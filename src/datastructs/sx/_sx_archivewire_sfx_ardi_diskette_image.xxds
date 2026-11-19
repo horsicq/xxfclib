@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sfx_ardi_diskette_image/xx_sfx_ardi_diskette_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarwire_ardi_geometry_record_fields = layout([u16("bytes_per_sector"), u8("sectors_per_cluster"),
+    u16("reserved_sectors", COUNT), u8("fat_count", COUNT), u16("root_directory_entries", COUNT), u16("total_sectors", COUNT),
+    u8("media_descriptor", ID), u16("sectors_per_fat", COUNT), u16("sectors_per_track", COUNT), u16("heads", COUNT),
+    u32("hidden_sectors", COUNT), u32("large_total_sectors", COUNT), bytes("drive_geometry", 11),
+    u16("record_marker", SIGNATURE), u32("compressed_size", SIZE), u32("constant"), u8("zero"), u32("image_crc32", CHECKSUM)]);
+var sxarwire_ardi_geometry_record = sxLayout(0x608D0129, "ardi_geometry_record", LE, sxarwire_ardi_geometry_record_fields);
+var sxarwire_ardi_trailer_fields = layout([bytes("opaque_prefix", 20), chars("copyright_prefix", 13, NONE),
+    field("copyright_year", "ascii_decimal[4]", 4), chars("author", 13, NONE), u8("terminator")]);
+var sxarwire_ardi_trailer = sxLayout(0x608D012A, "ardi_trailer", LE, sxarwire_ardi_trailer_fields);
+function sxarwire_ardi(c) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return false;
+    }
+    var r = f.get_current_archive_record(f, s);
+    var ok = false;
+    if (r !== null && r.header_offset >= f.base_address && r.header_size === 51 && r.data_offset >= f.base_address && r.compressed_size > 0) {
+        var p = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+        var d = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+        var z = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        var b = [];
+        if (sxarwire_span(c, p, 51) && d === p + 51 && sxarwire_span(c, d, z) && sxarwire_span(c, d + z, 51) && d + z + 51 === (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxarwire_read(c, p, b, 51) && sxarwire_num(b, 38, 4, false) === z) {
+            ok = sxarwire_put(c, sxarwire_ardi_geometry_record, p) && sxarwire_put(c, sxarwire_ardi_trailer, d + z);
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sx_sfx_ardi_diskette_image_build(c) {
+    return sxarwire_ardi(c);
+}

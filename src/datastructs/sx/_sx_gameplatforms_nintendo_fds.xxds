@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_fds/xx_nintendo_fds_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_fds_header_fields = layout([blob("signature", 4, SIGNATURE), u8("side_count", COUNT), blob("reserved", 11, RESERVED)]);
+var sxgp_fds_header = sxLayout(0x60360013, "fds_header", LE, sxgp_fds_header_fields);
+var sxgp_fds_file_count_fields = layout([u8("block_type", ID), u8("file_count", COUNT)]);
+var sxgp_fds_file_count = sxLayout(0x60360014, "fds_file_count", LE, sxgp_fds_file_count_fields);
+var sxgp_fds_file_fields = layout([u8("block_type", ID), u8("file_number", ID), u8("file_id", ID), chars("name", 8, STRING),
+    u16("load_address", VA), u16("file_size", SIZE), u8("file_type", ID), u8("data_block_type", ID)]);
+var sxgp_fds_file = sxLayout(0x60360015, "fds_file", LE, sxgp_fds_file_fields);
+var sxgp_fds_side_fields = layout([u8("block_type", ID), blob("disk_verification", 14, SIGNATURE), u8("licensee", ID),
+    chars("game_code", 3, ID), u8("game_type", ID), u8("game_version", ID), u8("side_number", ID), u8("disk_number", ID),
+    u8("fmc_disk_type", ID), u8("unknown18"), u8("boot_file_id", ID), blob("unknown1a", 5), blob("manufacture_date_bcd", 3),
+    u8("country", ID), u8("unknown23"), u8("unknown24"), blob("unknown25", 2), blob("unknown27", 5),
+    blob("rewrite_date_bcd", 3), u8("unknown2f"), u8("unknown30"), u16("disk_writer_serial", ID), u8("unknown33"),
+    u8("rewrite_count_bcd"), u8("actual_side", ID), u8("disk_type", ID), u8("disk_version", ID)]);
+var sxgp_fds_side = sxLayout(0x60360089, "fds_side", LE, sxgp_fds_side_fields);
+function sxgp_fds(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var sides = [0];
+    if (!sxgp_row(v, sxgp_fds_header, 0, end) || !sxgp_word(v, 4, 1, false, sides, 0, end) || sides[0] > 8) {
+        return false;
+    }
+    for (var i = 0; i < sides[0]; i++) {
+        var p = 16 + i * 65500;
+        var n = [0];
+        var z = [0];
+        var stop = p + 65500;
+        if (!sxgp_span(v, p, 65500, end) || !sxgp_row(v, sxgp_fds_side, p, stop) || !sxgp_row(v, sxgp_fds_file_count, p + 56, stop) || !sxgp_word(v, p + 57, 1, false, n, 0, stop) || n[0] > 128) {
+            return false;
+        }
+        p += 58;
+        for (var j = 0; j < n[0]; j++) {
+            if (!sxgp_row(v, sxgp_fds_file, p, stop) || !sxgp_word(v, p + 13, 2, false, z, 0, stop) || !sxgp_span(v, p + 17, z[0], stop)) {
+                return false;
+            }
+            p += 17 + z[0];
+        }
+    }
+    return true;
+}
+function sx_nintendo_fds_build(v) {
+    return sxgp_fds(v);
+}

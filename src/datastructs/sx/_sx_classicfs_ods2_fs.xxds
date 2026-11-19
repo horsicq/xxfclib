@@ -1,0 +1,182 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ods2_fs/xx_ods2_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_ods_home_block_fields = layout([u32("home_lbn"), u32("alternate_home_lbn"), u32("alternate_index_lbn"),
+    u16("structure_level", ID), u16("cluster_blocks", COUNT), u16("home_vbn"), u16("alternate_home_vbn"),
+    u16("alternate_index_vbn"), u16("index_bitmap_vbn"), u32("index_bitmap_lbn"), u32("maximum_files", COUNT),
+    u16("index_bitmap_blocks", COUNT), u16("reserved_files", COUNT), u16("device_type", ID), u16("relative_volume"),
+    u16("volume_count", COUNT), u16("characteristics", FLAGS), u32("owner_uic", ID), u32("security_mask", FLAGS),
+    u16("protection", FLAGS), u16("default_file_protection", FLAGS), u16("default_record_protection", FLAGS),
+    u16("checksum1", CHECKSUM), u64("creation_time", TIMESTAMP), u8("window_size", COUNT), u8("directory_cache_limit", COUNT),
+    u16("default_allocation_blocks", COUNT), u64("minimum_retention"), u64("maximum_retention"),
+    u64("revision_time", TIMESTAMP), field("minimum_security_class", "byte[20]", 20),
+    field("maximum_security_class", "byte[20]", 20), u16("file_lookup_number"), u16("file_lookup_sequence"),
+    u8("file_lookup_relative_volume"), u8("file_lookup_number_high"), u16("lowest_structure_level", ID),
+    u16("highest_structure_level", ID), u64("copy_time", TIMESTAMP), field("reserved0", "byte[302]", 302, RESERVED),
+    u32("serial_number", ID), chars("volume_set_name", 12, NONE), chars("volume_name", 12, NONE), chars("owner_name", 12, NONE),
+    chars("format_identifier", 12, SIGNATURE), u16("reserved1", RESERVED), u16("checksum2", CHECKSUM)]);
+var sxcf_ods_home_block = sxLayout(0x603D0057, "ods_home_block", LE, sxcf_ods_home_block_fields);
+var sxcf_ods_file_header_fields = layout([u8("identification_word_offset"), u8("map_word_offset"),
+    u8("access_control_word_offset"), u8("reserved_word_offset"), u16("segment_number"), u16("structure_level", ID),
+    u16("file_number_low"), u16("file_sequence"), u8("file_relative_volume"), u8("file_number_high"),
+    u16("extension_number_low"), u16("extension_sequence"), u8("extension_relative_volume"), u8("extension_number_high"),
+    u8("record_type_organization", FLAGS), u8("record_attributes", FLAGS), u16("record_size", SIZE),
+    u16("allocated_block_high"), u16("allocated_block_low"), u16("eof_block_high"), u16("eof_block_low"),
+    u16("first_free_byte", OFFSET), u8("bucket_blocks", COUNT), u8("fixed_control_size", SIZE),
+    u16("maximum_record_size", SIZE), u16("default_extend_blocks", COUNT), u16("global_buffer_count_16", COUNT),
+    u8("record_attribute_flags", FLAGS), u8("reserved0", RESERVED), u32("global_buffer_count_32", COUNT),
+    u16("reserved1", RESERVED), u16("version_limit", COUNT), u32("characteristics", FLAGS), u16("record_protection", FLAGS),
+    u8("mapping_words", COUNT), u8("access_mode", ID), u16("owner_member", ID), u16("owner_group", ID),
+    u16("protection", FLAGS), u16("backlink_number_low"), u16("backlink_sequence"), u8("backlink_relative_volume"),
+    u8("backlink_number_high"), u8("journal_flags", FLAGS), u8("recovery_unit_active", FLAGS), u16("link_count", COUNT),
+    u32("highwater_block")]);
+var sxcf_ods_file_header = sxLayout(0x603D0058, "ods_file_header", LE, sxcf_ods_file_header_fields);
+var sxcf_ods_file_checksum_fields = layout([u16("checksum", CHECKSUM)]);
+var sxcf_ods_file_checksum = sxLayout(0x603D0059, "ods_file_checksum", LE, sxcf_ods_file_checksum_fields);
+var sxcf_ods_retrieval_pointer0_fields = layout([u16("placement_word", FLAGS)]);
+var sxcf_ods_retrieval_pointer0 = sxLayout(0x603D005A, "ods_retrieval_pointer0", LE, sxcf_ods_retrieval_pointer0_fields);
+var sxcf_ods_retrieval_pointer1_fields = layout([u8("blocks_minus_one"), u8("format_and_lbn_high", FLAGS), u16("lbn_low")]);
+var sxcf_ods_retrieval_pointer1 = sxLayout(0x603D005B, "ods_retrieval_pointer1", LE, sxcf_ods_retrieval_pointer1_fields);
+var sxcf_ods_retrieval_pointer2_fields = layout([u16("format_and_blocks_minus_one", FLAGS), u32("first_lbn")]);
+var sxcf_ods_retrieval_pointer2 = sxLayout(0x603D005C, "ods_retrieval_pointer2", LE, sxcf_ods_retrieval_pointer2_fields);
+var sxcf_ods_retrieval_pointer3_fields = layout([u16("format_and_count_high", FLAGS), u16("count_low"), u32("first_lbn")]);
+var sxcf_ods_retrieval_pointer3 = sxLayout(0x603D005D, "ods_retrieval_pointer3", LE, sxcf_ods_retrieval_pointer3_fields);
+var sxcf_ods_directory_header_fields = layout([u16("following_record_size", SIZE), u16("version_limit", COUNT),
+    u8("flags_and_name_encoding", FLAGS), u8("name_size", SIZE)]);
+var sxcf_ods_directory_header = sxLayout(0x603D005E, "ods_directory_header", LE, sxcf_ods_directory_header_fields);
+var sxcf_ods_directory_version_fields = layout([u16("version"), u16("file_number_low"), u16("file_sequence"),
+    u8("relative_volume"), u8("file_number_high")]);
+var sxcf_ods_directory_version = sxLayout(0x603D005F, "ods_directory_version", LE, sxcf_ods_directory_version_fields);
+function sxcf_ods_sum(b, n) {
+    var sum = 0;
+    for (var i = 0; i < n; i += 2) {
+        sum = sum + sxcf16(b, i, 0) & 0xFFFF;
+    }
+    return sum;
+}
+function sxcf_ods_map(c, h, at, m, cap, emit) {
+    var q = h[1] * 2;
+    var end = (q + h[58] * 2) >>> 0;
+    var count = 0;
+    var logical = 0;
+    if (q < 80 || end > 510 || q > end) {
+        return 0;
+    }
+    while ((q + 2) >>> 0 <= end) {
+        var w = sxcf16(h, q, 0);
+        var format = w >> 14;
+        var z = format === 0 ? 2 : format === 1 ? 4 : format === 2 ? 6 : 8;
+        if (z > (end - q) >>> 0) {
+            return 0;
+        }
+        var l = format === 0 ? sxcf_ods_retrieval_pointer0 : format === 1 ? sxcf_ods_retrieval_pointer1 : format === 2 ? sxcf_ods_retrieval_pointer2 : sxcf_ods_retrieval_pointer3;
+        if (emit && !sxcf_put(c, l, at + q, 1)) {
+            return 0;
+        }
+        if (format) {
+            var n = format === 1 ? (w & 255) + 1 : format === 2 ? (w & 0x3FFF) + 1 : ((w & 0x3FFF) * 0x10000 | sxcf16(h, q + 2, 0)) + 1;
+            var block = format === 1 ? (w & 0x3F00) << 8 | sxcf16(h, q + 2, 0) : sxcf32(h, q + (format === 2 ? 2 : 4), 0);
+            if (n > (0x7FFFFF * 4294967296 + 0xFFFFFFFF) || !sxcf_span(c, block * 512, n * 512) || count >= cap) {
+                return count;
+            }
+            m[count++] = sxCopy_sxcf_extent_map(null, { logical: logical, physical: block * 512, bytes: n * 512 });
+            logical += n * 512;
+        }
+        q = (q + z) >>> 0;
+    }
+    return count;
+}
+function sxcf_ods_header_ok(h) {
+    return sxcf_ods_sum(h, 510) === sxcf16(h, 510, 0) && (sxcf16(h, 6, 0) >> 8 === 2 || sxcf16(h, 6, 0) >> 8 === 5) && h[0] >= 40 && h[0] <= h[1] && h[1] <= h[2] && h[2] <= h[3] && h[3] <= 255 && h[1] + h[58] <= h[2];
+}
+function sxcf_ods_dir(c, p, bytes) {
+    var h = [];
+    for (var q = 0; q + 6 <= bytes && c.count < 24000; ) {
+        if (!sxcf_read(c, p + q, h, 6)) {
+            return false;
+        }
+        var n = sxcf16(h, 0, 0);
+        var names = h[5];
+        if (!n || n === 65535) {
+            q = (Math.floor(q / 512) + 1) * 512;
+            continue;
+        }
+        var values = (6 + (((names + 1) >>> 0 & 0xFFFFFFFE) >>> 0)) >>> 0;
+        if (n < 14 || n & 1 || (n + 2) >>> 0 > sxU64(bytes - q) || (n + 2) >>> 0 > 512 - q % 512 || (values + 8) >>> 0 > (n + 2) >>> 0 || ((((n + 2) >>> 0) - values) >>> 0) % 8) {
+            break;
+        }
+        if (!sxcf_put(c, sxcf_ods_directory_header, p + q, 1) || !sxcf_put(c, sxcf_ods_directory_version, p + q + values, Math.floor(((((n + 2) >>> 0) - values) >>> 0) / 8))) {
+            return false;
+        }
+        q += (n + 2) >>> 0;
+    }
+    return true;
+}
+function sxcf_ods(c) {
+    var h = [];
+    var b = [];
+    var index = sxAllocN(215, sxNew_sxcf_extent_map);
+    var map = sxAllocN(215, sxNew_sxcf_extent_map);
+    if (!sxcf_read(c, 512, h, 512) || !(!sxMemcmpAt(h, 496, "DECFILE11A  ", 0, 12) || !sxMemcmpAt(h, 496, "DECFILE11B  ", 0, 12)) || sxcf_ods_sum(h, 58) !== sxcf16(h, 58, 0) || sxcf_ods_sum(h, 510) !== sxcf16(h, 510, 0) || !sxcf_put(c, sxcf_ods_home_block, 512, 1)) {
+        return false;
+    }
+    var first = sxcf32(h, 24, 0) + sxcf16(h, 32, 0);
+    var vbn = sxcf16(h, 22, 0) + sxcf16(h, 32, 0);
+    var max = sxcf32(h, 28, 0);
+    if (!vbn || !max || !sxcf_read(c, first * 512, b, 512) || !sxcf_ods_header_ok(b)) {
+        return true;
+    }
+    var ni = sxcf_ods_map(c, b, first * 512, index, 215, false);
+    if (!ni) {
+        return true;
+    }
+    if (max > 262144) {
+        max = 262144;
+    }
+    for (var id = 1; id <= max && c.count < 24000; id++) {
+        var logical = sxU64(vbn + id - 2) * 512;
+        var p = SX_U64_MAX;
+        for (var k = 0; k < ni; k++) {
+            if (logical >= index[k].logical && sxU64(logical - index[k].logical) <= index[k].bytes && 512 <= sxU64(index[k].bytes - sxU64(logical - index[k].logical))) {
+                p = sxU64(index[k].physical + logical - index[k].logical);
+                break;
+            }
+        }
+        if (p === SX_U64_MAX) {
+            continue;
+        }
+        if (!sxcf_read(c, p, b, 512)) {
+            return false;
+        }
+        if (!sxcf_ods_header_ok(b) || (sxcf16(b, 8, 0) | b[13] << 16) !== id) {
+            continue;
+        }
+        if (!sxcf_put(c, sxcf_ods_file_header, p, 1) || !sxcf_put(c, sxcf_ods_file_checksum, p + 510, 1)) {
+            return false;
+        }
+        var nm = sxcf_ods_map(c, b, p, map, 215, true);
+        if (sxcf32(b, 52, 0) & 0x2000) {
+            var end = ((sxcf16(b, 28, 0) << 16) >>> 0 | sxcf16(b, 30, 0)) >>> 0;
+            var size = end ? sxU64(end - 1) * 512 + sxcf16(b, 32, 0) : 0;
+            for (k = 0; k < nm; k++) {
+                if (map[k].logical >= size) {
+                    break;
+                }
+                var n = map[k].bytes;
+                if (n > sxU64(size - map[k].logical)) {
+                    n = sxU64(size - map[k].logical);
+                }
+                if (!sxcf_ods_dir(c, map[k].physical, n)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_ods2_fs_build(c) {
+    return sxcf_ods(c);
+}

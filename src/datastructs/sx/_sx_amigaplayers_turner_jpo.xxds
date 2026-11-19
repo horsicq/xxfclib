@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/turner_jpo/xx_turner_jpo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxamip_turner_target(stored, origin, extra, end, out) {
+    if (stored < origin) {
+        var d = sxU64(origin - stored);
+        if (d > extra) {
+            return false;
+        }
+        out[0] = sxU64(extra - d);
+    } else {
+        d = sxU64(stored - origin);
+        if (d > end || extra > sxU64(end - d)) {
+            return false;
+        }
+        out[0] = d + extra;
+    }
+    return out[0] <= end;
+}
+function sxamip_turner(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var origin = [0];
+    var sub = [0];
+    var trk = [0];
+    var smp = [0];
+    var a = [0];
+    var p;
+    var z = [0];
+    var n = [0];
+    if (!sxamip_span(v, 0, 46, e)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxamip_eq(v, (i * 8) >>> 0, "+|", 2, e) || !sxamip_row(v, sxamip_turner_address, (2 + ((i * 8) >>> 0)) >>> 0, e)) {
+            return false;
+        }
+    }
+    if (!sxamip_eq(v, 32, "0<\x00\xFF2\x00N\xB9", 8, e) || !sxamip_eq(v, 44, "Nu", 2, e) || !sxamip_be(v, 2, 4, origin, 0, e) || origin[0] < 46 || !sxamip_be(v, 10, 4, a, 0, e) || !sxamip_turner_target(a[0], origin[0], 46, e, sub) || !sxamip_be(v, 18, 4, a, 0, e) || !sxamip_turner_target(a[0], origin[0], 46, e, trk) || !sxamip_be(v, 26, 4, a, 0, e) || !sxamip_turner_target(a[0], origin[0], 20, e, smp)) {
+        return false;
+    }
+    p = sub[0];
+    for (i = 0; i < 4096; i++) {
+        if (!sxamip_be(v, p, 2, a, 0, e)) {
+            return false;
+        }
+        if (sxAnd64(a[0], 0xFFF0)) {
+            break;
+        }
+        if (!sxamip_row(v, sxamip_turner_subsong, p, e)) {
+            return false;
+        }
+        for (var k = 4; k < 12; k = (k + 2) >>> 0) {
+            var target = [0];
+            if (!sxamip_be(v, p + k, 2, a, 0, e)) {
+                return false;
+            }
+            if (a[0] && (!sxamip_signed16_target(v, p + k, sub[0], target, e) || !sxamip_span(v, target[0], 1, e))) {
+                return false;
+            }
+        }
+        p += 12;
+        if (i === 4095) {
+            return false;
+        }
+    }
+    if (!sxamip_be(v, smp[0], 4, n, 0, e) || !n[0] || sxAnd64(n[0], 3) || Math.floor(n[0] / 4) > 4096 || !sxamip_row(v, sxamip_turner_sample_table, smp[0], e)) {
+        return false;
+    }
+    p = smp[0] + 26;
+    if (!sxamip_span(v, p, n[0], e)) {
+        return false;
+    }
+    for (i = 0; i < Math.floor(n[0] / 4); i++) {
+        if (!sxamip_be(v, p + i * 4, 4, a, 0, e) || !sxamip_row(v, sxamip_turner_sample_offset, p + i * 4, e)) {
+            return false;
+        }
+        if (!a[0]) {
+            continue;
+        }
+        if (a[0] > sxU64(e - p) || !sxamip_be(v, p + a[0], 2, z, 0, e) || p + a[0] < 6 || !sxamip_span(v, sxU64(p + a[0] - 6), z[0] + 8, e) || !sxamip_row(v, sxamip_turner_sample_length, p + a[0], e)) {
+            return false;
+        }
+    }
+    return sxamip_span(v, trk[0], 2, e);
+}
+function sx_turner_jpo_build(v) {
+    return sxamip_turner(v);
+}

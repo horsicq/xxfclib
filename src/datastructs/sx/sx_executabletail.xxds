@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_executabletail.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_executabletail");
+include("_sx_executabletail_executable_overlay");
+include("_sx_executabletail_molebox");
+
+function fileTypes() { return ["MOLEBOX", "EXECUTABLE_OVERLAY"]; }
+
+var sx_executabletail_layouts = [sxexo_molebox_package_prefix, sxexo_molebox_encrypted_tree, sxexo_molebox_encrypted_header,
+    sxexo_molebox_encrypted_catalog, sxexo_molebox_encrypted_catalog_footer, sxexo_overlay_dos_header, sxexo_overlay_dos_e_res,
+    sxexo_overlay_dos_e_oemid, sxexo_overlay_dos_e_oeminfo, sxexo_overlay_dos_e_res2, sxexo_overlay_dos_e_lfanew,
+    sxexo_overlay_dos_relocation, sxexo_overlay_pe_signature, sxexo_overlay_coff_header, sxexo_overlay_pe_optional32,
+    sxexo_overlay_pe_optional64, sxexo_overlay_pe_directory, sxexo_overlay_pe_security_directory, sxexo_overlay_pe_section,
+    sxexo_overlay_ne_header, sxexo_overlay_ne_segment];
+
+function structs() {
+    return sxCatalog([sxexo_molebox_package_prefix, sxexo_molebox_encrypted_tree, sxexo_molebox_encrypted_header,
+        sxexo_molebox_encrypted_catalog, sxexo_molebox_encrypted_catalog_footer, sxexo_overlay_dos_header,
+        sxexo_overlay_dos_e_res, sxexo_overlay_dos_e_oemid, sxexo_overlay_dos_e_oeminfo, sxexo_overlay_dos_e_res2,
+        sxexo_overlay_dos_e_lfanew, sxexo_overlay_dos_relocation, sxexo_overlay_pe_signature, sxexo_overlay_coff_header,
+        sxexo_overlay_pe_optional32, sxexo_overlay_pe_optional64, sxexo_overlay_pe_directory,
+        sxexo_overlay_pe_security_directory, sxexo_overlay_pe_section, sxexo_overlay_ne_header, sxexo_overlay_ne_segment], sx_executabletail_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_executabletail_build, false);
+}

@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/parsec_pmm/xx_parsec_pmm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_pmm_header_fields = layout([chars("magic", 16, SIGNATURE), u32("instrument_offset", OFFSET),
+    u32("sample_offset0", OFFSET), u32("sample_offset1", OFFSET), u32("sample_offset2", OFFSET), u32("sample_offset3", OFFSET),
+    u32("sample_offset4", OFFSET), u32("sample_offset5", OFFSET), u32("sample_offset6", OFFSET), u32("sample_offset7", OFFSET),
+    u32("reserved", RESERVED), chars("metadata_magic", 4, SIGNATURE), blob("unknown_3c", 2),
+    u16("track_relative_offset", OFFSET), u8("sample_count", COUNT)]);
+var sxau_pmm_header = sxLayout(0x602C0072, "pmm_header", LE, sxau_pmm_header_fields);
+var sxau_pmm_sample_fields = layout([chars("magic", 6, SIGNATURE), u16("pcm_bytes", SIZE), blob("unknown", 2)]);
+var sxau_pmm_sample = sxLayout(0x602C0073, "pmm_sample", LE, sxau_pmm_sample_fields);
+var sxau_pmm_instrument_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxau_pmm_instrument = sxLayout(0x602C0074, "pmm_instrument", LE, sxau_pmm_instrument_fields);
+function sxau_pmm(v) {
+    if (!sxau_row(v, sxau_pmm_header, 0, v.n)) {
+        return false;
+    }
+    var n = v.p[64];
+    if (n > 8 || !sxau_row(v, sxau_pmm_instrument, sxau_u32(v.p, 16, false), v.n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxau_row(v, sxau_pmm_sample, sxau_u32(v.p, 20 + ((4 * i) >>> 0), false), v.n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_parsec_pmm_build(v) {
+    return sxau_pmm(v);
+}

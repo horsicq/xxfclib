@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/pfpk/xx_pfpk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_pfpk_header_fields = layout([chars("signature", 4, SIGNATURE), u32("entry_count", COUNT)]);
+var sxbx_pfpk_header = sxLayout(0x603000F1, "pfpk_header", LE, sxbx_pfpk_header_fields);
+var sxbx_pfpk_name_size_fields = layout([u8("name_size", SIZE)]);
+var sxbx_pfpk_name_size = sxLayout(0x603000F2, "pfpk_name_size", LE, sxbx_pfpk_name_size_fields);
+var sxbx_pfpk_member_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxbx_pfpk_member = sxLayout(0x603000F3, "pfpk_member", LE, sxbx_pfpk_member_fields);
+function sxbx_pfpk(c) {
+    var n = [0];
+    var p = [8];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxbx_add(c, sxbx_pfpk_header, 0) || !sxbx_word(c, 4, 4, false, n) || n[0] > 20000) {
+        return false;
+    }
+    for (var i = 0; i < n[0] && c.count < 20000; i++) {
+        if (!sxbx_counted(c, p, end, sxbx_pfpk_name_size, 1, false, 1) || sxU64(end - p[0]) < 8 || !sxbx_add(c, sxbx_pfpk_member, p[0])) {
+            break;
+        }
+        p[0] += 8;
+    }
+    return true;
+}
+function sx_pfpk_build(c) {
+    return sxbx_pfpk(c);
+}

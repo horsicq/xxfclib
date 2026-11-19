@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/dds/xx_dds_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_dds_header_fields = layout([chars("magic", 4, SIGNATURE), u32("size", SIZE), u32("flags", FLAGS), u32("height"),
+    u32("width"), u32("pitch_or_linear_size", SIZE), u32("depth"), u32("mipmap_count", COUNT),
+    field("reserved1", "uint32[11]", 44, RESERVED), u32("pixel_format_size", SIZE), u32("pixel_format_flags", FLAGS),
+    u32("fourcc", ID), u32("rgb_bit_count"), u32("red_mask", FLAGS), u32("green_mask", FLAGS), u32("blue_mask", FLAGS),
+    u32("alpha_mask", FLAGS), u32("caps", FLAGS), u32("caps2", FLAGS), u32("caps3", FLAGS), u32("caps4", FLAGS),
+    u32("reserved2", RESERVED)]);
+var sxm_dds_header = sxLayout(0x60060004, "dds_header", LE, sxm_dds_header_fields);
+var sxm_dds_dx10_fields = layout([u32("dxgi_format", ID), u32("resource_dimension", ID), u32("misc_flag", FLAGS),
+    u32("array_size", COUNT), u32("misc_flags2", FLAGS)]);
+var sxm_dds_dx10 = sxLayout(0x60060005, "dds_dx10", LE, sxm_dds_dx10_fields);
+function sx_dds_build(c, h, n) {
+    if (n < 128 || sxMemcmp(h, "DDS ", 4) || sxGetU32(h, 128, 4, false) !== 124 || sxGetU32(h, 128, 76, false) !== 32 || !sx_add(c, sxm_dds_header, 0, 128)) {
+        return false;
+    }
+    if (!sxMemcmpAt(h, 84, "DX10", 0, 4)) {
+        return sx_add(c, sxm_dds_dx10, 128, 20) && sxm_tail(c, 148);
+    }
+    return sxm_tail(c, 128);
+}

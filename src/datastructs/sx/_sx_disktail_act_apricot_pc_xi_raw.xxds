@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/act_apricot_pc_xi_raw/xx_act_apricot_pc_xi_raw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_apricot_label_prefix_fields = layout([chars("version", 8, NONE), field("unknown", "byte[6]", 6),
+    u16("sector_size", SIZE), u16("sectors_per_track", COUNT), u32("cylinders", COUNT), u8("heads", COUNT)]);
+var sxdt_apricot_label_prefix = sxLayout(0x607A0009, "apricot_label_prefix", LE, sxdt_apricot_label_prefix_fields);
+var sxdt_apricot_bpb_fields = layout([u16("bytes_per_sector", SIZE), u8("sectors_per_cluster", COUNT),
+    u16("reserved_sectors", COUNT), u8("fat_count", COUNT), u16("root_directory_entries", COUNT), u16("total_sectors", COUNT),
+    u8("media_descriptor", ID), u16("sectors_per_fat", COUNT)]);
+var sxdt_apricot_bpb = sxLayout(0x607A000A, "apricot_bpb", LE, sxdt_apricot_bpb_fields);
+var sxdt_apricot_fat12_pair_fields = layout([field("packed_cluster_links", "uint24", 3)]);
+var sxdt_apricot_fat12_pair = sxLayout(0x607A0078, "apricot_fat12_pair", LE, sxdt_apricot_fat12_pair_fields);
+var sxdt_apricot_directory_entry_fields = layout([chars("filename", 8, NONE), chars("extension", 3, NONE),
+    u8("attributes", FLAGS), field("reserved_legacy", "byte[10]", 10), u16("modification_time_packed"),
+    u16("modification_date_packed"), u16("first_cluster"), u32("file_size", SIZE)]);
+var sxdt_apricot_directory_entry = sxLayout(0x607A0079, "apricot_directory_entry", LE, sxdt_apricot_directory_entry_fields);
+function sxdt_apricot(c) {
+    var b = [];
+    if (!sxdt_read(c, 80, b, 0, 13) || sxdt16(b, 0, 0) !== 512 || !sxdt_put(c, sxdt_apricot_label_prefix, 0, 1) || !sxdt_put(c, sxdt_apricot_bpb, 80, 1)) {
+        return false;
+    }
+    var reserved = sxdt16(b, 3, 0);
+    var fats = b[5];
+    var fatsectors = sxdt16(b, 11, 0);
+    var entries = sxdt16(b, 6, 0);
+    if (!reserved || !fats || fats > 2 || !fatsectors || fatsectors > 16 || entries > 1024) {
+        return true;
+    }
+    for (var i = 0; i < fats; i++) {
+        var p = ((reserved + sxMul32(i, fatsectors)) >>> 0) * 512;
+        if (sxdt_span(c, p, fatsectors * 512) && !sxdt_put(c, sxdt_apricot_fat12_pair, p, Math.floor(((fatsectors * 512) >>> 0) / 3))) {
+            return false;
+        }
+    }
+    var root = ((reserved + sxMul32(fats, fatsectors)) >>> 0) * 512;
+    for (i = 0; i < entries; i++) {
+        var e = [];
+        p = root + ((i * 32) >>> 0);
+        if (!sxdt_read(c, p, e, 0, 32) || !e[0]) {
+            break;
+        }
+        if (e[0] !== 229 && (e[11] & 63) !== 15 && !sxdt_put(c, sxdt_apricot_directory_entry, p, 1)) {
+            return false;
+        }
+    }
+    if (c.f.create_archive_records_reading !== null && c.f.get_current_archive_record !== null && c.f.archive_record_move_to_next !== null && c.f.free_archive_records_reading !== null) {
+        var state = c.f.create_archive_records_reading(c.f, null, c.pd);
+        if (state !== null) {
+            var ok = true;
+            for (i = 0; i < 24000; i++) {
+                var r = c.f.get_current_archive_record(c.f, state);
+                if (r === null) {
+                    break;
+                }
+                if (r.header_offset >= c.f.base_address && r.header_size === 32) {
+                    p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+                    if (sxdt_span(c, p, 32) && !sxdt_put(c, sxdt_apricot_directory_entry, p, 1)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (!c.f.archive_record_move_to_next(c.f, state, c.pd)) {
+                    break;
+                }
+            }
+            c.f.free_archive_records_reading(c.f, state);
+            if (!ok) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_act_apricot_pc_xi_raw_build(c) {
+    var ok = false;
+    ok = sxdt_apricot(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

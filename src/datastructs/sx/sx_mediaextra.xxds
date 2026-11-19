@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_mediaextra.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_mediaextra");
+include("_sx_mediaextra_cri_utf");
+include("_sx_mediaextra_idtech_iqm");
+include("_sx_mediaextra_lithtech_rez");
+include("_sx_mediaextra_lucas_bun");
+include("_sx_mediaextra_lucas_lab");
+include("_sx_mediaextra_mohawk_mhk");
+include("_sx_mediaextra_mythic_myp");
+include("_sx_mediaextra_nintendo_bclyt");
+include("_sx_mediaextra_nintendo_bflyt");
+include("_sx_mediaextra_nintendo_bfres");
+include("_sx_mediaextra_nintendo_bfsha");
+include("_sx_mediaextra_nintendo_brlan");
+include("_sx_mediaextra_nintendo_brlyt");
+include("_sx_mediaextra_nintendo_brres");
+include("_sx_mediaextra_nintendo_byaml");
+include("_sx_mediaextra_nintendo_cgfx");
+include("_sx_mediaextra_nintendo_j3d_bmd");
+include("_sx_mediaextra_nintendo_j3d_btk");
+include("_sx_mediaextra_relic_chunky");
+include("_sx_mediaextra_relic_sga");
+include("_sx_mediaextra_terminalreality_pod");
+include("_sx_mediaextra_unity_serialized");
+include("_sx_mediaextra_unreal_package");
+include("_sx_mediaextra_unreal_psa");
+include("_sx_mediaextra_unreal_psk");
+include("_sx_mediaextra_valve_hpak");
+include("_sx_mediaextra_volition_vpp");
+
+function fileTypes() { return ["LUCAS_LAB", "LUCAS_BUN", "MOHAWK_MHK", "NINTENDO_BRRES", "TERMINALREALITY_POD", "VOLITION_VPP",
+    "MYTHIC_MYP", "LITHTECH_REZ", "VALVE_HPAK", "UNREAL_PACKAGE", "NINTENDO_BFRES", "NINTENDO_BFLYT", "NINTENDO_BCLYT",
+    "RELIC_SGA", "UNITY_SERIALIZED", "NINTENDO_CGFX", "NINTENDO_BYAML", "RELIC_CHUNKY", "NINTENDO_J3D_BMD", "NINTENDO_J3D_BTK",
+    "NINTENDO_BRLYT", "NINTENDO_BRLAN", "NINTENDO_BFSHA", "CRI_UTF", "IDTECH_IQM", "UNREAL_PSK", "UNREAL_PSA"]; }
+
+var sx_mediaextra_layouts = [sxmx_lab_header, sxmx_lab_entry, sxmx_bun_header, sxmx_bun_lb83_entry, sxmx_bun_lb23_entry,
+    sxmx_mhk_header, sxmx_mhk_directory, sxmx_mhk_type, sxmx_mhk_count32, sxmx_mhk_count16, sxmx_mhk_file, sxmx_mhk_resource,
+    sxmx_mhk_name, sxmx_pod2_header, sxmx_pod2_entry, sxmx_pod2_audit, sxmx_vpp3_header_le, sxmx_vpp3_entry_le,
+    sxmx_vpp3_header_be, sxmx_vpp3_entry_be, sxmx_myp_header, sxmx_myp_block, sxmx_myp_entry, sxmx_rez_header,
+    sxmx_rez_directory_entry, sxmx_rez_resource_entry, sxmx_rez_key, sxmx_hpak_header, sxmx_hpak_directory, sxmx_hpak_entry,
+    sxmx_brres_header, sxmx_brres_root, sxmx_brres_dictionary, sxmx_brres_node, sxmx_brres_resource, sxmx_cflyt_header_le,
+    sxmx_bflyt_header_le, sxmx_section_le, sxmx_nw_layout_le, sxmx_clyt_layout_le, sxmx_nw_names_le, sxmx_nw_name_offset_le,
+    sxmx_cflyt_header_be, sxmx_bflyt_header_be, sxmx_section_be, sxmx_nw_layout_be, sxmx_clyt_layout_be, sxmx_nw_names_be,
+    sxmx_nw_name_offset_be, sxmx_nw_header, sxmx_nw_pane, sxmx_nw_legacy_names, sxmx_nw_legacy_name, sxmx_nw_group,
+    sxmx_nw_pane_reference, sxmx_chunky_header, sxmx_chunky_chunk, sxmx_j3d_header, sxmx_btk_ttk1, sxmx_btk_selection,
+    sxmx_btk_remap, sxmx_btk_texture_matrix_index, sxmx_btk_float, sxmx_btk_rotation, sxmx_j3d_name_table, sxmx_j3d_name,
+    sxmx_brlan_pai1, sxmx_brlan_binding, sxmx_brlan_group, sxmx_brlan_track, sxmx_brlan_key, sxmx_relative_offset_be,
+    sxmx_bfres_header, sxmx_bfres_dictionary, sxmx_bfres_node, sxmx_bfres_external, sxmx_cgfx_slot, sxmx_cgfx_dictionary,
+    sxmx_cgfx_node, sxmx_unity_header, sxmx_unity_metadata_flags, sxmx_unity_type, sxmx_unity_object_count, sxmx_unity_object,
+    sxmx_unity_tail_counts, sxmx_ue1_header, sxmx_ue1_name_flags, sxmx_ue1_heritage, sxmx_sga6_header, sxmx_sga6_table_slot,
+    sxmx_sga6_drive, sxmx_sga6_folder, sxmx_sga6_file, sxmx_byaml_header_le, sxmx_byaml_node_le, sxmx_byaml_string_offset_le,
+    sxmx_byaml_map_key_le, sxmx_byaml_array_kind_le, sxmx_byaml_string_le, sxmx_byaml_bool_le, sxmx_byaml_int_le,
+    sxmx_byaml_float_le, sxmx_byaml_uint_le, sxmx_byaml_node_value_le, sxmx_byaml_null_le, sxmx_byaml_header_be,
+    sxmx_byaml_node_be, sxmx_byaml_string_offset_be, sxmx_byaml_map_key_be, sxmx_byaml_array_kind_be, sxmx_byaml_string_be,
+    sxmx_byaml_bool_be, sxmx_byaml_int_be, sxmx_byaml_float_be, sxmx_byaml_uint_be, sxmx_byaml_node_value_be,
+    sxmx_byaml_null_be, sxmx_fsha_header, sxmx_fsha_string_length, sxmx_fsha_model, sxmx_fsha_program, sxmx_fsha_vertex_shader,
+    sxmx_fsha_pixel_shader, sxmx_utf_header, sxmx_utf_column, sxmx_utf_u8, sxmx_utf_i8, sxmx_utf_u16, sxmx_utf_i16,
+    sxmx_utf_u32, sxmx_utf_i32, sxmx_utf_u64, sxmx_utf_i64, sxmx_utf_float, sxmx_utf_double, sxmx_utf_string, sxmx_utf_binary,
+    sxmx_utf_guid, sxmx_iqm_header, sxmx_iqm_mesh, sxmx_iqm_vertex_array, sxmx_iqm_triangle, sxmx_iqm_adjacency, sxmx_iqm_float,
+    sxmx_iqm_color, sxmx_psx_chunk, sxmx_psx_bone, sxmx_psk_point, sxmx_psk_wedge, sxmx_psk_face, sxmx_psk_material,
+    sxmx_psk_weight, sxmx_psa_sequence, sxmx_psa_key];
+
+function structs() {
+    return sxCatalog([sxmx_lab_header, sxmx_lab_entry, sxmx_bun_header, sxmx_bun_lb83_entry, sxmx_bun_lb23_entry,
+        sxmx_mhk_header, sxmx_mhk_directory, sxmx_mhk_type, sxmx_mhk_count32, sxmx_mhk_count16, sxmx_mhk_file,
+        sxmx_mhk_resource, sxmx_mhk_name, sxmx_pod2_header, sxmx_pod2_entry, sxmx_pod2_audit, sxmx_vpp3_header_le,
+        sxmx_vpp3_entry_le, sxmx_vpp3_header_be, sxmx_vpp3_entry_be, sxmx_myp_header, sxmx_myp_block, sxmx_myp_entry,
+        sxmx_rez_header, sxmx_rez_directory_entry, sxmx_rez_resource_entry, sxmx_rez_key, sxmx_hpak_header, sxmx_hpak_directory,
+        sxmx_hpak_entry, sxmx_brres_header, sxmx_brres_root, sxmx_brres_dictionary, sxmx_brres_node, sxmx_brres_resource,
+        sxmx_cflyt_header_le, sxmx_bflyt_header_le, sxmx_section_le, sxmx_nw_layout_le, sxmx_clyt_layout_le, sxmx_nw_names_le,
+        sxmx_nw_name_offset_le, sxmx_cflyt_header_be, sxmx_bflyt_header_be, sxmx_section_be, sxmx_nw_layout_be,
+        sxmx_clyt_layout_be, sxmx_nw_names_be, sxmx_nw_name_offset_be, sxmx_nw_header, sxmx_nw_pane, sxmx_nw_legacy_names,
+        sxmx_nw_legacy_name, sxmx_nw_group, sxmx_nw_pane_reference, sxmx_chunky_header, sxmx_chunky_chunk, sxmx_j3d_header,
+        sxmx_btk_ttk1, sxmx_btk_selection, sxmx_btk_remap, sxmx_btk_texture_matrix_index, sxmx_btk_float, sxmx_btk_rotation,
+        sxmx_j3d_name_table, sxmx_j3d_name, sxmx_brlan_pai1, sxmx_brlan_binding, sxmx_brlan_group, sxmx_brlan_track,
+        sxmx_brlan_key, sxmx_relative_offset_be, sxmx_bfres_header, sxmx_bfres_dictionary, sxmx_bfres_node, sxmx_bfres_external,
+        sxmx_cgfx_slot, sxmx_cgfx_dictionary, sxmx_cgfx_node, sxmx_unity_header, sxmx_unity_metadata_flags, sxmx_unity_type,
+        sxmx_unity_object_count, sxmx_unity_object, sxmx_unity_tail_counts, sxmx_ue1_header, sxmx_ue1_name_flags,
+        sxmx_ue1_heritage, sxmx_sga6_header, sxmx_sga6_table_slot, sxmx_sga6_drive, sxmx_sga6_folder, sxmx_sga6_file,
+        sxmx_byaml_header_le, sxmx_byaml_node_le, sxmx_byaml_string_offset_le, sxmx_byaml_map_key_le, sxmx_byaml_array_kind_le,
+        sxmx_byaml_string_le, sxmx_byaml_bool_le, sxmx_byaml_int_le, sxmx_byaml_float_le, sxmx_byaml_uint_le,
+        sxmx_byaml_node_value_le, sxmx_byaml_null_le, sxmx_byaml_header_be, sxmx_byaml_node_be, sxmx_byaml_string_offset_be,
+        sxmx_byaml_map_key_be, sxmx_byaml_array_kind_be, sxmx_byaml_string_be, sxmx_byaml_bool_be, sxmx_byaml_int_be,
+        sxmx_byaml_float_be, sxmx_byaml_uint_be, sxmx_byaml_node_value_be, sxmx_byaml_null_be, sxmx_fsha_header,
+        sxmx_fsha_string_length, sxmx_fsha_model, sxmx_fsha_program, sxmx_fsha_vertex_shader, sxmx_fsha_pixel_shader,
+        sxmx_utf_header, sxmx_utf_column, sxmx_utf_u8, sxmx_utf_i8, sxmx_utf_u16, sxmx_utf_i16, sxmx_utf_u32, sxmx_utf_i32,
+        sxmx_utf_u64, sxmx_utf_i64, sxmx_utf_float, sxmx_utf_double, sxmx_utf_string, sxmx_utf_binary, sxmx_utf_guid,
+        sxmx_iqm_header, sxmx_iqm_mesh, sxmx_iqm_vertex_array, sxmx_iqm_triangle, sxmx_iqm_adjacency, sxmx_iqm_float,
+        sxmx_iqm_color, sxmx_psx_chunk, sxmx_psx_bone, sxmx_psk_point, sxmx_psk_wedge, sxmx_psk_face, sxmx_psk_material,
+        sxmx_psk_weight, sxmx_psa_sequence, sxmx_psa_key], sx_mediaextra_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_mediaextra_build, false);
+}

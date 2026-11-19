@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/aaruformat/xx_aaruformat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_aaru2_header_fields = layout([u64("magic", SIGNATURE), chars("application", 64, STRING), u8("image_major_version", ID),
+    u8("image_minor_version", ID), u8("application_major_version", ID), u8("application_minor_version", ID),
+    u32("media_type", ID), u64("index_offset", OFFSET), i64("creation_time", TIMESTAMP), i64("last_written_time", TIMESTAMP),
+    field("guid", "byte[16]", 16, ID), u8("block_alignment_shift"), u16("biggest_sector_size", SIZE),
+    u64("feature_compatible", FLAGS), u64("feature_compatible_readonly", FLAGS), u64("feature_incompatible", FLAGS)]);
+var sxvi_aaru2_header = sxLayout(0x60530030, "aaru2_header", LE, sxvi_aaru2_header_fields);
+var sxvi_aaru2_ddt_header_fields = layout([u32("identifier", SIGNATURE), u16("data_type", ID), u16("compression", ID),
+    u8("levels", COUNT), u8("table_level"), u64("previous_level_offset", OFFSET), u32("negative_sectors", COUNT),
+    u64("blocks", COUNT), u32("overflow_sectors", COUNT), u64("start"), u8("block_alignment_shift"), u8("data_shift"),
+    u8("table_shift"), u64("entries", COUNT), u64("compressed_length", SIZE), u64("length", SIZE),
+    u64("compressed_crc64", CHECKSUM), u64("crc64", CHECKSUM)]);
+var sxvi_aaru2_ddt_header = sxLayout(0x60530031, "aaru2_ddt_header", LE, sxvi_aaru2_ddt_header_fields);
+var sxvi_aaru2_ddt_entry_fields = layout([u64("encoded_location", FLAGS)]);
+var sxvi_aaru2_ddt_entry = sxLayout(0x60530032, "aaru2_ddt_entry", LE, sxvi_aaru2_ddt_entry_fields);
+var sxvi_aaru_index3_fields = layout([u32("identifier", SIGNATURE), u64("entries", COUNT), u64("crc64", CHECKSUM),
+    u64("previous", OFFSET)]);
+var sxvi_aaru_index3 = sxLayout(0x60530033, "aaru_index3", LE, sxvi_aaru_index3_fields);
+var sxvi_aaru_index_entry_fields = layout([u32("block_type", ID), u16("data_type", ID), u64("offset", OFFSET)]);
+var sxvi_aaru_index_entry = sxLayout(0x60530034, "aaru_index_entry", LE, sxvi_aaru_index_entry_fields);
+var sxvi_aaru_data_header_fields = layout([u32("identifier", SIGNATURE), u16("data_type", ID), u16("compression", ID),
+    u32("sector_size", SIZE), u32("compressed_length", SIZE), u32("length", SIZE), u64("compressed_crc64", CHECKSUM),
+    u64("crc64", CHECKSUM)]);
+var sxvi_aaru_data_header = sxLayout(0x60530035, "aaru_data_header", LE, sxvi_aaru_data_header_fields);
+function sxvi_aaru(c) {
+    var h = [];
+    var b = [];
+    if (!sxvi_read(c, 0, h, 147) || sxMemcmp(h, "AARUFRMT", 8) || h[72] !== 2 || !sxvi_put(c, sxvi_aaru2_header, 0, 1)) {
+        return false;
+    }
+    var p = sxvi64(h, 80, 0);
+    if (!sxvi_read(c, p, b, 28) || sxvi32(b, 0, 0) !== 0x33584449) {
+        return true;
+    }
+    var n = sxvi64(b, 4, 0);
+    if (n > 1048576 || !sxvi_span(c, p + 28, n * 14)) {
+        return true;
+    }
+    if (!sxvi_put(c, sxvi_aaru_index3, p, 1) || !sxvi_put(c, sxvi_aaru_index_entry, p + 28, n)) {
+        return false;
+    }
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        var e = [];
+        if (!sxvi_read(c, p + 28 + i * 14, e, 14)) {
+            return false;
+        }
+        var at = sxvi64(e, 6, 0);
+        var type = sxvi32(e, 0, 0);
+        if (type === 0x4B4C4244) {
+            if (sxvi_read(c, at, b, 36) && sxvi32(b, 0, 0) === type && !sxvi_put(c, sxvi_aaru_data_header, at, 1)) {
+                return false;
+            }
+        } else if (type === 0x32544444 && sxvi_read(c, at, b, 85) && sxvi32(b, 0, 0) === type) {
+            if (!sxvi_put(c, sxvi_aaru2_ddt_header, at, 1)) {
+                return false;
+            }
+            var count = sxvi64(b, 45, 0);
+            var len = sxvi64(b, 61, 0);
+            if (!sxvi16(b, 6, 0) && count <= 1048576 && count * 8 === len && sxvi_span(c, at + 85, len) && !sxvi_put(c, sxvi_aaru2_ddt_entry, at + 85, count)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_aaruformat_build(c) {
+    return sxvi_aaru(c);
+}

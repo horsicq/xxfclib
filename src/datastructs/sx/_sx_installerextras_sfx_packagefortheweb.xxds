@@ -1,0 +1,171 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_packagefortheweb/xx_sfx_packagefortheweb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_pftw_settings_size_fields = layout([u32("settings_size", SIZE)]);
+var sxiex_pftw_settings_size = sxLayout(0x60820050, "pftw_settings_size", LE, sxiex_pftw_settings_size_fields);
+var sxiex_pftw_settings_new_fields = layout([field("signature", "byte[4]", 4, SIGNATURE)]);
+var sxiex_pftw_settings_new = sxLayout(0x60820051, "pftw_settings_new", LE, sxiex_pftw_settings_new_fields);
+var sxiex_pftw_settings_old_fields = layout([field("encoded_signature", "byte[3]", 3), field("encoded_version", "byte[1]", 1),
+    field("encoded_cabinet_size", "byte[4]", 4)]);
+var sxiex_pftw_settings_old = sxLayout(0x60820052, "pftw_settings_old", LE, sxiex_pftw_settings_old_fields);
+var sxiex_pftw_cab_header_fields = layout([chars("signature", 4, SIGNATURE), u32("reserved1", RESERVED),
+    u32("cabinet_size", SIZE), u32("reserved2", RESERVED), u32("files_offset", OFFSET), u32("reserved3", RESERVED),
+    u8("version_minor", ID), u8("version_major", ID), u16("folder_count", COUNT), u16("file_count", COUNT), u16("flags", FLAGS),
+    u16("set_identifier", ID), u16("cabinet_index")]);
+var sxiex_pftw_cab_header = sxLayout(0x60820053, "pftw_cab_header", LE, sxiex_pftw_cab_header_fields);
+var sxiex_pftw_cab_reserve_fields = layout([u16("header_reserved_size", SIZE), u8("folder_reserved_size", SIZE),
+    u8("data_reserved_size", SIZE)]);
+var sxiex_pftw_cab_reserve = sxLayout(0x60820054, "pftw_cab_reserve", LE, sxiex_pftw_cab_reserve_fields);
+var sxiex_pftw_cab_folder_fields = layout([u32("data_offset", OFFSET), u16("data_block_count", COUNT),
+    u16("compression_type", ID)]);
+var sxiex_pftw_cab_folder = sxLayout(0x60820055, "pftw_cab_folder", LE, sxiex_pftw_cab_folder_fields);
+var sxiex_pftw_cab_file_fields = layout([u32("unpacked_size", SIZE), u32("folder_offset", OFFSET), u16("folder_index"),
+    u16("dos_date"), u16("dos_time"), u16("attributes", FLAGS)]);
+var sxiex_pftw_cab_file = sxLayout(0x60820056, "pftw_cab_file", LE, sxiex_pftw_cab_file_fields);
+var sxiex_pftw_cab_data_fields = layout([u32("checksum", CHECKSUM), u16("packed_size", SIZE), u16("unpacked_size", SIZE)]);
+var sxiex_pftw_cab_data = sxLayout(0x60820057, "pftw_cab_data", LE, sxiex_pftw_cab_data_fields);
+function sxiex_cab(c, p, span) {
+    var h = [];
+    var b = [];
+    if (span < 36 || !sxiex_read(c, p, h, 36) || sxMemcmp(h, "MSCF", 4)) {
+        return true;
+    }
+    var total = sxiex32(h, 8, false);
+    var files = sxiex32(h, 16, false);
+    var at = [p + 36];
+    var folders = sxiex16(h, 26, false);
+    var count = sxiex16(h, 28, false);
+    var flags = sxiex16(h, 30, false);
+    var fr = 0;
+    var dr = 0;
+    if (total > span || total < 36) {
+        return true;
+    }
+    var end = p + total;
+    if (!sxiex_put(c, sxiex_pftw_cab_header, p, 1)) {
+        return false;
+    }
+    if (flags & 4) {
+        if (sxU64(end - at[0]) < 4 || !sxiex_read(c, at[0], b, 4)) {
+            return true;
+        }
+        if (!sxiex_put(c, sxiex_pftw_cab_reserve, at[0], 1)) {
+            return false;
+        }
+        fr = b[2];
+        dr = b[3];
+        var z = sxiex16(b, 0, false);
+        if (z > sxU64(sxU64(end - at[0]) - 4)) {
+            return true;
+        }
+        at[0] += 4 + z;
+    }
+    if (flags & 3) {
+        return true;
+    }
+    if (folders * ((8 + fr) >>> 0) > sxU64(end - at[0])) {
+        return true;
+    }
+    var first = end;
+    for (var i = 0; i < folders; i++) {
+        var q = at[0] + i * ((8 + fr) >>> 0);
+        if (!sxiex_read(c, q, b, 8) || !sxiex_put(c, sxiex_pftw_cab_folder, q, 1)) {
+            return false;
+        }
+        var data = sxiex32(b, 0, false);
+        var n = sxiex16(b, 4, false);
+        if (data > total) {
+            continue;
+        }
+        data += p;
+        if (data < first) {
+            first = data;
+        }
+        for (var j = 0; j < n; j++) {
+            if (data > end || sxU64(end - data) < (8 + dr) >>> 0 || !sxiex_read(c, data, b, 8)) {
+                break;
+            }
+            z = sxiex16(b, 4, false);
+            if (z > sxU64(sxU64(sxU64(end - data) - 8) - dr)) {
+                break;
+            }
+            if (!sxiex_put(c, sxiex_pftw_cab_data, data, 1)) {
+                return false;
+            }
+            data += ((8 + dr) >>> 0) + z;
+        }
+    }
+    if (files > total) {
+        return true;
+    }
+    at[0] = p + files;
+    for (i = 0; i < count; i++) {
+        if (at[0] > first || sxU64(first - at[0]) < 16) {
+            break;
+        }
+        if (!sxiex_put(c, sxiex_pftw_cab_file, at[0], 1)) {
+            return false;
+        }
+        at[0] += 16;
+        if (!sxiex_zstr(c, at, first)) {
+            break;
+        }
+    }
+    return true;
+}
+function sxiex_pftw(c, r) {
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.packed < 36 || !sxiex_eq(c, m.data, "MSCF", 4)) {
+            continue;
+        }
+        if (!sxiex_cab(c, m.data, m.packed)) {
+            return false;
+        }
+        var candidate = [SX_U64_MAX, SX_U64_MAX, SX_U64_MAX];
+        sxiex_pe(c, candidate);
+        var d = [];
+        var h = [];
+        var s = [];
+        if (sxiex_read(c, 0, d, 64)) {
+            var nt = sxiex32(d, 60, false);
+            if (sxiex_read(c, nt, h, 24)) {
+                var count = sxiex16(h, 6, false);
+                var opt = sxiex16(h, 20, false);
+                if (count <= 96) {
+                    for (var j = 0; j < count; j++) {
+                        if (sxiex_read(c, nt + 24 + opt + j * 40, s, 40) && !sxMemcmp(s, "_cabinet", 8)) {
+                            candidate[1] = sxiex32(s, 20, false);
+                            candidate[2] = candidate[1] + 12;
+                        }
+                    }
+                }
+            }
+        }
+        for (j = 0; j < 3; j++) {
+            var p = candidate[j];
+            var z = [0];
+            if (p === SX_U64_MAX || !sxiex_u32(c, p, z) || z[0] < 16 || z[0] > 1048576 || p + 4 + z[0] !== m.data) {
+                continue;
+            }
+            if (!sxiex_put(c, sxiex_pftw_settings_size, p, 1)) {
+                return false;
+            }
+            if (sxiex_eq(c, p + 4, "\xDC\xED\xBD\xA9", 4)) {
+                if (!sxiex_put(c, sxiex_pftw_settings_new, p + 4, 1)) {
+                    return false;
+                }
+            } else if (!sxiex_put(c, sxiex_pftw_settings_old, p + 4, 1)) {
+                return false;
+            }
+            break;
+        }
+    }
+    return true;
+}
+function sx_sfx_packagefortheweb_build(c, records) {
+    return sxiex_pftw(c, records);
+}

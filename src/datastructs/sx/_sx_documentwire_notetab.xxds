@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/notetab/xx_notetab_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdw_notetab_option_fields = layout([field("notetab_option", "utf8", 0, STRING)]);
+var sxdw_notetab_option = sxLayout(0x6074001E, "documentwire_notetab_option", LE, sxdw_notetab_option_fields);
+var sxdw_notetab_heading_fields = layout([field("notetab_heading", "utf8", 0, STRING)]);
+var sxdw_notetab_heading = sxLayout(0x6074001F, "documentwire_notetab_heading", LE, sxdw_notetab_heading_fields);
+var sxdw_notetab_body_line_fields = layout([field("notetab_body_line", "utf8", 0, STRING)]);
+var sxdw_notetab_body_line = sxLayout(0x60740020, "documentwire_notetab_body_line", LE, sxdw_notetab_body_line_fields);
+var sxdw_notetab_declaration_fields = layout([chars("signature", 3, SIGNATURE), field("version", "ascii_signed[1]", 1)]);
+var sxdw_notetab_declaration = sxLayout(0x6074002D, "documentwire_notetab_declaration", LE, sxdw_notetab_declaration_fields);
+function sxdw_notetab(q) {
+    var a = [0];
+    var e = [0];
+    if (!sxdw_line(q, a, e) || e[0] < 5 || !sxdw_emit(q, sxdw_notetab_declaration, 0, 4) || !sxdw_value(q, sxdw_notetab_option, 5, e[0] - 5) || !sxdw_line(q, a, e)) {
+        return false;
+    }
+    var body = q.p;
+    var quoted = false;
+    while (sxdw_line(q, a, e)) {
+        if (sxdw_prefix(q, a[0], e[0], "H=\"")) {
+            quoted = true;
+            break;
+        }
+    }
+    q.p = body;
+    var heading = false;
+    while (q.c.count < 32000 && sxdw_line(q, a, e)) {
+        var tag = quoted ? 3 : 2;
+        if (sxdw_prefix(q, a[0], e[0], quoted ? "H=\"" : "H=")) {
+            var end = e[0];
+            if (quoted && end > a[0] + tag && q.b[end - 1] === 34 /*"*/) {
+                end--;
+            }
+            if (!sxdw_value(q, sxdw_notetab_heading, a[0] + tag, end - a[0] - tag)) {
+                return false;
+            }
+            heading = true;
+        } else if (heading && !sxdw_value(q, sxdw_notetab_body_line, a[0], e[0] - a[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_notetab_build(q) {
+    return sxdw_notetab(q);
+}

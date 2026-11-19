@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/ancool_tcbtracker/xx_ancool_tcbtracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_tcb_amiga_flag_fields = layout([u16("amiga_frequencies", FLAGS)]);
+var sxmta_tcb_amiga_flag = sxLayout(0x6081001F, "tcb_amiga_flag", BE, sxmta_tcb_amiga_flag_fields);
+var sxmta_tcb_instrument_name_fields = layout([chars("name", 8, NONE)]);
+var sxmta_tcb_instrument_name = sxLayout(0x60810020, "tcb_instrument_name", LE, sxmta_tcb_instrument_name_fields);
+var sxmta_tcb_special_fields = layout([i16("special_value")]);
+var sxmta_tcb_special = sxLayout(0x60810021, "tcb_special", BE, sxmta_tcb_special_fields);
+var sxmta_tcb_event_fields = layout([u8("note"), u8("instrument_effect", FLAGS)]);
+var sxmta_tcb_event = sxLayout(0x60810022, "tcb_event", LE, sxmta_tcb_event_fields);
+var sxmta_tcb_sample_area_fields = layout([u32("remaining_bytes", SIZE)]);
+var sxmta_tcb_sample_area = sxLayout(0x60810023, "tcb_sample_area", BE, sxmta_tcb_sample_area_fields);
+var sxmta_tcb_sample_properties_fields = layout([u8("volume"), u8("unused", RESERVED), u16("loop_tail_bytes", SIZE)]);
+var sxmta_tcb_sample_properties = sxLayout(0x60810024, "tcb_sample_properties", BE, sxmta_tcb_sample_properties_fields);
+function sxmta_tcb(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [144];
+    var np = [0];
+    var x = [0];
+    var base;
+    var n = [0];
+    if (!sxmta_eq(v, 0, "AN COOL", 7, end) || !sxmta_u(v, 7, 1, x, 0, end) || x[0] !== 33 /*!*/ && x[0] !== 46 /*.*/ || !sxmta_be(v, 8, 4, np, 0, end) || np[0] > 127 || !sxmta_row(v, sxmta_tcb_header, 0, end)) {
+        return false;
+    }
+    if (x[0] === 46 /*.*/ && !sxmta_take(v, sxmta_tcb_amiga_flag, p, 1, end)) {
+        return false;
+    }
+    if (!sxmta_take(v, sxmta_tcb_instrument_name, p, 16, end) || x[0] === 46 /*.*/ && !sxmta_take(v, sxmta_tcb_special, p, 16, end) || !sxmta_take(v, sxmta_tcb_event, p, np[0] * 256, end)) {
+        return false;
+    }
+    base = p[0];
+    if (!sxmta_be(v, p[0], 4, n, 0, end) || !sxmta_span(v, p[0], n[0], end) || !sxmta_take(v, sxmta_tcb_sample_area, p, 1, end) || !sxmta_take(v, sxmta_tcb_sample_properties, p, 16, end)) {
+        return false;
+    }
+    for (var i = 0; i < 16; i++) {
+        var len = [0];
+        if (!sxmta_be(v, p[0], 4, x, 0, end) || !sxmta_be(v, p[0] + 4, 4, len, 0, end) || !sxmta_take(v, sxmta_tcb_sample_location, p, 1, end)) {
+            return false;
+        }
+        if (len[0] > 1 && (!sxmta_span(v, base, x[0], end) || !sxmta_span(v, base + x[0], len[0], end))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ancool_tcbtracker_build(v) {
+    return sxmta_tcb(v);
+}

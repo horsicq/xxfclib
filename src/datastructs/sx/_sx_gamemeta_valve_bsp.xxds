@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/valve_bsp/xx_valve_bsp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_valve_bsp_lump_fields = layout([i32("file_offset", OFFSET), i32("file_size", SIZE), i32("version", ID),
+    chars("fourcc", 4, ID)]);
+var sxgm_valve_bsp_lump = sxLayout(0x60270047, "valve_bsp_lump", LE, sxgm_valve_bsp_lump_fields);
+var sxgm_valve_bsp_revision_fields = layout([i32("revision")]);
+var sxgm_valve_bsp_revision = sxLayout(0x60270048, "valve_bsp_revision", LE, sxgm_valve_bsp_revision_fields);
+function sx_valve_bsp_build(c) {
+    return sxgm_add(c, sxgm_idtech_bsp_header, 0) && sxgm_table(c, sxgm_valve_bsp_lump, 8, 64) && sxgm_add(c, sxgm_valve_bsp_revision, 1032);
+}

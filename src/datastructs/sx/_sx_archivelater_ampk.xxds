@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ampk/xx_ampk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_ampk_header_fields = layout([chars("signature", 4, SIGNATURE), u8("version", ID), u8("reserved5", RESERVED),
+    u16("directory_count", COUNT), u16("file_count", COUNT), u32("unpacked_size", SIZE), u32("packed_size_hint", SIZE),
+    bytes("unused", 2)]);
+var sxal_ampk_header = sxLayout(0x60200005, "ampk_header", BE, sxal_ampk_header_fields);
+var sxal_ampk_record_fields = layout([u8("kind", ID), u8("name_size", SIZE), u32("directory_size_plus3")]);
+var sxal_ampk_record = sxLayout(0x60200006, "ampk_record", BE, sxal_ampk_record_fields);
+var sxal_ampk_file_fields = layout([u32("unpacked_size", SIZE), u32("packed_size_hint", SIZE), u8("method", ID),
+    u8("padding9", RESERVED), u32("protection", FLAGS), bytes("padding14", 2, RESERVED), u8("comment_size", SIZE),
+    u8("padding17", RESERVED)]);
+var sxal_ampk_file = sxLayout(0x60200007, "ampk_file", BE, sxal_ampk_file_fields);
+function sxal_ampk(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 20) || !sxal_add(c, sxal_ampk_header, 0)) {
+        return false;
+    }
+    var p = 20;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, 6) || b[0] > 2) {
+            break;
+        }
+        var kind = b[0];
+        var name = b[1];
+        if (!sxal_span(c, p + 6, name)) {
+            break;
+        }
+        if (!sxal_add(c, sxal_ampk_record, p)) {
+            return false;
+        }
+        p += (6 + name) >>> 0;
+        if (kind !== 2) {
+            continue;
+        }
+        if (!sxal_read(c, p, b, 18)) {
+            break;
+        }
+        var n = b[8] ? sxal32(b, 4, true) : sxal32(b, 0, true);
+        var comment = b[16];
+        var method = b[8];
+        if (method > 3) {
+            break;
+        }
+        if (!sxal_add(c, sxal_ampk_file, p)) {
+            return false;
+        }
+        p += 18;
+        if (!sxal_span(c, p, comment)) {
+            break;
+        }
+        p += comment;
+        if (method === 3 && !n && sxal32(b, 0, true)) {
+            break;
+        }
+        if (!sxal_span(c, p, n)) {
+            break;
+        }
+        p += n;
+    }
+    return true;
+}
+function sx_ampk_build(c) {
+    return sxal_ampk(c);
+}

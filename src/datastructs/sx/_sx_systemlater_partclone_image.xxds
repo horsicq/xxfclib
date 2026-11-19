@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/partclone_image/xx_partclone_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_partclone_header_le_fields = layout([chars("signature", 16, SIGNATURE), chars("creator_version", 14, NONE),
+    chars("image_version", 4, NONE), u16("byte_order_marker", ID), chars("filesystem", 16, NONE), u64("device_size", SIZE),
+    u64("total_blocks", COUNT), u64("superblock_used_blocks", COUNT), u64("bitmap_used_blocks", COUNT), u32("block_size", SIZE),
+    u32("feature_size", SIZE), u16("options_image_version"), u16("cpu_bits"), u16("checksum_mode", ID),
+    u16("checksum_size", SIZE), u32("blocks_per_checksum", COUNT), u8("reseed_checksum", FLAGS), u8("bitmap_mode", ID),
+    u32("header_crc", CHECKSUM)]);
+var sxsl_partclone_header_le = sxLayout(0x60330037, "partclone_header_le", LE, sxsl_partclone_header_le_fields);
+var sxsl_partclone_bitmap_crc_le_fields = layout([u32("bitmap_crc", CHECKSUM)]);
+var sxsl_partclone_bitmap_crc_le = sxLayout(0x60330038, "partclone_bitmap_crc_le", LE, sxsl_partclone_bitmap_crc_le_fields);
+var sxsl_partclone_header_be_fields = layout([chars("signature", 16, SIGNATURE), chars("creator_version", 14, NONE),
+    chars("image_version", 4, NONE), u16("byte_order_marker", ID), chars("filesystem", 16, NONE), u64("device_size", SIZE),
+    u64("total_blocks", COUNT), u64("superblock_used_blocks", COUNT), u64("bitmap_used_blocks", COUNT), u32("block_size", SIZE),
+    u32("feature_size", SIZE), u16("options_image_version"), u16("cpu_bits"), u16("checksum_mode", ID),
+    u16("checksum_size", SIZE), u32("blocks_per_checksum", COUNT), u8("reseed_checksum", FLAGS), u8("bitmap_mode", ID),
+    u32("header_crc", CHECKSUM)]);
+var sxsl_partclone_header_be = sxLayout(0x60330039, "partclone_header_be", BE, sxsl_partclone_header_be_fields);
+var sxsl_partclone_bitmap_crc_be_fields = layout([u32("bitmap_crc", CHECKSUM)]);
+var sxsl_partclone_bitmap_crc_be = sxLayout(0x6033003A, "partclone_bitmap_crc_be", BE, sxsl_partclone_bitmap_crc_be_fields);
+var sxsl_partclone_bitmap_byte_fields = layout([u8("allocated_bits", FLAGS)]);
+var sxsl_partclone_bitmap_byte = sxLayout(0x60330054, "partclone_bitmap_byte", LE, sxsl_partclone_bitmap_byte_fields);
+var sxsl_partclone_data_checksum4_fields = layout([field("checksum", "byte[4]", 4, CHECKSUM)]);
+var sxsl_partclone_data_checksum4 = sxLayout(0x60330055, "partclone_data_checksum4", LE, sxsl_partclone_data_checksum4_fields);
+var sxsl_partclone_data_checksum16_fields = layout([field("checksum", "byte[16]", 16, CHECKSUM)]);
+var sxsl_partclone_data_checksum16 = sxLayout(0x60330056, "partclone_data_checksum16", LE, sxsl_partclone_data_checksum16_fields);
+function sxsl_partclone(c) {
+    var h = [];
+    if (!sxsl_read(c, 0, h, 110)) {
+        return false;
+    }
+    var be = h[34] === 0xC0 && h[35] === 0xDE;
+    if (!sxsl_put(c, be ? sxsl_partclone_header_be : sxsl_partclone_header_le, 0, 1)) {
+        return false;
+    }
+    var total = sxsl_uint(h, 60, 8, be);
+    var used = sxsl_uint(h, 76, 8, be);
+    var block = sxsl_uint(h, 84, 4, be);
+    var per = sxsl_uint(h, 100, 4, be);
+    var cs = sxsl_uint(h, 98, 2, be);
+    var map = Math.floor(total / 8) + (total % 8 !== 0 ? 1 : 0);
+    if (!sxsl_span(c, 110, map) || !sxsl_span(c, 110 + map, 4)) {
+        return true;
+    }
+    if (map <= 1048576 && !sxsl_put(c, sxsl_partclone_bitmap_byte, 110, map)) {
+        return false;
+    }
+    if (!sxsl_put(c, be ? sxsl_partclone_bitmap_crc_be : sxsl_partclone_bitmap_crc_le, 110 + map, 1)) {
+        return false;
+    }
+    if (!per || !block || cs !== 4 && cs !== 16) {
+        return true;
+    }
+    var p = 114 + map;
+    for (var i = 0; used && i < 24000 && c.count < 24000; i++) {
+        var n = used < per ? used : per;
+        if (n > Math.floor(SX_U64_MAX / block) || !sxsl_span(c, p, n * block) || !sxsl_span(c, p + n * block, cs)) {
+            break;
+        }
+        p += n * block;
+        if (!sxsl_put(c, cs === 4 ? sxsl_partclone_data_checksum4 : sxsl_partclone_data_checksum16, p, 1)) {
+            return false;
+        }
+        p += cs;
+        used = sxU64(used - n);
+    }
+    return true;
+}
+function sx_partclone_image_build(c) {
+    var ok = false;
+    ok = sxsl_partclone(c);
+    return ok && sxsl_finish(c);
+}

@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/cfd/xx_cfd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_cfd_header_fields = layout([u32("reserved0"), u16("reserved1"), u8("reserved2"), u16("sector_size", SIZE),
+    field("unknown0", "byte[3]", 3), u8("format_marker", ID), field("unknown1", "byte[2]", 2), u16("total_sectors", COUNT),
+    field("unknown2", "byte[5]", 5), u16("head_count", COUNT), u16("reserved3"), u16("flags", FLAGS),
+    field("unknown3", "byte[4]", 4)]);
+var sxdn_cfd_header = sxLayout(0x60780013, "cfd_header", LE, sxdn_cfd_header_fields);
+var sxdn_cfd_block_fields = layout([u16("total_block_size", SIZE), u16("index_size", SIZE)]);
+var sxdn_cfd_block = sxLayout(0x60780014, "cfd_block", LE, sxdn_cfd_block_fields);
+var sxdn_cfd_repeat_fields = layout([u16("last_literal_offset", OFFSET), u16("repeat_count", COUNT)]);
+var sxdn_cfd_repeat = sxLayout(0x60780015, "cfd_repeat", LE, sxdn_cfd_repeat_fields);
+function sxdn_cfd(c) {
+    var h = [];
+    if (!sxdn_read(c, 0, h, 32) || !sxdn_put(c, sxdn_cfd_header, 0, 1)) {
+        return false;
+    }
+    if (sxdn16(h, 26, 0) & 0x800) {
+        return true;
+    }
+    for (var p = 32; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; ) {
+        if (!sxdn_read(c, p, h, 4)) {
+            break;
+        }
+        var z = sxdn16(h, 0, 0);
+        var n = sxdn16(h, 2, 0);
+        if (z < 4 || n < 2 || n > sxU64(z - 2) || sxU64(n - 2) % 4 || !sxdn_span(c, p, z)) {
+            break;
+        }
+        if (!sxdn_put(c, sxdn_cfd_block, p, 1) || !sxdn_put(c, sxdn_cfd_repeat, p + 4, Math.floor(sxU64(n - 2) / 4))) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_cfd_build(c) {
+    return sxdn_cfd(c);
+}

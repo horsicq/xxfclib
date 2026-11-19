@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/wallybeben/xx_wallybeben_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxamore_wb(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var after;
+    var address = [0];
+    var origin;
+    var n = [0];
+    var table = [0];
+    var operands = [];
+    if (!sxamore_eq(v, 0, "`\x00", 2, e) || !sxamore_eq(v, 4, "H\xE7\xFF\xFEa\x00\x00", 7, e) || !sxamore_eq(v, 12, "L\xDF\x7F\xFFNu", 6, e) || !sxamore_find(v, p, e, 0x4E75, 2, 2)) {
+        return false;
+    }
+    after = p[0] + 2;
+    if (!sxamore_find(v, p, e, 0x1039, 2, 2)) {
+        return false;
+    }
+    p[0] += 2;
+    operands[0] = p[0];
+    if (!sxamore_be(v, p[0], 4, address, 0, e) || address[0] < after) {
+        return false;
+    }
+    origin = sxU64(address[0] - after);
+    p[0] += 4;
+    if (!sxamore_find(v, p, e, 0x223C, 2, 2)) {
+        return false;
+    }
+    p[0] += 2;
+    operands[1] = p[0];
+    if (!sxamore_be(v, p[0], 4, n, 0, e) || n[0] < 2 || n[0] > 4097) {
+        return false;
+    }
+    n[0]--;
+    p[0] += 4;
+    if (!sxamore_find(v, p, e, 0x41F9, 2, 2)) {
+        return false;
+    }
+    p[0] += 2;
+    operands[2] = p[0];
+    if (!sxamore_be(v, p[0], 4, address, 0, e) || !sxamore_map(address[0], origin, e, table) || !sxamore_span(v, table[0], n[0] * 16, e)) {
+        return false;
+    }
+    var minimum = e;
+    for (var j = 0; j < n[0] * 4; j++) {
+        var target = [0];
+        if (!sxamore_be(v, table[0] + j * 4, 4, address, 0, e) || !sxamore_map(address[0], origin, e, target)) {
+            return false;
+        }
+        if (target[0] < minimum) {
+            minimum = target[0];
+        }
+    }
+    var end = table[0] + n[0] * 16;
+    if (minimum < end || sxU64(minimum - end) % 4) {
+        return false;
+    }
+    if (!sxamore_row(v, sxamore_original_address, operands[0], e) || !sxamore_row(v, sxamore_wb_count, operands[1], e) || !sxamore_row(v, sxamore_original_address, operands[2], e) || !sxamore_table(v, sxamore_wb_subsong, table[0], n[0], e) || !sxamore_table(v, sxamore_original_address, end, Math.floor(sxU64(minimum - end) / 4), e)) {
+        return false;
+    }
+    return true;
+}
+function sx_wallybeben_build(v) {
+    return sxamore_wb(v);
+}

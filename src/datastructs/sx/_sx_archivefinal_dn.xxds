@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/dn/xx_dn_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_dn_data_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("opaque_prefix", 14),
+    u32("compressed_size", SIZE), u32("uncompressed_size", SIZE), u16("opaque_word"), u16("name_size", SIZE)]);
+var sxaf_dn_data_header = sxLayout(0x603C002A, "dn_data_header", LE, sxaf_dn_data_header_fields);
+var sxaf_dn_directory_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("opaque_prefix", 26),
+    u16("name_size", SIZE), bytes("opaque_tail", 10), u32("data_header_offset", OFFSET)]);
+var sxaf_dn_directory_header = sxLayout(0x603C002B, "dn_directory_header", LE, sxaf_dn_directory_header_fields);
+var sxaf_dn_end_marker_fields = layout([u32("signature", SIGNATURE)]);
+var sxaf_dn_end_marker = sxLayout(0x603C002C, "dn_end_marker", LE, sxaf_dn_end_marker_fields);
+function sxaf_dn(c) {
+    var p = 0;
+    while (sxaf_span(c, p, 4)) {
+        var b = [];
+        if (!sxaf_read(c, p, b, 4) || b[0] !== 0x84 || b[1] !== 0x8D) {
+            return false;
+        }
+        var hs;
+        var n = 0;
+        var names;
+        if (b[2] === 1 && b[3] === 2) {
+            hs = 30;
+            if (!sxaf_read(c, p, b, 30)) {
+                return false;
+            }
+            n = sxaf_uint(b, 18, 4, false);
+            names = sxaf_uint(b, 28, 2, false);
+            if (!sxaf_add(c, sxaf_dn_data_header, p)) {
+                return false;
+            }
+        } else if (b[2] === 3 && b[3] === 4) {
+            hs = 46;
+            if (!sxaf_read(c, p, b, 46)) {
+                return false;
+            }
+            names = sxaf_uint(b, 30, 2, false);
+            if (!sxaf_add(c, sxaf_dn_directory_header, p)) {
+                return false;
+            }
+        } else if (b[2] === 5 && b[3] === 6) {
+            return sxaf_add(c, sxaf_dn_end_marker, p);
+        } else {
+            return false;
+        }
+        p += hs;
+        if (!sxaf_span(c, p, names) || !sxaf_span(c, p + names, n)) {
+            return false;
+        }
+        p += names + n;
+    }
+    return true;
+}
+function sx_dn_build(c) {
+    return sxaf_dn(c);
+}

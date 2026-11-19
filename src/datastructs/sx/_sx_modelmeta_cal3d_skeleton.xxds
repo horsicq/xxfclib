@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/cal3d_skeleton/xx_cal3d_skeleton_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_cal3d_skeleton_header_fields = layout([chars("signature", 4, SIGNATURE), i32("version", ID), i32("bone_count", COUNT)]);
+var sxmo_cal3d_skeleton_header = sxLayout(0x60210095, "cal3d_skeleton_header", LE, sxmo_cal3d_skeleton_header_fields);
+var sxmo_cal3d_bone_name_fields = layout([i32("name_size", SIZE)]);
+var sxmo_cal3d_bone_name = sxLayout(0x60210096, "cal3d_bone_name", LE, sxmo_cal3d_bone_name_fields);
+var sxmo_cal3d_bone_fields = layout([field("local_translation", "float32[3]", 12),
+    field("local_rotation_xyzw", "float32[4]", 16), field("bone_space_translation", "float32[3]", 12),
+    field("bone_space_rotation_xyzw", "float32[4]", 16), i32("parent_index", ID), i32("child_count", COUNT)]);
+var sxmo_cal3d_bone = sxLayout(0x60210097, "cal3d_bone", LE, sxmo_cal3d_bone_fields);
+var sxmo_cal3d_child_fields = layout([i32("bone_index", ID)]);
+var sxmo_cal3d_child = sxLayout(0x60210098, "cal3d_child", LE, sxmo_cal3d_child_fields);
+function sxmo_csf(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 12) || sxMemcmp(h, "CSF\x00", 4) || sxmo32(h, 4, false) !== 700 || !sxmo_add(c, sxmo_cal3d_skeleton_header, 0)) {
+        return false;
+    }
+    var count = sxmo32(h, 8, false);
+    if (count > 4000) {
+        return true;
+    }
+    var p = [12];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    for (var i = 0; i < count; i++) {
+        if (!sxmo_text(c, sxmo_cal3d_bone_name, p, end) || sxU64(end - p[0]) < 64 || !sxmo_read(c, p[0], h, 64)) {
+            break;
+        }
+        var n = sxmo32(h, 60, false);
+        if (n > 4000 || n * 4 > sxU64(sxU64(end - p[0]) - 64)) {
+            break;
+        }
+        if (!sxmo_take(c, sxmo_cal3d_bone, p, end) || !sxmo_table(c, sxmo_cal3d_child, p[0], n)) {
+            return false;
+        }
+        p[0] += n * 4;
+    }
+    return !c.failed;
+}
+function sx_cal3d_skeleton_build(c) {
+    var ok = false;
+    ok = sxmo_csf(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

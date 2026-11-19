@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/wmo_grib/xx_wmo_grib_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_grib2_indicator_fields = layout([chars("signature", 4, SIGNATURE), bytes("reserved", 2, RESERVED),
+    u8("discipline", ID), u8("edition", ID), u64("total_size", SIZE)]);
+var sxsw_grib2_indicator = sxLayout(0x602D002B, "grib2_indicator", BE, sxsw_grib2_indicator_fields);
+var sxsw_grib2_identification_fields = layout([u32("section_size", SIZE), u8("section_number", ID), u16("centre", ID),
+    u16("subcentre", ID), u8("master_table", ID), u8("local_table", ID), u8("reference_time_significance", ID), u16("year"),
+    u8("month"), u8("day"), u8("hour"), u8("minute"), u8("second"), u8("production_status", ID), u8("data_type", ID)]);
+var sxsw_grib2_identification = sxLayout(0x602D002D, "grib2_identification", BE, sxsw_grib2_identification_fields);
+var sxsw_grib2_grid_fields = layout([u32("section_size", SIZE), u8("section_number", ID), u8("source", ID),
+    u32("point_count", COUNT), u8("list_entry_size", SIZE), u8("list_interpretation", ID), u16("template_number", ID)]);
+var sxsw_grib2_grid = sxLayout(0x602D002E, "grib2_grid", BE, sxsw_grib2_grid_fields);
+var sxsw_grib2_product_fields = layout([u32("section_size", SIZE), u8("section_number", ID), u16("coordinate_count", COUNT),
+    u16("template_number", ID)]);
+var sxsw_grib2_product = sxLayout(0x602D002F, "grib2_product", BE, sxsw_grib2_product_fields);
+var sxsw_grib2_representation_fields = layout([u32("section_size", SIZE), u8("section_number", ID), u32("value_count", COUNT),
+    u16("template_number", ID)]);
+var sxsw_grib2_representation = sxLayout(0x602D0030, "grib2_representation", BE, sxsw_grib2_representation_fields);
+function sxsw_grib(c) {
+    var at = 0;
+    for (var msg = 0; at < c.size && msg < 400; msg++) {
+        var size;
+        if ((size = sx_u64(c, at + 8, true)) === null || size < 20 || !sxsw_span(c, at, size) || !sxsw_add(c, sxsw_grib2_indicator, at, 16)) {
+            return false;
+        }
+        var end = at + (size >= SX_I64_MAX ? size - SX_U64_MAX : size) - 4;
+        at += 16;
+        while (at < end) {
+            var b = [];
+            if (!sx_read(c, at, b, 5)) {
+                return false;
+            }
+            var n = sxsw32(b, 0, true);
+            var id = b[4];
+            var l = sxsw_grib2_section;
+            var width = 5;
+            if (id === 1) {
+                l = sxsw_grib2_identification;
+                width = 21;
+            } else if (id === 3) {
+                l = sxsw_grib2_grid;
+                width = 14;
+            } else if (id === 4) {
+                l = sxsw_grib2_product;
+                width = 9;
+            } else if (id === 5) {
+                l = sxsw_grib2_representation;
+                width = 11;
+            } else if (id === 6) {
+                l = sxsw_grib2_bitmap;
+                width = 6;
+            }
+            if (n < width || n > (end - at < 0 ? end - at + SX_U64_MAX : end - at) || !sxsw_add(c, l, at, width)) {
+                return false;
+            }
+            at += n;
+        }
+        if (at !== end || !sxsw_add(c, sxsw_wmo_end, at, 4)) {
+            return false;
+        }
+        at += 4;
+    }
+    return at === c.size;
+}
+function sx_wmo_grib_build(c) {
+    return sxsw_grib(c);
+}

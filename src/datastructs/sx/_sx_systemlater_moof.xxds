@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/moof/xx_moof_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_moof_header_fields = layout([chars("signature", 4, SIGNATURE), field("binary_marker", "byte[4]", 4, SIGNATURE),
+    u32("crc32", CHECKSUM)]);
+var sxsl_moof_header = sxLayout(0x6033002E, "moof_header", LE, sxsl_moof_header_fields);
+var sxsl_moof_chunk_fields = layout([chars("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxsl_moof_chunk = sxLayout(0x6033002F, "moof_chunk", LE, sxsl_moof_chunk_fields);
+var sxsl_moof_info_fields = layout([u8("version"), u8("disk_type", ID), u8("write_protected", FLAGS), u8("synchronized", FLAGS),
+    u8("optimal_bit_timing"), chars("creator", 32, NONE), u8("reserved", RESERVED), u16("largest_track_blocks", COUNT),
+    u16("flux_block"), u16("largest_flux_track_blocks", COUNT)]);
+var sxsl_moof_info = sxLayout(0x60330030, "moof_info", LE, sxsl_moof_info_fields);
+var sxsl_moof_track_map_fields = layout([u8("track_index")]);
+var sxsl_moof_track_map = sxLayout(0x60330031, "moof_track_map", LE, sxsl_moof_track_map_fields);
+var sxsl_moof_track_fields = layout([u16("starting_block"), u16("block_count", COUNT), u32("bit_count", COUNT)]);
+var sxsl_moof_track = sxLayout(0x60330032, "moof_track", LE, sxsl_moof_track_fields);
+function sxsl_moof(c) {
+    var b = [];
+    var p = 12;
+    if (!sxsl_put(c, sxsl_moof_header, 0, 1)) {
+        return false;
+    }
+    for (var i = 0; i < 4096 && c.count < 24000; i++) {
+        if (!sxsl_read(c, p, b, 8) || !sxsl32(b, 0)) {
+            break;
+        }
+        var z = sxsl32(b, 4);
+        var q = p + 8;
+        if (!sxsl_span(c, q, z) || !sxsl_put(c, sxsl_moof_chunk, p, 1)) {
+            break;
+        }
+        if (!sxMemcmp(b, "INFO", 4) && z >= 44) {
+            if (!sxsl_put(c, sxsl_moof_info, q, 1)) {
+                return false;
+            }
+        } else if ((!sxMemcmp(b, "TMAP", 4) || !sxMemcmp(b, "FLUX", 4)) && z >= 160) {
+            if (!sxsl_put(c, sxsl_moof_track_map, q, 160)) {
+                return false;
+            }
+        } else if (!sxMemcmp(b, "TRKS", 4) && z >= 1280) {
+            if (!sxsl_put(c, sxsl_moof_track, q, 160)) {
+                return false;
+            }
+        }
+        p = q + z;
+    }
+    return true;
+}
+function sx_moof_build(c) {
+    var ok = false;
+    ok = sxsl_moof(c);
+    return ok && sxsl_finish(c);
+}

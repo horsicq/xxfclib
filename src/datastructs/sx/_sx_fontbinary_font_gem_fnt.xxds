@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_gem_fnt/xx_font_gem_fnt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfb_gem_font_header_le_fields = layout([i16("font_id", ID), i16("point_size"), chars("font_name", 32, STRING),
+    u16("first_character", ID), u16("last_character", ID), u16("top"), u16("ascent"), u16("half"), u16("descent"),
+    u16("bottom"), u16("maximum_character_width", COUNT), u16("maximum_cell_width", COUNT), u16("left_skew_offset"),
+    u16("right_skew_offset"), u16("thicken"), u16("underline_height", COUNT), u16("lighten_mask", FLAGS),
+    u16("skew_mask", FLAGS), u16("flags", FLAGS), u32("horizontal_table_offset", OFFSET),
+    u32("glyph_offset_table_offset", OFFSET), u32("bitmap_offset", OFFSET), u16("form_width_bytes", SIZE),
+    u16("form_height_lines", COUNT), u32("next_font_pointer", POINTER)]);
+var sxfb_gem_font_header_le = sxLayout(0x60190019, "gem_font_header_le", LE, sxfb_gem_font_header_le_fields);
+var sxfb_gem_glyph_bit_position_le_fields = layout([u16("bit_position")]);
+var sxfb_gem_glyph_bit_position_le = sxLayout(0x6019001A, "gem_glyph_bit_position_le", LE, sxfb_gem_glyph_bit_position_le_fields);
+var sxfb_gem_font_header_be_fields = layout([i16("font_id", ID), i16("point_size"), chars("font_name", 32, STRING),
+    u16("first_character", ID), u16("last_character", ID), u16("top"), u16("ascent"), u16("half"), u16("descent"),
+    u16("bottom"), u16("maximum_character_width", COUNT), u16("maximum_cell_width", COUNT), u16("left_skew_offset"),
+    u16("right_skew_offset"), u16("thicken"), u16("underline_height", COUNT), u16("lighten_mask", FLAGS),
+    u16("skew_mask", FLAGS), u16("flags", FLAGS), u32("horizontal_table_offset", OFFSET),
+    u32("glyph_offset_table_offset", OFFSET), u32("bitmap_offset", OFFSET), u16("form_width_bytes", SIZE),
+    u16("form_height_lines", COUNT), u32("next_font_pointer", POINTER)]);
+var sxfb_gem_font_header_be = sxLayout(0x6019001B, "gem_font_header_be", BE, sxfb_gem_font_header_be_fields);
+var sxfb_gem_glyph_bit_position_be_fields = layout([u16("bit_position")]);
+var sxfb_gem_glyph_bit_position_be = sxLayout(0x6019001C, "gem_glyph_bit_position_be", BE, sxfb_gem_glyph_bit_position_be_fields);
+var sxfb_gem_horizontal_offsets_fields = layout([bytes("encoded_offsets", 2)]);
+var sxfb_gem_horizontal_offsets = sxLayout(0x6019001D, "gem_horizontal_offsets", BE, sxfb_gem_horizontal_offsets_fields);
+function sxfb_gem_header(c, h, be) {
+    var first = sxfb16(h, 36, be);
+    var last = sxfb16(h, 38, be);
+    var point = sxfb16(h, 2, be);
+    var flags = sxfb16(h, 66, be);
+    var width = sxfb16(h, 80, be);
+    var height = sxfb16(h, 82, be);
+    var off = sxfb32(h, 72, be);
+    var data = sxfb32(h, 76, be);
+    return !!(point > 0 && point < 256 && first <= last && last < 256 && !((flags & 0xFFFFFFF0) >>> 0) && width && height && height <= 8192 && off >= 88 && data >= 88 && !sxfb32(h, 84, be) && sxfb_span(c, off, ((((last - first) >>> 0) + 2) >>> 0) * 2) && sxfb_span(c, data, width * height));
+}
+function sxfb_gem(c) {
+    var h = [];
+    if (!sxfb_read(c, 0, h, 88)) {
+        return false;
+    }
+    var be = false;
+    if (!sxfb_gem_header(c, h, false)) {
+        be = true;
+        if (!sxfb_gem_header(c, h, true)) {
+            return false;
+        }
+    }
+    if (!sxfb_add(c, be ? sxfb_gem_font_header_be : sxfb_gem_font_header_le, 0)) {
+        return false;
+    }
+    var count = (sxfb16(h, 38, be) - sxfb16(h, 36, be) + 1) >>> 0;
+    var hor = sxfb32(h, 68, be);
+    var off = sxfb32(h, 72, be);
+    var data = sxfb32(h, 76, be);
+    if (off < 88 || off + ((((count + 1) >>> 0) * 2) >>> 0) !== data) {
+        return true;
+    }
+    if (sxfb16(h, 66, be) & 2) {
+        if (hor < 88 || hor + ((count * 2) >>> 0) !== off) {
+            return true;
+        }
+        if (!sx_table(c, sxfb_gem_horizontal_offsets, hor, 2, count)) {
+            return false;
+        }
+    }
+    return sx_table(c, be ? sxfb_gem_glyph_bit_position_be : sxfb_gem_glyph_bit_position_le, off, 2, (count + 1) >>> 0);
+}
+function sx_font_gem_fnt_build(c) {
+    return sxfb_gem(c);
+}

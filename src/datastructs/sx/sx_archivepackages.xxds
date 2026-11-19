@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivepackages.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivepackages");
+include("_sx_archivepackages_aixbff");
+include("_sx_archivepackages_beospkg");
+include("_sx_archivepackages_cpoint");
+include("_sx_archivepackages_kgb_archiver");
+include("_sx_archivepackages_kpck");
+include("_sx_archivepackages_lingvoarc");
+include("_sx_archivepackages_lz4demo");
+include("_sx_archivepackages_mlb_ft");
+include("_sx_archivepackages_oberon");
+include("_sx_archivepackages_qip2");
+include("_sx_archivepackages_rdc");
+include("_sx_archivepackages_solitaire_deluxe");
+include("_sx_archivepackages_spk");
+include("_sx_archivepackages_ssm");
+include("_sx_archivepackages_tar_nextstep");
+include("_sx_archivepackages_twrx");
+include("_sx_archivepackages_vmsdb");
+include("_sx_archivepackages_vmspcsi");
+include("_sx_archivepackages_vmssaveset");
+include("_sx_archivepackages_wrzl");
+
+function fileTypes() { return ["TAR_NEXTSTEP", "AIXBFF", "KPCK", "BEOSPKG", "VMSPCSI", "VMSDB", "SSM", "SPK", "WRZL", "QIP2",
+    "VMSSAVESET", "LINGVOARC", "LZ4DEMO", "TWRX", "KGB_ARCHIVER", "MLB_FT", "OBERON", "SOLITAIRE_DELUXE", "CPOINT", "RDC"]; }
+
+var sx_archivepackages_layouts = [sxap_kpck_header, sxap_kpck_filter, sxap_lingvo_header, sxap_lingvo_index_v1,
+    sxap_lingvo_member_v1, sxap_lingvo_index_v2, sxap_lingvo_member_v2, sxap_finear_header, sxap_lingvo_stream_header,
+    sxap_lingvo_code_length, sxap_legacy_lz4_magic, sxap_legacy_lz4_block, sxap_legacy_lz4_skip, sxap_ssm_header,
+    sxap_spark_prefix, sxap_spark_original_size, sxap_spark_riscos, sxap_spark_end, sxap_wrzl_header, sxap_wrzl_block_size,
+    sxap_wrzl_mode, sxap_wrzl_control, sxap_qip_header, sxap_qip_index, sxap_qip_member_v1, sxap_qip_member_v2,
+    sxap_twrx_header, sxap_twrx_deflate, sxap_beospkg_header, sxap_beospkg_tag, sxap_beospkg_value32, sxap_beospkg_value64,
+    sxap_beospkg_offset64, sxap_beospkg_size64, sxap_beospkg_length, sxap_beospkg_chunk, sxap_cpoint_setup, sxap_cpoint_file,
+    sxap_cpoint_footer, sxap_mlbft_header, sxap_mlbft_member, sxap_oberon_member, sxap_oberon_szdd, sxap_solitaire_header,
+    sxap_solitaire_member, sxap_rdc_block, sxap_kgb2_header, sxap_kgb2_member, sxap_kgb2_encryption, sxap_tar_nextstep_header,
+    sxap_bff_volume, sxap_bff_legacy, sxap_bff_member, sxap_bff_compact, sxap_bff_security_sizes, sxap_bff_terminator,
+    sxap_archivepackages_dcl, sxap_archivepackages_name, sxap_vms_backup_block, sxap_vms_backup_record,
+    sxap_vms_backup_file_version, sxap_vms_backup_attribute, sxap_vms_backup_fid, sxap_vms_backup_characteristics,
+    sxap_vms_backup_date, sxap_vms_backup_fat, sxap_vmspcsi_header, sxap_vmspcsi_table, sxap_vmspcsi_context,
+    sxap_vmspcsi_bitmap, sxap_vmspcsi_node, sxap_vmspcsi_context_map, sxap_vmspcsi_record, sxap_vmsdb_prefix, sxap_vmsdb_short,
+    sxap_vmsdb_indefinite, sxap_vmsdb_long1, sxap_vmsdb_long2, sxap_vmsdb_attributes];
+
+function structs() {
+    return sxCatalog([sxap_kpck_header, sxap_kpck_filter, sxap_lingvo_header, sxap_lingvo_index_v1, sxap_lingvo_member_v1,
+        sxap_lingvo_index_v2, sxap_lingvo_member_v2, sxap_finear_header, sxap_lingvo_stream_header, sxap_lingvo_code_length,
+        sxap_legacy_lz4_magic, sxap_legacy_lz4_block, sxap_legacy_lz4_skip, sxap_ssm_header, sxap_spark_prefix,
+        sxap_spark_original_size, sxap_spark_riscos, sxap_spark_end, sxap_wrzl_header, sxap_wrzl_block_size, sxap_wrzl_mode,
+        sxap_wrzl_control, sxap_qip_header, sxap_qip_index, sxap_qip_member_v1, sxap_qip_member_v2, sxap_twrx_header,
+        sxap_twrx_deflate, sxap_beospkg_header, sxap_beospkg_tag, sxap_beospkg_value32, sxap_beospkg_value64,
+        sxap_beospkg_offset64, sxap_beospkg_size64, sxap_beospkg_length, sxap_beospkg_chunk, sxap_cpoint_setup,
+        sxap_cpoint_file, sxap_cpoint_footer, sxap_mlbft_header, sxap_mlbft_member, sxap_oberon_member, sxap_oberon_szdd,
+        sxap_solitaire_header, sxap_solitaire_member, sxap_rdc_block, sxap_kgb2_header, sxap_kgb2_member, sxap_kgb2_encryption,
+        sxap_tar_nextstep_header, sxap_bff_volume, sxap_bff_legacy, sxap_bff_member, sxap_bff_compact, sxap_bff_security_sizes,
+        sxap_bff_terminator, sxap_archivepackages_dcl, sxap_archivepackages_name, sxap_vms_backup_block, sxap_vms_backup_record,
+        sxap_vms_backup_file_version, sxap_vms_backup_attribute, sxap_vms_backup_fid, sxap_vms_backup_characteristics,
+        sxap_vms_backup_date, sxap_vms_backup_fat, sxap_vmspcsi_header, sxap_vmspcsi_table, sxap_vmspcsi_context,
+        sxap_vmspcsi_bitmap, sxap_vmspcsi_node, sxap_vmspcsi_context_map, sxap_vmspcsi_record, sxap_vmsdb_prefix,
+        sxap_vmsdb_short, sxap_vmsdb_indefinite, sxap_vmsdb_long1, sxap_vmsdb_long2, sxap_vmsdb_attributes], sx_archivepackages_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivepackages_build, false);
+}

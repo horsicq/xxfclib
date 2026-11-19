@@ -1,0 +1,1771 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_videotail.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_videotail_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60390000 || id >= 0x603A0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60390001:
+        if (r.name === "index_size") {
+            text = "Byte length of the following17-byte-entry index.";
+        }
+        break;
+    case 0x60390002:
+        if (r.name === "member_offset") {
+            text = "File-relative offset of the member length word; zero ends the index.";
+        }
+        break;
+    case 0x60390004:
+        if (r.name === "uncompressed_file_size") {
+            text = "Complete uncompressed movie length including this8-byte header; compressed storage extent can differ.";
+        }
+        break;
+    case 0x60390005:
+        if (r.name === "compressed_size") {
+            text = "Length of LZMA compressed data, excluding the five property bytes.";
+        }
+        if (r.name === "lc_lp_pb") {
+            text = "LZMA property byte encodes lc,lp,pb.";
+        }
+        break;
+    case 0x60390006:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390007:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390008:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390009:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x6039000A:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x6039000B:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x6039000C:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x6039000D:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x6039000E:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x6039000F:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390010:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390011:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390012:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390013:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390014:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390015:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390016:
+        if (r.name === "encoded_rect") {
+            text = "Bit-packed RECT: first5bits give signed coordinate width, followed by Xmin,Xmax,Ymin,Ymax in twips and byte-alignment padding.";
+        }
+        break;
+    case 0x60390017:
+        if (r.name === "frame_rate_fixed8") {
+            text = "Adobe SWF19 physical UI16 field; unsigned8.8 frames per second.";
+        }
+        break;
+    case 0x60390018:
+        if (r.name === "code_and_length") {
+            switch (sxShr64(sxVarU64(r.value), 6)) {
+            case 0:
+                text = "End; low6bits encode body length or63 for long header";
+                break;
+            case 1:
+                text = "ShowFrame; low6bits encode body length or63 for long header";
+                break;
+            case 6:
+                text = "DefineBits; low6bits encode body length or63 for long header";
+                break;
+            case 8:
+                text = "JPEGTables; low6bits encode body length or63 for long header";
+                break;
+            case 9:
+                text = "SetBackgroundColor; low6bits encode body length or63 for long header";
+                break;
+            case 14:
+                text = "DefineSound; low6bits encode body length or63 for long header";
+                break;
+            case 18:
+                text = "SoundStreamHead; low6bits encode body length or63 for long header";
+                break;
+            case 19:
+                text = "SoundStreamBlock; low6bits encode body length or63 for long header";
+                break;
+            case 20:
+                text = "DefineBitsLossless; low6bits encode body length or63 for long header";
+                break;
+            case 21:
+                text = "DefineBitsJPEG2; low6bits encode body length or63 for long header";
+                break;
+            case 35:
+                text = "DefineBitsJPEG3; low6bits encode body length or63 for long header";
+                break;
+            case 36:
+                text = "DefineBitsLossless2; low6bits encode body length or63 for long header";
+                break;
+            case 39:
+                text = "DefineSprite; low6bits encode body length or63 for long header";
+                break;
+            case 45:
+                text = "SoundStreamHead2; low6bits encode body length or63 for long header";
+                break;
+            case 69:
+                text = "FileAttributes; low6bits encode body length or63 for long header";
+                break;
+            case 87:
+                text = "DefineBinaryData; low6bits encode body length or63 for long header";
+                break;
+            case 90:
+                text = "DefineBitsJPEG4; low6bits encode body length or63 for long header";
+                break;
+            default:
+                text = "Upper10bits tag code; low6bits body length or63 for long header";
+                break;
+            }
+        }
+        break;
+    case 0x60390019:
+        if (r.name === "code_and_length") {
+            switch (sxShr64(sxVarU64(r.value), 6)) {
+            case 0:
+                text = "End; low6bits encode body length or63 for long header";
+                break;
+            case 1:
+                text = "ShowFrame; low6bits encode body length or63 for long header";
+                break;
+            case 6:
+                text = "DefineBits; low6bits encode body length or63 for long header";
+                break;
+            case 8:
+                text = "JPEGTables; low6bits encode body length or63 for long header";
+                break;
+            case 9:
+                text = "SetBackgroundColor; low6bits encode body length or63 for long header";
+                break;
+            case 14:
+                text = "DefineSound; low6bits encode body length or63 for long header";
+                break;
+            case 18:
+                text = "SoundStreamHead; low6bits encode body length or63 for long header";
+                break;
+            case 19:
+                text = "SoundStreamBlock; low6bits encode body length or63 for long header";
+                break;
+            case 20:
+                text = "DefineBitsLossless; low6bits encode body length or63 for long header";
+                break;
+            case 21:
+                text = "DefineBitsJPEG2; low6bits encode body length or63 for long header";
+                break;
+            case 35:
+                text = "DefineBitsJPEG3; low6bits encode body length or63 for long header";
+                break;
+            case 36:
+                text = "DefineBitsLossless2; low6bits encode body length or63 for long header";
+                break;
+            case 39:
+                text = "DefineSprite; low6bits encode body length or63 for long header";
+                break;
+            case 45:
+                text = "SoundStreamHead2; low6bits encode body length or63 for long header";
+                break;
+            case 69:
+                text = "FileAttributes; low6bits encode body length or63 for long header";
+                break;
+            case 87:
+                text = "DefineBinaryData; low6bits encode body length or63 for long header";
+                break;
+            case 90:
+                text = "DefineBitsJPEG4; low6bits encode body length or63 for long header";
+                break;
+            default:
+                text = "Upper10bits tag code; low6bits body length or63 for long header";
+                break;
+            }
+        }
+        break;
+    case 0x6039001D:
+        if (r.name === "alpha_data_offset") {
+            text = "Relative to the end of this fixed header, where JPEG bytes begin.";
+        }
+        break;
+    case 0x6039001E:
+        if (r.name === "alpha_data_offset") {
+            text = "Byte count of ImageData; alpha bytes begin this many bytes after the8-byte fixed header.";
+        }
+        if (r.name === "deblock_fixed8") {
+            text = "Unsigned8.8 normalized deblocking strength; Adobe SWF19 declares UI16.";
+        }
+        break;
+    case 0x60390020:
+        if (r.name === "palette_count_minus_one") {
+            text = "Encoded number of colour-table entries minus1.";
+        }
+        break;
+    case 0x60390021:
+        if (r.name === "sound_format_flags") {
+            text = "High4bits codec, next2bits sample-rate selector, bit1 sample width, bit0 stereo.";
+        }
+        break;
+    case 0x60390026:
+        if (r.name === "payload_size") {
+            text = "Container length minus8.";
+        }
+        break;
+    case 0x60390028:
+        if (r.name === "payload_size") {
+            text = "Container length minus8.";
+        }
+        break;
+    case 0x6039002A:
+        if (r.name === "box_size") {
+            text = "Includes this header;1 selects64-bit extended size;0 extends to parent end.";
+        }
+        break;
+    case 0x6039002B:
+        if (r.name === "box_size") {
+            text = "Value1 selects the following64-bit size.";
+        }
+        break;
+    case 0x6039002F:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "timescale") {
+            text = "Ticks per second.";
+        }
+        if (r.name === "duration") {
+            text = "Movie timescale ticks.";
+        }
+        if (r.name === "rate_fixed16") {
+            text = "Signed16.16 fixed point.";
+        }
+        if (r.name === "volume_fixed8") {
+            text = "Signed8.8 fixed point.";
+        }
+        if (r.name === "matrix") {
+            text = "Signed16.16 values except u,v,w use2.30.";
+        }
+        break;
+    case 0x60390030:
+        if (r.name === "flags") {
+            text = "TrackEnabled=1,TrackInMovie=2,TrackInPreview=4,TrackSizeIsAspectRatio=8.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "duration") {
+            text = "Movie timescale ticks.";
+        }
+        if (r.name === "volume_fixed8") {
+            text = "Signed8.8 fixed point.";
+        }
+        if (r.name === "matrix") {
+            text = "Signed16.16 values except u,v,w use2.30.";
+        }
+        if (r.name === "width_fixed16") {
+            text = "Unsigned16.16 pixels.";
+        }
+        if (r.name === "height_fixed16") {
+            text = "Unsigned16.16 pixels.";
+        }
+        break;
+    case 0x60390031:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "timescale") {
+            text = "Ticks per second.";
+        }
+        if (r.name === "duration") {
+            text = "Media timescale ticks.";
+        }
+        if (r.name === "language") {
+            text = "Low15bits encode three5-bit ISO639-2 letters, each plus0x60.";
+        }
+        break;
+    case 0x60390032:
+        if (r.name === "segment_duration") {
+            text = "Movie timescale ticks.";
+        }
+        if (r.name === "media_time") {
+            text = "Media timescale ticks;-1 means empty edit.";
+        }
+        break;
+    case 0x60390033:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "timescale") {
+            text = "Ticks per second.";
+        }
+        if (r.name === "duration") {
+            text = "Movie timescale ticks.";
+        }
+        if (r.name === "rate_fixed16") {
+            text = "Signed16.16 fixed point.";
+        }
+        if (r.name === "volume_fixed8") {
+            text = "Signed8.8 fixed point.";
+        }
+        if (r.name === "matrix") {
+            text = "Signed16.16 values except u,v,w use2.30.";
+        }
+        break;
+    case 0x60390034:
+        if (r.name === "flags") {
+            text = "TrackEnabled=1,TrackInMovie=2,TrackInPreview=4,TrackSizeIsAspectRatio=8.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "duration") {
+            text = "Movie timescale ticks.";
+        }
+        if (r.name === "volume_fixed8") {
+            text = "Signed8.8 fixed point.";
+        }
+        if (r.name === "matrix") {
+            text = "Signed16.16 values except u,v,w use2.30.";
+        }
+        if (r.name === "width_fixed16") {
+            text = "Unsigned16.16 pixels.";
+        }
+        if (r.name === "height_fixed16") {
+            text = "Unsigned16.16 pixels.";
+        }
+        break;
+    case 0x60390035:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01UTC.";
+        }
+        if (r.name === "timescale") {
+            text = "Ticks per second.";
+        }
+        if (r.name === "duration") {
+            text = "Media timescale ticks.";
+        }
+        if (r.name === "language") {
+            text = "Low15bits encode three5-bit ISO639-2 letters, each plus0x60.";
+        }
+        break;
+    case 0x60390036:
+        if (r.name === "segment_duration") {
+            text = "Movie timescale ticks.";
+        }
+        if (r.name === "media_time") {
+            text = "Media timescale ticks;-1 means empty edit.";
+        }
+        break;
+    case 0x60390037:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        break;
+    case 0x60390038:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        break;
+    case 0x60390039:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        if (r.name === "sample_size") {
+            text = "Zero selects one size per sample.";
+        }
+        break;
+    case 0x6039003A:
+        if (r.name === "chunk_offset") {
+            text = "File-relative byte offset of the media chunk.";
+        }
+        break;
+    case 0x6039003B:
+        if (r.name === "chunk_offset") {
+            text = "File-relative byte offset of the media chunk.";
+        }
+        break;
+    case 0x6039003C:
+        if (r.name === "sample_delta") {
+            text = "Decode duration in media timescale ticks.";
+        }
+        break;
+    case 0x6039003D:
+        if (r.name === "sample_offset") {
+            text = "Composition offset in media timescale ticks.";
+        }
+        break;
+    case 0x6039003E:
+        if (r.name === "sample_offset") {
+            text = "Signed composition offset in media timescale ticks.";
+        }
+        break;
+    case 0x6039003F:
+        if (r.name === "first_chunk") {
+            text = "One-based chunk index.";
+        }
+        if (r.name === "sample_description_index") {
+            text = "One-based sample description index.";
+        }
+        break;
+    case 0x60390040:
+        if (r.name === "sample_number") {
+            text = "One-based sync sample index.";
+        }
+        break;
+    case 0x60390043:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        break;
+    case 0x60390044:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        if (r.name === "balance_fixed8") {
+            text = "Signed8.8 fixed point.";
+        }
+        break;
+    case 0x60390045:
+        if (r.name === "flags") {
+            text = "Box-specific24-bit flags.";
+        }
+        break;
+    case 0x60390046:
+        switch (sxVarU64(r.value)) {
+        case 440786851:
+            text = "EBML";
+            break;
+        case 408125543:
+            text = "Segment";
+            break;
+        case 357149030:
+            text = "Info";
+            break;
+        case 374648427:
+            text = "Tracks";
+            break;
+        case 174:
+            text = "TrackEntry";
+            break;
+        case 524531317:
+            text = "Cluster";
+            break;
+        case 160:
+            text = "BlockGroup";
+            break;
+        case 163:
+            text = "SimpleBlock";
+            break;
+        case 161:
+            text = "Block";
+            break;
+        case 236:
+            text = "Void";
+            break;
+        case 191:
+            text = "CRC32";
+            break;
+        case 17026:
+            text = "DocType";
+            break;
+        case 17030:
+            text = "EBMLVersion";
+            break;
+        case 17143:
+            text = "EBMLReadVersion";
+            break;
+        case 17138:
+            text = "EBMLMaxIDLength";
+            break;
+        case 17139:
+            text = "EBMLMaxSizeLength";
+            break;
+        case 17031:
+            text = "DocTypeVersion";
+            break;
+        case 17029:
+            text = "DocTypeReadVersion";
+            break;
+        case 2807729:
+            text = "TimestampScale";
+            break;
+        case 17545:
+            text = "Duration";
+            break;
+        case 17505:
+            text = "DateUTC";
+            break;
+        case 19840:
+            text = "MuxingApp";
+            break;
+        case 22337:
+            text = "WritingApp";
+            break;
+        case 215:
+            text = "TrackNumber";
+            break;
+        case 29637:
+            text = "TrackUID";
+            break;
+        case 131:
+            text = "TrackType";
+            break;
+        case 134:
+            text = "CodecID";
+            break;
+        case 224:
+            text = "Video";
+            break;
+        case 225:
+            text = "Audio";
+            break;
+        case 176:
+            text = "PixelWidth";
+            break;
+        case 186:
+            text = "PixelHeight";
+            break;
+        case 181:
+            text = "SamplingFrequency";
+            break;
+        case 159:
+            text = "Channels";
+            break;
+        case 231:
+            text = "Timestamp";
+            break;
+        case 21420:
+            text = "SeekPosition";
+            break;
+        case 290298740:
+            text = "SeekHead";
+            break;
+        case 19899:
+            text = "Seek";
+            break;
+        case 241:
+            text = "CueClusterPosition";
+            break;
+        case 240:
+            text = "CueRelativePosition";
+            break;
+        default:
+            text = "EBML element ID including its marker bit";
+            break;
+        }
+        break;
+    case 0x60390047:
+        switch (sxVarU64(r.value)) {
+        case 440786851:
+            text = "EBML";
+            break;
+        case 408125543:
+            text = "Segment";
+            break;
+        case 357149030:
+            text = "Info";
+            break;
+        case 374648427:
+            text = "Tracks";
+            break;
+        case 174:
+            text = "TrackEntry";
+            break;
+        case 524531317:
+            text = "Cluster";
+            break;
+        case 160:
+            text = "BlockGroup";
+            break;
+        case 163:
+            text = "SimpleBlock";
+            break;
+        case 161:
+            text = "Block";
+            break;
+        case 236:
+            text = "Void";
+            break;
+        case 191:
+            text = "CRC32";
+            break;
+        case 17026:
+            text = "DocType";
+            break;
+        case 17030:
+            text = "EBMLVersion";
+            break;
+        case 17143:
+            text = "EBMLReadVersion";
+            break;
+        case 17138:
+            text = "EBMLMaxIDLength";
+            break;
+        case 17139:
+            text = "EBMLMaxSizeLength";
+            break;
+        case 17031:
+            text = "DocTypeVersion";
+            break;
+        case 17029:
+            text = "DocTypeReadVersion";
+            break;
+        case 2807729:
+            text = "TimestampScale";
+            break;
+        case 17545:
+            text = "Duration";
+            break;
+        case 17505:
+            text = "DateUTC";
+            break;
+        case 19840:
+            text = "MuxingApp";
+            break;
+        case 22337:
+            text = "WritingApp";
+            break;
+        case 215:
+            text = "TrackNumber";
+            break;
+        case 29637:
+            text = "TrackUID";
+            break;
+        case 131:
+            text = "TrackType";
+            break;
+        case 134:
+            text = "CodecID";
+            break;
+        case 224:
+            text = "Video";
+            break;
+        case 225:
+            text = "Audio";
+            break;
+        case 176:
+            text = "PixelWidth";
+            break;
+        case 186:
+            text = "PixelHeight";
+            break;
+        case 181:
+            text = "SamplingFrequency";
+            break;
+        case 159:
+            text = "Channels";
+            break;
+        case 231:
+            text = "Timestamp";
+            break;
+        case 21420:
+            text = "SeekPosition";
+            break;
+        case 290298740:
+            text = "SeekHead";
+            break;
+        case 19899:
+            text = "Seek";
+            break;
+        case 241:
+            text = "CueClusterPosition";
+            break;
+        case 240:
+            text = "CueRelativePosition";
+            break;
+        default:
+            text = "EBML element ID including its marker bit";
+            break;
+        }
+        break;
+    case 0x60390048:
+        switch (sxVarU64(r.value)) {
+        case 440786851:
+            text = "EBML";
+            break;
+        case 408125543:
+            text = "Segment";
+            break;
+        case 357149030:
+            text = "Info";
+            break;
+        case 374648427:
+            text = "Tracks";
+            break;
+        case 174:
+            text = "TrackEntry";
+            break;
+        case 524531317:
+            text = "Cluster";
+            break;
+        case 160:
+            text = "BlockGroup";
+            break;
+        case 163:
+            text = "SimpleBlock";
+            break;
+        case 161:
+            text = "Block";
+            break;
+        case 236:
+            text = "Void";
+            break;
+        case 191:
+            text = "CRC32";
+            break;
+        case 17026:
+            text = "DocType";
+            break;
+        case 17030:
+            text = "EBMLVersion";
+            break;
+        case 17143:
+            text = "EBMLReadVersion";
+            break;
+        case 17138:
+            text = "EBMLMaxIDLength";
+            break;
+        case 17139:
+            text = "EBMLMaxSizeLength";
+            break;
+        case 17031:
+            text = "DocTypeVersion";
+            break;
+        case 17029:
+            text = "DocTypeReadVersion";
+            break;
+        case 2807729:
+            text = "TimestampScale";
+            break;
+        case 17545:
+            text = "Duration";
+            break;
+        case 17505:
+            text = "DateUTC";
+            break;
+        case 19840:
+            text = "MuxingApp";
+            break;
+        case 22337:
+            text = "WritingApp";
+            break;
+        case 215:
+            text = "TrackNumber";
+            break;
+        case 29637:
+            text = "TrackUID";
+            break;
+        case 131:
+            text = "TrackType";
+            break;
+        case 134:
+            text = "CodecID";
+            break;
+        case 224:
+            text = "Video";
+            break;
+        case 225:
+            text = "Audio";
+            break;
+        case 176:
+            text = "PixelWidth";
+            break;
+        case 186:
+            text = "PixelHeight";
+            break;
+        case 181:
+            text = "SamplingFrequency";
+            break;
+        case 159:
+            text = "Channels";
+            break;
+        case 231:
+            text = "Timestamp";
+            break;
+        case 21420:
+            text = "SeekPosition";
+            break;
+        case 290298740:
+            text = "SeekHead";
+            break;
+        case 19899:
+            text = "Seek";
+            break;
+        case 241:
+            text = "CueClusterPosition";
+            break;
+        case 240:
+            text = "CueRelativePosition";
+            break;
+        default:
+            text = "EBML element ID including its marker bit";
+            break;
+        }
+        break;
+    case 0x60390049:
+        switch (sxVarU64(r.value)) {
+        case 440786851:
+            text = "EBML";
+            break;
+        case 408125543:
+            text = "Segment";
+            break;
+        case 357149030:
+            text = "Info";
+            break;
+        case 374648427:
+            text = "Tracks";
+            break;
+        case 174:
+            text = "TrackEntry";
+            break;
+        case 524531317:
+            text = "Cluster";
+            break;
+        case 160:
+            text = "BlockGroup";
+            break;
+        case 163:
+            text = "SimpleBlock";
+            break;
+        case 161:
+            text = "Block";
+            break;
+        case 236:
+            text = "Void";
+            break;
+        case 191:
+            text = "CRC32";
+            break;
+        case 17026:
+            text = "DocType";
+            break;
+        case 17030:
+            text = "EBMLVersion";
+            break;
+        case 17143:
+            text = "EBMLReadVersion";
+            break;
+        case 17138:
+            text = "EBMLMaxIDLength";
+            break;
+        case 17139:
+            text = "EBMLMaxSizeLength";
+            break;
+        case 17031:
+            text = "DocTypeVersion";
+            break;
+        case 17029:
+            text = "DocTypeReadVersion";
+            break;
+        case 2807729:
+            text = "TimestampScale";
+            break;
+        case 17545:
+            text = "Duration";
+            break;
+        case 17505:
+            text = "DateUTC";
+            break;
+        case 19840:
+            text = "MuxingApp";
+            break;
+        case 22337:
+            text = "WritingApp";
+            break;
+        case 215:
+            text = "TrackNumber";
+            break;
+        case 29637:
+            text = "TrackUID";
+            break;
+        case 131:
+            text = "TrackType";
+            break;
+        case 134:
+            text = "CodecID";
+            break;
+        case 224:
+            text = "Video";
+            break;
+        case 225:
+            text = "Audio";
+            break;
+        case 176:
+            text = "PixelWidth";
+            break;
+        case 186:
+            text = "PixelHeight";
+            break;
+        case 181:
+            text = "SamplingFrequency";
+            break;
+        case 159:
+            text = "Channels";
+            break;
+        case 231:
+            text = "Timestamp";
+            break;
+        case 21420:
+            text = "SeekPosition";
+            break;
+        case 290298740:
+            text = "SeekHead";
+            break;
+        case 19899:
+            text = "Seek";
+            break;
+        case 241:
+            text = "CueClusterPosition";
+            break;
+        case 240:
+            text = "CueRelativePosition";
+            break;
+        default:
+            text = "EBML element ID including its marker bit";
+            break;
+        }
+        break;
+    case 0x6039004A:
+        var raw = sxVarU64(r.value);
+        var v = sxAnd64(raw, 127);
+        var b = [];
+        var wide = [];
+        if (sxShr64(raw, 7) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 127) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (var i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039004B:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 127);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 7) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039004C:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 127);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 7) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039004D:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 127);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 7) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 63]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039004F:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x60390050:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 16383);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 14) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 16383) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390051:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 16383);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 14) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390052:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 16383);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 14) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390053:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 16383);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 14) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 8191]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390055:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x60390056:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 2097151);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 21) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 2097151) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390057:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 2097151);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 21) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390058:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 2097151);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 21) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390059:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 2097151);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 21) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 1048575]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039005B:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x6039005C:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 268435455);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 28) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 268435455) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039005D:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 268435455);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 28) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039005E:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 268435455);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 28) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039005F:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 268435455);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 28) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 134217727]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390061:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x60390062:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 34359738367);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 35) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 34359738367) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390063:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 34359738367);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 35) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390064:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 34359738367);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 35) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390065:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 34359738367);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 35) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 17179869183]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390067:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x60390068:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 4398046511103);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 42) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 4398046511103) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390069:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 4398046511103);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 42) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039006A:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 4398046511103);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 42) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039006B:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 4398046511103);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 42) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 2199023255551]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039006D:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x6039006E:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 562949953421311);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 49) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === 562949953421311) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x6039006F:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 562949953421311);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 49) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390070:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 562949953421311);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 49) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390071:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, 562949953421311);
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 49) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - 281474976710655]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390073:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x60390074:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, sxK(0xFFFFFF, 0xFFFFFFFF));
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 56) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        if (v === (0xFFFFFF * 4294967296 + 0xFFFFFFFF)) {
+            return sxSetComment(r, "EBML unknown-size sentinel; enclosing boundary determines extent.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT: decoded payload length %llu bytes; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390075:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, sxK(0xFFFFFF, 0xFFFFFFFF));
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 56) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390076:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, sxK(0xFFFFFF, 0xFFFFFFFF));
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 56) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML VINT decoded value %llu; physical marker retained.", [v]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390077:
+        raw = sxVarU64(r.value);
+        v = sxAnd64(raw, sxK(0xFFFFFF, 0xFFFFFFFF));
+        b = [];
+        wide = [];
+        if (sxShr64(raw, 56) !== 1) {
+            return sxSetComment(r, "Invalid EBML VINT width marker; physical encoded word retained.");
+        }
+        sxSnprintf(b, 0, 160, "EBML lacing: signed frame-size difference %lld bytes.", [(v >= SX_I64_MAX ? v - SX_U64_MAX : v) - (0x7FFFFF * 4294967296 + 0xFFFFFFFF)]);
+        for (i = 0; i < 160; i++) {
+            wide[i] = b[i] & 0xFF;
+            if (!b[i]) {
+                break;
+            }
+        }
+        return sxSetComment(r, wide);
+    case 0x60390079:
+        if (r.name === "relative_offset") {
+            text = "Relative to Segment data start, except CueRelativePosition relative to its Cluster data start; element ID determines origin.";
+        }
+        break;
+    case 0x6039007D:
+        if (r.name === "crc32") {
+            text = "CRC32 over parent contents except this complete CRC element.";
+        }
+        break;
+    case 0x6039007E:
+        if (r.name === "relative_timestamp") {
+            text = "Signed offset from Cluster timestamp in track ticks.";
+        }
+        if (r.name === "flags") {
+            text = "Lacing bits1..2:0none,1Xiph,2fixed,3EBML; SimpleBlock bit7keyframe,bit0discardable.";
+        }
+        break;
+    case 0x6039007F:
+        if (r.name === "frame_count_minus_one") {
+            text = "Number of frames minus1; lacing requires at least2frames.";
+        }
+        break;
+    case 0x60390080:
+        if (r.name === "size_part") {
+            text = "Add255 continuations and a terminating byte below255 to obtain one frame size.";
+        }
+        break;
+    case 0x60390081:
+        if (r.name === "mmap_offset") {
+            text = "File-relative offset of the memory-map chunk.";
+        }
+        break;
+    case 0x60390082:
+        if (r.name === "first_free_resource_id") {
+            text = "Minus1 means no free resource.";
+        }
+        break;
+    case 0x60390083:
+        if (r.name === "type") {
+            text = "Packed four-character resource type.";
+        }
+        if (r.name === "chunk_offset") {
+            text = "File-relative chunk-header offset.";
+        }
+        if (r.name === "next_free_resource_id") {
+            text = "Resource index for free entries, flags for special resources.";
+        }
+        break;
+    case 0x60390085:
+        if (r.name === "child_type") {
+            text = "Packed four-character type.";
+        }
+        break;
+    case 0x60390086:
+        if (r.name === "mmap_offset") {
+            text = "File-relative offset of the memory-map chunk.";
+        }
+        break;
+    case 0x60390087:
+        if (r.name === "first_free_resource_id") {
+            text = "Minus1 means no free resource.";
+        }
+        break;
+    case 0x60390088:
+        if (r.name === "type") {
+            text = "Packed four-character resource type.";
+        }
+        if (r.name === "chunk_offset") {
+            text = "File-relative chunk-header offset.";
+        }
+        if (r.name === "next_free_resource_id") {
+            text = "Resource index for free entries, flags for special resources.";
+        }
+        break;
+    case 0x6039008A:
+        if (r.name === "child_type") {
+            text = "Packed four-character type.";
+        }
+        break;
+    case 0x6039008B:
+        if (r.name === "cast_resource_index") {
+            text = "Cast-list indices are stored big-endian independently of container byte order.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxvt_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxvt_read(c, p, b, b_o, n) {
+    return sxvt_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxvt_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxvt_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxvt_read(c, p, b, 0, n)) {
+        return false;
+    }
+    v[0] = sxvt_uint(b, 0, n, be);
+    return true;
+}
+function sxvt_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = f.offset + f.size;
+    return c.count < 20000 && sxvt_span(c, p, (n < 0 ? n + SX_U64_MAX : n)) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), n);
+}
+function sxvt_byte(c, p, v, v_o) {
+    return sxvt_read(c, p, v, v_o, 1);
+}
+function sxvt_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxvt_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxvt_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxvt_order, true);
+    return !c.failed;
+}
+function sx_videotail_supports(type) {
+    switch (type) {
+    case "GRASP":
+    case "SWF":
+    case "MP4":
+    case "MATROSKA":
+    case "ADOBE_DIRECTOR_CXT":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_videotail_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "GRASP":
+        ok = sx_grasp_build(c);
+        break;
+    case "SWF":
+        ok = sx_swf_build(c);
+        break;
+    case "MP4":
+        ok = sx_mp4_build(c);
+        break;
+    case "MATROSKA":
+        ok = sx_matroska_build(c);
+        break;
+    case "ADOBE_DIRECTOR_CXT":
+        ok = sx_adobe_director_cxt_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxvt_finish(c));
+}

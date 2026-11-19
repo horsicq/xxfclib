@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/trdos/xx_trdos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_trdos_entry_fields = layout([chars("name", 8, NONE), chars("extension", 1, ID), u16("start_address", VA),
+    u16("byte_length", SIZE), u8("sector_count", COUNT), u8("first_sector"), u8("first_track")]);
+var sxst_trdos_entry = sxLayout(0x60370008, "trdos_entry", LE, sxst_trdos_entry_fields);
+var sxst_trdos_disk_descriptor_fields = layout([u8("reserved", RESERVED), u8("first_free_sector"), u8("first_free_track"),
+    u8("disk_type", ID), u8("file_count", COUNT), u16("free_sector_count", COUNT), u8("identifier", SIGNATURE)]);
+var sxst_trdos_disk_descriptor = sxLayout(0x60370009, "trdos_disk_descriptor", LE, sxst_trdos_disk_descriptor_fields);
+function sxst_trdos(c) {
+    if (!sxst_put(c, sxst_trdos_disk_descriptor, 0x8E0, 1)) {
+        return false;
+    }
+    var b = [0];
+    var n = 0;
+    for (; n < 128; n++) {
+        if (!sxst_read(c, 16 * n, b, 1)) {
+            break;
+        }
+        if (!b[0]) {
+            n++;
+            break;
+        }
+    }
+    return !!(n && sxst_put(c, sxst_trdos_entry, 0, n));
+}
+function sx_trdos_build(c) {
+    return sxst_trdos(c);
+}

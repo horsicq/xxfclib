@@ -1,0 +1,207 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/inno_setup/xx_inno_setup_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_inno_loader_pointer_fields = layout([chars("signature", 4, SIGNATURE), u32("table_offset", OFFSET),
+    u32("complemented_table_offset")]);
+var sxil_inno_loader_pointer = sxLayout(0x60850059, "inno_loader_pointer", LE, sxil_inno_loader_pointer_fields);
+var sxil_inno_loader2_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("total_size", SIZE),
+    u32("exe_offset", OFFSET), u32("exe_packed_size", SIZE), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u32("legacy_word"), u32("setup_header_offset", OFFSET), u32("data_offset", OFFSET)]);
+var sxil_inno_loader2 = sxLayout(0x6085005A, "inno_loader2", LE, sxil_inno_loader2_fields);
+var sxil_inno_loader4_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("total_size", SIZE),
+    u32("exe_offset", OFFSET), u32("exe_packed_size", SIZE), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u32("setup_header_offset", OFFSET), u32("data_offset", OFFSET)]);
+var sxil_inno_loader4 = sxLayout(0x6085005B, "inno_loader4", LE, sxil_inno_loader4_fields);
+var sxil_inno_loader5_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("total_size", SIZE),
+    u32("exe_offset", OFFSET), u32("exe_packed_size", SIZE), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u32("setup_header_offset", OFFSET), u32("data_offset", OFFSET)]);
+var sxil_inno_loader5 = sxLayout(0x6085005C, "inno_loader5", LE, sxil_inno_loader5_fields);
+var sxil_inno_loader6_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("total_size", SIZE),
+    u32("exe_offset", OFFSET), u32("exe_packed_size", SIZE), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u32("setup_header_offset", OFFSET), u32("data_offset", OFFSET), u32("table_crc32", CHECKSUM)]);
+var sxil_inno_loader6 = sxLayout(0x6085005D, "inno_loader6", LE, sxil_inno_loader6_fields);
+var sxil_inno_loader7_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("total_size", SIZE),
+    u32("exe_offset", OFFSET), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u32("setup_header_offset", OFFSET), u32("data_offset", OFFSET), u32("table_crc32", CHECKSUM)]);
+var sxil_inno_loader7 = sxLayout(0x6085005E, "inno_loader7", LE, sxil_inno_loader7_fields);
+var sxil_inno_loader_revision1_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("revision", ID),
+    u32("total_size", SIZE), u32("exe_offset", OFFSET), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u32("setup_header_offset", OFFSET), u32("data_offset", OFFSET), u32("table_crc32", CHECKSUM)]);
+var sxil_inno_loader_revision1 = sxLayout(0x6085005F, "inno_loader_revision1", LE, sxil_inno_loader_revision1_fields);
+var sxil_inno_loader_revision2_fields = layout([field("signature", "byte[12]", 12, SIGNATURE), u32("revision", ID),
+    u64("total_size", SIZE), u64("exe_offset", OFFSET), u32("exe_unpacked_size", SIZE), u32("exe_checksum", CHECKSUM),
+    u64("setup_header_offset", OFFSET), u64("data_offset", OFFSET), u32("reserved", RESERVED), u32("table_crc32", CHECKSUM)]);
+var sxil_inno_loader_revision2 = sxLayout(0x60850060, "inno_loader_revision2", LE, sxil_inno_loader_revision2_fields);
+var sxil_inno_setup_version_fields = layout([chars("version", 64, NONE)]);
+var sxil_inno_setup_version = sxLayout(0x60850061, "inno_setup_version", LE, sxil_inno_setup_version_fields);
+var sxil_inno_encryption_envelope_fields = layout([u32("crc32", CHECKSUM), u8("encryption_kind", ID),
+    field("encryption_parameters", "byte[48]", 48)]);
+var sxil_inno_encryption_envelope = sxLayout(0x60850062, "inno_encryption_envelope", LE, sxil_inno_encryption_envelope_fields);
+var sxil_inno_block_legacy_fields = layout([u32("header_crc32", CHECKSUM), i32("compressed_size"),
+    u32("uncompressed_size", SIZE)]);
+var sxil_inno_block_legacy = sxLayout(0x60850063, "inno_block_legacy", LE, sxil_inno_block_legacy_fields);
+var sxil_inno_block32_fields = layout([u32("header_crc32", CHECKSUM), u32("stored_extent", SIZE), u8("compressed", FLAGS)]);
+var sxil_inno_block32 = sxLayout(0x60850064, "inno_block32", LE, sxil_inno_block32_fields);
+var sxil_inno_block64_fields = layout([u32("header_crc32", CHECKSUM), u64("stored_extent", SIZE), u8("compressed", FLAGS)]);
+var sxil_inno_block64 = sxLayout(0x60850065, "inno_block64", LE, sxil_inno_block64_fields);
+var sxil_inno_block_crc32_fields = layout([u32("crc32", CHECKSUM)]);
+var sxil_inno_block_crc32 = sxLayout(0x60850066, "inno_block_crc32", LE, sxil_inno_block_crc32_fields);
+var sxil_inno_data_marker_fields = layout([field("signature", "byte[4]", 4, SIGNATURE)]);
+var sxil_inno_data_marker = sxLayout(0x60850067, "inno_data_marker", LE, sxil_inno_data_marker_fields);
+function sxil64(p, p_o) {
+    return sxOr64(sxil32(p, p_o, false), sxShl64(sxil32(p, p_o + 4, false), 32));
+}
+function sxil_inno(c) {
+    var b = [];
+    var table = [0];
+    var header = 0;
+    var data = 0;
+    var generation = 0;
+    var resource_size = [0];
+    var row = null;
+    if (sxil_eq(c, 48, "Inno", 4)) {
+        var p = [0];
+        var np = [0];
+        if (!sxil_u32(c, 52, p) || !sxil_u32(c, 56, np) || p[0] !== ~np[0] >>> 0 || !sxil_read(c, p[0], b, 12)) {
+            return true;
+        }
+        table[0] = p[0];
+        if (!sxil_put(c, sxil_inno_loader_pointer, 48, 1)) {
+            return false;
+        }
+        if (sxMemcmp(b, "rDlPtS", 6) || b[6] !== 48 /*0*/ || b[7] < 50 /*2*/ || b[7] > 55 /*7*/ || sxMemcmpAt(b, 8, "\x87eVx", 0, 4)) {
+            return true;
+        }
+        generation = (b[7] - 48 /*0*/) >>> 0;
+        var n = generation === 2 || generation === 6 ? 44 : 40;
+        if (!sxil_read(c, table[0], b, n)) {
+            return true;
+        }
+        switch (generation) {
+        case 2:
+            row = sxil_inno_loader2;
+            break;
+        case 4:
+            row = sxil_inno_loader4;
+            break;
+        case 5:
+            row = sxil_inno_loader5;
+            break;
+        case 6:
+            row = sxil_inno_loader6;
+            break;
+        case 7:
+            row = sxil_inno_loader7;
+            break;
+        default:
+            return true;
+        }
+        header = sxil32(b, generation === 2 ? 36 : generation === 7 ? 28 : 32, false);
+        data = sxil32(b, generation === 2 ? 40 : generation === 7 ? 32 : 36, false);
+    } else if (sxil_resource(c, 10, 11111, null, table, resource_size) && resource_size[0] >= 44 && sxil_read(c, table[0], b, 44)) {
+        if (sxMemcmp(b, "rDlPtS\xCD\xE6\xD7{\x0B*", 12)) {
+            return true;
+        }
+        generation = sxil32(b, 12, false);
+        if (generation === 1) {
+            row = sxil_inno_loader_revision1;
+            header = sxil32(b, 32, false);
+            data = sxil32(b, 36, false);
+        } else if (generation === 2 && resource_size[0] >= 64 && sxil_read(c, table[0], b, 64)) {
+            row = sxil_inno_loader_revision2;
+            header = sxil64(b, 40);
+            data = sxil64(b, 48);
+        } else {
+            return true;
+        }
+        generation = (generation + 100) >>> 0;
+    } else {
+        return true;
+    }
+    if (!sxil_put(c, row, table[0], 1)) {
+        return false;
+    }
+    if (!sxil_read(c, header, b, 64)) {
+        return true;
+    }
+    var version = [0, 0, 0];
+    var pos = 0;
+    while (pos < 64 && b[pos] !== 40 /*(*/) {
+        pos++;
+    }
+    if (pos === 64) {
+        return true;
+    }
+    pos++;
+    for (var k = 0; k < 3; k++) {
+        var digits = 0;
+        while (pos < 64 && b[pos] >= 48 /*0*/ && b[pos] <= 57 /*9*/ && digits < 3) {
+            version[k] = (((((version[k] * 10) >>> 0) + b[pos++]) >>> 0) - 48 /*0*/) >>> 0;
+            digits++;
+        }
+        if (!digits) {
+            return true;
+        }
+        if (k < 2) {
+            if (pos >= 64 || b[pos++] !== 46 /*.*/) {
+                return true;
+            }
+        }
+    }
+    if (!sxil_put(c, sxil_inno_setup_version, header, 1)) {
+        return false;
+    }
+    p = [header + 64];
+    var legacy = version[0] < 4 || version[0] === 4 && version[1] === 0 && version[2] < 9;
+    var wide = version[0] > 6 || version[0] === 6 && version[1] >= 7;
+    if (generation === 102) {
+        if (!sxil_put(c, sxil_inno_encryption_envelope, p[0], 1)) {
+            return false;
+        }
+        p[0] += 53;
+    }
+    for (var block = 0; block < 2; block++) {
+        var extent;
+        var hs = legacy ? 12 : wide ? 13 : 9;
+        if (!sxil_read(c, p[0], b, hs)) {
+            return true;
+        }
+        if (legacy) {
+            var packed = sxil32(b, 4, false) | 0;
+            n = packed === -1 ? sxil32(b, 8, false) : packed < 0 ? 0 : packed >>> 0;
+            extent = n + 4 * Math.floor((n + 4095) / 4096);
+        } else {
+            extent = wide ? sxil64(b, 4) : sxil32(b, 4, false);
+        }
+        if (!sxil_put(c, legacy ? sxil_inno_block_legacy : wide ? sxil_inno_block64 : sxil_inno_block32, p[0], 1)) {
+            return false;
+        }
+        p[0] += hs;
+        if (!sxil_span(c, p[0], extent)) {
+            return true;
+        }
+        var end = p[0] + extent;
+        for (k = 0; k < 20000 && p[0] < end; k++) {
+            if (sxU64(end - p[0]) < 4) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_inno_block_crc32, p[0], 1)) {
+                return false;
+            }
+            p[0] += 4;
+            n = sxU64(end - p[0]) < 4096 ? sxU64(end - p[0]) : 4096;
+            p[0] += n;
+        }
+        p[0] = end;
+    }
+    if (data && sxil_eq(c, data, "zlb\x1A", 4) && !sxil_put(c, sxil_inno_data_marker, data, 1)) {
+        return false;
+    }
+    return true;
+}
+function sx_inno_setup_build(c) {
+    return sxil_inno(c);
+}

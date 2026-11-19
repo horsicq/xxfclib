@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_sarc/xx_nintendo_sarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_sarc_header_le_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("byte_order_mark", ID),
+    u32("file_size", SIZE), u32("data_offset", OFFSET), u16("version", ID), u16("reserved", RESERVED)]);
+var sxgm_sarc_header_le = sxLayout(0x60270023, "sarc_header_le", LE, sxgm_sarc_header_le_fields);
+var sxgm_sarc_header_be_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("byte_order_mark", ID),
+    u32("file_size", SIZE), u32("data_offset", OFFSET), u16("version", ID), u16("reserved", RESERVED)]);
+var sxgm_sarc_header_be = sxLayout(0x60270024, "sarc_header_be", BE, sxgm_sarc_header_be_fields);
+var sxgm_sarc_fat_le_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("entry_count", COUNT),
+    u32("hash_multiplier")]);
+var sxgm_sarc_fat_le = sxLayout(0x60270025, "sarc_fat_le", LE, sxgm_sarc_fat_le_fields);
+var sxgm_sarc_fat_be_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("entry_count", COUNT),
+    u32("hash_multiplier")]);
+var sxgm_sarc_fat_be = sxLayout(0x60270026, "sarc_fat_be", BE, sxgm_sarc_fat_be_fields);
+var sxgm_sarc_entry_le_fields = layout([u32("name_hash", CHECKSUM), u32("name_attributes", FLAGS), u32("start_offset", OFFSET),
+    u32("end_offset", OFFSET)]);
+var sxgm_sarc_entry_le = sxLayout(0x60270027, "sarc_entry_le", LE, sxgm_sarc_entry_le_fields);
+var sxgm_sarc_entry_be_fields = layout([u32("name_hash", CHECKSUM), u32("name_attributes", FLAGS), u32("start_offset", OFFSET),
+    u32("end_offset", OFFSET)]);
+var sxgm_sarc_entry_be = sxLayout(0x60270028, "sarc_entry_be", BE, sxgm_sarc_entry_be_fields);
+var sxgm_sarc_names_le_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("reserved", RESERVED)]);
+var sxgm_sarc_names_le = sxLayout(0x60270029, "sarc_names_le", LE, sxgm_sarc_names_le_fields);
+var sxgm_sarc_names_be_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("reserved", RESERVED)]);
+var sxgm_sarc_names_be = sxLayout(0x6027002A, "sarc_names_be", BE, sxgm_sarc_names_be_fields);
+function sxgm_sarc(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 32)) {
+        return false;
+    }
+    var be = b[6] === 0xFE && b[7] === 0xFF;
+    var n = sxgm16(b, 26, be);
+    return !!(sxgm_add(c, be ? sxgm_sarc_header_be : sxgm_sarc_header_le, 0) && sxgm_add(c, be ? sxgm_sarc_fat_be : sxgm_sarc_fat_le, 20) && sxgm_table(c, be ? sxgm_sarc_entry_be : sxgm_sarc_entry_le, 32, n) && (sxgm_span(c, 32 + n * 16, 8) ? (sxgm_add(c, be ? sxgm_sarc_names_be : sxgm_sarc_names_le, 32 + n * 16) ? 1 : 0) : 1));
+}
+function sx_nintendo_sarc_build(c) {
+    return sxgm_sarc(c);
+}

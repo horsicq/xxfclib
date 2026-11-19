@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/nintendo_nso/xx_nintendo_nso_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_nso_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("reserved", RESERVED),
+    u32("flags", FLAGS), u32("text_offset", OFFSET), u32("text_address", VA), u32("text_size", SIZE),
+    u32("module_name_offset", OFFSET), u32("ro_offset", OFFSET), u32("ro_address", VA), u32("ro_size", SIZE),
+    u32("module_name_size", SIZE), u32("data_offset", OFFSET), u32("data_address", VA), u32("data_size", SIZE),
+    u32("bss_size", SIZE), bytes("build_id", 32, ID), u32("text_compressed_size", SIZE), u32("ro_compressed_size", SIZE),
+    u32("data_compressed_size", SIZE), bytes("reserved108", 28, RESERVED), u32("embedded_offset", OFFSET),
+    u32("embedded_size", SIZE), u32("dynstr_offset", OFFSET), u32("dynstr_size", SIZE), u32("dynsym_offset", OFFSET),
+    u32("dynsym_size", SIZE), bytes("text_sha256", 32, CHECKSUM), bytes("ro_sha256", 32, CHECKSUM),
+    bytes("data_sha256", 32, CHECKSUM)]);
+var sxexm_nso_header = sxLayout(0x602B001D, "nso_header", LE, sxexm_nso_header_fields);
+function sx_nintendo_nso_build(c) {
+    var ok = false;
+    ok = sxexm_add(c, sxexm_nso_header, 0);
+    return ok && sxexm_finish(c);
+}

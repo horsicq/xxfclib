@@ -1,0 +1,103 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/tex_gf/xx_tex_gf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfb_gf_boc_fields = layout([u8("opcode", ID), i32("character_code", ID), i32("previous_boc_offset", OFFSET),
+    i32("minimum_m"), i32("maximum_m"), i32("minimum_n"), i32("maximum_n")]);
+var sxfb_gf_boc = sxLayout(0x60190037, "gf_boc", BE, sxfb_gf_boc_fields);
+var sxfb_gf_boc1_fields = layout([u8("opcode", ID), u8("character_code", ID), u8("delta_m"), u8("maximum_m"), u8("delta_n"),
+    u8("maximum_n")]);
+var sxfb_gf_boc1 = sxLayout(0x60190038, "gf_boc1", BE, sxfb_gf_boc1_fields);
+var sxfb_gf_paint1_fields = layout([u8("opcode", ID), u8("pixel_count", COUNT)]);
+var sxfb_gf_paint1 = sxLayout(0x60190039, "gf_paint1", BE, sxfb_gf_paint1_fields);
+var sxfb_gf_skip1_fields = layout([u8("opcode", ID), u8("extra_rows", COUNT)]);
+var sxfb_gf_skip1 = sxLayout(0x6019003A, "gf_skip1", BE, sxfb_gf_skip1_fields);
+var sxfb_gf_paint2_fields = layout([u8("opcode", ID), u16("pixel_count", COUNT)]);
+var sxfb_gf_paint2 = sxLayout(0x6019003B, "gf_paint2", BE, sxfb_gf_paint2_fields);
+var sxfb_gf_skip2_fields = layout([u8("opcode", ID), u16("extra_rows", COUNT)]);
+var sxfb_gf_skip2 = sxLayout(0x6019003C, "gf_skip2", BE, sxfb_gf_skip2_fields);
+var sxfb_gf_paint3_fields = layout([u8("opcode", ID), field("pixel_count", "uint24", 3, COUNT)]);
+var sxfb_gf_paint3 = sxLayout(0x6019003D, "gf_paint3", BE, sxfb_gf_paint3_fields);
+var sxfb_gf_skip3_fields = layout([u8("opcode", ID), field("extra_rows", "uint24", 3, COUNT)]);
+var sxfb_gf_skip3 = sxLayout(0x6019003E, "gf_skip3", BE, sxfb_gf_skip3_fields);
+var sxfb_gf_post_fields = layout([u8("opcode", ID), i32("previous_eoc_offset", OFFSET), i32("design_size"),
+    u32("checksum", CHECKSUM), i32("horizontal_pixels_per_point"), i32("vertical_pixels_per_point"), i32("minimum_m"),
+    i32("maximum_m"), i32("minimum_n"), i32("maximum_n")]);
+var sxfb_gf_post = sxLayout(0x6019003F, "gf_post", BE, sxfb_gf_post_fields);
+var sxfb_gf_char_loc_fields = layout([u8("opcode", ID), u8("character_code", ID), i32("dx"), i32("dy"), i32("tfm_width"),
+    i32("packet_offset", OFFSET)]);
+var sxfb_gf_char_loc = sxLayout(0x60190040, "gf_char_loc", BE, sxfb_gf_char_loc_fields);
+var sxfb_gf_char_loc0_fields = layout([u8("opcode", ID), u8("character_code", ID), u8("dx"), i32("tfm_width"),
+    i32("packet_offset", OFFSET)]);
+var sxfb_gf_char_loc0 = sxLayout(0x60190041, "gf_char_loc0", BE, sxfb_gf_char_loc0_fields);
+var sxfb_gf_postpost_fields = layout([u8("opcode", ID), i32("postamble_offset", OFFSET), u8("format_id", ID)]);
+var sxfb_gf_postpost = sxLayout(0x60190042, "gf_postpost", BE, sxfb_gf_postpost_fields);
+function sxfb_gf(c) {
+    var p = [0];
+    if (!sxfb_preamble(c, 131, p)) {
+        return false;
+    }
+    for (var step = 0; p[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && step < 20000; step++) {
+        var op = [0];
+        if (!sxfb_read(c, p[0], op, 1)) {
+            return false;
+        }
+        var l = null;
+        var size = 1;
+        if (op[0] >= 239 && op[0] <= 242) {
+            if (!sxfb_special(c, p, (op[0] - 238) >>> 0)) {
+                break;
+            }
+            continue;
+        }
+        if (op[0] <= 63 || op[0] === 69 || op[0] === 70 || op[0] >= 74 && op[0] <= 238 || op[0] === 244) {
+            l = sxfb_tex_opcode;
+        } else if (op[0] >= 64 && op[0] <= 66) {
+            var a = [sxfb_gf_paint1, sxfb_gf_paint2, sxfb_gf_paint3];
+            l = a[op[0] - 64];
+            size = (op[0] - 62) >>> 0;
+        } else if (op[0] >= 71 && op[0] <= 73) {
+            a = [sxfb_gf_skip1, sxfb_gf_skip2, sxfb_gf_skip3];
+            l = a[op[0] - 71];
+            size = (op[0] - 69) >>> 0;
+        } else if (op[0] === 67) {
+            l = sxfb_gf_boc;
+            size = 25;
+        } else if (op[0] === 68) {
+            l = sxfb_gf_boc1;
+            size = 6;
+        } else if (op[0] === 243) {
+            l = sxfb_tex_numeric_special;
+            size = 5;
+        } else if (op[0] === 245) {
+            l = sxfb_gf_char_loc;
+            size = 18;
+        } else if (op[0] === 246) {
+            l = sxfb_gf_char_loc0;
+            size = 11;
+        } else if (op[0] === 248) {
+            l = sxfb_gf_post;
+            size = 37;
+        } else if (op[0] === 249) {
+            if (sxfb_span(c, p[0], 6) && !sxfb_add(c, sxfb_gf_postpost, p[0])) {
+                return false;
+            }
+            break;
+        } else {
+            break;
+        }
+        if (!sxfb_span(c, p[0], size)) {
+            break;
+        }
+        if (!sxfb_add(c, l, p[0])) {
+            return false;
+        }
+        p[0] += size;
+    }
+    return !c.failed;
+}
+function sx_tex_gf_build(c) {
+    return sxfb_gf(c);
+}

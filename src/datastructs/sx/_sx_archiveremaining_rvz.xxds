@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/rvz/xx_rvz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_rvz_file_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version"), u32("compatible_version"),
+    u32("disc_header_size", SIZE), bytes("disc_header_sha1", 20, CHECKSUM), u64("iso_file_size", SIZE),
+    u64("rvz_file_size", SIZE), bytes("file_header_sha1", 20, CHECKSUM)]);
+var sxarm_rvz_file_header = sxLayout(0x607C002A, "rvz_file_header", BE, sxarm_rvz_file_header_fields);
+var sxarm_rvz_raw_entry_fields = layout([u64("iso_offset", OFFSET), u64("iso_size", SIZE), u32("first_group_index"),
+    u32("group_count", COUNT)]);
+var sxarm_rvz_raw_entry = sxLayout(0x607C002C, "rvz_raw_entry", BE, sxarm_rvz_raw_entry_fields);
+var sxarm_rvz_group_entry_fields = layout([u32("data_offset_div4"), u32("data_size_and_compressed_flag"),
+    u32("rvz_packed_size", SIZE)]);
+var sxarm_rvz_group_entry = sxLayout(0x607C002D, "rvz_group_entry", BE, sxarm_rvz_group_entry_fields);
+var sxarm_rvz_packing_run_fields = layout([u32("length_and_seed_flag")]);
+var sxarm_rvz_packing_run = sxLayout(0x607C002E, "rvz_packing_run", BE, sxarm_rvz_packing_run_fields);
+var sxarm_rvz_prng_seed_fields = layout([u32("seed_0"), u32("seed_1"), u32("seed_2"), u32("seed_3"), u32("seed_4"),
+    u32("seed_5"), u32("seed_6"), u32("seed_7"), u32("seed_8"), u32("seed_9"), u32("seed_10"), u32("seed_11"), u32("seed_12"),
+    u32("seed_13"), u32("seed_14"), u32("seed_15"), u32("seed_16")]);
+var sxarm_rvz_prng_seed = sxLayout(0x607C002F, "rvz_prng_seed", BE, sxarm_rvz_prng_seed_fields);
+function sxarm_rvz_packed(c, p, n) {
+    var end = p + n;
+    while (p < end) {
+        var word = [0];
+        if (sxU64(end - p) < 4 || !sxarm_word(c, p, 4, true, word) || !sxarm_add(c, sxarm_rvz_packing_run, p)) {
+            return false;
+        }
+        p += 4;
+        var z = sxAnd64(word[0], 0x80000000) ? 68 : sxAnd64(word[0], 0x7FFFFFFF);
+        if (z > sxU64(end - p)) {
+            return false;
+        }
+        if (sxAnd64(word[0], 0x80000000) && !sxarm_add(c, sxarm_rvz_prng_seed, p)) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sxarm_rvz(c) {
+    var magic = [];
+    if (!sxarm_read(c, 0, magic, 4) || sxMemcmp(magic, "RVZ\x01", 4)) {
+        return false;
+    }
+    var compression = [0];
+    var raw = [0];
+    var n = [0];
+    var rawz = [0];
+    var group = [0];
+    var gn = [0];
+    var gz = [0];
+    var p = [0];
+    var z = [0];
+    var packed = [0];
+    if (!sxarm_add(c, sxarm_rvz_file_header, 0) || !sxarm_add(c, sxarm_rvz_disc_header, 72) || !sxarm_word(c, 76, 4, true, compression)) {
+        return false;
+    }
+    if (compression[0]) {
+        return true;
+    }
+    if (!sxarm_word(c, 252, 4, true, n) || !sxarm_word(c, 256, 8, true, raw) || !sxarm_word(c, 264, 4, true, rawz) || n[0] > Math.floor(rawz[0] / 24) || !sxarm_span(c, raw[0], rawz[0]) || !sxarm_table(c, sxarm_rvz_raw_entry, raw[0], 24, n[0]) || !sxarm_word(c, 268, 4, true, gn) || !sxarm_word(c, 272, 8, true, group) || !sxarm_word(c, 280, 4, true, gz) || gn[0] > Math.floor(gz[0] / 12) || !sxarm_span(c, group[0], gz[0]) || !sxarm_table(c, sxarm_rvz_group_entry, group[0], 12, gn[0])) {
+        return false;
+    }
+    for (var i = 0; i < gn[0]; i++) {
+        if (!sxarm_word(c, group[0] + 12 * i, 4, true, p) || !sxarm_word(c, group[0] + 12 * i + 4, 4, true, z) || !sxarm_word(c, group[0] + 12 * i + 8, 4, true, packed)) {
+            return false;
+        }
+        p[0] *= 4;
+        if (sxAnd64(z[0], 0x80000000)) {
+            continue;
+        }
+        if (z[0] && packed[0] && sxarm_span(c, p[0], z[0])) {
+            var old = c.count;
+            if (!sxarm_rvz_packed(c, p[0], z[0])) {
+                return true;
+            }
+        }
+    }
+    return true;
+}
+function sx_rvz_build(c) {
+    return sxarm_rvz(c);
+}

@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_package.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_package");
+include("_sx_package_ace");
+include("_sx_package_alz");
+include("_sx_package_arj");
+include("_sx_package_chm");
+include("_sx_package_chromium_pak");
+include("_sx_package_ha");
+include("_sx_package_lha");
+include("_sx_package_mozilla_mar");
+include("_sx_package_rpm");
+include("_sx_package_snappy_framed");
+include("_sx_package_tex_dvi");
+include("_sx_package_tnef");
+include("_sx_package_unixcompress");
+include("_sx_package_unixpack");
+include("_sx_package_wim");
+include("_sx_package_xar");
+include("_sx_package_xpak");
+include("_sx_package_zlib");
+include("_sx_package_zoo");
+
+function fileTypes() { return ["ACE", "ALZ", "ARJ", "LZMA", "UNIX_PACK", "ZLIB", "UNIX_COMPRESS", "XAR", "LHA", "HA", "ZOO",
+    "PP20", "TNEF", "BINDER", "WIM", "XPAK", "CHM", "RPM", "SNAPPY_FRAMED", "TEX_DVI", "LZMA86", "MOZILLA_MAR", "CFBF",
+    "CHROMIUM_PAK"]; }
+
+var sx_package_layouts = [sx_p_arj_prefix, sx_p_arj_main, sx_p_arj_file, sx_p_crc32, sx_p_crc16, sx_p_length16, sx_p_ace_main,
+    sx_p_ace_generic, sx_p_ace_file32, sx_p_ace_file64, sx_p_alz_header, sx_p_alz_file, sx_p_alz_sizes1, sx_p_alz_sizes2,
+    sx_p_alz_sizes3, sx_p_alz_sizes4, sx_p_alz_sizes5, sx_p_alz_sizes6, sx_p_alz_sizes7, sx_p_alz_sizes8, sx_p_ha_header,
+    sx_p_ha_file, sx_p_ha_machine, sx_p_zoo_header, sx_p_zoo_directory, sx_p_zoo_variable, sx_p_lha_level0, sx_p_lha_level1,
+    sx_p_lha_level2, sx_p_lha_level3, sx_p_lha_extension2, sx_p_lha_extension4, sx_p_lha_os, sx_p_length32, sx_p_zlib_header,
+    sx_p_zlib_dictionary, sx_p_zlib_trailer, sx_p_lzma_header, sx_p_lzma86_filter, sx_p_xar_header, sx_p_rpm_lead,
+    sx_p_rpm_header, sx_p_rpm_index, sx_p_cfbf_header, sx_p_cfbf_sector_id, sx_p_cfbf_directory, sx_p_chm_itsf2, sx_p_chm_itsf3,
+    sx_p_chm_itsp, sx_p_chm_pmgl, sx_p_chm_pmgi, sx_p_chm_section0, sx_p_tnef_header, sx_p_tnef_attribute, sx_p_tnef_checksum,
+    sx_p_wim_header, sx_p_wim_resource, sx_p_wim_boot, sx_p_wim_blob, sx_p_unix_compress_header, sx_p_unix_pack_header,
+    sx_p_unix_pack_old_header, sx_p_snappy_chunk, sx_p_snappy_crc, sx_p_mar_header, sx_p_mar_index, sx_p_mar_entry,
+    sx_p_pak_header4, sx_p_pak_header5, sx_p_pak_resource, sx_p_pak_alias, sx_p_xpak_header, sx_p_xpak_codec, sx_p_pp20_header,
+    sx_p_pp20_trailer, sx_p_dvi_preamble, sx_p_dvi_postamble, sx_p_dvi_post_post, sx_p_zoo_attributes, sx_p_lha_unix_mode,
+    sx_p_lha_sizes64, sx_p_pp20_library_header, sx_p_pp20_encrypted_header, sx_p_mar_signed_header, sx_p_mar_signature,
+    sx_p_mar_sections, sx_p_mar_section, sx_p_pack_tree, sx_p_pack_level, sx_p_pack_literal, sx_p_dvi_page, sx_p_pack_old_tree,
+    sx_p_pack_old_node, sx_p_pack_old_wide_node];
+
+function structs() {
+    return sxCatalog([sx_p_arj_prefix, sx_p_arj_main, sx_p_arj_file, sx_p_crc32, sx_p_crc16, sx_p_length16, sx_p_ace_main,
+        sx_p_ace_generic, sx_p_ace_file32, sx_p_ace_file64, sx_p_alz_header, sx_p_alz_file, sx_p_alz_sizes1, sx_p_alz_sizes2,
+        sx_p_alz_sizes3, sx_p_alz_sizes4, sx_p_alz_sizes5, sx_p_alz_sizes6, sx_p_alz_sizes7, sx_p_alz_sizes8, sx_p_ha_header,
+        sx_p_ha_file, sx_p_ha_machine, sx_p_zoo_header, sx_p_zoo_directory, sx_p_zoo_variable, sx_p_lha_level0, sx_p_lha_level1,
+        sx_p_lha_level2, sx_p_lha_level3, sx_p_lha_extension2, sx_p_lha_extension4, sx_p_lha_os, sx_p_length32,
+        sx_p_zlib_header, sx_p_zlib_dictionary, sx_p_zlib_trailer, sx_p_lzma_header, sx_p_lzma86_filter, sx_p_xar_header,
+        sx_p_rpm_lead, sx_p_rpm_header, sx_p_rpm_index, sx_p_cfbf_header, sx_p_cfbf_sector_id, sx_p_cfbf_directory,
+        sx_p_chm_itsf2, sx_p_chm_itsf3, sx_p_chm_itsp, sx_p_chm_pmgl, sx_p_chm_pmgi, sx_p_chm_section0, sx_p_tnef_header,
+        sx_p_tnef_attribute, sx_p_tnef_checksum, sx_p_wim_header, sx_p_wim_resource, sx_p_wim_boot, sx_p_wim_blob,
+        sx_p_unix_compress_header, sx_p_unix_pack_header, sx_p_unix_pack_old_header, sx_p_snappy_chunk, sx_p_snappy_crc,
+        sx_p_mar_header, sx_p_mar_index, sx_p_mar_entry, sx_p_pak_header4, sx_p_pak_header5, sx_p_pak_resource, sx_p_pak_alias,
+        sx_p_xpak_header, sx_p_xpak_codec, sx_p_pp20_header, sx_p_pp20_trailer, sx_p_dvi_preamble, sx_p_dvi_postamble,
+        sx_p_dvi_post_post, sx_p_zoo_attributes, sx_p_lha_unix_mode, sx_p_lha_sizes64, sx_p_pp20_library_header,
+        sx_p_pp20_encrypted_header, sx_p_mar_signed_header, sx_p_mar_signature, sx_p_mar_sections, sx_p_mar_section,
+        sx_p_pack_tree, sx_p_pack_level, sx_p_pack_literal, sx_p_dvi_page, sx_p_pack_old_tree, sx_p_pack_old_node,
+        sx_p_pack_old_wide_node], sx_package_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_package_build, false);
+}

@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/taylor_fmtracker/xx_taylor_fmtracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_taylor_header_fields = layout([chars("signature", 9, SIGNATURE), u8("major_version", ID), u8("minor_version", ID),
+    chars("tracker", 20, NONE), chars("title", 32, NONE)]);
+var sxpcm_taylor_header = sxLayout(0x60940012, "taylor_header", LE, sxpcm_taylor_header_fields);
+var sxpcm_taylor_instrument_fields = layout([chars("name", 8, NONE), u8("modulator_characteristics", FLAGS),
+    u8("carrier_characteristics", FLAGS), u8("modulator_level", FLAGS), u8("carrier_level", FLAGS),
+    u8("modulator_attack_decay", FLAGS), u8("carrier_attack_decay", FLAGS), u8("modulator_sustain_release", FLAGS),
+    u8("carrier_sustain_release", FLAGS), u8("modulator_waveform", ID), u8("carrier_waveform", ID),
+    u8("feedback_connection", FLAGS)]);
+var sxpcm_taylor_instrument = sxLayout(0x60940013, "taylor_instrument", LE, sxpcm_taylor_instrument_fields);
+var sxpcm_taylor_delay_fields = layout([u8("delay")]);
+var sxpcm_taylor_delay = sxLayout(0x60940015, "taylor_delay", LE, sxpcm_taylor_delay_fields);
+function sxpcm_taylor(c) {
+    var n = [];
+    if (!sxpcm_eq(c, 0, "FMTracker", 9) || !sxpcm_put(c, sxpcm_taylor_header, 0, 1)) {
+        return false;
+    }
+    if (!sxpcm_put(c, sxpcm_taylor_instrument, 63, 8)) {
+        return true;
+    }
+    if (!sxpcm_read(c, 215, n, 3) || !sxpcm_put(c, sxpcm_taylor_counts, 215, 1)) {
+        return true;
+    }
+    var p = 218;
+    var count = n[1] + 1;
+    if (!sxpcm_put(c, sxpcm_pc_pattern_index, p, count)) {
+        return true;
+    }
+    p += count;
+    if (!sxpcm_put(c, sxpcm_taylor_delay, p, count)) {
+        return true;
+    }
+    p += count;
+    return sxpcm_opt(c, sxpcm_pc_pattern_index, p, n[2] + 1);
+}
+function sx_taylor_fmtracker_build(c) {
+    return sxpcm_taylor(c);
+}

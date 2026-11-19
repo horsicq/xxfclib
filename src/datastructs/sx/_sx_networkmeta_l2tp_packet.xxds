@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/l2tp_packet/xx_l2tp_packet_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_l2tp_protocol_version_fields = layout([u16("protocol_version", ID)]);
+var sxnm_l2tp_protocol_version = sxLayout(0x60260055, "l2tp_protocol_version", BE, sxnm_l2tp_protocol_version_fields);
+var sxnm_l2tp_firmware_revision_fields = layout([u16("firmware_revision", ID)]);
+var sxnm_l2tp_firmware_revision = sxLayout(0x60260056, "l2tp_firmware_revision", BE, sxnm_l2tp_firmware_revision_fields);
+var sxnm_l2tp_assigned_tunnel_fields = layout([u16("tunnel_id", ID)]);
+var sxnm_l2tp_assigned_tunnel = sxLayout(0x60260057, "l2tp_assigned_tunnel", BE, sxnm_l2tp_assigned_tunnel_fields);
+var sxnm_l2tp_receive_window_fields = layout([u16("window_packets", COUNT)]);
+var sxnm_l2tp_receive_window = sxLayout(0x60260058, "l2tp_receive_window", BE, sxnm_l2tp_receive_window_fields);
+var sxnm_l2tp_framing_capabilities_fields = layout([u32("framing_capabilities", FLAGS)]);
+var sxnm_l2tp_framing_capabilities = sxLayout(0x60260059, "l2tp_framing_capabilities", BE, sxnm_l2tp_framing_capabilities_fields);
+var sxnm_l2tp_bearer_capabilities_fields = layout([u32("bearer_capabilities", FLAGS)]);
+var sxnm_l2tp_bearer_capabilities = sxLayout(0x6026005A, "l2tp_bearer_capabilities", BE, sxnm_l2tp_bearer_capabilities_fields);
+function sxnm_l2tp(v) {
+    if (!sxnm_row(v, sxnm_l2tp_control_header, 0, v.n) || sxnm_u16(v.p, 2) !== v.n) {
+        return false;
+    }
+    var at = 12;
+    while (at < v.n) {
+        if (!sxnm_row(v, sxnm_l2tp_avp_header, at, v.n)) {
+            return false;
+        }
+        var n = sxnm_u16(v.p, at) & 1023;
+        var type = sxnm_u16(v.p, at + 4);
+        if (n < 6 || !sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        var l = null;
+        switch (type) {
+        case 0:
+            l = sxnm_l2tp_message_type;
+            break;
+        case 2:
+            l = sxnm_l2tp_protocol_version;
+            break;
+        case 3:
+            l = sxnm_l2tp_framing_capabilities;
+            break;
+        case 4:
+            l = sxnm_l2tp_bearer_capabilities;
+            break;
+        case 6:
+            l = sxnm_l2tp_firmware_revision;
+            break;
+        case 9:
+            l = sxnm_l2tp_assigned_tunnel;
+            break;
+        case 10:
+            l = sxnm_l2tp_receive_window;
+            break;
+        default:
+            break;
+        }
+        if (l !== null && !sxnm_row(v, l, at + 6, at + n)) {
+            return false;
+        }
+        at += n;
+    }
+    return true;
+}
+function sx_l2tp_packet_build(v) {
+    return sxnm_l2tp(v);
+}

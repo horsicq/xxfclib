@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/romfs/xx_romfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_romfs_superblock_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("full_size", SIZE),
+    u32("checksum", CHECKSUM)]);
+var sx_st_romfs_superblock = sxLayout(0x60080059, "romfs_superblock", BE, sx_st_romfs_superblock_fields);
+var sx_st_romfs_inode_fields = layout([u32("next_offset_and_type", OFFSET), u32("spec_info"), u32("size", SIZE),
+    u32("checksum", CHECKSUM)]);
+var sx_st_romfs_inode = sxLayout(0x6008005A, "romfs_inode", BE, sx_st_romfs_inode_fields);
+function sx_st_romfs_chain(c, at, depth) {
+    if (depth >= 64) {
+        return true;
+    }
+    while (at && sx_st_free(c, at, 16)) {
+        var h = [];
+        var next;
+        var spec;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 16) || !sx_add(c, sx_st_romfs_inode, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 16)) {
+            return false;
+        }
+        next = sxGetU32(h, 16, 0, true);
+        spec = sxGetU32(h, 16, 4, true);
+        if ((next & 7) === 1 && spec && !sx_st_romfs_chain(c, spec, (depth + 1) >>> 0)) {
+            return false;
+        }
+        if (!(next & 7) && spec && !sx_st_romfs_chain(c, spec, (depth + 1) >>> 0)) {
+            return false;
+        }
+        at = (next & 0xFFFFFFF0) >>> 0;
+    }
+    return true;
+}
+function sx_st_romfs(c) {
+    var at = 16;
+    var ch = [1];
+    var count = 0;
+    if (!sx_add(c, sx_st_romfs_superblock, 0, 16)) {
+        return false;
+    }
+    while (ch[0] && at < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && count++ < 4096) {
+        if (!sx_read(c, sxI64(at++), ch, 1)) {
+            return false;
+        }
+    }
+    if (ch[0]) {
+        return false;
+    }
+    at = sxAnd64(at + 15, sxK(0xFFFFFFFF, 0xFFFFFFF0));
+    return sx_st_romfs_chain(c, at, 0);
+}
+function sx_romfs_build(c) {
+    var ok = false;
+    ok = sx_st_romfs(c);
+    return ok && sx_st_finish(c);
+}

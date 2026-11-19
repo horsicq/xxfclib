@@ -1,0 +1,84 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/borlandpack/xx_borlandpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_borlandpack_header_fields = layout([bytes("signature", 23, SIGNATURE), chars("method_tag", 4, SIGNATURE),
+    field("method", "ascii_decimal[2]", 2), chars("separator", 1, NONE), field("version", "ascii_decimal[3]", 3),
+    chars("suffix", 3, NONE)]);
+var sxacl_borlandpack_header = sxLayout(0x6050000B, "borlandpack_header", LE, sxacl_borlandpack_header_fields);
+var sxacl_borlandpack_attributes_fields = layout([field("uncompressed_size", "ascii_decimal[11]", 11, SIZE),
+    chars("separator1", 1, NONE), field("checksum", "ascii_hex[4]", 4, CHECKSUM), chars("separator2", 1, NONE),
+    field("dos_date", "ascii_hex[4]", 4), chars("separator3", 1, NONE), field("dos_time", "ascii_hex[4]", 4)]);
+var sxacl_borlandpack_attributes = sxLayout(0x6050000C, "borlandpack_attributes", LE, sxacl_borlandpack_attributes_fields);
+var sxacl_borlandpack_size_fields = layout([field("compressed_size", "ascii_decimal[10]", 10, SIZE), chars("line_end", 2, NONE)]);
+var sxacl_borlandpack_size = sxLayout(0x6050000D, "borlandpack_size", LE, sxacl_borlandpack_size_fields);
+var sxacl_borlandpack_lzw_flags_fields = layout([u8("flags")]);
+var sxacl_borlandpack_lzw_flags = sxLayout(0x6050000E, "borlandpack_lzw_flags", LE, sxacl_borlandpack_lzw_flags_fields);
+function sxacl_decimal(c, p, n, v) {
+    var b = [];
+    if (n > 24 || !sxacl_read(c, p, b, n)) {
+        return false;
+    }
+    var i = 0;
+    while (i < n && b[i] === 32) {
+        i++;
+    }
+    if (i === n) {
+        return false;
+    }
+    var a = 0;
+    for (; i < n; i++) {
+        if (b[i] < 48 /*0*/ || b[i] > 57 /*9*/ || a > Math.floor((SX_U64_MAX - (b[i] - 48 /*0*/ < 0 ? b[i] - 48 /*0*/ + SX_U64_MAX : b[i] - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        a = sxU64(a * 10 + b[i] - 48 /*0*/);
+    }
+    v[0] = a;
+    return true;
+}
+function sxacl_hex4(c, p) {
+    var b = [];
+    if (!sxacl_read(c, p, b, 4)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!(b[i] >= 48 /*0*/ && b[i] <= 57 /*9*/ || b[i] >= 65 /*A*/ && b[i] <= 70 /*F*/)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxacl_borland(c) {
+    var p = 36;
+    if (!sxacl_add(c, sxacl_borlandpack_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var q = p + 1;
+        var z = [0];
+        var found = false;
+        for (var j = 0; j < 4096; j++, q++) {
+            var b = [];
+            if (!sxacl_read(c, q, b, 2)) {
+                return false;
+            }
+            if (b[0] === 13 && b[1] === 10) {
+                found = true;
+                break;
+            }
+        }
+        if (!found || sxU64(q - p) < 28 || !sxacl_hex4(c, sxU64(q - 14)) || !sxacl_hex4(c, sxU64(q - 9)) || !sxacl_hex4(c, sxU64(q - 4)) || !sxacl_add(c, sxacl_borlandpack_attributes, sxU64(q - 26)) || !sxacl_add(c, sxacl_borlandpack_size, q + 2) || !sxacl_decimal(c, q + 2, 10, z) || !sxacl_span(c, q + 14, z[0])) {
+            return false;
+        }
+        if (z[0] && !sxacl_add(c, sxacl_borlandpack_lzw_flags, q + 14)) {
+            return false;
+        }
+        p = q + 14 + z[0];
+    }
+    return true;
+}
+function sx_borlandpack_build(c) {
+    return sxacl_borland(c);
+}

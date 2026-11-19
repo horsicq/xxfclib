@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/kpck/xx_kpck_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_kpck_header_fields = layout([chars("signature", 4, SIGNATURE), u32("uncompressed_size", SIZE),
+    u32("method_flags", FLAGS)]);
+var sxap_kpck_header = sxLayout(0x60720001, "kpck_header", LE, sxap_kpck_header_fields);
+var sxap_kpck_filter_fields = layout([u32("call_count", COUNT), u8("marker")]);
+var sxap_kpck_filter = sxLayout(0x60720002, "kpck_filter", LE, sxap_kpck_filter_fields);
+function sxap_kpck(c) {
+    var flags = [0];
+    if (!sxap_add(c, sxap_kpck_header, 0) || !sxap_word(c, 8, 4, false, flags)) {
+        return false;
+    }
+    return !sxAnd64(flags[0], 0xC0) || c.size < 17 || sxap_add(c, sxap_kpck_filter, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 5));
+}
+function sx_kpck_build(c) {
+    return sxap_kpck(c);
+}

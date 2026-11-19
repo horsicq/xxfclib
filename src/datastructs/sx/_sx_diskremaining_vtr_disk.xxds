@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vtr_disk/xx_vtr_disk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_vtr_header_fields = layout([chars("magic", 7, SIGNATURE), u8("write_protected", FLAGS), u16("rpm"),
+    u8("cylinders", COUNT), u8("interface_mode", ID), u8("heads", COUNT), u8("track_encoding", ID), u16("bitrate_kbps"),
+    u16("track_list_block"), u8("revision", ID), field("reserved1", "byte[100]", 100, RESERVED),
+    chars("input_filename", 128, NONE), field("reserved2", "byte[50]", 50, RESERVED), chars("credits", 73, NONE)]);
+var sxdr_vtr_header = sxLayout(0x607F000D, "vtr_header", LE, sxdr_vtr_header_fields);
+var sxdr_vtr_track_entry_fields = layout([u16("track_block"), u16("combined_track_bytes", SIZE)]);
+var sxdr_vtr_track_entry = sxLayout(0x607F000E, "vtr_track_entry", LE, sxdr_vtr_track_entry_fields);
+function sxdr_vtr(c) {
+    var h = [];
+    if (!sxdr_read(c, 0, h, 370) || sxMemcmp(h, "VTrucco", 7) || !h[10] || !h[12] || h[12] > 2 || h[18] || !sxdr_put(c, sxdr_vtr_header, 0, 1)) {
+        return false;
+    }
+    var table = sxdr16(h, 16, false) * 512;
+    if (table < 512 || !sxdr_span(c, table, h[10] * 4)) {
+        return true;
+    }
+    return sxdr_put(c, sxdr_vtr_track_entry, table, h[10]);
+}
+function sx_vtr_disk_build(c) {
+    return sxdr_vtr(c);
+}

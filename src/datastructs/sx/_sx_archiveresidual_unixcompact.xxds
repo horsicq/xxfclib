@@ -1,0 +1,1569 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/unixcompact/xx_unixcompact_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarfinal_unixcompact_prefix_fields = layout([bytes("signature", 2, SIGNATURE), u8("first_literal")]);
+var sxarfinal_unixcompact_prefix = sxLayout(0x60920002, "unixcompact_prefix", LE, sxarfinal_unixcompact_prefix_fields);
+var sxarfinal_unixcompact_code1_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit0 = sxLayout(0x60920003, "unixcompact_code1_bit0", LE, sxarfinal_unixcompact_code1_bit0_fields);
+var sxarfinal_unixcompact_code1_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit1 = sxLayout(0x60920004, "unixcompact_code1_bit1", LE, sxarfinal_unixcompact_code1_bit1_fields);
+var sxarfinal_unixcompact_code1_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit2 = sxLayout(0x60920005, "unixcompact_code1_bit2", LE, sxarfinal_unixcompact_code1_bit2_fields);
+var sxarfinal_unixcompact_code1_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit3 = sxLayout(0x60920006, "unixcompact_code1_bit3", LE, sxarfinal_unixcompact_code1_bit3_fields);
+var sxarfinal_unixcompact_code1_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit4 = sxLayout(0x60920007, "unixcompact_code1_bit4", LE, sxarfinal_unixcompact_code1_bit4_fields);
+var sxarfinal_unixcompact_code1_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit5 = sxLayout(0x60920008, "unixcompact_code1_bit5", LE, sxarfinal_unixcompact_code1_bit5_fields);
+var sxarfinal_unixcompact_code1_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit6 = sxLayout(0x60920009, "unixcompact_code1_bit6", LE, sxarfinal_unixcompact_code1_bit6_fields);
+var sxarfinal_unixcompact_code1_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,1]", 1)]);
+var sxarfinal_unixcompact_code1_bit7 = sxLayout(0x6092000A, "unixcompact_code1_bit7", LE, sxarfinal_unixcompact_code1_bit7_fields);
+var sxarfinal_unixcompact_code2_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit0 = sxLayout(0x6092000B, "unixcompact_code2_bit0", LE, sxarfinal_unixcompact_code2_bit0_fields);
+var sxarfinal_unixcompact_code2_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit1 = sxLayout(0x6092000C, "unixcompact_code2_bit1", LE, sxarfinal_unixcompact_code2_bit1_fields);
+var sxarfinal_unixcompact_code2_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit2 = sxLayout(0x6092000D, "unixcompact_code2_bit2", LE, sxarfinal_unixcompact_code2_bit2_fields);
+var sxarfinal_unixcompact_code2_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit3 = sxLayout(0x6092000E, "unixcompact_code2_bit3", LE, sxarfinal_unixcompact_code2_bit3_fields);
+var sxarfinal_unixcompact_code2_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit4 = sxLayout(0x6092000F, "unixcompact_code2_bit4", LE, sxarfinal_unixcompact_code2_bit4_fields);
+var sxarfinal_unixcompact_code2_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit5 = sxLayout(0x60920010, "unixcompact_code2_bit5", LE, sxarfinal_unixcompact_code2_bit5_fields);
+var sxarfinal_unixcompact_code2_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,2]", 1)]);
+var sxarfinal_unixcompact_code2_bit6 = sxLayout(0x60920011, "unixcompact_code2_bit6", LE, sxarfinal_unixcompact_code2_bit6_fields);
+var sxarfinal_unixcompact_code2_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,2]", 2)]);
+var sxarfinal_unixcompact_code2_bit7 = sxLayout(0x60920012, "unixcompact_code2_bit7", LE, sxarfinal_unixcompact_code2_bit7_fields);
+var sxarfinal_unixcompact_code3_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,3]", 1)]);
+var sxarfinal_unixcompact_code3_bit0 = sxLayout(0x60920013, "unixcompact_code3_bit0", LE, sxarfinal_unixcompact_code3_bit0_fields);
+var sxarfinal_unixcompact_code3_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,3]", 1)]);
+var sxarfinal_unixcompact_code3_bit1 = sxLayout(0x60920014, "unixcompact_code3_bit1", LE, sxarfinal_unixcompact_code3_bit1_fields);
+var sxarfinal_unixcompact_code3_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,3]", 1)]);
+var sxarfinal_unixcompact_code3_bit2 = sxLayout(0x60920015, "unixcompact_code3_bit2", LE, sxarfinal_unixcompact_code3_bit2_fields);
+var sxarfinal_unixcompact_code3_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,3]", 1)]);
+var sxarfinal_unixcompact_code3_bit3 = sxLayout(0x60920016, "unixcompact_code3_bit3", LE, sxarfinal_unixcompact_code3_bit3_fields);
+var sxarfinal_unixcompact_code3_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,3]", 1)]);
+var sxarfinal_unixcompact_code3_bit4 = sxLayout(0x60920017, "unixcompact_code3_bit4", LE, sxarfinal_unixcompact_code3_bit4_fields);
+var sxarfinal_unixcompact_code3_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,3]", 1)]);
+var sxarfinal_unixcompact_code3_bit5 = sxLayout(0x60920018, "unixcompact_code3_bit5", LE, sxarfinal_unixcompact_code3_bit5_fields);
+var sxarfinal_unixcompact_code3_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,3]", 2)]);
+var sxarfinal_unixcompact_code3_bit6 = sxLayout(0x60920019, "unixcompact_code3_bit6", LE, sxarfinal_unixcompact_code3_bit6_fields);
+var sxarfinal_unixcompact_code3_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,3]", 2)]);
+var sxarfinal_unixcompact_code3_bit7 = sxLayout(0x6092001A, "unixcompact_code3_bit7", LE, sxarfinal_unixcompact_code3_bit7_fields);
+var sxarfinal_unixcompact_code4_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,4]", 1)]);
+var sxarfinal_unixcompact_code4_bit0 = sxLayout(0x6092001B, "unixcompact_code4_bit0", LE, sxarfinal_unixcompact_code4_bit0_fields);
+var sxarfinal_unixcompact_code4_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,4]", 1)]);
+var sxarfinal_unixcompact_code4_bit1 = sxLayout(0x6092001C, "unixcompact_code4_bit1", LE, sxarfinal_unixcompact_code4_bit1_fields);
+var sxarfinal_unixcompact_code4_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,4]", 1)]);
+var sxarfinal_unixcompact_code4_bit2 = sxLayout(0x6092001D, "unixcompact_code4_bit2", LE, sxarfinal_unixcompact_code4_bit2_fields);
+var sxarfinal_unixcompact_code4_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,4]", 1)]);
+var sxarfinal_unixcompact_code4_bit3 = sxLayout(0x6092001E, "unixcompact_code4_bit3", LE, sxarfinal_unixcompact_code4_bit3_fields);
+var sxarfinal_unixcompact_code4_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,4]", 1)]);
+var sxarfinal_unixcompact_code4_bit4 = sxLayout(0x6092001F, "unixcompact_code4_bit4", LE, sxarfinal_unixcompact_code4_bit4_fields);
+var sxarfinal_unixcompact_code4_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,4]", 2)]);
+var sxarfinal_unixcompact_code4_bit5 = sxLayout(0x60920020, "unixcompact_code4_bit5", LE, sxarfinal_unixcompact_code4_bit5_fields);
+var sxarfinal_unixcompact_code4_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,4]", 2)]);
+var sxarfinal_unixcompact_code4_bit6 = sxLayout(0x60920021, "unixcompact_code4_bit6", LE, sxarfinal_unixcompact_code4_bit6_fields);
+var sxarfinal_unixcompact_code4_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,4]", 2)]);
+var sxarfinal_unixcompact_code4_bit7 = sxLayout(0x60920022, "unixcompact_code4_bit7", LE, sxarfinal_unixcompact_code4_bit7_fields);
+var sxarfinal_unixcompact_code5_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,5]", 1)]);
+var sxarfinal_unixcompact_code5_bit0 = sxLayout(0x60920023, "unixcompact_code5_bit0", LE, sxarfinal_unixcompact_code5_bit0_fields);
+var sxarfinal_unixcompact_code5_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,5]", 1)]);
+var sxarfinal_unixcompact_code5_bit1 = sxLayout(0x60920024, "unixcompact_code5_bit1", LE, sxarfinal_unixcompact_code5_bit1_fields);
+var sxarfinal_unixcompact_code5_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,5]", 1)]);
+var sxarfinal_unixcompact_code5_bit2 = sxLayout(0x60920025, "unixcompact_code5_bit2", LE, sxarfinal_unixcompact_code5_bit2_fields);
+var sxarfinal_unixcompact_code5_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,5]", 1)]);
+var sxarfinal_unixcompact_code5_bit3 = sxLayout(0x60920026, "unixcompact_code5_bit3", LE, sxarfinal_unixcompact_code5_bit3_fields);
+var sxarfinal_unixcompact_code5_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,5]", 2)]);
+var sxarfinal_unixcompact_code5_bit4 = sxLayout(0x60920027, "unixcompact_code5_bit4", LE, sxarfinal_unixcompact_code5_bit4_fields);
+var sxarfinal_unixcompact_code5_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,5]", 2)]);
+var sxarfinal_unixcompact_code5_bit5 = sxLayout(0x60920028, "unixcompact_code5_bit5", LE, sxarfinal_unixcompact_code5_bit5_fields);
+var sxarfinal_unixcompact_code5_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,5]", 2)]);
+var sxarfinal_unixcompact_code5_bit6 = sxLayout(0x60920029, "unixcompact_code5_bit6", LE, sxarfinal_unixcompact_code5_bit6_fields);
+var sxarfinal_unixcompact_code5_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,5]", 2)]);
+var sxarfinal_unixcompact_code5_bit7 = sxLayout(0x6092002A, "unixcompact_code5_bit7", LE, sxarfinal_unixcompact_code5_bit7_fields);
+var sxarfinal_unixcompact_code6_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,6]", 1)]);
+var sxarfinal_unixcompact_code6_bit0 = sxLayout(0x6092002B, "unixcompact_code6_bit0", LE, sxarfinal_unixcompact_code6_bit0_fields);
+var sxarfinal_unixcompact_code6_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,6]", 1)]);
+var sxarfinal_unixcompact_code6_bit1 = sxLayout(0x6092002C, "unixcompact_code6_bit1", LE, sxarfinal_unixcompact_code6_bit1_fields);
+var sxarfinal_unixcompact_code6_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,6]", 1)]);
+var sxarfinal_unixcompact_code6_bit2 = sxLayout(0x6092002D, "unixcompact_code6_bit2", LE, sxarfinal_unixcompact_code6_bit2_fields);
+var sxarfinal_unixcompact_code6_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,6]", 2)]);
+var sxarfinal_unixcompact_code6_bit3 = sxLayout(0x6092002E, "unixcompact_code6_bit3", LE, sxarfinal_unixcompact_code6_bit3_fields);
+var sxarfinal_unixcompact_code6_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,6]", 2)]);
+var sxarfinal_unixcompact_code6_bit4 = sxLayout(0x6092002F, "unixcompact_code6_bit4", LE, sxarfinal_unixcompact_code6_bit4_fields);
+var sxarfinal_unixcompact_code6_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,6]", 2)]);
+var sxarfinal_unixcompact_code6_bit5 = sxLayout(0x60920030, "unixcompact_code6_bit5", LE, sxarfinal_unixcompact_code6_bit5_fields);
+var sxarfinal_unixcompact_code6_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,6]", 2)]);
+var sxarfinal_unixcompact_code6_bit6 = sxLayout(0x60920031, "unixcompact_code6_bit6", LE, sxarfinal_unixcompact_code6_bit6_fields);
+var sxarfinal_unixcompact_code6_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,6]", 2)]);
+var sxarfinal_unixcompact_code6_bit7 = sxLayout(0x60920032, "unixcompact_code6_bit7", LE, sxarfinal_unixcompact_code6_bit7_fields);
+var sxarfinal_unixcompact_code7_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,7]", 1)]);
+var sxarfinal_unixcompact_code7_bit0 = sxLayout(0x60920033, "unixcompact_code7_bit0", LE, sxarfinal_unixcompact_code7_bit0_fields);
+var sxarfinal_unixcompact_code7_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,7]", 1)]);
+var sxarfinal_unixcompact_code7_bit1 = sxLayout(0x60920034, "unixcompact_code7_bit1", LE, sxarfinal_unixcompact_code7_bit1_fields);
+var sxarfinal_unixcompact_code7_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,7]", 2)]);
+var sxarfinal_unixcompact_code7_bit2 = sxLayout(0x60920035, "unixcompact_code7_bit2", LE, sxarfinal_unixcompact_code7_bit2_fields);
+var sxarfinal_unixcompact_code7_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,7]", 2)]);
+var sxarfinal_unixcompact_code7_bit3 = sxLayout(0x60920036, "unixcompact_code7_bit3", LE, sxarfinal_unixcompact_code7_bit3_fields);
+var sxarfinal_unixcompact_code7_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,7]", 2)]);
+var sxarfinal_unixcompact_code7_bit4 = sxLayout(0x60920037, "unixcompact_code7_bit4", LE, sxarfinal_unixcompact_code7_bit4_fields);
+var sxarfinal_unixcompact_code7_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,7]", 2)]);
+var sxarfinal_unixcompact_code7_bit5 = sxLayout(0x60920038, "unixcompact_code7_bit5", LE, sxarfinal_unixcompact_code7_bit5_fields);
+var sxarfinal_unixcompact_code7_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,7]", 2)]);
+var sxarfinal_unixcompact_code7_bit6 = sxLayout(0x60920039, "unixcompact_code7_bit6", LE, sxarfinal_unixcompact_code7_bit6_fields);
+var sxarfinal_unixcompact_code7_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,7]", 2)]);
+var sxarfinal_unixcompact_code7_bit7 = sxLayout(0x6092003A, "unixcompact_code7_bit7", LE, sxarfinal_unixcompact_code7_bit7_fields);
+var sxarfinal_unixcompact_code8_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,8]", 1)]);
+var sxarfinal_unixcompact_code8_bit0 = sxLayout(0x6092003B, "unixcompact_code8_bit0", LE, sxarfinal_unixcompact_code8_bit0_fields);
+var sxarfinal_unixcompact_code8_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit1 = sxLayout(0x6092003C, "unixcompact_code8_bit1", LE, sxarfinal_unixcompact_code8_bit1_fields);
+var sxarfinal_unixcompact_code8_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit2 = sxLayout(0x6092003D, "unixcompact_code8_bit2", LE, sxarfinal_unixcompact_code8_bit2_fields);
+var sxarfinal_unixcompact_code8_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit3 = sxLayout(0x6092003E, "unixcompact_code8_bit3", LE, sxarfinal_unixcompact_code8_bit3_fields);
+var sxarfinal_unixcompact_code8_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit4 = sxLayout(0x6092003F, "unixcompact_code8_bit4", LE, sxarfinal_unixcompact_code8_bit4_fields);
+var sxarfinal_unixcompact_code8_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit5 = sxLayout(0x60920040, "unixcompact_code8_bit5", LE, sxarfinal_unixcompact_code8_bit5_fields);
+var sxarfinal_unixcompact_code8_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit6 = sxLayout(0x60920041, "unixcompact_code8_bit6", LE, sxarfinal_unixcompact_code8_bit6_fields);
+var sxarfinal_unixcompact_code8_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,8]", 2)]);
+var sxarfinal_unixcompact_code8_bit7 = sxLayout(0x60920042, "unixcompact_code8_bit7", LE, sxarfinal_unixcompact_code8_bit7_fields);
+var sxarfinal_unixcompact_code9_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit0 = sxLayout(0x60920043, "unixcompact_code9_bit0", LE, sxarfinal_unixcompact_code9_bit0_fields);
+var sxarfinal_unixcompact_code9_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit1 = sxLayout(0x60920044, "unixcompact_code9_bit1", LE, sxarfinal_unixcompact_code9_bit1_fields);
+var sxarfinal_unixcompact_code9_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit2 = sxLayout(0x60920045, "unixcompact_code9_bit2", LE, sxarfinal_unixcompact_code9_bit2_fields);
+var sxarfinal_unixcompact_code9_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit3 = sxLayout(0x60920046, "unixcompact_code9_bit3", LE, sxarfinal_unixcompact_code9_bit3_fields);
+var sxarfinal_unixcompact_code9_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit4 = sxLayout(0x60920047, "unixcompact_code9_bit4", LE, sxarfinal_unixcompact_code9_bit4_fields);
+var sxarfinal_unixcompact_code9_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit5 = sxLayout(0x60920048, "unixcompact_code9_bit5", LE, sxarfinal_unixcompact_code9_bit5_fields);
+var sxarfinal_unixcompact_code9_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit6 = sxLayout(0x60920049, "unixcompact_code9_bit6", LE, sxarfinal_unixcompact_code9_bit6_fields);
+var sxarfinal_unixcompact_code9_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,9]", 2)]);
+var sxarfinal_unixcompact_code9_bit7 = sxLayout(0x6092004A, "unixcompact_code9_bit7", LE, sxarfinal_unixcompact_code9_bit7_fields);
+var sxarfinal_unixcompact_code10_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit0 = sxLayout(0x6092004B, "unixcompact_code10_bit0", LE, sxarfinal_unixcompact_code10_bit0_fields);
+var sxarfinal_unixcompact_code10_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit1 = sxLayout(0x6092004C, "unixcompact_code10_bit1", LE, sxarfinal_unixcompact_code10_bit1_fields);
+var sxarfinal_unixcompact_code10_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit2 = sxLayout(0x6092004D, "unixcompact_code10_bit2", LE, sxarfinal_unixcompact_code10_bit2_fields);
+var sxarfinal_unixcompact_code10_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit3 = sxLayout(0x6092004E, "unixcompact_code10_bit3", LE, sxarfinal_unixcompact_code10_bit3_fields);
+var sxarfinal_unixcompact_code10_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit4 = sxLayout(0x6092004F, "unixcompact_code10_bit4", LE, sxarfinal_unixcompact_code10_bit4_fields);
+var sxarfinal_unixcompact_code10_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit5 = sxLayout(0x60920050, "unixcompact_code10_bit5", LE, sxarfinal_unixcompact_code10_bit5_fields);
+var sxarfinal_unixcompact_code10_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,10]", 2)]);
+var sxarfinal_unixcompact_code10_bit6 = sxLayout(0x60920051, "unixcompact_code10_bit6", LE, sxarfinal_unixcompact_code10_bit6_fields);
+var sxarfinal_unixcompact_code10_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,10]", 3)]);
+var sxarfinal_unixcompact_code10_bit7 = sxLayout(0x60920052, "unixcompact_code10_bit7", LE, sxarfinal_unixcompact_code10_bit7_fields);
+var sxarfinal_unixcompact_code11_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,11]", 2)]);
+var sxarfinal_unixcompact_code11_bit0 = sxLayout(0x60920053, "unixcompact_code11_bit0", LE, sxarfinal_unixcompact_code11_bit0_fields);
+var sxarfinal_unixcompact_code11_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,11]", 2)]);
+var sxarfinal_unixcompact_code11_bit1 = sxLayout(0x60920054, "unixcompact_code11_bit1", LE, sxarfinal_unixcompact_code11_bit1_fields);
+var sxarfinal_unixcompact_code11_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,11]", 2)]);
+var sxarfinal_unixcompact_code11_bit2 = sxLayout(0x60920055, "unixcompact_code11_bit2", LE, sxarfinal_unixcompact_code11_bit2_fields);
+var sxarfinal_unixcompact_code11_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,11]", 2)]);
+var sxarfinal_unixcompact_code11_bit3 = sxLayout(0x60920056, "unixcompact_code11_bit3", LE, sxarfinal_unixcompact_code11_bit3_fields);
+var sxarfinal_unixcompact_code11_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,11]", 2)]);
+var sxarfinal_unixcompact_code11_bit4 = sxLayout(0x60920057, "unixcompact_code11_bit4", LE, sxarfinal_unixcompact_code11_bit4_fields);
+var sxarfinal_unixcompact_code11_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,11]", 2)]);
+var sxarfinal_unixcompact_code11_bit5 = sxLayout(0x60920058, "unixcompact_code11_bit5", LE, sxarfinal_unixcompact_code11_bit5_fields);
+var sxarfinal_unixcompact_code11_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,11]", 3)]);
+var sxarfinal_unixcompact_code11_bit6 = sxLayout(0x60920059, "unixcompact_code11_bit6", LE, sxarfinal_unixcompact_code11_bit6_fields);
+var sxarfinal_unixcompact_code11_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,11]", 3)]);
+var sxarfinal_unixcompact_code11_bit7 = sxLayout(0x6092005A, "unixcompact_code11_bit7", LE, sxarfinal_unixcompact_code11_bit7_fields);
+var sxarfinal_unixcompact_code12_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,12]", 2)]);
+var sxarfinal_unixcompact_code12_bit0 = sxLayout(0x6092005B, "unixcompact_code12_bit0", LE, sxarfinal_unixcompact_code12_bit0_fields);
+var sxarfinal_unixcompact_code12_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,12]", 2)]);
+var sxarfinal_unixcompact_code12_bit1 = sxLayout(0x6092005C, "unixcompact_code12_bit1", LE, sxarfinal_unixcompact_code12_bit1_fields);
+var sxarfinal_unixcompact_code12_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,12]", 2)]);
+var sxarfinal_unixcompact_code12_bit2 = sxLayout(0x6092005D, "unixcompact_code12_bit2", LE, sxarfinal_unixcompact_code12_bit2_fields);
+var sxarfinal_unixcompact_code12_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,12]", 2)]);
+var sxarfinal_unixcompact_code12_bit3 = sxLayout(0x6092005E, "unixcompact_code12_bit3", LE, sxarfinal_unixcompact_code12_bit3_fields);
+var sxarfinal_unixcompact_code12_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,12]", 2)]);
+var sxarfinal_unixcompact_code12_bit4 = sxLayout(0x6092005F, "unixcompact_code12_bit4", LE, sxarfinal_unixcompact_code12_bit4_fields);
+var sxarfinal_unixcompact_code12_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,12]", 3)]);
+var sxarfinal_unixcompact_code12_bit5 = sxLayout(0x60920060, "unixcompact_code12_bit5", LE, sxarfinal_unixcompact_code12_bit5_fields);
+var sxarfinal_unixcompact_code12_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,12]", 3)]);
+var sxarfinal_unixcompact_code12_bit6 = sxLayout(0x60920061, "unixcompact_code12_bit6", LE, sxarfinal_unixcompact_code12_bit6_fields);
+var sxarfinal_unixcompact_code12_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,12]", 3)]);
+var sxarfinal_unixcompact_code12_bit7 = sxLayout(0x60920062, "unixcompact_code12_bit7", LE, sxarfinal_unixcompact_code12_bit7_fields);
+var sxarfinal_unixcompact_code13_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,13]", 2)]);
+var sxarfinal_unixcompact_code13_bit0 = sxLayout(0x60920063, "unixcompact_code13_bit0", LE, sxarfinal_unixcompact_code13_bit0_fields);
+var sxarfinal_unixcompact_code13_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,13]", 2)]);
+var sxarfinal_unixcompact_code13_bit1 = sxLayout(0x60920064, "unixcompact_code13_bit1", LE, sxarfinal_unixcompact_code13_bit1_fields);
+var sxarfinal_unixcompact_code13_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,13]", 2)]);
+var sxarfinal_unixcompact_code13_bit2 = sxLayout(0x60920065, "unixcompact_code13_bit2", LE, sxarfinal_unixcompact_code13_bit2_fields);
+var sxarfinal_unixcompact_code13_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,13]", 2)]);
+var sxarfinal_unixcompact_code13_bit3 = sxLayout(0x60920066, "unixcompact_code13_bit3", LE, sxarfinal_unixcompact_code13_bit3_fields);
+var sxarfinal_unixcompact_code13_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,13]", 3)]);
+var sxarfinal_unixcompact_code13_bit4 = sxLayout(0x60920067, "unixcompact_code13_bit4", LE, sxarfinal_unixcompact_code13_bit4_fields);
+var sxarfinal_unixcompact_code13_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,13]", 3)]);
+var sxarfinal_unixcompact_code13_bit5 = sxLayout(0x60920068, "unixcompact_code13_bit5", LE, sxarfinal_unixcompact_code13_bit5_fields);
+var sxarfinal_unixcompact_code13_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,13]", 3)]);
+var sxarfinal_unixcompact_code13_bit6 = sxLayout(0x60920069, "unixcompact_code13_bit6", LE, sxarfinal_unixcompact_code13_bit6_fields);
+var sxarfinal_unixcompact_code13_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,13]", 3)]);
+var sxarfinal_unixcompact_code13_bit7 = sxLayout(0x6092006A, "unixcompact_code13_bit7", LE, sxarfinal_unixcompact_code13_bit7_fields);
+var sxarfinal_unixcompact_code14_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,14]", 2)]);
+var sxarfinal_unixcompact_code14_bit0 = sxLayout(0x6092006B, "unixcompact_code14_bit0", LE, sxarfinal_unixcompact_code14_bit0_fields);
+var sxarfinal_unixcompact_code14_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,14]", 2)]);
+var sxarfinal_unixcompact_code14_bit1 = sxLayout(0x6092006C, "unixcompact_code14_bit1", LE, sxarfinal_unixcompact_code14_bit1_fields);
+var sxarfinal_unixcompact_code14_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,14]", 2)]);
+var sxarfinal_unixcompact_code14_bit2 = sxLayout(0x6092006D, "unixcompact_code14_bit2", LE, sxarfinal_unixcompact_code14_bit2_fields);
+var sxarfinal_unixcompact_code14_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,14]", 3)]);
+var sxarfinal_unixcompact_code14_bit3 = sxLayout(0x6092006E, "unixcompact_code14_bit3", LE, sxarfinal_unixcompact_code14_bit3_fields);
+var sxarfinal_unixcompact_code14_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,14]", 3)]);
+var sxarfinal_unixcompact_code14_bit4 = sxLayout(0x6092006F, "unixcompact_code14_bit4", LE, sxarfinal_unixcompact_code14_bit4_fields);
+var sxarfinal_unixcompact_code14_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,14]", 3)]);
+var sxarfinal_unixcompact_code14_bit5 = sxLayout(0x60920070, "unixcompact_code14_bit5", LE, sxarfinal_unixcompact_code14_bit5_fields);
+var sxarfinal_unixcompact_code14_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,14]", 3)]);
+var sxarfinal_unixcompact_code14_bit6 = sxLayout(0x60920071, "unixcompact_code14_bit6", LE, sxarfinal_unixcompact_code14_bit6_fields);
+var sxarfinal_unixcompact_code14_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,14]", 3)]);
+var sxarfinal_unixcompact_code14_bit7 = sxLayout(0x60920072, "unixcompact_code14_bit7", LE, sxarfinal_unixcompact_code14_bit7_fields);
+var sxarfinal_unixcompact_code15_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,15]", 2)]);
+var sxarfinal_unixcompact_code15_bit0 = sxLayout(0x60920073, "unixcompact_code15_bit0", LE, sxarfinal_unixcompact_code15_bit0_fields);
+var sxarfinal_unixcompact_code15_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,15]", 2)]);
+var sxarfinal_unixcompact_code15_bit1 = sxLayout(0x60920074, "unixcompact_code15_bit1", LE, sxarfinal_unixcompact_code15_bit1_fields);
+var sxarfinal_unixcompact_code15_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,15]", 3)]);
+var sxarfinal_unixcompact_code15_bit2 = sxLayout(0x60920075, "unixcompact_code15_bit2", LE, sxarfinal_unixcompact_code15_bit2_fields);
+var sxarfinal_unixcompact_code15_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,15]", 3)]);
+var sxarfinal_unixcompact_code15_bit3 = sxLayout(0x60920076, "unixcompact_code15_bit3", LE, sxarfinal_unixcompact_code15_bit3_fields);
+var sxarfinal_unixcompact_code15_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,15]", 3)]);
+var sxarfinal_unixcompact_code15_bit4 = sxLayout(0x60920077, "unixcompact_code15_bit4", LE, sxarfinal_unixcompact_code15_bit4_fields);
+var sxarfinal_unixcompact_code15_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,15]", 3)]);
+var sxarfinal_unixcompact_code15_bit5 = sxLayout(0x60920078, "unixcompact_code15_bit5", LE, sxarfinal_unixcompact_code15_bit5_fields);
+var sxarfinal_unixcompact_code15_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,15]", 3)]);
+var sxarfinal_unixcompact_code15_bit6 = sxLayout(0x60920079, "unixcompact_code15_bit6", LE, sxarfinal_unixcompact_code15_bit6_fields);
+var sxarfinal_unixcompact_code15_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,15]", 3)]);
+var sxarfinal_unixcompact_code15_bit7 = sxLayout(0x6092007A, "unixcompact_code15_bit7", LE, sxarfinal_unixcompact_code15_bit7_fields);
+var sxarfinal_unixcompact_code16_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,16]", 2)]);
+var sxarfinal_unixcompact_code16_bit0 = sxLayout(0x6092007B, "unixcompact_code16_bit0", LE, sxarfinal_unixcompact_code16_bit0_fields);
+var sxarfinal_unixcompact_code16_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit1 = sxLayout(0x6092007C, "unixcompact_code16_bit1", LE, sxarfinal_unixcompact_code16_bit1_fields);
+var sxarfinal_unixcompact_code16_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit2 = sxLayout(0x6092007D, "unixcompact_code16_bit2", LE, sxarfinal_unixcompact_code16_bit2_fields);
+var sxarfinal_unixcompact_code16_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit3 = sxLayout(0x6092007E, "unixcompact_code16_bit3", LE, sxarfinal_unixcompact_code16_bit3_fields);
+var sxarfinal_unixcompact_code16_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit4 = sxLayout(0x6092007F, "unixcompact_code16_bit4", LE, sxarfinal_unixcompact_code16_bit4_fields);
+var sxarfinal_unixcompact_code16_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit5 = sxLayout(0x60920080, "unixcompact_code16_bit5", LE, sxarfinal_unixcompact_code16_bit5_fields);
+var sxarfinal_unixcompact_code16_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit6 = sxLayout(0x60920081, "unixcompact_code16_bit6", LE, sxarfinal_unixcompact_code16_bit6_fields);
+var sxarfinal_unixcompact_code16_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,16]", 3)]);
+var sxarfinal_unixcompact_code16_bit7 = sxLayout(0x60920082, "unixcompact_code16_bit7", LE, sxarfinal_unixcompact_code16_bit7_fields);
+var sxarfinal_unixcompact_code17_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit0 = sxLayout(0x60920083, "unixcompact_code17_bit0", LE, sxarfinal_unixcompact_code17_bit0_fields);
+var sxarfinal_unixcompact_code17_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit1 = sxLayout(0x60920084, "unixcompact_code17_bit1", LE, sxarfinal_unixcompact_code17_bit1_fields);
+var sxarfinal_unixcompact_code17_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit2 = sxLayout(0x60920085, "unixcompact_code17_bit2", LE, sxarfinal_unixcompact_code17_bit2_fields);
+var sxarfinal_unixcompact_code17_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit3 = sxLayout(0x60920086, "unixcompact_code17_bit3", LE, sxarfinal_unixcompact_code17_bit3_fields);
+var sxarfinal_unixcompact_code17_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit4 = sxLayout(0x60920087, "unixcompact_code17_bit4", LE, sxarfinal_unixcompact_code17_bit4_fields);
+var sxarfinal_unixcompact_code17_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit5 = sxLayout(0x60920088, "unixcompact_code17_bit5", LE, sxarfinal_unixcompact_code17_bit5_fields);
+var sxarfinal_unixcompact_code17_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit6 = sxLayout(0x60920089, "unixcompact_code17_bit6", LE, sxarfinal_unixcompact_code17_bit6_fields);
+var sxarfinal_unixcompact_code17_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,17]", 3)]);
+var sxarfinal_unixcompact_code17_bit7 = sxLayout(0x6092008A, "unixcompact_code17_bit7", LE, sxarfinal_unixcompact_code17_bit7_fields);
+var sxarfinal_unixcompact_code18_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit0 = sxLayout(0x6092008B, "unixcompact_code18_bit0", LE, sxarfinal_unixcompact_code18_bit0_fields);
+var sxarfinal_unixcompact_code18_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit1 = sxLayout(0x6092008C, "unixcompact_code18_bit1", LE, sxarfinal_unixcompact_code18_bit1_fields);
+var sxarfinal_unixcompact_code18_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit2 = sxLayout(0x6092008D, "unixcompact_code18_bit2", LE, sxarfinal_unixcompact_code18_bit2_fields);
+var sxarfinal_unixcompact_code18_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit3 = sxLayout(0x6092008E, "unixcompact_code18_bit3", LE, sxarfinal_unixcompact_code18_bit3_fields);
+var sxarfinal_unixcompact_code18_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit4 = sxLayout(0x6092008F, "unixcompact_code18_bit4", LE, sxarfinal_unixcompact_code18_bit4_fields);
+var sxarfinal_unixcompact_code18_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit5 = sxLayout(0x60920090, "unixcompact_code18_bit5", LE, sxarfinal_unixcompact_code18_bit5_fields);
+var sxarfinal_unixcompact_code18_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,18]", 3)]);
+var sxarfinal_unixcompact_code18_bit6 = sxLayout(0x60920091, "unixcompact_code18_bit6", LE, sxarfinal_unixcompact_code18_bit6_fields);
+var sxarfinal_unixcompact_code18_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,18]", 4)]);
+var sxarfinal_unixcompact_code18_bit7 = sxLayout(0x60920092, "unixcompact_code18_bit7", LE, sxarfinal_unixcompact_code18_bit7_fields);
+var sxarfinal_unixcompact_code19_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,19]", 3)]);
+var sxarfinal_unixcompact_code19_bit0 = sxLayout(0x60920093, "unixcompact_code19_bit0", LE, sxarfinal_unixcompact_code19_bit0_fields);
+var sxarfinal_unixcompact_code19_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,19]", 3)]);
+var sxarfinal_unixcompact_code19_bit1 = sxLayout(0x60920094, "unixcompact_code19_bit1", LE, sxarfinal_unixcompact_code19_bit1_fields);
+var sxarfinal_unixcompact_code19_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,19]", 3)]);
+var sxarfinal_unixcompact_code19_bit2 = sxLayout(0x60920095, "unixcompact_code19_bit2", LE, sxarfinal_unixcompact_code19_bit2_fields);
+var sxarfinal_unixcompact_code19_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,19]", 3)]);
+var sxarfinal_unixcompact_code19_bit3 = sxLayout(0x60920096, "unixcompact_code19_bit3", LE, sxarfinal_unixcompact_code19_bit3_fields);
+var sxarfinal_unixcompact_code19_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,19]", 3)]);
+var sxarfinal_unixcompact_code19_bit4 = sxLayout(0x60920097, "unixcompact_code19_bit4", LE, sxarfinal_unixcompact_code19_bit4_fields);
+var sxarfinal_unixcompact_code19_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,19]", 3)]);
+var sxarfinal_unixcompact_code19_bit5 = sxLayout(0x60920098, "unixcompact_code19_bit5", LE, sxarfinal_unixcompact_code19_bit5_fields);
+var sxarfinal_unixcompact_code19_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,19]", 4)]);
+var sxarfinal_unixcompact_code19_bit6 = sxLayout(0x60920099, "unixcompact_code19_bit6", LE, sxarfinal_unixcompact_code19_bit6_fields);
+var sxarfinal_unixcompact_code19_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,19]", 4)]);
+var sxarfinal_unixcompact_code19_bit7 = sxLayout(0x6092009A, "unixcompact_code19_bit7", LE, sxarfinal_unixcompact_code19_bit7_fields);
+var sxarfinal_unixcompact_code20_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,20]", 3)]);
+var sxarfinal_unixcompact_code20_bit0 = sxLayout(0x6092009B, "unixcompact_code20_bit0", LE, sxarfinal_unixcompact_code20_bit0_fields);
+var sxarfinal_unixcompact_code20_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,20]", 3)]);
+var sxarfinal_unixcompact_code20_bit1 = sxLayout(0x6092009C, "unixcompact_code20_bit1", LE, sxarfinal_unixcompact_code20_bit1_fields);
+var sxarfinal_unixcompact_code20_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,20]", 3)]);
+var sxarfinal_unixcompact_code20_bit2 = sxLayout(0x6092009D, "unixcompact_code20_bit2", LE, sxarfinal_unixcompact_code20_bit2_fields);
+var sxarfinal_unixcompact_code20_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,20]", 3)]);
+var sxarfinal_unixcompact_code20_bit3 = sxLayout(0x6092009E, "unixcompact_code20_bit3", LE, sxarfinal_unixcompact_code20_bit3_fields);
+var sxarfinal_unixcompact_code20_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,20]", 3)]);
+var sxarfinal_unixcompact_code20_bit4 = sxLayout(0x6092009F, "unixcompact_code20_bit4", LE, sxarfinal_unixcompact_code20_bit4_fields);
+var sxarfinal_unixcompact_code20_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,20]", 4)]);
+var sxarfinal_unixcompact_code20_bit5 = sxLayout(0x609200A0, "unixcompact_code20_bit5", LE, sxarfinal_unixcompact_code20_bit5_fields);
+var sxarfinal_unixcompact_code20_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,20]", 4)]);
+var sxarfinal_unixcompact_code20_bit6 = sxLayout(0x609200A1, "unixcompact_code20_bit6", LE, sxarfinal_unixcompact_code20_bit6_fields);
+var sxarfinal_unixcompact_code20_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,20]", 4)]);
+var sxarfinal_unixcompact_code20_bit7 = sxLayout(0x609200A2, "unixcompact_code20_bit7", LE, sxarfinal_unixcompact_code20_bit7_fields);
+var sxarfinal_unixcompact_code21_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,21]", 3)]);
+var sxarfinal_unixcompact_code21_bit0 = sxLayout(0x609200A3, "unixcompact_code21_bit0", LE, sxarfinal_unixcompact_code21_bit0_fields);
+var sxarfinal_unixcompact_code21_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,21]", 3)]);
+var sxarfinal_unixcompact_code21_bit1 = sxLayout(0x609200A4, "unixcompact_code21_bit1", LE, sxarfinal_unixcompact_code21_bit1_fields);
+var sxarfinal_unixcompact_code21_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,21]", 3)]);
+var sxarfinal_unixcompact_code21_bit2 = sxLayout(0x609200A5, "unixcompact_code21_bit2", LE, sxarfinal_unixcompact_code21_bit2_fields);
+var sxarfinal_unixcompact_code21_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,21]", 3)]);
+var sxarfinal_unixcompact_code21_bit3 = sxLayout(0x609200A6, "unixcompact_code21_bit3", LE, sxarfinal_unixcompact_code21_bit3_fields);
+var sxarfinal_unixcompact_code21_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,21]", 4)]);
+var sxarfinal_unixcompact_code21_bit4 = sxLayout(0x609200A7, "unixcompact_code21_bit4", LE, sxarfinal_unixcompact_code21_bit4_fields);
+var sxarfinal_unixcompact_code21_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,21]", 4)]);
+var sxarfinal_unixcompact_code21_bit5 = sxLayout(0x609200A8, "unixcompact_code21_bit5", LE, sxarfinal_unixcompact_code21_bit5_fields);
+var sxarfinal_unixcompact_code21_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,21]", 4)]);
+var sxarfinal_unixcompact_code21_bit6 = sxLayout(0x609200A9, "unixcompact_code21_bit6", LE, sxarfinal_unixcompact_code21_bit6_fields);
+var sxarfinal_unixcompact_code21_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,21]", 4)]);
+var sxarfinal_unixcompact_code21_bit7 = sxLayout(0x609200AA, "unixcompact_code21_bit7", LE, sxarfinal_unixcompact_code21_bit7_fields);
+var sxarfinal_unixcompact_code22_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,22]", 3)]);
+var sxarfinal_unixcompact_code22_bit0 = sxLayout(0x609200AB, "unixcompact_code22_bit0", LE, sxarfinal_unixcompact_code22_bit0_fields);
+var sxarfinal_unixcompact_code22_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,22]", 3)]);
+var sxarfinal_unixcompact_code22_bit1 = sxLayout(0x609200AC, "unixcompact_code22_bit1", LE, sxarfinal_unixcompact_code22_bit1_fields);
+var sxarfinal_unixcompact_code22_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,22]", 3)]);
+var sxarfinal_unixcompact_code22_bit2 = sxLayout(0x609200AD, "unixcompact_code22_bit2", LE, sxarfinal_unixcompact_code22_bit2_fields);
+var sxarfinal_unixcompact_code22_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,22]", 4)]);
+var sxarfinal_unixcompact_code22_bit3 = sxLayout(0x609200AE, "unixcompact_code22_bit3", LE, sxarfinal_unixcompact_code22_bit3_fields);
+var sxarfinal_unixcompact_code22_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,22]", 4)]);
+var sxarfinal_unixcompact_code22_bit4 = sxLayout(0x609200AF, "unixcompact_code22_bit4", LE, sxarfinal_unixcompact_code22_bit4_fields);
+var sxarfinal_unixcompact_code22_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,22]", 4)]);
+var sxarfinal_unixcompact_code22_bit5 = sxLayout(0x609200B0, "unixcompact_code22_bit5", LE, sxarfinal_unixcompact_code22_bit5_fields);
+var sxarfinal_unixcompact_code22_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,22]", 4)]);
+var sxarfinal_unixcompact_code22_bit6 = sxLayout(0x609200B1, "unixcompact_code22_bit6", LE, sxarfinal_unixcompact_code22_bit6_fields);
+var sxarfinal_unixcompact_code22_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,22]", 4)]);
+var sxarfinal_unixcompact_code22_bit7 = sxLayout(0x609200B2, "unixcompact_code22_bit7", LE, sxarfinal_unixcompact_code22_bit7_fields);
+var sxarfinal_unixcompact_code23_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,23]", 3)]);
+var sxarfinal_unixcompact_code23_bit0 = sxLayout(0x609200B3, "unixcompact_code23_bit0", LE, sxarfinal_unixcompact_code23_bit0_fields);
+var sxarfinal_unixcompact_code23_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,23]", 3)]);
+var sxarfinal_unixcompact_code23_bit1 = sxLayout(0x609200B4, "unixcompact_code23_bit1", LE, sxarfinal_unixcompact_code23_bit1_fields);
+var sxarfinal_unixcompact_code23_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,23]", 4)]);
+var sxarfinal_unixcompact_code23_bit2 = sxLayout(0x609200B5, "unixcompact_code23_bit2", LE, sxarfinal_unixcompact_code23_bit2_fields);
+var sxarfinal_unixcompact_code23_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,23]", 4)]);
+var sxarfinal_unixcompact_code23_bit3 = sxLayout(0x609200B6, "unixcompact_code23_bit3", LE, sxarfinal_unixcompact_code23_bit3_fields);
+var sxarfinal_unixcompact_code23_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,23]", 4)]);
+var sxarfinal_unixcompact_code23_bit4 = sxLayout(0x609200B7, "unixcompact_code23_bit4", LE, sxarfinal_unixcompact_code23_bit4_fields);
+var sxarfinal_unixcompact_code23_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,23]", 4)]);
+var sxarfinal_unixcompact_code23_bit5 = sxLayout(0x609200B8, "unixcompact_code23_bit5", LE, sxarfinal_unixcompact_code23_bit5_fields);
+var sxarfinal_unixcompact_code23_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,23]", 4)]);
+var sxarfinal_unixcompact_code23_bit6 = sxLayout(0x609200B9, "unixcompact_code23_bit6", LE, sxarfinal_unixcompact_code23_bit6_fields);
+var sxarfinal_unixcompact_code23_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,23]", 4)]);
+var sxarfinal_unixcompact_code23_bit7 = sxLayout(0x609200BA, "unixcompact_code23_bit7", LE, sxarfinal_unixcompact_code23_bit7_fields);
+var sxarfinal_unixcompact_code24_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,24]", 3)]);
+var sxarfinal_unixcompact_code24_bit0 = sxLayout(0x609200BB, "unixcompact_code24_bit0", LE, sxarfinal_unixcompact_code24_bit0_fields);
+var sxarfinal_unixcompact_code24_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit1 = sxLayout(0x609200BC, "unixcompact_code24_bit1", LE, sxarfinal_unixcompact_code24_bit1_fields);
+var sxarfinal_unixcompact_code24_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit2 = sxLayout(0x609200BD, "unixcompact_code24_bit2", LE, sxarfinal_unixcompact_code24_bit2_fields);
+var sxarfinal_unixcompact_code24_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit3 = sxLayout(0x609200BE, "unixcompact_code24_bit3", LE, sxarfinal_unixcompact_code24_bit3_fields);
+var sxarfinal_unixcompact_code24_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit4 = sxLayout(0x609200BF, "unixcompact_code24_bit4", LE, sxarfinal_unixcompact_code24_bit4_fields);
+var sxarfinal_unixcompact_code24_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit5 = sxLayout(0x609200C0, "unixcompact_code24_bit5", LE, sxarfinal_unixcompact_code24_bit5_fields);
+var sxarfinal_unixcompact_code24_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit6 = sxLayout(0x609200C1, "unixcompact_code24_bit6", LE, sxarfinal_unixcompact_code24_bit6_fields);
+var sxarfinal_unixcompact_code24_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,24]", 4)]);
+var sxarfinal_unixcompact_code24_bit7 = sxLayout(0x609200C2, "unixcompact_code24_bit7", LE, sxarfinal_unixcompact_code24_bit7_fields);
+var sxarfinal_unixcompact_code25_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit0 = sxLayout(0x609200C3, "unixcompact_code25_bit0", LE, sxarfinal_unixcompact_code25_bit0_fields);
+var sxarfinal_unixcompact_code25_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit1 = sxLayout(0x609200C4, "unixcompact_code25_bit1", LE, sxarfinal_unixcompact_code25_bit1_fields);
+var sxarfinal_unixcompact_code25_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit2 = sxLayout(0x609200C5, "unixcompact_code25_bit2", LE, sxarfinal_unixcompact_code25_bit2_fields);
+var sxarfinal_unixcompact_code25_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit3 = sxLayout(0x609200C6, "unixcompact_code25_bit3", LE, sxarfinal_unixcompact_code25_bit3_fields);
+var sxarfinal_unixcompact_code25_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit4 = sxLayout(0x609200C7, "unixcompact_code25_bit4", LE, sxarfinal_unixcompact_code25_bit4_fields);
+var sxarfinal_unixcompact_code25_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit5 = sxLayout(0x609200C8, "unixcompact_code25_bit5", LE, sxarfinal_unixcompact_code25_bit5_fields);
+var sxarfinal_unixcompact_code25_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit6 = sxLayout(0x609200C9, "unixcompact_code25_bit6", LE, sxarfinal_unixcompact_code25_bit6_fields);
+var sxarfinal_unixcompact_code25_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,25]", 4)]);
+var sxarfinal_unixcompact_code25_bit7 = sxLayout(0x609200CA, "unixcompact_code25_bit7", LE, sxarfinal_unixcompact_code25_bit7_fields);
+var sxarfinal_unixcompact_code26_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit0 = sxLayout(0x609200CB, "unixcompact_code26_bit0", LE, sxarfinal_unixcompact_code26_bit0_fields);
+var sxarfinal_unixcompact_code26_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit1 = sxLayout(0x609200CC, "unixcompact_code26_bit1", LE, sxarfinal_unixcompact_code26_bit1_fields);
+var sxarfinal_unixcompact_code26_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit2 = sxLayout(0x609200CD, "unixcompact_code26_bit2", LE, sxarfinal_unixcompact_code26_bit2_fields);
+var sxarfinal_unixcompact_code26_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit3 = sxLayout(0x609200CE, "unixcompact_code26_bit3", LE, sxarfinal_unixcompact_code26_bit3_fields);
+var sxarfinal_unixcompact_code26_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit4 = sxLayout(0x609200CF, "unixcompact_code26_bit4", LE, sxarfinal_unixcompact_code26_bit4_fields);
+var sxarfinal_unixcompact_code26_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit5 = sxLayout(0x609200D0, "unixcompact_code26_bit5", LE, sxarfinal_unixcompact_code26_bit5_fields);
+var sxarfinal_unixcompact_code26_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,26]", 4)]);
+var sxarfinal_unixcompact_code26_bit6 = sxLayout(0x609200D1, "unixcompact_code26_bit6", LE, sxarfinal_unixcompact_code26_bit6_fields);
+var sxarfinal_unixcompact_code26_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,26]", 5)]);
+var sxarfinal_unixcompact_code26_bit7 = sxLayout(0x609200D2, "unixcompact_code26_bit7", LE, sxarfinal_unixcompact_code26_bit7_fields);
+var sxarfinal_unixcompact_code27_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,27]", 4)]);
+var sxarfinal_unixcompact_code27_bit0 = sxLayout(0x609200D3, "unixcompact_code27_bit0", LE, sxarfinal_unixcompact_code27_bit0_fields);
+var sxarfinal_unixcompact_code27_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,27]", 4)]);
+var sxarfinal_unixcompact_code27_bit1 = sxLayout(0x609200D4, "unixcompact_code27_bit1", LE, sxarfinal_unixcompact_code27_bit1_fields);
+var sxarfinal_unixcompact_code27_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,27]", 4)]);
+var sxarfinal_unixcompact_code27_bit2 = sxLayout(0x609200D5, "unixcompact_code27_bit2", LE, sxarfinal_unixcompact_code27_bit2_fields);
+var sxarfinal_unixcompact_code27_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,27]", 4)]);
+var sxarfinal_unixcompact_code27_bit3 = sxLayout(0x609200D6, "unixcompact_code27_bit3", LE, sxarfinal_unixcompact_code27_bit3_fields);
+var sxarfinal_unixcompact_code27_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,27]", 4)]);
+var sxarfinal_unixcompact_code27_bit4 = sxLayout(0x609200D7, "unixcompact_code27_bit4", LE, sxarfinal_unixcompact_code27_bit4_fields);
+var sxarfinal_unixcompact_code27_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,27]", 4)]);
+var sxarfinal_unixcompact_code27_bit5 = sxLayout(0x609200D8, "unixcompact_code27_bit5", LE, sxarfinal_unixcompact_code27_bit5_fields);
+var sxarfinal_unixcompact_code27_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,27]", 5)]);
+var sxarfinal_unixcompact_code27_bit6 = sxLayout(0x609200D9, "unixcompact_code27_bit6", LE, sxarfinal_unixcompact_code27_bit6_fields);
+var sxarfinal_unixcompact_code27_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,27]", 5)]);
+var sxarfinal_unixcompact_code27_bit7 = sxLayout(0x609200DA, "unixcompact_code27_bit7", LE, sxarfinal_unixcompact_code27_bit7_fields);
+var sxarfinal_unixcompact_code28_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,28]", 4)]);
+var sxarfinal_unixcompact_code28_bit0 = sxLayout(0x609200DB, "unixcompact_code28_bit0", LE, sxarfinal_unixcompact_code28_bit0_fields);
+var sxarfinal_unixcompact_code28_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,28]", 4)]);
+var sxarfinal_unixcompact_code28_bit1 = sxLayout(0x609200DC, "unixcompact_code28_bit1", LE, sxarfinal_unixcompact_code28_bit1_fields);
+var sxarfinal_unixcompact_code28_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,28]", 4)]);
+var sxarfinal_unixcompact_code28_bit2 = sxLayout(0x609200DD, "unixcompact_code28_bit2", LE, sxarfinal_unixcompact_code28_bit2_fields);
+var sxarfinal_unixcompact_code28_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,28]", 4)]);
+var sxarfinal_unixcompact_code28_bit3 = sxLayout(0x609200DE, "unixcompact_code28_bit3", LE, sxarfinal_unixcompact_code28_bit3_fields);
+var sxarfinal_unixcompact_code28_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,28]", 4)]);
+var sxarfinal_unixcompact_code28_bit4 = sxLayout(0x609200DF, "unixcompact_code28_bit4", LE, sxarfinal_unixcompact_code28_bit4_fields);
+var sxarfinal_unixcompact_code28_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,28]", 5)]);
+var sxarfinal_unixcompact_code28_bit5 = sxLayout(0x609200E0, "unixcompact_code28_bit5", LE, sxarfinal_unixcompact_code28_bit5_fields);
+var sxarfinal_unixcompact_code28_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,28]", 5)]);
+var sxarfinal_unixcompact_code28_bit6 = sxLayout(0x609200E1, "unixcompact_code28_bit6", LE, sxarfinal_unixcompact_code28_bit6_fields);
+var sxarfinal_unixcompact_code28_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,28]", 5)]);
+var sxarfinal_unixcompact_code28_bit7 = sxLayout(0x609200E2, "unixcompact_code28_bit7", LE, sxarfinal_unixcompact_code28_bit7_fields);
+var sxarfinal_unixcompact_code29_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,29]", 4)]);
+var sxarfinal_unixcompact_code29_bit0 = sxLayout(0x609200E3, "unixcompact_code29_bit0", LE, sxarfinal_unixcompact_code29_bit0_fields);
+var sxarfinal_unixcompact_code29_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,29]", 4)]);
+var sxarfinal_unixcompact_code29_bit1 = sxLayout(0x609200E4, "unixcompact_code29_bit1", LE, sxarfinal_unixcompact_code29_bit1_fields);
+var sxarfinal_unixcompact_code29_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,29]", 4)]);
+var sxarfinal_unixcompact_code29_bit2 = sxLayout(0x609200E5, "unixcompact_code29_bit2", LE, sxarfinal_unixcompact_code29_bit2_fields);
+var sxarfinal_unixcompact_code29_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,29]", 4)]);
+var sxarfinal_unixcompact_code29_bit3 = sxLayout(0x609200E6, "unixcompact_code29_bit3", LE, sxarfinal_unixcompact_code29_bit3_fields);
+var sxarfinal_unixcompact_code29_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,29]", 5)]);
+var sxarfinal_unixcompact_code29_bit4 = sxLayout(0x609200E7, "unixcompact_code29_bit4", LE, sxarfinal_unixcompact_code29_bit4_fields);
+var sxarfinal_unixcompact_code29_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,29]", 5)]);
+var sxarfinal_unixcompact_code29_bit5 = sxLayout(0x609200E8, "unixcompact_code29_bit5", LE, sxarfinal_unixcompact_code29_bit5_fields);
+var sxarfinal_unixcompact_code29_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,29]", 5)]);
+var sxarfinal_unixcompact_code29_bit6 = sxLayout(0x609200E9, "unixcompact_code29_bit6", LE, sxarfinal_unixcompact_code29_bit6_fields);
+var sxarfinal_unixcompact_code29_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,29]", 5)]);
+var sxarfinal_unixcompact_code29_bit7 = sxLayout(0x609200EA, "unixcompact_code29_bit7", LE, sxarfinal_unixcompact_code29_bit7_fields);
+var sxarfinal_unixcompact_code30_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,30]", 4)]);
+var sxarfinal_unixcompact_code30_bit0 = sxLayout(0x609200EB, "unixcompact_code30_bit0", LE, sxarfinal_unixcompact_code30_bit0_fields);
+var sxarfinal_unixcompact_code30_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,30]", 4)]);
+var sxarfinal_unixcompact_code30_bit1 = sxLayout(0x609200EC, "unixcompact_code30_bit1", LE, sxarfinal_unixcompact_code30_bit1_fields);
+var sxarfinal_unixcompact_code30_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,30]", 4)]);
+var sxarfinal_unixcompact_code30_bit2 = sxLayout(0x609200ED, "unixcompact_code30_bit2", LE, sxarfinal_unixcompact_code30_bit2_fields);
+var sxarfinal_unixcompact_code30_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,30]", 5)]);
+var sxarfinal_unixcompact_code30_bit3 = sxLayout(0x609200EE, "unixcompact_code30_bit3", LE, sxarfinal_unixcompact_code30_bit3_fields);
+var sxarfinal_unixcompact_code30_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,30]", 5)]);
+var sxarfinal_unixcompact_code30_bit4 = sxLayout(0x609200EF, "unixcompact_code30_bit4", LE, sxarfinal_unixcompact_code30_bit4_fields);
+var sxarfinal_unixcompact_code30_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,30]", 5)]);
+var sxarfinal_unixcompact_code30_bit5 = sxLayout(0x609200F0, "unixcompact_code30_bit5", LE, sxarfinal_unixcompact_code30_bit5_fields);
+var sxarfinal_unixcompact_code30_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,30]", 5)]);
+var sxarfinal_unixcompact_code30_bit6 = sxLayout(0x609200F1, "unixcompact_code30_bit6", LE, sxarfinal_unixcompact_code30_bit6_fields);
+var sxarfinal_unixcompact_code30_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,30]", 5)]);
+var sxarfinal_unixcompact_code30_bit7 = sxLayout(0x609200F2, "unixcompact_code30_bit7", LE, sxarfinal_unixcompact_code30_bit7_fields);
+var sxarfinal_unixcompact_code31_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,31]", 4)]);
+var sxarfinal_unixcompact_code31_bit0 = sxLayout(0x609200F3, "unixcompact_code31_bit0", LE, sxarfinal_unixcompact_code31_bit0_fields);
+var sxarfinal_unixcompact_code31_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,31]", 4)]);
+var sxarfinal_unixcompact_code31_bit1 = sxLayout(0x609200F4, "unixcompact_code31_bit1", LE, sxarfinal_unixcompact_code31_bit1_fields);
+var sxarfinal_unixcompact_code31_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,31]", 5)]);
+var sxarfinal_unixcompact_code31_bit2 = sxLayout(0x609200F5, "unixcompact_code31_bit2", LE, sxarfinal_unixcompact_code31_bit2_fields);
+var sxarfinal_unixcompact_code31_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,31]", 5)]);
+var sxarfinal_unixcompact_code31_bit3 = sxLayout(0x609200F6, "unixcompact_code31_bit3", LE, sxarfinal_unixcompact_code31_bit3_fields);
+var sxarfinal_unixcompact_code31_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,31]", 5)]);
+var sxarfinal_unixcompact_code31_bit4 = sxLayout(0x609200F7, "unixcompact_code31_bit4", LE, sxarfinal_unixcompact_code31_bit4_fields);
+var sxarfinal_unixcompact_code31_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,31]", 5)]);
+var sxarfinal_unixcompact_code31_bit5 = sxLayout(0x609200F8, "unixcompact_code31_bit5", LE, sxarfinal_unixcompact_code31_bit5_fields);
+var sxarfinal_unixcompact_code31_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,31]", 5)]);
+var sxarfinal_unixcompact_code31_bit6 = sxLayout(0x609200F9, "unixcompact_code31_bit6", LE, sxarfinal_unixcompact_code31_bit6_fields);
+var sxarfinal_unixcompact_code31_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,31]", 5)]);
+var sxarfinal_unixcompact_code31_bit7 = sxLayout(0x609200FA, "unixcompact_code31_bit7", LE, sxarfinal_unixcompact_code31_bit7_fields);
+var sxarfinal_unixcompact_code32_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,32]", 4)]);
+var sxarfinal_unixcompact_code32_bit0 = sxLayout(0x609200FB, "unixcompact_code32_bit0", LE, sxarfinal_unixcompact_code32_bit0_fields);
+var sxarfinal_unixcompact_code32_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit1 = sxLayout(0x609200FC, "unixcompact_code32_bit1", LE, sxarfinal_unixcompact_code32_bit1_fields);
+var sxarfinal_unixcompact_code32_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit2 = sxLayout(0x609200FD, "unixcompact_code32_bit2", LE, sxarfinal_unixcompact_code32_bit2_fields);
+var sxarfinal_unixcompact_code32_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit3 = sxLayout(0x609200FE, "unixcompact_code32_bit3", LE, sxarfinal_unixcompact_code32_bit3_fields);
+var sxarfinal_unixcompact_code32_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit4 = sxLayout(0x609200FF, "unixcompact_code32_bit4", LE, sxarfinal_unixcompact_code32_bit4_fields);
+var sxarfinal_unixcompact_code32_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit5 = sxLayout(0x60920100, "unixcompact_code32_bit5", LE, sxarfinal_unixcompact_code32_bit5_fields);
+var sxarfinal_unixcompact_code32_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit6 = sxLayout(0x60920101, "unixcompact_code32_bit6", LE, sxarfinal_unixcompact_code32_bit6_fields);
+var sxarfinal_unixcompact_code32_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,32]", 5)]);
+var sxarfinal_unixcompact_code32_bit7 = sxLayout(0x60920102, "unixcompact_code32_bit7", LE, sxarfinal_unixcompact_code32_bit7_fields);
+var sxarfinal_unixcompact_code33_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit0 = sxLayout(0x60920103, "unixcompact_code33_bit0", LE, sxarfinal_unixcompact_code33_bit0_fields);
+var sxarfinal_unixcompact_code33_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit1 = sxLayout(0x60920104, "unixcompact_code33_bit1", LE, sxarfinal_unixcompact_code33_bit1_fields);
+var sxarfinal_unixcompact_code33_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit2 = sxLayout(0x60920105, "unixcompact_code33_bit2", LE, sxarfinal_unixcompact_code33_bit2_fields);
+var sxarfinal_unixcompact_code33_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit3 = sxLayout(0x60920106, "unixcompact_code33_bit3", LE, sxarfinal_unixcompact_code33_bit3_fields);
+var sxarfinal_unixcompact_code33_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit4 = sxLayout(0x60920107, "unixcompact_code33_bit4", LE, sxarfinal_unixcompact_code33_bit4_fields);
+var sxarfinal_unixcompact_code33_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit5 = sxLayout(0x60920108, "unixcompact_code33_bit5", LE, sxarfinal_unixcompact_code33_bit5_fields);
+var sxarfinal_unixcompact_code33_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit6 = sxLayout(0x60920109, "unixcompact_code33_bit6", LE, sxarfinal_unixcompact_code33_bit6_fields);
+var sxarfinal_unixcompact_code33_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,33]", 5)]);
+var sxarfinal_unixcompact_code33_bit7 = sxLayout(0x6092010A, "unixcompact_code33_bit7", LE, sxarfinal_unixcompact_code33_bit7_fields);
+var sxarfinal_unixcompact_code34_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit0 = sxLayout(0x6092010B, "unixcompact_code34_bit0", LE, sxarfinal_unixcompact_code34_bit0_fields);
+var sxarfinal_unixcompact_code34_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit1 = sxLayout(0x6092010C, "unixcompact_code34_bit1", LE, sxarfinal_unixcompact_code34_bit1_fields);
+var sxarfinal_unixcompact_code34_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit2 = sxLayout(0x6092010D, "unixcompact_code34_bit2", LE, sxarfinal_unixcompact_code34_bit2_fields);
+var sxarfinal_unixcompact_code34_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit3 = sxLayout(0x6092010E, "unixcompact_code34_bit3", LE, sxarfinal_unixcompact_code34_bit3_fields);
+var sxarfinal_unixcompact_code34_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit4 = sxLayout(0x6092010F, "unixcompact_code34_bit4", LE, sxarfinal_unixcompact_code34_bit4_fields);
+var sxarfinal_unixcompact_code34_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit5 = sxLayout(0x60920110, "unixcompact_code34_bit5", LE, sxarfinal_unixcompact_code34_bit5_fields);
+var sxarfinal_unixcompact_code34_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,34]", 5)]);
+var sxarfinal_unixcompact_code34_bit6 = sxLayout(0x60920111, "unixcompact_code34_bit6", LE, sxarfinal_unixcompact_code34_bit6_fields);
+var sxarfinal_unixcompact_code34_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,34]", 6)]);
+var sxarfinal_unixcompact_code34_bit7 = sxLayout(0x60920112, "unixcompact_code34_bit7", LE, sxarfinal_unixcompact_code34_bit7_fields);
+var sxarfinal_unixcompact_code35_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,35]", 5)]);
+var sxarfinal_unixcompact_code35_bit0 = sxLayout(0x60920113, "unixcompact_code35_bit0", LE, sxarfinal_unixcompact_code35_bit0_fields);
+var sxarfinal_unixcompact_code35_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,35]", 5)]);
+var sxarfinal_unixcompact_code35_bit1 = sxLayout(0x60920114, "unixcompact_code35_bit1", LE, sxarfinal_unixcompact_code35_bit1_fields);
+var sxarfinal_unixcompact_code35_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,35]", 5)]);
+var sxarfinal_unixcompact_code35_bit2 = sxLayout(0x60920115, "unixcompact_code35_bit2", LE, sxarfinal_unixcompact_code35_bit2_fields);
+var sxarfinal_unixcompact_code35_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,35]", 5)]);
+var sxarfinal_unixcompact_code35_bit3 = sxLayout(0x60920116, "unixcompact_code35_bit3", LE, sxarfinal_unixcompact_code35_bit3_fields);
+var sxarfinal_unixcompact_code35_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,35]", 5)]);
+var sxarfinal_unixcompact_code35_bit4 = sxLayout(0x60920117, "unixcompact_code35_bit4", LE, sxarfinal_unixcompact_code35_bit4_fields);
+var sxarfinal_unixcompact_code35_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,35]", 5)]);
+var sxarfinal_unixcompact_code35_bit5 = sxLayout(0x60920118, "unixcompact_code35_bit5", LE, sxarfinal_unixcompact_code35_bit5_fields);
+var sxarfinal_unixcompact_code35_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,35]", 6)]);
+var sxarfinal_unixcompact_code35_bit6 = sxLayout(0x60920119, "unixcompact_code35_bit6", LE, sxarfinal_unixcompact_code35_bit6_fields);
+var sxarfinal_unixcompact_code35_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,35]", 6)]);
+var sxarfinal_unixcompact_code35_bit7 = sxLayout(0x6092011A, "unixcompact_code35_bit7", LE, sxarfinal_unixcompact_code35_bit7_fields);
+var sxarfinal_unixcompact_code36_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,36]", 5)]);
+var sxarfinal_unixcompact_code36_bit0 = sxLayout(0x6092011B, "unixcompact_code36_bit0", LE, sxarfinal_unixcompact_code36_bit0_fields);
+var sxarfinal_unixcompact_code36_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,36]", 5)]);
+var sxarfinal_unixcompact_code36_bit1 = sxLayout(0x6092011C, "unixcompact_code36_bit1", LE, sxarfinal_unixcompact_code36_bit1_fields);
+var sxarfinal_unixcompact_code36_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,36]", 5)]);
+var sxarfinal_unixcompact_code36_bit2 = sxLayout(0x6092011D, "unixcompact_code36_bit2", LE, sxarfinal_unixcompact_code36_bit2_fields);
+var sxarfinal_unixcompact_code36_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,36]", 5)]);
+var sxarfinal_unixcompact_code36_bit3 = sxLayout(0x6092011E, "unixcompact_code36_bit3", LE, sxarfinal_unixcompact_code36_bit3_fields);
+var sxarfinal_unixcompact_code36_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,36]", 5)]);
+var sxarfinal_unixcompact_code36_bit4 = sxLayout(0x6092011F, "unixcompact_code36_bit4", LE, sxarfinal_unixcompact_code36_bit4_fields);
+var sxarfinal_unixcompact_code36_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,36]", 6)]);
+var sxarfinal_unixcompact_code36_bit5 = sxLayout(0x60920120, "unixcompact_code36_bit5", LE, sxarfinal_unixcompact_code36_bit5_fields);
+var sxarfinal_unixcompact_code36_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,36]", 6)]);
+var sxarfinal_unixcompact_code36_bit6 = sxLayout(0x60920121, "unixcompact_code36_bit6", LE, sxarfinal_unixcompact_code36_bit6_fields);
+var sxarfinal_unixcompact_code36_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,36]", 6)]);
+var sxarfinal_unixcompact_code36_bit7 = sxLayout(0x60920122, "unixcompact_code36_bit7", LE, sxarfinal_unixcompact_code36_bit7_fields);
+var sxarfinal_unixcompact_code37_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,37]", 5)]);
+var sxarfinal_unixcompact_code37_bit0 = sxLayout(0x60920123, "unixcompact_code37_bit0", LE, sxarfinal_unixcompact_code37_bit0_fields);
+var sxarfinal_unixcompact_code37_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,37]", 5)]);
+var sxarfinal_unixcompact_code37_bit1 = sxLayout(0x60920124, "unixcompact_code37_bit1", LE, sxarfinal_unixcompact_code37_bit1_fields);
+var sxarfinal_unixcompact_code37_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,37]", 5)]);
+var sxarfinal_unixcompact_code37_bit2 = sxLayout(0x60920125, "unixcompact_code37_bit2", LE, sxarfinal_unixcompact_code37_bit2_fields);
+var sxarfinal_unixcompact_code37_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,37]", 5)]);
+var sxarfinal_unixcompact_code37_bit3 = sxLayout(0x60920126, "unixcompact_code37_bit3", LE, sxarfinal_unixcompact_code37_bit3_fields);
+var sxarfinal_unixcompact_code37_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,37]", 6)]);
+var sxarfinal_unixcompact_code37_bit4 = sxLayout(0x60920127, "unixcompact_code37_bit4", LE, sxarfinal_unixcompact_code37_bit4_fields);
+var sxarfinal_unixcompact_code37_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,37]", 6)]);
+var sxarfinal_unixcompact_code37_bit5 = sxLayout(0x60920128, "unixcompact_code37_bit5", LE, sxarfinal_unixcompact_code37_bit5_fields);
+var sxarfinal_unixcompact_code37_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,37]", 6)]);
+var sxarfinal_unixcompact_code37_bit6 = sxLayout(0x60920129, "unixcompact_code37_bit6", LE, sxarfinal_unixcompact_code37_bit6_fields);
+var sxarfinal_unixcompact_code37_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,37]", 6)]);
+var sxarfinal_unixcompact_code37_bit7 = sxLayout(0x6092012A, "unixcompact_code37_bit7", LE, sxarfinal_unixcompact_code37_bit7_fields);
+var sxarfinal_unixcompact_code38_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,38]", 5)]);
+var sxarfinal_unixcompact_code38_bit0 = sxLayout(0x6092012B, "unixcompact_code38_bit0", LE, sxarfinal_unixcompact_code38_bit0_fields);
+var sxarfinal_unixcompact_code38_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,38]", 5)]);
+var sxarfinal_unixcompact_code38_bit1 = sxLayout(0x6092012C, "unixcompact_code38_bit1", LE, sxarfinal_unixcompact_code38_bit1_fields);
+var sxarfinal_unixcompact_code38_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,38]", 5)]);
+var sxarfinal_unixcompact_code38_bit2 = sxLayout(0x6092012D, "unixcompact_code38_bit2", LE, sxarfinal_unixcompact_code38_bit2_fields);
+var sxarfinal_unixcompact_code38_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,38]", 6)]);
+var sxarfinal_unixcompact_code38_bit3 = sxLayout(0x6092012E, "unixcompact_code38_bit3", LE, sxarfinal_unixcompact_code38_bit3_fields);
+var sxarfinal_unixcompact_code38_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,38]", 6)]);
+var sxarfinal_unixcompact_code38_bit4 = sxLayout(0x6092012F, "unixcompact_code38_bit4", LE, sxarfinal_unixcompact_code38_bit4_fields);
+var sxarfinal_unixcompact_code38_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,38]", 6)]);
+var sxarfinal_unixcompact_code38_bit5 = sxLayout(0x60920130, "unixcompact_code38_bit5", LE, sxarfinal_unixcompact_code38_bit5_fields);
+var sxarfinal_unixcompact_code38_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,38]", 6)]);
+var sxarfinal_unixcompact_code38_bit6 = sxLayout(0x60920131, "unixcompact_code38_bit6", LE, sxarfinal_unixcompact_code38_bit6_fields);
+var sxarfinal_unixcompact_code38_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,38]", 6)]);
+var sxarfinal_unixcompact_code38_bit7 = sxLayout(0x60920132, "unixcompact_code38_bit7", LE, sxarfinal_unixcompact_code38_bit7_fields);
+var sxarfinal_unixcompact_code39_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,39]", 5)]);
+var sxarfinal_unixcompact_code39_bit0 = sxLayout(0x60920133, "unixcompact_code39_bit0", LE, sxarfinal_unixcompact_code39_bit0_fields);
+var sxarfinal_unixcompact_code39_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,39]", 5)]);
+var sxarfinal_unixcompact_code39_bit1 = sxLayout(0x60920134, "unixcompact_code39_bit1", LE, sxarfinal_unixcompact_code39_bit1_fields);
+var sxarfinal_unixcompact_code39_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,39]", 6)]);
+var sxarfinal_unixcompact_code39_bit2 = sxLayout(0x60920135, "unixcompact_code39_bit2", LE, sxarfinal_unixcompact_code39_bit2_fields);
+var sxarfinal_unixcompact_code39_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,39]", 6)]);
+var sxarfinal_unixcompact_code39_bit3 = sxLayout(0x60920136, "unixcompact_code39_bit3", LE, sxarfinal_unixcompact_code39_bit3_fields);
+var sxarfinal_unixcompact_code39_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,39]", 6)]);
+var sxarfinal_unixcompact_code39_bit4 = sxLayout(0x60920137, "unixcompact_code39_bit4", LE, sxarfinal_unixcompact_code39_bit4_fields);
+var sxarfinal_unixcompact_code39_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,39]", 6)]);
+var sxarfinal_unixcompact_code39_bit5 = sxLayout(0x60920138, "unixcompact_code39_bit5", LE, sxarfinal_unixcompact_code39_bit5_fields);
+var sxarfinal_unixcompact_code39_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,39]", 6)]);
+var sxarfinal_unixcompact_code39_bit6 = sxLayout(0x60920139, "unixcompact_code39_bit6", LE, sxarfinal_unixcompact_code39_bit6_fields);
+var sxarfinal_unixcompact_code39_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,39]", 6)]);
+var sxarfinal_unixcompact_code39_bit7 = sxLayout(0x6092013A, "unixcompact_code39_bit7", LE, sxarfinal_unixcompact_code39_bit7_fields);
+var sxarfinal_unixcompact_code40_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,40]", 5)]);
+var sxarfinal_unixcompact_code40_bit0 = sxLayout(0x6092013B, "unixcompact_code40_bit0", LE, sxarfinal_unixcompact_code40_bit0_fields);
+var sxarfinal_unixcompact_code40_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit1 = sxLayout(0x6092013C, "unixcompact_code40_bit1", LE, sxarfinal_unixcompact_code40_bit1_fields);
+var sxarfinal_unixcompact_code40_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit2 = sxLayout(0x6092013D, "unixcompact_code40_bit2", LE, sxarfinal_unixcompact_code40_bit2_fields);
+var sxarfinal_unixcompact_code40_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit3 = sxLayout(0x6092013E, "unixcompact_code40_bit3", LE, sxarfinal_unixcompact_code40_bit3_fields);
+var sxarfinal_unixcompact_code40_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit4 = sxLayout(0x6092013F, "unixcompact_code40_bit4", LE, sxarfinal_unixcompact_code40_bit4_fields);
+var sxarfinal_unixcompact_code40_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit5 = sxLayout(0x60920140, "unixcompact_code40_bit5", LE, sxarfinal_unixcompact_code40_bit5_fields);
+var sxarfinal_unixcompact_code40_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit6 = sxLayout(0x60920141, "unixcompact_code40_bit6", LE, sxarfinal_unixcompact_code40_bit6_fields);
+var sxarfinal_unixcompact_code40_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,40]", 6)]);
+var sxarfinal_unixcompact_code40_bit7 = sxLayout(0x60920142, "unixcompact_code40_bit7", LE, sxarfinal_unixcompact_code40_bit7_fields);
+var sxarfinal_unixcompact_code41_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit0 = sxLayout(0x60920143, "unixcompact_code41_bit0", LE, sxarfinal_unixcompact_code41_bit0_fields);
+var sxarfinal_unixcompact_code41_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit1 = sxLayout(0x60920144, "unixcompact_code41_bit1", LE, sxarfinal_unixcompact_code41_bit1_fields);
+var sxarfinal_unixcompact_code41_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit2 = sxLayout(0x60920145, "unixcompact_code41_bit2", LE, sxarfinal_unixcompact_code41_bit2_fields);
+var sxarfinal_unixcompact_code41_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit3 = sxLayout(0x60920146, "unixcompact_code41_bit3", LE, sxarfinal_unixcompact_code41_bit3_fields);
+var sxarfinal_unixcompact_code41_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit4 = sxLayout(0x60920147, "unixcompact_code41_bit4", LE, sxarfinal_unixcompact_code41_bit4_fields);
+var sxarfinal_unixcompact_code41_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit5 = sxLayout(0x60920148, "unixcompact_code41_bit5", LE, sxarfinal_unixcompact_code41_bit5_fields);
+var sxarfinal_unixcompact_code41_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit6 = sxLayout(0x60920149, "unixcompact_code41_bit6", LE, sxarfinal_unixcompact_code41_bit6_fields);
+var sxarfinal_unixcompact_code41_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,41]", 6)]);
+var sxarfinal_unixcompact_code41_bit7 = sxLayout(0x6092014A, "unixcompact_code41_bit7", LE, sxarfinal_unixcompact_code41_bit7_fields);
+var sxarfinal_unixcompact_code42_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit0 = sxLayout(0x6092014B, "unixcompact_code42_bit0", LE, sxarfinal_unixcompact_code42_bit0_fields);
+var sxarfinal_unixcompact_code42_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit1 = sxLayout(0x6092014C, "unixcompact_code42_bit1", LE, sxarfinal_unixcompact_code42_bit1_fields);
+var sxarfinal_unixcompact_code42_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit2 = sxLayout(0x6092014D, "unixcompact_code42_bit2", LE, sxarfinal_unixcompact_code42_bit2_fields);
+var sxarfinal_unixcompact_code42_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit3 = sxLayout(0x6092014E, "unixcompact_code42_bit3", LE, sxarfinal_unixcompact_code42_bit3_fields);
+var sxarfinal_unixcompact_code42_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit4 = sxLayout(0x6092014F, "unixcompact_code42_bit4", LE, sxarfinal_unixcompact_code42_bit4_fields);
+var sxarfinal_unixcompact_code42_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit5 = sxLayout(0x60920150, "unixcompact_code42_bit5", LE, sxarfinal_unixcompact_code42_bit5_fields);
+var sxarfinal_unixcompact_code42_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,42]", 6)]);
+var sxarfinal_unixcompact_code42_bit6 = sxLayout(0x60920151, "unixcompact_code42_bit6", LE, sxarfinal_unixcompact_code42_bit6_fields);
+var sxarfinal_unixcompact_code42_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,42]", 7)]);
+var sxarfinal_unixcompact_code42_bit7 = sxLayout(0x60920152, "unixcompact_code42_bit7", LE, sxarfinal_unixcompact_code42_bit7_fields);
+var sxarfinal_unixcompact_code43_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,43]", 6)]);
+var sxarfinal_unixcompact_code43_bit0 = sxLayout(0x60920153, "unixcompact_code43_bit0", LE, sxarfinal_unixcompact_code43_bit0_fields);
+var sxarfinal_unixcompact_code43_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,43]", 6)]);
+var sxarfinal_unixcompact_code43_bit1 = sxLayout(0x60920154, "unixcompact_code43_bit1", LE, sxarfinal_unixcompact_code43_bit1_fields);
+var sxarfinal_unixcompact_code43_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,43]", 6)]);
+var sxarfinal_unixcompact_code43_bit2 = sxLayout(0x60920155, "unixcompact_code43_bit2", LE, sxarfinal_unixcompact_code43_bit2_fields);
+var sxarfinal_unixcompact_code43_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,43]", 6)]);
+var sxarfinal_unixcompact_code43_bit3 = sxLayout(0x60920156, "unixcompact_code43_bit3", LE, sxarfinal_unixcompact_code43_bit3_fields);
+var sxarfinal_unixcompact_code43_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,43]", 6)]);
+var sxarfinal_unixcompact_code43_bit4 = sxLayout(0x60920157, "unixcompact_code43_bit4", LE, sxarfinal_unixcompact_code43_bit4_fields);
+var sxarfinal_unixcompact_code43_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,43]", 6)]);
+var sxarfinal_unixcompact_code43_bit5 = sxLayout(0x60920158, "unixcompact_code43_bit5", LE, sxarfinal_unixcompact_code43_bit5_fields);
+var sxarfinal_unixcompact_code43_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,43]", 7)]);
+var sxarfinal_unixcompact_code43_bit6 = sxLayout(0x60920159, "unixcompact_code43_bit6", LE, sxarfinal_unixcompact_code43_bit6_fields);
+var sxarfinal_unixcompact_code43_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,43]", 7)]);
+var sxarfinal_unixcompact_code43_bit7 = sxLayout(0x6092015A, "unixcompact_code43_bit7", LE, sxarfinal_unixcompact_code43_bit7_fields);
+var sxarfinal_unixcompact_code44_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,44]", 6)]);
+var sxarfinal_unixcompact_code44_bit0 = sxLayout(0x6092015B, "unixcompact_code44_bit0", LE, sxarfinal_unixcompact_code44_bit0_fields);
+var sxarfinal_unixcompact_code44_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,44]", 6)]);
+var sxarfinal_unixcompact_code44_bit1 = sxLayout(0x6092015C, "unixcompact_code44_bit1", LE, sxarfinal_unixcompact_code44_bit1_fields);
+var sxarfinal_unixcompact_code44_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,44]", 6)]);
+var sxarfinal_unixcompact_code44_bit2 = sxLayout(0x6092015D, "unixcompact_code44_bit2", LE, sxarfinal_unixcompact_code44_bit2_fields);
+var sxarfinal_unixcompact_code44_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,44]", 6)]);
+var sxarfinal_unixcompact_code44_bit3 = sxLayout(0x6092015E, "unixcompact_code44_bit3", LE, sxarfinal_unixcompact_code44_bit3_fields);
+var sxarfinal_unixcompact_code44_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,44]", 6)]);
+var sxarfinal_unixcompact_code44_bit4 = sxLayout(0x6092015F, "unixcompact_code44_bit4", LE, sxarfinal_unixcompact_code44_bit4_fields);
+var sxarfinal_unixcompact_code44_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,44]", 7)]);
+var sxarfinal_unixcompact_code44_bit5 = sxLayout(0x60920160, "unixcompact_code44_bit5", LE, sxarfinal_unixcompact_code44_bit5_fields);
+var sxarfinal_unixcompact_code44_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,44]", 7)]);
+var sxarfinal_unixcompact_code44_bit6 = sxLayout(0x60920161, "unixcompact_code44_bit6", LE, sxarfinal_unixcompact_code44_bit6_fields);
+var sxarfinal_unixcompact_code44_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,44]", 7)]);
+var sxarfinal_unixcompact_code44_bit7 = sxLayout(0x60920162, "unixcompact_code44_bit7", LE, sxarfinal_unixcompact_code44_bit7_fields);
+var sxarfinal_unixcompact_code45_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,45]", 6)]);
+var sxarfinal_unixcompact_code45_bit0 = sxLayout(0x60920163, "unixcompact_code45_bit0", LE, sxarfinal_unixcompact_code45_bit0_fields);
+var sxarfinal_unixcompact_code45_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,45]", 6)]);
+var sxarfinal_unixcompact_code45_bit1 = sxLayout(0x60920164, "unixcompact_code45_bit1", LE, sxarfinal_unixcompact_code45_bit1_fields);
+var sxarfinal_unixcompact_code45_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,45]", 6)]);
+var sxarfinal_unixcompact_code45_bit2 = sxLayout(0x60920165, "unixcompact_code45_bit2", LE, sxarfinal_unixcompact_code45_bit2_fields);
+var sxarfinal_unixcompact_code45_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,45]", 6)]);
+var sxarfinal_unixcompact_code45_bit3 = sxLayout(0x60920166, "unixcompact_code45_bit3", LE, sxarfinal_unixcompact_code45_bit3_fields);
+var sxarfinal_unixcompact_code45_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,45]", 7)]);
+var sxarfinal_unixcompact_code45_bit4 = sxLayout(0x60920167, "unixcompact_code45_bit4", LE, sxarfinal_unixcompact_code45_bit4_fields);
+var sxarfinal_unixcompact_code45_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,45]", 7)]);
+var sxarfinal_unixcompact_code45_bit5 = sxLayout(0x60920168, "unixcompact_code45_bit5", LE, sxarfinal_unixcompact_code45_bit5_fields);
+var sxarfinal_unixcompact_code45_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,45]", 7)]);
+var sxarfinal_unixcompact_code45_bit6 = sxLayout(0x60920169, "unixcompact_code45_bit6", LE, sxarfinal_unixcompact_code45_bit6_fields);
+var sxarfinal_unixcompact_code45_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,45]", 7)]);
+var sxarfinal_unixcompact_code45_bit7 = sxLayout(0x6092016A, "unixcompact_code45_bit7", LE, sxarfinal_unixcompact_code45_bit7_fields);
+var sxarfinal_unixcompact_code46_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,46]", 6)]);
+var sxarfinal_unixcompact_code46_bit0 = sxLayout(0x6092016B, "unixcompact_code46_bit0", LE, sxarfinal_unixcompact_code46_bit0_fields);
+var sxarfinal_unixcompact_code46_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,46]", 6)]);
+var sxarfinal_unixcompact_code46_bit1 = sxLayout(0x6092016C, "unixcompact_code46_bit1", LE, sxarfinal_unixcompact_code46_bit1_fields);
+var sxarfinal_unixcompact_code46_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,46]", 6)]);
+var sxarfinal_unixcompact_code46_bit2 = sxLayout(0x6092016D, "unixcompact_code46_bit2", LE, sxarfinal_unixcompact_code46_bit2_fields);
+var sxarfinal_unixcompact_code46_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,46]", 7)]);
+var sxarfinal_unixcompact_code46_bit3 = sxLayout(0x6092016E, "unixcompact_code46_bit3", LE, sxarfinal_unixcompact_code46_bit3_fields);
+var sxarfinal_unixcompact_code46_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,46]", 7)]);
+var sxarfinal_unixcompact_code46_bit4 = sxLayout(0x6092016F, "unixcompact_code46_bit4", LE, sxarfinal_unixcompact_code46_bit4_fields);
+var sxarfinal_unixcompact_code46_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,46]", 7)]);
+var sxarfinal_unixcompact_code46_bit5 = sxLayout(0x60920170, "unixcompact_code46_bit5", LE, sxarfinal_unixcompact_code46_bit5_fields);
+var sxarfinal_unixcompact_code46_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,46]", 7)]);
+var sxarfinal_unixcompact_code46_bit6 = sxLayout(0x60920171, "unixcompact_code46_bit6", LE, sxarfinal_unixcompact_code46_bit6_fields);
+var sxarfinal_unixcompact_code46_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,46]", 7)]);
+var sxarfinal_unixcompact_code46_bit7 = sxLayout(0x60920172, "unixcompact_code46_bit7", LE, sxarfinal_unixcompact_code46_bit7_fields);
+var sxarfinal_unixcompact_code47_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,47]", 6)]);
+var sxarfinal_unixcompact_code47_bit0 = sxLayout(0x60920173, "unixcompact_code47_bit0", LE, sxarfinal_unixcompact_code47_bit0_fields);
+var sxarfinal_unixcompact_code47_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,47]", 6)]);
+var sxarfinal_unixcompact_code47_bit1 = sxLayout(0x60920174, "unixcompact_code47_bit1", LE, sxarfinal_unixcompact_code47_bit1_fields);
+var sxarfinal_unixcompact_code47_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,47]", 7)]);
+var sxarfinal_unixcompact_code47_bit2 = sxLayout(0x60920175, "unixcompact_code47_bit2", LE, sxarfinal_unixcompact_code47_bit2_fields);
+var sxarfinal_unixcompact_code47_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,47]", 7)]);
+var sxarfinal_unixcompact_code47_bit3 = sxLayout(0x60920176, "unixcompact_code47_bit3", LE, sxarfinal_unixcompact_code47_bit3_fields);
+var sxarfinal_unixcompact_code47_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,47]", 7)]);
+var sxarfinal_unixcompact_code47_bit4 = sxLayout(0x60920177, "unixcompact_code47_bit4", LE, sxarfinal_unixcompact_code47_bit4_fields);
+var sxarfinal_unixcompact_code47_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,47]", 7)]);
+var sxarfinal_unixcompact_code47_bit5 = sxLayout(0x60920178, "unixcompact_code47_bit5", LE, sxarfinal_unixcompact_code47_bit5_fields);
+var sxarfinal_unixcompact_code47_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,47]", 7)]);
+var sxarfinal_unixcompact_code47_bit6 = sxLayout(0x60920179, "unixcompact_code47_bit6", LE, sxarfinal_unixcompact_code47_bit6_fields);
+var sxarfinal_unixcompact_code47_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,47]", 7)]);
+var sxarfinal_unixcompact_code47_bit7 = sxLayout(0x6092017A, "unixcompact_code47_bit7", LE, sxarfinal_unixcompact_code47_bit7_fields);
+var sxarfinal_unixcompact_code48_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,48]", 6)]);
+var sxarfinal_unixcompact_code48_bit0 = sxLayout(0x6092017B, "unixcompact_code48_bit0", LE, sxarfinal_unixcompact_code48_bit0_fields);
+var sxarfinal_unixcompact_code48_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit1 = sxLayout(0x6092017C, "unixcompact_code48_bit1", LE, sxarfinal_unixcompact_code48_bit1_fields);
+var sxarfinal_unixcompact_code48_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit2 = sxLayout(0x6092017D, "unixcompact_code48_bit2", LE, sxarfinal_unixcompact_code48_bit2_fields);
+var sxarfinal_unixcompact_code48_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit3 = sxLayout(0x6092017E, "unixcompact_code48_bit3", LE, sxarfinal_unixcompact_code48_bit3_fields);
+var sxarfinal_unixcompact_code48_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit4 = sxLayout(0x6092017F, "unixcompact_code48_bit4", LE, sxarfinal_unixcompact_code48_bit4_fields);
+var sxarfinal_unixcompact_code48_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit5 = sxLayout(0x60920180, "unixcompact_code48_bit5", LE, sxarfinal_unixcompact_code48_bit5_fields);
+var sxarfinal_unixcompact_code48_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit6 = sxLayout(0x60920181, "unixcompact_code48_bit6", LE, sxarfinal_unixcompact_code48_bit6_fields);
+var sxarfinal_unixcompact_code48_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,48]", 7)]);
+var sxarfinal_unixcompact_code48_bit7 = sxLayout(0x60920182, "unixcompact_code48_bit7", LE, sxarfinal_unixcompact_code48_bit7_fields);
+var sxarfinal_unixcompact_code49_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit0 = sxLayout(0x60920183, "unixcompact_code49_bit0", LE, sxarfinal_unixcompact_code49_bit0_fields);
+var sxarfinal_unixcompact_code49_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit1 = sxLayout(0x60920184, "unixcompact_code49_bit1", LE, sxarfinal_unixcompact_code49_bit1_fields);
+var sxarfinal_unixcompact_code49_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit2 = sxLayout(0x60920185, "unixcompact_code49_bit2", LE, sxarfinal_unixcompact_code49_bit2_fields);
+var sxarfinal_unixcompact_code49_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit3 = sxLayout(0x60920186, "unixcompact_code49_bit3", LE, sxarfinal_unixcompact_code49_bit3_fields);
+var sxarfinal_unixcompact_code49_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit4 = sxLayout(0x60920187, "unixcompact_code49_bit4", LE, sxarfinal_unixcompact_code49_bit4_fields);
+var sxarfinal_unixcompact_code49_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit5 = sxLayout(0x60920188, "unixcompact_code49_bit5", LE, sxarfinal_unixcompact_code49_bit5_fields);
+var sxarfinal_unixcompact_code49_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit6 = sxLayout(0x60920189, "unixcompact_code49_bit6", LE, sxarfinal_unixcompact_code49_bit6_fields);
+var sxarfinal_unixcompact_code49_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,49]", 7)]);
+var sxarfinal_unixcompact_code49_bit7 = sxLayout(0x6092018A, "unixcompact_code49_bit7", LE, sxarfinal_unixcompact_code49_bit7_fields);
+var sxarfinal_unixcompact_code50_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit0 = sxLayout(0x6092018B, "unixcompact_code50_bit0", LE, sxarfinal_unixcompact_code50_bit0_fields);
+var sxarfinal_unixcompact_code50_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit1 = sxLayout(0x6092018C, "unixcompact_code50_bit1", LE, sxarfinal_unixcompact_code50_bit1_fields);
+var sxarfinal_unixcompact_code50_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit2 = sxLayout(0x6092018D, "unixcompact_code50_bit2", LE, sxarfinal_unixcompact_code50_bit2_fields);
+var sxarfinal_unixcompact_code50_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit3 = sxLayout(0x6092018E, "unixcompact_code50_bit3", LE, sxarfinal_unixcompact_code50_bit3_fields);
+var sxarfinal_unixcompact_code50_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit4 = sxLayout(0x6092018F, "unixcompact_code50_bit4", LE, sxarfinal_unixcompact_code50_bit4_fields);
+var sxarfinal_unixcompact_code50_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit5 = sxLayout(0x60920190, "unixcompact_code50_bit5", LE, sxarfinal_unixcompact_code50_bit5_fields);
+var sxarfinal_unixcompact_code50_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,50]", 7)]);
+var sxarfinal_unixcompact_code50_bit6 = sxLayout(0x60920191, "unixcompact_code50_bit6", LE, sxarfinal_unixcompact_code50_bit6_fields);
+var sxarfinal_unixcompact_code50_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,50]", 8)]);
+var sxarfinal_unixcompact_code50_bit7 = sxLayout(0x60920192, "unixcompact_code50_bit7", LE, sxarfinal_unixcompact_code50_bit7_fields);
+var sxarfinal_unixcompact_code51_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,51]", 7)]);
+var sxarfinal_unixcompact_code51_bit0 = sxLayout(0x60920193, "unixcompact_code51_bit0", LE, sxarfinal_unixcompact_code51_bit0_fields);
+var sxarfinal_unixcompact_code51_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,51]", 7)]);
+var sxarfinal_unixcompact_code51_bit1 = sxLayout(0x60920194, "unixcompact_code51_bit1", LE, sxarfinal_unixcompact_code51_bit1_fields);
+var sxarfinal_unixcompact_code51_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,51]", 7)]);
+var sxarfinal_unixcompact_code51_bit2 = sxLayout(0x60920195, "unixcompact_code51_bit2", LE, sxarfinal_unixcompact_code51_bit2_fields);
+var sxarfinal_unixcompact_code51_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,51]", 7)]);
+var sxarfinal_unixcompact_code51_bit3 = sxLayout(0x60920196, "unixcompact_code51_bit3", LE, sxarfinal_unixcompact_code51_bit3_fields);
+var sxarfinal_unixcompact_code51_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,51]", 7)]);
+var sxarfinal_unixcompact_code51_bit4 = sxLayout(0x60920197, "unixcompact_code51_bit4", LE, sxarfinal_unixcompact_code51_bit4_fields);
+var sxarfinal_unixcompact_code51_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,51]", 7)]);
+var sxarfinal_unixcompact_code51_bit5 = sxLayout(0x60920198, "unixcompact_code51_bit5", LE, sxarfinal_unixcompact_code51_bit5_fields);
+var sxarfinal_unixcompact_code51_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,51]", 8)]);
+var sxarfinal_unixcompact_code51_bit6 = sxLayout(0x60920199, "unixcompact_code51_bit6", LE, sxarfinal_unixcompact_code51_bit6_fields);
+var sxarfinal_unixcompact_code51_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,51]", 8)]);
+var sxarfinal_unixcompact_code51_bit7 = sxLayout(0x6092019A, "unixcompact_code51_bit7", LE, sxarfinal_unixcompact_code51_bit7_fields);
+var sxarfinal_unixcompact_code52_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,52]", 7)]);
+var sxarfinal_unixcompact_code52_bit0 = sxLayout(0x6092019B, "unixcompact_code52_bit0", LE, sxarfinal_unixcompact_code52_bit0_fields);
+var sxarfinal_unixcompact_code52_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,52]", 7)]);
+var sxarfinal_unixcompact_code52_bit1 = sxLayout(0x6092019C, "unixcompact_code52_bit1", LE, sxarfinal_unixcompact_code52_bit1_fields);
+var sxarfinal_unixcompact_code52_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,52]", 7)]);
+var sxarfinal_unixcompact_code52_bit2 = sxLayout(0x6092019D, "unixcompact_code52_bit2", LE, sxarfinal_unixcompact_code52_bit2_fields);
+var sxarfinal_unixcompact_code52_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,52]", 7)]);
+var sxarfinal_unixcompact_code52_bit3 = sxLayout(0x6092019E, "unixcompact_code52_bit3", LE, sxarfinal_unixcompact_code52_bit3_fields);
+var sxarfinal_unixcompact_code52_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,52]", 7)]);
+var sxarfinal_unixcompact_code52_bit4 = sxLayout(0x6092019F, "unixcompact_code52_bit4", LE, sxarfinal_unixcompact_code52_bit4_fields);
+var sxarfinal_unixcompact_code52_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,52]", 8)]);
+var sxarfinal_unixcompact_code52_bit5 = sxLayout(0x609201A0, "unixcompact_code52_bit5", LE, sxarfinal_unixcompact_code52_bit5_fields);
+var sxarfinal_unixcompact_code52_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,52]", 8)]);
+var sxarfinal_unixcompact_code52_bit6 = sxLayout(0x609201A1, "unixcompact_code52_bit6", LE, sxarfinal_unixcompact_code52_bit6_fields);
+var sxarfinal_unixcompact_code52_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,52]", 8)]);
+var sxarfinal_unixcompact_code52_bit7 = sxLayout(0x609201A2, "unixcompact_code52_bit7", LE, sxarfinal_unixcompact_code52_bit7_fields);
+var sxarfinal_unixcompact_code53_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,53]", 7)]);
+var sxarfinal_unixcompact_code53_bit0 = sxLayout(0x609201A3, "unixcompact_code53_bit0", LE, sxarfinal_unixcompact_code53_bit0_fields);
+var sxarfinal_unixcompact_code53_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,53]", 7)]);
+var sxarfinal_unixcompact_code53_bit1 = sxLayout(0x609201A4, "unixcompact_code53_bit1", LE, sxarfinal_unixcompact_code53_bit1_fields);
+var sxarfinal_unixcompact_code53_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,53]", 7)]);
+var sxarfinal_unixcompact_code53_bit2 = sxLayout(0x609201A5, "unixcompact_code53_bit2", LE, sxarfinal_unixcompact_code53_bit2_fields);
+var sxarfinal_unixcompact_code53_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,53]", 7)]);
+var sxarfinal_unixcompact_code53_bit3 = sxLayout(0x609201A6, "unixcompact_code53_bit3", LE, sxarfinal_unixcompact_code53_bit3_fields);
+var sxarfinal_unixcompact_code53_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,53]", 8)]);
+var sxarfinal_unixcompact_code53_bit4 = sxLayout(0x609201A7, "unixcompact_code53_bit4", LE, sxarfinal_unixcompact_code53_bit4_fields);
+var sxarfinal_unixcompact_code53_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,53]", 8)]);
+var sxarfinal_unixcompact_code53_bit5 = sxLayout(0x609201A8, "unixcompact_code53_bit5", LE, sxarfinal_unixcompact_code53_bit5_fields);
+var sxarfinal_unixcompact_code53_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,53]", 8)]);
+var sxarfinal_unixcompact_code53_bit6 = sxLayout(0x609201A9, "unixcompact_code53_bit6", LE, sxarfinal_unixcompact_code53_bit6_fields);
+var sxarfinal_unixcompact_code53_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,53]", 8)]);
+var sxarfinal_unixcompact_code53_bit7 = sxLayout(0x609201AA, "unixcompact_code53_bit7", LE, sxarfinal_unixcompact_code53_bit7_fields);
+var sxarfinal_unixcompact_code54_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,54]", 7)]);
+var sxarfinal_unixcompact_code54_bit0 = sxLayout(0x609201AB, "unixcompact_code54_bit0", LE, sxarfinal_unixcompact_code54_bit0_fields);
+var sxarfinal_unixcompact_code54_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,54]", 7)]);
+var sxarfinal_unixcompact_code54_bit1 = sxLayout(0x609201AC, "unixcompact_code54_bit1", LE, sxarfinal_unixcompact_code54_bit1_fields);
+var sxarfinal_unixcompact_code54_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,54]", 7)]);
+var sxarfinal_unixcompact_code54_bit2 = sxLayout(0x609201AD, "unixcompact_code54_bit2", LE, sxarfinal_unixcompact_code54_bit2_fields);
+var sxarfinal_unixcompact_code54_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,54]", 8)]);
+var sxarfinal_unixcompact_code54_bit3 = sxLayout(0x609201AE, "unixcompact_code54_bit3", LE, sxarfinal_unixcompact_code54_bit3_fields);
+var sxarfinal_unixcompact_code54_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,54]", 8)]);
+var sxarfinal_unixcompact_code54_bit4 = sxLayout(0x609201AF, "unixcompact_code54_bit4", LE, sxarfinal_unixcompact_code54_bit4_fields);
+var sxarfinal_unixcompact_code54_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,54]", 8)]);
+var sxarfinal_unixcompact_code54_bit5 = sxLayout(0x609201B0, "unixcompact_code54_bit5", LE, sxarfinal_unixcompact_code54_bit5_fields);
+var sxarfinal_unixcompact_code54_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,54]", 8)]);
+var sxarfinal_unixcompact_code54_bit6 = sxLayout(0x609201B1, "unixcompact_code54_bit6", LE, sxarfinal_unixcompact_code54_bit6_fields);
+var sxarfinal_unixcompact_code54_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,54]", 8)]);
+var sxarfinal_unixcompact_code54_bit7 = sxLayout(0x609201B2, "unixcompact_code54_bit7", LE, sxarfinal_unixcompact_code54_bit7_fields);
+var sxarfinal_unixcompact_code55_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,55]", 7)]);
+var sxarfinal_unixcompact_code55_bit0 = sxLayout(0x609201B3, "unixcompact_code55_bit0", LE, sxarfinal_unixcompact_code55_bit0_fields);
+var sxarfinal_unixcompact_code55_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,55]", 7)]);
+var sxarfinal_unixcompact_code55_bit1 = sxLayout(0x609201B4, "unixcompact_code55_bit1", LE, sxarfinal_unixcompact_code55_bit1_fields);
+var sxarfinal_unixcompact_code55_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,55]", 8)]);
+var sxarfinal_unixcompact_code55_bit2 = sxLayout(0x609201B5, "unixcompact_code55_bit2", LE, sxarfinal_unixcompact_code55_bit2_fields);
+var sxarfinal_unixcompact_code55_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,55]", 8)]);
+var sxarfinal_unixcompact_code55_bit3 = sxLayout(0x609201B6, "unixcompact_code55_bit3", LE, sxarfinal_unixcompact_code55_bit3_fields);
+var sxarfinal_unixcompact_code55_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,55]", 8)]);
+var sxarfinal_unixcompact_code55_bit4 = sxLayout(0x609201B7, "unixcompact_code55_bit4", LE, sxarfinal_unixcompact_code55_bit4_fields);
+var sxarfinal_unixcompact_code55_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,55]", 8)]);
+var sxarfinal_unixcompact_code55_bit5 = sxLayout(0x609201B8, "unixcompact_code55_bit5", LE, sxarfinal_unixcompact_code55_bit5_fields);
+var sxarfinal_unixcompact_code55_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,55]", 8)]);
+var sxarfinal_unixcompact_code55_bit6 = sxLayout(0x609201B9, "unixcompact_code55_bit6", LE, sxarfinal_unixcompact_code55_bit6_fields);
+var sxarfinal_unixcompact_code55_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,55]", 8)]);
+var sxarfinal_unixcompact_code55_bit7 = sxLayout(0x609201BA, "unixcompact_code55_bit7", LE, sxarfinal_unixcompact_code55_bit7_fields);
+var sxarfinal_unixcompact_code56_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,56]", 7)]);
+var sxarfinal_unixcompact_code56_bit0 = sxLayout(0x609201BB, "unixcompact_code56_bit0", LE, sxarfinal_unixcompact_code56_bit0_fields);
+var sxarfinal_unixcompact_code56_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit1 = sxLayout(0x609201BC, "unixcompact_code56_bit1", LE, sxarfinal_unixcompact_code56_bit1_fields);
+var sxarfinal_unixcompact_code56_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit2 = sxLayout(0x609201BD, "unixcompact_code56_bit2", LE, sxarfinal_unixcompact_code56_bit2_fields);
+var sxarfinal_unixcompact_code56_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit3 = sxLayout(0x609201BE, "unixcompact_code56_bit3", LE, sxarfinal_unixcompact_code56_bit3_fields);
+var sxarfinal_unixcompact_code56_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit4 = sxLayout(0x609201BF, "unixcompact_code56_bit4", LE, sxarfinal_unixcompact_code56_bit4_fields);
+var sxarfinal_unixcompact_code56_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit5 = sxLayout(0x609201C0, "unixcompact_code56_bit5", LE, sxarfinal_unixcompact_code56_bit5_fields);
+var sxarfinal_unixcompact_code56_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit6 = sxLayout(0x609201C1, "unixcompact_code56_bit6", LE, sxarfinal_unixcompact_code56_bit6_fields);
+var sxarfinal_unixcompact_code56_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,56]", 8)]);
+var sxarfinal_unixcompact_code56_bit7 = sxLayout(0x609201C2, "unixcompact_code56_bit7", LE, sxarfinal_unixcompact_code56_bit7_fields);
+var sxarfinal_unixcompact_code57_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit0 = sxLayout(0x609201C3, "unixcompact_code57_bit0", LE, sxarfinal_unixcompact_code57_bit0_fields);
+var sxarfinal_unixcompact_code57_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit1 = sxLayout(0x609201C4, "unixcompact_code57_bit1", LE, sxarfinal_unixcompact_code57_bit1_fields);
+var sxarfinal_unixcompact_code57_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit2 = sxLayout(0x609201C5, "unixcompact_code57_bit2", LE, sxarfinal_unixcompact_code57_bit2_fields);
+var sxarfinal_unixcompact_code57_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit3 = sxLayout(0x609201C6, "unixcompact_code57_bit3", LE, sxarfinal_unixcompact_code57_bit3_fields);
+var sxarfinal_unixcompact_code57_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit4 = sxLayout(0x609201C7, "unixcompact_code57_bit4", LE, sxarfinal_unixcompact_code57_bit4_fields);
+var sxarfinal_unixcompact_code57_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit5 = sxLayout(0x609201C8, "unixcompact_code57_bit5", LE, sxarfinal_unixcompact_code57_bit5_fields);
+var sxarfinal_unixcompact_code57_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit6 = sxLayout(0x609201C9, "unixcompact_code57_bit6", LE, sxarfinal_unixcompact_code57_bit6_fields);
+var sxarfinal_unixcompact_code57_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,57]", 8)]);
+var sxarfinal_unixcompact_code57_bit7 = sxLayout(0x609201CA, "unixcompact_code57_bit7", LE, sxarfinal_unixcompact_code57_bit7_fields);
+var sxarfinal_unixcompact_code58_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit0 = sxLayout(0x609201CB, "unixcompact_code58_bit0", LE, sxarfinal_unixcompact_code58_bit0_fields);
+var sxarfinal_unixcompact_code58_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit1 = sxLayout(0x609201CC, "unixcompact_code58_bit1", LE, sxarfinal_unixcompact_code58_bit1_fields);
+var sxarfinal_unixcompact_code58_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit2 = sxLayout(0x609201CD, "unixcompact_code58_bit2", LE, sxarfinal_unixcompact_code58_bit2_fields);
+var sxarfinal_unixcompact_code58_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit3 = sxLayout(0x609201CE, "unixcompact_code58_bit3", LE, sxarfinal_unixcompact_code58_bit3_fields);
+var sxarfinal_unixcompact_code58_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit4 = sxLayout(0x609201CF, "unixcompact_code58_bit4", LE, sxarfinal_unixcompact_code58_bit4_fields);
+var sxarfinal_unixcompact_code58_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit5 = sxLayout(0x609201D0, "unixcompact_code58_bit5", LE, sxarfinal_unixcompact_code58_bit5_fields);
+var sxarfinal_unixcompact_code58_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,58]", 8)]);
+var sxarfinal_unixcompact_code58_bit6 = sxLayout(0x609201D1, "unixcompact_code58_bit6", LE, sxarfinal_unixcompact_code58_bit6_fields);
+var sxarfinal_unixcompact_code58_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,58]", 9)]);
+var sxarfinal_unixcompact_code58_bit7 = sxLayout(0x609201D2, "unixcompact_code58_bit7", LE, sxarfinal_unixcompact_code58_bit7_fields);
+var sxarfinal_unixcompact_code59_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,59]", 8)]);
+var sxarfinal_unixcompact_code59_bit0 = sxLayout(0x609201D3, "unixcompact_code59_bit0", LE, sxarfinal_unixcompact_code59_bit0_fields);
+var sxarfinal_unixcompact_code59_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,59]", 8)]);
+var sxarfinal_unixcompact_code59_bit1 = sxLayout(0x609201D4, "unixcompact_code59_bit1", LE, sxarfinal_unixcompact_code59_bit1_fields);
+var sxarfinal_unixcompact_code59_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,59]", 8)]);
+var sxarfinal_unixcompact_code59_bit2 = sxLayout(0x609201D5, "unixcompact_code59_bit2", LE, sxarfinal_unixcompact_code59_bit2_fields);
+var sxarfinal_unixcompact_code59_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,59]", 8)]);
+var sxarfinal_unixcompact_code59_bit3 = sxLayout(0x609201D6, "unixcompact_code59_bit3", LE, sxarfinal_unixcompact_code59_bit3_fields);
+var sxarfinal_unixcompact_code59_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,59]", 8)]);
+var sxarfinal_unixcompact_code59_bit4 = sxLayout(0x609201D7, "unixcompact_code59_bit4", LE, sxarfinal_unixcompact_code59_bit4_fields);
+var sxarfinal_unixcompact_code59_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,59]", 8)]);
+var sxarfinal_unixcompact_code59_bit5 = sxLayout(0x609201D8, "unixcompact_code59_bit5", LE, sxarfinal_unixcompact_code59_bit5_fields);
+var sxarfinal_unixcompact_code59_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,59]", 9)]);
+var sxarfinal_unixcompact_code59_bit6 = sxLayout(0x609201D9, "unixcompact_code59_bit6", LE, sxarfinal_unixcompact_code59_bit6_fields);
+var sxarfinal_unixcompact_code59_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,59]", 9)]);
+var sxarfinal_unixcompact_code59_bit7 = sxLayout(0x609201DA, "unixcompact_code59_bit7", LE, sxarfinal_unixcompact_code59_bit7_fields);
+var sxarfinal_unixcompact_code60_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,60]", 8)]);
+var sxarfinal_unixcompact_code60_bit0 = sxLayout(0x609201DB, "unixcompact_code60_bit0", LE, sxarfinal_unixcompact_code60_bit0_fields);
+var sxarfinal_unixcompact_code60_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,60]", 8)]);
+var sxarfinal_unixcompact_code60_bit1 = sxLayout(0x609201DC, "unixcompact_code60_bit1", LE, sxarfinal_unixcompact_code60_bit1_fields);
+var sxarfinal_unixcompact_code60_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,60]", 8)]);
+var sxarfinal_unixcompact_code60_bit2 = sxLayout(0x609201DD, "unixcompact_code60_bit2", LE, sxarfinal_unixcompact_code60_bit2_fields);
+var sxarfinal_unixcompact_code60_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,60]", 8)]);
+var sxarfinal_unixcompact_code60_bit3 = sxLayout(0x609201DE, "unixcompact_code60_bit3", LE, sxarfinal_unixcompact_code60_bit3_fields);
+var sxarfinal_unixcompact_code60_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,60]", 8)]);
+var sxarfinal_unixcompact_code60_bit4 = sxLayout(0x609201DF, "unixcompact_code60_bit4", LE, sxarfinal_unixcompact_code60_bit4_fields);
+var sxarfinal_unixcompact_code60_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,60]", 9)]);
+var sxarfinal_unixcompact_code60_bit5 = sxLayout(0x609201E0, "unixcompact_code60_bit5", LE, sxarfinal_unixcompact_code60_bit5_fields);
+var sxarfinal_unixcompact_code60_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,60]", 9)]);
+var sxarfinal_unixcompact_code60_bit6 = sxLayout(0x609201E1, "unixcompact_code60_bit6", LE, sxarfinal_unixcompact_code60_bit6_fields);
+var sxarfinal_unixcompact_code60_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,60]", 9)]);
+var sxarfinal_unixcompact_code60_bit7 = sxLayout(0x609201E2, "unixcompact_code60_bit7", LE, sxarfinal_unixcompact_code60_bit7_fields);
+var sxarfinal_unixcompact_code61_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,61]", 8)]);
+var sxarfinal_unixcompact_code61_bit0 = sxLayout(0x609201E3, "unixcompact_code61_bit0", LE, sxarfinal_unixcompact_code61_bit0_fields);
+var sxarfinal_unixcompact_code61_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,61]", 8)]);
+var sxarfinal_unixcompact_code61_bit1 = sxLayout(0x609201E4, "unixcompact_code61_bit1", LE, sxarfinal_unixcompact_code61_bit1_fields);
+var sxarfinal_unixcompact_code61_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,61]", 8)]);
+var sxarfinal_unixcompact_code61_bit2 = sxLayout(0x609201E5, "unixcompact_code61_bit2", LE, sxarfinal_unixcompact_code61_bit2_fields);
+var sxarfinal_unixcompact_code61_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,61]", 8)]);
+var sxarfinal_unixcompact_code61_bit3 = sxLayout(0x609201E6, "unixcompact_code61_bit3", LE, sxarfinal_unixcompact_code61_bit3_fields);
+var sxarfinal_unixcompact_code61_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,61]", 9)]);
+var sxarfinal_unixcompact_code61_bit4 = sxLayout(0x609201E7, "unixcompact_code61_bit4", LE, sxarfinal_unixcompact_code61_bit4_fields);
+var sxarfinal_unixcompact_code61_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,61]", 9)]);
+var sxarfinal_unixcompact_code61_bit5 = sxLayout(0x609201E8, "unixcompact_code61_bit5", LE, sxarfinal_unixcompact_code61_bit5_fields);
+var sxarfinal_unixcompact_code61_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,61]", 9)]);
+var sxarfinal_unixcompact_code61_bit6 = sxLayout(0x609201E9, "unixcompact_code61_bit6", LE, sxarfinal_unixcompact_code61_bit6_fields);
+var sxarfinal_unixcompact_code61_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,61]", 9)]);
+var sxarfinal_unixcompact_code61_bit7 = sxLayout(0x609201EA, "unixcompact_code61_bit7", LE, sxarfinal_unixcompact_code61_bit7_fields);
+var sxarfinal_unixcompact_code62_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,62]", 8)]);
+var sxarfinal_unixcompact_code62_bit0 = sxLayout(0x609201EB, "unixcompact_code62_bit0", LE, sxarfinal_unixcompact_code62_bit0_fields);
+var sxarfinal_unixcompact_code62_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,62]", 8)]);
+var sxarfinal_unixcompact_code62_bit1 = sxLayout(0x609201EC, "unixcompact_code62_bit1", LE, sxarfinal_unixcompact_code62_bit1_fields);
+var sxarfinal_unixcompact_code62_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,62]", 8)]);
+var sxarfinal_unixcompact_code62_bit2 = sxLayout(0x609201ED, "unixcompact_code62_bit2", LE, sxarfinal_unixcompact_code62_bit2_fields);
+var sxarfinal_unixcompact_code62_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,62]", 9)]);
+var sxarfinal_unixcompact_code62_bit3 = sxLayout(0x609201EE, "unixcompact_code62_bit3", LE, sxarfinal_unixcompact_code62_bit3_fields);
+var sxarfinal_unixcompact_code62_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,62]", 9)]);
+var sxarfinal_unixcompact_code62_bit4 = sxLayout(0x609201EF, "unixcompact_code62_bit4", LE, sxarfinal_unixcompact_code62_bit4_fields);
+var sxarfinal_unixcompact_code62_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,62]", 9)]);
+var sxarfinal_unixcompact_code62_bit5 = sxLayout(0x609201F0, "unixcompact_code62_bit5", LE, sxarfinal_unixcompact_code62_bit5_fields);
+var sxarfinal_unixcompact_code62_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,62]", 9)]);
+var sxarfinal_unixcompact_code62_bit6 = sxLayout(0x609201F1, "unixcompact_code62_bit6", LE, sxarfinal_unixcompact_code62_bit6_fields);
+var sxarfinal_unixcompact_code62_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,62]", 9)]);
+var sxarfinal_unixcompact_code62_bit7 = sxLayout(0x609201F2, "unixcompact_code62_bit7", LE, sxarfinal_unixcompact_code62_bit7_fields);
+var sxarfinal_unixcompact_code63_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,63]", 8)]);
+var sxarfinal_unixcompact_code63_bit0 = sxLayout(0x609201F3, "unixcompact_code63_bit0", LE, sxarfinal_unixcompact_code63_bit0_fields);
+var sxarfinal_unixcompact_code63_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,63]", 8)]);
+var sxarfinal_unixcompact_code63_bit1 = sxLayout(0x609201F4, "unixcompact_code63_bit1", LE, sxarfinal_unixcompact_code63_bit1_fields);
+var sxarfinal_unixcompact_code63_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,63]", 9)]);
+var sxarfinal_unixcompact_code63_bit2 = sxLayout(0x609201F5, "unixcompact_code63_bit2", LE, sxarfinal_unixcompact_code63_bit2_fields);
+var sxarfinal_unixcompact_code63_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,63]", 9)]);
+var sxarfinal_unixcompact_code63_bit3 = sxLayout(0x609201F6, "unixcompact_code63_bit3", LE, sxarfinal_unixcompact_code63_bit3_fields);
+var sxarfinal_unixcompact_code63_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,63]", 9)]);
+var sxarfinal_unixcompact_code63_bit4 = sxLayout(0x609201F7, "unixcompact_code63_bit4", LE, sxarfinal_unixcompact_code63_bit4_fields);
+var sxarfinal_unixcompact_code63_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,63]", 9)]);
+var sxarfinal_unixcompact_code63_bit5 = sxLayout(0x609201F8, "unixcompact_code63_bit5", LE, sxarfinal_unixcompact_code63_bit5_fields);
+var sxarfinal_unixcompact_code63_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,63]", 9)]);
+var sxarfinal_unixcompact_code63_bit6 = sxLayout(0x609201F9, "unixcompact_code63_bit6", LE, sxarfinal_unixcompact_code63_bit6_fields);
+var sxarfinal_unixcompact_code63_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,63]", 9)]);
+var sxarfinal_unixcompact_code63_bit7 = sxLayout(0x609201FA, "unixcompact_code63_bit7", LE, sxarfinal_unixcompact_code63_bit7_fields);
+var sxarfinal_unixcompact_code64_bit0_fields = layout([field("huffman_prefix_bits", "msb_bits[0,64]", 8)]);
+var sxarfinal_unixcompact_code64_bit0 = sxLayout(0x609201FB, "unixcompact_code64_bit0", LE, sxarfinal_unixcompact_code64_bit0_fields);
+var sxarfinal_unixcompact_code64_bit1_fields = layout([field("huffman_prefix_bits", "msb_bits[1,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit1 = sxLayout(0x609201FC, "unixcompact_code64_bit1", LE, sxarfinal_unixcompact_code64_bit1_fields);
+var sxarfinal_unixcompact_code64_bit2_fields = layout([field("huffman_prefix_bits", "msb_bits[2,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit2 = sxLayout(0x609201FD, "unixcompact_code64_bit2", LE, sxarfinal_unixcompact_code64_bit2_fields);
+var sxarfinal_unixcompact_code64_bit3_fields = layout([field("huffman_prefix_bits", "msb_bits[3,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit3 = sxLayout(0x609201FE, "unixcompact_code64_bit3", LE, sxarfinal_unixcompact_code64_bit3_fields);
+var sxarfinal_unixcompact_code64_bit4_fields = layout([field("huffman_prefix_bits", "msb_bits[4,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit4 = sxLayout(0x609201FF, "unixcompact_code64_bit4", LE, sxarfinal_unixcompact_code64_bit4_fields);
+var sxarfinal_unixcompact_code64_bit5_fields = layout([field("huffman_prefix_bits", "msb_bits[5,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit5 = sxLayout(0x60920200, "unixcompact_code64_bit5", LE, sxarfinal_unixcompact_code64_bit5_fields);
+var sxarfinal_unixcompact_code64_bit6_fields = layout([field("huffman_prefix_bits", "msb_bits[6,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit6 = sxLayout(0x60920201, "unixcompact_code64_bit6", LE, sxarfinal_unixcompact_code64_bit6_fields);
+var sxarfinal_unixcompact_code64_bit7_fields = layout([field("huffman_prefix_bits", "msb_bits[7,64]", 9)]);
+var sxarfinal_unixcompact_code64_bit7 = sxLayout(0x60920202, "unixcompact_code64_bit7", LE, sxarfinal_unixcompact_code64_bit7_fields);
+var sxarfinal_unixcompact_new_literal_bit0_fields = layout([field("new_literal", "msb_bits[0,8]", 1)]);
+var sxarfinal_unixcompact_new_literal_bit0 = sxLayout(0x60920203, "unixcompact_new_literal_bit0", LE, sxarfinal_unixcompact_new_literal_bit0_fields);
+var sxarfinal_unixcompact_new_literal_bit1_fields = layout([field("new_literal", "msb_bits[1,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit1 = sxLayout(0x60920204, "unixcompact_new_literal_bit1", LE, sxarfinal_unixcompact_new_literal_bit1_fields);
+var sxarfinal_unixcompact_new_literal_bit2_fields = layout([field("new_literal", "msb_bits[2,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit2 = sxLayout(0x60920205, "unixcompact_new_literal_bit2", LE, sxarfinal_unixcompact_new_literal_bit2_fields);
+var sxarfinal_unixcompact_new_literal_bit3_fields = layout([field("new_literal", "msb_bits[3,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit3 = sxLayout(0x60920206, "unixcompact_new_literal_bit3", LE, sxarfinal_unixcompact_new_literal_bit3_fields);
+var sxarfinal_unixcompact_new_literal_bit4_fields = layout([field("new_literal", "msb_bits[4,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit4 = sxLayout(0x60920207, "unixcompact_new_literal_bit4", LE, sxarfinal_unixcompact_new_literal_bit4_fields);
+var sxarfinal_unixcompact_new_literal_bit5_fields = layout([field("new_literal", "msb_bits[5,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit5 = sxLayout(0x60920208, "unixcompact_new_literal_bit5", LE, sxarfinal_unixcompact_new_literal_bit5_fields);
+var sxarfinal_unixcompact_new_literal_bit6_fields = layout([field("new_literal", "msb_bits[6,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit6 = sxLayout(0x60920209, "unixcompact_new_literal_bit6", LE, sxarfinal_unixcompact_new_literal_bit6_fields);
+var sxarfinal_unixcompact_new_literal_bit7_fields = layout([field("new_literal", "msb_bits[7,8]", 2)]);
+var sxarfinal_unixcompact_new_literal_bit7 = sxLayout(0x6092020A, "unixcompact_new_literal_bit7", LE, sxarfinal_unixcompact_new_literal_bit7_fields);
+var sxarfinal_set_unixcompact_code1 = [sxarfinal_unixcompact_code1_bit0, sxarfinal_unixcompact_code1_bit1,
+    sxarfinal_unixcompact_code1_bit2, sxarfinal_unixcompact_code1_bit3, sxarfinal_unixcompact_code1_bit4,
+    sxarfinal_unixcompact_code1_bit5, sxarfinal_unixcompact_code1_bit6, sxarfinal_unixcompact_code1_bit7];
+var sxarfinal_set_unixcompact_code2 = [sxarfinal_unixcompact_code2_bit0, sxarfinal_unixcompact_code2_bit1,
+    sxarfinal_unixcompact_code2_bit2, sxarfinal_unixcompact_code2_bit3, sxarfinal_unixcompact_code2_bit4,
+    sxarfinal_unixcompact_code2_bit5, sxarfinal_unixcompact_code2_bit6, sxarfinal_unixcompact_code2_bit7];
+var sxarfinal_set_unixcompact_code3 = [sxarfinal_unixcompact_code3_bit0, sxarfinal_unixcompact_code3_bit1,
+    sxarfinal_unixcompact_code3_bit2, sxarfinal_unixcompact_code3_bit3, sxarfinal_unixcompact_code3_bit4,
+    sxarfinal_unixcompact_code3_bit5, sxarfinal_unixcompact_code3_bit6, sxarfinal_unixcompact_code3_bit7];
+var sxarfinal_set_unixcompact_code4 = [sxarfinal_unixcompact_code4_bit0, sxarfinal_unixcompact_code4_bit1,
+    sxarfinal_unixcompact_code4_bit2, sxarfinal_unixcompact_code4_bit3, sxarfinal_unixcompact_code4_bit4,
+    sxarfinal_unixcompact_code4_bit5, sxarfinal_unixcompact_code4_bit6, sxarfinal_unixcompact_code4_bit7];
+var sxarfinal_set_unixcompact_code5 = [sxarfinal_unixcompact_code5_bit0, sxarfinal_unixcompact_code5_bit1,
+    sxarfinal_unixcompact_code5_bit2, sxarfinal_unixcompact_code5_bit3, sxarfinal_unixcompact_code5_bit4,
+    sxarfinal_unixcompact_code5_bit5, sxarfinal_unixcompact_code5_bit6, sxarfinal_unixcompact_code5_bit7];
+var sxarfinal_set_unixcompact_code6 = [sxarfinal_unixcompact_code6_bit0, sxarfinal_unixcompact_code6_bit1,
+    sxarfinal_unixcompact_code6_bit2, sxarfinal_unixcompact_code6_bit3, sxarfinal_unixcompact_code6_bit4,
+    sxarfinal_unixcompact_code6_bit5, sxarfinal_unixcompact_code6_bit6, sxarfinal_unixcompact_code6_bit7];
+var sxarfinal_set_unixcompact_code7 = [sxarfinal_unixcompact_code7_bit0, sxarfinal_unixcompact_code7_bit1,
+    sxarfinal_unixcompact_code7_bit2, sxarfinal_unixcompact_code7_bit3, sxarfinal_unixcompact_code7_bit4,
+    sxarfinal_unixcompact_code7_bit5, sxarfinal_unixcompact_code7_bit6, sxarfinal_unixcompact_code7_bit7];
+var sxarfinal_set_unixcompact_code8 = [sxarfinal_unixcompact_code8_bit0, sxarfinal_unixcompact_code8_bit1,
+    sxarfinal_unixcompact_code8_bit2, sxarfinal_unixcompact_code8_bit3, sxarfinal_unixcompact_code8_bit4,
+    sxarfinal_unixcompact_code8_bit5, sxarfinal_unixcompact_code8_bit6, sxarfinal_unixcompact_code8_bit7];
+var sxarfinal_set_unixcompact_code9 = [sxarfinal_unixcompact_code9_bit0, sxarfinal_unixcompact_code9_bit1,
+    sxarfinal_unixcompact_code9_bit2, sxarfinal_unixcompact_code9_bit3, sxarfinal_unixcompact_code9_bit4,
+    sxarfinal_unixcompact_code9_bit5, sxarfinal_unixcompact_code9_bit6, sxarfinal_unixcompact_code9_bit7];
+var sxarfinal_set_unixcompact_code10 = [sxarfinal_unixcompact_code10_bit0, sxarfinal_unixcompact_code10_bit1,
+    sxarfinal_unixcompact_code10_bit2, sxarfinal_unixcompact_code10_bit3, sxarfinal_unixcompact_code10_bit4,
+    sxarfinal_unixcompact_code10_bit5, sxarfinal_unixcompact_code10_bit6, sxarfinal_unixcompact_code10_bit7];
+var sxarfinal_set_unixcompact_code11 = [sxarfinal_unixcompact_code11_bit0, sxarfinal_unixcompact_code11_bit1,
+    sxarfinal_unixcompact_code11_bit2, sxarfinal_unixcompact_code11_bit3, sxarfinal_unixcompact_code11_bit4,
+    sxarfinal_unixcompact_code11_bit5, sxarfinal_unixcompact_code11_bit6, sxarfinal_unixcompact_code11_bit7];
+var sxarfinal_set_unixcompact_code12 = [sxarfinal_unixcompact_code12_bit0, sxarfinal_unixcompact_code12_bit1,
+    sxarfinal_unixcompact_code12_bit2, sxarfinal_unixcompact_code12_bit3, sxarfinal_unixcompact_code12_bit4,
+    sxarfinal_unixcompact_code12_bit5, sxarfinal_unixcompact_code12_bit6, sxarfinal_unixcompact_code12_bit7];
+var sxarfinal_set_unixcompact_code13 = [sxarfinal_unixcompact_code13_bit0, sxarfinal_unixcompact_code13_bit1,
+    sxarfinal_unixcompact_code13_bit2, sxarfinal_unixcompact_code13_bit3, sxarfinal_unixcompact_code13_bit4,
+    sxarfinal_unixcompact_code13_bit5, sxarfinal_unixcompact_code13_bit6, sxarfinal_unixcompact_code13_bit7];
+var sxarfinal_set_unixcompact_code14 = [sxarfinal_unixcompact_code14_bit0, sxarfinal_unixcompact_code14_bit1,
+    sxarfinal_unixcompact_code14_bit2, sxarfinal_unixcompact_code14_bit3, sxarfinal_unixcompact_code14_bit4,
+    sxarfinal_unixcompact_code14_bit5, sxarfinal_unixcompact_code14_bit6, sxarfinal_unixcompact_code14_bit7];
+var sxarfinal_set_unixcompact_code15 = [sxarfinal_unixcompact_code15_bit0, sxarfinal_unixcompact_code15_bit1,
+    sxarfinal_unixcompact_code15_bit2, sxarfinal_unixcompact_code15_bit3, sxarfinal_unixcompact_code15_bit4,
+    sxarfinal_unixcompact_code15_bit5, sxarfinal_unixcompact_code15_bit6, sxarfinal_unixcompact_code15_bit7];
+var sxarfinal_set_unixcompact_code16 = [sxarfinal_unixcompact_code16_bit0, sxarfinal_unixcompact_code16_bit1,
+    sxarfinal_unixcompact_code16_bit2, sxarfinal_unixcompact_code16_bit3, sxarfinal_unixcompact_code16_bit4,
+    sxarfinal_unixcompact_code16_bit5, sxarfinal_unixcompact_code16_bit6, sxarfinal_unixcompact_code16_bit7];
+var sxarfinal_set_unixcompact_code17 = [sxarfinal_unixcompact_code17_bit0, sxarfinal_unixcompact_code17_bit1,
+    sxarfinal_unixcompact_code17_bit2, sxarfinal_unixcompact_code17_bit3, sxarfinal_unixcompact_code17_bit4,
+    sxarfinal_unixcompact_code17_bit5, sxarfinal_unixcompact_code17_bit6, sxarfinal_unixcompact_code17_bit7];
+var sxarfinal_set_unixcompact_code18 = [sxarfinal_unixcompact_code18_bit0, sxarfinal_unixcompact_code18_bit1,
+    sxarfinal_unixcompact_code18_bit2, sxarfinal_unixcompact_code18_bit3, sxarfinal_unixcompact_code18_bit4,
+    sxarfinal_unixcompact_code18_bit5, sxarfinal_unixcompact_code18_bit6, sxarfinal_unixcompact_code18_bit7];
+var sxarfinal_set_unixcompact_code19 = [sxarfinal_unixcompact_code19_bit0, sxarfinal_unixcompact_code19_bit1,
+    sxarfinal_unixcompact_code19_bit2, sxarfinal_unixcompact_code19_bit3, sxarfinal_unixcompact_code19_bit4,
+    sxarfinal_unixcompact_code19_bit5, sxarfinal_unixcompact_code19_bit6, sxarfinal_unixcompact_code19_bit7];
+var sxarfinal_set_unixcompact_code20 = [sxarfinal_unixcompact_code20_bit0, sxarfinal_unixcompact_code20_bit1,
+    sxarfinal_unixcompact_code20_bit2, sxarfinal_unixcompact_code20_bit3, sxarfinal_unixcompact_code20_bit4,
+    sxarfinal_unixcompact_code20_bit5, sxarfinal_unixcompact_code20_bit6, sxarfinal_unixcompact_code20_bit7];
+var sxarfinal_set_unixcompact_code21 = [sxarfinal_unixcompact_code21_bit0, sxarfinal_unixcompact_code21_bit1,
+    sxarfinal_unixcompact_code21_bit2, sxarfinal_unixcompact_code21_bit3, sxarfinal_unixcompact_code21_bit4,
+    sxarfinal_unixcompact_code21_bit5, sxarfinal_unixcompact_code21_bit6, sxarfinal_unixcompact_code21_bit7];
+var sxarfinal_set_unixcompact_code22 = [sxarfinal_unixcompact_code22_bit0, sxarfinal_unixcompact_code22_bit1,
+    sxarfinal_unixcompact_code22_bit2, sxarfinal_unixcompact_code22_bit3, sxarfinal_unixcompact_code22_bit4,
+    sxarfinal_unixcompact_code22_bit5, sxarfinal_unixcompact_code22_bit6, sxarfinal_unixcompact_code22_bit7];
+var sxarfinal_set_unixcompact_code23 = [sxarfinal_unixcompact_code23_bit0, sxarfinal_unixcompact_code23_bit1,
+    sxarfinal_unixcompact_code23_bit2, sxarfinal_unixcompact_code23_bit3, sxarfinal_unixcompact_code23_bit4,
+    sxarfinal_unixcompact_code23_bit5, sxarfinal_unixcompact_code23_bit6, sxarfinal_unixcompact_code23_bit7];
+var sxarfinal_set_unixcompact_code24 = [sxarfinal_unixcompact_code24_bit0, sxarfinal_unixcompact_code24_bit1,
+    sxarfinal_unixcompact_code24_bit2, sxarfinal_unixcompact_code24_bit3, sxarfinal_unixcompact_code24_bit4,
+    sxarfinal_unixcompact_code24_bit5, sxarfinal_unixcompact_code24_bit6, sxarfinal_unixcompact_code24_bit7];
+var sxarfinal_set_unixcompact_code25 = [sxarfinal_unixcompact_code25_bit0, sxarfinal_unixcompact_code25_bit1,
+    sxarfinal_unixcompact_code25_bit2, sxarfinal_unixcompact_code25_bit3, sxarfinal_unixcompact_code25_bit4,
+    sxarfinal_unixcompact_code25_bit5, sxarfinal_unixcompact_code25_bit6, sxarfinal_unixcompact_code25_bit7];
+var sxarfinal_set_unixcompact_code26 = [sxarfinal_unixcompact_code26_bit0, sxarfinal_unixcompact_code26_bit1,
+    sxarfinal_unixcompact_code26_bit2, sxarfinal_unixcompact_code26_bit3, sxarfinal_unixcompact_code26_bit4,
+    sxarfinal_unixcompact_code26_bit5, sxarfinal_unixcompact_code26_bit6, sxarfinal_unixcompact_code26_bit7];
+var sxarfinal_set_unixcompact_code27 = [sxarfinal_unixcompact_code27_bit0, sxarfinal_unixcompact_code27_bit1,
+    sxarfinal_unixcompact_code27_bit2, sxarfinal_unixcompact_code27_bit3, sxarfinal_unixcompact_code27_bit4,
+    sxarfinal_unixcompact_code27_bit5, sxarfinal_unixcompact_code27_bit6, sxarfinal_unixcompact_code27_bit7];
+var sxarfinal_set_unixcompact_code28 = [sxarfinal_unixcompact_code28_bit0, sxarfinal_unixcompact_code28_bit1,
+    sxarfinal_unixcompact_code28_bit2, sxarfinal_unixcompact_code28_bit3, sxarfinal_unixcompact_code28_bit4,
+    sxarfinal_unixcompact_code28_bit5, sxarfinal_unixcompact_code28_bit6, sxarfinal_unixcompact_code28_bit7];
+var sxarfinal_set_unixcompact_code29 = [sxarfinal_unixcompact_code29_bit0, sxarfinal_unixcompact_code29_bit1,
+    sxarfinal_unixcompact_code29_bit2, sxarfinal_unixcompact_code29_bit3, sxarfinal_unixcompact_code29_bit4,
+    sxarfinal_unixcompact_code29_bit5, sxarfinal_unixcompact_code29_bit6, sxarfinal_unixcompact_code29_bit7];
+var sxarfinal_set_unixcompact_code30 = [sxarfinal_unixcompact_code30_bit0, sxarfinal_unixcompact_code30_bit1,
+    sxarfinal_unixcompact_code30_bit2, sxarfinal_unixcompact_code30_bit3, sxarfinal_unixcompact_code30_bit4,
+    sxarfinal_unixcompact_code30_bit5, sxarfinal_unixcompact_code30_bit6, sxarfinal_unixcompact_code30_bit7];
+var sxarfinal_set_unixcompact_code31 = [sxarfinal_unixcompact_code31_bit0, sxarfinal_unixcompact_code31_bit1,
+    sxarfinal_unixcompact_code31_bit2, sxarfinal_unixcompact_code31_bit3, sxarfinal_unixcompact_code31_bit4,
+    sxarfinal_unixcompact_code31_bit5, sxarfinal_unixcompact_code31_bit6, sxarfinal_unixcompact_code31_bit7];
+var sxarfinal_set_unixcompact_code32 = [sxarfinal_unixcompact_code32_bit0, sxarfinal_unixcompact_code32_bit1,
+    sxarfinal_unixcompact_code32_bit2, sxarfinal_unixcompact_code32_bit3, sxarfinal_unixcompact_code32_bit4,
+    sxarfinal_unixcompact_code32_bit5, sxarfinal_unixcompact_code32_bit6, sxarfinal_unixcompact_code32_bit7];
+var sxarfinal_set_unixcompact_code33 = [sxarfinal_unixcompact_code33_bit0, sxarfinal_unixcompact_code33_bit1,
+    sxarfinal_unixcompact_code33_bit2, sxarfinal_unixcompact_code33_bit3, sxarfinal_unixcompact_code33_bit4,
+    sxarfinal_unixcompact_code33_bit5, sxarfinal_unixcompact_code33_bit6, sxarfinal_unixcompact_code33_bit7];
+var sxarfinal_set_unixcompact_code34 = [sxarfinal_unixcompact_code34_bit0, sxarfinal_unixcompact_code34_bit1,
+    sxarfinal_unixcompact_code34_bit2, sxarfinal_unixcompact_code34_bit3, sxarfinal_unixcompact_code34_bit4,
+    sxarfinal_unixcompact_code34_bit5, sxarfinal_unixcompact_code34_bit6, sxarfinal_unixcompact_code34_bit7];
+var sxarfinal_set_unixcompact_code35 = [sxarfinal_unixcompact_code35_bit0, sxarfinal_unixcompact_code35_bit1,
+    sxarfinal_unixcompact_code35_bit2, sxarfinal_unixcompact_code35_bit3, sxarfinal_unixcompact_code35_bit4,
+    sxarfinal_unixcompact_code35_bit5, sxarfinal_unixcompact_code35_bit6, sxarfinal_unixcompact_code35_bit7];
+var sxarfinal_set_unixcompact_code36 = [sxarfinal_unixcompact_code36_bit0, sxarfinal_unixcompact_code36_bit1,
+    sxarfinal_unixcompact_code36_bit2, sxarfinal_unixcompact_code36_bit3, sxarfinal_unixcompact_code36_bit4,
+    sxarfinal_unixcompact_code36_bit5, sxarfinal_unixcompact_code36_bit6, sxarfinal_unixcompact_code36_bit7];
+var sxarfinal_set_unixcompact_code37 = [sxarfinal_unixcompact_code37_bit0, sxarfinal_unixcompact_code37_bit1,
+    sxarfinal_unixcompact_code37_bit2, sxarfinal_unixcompact_code37_bit3, sxarfinal_unixcompact_code37_bit4,
+    sxarfinal_unixcompact_code37_bit5, sxarfinal_unixcompact_code37_bit6, sxarfinal_unixcompact_code37_bit7];
+var sxarfinal_set_unixcompact_code38 = [sxarfinal_unixcompact_code38_bit0, sxarfinal_unixcompact_code38_bit1,
+    sxarfinal_unixcompact_code38_bit2, sxarfinal_unixcompact_code38_bit3, sxarfinal_unixcompact_code38_bit4,
+    sxarfinal_unixcompact_code38_bit5, sxarfinal_unixcompact_code38_bit6, sxarfinal_unixcompact_code38_bit7];
+var sxarfinal_set_unixcompact_code39 = [sxarfinal_unixcompact_code39_bit0, sxarfinal_unixcompact_code39_bit1,
+    sxarfinal_unixcompact_code39_bit2, sxarfinal_unixcompact_code39_bit3, sxarfinal_unixcompact_code39_bit4,
+    sxarfinal_unixcompact_code39_bit5, sxarfinal_unixcompact_code39_bit6, sxarfinal_unixcompact_code39_bit7];
+var sxarfinal_set_unixcompact_code40 = [sxarfinal_unixcompact_code40_bit0, sxarfinal_unixcompact_code40_bit1,
+    sxarfinal_unixcompact_code40_bit2, sxarfinal_unixcompact_code40_bit3, sxarfinal_unixcompact_code40_bit4,
+    sxarfinal_unixcompact_code40_bit5, sxarfinal_unixcompact_code40_bit6, sxarfinal_unixcompact_code40_bit7];
+var sxarfinal_set_unixcompact_code41 = [sxarfinal_unixcompact_code41_bit0, sxarfinal_unixcompact_code41_bit1,
+    sxarfinal_unixcompact_code41_bit2, sxarfinal_unixcompact_code41_bit3, sxarfinal_unixcompact_code41_bit4,
+    sxarfinal_unixcompact_code41_bit5, sxarfinal_unixcompact_code41_bit6, sxarfinal_unixcompact_code41_bit7];
+var sxarfinal_set_unixcompact_code42 = [sxarfinal_unixcompact_code42_bit0, sxarfinal_unixcompact_code42_bit1,
+    sxarfinal_unixcompact_code42_bit2, sxarfinal_unixcompact_code42_bit3, sxarfinal_unixcompact_code42_bit4,
+    sxarfinal_unixcompact_code42_bit5, sxarfinal_unixcompact_code42_bit6, sxarfinal_unixcompact_code42_bit7];
+var sxarfinal_set_unixcompact_code43 = [sxarfinal_unixcompact_code43_bit0, sxarfinal_unixcompact_code43_bit1,
+    sxarfinal_unixcompact_code43_bit2, sxarfinal_unixcompact_code43_bit3, sxarfinal_unixcompact_code43_bit4,
+    sxarfinal_unixcompact_code43_bit5, sxarfinal_unixcompact_code43_bit6, sxarfinal_unixcompact_code43_bit7];
+var sxarfinal_set_unixcompact_code44 = [sxarfinal_unixcompact_code44_bit0, sxarfinal_unixcompact_code44_bit1,
+    sxarfinal_unixcompact_code44_bit2, sxarfinal_unixcompact_code44_bit3, sxarfinal_unixcompact_code44_bit4,
+    sxarfinal_unixcompact_code44_bit5, sxarfinal_unixcompact_code44_bit6, sxarfinal_unixcompact_code44_bit7];
+var sxarfinal_set_unixcompact_code45 = [sxarfinal_unixcompact_code45_bit0, sxarfinal_unixcompact_code45_bit1,
+    sxarfinal_unixcompact_code45_bit2, sxarfinal_unixcompact_code45_bit3, sxarfinal_unixcompact_code45_bit4,
+    sxarfinal_unixcompact_code45_bit5, sxarfinal_unixcompact_code45_bit6, sxarfinal_unixcompact_code45_bit7];
+var sxarfinal_set_unixcompact_code46 = [sxarfinal_unixcompact_code46_bit0, sxarfinal_unixcompact_code46_bit1,
+    sxarfinal_unixcompact_code46_bit2, sxarfinal_unixcompact_code46_bit3, sxarfinal_unixcompact_code46_bit4,
+    sxarfinal_unixcompact_code46_bit5, sxarfinal_unixcompact_code46_bit6, sxarfinal_unixcompact_code46_bit7];
+var sxarfinal_set_unixcompact_code47 = [sxarfinal_unixcompact_code47_bit0, sxarfinal_unixcompact_code47_bit1,
+    sxarfinal_unixcompact_code47_bit2, sxarfinal_unixcompact_code47_bit3, sxarfinal_unixcompact_code47_bit4,
+    sxarfinal_unixcompact_code47_bit5, sxarfinal_unixcompact_code47_bit6, sxarfinal_unixcompact_code47_bit7];
+var sxarfinal_set_unixcompact_code48 = [sxarfinal_unixcompact_code48_bit0, sxarfinal_unixcompact_code48_bit1,
+    sxarfinal_unixcompact_code48_bit2, sxarfinal_unixcompact_code48_bit3, sxarfinal_unixcompact_code48_bit4,
+    sxarfinal_unixcompact_code48_bit5, sxarfinal_unixcompact_code48_bit6, sxarfinal_unixcompact_code48_bit7];
+var sxarfinal_set_unixcompact_code49 = [sxarfinal_unixcompact_code49_bit0, sxarfinal_unixcompact_code49_bit1,
+    sxarfinal_unixcompact_code49_bit2, sxarfinal_unixcompact_code49_bit3, sxarfinal_unixcompact_code49_bit4,
+    sxarfinal_unixcompact_code49_bit5, sxarfinal_unixcompact_code49_bit6, sxarfinal_unixcompact_code49_bit7];
+var sxarfinal_set_unixcompact_code50 = [sxarfinal_unixcompact_code50_bit0, sxarfinal_unixcompact_code50_bit1,
+    sxarfinal_unixcompact_code50_bit2, sxarfinal_unixcompact_code50_bit3, sxarfinal_unixcompact_code50_bit4,
+    sxarfinal_unixcompact_code50_bit5, sxarfinal_unixcompact_code50_bit6, sxarfinal_unixcompact_code50_bit7];
+var sxarfinal_set_unixcompact_code51 = [sxarfinal_unixcompact_code51_bit0, sxarfinal_unixcompact_code51_bit1,
+    sxarfinal_unixcompact_code51_bit2, sxarfinal_unixcompact_code51_bit3, sxarfinal_unixcompact_code51_bit4,
+    sxarfinal_unixcompact_code51_bit5, sxarfinal_unixcompact_code51_bit6, sxarfinal_unixcompact_code51_bit7];
+var sxarfinal_set_unixcompact_code52 = [sxarfinal_unixcompact_code52_bit0, sxarfinal_unixcompact_code52_bit1,
+    sxarfinal_unixcompact_code52_bit2, sxarfinal_unixcompact_code52_bit3, sxarfinal_unixcompact_code52_bit4,
+    sxarfinal_unixcompact_code52_bit5, sxarfinal_unixcompact_code52_bit6, sxarfinal_unixcompact_code52_bit7];
+var sxarfinal_set_unixcompact_code53 = [sxarfinal_unixcompact_code53_bit0, sxarfinal_unixcompact_code53_bit1,
+    sxarfinal_unixcompact_code53_bit2, sxarfinal_unixcompact_code53_bit3, sxarfinal_unixcompact_code53_bit4,
+    sxarfinal_unixcompact_code53_bit5, sxarfinal_unixcompact_code53_bit6, sxarfinal_unixcompact_code53_bit7];
+var sxarfinal_set_unixcompact_code54 = [sxarfinal_unixcompact_code54_bit0, sxarfinal_unixcompact_code54_bit1,
+    sxarfinal_unixcompact_code54_bit2, sxarfinal_unixcompact_code54_bit3, sxarfinal_unixcompact_code54_bit4,
+    sxarfinal_unixcompact_code54_bit5, sxarfinal_unixcompact_code54_bit6, sxarfinal_unixcompact_code54_bit7];
+var sxarfinal_set_unixcompact_code55 = [sxarfinal_unixcompact_code55_bit0, sxarfinal_unixcompact_code55_bit1,
+    sxarfinal_unixcompact_code55_bit2, sxarfinal_unixcompact_code55_bit3, sxarfinal_unixcompact_code55_bit4,
+    sxarfinal_unixcompact_code55_bit5, sxarfinal_unixcompact_code55_bit6, sxarfinal_unixcompact_code55_bit7];
+var sxarfinal_set_unixcompact_code56 = [sxarfinal_unixcompact_code56_bit0, sxarfinal_unixcompact_code56_bit1,
+    sxarfinal_unixcompact_code56_bit2, sxarfinal_unixcompact_code56_bit3, sxarfinal_unixcompact_code56_bit4,
+    sxarfinal_unixcompact_code56_bit5, sxarfinal_unixcompact_code56_bit6, sxarfinal_unixcompact_code56_bit7];
+var sxarfinal_set_unixcompact_code57 = [sxarfinal_unixcompact_code57_bit0, sxarfinal_unixcompact_code57_bit1,
+    sxarfinal_unixcompact_code57_bit2, sxarfinal_unixcompact_code57_bit3, sxarfinal_unixcompact_code57_bit4,
+    sxarfinal_unixcompact_code57_bit5, sxarfinal_unixcompact_code57_bit6, sxarfinal_unixcompact_code57_bit7];
+var sxarfinal_set_unixcompact_code58 = [sxarfinal_unixcompact_code58_bit0, sxarfinal_unixcompact_code58_bit1,
+    sxarfinal_unixcompact_code58_bit2, sxarfinal_unixcompact_code58_bit3, sxarfinal_unixcompact_code58_bit4,
+    sxarfinal_unixcompact_code58_bit5, sxarfinal_unixcompact_code58_bit6, sxarfinal_unixcompact_code58_bit7];
+var sxarfinal_set_unixcompact_code59 = [sxarfinal_unixcompact_code59_bit0, sxarfinal_unixcompact_code59_bit1,
+    sxarfinal_unixcompact_code59_bit2, sxarfinal_unixcompact_code59_bit3, sxarfinal_unixcompact_code59_bit4,
+    sxarfinal_unixcompact_code59_bit5, sxarfinal_unixcompact_code59_bit6, sxarfinal_unixcompact_code59_bit7];
+var sxarfinal_set_unixcompact_code60 = [sxarfinal_unixcompact_code60_bit0, sxarfinal_unixcompact_code60_bit1,
+    sxarfinal_unixcompact_code60_bit2, sxarfinal_unixcompact_code60_bit3, sxarfinal_unixcompact_code60_bit4,
+    sxarfinal_unixcompact_code60_bit5, sxarfinal_unixcompact_code60_bit6, sxarfinal_unixcompact_code60_bit7];
+var sxarfinal_set_unixcompact_code61 = [sxarfinal_unixcompact_code61_bit0, sxarfinal_unixcompact_code61_bit1,
+    sxarfinal_unixcompact_code61_bit2, sxarfinal_unixcompact_code61_bit3, sxarfinal_unixcompact_code61_bit4,
+    sxarfinal_unixcompact_code61_bit5, sxarfinal_unixcompact_code61_bit6, sxarfinal_unixcompact_code61_bit7];
+var sxarfinal_set_unixcompact_code62 = [sxarfinal_unixcompact_code62_bit0, sxarfinal_unixcompact_code62_bit1,
+    sxarfinal_unixcompact_code62_bit2, sxarfinal_unixcompact_code62_bit3, sxarfinal_unixcompact_code62_bit4,
+    sxarfinal_unixcompact_code62_bit5, sxarfinal_unixcompact_code62_bit6, sxarfinal_unixcompact_code62_bit7];
+var sxarfinal_set_unixcompact_code63 = [sxarfinal_unixcompact_code63_bit0, sxarfinal_unixcompact_code63_bit1,
+    sxarfinal_unixcompact_code63_bit2, sxarfinal_unixcompact_code63_bit3, sxarfinal_unixcompact_code63_bit4,
+    sxarfinal_unixcompact_code63_bit5, sxarfinal_unixcompact_code63_bit6, sxarfinal_unixcompact_code63_bit7];
+var sxarfinal_set_unixcompact_code64 = [sxarfinal_unixcompact_code64_bit0, sxarfinal_unixcompact_code64_bit1,
+    sxarfinal_unixcompact_code64_bit2, sxarfinal_unixcompact_code64_bit3, sxarfinal_unixcompact_code64_bit4,
+    sxarfinal_unixcompact_code64_bit5, sxarfinal_unixcompact_code64_bit6, sxarfinal_unixcompact_code64_bit7];
+var sxarfinal_set_unixcompact_new_literal = [sxarfinal_unixcompact_new_literal_bit0, sxarfinal_unixcompact_new_literal_bit1,
+    sxarfinal_unixcompact_new_literal_bit2, sxarfinal_unixcompact_new_literal_bit3, sxarfinal_unixcompact_new_literal_bit4,
+    sxarfinal_unixcompact_new_literal_bit5, sxarfinal_unixcompact_new_literal_bit6, sxarfinal_unixcompact_new_literal_bit7];
+function sxarfinal_take(b, n, v) {
+    var sxb1, sxr2;
+    if (!n || n > 64 || b.bit > SX_U64_MAX - n) {
+        return false;
+    }
+    var out = 0;
+    for (var i = 0; i < n; i++) {
+        var at = Math.floor(b.bit / 8);
+        if (!b.have || at !== b.cached_at) {
+            if (!(sxr2 = sxarfinal_read(b.c, at, (sxb1 = [b.cached]), 1), b.cached = sxb1[0], sxr2)) {
+                return false;
+            }
+            b.cached_at = at;
+            b.have = true;
+        }
+        var bit = b.cached >> (b.lsb ? sxAnd64(b.bit, 7) : 7 - sxAnd64(b.bit, 7)) & 1;
+        if (b.lsb) {
+            out = sxOr64(out, sxShl64(bit, i));
+        } else {
+            out = sxOr64(sxShl64(out, 1), bit);
+        }
+        b.bit++;
+    }
+    v[0] = out;
+    return true;
+}
+function sxarfinal_field(b, set, n, v) {
+    var begin = b.bit;
+    if (!sxarfinal_take(b, n, v)) {
+        return false;
+    }
+    return sxarfinal_put(b.c, set[sxAnd64(begin, 7)], Math.floor(begin / 8));
+}
+function sxarfinal_compact_tree_init(tree, first) {
+    var index;
+    sxCopy_sxarfinal_compact_tree_s(tree, sxNew_sxarfinal_compact_tree_s());
+    for (index = 0; index < 0x102; ++index) {
+        tree.leaf_node[index] = -1;
+    }
+    tree.blocks[0].node = -1;
+    tree.blocks[0].next = 1;
+    tree.blocks[1].node = 0;
+    tree.blocks[1].next = 2;
+    tree.blocks[2].node = 0;
+    tree.blocks[2].next = -1;
+    for (index = 3; index < 518; ++index) {
+        tree.blocks[index].node = -1;
+        tree.blocks[index].next = index + 1 < 518 ? index + 1 : -1;
+    }
+    tree.block_free = 3;
+    tree.nodes[0].parent = -1;
+    tree.nodes[0].flags = 4;
+    tree.nodes[0].child[0].value = 1;
+    tree.nodes[0].child[0].block = 1;
+    tree.nodes[0].child[0].count = 2;
+    tree.nodes[0].child[1].value = first;
+    tree.nodes[0].child[1].block = 2;
+    tree.nodes[0].child[1].count = 1;
+    tree.nodes[1].parent = 0;
+    tree.nodes[1].flags = 12;
+    tree.nodes[1].child[0].value = 0x101;
+    tree.nodes[1].child[0].block = 2;
+    tree.nodes[1].child[0].count = 1;
+    tree.nodes[1].child[1].value = 0x100;
+    tree.nodes[1].child[1].block = 2;
+    tree.nodes[1].child[1].count = 1;
+    tree.last_node = 1;
+    tree.leaf_node[first] = 0;
+    tree.leaf_info[first] = 3;
+    tree.leaf_node[0x100] = 1;
+    tree.leaf_info[0x100] = 3;
+    tree.leaf_node[0x101] = 1;
+    tree.leaf_info[0x101] = 2;
+}
+function sxarfinal_compact_relink(tree, node, child_index, value, new_parent, new_index) {
+    var mask = child_index === 0 ? 8 : 4;
+    if ((mask & tree.nodes[node].flags) >>> 0 === 0) {
+        tree.nodes[value].parent = new_parent;
+        tree.nodes[value].flags = (tree.nodes[value].flags & 0xFFFFFFFE) >>> 0;
+        if (new_index !== 0) {
+            tree.nodes[value].flags = (tree.nodes[value].flags | new_index) >>> 0;
+        }
+    } else {
+        tree.leaf_node[value] = new_parent;
+        tree.leaf_info[value] &= -2;
+        if (new_index !== 0) {
+            tree.leaf_info[value] |= new_index | 0;
+        }
+    }
+}
+function sxarfinal_compact_tree_update(tree, symbol) {
+    var node = tree.leaf_node[symbol];
+    var index = tree.leaf_info[symbol] >>> 0;
+    if (node < 0) {
+        return;
+    }
+    for (; ; ) {
+        var count;
+        var old_block;
+        var above_count = 0;
+        var above_block = 0;
+        var below_count = 0;
+        var below_block = -1;
+        var below_node = 0;
+        index &= 1;
+        tree.nodes[node].child[index].count += 1;
+        count = tree.nodes[node].child[index].count;
+        old_block = tree.nodes[node].child[index].block;
+        for (; ; ) {
+            var leader;
+            var leader_index;
+            var is_right;
+            var moved_in;
+            var moved_out;
+            var mask_here;
+            var mask_there;
+            if (index !== 0) {
+                below_node = node + 1;
+                if (node === tree.last_node) {
+                    below_count = count - 2;
+                    below_block = -1;
+                } else {
+                    below_count = tree.nodes[node + 1].child[0].count;
+                    below_block = tree.nodes[node + 1].child[0].block;
+                }
+                above_count = tree.nodes[node].child[0].count;
+                above_block = tree.nodes[node].child[0].block;
+            } else {
+                below_node = node;
+                below_count = tree.nodes[node].child[1].count;
+                below_block = tree.nodes[node].child[1].block;
+                if (node !== 0) {
+                    above_count = tree.nodes[node - 1].child[1].count;
+                    above_block = tree.nodes[node - 1].child[1].block;
+                } else {
+                    above_count = count + 1;
+                    above_block = 0;
+                }
+            }
+            if (count <= above_count) {
+                break;
+            }
+            leader = tree.blocks[above_block].node;
+            leader_index = count <= tree.nodes[leader].child[0].count ? 1 : 0;
+            is_right = leader_index >>> 0;
+            moved_in = tree.nodes[leader].child[leader_index].value;
+            moved_out = tree.nodes[node].child[index].value;
+            tree.nodes[leader].child[leader_index].value = moved_out;
+            tree.nodes[node].child[index].value = moved_in;
+            sxarfinal_compact_relink(tree, leader, leader_index, moved_in, node, index);
+            sxarfinal_compact_relink(tree, node, index | 0, moved_out, leader, is_right);
+            mask_here = index === 0 ? 8 : 4;
+            mask_there = is_right === 0 ? 8 : 4;
+            if (((tree.nodes[node].flags & mask_here) >>> 0 << index) >>> 0 !== ((tree.nodes[leader].flags & mask_there) >>> 0 << is_right) >>> 0) {
+                tree.nodes[node].flags = (tree.nodes[node].flags ^ mask_here) >>> 0;
+                tree.nodes[leader].flags = (tree.nodes[leader].flags ^ mask_there) >>> 0;
+            }
+            tree.nodes[leader].child[leader_index].count += 1;
+            tree.nodes[node].child[index].count -= 1;
+            node = leader;
+            index = is_right;
+            if (is_right !== 0) {
+                tree.blocks[above_block].node += 1;
+            }
+        }
+        if (count === above_count) {
+            tree.nodes[node].child[index].block = above_block;
+            if (below_count + 1 < count) {
+                tree.blocks[above_block].next = below_block;
+                tree.blocks[old_block].next = tree.block_free;
+                tree.block_free = old_block;
+            } else if (below_block >= 0) {
+                tree.blocks[below_block].node = below_node;
+            }
+        } else if (count === below_count + 1) {
+            var fresh = tree.block_free;
+            if (fresh < 0) {
+                return;
+            }
+            tree.block_free = tree.blocks[fresh].next;
+            tree.blocks[fresh].next = below_block;
+            tree.blocks[fresh].node = node;
+            tree.blocks[above_block].next = fresh;
+            if (below_block >= 0) {
+                tree.blocks[below_block].node = below_node;
+            }
+            tree.nodes[node].child[index].block = fresh;
+        }
+        index = tree.nodes[node].flags;
+        node = tree.nodes[node].parent;
+        if (node < 0) {
+            return;
+        }
+    }
+}
+function sxarfinal_compact_tree_add(tree, symbol) {
+    var fresh = tree.block_free;
+    var parent = tree.last_node;
+    var added;
+    var displaced;
+    if (fresh < 0) {
+        return false;
+    }
+    if (parent + 1 >= 258) {
+        return false;
+    }
+    if ((tree.nodes[parent].flags & 4) === 0) {
+        return false;
+    }
+    displaced = tree.nodes[parent].child[1].value;
+    if (displaced < 0 || displaced >= 0x102) {
+        return false;
+    }
+    tree.block_free = tree.blocks[fresh].next;
+    added = parent + 1;
+    tree.last_node = added;
+    tree.nodes[added].parent = parent;
+    tree.leaf_info[symbol] = 3;
+    tree.blocks[fresh].node = added;
+    tree.nodes[parent].child[1].value = added;
+    tree.leaf_node[displaced] = added;
+    tree.leaf_node[symbol] = added;
+    tree.nodes[added].flags = 13;
+    tree.nodes[parent].flags = (tree.nodes[parent].flags & 0xFFFFFFFB) >>> 0;
+    tree.leaf_info[displaced] = 2;
+    tree.nodes[added].child[0].value = displaced;
+    tree.nodes[added].child[0].count = tree.nodes[parent].child[1].count;
+    tree.nodes[added].child[0].block = tree.nodes[parent].child[1].block;
+    tree.nodes[added].child[1].value = symbol;
+    tree.nodes[added].child[1].count = 0;
+    tree.blocks[tree.nodes[parent].child[1].block].next = fresh;
+    tree.nodes[added].child[1].block = fresh;
+    tree.blocks[fresh].next = -1;
+    return true;
+}
+var sxarfinal_compact_code_sets = [sxarfinal_set_unixcompact_code1, sxarfinal_set_unixcompact_code2,
+    sxarfinal_set_unixcompact_code3, sxarfinal_set_unixcompact_code4, sxarfinal_set_unixcompact_code5,
+    sxarfinal_set_unixcompact_code6, sxarfinal_set_unixcompact_code7, sxarfinal_set_unixcompact_code8,
+    sxarfinal_set_unixcompact_code9, sxarfinal_set_unixcompact_code10, sxarfinal_set_unixcompact_code11,
+    sxarfinal_set_unixcompact_code12, sxarfinal_set_unixcompact_code13, sxarfinal_set_unixcompact_code14,
+    sxarfinal_set_unixcompact_code15, sxarfinal_set_unixcompact_code16, sxarfinal_set_unixcompact_code17,
+    sxarfinal_set_unixcompact_code18, sxarfinal_set_unixcompact_code19, sxarfinal_set_unixcompact_code20,
+    sxarfinal_set_unixcompact_code21, sxarfinal_set_unixcompact_code22, sxarfinal_set_unixcompact_code23,
+    sxarfinal_set_unixcompact_code24, sxarfinal_set_unixcompact_code25, sxarfinal_set_unixcompact_code26,
+    sxarfinal_set_unixcompact_code27, sxarfinal_set_unixcompact_code28, sxarfinal_set_unixcompact_code29,
+    sxarfinal_set_unixcompact_code30, sxarfinal_set_unixcompact_code31, sxarfinal_set_unixcompact_code32,
+    sxarfinal_set_unixcompact_code33, sxarfinal_set_unixcompact_code34, sxarfinal_set_unixcompact_code35,
+    sxarfinal_set_unixcompact_code36, sxarfinal_set_unixcompact_code37, sxarfinal_set_unixcompact_code38,
+    sxarfinal_set_unixcompact_code39, sxarfinal_set_unixcompact_code40, sxarfinal_set_unixcompact_code41,
+    sxarfinal_set_unixcompact_code42, sxarfinal_set_unixcompact_code43, sxarfinal_set_unixcompact_code44,
+    sxarfinal_set_unixcompact_code45, sxarfinal_set_unixcompact_code46, sxarfinal_set_unixcompact_code47,
+    sxarfinal_set_unixcompact_code48, sxarfinal_set_unixcompact_code49, sxarfinal_set_unixcompact_code50,
+    sxarfinal_set_unixcompact_code51, sxarfinal_set_unixcompact_code52, sxarfinal_set_unixcompact_code53,
+    sxarfinal_set_unixcompact_code54, sxarfinal_set_unixcompact_code55, sxarfinal_set_unixcompact_code56,
+    sxarfinal_set_unixcompact_code57, sxarfinal_set_unixcompact_code58, sxarfinal_set_unixcompact_code59,
+    sxarfinal_set_unixcompact_code60, sxarfinal_set_unixcompact_code61, sxarfinal_set_unixcompact_code62,
+    sxarfinal_set_unixcompact_code63, sxarfinal_set_unixcompact_code64];
+function sxarfinal_unixcompact(c) {
+    done: {
+        var h = [];
+        var seen = [];
+        if (!sxarfinal_read(c, 0, h, 3) || h[0] !== 255 || h[1] !== 31 || !sxarfinal_put(c, sxarfinal_unixcompact_prefix, 0)) {
+            return false;
+        }
+        var tree = sxNew_sxarfinal_compact_tree_s();
+        if (tree === null) {
+            return false;
+        }
+        sxFill(seen, 0, 256, 0);
+        seen[h[2]] = 1;
+        sxarfinal_compact_tree_init(tree, h[2]);
+        var b = { c: c, bit: 24, lsb: false, cached_at: 0, cached: 0, have: false };
+        var ok = false;
+        for (var step = 0; step < 20000; step++) {
+            var node = 0;
+            var symbol = -1;
+            var begin = b.bit;
+            var width = 0;
+            while (width < 64) {
+                var bit = [0];
+                if (!sxarfinal_take(b, 1, bit)) {
+                    break done;
+                }
+                width++;
+                var mask = bit[0] ? 4 : 8;
+                if ((tree.nodes[node].flags & mask) >>> 0) {
+                    symbol = tree.nodes[node].child[bit[0]].value;
+                    break;
+                }
+                node = tree.nodes[node].child[bit[0]].value;
+                if (node < 0 || node >= 258) {
+                    break done;
+                }
+            }
+            if (symbol < 0 || width === 0 || !sxarfinal_put(c, sxarfinal_compact_code_sets[(width - 1) >>> 0][sxAnd64(begin, 7)], Math.floor(begin / 8))) {
+                break done;
+            }
+            if (symbol === 0x100) {
+                ok = true;
+                break done;
+            }
+            if (symbol === 0x101) {
+                sxarfinal_compact_tree_update(tree, 0x101);
+                var literal = [0];
+                if (!sxarfinal_field(b, sxarfinal_set_unixcompact_new_literal, 8, literal) || seen[literal[0]]) {
+                    break done;
+                }
+                symbol = literal[0] | 0;
+                seen[literal[0]] = 1;
+                if (!sxarfinal_compact_tree_add(tree, symbol)) {
+                    break done;
+                }
+            } else if (symbol > 255) {
+                break done;
+            }
+            sxarfinal_compact_tree_update(tree, symbol);
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_unixcompact_build(c) {
+    var ok = false;
+    ok = sxarfinal_unixcompact(c);
+    return !!(c.count && sxarfinal_finish(c));
+}

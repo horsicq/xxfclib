@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/hp_som/xx_hp_som_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_som_header_fields = layout([u16("system_id", ID), u16("magic", SIGNATURE), u32("version_id", ID),
+    u32("file_time_seconds", TIMESTAMP), u32("file_time_nanoseconds"), u32("entry_space", ID), u32("entry_subspace", ID),
+    u32("entry_offset", OFFSET), u32("auxiliary_header_offset", OFFSET), u32("auxiliary_header_size", SIZE),
+    u32("som_size", SIZE), u32("presumed_dp", VA), u32("space_offset", OFFSET), u32("space_count", COUNT),
+    u32("subspace_offset", OFFSET), u32("subspace_count", COUNT), u32("loader_fixup_offset", OFFSET),
+    u32("loader_fixup_count", COUNT), u32("space_strings_offset", OFFSET), u32("space_strings_size", SIZE),
+    u32("initialization_array_offset", OFFSET), u32("initialization_array_count", COUNT), u32("compiler_offset", OFFSET),
+    u32("compiler_count", COUNT), u32("symbol_offset", OFFSET), u32("symbol_count", COUNT), u32("fixup_request_offset", OFFSET),
+    u32("fixup_request_count", COUNT), u32("symbol_strings_offset", OFFSET), u32("symbol_strings_size", SIZE),
+    u32("unloadable_space_offset", OFFSET), u32("unloadable_space_size", SIZE), u32("checksum", CHECKSUM)]);
+var sxexm_som_header = sxLayout(0x602B0054, "som_header", BE, sxexm_som_header_fields);
+var sxexm_som_space_fields = layout([u32("name_offset", OFFSET), u32("flags", FLAGS), i32("space_number", ID),
+    i32("subspace_index", ID), u32("subspace_count", COUNT), i32("loader_fixup_index", ID), u32("loader_fixup_count", COUNT),
+    i32("initialization_pointer_index", ID), u32("initialization_pointer_count", COUNT)]);
+var sxexm_som_space = sxLayout(0x602B0055, "som_space", BE, sxexm_som_space_fields);
+var sxexm_som_subspace_initialized_fields = layout([i32("space_index", ID), u32("flags", FLAGS), i32("file_offset", OFFSET),
+    u32("initialization_size", SIZE), u32("subspace_start", VA), u32("virtual_size", SIZE),
+    u32("alignment_and_reserved", FLAGS), u32("name_offset", OFFSET), i32("fixup_request_index", ID),
+    u32("fixup_request_count", COUNT)]);
+var sxexm_som_subspace_initialized = sxLayout(0x602B0056, "som_subspace_initialized", BE, sxexm_som_subspace_initialized_fields);
+var sxexm_som_subspace_pattern_fields = layout([i32("space_index", ID), u32("flags", FLAGS), i32("initialization_pattern"),
+    u32("initialization_size", SIZE), u32("subspace_start", VA), u32("virtual_size", SIZE),
+    u32("alignment_and_reserved", FLAGS), u32("name_offset", OFFSET), i32("fixup_request_index", ID),
+    u32("fixup_request_count", COUNT)]);
+var sxexm_som_subspace_pattern = sxLayout(0x602B0057, "som_subspace_pattern", BE, sxexm_som_subspace_pattern_fields);
+var sxexm_som_symbol_fields = layout([u32("flags", FLAGS), u32("name_offset", OFFSET), u32("qualifier_name_offset", OFFSET),
+    u32("info"), u32("value")]);
+var sxexm_som_symbol = sxLayout(0x602B0058, "som_symbol", BE, sxexm_som_symbol_fields);
+function sxexm_som(c) {
+    var b = [];
+    if (!sxexm_read(c, 0, b, 128) || !sxexm_add(c, sxexm_som_header, 0)) {
+        return false;
+    }
+    if (!sxexm_table(c, sxexm_som_space, sxexm32(b, 44, true), sxexm32(b, 48, true)) || !sxexm_table(c, sxexm_som_symbol, sxexm32(b, 92, true), sxexm32(b, 96, true))) {
+        return false;
+    }
+    var p = sxexm32(b, 52, true);
+    var n = sxexm32(b, 56, true);
+    if (n > 20000 || !sxexm_span(c, p, n * 40)) {
+        return true;
+    }
+    for (var i = 0; i < n && c.count < 20000; i++) {
+        var z = [0];
+        if (!sxexm_word(c, p + i * 40 + 12, 4, true, z)) {
+            break;
+        }
+        if (!sxexm_add(c, z[0] ? sxexm_som_subspace_initialized : sxexm_som_subspace_pattern, p + i * 40)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_hp_som_build(c) {
+    var ok = false;
+    ok = sxexm_som(c);
+    return ok && sxexm_finish(c);
+}

@@ -1,0 +1,562 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivepackages.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_archivepackages_dcl_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxap_archivepackages_dcl = sxLayout(0x60720039, "archivepackages_dcl", LE, sxap_archivepackages_dcl_fields);
+var sxap_archivepackages_name_fields = layout([field("name", "char", 0)]);
+var sxap_archivepackages_name = sxLayout(0x6072003A, "archivepackages_name", LE, sxap_archivepackages_name_fields);
+function sx_archivepackages_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60720000 || id >= 0x60730000) {
+        return true;
+    }
+    if (r.type !== null && (!sxStrncmp(r.type, "ascii_decimal[", 14) || !sxStrncmp(r.type, "ascii_octal_padded[", 19)) && r.value.t !== 8 /*XX_VAR_TYPE_UINT64*/ && r.value.t !== 4 /*XX_VAR_TYPE_INT64*/) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60720001:
+        if (r.name === "method_flags") {
+            text = "1=LZMA; 0x40=x86 filter1; 0x80=x86 filter2, mutually exclusive";
+        }
+        break;
+    case 0x60720002:
+        if (r.name === "marker") {
+            text = "x86 call-trick marker; parameters occupy the final five physical bytes";
+        }
+        break;
+    case 0x60720005:
+        if (r.name === "dos_datetime") {
+            text = "Packed DOS date/time";
+        }
+        if (r.name === "fragment_method") {
+            text = "0=complete FINEAR, 6=first fragment, 2=continuation from previous volume";
+        }
+        break;
+    case 0x60720007:
+        if (r.name === "dos_datetime") {
+            text = "Packed DOS date/time";
+        }
+        if (r.name === "fragment_method") {
+            text = "0=complete FINEAR, 6=first fragment, 2=continuation from previous volume";
+        }
+        break;
+    case 0x60720008:
+        if (r.name === "crc16_word") {
+            text = "CRC16/ARC stored in a 32-bit word";
+        }
+        break;
+    case 0x60720009:
+        if (r.name === "parameters") {
+            text = "Fixed native-supported stream parameters; individual meanings not established";
+        }
+        break;
+    case 0x6072000A:
+        if (r.name === "code_bits") {
+            text = "Canonical Huffman symbol code length in bits; 321 symbols including end marker256";
+        }
+        break;
+    case 0x6072000B:
+        if (r.name === "magic") {
+            text = "0x184C2102 legacy frame; 0x184D2A50..0x184D2A5F skippable frames";
+        }
+        break;
+    case 0x6072000E:
+        if (r.name === "method") {
+            text = "3 or5 PICTools opcode stream; synthesized MZ prologue is not stored metadata";
+        }
+        break;
+    case 0x6072000F:
+        if (r.name === "method") {
+            text = "High bit indicates RISC OS extension; masked0 ends archive";
+        }
+        break;
+    case 0x60720011:
+        if (r.name === "load_address") {
+            text = "Filetyped RISC OS words may encode type/date rather than address";
+        }
+        if (r.name === "exec_address") {
+            text = "For filetyped load word, this contains timestamp low bits";
+        }
+        break;
+    case 0x60720012:
+        if (r.name === "method") {
+            text = "Masked method0 terminates the containing member chain";
+        }
+        break;
+    case 0x60720014:
+        if (r.name === "compressed_size") {
+            text = "Includes mode byte and any control words";
+        }
+        break;
+    case 0x60720015:
+        if (r.name === "mode") {
+            text = "0x80 copied; 0x40 LZRW1/KH coded";
+        }
+        break;
+    case 0x60720016:
+        if (r.name === "control_bits") {
+            text = "Sixteen token flags, most significant bit first; subsequent codec tokens remain raw";
+        }
+        break;
+    case 0x60720019:
+        if (r.name === "kind") {
+            text = "0=file,1=install path";
+        }
+        if (r.name === "sequence_number") {
+            text = "One-based sequence number";
+        }
+        break;
+    case 0x6072001A:
+        if (r.name === "kind") {
+            text = "0=file,1=install path";
+        }
+        if (r.name === "sequence_number") {
+            text = "One-based sequence number";
+        }
+        break;
+    case 0x6072001B:
+        if (r.name === "method") {
+            text = "0=stored,6=DCL,8=Deflate with six-byte prefix";
+        }
+        if (r.name === "stamp_low") {
+            text = "Unidentified low stamp word";
+        }
+        if (r.name === "packed_crc32") {
+            text = "Reflected CRC32 seed0/no final complement; zero disables verification";
+        }
+        break;
+    case 0x6072001E:
+        if (r.name === "payload_type") {
+            text = "0x101=u32BE,0x102=u64BE,0x200=string,0x300=chunk,0x400=group,0x500=blob; zero tag/type=end group";
+        }
+        break;
+    case 0x60720024:
+        if (r.name === "method") {
+            text = "2=zlib";
+        }
+        break;
+    case 0x60720025:
+        if (r.name === "tag") {
+            text = "First setup tags124,125,126";
+        }
+        break;
+    case 0x60720026:
+        if (r.name === "kind") {
+            text = "3=stored file";
+        }
+        break;
+    case 0x60720028:
+        if (r.name === "version") {
+            text = "Native-supported version6";
+        }
+        break;
+    case 0x6072002A:
+        if (r.name === "flags") {
+            text = "Native accepts0 or1";
+        }
+        break;
+    case 0x6072002D:
+        if (r.name === "value") {
+            text = "Native metadata word; category interpretation not established";
+        }
+        break;
+    case 0x6072002E:
+        if (r.name === "size_or_stored_length") {
+            text = "Negative=stored byte count after negation; positive=compressed byte count; zero=stream end";
+        }
+        break;
+    case 0x6072002F:
+        if (r.name === "algorithm") {
+            text = "0=stored;1..7=PAQ-family solid models";
+        }
+        break;
+    case 0x60720030:
+        if (r.name === "record_size") {
+            text = "Size of _wfinddata64_t record, excluding this word and final byte sum";
+        }
+        if (r.name === "name") {
+            text = "UTF16LE NUL-terminated; unused suffix may contain stale bytes";
+        }
+        if (r.name === "byte_sum") {
+            text = "Sum of plaintext bytes";
+        }
+        break;
+    case 0x60720031:
+        if (r.name === "encrypted_check") {
+            text = "Encrypted payload prefix; no plaintext interpretation";
+        }
+        break;
+    case 0x60720032:
+        if (r.name === "typeflag") {
+            text = "0/ASCII0=regular,1/2=link no payload,5=directory";
+        }
+        if (r.name === "unknown_tail") {
+            text = "Native reader does not define the remaining shifted TAR dialect fields";
+        }
+        break;
+    case 0x60720033:
+        if (r.name === "record_length_words") {
+            text = "Header length in eight-byte units";
+        }
+        if (r.name === "volume_words") {
+            text = "Number of eight-byte words";
+        }
+        break;
+    case 0x60720034:
+        if (r.name === "record_length_words") {
+            text = "Name area length in eight-byte units";
+        }
+        if (r.name === "record_type") {
+            text = "9=legacy FS_NAME,11=FS_NAME_X,12=compact,7=end";
+        }
+        break;
+    case 0x60720035:
+        if (r.name === "record_length_words") {
+            text = "Name area length in eight-byte units";
+        }
+        if (r.name === "record_type") {
+            text = "9=legacy FS_NAME,11=FS_NAME_X,12=compact,7=end";
+        }
+        break;
+    case 0x60720036:
+        if (r.name === "record_length_words") {
+            text = "Name area length in eight-byte units";
+        }
+        if (r.name === "record_type") {
+            text = "9=legacy FS_NAME,11=FS_NAME_X,12=compact,7=end";
+        }
+        break;
+    case 0x60720037:
+        if (r.name === "acl_words") {
+            text = "ACL length in eight-byte words";
+        }
+        if (r.name === "pcl_words") {
+            text = "PCL length in eight-byte words";
+        }
+        break;
+    case 0x60720039:
+        if (r.name === "literal_mode") {
+            text = "0=raw literals,1=coded literals";
+        }
+        if (r.name === "dictionary_bits") {
+            text = "Dictionary selector4..6";
+        }
+        break;
+    case 0x6072003B:
+        if (r.name === "application") {
+            text = "1=BACKUP data,2=filler";
+        }
+        if (r.name === "block_size") {
+            text = "Filler block zero inherits first block size";
+        }
+        if (r.name === "bucket_size") {
+            text = "Bucket size in512-byte blocks";
+        }
+        if (r.name === "file_size") {
+            text = "BBH file size word; native does not consume units";
+        }
+        break;
+    case 0x6072003C:
+        if (r.name === "record_type") {
+            text = "0=null,1=summary,3=file,4=VBN data";
+        }
+        if (r.name === "address") {
+            text = "Record logical address; not physical file offset";
+        }
+        break;
+    case 0x6072003E:
+        if (r.name === "tag") {
+            text = "0x2a=name,0x2c=FID,0x33=characteristics,0x34=FAT,0x36/37=dates";
+        }
+        break;
+    case 0x60720040:
+        if (r.name === "characteristics") {
+            text = "0x2000=directory; stored Files-11 characteristics";
+        }
+        break;
+    case 0x60720041:
+        if (r.name === "vms_time") {
+            text = "VMS100-nanosecond ticks since1858-11-17; not Unix seconds";
+        }
+        break;
+    case 0x60720042:
+        if (r.name === "high_block") {
+            text = "Allocated512-byte block count, PDP word order";
+        }
+        if (r.name === "eof_block") {
+            text = "One-based EOF block; byte size=(eof_block-1)*512+first_free_byte";
+        }
+        if (r.name === "first_free_byte") {
+            text = "Offset within the EOF block";
+        }
+        if (r.name === "bucket_size") {
+            text = "In512-byte blocks";
+        }
+        if (r.name === "default_extend") {
+            text = "Allocation extension in512-byte blocks";
+        }
+        break;
+    case 0x60720045:
+        if (r.name === "node_offset") {
+            text = "Relative to this context block";
+        }
+        if (r.name === "map_offset") {
+            text = "Relative to this context block; zero means implicit context0";
+        }
+        break;
+    case 0x60720046:
+        if (r.name === "leaf_flags") {
+            text = "One bit per node; one=leaf symbol, zero=child index";
+        }
+        break;
+    case 0x60720047:
+        if (r.name === "symbol_or_child") {
+            text = "Leaf bitmap selects symbol vs child/2; child0 ends record";
+        }
+        break;
+    case 0x60720048:
+        if (r.name === "next_context") {
+            text = "Context index selected after decoding the corresponding symbol";
+        }
+        break;
+    case 0x60720049:
+        if (r.name === "unknown_record_word") {
+            text = "Physical two-byte prefix discarded by native codec; later record starts are codec-defined";
+        }
+        break;
+    case 0x6072004A:
+        if (r.name === "marker") {
+            text = "0xffff introduces the BER-like PCSI database";
+        }
+        break;
+    case 0x6072004C:
+        if (r.name === "length_form") {
+            text = "0x80: constructed value terminated by tag0";
+        }
+        break;
+    case 0x6072004D:
+        if (r.name === "length_form") {
+            text = "0x81";
+        }
+        break;
+    case 0x6072004E:
+        if (r.name === "length_form") {
+            text = "0x82";
+        }
+        break;
+    case 0x6072004F:
+        if (r.name === "allocated_blocks") {
+            text = "Signed512-byte block count; effective size=max(0,(blocks-1)*512+last_block_bytes)";
+        }
+        if (r.name === "last_block_bytes") {
+            text = "Bytes used in last512-byte block";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxap_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxap_read(c, p, b, n) {
+    return sxap_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxap_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxap_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxap_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxap_uint(b, 0, n, be);
+    return true;
+}
+function sxap_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxap_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxap_add(c, l, p) {
+    return sxap_put(c, l, p, 0, false);
+}
+function sxap_text(c, l, p, n, aliases) {
+    return (!n || n > 4096 ? 1 : (sxap_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxap_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxap_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxap_order, true);
+    return !c.failed;
+}
+function sxap_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxap_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxap_dcl(c, p, n) {
+    var b = [];
+    return (n < 2 || !sxap_read(c, p, b, 2) || b[0] > 1 || b[1] < 4 || b[1] > 6 ? 1 : (sxap_add(c, sxap_archivepackages_dcl, p) ? 1 : 0)) !== 0;
+}
+function sx_archivepackages_supports(type) {
+    switch (type) {
+    case "KPCK":
+    case "LINGVOARC":
+    case "LZ4DEMO":
+    case "VMSSAVESET":
+    case "SSM":
+    case "SPK":
+    case "WRZL":
+    case "QIP2":
+    case "TWRX":
+    case "BEOSPKG":
+    case "VMSPCSI":
+    case "VMSDB":
+    case "MLB_FT":
+    case "OBERON":
+    case "SOLITAIRE_DELUXE":
+    case "CPOINT":
+    case "RDC":
+    case "KGB_ARCHIVER":
+    case "TAR_NEXTSTEP":
+    case "AIXBFF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivepackages_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "KPCK":
+        ok = sx_kpck_build(c);
+        break;
+    case "LINGVOARC":
+        ok = sx_lingvoarc_build(c);
+        break;
+    case "LZ4DEMO":
+        ok = sx_lz4demo_build(c);
+        break;
+    case "VMSSAVESET":
+        ok = sx_vmssaveset_build(c);
+        break;
+    case "SSM":
+        ok = sx_ssm_build(c);
+        break;
+    case "SPK":
+        ok = sx_spk_build(c);
+        break;
+    case "WRZL":
+        ok = sx_wrzl_build(c);
+        break;
+    case "QIP2":
+        ok = sx_qip2_build(c);
+        break;
+    case "TWRX":
+        ok = sx_twrx_build(c);
+        break;
+    case "BEOSPKG":
+        ok = sx_beospkg_build(c);
+        break;
+    case "VMSPCSI":
+        ok = sx_vmspcsi_build(c);
+        break;
+    case "VMSDB":
+        ok = sx_vmsdb_build(c);
+        break;
+    case "MLB_FT":
+        ok = sx_mlb_ft_build(c);
+        break;
+    case "OBERON":
+        ok = sx_oberon_build(c);
+        break;
+    case "SOLITAIRE_DELUXE":
+        ok = sx_solitaire_deluxe_build(c);
+        break;
+    case "CPOINT":
+        ok = sx_cpoint_build(c);
+        break;
+    case "RDC":
+        ok = sx_rdc_build(c);
+        break;
+    case "KGB_ARCHIVER":
+        ok = sx_kgb_archiver_build(c);
+        break;
+    case "TAR_NEXTSTEP":
+        ok = sx_tar_nextstep_build(c);
+        break;
+    case "AIXBFF":
+        ok = sx_aixbff_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxap_finish(c));
+}

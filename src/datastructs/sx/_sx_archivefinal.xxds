@@ -1,0 +1,411 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivefinal.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_squeeze1_header_fields = layout([u16("magic", SIGNATURE), u16("checksum", CHECKSUM)]);
+var sxaf_squeeze1_header = sxLayout(0x603C000A, "squeeze1_header", LE, sxaf_squeeze1_header_fields);
+var sxaf_squeeze2_magic_fields = layout([u16("magic", SIGNATURE)]);
+var sxaf_squeeze2_magic = sxLayout(0x603C000B, "squeeze2_magic", LE, sxaf_squeeze2_magic_fields);
+var sxaf_squeeze2_header_fields = layout([u8("empty_field"), u8("end_of_text", SIGNATURE), u16("checksum", CHECKSUM),
+    u16("dos_date"), u16("dos_time"), u16("node_count", COUNT)]);
+var sxaf_squeeze2_header = sxLayout(0x603C000C, "squeeze2_header", LE, sxaf_squeeze2_header_fields);
+var sxaf_squeeze_node_count_fields = layout([u16("node_count", COUNT)]);
+var sxaf_squeeze_node_count = sxLayout(0x603C000D, "squeeze_node_count", LE, sxaf_squeeze_node_count_fields);
+var sxaf_squeeze_tree_node_fields = layout([i16("left_child"), i16("right_child")]);
+var sxaf_squeeze_tree_node = sxLayout(0x603C000E, "squeeze_tree_node", LE, sxaf_squeeze_tree_node_fields);
+function sx_archivefinal_comment(r, id) {
+    if (r === null || r.name === null || id < 0x603C0000 || id >= 0x603D0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x603C0001:
+        if (r.name === "byte_length") {
+            text = "NAR string byte length; following bytes are padded to an8-byte boundary.";
+        }
+        break;
+    case 0x603C0003:
+        if (r.name === "api_version") {
+            text = "Three big-endian version nibbles: major/minor/patch, followed by zero nibble.";
+        }
+        break;
+    case 0x603C0004:
+        if (r.name === "global_flags") {
+            text = "0x10000 signature present; other unused bits reserved.";
+        }
+        break;
+    case 0x603C0007:
+        if (r.name === "unix_timestamp") {
+            text = "Seconds since1970-01-01.";
+        }
+        if (r.name === "flags") {
+            text = "Low9bits permissions;0x1000 DEFLATE;0x2000 BZIP2.";
+        }
+        break;
+    case 0x603C0008:
+        if (r.name === "signature_type") {
+            text = "1 MD5,2 SHA1,3 SHA256,4 SHA512,16 OpenSSL.";
+        }
+        break;
+    case 0x603C0009:
+        if (r.name === "part_number") {
+            text = "One-based segment number.";
+        }
+        if (r.name === "creation_time") {
+            text = "Seconds since1904-01-01.";
+        }
+        if (r.name === "modification_time") {
+            text = "Seconds since1904-01-01.";
+        }
+        if (r.name === "resource_fork_size") {
+            text = "Whole original resource fork, not this segment.";
+        }
+        if (r.name === "data_fork_size") {
+            text = "Whole original data fork, not this segment.";
+        }
+        if (r.name === "segment_bookkeeping") {
+            text = "Stored bookkeeping bytes; semantics not established.";
+        }
+        break;
+    case 0x603C000A:
+        if (r.name === "checksum") {
+            text = "Sum of decoded bytes modulo65536.";
+        }
+        break;
+    case 0x603C000C:
+        if (r.name === "checksum") {
+            text = "Sum of decoded bytes modulo65536.";
+        }
+        if (r.name === "dos_date") {
+            text = "Packed DOS date: year since1980/month/day.";
+        }
+        if (r.name === "dos_time") {
+            text = "Packed DOS time: hour/minute/2-second count.";
+        }
+        break;
+    case 0x603C000E:
+        if (r.name === "left_child") {
+            text = "Nonnegative node index; negative value encodes symbol=-(value+1),256=end.";
+        }
+        if (r.name === "right_child") {
+            text = "Nonnegative node index; negative value encodes symbol=-(value+1),256=end.";
+        }
+        break;
+    case 0x603C0011:
+        if (r.name === "method") {
+            text = "0 stored;2 raw DEFLATE.";
+        }
+        if (r.name === "dos_time") {
+            text = "Packed DOS time.";
+        }
+        if (r.name === "dos_date") {
+            text = "Packed DOS date.";
+        }
+        break;
+    case 0x603C0012:
+        if (r.name === "directory_checkword") {
+            text = "Stored checkword; native reader does not validate its algorithm.";
+        }
+        break;
+    case 0x603C0015:
+        if (r.name === "method") {
+            text = "RNC method1 or2.";
+        }
+        break;
+    case 0x603C0016:
+        if (r.name === "positive_word") {
+            text = "Native reader requires positive; meaning is unknown.";
+        }
+        if (r.name === "class_word0") {
+            text = "Observed selector; semantics unknown.";
+        }
+        if (r.name === "class_word1") {
+            text = "Observed selector; semantics unknown.";
+        }
+        break;
+    case 0x603C0017:
+        if (r.name === "fixed_word") {
+            text = "Native requires0x30; further semantics are not established.";
+        }
+        if (r.name === "slot_count_plus_one") {
+            text = "Directory row count is this value minus one.";
+        }
+        break;
+    case 0x603C0019:
+        if (r.name === "header_checksum") {
+            text = "Sum of signed header/name bytes starting at offset4.";
+        }
+        if (r.name === "dos_date") {
+            text = "Packed DOS date.";
+        }
+        if (r.name === "dos_time") {
+            text = "Packed DOS time.";
+        }
+        if (r.name === "attributes") {
+            text = "0x10 directory.";
+        }
+        if (r.name === "archive_type") {
+            text = "1 compressed,2 stored,0 autodetect based on length and suffix.";
+        }
+        break;
+    case 0x603C001B:
+        if (r.name === "complemented_crc32") {
+            text = "Bitwise complement of the plaintext standard CRC32.";
+        }
+        if (r.name === "method") {
+            text = "0 PKWARE DCL;1 stored.";
+        }
+        break;
+    case 0x603C001E:
+        if (r.name === "form_size") {
+            text = "Complete file size minus8.";
+        }
+        break;
+    case 0x603C001F:
+        if (r.name === "header_payload_size") {
+            text = "Name length plus20; excludes8-byte chunk prefix.";
+        }
+        if (r.name === "method") {
+            text = "0 stored;1..7 Shrink arithmetic/LZ.";
+        }
+        break;
+    case 0x603C0022:
+        if (r.name === "id_and_flags") {
+            text = "0x8000 stored;low15bits member ID.";
+        }
+        break;
+    case 0x603C0026:
+        if (r.name === "name_terminator") {
+            text = "Newline delimiter.";
+        }
+        break;
+    case 0x603C0027:
+        if (r.name === "raw_crc32") {
+            text = "CRC32 of packed bytes with initial state zero, no complement.";
+        }
+        break;
+    case 0x603C0028:
+        if (r.name === "next_record_delta") {
+            text = "Relative to current header;zero means final member.";
+        }
+        break;
+    case 0x603C0029:
+        if (r.name === "positive_word") {
+            text = "Native requires nonzero; semantics unknown.";
+        }
+        if (r.name === "method") {
+            text = "6 Zoo LZD.";
+        }
+        break;
+    case 0x603C002A:
+        if (r.name === "opaque_prefix") {
+            text = "Uninterpreted physical header bytes.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxaf_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxaf_read(c, p, b, n) {
+    return sxaf_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxaf_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxaf_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxaf_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxaf_uint(b, 0, n, be);
+    return true;
+}
+function sxaf_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = f.offset + f.size;
+    return c.count < 20000 && sxaf_span(c, p, (n < 0 ? n + SX_U64_MAX : n)) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), n);
+}
+function sxaf_zstr(c, p, end, cap, stop) {
+    for (var i = 0; i < cap && p[0] < end; i++) {
+        var b = [0];
+        if (!sxaf_read(c, p[0]++, b, 1)) {
+            return false;
+        }
+        if (b[0] === stop) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxaf_squeeze(c, second) {
+    var p = [second ? 2 : 4];
+    var n = [0];
+    if (!sxaf_add(c, second ? sxaf_squeeze2_magic : sxaf_squeeze1_header, 0) || !sxaf_zstr(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 256, 0)) {
+        return false;
+    }
+    if (second) {
+        if (!sxaf_zstr(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 256, 0) || !sxaf_word(c, p[0] + 8, 2, false, n) || !sxaf_add(c, sxaf_squeeze2_header, p[0])) {
+            return false;
+        }
+        p[0] += 10;
+    } else {
+        if (!sxaf_word(c, p[0], 2, false, n) || !sxaf_add(c, sxaf_squeeze_node_count, p[0])) {
+            return false;
+        }
+        p[0] += 2;
+    }
+    if (n[0] > 256 || !sxaf_span(c, p[0], 4 * n[0])) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxaf_add(c, sxaf_squeeze_tree_node, p[0] + 4 * i)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxaf_table(c, h, entry, off, width, p, stride) {
+    var count = [0];
+    if (!sxaf_word(c, off, width, false, count) || !sxaf_span(c, p, count[0] * stride) || !sxaf_add(c, h, 0)) {
+        return false;
+    }
+    for (var i = 0; i < count[0]; i++) {
+        if (!sxaf_add(c, entry, p + i * stride)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxaf_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxaf_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxaf_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxaf_order, true);
+    return !c.failed;
+}
+function sx_archivefinal_supports(type) {
+    switch (type) {
+    case "NIX_NAR":
+    case "PHAR":
+    case "STUFFIT_SPLIT_FILE":
+    case "SQUEEZE1":
+    case "SQUEEZE2":
+    case "SQ":
+    case "LSPACK10":
+    case "RNCA":
+    case "BAGF":
+    case "IXA":
+    case "BGA":
+    case "DFC":
+    case "KA":
+    case "SHRINK_CDAF":
+    case "SPACK":
+    case "PCOMPRESS_PACK":
+    case "MXM_SIMPLEARC":
+    case "LIF":
+    case "DN":
+    case "INSA":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivefinal_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "NIX_NAR":
+        ok = sx_nix_nar_build(c);
+        break;
+    case "PHAR":
+        ok = sx_phar_build(c);
+        break;
+    case "STUFFIT_SPLIT_FILE":
+        ok = sx_stuffit_split_file_build(c);
+        break;
+    case "SQUEEZE1":
+        ok = sx_squeeze1_build(c);
+        break;
+    case "SQUEEZE2":
+        ok = sx_squeeze2_build(c);
+        break;
+    case "SQ":
+        ok = sx_sq_build(c);
+        break;
+    case "LSPACK10":
+        ok = sx_lspack10_build(c);
+        break;
+    case "RNCA":
+        ok = sx_rnca_build(c);
+        break;
+    case "BAGF":
+        ok = sx_bagf_build(c);
+        break;
+    case "IXA":
+        ok = sx_ixa_build(c);
+        break;
+    case "BGA":
+        ok = sx_bga_build(c);
+        break;
+    case "DFC":
+        ok = sx_dfc_build(c);
+        break;
+    case "KA":
+        ok = sx_ka_build(c);
+        break;
+    case "SHRINK_CDAF":
+        ok = sx_shrink_cdaf_build(c);
+        break;
+    case "SPACK":
+        ok = sx_spack_build(c);
+        break;
+    case "PCOMPRESS_PACK":
+        ok = sx_pcompress_pack_build(c);
+        break;
+    case "MXM_SIMPLEARC":
+        ok = sx_mxm_simplearc_build(c);
+        break;
+    case "LIF":
+        ok = sx_lif_build(c);
+        break;
+    case "DN":
+        ok = sx_dn_build(c);
+        break;
+    case "INSA":
+        ok = sx_insa_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxaf_finish(c));
+}

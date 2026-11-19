@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/o_setup/xx_o_setup_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_osetup_member_fields = layout([chars("signature", 4, SIGNATURE), u32("payload_size", SIZE),
+    u32("modification_time", TIMESTAMP), chars("name", 13, NONE), bytes("writer_memory", 19)]);
+var sxan_osetup_member = sxLayout(0x60770019, "osetup_member", LE, sxan_osetup_member_fields);
+var sxan_osetup_trailer_6_fields = layout([chars("signature", 6, SIGNATURE), u32("first_record_offset", OFFSET),
+    u16("member_count", COUNT)]);
+var sxan_osetup_trailer_6 = sxLayout(0x6077001A, "osetup_trailer_6", LE, sxan_osetup_trailer_6_fields);
+var sxan_osetup_trailer_8_fields = layout([chars("signature", 8, SIGNATURE), u32("first_record_offset", OFFSET),
+    u16("member_count", COUNT)]);
+var sxan_osetup_trailer_8 = sxLayout(0x6077001B, "osetup_trailer_8", LE, sxan_osetup_trailer_8_fields);
+function sxan_osetup(c) {
+    var h = [];
+    var trailer;
+    var p = [0];
+    var n = [0];
+    var z = [0];
+    var tag = 8;
+    if (c.size < 14) {
+        return false;
+    }
+    trailer = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 14);
+    if (!sxan_read(c, trailer, h, 8)) {
+        return false;
+    }
+    if (sxMemcmp(h, "OSETUPS\x00", 8) && sxMemcmp(h, "OSETUPA\x00", 8)) {
+        tag = 6;
+        trailer = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 12);
+        if (!sxan_read(c, trailer, h, 6) || sxMemcmp(h, "OSETUP", 6)) {
+            return false;
+        }
+    }
+    if (!sxan_add(c, tag === 8 ? sxan_osetup_trailer_8 : sxan_osetup_trailer_6, trailer) || !sxan_word(c, trailer + tag, 4, false, p) || !sxan_word(c, trailer + tag + 4, 2, false, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (p[0] > trailer || sxU64(trailer - p[0]) < 44 || !sxan_word(c, p[0] + 4, 4, false, z) || !sxan_add(c, sxan_osetup_member, p[0])) {
+            return false;
+        }
+        p[0] += 44;
+        if (z[0] > sxU64(trailer - p[0])) {
+            return true;
+        }
+        p[0] += z[0];
+    }
+    return true;
+}
+function sx_o_setup_build(c) {
+    var ok = false;
+    ok = sxan_osetup(c);
+    return !!(c.count && sxan_finish(c));
+}

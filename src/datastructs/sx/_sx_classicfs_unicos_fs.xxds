@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/unicos_fs/xx_unicos_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_unicos_superblock_prefix_fields = layout([u64("magic", SIGNATURE), chars("filesystem_name", 8, NONE),
+    chars("pack_name", 8, NONE), i64("device", ID), i64("block_count", COUNT), i64("inode_count", COUNT),
+    i64("big_file_threshold", SIZE), i64("big_file_minimum_blocks", COUNT), u64("secure_label", SIGNATURE),
+    i64("maximum_security_level"), i64("minimum_security_level"), i64("valid_security_compartments", FLAGS),
+    i64("last_update", TIMESTAMP), i64("dynamic_block"), i64("root_inode"), i64("filesystem_error", ID), i64("first_map_block"),
+    i64("last_map_block"), i64("superblock_copies", COUNT), i64("partition_count", COUNT), i64("inode_block_ratio"),
+    i64("shared_filesystem_extent"), i64("flags", FLAGS)]);
+var sxcf_unicos_superblock_prefix = sxLayout(0x603D0060, "unicos_superblock_prefix", BE, sxcf_unicos_superblock_prefix_fields);
+var sxcf_unicos_partition_fields = layout([i64("device_name", ID), u32("first_block"), u32("block_count", COUNT),
+    u16("region0_reserved", RESERVED), u16("region0_blocks", COUNT), u32("region0_first_block"),
+    u16("region1_reserved", RESERVED), u16("region1_blocks", COUNT), u32("region1_first_block"),
+    u16("region2_reserved", RESERVED), u16("region2_blocks", COUNT), u32("region2_first_block"),
+    u16("region3_reserved", RESERVED), u16("region3_blocks", COUNT), u32("region3_first_block")]);
+var sxcf_unicos_partition = sxLayout(0x603D0061, "unicos_partition", BE, sxcf_unicos_partition_fields);
+var sxcf_unicos_superblock_tail_fields = layout([i64("io_unit"), i64("inode_reservation_blocks_minus_one"),
+    i64("primary_partitions", FLAGS), i64("primary_block_words_minus_one"), i64("primary_blocks", COUNT),
+    i64("secondary_partitions", FLAGS), i64("secondary_block_words_minus_one"), i64("secondary_blocks", COUNT),
+    i64("filesystem_data_partitions", FLAGS), i64("root_directory_partitions", FLAGS), i64("no_user_data_partitions", FLAGS),
+    i64("semaphore_count", COUNT), i64("active_primary_partitions", FLAGS), i64("arbiter_identifier", ID),
+    field("reserved", "byte[728]", 728, RESERVED)]);
+var sxcf_unicos_superblock_tail = sxLayout(0x603D0062, "unicos_superblock_tail", BE, sxcf_unicos_superblock_tail_fields);
+var sxcf_unicos_inode_prefix_fields = layout([u32("mode_encoded", FLAGS), u32("links_encoded", FLAGS),
+    field("opaque_08", "byte[16]", 16), u64("file_size", SIZE), field("opaque_20", "byte[49]", 49),
+    u8("allocation_device_flags", FLAGS), field("opaque_52", "byte[6]", 6), u8("allocation_type_flags", FLAGS),
+    field("opaque_59", "byte[39]", 39)]);
+var sxcf_unicos_inode_prefix = sxLayout(0x603D0063, "unicos_inode_prefix", BE, sxcf_unicos_inode_prefix_fields);
+var sxcf_unicos_extent_fields = layout([u32("blocks_encoded", FLAGS), u32("first_block")]);
+var sxcf_unicos_extent = sxLayout(0x603D0064, "unicos_extent", BE, sxcf_unicos_extent_fields);
+var sxcf_unicos_inode_tail_fields = layout([field("opaque_c0", "byte[46]", 46), u16("external_device"),
+    field("opaque_f0", "byte[16]", 16)]);
+var sxcf_unicos_inode_tail = sxLayout(0x603D0065, "unicos_inode_tail", BE, sxcf_unicos_inode_tail_fields);
+var sxcf_unicos_directory_header_fields = layout([u64("inode_number"), field("opaque_08", "byte[8]", 8),
+    u64("record_and_name_lengths", FLAGS)]);
+var sxcf_unicos_directory_header = sxLayout(0x603D0066, "unicos_directory_header", BE, sxcf_unicos_directory_header_fields);
+function sxcf_unicos(c) {
+    var h = [];
+    var b = [];
+    var d = [];
+    var sb = 0;
+    if (!sxcf_read(c, 0, h, 4096) || sxcf64(h, 0, 1) !== (0x6E633166 * 4294967296 + 0x7331636E)) {
+        sb = 4096;
+        if (!sxcf_read(c, sb, h, 4096) || sxcf64(h, 0, 1) !== (0x6E633166 * 4294967296 + 0x7331636E)) {
+            return false;
+        }
+    }
+    var blocks = sxcf64(h, 32, 1);
+    var a = sxcf64(h, 3264, 1);
+    var v = sxcf64(h, 3280, 1);
+    if (!blocks || a > 15 || v > 15 || sxcf64(h, 152, 1) !== 1) {
+        return false;
+    }
+    if (!sxcf_put(c, sxcf_unicos_superblock_prefix, sb, 1) || !sxcf_put(c, sxcf_unicos_partition, sb + 184, 64) || !sxcf_put(c, sxcf_unicos_superblock_tail, sb + 3256, 1)) {
+        return false;
+    }
+    var visits = 0;
+    for (var region = 0; region < 4; region++) {
+        var first = sxcf32(h, 204 + ((region * 8) >>> 0), 1);
+        var count = sxcf16(h, 202 + ((region * 8) >>> 0), 1);
+        var bitmap = (a + 1) * (v + 1);
+        if (!count || first >= blocks || count > sxU64(blocks - first) || bitmap >= count) {
+            continue;
+        }
+        for (var i = 0; i < sxU64(count - bitmap) * 16 && visits < 262144 && c.count < 24000; i++, visits++) {
+            var p = (first + bitmap) * 4096 + i * 256;
+            if (!sxcf_read(c, p, b, 256)) {
+                break;
+            }
+            if (!sxcf32(b, 0, 1)) {
+                continue;
+            }
+            if (!sxcf_put(c, sxcf_unicos_inode_prefix, p, 1) || !sxcf_put(c, sxcf_unicos_extent, p + 128, 8) || !sxcf_put(c, sxcf_unicos_inode_tail, p + 192, 1)) {
+                return false;
+            }
+            if ((sxcf32(b, 0, 1) & 0xF000) !== 0x4000 || (b[88] & 15) !== 1) {
+                continue;
+            }
+            var left = sxcf64(b, 24, 1);
+            for (var k = 0; k < 8 && left && c.count < 24000; k++) {
+                var n = sxcf32(b, 128 + ((8 * k) >>> 0), 1);
+                var at = sxcf32(b, 132 + ((8 * k) >>> 0), 1);
+                if (!n || sxAnd64(n, 0x80000000) || at >= blocks || n > sxU64(blocks - at)) {
+                    break;
+                }
+                n *= 4096;
+                if (n > left) {
+                    n = left;
+                }
+                for (var q = 0; q + 24 <= n && c.count < 24000; ) {
+                    if (!sxcf_read(c, at * 4096 + q, d, 24)) {
+                        return false;
+                    }
+                    var word = sxcf64(d, 16, 1);
+                    var z = sxAnd64(sxShr64(word, 10), 0x3FFFFF);
+                    var names = sxAnd64(word, 1023);
+                    if (z < 24 || sxAnd64(z, 7) || z > sxU64(n - q) || z > 4096 - q % 4096 || names > sxU64(z - 24)) {
+                        break;
+                    }
+                    if (!sxcf_put(c, sxcf_unicos_directory_header, at * 4096 + q, 1)) {
+                        return false;
+                    }
+                    q += z;
+                }
+                left = sxU64(left - n);
+            }
+        }
+    }
+    return true;
+}
+function sx_unicos_fs_build(c) {
+    return sxcf_unicos(c);
+}

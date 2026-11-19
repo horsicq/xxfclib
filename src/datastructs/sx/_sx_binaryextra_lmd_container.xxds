@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/lmd_container/xx_lmd_container_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_lmd_header_fields = layout([u8("signature_length", SIZE), chars("signature", 8, SIGNATURE), u32("record_count", COUNT)]);
+var sxbx_lmd_header = sxLayout(0x60300003, "lmd_header", LE, sxbx_lmd_header_fields);
+var sxbx_lmd_record_offset_fields = layout([u32("record_offset", OFFSET)]);
+var sxbx_lmd_record_offset = sxLayout(0x60300004, "lmd_record_offset", LE, sxbx_lmd_record_offset_fields);
+var sxbx_lmd_flags_fields = layout([u8("flags", FLAGS)]);
+var sxbx_lmd_flags = sxLayout(0x60300005, "lmd_flags", LE, sxbx_lmd_flags_fields);
+var sxbx_lmd_name_length_fields = layout([u8("name_size", SIZE)]);
+var sxbx_lmd_name_length = sxLayout(0x60300006, "lmd_name_length", LE, sxbx_lmd_name_length_fields);
+var sxbx_lmd_optional_value_fields = layout([u32("value")]);
+var sxbx_lmd_optional_value = sxLayout(0x60300007, "lmd_optional_value", LE, sxbx_lmd_optional_value_fields);
+var sxbx_lmd_bitmap_size_fields = layout([u32("bitmap_size", SIZE)]);
+var sxbx_lmd_bitmap_size = sxLayout(0x60300008, "lmd_bitmap_size", LE, sxbx_lmd_bitmap_size_fields);
+var sxbx_lmd_block_header_fields = layout([u32("block_size", SIZE), u8("method", ID)]);
+var sxbx_lmd_block_header = sxLayout(0x60300009, "lmd_block_header", LE, sxbx_lmd_block_header_fields);
+function sxbx_lmd(c) {
+    var n = [0];
+    if (!sxbx_add(c, sxbx_lmd_header, 0) || !sxbx_word(c, 9, 4, false, n) || n[0] > 4096 || !sxbx_span(c, 13, n[0] * 4) || !sxbx_table(c, sxbx_lmd_record_offset, 13, n[0])) {
+        return false;
+    }
+    for (var i = 0; i < n[0] && c.count < 20000; i++) {
+        var p = [0];
+        var end = [(c.size < 0 ? c.size + SX_U64_MAX : c.size)];
+        var flags = [0];
+        var z = [0];
+        if (!sxbx_word(c, 13 + i * 4, 4, false, p) || i + 1 < n[0] && !sxbx_word(c, 17 + i * 4, 4, false, end) || p[0] < 13 + n[0] * 4 || end[0] <= p[0] || end[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || !sxbx_word(c, p[0], 1, false, flags) || !sxbx_add(c, sxbx_lmd_flags, p[0])) {
+            continue;
+        }
+        p[0]++;
+        if (sxAnd64(flags[0], 2)) {
+            if (!sxbx_counted(c, p, end[0], sxbx_lmd_name_length, 1, false, 1)) {
+                continue;
+            }
+        }
+        if (sxAnd64(flags[0], 4)) {
+            if (sxU64(end[0] - p[0]) < 4 || !sxbx_add(c, sxbx_lmd_optional_value, p[0])) {
+                continue;
+            }
+            p[0] += 4;
+        }
+        if (sxAnd64(flags[0], 8)) {
+            if (sxU64(end[0] - p[0]) < 4 || !sxbx_word(c, p[0], 4, false, z) || z[0] !== sxU64(sxU64(end[0] - p[0]) - 4) || !sxbx_add(c, sxbx_lmd_bitmap_size, p[0])) {
+                continue;
+            }
+            p[0] += 4;
+            if (sxAnd64(flags[0], 1)) {
+                while (p[0] < end[0] && c.count < 20000) {
+                    if (sxU64(end[0] - p[0]) < 5 || !sxbx_word(c, p[0], 4, false, z) || z[0] < 1 || z[0] > sxU64(sxU64(end[0] - p[0]) - 4)) {
+                        break;
+                    }
+                    if (!sxbx_add(c, sxbx_lmd_block_header, p[0])) {
+                        return false;
+                    }
+                    p[0] += 4 + z[0];
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_lmd_container_build(c) {
+    return sxbx_lmd(c);
+}

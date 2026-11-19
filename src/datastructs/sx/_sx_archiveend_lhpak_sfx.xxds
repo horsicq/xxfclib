@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lhpak_sfx/xx_lhpak_sfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_lhpak_sfx_position_fields = layout([u32("archive_offset_longs")]);
+var sxaend_lhpak_sfx_position = sxLayout(0x60840004, "lhpak_sfx_position", BE, sxaend_lhpak_sfx_position_fields);
+var sxaend_lhpak_sfx_member_fields = layout([u32("next_block_displacement", OFFSET), u16("packed_size", SIZE),
+    u16("block_number"), u32("uncompressed_block_size", SIZE), u32("packed_crc32", CHECKSUM), u32("header_checksum", CHECKSUM),
+    bytes("unknown_20", 4), u32("uncompressed_file_size", SIZE), bytes("unknown_28", 14), u8("name_longs"), u8("comment_longs")]);
+var sxaend_lhpak_sfx_member = sxLayout(0x60840005, "lhpak_sfx_member", BE, sxaend_lhpak_sfx_member_fields);
+var sxaend_lhpak_sfx_block_fields = layout([u32("next_block_displacement", OFFSET), u16("packed_size", SIZE),
+    u16("block_number"), u32("uncompressed_block_size", SIZE), u32("packed_crc32", CHECKSUM), u32("header_checksum", CHECKSUM)]);
+var sxaend_lhpak_sfx_block = sxLayout(0x60840006, "lhpak_sfx_block", BE, sxaend_lhpak_sfx_block_fields);
+function sxaend_lhpak(c) {
+    var p;
+    var x = [0];
+    if (!sxaend_word(c, 20, 4, true, x) || x[0] > (0x3FFFFFFF * 4294967296 + 0xFFFFFFDF) || !sxaend_add(c, sxaend_lhpak_sfx_position, 20)) {
+        return false;
+    }
+    p = 128 + 4 * x[0];
+    for (var i = 0; i < 20000; i++) {
+        var h = [];
+        if (!sxaend_read(c, p, h, 44)) {
+            return false;
+        }
+        var total = sxaend_uint(h, 24, 4, true);
+        var done = 0;
+        var hs = 44 + 4 * (h[42] + h[43]);
+        var header = p;
+        if (!sxaend_span(c, p, hs) || !sxaend_add(c, sxaend_lhpak_sfx_member, p) || !sxaend_name(c, p + 44, 4 * h[42]) || !sxaend_text(c, sxaend_archiveend_comment, p + 44 + 4 * h[42], 4 * h[43], false)) {
+            return false;
+        }
+        for (var j = 0; j < 20000; j++) {
+            var b = [];
+            if (!sxaend_read(c, header, b, 20)) {
+                return false;
+            }
+            var step = sxaend_uint(b, 0, 4, true);
+            var packed = sxaend_uint(b, 4, 2, true);
+            var plain = sxaend_uint(b, 8, 4, true);
+            if (!plain || done > total || plain > sxU64(total - done) || !sxaend_span(c, header + hs, packed)) {
+                return false;
+            }
+            done += plain;
+            var next = header + hs + packed;
+            if (step) {
+                if (step < hs || packed > sxU64(step - hs) || !sxaend_span(c, header, step)) {
+                    return false;
+                }
+                next = header + step;
+            }
+            if (done === total) {
+                if (!step) {
+                    return true;
+                }
+                p = next;
+                break;
+            }
+            if (!step || !sxaend_add(c, sxaend_lhpak_sfx_block, next)) {
+                return false;
+            }
+            header = next;
+            hs = 20;
+            if ((j + 1) >>> 0 === 20000) {
+                return true;
+            }
+        }
+    }
+    return true;
+}
+function sx_lhpak_sfx_build(c) {
+    return sxaend_lhpak(c);
+}

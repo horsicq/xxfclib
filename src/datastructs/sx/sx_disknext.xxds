@@ -1,0 +1,137 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_disknext.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_disknext");
+include("_sx_disknext_blindwrite4");
+include("_sx_disknext_blindwrite_5_6_image");
+include("_sx_disknext_ccd");
+include("_sx_disknext_cdrdao_toc");
+include("_sx_disknext_cfd");
+include("_sx_disknext_cue");
+include("_sx_disknext_dcp_disk");
+include("_sx_disknext_dragon_cas");
+include("_sx_disknext_ecm");
+include("_sx_disknext_emt");
+include("_sx_disknext_fdcopy_cfi");
+include("_sx_disknext_gdi");
+include("_sx_disknext_jffs2_old");
+include("_sx_disknext_jvc");
+include("_sx_disknext_kryoflux_stream");
+include("_sx_disknext_ldbst");
+include("_sx_disknext_msx_cas");
+include("_sx_disknext_rsdos_fs");
+include("_sx_disknext_simh_disk");
+include("_sx_disknext_snatchit_cp2");
+include("_sx_disknext_squashfs_sqlz");
+include("_sx_disknext_svd");
+include("_sx_disknext_zx_hobeta");
+
+function fileTypes() { return ["EMT", "CUE", "RSDOS_FS", "MSX_CAS", "DRAGON_CAS", "ZX_HOBETA", "BLINDWRITE_5_6_IMAGE",
+    "JFFS2_OLD", "JVC", "KRYOFLUX_STREAM", "SQUASHFS_SQLZ", "GDI", "CCD", "CDRDAO_TOC", "FDCOPY_CFI", "SIMH_DISK",
+    "SNATCHIT_CP2", "LDBST", "SVD", "BLINDWRITE4", "CFD", "PSA_DISK", "DCP_DISK", "ECM"]; }
+
+var sx_disknext_layouts = [sxdn_emt_header, sxdn_msx_cas_binary_header, sxdn_dragon_cas_block_header,
+    sxdn_dragon_cas_file_header, sxdn_dragon_cas_block_checksum, sxdn_hobeta_header, sxdn_hobeta_code_header, sxdn_jvc_header_1,
+    sxdn_jvc_header_2, sxdn_jvc_header_3, sxdn_jvc_header_4, sxdn_jvc_header_5, sxdn_rsdos_vdk_header, sxdn_rsdos_granule,
+    sxdn_rsdos_directory_entry, sxdn_dragon_dos_geometry, sxdn_dragon_dos_file, sxdn_dragon_dos_continuation, sxdn_cfd_header,
+    sxdn_cfd_block, sxdn_cfd_repeat, sxdn_dcp_disk_header, sxdn_dcp_rdc_block, sxdn_fdcopy_track, sxdn_fdcopy_token,
+    sxdn_fdcopy_repeat, sxdn_cp2_header, sxdn_cp2_segment_header, sxdn_cp2_track, sxdn_cp2_sector, sxdn_cp2_header_checksum,
+    sxdn_cp2_segment_payload, sxdn_ecm_signature, sxdn_ecm_record_first, sxdn_ecm_record_continuation, sxdn_ecm_edc,
+    sxdn_ecm_mode1_address, sxdn_ecm_mode2_subheader, sxdn_kryoflux_oob, sxdn_kryoflux_eof, sxdn_kryoflux_stream_info,
+    sxdn_kryoflux_stream_end, sxdn_kryoflux_index, sxdn_simh_cpm_directory, sxdn_svd_version, sxdn_svd_sectors,
+    sxdn_svd_cylinders, sxdn_svd_sides, sxdn_svd_sector_size_code, sxdn_svd_write_protect, sxdn_disk_descriptor_keyword,
+    sxdn_disk_descriptor_string, sxdn_kryoflux_info_text, sxdn_blindwrite4_header, sxdn_blindwrite4_string_size,
+    sxdn_blindwrite4_track_count, sxdn_blindwrite4_extra_prefix, sxdn_blindwrite4_track, sxdn_blindwrite56_signature,
+    sxdn_blindwrite56_disc, sxdn_blindwrite56_inquiry, sxdn_blindwrite56_volume_name, sxdn_blindwrite56_lengths,
+    sxdn_blindwrite56_data_list, sxdn_blindwrite56_data_block, sxdn_blindwrite56_data_tail, sxdn_blindwrite56_session,
+    sxdn_blindwrite56_entry, sxdn_blindwrite56_cd_extra, sxdn_blindwrite56_footer, sxdn_psa_disk_header, sxdn_psa_fat_bpb,
+    sxdn_psa_fat1216_extension, sxdn_old_jffs2_common_header_le, sxdn_old_jffs2_directory_entry_le, sxdn_old_jffs2_inode_le,
+    sxdn_old_jffs2_xattr_le, sxdn_old_jffs2_xref_le, sxdn_old_jffs2_common_header_be, sxdn_old_jffs2_directory_entry_be,
+    sxdn_old_jffs2_inode_be, sxdn_old_jffs2_xattr_be, sxdn_old_jffs2_xref_be, sxdn_sqlz_squashfs2_superblock_le,
+    sxdn_sqlz_squashfs2_superblock_be, sxdn_sqlz_squashfs3_superblock_le, sxdn_sqlz_squashfs3_superblock_be,
+    sxdn_sqlz_squashfs_metadata_header_le, sxdn_sqlz_squashfs_table_index_le, sxdn_sqlz_squashfs2_fragment_index_le,
+    sxdn_sqlz_squashfs_identity_le, sxdn_sqlz_squashfs_metadata_header_be, sxdn_sqlz_squashfs_table_index_be,
+    sxdn_sqlz_squashfs2_fragment_index_be, sxdn_sqlz_squashfs_identity_be, sxdn_jvc_os9_disk_descriptor,
+    sxdn_jvc_os9_path_options, sxdn_jvc_os9_file_descriptor, sxdn_jvc_os9_segment, sxdn_jvc_os9_directory_entry,
+    sxdn_gdi_track_count, sxdn_gdi_track_number, sxdn_gdi_lba, sxdn_gdi_control, sxdn_gdi_sector_size, sxdn_gdi_filename,
+    sxdn_gdi_file_offset, sxdn_cue_track_number, sxdn_cue_index_number, sxdn_cue_position, sxdn_cue_file, sxdn_cue_mode,
+    sxdn_cue_file_type, sxdn_ldbst_trail_bytes, sxdn_toc_start, sxdn_toc_length, sxdn_toc_filename, sxdn_psa_fat32_extension,
+    sxdn_ccd_version, sxdn_ccd_version_hex, sxdn_ccd_toc_entries, sxdn_ccd_toc_entries_hex, sxdn_ccd_sessions,
+    sxdn_ccd_sessions_hex, sxdn_ccd_data_tracks_scrambled, sxdn_ccd_data_tracks_scrambled_hex, sxdn_ccd_cd_text_length,
+    sxdn_ccd_cd_text_length_hex, sxdn_ccd_pregap_mode, sxdn_ccd_pregap_mode_hex, sxdn_ccd_pregap_subchannel,
+    sxdn_ccd_pregap_subchannel_hex, sxdn_ccd_session, sxdn_ccd_session_hex, sxdn_ccd_point, sxdn_ccd_point_hex, sxdn_ccd_adr,
+    sxdn_ccd_adr_hex, sxdn_ccd_control, sxdn_ccd_control_hex, sxdn_ccd_track_number, sxdn_ccd_track_number_hex,
+    sxdn_ccd_absolute_minute, sxdn_ccd_absolute_minute_hex, sxdn_ccd_absolute_second, sxdn_ccd_absolute_second_hex,
+    sxdn_ccd_absolute_frame, sxdn_ccd_absolute_frame_hex, sxdn_ccd_absolute_lba, sxdn_ccd_absolute_lba_hex, sxdn_ccd_zero,
+    sxdn_ccd_zero_hex, sxdn_ccd_pminute, sxdn_ccd_pminute_hex, sxdn_ccd_psecond, sxdn_ccd_psecond_hex, sxdn_ccd_pframe,
+    sxdn_ccd_pframe_hex, sxdn_ccd_plba, sxdn_ccd_plba_hex, sxdn_ccd_mode, sxdn_ccd_mode_hex, sxdn_ccd_index1,
+    sxdn_ccd_index1_hex, sxdn_ldbst_cylinder, sxdn_ldbst_cylinder_hex, sxdn_ldbst_head, sxdn_ldbst_head_hex,
+    sxdn_ldbst_data_rate, sxdn_ldbst_data_rate_hex, sxdn_ldbst_gap3, sxdn_ldbst_gap3_hex, sxdn_ldbst_filler,
+    sxdn_ldbst_filler_hex, sxdn_ldbst_total_length, sxdn_ldbst_total_length_hex, sxdn_ldbst_cylinders, sxdn_ldbst_cylinders_hex,
+    sxdn_ldbst_heads, sxdn_ldbst_heads_hex, sxdn_ldbst_sectors, sxdn_ldbst_sectors_hex, sxdn_ldbst_sector_base,
+    sxdn_ldbst_sector_base_hex, sxdn_ldbst_sector_size, sxdn_ldbst_sector_size_hex, sxdn_ldbst_id_cylinder,
+    sxdn_ldbst_id_cylinder_hex, sxdn_ldbst_id_head, sxdn_ldbst_id_head_hex, sxdn_ldbst_id_sector, sxdn_ldbst_id_sector_hex,
+    sxdn_ldbst_sector_size_code, sxdn_ldbst_sector_size_code_hex, sxdn_ldbst_status1, sxdn_ldbst_status1_hex,
+    sxdn_ldbst_status2, sxdn_ldbst_status2_hex, sxdn_ldbst_copies, sxdn_ldbst_copies_hex, sxdn_ldbst_data_length,
+    sxdn_ldbst_data_length_hex, sxdn_ldbst_trail_bytes_hex, sxdn_ldbst_track_relative_offset,
+    sxdn_ldbst_track_relative_offset_hex, sxdn_ldbst_version, sxdn_ldbst_sidedness, sxdn_ldbst_complement,
+    sxdn_ldbst_recording_mode];
+
+function structs() {
+    return sxCatalog([sxdn_emt_header, sxdn_msx_cas_binary_header, sxdn_dragon_cas_block_header, sxdn_dragon_cas_file_header,
+        sxdn_dragon_cas_block_checksum, sxdn_hobeta_header, sxdn_hobeta_code_header, sxdn_jvc_header_1, sxdn_jvc_header_2,
+        sxdn_jvc_header_3, sxdn_jvc_header_4, sxdn_jvc_header_5, sxdn_rsdos_vdk_header, sxdn_rsdos_granule,
+        sxdn_rsdos_directory_entry, sxdn_dragon_dos_geometry, sxdn_dragon_dos_file, sxdn_dragon_dos_continuation,
+        sxdn_cfd_header, sxdn_cfd_block, sxdn_cfd_repeat, sxdn_dcp_disk_header, sxdn_dcp_rdc_block, sxdn_fdcopy_track,
+        sxdn_fdcopy_token, sxdn_fdcopy_repeat, sxdn_cp2_header, sxdn_cp2_segment_header, sxdn_cp2_track, sxdn_cp2_sector,
+        sxdn_cp2_header_checksum, sxdn_cp2_segment_payload, sxdn_ecm_signature, sxdn_ecm_record_first,
+        sxdn_ecm_record_continuation, sxdn_ecm_edc, sxdn_ecm_mode1_address, sxdn_ecm_mode2_subheader, sxdn_kryoflux_oob,
+        sxdn_kryoflux_eof, sxdn_kryoflux_stream_info, sxdn_kryoflux_stream_end, sxdn_kryoflux_index, sxdn_simh_cpm_directory,
+        sxdn_svd_version, sxdn_svd_sectors, sxdn_svd_cylinders, sxdn_svd_sides, sxdn_svd_sector_size_code,
+        sxdn_svd_write_protect, sxdn_disk_descriptor_keyword, sxdn_disk_descriptor_string, sxdn_kryoflux_info_text,
+        sxdn_blindwrite4_header, sxdn_blindwrite4_string_size, sxdn_blindwrite4_track_count, sxdn_blindwrite4_extra_prefix,
+        sxdn_blindwrite4_track, sxdn_blindwrite56_signature, sxdn_blindwrite56_disc, sxdn_blindwrite56_inquiry,
+        sxdn_blindwrite56_volume_name, sxdn_blindwrite56_lengths, sxdn_blindwrite56_data_list, sxdn_blindwrite56_data_block,
+        sxdn_blindwrite56_data_tail, sxdn_blindwrite56_session, sxdn_blindwrite56_entry, sxdn_blindwrite56_cd_extra,
+        sxdn_blindwrite56_footer, sxdn_psa_disk_header, sxdn_psa_fat_bpb, sxdn_psa_fat1216_extension,
+        sxdn_old_jffs2_common_header_le, sxdn_old_jffs2_directory_entry_le, sxdn_old_jffs2_inode_le, sxdn_old_jffs2_xattr_le,
+        sxdn_old_jffs2_xref_le, sxdn_old_jffs2_common_header_be, sxdn_old_jffs2_directory_entry_be, sxdn_old_jffs2_inode_be,
+        sxdn_old_jffs2_xattr_be, sxdn_old_jffs2_xref_be, sxdn_sqlz_squashfs2_superblock_le, sxdn_sqlz_squashfs2_superblock_be,
+        sxdn_sqlz_squashfs3_superblock_le, sxdn_sqlz_squashfs3_superblock_be, sxdn_sqlz_squashfs_metadata_header_le,
+        sxdn_sqlz_squashfs_table_index_le, sxdn_sqlz_squashfs2_fragment_index_le, sxdn_sqlz_squashfs_identity_le,
+        sxdn_sqlz_squashfs_metadata_header_be, sxdn_sqlz_squashfs_table_index_be, sxdn_sqlz_squashfs2_fragment_index_be,
+        sxdn_sqlz_squashfs_identity_be, sxdn_jvc_os9_disk_descriptor, sxdn_jvc_os9_path_options, sxdn_jvc_os9_file_descriptor,
+        sxdn_jvc_os9_segment, sxdn_jvc_os9_directory_entry, sxdn_gdi_track_count, sxdn_gdi_track_number, sxdn_gdi_lba,
+        sxdn_gdi_control, sxdn_gdi_sector_size, sxdn_gdi_filename, sxdn_gdi_file_offset, sxdn_cue_track_number,
+        sxdn_cue_index_number, sxdn_cue_position, sxdn_cue_file, sxdn_cue_mode, sxdn_cue_file_type, sxdn_ldbst_trail_bytes,
+        sxdn_toc_start, sxdn_toc_length, sxdn_toc_filename, sxdn_psa_fat32_extension, sxdn_ccd_version, sxdn_ccd_version_hex,
+        sxdn_ccd_toc_entries, sxdn_ccd_toc_entries_hex, sxdn_ccd_sessions, sxdn_ccd_sessions_hex,
+        sxdn_ccd_data_tracks_scrambled, sxdn_ccd_data_tracks_scrambled_hex, sxdn_ccd_cd_text_length,
+        sxdn_ccd_cd_text_length_hex, sxdn_ccd_pregap_mode, sxdn_ccd_pregap_mode_hex, sxdn_ccd_pregap_subchannel,
+        sxdn_ccd_pregap_subchannel_hex, sxdn_ccd_session, sxdn_ccd_session_hex, sxdn_ccd_point, sxdn_ccd_point_hex,
+        sxdn_ccd_adr, sxdn_ccd_adr_hex, sxdn_ccd_control, sxdn_ccd_control_hex, sxdn_ccd_track_number,
+        sxdn_ccd_track_number_hex, sxdn_ccd_absolute_minute, sxdn_ccd_absolute_minute_hex, sxdn_ccd_absolute_second,
+        sxdn_ccd_absolute_second_hex, sxdn_ccd_absolute_frame, sxdn_ccd_absolute_frame_hex, sxdn_ccd_absolute_lba,
+        sxdn_ccd_absolute_lba_hex, sxdn_ccd_zero, sxdn_ccd_zero_hex, sxdn_ccd_pminute, sxdn_ccd_pminute_hex, sxdn_ccd_psecond,
+        sxdn_ccd_psecond_hex, sxdn_ccd_pframe, sxdn_ccd_pframe_hex, sxdn_ccd_plba, sxdn_ccd_plba_hex, sxdn_ccd_mode,
+        sxdn_ccd_mode_hex, sxdn_ccd_index1, sxdn_ccd_index1_hex, sxdn_ldbst_cylinder, sxdn_ldbst_cylinder_hex, sxdn_ldbst_head,
+        sxdn_ldbst_head_hex, sxdn_ldbst_data_rate, sxdn_ldbst_data_rate_hex, sxdn_ldbst_gap3, sxdn_ldbst_gap3_hex,
+        sxdn_ldbst_filler, sxdn_ldbst_filler_hex, sxdn_ldbst_total_length, sxdn_ldbst_total_length_hex, sxdn_ldbst_cylinders,
+        sxdn_ldbst_cylinders_hex, sxdn_ldbst_heads, sxdn_ldbst_heads_hex, sxdn_ldbst_sectors, sxdn_ldbst_sectors_hex,
+        sxdn_ldbst_sector_base, sxdn_ldbst_sector_base_hex, sxdn_ldbst_sector_size, sxdn_ldbst_sector_size_hex,
+        sxdn_ldbst_id_cylinder, sxdn_ldbst_id_cylinder_hex, sxdn_ldbst_id_head, sxdn_ldbst_id_head_hex, sxdn_ldbst_id_sector,
+        sxdn_ldbst_id_sector_hex, sxdn_ldbst_sector_size_code, sxdn_ldbst_sector_size_code_hex, sxdn_ldbst_status1,
+        sxdn_ldbst_status1_hex, sxdn_ldbst_status2, sxdn_ldbst_status2_hex, sxdn_ldbst_copies, sxdn_ldbst_copies_hex,
+        sxdn_ldbst_data_length, sxdn_ldbst_data_length_hex, sxdn_ldbst_trail_bytes_hex, sxdn_ldbst_track_relative_offset,
+        sxdn_ldbst_track_relative_offset_hex, sxdn_ldbst_version, sxdn_ldbst_sidedness, sxdn_ldbst_complement,
+        sxdn_ldbst_recording_mode], sx_disknext_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_disknext_build, false);
+}

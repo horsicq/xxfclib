@@ -1,0 +1,107 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/prodos/xx_prodos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_prodos_directory_links_fields = layout([u16("previous_block"), u16("next_block")]);
+var sxrfs_prodos_directory_links = sxLayout(0x60650002, "prodos_directory_links", LE, sxrfs_prodos_directory_links_fields);
+var sxrfs_prodos_volume_header_fields = layout([u8("storage_and_name_length", FLAGS), chars("volume_name", 15, NONE),
+    field("reserved", "byte[2]", 2, RESERVED), u32("modification_packed"), u16("lowercase_flags", FLAGS),
+    u32("creation_packed"), u8("version", ID), u8("minimum_version", ID), u8("access", FLAGS), u8("entry_length", SIZE),
+    u8("entries_per_block", COUNT), u16("active_entries", COUNT), u16("bitmap_block"), u16("total_blocks", COUNT)]);
+var sxrfs_prodos_volume_header = sxLayout(0x60650003, "prodos_volume_header", LE, sxrfs_prodos_volume_header_fields);
+var sxrfs_prodos_subdirectory_header_fields = layout([u8("storage_and_name_length", FLAGS), chars("directory_name", 15, NONE),
+    u8("reserved_75", RESERVED), field("reserved", "byte[7]", 7, RESERVED), u32("creation_packed"), u8("version", ID),
+    u8("minimum_version", ID), u8("access", FLAGS), u8("entry_length", SIZE), u8("entries_per_block", COUNT),
+    u16("active_entries", COUNT), u16("parent_block"), u8("parent_entry_number"), u8("parent_entry_length", SIZE)]);
+var sxrfs_prodos_subdirectory_header = sxLayout(0x60650004, "prodos_subdirectory_header", LE, sxrfs_prodos_subdirectory_header_fields);
+var sxrfs_prodos_file_entry_fields = layout([u8("storage_and_name_length", FLAGS), chars("name", 15, NONE), u8("file_type", ID),
+    u16("key_block"), u16("blocks_used", COUNT), field("eof", "uint24", 3, SIZE), u32("creation_packed"),
+    u16("version_and_case", FLAGS), u8("access", FLAGS), u16("auxiliary_type", ID), u32("modification_packed"),
+    u16("header_block")]);
+var sxrfs_prodos_file_entry = sxLayout(0x60650005, "prodos_file_entry", LE, sxrfs_prodos_file_entry_fields);
+var sxrfs_prodos_fork_descriptor_fields = layout([u8("storage_type", ID), u16("key_block"), u16("blocks_used", COUNT),
+    field("eof", "uint24", 3, SIZE)]);
+var sxrfs_prodos_fork_descriptor = sxLayout(0x60650006, "prodos_fork_descriptor", LE, sxrfs_prodos_fork_descriptor_fields);
+var sxrfs_prodos_index_low_fields = layout([field("block_number_low_bytes", "byte[256]", 256)]);
+var sxrfs_prodos_index_low = sxLayout(0x60650007, "prodos_index_low", LE, sxrfs_prodos_index_low_fields);
+var sxrfs_prodos_index_high_fields = layout([field("block_number_high_bytes", "byte[256]", 256)]);
+var sxrfs_prodos_index_high = sxLayout(0x60650008, "prodos_index_high", LE, sxrfs_prodos_index_high_fields);
+function sxrfs_pd_header(h) {
+    return !!(!sxrfs16(h, 0, 0) && h[4] >> 4 === 15 && h[4] & 15 && h[35] === 39 && h[36] === 13 && sxrfs16(h, 41, 0) >= 5);
+}
+function sxrfs_prodos(c) {
+    var h = [];
+    var dos = false;
+    if (!sxrfs_read(c, 1024, h, 0, 512)) {
+        return false;
+    }
+    if (!sxrfs_pd_header(h)) {
+        dos = true;
+        if (c.size < 143360 || !sxrfs_apple_read(c, 1024, h, 512, true) || !sxrfs_pd_header(h)) {
+            return false;
+        }
+    }
+    var blocks = sxrfs16(h, 41, 0);
+    var seen = sxZeros(blocks);
+    var queue = sxZeros(Math.floor((blocks * 2) / 2));
+    if (seen === null || queue === null) {
+        return false;
+    }
+    var n = 1;
+    var i = 0;
+    queue[0] = 2;
+    seen[2] = 1;
+    var ok = true;
+    while (i < n && c.count < 24000) {
+        var b = queue[i++];
+        var p = b * 512;
+        if (!sxrfs_apple_read(c, p, h, 512, dos)) {
+            break;
+        }
+        if (!sxrfs_apple_put(c, sxrfs_prodos_directory_links, p, dos)) {
+            ok = false;
+            break;
+        }
+        var next = sxrfs16(h, 2, 0);
+        if (next >= 3 && next < blocks && !seen[next]) {
+            seen[next] = 1;
+            queue[n++] = next & 0xFFFF;
+        }
+        for (var j = 0; j < 13; j++) {
+            var e = h, e_o = 4 + ((j * 39) >>> 0);
+            var t = e[e_o] >> 4;
+            var at = p + 4 + ((j * 39) >>> 0);
+            var l = t === 15 ? sxrfs_prodos_volume_header : t === 14 ? sxrfs_prodos_subdirectory_header : t ? sxrfs_prodos_file_entry : null;
+            if (l === null) {
+                continue;
+            }
+            if (!sxrfs_apple_put(c, l, at, dos)) {
+                ok = false;
+                break;
+            }
+            var key = sxrfs16(e, e_o + 17, 0);
+            if (t === 13 && key >= 3 && key < blocks && !seen[key]) {
+                seen[key] = 1;
+                queue[n++] = key & 0xFFFF;
+            }
+            if ((t === 2 || t === 3) && key < blocks && key >= 3) {
+                if (!sxrfs_apple_put(c, sxrfs_prodos_index_low, key * 512, dos) || !sxrfs_apple_put(c, sxrfs_prodos_index_high, key * 512 + 256, dos)) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (t === 5 && key >= 3 && key < blocks) {
+                if (!sxrfs_apple_put(c, sxrfs_prodos_fork_descriptor, key * 512, dos) || !sxrfs_apple_put(c, sxrfs_prodos_fork_descriptor, key * 512 + 256, dos)) {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_prodos_build(c) {
+    return sxrfs_prodos(c);
+}

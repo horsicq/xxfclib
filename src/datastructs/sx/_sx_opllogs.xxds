@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_opllogs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxop37_sng_header_fields = layout([chars("signature", 4, SIGNATURE), u16("data_length", SIZE), u16("start_offset", OFFSET),
+    u16("loop_offset", OFFSET), u8("initial_delay"), u8("compressed_delays", FLAGS)]);
+var sxop37_sng_header = sxLayout(0x60AE0001, "obsm_sng_header", LE, sxop37_sng_header_fields);
+var sxop37_sng_event_fields = layout([u8("value"), u8("register", ID)]);
+var sxop37_sng_event = sxLayout(0x60AE0002, "obsm_sng_event", LE, sxop37_sng_event_fields);
+function sx_opllogs_supports(t) {
+    return t === "DIE_MUSIC_VALTONEN_SNGPLAYER";
+}
+function sxop37_raw(c) {
+    var v = [0];
+    if (c === null || c.count || c.failed || c.size <= 0 || !sx_read(c, 0, v, 1)) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}
+function sx_opllogs_build(c) {
+    var h = [];
+    if (c === null || c.f === null || !sx_opllogs_supports(c.f.file_type)) {
+        return false;
+    }
+    if (c.size < 12) {
+        return sxop37_raw(c);
+    }
+    if (!sx_read(c, 0, h, 12)) {
+        return false;
+    }
+    if (sxMemcmp(h, "ObsM", 4)) {
+        return sxop37_raw(c);
+    }
+    var length = h[4] | h[5] << 8;
+    if (!sx_add(c, sxop37_sng_header, 0, 12)) {
+        return false;
+    }
+    var end = 12;
+    if (length && !(length & 1) && length <= c.size - 12) {
+        if (!sx_table(c, sxop37_sng_event, 12, 2, Math.floor(length / 2))) {
+            return false;
+        }
+        end += length;
+    }
+    return sx_raw(c, end, c.size - end) && !c.failed;
+}
+function sx_opllogs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60AE0001 || id > 0x60AE0002) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60AE0001) {
+        if (r.name === "signature") {
+            s = "ObsM identifier used by the original SNG reader.";
+        } else if (r.name === "data_length") {
+            s = "Stored byte length of the two-byte value/register stream, excluding this 12-byte header.";
+        } else if (r.name === "start_offset" || r.name === "loop_offset") {
+            s = "Byte offset relative to the event stream beginning after the 12-byte header. The player divides the stored word by two; no relocated address is substituted.";
+        } else if (r.name === "initial_delay") {
+            s = "Initial countdown for compressed-delay playback at the player's 70 Hz update rate; uncompressed playback ignores this initial countdown.";
+        } else if (r.name === "compressed_delays") {
+            s = "0=UNCOMPRESSED; nonzero=COMPRESSED_DELAYS. Both forms store value/register pairs; this flag changes delay handling.";
+        }
+    } else if (r.name === "register") {
+        s = "OPL2 register address; zero marks a timing record whose value controls the player countdown.";
+    } else if (r.name === "value") {
+        s = "Stored OPL register value or countdown byte for a zero-register timing record.";
+    }
+    return s === null || sxSetComment(r, s);
+}

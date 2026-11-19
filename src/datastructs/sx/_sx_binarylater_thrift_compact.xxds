@@ -1,0 +1,115 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/thrift_compact/xx_thrift_compact_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_thrift_field_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_thrift_field_tag = sxLayout(0x6035003B, "thrift_field_tag", LE, sxbl_thrift_field_tag_fields);
+var sxbl_thrift_collection_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_thrift_collection_tag = sxLayout(0x6035003C, "thrift_collection_tag", LE, sxbl_thrift_collection_tag_fields);
+var sxbl_thrift_map_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_thrift_map_tag = sxLayout(0x6035003D, "thrift_map_tag", LE, sxbl_thrift_map_tag_fields);
+var sxbl_thrift_message_fields = layout([u8("protocol", SIGNATURE), u8("version_and_message_type", FLAGS)]);
+var sxbl_thrift_message = sxLayout(0x603500D7, "thrift_message", LE, sxbl_thrift_message_fields);
+var sxbl_thrift_uuid_fields = layout([bytes("uuid", 16)]);
+var sxbl_thrift_uuid = sxLayout(0x603500D8, "thrift_uuid", LE, sxbl_thrift_uuid_fields);
+function sxbl_thrift_struct(c, p, end, depth) {
+    for (var i = 0; i < 256; i++) {
+        var t = [0];
+        var id = [0];
+        if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_thrift_field_tag)) {
+            return false;
+        }
+        if (!t[0]) {
+            return true;
+        }
+        if (!(t[0] >> 4) && !sxbl_var(c, p, end, 6, id)) {
+            return false;
+        }
+        if (!sxbl_thrift_value(c, p, end, t[0] & 15, (depth + 1) >>> 0, true)) {
+            return false;
+        }
+    }
+    return false;
+}
+function sxbl_thrift_value(c, p, end, kind, depth, field) {
+    var n = [0];
+    var v = [0];
+    if (depth > 32) {
+        return false;
+    }
+    if (kind === 1 || kind === 2) {
+        return field || sxbl_numeric(c, p, end, 1, false, false);
+    }
+    if (kind === 3) {
+        return sxbl_numeric(c, p, end, 1, true, false);
+    }
+    if (kind >= 4 && kind <= 6) {
+        return sxbl_var(c, p, end, 2, v);
+    }
+    if (kind === 7) {
+        return sxbl_float(c, p, end, 8, false);
+    }
+    if (kind === 13) {
+        return sxbl_emit(c, p, end, sxbl_thrift_uuid);
+    }
+    if (kind === 8) {
+        return sxbl_var(c, p, end, 4, n) && sxbl_skip(c, p, end, n[0]);
+    }
+    if (kind === 12) {
+        return sxbl_thrift_struct(c, p, end, depth);
+    }
+    var t = [0];
+    if (kind === 9 || kind === 10) {
+        if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_thrift_collection_tag)) {
+            return false;
+        }
+        n[0] = t[0] >> 4;
+        if (n[0] === 15 && !sxbl_var(c, p, end, 5, n)) {
+            return false;
+        }
+        if (n[0] > 20000) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxbl_thrift_value(c, p, end, t[0] & 15, (depth + 1) >>> 0, false)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (kind === 11) {
+        if (!sxbl_var(c, p, end, 5, n) || n[0] > 20000) {
+            return false;
+        }
+        if (!n[0]) {
+            return true;
+        }
+        if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_thrift_map_tag)) {
+            return false;
+        }
+        for (i = 0; i < n[0]; i++) {
+            if (!sxbl_thrift_value(c, p, end, t[0] >> 4, (depth + 1) >>> 0, false) || !sxbl_thrift_value(c, p, end, t[0] & 15, (depth + 1) >>> 0, false)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+function sxbl_thrift(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    for (var i = 0; p[0] < end && i < 256; i++) {
+        var v = [0];
+        var n = [0];
+        if (!sxbl_emit(c, p, end, sxbl_thrift_message) || !sxbl_var(c, p, end, 3, v) || !sxbl_var(c, p, end, 4, n) || !sxbl_skip(c, p, end, n[0]) || !sxbl_thrift_struct(c, p, end, 0)) {
+            return false;
+        }
+    }
+    return p[0] === end;
+}
+function sx_thrift_compact_build(c) {
+    return sxbl_thrift(c);
+}

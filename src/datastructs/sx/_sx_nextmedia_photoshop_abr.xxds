@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/photoshop_abr/xx_photoshop_abr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_abr_header_fields = layout([i16("version", ID), i16("brush_count", COUNT)]);
+var sxnx_abr_header = sxLayout(0x60320027, "abr_header", BE, sxnx_abr_header_fields);
+var sxnx_abr_record_fields = layout([i16("brush_type", ID), i32("data_size", SIZE)]);
+var sxnx_abr_record = sxLayout(0x60320028, "abr_record", BE, sxnx_abr_record_fields);
+var sxnx_abr_sample_prefix_fields = layout([i32("misc"), i16("spacing")]);
+var sxnx_abr_sample_prefix = sxLayout(0x60320029, "abr_sample_prefix", BE, sxnx_abr_sample_prefix_fields);
+var sxnx_abr_name_header_fields = layout([u32("utf16_units", COUNT)]);
+var sxnx_abr_name_header = sxLayout(0x6032002A, "abr_name_header", BE, sxnx_abr_name_header_fields);
+var sxnx_abr_sample_geometry_fields = layout([u8("antialias", FLAGS), i16("bounds_top"), i16("bounds_left"),
+    i16("bounds_bottom"), i16("bounds_right"), i32("top"), i32("left"), i32("bottom"), i32("right"), i16("depth"),
+    u8("compression", ID)]);
+var sxnx_abr_sample_geometry = sxLayout(0x6032002B, "abr_sample_geometry", BE, sxnx_abr_sample_geometry_fields);
+var sxnx_abr_row_size_fields = layout([u16("packed_size", SIZE)]);
+var sxnx_abr_row_size = sxLayout(0x6032002C, "abr_row_size", BE, sxnx_abr_row_size_fields);
+function sxnx_abr(v) {
+    if (!sxnx_row(v, sxnx_abr_header, 0, v.n)) {
+        return false;
+    }
+    var version = sxnx_u16(v.p, 0, true);
+    var count = sxnx_u16(v.p, 2, true);
+    if (count > 1024) {
+        return false;
+    }
+    var p = 4;
+    for (var i = 0; i < count; i++) {
+        if (!sxnx_row(v, sxnx_abr_record, p, v.n)) {
+            return false;
+        }
+        var n = sxnx_u32(v.p, p + 2, true);
+        p += 6;
+        if (!sxnx_need(v, p, n, v.n)) {
+            return false;
+        }
+        var end = p + n;
+        if (!sxnx_row(v, sxnx_abr_sample_prefix, p, end)) {
+            return false;
+        }
+        p += 6;
+        if (version === 2) {
+            if (!sxnx_row(v, sxnx_abr_name_header, p, end)) {
+                return false;
+            }
+            var units = sxnx_u32(v.p, p, true);
+            p += 4;
+            if (!sxnx_need(v, p, units * 2, end)) {
+                return false;
+            }
+            p += (units * 2) >>> 0;
+        }
+        if (!sxnx_row(v, sxnx_abr_sample_geometry, p, end)) {
+            return false;
+        }
+        var top = sxnx_u32(v.p, p + 9, true) | 0;
+        var bottom = sxnx_u32(v.p, p + 17, true) | 0;
+        var compression = v.p[p + 27];
+        p += 28;
+        if (bottom < top) {
+            return false;
+        }
+        if (compression === 1 && !sxnx_table(v, sxnx_abr_row_size, p, (bottom - top < 0 ? bottom - top + SX_U64_MAX : bottom - top), end)) {
+            return false;
+        }
+        p = end;
+    }
+    return p === v.n;
+}
+function sx_photoshop_abr_build(v) {
+    return sxnx_abr(v);
+}

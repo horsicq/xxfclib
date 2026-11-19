@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/tga/xx_tga_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_tga_footer_fields = layout([u32("extension_area_offset", OFFSET), u32("developer_directory_offset", OFFSET),
+    chars("signature", 18, SIGNATURE)]);
+var sxm_tga_footer = sxLayout(0x60060002, "tga_footer", LE, sxm_tga_footer_fields);
+function sx_tga_build(c) {
+    var footer = [];
+    if (c.size < 44 || !sx_read(c, c.size - 26, footer, 26) || sxMemcmpAt(footer, 8, "TRUEVISION-XFILE.\x00", 0, 18)) {
+        return false;
+    }
+    return sx_add(c, sxm_tga_header, 0, 18) && sxm_raw(c, 18, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 44)) && sx_add(c, sxm_tga_footer, c.size - 26, 26);
+}

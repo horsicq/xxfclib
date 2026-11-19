@@ -1,0 +1,1686 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveresidual.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_archiveresidual_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60920000 || id >= 0x60930000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60920001:
+        text = "Signature is clear. Bytes4..59 are seven encrypted DES header blocks and cannot be split into plaintext numeric fields. Nonzero final8 bytes wrap a user file key under a fixed DES key; zero selects built-in key candidates. Stored ciphertext is retained; no password or integrity claim.";
+        break;
+    case 0x60920002:
+        text = "The first decoded byte is physically stored at offset2 and initializes the adaptive Huffman tree. No stored output length or checksum exists.";
+        break;
+    case 0x60920003:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920004:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920005:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920006:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920007:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920008:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920009:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092000A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092000B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092000C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092000D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092000E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092000F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920010:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920011:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920012:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920013:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920014:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920015:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920016:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920017:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920018:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920019:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092001A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092001B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092001C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092001D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092001E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092001F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920020:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920021:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920022:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920023:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920024:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920025:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920026:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920027:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920028:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920029:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092002A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092002B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092002C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092002D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092002E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092002F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920030:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920031:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920032:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920033:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920034:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920035:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920036:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920037:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920038:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920039:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092003A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092003B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092003C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092003D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092003E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092003F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920040:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920041:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920042:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920043:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920044:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920045:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920046:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920047:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920048:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920049:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092004A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092004B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092004C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092004D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092004E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092004F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920050:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920051:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920052:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920053:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920054:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920055:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920056:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920057:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920058:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920059:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092005A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092005B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092005C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092005D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092005E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092005F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920060:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920061:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920062:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920063:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920064:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920065:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920066:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920067:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920068:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920069:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092006A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092006B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092006C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092006D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092006E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092006F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920070:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920071:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920072:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920073:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920074:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920075:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920076:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920077:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920078:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920079:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092007A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092007B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092007C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092007D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092007E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092007F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920080:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920081:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920082:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920083:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920084:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920085:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920086:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920087:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920088:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920089:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092008A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092008B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092008C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092008D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092008E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092008F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920090:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920091:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920092:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920093:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920094:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920095:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920096:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920097:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920098:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920099:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092009A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092009B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092009C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092009D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092009E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092009F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200A9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200AA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200AB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200AC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200AD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200AE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200AF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200B9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200BA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200BB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200BC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200BD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200BE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200BF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200C9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200CA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200CB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200CC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200CD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200CE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200CF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200D9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200DA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200DB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200DC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200DD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200DE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200DF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200E9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200EA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200EB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200EC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200ED:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200EE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200EF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200F9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200FA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200FB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200FC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200FD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200FE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609200FF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920100:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920101:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920102:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920103:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920104:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920105:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920106:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920107:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920108:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920109:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092010A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092010B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092010C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092010D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092010E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092010F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920110:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920111:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920112:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920113:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920114:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920115:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920116:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920117:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920118:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920119:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092011A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092011B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092011C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092011D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092011E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092011F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920120:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920121:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920122:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920123:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920124:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920125:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920126:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920127:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920128:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920129:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092012A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092012B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092012C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092012D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092012E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092012F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920130:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920131:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920132:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920133:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920134:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920135:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920136:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920137:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920138:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920139:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092013A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092013B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092013C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092013D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092013E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092013F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920140:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920141:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920142:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920143:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920144:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920145:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920146:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920147:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920148:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920149:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092014A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092014B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092014C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092014D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092014E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092014F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920150:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920151:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920152:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920153:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920154:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920155:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920156:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920157:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920158:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920159:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092015A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092015B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092015C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092015D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092015E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092015F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920160:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920161:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920162:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920163:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920164:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920165:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920166:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920167:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920168:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920169:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092016A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092016B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092016C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092016D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092016E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092016F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920170:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920171:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920172:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920173:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920174:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920175:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920176:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920177:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920178:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920179:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092017A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092017B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092017C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092017D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092017E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092017F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920180:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920181:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920182:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920183:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920184:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920185:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920186:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920187:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920188:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920189:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092018A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092018B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092018C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092018D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092018E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092018F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920190:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920191:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920192:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920193:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920194:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920195:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920196:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920197:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920198:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920199:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092019A:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092019B:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092019C:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092019D:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092019E:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x6092019F:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201A9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201AA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201AB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201AC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201AD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201AE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201AF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201B9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201BA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201BB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201BC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201BD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201BE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201BF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201C9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201CA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201CB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201CC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201CD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201CE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201CF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201D9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201DA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201DB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201DC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201DD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201DE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201DF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201E9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201EA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201EB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201EC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201ED:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201EE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201EF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F0:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F1:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F2:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F3:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F4:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F5:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F6:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F7:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F8:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201F9:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201FA:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201FB:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201FC:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201FD:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201FE:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x609201FF:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920200:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920201:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920202:
+        text = "Physical adaptive Huffman code bits, not the decoded byte/symbol. Following an ESC code, a new literal is stored in8 MSB-first bits. EOF is an in-band adaptive code; trailing bits are raw, not declared padding.";
+        break;
+    case 0x60920203:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x60920204:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x60920205:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x60920206:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x60920207:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x60920208:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x60920209:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x6092020A:
+        text = "Eight physical MSB-first literal bits after an adaptive ESC code. This introduces a byte not previously seen.";
+        break;
+    case 0x6092020B:
+        text = "Clear TARX1 transport signature. Encrypted TAR byte0 is stored at physical byte4; the cipher preserves all subsequent byte positions.";
+        break;
+    case 0x6092020C:
+        text = "Stored ciphertext bytes at a native-authenticated decoded TAR member header. TARX1 preserves byte boundaries but values here remain encoded, including size, timestamp and checksum. The common257-byte TAR prefix is covered; variant-specific extensions and remaining header bytes stay raw. Decoded archive offsets gain the four-byte clear transport prefix.";
+        break;
+    case 0x6092020D:
+        text = "PAQ8L level0 physical header. The optional standalone helper currently accepts only level0 DEFAULT stored frames; other PAQ8 revisions/levels/modes remain unsupported by that helper.";
+        break;
+    case 0x6092020E:
+        text = "Decimal decoded member byte length in the clear PAQ8 directory. The corresponding payload is part of the solid body, not located at this text position.";
+        break;
+    case 0x6092020F:
+        text = "Physical clear directory name, excluding the preceding TAB and following CRLF. No file is extracted by this schema.";
+        break;
+    case 0x60920212:
+        text = "Physical byte0x1A ends the clear member directory; it is not part of any decoded member.";
+        break;
+    case 0x60920213:
+        text = "Level0 DEFAULT type0 frame; four-byte big-endian length counts following untransformed bytes. Entropy-coded and EXE/JPEG preprocessing variants are not interpreted here.";
+        break;
+    case 0x60920215:
+        text = "GRZipII stored block fields. Mode-1/parameter0 stores bytes verbatim; transform_parameter is written zero in that mode. Other modes use these parameter words for LZP/filter/sorting state. CRC values are stored metadata; this schema does not claim independent integrity verification.";
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxarfinal_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxarfinal_read(c, p, b, n) {
+    return sxarfinal_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxarfinal_num(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxarfinal_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+}
+function sxarfinal_put(c, l, p) {
+    var n = sxarfinal_width(l);
+    return !!(c.count < 20000 && n && sxarfinal_span(c, p, n) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n)));
+}
+function sxarfinal_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxarfinal_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxarfinal_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < 0 || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + z > end) {
+            end = p + z;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxarfinal_order, true);
+    return !c.failed;
+}
+function sx_archiveresidual_supports(t) {
+    switch (t) {
+    case "PAQ8":
+    case "GRZIP":
+    case "TARX1":
+    case "PCSECURE":
+    case "UNIX_COMPACT":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archiveresidual_build(c) {
+    if (c.f.file_type === "PAQ8") {
+        return sx_paq8_build(c);
+    }
+    if (c.f.file_type === "GRZIP") {
+        return sx_grzip_build(c);
+    }
+    if (c.f.file_type === "TARX1") {
+        return sx_tarx1_build(c);
+    }
+    if (c.f.file_type === "PCSECURE") {
+        return sx_pcsecure_build(c);
+    }
+    if (c.f.file_type === "UNIX_COMPACT") {
+        return sx_unixcompact_build(c);
+    }
+    return false;
+}

@@ -1,0 +1,206 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/mdl_molfile/xx_mdl_molfile_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_mol_program_fields = layout([field("mol_program", "char", 0, STRING)]);
+var sxsa_mol_program = sxLayout(0x60510080, "science_mol_program", LE, sxsa_mol_program_fields);
+var sxsa_mol_comment_fields = layout([field("mol_comment", "char", 0, STRING)]);
+var sxsa_mol_comment = sxLayout(0x60510081, "science_mol_comment", LE, sxsa_mol_comment_fields);
+var sxsa_mol_version_fields = layout([field("mol_version", "char", 0, STRING)]);
+var sxsa_mol_version = sxLayout(0x60510082, "science_mol_version", LE, sxsa_mol_version_fields);
+var sxsa_mol_atom_list_count_fields = layout([field("mol_atom_list_count", "ascii_signed", 0)]);
+var sxsa_mol_atom_list_count = sxLayout(0x60510083, "science_mol_atom_list_count", LE, sxsa_mol_atom_list_count_fields);
+var sxsa_mol_obsolete_count_fields = layout([field("mol_obsolete_count", "ascii_signed", 0)]);
+var sxsa_mol_obsolete_count = sxLayout(0x60510084, "science_mol_obsolete_count", LE, sxsa_mol_obsolete_count_fields);
+var sxsa_mol_chiral_flag_fields = layout([field("mol_chiral_flag", "ascii_signed", 0)]);
+var sxsa_mol_chiral_flag = sxLayout(0x60510085, "science_mol_chiral_flag", LE, sxsa_mol_chiral_flag_fields);
+var sxsa_mol_stext_count_fields = layout([field("mol_stext_count", "ascii_signed", 0)]);
+var sxsa_mol_stext_count = sxLayout(0x60510086, "science_mol_stext_count", LE, sxsa_mol_stext_count_fields);
+var sxsa_mol_obsolete_18_fields = layout([field("mol_obsolete_18", "ascii_signed", 0)]);
+var sxsa_mol_obsolete_18 = sxLayout(0x60510087, "science_mol_obsolete_18", LE, sxsa_mol_obsolete_18_fields);
+var sxsa_mol_obsolete_21_fields = layout([field("mol_obsolete_21", "ascii_signed", 0)]);
+var sxsa_mol_obsolete_21 = sxLayout(0x60510088, "science_mol_obsolete_21", LE, sxsa_mol_obsolete_21_fields);
+var sxsa_mol_obsolete_24_fields = layout([field("mol_obsolete_24", "ascii_signed", 0)]);
+var sxsa_mol_obsolete_24 = sxLayout(0x60510089, "science_mol_obsolete_24", LE, sxsa_mol_obsolete_24_fields);
+var sxsa_mol_obsolete_27_fields = layout([field("mol_obsolete_27", "ascii_signed", 0)]);
+var sxsa_mol_obsolete_27 = sxLayout(0x6051008A, "science_mol_obsolete_27", LE, sxsa_mol_obsolete_27_fields);
+var sxsa_mol_property_count_fields = layout([field("mol_property_count", "ascii_signed", 0)]);
+var sxsa_mol_property_count = sxLayout(0x6051008B, "science_mol_property_count", LE, sxsa_mol_property_count_fields);
+var sxsa_mol_x_fields = layout([field("mol_x", "ascii_real", 0)]);
+var sxsa_mol_x = sxLayout(0x6051008C, "science_mol_x", LE, sxsa_mol_x_fields);
+var sxsa_mol_y_fields = layout([field("mol_y", "ascii_real", 0)]);
+var sxsa_mol_y = sxLayout(0x6051008D, "science_mol_y", LE, sxsa_mol_y_fields);
+var sxsa_mol_z_fields = layout([field("mol_z", "ascii_real", 0)]);
+var sxsa_mol_z = sxLayout(0x6051008E, "science_mol_z", LE, sxsa_mol_z_fields);
+var sxsa_mol_mass_difference_fields = layout([field("mol_mass_difference", "ascii_signed", 0)]);
+var sxsa_mol_mass_difference = sxLayout(0x6051008F, "science_mol_mass_difference", LE, sxsa_mol_mass_difference_fields);
+var sxsa_mol_charge_code_fields = layout([field("mol_charge_code", "ascii_signed", 0)]);
+var sxsa_mol_charge_code = sxLayout(0x60510090, "science_mol_charge_code", LE, sxsa_mol_charge_code_fields);
+var sxsa_mol_stereo_parity_fields = layout([field("mol_stereo_parity", "ascii_signed", 0)]);
+var sxsa_mol_stereo_parity = sxLayout(0x60510091, "science_mol_stereo_parity", LE, sxsa_mol_stereo_parity_fields);
+var sxsa_mol_hydrogen_count_fields = layout([field("mol_hydrogen_count", "ascii_signed", 0)]);
+var sxsa_mol_hydrogen_count = sxLayout(0x60510092, "science_mol_hydrogen_count", LE, sxsa_mol_hydrogen_count_fields);
+var sxsa_mol_stereo_care_fields = layout([field("mol_stereo_care", "ascii_signed", 0)]);
+var sxsa_mol_stereo_care = sxLayout(0x60510093, "science_mol_stereo_care", LE, sxsa_mol_stereo_care_fields);
+var sxsa_mol_valence_fields = layout([field("mol_valence", "ascii_signed", 0)]);
+var sxsa_mol_valence = sxLayout(0x60510094, "science_mol_valence", LE, sxsa_mol_valence_fields);
+var sxsa_mol_h0_designator_fields = layout([field("mol_h0_designator", "ascii_signed", 0)]);
+var sxsa_mol_h0_designator = sxLayout(0x60510095, "science_mol_h0_designator", LE, sxsa_mol_h0_designator_fields);
+var sxsa_mol_unused_1_fields = layout([field("mol_unused_1", "ascii_signed", 0)]);
+var sxsa_mol_unused_1 = sxLayout(0x60510096, "science_mol_unused_1", LE, sxsa_mol_unused_1_fields);
+var sxsa_mol_unused_2_fields = layout([field("mol_unused_2", "ascii_signed", 0)]);
+var sxsa_mol_unused_2 = sxLayout(0x60510097, "science_mol_unused_2", LE, sxsa_mol_unused_2_fields);
+var sxsa_mol_mapping_number_fields = layout([field("mol_mapping_number", "ascii_signed", 0)]);
+var sxsa_mol_mapping_number = sxLayout(0x60510098, "science_mol_mapping_number", LE, sxsa_mol_mapping_number_fields);
+var sxsa_mol_inversion_fields = layout([field("mol_inversion", "ascii_signed", 0)]);
+var sxsa_mol_inversion = sxLayout(0x60510099, "science_mol_inversion", LE, sxsa_mol_inversion_fields);
+var sxsa_mol_exact_change_fields = layout([field("mol_exact_change", "ascii_signed", 0)]);
+var sxsa_mol_exact_change = sxLayout(0x6051009A, "science_mol_exact_change", LE, sxsa_mol_exact_change_fields);
+var sxsa_mol_bond_atom_1_fields = layout([field("mol_bond_atom_1", "ascii_signed", 0)]);
+var sxsa_mol_bond_atom_1 = sxLayout(0x6051009B, "science_mol_bond_atom_1", LE, sxsa_mol_bond_atom_1_fields);
+var sxsa_mol_bond_atom_2_fields = layout([field("mol_bond_atom_2", "ascii_signed", 0)]);
+var sxsa_mol_bond_atom_2 = sxLayout(0x6051009C, "science_mol_bond_atom_2", LE, sxsa_mol_bond_atom_2_fields);
+var sxsa_mol_bond_type_fields = layout([field("mol_bond_type", "ascii_signed", 0)]);
+var sxsa_mol_bond_type = sxLayout(0x6051009D, "science_mol_bond_type", LE, sxsa_mol_bond_type_fields);
+var sxsa_mol_bond_stereo_fields = layout([field("mol_bond_stereo", "ascii_signed", 0)]);
+var sxsa_mol_bond_stereo = sxLayout(0x6051009E, "science_mol_bond_stereo", LE, sxsa_mol_bond_stereo_fields);
+var sxsa_mol_bond_unused_fields = layout([field("mol_bond_unused", "ascii_signed", 0)]);
+var sxsa_mol_bond_unused = sxLayout(0x6051009F, "science_mol_bond_unused", LE, sxsa_mol_bond_unused_fields);
+var sxsa_mol_bond_topology_fields = layout([field("mol_bond_topology", "ascii_signed", 0)]);
+var sxsa_mol_bond_topology = sxLayout(0x605100A0, "science_mol_bond_topology", LE, sxsa_mol_bond_topology_fields);
+var sxsa_mol_bond_reaction_fields = layout([field("mol_bond_reaction", "ascii_signed", 0)]);
+var sxsa_mol_bond_reaction = sxLayout(0x605100A1, "science_mol_bond_reaction", LE, sxsa_mol_bond_reaction_fields);
+var sxsa_mol_property_fields = layout([field("mol_property", "char", 0, STRING)]);
+var sxsa_mol_property = sxLayout(0x605100A2, "science_mol_property", LE, sxsa_mol_property_fields);
+var sxsa_mol_property_atom_fields = layout([field("mol_property_atom", "ascii_signed", 0)]);
+var sxsa_mol_property_atom = sxLayout(0x605100A3, "science_mol_property_atom", LE, sxsa_mol_property_atom_fields);
+var sxsa_mol_property_value_fields = layout([field("mol_property_value", "ascii_signed", 0)]);
+var sxsa_mol_property_value = sxLayout(0x605100A4, "science_mol_property_value", LE, sxsa_mol_property_value_fields);
+function sxsa_mol(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(20, sxNew_sxsa_token);
+    var atoms = [0];
+    var bonds = [0];
+    for (var i = 0; i < 3; i++) {
+        if (!sxsa_line(q, line)) {
+            return false;
+        }
+        if (!sxsa_emit(q, i === 0 ? sxsa_title : i === 1 ? sxsa_mol_program : sxsa_mol_comment, sxCopy_sxsa_token(null, line))) {
+            return false;
+        }
+    }
+    if (!sxsa_line(q, line) || line.z < 39 || !sxsa_number(q, sxCopy_sxsa_token(null, { a: line.a, z: 3 }), atoms) || !sxsa_number(q, sxCopy_sxsa_token(null, { a: line.a + 3, z: 3 }), bonds)) {
+        return false;
+    }
+    var counts = [sxsa_atom_count, sxsa_bond_count, sxsa_mol_atom_list_count, sxsa_mol_obsolete_count, sxsa_mol_chiral_flag, sxsa_mol_stext_count, sxsa_mol_obsolete_18, sxsa_mol_obsolete_21, sxsa_mol_obsolete_24, sxsa_mol_obsolete_27, sxsa_mol_property_count];
+    for (i = 0; i < 11; i++) {
+        if (!sxsa_column(q, counts[i], sxCopy_sxsa_token(null, line), (3 * i) >>> 0, 3)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsa_column(q, sxsa_mol_version, sxCopy_sxsa_token(null, line), 34, 5)) {
+            return false;
+        }
+    }
+    var atom = [sxsa_mol_charge_code, sxsa_mol_stereo_parity, sxsa_mol_hydrogen_count, sxsa_mol_stereo_care, sxsa_mol_valence, sxsa_mol_h0_designator, sxsa_mol_unused_1, sxsa_mol_unused_2, sxsa_mol_mapping_number, sxsa_mol_inversion, sxsa_mol_exact_change];
+    for (i = 0; i < atoms[0]; i++) {
+        if (!sxsa_line(q, line)) {
+            return false;
+        }
+        {
+            if (!sxsa_column(q, sxsa_mol_x, sxCopy_sxsa_token(null, line), 0, 10)) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_column(q, sxsa_mol_y, sxCopy_sxsa_token(null, line), 10, 10)) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_column(q, sxsa_mol_z, sxCopy_sxsa_token(null, line), 20, 10)) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_column(q, sxsa_element, sxCopy_sxsa_token(null, line), 31, 3)) {
+                return false;
+            }
+        }
+        if (line.z >= 36) {
+            {
+                if (!sxsa_column(q, sxsa_mol_mass_difference, sxCopy_sxsa_token(null, line), 34, 2)) {
+                    return false;
+                }
+            }
+        }
+        for (var j = 0; j < 11 && (39 + ((3 * j) >>> 0)) >>> 0 <= (line.z < 0 ? line.z + SX_U64_MAX : line.z); j++) {
+            if (!sxsa_column(q, atom[j], sxCopy_sxsa_token(null, line), (36 + ((3 * j) >>> 0)) >>> 0, 3)) {
+                return false;
+            }
+        }
+        if (q.c.count >= 24000) {
+            return true;
+        }
+    }
+    var bond = [sxsa_mol_bond_atom_1, sxsa_mol_bond_atom_2, sxsa_mol_bond_type, sxsa_mol_bond_stereo, sxsa_mol_bond_unused, sxsa_mol_bond_topology, sxsa_mol_bond_reaction];
+    for (i = 0; i < bonds[0]; i++) {
+        if (!sxsa_line(q, line)) {
+            return false;
+        }
+        for (j = 0; j < 7 && (3 + ((3 * j) >>> 0)) >>> 0 <= (line.z < 0 ? line.z + SX_U64_MAX : line.z); j++) {
+            if (!sxsa_column(q, bond[j], sxCopy_sxsa_token(null, line), (3 * j) >>> 0, 3)) {
+                return false;
+            }
+        }
+    }
+    while (sxsa_line(q, line)) {
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 20, false);
+        if (!n) {
+            continue;
+        }
+        if (n < 2) {
+            return false;
+        }
+        {
+            if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, t[0]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_emit(q, sxsa_mol_property, sxCopy_sxsa_token(null, t[1]))) {
+                return false;
+            }
+        }
+        if (sxsa_eq(q, sxCopy_sxsa_token(null, t[1]), "END")) {
+            break;
+        }
+        if (n < 3) {
+            return false;
+        }
+        {
+            if (!sxsa_emit(q, sxsa_feature_count, sxCopy_sxsa_token(null, t[2]))) {
+                return false;
+            }
+        }
+        for (i = 3; (i + 1) >>> 0 < n; i = (i + 2) >>> 0) {
+            {
+                if (!sxsa_emit(q, sxsa_mol_property_atom, sxCopy_sxsa_token(null, t[i]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsa_emit(q, sxsa_mol_property_value, sxCopy_sxsa_token(null, t[(i + 1) >>> 0]))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_mdl_molfile_build(q) {
+    return sxsa_mol(q);
+}

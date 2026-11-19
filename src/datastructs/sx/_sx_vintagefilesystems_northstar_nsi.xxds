@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/northstar_nsi/xx_northstar_nsi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvintage_northstar_directory_entry_fields = layout([chars("filename", 8, NONE), u16("disk_address", ID),
+    u16("stored_length", COUNT), u8("type_density", FLAGS), bytes("opaque_type_data", 3)]);
+var sxvintage_northstar_directory_entry = sxLayout(0x609D0006, "northstar_directory_entry", LE, sxvintage_northstar_directory_entry_fields);
+var sxvintage_northstar_executable_entry_fields = layout([chars("filename", 8, NONE), u16("disk_address", ID),
+    u16("stored_length", COUNT), u8("type_density", FLAGS), u16("go_address", VA), u8("unknown_tail")]);
+var sxvintage_northstar_executable_entry = sxLayout(0x609D0007, "northstar_executable_entry", LE, sxvintage_northstar_executable_entry_fields);
+function sxvintage_northstar(c) {
+    var directory = [];
+    var used = 0;
+    var sectors;
+    if (c.size !== 179200 && c.size !== 358400) {
+        return false;
+    }
+    sectors = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512);
+    if (!sx_read(c, 0, directory, 2048)) {
+        return false;
+    }
+    for (var i = 0; i < 128; i++) {
+        var d = directory, d_o = (i * 16) >>> 0;
+        if (d[d_o] === 32) {
+            continue;
+        }
+        for (var j = 0; j < 8; j++) {
+            if (d[d_o + j] < 32 || d[d_o + j] >= 127 || d[d_o + j] === 44 /*,*/) {
+                return false;
+            }
+        }
+        var at = d[d_o + 8] + d[d_o + 9] * 256;
+        var length = d[d_o + 10] + d[d_o + 11] * 256;
+        if (!(d[d_o + 12] & 128) || at >= sectors || length > sxU64(sectors - at)) {
+            return false;
+        }
+        used++;
+    }
+    if (!used) {
+        return false;
+    }
+    for (i = 0; i < 128; i++) {
+        d = directory;
+        d_o = (i * 16) >>> 0;
+        if (d[d_o] === 32) {
+            continue;
+        }
+        var l = (d[d_o + 12] & 127) === 1 ? sxvintage_northstar_executable_entry : sxvintage_northstar_directory_entry;
+        if (!sx_add(c, l, (i * 16) >>> 0, 16)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_northstar_nsi_build(c) {
+    if (c.size !== 89600 && c.size !== 179200 && c.size !== 358400) {
+        return false;
+    }
+    if (sxvintage_northstar(c)) {
+        return sxvintage_finish(c);
+    }
+    if (c.failed || c.count) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}

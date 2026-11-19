@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musicwire.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_musicwire");
+include("_sx_musicwire_adlibvisualcomposer_standardbnk");
+include("_sx_musicwire_bassmod_mo3");
+include("_sx_musicwire_birney_playerpro_mad");
+include("_sx_musicwire_bluemoon_soundclub_sn2");
+include("_sx_musicwire_delek_deflemask");
+include("_sx_musicwire_hellstrom_sbstudio_pac");
+include("_sx_musicwire_kometbomb_klystrack");
+include("_sx_musicwire_kometbomb_klystrack_fx");
+include("_sx_musicwire_kometbomb_klystrack_ki");
+include("_sx_musicwire_lucasarts_adlib");
+include("_sx_musicwire_nightradio_sunvox");
+include("_sx_musicwire_shiru_tfmd");
+include("_sx_musicwire_shiru_tfmv2");
+include("_sx_musicwire_shiru_vge");
+include("_sx_musicwire_sierra_scisound");
+include("_sx_musicwire_subzer0_mpu401trakker_mtk");
+include("_sx_musicwire_tammelin_jeskolabuzz_bmx");
+include("_sx_musicwire_westwood_adl");
+
+function fileTypes() { return ["DIE_MUSIC_TAMMELIN_JESKOLABUZZ_BMX", "DIE_MUSIC_ADLIBVISUALCOMPOSER_STANDARDBNK",
+    "DIE_MUSIC_DELEK_DEFLEMASK", "DIE_MUSIC_KOMETBOMB_KLYSTRACK", "DIE_MUSIC_KOMETBOMB_KLYSTRACK_KI",
+    "DIE_MUSIC_KOMETBOMB_KLYSTRACK_FX", "DIE_MUSIC_LUCASARTS_ADLIB", "DIE_MUSIC_BIRNEY_PLAYERPRO_MAD", "DIE_MUSIC_BASSMOD_MO3",
+    "DIE_MUSIC_SUBZER0_MPU401TRAKKER_MTK", "DIE_MUSIC_HELLSTROM_SBSTUDIO_PAC", "DIE_MUSIC_BLUEMOON_SOUNDCLUB_SN2",
+    "DIE_MUSIC_NIGHTRADIO_SUNVOX", "DIE_MUSIC_SHIRU_TFMD", "DIE_MUSIC_SHIRU_TFMV2", "DIE_MUSIC_SHIRU_VGE",
+    "DIE_MUSIC_WESTWOOD_ADL", "DIE_MUSIC_SIERRA_SCISOUND"]; }
+
+var sx_musicwire_layouts = [sxmw_text, sxmw_nul, sxmw_pascal_text_length, sxmw_count16, sxmw_order8, sxmw_order16, sxmw_order32,
+    sxmw_chunk_le, sxmw_bmx_header, sxmw_bmx_section, sxmw_bmx_connection, sxmw_bmx_sequences, sxmw_bmx_sequence,
+    sxmw_bmx_wave_data, sxmw_bmx_wave_bytes, sxmw_bnk_header, sxmw_bnk_name, sxmw_bnk_instrument, sxmw_bnk_operator,
+    sxmw_bnk_waveforms, sxmw_mo3_header, sxmw_mo3_packed_length, sxmw_mtk_header, sxmw_madg_header, sxmw_madg_instrument,
+    sxmw_madg_orders, sxmw_madg_pattern, sxmw_madg_event, sxmw_pac_header, sxmw_pac_info, sxmw_pac_song, sxmw_pac_pan,
+    sxmw_pac_sound, sxmw_pac_event, sxmw_dmf_header, sxmw_dmf_timing, sxmw_dmf_instrument_count, sxmw_dmf_instrument_mode,
+    sxmw_dmf_fm, sxmw_dmf_operator, sxmw_tfd_header, sxmw_tfd_command, sxmw_tfd_skip, sxmw_tfd_write, sxmw_tfm_rle_header,
+    sxmw_rle_literal, sxmw_rle_marker, sxmw_rle_count_part, sxmw_vge_header, sxmw_laa_header, sxmw_laa_chunk, sxmw_laa_mdhd,
+    sxmw_midi_header, sxmw_laa_old_header, sxmw_laa_old_instrument, sxmw_sci0_header, sxmw_sci0_channel, sxmw_sci1_header,
+    sxmw_sci1_track, sxmw_sci1_section_end, sxmw_adl_program8, sxmw_adl_program16, sxmw_adl_program_offset,
+    sxmw_adl_instrument_offset, sxmw_sn2_header, sxmw_sn2_chunk, sxmw_sunvox_header, sxmw_sv_version, sxmw_sv_base_version,
+    sxmw_sv_tempo, sxmw_sv_ticks_per_line, sxmw_sv_time_grid, sxmw_sv_time_grid2, sxmw_sv_global_volume, sxmw_sv_module_scale,
+    sxmw_sv_module_zoom, sxmw_sv_module_x, sxmw_sv_module_y, sxmw_sv_layer_mask, sxmw_sv_current_layer,
+    sxmw_sv_timeline_position, sxmw_sv_restart_position, sxmw_sv_selected_module, sxmw_sv_last_generator, sxmw_sv_tracks,
+    sxmw_sv_lines, sxmw_sv_source_pattern, sxmw_sv_flags, sxmw_sv_x, sxmw_sv_y, sxmw_sv_finetune, sxmw_sv_relative_note,
+    sxmw_sv_layer, sxmw_sv_scale, sxmw_sv_midi_in, sxmw_sv_midi_channel, sxmw_sv_midi_bank, sxmw_sv_midi_program,
+    sxmw_sv_link_module, sxmw_sv_controller_value, sxmw_sv_chunk_number, sxmw_sv_chunk_capacity, sxmw_sv_chunk_format,
+    sxmw_sv_sample_rate, sxmw_sv_color, sxmw_sv_note, sxmw_kly_header, sxmw_kly_channels, sxmw_kly_time_signature,
+    sxmw_kly_sequence_step, sxmw_kly_counts, sxmw_kly_sequence_count, sxmw_kly_length, sxmw_kly_volume, sxmw_kly_pan,
+    sxmw_kly_timing, sxmw_kly_flags, sxmw_kly_multiplex, sxmw_kly_pitch, sxmw_kly_fx_count, sxmw_kly_fx, sxmw_kly_spread,
+    sxmw_kly_padding, sxmw_kly_tap_old, sxmw_kly_tap, sxmw_kly_downsample, sxmw_kly_gain, sxmw_kly_legacy_tap,
+    sxmw_kly_instrument, sxmw_kly_program, sxmw_kly_instrument_control, sxmw_kly_finetune, sxmw_kly_filter, sxmw_kly_buzz,
+    sxmw_kly_fx_bus, sxmw_kly_shapes, sxmw_kly_lfsr, sxmw_kly_wave_index, sxmw_kly_fm, sxmw_kly_fm_attack, sxmw_kly_fm_wave,
+    sxmw_kly_sequence, sxmw_kly_sequence_old, sxmw_kly_pattern, sxmw_kly_color];
+
+function structs() {
+    return sxCatalog([sxmw_text, sxmw_nul, sxmw_pascal_text_length, sxmw_count16, sxmw_order8, sxmw_order16, sxmw_order32,
+        sxmw_chunk_le, sxmw_bmx_header, sxmw_bmx_section, sxmw_bmx_connection, sxmw_bmx_sequences, sxmw_bmx_sequence,
+        sxmw_bmx_wave_data, sxmw_bmx_wave_bytes, sxmw_bnk_header, sxmw_bnk_name, sxmw_bnk_instrument, sxmw_bnk_operator,
+        sxmw_bnk_waveforms, sxmw_mo3_header, sxmw_mo3_packed_length, sxmw_mtk_header, sxmw_madg_header, sxmw_madg_instrument,
+        sxmw_madg_orders, sxmw_madg_pattern, sxmw_madg_event, sxmw_pac_header, sxmw_pac_info, sxmw_pac_song, sxmw_pac_pan,
+        sxmw_pac_sound, sxmw_pac_event, sxmw_dmf_header, sxmw_dmf_timing, sxmw_dmf_instrument_count, sxmw_dmf_instrument_mode,
+        sxmw_dmf_fm, sxmw_dmf_operator, sxmw_tfd_header, sxmw_tfd_command, sxmw_tfd_skip, sxmw_tfd_write, sxmw_tfm_rle_header,
+        sxmw_rle_literal, sxmw_rle_marker, sxmw_rle_count_part, sxmw_vge_header, sxmw_laa_header, sxmw_laa_chunk, sxmw_laa_mdhd,
+        sxmw_midi_header, sxmw_laa_old_header, sxmw_laa_old_instrument, sxmw_sci0_header, sxmw_sci0_channel, sxmw_sci1_header,
+        sxmw_sci1_track, sxmw_sci1_section_end, sxmw_adl_program8, sxmw_adl_program16, sxmw_adl_program_offset,
+        sxmw_adl_instrument_offset, sxmw_sn2_header, sxmw_sn2_chunk, sxmw_sunvox_header, sxmw_sv_version, sxmw_sv_base_version,
+        sxmw_sv_tempo, sxmw_sv_ticks_per_line, sxmw_sv_time_grid, sxmw_sv_time_grid2, sxmw_sv_global_volume,
+        sxmw_sv_module_scale, sxmw_sv_module_zoom, sxmw_sv_module_x, sxmw_sv_module_y, sxmw_sv_layer_mask,
+        sxmw_sv_current_layer, sxmw_sv_timeline_position, sxmw_sv_restart_position, sxmw_sv_selected_module,
+        sxmw_sv_last_generator, sxmw_sv_tracks, sxmw_sv_lines, sxmw_sv_source_pattern, sxmw_sv_flags, sxmw_sv_x, sxmw_sv_y,
+        sxmw_sv_finetune, sxmw_sv_relative_note, sxmw_sv_layer, sxmw_sv_scale, sxmw_sv_midi_in, sxmw_sv_midi_channel,
+        sxmw_sv_midi_bank, sxmw_sv_midi_program, sxmw_sv_link_module, sxmw_sv_controller_value, sxmw_sv_chunk_number,
+        sxmw_sv_chunk_capacity, sxmw_sv_chunk_format, sxmw_sv_sample_rate, sxmw_sv_color, sxmw_sv_note, sxmw_kly_header,
+        sxmw_kly_channels, sxmw_kly_time_signature, sxmw_kly_sequence_step, sxmw_kly_counts, sxmw_kly_sequence_count,
+        sxmw_kly_length, sxmw_kly_volume, sxmw_kly_pan, sxmw_kly_timing, sxmw_kly_flags, sxmw_kly_multiplex, sxmw_kly_pitch,
+        sxmw_kly_fx_count, sxmw_kly_fx, sxmw_kly_spread, sxmw_kly_padding, sxmw_kly_tap_old, sxmw_kly_tap, sxmw_kly_downsample,
+        sxmw_kly_gain, sxmw_kly_legacy_tap, sxmw_kly_instrument, sxmw_kly_program, sxmw_kly_instrument_control,
+        sxmw_kly_finetune, sxmw_kly_filter, sxmw_kly_buzz, sxmw_kly_fx_bus, sxmw_kly_shapes, sxmw_kly_lfsr, sxmw_kly_wave_index,
+        sxmw_kly_fm, sxmw_kly_fm_attack, sxmw_kly_fm_wave, sxmw_kly_sequence, sxmw_kly_sequence_old, sxmw_kly_pattern,
+        sxmw_kly_color], sx_musicwire_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_musicwire_build, false);
+}

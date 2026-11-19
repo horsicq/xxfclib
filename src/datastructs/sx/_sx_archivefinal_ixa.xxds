@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ixa/xx_ixa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_ixa_header_fields = layout([chars("signature", 9, SIGNATURE), chars("title", 31, NONE), u32("fixed_word"),
+    u32("version"), u32("slot_count_plus_one"), u32("table_end_offset", OFFSET), u32("auxiliary_block_size", SIZE),
+    u32("unknown_word")]);
+var sxaf_ixa_header = sxLayout(0x603C0017, "ixa_header", LE, sxaf_ixa_header_fields);
+var sxaf_ixa_entry_fields = layout([u32("payload_offset", OFFSET), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE)]);
+var sxaf_ixa_entry = sxLayout(0x603C0018, "ixa_entry", LE, sxaf_ixa_entry_fields);
+function sxaf_ixa(c) {
+    var count = [0];
+    var end = [0];
+    if (!sxaf_word(c, 48, 4, false, count) || !count[0] || !sxaf_word(c, 52, 4, false, end) || end[0] < 64 || sxU64(count[0] - 1) > Math.floor(sxU64(end[0] - 64) / 12) || !sxaf_span(c, 0, end[0]) || !sxaf_add(c, sxaf_ixa_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < sxU64(count[0] - 1); i++) {
+        if (!sxaf_add(c, sxaf_ixa_entry, 64 + i * 12)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ixa_build(c) {
+    return sxaf_ixa(c);
+}

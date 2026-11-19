@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hp_lif/xx_hp_lif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_hp_lif_volume_header_fields = layout([u16("magic", SIGNATURE), chars("label", 6, NONE), u32("directory_block"),
+    u16("lif_identifier", ID), u16("reserved0", RESERVED), u32("directory_blocks", COUNT), u16("version", ID),
+    u16("reserved1", RESERVED), u32("tracks", COUNT), u32("heads", COUNT), u32("sectors_per_track", COUNT),
+    field("creation_date_bcd", "byte[6]", 6)]);
+var sxcf_hp_lif_volume_header = sxLayout(0x603D003A, "hp_lif_volume_header", BE, sxcf_hp_lif_volume_header_fields);
+var sxcf_hp_lif_directory_entry_fields = layout([chars("name", 10, NONE), u16("type", ID), u32("first_block"),
+    u32("block_count", COUNT), field("creation_date_bcd", "byte[6]", 6), u16("volume_number", FLAGS),
+    u32("implementation_defined")]);
+var sxcf_hp_lif_directory_entry = sxLayout(0x603D003B, "hp_lif_directory_entry", BE, sxcf_hp_lif_directory_entry_fields);
+function sxcf_lif(c) {
+    var h = [];
+    var b = [];
+    if (!sxcf_read(c, 0, h, 42) || sxcf16(h, 0, 1) !== 0x8000) {
+        return false;
+    }
+    var p = sxcf32(h, 8, 1) * 256;
+    var n = sxcf32(h, 16, 1) * 256;
+    if (!p || !n || !sxcf_span(c, p, n) || !sxcf_put(c, sxcf_hp_lif_volume_header, 0, 1)) {
+        return false;
+    }
+    for (var q = 0; q + 32 <= n && c.count < 24000; q += 32) {
+        if (!sxcf_read(c, p + q, b, 32) || !sxcf_put(c, sxcf_hp_lif_directory_entry, p + q, 1)) {
+            return false;
+        }
+        if (sxcf16(b, 10, 1) === 65535) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_hp_lif_build(c) {
+    return sxcf_lif(c);
+}

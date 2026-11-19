@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_docmeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_docmeta");
+include("_sx_docmeta_djvu");
+include("_sx_docmeta_ivt");
+include("_sx_docmeta_lsz");
+include("_sx_docmeta_openzim");
+include("_sx_docmeta_outlook_express_dbx_mailbox");
+include("_sx_docmeta_pain");
+include("_sx_docmeta_paperport");
+include("_sx_docmeta_perform");
+include("_sx_docmeta_pkt");
+include("_sx_docmeta_stylus");
+include("_sx_docmeta_thebat_msb");
+include("_sx_docmeta_ue2_documents");
+include("_sx_docmeta_zxml");
+
+function fileTypes() { return ["LSZ", "IVT", "PKT", "STYLUS", "PERFORM", "PAIN", "PAPERPORT", "DJVU", "OPENZIM", "HXS",
+    "OUTLOOK_EXPRESS_DBX_MAILBOX", "THEBAT_MSB", "WINDOWS_HELP", "MICROSOFT_LIT", "ZXML"]; }
+
+var sx_docmeta_layouts = [sxdm_djvu_form_header, sxdm_djvu_chunk_header, sxdm_djvu_info, sxdm_zxml_header, sxdm_lsz_header,
+    sxdm_lsz_member_header, sxdm_pain_header, sxdm_pain_directory_entry, sxdm_pain_lzss_block_header, sxdm_thebat_msb_header,
+    sxdm_thebat_msb_record, sxdm_stylus_header, sxdm_perform_header, sxdm_pkt_type2_header, sxdm_pkt_message_header,
+    sxdm_paperport_header, sxdm_paperport_chunk_header, sxdm_paperport_root_prefix, sxdm_paperport_root_entry,
+    sxdm_paperport_page_item, sxdm_winhelp_header, sxdm_winhelp_internal_file_header, sxdm_winhelp_btree_header,
+    sxdm_winhelp_index_header, sxdm_winhelp_leaf_header, sxdm_winhelp_file_pointer, sxdm_ivt_header, sxdm_ivt_btree_header,
+    sxdm_ivt_leaf_header, sxdm_ivt_index_header, sxdm_ivt_key_length, sxdm_ivt_child_pointer, sxdm_ivt_entry_terminator,
+    sxdm_ivt_mszip_header, sxdm_ivt_mszip_block_header, sxdm_ivt_leb_offset_1, sxdm_ivt_leb_offset_2, sxdm_ivt_leb_offset_3,
+    sxdm_ivt_leb_offset_4, sxdm_ivt_leb_offset_5, sxdm_ivt_leb_size_1, sxdm_ivt_leb_size_2, sxdm_ivt_leb_size_3,
+    sxdm_ivt_leb_size_4, sxdm_ivt_leb_size_5, sxdm_zim_header, sxdm_zim_url_pointer, sxdm_zim_title_pointer,
+    sxdm_zim_cluster_pointer, sxdm_zim_article_entry, sxdm_zim_redirect_entry, sxdm_zim_cluster_header, sxdm_zim_blob_offset32,
+    sxdm_zim_blob_offset64, sxdm_zim_checksum, sxdm_itolitls_header, sxdm_itolitls_section, sxdm_hxs_post_header, sxdm_hxs_caol,
+    sxdm_hxs_itsf, sxdm_hxs_file_size_header, sxdm_hxs_ifcm, sxdm_hxs_aoll_header, sxdm_hxs_aoll_count, sxdm_dbx_header,
+    sxdm_dbx_node_header, sxdm_dbx_node_entry, sxdm_dbx_info_header, sxdm_dbx_attribute, sxdm_dbx_attribute_indirect,
+    sxdm_dbx_attribute_message, sxdm_dbx_message_pointer, sxdm_dbx_block_header];
+
+function structs() {
+    return sxCatalog([sxdm_djvu_form_header, sxdm_djvu_chunk_header, sxdm_djvu_info, sxdm_zxml_header, sxdm_lsz_header,
+        sxdm_lsz_member_header, sxdm_pain_header, sxdm_pain_directory_entry, sxdm_pain_lzss_block_header,
+        sxdm_thebat_msb_header, sxdm_thebat_msb_record, sxdm_stylus_header, sxdm_perform_header, sxdm_pkt_type2_header,
+        sxdm_pkt_message_header, sxdm_paperport_header, sxdm_paperport_chunk_header, sxdm_paperport_root_prefix,
+        sxdm_paperport_root_entry, sxdm_paperport_page_item, sxdm_winhelp_header, sxdm_winhelp_internal_file_header,
+        sxdm_winhelp_btree_header, sxdm_winhelp_index_header, sxdm_winhelp_leaf_header, sxdm_winhelp_file_pointer,
+        sxdm_ivt_header, sxdm_ivt_btree_header, sxdm_ivt_leaf_header, sxdm_ivt_index_header, sxdm_ivt_key_length,
+        sxdm_ivt_child_pointer, sxdm_ivt_entry_terminator, sxdm_ivt_mszip_header, sxdm_ivt_mszip_block_header,
+        sxdm_ivt_leb_offset_1, sxdm_ivt_leb_offset_2, sxdm_ivt_leb_offset_3, sxdm_ivt_leb_offset_4, sxdm_ivt_leb_offset_5,
+        sxdm_ivt_leb_size_1, sxdm_ivt_leb_size_2, sxdm_ivt_leb_size_3, sxdm_ivt_leb_size_4, sxdm_ivt_leb_size_5,
+        sxdm_zim_header, sxdm_zim_url_pointer, sxdm_zim_title_pointer, sxdm_zim_cluster_pointer, sxdm_zim_article_entry,
+        sxdm_zim_redirect_entry, sxdm_zim_cluster_header, sxdm_zim_blob_offset32, sxdm_zim_blob_offset64, sxdm_zim_checksum,
+        sxdm_itolitls_header, sxdm_itolitls_section, sxdm_hxs_post_header, sxdm_hxs_caol, sxdm_hxs_itsf,
+        sxdm_hxs_file_size_header, sxdm_hxs_ifcm, sxdm_hxs_aoll_header, sxdm_hxs_aoll_count, sxdm_dbx_header,
+        sxdm_dbx_node_header, sxdm_dbx_node_entry, sxdm_dbx_info_header, sxdm_dbx_attribute, sxdm_dbx_attribute_indirect,
+        sxdm_dbx_attribute_message, sxdm_dbx_message_pointer, sxdm_dbx_block_header], sx_docmeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_docmeta_build, false);
+}

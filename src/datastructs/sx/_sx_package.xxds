@@ -1,0 +1,401 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_package.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_length16_fields = layout([u16("data_size", SIZE)]);
+var sx_p_length16 = sxLayout(0x60070006, "length16", LE, sx_p_length16_fields);
+var sx_p_alz_file_fields = layout([chars("signature", 4, SIGNATURE), u16("name_size", SIZE), u8("attributes", FLAGS),
+    u32("modified", TIMESTAMP), u8("descriptor", FLAGS), u8("reserved", RESERVED)]);
+var sx_p_alz_file = sxLayout(0x6007000C, "alz_file", LE, sx_p_alz_file_fields);
+var sx_p_ha_file_fields = layout([u8("version_method", ID), u32("packed_size", SIZE), u32("original_size", SIZE),
+    u32("crc32", CHECKSUM), u32("modified", TIMESTAMP)]);
+var sx_p_ha_file = sxLayout(0x60070016, "ha_file", LE, sx_p_ha_file_fields);
+var sx_p_zoo_directory_fields = layout([u32("magic", SIGNATURE), u8("type", ID), u8("method", ID),
+    u32("next_directory", OFFSET), u32("data_offset", OFFSET), u16("date"), u16("time"), u16("crc16", CHECKSUM),
+    u32("original_size", SIZE), u32("packed_size", SIZE), u8("version_major"), u8("version_minor"), u8("deleted", FLAGS),
+    u8("file_structure", ID), u32("comment_offset", OFFSET), u16("comment_size", SIZE), chars("short_name", 13, STRING)]);
+var sx_p_zoo_directory = sxLayout(0x60070019, "zoo_directory", LE, sx_p_zoo_directory_fields);
+var sx_p_zlib_header_fields = layout([u8("compression_method_flags", FLAGS), u8("flags", FLAGS)]);
+var sx_p_zlib_header = sxLayout(0x60070023, "zlib_header", BE, sx_p_zlib_header_fields);
+var sx_p_lzma_header_fields = layout([u8("properties", FLAGS), u32("dictionary_size", SIZE), u64("original_size", SIZE)]);
+var sx_p_lzma_header = sxLayout(0x60070026, "lzma_header", LE, sx_p_lzma_header_fields);
+var sx_p_lzma86_filter_fields = layout([u8("filter", ID)]);
+var sx_p_lzma86_filter = sxLayout(0x60070027, "lzma86_filter", LE, sx_p_lzma86_filter_fields);
+var sx_p_xar_header_fields = layout([chars("signature", 4, SIGNATURE), u16("header_size", SIZE), u16("version"),
+    u64("toc_packed_size", SIZE), u64("toc_original_size", SIZE), u32("checksum_algorithm", ID)]);
+var sx_p_xar_header = sxLayout(0x60070028, "xar_header", BE, sx_p_xar_header_fields);
+var sx_p_rpm_index_fields = layout([u32("tag", ID), u32("type", ID), u32("data_offset", OFFSET), u32("count", COUNT)]);
+var sx_p_rpm_index = sxLayout(0x6007002B, "rpm_index", BE, sx_p_rpm_index_fields);
+var sx_p_cfbf_header_fields = layout([blob("signature", 8, SIGNATURE), blob("clsid", 16, ID), u16("minor_version"),
+    u16("major_version"), u16("byte_order", ID), u16("sector_shift"), u16("mini_sector_shift"), blob("reserved", 6, RESERVED),
+    u32("directory_sector_count", COUNT), u32("fat_sector_count", COUNT), u32("first_directory_sector", ID),
+    u32("transaction_signature", SIGNATURE), u32("mini_stream_cutoff", SIZE), u32("first_mini_fat_sector", ID),
+    u32("mini_fat_sector_count", COUNT), u32("first_difat_sector", ID), u32("difat_sector_count", COUNT)]);
+var sx_p_cfbf_header = sxLayout(0x6007002C, "cfbf_header", LE, sx_p_cfbf_header_fields);
+var sx_p_cfbf_sector_id_fields = layout([u32("sector_id", ID)]);
+var sx_p_cfbf_sector_id = sxLayout(0x6007002D, "cfbf_sector_id", LE, sx_p_cfbf_sector_id_fields);
+var sx_p_cfbf_directory_fields = layout([blob("name_utf16", 64, STRING), u16("name_size", SIZE), u8("object_type", ID),
+    u8("color", ID), u32("left_sibling", ID), u32("right_sibling", ID), u32("child", ID), blob("clsid", 16, ID),
+    u32("state_bits", FLAGS), u64("created", TIMESTAMP), u64("modified", TIMESTAMP), u32("first_sector", ID),
+    u64("stream_size", SIZE)]);
+var sx_p_cfbf_directory = sxLayout(0x6007002E, "cfbf_directory", LE, sx_p_cfbf_directory_fields);
+var sx_p_chm_itsf2_fields = layout([chars("signature", 4, SIGNATURE), u32("version"), u32("header_size", SIZE), u32("unknown"),
+    u32("timestamp"), u32("language_id", ID), blob("directory_guid", 16, ID), blob("stream_guid", 16, ID),
+    u64("section0_offset", OFFSET), u64("section0_size", SIZE), u64("directory_offset", OFFSET), u64("directory_size", SIZE)]);
+var sx_p_chm_itsf2 = sxLayout(0x6007002F, "chm_itsf2", LE, sx_p_chm_itsf2_fields);
+var sx_p_chm_itsf3_fields = layout([chars("signature", 4, SIGNATURE), u32("version"), u32("header_size", SIZE), u32("unknown"),
+    u32("timestamp"), u32("language_id", ID), blob("directory_guid", 16, ID), blob("stream_guid", 16, ID),
+    u64("section0_offset", OFFSET), u64("section0_size", SIZE), u64("directory_offset", OFFSET), u64("directory_size", SIZE),
+    u64("data_offset", OFFSET)]);
+var sx_p_chm_itsf3 = sxLayout(0x60070030, "chm_itsf3", LE, sx_p_chm_itsf3_fields);
+var sx_p_tnef_attribute_fields = layout([u8("level", ID), u32("attribute_id", ID), u32("data_size", SIZE)]);
+var sx_p_tnef_attribute = sxLayout(0x60070036, "tnef_attribute", LE, sx_p_tnef_attribute_fields);
+var sx_p_wim_resource_fields = layout([u64("size_and_flags", FLAGS), u64("offset", OFFSET), u64("original_size", SIZE)]);
+var sx_p_wim_resource = sxLayout(0x60070039, "wim_resource", LE, sx_p_wim_resource_fields);
+var sx_p_wim_blob_fields = layout([u64("size_and_flags", FLAGS), u64("offset", OFFSET), u64("original_size", SIZE),
+    u16("part_number"), u32("reference_count", COUNT), blob("sha1", 20, CHECKSUM)]);
+var sx_p_wim_blob = sxLayout(0x6007003B, "wim_blob", LE, sx_p_wim_blob_fields);
+var sx_p_unix_compress_header_fields = layout([blob("signature", 2, SIGNATURE), u8("flags", FLAGS)]);
+var sx_p_unix_compress_header = sxLayout(0x6007003C, "unix_compress_header", LE, sx_p_unix_compress_header_fields);
+var sx_p_unix_pack_old_header_fields = layout([blob("signature", 2, SIGNATURE), u16("original_size_high"),
+    u16("original_size_low")]);
+var sx_p_unix_pack_old_header = sxLayout(0x6007003E, "unix_pack_old_header", LE, sx_p_unix_pack_old_header_fields);
+var sx_p_snappy_chunk_fields = layout([u8("type", ID), field("data_size", "uint24", 3, SIZE)]);
+var sx_p_snappy_chunk = sxLayout(0x6007003F, "snappy_chunk", LE, sx_p_snappy_chunk_fields);
+var sx_p_pp20_header_fields = layout([chars("signature", 4, SIGNATURE), blob("efficiency", 4)]);
+var sx_p_pp20_header = sxLayout(0x6007004A, "pp20_header", BE, sx_p_pp20_header_fields);
+var sx_p_pp20_trailer_fields = layout([field("original_size", "uint24", 3, SIZE), u8("skip_bits", COUNT)]);
+var sx_p_pp20_trailer = sxLayout(0x6007004B, "pp20_trailer", BE, sx_p_pp20_trailer_fields);
+var sx_p_pp20_library_header_fields = layout([chars("signature", 4, SIGNATURE), u32("hunk_original_size", SIZE),
+    blob("efficiency", 4)]);
+var sx_p_pp20_library_header = sxLayout(0x60070052, "pp20_library_header", BE, sx_p_pp20_library_header_fields);
+var sx_p_pp20_encrypted_header_fields = layout([chars("signature", 4, SIGNATURE), u16("password_checksum", CHECKSUM),
+    blob("efficiency", 4)]);
+var sx_p_pp20_encrypted_header = sxLayout(0x60070053, "pp20_encrypted_header", BE, sx_p_pp20_encrypted_header_fields);
+var sx_p_pack_level_fields = layout([u8("stored_code_count", COUNT)]);
+var sx_p_pack_level = sxLayout(0x60070059, "pack_level", BE, sx_p_pack_level_fields);
+function sx_p_span(c, off, size) {
+    return off <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && size <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - off);
+}
+function sx_p_sig(c, off, sig, n) {
+    var b = [];
+    return n <= 16 && sx_read(c, off, b, n) && !sxMemcmp(b, sig, n);
+}
+function sx_p_byte(c, off, v) {
+    return sx_read(c, off, v, 1);
+}
+function sx_p_uint(c, off, n, v) {
+    var b = [];
+    if (!n || n > 8 || !sx_read(c, off, b, n)) {
+        return false;
+    }
+    v[0] = 0;
+    for (var i = 0; i < n; i++) {
+        v[0] = sxOr64(v[0], sxShl64(b[i], (8 * i) >>> 0));
+    }
+    return true;
+}
+function sx_p_zstring(c, off, end) {
+    var b = [0];
+    while (off[0] < end) {
+        if (!sx_p_byte(c, off[0]++, b)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sx_p_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var gap = Math.floor(n / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < n; i++) {
+            var item = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > item.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, item);
+        }
+    }
+    for (i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        var total = c.items[i].total_size;
+        if (off < end || !sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), (total < 0 ? total + SX_U64_MAX : total)) || !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        end = off + total;
+    }
+    if (!sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    for (gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (i = gap; i < c.count; i++) {
+            item = sxCopy_xx_data_struct(null, c.items[i]);
+            j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > item.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, item);
+        }
+    }
+    return true;
+}
+function sx_p_cfbf(c) {
+    var major;
+    var shift;
+    var dir;
+    var fats;
+    if (!sx_p_sig(c, 0, "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", 8) || (major = sx_u16(c, 26, false)) === null || !sx_p_sig(c, 28, "\xFE\xFF", 2) || (shift = sx_u16(c, 30, false)) === null || !(major === 3 && shift === 9 || major === 4 && shift === 12) || (fats = sx_u32(c, 44, false)) === null || (dir = sx_u32(c, 48, false)) === null || !sx_add(c, sx_p_cfbf_header, 0, 76) || !sx_table(c, sx_p_cfbf_sector_id, 76, 4, 109)) {
+        return false;
+    }
+    var sector = sxShl64(1, shift);
+    if (!sx_p_span(c, 0, sector)) {
+        return false;
+    }
+    if (fats > 109) {
+        return true;
+    }
+    for (var i = 0; i < fats; i++) {
+        var id;
+        if ((id = sx_u32(c, (76 + ((4 * i) >>> 0)) >>> 0, false)) === null || id >= 0xFFFFFFFA || !sx_table(c, sx_p_cfbf_sector_id, sxI64(((id + 1) >>> 0) * sector), 4, Math.floor(sector / 4))) {
+            return false;
+        }
+    }
+    var max = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / sector);
+    for (var seen = 0; dir < 0xFFFFFFFA && seen < max; seen++) {
+        var loc = ((dir + 1) >>> 0) * sector;
+        if (!sx_table(c, sx_p_cfbf_directory, (loc >= SX_I64_MAX ? loc - SX_U64_MAX : loc), 128, Math.floor(sector / 128))) {
+            return false;
+        }
+        var fi = Math.floor(dir / Math.floor(sector / 4));
+        var fat;
+        var next;
+        if (fi >= fats || (fat = sx_u32(c, 76 + (fi >= SX_I64_MAX ? fi - SX_U64_MAX : fi) * 4, false)) === null || (next = sx_u32(c, sxI64(((fat + 1) >>> 0) * sector + dir % Math.floor(sector / 4) * 4), false)) === null) {
+            return false;
+        }
+        if (next === 0xFFFFFFFE) {
+            return true;
+        }
+        if (next === dir) {
+            return false;
+        }
+        dir = next;
+    }
+    return dir === 0xFFFFFFFE;
+}
+function sx_package_supports(type) {
+    switch (type) {
+    case "ARJ":
+    case "ACE":
+    case "ALZ":
+    case "HA":
+    case "ZOO":
+    case "LHA":
+    case "ZLIB":
+    case "LZMA":
+    case "LZMA86":
+    case "XAR":
+    case "RPM":
+    case "CFBF":
+    case "BINDER":
+    case "CHM":
+    case "TNEF":
+    case "WIM":
+    case "UNIX_COMPRESS":
+    case "UNIX_PACK":
+    case "SNAPPY_FRAMED":
+    case "MOZILLA_MAR":
+    case "CHROMIUM_PAK":
+    case "XPAK":
+    case "PP20":
+    case "TEX_DVI":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_package_build(c) {
+    var ok = false;
+    var b = [];
+    switch (c.f.file_type) {
+    case "ARJ":
+        ok = sx_arj_build(c);
+        break;
+    case "ACE":
+        ok = sx_ace_build(c);
+        break;
+    case "ALZ":
+        ok = sx_alz_build(c);
+        break;
+    case "HA":
+        ok = sx_ha_build(c);
+        break;
+    case "ZOO":
+        ok = sx_zoo_build(c);
+        break;
+    case "LHA":
+        ok = sx_lha_build(c);
+        break;
+    case "ZLIB":
+        ok = sx_zlib_build(c);
+        break;
+    case "LZMA":
+    case "LZMA86":
+        var off = c.f.file_type === "LZMA86" ? 1 : 0;
+        if (off && (!sx_p_byte(c, 0, b) || b[0] > 1 || !sx_add(c, sx_p_lzma86_filter, 0, 1))) {
+            break;
+        }
+        ok = sx_p_byte(c, off, b) && b[0] < 225 && sx_add(c, sx_p_lzma_header, off, 13);
+        break;
+    case "XAR":
+        ok = sx_xar_build(c);
+        break;
+    case "RPM":
+        ok = sx_rpm_build(c);
+        break;
+    case "CFBF":
+    case "BINDER":
+        ok = sx_p_cfbf(c);
+        break;
+    case "CHM":
+        ok = sx_chm_build(c);
+        break;
+    case "TNEF":
+        ok = sx_tnef_build(c);
+        break;
+    case "WIM":
+        ok = sx_wim_build(c);
+        break;
+    case "UNIX_COMPRESS":
+        ok = sx_unixcompress_build(c);
+        break;
+    case "UNIX_PACK":
+        ok = sx_unixpack_build(c);
+        break;
+    case "SNAPPY_FRAMED":
+        ok = sx_snappy_framed_build(c);
+        break;
+    case "MOZILLA_MAR":
+        ok = sx_mozilla_mar_build(c);
+        break;
+    case "CHROMIUM_PAK":
+        ok = sx_chromium_pak_build(c);
+        break;
+    case "XPAK":
+        ok = sx_xpak_build(c);
+        break;
+    case "PP20":
+        var header = 8;
+        var layout = sx_p_pp20_header;
+        if (!sx_read(c, 0, b, 4)) {
+            break;
+        }
+        if (!sxMemcmp(b, "PPLS", 4)) {
+            header = 12;
+            layout = sx_p_pp20_library_header;
+        } else if (!sxMemcmp(b, "PX20", 4)) {
+            header = 10;
+            layout = sx_p_pp20_encrypted_header;
+        } else if (sxMemcmp(b, "PP20", 4) && sxMemcmp(b, "PP11", 4) && sxMemcmp(b, "PPBK", 4)) {
+            break;
+        }
+        if (c.size < header + 5 || sxI64(sxAnd64(c.size, 3)) || !sx_read(c, header - 4, b, 4)) {
+            break;
+        }
+        var widths = true;
+        for (var i = 0; i < 4; i++) {
+            if (b[i] < 9 || b[i] > 16 || i && b[i] < b[(i - 1) >>> 0]) {
+                widths = false;
+            }
+        }
+        ok = widths && sx_add(c, layout, 0, header) && sx_p_byte(c, c.size - 1, b) && b[0] <= 31 && sx_add(c, sx_p_pp20_trailer, c.size - 4, 4);
+        break;
+    case "TEX_DVI":
+        ok = sx_tex_dvi_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sx_p_finish(c);
+}
+var sx_p_comment_names = ["NULL", "CHAR", "INT8", "INT16", "INT32", "INT64", "STRING", "BIN", "STRING_ARRAY", "I18NSTRING"];
+function sx_p_comment(id, name, value) {
+    if ((id === sx_p_chm_itsf2.id || id === sx_p_chm_itsf3.id) && !sxStrcmp(name, "timestamp")) {
+        return "Encoded low 32 bits of FILETIME plus 42, modulo 2^32";
+    }
+    if (id === sx_p_zoo_directory.id) {
+        if (!sxStrcmp(name, "date")) {
+            return "Packed MS-DOS date: year since 1980 (bits 9..15), month (5..8), day (0..4)";
+        }
+        if (!sxStrcmp(name, "time")) {
+            return "Packed MS-DOS time: hour (bits 11..15), minute (5..10), two-second units (0..4)";
+        }
+    }
+    if (id === sx_p_cfbf_header.id && (!sxStrcmp(name, "sector_shift") || !sxStrcmp(name, "mini_sector_shift"))) {
+        return "log2(sector size in bytes)";
+    }
+    if (id === sx_p_wim_resource.id || id === sx_p_wim_blob.id) {
+        if (!sxStrcmp(name, "size_and_flags")) {
+            return "Low 56 bits: packed byte size; high 8 bits: resource flags";
+        }
+    }
+    if (id === sx_p_lzma_header.id) {
+        if (!sxStrcmp(name, "properties")) {
+            return "(pb * 5 + lp) * 9 + lc";
+        }
+        if (!sxStrcmp(name, "original_size") && value === SX_U64_MAX) {
+            return "Unknown size; end marker terminates stream";
+        }
+    }
+    if (id === sx_p_lzma86_filter.id) {
+        return value === 0 ? "No filter" : value === 1 ? "x86 BCJ" : null;
+    }
+    if (id === sx_p_xar_header.id && !sxStrcmp(name, "checksum_algorithm")) {
+        return value === 0 ? "NONE" : value === 1 ? "SHA1" : value === 2 ? "MD5" : value === 3 ? "SHA256" : value === 4 ? "SHA512" : null;
+    }
+    if (id === sx_p_rpm_index.id && !sxStrcmp(name, "type")) {
+        return value < 10 ? sx_p_comment_names[value] : null;
+    }
+    if (id === sx_p_snappy_chunk.id && !sxStrcmp(name, "type")) {
+        return value === 0 ? "Compressed data" : value === 1 ? "Uncompressed data" : value === 255 ? "Stream identifier" : value >= 128 ? "Skippable chunk" : "Reserved unskippable chunk";
+    }
+    if (id === sx_p_tnef_attribute.id && !sxStrcmp(name, "level")) {
+        return value === 1 ? "Message" : value === 2 ? "Attachment" : null;
+    }
+    if (id === sx_p_unix_compress_header.id && !sxStrcmp(name, "flags")) {
+        return "Low 5 bits: maximum code width; bit 7: block mode";
+    }
+    if (id === sx_p_zlib_header.id) {
+        if (!sxStrcmp(name, "compression_method_flags")) {
+            return "CM in bits 0..3 (8 = DEFLATE); CINFO in bits 4..7 (window log2 minus 8)";
+        }
+        return "FCHECK in bits 0..4; FDICT bit 5; compression level bits 6..7";
+    }
+    if (id === sx_p_alz_file.id && !sxStrcmp(name, "descriptor")) {
+        return "High nibble: size-field byte width; bit 0: encrypted";
+    }
+    if (id === sx_p_ha_file.id && !sxStrcmp(name, "version_method")) {
+        return "High nibble: version; low nibble: method (0 stored, 1 ASC, 2 HSC)";
+    }
+    if (id === sx_p_unix_pack_old_header.id && (!sxStrcmp(name, "original_size_high") || !sxStrcmp(name, "original_size_low"))) {
+        return "Original size = (high << 16) | low; words are little endian";
+    }
+    if (id === sx_p_pack_level.id) {
+        return "Codewords at this depth; deepest level stores the count minus 2";
+    }
+    return null;
+}
+function sx_package_comment(record, id) {
+    if (record === null || record.name === null || id < 0x60070000 || id >= 0x60080000) {
+        return true;
+    }
+    var comment = sx_p_comment(id, record.name, sxVarU64(record.value));
+    return comment === null || sxSetComment(record, comment);
+}

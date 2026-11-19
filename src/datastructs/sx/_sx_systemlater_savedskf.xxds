@@ -1,0 +1,18 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/savedskf/xx_savedskf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_savedskf_header_fields = layout([u16("signature", SIGNATURE), u16("media_descriptor", ID), u16("sector_size", SIZE),
+    u8("sectors_per_cluster_minus_one"), u8("cluster_shift"), u16("reserved_sectors", COUNT), u8("fat_count", COUNT),
+    u16("root_entry_count", COUNT), u16("first_data_sector"), u16("highest_cluster"), u8("sectors_per_fat", COUNT),
+    u16("root_directory_sector"), u32("checksum", CHECKSUM), u16("cylinder_count", COUNT), u16("head_count", COUNT),
+    u16("sectors_per_track", COUNT), field("unknown_1e", "byte[4]", 4), u16("stored_sector_count", COUNT),
+    u16("comment_offset", OFFSET), u16("data_offset", OFFSET)]);
+var sxsl_savedskf_header = sxLayout(0x60330005, "savedskf_header", LE, sxsl_savedskf_header_fields);
+function sx_savedskf_build(c) {
+    var ok = false;
+    ok = sxsl_put(c, sxsl_savedskf_header, 0, 1);
+    return ok && sxsl_finish(c);
+}

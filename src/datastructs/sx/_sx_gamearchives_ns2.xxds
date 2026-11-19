@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ns2/xx_ns2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_ns2_size_fields = layout([u32("data_bytes", SIZE)]);
+var sxga_ns2_size = sxLayout(0x603B002C, "ns2_size", LE, sxga_ns2_size_fields);
+var sxga_ns2_quote_fields = layout([u8("quote", SIGNATURE)]);
+var sxga_ns2_quote = sxLayout(0x603B002D, "ns2_quote", LE, sxga_ns2_quote_fields);
+var sxga_ns2_end_fields = layout([u8("terminator", SIGNATURE)]);
+var sxga_ns2_end = sxLayout(0x603B002E, "ns2_end", LE, sxga_ns2_end_fields);
+function sxga_ns2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var base = [0];
+    var at = 4;
+    var b = [0];
+    if (!sxga_row(v, sxga_ns2_header, 0, end) || !sxga_word(v, 0, 4, false, base, 0, end) || base[0] > end) {
+        return false;
+    }
+    while (at < base[0]) {
+        if (!sxga_word(v, at, 1, false, b, 0, base[0])) {
+            return false;
+        }
+        if (b[0] === 101 /*e*/) {
+            return sxga_row(v, sxga_ns2_end, at, base[0]);
+        }
+        if (b[0] !== 34 /*"*/ || !sxga_row(v, sxga_ns2_quote, at, base[0])) {
+            return false;
+        }
+        var start = ++at;
+        while (at < base[0]) {
+            if (!sxga_word(v, at, 1, false, b, 0, base[0])) {
+                return false;
+            }
+            if (b[0] === 34 /*"*/) {
+                break;
+            }
+            at++;
+            if (++v.work > 4000000) {
+                return false;
+            }
+        }
+        if (!sxga_named(v, start, sxU64(at - start), base[0], false) || !sxga_row(v, sxga_ns2_quote, at, base[0]) || !sxga_row(v, sxga_ns2_size, at + 1, base[0])) {
+            return false;
+        }
+        at += 5;
+    }
+    return false;
+}
+function sx_ns2_build(v) {
+    return sxga_ns2(v);
+}

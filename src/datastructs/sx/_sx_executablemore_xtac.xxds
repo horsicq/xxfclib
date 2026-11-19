@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/xtac/xx_xtac_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_xtac_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("is_updated", FLAGS),
+    u32("address_pairs_offset", OFFSET), u32("address_pair_count", COUNT), u32("module_name_offset", OFFSET),
+    u32("module_name_size", SIZE), u32("nt_path_offset", OFFSET), u32("nt_path_size", SIZE),
+    u32("head_block_stub_offset", OFFSET), u32("tail_block_stub_offset", OFFSET), u32("block_stub_code_size", SIZE),
+    u32("linked_list_head_offset", OFFSET), u32("linked_list_tail_offset", OFFSET)]);
+var sxexm_xtac_header = sxLayout(0x602B0032, "xtac_header", LE, sxexm_xtac_header_fields);
+var sxexm_xtac_address_pair_fields = layout([u32("x86_rva", VA), u32("arm64_rva", VA)]);
+var sxexm_xtac_address_pair = sxLayout(0x602B0033, "xtac_address_pair", LE, sxexm_xtac_address_pair_fields);
+var sxexm_xtac_block_stub_fields = layout([chars("magic", 4, SIGNATURE), u32("offset_to_next_entry", OFFSET),
+    u32("next_entry_offset", OFFSET), u32("padding", RESERVED)]);
+var sxexm_xtac_block_stub = sxLayout(0x602B0034, "xtac_block_stub", LE, sxexm_xtac_block_stub_fields);
+var sxexm_xtac_linked_entry0_fields = layout([u32("metadata_and_step", FLAGS)]);
+var sxexm_xtac_linked_entry0 = sxLayout(0x602B0035, "xtac_linked_entry0", LE, sxexm_xtac_linked_entry0_fields);
+var sxexm_xtac_linked_entry1_fields = layout([u32("metadata_and_step", FLAGS), u32("forward_edge_address", VA)]);
+var sxexm_xtac_linked_entry1 = sxLayout(0x602B0036, "xtac_linked_entry1", LE, sxexm_xtac_linked_entry1_fields);
+var sxexm_xtac_linked_entry2_fields = layout([u32("metadata_and_step", FLAGS), u32("backward_edge_address", VA)]);
+var sxexm_xtac_linked_entry2 = sxLayout(0x602B0037, "xtac_linked_entry2", LE, sxexm_xtac_linked_entry2_fields);
+var sxexm_xtac_linked_entry3_fields = layout([u32("metadata_and_step", FLAGS), u32("forward_edge_address", VA),
+    u32("backward_edge_address", VA)]);
+var sxexm_xtac_linked_entry3 = sxLayout(0x602B0038, "xtac_linked_entry3", LE, sxexm_xtac_linked_entry3_fields);
+function sxexm_xtac(c) {
+    var h = [];
+    var b = [];
+    if (!sxexm_read(c, 0, h, 56) || !sxexm_add(c, sxexm_xtac_header, 0) || !sxexm_table(c, sxexm_xtac_address_pair, sxexm32(h, 12, false), sxexm32(h, 16, false))) {
+        return false;
+    }
+    var p = sxexm32(h, 36, false);
+    for (var i = 0; p && i < 20; i++) {
+        if (!sxexm_read(c, p, b, 16) || sxMemcmp(b, "BLCK", 4) || !sxexm_free(c, p, 16)) {
+            break;
+        }
+        if (!sxexm_add(c, sxexm_xtac_block_stub, p)) {
+            return false;
+        }
+        p = sxexm32(b, 8, false);
+    }
+    p = sxexm32(h, 48, false);
+    for (i = 0; p && i < 20000 && c.count < 20000; i++) {
+        var v = [0];
+        if (!sxexm_word(c, p, 4, false, v)) {
+            break;
+        }
+        var k = sxShr64(v[0], 28) >>> 0 & 3;
+        var z = 4 + (k & 1 ? 4 : 0) + (k & 2 ? 4 : 0);
+        var ls = [sxexm_xtac_linked_entry0, sxexm_xtac_linked_entry1, sxexm_xtac_linked_entry2, sxexm_xtac_linked_entry3];
+        if (!sxexm_span(c, p, z) || !sxexm_free(c, p, z)) {
+            break;
+        }
+        if (!sxexm_add(c, ls[k], p)) {
+            return false;
+        }
+        var step = sxAnd64(v[0], 0x0FFFFFFF);
+        if (!step || step === 0x0FFFFFFF) {
+            break;
+        }
+        p += step * 4;
+    }
+    return true;
+}
+function sx_xtac_build(c) {
+    var ok = false;
+    ok = sxexm_xtac(c);
+    return ok && sxexm_finish(c);
+}

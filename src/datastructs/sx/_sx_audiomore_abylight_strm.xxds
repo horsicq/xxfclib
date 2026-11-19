@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/abylight_strm/xx_abylight_strm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_abylight_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("sample_rate"),
+    blob("unknown_c", 4), u32("stream_bytes", SIZE), blob("unknown_14", 4), u32("stream_bytes_copy", SIZE),
+    blob("unknown_1c", 2)]);
+var sxau_abylight_header = sxLayout(0x602C006F, "abylight_header", LE, sxau_abylight_header_fields);
+function sx_abylight_strm_build(v) {
+    return sxau_row(v, sxau_abylight_header, 0, v.n) && sxau_adts(v, 30, v.n);
+}

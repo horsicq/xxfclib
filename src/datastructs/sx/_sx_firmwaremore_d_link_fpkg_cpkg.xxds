@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/d_link_fpkg_cpkg/xx_d_link_fpkg_cpkg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_dlink_fpkg_extra_fields = layout([u32("unknown"), u32("model_name_length", SIZE)]);
+var sx_fm_dlink_fpkg_extra = sxLayout(0x6022000F, "dlink_fpkg_extra", BE, sx_fm_dlink_fpkg_extra_fields);
+function sx_fm_dlink(c) {
+    var magic = [];
+    var off = [0];
+    if (!sx_fm_read(c, 0, magic, 4) || !sx_fm_u32(c, 8, true, off) || !sx_fm_add(c, sx_fm_dlink_package_header, 0, 12)) {
+        return false;
+    }
+    if (!sxMemcmp(magic, "FPKG", 4) && off[0] >= 20) {
+        var name = [0];
+        if (sx_fm_u32(c, 16, true, name) && name[0] && name[0] <= 256 && name[0] <= (off[0] - 20) >>> 0 && !sx_fm_add(c, sx_fm_dlink_fpkg_extra, 12, 8)) {
+            return false;
+        }
+    }
+    var at = off[0];
+    var count = 0;
+    while (at + 28 <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && count < 65530) {
+        var h = [];
+        if (!sx_fm_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 28)) {
+            return false;
+        }
+        var n = sxGetU32(h, 28, 8, true);
+        var t = sxGetU16(h, 28, 4, true);
+        if (sxGetU32(h, 28, 0, true) !== 28 || t < 0x100 || t > 0x103 || !sx_fm_span(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 28, n)) {
+            break;
+        }
+        var printable = true;
+        for (var i = 12; i < 28 && h[i]; i++) {
+            if (h[i] < 32 || h[i] > 126) {
+                printable = false;
+            }
+        }
+        if (!printable) {
+            break;
+        }
+        if (!sx_fm_add(c, sx_fm_dlink_package_entry, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 28)) {
+            return false;
+        }
+        at += 28 + n;
+        count++;
+    }
+    return !c.failed;
+}
+function sx_d_link_fpkg_cpkg_build(c) {
+    return sx_fm_dlink(c);
+}

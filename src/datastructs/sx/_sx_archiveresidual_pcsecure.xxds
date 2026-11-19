@@ -1,0 +1,18 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pcsecure/xx_pcsecure_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarfinal_pcsecure_physical_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("encrypted_header", 56),
+    bytes("wrapped_file_key", 8)]);
+var sxarfinal_pcsecure_physical_header = sxLayout(0x60920001, "pcsecure_physical_header", LE, sxarfinal_pcsecure_physical_header_fields);
+function sxarfinal_pcsecure(c) {
+    var h = [];
+    return c.size > 68 && sxarfinal_read(c, 0, h, 4) && (!sxMemcmp(h, "PCT5", 4) || !sxMemcmp(h, "PCT6", 4) || !sxMemcmp(h, "PCT7", 4) || !sxMemcmp(h, "AfoS", 4)) && sxarfinal_put(c, sxarfinal_pcsecure_physical_header, 0);
+}
+function sx_pcsecure_build(c) {
+    var ok = false;
+    ok = sxarfinal_pcsecure(c);
+    return !!(c.count && sxarfinal_finish(c));
+}

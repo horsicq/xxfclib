@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/dsn6_density/xx_dsn6_density_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_dsn6_header_le_fields = layout([i16("origin_x"), i16("origin_y"), i16("origin_z"), i16("extent_x", COUNT),
+    i16("extent_y", COUNT), i16("extent_z", COUNT), i16("grid_x", COUNT), i16("grid_y", COUNT), i16("grid_z", COUNT),
+    i16("cell_a"), i16("cell_b"), i16("cell_c"), i16("cell_alpha"), i16("cell_beta"), i16("cell_gamma"),
+    i16("density_multiplier"), i16("density_bias"), i16("cell_multiplier"), i16("byte_order_marker", ID),
+    bytes("reserved", 474, RESERVED)]);
+var sxscx_dsn6_header_le = sxLayout(0x60310006, "dsn6_header_le", LE, sxscx_dsn6_header_le_fields);
+var sxscx_dsn6_header_be_fields = layout([i16("origin_x"), i16("origin_y"), i16("origin_z"), i16("extent_x", COUNT),
+    i16("extent_y", COUNT), i16("extent_z", COUNT), i16("grid_x", COUNT), i16("grid_y", COUNT), i16("grid_z", COUNT),
+    i16("cell_a"), i16("cell_b"), i16("cell_c"), i16("cell_alpha"), i16("cell_beta"), i16("cell_gamma"),
+    i16("density_multiplier"), i16("density_bias"), i16("cell_multiplier"), i16("byte_order_marker", ID),
+    bytes("reserved", 474, RESERVED)]);
+var sxscx_dsn6_header_be = sxLayout(0x60310009, "dsn6_header_be", BE, sxscx_dsn6_header_be_fields);
+var sxscx_brix_header_fields = layout([chars("descriptor_text", 512, STRING)]);
+var sxscx_brix_header = sxLayout(0x6031000A, "brix_header", LE, sxscx_brix_header_fields);
+function sxscx_dsn6(c, b, n) {
+    if (n < 512) {
+        return false;
+    }
+    return sxscx_add(c, !sxMemcmp(b, ":-)", 3) ? sxscx_brix_header : sxscx16(b, 36, true) === 100 ? sxscx_dsn6_header_be : sxscx_dsn6_header_le, 0);
+}
+function sx_dsn6_density_build(c, b) {
+    return sxscx_dsn6(c, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

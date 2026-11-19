@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/chz/xx_chz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_chz_file_fields = layout([chars("magic", 4, SIGNATURE), u32("record_size", SIZE), u32("unpacked_size", SIZE),
+    bytes("opaque_metadata", 8), u8("method", ID), u8("unknown21"), u16("name_size", SIZE)]);
+var sxae_chz_file = sxLayout(0x60170024, "chz_file", LE, sxae_chz_file_fields);
+var sxae_chz_directory_fields = layout([chars("magic", 4, SIGNATURE), bytes("opaque_metadata", 4), u8("reserved", RESERVED),
+    u8("name_size", SIZE)]);
+var sxae_chz_directory = sxLayout(0x60170025, "chz_directory", LE, sxae_chz_directory_fields);
+var sxae_chz_directory_end_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxae_chz_directory_end = sxLayout(0x60170026, "chz_directory_end", LE, sxae_chz_directory_end_fields);
+function sxae_chz(c) {
+    var p = 0;
+    var b = [];
+    var depth = 0;
+    for (var i = 0; p < c.size && i < 20000; i++) {
+        if (!sx_read(c, p, b, 4)) {
+            return false;
+        }
+        var tag = sxae32(b, 0);
+        if (tag === 0x46684353) {
+            if (!sx_read(c, p, b, 24)) {
+                return false;
+            }
+            var z = sxae32(b, 4);
+            var n = sxae16(b, 22);
+            if (z < 24 + n || !sxae_bound(c, p, z) || !sxae_add(c, sxae_chz_file, p) || !sxae_data(c, p + 24 + n, (((z - 24) >>> 0) - n) >>> 0)) {
+                return false;
+            }
+            p += z;
+        } else if (tag === 0x44684353) {
+            if (depth++ >= 64 || !sx_read(c, p, b, 10) || !sxae_bound(c, p, 10 + b[9]) || !sxae_add(c, sxae_chz_directory, p)) {
+                return false;
+            }
+            p += 10 + b[9];
+        } else if (tag === 0x64684353) {
+            if (!depth-- || !sxae_add(c, sxae_chz_directory_end, p)) {
+                return false;
+            }
+            p += 4;
+        } else {
+            return false;
+        }
+    }
+    return p === c.size;
+}
+function sx_chz_build(c) {
+    return sxae_chz(c);
+}

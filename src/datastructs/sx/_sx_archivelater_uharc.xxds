@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/uharc/xx_uharc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_uharc_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version", ID)]);
+var sxal_uharc_header = sxLayout(0x6020004E, "uharc_header", BE, sxal_uharc_header_fields);
+function sx_uharc_build(c) {
+    return sxal_add(c, sxal_uharc_header, 0);
+}

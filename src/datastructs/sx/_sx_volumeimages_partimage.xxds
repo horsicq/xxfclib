@@ -1,0 +1,113 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/partimage/xx_partimage_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_partimage_volume_header_fields = layout([chars("magic", 32, SIGNATURE), chars("version", 64, STRING),
+    u32("volume_number"), u64("identifier", ID), field("reserved", "byte[404]", 404, RESERVED)]);
+var sxvi_partimage_volume_header = sxLayout(0x6053005E, "partimage_volume_header", LE, sxvi_partimage_volume_header_fields);
+var sxvi_partimage_main_header_fields = layout([chars("filesystem", 512, STRING), chars("description", 4096, STRING),
+    chars("original_device", 512, STRING), chars("first_image_filepath", 4095, STRING), chars("uname_system", 65, STRING),
+    chars("uname_node", 65, STRING), chars("uname_release", 65, STRING), chars("uname_version", 65, STRING),
+    chars("uname_machine", 65, STRING), u32("compression", ID), u32("flags", FLAGS), u32("second"), u32("minute"), u32("hour"),
+    u32("day"), u32("month"), u32("year"), u32("weekday"), u32("yearday"), u32("daylight_saving"), u32("timezone_offset"),
+    u32("timezone_word"), u64("partition_size", SIZE), chars("hostname", 128, STRING), chars("version", 64, STRING),
+    u32("mbr_count", COUNT), u32("mbr_record_size", SIZE), u32("encryption_algorithm", ID),
+    field("test_key_hash", "byte[16]", 16, CHECKSUM), field("future_extensions", "uint32[10]", 40, RESERVED),
+    field("reserved", "byte[6524]", 6524, RESERVED)]);
+var sxvi_partimage_main_header = sxLayout(0x6053005F, "partimage_main_header", LE, sxvi_partimage_main_header_fields);
+var sxvi_partimage_local_header_fields = layout([u64("block_size", SIZE), u64("used_blocks", COUNT), u64("block_count", COUNT),
+    u64("bitmap_size", SIZE), u64("bad_blocks", COUNT), chars("label", 64, STRING),
+    field("reserved", "byte[16280]", 16280, RESERVED)]);
+var sxvi_partimage_local_header = sxLayout(0x60530060, "partimage_local_header", LE, sxvi_partimage_local_header_fields);
+var sxvi_partimage_header_checksum_fields = layout([u32("additive_checksum", CHECKSUM)]);
+var sxvi_partimage_header_checksum = sxLayout(0x60530061, "partimage_header_checksum", LE, sxvi_partimage_header_checksum_fields);
+var sxvi_partimage_extension_header_fields = layout([chars("magic", 18, SIGNATURE), u32("data_size", SIZE)]);
+var sxvi_partimage_extension_header = sxLayout(0x60530062, "partimage_extension_header", LE, sxvi_partimage_extension_header_fields);
+var sxvi_partimage_data_check_fields = layout([chars("magic", 4, SIGNATURE), u32("crc32", CHECKSUM), u64("block_position")]);
+var sxvi_partimage_data_check = sxLayout(0x60530063, "partimage_data_check", LE, sxvi_partimage_data_check_fields);
+var sxvi_partimage_tail_fields = layout([u64("additive_checksum", CHECKSUM), u32("volume_number"),
+    field("reserved", "byte[16372]", 16372, RESERVED)]);
+var sxvi_partimage_tail = sxLayout(0x60530064, "partimage_tail", LE, sxvi_partimage_tail_fields);
+function sxvi_pi_marker(c, p, str) {
+    var n = sxStrlen(str);
+    if (!sxvi_magic(c, p[0], str, n)) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxvi_partimage(c) {
+    var b = [];
+    var p = [512];
+    if (!sxvi_magic(c, 0, "PaRtImAgE-VoLuMe\x00", 16) || !sxvi_magic(c, 32, "0.6.1\x00", 6) || !sxvi_magic(c, 10240, "0.6.1\x00", 6) || !sxvi_put(c, sxvi_partimage_volume_header, 0, 1) || !sxvi_put(c, sxvi_partimage_main_header, p[0], 1) || !sxvi_put(c, sxvi_partimage_header_checksum, p[0] + 16384, 1)) {
+        return false;
+    }
+    p[0] += 16388;
+    if (!sxvi_pi_marker(c, p, "MAGIC-BEGIN-MBRBACKUP")) {
+        return true;
+    }
+    for (var i = 0; i < 10; i++) {
+        var magic = [];
+        sxSnprintf(magic, 0, 32, "MAGIC-BEGIN-EXT%03u", [i]);
+        if (!sxvi_magic(c, p[0], magic, 18) || !sxvi_read(c, p[0] + 18, b, 4)) {
+            return true;
+        }
+        var n = sxvi32(b, 0, 0);
+        if (!sxvi_put(c, sxvi_partimage_extension_header, p[0], 1) || !sxvi_span(c, p[0] + 22, n)) {
+            return false;
+        }
+        p[0] += 22 + n;
+    }
+    if (!sxvi_pi_marker(c, p, "MAGIC-BEGIN-LOCALHEADER") || !sxvi_read(c, p[0], b, 40)) {
+        return true;
+    }
+    var bs = sxvi64(b, 0, 0);
+    var used = sxvi64(b, 8, 0);
+    var blocks = sxvi64(b, 16, 0);
+    var bitmap = sxvi64(b, 24, 0);
+    if (!sxvi_put(c, sxvi_partimage_local_header, p[0], 1) || !sxvi_put(c, sxvi_partimage_header_checksum, p[0] + 16384, 1)) {
+        return false;
+    }
+    p[0] += 16388;
+    if (!sxvi_pi_marker(c, p, "MAGIC-BEGIN-BITMAP") || !sxvi_span(c, p[0], bitmap)) {
+        return true;
+    }
+    p[0] += bitmap;
+    if (!sxvi_pi_marker(c, p, "MAGIC-BEGIN-INFO") || !sxvi_span(c, p[0], 16388)) {
+        return true;
+    }
+    if (!sxvi_put(c, sxvi_partimage_header_checksum, p[0] + 16384, 1)) {
+        return false;
+    }
+    p[0] += 16388;
+    if (!sxvi_pi_marker(c, p, "MAGIC-BEGIN-DATABLOCKS")) {
+        return true;
+    }
+    if (!bs || bs > 65536 || used > blocks || used > Math.floor(SX_U64_MAX / bs)) {
+        return true;
+    }
+    var bytes = used * bs;
+    var checks = Math.floor(bytes / 65536);
+    if (bytes > SX_U64_MAX - checks * 16 || !sxvi_span(c, p[0], bytes + checks * 16)) {
+        return true;
+    }
+    var end = [p[0] + bytes + checks * 16];
+    for (i = 0; i < checks && c.count < 24000; i++) {
+        var at = p[0] + (i + 1) * 65536 + i * 16;
+        if (!sxvi_magic(c, at, "CHK\x00", 4)) {
+            break;
+        }
+        if (!sxvi_put(c, sxvi_partimage_data_check, at, 1)) {
+            return false;
+        }
+    }
+    if (!sxvi_pi_marker(c, end, "MAGIC-BEGIN-TAIL") || !sxvi_span(c, end[0], 16384)) {
+        return true;
+    }
+    return sxvi_put(c, sxvi_partimage_tail, end[0], 1);
+}
+function sx_partimage_build(c) {
+    return sxvi_partimage(c);
+}

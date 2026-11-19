@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/swagpacket/xx_swagpacket_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_swagpacket_header_fields = layout([chars("banner", 48, SIGNATURE), chars("separator", 1, RESERVED),
+    field("entry_count", "ascii_decimal[5]", 5, COUNT), chars("padding", 9, RESERVED), chars("title", 65, STRING)]);
+var sxag_swagpacket_header = sxLayout(0x60250029, "swagpacket_header", LE, sxag_swagpacket_header_fields);
+var sxag_swagpacket_entry_fields = layout([field("entry_index", "ascii_decimal[8]", 8, ID), chars("date", 8, NONE),
+    chars("time", 5, NONE), chars("author", 25, STRING), chars("contributor", 25, STRING), chars("subject", 25, STRING),
+    chars("keywords", 20, STRING), field("block_count", "ascii_decimal[7]", 7, COUNT), bytes("unknown123", 4),
+    chars("separator", 1, RESERVED)]);
+var sxag_swagpacket_entry = sxLayout(0x6025002A, "swagpacket_entry", LE, sxag_swagpacket_entry_fields);
+function sxag_decimal(b, b_o, n, v) {
+    var a = 0;
+    var seen = false;
+    var tail = false;
+    for (var i = 0; i < n; i++) {
+        if (b[b_o + i] === 32) {
+            if (seen) {
+                tail = true;
+            }
+            continue;
+        }
+        if (tail || b[b_o + i] < 48 /*0*/ || b[b_o + i] > 57 /*9*/ || a > Math.floor((SX_U64_MAX - (b[b_o + i] - 48 /*0*/ < 0 ? b[b_o + i] - 48 /*0*/ + SX_U64_MAX : b[b_o + i] - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        a = sxU64(a * 10 + b[b_o + i] - 48 /*0*/);
+        seen = true;
+    }
+    v[0] = a;
+    return seen;
+}
+function sxag_swag(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 128) || !sxag_add(c, sxag_swagpacket_header, 0)) {
+        return false;
+    }
+    var n = [0];
+    var p = 128;
+    if (!sxag_decimal(b, 49, 5, n) || n[0] > 20000) {
+        return true;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var blocks = [0];
+        if (!sxag_read(c, p, b, 128) || !sxag_decimal(b, 116, 7, blocks) || blocks[0] < 2 || blocks[0] > (0x1FFFFFF * 4294967296 + 0xFFFFFFFF) || !sxag_span(c, p, blocks[0] * 128)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_swagpacket_entry, p)) {
+            return false;
+        }
+        p += blocks[0] * 128;
+    }
+    return true;
+}
+function sx_swagpacket_build(c) {
+    return sxag_swag(c);
+}

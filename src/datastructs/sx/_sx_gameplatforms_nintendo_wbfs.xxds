@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_wbfs/xx_nintendo_wbfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_wbfs_header_fields = layout([blob("signature", 4, SIGNATURE), u32("host_sector_count", COUNT), u8("host_sector_shift"),
+    u8("wbfs_sector_shift"), blob("reserved", 2, RESERVED), blob("disc_table", 500, FLAGS)]);
+var sxgp_wbfs_header = sxLayout(0x6036009C, "wbfs_header", BE, sxgp_wbfs_header_fields);
+var sxgp_wbfs_disc_title_fields = layout([chars("title", 64, STRING)]);
+var sxgp_wbfs_disc_title = sxLayout(0x6036009D, "wbfs_disc_title", LE, sxgp_wbfs_disc_title_fields);
+var sxgp_wbfs_block_fields = layout([u16("physical_cluster")]);
+var sxgp_wbfs_block = sxLayout(0x6036009E, "wbfs_block", BE, sxgp_wbfs_block_fields);
+var sxgp_wbfs_md5_fields = layout([blob("signature", 4, SIGNATURE), blob("digest", 16, CHECKSUM)]);
+var sxgp_wbfs_md5 = sxLayout(0x6036009F, "wbfs_md5", LE, sxgp_wbfs_md5_fields);
+function sxgp_wbfs(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var shift = [0];
+    var physical = [0];
+    var tag = [];
+    if (!sxgp_row(v, sxgp_wbfs_header, 0, end) || !sxgp_row(v, sxgp_gcm_id, 512, end) || !sxgp_row(v, sxgp_wbfs_disc_title, 544, end) || !sxgp_word(v, 9, 1, false, shift, 0, end) || shift[0] < 19 || shift[0] > 24) {
+        return false;
+    }
+    var cluster = sxShl64(1, shift[0]);
+    var n = Math.floor((0x230480000 + cluster - 1) / cluster);
+    if (!sxgp_table(v, sxgp_wbfs_block, 768, n, end) || !sxgp_word(v, 768, 2, true, physical, 0, end) || !sxgp_span(v, physical[0] * cluster, 256, end) || !sxgp_row(v, sxgp_gcm_id, physical[0] * cluster, end) || !sxgp_row(v, sxgp_wbfs_disc_title, physical[0] * cluster + 32, end)) {
+        return false;
+    }
+    if (!sxgp_read(v, 748, tag, 4, end)) {
+        return false;
+    }
+    return !!(sxMemcmp(tag, "MD5#", 4) || sxgp_row(v, sxgp_wbfs_md5, 748, end));
+}
+function sx_nintendo_wbfs_build(v) {
+    return sxgp_wbfs(v);
+}

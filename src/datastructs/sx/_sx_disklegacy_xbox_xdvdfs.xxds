@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/xbox_xdvdfs/xx_xbox_xdvdfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_xdvdfs_volume_descriptor_fields = layout([chars("signature", 20, SIGNATURE), u32("root_directory_sector"),
+    u32("root_directory_size", SIZE), u64("creation_filetime"), field("reserved", "byte[1992]", 1992, RESERVED),
+    chars("ending_signature", 20, SIGNATURE)]);
+var sxdleg_xdvdfs_volume_descriptor = sxLayout(0x60750040, "xdvdfs_volume_descriptor", LE, sxdleg_xdvdfs_volume_descriptor_fields);
+var sxdleg_xdvdfs_directory_entry_fields = layout([u16("left_child_words"), u16("right_child_words"), u32("first_sector"),
+    u32("file_size", SIZE), u8("attributes", FLAGS), u8("name_length", COUNT)]);
+var sxdleg_xdvdfs_directory_entry = sxLayout(0x60750041, "xdvdfs_directory_entry", LE, sxdleg_xdvdfs_directory_entry_fields);
+function sxdleg_xdvdfs(c) {
+    var h = [];
+    var e = [];
+    if (!sxdleg_read(c, 65536, h, 0, 32) || sxMemcmp(h, "MICROSOFT*XBOX*MEDIA", 20) || !sxdleg_put(c, sxdleg_xdvdfs_volume_descriptor, 65536, 1)) {
+        return false;
+    }
+    var base = sxdleg32(h, 20, 0) * 2048;
+    var size = sxdleg32(h, 24, 0);
+    if (size < 14 || !sxdleg_span(c, base, size)) {
+        return true;
+    }
+    var todo = sxZeros(1024);
+    var count = 1;
+    for (var i = 0; i < count; i++) {
+        var p = todo[i];
+        if (p > size || sxU64(size - p) < 14 || !sxdleg_read(c, base + p, e, 0, 14) || e[13] > sxU64(sxU64(size - p) - 14)) {
+            continue;
+        }
+        if (!sxdleg_put(c, sxdleg_xdvdfs_directory_entry, base + p, 1)) {
+            return false;
+        }
+        for (var j = 0; j < 2; j++) {
+            var child = sxdleg16(e, (j * 2) >>> 0, 0);
+            if (!child || child === 65535) {
+                continue;
+            }
+            child = (child * 4) >>> 0;
+            var seen = false;
+            for (var k = 0; k < count; k++) {
+                if (todo[k] === child) {
+                    seen = true;
+                }
+            }
+            if (!seen && count < 1024) {
+                todo[count++] = child;
+            }
+        }
+    }
+    return true;
+}
+function sx_xbox_xdvdfs_build(c) {
+    return sxdleg_xdvdfs(c);
+}

@@ -1,0 +1,100 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vxfs/xx_vxfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_vxfs1_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("creation_time", TIMESTAMP),
+    u32("creation_microseconds"), field("unused0", "uint32[2]", 8, RESERVED), u32("old_log_start"), u32("old_log_end"),
+    u32("block_size", SIZE), u32("block_count", COUNT), u32("data_block_count", COUNT), u32("old_inode_count", COUNT),
+    u32("old_allocation_units", COUNT), u32("unused1", RESERVED), u32("old_default_inode_extent_blocks", COUNT),
+    u32("old_inode_list_block_size"), u32("immediate_data_size", SIZE), u32("direct_extent_count", COUNT),
+    u32("first_allocation_unit_block"), u32("extent_map_block"), u32("inode_map_block"), u32("extent_operation_map_block"),
+    u32("inode_list_block"), u32("free_data_block"), u32("first_extent_map_block"), u32("first_inode_map_block"),
+    u32("first_extent_operation_block"), u32("first_inode_list_block"), u32("first_free_data_block"),
+    u32("indirect_entries", COUNT), u32("allocation_unit_blocks", COUNT), u32("inode_map_blocks", COUNT),
+    u32("extent_map_blocks", COUNT), u32("inode_list_blocks", COUNT), u32("padding_blocks", COUNT),
+    u32("data_blocks_per_unit", COUNT), u32("max_tier"), u32("inodes_per_block", COUNT), u32("old_inodes_per_unit", COUNT),
+    u32("old_inodes_per_list_block", COUNT), u32("old_directory_inodes_per_unit", COUNT),
+    u32("indirect_address_extent_blocks", COUNT), u32("block_shift"), u32("inode_shift"), u32("block_mask", FLAGS),
+    u32("block_offset_mask", FLAGS), u32("old_inode_mask", FLAGS), u32("checksum", CHECKSUM), u32("free_blocks", COUNT),
+    u32("free_inodes", COUNT), field("free_extents_by_size", "uint32[32]", 128, COUNT), u32("flags", FLAGS),
+    u8("modified", FLAGS), u8("clean", FLAGS), u16("unused2", RESERVED), u32("first_log_id", ID), u32("write_time", TIMESTAMP),
+    u32("write_microseconds"), chars("filesystem_name", 6, STRING), chars("pack_name", 6, STRING), u32("log_version", ID),
+    u32("unused3", RESERVED)]);
+var sxmf_vxfs1_superblock_le = sxLayout(0x60420067, "vxfs1_superblock_le", LE, sxmf_vxfs1_superblock_le_fields);
+var sxmf_vxfs1_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("creation_time", TIMESTAMP),
+    u32("creation_microseconds"), field("unused0", "uint32[2]", 8, RESERVED), u32("old_log_start"), u32("old_log_end"),
+    u32("block_size", SIZE), u32("block_count", COUNT), u32("data_block_count", COUNT), u32("old_inode_count", COUNT),
+    u32("old_allocation_units", COUNT), u32("unused1", RESERVED), u32("old_default_inode_extent_blocks", COUNT),
+    u32("old_inode_list_block_size"), u32("immediate_data_size", SIZE), u32("direct_extent_count", COUNT),
+    u32("first_allocation_unit_block"), u32("extent_map_block"), u32("inode_map_block"), u32("extent_operation_map_block"),
+    u32("inode_list_block"), u32("free_data_block"), u32("first_extent_map_block"), u32("first_inode_map_block"),
+    u32("first_extent_operation_block"), u32("first_inode_list_block"), u32("first_free_data_block"),
+    u32("indirect_entries", COUNT), u32("allocation_unit_blocks", COUNT), u32("inode_map_blocks", COUNT),
+    u32("extent_map_blocks", COUNT), u32("inode_list_blocks", COUNT), u32("padding_blocks", COUNT),
+    u32("data_blocks_per_unit", COUNT), u32("max_tier"), u32("inodes_per_block", COUNT), u32("old_inodes_per_unit", COUNT),
+    u32("old_inodes_per_list_block", COUNT), u32("old_directory_inodes_per_unit", COUNT),
+    u32("indirect_address_extent_blocks", COUNT), u32("block_shift"), u32("inode_shift"), u32("block_mask", FLAGS),
+    u32("block_offset_mask", FLAGS), u32("old_inode_mask", FLAGS), u32("checksum", CHECKSUM), u32("free_blocks", COUNT),
+    u32("free_inodes", COUNT), field("free_extents_by_size", "uint32[32]", 128, COUNT), u32("flags", FLAGS),
+    u8("modified", FLAGS), u8("clean", FLAGS), u16("unused2", RESERVED), u32("first_log_id", ID), u32("write_time", TIMESTAMP),
+    u32("write_microseconds"), chars("filesystem_name", 6, STRING), chars("pack_name", 6, STRING), u32("log_version", ID),
+    u32("unused3", RESERVED)]);
+var sxmf_vxfs1_superblock_be = sxLayout(0x60420068, "vxfs1_superblock_be", BE, sxmf_vxfs1_superblock_be_fields);
+var sxmf_vxfs2_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("creation_time", TIMESTAMP),
+    u32("creation_microseconds"), field("unused0", "uint32[2]", 8, RESERVED), u32("old_log_start"), u32("old_log_end"),
+    u32("block_size", SIZE), u32("block_count", COUNT), u32("data_block_count", COUNT), u32("old_inode_count", COUNT),
+    u32("old_allocation_units", COUNT), u32("unused1", RESERVED), u32("old_default_inode_extent_blocks", COUNT),
+    u32("old_inode_list_block_size"), u32("immediate_data_size", SIZE), u32("direct_extent_count", COUNT),
+    u32("first_allocation_unit_block"), u32("extent_map_block"), u32("inode_map_block"), u32("extent_operation_map_block"),
+    u32("inode_list_block"), u32("free_data_block"), u32("first_extent_map_block"), u32("first_inode_map_block"),
+    u32("first_extent_operation_block"), u32("first_inode_list_block"), u32("first_free_data_block"),
+    u32("indirect_entries", COUNT), u32("allocation_unit_blocks", COUNT), u32("inode_map_blocks", COUNT),
+    u32("extent_map_blocks", COUNT), u32("inode_list_blocks", COUNT), u32("padding_blocks", COUNT),
+    u32("data_blocks_per_unit", COUNT), u32("max_tier"), u32("inodes_per_block", COUNT), u32("old_inodes_per_unit", COUNT),
+    u32("old_inodes_per_list_block", COUNT), u32("old_directory_inodes_per_unit", COUNT),
+    u32("indirect_address_extent_blocks", COUNT), u32("block_shift"), u32("inode_shift"), u32("block_mask", FLAGS),
+    u32("block_offset_mask", FLAGS), u32("old_inode_mask", FLAGS), u32("checksum", CHECKSUM), u32("free_blocks", COUNT),
+    u32("free_inodes", COUNT), field("free_extents_by_size", "uint32[32]", 128, COUNT), u32("flags", FLAGS),
+    u8("modified", FLAGS), u8("clean", FLAGS), u16("unused2", RESERVED), u32("first_log_id", ID), u32("write_time", TIMESTAMP),
+    u32("write_microseconds"), chars("filesystem_name", 6, STRING), chars("pack_name", 6, STRING), u32("log_version", ID),
+    u32("unused3", RESERVED), field("object_location_extents", "uint32[2]", 8), u32("object_location_extent_blocks", COUNT),
+    u32("inode_allocation_map_blocks", COUNT), u32("inode_allocation_unit_blocks", COUNT), u32("inode_size", SIZE),
+    u32("old_indirect_levels", COUNT), u32("checksum2", CHECKSUM)]);
+var sxmf_vxfs2_superblock_le = sxLayout(0x60420069, "vxfs2_superblock_le", LE, sxmf_vxfs2_superblock_le_fields);
+var sxmf_vxfs2_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("creation_time", TIMESTAMP),
+    u32("creation_microseconds"), field("unused0", "uint32[2]", 8, RESERVED), u32("old_log_start"), u32("old_log_end"),
+    u32("block_size", SIZE), u32("block_count", COUNT), u32("data_block_count", COUNT), u32("old_inode_count", COUNT),
+    u32("old_allocation_units", COUNT), u32("unused1", RESERVED), u32("old_default_inode_extent_blocks", COUNT),
+    u32("old_inode_list_block_size"), u32("immediate_data_size", SIZE), u32("direct_extent_count", COUNT),
+    u32("first_allocation_unit_block"), u32("extent_map_block"), u32("inode_map_block"), u32("extent_operation_map_block"),
+    u32("inode_list_block"), u32("free_data_block"), u32("first_extent_map_block"), u32("first_inode_map_block"),
+    u32("first_extent_operation_block"), u32("first_inode_list_block"), u32("first_free_data_block"),
+    u32("indirect_entries", COUNT), u32("allocation_unit_blocks", COUNT), u32("inode_map_blocks", COUNT),
+    u32("extent_map_blocks", COUNT), u32("inode_list_blocks", COUNT), u32("padding_blocks", COUNT),
+    u32("data_blocks_per_unit", COUNT), u32("max_tier"), u32("inodes_per_block", COUNT), u32("old_inodes_per_unit", COUNT),
+    u32("old_inodes_per_list_block", COUNT), u32("old_directory_inodes_per_unit", COUNT),
+    u32("indirect_address_extent_blocks", COUNT), u32("block_shift"), u32("inode_shift"), u32("block_mask", FLAGS),
+    u32("block_offset_mask", FLAGS), u32("old_inode_mask", FLAGS), u32("checksum", CHECKSUM), u32("free_blocks", COUNT),
+    u32("free_inodes", COUNT), field("free_extents_by_size", "uint32[32]", 128, COUNT), u32("flags", FLAGS),
+    u8("modified", FLAGS), u8("clean", FLAGS), u16("unused2", RESERVED), u32("first_log_id", ID), u32("write_time", TIMESTAMP),
+    u32("write_microseconds"), chars("filesystem_name", 6, STRING), chars("pack_name", 6, STRING), u32("log_version", ID),
+    u32("unused3", RESERVED), field("object_location_extents", "uint32[2]", 8), u32("object_location_extent_blocks", COUNT),
+    u32("inode_allocation_map_blocks", COUNT), u32("inode_allocation_unit_blocks", COUNT), u32("inode_size", SIZE),
+    u32("old_indirect_levels", COUNT), u32("checksum2", CHECKSUM)]);
+var sxmf_vxfs2_superblock_be = sxLayout(0x6042006A, "vxfs2_superblock_be", BE, sxmf_vxfs2_superblock_be_fields);
+function sxmf_vxfs(c) {
+    var h = [];
+    if (!sxmf_read(c, 1024, h, 0, 8)) {
+        return false;
+    }
+    var o = sxmf32(h, 0, 0) === 0xA501FCF5 ? 0 : sxmf32(h, 0, 1) === 0xA501FCF5 ? 1 : 2;
+    if (o === 2) {
+        return false;
+    }
+    return sxmf_put(c, sxmf32(h, 4, o) >= 2 ? o === 1 ? sxmf_vxfs2_superblock_be : sxmf_vxfs2_superblock_le : o === 1 ? sxmf_vxfs1_superblock_be : sxmf_vxfs1_superblock_le, 1024, 1);
+}
+function sx_vxfs_build(c) {
+    return sxmf_vxfs(c);
+}

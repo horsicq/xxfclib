@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/nid/xx_nid_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_nid_header_fields = layout([chars("signature", 2, SIGNATURE), u16("version"), u16("checksum", CHECKSUM),
+    u16("member_count", COUNT), bytes("reserved", 112)]);
+var sxat_nid_header = sxLayout(0x60640008, "nid_header", LE, sxat_nid_header_fields);
+var sxat_nid_member_fields = layout([u8("method"), i32("payload_offset1", OFFSET), u32("folder_key"), chars("name", 11, NONE),
+    u8("attributes", FLAGS), u16("dos_time"), u16("dos_date"), i32("uncompressed_size", SIZE)]);
+var sxat_nid_member = sxLayout(0x60640009, "nid_member", LE, sxat_nid_member_fields);
+var sxat_nid_block_fields = layout([u8("opaque"), u16("flags", FLAGS), u16("compressed_size", SIZE)]);
+var sxat_nid_block = sxLayout(0x6064000A, "nid_block", LE, sxat_nid_block_fields);
+function sxat_nid(c) {
+    var n = [0];
+    var work = 0;
+    if (!sxat_word(c, 6, 2, false, n) || !sxat_add(c, sxat_nid_header, 0) || !sxat_table(c, sxat_nid_member, 120, 29, n[0])) {
+        return false;
+    }
+    for (var i = 0; i < n[0] && c.count < 20000; i++) {
+        var h = [];
+        if (!sxat_read(c, 120 + 29 * i, h, 29)) {
+            return false;
+        }
+        if (h[0] !== 1) {
+            continue;
+        }
+        var p = sxat_uint(h, 1, 4, false);
+        if (!p || p > 2147483647) {
+            continue;
+        }
+        p--;
+        while (sxat_span(c, p, 5)) {
+            if (++work > 100000) {
+                return true;
+            }
+            var b = [];
+            if (!sxat_read(c, p, b, 5) || !sxat_add(c, sxat_nid_block, p)) {
+                break;
+            }
+            var z = sxat_uint(b, 3, 2, false);
+            p += 5;
+            if (!sxat_span(c, p, z)) {
+                break;
+            }
+            p += z;
+            if (sxAnd64(sxat_uint(b, 1, 2, false), 0x100)) {
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sx_nid_build(c) {
+    return sxat_nid(c);
+}

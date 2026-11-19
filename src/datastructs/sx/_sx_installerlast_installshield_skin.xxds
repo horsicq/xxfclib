@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/installshield_skin/xx_installshield_skin_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_installshield_skin_encoded_name_fields = layout([field("encoded_name", "uint8", 0)]);
+var sxil_installshield_skin_encoded_name = sxLayout(0x60850030, "installshield_skin_encoded_name", LE, sxil_installshield_skin_encoded_name_fields);
+var sxil_installshield_skin_encoded_size_fields = layout([field("encoded_size", "uint8", 0)]);
+var sxil_installshield_skin_encoded_size = sxLayout(0x60850031, "installshield_skin_encoded_size", LE, sxil_installshield_skin_encoded_size_fields);
+var sxil_skin_key = [0xA2, 0x85, 0x59, 0xBC, 0xA3, 0x9F, 0x3B, 0xAC];
+function sxil_skin(c, r) {
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size > 281) {
+            continue;
+        }
+        var b = [];
+        if (!sxil_read(c, m.header, b, m.header_size)) {
+            continue;
+        }
+        for (var k = 0; k < m.header_size; k++) {
+            b[k] = (b[k] >> 4 | b[k] << 4) & 0xFF ^ sxil_skin_key[sxAnd64(m.header + k, 7)];
+        }
+        var n = 0;
+        while (n < m.header_size && b[n]) {
+            n++;
+        }
+        if (n >= m.header_size) {
+            continue;
+        }
+        n++;
+        if (!sxil_text(c, sxil_installshield_skin_encoded_name, m.header, n) || !sxil_text(c, sxil_installshield_skin_encoded_size, m.header + n, sxU64(m.header_size - n))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_installshield_skin_build(c, records) {
+    return sxil_skin(c, records);
+}

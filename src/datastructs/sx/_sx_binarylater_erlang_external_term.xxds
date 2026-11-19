@@ -1,0 +1,116 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/erlang_external_term/xx_erlang_external_term_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_etf_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_etf_tag = sxLayout(0x60350039, "etf_tag", LE, sxbl_etf_tag_fields);
+var sxbl_etf_version_fields = layout([u8("version", SIGNATURE)]);
+var sxbl_etf_version = sxLayout(0x60350098, "etf_version", LE, sxbl_etf_version_fields);
+var sxbl_etf_big_sign_fields = layout([u8("sign")]);
+var sxbl_etf_big_sign = sxLayout(0x60350099, "etf_big_sign", LE, sxbl_etf_big_sign_fields);
+var sxbl_etf_bit_count_fields = layout([u8("last_byte_bits")]);
+var sxbl_etf_bit_count = sxLayout(0x6035009A, "etf_bit_count", LE, sxbl_etf_bit_count_fields);
+var sxbl_etf_old_float_fields = layout([chars("decimal_text", 31, STRING)]);
+var sxbl_etf_old_float = sxLayout(0x6035009B, "etf_old_float", LE, sxbl_etf_old_float_fields);
+var sxbl_etf_pid_old_fields = layout([u32("id", ID), u32("serial", ID), u8("creation")]);
+var sxbl_etf_pid_old = sxLayout(0x6035009C, "etf_pid_old", BE, sxbl_etf_pid_old_fields);
+var sxbl_etf_pid_new_fields = layout([u32("id", ID), u32("serial", ID), u32("creation")]);
+var sxbl_etf_pid_new = sxLayout(0x6035009D, "etf_pid_new", BE, sxbl_etf_pid_new_fields);
+var sxbl_etf_port_old_fields = layout([u32("id", ID), u8("creation")]);
+var sxbl_etf_port_old = sxLayout(0x6035009E, "etf_port_old", BE, sxbl_etf_port_old_fields);
+var sxbl_etf_port_new_fields = layout([u32("id", ID), u32("creation")]);
+var sxbl_etf_port_new = sxLayout(0x6035009F, "etf_port_new", BE, sxbl_etf_port_new_fields);
+var sxbl_etf_port_v4_fields = layout([u64("id", ID), u32("creation")]);
+var sxbl_etf_port_v4 = sxLayout(0x603500A0, "etf_port_v4", BE, sxbl_etf_port_v4_fields);
+var sxbl_etf_reference_id_fields = layout([u32("id", ID)]);
+var sxbl_etf_reference_id = sxLayout(0x603500A1, "etf_reference_id", BE, sxbl_etf_reference_id_fields);
+var sxbl_etf_creation1_fields = layout([u8("creation")]);
+var sxbl_etf_creation1 = sxLayout(0x603500A2, "etf_creation1", LE, sxbl_etf_creation1_fields);
+var sxbl_etf_creation4_fields = layout([u32("creation")]);
+var sxbl_etf_creation4 = sxLayout(0x603500A3, "etf_creation4", BE, sxbl_etf_creation4_fields);
+var sxbl_etf_reference_old_fields = layout([u32("id", ID), u8("creation")]);
+var sxbl_etf_reference_old = sxLayout(0x60350118, "etf_reference_old", BE, sxbl_etf_reference_old_fields);
+function sxbl_etf(c, p, end, depth) {
+    var t = [0];
+    if (depth > 32 || !sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_etf_tag)) {
+        return false;
+    }
+    var n = [0];
+    var z;
+    if (t[0] === 106) {
+        return true;
+    }
+    if (t[0] === 97 || t[0] === 98) {
+        return sxbl_numeric(c, p, end, t[0] === 97 ? 1 : 4, t[0] === 98, true);
+    }
+    if (t[0] === 70) {
+        return sxbl_float(c, p, end, 8, true);
+    }
+    if (t[0] === 99) {
+        return sxbl_emit(c, p, end, sxbl_etf_old_float);
+    }
+    if (t[0] === 100 || t[0] === 115 || t[0] === 118 || t[0] === 119) {
+        return sxbl_string(c, p, end, t[0] === 100 || t[0] === 118 ? 2 : 1, true);
+    }
+    if (t[0] === 107) {
+        return sxbl_string(c, p, end, 2, true);
+    }
+    if (t[0] === 109 || t[0] === 77) {
+        if (!sxbl_length(c, p, end, 4, true, false, n)) {
+            return false;
+        }
+        if (t[0] === 77 && !sxbl_emit(c, p, end, sxbl_etf_bit_count)) {
+            return false;
+        }
+        return sxbl_skip(c, p, end, n[0]);
+    }
+    if (t[0] === 104 || t[0] === 105 || t[0] === 108 || t[0] === 116) {
+        if (!sxbl_length(c, p, end, t[0] === 104 ? 1 : 4, true, true, n) || n[0] > 20000) {
+            return false;
+        }
+        for (var i = 0; i < n[0] * (t[0] === 116 ? 2 : 1); i++) {
+            if (!sxbl_etf(c, p, end, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return t[0] !== 108 || sxbl_etf(c, p, end, (depth + 1) >>> 0);
+    }
+    if (t[0] === 110 || t[0] === 111) {
+        if (!sxbl_length(c, p, end, t[0] === 110 ? 1 : 4, true, true, n) || !sxbl_emit(c, p, end, sxbl_etf_big_sign)) {
+            return false;
+        }
+        return sxbl_skip(c, p, end, n[0]);
+    }
+    if (t[0] === 103 || t[0] === 88 || t[0] === 102 || t[0] === 89 || t[0] === 120 || t[0] === 101 || t[0] === 114 || t[0] === 90) {
+        n[0] = 1;
+        if ((t[0] === 114 || t[0] === 90) && (!sxbl_length(c, p, end, 2, true, true, n) || n[0] > 5)) {
+            return false;
+        }
+        if (!sxbl_etf(c, p, end, (depth + 1) >>> 0)) {
+            return false;
+        }
+        if (t[0] === 103 || t[0] === 88) {
+            return sxbl_emit(c, p, end, t[0] === 103 ? sxbl_etf_pid_old : sxbl_etf_pid_new);
+        }
+        if (t[0] === 102 || t[0] === 89 || t[0] === 120 || t[0] === 101) {
+            return sxbl_emit(c, p, end, t[0] === 101 ? sxbl_etf_reference_old : t[0] === 102 ? sxbl_etf_port_old : t[0] === 89 ? sxbl_etf_port_new : sxbl_etf_port_v4);
+        }
+        if (!sxbl_emit(c, p, end, t[0] === 90 ? sxbl_etf_creation4 : sxbl_etf_creation1)) {
+            return false;
+        }
+        for (i = 0; i < n[0]; i++) {
+            if (!sxbl_emit(c, p, end, sxbl_etf_reference_id)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+function sx_erlang_external_term_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    return sxbl_emit(c, p, end, sxbl_etf_version) && sxbl_etf(c, p, end, 0);
+}

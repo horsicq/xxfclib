@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/bondwell_2_disk/xx_bondwell_2_disk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxdt_bw_name(b, b_o, n, required) {
+    var padding = false;
+    for (var i = 0; i < n; i++) {
+        var x = b[b_o + i] & 127;
+        if (x === 32) {
+            if (!i && required) {
+                return false;
+            }
+            padding = true;
+        } else if (padding || x < 33 || x > 126 || x === 46 /*.*/ || x === 44 /*,*/ || x === 59 /*;*/ || x === 58 /*:*/ || x === 61 /*=*/ || x === 63 /*?*/ || x === 42 || x === 60 /*<*/ || x === 62 /*>*/ || x === 91 /*[*/ || x === 93 /*]*/) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxdt_bw_entries(b, first, end, minimum, blocks, used) {
+    for (var i = first; i < end; i++) {
+        var e = b, e_o = (i * 32) >>> 0;
+        if (e[e_o] === 229) {
+            continue;
+        }
+        if (e[e_o] > 15 || !sxdt_bw_name(e, e_o + 1, 8, true) || !sxdt_bw_name(e, e_o + 9, 3, false) || e[e_o + 12] > 31 || e[e_o + 13] > 128 || e[e_o + 14] > 15 || e[e_o + 15] > 128) {
+            return false;
+        }
+        var need = Math.floor(((e[e_o + 12] & 1) * 128 + e[e_o + 15] + 15) / 16);
+        for (var j = 0; j < 16; j++) {
+            var k = e[e_o + ((16 + j) >>> 0)];
+            if (!k) {
+                continue;
+            }
+            if (j >= need || k < minimum || k >= blocks || used[Math.floor(k / 8)] & 1 << k % 8) {
+                return false;
+            }
+            used[Math.floor(k / 8)] |= 1 << k % 8;
+        }
+    }
+    return true;
+}
+function sxdt_bondwell(c) {
+    var spt = c.size === 348160 ? 17 : c.size === 368640 ? 18 : 0;
+    if (!spt) {
+        return false;
+    }
+    var p = (((2 * spt) >>> 0) * 256) >>> 0;
+    var dir = [];
+    var used = sxZeros(32);
+    var blocks = Math.floor(((((78 * spt) >>> 0) * 256) >>> 0) / 2048);
+    var n = 64;
+    if (!sxdt_read(c, p, dir, 0, 0x1000) || !sxdt_bw_entries(dir, 0, 64, 1, blocks, used)) {
+        return false;
+    }
+    if (!(used[0] & 2) && sxdt_bw_entries(dir, 64, 128, 2, blocks, used)) {
+        n = 128;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxdt_put(c, dir[(i * 32) >>> 0] === 229 ? sxdt_cpm_deleted_entry : sxdt_cpm_extent8, p + ((i * 32) >>> 0), 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_bondwell_2_disk_build(c) {
+    var ok = false;
+    ok = sxdt_bondwell(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

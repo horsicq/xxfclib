@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/fdx68_fdx/xx_fdx68_fdx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_fdx68_header_fields = layout([chars("signature", 3, SIGNATURE), u8("revision", ID), chars("name", 60, NONE),
+    field("padding", "byte[4]", 4, RESERVED), i32("type", ID), i32("cylinders", COUNT), i32("heads", COUNT),
+    i32("transfer_rate"), i32("rpm"), i32("write_protected", FLAGS), u32("options", FLAGS), u32("unused", RESERVED),
+    i32("track_block_size", SIZE), field("reserved", "byte[152]", 152, RESERVED)]);
+var sxst_fdx68_header = sxLayout(0x60370038, "fdx68_header", LE, sxst_fdx68_header_fields);
+var sxst_fdx68_track_fields = layout([i32("cylinder"), i32("head"), i32("index_bit_position"), i32("bit_count", COUNT)]);
+var sxst_fdx68_track = sxLayout(0x60370039, "fdx68_track", LE, sxst_fdx68_track_fields);
+function sxst_fdx(c) {
+    var h = [];
+    if (!sxst_read(c, 0, h, 104) || !sxst_put(c, sxst_fdx68_header, 0, 1)) {
+        return false;
+    }
+    var cyl = sxst32(h, 72);
+    var heads = sxst32(h, 76);
+    var block = sxst32(h, 100);
+    if (!cyl || cyl > 256 || !heads || heads > 2 || block <= 16 || block > 1048576) {
+        return true;
+    }
+    for (var i = 0; i < cyl * heads; i++) {
+        var p = 256 + i * block;
+        if (!sxst_span(c, p, block) || !sxst_put(c, sxst_fdx68_track, p, 1)) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_fdx68_fdx_build(c) {
+    return sxst_fdx(c);
+}

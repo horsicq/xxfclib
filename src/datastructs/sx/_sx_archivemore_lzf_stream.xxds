@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzf_stream/xx_lzf_stream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_lzf_stored_block_fields = layout([chars("magic", 2, SIGNATURE), u8("kind", ID), u16("packed_size", SIZE)]);
+var sxar_lzf_stored_block = sxLayout(0x601C002B, "lzf_stored_block", BE, sxar_lzf_stored_block_fields);
+var sxar_lzf_compressed_block_fields = layout([chars("magic", 2, SIGNATURE), u8("kind", ID), u16("packed_size", SIZE),
+    u16("unpacked_size", SIZE)]);
+var sxar_lzf_compressed_block = sxLayout(0x601C002C, "lzf_compressed_block", BE, sxar_lzf_compressed_block_fields);
+var sxar_lzf_end_fields = layout([u8("marker", SIGNATURE)]);
+var sxar_lzf_end = sxLayout(0x601C002D, "lzf_end", LE, sxar_lzf_end_fields);
+function sxar_lzf(c) {
+    var p = 0;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var b = [];
+        if (!sxar_read(c, p, b, 0, 1)) {
+            break;
+        }
+        if (!b[0] && p + 1 === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            if (!sxar_add(c, sxar_lzf_end, p)) {
+                return false;
+            }
+            break;
+        }
+        if (!sxar_read(c, p, b, 0, 5) || b[0] !== 90 /*Z*/ || b[1] !== 86 /*V*/ || b[2] > 1) {
+            break;
+        }
+        var head = b[2] ? 7 : 5;
+        var n = sxar16(b, 3, true);
+        if (!sxar_span(c, p, head + n)) {
+            break;
+        }
+        if (!sxar_add(c, b[2] ? sxar_lzf_compressed_block : sxar_lzf_stored_block, p)) {
+            return false;
+        }
+        p += head + n;
+    }
+    return c.count !== 0;
+}
+function sx_lzf_stream_build(c) {
+    return sxar_lzf(c);
+}

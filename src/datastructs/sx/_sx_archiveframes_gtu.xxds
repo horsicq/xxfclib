@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/gtu/xx_gtu_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_gtu_header_fields = layout([u32("file_size", SIZE)]);
+var sxafr_gtu_header = sxLayout(0x6054000E, "gtu_header", LE, sxafr_gtu_header_fields);
+var sxafr_gtu_record_fields = layout([u32("block_offset", OFFSET), u16("tag", SIGNATURE), u16("kind"), u16("reserved"),
+    u16("name_size", SIZE)]);
+var sxafr_gtu_record = sxLayout(0x6054000F, "gtu_record", LE, sxafr_gtu_record_fields);
+var sxafr_gtu_terminator_fields = layout([u32("self_offset", OFFSET), bytes("unused", 8)]);
+var sxafr_gtu_terminator = sxLayout(0x60540010, "gtu_terminator", LE, sxafr_gtu_terminator_fields);
+var sxafr_gtu_info_fields = layout([u16("dos_date"), u16("dos_time"), bytes("opaque", 8), i32("uncompressed_size", SIZE),
+    i32("allocated_size", SIZE), u32("attributes", FLAGS), i32("skip_size", SIZE)]);
+var sxafr_gtu_info = sxLayout(0x60540011, "gtu_info", LE, sxafr_gtu_info_fields);
+var sxafr_gtu_frame_fields = layout([i32("uncompressed_size", SIZE), i32("compressed_size", SIZE)]);
+var sxafr_gtu_frame = sxLayout(0x60540012, "gtu_frame", LE, sxafr_gtu_frame_fields);
+function sxafr_gtu(c) {
+    var p = 4;
+    if (!sxafr_add(c, sxafr_gtu_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000; i++) {
+        var h = [];
+        if (!sxafr_read(c, p, h, 12)) {
+            return false;
+        }
+        var off = sxafr_uint(h, 0, 4, false);
+        var names = sxafr_uint(h, 10, 2, false);
+        if (off === p) {
+            return sxafr_add(c, sxafr_gtu_terminator, p);
+        }
+        if (!names || names > 4096 || !sxafr_span(c, p + 12, names) || !sxafr_span(c, off, 12 + names + 28) || !sxafr_add(c, sxafr_gtu_record, p) || !sxafr_add(c, sxafr_gtu_record, off)) {
+            return false;
+        }
+        var q = off + 12 + names;
+        var info = [];
+        if (!sxafr_read(c, q, info, 28) || !sxafr_add(c, sxafr_gtu_info, q)) {
+            return false;
+        }
+        q += 28;
+        var totals = [sxafr_uint(info, 24, 4, false), sxafr_uint(info, 12, 4, false)];
+        for (var phase = 0; phase < 2; phase++) {
+            var remaining = totals[phase];
+            if (remaining > 2147483647) {
+                return false;
+            }
+            while (remaining) {
+                var frame = [];
+                if (!sxafr_read(c, q, frame, 8)) {
+                    return false;
+                }
+                var raw = sxafr_uint(frame, 0, 4, false);
+                var z = sxafr_uint(frame, 4, 4, false);
+                if (!raw || raw > 65536 || raw > remaining || z > 2147483647 || !sxafr_span(c, q + 8, z) || !sxafr_add(c, sxafr_gtu_frame, q)) {
+                    return false;
+                }
+                remaining = sxU64(remaining - raw);
+                q += 8 + z;
+            }
+        }
+        p += 12 + names;
+    }
+    return true;
+}
+function sx_gtu_build(c) {
+    return sxafr_gtu(c);
+}

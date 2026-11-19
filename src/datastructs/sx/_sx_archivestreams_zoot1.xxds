@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zoot1/xx_zoot1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_zoot1_header_fields = layout([chars("signature", 4, SIGNATURE), u32("directory_size", SIZE), u16("version"),
+    u16("directory_count", COUNT)]);
+var sxas_zoot1_header = sxLayout(0x60430004, "zoot1_header", LE, sxas_zoot1_header_fields);
+var sxas_zoot1_entry137_fields = layout([chars("name", 60, NONE), bytes("opaque0", 33), u32("payload_offset", OFFSET),
+    u32("payload_size", SIZE), bytes("opaque1", 2), u16("status"), u16("class_word"), bytes("opaque_tail", 30)]);
+var sxas_zoot1_entry137 = sxLayout(0x60430005, "zoot1_entry137", LE, sxas_zoot1_entry137_fields);
+var sxas_zoot1_entry235_fields = layout([chars("name", 60, NONE), bytes("opaque0", 33), u32("payload_offset", OFFSET),
+    u32("payload_size", SIZE), bytes("opaque1", 2), u16("status"), u16("class_word"), bytes("opaque_tail", 128)]);
+var sxas_zoot1_entry235 = sxLayout(0x60430006, "zoot1_entry235", LE, sxas_zoot1_entry235_fields);
+function sxas_zoot(c) {
+    var size = [0];
+    var version = [0];
+    var dirs = [0];
+    if (!sxas_word(c, 4, 4, false, size) || !sxas_word(c, 8, 2, false, version) || !sxas_word(c, 10, 2, false, dirs) || !sxas_span(c, 12, size[0]) || !sxas_add(c, sxas_zoot1_header, 0)) {
+        return false;
+    }
+    var ds = version[0] === 0x272E ? 116 : 76;
+    var es = version[0] === 0x2739 ? 235 : 137;
+    if (version[0] !== 0x272E && version[0] !== 0x2738 && version[0] !== 0x2739) {
+        return false;
+    }
+    if (dirs[0] > Math.floor(size[0] / ds)) {
+        return false;
+    }
+    var p = 12 + dirs[0] * ds;
+    var count = Math.floor(sxU64(size[0] - dirs[0] * ds) / es);
+    for (var i = 0; i < count; i++) {
+        if (!sxas_add(c, es === 235 ? sxas_zoot1_entry235 : sxas_zoot1_entry137, p + i * es)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_zoot1_build(c) {
+    return sxas_zoot(c);
+}

@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/dds_rtps/xx_dds_rtps_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_rtps_header_fields = layout([chars("magic", 4, SIGNATURE), u8("protocol_major", ID), u8("protocol_minor", ID),
+    blob("vendor_id", 2, ID), blob("guid_prefix", 12, ID)]);
+var sxnm_rtps_header = sxLayout(0x6026005F, "rtps_header", BE, sxnm_rtps_header_fields);
+var sxnm_rtps_destination_fields = layout([blob("guid_prefix", 12, ID)]);
+var sxnm_rtps_destination = sxLayout(0x60260074, "rtps_destination", BE, sxnm_rtps_destination_fields);
+function sxnm_rtps(v) {
+    if (!sxnm_row(v, sxnm_rtps_header, 0, v.n)) {
+        return false;
+    }
+    var at = 20;
+    while (at < v.n) {
+        if (!sxnm_need(v, at, 4, v.n)) {
+            return false;
+        }
+        var type = v.p[at];
+        var f = v.p[at + 1];
+        var be = !(f & 1);
+        var n = sxGetU16At(v.p, at + 2, 2, 0, be);
+        if (!sxnm_row(v, be ? sxnm_rtps_submessage_be : sxnm_rtps_submessage_le, at, v.n)) {
+            return false;
+        }
+        at += 4;
+        if (!n && !(type === 9 && f & 2)) {
+            n = sxU64(v.n - at);
+        }
+        if (!sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        var end = at + n;
+        var l = null;
+        if (type === 9 && !(f & 2)) {
+            l = be ? sxnm_rtps_timestamp_be : sxnm_rtps_timestamp_le;
+        } else if (type === 14) {
+            l = sxnm_rtps_destination;
+        } else if (type === 7) {
+            l = be ? sxnm_rtps_heartbeat_be : sxnm_rtps_heartbeat_le;
+        } else if (type === 21) {
+            l = be ? sxnm_rtps_data_be : sxnm_rtps_data_le;
+            if (!sxnm_row(v, sxnm_rtps_cdr_encapsulation, at + 20, end)) {
+                return false;
+            }
+        }
+        if (l !== null && !sxnm_row(v, l, at, end)) {
+            return false;
+        }
+        at = end;
+    }
+    return true;
+}
+function sx_dds_rtps_build(v) {
+    return sxnm_rtps(v);
+}

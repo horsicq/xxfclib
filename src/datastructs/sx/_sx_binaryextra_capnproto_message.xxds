@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/capnproto_message/xx_capnproto_message_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_capnp_segment_table_fields = layout([u32("segment_count_minus_one"), u32("segment_words")]);
+var sxbx_capnp_segment_table = sxLayout(0x60300068, "capnp_segment_table", LE, sxbx_capnp_segment_table_fields);
+var sxbx_capnp_struct_pointer_fields = layout([u32("offset_and_kind", FLAGS), u16("data_word_count", COUNT),
+    u16("pointer_count", COUNT)]);
+var sxbx_capnp_struct_pointer = sxLayout(0x60300069, "capnp_struct_pointer", LE, sxbx_capnp_struct_pointer_fields);
+var sxbx_capnp_list_pointer_fields = layout([u32("offset_and_kind", FLAGS), u32("count_and_element_size", FLAGS)]);
+var sxbx_capnp_list_pointer = sxLayout(0x6030006A, "capnp_list_pointer", LE, sxbx_capnp_list_pointer_fields);
+var sxbx_capnp_composite_tag_fields = layout([u32("element_count_and_kind", FLAGS), u16("data_word_count", COUNT),
+    u16("pointer_count", COUNT)]);
+var sxbx_capnp_composite_tag = sxLayout(0x6030006B, "capnp_composite_tag", LE, sxbx_capnp_composite_tag_fields);
+var sxbx_capnp_null_pointer_fields = layout([u64("null_pointer")]);
+var sxbx_capnp_null_pointer = sxLayout(0x6030006C, "capnp_null_pointer", LE, sxbx_capnp_null_pointer_fields);
+function sxbx_cap_pointer(c, word, words, depth, work) {
+    if (depth > 32 || ++work[0] > 65536 || c.count >= 20000 || word >= words) {
+        return true;
+    }
+    var p = 8 + word * 8;
+    var v = [0];
+    if (!sxbx_word(c, p, 8, false, v)) {
+        return false;
+    }
+    if (!sxbx_free(c, p, 8)) {
+        return true;
+    }
+    if (!v[0]) {
+        return sxbx_add(c, sxbx_capnp_null_pointer, p);
+    }
+    var type = v[0] >>> 0 & 3;
+    if (type > 1) {
+        return true;
+    }
+    if (!sxbx_add(c, type ? sxbx_capnp_list_pointer : sxbx_capnp_struct_pointer, p)) {
+        return false;
+    }
+    var disp = sxDiv((v[0] >>> 0) | 0, 4);
+    if ((v[0] >>> 0 & 0x80000000) >>> 0) {
+        disp = sxDiv(((v[0] >>> 0) | 0) - 3, 4);
+    }
+    var target = (word >= SX_I64_MAX ? word - SX_U64_MAX : word) + 1 + disp;
+    if (target < 0 || (target < 0 ? target + SX_U64_MAX : target) > words) {
+        return true;
+    }
+    var at = (target < 0 ? target + SX_U64_MAX : target);
+    if (!type) {
+        var data = sxAnd64(sxShr64(v[0], 32), 65535);
+        var ptrs = sxShr64(v[0], 48);
+        if (data + ptrs > sxU64(words - at)) {
+            return true;
+        }
+        for (var i = 0; i < ptrs && c.count < 20000; i++) {
+            if (!sxbx_cap_pointer(c, at + data + i, words, (depth + 1) >>> 0, work)) {
+                return false;
+            }
+        }
+    } else {
+        var size = sxShr64(v[0], 32) & 7;
+        var n = sxShr64(v[0], 35);
+        if (size === 6) {
+            if (n > sxU64(words - at)) {
+                return true;
+            }
+            for (i = 0; i < n && c.count < 20000; i++) {
+                if (!sxbx_cap_pointer(c, at + i, words, (depth + 1) >>> 0, work)) {
+                    return false;
+                }
+            }
+        } else if (size === 7) {
+            var tag = [0];
+            if (at >= words || n > sxU64(sxU64(words - at) - 1) || !sxbx_word(c, 8 + at * 8, 8, false, tag) || sxAnd64(tag[0], 3)) {
+                return true;
+            }
+            var elems = tag[0] >>> 0 >>> 2;
+            data = sxAnd64(sxShr64(tag[0], 32), 65535);
+            ptrs = sxShr64(tag[0], 48);
+            if (elems > 1048576 || elems * (data + ptrs) !== n) {
+                return true;
+            }
+            if (!sxbx_add(c, sxbx_capnp_composite_tag, 8 + at * 8)) {
+                return false;
+            }
+            for (i = 0; i < elems && c.count < 20000; i++) {
+                for (var j = 0; j < ptrs && c.count < 20000; j++) {
+                    if (!sxbx_cap_pointer(c, at + 1 + i * (data + ptrs) + data + j, words, (depth + 1) >>> 0, work)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sxbx_capnp(c) {
+    var n = [0];
+    if (!sxbx_add(c, sxbx_capnp_segment_table, 0) || !sxbx_word(c, 4, 4, false, n) || n[0] > 1048576 || !sxbx_span(c, 8, n[0] * 8)) {
+        return false;
+    }
+    var work = [0];
+    return sxbx_cap_pointer(c, 0, n[0], 0, work);
+}
+function sx_capnproto_message_build(c) {
+    return sxbx_capnp(c);
+}

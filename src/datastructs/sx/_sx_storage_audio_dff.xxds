@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_dff/xx_audio_dff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_dff_form_fields = layout([chars("chunk_id", 4, STRING), u64("chunk_size", SIZE), chars("form_type", 4, STRING)]);
+var sx_st_dff_form = sxLayout(0x60080016, "dff_form", BE, sx_st_dff_form_fields);
+var sx_st_dff_chunk_fields = layout([chars("chunk_id", 4, STRING), u64("chunk_size", SIZE)]);
+var sx_st_dff_chunk = sxLayout(0x60080017, "dff_chunk", BE, sx_st_dff_chunk_fields);
+var sx_st_dff_version_fields = layout([u32("version")]);
+var sx_st_dff_version = sxLayout(0x60080018, "dff_version", BE, sx_st_dff_version_fields);
+var sx_st_dff_property_fields = layout([chars("property_type", 4, STRING)]);
+var sx_st_dff_property = sxLayout(0x60080019, "dff_property", BE, sx_st_dff_property_fields);
+var sx_st_dff_frequency_fields = layout([u32("sample_rate")]);
+var sx_st_dff_frequency = sxLayout(0x6008001A, "dff_frequency", BE, sx_st_dff_frequency_fields);
+var sx_st_dff_channels_fields = layout([u16("channel_count", COUNT)]);
+var sx_st_dff_channels = sxLayout(0x6008001B, "dff_channels", BE, sx_st_dff_channels_fields);
+var sx_st_dff_channel_fields = layout([chars("channel_id", 4, STRING)]);
+var sx_st_dff_channel = sxLayout(0x6008001C, "dff_channel", BE, sx_st_dff_channel_fields);
+var sx_st_dff_compression_fields = layout([chars("compression_id", 4, STRING), u8("name_length", SIZE)]);
+var sx_st_dff_compression = sxLayout(0x6008001D, "dff_compression", BE, sx_st_dff_compression_fields);
+function sx_st_dff_chunks(c, at, end, properties) {
+    while (at < end) {
+        var h = [];
+        var n;
+        if (sxU64(end - at) < 12 || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 12) || !sx_add(c, sx_st_dff_chunk, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 12)) {
+            return false;
+        }
+        n = sxGetU64(h, 12, 4, true);
+        at += 12;
+        if (n > sxU64(end - at)) {
+            return false;
+        }
+        if (!properties && !sxMemcmp(h, "PROP", 4)) {
+            if (n < 4 || !sx_add(c, sx_st_dff_property, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4) || !sx_st_dff_chunks(c, at + 4, at + n, true)) {
+                return false;
+            }
+        } else if (!properties && !sxMemcmp(h, "FVER", 4)) {
+            if (n !== 4 || !sx_add(c, sx_st_dff_version, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+                return false;
+            }
+        } else if (properties && !sxMemcmp(h, "FS  ", 4)) {
+            if (n !== 4 || !sx_add(c, sx_st_dff_frequency, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+                return false;
+            }
+        } else if (properties && !sxMemcmp(h, "CHNL", 4)) {
+            var count;
+            if (n < 2 || (count = sx_u16(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), true)) === null || n !== 2 + count * 4 || !sx_add(c, sx_st_dff_channels, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2) || !sx_table(c, sx_st_dff_channel, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 2, 4, count)) {
+                return false;
+            }
+        } else if (properties && !sxMemcmp(h, "CMPR", 4)) {
+            if (n < 5 || !sx_add(c, sx_st_dff_compression, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 5)) {
+                return false;
+            }
+        }
+        at += n;
+        if (sxAnd64(n, 1)) {
+            if (at >= end) {
+                return false;
+            }
+            at++;
+        }
+    }
+    return at === end;
+}
+function sx_audio_dff_build(c) {
+    var ok = false;
+    ok = sx_add(c, sx_st_dff_form, 0, 16) && sx_st_dff_chunks(c, 16, (c.size < 0 ? c.size + SX_U64_MAX : c.size), false);
+    return ok && sx_st_finish(c);
+}

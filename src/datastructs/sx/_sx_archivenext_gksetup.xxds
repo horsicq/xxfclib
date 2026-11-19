@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/gksetup/xx_gksetup_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_gksetup_banner_fields = layout([chars("banner", 39, SIGNATURE)]);
+var sxan_gksetup_banner = sxLayout(0x6077000F, "gksetup_banner", LE, sxan_gksetup_banner_fields);
+var sxan_gksetup_signature_fields = layout([chars("signature", 2, SIGNATURE)]);
+var sxan_gksetup_signature = sxLayout(0x60770010, "gksetup_signature", LE, sxan_gksetup_signature_fields);
+var sxan_gksetup_data_offset_fields = layout([u32("data_offset", OFFSET)]);
+var sxan_gksetup_data_offset = sxLayout(0x60770011, "gksetup_data_offset", LE, sxan_gksetup_data_offset_fields);
+var sxan_gksetup_member_fields = layout([chars("name", 260, NONE), u32("attributes", FLAGS), u64("creation_time"),
+    u64("access_time"), u64("modification_time"), i32("payload_size", SIZE)]);
+var sxan_gksetup_member = sxLayout(0x60770012, "gksetup_member", LE, sxan_gksetup_member_fields);
+var sxan_archivenext_padding32_fields = layout([u32("padding")]);
+var sxan_archivenext_padding32 = sxLayout(0x60770047, "archivenext_padding32", LE, sxan_archivenext_padding32_fields);
+function sxan_gk_header(c, p, z, attrs, pop) {
+    var h = [];
+    if (!sxan_read(c, p, h, 292)) {
+        return false;
+    }
+    var len = 0;
+    while (len < 259 && h[len]) {
+        if (h[len] < 32) {
+            return false;
+        }
+        len++;
+    }
+    if (!len) {
+        return false;
+    }
+    z[0] = sxan_uint(h, 288, 4, false);
+    attrs[0] = sxan_uint(h, 260, 4, false);
+    pop[0] = len === 2 && h[0] === 46 /*.*/ && h[1] === 46 /*.*/;
+    return z[0] <= 2147483647;
+}
+function sxan_gk(c) {
+    var p = [0];
+    var z = [0];
+    var attrs = [0];
+    var pop = [false];
+    var padded = true;
+    if (!sxan_add(c, sxan_gksetup_banner, 0) || !sxan_add(c, sxan_gksetup_signature, 80) || !sxan_add(c, sxan_gksetup_data_offset, 296) || !sxan_word(c, 296, 4, false, p)) {
+        return false;
+    }
+    var q = p[0];
+    for (var i = 0; i < 2; i++) {
+        var zero = [0];
+        if (!sxan_gk_header(c, q, z, attrs, pop) || !sxan_span(c, q + 292, z[0]) || !sxan_word(c, q + 292, 4, false, zero) || zero[0]) {
+            padded = false;
+            break;
+        }
+        q += 296 + z[0];
+    }
+    while (sxan_gk_header(c, p[0], z, attrs, pop)) {
+        if (!sxan_add(c, sxan_gksetup_member, p[0])) {
+            return false;
+        }
+        p[0] += 292;
+        if (padded) {
+            zero = [0];
+            if (!sxan_word(c, p[0], 4, false, zero) || zero[0]) {
+                return true;
+            }
+            if (!sxan_add(c, sxan_archivenext_padding32, p[0])) {
+                return false;
+            }
+            p[0] += 4;
+        }
+        if (pop[0]) {
+            continue;
+        }
+        if (sxAnd64(attrs[0], 16)) {
+            if (z[0]) {
+                return true;
+            }
+            continue;
+        }
+        if (!sxan_span(c, p[0], z[0])) {
+            return true;
+        }
+        p[0] += z[0];
+    }
+    return true;
+}
+function sx_gksetup_build(c) {
+    var ok = false;
+    ok = sxan_gk(c);
+    return !!(c.count && sxan_finish(c));
+}

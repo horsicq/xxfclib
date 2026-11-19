@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/sfx_flashjester_jugglor/xx_sfx_flashjester_jugglor_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_jugglor_member_fields = layout([u32("signature", SIGNATURE), u8("name_length", SIZE),
+    chars("name_storage", 255, NONE), u8("directory_length", SIZE), chars("directory_storage", 255, NONE),
+    u8("unused_string_length", SIZE), field("unused_string_storage", "byte[255]", 255), u32("unpacked_size", SIZE),
+    u32("packed_size", SIZE), u64("local_filetime", TIMESTAMP), field("unknown", "byte[4]", 4), u32("end_signature", SIGNATURE)]);
+var sxiex_jugglor_member = sxLayout(0x6082003F, "jugglor_member", LE, sxiex_jugglor_member_fields);
+var sxiex_exeattachment_member_fields = layout([u32("signature", SIGNATURE), u8("name_length", SIZE),
+    chars("name_storage", 255, NONE), u8("directory_length", SIZE), chars("directory_storage", 255, NONE),
+    u32("unpacked_size", SIZE), u32("packed_size", SIZE), u64("local_filetime", TIMESTAMP), field("unknown", "byte[8]", 8),
+    u32("end_signature", SIGNATURE)]);
+var sxiex_exeattachment_member = sxLayout(0x60820040, "exeattachment_member", LE, sxiex_exeattachment_member_fields);
+var sxiex_jugglor_trailer_fields = layout([u32("signature", SIGNATURE), u32("overlay_offset", OFFSET), u32("chain_size", SIZE),
+    u32("file_count", COUNT), u32("producer_value"), u32("unpacked_size_sum", SIZE), u8("version_length", SIZE),
+    chars("version_storage", 187, NONE), u32("unknown"), u32("end_signature", SIGNATURE)]);
+var sxiex_jugglor_trailer = sxLayout(0x60820041, "jugglor_trailer", LE, sxiex_jugglor_trailer_fields);
+var sxiex_exeattachment_trailer_fields = layout([u32("signature", SIGNATURE), field("unknown", "byte[270]", 270),
+    u32("end_signature", SIGNATURE)]);
+var sxiex_exeattachment_trailer = sxLayout(0x60820042, "exeattachment_trailer", LE, sxiex_exeattachment_trailer_fields);
+function sxiex_jugglor(c, r) {
+    var end = 0;
+    var jugglor = false;
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size !== 796 && m.header_size !== 544) {
+            continue;
+        }
+        jugglor = m.header_size === 796;
+        if (!sxiex_put(c, jugglor ? sxiex_jugglor_member : sxiex_exeattachment_member, m.header, 1)) {
+            return false;
+        }
+        var e = m.data + m.packed;
+        if (!jugglor && sxiex_span(c, e, 278) && sxiex_eq(c, e, "\xA3aJj", 4) && !sxiex_put(c, sxiex_exeattachment_trailer, e, 1)) {
+            return false;
+        }
+        if (e > end) {
+            end = e;
+        }
+    }
+    if (jugglor && end && sxiex_span(c, end, 220) && sxiex_eq(c, end, "\xA3aJj", 4) && !sxiex_put(c, sxiex_jugglor_trailer, end, 1)) {
+        return false;
+    }
+    return true;
+}
+function sx_sfx_flashjester_jugglor_build(c, records) {
+    return sxiex_jugglor(c, records);
+}

@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/tex_pk/xx_tex_pk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfb_pk_metrics_fields = layout([i32("design_size"), u32("checksum", CHECKSUM), i32("horizontal_pixels_per_point"),
+    i32("vertical_pixels_per_point")]);
+var sxfb_pk_metrics = sxLayout(0x6019002D, "pk_metrics", BE, sxfb_pk_metrics_fields);
+var sxfb_pk_short_glyph_fields = layout([u8("flag", FLAGS), u8("packet_size_low"), u8("character_code", ID),
+    field("tfm_width", "uint24", 3), u8("dx"), u8("width_pixels", COUNT), u8("height_pixels", COUNT), i8("horizontal_offset"),
+    i8("vertical_offset")]);
+var sxfb_pk_short_glyph = sxLayout(0x6019002E, "pk_short_glyph", BE, sxfb_pk_short_glyph_fields);
+var sxfb_pk_extended_glyph_fields = layout([u8("flag", FLAGS), u16("packet_size_low"), u8("character_code", ID),
+    field("tfm_width", "uint24", 3), u16("dx"), u16("width_pixels", COUNT), u16("height_pixels", COUNT),
+    i16("horizontal_offset"), i16("vertical_offset")]);
+var sxfb_pk_extended_glyph = sxLayout(0x6019002F, "pk_extended_glyph", BE, sxfb_pk_extended_glyph_fields);
+var sxfb_pk_long_glyph_fields = layout([u8("flag", FLAGS), i32("packet_size", SIZE), i32("character_code", ID),
+    i32("tfm_width"), i32("dx"), i32("dy"), i32("width_pixels", COUNT), i32("height_pixels", COUNT), i32("horizontal_offset"),
+    i32("vertical_offset")]);
+var sxfb_pk_long_glyph = sxLayout(0x60190030, "pk_long_glyph", BE, sxfb_pk_long_glyph_fields);
+function sxfb_pk(c) {
+    var p = [0];
+    if (!sxfb_preamble(c, 89, p) || !sxfb_span(c, p[0], 16) || !sxfb_add(c, sxfb_pk_metrics, p[0])) {
+        return false;
+    }
+    p[0] += 16;
+    for (var step = 0; p[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && step < 20000; step++) {
+        var h = [];
+        if (!sxfb_read(c, p[0], h, 1)) {
+            return false;
+        }
+        var op = h[0];
+        if (op < 240) {
+            var form = op & 7;
+            var size = form < 4 ? 11 : form < 7 ? 17 : 37;
+            var at = form < 4 ? 3 : form < 7 ? 4 : 9;
+            if (!sxfb_read(c, p[0], h, size)) {
+                break;
+            }
+            var packet = form < 4 ? form * 256 + h[1] : form < 7 ? ((form - 4) >>> 0) * 65536 + sxfb16(h, 1, true) : sxfb32(h, 1, true);
+            if (packet < (size - at) >>> 0 || !sxfb_span(c, p[0], at + packet)) {
+                break;
+            }
+            if (!sxfb_add(c, form < 4 ? sxfb_pk_short_glyph : form < 7 ? sxfb_pk_extended_glyph : sxfb_pk_long_glyph, p[0])) {
+                return false;
+            }
+            p[0] += at + packet;
+        } else if (op <= 243) {
+            if (!sxfb_special(c, p, (op - 239) >>> 0)) {
+                break;
+            }
+        } else if (op === 244) {
+            if (!sxfb_span(c, p[0], 5)) {
+                break;
+            }
+            if (!sxfb_add(c, sxfb_tex_numeric_special, p[0])) {
+                return false;
+            }
+            p[0] += 5;
+        } else if (op === 245 || op === 246) {
+            if (!sxfb_add(c, sxfb_tex_opcode, p[0]++)) {
+                return false;
+            }
+        } else {
+            break;
+        }
+    }
+    return !c.failed;
+}
+function sx_tex_pk_build(c) {
+    return sxfb_pk(c);
+}

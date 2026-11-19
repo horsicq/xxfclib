@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apridisk/xx_apridisk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_apridisk_header_fields = layout([chars("signature", 24, SIGNATURE), field("reserved", "byte[104]", 104, RESERVED)]);
+var sxsl_apridisk_header = sxLayout(0x6033000F, "apridisk_header", LE, sxsl_apridisk_header_fields);
+var sxsl_apridisk_record_fields = layout([u32("type", ID), u16("compression", ID), u16("header_size", SIZE),
+    u32("data_size", SIZE), u8("head"), u8("sector"), u16("cylinder")]);
+var sxsl_apridisk_record = sxLayout(0x60330010, "apridisk_record", LE, sxsl_apridisk_record_fields);
+function sxsl_apridisk(c) {
+    if (!sxsl_put(c, sxsl_apridisk_header, 0, 1)) {
+        return false;
+    }
+    var p = 128;
+    var b = [];
+    for (var i = 0; i < 24000 && c.count < 24000; i++) {
+        if (!sxsl_read(c, p, b, 16)) {
+            break;
+        }
+        var h = sxsl16(b, 6);
+        var z = sxsl32(b, 8);
+        if (h < 16 || !sxsl_span(c, p, h + z) || !sxsl_put(c, sxsl_apridisk_record, p, 1)) {
+            break;
+        }
+        p += h + z;
+    }
+    return true;
+}
+function sx_apridisk_build(c) {
+    var ok = false;
+    ok = sxsl_apridisk(c);
+    return ok && sxsl_finish(c);
+}

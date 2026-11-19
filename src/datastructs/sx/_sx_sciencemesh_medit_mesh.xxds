@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/medit_mesh/xx_medit_mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_label_id_fields = layout([field("label_id", "ascii_signed", 0, ID)]);
+var sxsm_label_id = sxLayout(0x6063001F, "mesh_label_id", LE, sxsm_label_id_fields);
+var sxsm_mesh_version_fields = layout([field("mesh_version", "ascii_signed", 0)]);
+var sxsm_mesh_version = sxLayout(0x60630060, "mesh_mesh_version", LE, sxsm_mesh_version_fields);
+function sxsm_medit(q) {
+    var t = sxNew_sxsm_token();
+    var dim = [0];
+    if (!sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_one(q, sxsm_mesh_version, true) || !sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_count(q, sxsm_dimension, dim, true) || dim[0] !== 2 && dim[0] !== 3) {
+        return false;
+    }
+    while (sxsm_lex(q, t, true)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_section, sxCopy_sxsm_token(null, t))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "End")) {
+            return true;
+        }
+        var vertices = sxsm_eq(q, sxCopy_sxsm_token(null, t), "Vertices");
+        var ref = sxsm_eq(q, sxCopy_sxsm_token(null, t), "Corners") || sxsm_eq(q, sxCopy_sxsm_token(null, t), "RequiredVertices");
+        var arity = vertices ? dim[0] >>> 0 : ref ? 1 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "Edges") ? 2 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "Triangles") ? 3 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "Quadrilaterals") || sxsm_eq(q, sxCopy_sxsm_token(null, t), "Tetrahedra") ? 4 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "Hexahedra") ? 8 : 0;
+        var n = [0];
+        if (!arity || !sxsm_count(q, vertices ? sxsm_node_count : sxsm_element_count, n, true)) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            if (q.c.count >= 24000) {
+                return true;
+            }
+            if (vertices) {
+                if (!sxsm_one(q, sxsm_coordinate_x, true) || !sxsm_one(q, sxsm_coordinate_y, true) || dim[0] === 3 && !sxsm_one(q, sxsm_coordinate_z, true)) {
+                    return false;
+                }
+            } else if (!sxsm_many(q, sxsm_node_index, arity, true)) {
+                return false;
+            }
+            if (!ref && !sxsm_one(q, sxsm_label_id, true)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_medit_mesh_build(q) {
+    return sxsm_medit(q);
+}

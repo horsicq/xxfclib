@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/woff/xx_woff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_woff_header_fields = layout([chars("signature", 4, SIGNATURE), u32("flavor", ID), u32("length", SIZE),
+    u16("number_of_tables", COUNT), u16("reserved", RESERVED), u32("total_sfnt_size", SIZE), u16("major_version"),
+    u16("minor_version"), u32("metadata_offset", OFFSET), u32("metadata_length", SIZE), u32("metadata_original_length", SIZE),
+    u32("private_offset", OFFSET), u32("private_length", SIZE)]);
+var sx_c_woff_header = sxLayout(0x6002002A, "woff_header", BE, sx_c_woff_header_fields);
+var sx_c_woff_table_record_fields = layout([chars("tag", 4, ID), u32("offset", OFFSET), u32("compressed_length", SIZE),
+    u32("original_length", SIZE), u32("original_checksum", CHECKSUM)]);
+var sx_c_woff_table_record = sxLayout(0x6002002B, "woff_table_record", BE, sx_c_woff_table_record_fields);
+function sx_c_woff(c) {
+    var h = [];
+    var total;
+    var count;
+    if (!sx_read(c, 0, h, 44) || sxMemcmp(h, "wOFF", 4)) {
+        return false;
+    }
+    count = sxGetU16At(h, 12, 2, 0, true);
+    total = sxGetU32At(h, 8, 4, 0, true);
+    if (!count || total > c.size || total < 44 + 20 * count || sxGetU16At(h, 14, 2, 0, true) || !sx_add(c, sx_c_woff_header, 0, 44) || !sx_table(c, sx_c_woff_table_record, 44, 20, count)) {
+        return false;
+    }
+    for (var i = 0; i < count; ++i) {
+        var d = [];
+        var off;
+        var n;
+        var orig;
+        if (!sx_read(c, 44 + 20 * i, d, 20)) {
+            return false;
+        }
+        off = sxGetU32At(d, 4, 4, 0, true);
+        n = sxGetU32At(d, 8, 4, 0, true);
+        orig = sxGetU32At(d, 12, 4, 0, true);
+        if (off < 44 + 20 * count || off > total || n > (total - off) >>> 0 || n > orig) {
+            return false;
+        }
+        if (n === orig) {
+            if (!sx_c_font_table(c, d, off, n)) {
+                return false;
+            }
+        } else if (!sx_raw(c, off, n)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 2; ++i) {
+        off = sxGetU32At(h, i ? 36 : 24, 4, 0, true);
+        n = sxGetU32At(h, i ? 40 : 28, 4, 0, true);
+        if (!off !== !n || off > total || n > (total - off) >>> 0 || !sx_raw(c, off, n)) {
+            return false;
+        }
+    }
+    return sx_raw(c, total, c.size - total);
+}
+function sx_woff_build(c) {
+    return sx_c_woff(c);
+}

@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/nix_nar/xx_nix_nar_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_nar_string_length_fields = layout([u64("byte_length", SIZE)]);
+var sxaf_nar_string_length = sxLayout(0x603C0001, "nar_string_length", LE, sxaf_nar_string_length_fields);
+function sxaf_nar(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var n = [0];
+        if (!sxaf_word(c, p, 8, false, n) || !sxaf_span(c, p + 8, n[0]) || !sxaf_add(c, sxaf_nar_string_length, p)) {
+            return false;
+        }
+        p += 8 + n[0];
+        var pad = 8 - sxAnd64(n[0], 7) & 7;
+        if (!sxaf_span(c, p, pad)) {
+            return false;
+        }
+        p += pad;
+    }
+    return true;
+}
+function sx_nix_nar_build(c) {
+    return sxaf_nar(c);
+}

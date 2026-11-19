@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/earefpack/xx_earefpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_refpack_header24_fields = layout([u8("flags", FLAGS), u8("marker", SIGNATURE),
+    field("decoded_bytes", "uint24", 3, SIZE)]);
+var sxga_refpack_header24 = sxLayout(0x603B0019, "refpack_header24", BE, sxga_refpack_header24_fields);
+var sxga_refpack_header24_packed_fields = layout([u8("flags", FLAGS), u8("marker", SIGNATURE),
+    field("packed_bytes", "uint24", 3, SIZE), field("decoded_bytes", "uint24", 3, SIZE)]);
+var sxga_refpack_header24_packed = sxLayout(0x603B001A, "refpack_header24_packed", BE, sxga_refpack_header24_packed_fields);
+var sxga_refpack_header32_fields = layout([u8("flags", FLAGS), u8("marker", SIGNATURE), u32("decoded_bytes", SIZE)]);
+var sxga_refpack_header32 = sxLayout(0x603B001B, "refpack_header32", BE, sxga_refpack_header32_fields);
+var sxga_refpack_header32_packed_fields = layout([u8("flags", FLAGS), u8("marker", SIGNATURE), u32("packed_bytes", SIZE),
+    u32("decoded_bytes", SIZE)]);
+var sxga_refpack_header32_packed = sxLayout(0x603B001C, "refpack_header32_packed", BE, sxga_refpack_header32_packed_fields);
+function sxga_refpack(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var b = [0];
+    if (!sxga_word(v, 0, 1, false, b, 0, end)) {
+        return false;
+    }
+    var l = sxAnd64(b[0], 1) ? sxAnd64(b[0], 128) ? sxga_refpack_header32_packed : sxga_refpack_header32 : sxAnd64(b[0], 128) ? sxga_refpack_header24_packed : sxga_refpack_header24;
+    return sxga_row(v, l, 0, end);
+}
+function sx_earefpack_build(v) {
+    return sxga_refpack(v);
+}

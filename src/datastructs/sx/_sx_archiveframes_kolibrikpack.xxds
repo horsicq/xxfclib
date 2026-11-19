@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/kolibrikpack/xx_kolibrikpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_kpack_header_fields = layout([chars("signature", 4, SIGNATURE), u32("uncompressed_size", SIZE), u32("flags", FLAGS)]);
+var sxafr_kpack_header = sxLayout(0x60540019, "kpack_header", LE, sxafr_kpack_header_fields);
+var sxafr_kpack_filter_fields = layout([u32("conversion_count", COUNT), u8("marker")]);
+var sxafr_kpack_filter = sxLayout(0x6054001A, "kpack_filter", LE, sxafr_kpack_filter_fields);
+function sxafr_kpack(c) {
+    var flags = [0];
+    if (!sxafr_word(c, 8, 4, false, flags) || !sxafr_add(c, sxafr_kpack_header, 0)) {
+        return false;
+    }
+    return !sxAnd64(flags[0], 0xC0) || c.size >= 17 && sxafr_add(c, sxafr_kpack_filter, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 5));
+}
+function sx_kolibrikpack_build(c) {
+    return sxafr_kpack(c);
+}

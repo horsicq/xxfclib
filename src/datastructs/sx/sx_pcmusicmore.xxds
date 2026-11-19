@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_pcmusicmore.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_pcmusicmore");
+include("_sx_pcmusicmore_baktery_skaletracker_skm");
+include("_sx_pcmusicmore_culchan_mdc");
+include("_sx_pcmusicmore_gargaj_mvx_mvm");
+include("_sx_pcmusicmore_multitrackcontainer");
+include("_sx_pcmusicmore_saharasurfers_ixalance_co");
+include("_sx_pcmusicmore_webfoot_dsmiamfhack");
+
+function fileTypes() { return ["DIE_MUSIC_WEBFOOT_DSMIAMFHACK", "DIE_MUSIC_SAHARASURFERS_IXALANCE_CO", "DIE_MUSIC_CULCHAN_MDC",
+    "DIE_MUSIC_MULTITRACKCONTAINER", "DIE_MUSIC_BAKTERY_SKALETRACKER_SKM", "DIE_MUSIC_GARGAJ_MVX_MVM"]; }
+
+var sx_pcmusicmore_layouts = [sxpcmore_pcmore_text, sxpcmore_webfoot_dmf_header, sxpcmore_webfoot_dmf_panning,
+    sxpcmore_webfoot_dmf_timing, sxpcmore_webfoot_dmf_order, sxpcmore_webfoot_dmf_track_reference, sxpcmore_webfoot_dmf_sample,
+    sxpcmore_webfoot_dmf_track_map, sxpcmore_webfoot_dmf_track, sxpcmore_webfoot_dmf_event, sxpcmore_ixs_compressed_header,
+    sxpcmore_mdc_header, sxpcmore_mdc_track_count, sxpcmore_mdc_track, sxpcmore_mtc_chunk, sxpcmore_skm_chunk,
+    sxpcmore_skm_file_payload, sxpcmore_skm_song_timing, sxpcmore_skm_title, sxpcmore_skm_message, sxpcmore_skm_orders,
+    sxpcmore_skm_pattern, sxpcmore_skm_track_chunk, sxpcmore_skm_channel, sxpcmore_mvx_header, sxpcmore_mvx_machine_id,
+    sxpcmore_mvx_machine_order, sxpcmore_mvx_connection_count, sxpcmore_mvx_connection];
+
+function structs() {
+    return sxCatalog([sxpcmore_pcmore_text, sxpcmore_webfoot_dmf_header, sxpcmore_webfoot_dmf_panning,
+        sxpcmore_webfoot_dmf_timing, sxpcmore_webfoot_dmf_order, sxpcmore_webfoot_dmf_track_reference,
+        sxpcmore_webfoot_dmf_sample, sxpcmore_webfoot_dmf_track_map, sxpcmore_webfoot_dmf_track, sxpcmore_webfoot_dmf_event,
+        sxpcmore_ixs_compressed_header, sxpcmore_mdc_header, sxpcmore_mdc_track_count, sxpcmore_mdc_track, sxpcmore_mtc_chunk,
+        sxpcmore_skm_chunk, sxpcmore_skm_file_payload, sxpcmore_skm_song_timing, sxpcmore_skm_title, sxpcmore_skm_message,
+        sxpcmore_skm_orders, sxpcmore_skm_pattern, sxpcmore_skm_track_chunk, sxpcmore_skm_channel, sxpcmore_mvx_header,
+        sxpcmore_mvx_machine_id, sxpcmore_mvx_machine_order, sxpcmore_mvx_connection_count, sxpcmore_mvx_connection], sx_pcmusicmore_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_pcmusicmore_build, false);
+}

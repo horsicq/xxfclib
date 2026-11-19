@@ -1,0 +1,518 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binaryresources.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_binaryresources_comment(r, id) {
+    if (r === null || r.name === null || id < 0x603E0000 || id >= 0x603F0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x603E0001:
+        if (r.name === "infofield") {
+            text = "Bit4 selects16-bit dimensions; extension fields are unsupported by the native reader.";
+        }
+        if (r.name === "depth") {
+            text = "Native monochrome images store1 bit per pixel.";
+        }
+        break;
+    case 0x603E0002:
+        if (r.name === "infofield") {
+            text = "Bit4 selects16-bit big-endian dimensions.";
+        }
+        if (r.name === "depth") {
+            text = "Native monochrome images store1 bit per pixel.";
+        }
+        break;
+    case 0x603E0003:
+        if (r.name === "magic") {
+            text = "LP_METADATA_GEOMETRY_MAGIC";
+        }
+        if (r.name === "checksum") {
+            text = "SHA-256 of the geometry with this field zeroed.";
+        }
+        if (r.name === "logical_block_size") {
+            text = "Alignment in bytes; multiple of512.";
+        }
+        break;
+    case 0x603E0004:
+        if (r.name === "magic") {
+            text = "LP_METADATA_HEADER_MAGIC";
+        }
+        if (r.name === "header_checksum") {
+            text = "SHA-256 of header_size bytes with this checksum zeroed.";
+        }
+        if (r.name === "tables_checksum") {
+            text = "SHA-256 of all table bytes.";
+        }
+        if (r.name === "partitions_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "extents_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "groups_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "block_devices_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        break;
+    case 0x603E0005:
+        if (r.name === "magic") {
+            text = "LP_METADATA_HEADER_MAGIC";
+        }
+        if (r.name === "header_checksum") {
+            text = "SHA-256 of header_size bytes with this checksum zeroed.";
+        }
+        if (r.name === "tables_checksum") {
+            text = "SHA-256 of all table bytes.";
+        }
+        if (r.name === "partitions_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "extents_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "groups_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "block_devices_offset") {
+            text = "Byte offset from the end of the metadata header.";
+        }
+        if (r.name === "flags") {
+            text = "LP_HEADER_FLAG_VIRTUAL_AB_DEVICE=1; LP_HEADER_FLAG_OVERLAYS_ACTIVE=2.";
+        }
+        break;
+    case 0x603E0006:
+        if (r.name === "attributes") {
+            text = "LP_PARTITION_ATTR_READONLY=1; SLOT_SUFFIXED=2; UPDATED=4; DISABLED=8.";
+        }
+        if (r.name === "first_extent_index") {
+            text = "Index in the extent table; not a byte offset.";
+        }
+        if (r.name === "group_index") {
+            text = "Index in the partition-group table.";
+        }
+        break;
+    case 0x603E0007:
+        if (r.name === "num_sectors") {
+            text = "Length in512-byte sectors.";
+        }
+        if (r.name === "target_type") {
+            text = "LP_TARGET_TYPE_LINEAR=0; LP_TARGET_TYPE_ZERO=1.";
+        }
+        if (r.name === "target_data") {
+            text = "LINEAR: physical sector number in512-byte units; ZERO: reserved zero.";
+        }
+        if (r.name === "target_source") {
+            text = "LINEAR: block-device table index; ZERO: reserved zero.";
+        }
+        break;
+    case 0x603E0008:
+        if (r.name === "flags") {
+            text = "LP_GROUP_SLOT_SUFFIXED=1.";
+        }
+        if (r.name === "maximum_size") {
+            text = "Byte limit; zero means unlimited.";
+        }
+        break;
+    case 0x603E0009:
+        if (r.name === "first_logical_sector") {
+            text = "First usable512-byte sector number.";
+        }
+        if (r.name === "alignment") {
+            text = "Partition alignment in bytes.";
+        }
+        if (r.name === "alignment_offset") {
+            text = "Byte alignment adjustment within the parent block device.";
+        }
+        if (r.name === "flags") {
+            text = "LP_BLOCK_DEVICE_SLOT_SUFFIXED=1.";
+        }
+        break;
+    case 0x603E000A:
+        if (r.name === "version") {
+            text = "Low16 bits are DTS version; high16 bits are exporter version.";
+        }
+        if (r.name === "buffer_size_words") {
+            text = "Total buffer length in32-bit words.";
+        }
+        if (r.name === "start16_words") {
+            text = "Start of16-bit buffer, measured in32-bit words from the end of this header.";
+        }
+        if (r.name === "start8_words") {
+            text = "Start of8-bit buffer, measured in32-bit words from the end of this header.";
+        }
+        break;
+    case 0x603E000D:
+        if (r.name === "parent_index") {
+            text = "-1 means no parent.";
+        }
+        if (r.name === "first_object_index") {
+            text = "-1 means no object.";
+        }
+        if (r.name === "first_child_index") {
+            text = "-1 means no child.";
+        }
+        if (r.name === "next_sibling_index") {
+            text = "-1 means no sibling.";
+        }
+        break;
+    case 0x603E0010:
+        if (r.name === "x") {
+            text = "Quantized quaternion component; original signed16-bit encoding.";
+        }
+        break;
+    case 0x603E0017:
+        if (r.name === "value") {
+            text = "Runtime symbol value; not a physical file offset.";
+        }
+        if (r.name === "type") {
+            text = "Native recognized symbol classes:0x500 function,0x700 initialized data,0x900 uninitialized data.";
+        }
+        break;
+    case 0x603E0018:
+        if (r.name === "value") {
+            text = "Runtime symbol value; not a physical file offset.";
+        }
+        if (r.name === "type") {
+            text = "Native recognized symbol classes:0x500 function,0x700 initialized data,0x900 uninitialized data.";
+        }
+        break;
+    case 0x603E0019:
+        if (r.name === "magic") {
+            text = "Unix compress signature1F9D.";
+        }
+        if (r.name === "dos_time") {
+            text = "Packed DOS time: bits0..4 seconds/2, bits5..10 minutes, bits11..15 hours.";
+        }
+        if (r.name === "dos_date") {
+            text = "Packed DOS date: bits0..4 day, bits5..8 month, bits9..15 years since1980.";
+        }
+        if (r.name === "constant") {
+            text = "MWave wrapper constant0x0020.";
+        }
+        if (r.name === "compress_flags") {
+            text = "Low5 bits:max LZW code width; bit7:block mode; bits5..6 reserved.";
+        }
+        break;
+    case 0x603E001B:
+        if (r.name === "method") {
+            text = "Native defined method0:stored.";
+        }
+        break;
+    case 0x603E001C:
+        if (r.name === "signature") {
+            text = "QNX startup signature0x00FF7EEB.";
+        }
+        if (r.name === "flags1") {
+            text = "Includes byte order and compression method encoding.";
+        }
+        if (r.name === "machine") {
+            text = "ELF machine identifier.";
+        }
+        if (r.name === "paddr_bias") {
+            text = "Bias added to physical addresses to form accessible pointers.";
+        }
+        if (r.name === "imagefs_size") {
+            text = "Decoded image-filesystem size.";
+        }
+        if (r.name === "preboot_size") {
+            text = "Bytes from image start to this startup header.";
+        }
+        break;
+    case 0x603E001D:
+        if (r.name === "signature") {
+            text = "QNX startup signature0x00FF7EEB.";
+        }
+        if (r.name === "flags1") {
+            text = "Includes byte order and compression method encoding.";
+        }
+        if (r.name === "machine") {
+            text = "ELF machine identifier.";
+        }
+        if (r.name === "paddr_bias") {
+            text = "Bias added to physical addresses to form accessible pointers.";
+        }
+        if (r.name === "imagefs_size") {
+            text = "Decoded image-filesystem size.";
+        }
+        if (r.name === "preboot_size") {
+            text = "Bytes from image start to this startup header.";
+        }
+        if (r.name === "info") {
+            text = "Startup-info records; their individual grammar remains undecoded.";
+        }
+        break;
+    case 0x603E001E:
+        if (r.name === "packed_size") {
+            text = "Length of the following NRV2B block; zero terminates the chain.";
+        }
+        break;
+    case 0x603E001F:
+        if (r.name === "crc32") {
+            text = "CRC32 of the complete data area, including padding.";
+        }
+        break;
+    case 0x603E0020:
+        if (r.name === "crc32") {
+            text = "CRC32 of the complete data area after flags, including padding.";
+        }
+        if (r.name === "flags") {
+            text = "Redundant-environment active/obsolete flag or serial counter, depending on storage backend.";
+        }
+        break;
+    case 0x603E0021:
+        if (r.name === "crc32") {
+            text = "CRC32 of the complete data area, including padding.";
+        }
+        break;
+    case 0x603E0022:
+        if (r.name === "crc32") {
+            text = "CRC32 of the complete data area after flags, including padding.";
+        }
+        if (r.name === "flags") {
+            text = "Redundant-environment active/obsolete flag or serial counter, depending on storage backend.";
+        }
+        break;
+    case 0x603E0025:
+        if (r.name === "separator") {
+            text = "ASCII equals sign separates key and value.";
+        }
+        break;
+    case 0x603E0026:
+        if (r.name === "terminator") {
+            text = "NUL terminates the variable; a second NUL ends the list.";
+        }
+        break;
+    case 0x603E0027:
+        if (r.name === "marker_05") {
+            text = "Native signature requires1.";
+        }
+        if (r.name === "marker_07") {
+            text = "Native signature requires1.";
+        }
+        if (r.name === "descriptor_count") {
+            text = "Includes one implicit descriptor before the stored12-byte descriptor records.";
+        }
+        if (r.name === "marker_0e") {
+            text = "Native signature requires0xFFFF.";
+        }
+        break;
+    case 0x603E0028:
+        if (r.name === "data_offset") {
+            text = "Data extent is associated with the preceding record name.";
+        }
+        if (r.name === "kind") {
+            text = "0x10 marks a named resource descriptor.";
+        }
+        break;
+    case 0x603E002B:
+        if (r.name === "kind") {
+            text = "Native named-resource block type1.";
+        }
+        break;
+    case 0x603E002D:
+        if (r.name === "marker") {
+            text = "Native resource record marker1.";
+        }
+        break;
+    case 0x603E002E:
+        if (r.name === "marker") {
+            text = "Native header marker12.";
+        }
+        if (r.name === "field_10") {
+            text = "Meaning unconfirmed; native reader requires nonzero.";
+        }
+        if (r.name === "field_14") {
+            text = "Meaning unconfirmed; native reader requires nonzero.";
+        }
+        break;
+    case 0x603E002F:
+        if (r.name === "image_type") {
+            text = "JPEG=1;PNG=2.";
+        }
+        break;
+    case 0x603E0030:
+        if (r.name === "magic") {
+            text = "TCJN";
+        }
+        if (r.name === "payload_size") {
+            text = "Bytes following this512-byte header.";
+        }
+        if (r.name === "continuation") {
+            text = "Zero selects the initial volume; continuations need the initial volume.";
+        }
+        if (r.name === "field_19") {
+            text = "Meaning unconfirmed; native reader accepts0 or1.";
+        }
+        break;
+    case 0x603E0031:
+        if (r.name === "magic") {
+            text = "ZLIB marker before the physical zlib stream.";
+        }
+        break;
+    case 0x603E0032:
+        if (r.name === "compression_method_flags") {
+            text = "CM bits0..3=8:DEFLATE; CINFO bits4..7=window log2 minus8.";
+        }
+        if (r.name === "flags") {
+            text = "FCHECK bits0..4; FDICT bit5; compression level bits6..7.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxbrs_num(c, at, width, be) {
+    var b = [];
+    if (!width || width > 8 || !sx_read(c, at, b, width)) {
+        c.failed = true;
+        return 0;
+    }
+    var v = 0;
+    for (var i = 0; i < width; i++) {
+        v = sxOr64(v, sxShl64(b[i], (8 * (be ? (((width - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxbrs_width(l) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    return (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+}
+function sxbrs_take(c, l, at, end, count) {
+    var width = sxbrs_width(l);
+    if (at[0] < 0 || end < at[0] || !width || count > Math.floor((end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) / width)) {
+        return false;
+    }
+    if (count && c.count < 32000 && !sx_table(c, l, at[0], (width >= SX_I64_MAX ? width - SX_U64_MAX : width), count > 65536 ? 65536 : count)) {
+        return false;
+    }
+    at[0] += (count * width >= SX_I64_MAX ? count * width - SX_U64_MAX : count * width);
+    return !c.failed;
+}
+function sxbrs_add(c, l, at) {
+    at = [at];
+    return sxbrs_take(c, l, at, c.size, 1);
+}
+function sxbrs_skip(at, end, n) {
+    if (at[0] < 0 || end < at[0] || n > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+        return false;
+    }
+    at[0] += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    return true;
+}
+function sxbrs_eq(c, at, text, n) {
+    var buf = [];
+    return n <= 64 && sx_read(c, at, buf, n) && !sxMemcmp(buf, text, n);
+}
+function sxbrs_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxbrs_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxbrs_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxbrs_order, true);
+    return !c.failed;
+}
+function sx_binaryresources_supports(t) {
+    switch (t) {
+    case "PCXLIB":
+    case "TORQUE_DTS":
+    case "NOKIA_OTA_BITMAP":
+    case "FSS":
+    case "PX":
+    case "EVD":
+    case "QNXBASE":
+    case "VXWORKS":
+    case "MWAVE":
+    case "UBOOT_ENV":
+    case "ANDROID_LP":
+    case "SONY_IMAGE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_binaryresources_build(c) {
+    if (c === null || c.size < 1 || c.size > 268435456) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "PCXLIB":
+        ok = sx_pcxlib_build(c);
+        break;
+    case "TORQUE_DTS":
+        ok = sx_torque_dts_build(c);
+        break;
+    case "NOKIA_OTA_BITMAP":
+        ok = sx_nokia_ota_bitmap_build(c);
+        break;
+    case "FSS":
+        ok = sx_fss_build(c);
+        break;
+    case "PX":
+        ok = sx_px_build(c);
+        break;
+    case "EVD":
+        ok = sx_evd_build(c);
+        break;
+    case "QNXBASE":
+        ok = sx_qnxbase_build(c);
+        break;
+    case "VXWORKS":
+        ok = sx_vxworks_build(c);
+        break;
+    case "MWAVE":
+        ok = sx_mwave_build(c);
+        break;
+    case "UBOOT_ENV":
+        ok = sx_uboot_build(c);
+        break;
+    case "ANDROID_LP":
+        ok = sx_android_lp_build(c);
+        break;
+    case "SONY_IMAGE":
+        ok = sx_sony_image_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sxbrs_finish(c);
+}

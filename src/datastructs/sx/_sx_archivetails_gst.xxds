@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/gst/xx_gst_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_gst_member_fields = layout([u16("signature", SIGNATURE), u32("stamp"), u8("flags", FLAGS), u8("method"),
+    u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), chars("name", 12, NONE), u32("crc32", CHECKSUM)]);
+var sxat_gst_member = sxLayout(0x60640011, "gst_member", LE, sxat_gst_member_fields);
+function sxat_gst(c) {
+    var p = 0;
+    while (sxat_span(c, p, 32)) {
+        var h = [];
+        if (!sxat_read(c, p, h, 32)) {
+            return false;
+        }
+        var z = sxat_uint(h, 12, 4, false);
+        if (!sxat_add(c, sxat_gst_member, p)) {
+            return false;
+        }
+        p += 32;
+        if (!sxat_span(c, p, z)) {
+            return true;
+        }
+        if (h[7] === 1 && !sxat_dcl(c, p, z)) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_gst_build(c) {
+    return sxat_gst(c);
+}

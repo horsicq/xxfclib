@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/orionsand_fasttracker_ftc/xx_orionsand_fasttracker_ftc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_fasttracker_position_fields = layout([u8("pattern_index"), i8("transposition")]);
+var sxzxm_fasttracker_position = sxLayout(0x608A0023, "fasttracker_position", LE, sxzxm_fasttracker_position_fields);
+var sxzxm_fasttracker_pattern_end_fields = layout([u16("marker", ID)]);
+var sxzxm_fasttracker_pattern_end = sxLayout(0x608A0027, "fasttracker_pattern_end", LE, sxzxm_fasttracker_pattern_end_fields);
+function sxzxm_fast(c) {
+    var pt = [0];
+    if (!sxzxm_put(c, sxzxm_fasttracker_header, 0, 1) || !sxzxm_u16(c, 75, pt)) {
+        return false;
+    }
+    if (!sxzxm_opt(c, sxzxm_zx_sample_address, 82, 32) || !sxzxm_opt(c, sxzxm_zx_ornament_address, 146, 33)) {
+        return false;
+    }
+    var b = [0];
+    var n = 0;
+    for (; n < 255 && sxzxm_u8(c, (212 + ((2 * n) >>> 0)) >>> 0, b) && b[0] < 128; n++) {
+    }
+    if (!sxzxm_opt(c, sxzxm_fasttracker_position, 212, n)) {
+        return false;
+    }
+    if (sxzxm_u8(c, (212 + ((2 * n) >>> 0)) >>> 0, b) && b[0] === 255 && !sxzxm_put(c, sxzxm_zx_marker, (212 + ((2 * n) >>> 0)) >>> 0, 1)) {
+        return false;
+    }
+    var first = 0;
+    var end = [0];
+    var count = 0;
+    var terminated = false;
+    for (; count < 32; count++) {
+        if (!sxzxm_u16(c, pt[0] + ((6 * count) >>> 0), end)) {
+            break;
+        }
+        if (end[0] === 65535) {
+            terminated = true;
+            break;
+        }
+        if (!first && end[0]) {
+            first = end[0];
+        }
+    }
+    if (!sxzxm_opt(c, sxzxm_zx_pattern_addresses, pt[0], count)) {
+        return false;
+    }
+    var after = pt[0] + ((6 * count) >>> 0) + 2;
+    if (!terminated || first < after) {
+        return true;
+    }
+    if (!sxzxm_put(c, sxzxm_fasttracker_pattern_end, sxU64(after - 2), 1)) {
+        return false;
+    }
+    var base = sxU64(first - after);
+    for (var k = 0; k < 2; k++) {
+        for (var i = 0; i < (k ? 33 : 32); i++) {
+            var p = [0];
+            if (!sxzxm_u16(c, ((k ? 146 : 82) + ((2 * i) >>> 0)) >>> 0, p)) {
+                break;
+            }
+            if (p[0] >= base && sxU64(p[0] - base) >= after && !sxzxm_object(c, sxU64(p[0] - base), k ? 7 : 6)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_orionsand_fasttracker_ftc_build(c) {
+    return sxzxm_fast(c);
+}

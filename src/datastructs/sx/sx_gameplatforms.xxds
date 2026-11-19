@@ -1,0 +1,105 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gameplatforms.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_gameplatforms");
+include("_sx_gameplatforms_amstrad_cpc_sna");
+include("_sx_gameplatforms_atari_7800_a78");
+include("_sx_gameplatforms_fromsoftware_binder");
+include("_sx_gameplatforms_kirikiri_xp3");
+include("_sx_gameplatforms_larian_lsf");
+include("_sx_gameplatforms_larian_lspk");
+include("_sx_gameplatforms_minecraft_nbt");
+include("_sx_gameplatforms_msx_rom");
+include("_sx_gameplatforms_nintendo_cia");
+include("_sx_gameplatforms_nintendo_fds");
+include("_sx_gameplatforms_nintendo_gb_rom");
+include("_sx_gameplatforms_nintendo_gba_rom");
+include("_sx_gameplatforms_nintendo_gcm");
+include("_sx_gameplatforms_nintendo_n64_rom");
+include("_sx_gameplatforms_nintendo_ncch");
+include("_sx_gameplatforms_nintendo_ncsd");
+include("_sx_gameplatforms_nintendo_nds");
+include("_sx_gameplatforms_nintendo_unif");
+include("_sx_gameplatforms_nintendo_wbfs");
+include("_sx_gameplatforms_ravensoft_rff");
+include("_sx_gameplatforms_renpy_rpa");
+include("_sx_gameplatforms_sega_megadrive_rom");
+include("_sx_gameplatforms_sega_sms_rom");
+include("_sx_gameplatforms_sony_psp_pbp");
+include("_sx_gameplatforms_tic80");
+include("_sx_gameplatforms_totalannihilation_hpi");
+include("_sx_gameplatforms_unityfs");
+include("_sx_gameplatforms_xna_xnb");
+include("_sx_gameplatforms_zx_spectrum_szx");
+
+function fileTypes() { return ["UNITYFS", "TOTALANNIHILATION_HPI", "RAVENSOFT_RFF", "KIRIKIRI_XP3", "FROMSOFTWARE_BINDER",
+    "NINTENDO_NCCH", "NINTENDO_NCSD", "NINTENDO_CIA", "NINTENDO_NDS", "NINTENDO_GCM", "LARIAN_LSPK", "LARIAN_LSF", "RENPY_RPA",
+    "NINTENDO_WBFS", "SONY_PSP_PBP", "NINTENDO_N64_ROM", "NINTENDO_GB_ROM", "NINTENDO_GBA_ROM", "SEGA_MEGADRIVE_ROM", "XNA_XNB",
+    "ZX_SPECTRUM_SZX", "NINTENDO_UNIF", "NINTENDO_FDS", "ATARI_7800_A78", "AMSTRAD_CPC_SNA", "MINECRAFT_NBT", "MSX_ROM",
+    "SEGA_SMS_ROM", "TIC80"]; }
+
+var sx_gameplatforms_layouts = [sxgp_msx_rom_header, sxgp_msx_binary_header, sxgp_sms_header, sxgp_tic_chunk, sxgp_gb_common,
+    sxgp_gb_title, sxgp_cgb_title, sxgp_gb_cartridge, sxgp_gba_header, sxgp_megadrive_boot, sxgp_megadrive_vector,
+    sxgp_megadrive_header, sxgp_n64_header, sxgp_a78_header, sxgp_unif_header, sxgp_unif_chunk, sxgp_unif_crc,
+    sxgp_unif_mirroring, sxgp_fds_header, sxgp_fds_file_count, sxgp_fds_file, sxgp_pbp_header, sxgp_sfo_header, sxgp_sfo_entry,
+    sxgp_xnb_header, sxgp_xnb_count, sxgp_xnb_reader_id, sxgp_xnb_length_1, sxgp_xnb_length_2, sxgp_xnb_length_3,
+    sxgp_xnb_length_4, sxgp_xnb_reader_version, sxgp_xnb_texture, sxgp_xnb_mip, sxgp_xnb_int32, sxgp_xnb_float32, sxgp_xnb_byte,
+    sxgp_ncch_header, sxgp_ncsd_header, sxgp_ncsd_partition, sxgp_ncsd_tail, sxgp_ncch_sci_prefix, sxgp_ncch_code_segment,
+    sxgp_ncch_stack, sxgp_ncch_reserved_word, sxgp_ncch_bss, sxgp_ncch_dependency, sxgp_ncch_sci_tail, sxgp_nds_header,
+    sxgp_nds_fat, sxgp_nds_overlay, sxgp_nds_directory, sxgp_nds_name, sxgp_nds_subdirectory, sxgp_sfo_int32,
+    sxgp_nds_root_directory, sxgp_unity_header, sxgp_unity_sizes, sxgp_unity_info, sxgp_unity_block, sxgp_unity_node_count,
+    sxgp_unity_node, sxgp_hpi_header, sxgp_hpi_directory, sxgp_hpi_entry, sxgp_hpi_file, sxgp_rff_header, sxgp_rff_entry,
+    sxgp_bnd3_header_le, sxgp_bnd4_header_le, sxgp_bnd3_entry_le, sxgp_bnd4_entry_le, sxgp_bnd_offset32_le,
+    sxgp_bnd_offset64_le, sxgp_bnd_id_le, sxgp_bnd3_name_le, sxgp_bnd4_name_le, sxgp_bnd_raw32_le, sxgp_bnd_raw64_le,
+    sxgp_bnd4_names_extra_le, sxgp_bnd3_header_be, sxgp_bnd4_header_be, sxgp_bnd3_entry_be, sxgp_bnd4_entry_be,
+    sxgp_bnd_offset32_be, sxgp_bnd_offset64_be, sxgp_bnd_id_be, sxgp_bnd3_name_be, sxgp_bnd4_name_be, sxgp_bnd_raw32_be,
+    sxgp_bnd_raw64_be, sxgp_bnd4_names_extra_be, sxgp_xp3_header, sxgp_xp3_index, sxgp_xp3_chunk, sxgp_xp3_info,
+    sxgp_xp3_segment, sxgp_xp3_checksum, sxgp_lspk_header, sxgp_lspk_file, sxgp_lsf_header, sxgp_lsf_string_table,
+    sxgp_lsf_bucket, sxgp_lsf_string, sxgp_lsf_node, sxgp_lsf_attribute, sxgp_rpa_header, sxgp_rpa_zlib, sxgp_rpa_adler,
+    sxgp_nbt_tag, sxgp_nbt_string, sxgp_nbt_array, sxgp_nbt_list, sxgp_nbt_byte, sxgp_nbt_short, sxgp_nbt_int, sxgp_nbt_long,
+    sxgp_nbt_float, sxgp_nbt_double, sxgp_szx_header, sxgp_szx_chunk, sxgp_szx_z80, sxgp_szx_z80_v0_tail, sxgp_szx_z80_v1_tail,
+    sxgp_szx_z80_v4_tail, sxgp_szx_spectrum, sxgp_szx_ram, sxgp_szx_creator, sxgp_szx_joystick, sxgp_szx_keyboard,
+    sxgp_szx_keyboard_joystick, sxgp_szx_printer, sxgp_szx_ay, sxgp_cpc_header, sxgp_cpc_v1_tail, sxgp_cpc_model, sxgp_fds_side,
+    sxgp_cia_header, sxgp_cia_signature, sxgp_cia_tmd, sxgp_cia_content_info, sxgp_cia_content, sxgp_cia_metadata, sxgp_gcm_id,
+    sxgp_gcm_title, sxgp_gcm_debug, sxgp_gcm_boot, sxgp_gcm_apploader, sxgp_gcm_fst_file, sxgp_gcm_fst_directory,
+    sxgp_gcm_fst_root, sxgp_gcm_dol_offset, sxgp_gcm_dol_address, sxgp_gcm_dol_size, sxgp_gcm_dol_tail, sxgp_wbfs_header,
+    sxgp_wbfs_disc_title, sxgp_wbfs_block, sxgp_wbfs_md5];
+
+function structs() {
+    return sxCatalog([sxgp_msx_rom_header, sxgp_msx_binary_header, sxgp_sms_header, sxgp_tic_chunk, sxgp_gb_common,
+        sxgp_gb_title, sxgp_cgb_title, sxgp_gb_cartridge, sxgp_gba_header, sxgp_megadrive_boot, sxgp_megadrive_vector,
+        sxgp_megadrive_header, sxgp_n64_header, sxgp_a78_header, sxgp_unif_header, sxgp_unif_chunk, sxgp_unif_crc,
+        sxgp_unif_mirroring, sxgp_fds_header, sxgp_fds_file_count, sxgp_fds_file, sxgp_pbp_header, sxgp_sfo_header,
+        sxgp_sfo_entry, sxgp_xnb_header, sxgp_xnb_count, sxgp_xnb_reader_id, sxgp_xnb_length_1, sxgp_xnb_length_2,
+        sxgp_xnb_length_3, sxgp_xnb_length_4, sxgp_xnb_reader_version, sxgp_xnb_texture, sxgp_xnb_mip, sxgp_xnb_int32,
+        sxgp_xnb_float32, sxgp_xnb_byte, sxgp_ncch_header, sxgp_ncsd_header, sxgp_ncsd_partition, sxgp_ncsd_tail,
+        sxgp_ncch_sci_prefix, sxgp_ncch_code_segment, sxgp_ncch_stack, sxgp_ncch_reserved_word, sxgp_ncch_bss,
+        sxgp_ncch_dependency, sxgp_ncch_sci_tail, sxgp_nds_header, sxgp_nds_fat, sxgp_nds_overlay, sxgp_nds_directory,
+        sxgp_nds_name, sxgp_nds_subdirectory, sxgp_sfo_int32, sxgp_nds_root_directory, sxgp_unity_header, sxgp_unity_sizes,
+        sxgp_unity_info, sxgp_unity_block, sxgp_unity_node_count, sxgp_unity_node, sxgp_hpi_header, sxgp_hpi_directory,
+        sxgp_hpi_entry, sxgp_hpi_file, sxgp_rff_header, sxgp_rff_entry, sxgp_bnd3_header_le, sxgp_bnd4_header_le,
+        sxgp_bnd3_entry_le, sxgp_bnd4_entry_le, sxgp_bnd_offset32_le, sxgp_bnd_offset64_le, sxgp_bnd_id_le, sxgp_bnd3_name_le,
+        sxgp_bnd4_name_le, sxgp_bnd_raw32_le, sxgp_bnd_raw64_le, sxgp_bnd4_names_extra_le, sxgp_bnd3_header_be,
+        sxgp_bnd4_header_be, sxgp_bnd3_entry_be, sxgp_bnd4_entry_be, sxgp_bnd_offset32_be, sxgp_bnd_offset64_be, sxgp_bnd_id_be,
+        sxgp_bnd3_name_be, sxgp_bnd4_name_be, sxgp_bnd_raw32_be, sxgp_bnd_raw64_be, sxgp_bnd4_names_extra_be, sxgp_xp3_header,
+        sxgp_xp3_index, sxgp_xp3_chunk, sxgp_xp3_info, sxgp_xp3_segment, sxgp_xp3_checksum, sxgp_lspk_header, sxgp_lspk_file,
+        sxgp_lsf_header, sxgp_lsf_string_table, sxgp_lsf_bucket, sxgp_lsf_string, sxgp_lsf_node, sxgp_lsf_attribute,
+        sxgp_rpa_header, sxgp_rpa_zlib, sxgp_rpa_adler, sxgp_nbt_tag, sxgp_nbt_string, sxgp_nbt_array, sxgp_nbt_list,
+        sxgp_nbt_byte, sxgp_nbt_short, sxgp_nbt_int, sxgp_nbt_long, sxgp_nbt_float, sxgp_nbt_double, sxgp_szx_header,
+        sxgp_szx_chunk, sxgp_szx_z80, sxgp_szx_z80_v0_tail, sxgp_szx_z80_v1_tail, sxgp_szx_z80_v4_tail, sxgp_szx_spectrum,
+        sxgp_szx_ram, sxgp_szx_creator, sxgp_szx_joystick, sxgp_szx_keyboard, sxgp_szx_keyboard_joystick, sxgp_szx_printer,
+        sxgp_szx_ay, sxgp_cpc_header, sxgp_cpc_v1_tail, sxgp_cpc_model, sxgp_fds_side, sxgp_cia_header, sxgp_cia_signature,
+        sxgp_cia_tmd, sxgp_cia_content_info, sxgp_cia_content, sxgp_cia_metadata, sxgp_gcm_id, sxgp_gcm_title, sxgp_gcm_debug,
+        sxgp_gcm_boot, sxgp_gcm_apploader, sxgp_gcm_fst_file, sxgp_gcm_fst_directory, sxgp_gcm_fst_root, sxgp_gcm_dol_offset,
+        sxgp_gcm_dol_address, sxgp_gcm_dol_size, sxgp_gcm_dol_tail, sxgp_wbfs_header, sxgp_wbfs_disc_title, sxgp_wbfs_block,
+        sxgp_wbfs_md5], sx_gameplatforms_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_gameplatforms_build, false);
+}

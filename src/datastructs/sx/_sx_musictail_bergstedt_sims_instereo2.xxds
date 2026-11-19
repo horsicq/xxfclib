@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bergstedt_sims_instereo2/xx_bergstedt_sims_instereo2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_is_signed_value_fields = layout([i8("value")]);
+var sxmta_is_signed_value = sxLayout(0x6081008E, "is_signed_value", LE, sxmta_is_signed_value_fields);
+var sxmta_is2_header_fields = layout([blob("magic", 8, SIGNATURE)]);
+var sxmta_is2_header = sxLayout(0x6081008F, "is2_header", LE, sxmta_is2_header_fields);
+var sxmta_is2_section_fields = layout([blob("tag", 4, ID), u32("count", COUNT)]);
+var sxmta_is2_section = sxLayout(0x60810090, "is2_section", BE, sxmta_is2_section_fields);
+var sxmta_is2_sample_name_fields = layout([chars("name", 20, NONE)]);
+var sxmta_is2_sample_name = sxLayout(0x60810094, "is2_sample_name", LE, sxmta_is2_sample_name_fields);
+function sxmta_is2_read_section(v, p, name, n, end) {
+    return sxmta_eq(v, p[0], name, 4, end) && sxmta_be(v, p[0] + 4, 4, n, 0, end) && sxmta_take(v, sxmta_is2_section, p, 1, end);
+}
+function sxmta_is2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [8];
+    var n = [0];
+    var ns = [0];
+    var x = [0];
+    var total = 0;
+    if (!sxmta_eq(v, 0, "IS20DF10", 8, end) || !sxmta_row(v, sxmta_is2_header, 0, end) || !sxmta_is2_read_section(v, p, "STBL", n, end) || !sxmta_take(v, sxmta_is2_subsong, p, n[0], end) || !sxmta_is2_read_section(v, p, "OVTB", n, end) || !sxmta_take(v, sxmta_is_position, p, n[0] * 4, end) || !sxmta_is2_read_section(v, p, "NTBL", n, end) || !sxmta_take(v, sxmta_is2_event, p, n[0], end) || !sxmta_is2_read_section(v, p, "SAMP", ns, end) || !sxmta_take(v, sxmta_is2_sample, p, ns[0], end) || !sxmta_take(v, sxmta_is2_sample_name, p, ns[0], end) || !sxmta_take(v, sxmta_is2_sample_copy, p, ns[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < ns[0]; i++) {
+        if (!sxmta_be(v, p[0], 4, x, 0, end) || !sxmta_take(v, sxmta_is_sample_bytes, p, 1, end)) {
+            return false;
+        }
+        total += x[0];
+    }
+    if (!sxmta_skip(v, p, total, end) || !sxmta_is2_read_section(v, p, "SYNT", n, end) || n[0] > 4000000 || !sxmta_span(v, p[0], n[0] * 1010, end)) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (!sxmta_eq(v, p[0], "IS20", 4, end) || !sxmta_take(v, sxmta_is2_synth, p, 1, end) || !sxmta_take(v, sxmta_is_unsigned_value, p, 128, end) || !sxmta_take(v, sxmta_is_signed_value, p, 128, end) || !sxmta_take(v, sxmta_is2_arpeggio, p, 3, end) || !sxmta_take(v, sxmta_is_unsigned_value, p, 128, end) || !sxmta_skip(v, p, 512, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_bergstedt_sims_instereo2_build(v) {
+    return sxmta_is2(v);
+}

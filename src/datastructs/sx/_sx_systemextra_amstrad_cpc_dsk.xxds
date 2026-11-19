@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/amstrad_cpc_dsk/xx_amstrad_cpc_dsk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_cpc_disk_header_fields = layout([chars("signature", 34, SIGNATURE), chars("creator", 14, STRING),
+    u8("cylinder_count", COUNT), u8("side_count", COUNT), u16("track_size", SIZE)]);
+var sxse_cpc_disk_header = sxLayout(0x602F0018, "cpc_disk_header", LE, sxse_cpc_disk_header_fields);
+var sxse_cpc_extended_disk_header_fields = layout([chars("signature", 34, SIGNATURE), chars("creator", 14, STRING),
+    u8("cylinder_count", COUNT), u8("side_count", COUNT), u16("unused", RESERVED)]);
+var sxse_cpc_extended_disk_header = sxLayout(0x602F0019, "cpc_extended_disk_header", LE, sxse_cpc_extended_disk_header_fields);
+var sxse_cpc_track_size_fields = layout([u8("size_units")]);
+var sxse_cpc_track_size = sxLayout(0x602F001A, "cpc_track_size", LE, sxse_cpc_track_size_fields);
+var sxse_cpc_track_header_fields = layout([chars("signature", 12, SIGNATURE), field("reserved", "byte[4]", 4, RESERVED),
+    u8("cylinder", ID), u8("side", ID), u8("data_rate", ID), u8("recording_mode", ID), u8("sector_size_code"),
+    u8("sector_count", COUNT), u8("gap3_length", SIZE), u8("filler_byte")]);
+var sxse_cpc_track_header = sxLayout(0x602F001B, "cpc_track_header", LE, sxse_cpc_track_header_fields);
+var sxse_cpc_sector_standard_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u8("fdc_status1", FLAGS), u8("fdc_status2", FLAGS), u16("unused", RESERVED)]);
+var sxse_cpc_sector_standard = sxLayout(0x602F001C, "cpc_sector_standard", LE, sxse_cpc_sector_standard_fields);
+var sxse_cpc_sector_extended_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u8("fdc_status1", FLAGS), u8("fdc_status2", FLAGS), u16("data_size", SIZE)]);
+var sxse_cpc_sector_extended = sxLayout(0x602F001D, "cpc_sector_extended", LE, sxse_cpc_sector_extended_fields);
+var sxse_cpc_offset_info_fields = layout([chars("signature", 13, SIGNATURE), field("reserved", "byte[2]", 2, RESERVED)]);
+var sxse_cpc_offset_info = sxLayout(0x602F001E, "cpc_offset_info", LE, sxse_cpc_offset_info_fields);
+var sxse_cpc_track_length_fields = layout([u16("track_length")]);
+var sxse_cpc_track_length = sxLayout(0x602F001F, "cpc_track_length", LE, sxse_cpc_track_length_fields);
+var sxse_cpc_sector_timing_fields = layout([u16("sector_position")]);
+var sxse_cpc_sector_timing = sxLayout(0x602F0020, "cpc_sector_timing", LE, sxse_cpc_sector_timing_fields);
+function sxse_cpc(c) {
+    var h = [];
+    var b = [];
+    var p = 256;
+    var counts = [];
+    var formatted = 0;
+    if (!sxse_read(c, 0, h, 256)) {
+        return false;
+    }
+    var ext = !sxMemcmp(h, "EXTENDED CPC DSK File\r\nDisk-Info\r\n", 34);
+    var n = h[48] * h[49];
+    if (!n || n > 168 || !sxse_put(c, ext ? sxse_cpc_extended_disk_header : sxse_cpc_disk_header, 0, 52, 1) || ext && !sxse_put(c, sxse_cpc_track_size, 52, 1, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var z = ext ? h[(52 + i) >>> 0] * 256 : sxse_u16(h, 50, false);
+        if (!z) {
+            continue;
+        }
+        if (z < 256 || !sxse_span(c, p, z) || !sxse_read(c, p, b, 24) || sxMemcmp(b, "Track-Info\r\n", 12) || b[21] > 29) {
+            return false;
+        }
+        counts[formatted++] = b[21];
+        if (!sxse_put(c, sxse_cpc_track_header, p, 24, 1) || !sxse_put(c, ext ? sxse_cpc_sector_extended : sxse_cpc_sector_standard, p + 24, 8, b[21])) {
+            return false;
+        }
+        p += z;
+    }
+    if (sxse_span(c, p, 15) && sxse_read(c, p, b, 15) && !sxMemcmp(b, "Offset-Info\r\n", 13)) {
+        if (!sxse_put(c, sxse_cpc_offset_info, p, 15, 1)) {
+            return false;
+        }
+        p += 15;
+        for (i = 0; i < formatted; i++) {
+            if (!sxse_put(c, sxse_cpc_track_length, p, 2, 1) || !sxse_put(c, sxse_cpc_sector_timing, p + 2, 2, counts[i])) {
+                return false;
+            }
+            p += 2 + 2 * counts[i];
+        }
+    }
+    return true;
+}
+function sx_amstrad_cpc_dsk_build(c) {
+    return sxse_cpc(c);
+}

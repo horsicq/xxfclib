@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/konami_mxdrv_pcm/xx_konami_mxdrv_pcm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxmn_pdx(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 0;
+    var data = end;
+    while (at < data) {
+        var off = [0];
+        var z = [0];
+        if (!sxmn_row(v, sxmn_pdx_entry, at, data) || !sxmn_word(v, at, 4, true, off, 0, end) || !sxmn_word(v, at + 4, 4, true, z, 0, end)) {
+            return false;
+        }
+        if (off[0]) {
+            if (off[0] < at + 8 || !sxmn_span(v, off[0], z[0], end)) {
+                return false;
+            }
+            if (off[0] < data) {
+                data = off[0];
+            }
+        }
+        at += 8;
+        if (++v.work > 4000000) {
+            return false;
+        }
+    }
+    return at === data;
+}
+function sx_konami_mxdrv_pcm_build(v) {
+    return sxmn_pdx(v);
+}

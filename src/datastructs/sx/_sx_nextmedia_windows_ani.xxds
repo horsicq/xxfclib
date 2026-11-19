@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/windows_ani/xx_windows_ani_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_ani_riff_fields = layout([blob("signature", 4, SIGNATURE), u32("data_size", SIZE), blob("form_type", 4, ID)]);
+var sxnx_ani_riff = sxLayout(0x60320093, "ani_riff", LE, sxnx_ani_riff_fields);
+var sxnx_ani_chunk_fields = layout([blob("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxnx_ani_chunk = sxLayout(0x60320094, "ani_chunk", LE, sxnx_ani_chunk_fields);
+var sxnx_ani_list_fields = layout([blob("list_type", 4, ID)]);
+var sxnx_ani_list = sxLayout(0x60320095, "ani_list", LE, sxnx_ani_list_fields);
+var sxnx_ani_header_fields = layout([u32("header_size", SIZE), u32("frame_count", COUNT), u32("step_count", COUNT),
+    u32("width"), u32("height"), u32("pixel_bits"), u32("plane_count", COUNT), u32("display_rate_jiffies"), u32("flags", FLAGS)]);
+var sxnx_ani_header = sxLayout(0x60320096, "ani_header", LE, sxnx_ani_header_fields);
+var sxnx_ani_rate_fields = layout([u32("duration_jiffies")]);
+var sxnx_ani_rate = sxLayout(0x60320097, "ani_rate", LE, sxnx_ani_rate_fields);
+var sxnx_ani_sequence_fields = layout([u32("frame_index", ID)]);
+var sxnx_ani_sequence = sxLayout(0x60320098, "ani_sequence", LE, sxnx_ani_sequence_fields);
+var sxnx_ani_icon_header_fields = layout([u16("reserved", RESERVED), u16("image_type", ID), u16("image_count", COUNT)]);
+var sxnx_ani_icon_header = sxLayout(0x60320099, "ani_icon_header", LE, sxnx_ani_icon_header_fields);
+var sxnx_ani_icon_entry_fields = layout([u8("width"), u8("height"), u8("color_count", COUNT), u8("reserved", RESERVED),
+    u16("planes", COUNT), u16("bit_count"), u32("data_size", SIZE), u32("data_offset", OFFSET)]);
+var sxnx_ani_icon_entry = sxLayout(0x6032009A, "ani_icon_entry", LE, sxnx_ani_icon_entry_fields);
+var sxnx_ani_cursor_entry_fields = layout([u8("width"), u8("height"), u8("color_count", COUNT), u8("reserved", RESERVED),
+    u16("hotspot_x"), u16("hotspot_y"), u32("data_size", SIZE), u32("data_offset", OFFSET)]);
+var sxnx_ani_cursor_entry = sxLayout(0x6032009B, "ani_cursor_entry", LE, sxnx_ani_cursor_entry_fields);
+function sxnx_ani_chunks(v, p, end, frames) {
+    while (p < end) {
+        if (!sxnx_row(v, sxnx_ani_chunk, p, end)) {
+            return false;
+        }
+        var id = sxnx_u32(v.p, p, true);
+        var z = sxnx_u32(v.p, p + 4, false);
+        p += 8;
+        if (!sxnx_need(v, p, z + (z & 1), end)) {
+            return false;
+        }
+        var next = p + z + (z & 1);
+        if (id === 0x616E6968) {
+            if (!sxnx_row(v, sxnx_ani_header, p, p + z)) {
+                return false;
+            }
+        } else if (id === 0x4C495354) {
+            if (!sxnx_row(v, sxnx_ani_list, p, p + z)) {
+                return false;
+            }
+            if (!frames && sxnx_u32(v.p, p, true) === 0x6672616D && !sxnx_ani_chunks(v, p + 4, p + z, true)) {
+                return false;
+            }
+        } else if (id === 0x72617465 || id === 0x73657120) {
+            if (z % 4 || !sxnx_table(v, id === 0x72617465 ? sxnx_ani_rate : sxnx_ani_sequence, p, Math.floor(z / 4), p + z)) {
+                return false;
+            }
+        } else if (frames && id === 0x69636F6E) {
+            if (!sxnx_row(v, sxnx_ani_icon_header, p, p + z)) {
+                return false;
+            }
+            var count = sxnx_u16(v.p, p + 4, false);
+            if (!sxnx_table(v, sxnx_u16(v.p, p + 2, false) === 2 ? sxnx_ani_cursor_entry : sxnx_ani_icon_entry, p + 6, count, p + z)) {
+                return false;
+            }
+        }
+        p = next;
+    }
+    return p === end;
+}
+function sxnx_ani(v) {
+    return sxnx_row(v, sxnx_ani_riff, 0, v.n) && sxnx_ani_chunks(v, 12, v.n, false);
+}
+function sx_windows_ani_build(v) {
+    return sxnx_ani(v);
+}

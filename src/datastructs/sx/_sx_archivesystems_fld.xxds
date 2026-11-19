@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/fld/xx_fld_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_fld_member_fields = layout([u8("name_size", SIZE), chars("name", 12, NONE), i32("compressed_size", SIZE),
+    i32("uncompressed_size", SIZE), u16("dos_time"), u16("dos_date"), u8("method"), chars("marker", 1, SIGNATURE)]);
+var sxasy_fld_member = sxLayout(0x60440010, "fld_member", LE, sxasy_fld_member_fields);
+function sxasy_fld(c) {
+    var p = 0;
+    for (var i = 0; i < 20000 && sxasy_span(c, p, 27); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 27) || h[0] !== 12 || h[26] !== 36 /*$*/) {
+            return false;
+        }
+        var n = sxasy_uint(h, 13, 4, false);
+        if (n > 2147483647 || !sxasy_span(c, p + 27, n) || !sxasy_add(c, sxasy_fld_member, p)) {
+            return false;
+        }
+        if (h[25] === 1 && !sxasy_dcl(c, p + 27, n)) {
+            return false;
+        }
+        p += 27 + n;
+    }
+    return true;
+}
+function sx_fld_build(c) {
+    return sxasy_fld(c);
+}

@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/tnef/xx_tnef_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_tnef_header_fields = layout([u32("signature", SIGNATURE), u16("key", ID)]);
+var sx_p_tnef_header = sxLayout(0x60070035, "tnef_header", LE, sx_p_tnef_header_fields);
+var sx_p_tnef_checksum_fields = layout([u16("checksum", CHECKSUM)]);
+var sx_p_tnef_checksum = sxLayout(0x60070037, "tnef_checksum", LE, sx_p_tnef_checksum_fields);
+function sx_p_tnef(c) {
+    if (!sx_p_sig(c, 0, "x\x9F>\"", 4) || !sx_add(c, sx_p_tnef_header, 0, 6)) {
+        return false;
+    }
+    var off = 6;
+    while (off < c.size) {
+        var level = [0];
+        var n;
+        if (!sx_p_byte(c, off, level) || level[0] !== 1 && level[0] !== 2 || (n = sx_u32(c, off + 5, false)) === null || !sx_add(c, sx_p_tnef_attribute, off, 9)) {
+            return false;
+        }
+        off += 9;
+        if (!sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), n + 2) || !sx_add(c, sx_p_tnef_checksum, off + n, 2)) {
+            return false;
+        }
+        off += (n + 2) >>> 0;
+    }
+    return true;
+}
+function sx_tnef_build(c) {
+    return sx_p_tnef(c);
+}

@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/ivf/xx_ivf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_ivf_header_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u16("version"), u16("header_size", SIZE),
+    chars("codec", 4, STRING), u16("width"), u16("height"), u32("frame_rate_numerator"), u32("frame_rate_denominator"),
+    u32("declared_frame_count", COUNT), u32("unused", RESERVED)]);
+var sx_st_ivf_header = sxLayout(0x60080029, "ivf_header", LE, sx_st_ivf_header_fields);
+function sx_st_ivf(c) {
+    var at = 32;
+    if (!sx_add(c, sx_st_ivf_header, 0, 32)) {
+        return false;
+    }
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var n;
+        if (!sx_add(c, sx_st_ivf_frame, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 12) || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), false)) === null || !sx_st_fits(c, at + 12, n)) {
+            return false;
+        }
+        at += 12 + n;
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_ivf_build(c) {
+    var ok = false;
+    ok = sx_st_ivf(c);
+    return ok && sx_st_finish(c);
+}

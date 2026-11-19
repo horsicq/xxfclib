@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/advanced_installer_bootstrapper/xx_advanced_installer_bootstrapper_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_installerlast_utf16_name_fields = layout([field("name", "uint16", 0)]);
+var sxil_installerlast_utf16_name = sxLayout(0x60850002, "installerlast_utf16_name", LE, sxil_installerlast_utf16_name_fields);
+var sxil_advanced_installer_footer_fields = layout([u32("mode", ID), u32("external_name_offset", OFFSET),
+    u32("file_count", COUNT), u32("version", ID), u32("metadata_end", OFFSET), u32("info_offset", OFFSET),
+    u32("data_offset", OFFSET), chars("guid_hex", 32, NONE), u32("unknown"), chars("marker", 10, SIGNATURE)]);
+var sxil_advanced_installer_footer = sxLayout(0x60850006, "advanced_installer_footer", LE, sxil_advanced_installer_footer_fields);
+var sxil_advanced_installer_record_fields = layout([u32("type", ID), u32("index"), u32("xor_flag", FLAGS),
+    u32("file_size", SIZE), u32("file_offset", OFFSET), u32("name_length", COUNT)]);
+var sxil_advanced_installer_record = sxLayout(0x60850007, "advanced_installer_record", LE, sxil_advanced_installer_record_fields);
+var sxil_advanced_installer_external_fields = layout([u32("reserved", RESERVED), u32("name_length", COUNT)]);
+var sxil_advanced_installer_external = sxLayout(0x60850008, "advanced_installer_external", LE, sxil_advanced_installer_external_fields);
+function sxil_advanced(c, r) {
+    var start = 0;
+    var p = [0];
+    var b = [];
+    var attempts = 0;
+    while (attempts++ < 100000 && sxil_find(c, sxBytes("ADVINSTSFX"), 10, start, (c.size < 0 ? c.size + SX_U64_MAX : c.size), p)) {
+        start = p[0] + 10;
+        if (p[0] < 64 || !sxil_read(c, sxU64(p[0] - 64), b, 74)) {
+            continue;
+        }
+        var mode = sxil32(b, 0, false);
+        var ext = sxil32(b, 4, false);
+        var count = sxil32(b, 8, false);
+        var info = sxil32(b, 20, false);
+        if (mode > 1 || sxil32(b, 12, false) !== 100 || sxil32(b, 16, false) !== sxU64(p[0] - 64) || !count || count > 4096 || info >= sxU64(p[0] - 64)) {
+            continue;
+        }
+        if (r.count && r.items[0].header !== info) {
+            continue;
+        }
+        if (!sxil_put(c, sxil_advanced_installer_footer, sxU64(p[0] - 64), 1)) {
+            return false;
+        }
+        var q = info;
+        var limit = mode ? ext : sxU64(p[0] - 64);
+        for (var i = 0; i < count && q <= limit && 24 <= sxU64(limit - q); i++) {
+            var h = [];
+            if (!sxil_read(c, q, h, 24)) {
+                return true;
+            }
+            var n = [sxil32(h, 20, false)];
+            if (!n[0] || n[0] > 2048 || n[0] * 2 > sxU64(sxU64(limit - q) - 24)) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_advanced_installer_record, q, 1) || !sxil_text(c, sxil_installerlast_utf16_name, q + 24, n[0] * 2)) {
+                return false;
+            }
+            q += 24 + n[0] * 2;
+        }
+        if (mode && ext <= sxU64(p[0] - 64) && 8 <= sxU64(sxU64(p[0] - 64) - ext)) {
+            n = [0];
+            if (sxil_u32(c, (ext + 4) >>> 0, n) && n[0] <= Math.floor(sxU64(sxU64(sxU64(p[0] - 64) - ext) - 8) / 2)) {
+                if (!sxil_put(c, sxil_advanced_installer_external, ext, 1) || !sxil_text(c, sxil_installerlast_utf16_name, (ext + 8) >>> 0, n[0] * 2)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    return true;
+}
+function sx_advanced_installer_bootstrapper_build(c, records) {
+    return sxil_advanced(c, records);
+}

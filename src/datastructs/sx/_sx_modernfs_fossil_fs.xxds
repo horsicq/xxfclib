@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/fossil_fs/xx_fossil_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_fossil_header_fields = layout([u32("magic", SIGNATURE), u16("version", ID), u16("block_size", SIZE),
+    u32("super_block"), u32("label_block"), u32("data_block"), u32("end_block")]);
+var sxmf_fossil_header = sxLayout(0x60420002, "fossil_header", BE, sxmf_fossil_header_fields);
+var sxmf_fossil_superblock_fields = layout([u32("magic", SIGNATURE), u16("version", ID), u32("epoch_low"), u32("epoch_high"),
+    u64("next_qid", ID), i32("active_root_block"), i32("next_archive_root_block"), i32("current_archive_root_block"),
+    field("last_archive_score", "byte[20]", 20, SIGNATURE), chars("name", 128, STRING)]);
+var sxmf_fossil_superblock = sxLayout(0x60420003, "fossil_superblock", BE, sxmf_fossil_superblock_fields);
+var sxmf_fossil_label_fields = layout([u8("state", FLAGS), u8("type", ID), u32("epoch"), u32("epoch_close"), u32("tag", ID)]);
+var sxmf_fossil_label = sxLayout(0x60420004, "fossil_label", BE, sxmf_fossil_label_fields);
+function sxmf_fossil(c) {
+    var h = [];
+    var b = [];
+    if (!sxmf_read(c, 131072, h, 0, 24) || sxmf32(h, 0, 1) !== 0x3776AE89 || !sxmf_put(c, sxmf_fossil_header, 131072, 1)) {
+        return false;
+    }
+    var bs = sxmf16(h, 6, 1);
+    var sb = sxmf32(h, 8, 1);
+    var labels = sxmf32(h, 12, 1);
+    var data = sxmf32(h, 16, 1);
+    var end = sxmf32(h, 20, 1);
+    if (bs < 512 || !sxmf_pow(bs) || end > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs) || sb >= end) {
+        return true;
+    }
+    if (sxmf_read(c, sb * bs, b, 0, 182) && sxmf32(b, 0, 1) === 0x2340A3B1 && !sxmf_put(c, sxmf_fossil_superblock, sb * bs, 1)) {
+        return false;
+    }
+    if (labels < data && data < end) {
+        var slots = Math.floor(bs / 14);
+        var total = sxU64(end - data);
+        var limit = sxU64(data - labels) * slots;
+        if (total > limit) {
+            total = limit;
+        }
+        if (total > 262144) {
+            total = 262144;
+        }
+        for (var i = 0; i < total && c.count < 24000; ) {
+            var n = sxU64(total - i);
+            if (n > slots) {
+                n = slots;
+            }
+            if (!sxmf_put(c, sxmf_fossil_label, (labels + Math.floor(i / slots)) * bs, n)) {
+                return false;
+            }
+            i += n;
+        }
+    }
+    return true;
+}
+function sx_fossil_fs_build(c) {
+    return sxmf_fossil(c);
+}

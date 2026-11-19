@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/grasp/xx_grasp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvt_grasp_header_fields = layout([u16("index_size", SIZE)]);
+var sxvt_grasp_header = sxLayout(0x60390001, "grasp_header", LE, sxvt_grasp_header_fields);
+var sxvt_grasp_entry_fields = layout([u32("member_offset", OFFSET), chars("name", 13, STRING)]);
+var sxvt_grasp_entry = sxLayout(0x60390002, "grasp_entry", LE, sxvt_grasp_entry_fields);
+var sxvt_grasp_member_size_fields = layout([u32("member_size", SIZE)]);
+var sxvt_grasp_member_size = sxLayout(0x60390003, "grasp_member_size", LE, sxvt_grasp_member_size_fields);
+function sxvt_grasp(c) {
+    var z = [0];
+    if (!sxvt_word(c, 0, 2, false, z) || z[0] % 17 || !sxvt_span(c, 2, z[0]) || !sxvt_add(c, sxvt_grasp_header, 0)) {
+        return false;
+    }
+    for (var p = 2; p < 2 + z[0]; p += 17) {
+        var off = [0];
+        var n = [0];
+        if (!sxvt_word(c, p, 4, false, off) || !sxvt_add(c, sxvt_grasp_entry, p)) {
+            return false;
+        }
+        if (!off[0]) {
+            break;
+        }
+        if (!sxvt_word(c, off[0], 4, false, n) || !sxvt_span(c, off[0] + 4, n[0]) || !sxvt_add(c, sxvt_grasp_member_size, off[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_grasp_build(c) {
+    return sxvt_grasp(c);
+}

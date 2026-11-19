@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/fox_sqz/xx_fox_sqz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_fox_sqz_header_fields = layout([chars("signature", 24, SIGNATURE), u8("base_key_size", SIZE), bytes("encoded_key", 4),
+    bytes("opaque0", 3), u16("method"), bytes("opaque1", 2), u16("extra_key_size", SIZE), bytes("opaque_tail", 8)]);
+var sxas_fox_sqz_header = sxLayout(0x6043000E, "fox_sqz_header", LE, sxas_fox_sqz_header_fields);
+var sxas_fox_sqz_member_fields = layout([u16("tag", SIGNATURE), u8("opaque0"), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u16("checksum", CHECKSUM), bytes("opaque1", 8), u16("name_size", SIZE)]);
+var sxas_fox_sqz_member = sxLayout(0x6043000F, "fox_sqz_member", LE, sxas_fox_sqz_member_fields);
+var sxas_fox_sqz_end_fields = layout([u16("tag", SIGNATURE)]);
+var sxas_fox_sqz_end = sxLayout(0x60430010, "fox_sqz_end", LE, sxas_fox_sqz_end_fields);
+function sxas_fox(c) {
+    var b = [];
+    if (!sxas_read(c, 0, b, 46) || !sxas_add(c, sxas_fox_sqz_header, 0)) {
+        return false;
+    }
+    if (b[24]) {
+        return true;
+    }
+    var p = 46;
+    while (sxas_span(c, p, 23)) {
+        if (!sxas_read(c, p, b, 23)) {
+            return false;
+        }
+        var tag = sxas_uint(b, 0, 2, false);
+        if (tag === 0xFE) {
+            return sxas_add(c, sxas_fox_sqz_end, p);
+        }
+        if (tag !== 0xEB) {
+            return false;
+        }
+        var packed = sxas_uint(b, 3, 4, false);
+        var names = sxas_uint(b, 21, 2, false);
+        if (!sxas_span(c, p + 23, names) || !sxas_span(c, p + 23 + names, packed) || !sxas_add(c, sxas_fox_sqz_member, p)) {
+            return false;
+        }
+        p += 23 + names + packed;
+    }
+    return false;
+}
+function sx_fox_sqz_build(c) {
+    return sxas_fox(c);
+}

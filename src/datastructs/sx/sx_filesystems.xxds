@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_filesystems.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_filesystems");
+include("_sx_filesystems_exfat");
+include("_sx_filesystems_fat");
+include("_sx_filesystems_ntfs");
+
+function fileTypes() { return ["NTFS", "FAT", "EXFAT"]; }
+
+var sx_filesystems_layouts = [sx_fs_fat_bpb, sx_fs_fat16_boot_sector, sx_fs_fat32_boot_sector, sx_fs_fat32_fsinfo,
+    sx_fs_fat32_directory_entry, sx_fs_fat16_directory_entry, sx_fs_fat_long_name_entry, sx_fs_fat16_entry, sx_fs_fat32_entry,
+    sx_fs_boot_signature, sx_fs_exfat_boot_sector, sx_fs_exfat_extended_boot_signature, sx_fs_exfat_boot_checksum,
+    sx_fs_exfat_bitmap_entry, sx_fs_exfat_upcase_entry, sx_fs_exfat_volume_label_entry, sx_fs_exfat_file_entry,
+    sx_fs_exfat_stream_entry, sx_fs_exfat_name_entry, sx_fs_exfat_fat_entry, sx_fs_ntfs_boot_sector,
+    sx_fs_ntfs_file_record_header, sx_fs_ntfs_update_sequence, sx_fs_ntfs_attribute_common, sx_fs_ntfs_attribute_resident,
+    sx_fs_ntfs_attribute_nonresident, sx_fs_ntfs_attribute_end];
+
+function structs() {
+    return sxCatalog([sx_fs_fat_bpb, sx_fs_fat16_boot_sector, sx_fs_fat32_boot_sector, sx_fs_fat32_fsinfo,
+        sx_fs_fat32_directory_entry, sx_fs_fat16_directory_entry, sx_fs_fat_long_name_entry, sx_fs_fat16_entry,
+        sx_fs_fat32_entry, sx_fs_boot_signature, sx_fs_exfat_boot_sector, sx_fs_exfat_extended_boot_signature,
+        sx_fs_exfat_boot_checksum, sx_fs_exfat_bitmap_entry, sx_fs_exfat_upcase_entry, sx_fs_exfat_volume_label_entry,
+        sx_fs_exfat_file_entry, sx_fs_exfat_stream_entry, sx_fs_exfat_name_entry, sx_fs_exfat_fat_entry, sx_fs_ntfs_boot_sector,
+        sx_fs_ntfs_file_record_header, sx_fs_ntfs_update_sequence, sx_fs_ntfs_attribute_common, sx_fs_ntfs_attribute_resident,
+        sx_fs_ntfs_attribute_nonresident, sx_fs_ntfs_attribute_end], sx_filesystems_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_filesystems_build, false);
+}

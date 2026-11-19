@@ -1,0 +1,999 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_documentwire.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdw_theme_version_fields = layout([field("theme_version", "utf8", 0, STRING)]);
+var sxdw_theme_version = sxLayout(0x6074001B, "documentwire_theme_version", LE, sxdw_theme_version_fields);
+var sxdw_theme_name_fields = layout([field("theme_name", "utf8", 0, STRING)]);
+var sxdw_theme_name = sxLayout(0x6074001C, "documentwire_theme_name", LE, sxdw_theme_name_fields);
+var sxdw_theme_css_fields = layout([field("theme_css", "utf8", 0, STRING)]);
+var sxdw_theme_css = sxLayout(0x6074001D, "documentwire_theme_css", LE, sxdw_theme_css_fields);
+var sxdw_theme_member_count_fields = layout([field("theme_member_count", "ascii_signed", 0, COUNT)]);
+var sxdw_theme_member_count = sxLayout(0x60740025, "documentwire_theme_member_count", LE, sxdw_theme_member_count_fields);
+var sxdw_theme_member_size_fields = layout([field("theme_member_size", "ascii_signed", 0, SIZE)]);
+var sxdw_theme_member_size = sxLayout(0x60740026, "documentwire_theme_member_size", LE, sxdw_theme_member_size_fields);
+var sxdw_theme_payload_marker_fields = layout([chars("marker", 14, SIGNATURE)]);
+var sxdw_theme_payload_marker = sxLayout(0x6074002C, "documentwire_theme_payload_marker", LE, sxdw_theme_payload_marker_fields);
+var sxdw_ber_short_header_fields = layout([u8("tag", ID), u8("content_length", SIZE)]);
+var sxdw_ber_short_header = sxLayout(0x60740030, "documentwire_ber_short_header", LE, sxdw_ber_short_header_fields);
+var sxdw_ber_long_header1_fields = layout([u8("tag", ID), u8("length_form", FLAGS), field("content_length", "uint8be", 1, SIZE)]);
+var sxdw_ber_long_header1 = sxLayout(0x60740031, "documentwire_ber_long_header1", LE, sxdw_ber_long_header1_fields);
+var sxdw_ber_long_header2_fields = layout([u8("tag", ID), u8("length_form", FLAGS), field("content_length", "uint16be", 2, SIZE)]);
+var sxdw_ber_long_header2 = sxLayout(0x60740032, "documentwire_ber_long_header2", LE, sxdw_ber_long_header2_fields);
+var sxdw_ber_long_header3_fields = layout([u8("tag", ID), u8("length_form", FLAGS), field("content_length", "uint24be", 3, SIZE)]);
+var sxdw_ber_long_header3 = sxLayout(0x60740033, "documentwire_ber_long_header3", LE, sxdw_ber_long_header3_fields);
+var sxdw_ber_long_header4_fields = layout([u8("tag", ID), u8("length_form", FLAGS), field("content_length", "uint32be", 4, SIZE)]);
+var sxdw_ber_long_header4 = sxLayout(0x60740034, "documentwire_ber_long_header4", LE, sxdw_ber_long_header4_fields);
+var sxdw_ber_signed1_fields = layout([field("integer", "int8be", 1)]);
+var sxdw_ber_signed1 = sxLayout(0x60740035, "documentwire_ber_signed1", LE, sxdw_ber_signed1_fields);
+var sxdw_ber_signed2_fields = layout([field("integer", "int16be", 2)]);
+var sxdw_ber_signed2 = sxLayout(0x60740036, "documentwire_ber_signed2", LE, sxdw_ber_signed2_fields);
+var sxdw_ber_signed3_fields = layout([field("integer", "int24be", 3)]);
+var sxdw_ber_signed3 = sxLayout(0x60740037, "documentwire_ber_signed3", LE, sxdw_ber_signed3_fields);
+var sxdw_ber_signed4_fields = layout([field("integer", "int32be", 4)]);
+var sxdw_ber_signed4 = sxLayout(0x60740038, "documentwire_ber_signed4", LE, sxdw_ber_signed4_fields);
+var sxdw_ber_unsigned1_fields = layout([field("unsigned_integer", "uint8be", 1)]);
+var sxdw_ber_unsigned1 = sxLayout(0x60740039, "documentwire_ber_unsigned1", LE, sxdw_ber_unsigned1_fields);
+var sxdw_ber_unsigned2_fields = layout([field("unsigned_integer", "uint16be", 2)]);
+var sxdw_ber_unsigned2 = sxLayout(0x6074003A, "documentwire_ber_unsigned2", LE, sxdw_ber_unsigned2_fields);
+var sxdw_ber_unsigned3_fields = layout([field("unsigned_integer", "uint24be", 3)]);
+var sxdw_ber_unsigned3 = sxLayout(0x6074003B, "documentwire_ber_unsigned3", LE, sxdw_ber_unsigned3_fields);
+var sxdw_ber_unsigned4_fields = layout([field("unsigned_integer", "uint32be", 4)]);
+var sxdw_ber_unsigned4 = sxLayout(0x6074003C, "documentwire_ber_unsigned4", LE, sxdw_ber_unsigned4_fields);
+var sxdw_ber_unsigned5_fields = layout([field("unsigned_integer", "uint40be", 5)]);
+var sxdw_ber_unsigned5 = sxLayout(0x6074003D, "documentwire_ber_unsigned5", LE, sxdw_ber_unsigned5_fields);
+var sxdw_ber_unsigned6_fields = layout([field("unsigned_integer", "uint48be", 6)]);
+var sxdw_ber_unsigned6 = sxLayout(0x6074003E, "documentwire_ber_unsigned6", LE, sxdw_ber_unsigned6_fields);
+var sxdw_ber_unsigned7_fields = layout([field("unsigned_integer", "uint56be", 7)]);
+var sxdw_ber_unsigned7 = sxLayout(0x6074003F, "documentwire_ber_unsigned7", LE, sxdw_ber_unsigned7_fields);
+var sxdw_ber_unsigned8_fields = layout([field("unsigned_integer", "uint64be", 8)]);
+var sxdw_ber_unsigned8 = sxLayout(0x60740040, "documentwire_ber_unsigned8", LE, sxdw_ber_unsigned8_fields);
+var sxdw_ber_unsigned9_fields = layout([u8("positive_sign_octet"), field("unsigned_integer", "uint64be", 8)]);
+var sxdw_ber_unsigned9 = sxLayout(0x60740041, "documentwire_ber_unsigned9", LE, sxdw_ber_unsigned9_fields);
+var sxdw_ber_oid_octet_fields = layout([u8("base128_oid_octet", FLAGS)]);
+var sxdw_ber_oid_octet = sxLayout(0x60740042, "documentwire_ber_oid_octet", LE, sxdw_ber_oid_octet_fields);
+var sxdw_ber_ipv4_fields = layout([bytes("ipv4_address", 4)]);
+var sxdw_ber_ipv4 = sxLayout(0x60740043, "documentwire_ber_ipv4", LE, sxdw_ber_ipv4_fields);
+var sxdw_ber_octet_text_fields = layout([field("ber_octet_text", "utf8", 0, STRING)]);
+var sxdw_ber_octet_text = sxLayout(0x60740044, "documentwire_ber_octet_text", LE, sxdw_ber_octet_text_fields);
+var sxdw_pdf_header_fields = layout([chars("signature", 5, SIGNATURE), chars("version", 3, NONE)]);
+var sxdw_pdf_header = sxLayout(0x60740060, "documentwire_pdf_header", LE, sxdw_pdf_header_fields);
+var sxdw_pdf_name_fields = layout([field("pdf_name", "utf8", 0, STRING)]);
+var sxdw_pdf_name = sxLayout(0x60740061, "documentwire_pdf_name", LE, sxdw_pdf_name_fields);
+var sxdw_pdf_literal_string_fields = layout([field("pdf_literal_string", "utf8", 0, STRING)]);
+var sxdw_pdf_literal_string = sxLayout(0x60740062, "documentwire_pdf_literal_string", LE, sxdw_pdf_literal_string_fields);
+var sxdw_pdf_hex_string_fields = layout([field("pdf_hex_string", "utf8", 0, STRING)]);
+var sxdw_pdf_hex_string = sxLayout(0x60740063, "documentwire_pdf_hex_string", LE, sxdw_pdf_hex_string_fields);
+var sxdw_pdf_keyword_fields = layout([field("pdf_keyword", "utf8", 0, STRING)]);
+var sxdw_pdf_keyword = sxLayout(0x60740064, "documentwire_pdf_keyword", LE, sxdw_pdf_keyword_fields);
+var sxdw_pdf_integer_fields = layout([field("pdf_integer", "ascii_signed", 0)]);
+var sxdw_pdf_integer = sxLayout(0x60740065, "documentwire_pdf_integer", LE, sxdw_pdf_integer_fields);
+var sxdw_pdf_object_id_fields = layout([field("pdf_object_id", "ascii_signed", 0)]);
+var sxdw_pdf_object_id = sxLayout(0x60740066, "documentwire_pdf_object_id", LE, sxdw_pdf_object_id_fields);
+var sxdw_pdf_generation_fields = layout([field("pdf_generation", "ascii_signed", 0)]);
+var sxdw_pdf_generation = sxLayout(0x60740067, "documentwire_pdf_generation", LE, sxdw_pdf_generation_fields);
+var sxdw_pdf_xref_first_object_fields = layout([field("pdf_xref_first_object", "ascii_signed", 0)]);
+var sxdw_pdf_xref_first_object = sxLayout(0x60740068, "documentwire_pdf_xref_first_object", LE, sxdw_pdf_xref_first_object_fields);
+var sxdw_pdf_xref_count_fields = layout([field("pdf_xref_count", "ascii_signed", 0, COUNT)]);
+var sxdw_pdf_xref_count = sxLayout(0x60740069, "documentwire_pdf_xref_count", LE, sxdw_pdf_xref_count_fields);
+var sxdw_pdf_stream_length_fields = layout([field("pdf_stream_length", "ascii_signed", 0, SIZE)]);
+var sxdw_pdf_stream_length = sxLayout(0x6074006A, "documentwire_pdf_stream_length", LE, sxdw_pdf_stream_length_fields);
+var sxdw_pdf_offset_fields = layout([field("pdf_offset", "ascii_signed", 0, OFFSET)]);
+var sxdw_pdf_offset = sxLayout(0x6074006B, "documentwire_pdf_offset", LE, sxdw_pdf_offset_fields);
+var sxdw_pdf_real_fields = layout([field("pdf_real", "ascii_real", 0)]);
+var sxdw_pdf_real = sxLayout(0x6074006C, "documentwire_pdf_real", LE, sxdw_pdf_real_fields);
+var sxdw_pdf_xref_in_use_fields = layout([field("file_offset", "ascii_signed[10]", 10, OFFSET),
+    at(11, field("generation", "ascii_signed[5]", 5)), at(17, chars("entry_kind", 1, ID))]);
+var sxdw_pdf_xref_in_use = sxLayout(0x6074006D, "documentwire_pdf_xref_in_use", LE, sxdw_pdf_xref_in_use_fields);
+var sxdw_pdf_xref_free_fields = layout([field("next_free_object", "ascii_signed[10]", 10),
+    at(11, field("generation", "ascii_signed[5]", 5)), at(17, chars("entry_kind", 1, ID))]);
+var sxdw_pdf_xref_free = sxLayout(0x6074006E, "documentwire_pdf_xref_free", LE, sxdw_pdf_xref_free_fields);
+function sx_documentwire_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    if (id < 0x60740001 || id >= 0x6074006F) {
+        return true;
+    }
+    switch (id) {
+    case 0x60740002:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x60740003:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x60740004:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x60740005:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x60740006:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x60740007:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x60740008:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x60740009:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x6074000A:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x6074000B:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x6074000C:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x6074000D:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x6074000E:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x6074000F:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x60740010:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x60740011:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x60740012:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x60740013:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x60740014:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x60740015:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x60740016:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x60740017:
+        if (!sxSetComment(r, "MSB-first token. The field type records its start bit and width within the preserved physical bytes.")) {
+            return false;
+        }
+        break;
+    case 0x60740018:
+        if (!sxSetComment(r, "Ring position is an index in the 4096-byte LZSS dictionary. Match length equals the encoded length_code plus2; neither field is a source-file offset.")) {
+            return false;
+        }
+        break;
+    case 0x60740019:
+        if (!sxSetComment(r, "A zero12-bit position following flag0 terminates the compressed stream.")) {
+            return false;
+        }
+        break;
+    case 0x6074001A:
+        if (!sxSetComment(r, "Little-endian stored version metadata; future or older versions are preserved.")) {
+            return false;
+        }
+        break;
+    case 0x6074002B:
+        if (!sxSetComment(r, "FILESIZE is a record count. Payload byte length equals RECSIZE times FILESIZE.")) {
+            return false;
+        }
+        break;
+    case 0x6074002C:
+        if (!sxSetComment(r, "The physical marker is exactly14 ASCII bytes, without a terminating NUL.")) {
+            return false;
+        }
+        break;
+    case 0x6074002F:
+        if (!sxSetComment(r, "F denotes fixed-length records.")) {
+            return false;
+        }
+        break;
+    case 0x60740042:
+        if (!sxSetComment(r, "High bit continues a base128 subidentifier. The first subidentifier combines the first two OID arcs.")) {
+            return false;
+        }
+        break;
+    case 0x60740046:
+        if (!sxSetComment(r, "Packet length excludes its own four bytes and any MAC. Only native-validated initial cleartext packets are walked.")) {
+            return false;
+        }
+        break;
+    case 0x60740057:
+        if (!sxSetComment(r, "Original UTF code unit; UTF16 supplementary characters occupy a high/low surrogate pair.")) {
+            return false;
+        }
+        break;
+    case 0x60740058:
+        if (!sxSetComment(r, "Original UTF code unit; UTF16 supplementary characters occupy a high/low surrogate pair.")) {
+            return false;
+        }
+        break;
+    case 0x60740059:
+        if (!sxSetComment(r, "Original UTF32 Unicode scalar value.")) {
+            return false;
+        }
+        break;
+    case 0x6074005A:
+        if (!sxSetComment(r, "Original UTF32 Unicode scalar value.")) {
+            return false;
+        }
+        break;
+    case 0x6074006D:
+        if (!sxSetComment(r, "In-use cross-reference entry n; physical file offset is shown in hexadecimal.")) {
+            return false;
+        }
+        break;
+    case 0x6074006E:
+        if (!sxSetComment(r, "Free cross-reference entry f; the first field is a linked-list object number, not a file offset.")) {
+            return false;
+        }
+        break;
+    default:
+        break;
+    }
+    if (r.name === null) {
+        return true;
+    }
+    var t = sxVarType(r.value);
+    if (t < 1 /*XX_VAR_TYPE_INT8*/ || t > 8 /*XX_VAR_TYPE_UINT64*/) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var text = null;
+    if (r.name === "tag") {
+        switch (v) {
+        case 2:
+            text = "INTEGER";
+            break;
+        case 4:
+            text = "OCTET STRING";
+            break;
+        case 5:
+            text = "NULL";
+            break;
+        case 6:
+            text = "OBJECT IDENTIFIER";
+            break;
+        case 10:
+            text = "ENUMERATED";
+            break;
+        case 48:
+            text = "SEQUENCE";
+            break;
+        case 49:
+            text = "SET";
+            break;
+        case 64:
+            text = "IpAddress";
+            break;
+        case 65:
+            text = "Counter32";
+            break;
+        case 66:
+            text = "Gauge32/Unsigned32";
+            break;
+        case 67:
+            text = "TimeTicks";
+            break;
+        case 70:
+            text = "Counter64";
+            break;
+        case 100:
+            text = "LDAP SearchResultEntry";
+            break;
+        case 101:
+            text = "LDAP SearchResultDone";
+            break;
+        case 128:
+            text = "noSuchObject";
+            break;
+        case 129:
+            text = "noSuchInstance";
+            break;
+        case 130:
+            text = "endOfMibView";
+            break;
+        case 160:
+            text = "GetRequest-PDU";
+            break;
+        case 161:
+            text = "GetNextRequest-PDU";
+            break;
+        case 162:
+            text = "Response-PDU";
+            break;
+        case 163:
+            text = "SetRequest-PDU";
+            break;
+        case 165:
+            text = "GetBulkRequest-PDU";
+            break;
+        case 166:
+            text = "InformRequest-PDU";
+            break;
+        case 167:
+            text = "SNMPv2-Trap-PDU";
+            break;
+        case 168:
+            text = "Report-PDU";
+            break;
+        default:
+            break;
+        }
+    }
+    if (r.name === "message_type") {
+        switch (v) {
+        case 20:
+            text = "SSH_MSG_KEXINIT";
+            break;
+        case 30:
+            text = "SSH_MSG_KEXDH_INIT";
+            break;
+        case 21:
+            text = "SSH_MSG_NEWKEYS";
+            break;
+        default:
+            break;
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxdw_emit(q, l, at, n) {
+    if (at < 0 || n <= 0 || at > q.n || n > q.n - at) {
+        return false;
+    }
+    if (q.c.count >= 32000) {
+        return true;
+    }
+    return sx_add(q.c, l, at, n);
+}
+function sxdw_value(q, l, at, n) {
+    if (!n) {
+        return true;
+    }
+    if (at < 0 || n < 0 || at > q.n || n > q.n - at) {
+        return false;
+    }
+    var limit = !sxStrcmp(l.fields[0].type, "ascii_signed") ? 128 : 4096;
+    if (limit === 128 && n > limit) {
+        return true;
+    }
+    while (n && q.c.count < 32000) {
+        var take = n < limit ? n : limit;
+        if (take < n && !sxStrcmp(l.fields[0].type, "utf8")) {
+            var aligned = take;
+            while (aligned > 0 && (q.b[at + aligned] & 192) === 128) {
+                aligned--;
+            }
+            if (aligned) {
+                take = aligned;
+            }
+        }
+        if (!sxdw_emit(q, l, at, take)) {
+            return false;
+        }
+        at += take;
+        n -= take;
+    }
+    return true;
+}
+function sxdw_line(q, start, end) {
+    if (q.p >= q.n) {
+        return false;
+    }
+    start[0] = q.p;
+    while (q.p < q.n && q.b[q.p] !== 13 && q.b[q.p] !== 10) {
+        q.p++;
+    }
+    end[0] = q.p;
+    if (q.p < q.n) {
+        var c = q.b[q.p++];
+        if (q.p < q.n && (c === 13 && q.b[q.p] === 10 || c === 10 && q.b[q.p] === 13)) {
+            q.p++;
+        }
+    }
+    return true;
+}
+function sxdw_decimal(q, at, end, v, v_o) {
+    v[v_o] = 0;
+    if (at >= end || at < 0 || end > q.n) {
+        return false;
+    }
+    for (; at < end; at++) {
+        var c = q.b[at];
+        if (c < 48 /*0*/ || c > 57 /*9*/ || v[v_o] > Math.floor(sxU64(SX_I64_MAX - (c - 48 /*0*/ < 0 ? c - 48 /*0*/ + SX_U64_MAX : c - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        v[v_o] = sxU64(v[v_o] * 10 + c - 48 /*0*/);
+    }
+    return true;
+}
+function sxdw_prefix(q, at, end, text) {
+    var n = sxStrlen(text);
+    return at >= 0 && end <= q.n && at <= end && (end - at < 0 ? end - at + SX_U64_MAX : end - at) >= n && !sxMemcmpAt(q.b, at, text, 0, n);
+}
+function sxdw_theme(q, elm) {
+    var a = [0];
+    var e = [0];
+    var count = [0];
+    if (!sxdw_line(q, a, e) || !sxdw_value(q, sxdw_theme_version, a[0], e[0] - a[0]) || !sxdw_line(q, a, e) || !sxdw_decimal(q, a[0], e[0], count, 0) || count[0] > 65536 || !sxdw_value(q, sxdw_theme_member_count, a[0], e[0] - a[0])) {
+        return false;
+    }
+    var sizes = sxAlloc(Math.floor(((count[0] ? count[0] : 1) * 8) / 8));
+    if (sizes === null) {
+        return false;
+    }
+    var ok = true;
+    for (var i = 0; i < count[0] && ok; i++) {
+        if (!sxdw_line(q, a, e)) {
+            ok = false;
+            break;
+        }
+        var comma = a[0];
+        while (comma < e[0] && q.b[comma] !== 44 /*,*/) {
+            comma++;
+        }
+        ok = comma < e[0] && sxdw_decimal(q, comma + 1, e[0], sizes, i) && sxdw_value(q, sxdw_theme_name, a[0], comma - a[0]) && sxdw_value(q, sxdw_theme_member_size, comma + 1, e[0] - comma - 1);
+    }
+    for (i = 0; i < count[0] && ok; i++) {
+        ok = q.n - q.p >= 14 && !sxMemcmpAt(q.b, q.p, "<==MS-Theme==>", 0, 14) && sxdw_emit(q, sxdw_theme_payload_marker, q.p, 14);
+        if (ok) {
+            q.p += 14;
+            ok = sizes[i] <= (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p);
+            if (ok) {
+                q.p += (sizes[i] >= SX_I64_MAX ? sizes[i] - SX_U64_MAX : sizes[i]);
+            }
+        }
+    }
+    if (ok && elm && q.p < q.n) {
+        ok = sxdw_value(q, sxdw_theme_css, q.p, q.n - q.p);
+    }
+    return ok;
+}
+function sxdw_ber(q, p, end, depth) {
+    if (depth > 32 || p < 0 || end > q.n || p > end) {
+        return false;
+    }
+    var heads = [sxdw_ber_short_header, sxdw_ber_long_header1, sxdw_ber_long_header2, sxdw_ber_long_header3, sxdw_ber_long_header4];
+    var signs = [sxdw_ber_signed1, sxdw_ber_signed2, sxdw_ber_signed3, sxdw_ber_signed4];
+    var unsigns = [sxdw_ber_unsigned1, sxdw_ber_unsigned2, sxdw_ber_unsigned3, sxdw_ber_unsigned4, sxdw_ber_unsigned5, sxdw_ber_unsigned6, sxdw_ber_unsigned7, sxdw_ber_unsigned8, sxdw_ber_unsigned9];
+    while (p < end && q.c.count < 32000) {
+        if (end - p < 2) {
+            return false;
+        }
+        var start = p;
+        var tag = q.b[p++];
+        var len = q.b[p++];
+        var width = 0;
+        var n = len;
+        if ((tag & 31) === 31 || !tag) {
+            return false;
+        }
+        if (len & 128) {
+            width = len & 127;
+            if (!width || width > 4 || width > end - p) {
+                return false;
+            }
+            n = 0;
+            for (var i = 0; i < width; i++) {
+                n = sxOr64(sxShl64(n, 8), q.b[p++]);
+            }
+        }
+        if (n > (end - p < 0 ? end - p + SX_U64_MAX : end - p) || !sxdw_emit(q, heads[width], start, p - start)) {
+            return false;
+        }
+        var next = p + (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+        if (tag & 32) {
+            if (!sxdw_ber(q, p, next, (depth + 1) >>> 0)) {
+                return false;
+            }
+        } else if ((tag === 2 || tag === 10) && n > 0 && n <= 4) {
+            if (!sxdw_emit(q, signs[sxU64(n - 1)], p, (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+                return false;
+            }
+        } else if ((tag === 65 || tag === 66 || tag === 67 || tag === 70) && n > 0 && n <= 9) {
+            if (!sxdw_emit(q, unsigns[sxU64(n - 1)], p, (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+                return false;
+            }
+        } else if (tag === 64 && n === 4) {
+            if (!sxdw_emit(q, sxdw_ber_ipv4, p, 4)) {
+                return false;
+            }
+        } else if (tag === 6) {
+            for (var k = p; k < next && q.c.count < 32000; k++) {
+                if (!sxdw_emit(q, sxdw_ber_oid_octet, k, 1)) {
+                    return false;
+                }
+            }
+        } else if (tag === 4 && n) {
+            var text = true;
+            for (k = p; k < next; k++) {
+                if (q.b[k] < 32 || q.b[k] > 126) {
+                    text = false;
+                    break;
+                }
+            }
+            if (text && !sxdw_value(q, sxdw_ber_octet_text, p, (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+                return false;
+            }
+        }
+        p = next;
+    }
+    return true;
+}
+function sxdw_pdf_span_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.at < y.at ? -1 : x.at > y.at ? 1 : x.end < y.end ? -1 : x.end > y.end ? 1 : 0;
+}
+function sxdw_pdf_space(c) {
+    return !c || c === 9 || c === 10 || c === 12 || c === 13 || c === 32;
+}
+function sxdw_pdf_delim(c) {
+    return sxdw_pdf_space(c) || c === 40 /*(*/ || c === 41 /*)*/ || c === 60 /*<*/ || c === 62 /*>*/ || c === 91 /*[*/ || c === 93 /*]*/ || c === 123 /*{*/ || c === 125 /*}*/ || c === 47 || c === 37 /*%*/;
+}
+function sxdw_pdf_skip(q, p) {
+    for (; ; ) {
+        while (p < q.n && sxdw_pdf_space(q.b[p])) {
+            p++;
+        }
+        if (p < q.n && q.b[p] === 37 /*%*/) {
+            while (p < q.n && q.b[p] !== 10 && q.b[p] !== 13) {
+                p++;
+            }
+        } else {
+            break;
+        }
+    }
+    return p;
+}
+function sxdw_pdf_number(q, a, e, real) {
+    real[0] = false;
+    if (a < e && (q.b[a] === 43 /*+*/ || q.b[a] === 45 /*-*/)) {
+        a++;
+    }
+    var digit = false;
+    for (; a < e; a++) {
+        if (q.b[a] === 46 /*.*/ && !real[0]) {
+            real[0] = true;
+        } else if (q.b[a] >= 48 /*0*/ && q.b[a] <= 57 /*9*/) {
+            digit = true;
+        } else {
+            return false;
+        }
+    }
+    return digit;
+}
+function sxdw_pdf(q) {
+    var spans = null;
+    var count = 0;
+    var capacity = 0;
+    var index = 0;
+    var ok = true;
+    var f = q.c.f;
+    if (f.handle_base_info === null || !f.handle_base_info(f, q.c.pd) || !f.is_valid) {
+        return false;
+    }
+    var s = sxArcCreate(f);
+    if (s === null) {
+        return false;
+    }
+    for (var work = 0; work < 65536; work++) {
+        var r = sxArcCurrent(f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.data_offset < f.base_address || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var a = r.data_offset - f.base_address;
+        var n = [r.compressed_size];
+        if (a > q.n || n[0] > q.n - a) {
+            ok = false;
+            break;
+        }
+        if (count === capacity) {
+            var cap = capacity ? capacity * 2 : 16;
+            var grown = sxNew_sxdw_pdf_span();
+            if (grown === null) {
+                ok = false;
+                break;
+            }
+            spans = [grown];
+            capacity = cap;
+        }
+        spans[count++] = sxCopy_sxdw_pdf_span(null, { at: a, end: a + n[0] });
+        if (!sxArcNext(f, s)) {
+            break;
+        }
+    }
+    sxArcFree(f, s);
+    if (!ok) {
+        return false;
+    }
+    sxQsort(spans, 0, count, sxdw_pdf_span_order, true);
+    var p = 0;
+    while (p + 8 <= q.n && p <= 1024 && !sxdw_prefix(q, p, q.n, "%PDF-")) {
+        p++;
+    }
+    if (p > 1024 || q.n - p < 8 || !sxdw_emit(q, sxdw_pdf_header, p, 8)) {
+        return false;
+    }
+    p += 8;
+    var want_offset = false;
+    var number_layout = sxdw_pdf_integer;
+    while (p < q.n && q.c.count < 32000 && ok) {
+        if (false) {
+            ok = false;
+            break;
+        }
+        while (index < count && spans[index].end <= p) {
+            index++;
+        }
+        if (index < count && p >= spans[index].at && p < spans[index].end) {
+            p = spans[index].end;
+            continue;
+        }
+        var c = q.b[p];
+        if (sxdw_pdf_space(c)) {
+            p++;
+            continue;
+        }
+        if (c === 37 /*%*/) {
+            while (p < q.n && q.b[p] !== 10 && q.b[p] !== 13) {
+                p++;
+            }
+            continue;
+        }
+        a = p;
+        if ((c === 60 /*<*/ || c === 62 /*>*/) && p + 1 < q.n && q.b[p + 1] === c) {
+            p += 2;
+            continue;
+        }
+        if (c === 40 /*(*/) {
+            var depth = 1;
+            p++;
+            while (p < q.n && depth) {
+                var x = q.b[p++];
+                if (x === 92) {
+                    if (p < q.n) {
+                        var y = q.b[p++];
+                        if (y === 13 && p < q.n && q.b[p] === 10) {
+                            p++;
+                        }
+                    }
+                } else if (x === 40 /*(*/) {
+                    depth++;
+                } else if (x === 41 /*)*/) {
+                    depth--;
+                }
+                if (depth > 128) {
+                    break;
+                }
+            }
+            if (depth) {
+                break;
+            }
+            ok = sxdw_value(q, sxdw_pdf_literal_string, a, p - a);
+            number_layout = sxdw_pdf_integer;
+            continue;
+        }
+        if (c === 60 /*<*/ && p + 1 < q.n && q.b[p + 1] !== 60 /*<*/) {
+            p++;
+            while (p < q.n && q.b[p] !== 62 /*>*/) {
+                p++;
+            }
+            if (p === q.n) {
+                break;
+            }
+            p++;
+            ok = sxdw_value(q, sxdw_pdf_hex_string, a, p - a);
+            number_layout = sxdw_pdf_integer;
+            continue;
+        }
+        if (c === 47) {
+            p++;
+            while (p < q.n && !sxdw_pdf_delim(q.b[p])) {
+                p++;
+            }
+            ok = sxdw_value(q, sxdw_pdf_name, a, p - a);
+            number_layout = sxdw_prefix(q, a, p, "/Length") && p - a === 7 ? sxdw_pdf_stream_length : p - a === 5 && sxdw_prefix(q, a, p, "/Prev") || p - a === 8 && sxdw_prefix(q, a, p, "/XRefStm") ? sxdw_pdf_offset : sxdw_pdf_integer;
+            continue;
+        }
+        if (sxdw_pdf_delim(c)) {
+            p++;
+            continue;
+        }
+        while (p < q.n && !sxdw_pdf_delim(q.b[p])) {
+            p++;
+        }
+        var real = [false];
+        if (sxdw_pdf_number(q, a, p, real)) {
+            var first_end = p;
+            var b = sxdw_pdf_skip(q, p);
+            var z = b;
+            while (z < q.n && !sxdw_pdf_delim(q.b[z])) {
+                z++;
+            }
+            var real2 = [false];
+            var obj = sxdw_pdf_skip(q, z);
+            var token = 0;
+            if (obj + 3 <= q.n && !sxMemcmpAt(q.b, obj, "obj", 0, 3) && (obj + 3 === q.n || sxdw_pdf_delim(q.b[obj + 3]))) {
+                token = 3;
+            } else if (obj < q.n && q.b[obj] === 82 /*R*/ && (obj + 1 === q.n || sxdw_pdf_delim(q.b[obj + 1]))) {
+                token = 1;
+            }
+            var object_id = [0];
+            var generation = [0];
+            if (token && !real[0] && sxdw_pdf_number(q, b, z, real2) && !real2[0] && sxdw_decimal(q, a, first_end, object_id, 0) && sxdw_decimal(q, b, z, generation, 0)) {
+                ok = sxdw_value(q, sxdw_pdf_object_id, a, first_end - a) && sxdw_value(q, sxdw_pdf_generation, b, z - b) && sxdw_value(q, sxdw_pdf_keyword, obj, token);
+                p = obj + token;
+            } else {
+                ok = sxdw_value(q, want_offset ? sxdw_pdf_offset : real[0] ? sxdw_pdf_real : number_layout, a, p - a);
+            }
+            want_offset = false;
+            number_layout = sxdw_pdf_integer;
+            continue;
+        }
+        ok = sxdw_value(q, sxdw_pdf_keyword, a, p - a);
+        number_layout = sxdw_pdf_integer;
+        if (p - a === 9 && !sxMemcmpAt(q.b, a, "startxref", 0, 9)) {
+            want_offset = true;
+            continue;
+        }
+        if (p - a === 6 && !sxMemcmpAt(q.b, a, "stream", 0, 6)) {
+            var data = p;
+            if (data < q.n && q.b[data] === 13) {
+                data++;
+                if (data < q.n && q.b[data] === 10) {
+                    data++;
+                }
+            } else if (data < q.n && q.b[data] === 10) {
+                data++;
+            }
+            while (index < count && spans[index].at < data) {
+                index++;
+            }
+            if (index >= count || spans[index].at !== data) {
+                break;
+            }
+            p = spans[index].end;
+            continue;
+        }
+        if (p - a === 4 && !sxMemcmpAt(q.b, a, "xref", 0, 4)) {
+            for (; ; ) {
+                x = sxdw_pdf_skip(q, p);
+                var e = x;
+                while (e < q.n && q.b[e] !== 10 && q.b[e] !== 13) {
+                    e++;
+                }
+                var sep = x;
+                while (sep < e && q.b[sep] >= 48 /*0*/ && q.b[sep] <= 57 /*9*/) {
+                    sep++;
+                }
+                y = sep;
+                while (y < e && (q.b[y] === 32 || q.b[y] === 9)) {
+                    y++;
+                }
+                var last = y;
+                while (last < e && q.b[last] >= 48 /*0*/ && q.b[last] <= 57 /*9*/) {
+                    last++;
+                }
+                var first = [0];
+                n = [0];
+                if (!sxdw_decimal(q, x, sep, first, 0) || !sxdw_decimal(q, y, last, n, 0) || n[0] > 32000) {
+                    break;
+                }
+                var trail = last;
+                while (trail < e && (q.b[trail] === 32 || q.b[trail] === 9)) {
+                    trail++;
+                }
+                if (trail !== e) {
+                    break;
+                }
+                if (!sxdw_value(q, sxdw_pdf_xref_first_object, x, sep - x) || !sxdw_value(q, sxdw_pdf_xref_count, y, last - y)) {
+                    ok = false;
+                    break;
+                }
+                p = e;
+                if (p < q.n && q.b[p] === 13) {
+                    p++;
+                }
+                if (p < q.n && q.b[p] === 10) {
+                    p++;
+                }
+                for (var i = 0; i < n[0] && q.c.count < 32000; i++) {
+                    if (q.n - p < 20) {
+                        ok = false;
+                        break;
+                    }
+                    var off = [0];
+                    var gen = [0];
+                    if (!sxdw_decimal(q, p, p + 10, off, 0) || q.b[p + 10] !== 32 || !sxdw_decimal(q, p + 11, p + 16, gen, 0) || q.b[p + 16] !== 32 || q.b[p + 17] !== 110 /*n*/ && q.b[p + 17] !== 102 /*f*/ || !sxdw_emit(q, q.b[p + 17] === 110 /*n*/ ? sxdw_pdf_xref_in_use : sxdw_pdf_xref_free, p, 20)) {
+                        ok = false;
+                        break;
+                    }
+                    p += 20;
+                }
+                if (!ok || q.c.count >= 32000) {
+                    break;
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sxdw_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxdw_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxdw_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxdw_order, true);
+    return !c.failed;
+}
+function sx_documentwire_supports(t) {
+    switch (t) {
+    case "MATHCAD":
+    case "RPRJ":
+    case "FRONTPAGETHEME":
+    case "ELM":
+    case "NOTETAB":
+    case "PJL":
+    case "HP3000_WRQ":
+    case "SNMP_MESSAGE":
+    case "LDAP_MESSAGE":
+    case "SSH_TRANSPORT":
+    case "TEXT":
+    case "MIME_MESSAGE":
+    case "PDF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_documentwire_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 33554432) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: b, n: c.size, p: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "MATHCAD":
+            ok = sx_mathcad_build(q);
+            break;
+        case "RPRJ":
+            ok = sx_rprj_build(q);
+            break;
+        case "FRONTPAGETHEME":
+            ok = sx_frontpagetheme_build(q);
+            break;
+        case "ELM":
+            ok = sx_elm_build(q);
+            break;
+        case "NOTETAB":
+            ok = sx_notetab_build(q);
+            break;
+        case "PJL":
+            ok = sx_pjl_build(q);
+            break;
+        case "HP3000_WRQ":
+            ok = sx_hp3000_wrq_build(q);
+            break;
+        case "SNMP_MESSAGE":
+            ok = sx_snmp_message_build(q);
+            break;
+        case "LDAP_MESSAGE":
+            ok = sx_ldap_message_build(q);
+            break;
+        case "SSH_TRANSPORT":
+            ok = sx_ssh_transport_build(q);
+            break;
+        case "TEXT":
+            ok = sx_text_build(q);
+            break;
+        case "MIME_MESSAGE":
+            ok = sx_ue2_documents_mime_build(q);
+            break;
+        case "PDF":
+            ok = sxdw_pdf(q);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxdw_finish(c);
+}

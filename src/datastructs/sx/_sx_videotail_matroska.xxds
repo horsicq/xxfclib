@@ -1,0 +1,339 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/matroska/xx_matroska_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvt_ebml_id1_fields = layout([u8("element_id", ID)]);
+var sxvt_ebml_id1 = sxLayout(0x60390046, "ebml_id1", BE, sxvt_ebml_id1_fields);
+var sxvt_ebml_id2_fields = layout([u16("element_id", ID)]);
+var sxvt_ebml_id2 = sxLayout(0x60390047, "ebml_id2", BE, sxvt_ebml_id2_fields);
+var sxvt_ebml_id3_fields = layout([field("element_id", "uint24", 3, ID)]);
+var sxvt_ebml_id3 = sxLayout(0x60390048, "ebml_id3", BE, sxvt_ebml_id3_fields);
+var sxvt_ebml_id4_fields = layout([u32("element_id", ID)]);
+var sxvt_ebml_id4 = sxLayout(0x60390049, "ebml_id4", BE, sxvt_ebml_id4_fields);
+var sxvt_ebml_size1_fields = layout([u8("encoded_size")]);
+var sxvt_ebml_size1 = sxLayout(0x6039004A, "ebml_size1", BE, sxvt_ebml_size1_fields);
+var sxvt_matroska_track1_fields = layout([u8("encoded_track")]);
+var sxvt_matroska_track1 = sxLayout(0x6039004B, "matroska_track1", BE, sxvt_matroska_track1_fields);
+var sxvt_matroska_lace_size1_fields = layout([u8("encoded_first_frame_size")]);
+var sxvt_matroska_lace_size1 = sxLayout(0x6039004C, "matroska_lace_size1", BE, sxvt_matroska_lace_size1_fields);
+var sxvt_matroska_lace_delta1_fields = layout([u8("encoded_size_delta")]);
+var sxvt_matroska_lace_delta1 = sxLayout(0x6039004D, "matroska_lace_delta1", BE, sxvt_matroska_lace_delta1_fields);
+var sxvt_matroska_uint1_fields = layout([u8("value")]);
+var sxvt_matroska_uint1 = sxLayout(0x6039004E, "matroska_uint1", BE, sxvt_matroska_uint1_fields);
+var sxvt_matroska_offset1_fields = layout([u8("relative_offset", OFFSET)]);
+var sxvt_matroska_offset1 = sxLayout(0x6039004F, "matroska_offset1", BE, sxvt_matroska_offset1_fields);
+var sxvt_ebml_size2_fields = layout([u16("encoded_size")]);
+var sxvt_ebml_size2 = sxLayout(0x60390050, "ebml_size2", BE, sxvt_ebml_size2_fields);
+var sxvt_matroska_track2_fields = layout([u16("encoded_track")]);
+var sxvt_matroska_track2 = sxLayout(0x60390051, "matroska_track2", BE, sxvt_matroska_track2_fields);
+var sxvt_matroska_lace_size2_fields = layout([u16("encoded_first_frame_size")]);
+var sxvt_matroska_lace_size2 = sxLayout(0x60390052, "matroska_lace_size2", BE, sxvt_matroska_lace_size2_fields);
+var sxvt_matroska_lace_delta2_fields = layout([u16("encoded_size_delta")]);
+var sxvt_matroska_lace_delta2 = sxLayout(0x60390053, "matroska_lace_delta2", BE, sxvt_matroska_lace_delta2_fields);
+var sxvt_matroska_uint2_fields = layout([u16("value")]);
+var sxvt_matroska_uint2 = sxLayout(0x60390054, "matroska_uint2", BE, sxvt_matroska_uint2_fields);
+var sxvt_matroska_offset2_fields = layout([u16("relative_offset", OFFSET)]);
+var sxvt_matroska_offset2 = sxLayout(0x60390055, "matroska_offset2", BE, sxvt_matroska_offset2_fields);
+var sxvt_ebml_size3_fields = layout([field("encoded_size", "uint24", 3)]);
+var sxvt_ebml_size3 = sxLayout(0x60390056, "ebml_size3", BE, sxvt_ebml_size3_fields);
+var sxvt_matroska_track3_fields = layout([field("encoded_track", "uint24", 3)]);
+var sxvt_matroska_track3 = sxLayout(0x60390057, "matroska_track3", BE, sxvt_matroska_track3_fields);
+var sxvt_matroska_lace_size3_fields = layout([field("encoded_first_frame_size", "uint24", 3)]);
+var sxvt_matroska_lace_size3 = sxLayout(0x60390058, "matroska_lace_size3", BE, sxvt_matroska_lace_size3_fields);
+var sxvt_matroska_lace_delta3_fields = layout([field("encoded_size_delta", "uint24", 3)]);
+var sxvt_matroska_lace_delta3 = sxLayout(0x60390059, "matroska_lace_delta3", BE, sxvt_matroska_lace_delta3_fields);
+var sxvt_matroska_uint3_fields = layout([field("value", "uint24", 3)]);
+var sxvt_matroska_uint3 = sxLayout(0x6039005A, "matroska_uint3", BE, sxvt_matroska_uint3_fields);
+var sxvt_matroska_offset3_fields = layout([field("relative_offset", "uint24", 3, OFFSET)]);
+var sxvt_matroska_offset3 = sxLayout(0x6039005B, "matroska_offset3", BE, sxvt_matroska_offset3_fields);
+var sxvt_ebml_size4_fields = layout([u32("encoded_size")]);
+var sxvt_ebml_size4 = sxLayout(0x6039005C, "ebml_size4", BE, sxvt_ebml_size4_fields);
+var sxvt_matroska_track4_fields = layout([u32("encoded_track")]);
+var sxvt_matroska_track4 = sxLayout(0x6039005D, "matroska_track4", BE, sxvt_matroska_track4_fields);
+var sxvt_matroska_lace_size4_fields = layout([u32("encoded_first_frame_size")]);
+var sxvt_matroska_lace_size4 = sxLayout(0x6039005E, "matroska_lace_size4", BE, sxvt_matroska_lace_size4_fields);
+var sxvt_matroska_lace_delta4_fields = layout([u32("encoded_size_delta")]);
+var sxvt_matroska_lace_delta4 = sxLayout(0x6039005F, "matroska_lace_delta4", BE, sxvt_matroska_lace_delta4_fields);
+var sxvt_matroska_uint4_fields = layout([u32("value")]);
+var sxvt_matroska_uint4 = sxLayout(0x60390060, "matroska_uint4", BE, sxvt_matroska_uint4_fields);
+var sxvt_matroska_offset4_fields = layout([u32("relative_offset", OFFSET)]);
+var sxvt_matroska_offset4 = sxLayout(0x60390061, "matroska_offset4", BE, sxvt_matroska_offset4_fields);
+var sxvt_ebml_size5_fields = layout([field("encoded_size", "uint40", 5)]);
+var sxvt_ebml_size5 = sxLayout(0x60390062, "ebml_size5", BE, sxvt_ebml_size5_fields);
+var sxvt_matroska_track5_fields = layout([field("encoded_track", "uint40", 5)]);
+var sxvt_matroska_track5 = sxLayout(0x60390063, "matroska_track5", BE, sxvt_matroska_track5_fields);
+var sxvt_matroska_lace_size5_fields = layout([field("encoded_first_frame_size", "uint40", 5)]);
+var sxvt_matroska_lace_size5 = sxLayout(0x60390064, "matroska_lace_size5", BE, sxvt_matroska_lace_size5_fields);
+var sxvt_matroska_lace_delta5_fields = layout([field("encoded_size_delta", "uint40", 5)]);
+var sxvt_matroska_lace_delta5 = sxLayout(0x60390065, "matroska_lace_delta5", BE, sxvt_matroska_lace_delta5_fields);
+var sxvt_matroska_uint5_fields = layout([field("value", "uint40", 5)]);
+var sxvt_matroska_uint5 = sxLayout(0x60390066, "matroska_uint5", BE, sxvt_matroska_uint5_fields);
+var sxvt_matroska_offset5_fields = layout([field("relative_offset", "uint40", 5, OFFSET)]);
+var sxvt_matroska_offset5 = sxLayout(0x60390067, "matroska_offset5", BE, sxvt_matroska_offset5_fields);
+var sxvt_ebml_size6_fields = layout([field("encoded_size", "uint48", 6)]);
+var sxvt_ebml_size6 = sxLayout(0x60390068, "ebml_size6", BE, sxvt_ebml_size6_fields);
+var sxvt_matroska_track6_fields = layout([field("encoded_track", "uint48", 6)]);
+var sxvt_matroska_track6 = sxLayout(0x60390069, "matroska_track6", BE, sxvt_matroska_track6_fields);
+var sxvt_matroska_lace_size6_fields = layout([field("encoded_first_frame_size", "uint48", 6)]);
+var sxvt_matroska_lace_size6 = sxLayout(0x6039006A, "matroska_lace_size6", BE, sxvt_matroska_lace_size6_fields);
+var sxvt_matroska_lace_delta6_fields = layout([field("encoded_size_delta", "uint48", 6)]);
+var sxvt_matroska_lace_delta6 = sxLayout(0x6039006B, "matroska_lace_delta6", BE, sxvt_matroska_lace_delta6_fields);
+var sxvt_matroska_uint6_fields = layout([field("value", "uint48", 6)]);
+var sxvt_matroska_uint6 = sxLayout(0x6039006C, "matroska_uint6", BE, sxvt_matroska_uint6_fields);
+var sxvt_matroska_offset6_fields = layout([field("relative_offset", "uint48", 6, OFFSET)]);
+var sxvt_matroska_offset6 = sxLayout(0x6039006D, "matroska_offset6", BE, sxvt_matroska_offset6_fields);
+var sxvt_ebml_size7_fields = layout([field("encoded_size", "uint56", 7)]);
+var sxvt_ebml_size7 = sxLayout(0x6039006E, "ebml_size7", BE, sxvt_ebml_size7_fields);
+var sxvt_matroska_track7_fields = layout([field("encoded_track", "uint56", 7)]);
+var sxvt_matroska_track7 = sxLayout(0x6039006F, "matroska_track7", BE, sxvt_matroska_track7_fields);
+var sxvt_matroska_lace_size7_fields = layout([field("encoded_first_frame_size", "uint56", 7)]);
+var sxvt_matroska_lace_size7 = sxLayout(0x60390070, "matroska_lace_size7", BE, sxvt_matroska_lace_size7_fields);
+var sxvt_matroska_lace_delta7_fields = layout([field("encoded_size_delta", "uint56", 7)]);
+var sxvt_matroska_lace_delta7 = sxLayout(0x60390071, "matroska_lace_delta7", BE, sxvt_matroska_lace_delta7_fields);
+var sxvt_matroska_uint7_fields = layout([field("value", "uint56", 7)]);
+var sxvt_matroska_uint7 = sxLayout(0x60390072, "matroska_uint7", BE, sxvt_matroska_uint7_fields);
+var sxvt_matroska_offset7_fields = layout([field("relative_offset", "uint56", 7, OFFSET)]);
+var sxvt_matroska_offset7 = sxLayout(0x60390073, "matroska_offset7", BE, sxvt_matroska_offset7_fields);
+var sxvt_ebml_size8_fields = layout([u64("encoded_size")]);
+var sxvt_ebml_size8 = sxLayout(0x60390074, "ebml_size8", BE, sxvt_ebml_size8_fields);
+var sxvt_matroska_track8_fields = layout([u64("encoded_track")]);
+var sxvt_matroska_track8 = sxLayout(0x60390075, "matroska_track8", BE, sxvt_matroska_track8_fields);
+var sxvt_matroska_lace_size8_fields = layout([u64("encoded_first_frame_size")]);
+var sxvt_matroska_lace_size8 = sxLayout(0x60390076, "matroska_lace_size8", BE, sxvt_matroska_lace_size8_fields);
+var sxvt_matroska_lace_delta8_fields = layout([u64("encoded_size_delta")]);
+var sxvt_matroska_lace_delta8 = sxLayout(0x60390077, "matroska_lace_delta8", BE, sxvt_matroska_lace_delta8_fields);
+var sxvt_matroska_uint8_fields = layout([u64("value")]);
+var sxvt_matroska_uint8 = sxLayout(0x60390078, "matroska_uint8", BE, sxvt_matroska_uint8_fields);
+var sxvt_matroska_offset8_fields = layout([u64("relative_offset", OFFSET)]);
+var sxvt_matroska_offset8 = sxLayout(0x60390079, "matroska_offset8", BE, sxvt_matroska_offset8_fields);
+var sxvt_matroska_date_fields = layout([i64("nanoseconds_since_2001")]);
+var sxvt_matroska_date = sxLayout(0x6039007A, "matroska_date", BE, sxvt_matroska_date_fields);
+var sxvt_matroska_float4_fields = layout([field("value", "float32", 4)]);
+var sxvt_matroska_float4 = sxLayout(0x6039007B, "matroska_float4", BE, sxvt_matroska_float4_fields);
+var sxvt_matroska_float8_fields = layout([field("value", "float64", 8)]);
+var sxvt_matroska_float8 = sxLayout(0x6039007C, "matroska_float8", BE, sxvt_matroska_float8_fields);
+var sxvt_matroska_crc32_fields = layout([u32("crc32", CHECKSUM)]);
+var sxvt_matroska_crc32 = sxLayout(0x6039007D, "matroska_crc32", LE, sxvt_matroska_crc32_fields);
+var sxvt_matroska_block_fields = layout([i16("relative_timestamp"), u8("flags", FLAGS)]);
+var sxvt_matroska_block = sxLayout(0x6039007E, "matroska_block", BE, sxvt_matroska_block_fields);
+var sxvt_matroska_lace_count_fields = layout([u8("frame_count_minus_one")]);
+var sxvt_matroska_lace_count = sxLayout(0x6039007F, "matroska_lace_count", LE, sxvt_matroska_lace_count_fields);
+var sxvt_matroska_xiph_size_fields = layout([u8("size_part")]);
+var sxvt_matroska_xiph_size = sxLayout(0x60390080, "matroska_xiph_size", LE, sxvt_matroska_xiph_size_fields);
+function sxvt_vint(c, p, end, id, v, w) {
+    var b = [];
+    if (p[0] >= end || !sxvt_byte(c, p[0], b, 0) || !b[0]) {
+        return false;
+    }
+    var z = 1;
+    var mask = 128;
+    while (!(b[0] & mask)) {
+        z++;
+        mask = mask >> 1;
+    }
+    if (z > (id ? 4 : 8) || z > sxU64(end - p[0]) || !sxvt_read(c, p[0], b, 0, z)) {
+        return false;
+    }
+    v[0] = id ? b[0] : b[0] & (mask - 1) >>> 0;
+    for (var i = 1; i < z; i++) {
+        v[0] = sxOr64(sxShl64(v[0], 8), b[i]);
+    }
+    p[0] += z;
+    w[0] = z;
+    return true;
+}
+var sxvt_ebml_ids = [sxvt_ebml_id1, sxvt_ebml_id2, sxvt_ebml_id3, sxvt_ebml_id4];
+var sxvt_sizes = [sxvt_ebml_size1, sxvt_ebml_size2, sxvt_ebml_size3, sxvt_ebml_size4, sxvt_ebml_size5, sxvt_ebml_size6,
+    sxvt_ebml_size7, sxvt_ebml_size8];
+var sxvt_tracks = [sxvt_matroska_track1, sxvt_matroska_track2, sxvt_matroska_track3, sxvt_matroska_track4, sxvt_matroska_track5,
+    sxvt_matroska_track6, sxvt_matroska_track7, sxvt_matroska_track8];
+var sxvt_laces = [sxvt_matroska_lace_size1, sxvt_matroska_lace_size2, sxvt_matroska_lace_size3, sxvt_matroska_lace_size4,
+    sxvt_matroska_lace_size5, sxvt_matroska_lace_size6, sxvt_matroska_lace_size7, sxvt_matroska_lace_size8];
+var sxvt_deltas = [sxvt_matroska_lace_delta1, sxvt_matroska_lace_delta2, sxvt_matroska_lace_delta3, sxvt_matroska_lace_delta4,
+    sxvt_matroska_lace_delta5, sxvt_matroska_lace_delta6, sxvt_matroska_lace_delta7, sxvt_matroska_lace_delta8];
+var sxvt_uints = [sxvt_matroska_uint1, sxvt_matroska_uint2, sxvt_matroska_uint3, sxvt_matroska_uint4, sxvt_matroska_uint5,
+    sxvt_matroska_uint6, sxvt_matroska_uint7, sxvt_matroska_uint8];
+var sxvt_offsets = [sxvt_matroska_offset1, sxvt_matroska_offset2, sxvt_matroska_offset3, sxvt_matroska_offset4,
+    sxvt_matroska_offset5, sxvt_matroska_offset6, sxvt_matroska_offset7, sxvt_matroska_offset8];
+function sxvt_mkblock(c, p, end) {
+    p = [p];
+    var v = [0];
+    var start = p[0];
+    var z = [0];
+    var b = [0];
+    if (!sxvt_vint(c, p, end, false, v, z) || !sxvt_add(c, sxvt_tracks[(z[0] - 1) >>> 0], start) || sxU64(end - p[0]) < 3 || !sxvt_byte(c, p[0] + 2, b, 0) || !sxvt_add(c, sxvt_matroska_block, p[0])) {
+        return false;
+    }
+    p[0] += 3;
+    var lace = b[0] >> 1 & 3;
+    if (lace) {
+        if (p[0] === end || !sxvt_byte(c, p[0], b, 0) || !sxvt_add(c, sxvt_matroska_lace_count, p[0])) {
+            return false;
+        }
+        p[0]++;
+        var count = b[0] + 1;
+        if (lace === 1) {
+            for (var i = 1; i < count; i++) {
+                do {
+                    if (p[0] === end || !sxvt_byte(c, p[0], b, 0) || !sxvt_add(c, sxvt_matroska_xiph_size, p[0]++)) {
+                        return false;
+                    }
+                } while (b[0] === 255);
+            }
+        } else if (lace === 3) {
+            for (i = 1; i < count; i++) {
+                start = p[0];
+                if (!sxvt_vint(c, p, end, false, v, z) || !sxvt_add(c, i === 1 ? sxvt_laces[(z[0] - 1) >>> 0] : sxvt_deltas[(z[0] - 1) >>> 0], start)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sxvt_mkmaster(id) {
+    switch (id) {
+    case 0x1A45DFA3:
+    case 0x18538067:
+    case 0x1549A966:
+    case 0x1654AE6B:
+    case 0xAE:
+    case 0x1F43B675:
+    case 0xA0:
+    case 0xE0:
+    case 0xE1:
+    case 0x6D80:
+    case 0x6240:
+    case 0x5034:
+    case 0x5035:
+    case 0x1043A770:
+    case 0x45B9:
+    case 0xB6:
+    case 0x80:
+    case 0x1254C367:
+    case 0x7373:
+    case 0x63C0:
+    case 0x67C8:
+    case 0x1941A469:
+    case 0x61A7:
+    case 0x114D9B74:
+    case 0x4DBB:
+    case 0x1C53BB6B:
+    case 0xBB:
+    case 0xB7:
+        return true;
+    default:
+        return false;
+    }
+}
+function sxvt_mkkind(id) {
+    switch (id) {
+    case 0x42F7:
+    case 0x4286:
+    case 0x42F2:
+    case 0x42F3:
+    case 0x4287:
+    case 0x4285:
+    case 0x2AD7B1:
+    case 0xD7:
+    case 0x73C5:
+    case 0x83:
+    case 0xB9:
+    case 0x88:
+    case 0x55AA:
+    case 0x9C:
+    case 0x6DE7:
+    case 0x6DF8:
+    case 0x23E383:
+    case 0xB0:
+    case 0xBA:
+    case 0x54B0:
+    case 0x54BA:
+    case 0x54B2:
+    case 0x9F:
+    case 0x6264:
+    case 0xE7:
+    case 0xF7:
+    case 0x5378:
+    case 0xB3:
+    case 0x9B:
+        return 1;
+    case 0x53AC:
+    case 0xF1:
+    case 0xA7:
+    case 0xF0:
+        return 2;
+    case 0x4489:
+    case 0xB5:
+    case 0x78B5:
+    case 0x23314F:
+        return 3;
+    case 0x4461:
+        return 4;
+    case 0xBF:
+        return 5;
+    default:
+        return 0;
+    }
+}
+function sxvt_mk(c, p, end, depth, parent) {
+    p = [p];
+    if (depth > 24) {
+        return false;
+    }
+    while (p[0] < end && c.count < 20000) {
+        var id = [0];
+        var n = [0];
+        var a = p[0];
+        var iz = [0];
+        var sz = [0];
+        if (!sxvt_vint(c, p, end, true, id, iz)) {
+            return false;
+        }
+        var b = p[0];
+        if (!sxvt_vint(c, p, end, false, n, sz)) {
+            return false;
+        }
+        var unknown = n[0] === sxU64(sxShl64(1, (7 * sz[0]) >>> 0) - 1);
+        if (unknown) {
+            if (id[0] !== 0x18538067) {
+                return false;
+            }
+            n[0] = sxU64(end - p[0]);
+        }
+        if (n[0] > sxU64(end - p[0])) {
+            return false;
+        }
+        var stop = p[0] + n[0];
+        if (!sxvt_add(c, sxvt_ebml_ids[(iz[0] - 1) >>> 0], a) || !sxvt_add(c, sxvt_sizes[(sz[0] - 1) >>> 0], b)) {
+            return false;
+        }
+        if (sxvt_mkmaster(id[0])) {
+            sxvt_mk(c, p[0], stop, (depth + 1) >>> 0, id[0]);
+        } else if (id[0] === 0xA3 && parent === 0x1F43B675 || id[0] === 0xA1 && parent === 0xA0) {
+            sxvt_mkblock(c, p[0], stop);
+        } else {
+            var kind = sxvt_mkkind(id[0]);
+            var l = null;
+            if ((kind === 1 || kind === 2) && n[0] && n[0] <= 8) {
+                l = (kind === 1 ? sxvt_uints : sxvt_offsets)[sxU64(n[0] - 1)];
+            } else if (kind === 3 && (n[0] === 4 || n[0] === 8)) {
+                l = n[0] === 4 ? sxvt_matroska_float4 : sxvt_matroska_float8;
+            } else if (kind === 4 && n[0] === 8) {
+                l = sxvt_matroska_date;
+            } else if (kind === 5 && n[0] === 4) {
+                l = sxvt_matroska_crc32;
+            }
+            if (l !== null && !sxvt_add(c, l, p[0])) {
+                return false;
+            }
+        }
+        p[0] = stop;
+    }
+    return p[0] === end;
+}
+function sx_matroska_build(c) {
+    return sxvt_mk(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0, 0);
+}

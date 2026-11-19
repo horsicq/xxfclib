@@ -1,0 +1,96 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gaussian_cube/xx_gaussian_cube_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_cube_origin_x_fields = layout([field("cube_origin_x", "ascii_real", 0)]);
+var sxsa_cube_origin_x = sxLayout(0x605100B9, "science_cube_origin_x", LE, sxsa_cube_origin_x_fields);
+var sxsa_cube_origin_y_fields = layout([field("cube_origin_y", "ascii_real", 0)]);
+var sxsa_cube_origin_y = sxLayout(0x605100BA, "science_cube_origin_y", LE, sxsa_cube_origin_y_fields);
+var sxsa_cube_origin_z_fields = layout([field("cube_origin_z", "ascii_real", 0)]);
+var sxsa_cube_origin_z = sxLayout(0x605100BB, "science_cube_origin_z", LE, sxsa_cube_origin_z_fields);
+var sxsa_cube_vector_x_fields = layout([field("cube_vector_x", "ascii_real", 0)]);
+var sxsa_cube_vector_x = sxLayout(0x605100BC, "science_cube_vector_x", LE, sxsa_cube_vector_x_fields);
+var sxsa_cube_vector_y_fields = layout([field("cube_vector_y", "ascii_real", 0)]);
+var sxsa_cube_vector_y = sxLayout(0x605100BD, "science_cube_vector_y", LE, sxsa_cube_vector_y_fields);
+var sxsa_cube_vector_z_fields = layout([field("cube_vector_z", "ascii_real", 0)]);
+var sxsa_cube_vector_z = sxLayout(0x605100BE, "science_cube_vector_z", LE, sxsa_cube_vector_z_fields);
+var sxsa_cube_atom_x_fields = layout([field("cube_atom_x", "ascii_real", 0)]);
+var sxsa_cube_atom_x = sxLayout(0x605100BF, "science_cube_atom_x", LE, sxsa_cube_atom_x_fields);
+var sxsa_cube_atom_y_fields = layout([field("cube_atom_y", "ascii_real", 0)]);
+var sxsa_cube_atom_y = sxLayout(0x605100C0, "science_cube_atom_y", LE, sxsa_cube_atom_y_fields);
+var sxsa_cube_atom_z_fields = layout([field("cube_atom_z", "ascii_real", 0)]);
+var sxsa_cube_atom_z = sxLayout(0x605100C1, "science_cube_atom_z", LE, sxsa_cube_atom_z_fields);
+var sxsa_cube_axis_count_fields = layout([field("cube_axis_count", "ascii_signed", 0, COUNT)]);
+var sxsa_cube_axis_count = sxLayout(0x605100C2, "science_cube_axis_count", LE, sxsa_cube_axis_count_fields);
+var sxsa_atomic_number_fields = layout([field("atomic_number", "ascii_signed", 0)]);
+var sxsa_atomic_number = sxLayout(0x605100C3, "science_atomic_number", LE, sxsa_atomic_number_fields);
+var sxsa_cube_nuclear_charge_fields = layout([field("cube_nuclear_charge", "ascii_real", 0)]);
+var sxsa_cube_nuclear_charge = sxLayout(0x605100C4, "science_cube_nuclear_charge", LE, sxsa_cube_nuclear_charge_fields);
+var sxsa_cube_value_fields = layout([field("cube_value", "ascii_real", 0)]);
+var sxsa_cube_value = sxLayout(0x605100C5, "science_cube_value", LE, sxsa_cube_value_fields);
+function sxsa_cube(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(8, sxNew_sxsa_token);
+    var atoms = [0];
+    for (var i = 0; i < 2; i++) {
+        if (!sxsa_line(q, line)) {
+            return false;
+        }
+        {
+            if (!sxsa_emit(q, sxsa_comment, sxCopy_sxsa_token(null, line))) {
+                return false;
+            }
+        }
+    }
+    if (!sxsa_line(q, line) || sxsa_split(q, sxCopy_sxsa_token(null, line), t, 8, false) !== 4 || !sxsa_number(q, sxCopy_sxsa_token(null, t[0]), atoms)) {
+        return false;
+    }
+    var origin = [sxsa_atom_count, sxsa_cube_origin_x, sxsa_cube_origin_y, sxsa_cube_origin_z];
+    if (!sxsa_fields(q, t, 0, 4, origin, 4)) {
+        return false;
+    }
+    var axis = [sxsa_cube_axis_count, sxsa_cube_vector_x, sxsa_cube_vector_y, sxsa_cube_vector_z];
+    for (i = 0; i < 3; i++) {
+        if (!sxsa_line(q, line) || sxsa_split(q, sxCopy_sxsa_token(null, line), t, 8, false) !== 4 || !sxsa_fields(q, t, 0, 4, axis, 4)) {
+            return false;
+        }
+    }
+    var atom = [sxsa_atomic_number, sxsa_cube_nuclear_charge, sxsa_cube_atom_x, sxsa_cube_atom_y, sxsa_cube_atom_z];
+    for (i = 0; i < atoms[0]; i++) {
+        if (!sxsa_line(q, line) || sxsa_split(q, sxCopy_sxsa_token(null, line), t, 8, false) !== 5 || !sxsa_fields(q, t, 0, 5, atom, 5)) {
+            return false;
+        }
+        if (q.c.count >= 24000) {
+            return true;
+        }
+    }
+    while (sxsa_line(q, line)) {
+        var p = line.a;
+        var end = p + line.z;
+        while (p < end) {
+            while (p < end && sxsa_space(q.b[p])) {
+                p++;
+            }
+            var a = p;
+            while (p < end && !sxsa_space(q.b[p])) {
+                p++;
+            }
+            if (p > a) {
+                {
+                    if (!sxsa_emit(q, sxsa_cube_value, sxCopy_sxsa_token(null, { a: a, z: p - a }))) {
+                        return false;
+                    }
+                }
+            }
+        }
+        if (q.c.count >= 24000) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_gaussian_cube_build(q) {
+    return sxsa_cube(q);
+}

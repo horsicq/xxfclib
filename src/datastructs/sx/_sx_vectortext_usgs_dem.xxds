@@ -1,0 +1,233 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/usgs_dem/xx_usgs_dem_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvtx_profile_count_fields = layout([field("profile_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_profile_count = sxLayout(0x6062003C, "vectortext_profile_count", LE, sxvtx_profile_count_fields);
+var sxvtx_row_count_fields = layout([field("row_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_row_count = sxLayout(0x6062003D, "vectortext_row_count", LE, sxvtx_row_count_fields);
+var sxvtx_column_number_fields = layout([field("column_number", "ascii_signed", 0)]);
+var sxvtx_column_number = sxLayout(0x6062003E, "vectortext_column_number", LE, sxvtx_column_number_fields);
+var sxvtx_elevation_sample_fields = layout([field("elevation_sample", "ascii_signed", 0)]);
+var sxvtx_elevation_sample = sxLayout(0x6062003F, "vectortext_elevation_sample", LE, sxvtx_elevation_sample_fields);
+var sxvtx_dem_level_fields = layout([field("dem_level", "ascii_signed", 0)]);
+var sxvtx_dem_level = sxLayout(0x60620040, "vectortext_dem_level", LE, sxvtx_dem_level_fields);
+var sxvtx_elevation_pattern_fields = layout([field("elevation_pattern", "ascii_signed", 0)]);
+var sxvtx_elevation_pattern = sxLayout(0x60620041, "vectortext_elevation_pattern", LE, sxvtx_elevation_pattern_fields);
+var sxvtx_reference_system_fields = layout([field("reference_system", "ascii_signed", 0)]);
+var sxvtx_reference_system = sxLayout(0x60620042, "vectortext_reference_system", LE, sxvtx_reference_system_fields);
+var sxvtx_zone_fields = layout([field("zone", "ascii_signed", 0)]);
+var sxvtx_zone = sxLayout(0x60620043, "vectortext_zone", LE, sxvtx_zone_fields);
+var sxvtx_ground_unit_fields = layout([field("ground_unit", "ascii_signed", 0)]);
+var sxvtx_ground_unit = sxLayout(0x60620044, "vectortext_ground_unit", LE, sxvtx_ground_unit_fields);
+var sxvtx_elevation_unit_fields = layout([field("elevation_unit", "ascii_signed", 0)]);
+var sxvtx_elevation_unit = sxLayout(0x60620045, "vectortext_elevation_unit", LE, sxvtx_elevation_unit_fields);
+var sxvtx_polygon_side_count_fields = layout([field("polygon_side_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_polygon_side_count = sxLayout(0x60620046, "vectortext_polygon_side_count", LE, sxvtx_polygon_side_count_fields);
+var sxvtx_accuracy_code_fields = layout([field("accuracy_code", "ascii_signed", 0)]);
+var sxvtx_accuracy_code = sxLayout(0x60620047, "vectortext_accuracy_code", LE, sxvtx_accuracy_code_fields);
+var sxvtx_row_number_fields = layout([field("row_number", "ascii_signed", 0)]);
+var sxvtx_row_number = sxLayout(0x60620086, "vectortext_row_number", LE, sxvtx_row_number_fields);
+var sxvtx_dem_x_fields = layout([field("dem_x", "ascii_fortran_real", 0)]);
+var sxvtx_dem_x = sxLayout(0x60620092, "vectortext_dem_x", LE, sxvtx_dem_x_fields);
+var sxvtx_dem_y_fields = layout([field("dem_y", "ascii_fortran_real", 0)]);
+var sxvtx_dem_y = sxLayout(0x60620093, "vectortext_dem_y", LE, sxvtx_dem_y_fields);
+var sxvtx_dem_coordinate_value_fields = layout([field("dem_coordinate_value", "ascii_fortran_real", 0)]);
+var sxvtx_dem_coordinate_value = sxLayout(0x60620094, "vectortext_dem_coordinate_value", LE, sxvtx_dem_coordinate_value_fields);
+var sxvtx_dem_minimum_elevation_fields = layout([field("dem_minimum_elevation", "ascii_fortran_real", 0)]);
+var sxvtx_dem_minimum_elevation = sxLayout(0x60620095, "vectortext_dem_minimum_elevation", LE, sxvtx_dem_minimum_elevation_fields);
+var sxvtx_dem_maximum_elevation_fields = layout([field("dem_maximum_elevation", "ascii_fortran_real", 0)]);
+var sxvtx_dem_maximum_elevation = sxLayout(0x60620096, "vectortext_dem_maximum_elevation", LE, sxvtx_dem_maximum_elevation_fields);
+var sxvtx_dem_rotation_fields = layout([field("dem_rotation", "ascii_fortran_real", 0)]);
+var sxvtx_dem_rotation = sxLayout(0x60620097, "vectortext_dem_rotation", LE, sxvtx_dem_rotation_fields);
+var sxvtx_dem_x_resolution_fields = layout([field("dem_x_resolution", "ascii_fortran_real", 0)]);
+var sxvtx_dem_x_resolution = sxLayout(0x60620098, "vectortext_dem_x_resolution", LE, sxvtx_dem_x_resolution_fields);
+var sxvtx_dem_y_resolution_fields = layout([field("dem_y_resolution", "ascii_fortran_real", 0)]);
+var sxvtx_dem_y_resolution = sxLayout(0x60620099, "vectortext_dem_y_resolution", LE, sxvtx_dem_y_resolution_fields);
+var sxvtx_dem_z_resolution_fields = layout([field("dem_z_resolution", "ascii_fortran_real", 0)]);
+var sxvtx_dem_z_resolution = sxLayout(0x6062009A, "vectortext_dem_z_resolution", LE, sxvtx_dem_z_resolution_fields);
+var sxvtx_dem_elevation_datum_fields = layout([field("dem_elevation_datum", "ascii_fortran_real", 0)]);
+var sxvtx_dem_elevation_datum = sxLayout(0x6062009B, "vectortext_dem_elevation_datum", LE, sxvtx_dem_elevation_datum_fields);
+var sxvtx_dem_projection_parameter_fields = layout([field("dem_projection_parameter", "ascii_fortran_real", 0)]);
+var sxvtx_dem_projection_parameter = sxLayout(0x6062009C, "vectortext_dem_projection_parameter", LE, sxvtx_dem_projection_parameter_fields);
+function sxvtx_dem(q) {
+    if (q.n < 2048) {
+        return false;
+    }
+    var stride = q.b[1024] === 10 ? 1025 : q.b[1024] === 13 && q.b[1025] === 10 ? 1026 : 1024;
+    if (q.n % stride) {
+        return false;
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_record_text, 0, 144)) {
+            return false;
+        }
+    }
+    var head = [sxvtx_dem_level, sxvtx_elevation_pattern, sxvtx_reference_system, sxvtx_zone];
+    for (var i = 0; i < 4; i++) {
+        if (!sxvtx_emit(q, head[i], (144 + ((6 * i) >>> 0)) >>> 0, 6)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 15; i++) {
+        if (sxvtx_nonblank(q, (168 + ((24 * i) >>> 0)) >>> 0, 24) && !sxvtx_emit(q, sxvtx_dem_projection_parameter, (168 + ((24 * i) >>> 0)) >>> 0, 24)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_ground_unit, 528, 6)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_elevation_unit, 534, 6)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_polygon_side_count, 540, 6)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 8; i++) {
+        {
+            if (!sxvtx_emit(q, sxvtx_dem_coordinate_value, (546 + ((24 * i) >>> 0)) >>> 0, 24)) {
+                return false;
+            }
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_dem_minimum_elevation, 738, 24)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_dem_maximum_elevation, 762, 24)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_dem_rotation, 786, 24)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_accuracy_code, 810, 6)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_dem_x_resolution, 816, 12)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_dem_y_resolution, 828, 12)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_dem_z_resolution, 840, 12)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_row_count, 852, 6)) {
+            return false;
+        }
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_profile_count, 858, 6)) {
+            return false;
+        }
+    }
+    var count = [0];
+    if (!sxvtx_uint_at(q, 858, 6, count) || count[0] > 4000) {
+        return false;
+    }
+    var logical = 1024;
+    var available = sxDiv(q.n, stride) * 1024;
+    for (i = 0; i < count[0]; i++) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var a = sxDiv(logical, 1024) * stride;
+        if (logical > available - 144) {
+            return false;
+        }
+        var rows = [0];
+        if (!sxvtx_uint_at(q, a + 12, 6, rows) || rows[0] > 1000000) {
+            return false;
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_row_number, a, 6)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_column_number, a + 6, 6)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_row_count, a + 12, 6)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_column_count, a + 18, 6)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_dem_x, a + 24, 24)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_dem_y, a + 48, 24)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_dem_elevation_datum, a + 72, 24)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_dem_minimum_elevation, a + 96, 24)) {
+                return false;
+            }
+        }
+        {
+            if (!sxvtx_emit(q, sxvtx_dem_maximum_elevation, a + 120, 24)) {
+                return false;
+            }
+        }
+        logical += 144;
+        for (var j = 0; j < rows[0]; j++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            if (logical % 1024 > 1018) {
+                logical = sxDiv(logical + 1023, 1024) * 1024;
+            }
+            if (logical > available - 6) {
+                return false;
+            }
+            {
+                if (!sxvtx_emit(q, sxvtx_elevation_sample, sxDiv(logical, 1024) * stride + logical % 1024, 6)) {
+                    return false;
+                }
+            }
+            logical += 6;
+        }
+        logical = sxDiv(logical + 1023, 1024) * 1024;
+    }
+    return logical === available;
+}
+function sx_usgs_dem_build(q) {
+    return sxvtx_dem(q);
+}

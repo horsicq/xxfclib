@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/cfe/xx_cfe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcfefw_header_fields = layout([bytes("seal", 4, SIGNATURE), u32("flags", FLAGS), u32("payload_size", SIZE),
+    u32("payload_crc32", CHECKSUM), chars("board_name", 32, STRING), u8("major_version"), u8("minor_version"),
+    u8("eco_version"), u8("misc_version"), bytes("reserved", 12, RESERVED)]);
+var sxcfefw_header = sxLayout(0x609F0001, "cfe_flash_update_header", BE, sxcfefw_header_fields);
+function sxcfefw_be32(p, p_o) {
+    return ((((p[p_o] << 24) >>> 0 | p[p_o + 1] << 16) >>> 0 | p[p_o + 2] << 8) >>> 0 | p[p_o + 3]) >>> 0;
+}
+function sxcfefw_update(c) {
+    var h = [];
+    var b = [];
+    var crc = 0;
+    var done = 0;
+    var terminated = false;
+    if (c.size < 64 || !sx_read(c, 0, h, 64) || sxMemcmp(h, "CFE1", 4)) {
+        return false;
+    }
+    var n = sxcfefw_be32(h, 8);
+    if (!n || n > 67108864 || n > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 64)) {
+        return false;
+    }
+    for (var i = 16; i < 48; i++) {
+        if (!h[i]) {
+            terminated = true;
+        }
+    }
+    if (!terminated) {
+        return false;
+    }
+    while (done < n) {
+        var z = sxU64(n - done) > 0x2000 ? 0x2000 : sxU64(n - done);
+        if (!sx_read(c, 64 + (done >= SX_I64_MAX ? done - SX_U64_MAX : done), b, z)) {
+            return false;
+        }
+        crc = sxCrc32(crc, b, z);
+        done += z;
+    }
+    if (~crc >>> 0 !== sxcfefw_be32(h, 12)) {
+        return false;
+    }
+    return sx_add(c, sxcfefw_header, 0, 64) && sx_raw(c, 64, c.size - 64);
+}
+function sx_cfe_build(c) {
+    if (sxcfefw_update(c)) {
+        return true;
+    }
+    if (c.failed) {
+        return false;
+    }
+    var seal = [];
+    return c.size >= 36 && sx_read(c, 28, seal, 8) && !sxMemcmp(seal, "CFE1CFE1", 8) && sx_raw(c, 0, c.size);
+}

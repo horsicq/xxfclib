@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/lifkd/xx_lifkd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_lifkd_member_fields = layout([field("dos_datetime", "ascii_hex[8]", 8),
+    field("compressed_size", "ascii_hex[8]", 8, SIZE), field("uncompressed_size", "ascii_hex[8]", 8, SIZE),
+    field("packed_crc16", "ascii_hex[4]", 4, CHECKSUM), field("plain_crc16", "ascii_hex[4]", 4, CHECKSUM),
+    field("method", "ascii_hex[2]", 2), chars("name", 20, NONE)]);
+var sxat_lifkd_member = sxLayout(0x6064001D, "lifkd_member", LE, sxat_lifkd_member_fields);
+function sxat_lifkd(c) {
+    var p = 0;
+    while (sxat_span(c, p, 54)) {
+        var z = [0];
+        var v = [0];
+        if (!sxat_hex(c, p, 8, v) || !sxat_hex(c, p + 8, 8, z) || !sxat_hex(c, p + 16, 8, v) || !sxat_hex(c, p + 24, 4, v) || !sxat_hex(c, p + 28, 4, v) || !sxat_hex(c, p + 32, 2, v) || !sxat_add(c, sxat_lifkd_member, p)) {
+            return false;
+        }
+        p += 54;
+        if (!sxat_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_lifkd_build(c) {
+    return sxat_lifkd(c);
+}

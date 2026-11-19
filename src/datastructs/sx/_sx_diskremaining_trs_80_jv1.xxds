@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/trs_80_jv1/xx_trs_80_jv1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_trs80_boot_directory_fields = layout([u8("directory_track_flags", FLAGS)]);
+var sxdr_trs80_boot_directory = sxLayout(0x607F0004, "trs80_boot_directory", LE, sxdr_trs80_boot_directory_fields);
+var sxdr_trs80_gat_track_fields = layout([u8("allocated_granules", FLAGS)]);
+var sxdr_trs80_gat_track = sxLayout(0x607F0005, "trs80_gat_track", LE, sxdr_trs80_gat_track_fields);
+var sxdr_trs80_gat_identity_fields = layout([chars("disk_name", 8, NONE), chars("date_text", 8, NONE),
+    chars("auto_command", 32, NONE)]);
+var sxdr_trs80_gat_identity = sxLayout(0x607F0006, "trs80_gat_identity", LE, sxdr_trs80_gat_identity_fields);
+var sxdr_trs80_hit_fields = layout([u8("filename_hash", CHECKSUM)]);
+var sxdr_trs80_hit = sxLayout(0x607F0007, "trs80_hit", LE, sxdr_trs80_hit_fields);
+var sxdr_trs80_primary_entry_fields = layout([u8("flags", FLAGS), u8("month_flags", FLAGS), u8("day_year_flags", FLAGS),
+    u8("last_sector_bytes"), u8("logical_record_length"), chars("name", 8, NONE), chars("extension", 3, NONE),
+    u16("update_password_hash", CHECKSUM), u16("access_password_hash", CHECKSUM), u16("allocated_sectors", COUNT)]);
+var sxdr_trs80_primary_entry = sxLayout(0x607F0008, "trs80_primary_entry", LE, sxdr_trs80_primary_entry_fields);
+var sxdr_trs80_extended_entry_fields = layout([u8("flags", FLAGS), u8("previous_entry_code", ID), u8("day_year_flags", FLAGS),
+    u8("last_sector_bytes"), u8("logical_record_length"), chars("name", 8, NONE), chars("extension", 3, NONE),
+    u16("update_password_hash", CHECKSUM), u16("access_password_hash", CHECKSUM), u16("allocated_sectors", COUNT)]);
+var sxdr_trs80_extended_entry = sxLayout(0x607F0009, "trs80_extended_entry", LE, sxdr_trs80_extended_entry_fields);
+var sxdr_trs80_extent_fields = layout([u8("start_track"), u8("granule_start_count", FLAGS)]);
+var sxdr_trs80_extent = sxLayout(0x607F000A, "trs80_extent", LE, sxdr_trs80_extent_fields);
+var sxdr_trs80_extent_link_fields = layout([u8("marker", ID), u8("next_entry_code", ID)]);
+var sxdr_trs80_extent_link = sxLayout(0x607F000B, "trs80_extent_link", LE, sxdr_trs80_extent_link_fields);
+var sxdr_trs80_gat_lockout_fields = layout([u8("lockout_flags", FLAGS)]);
+var sxdr_trs80_gat_lockout = sxLayout(0x607F0026, "trs80_gat_lockout", LE, sxdr_trs80_gat_lockout_fields);
+var sxdr_trs80_gat_system_fields = layout([u8("os_version", ID), u8("cylinders_minus_35"), u8("geometry_flags", FLAGS),
+    u16("master_password_hash", CHECKSUM)]);
+var sxdr_trs80_gat_system = sxLayout(0x607F0027, "trs80_gat_system", LE, sxdr_trs80_gat_system_fields);
+function sxdr_trs(c) {
+    var boot = [];
+    var e = [];
+    if (c.size < 5120 || c.size % 2560 || c.size > 0x3C000 || !sxdr_read(c, 0, boot, 3)) {
+        return false;
+    }
+    var track = boot[2] & 127;
+    var tracks = sxU64(sxDiv(c.size, 2560));
+    var base = track * 2560;
+    if (!track || track >= tracks || !sxdr_span(c, base, 2560)) {
+        return false;
+    }
+    if (!sxdr_put(c, sxdr_trs80_boot_directory, 2, 1) || !sxdr_put(c, sxdr_trs80_gat_track, base, tracks) || !sxdr_put(c, sxdr_trs80_gat_lockout, base + 96, tracks) || !sxdr_put(c, sxdr_trs80_gat_system, base + 203, 1) || !sxdr_put(c, sxdr_trs80_gat_identity, base + 208, 1) || !sxdr_put(c, sxdr_trs80_hit, base + 256, 256)) {
+        return false;
+    }
+    for (var i = 0; i < 64; i++) {
+        var p = base + 512 + i * 32;
+        if (!sxdr_read(c, p, e, 32)) {
+            return false;
+        }
+        if (!(e[0] & 16)) {
+            continue;
+        }
+        if (!sxdr_put(c, e[0] & 128 ? sxdr_trs80_extended_entry : sxdr_trs80_primary_entry, p, 1)) {
+            return false;
+        }
+        for (var j = 0; j < 5; j++) {
+            var a = e[(22 + ((j * 2) >>> 0)) >>> 0];
+            if (a === 255) {
+                break;
+            }
+            if (j === 4 && a === 254) {
+                if (!sxdr_put(c, sxdr_trs80_extent_link, p + 30, 1)) {
+                    return false;
+                }
+                break;
+            }
+            if (!sxdr_put(c, sxdr_trs80_extent, p + 22 + ((j * 2) >>> 0), 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_trs_80_jv1_build(c) {
+    return sxdr_trs(c);
+}

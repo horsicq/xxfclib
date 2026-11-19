@@ -1,0 +1,121 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/abaqus_input/xx_abaqus_input_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_surface_face_fields = layout([field("surface_face", "char", 0, STRING)]);
+var sxsm_surface_face = sxLayout(0x6063007A, "mesh_surface_face", LE, sxsm_surface_face_fields);
+function sxsm_abaqus(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(32, sxNew_sxsm_token);
+    var n;
+    var mode = 0;
+    while (sxsm_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxsm_token(line, sxsm_trim(q, sxCopy_sxsm_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        if (line.z >= 2 && q.b[line.a] === 42 && q.b[line.a + 1] === 42) {
+            {
+                if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        n = sxsm_csv(q, sxCopy_sxsm_token(null, line), t, 32);
+        if (!n || n > 32) {
+            return false;
+        }
+        if (q.b[line.a] === 42) {
+            {
+                if (!sxsm_emit(q, sxsm_section, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            mode = sxsm_ci(q, sxCopy_sxsm_token(null, t[0]), "*heading") ? 1 : sxsm_ci(q, sxCopy_sxsm_token(null, t[0]), "*node") ? 2 : sxsm_ci(q, sxCopy_sxsm_token(null, t[0]), "*element") ? 3 : sxsm_ci(q, sxCopy_sxsm_token(null, t[0]), "*nset") ? 4 : sxsm_ci(q, sxCopy_sxsm_token(null, t[0]), "*elset") ? 5 : sxsm_ci(q, sxCopy_sxsm_token(null, t[0]), "*surface") ? 6 : 0;
+            for (var i = 1; i < n; i++) {
+                var key = sxNew_sxsm_token();
+                var value = sxNew_sxsm_token();
+                if (!sxsm_keyvalue(q, sxCopy_sxsm_token(null, t[i]), 61 /*=*/, key, value)) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, key))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_option_value, sxCopy_sxsm_token(null, value))) {
+                        return false;
+                    }
+                }
+            }
+            continue;
+        }
+        if (mode === 1) {
+            {
+                if (!sxsm_emit(q, sxsm_title, sxCopy_sxsm_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        while (n && !t[(n - 1) >>> 0].z) {
+            n--;
+        }
+        if (!n) {
+            return false;
+        }
+        if (mode === 2) {
+            if (n !== 4) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_node_id, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_xyz(q, t[1], 0)) {
+                return false;
+            }
+        } else if (mode === 3) {
+            {
+                if (!sxsm_emit(q, sxsm_element_id, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_each(q, t, 1, (n - 1) >>> 0, sxsm_node_index)) {
+                return false;
+            }
+        } else if (mode === 4 || mode === 5) {
+            if (!sxsm_each(q, t, 0, n, mode === 4 ? sxsm_node_index : sxsm_element_id)) {
+                return false;
+            }
+        } else if (mode === 6) {
+            if (n !== 2) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_element_id, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_surface_face, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_abaqus_input_build(q) {
+    return sxsm_abaqus(q);
+}

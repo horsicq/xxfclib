@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cpx/xx_cpx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_cpx_header_fields = layout([u8("version"), bytes("signature", 3, SIGNATURE), u16("member_count", COUNT)]);
+var sxao_cpx_header = sxLayout(0x60700032, "cpx_header", LE, sxao_cpx_header_fields);
+var sxao_cpx_member_fields = layout([chars("name", 13, NONE), u8("group"), u32("dos_datetime"),
+    u32("size_and_stored_flag", FLAGS), u32("payload_offset", OFFSET)]);
+var sxao_cpx_member = sxLayout(0x60700033, "cpx_member", LE, sxao_cpx_member_fields);
+var sxao_cpx4_header_fields = layout([u8("version_stamp"), bytes("signature", 3, SIGNATURE), u16("header_size", SIZE),
+    u16("version"), u32("record_table_size", SIZE), u32("record_table_offset", OFFSET), u32("name_table_size", SIZE),
+    u32("name_table_offset", OFFSET), u32("extra_size", SIZE), u32("extra_offset", OFFSET), u32("stamp")]);
+var sxao_cpx4_header = sxLayout(0x60700034, "cpx4_header", LE, sxao_cpx4_header_fields);
+var sxao_cpx4_member_fields = layout([u32("name_offset", OFFSET), u32("attributes", FLAGS), u32("uncompressed_size", SIZE),
+    u32("timestamp"), u32("flags", FLAGS), u32("compressed_size", SIZE), u32("payload_offset", OFFSET)]);
+var sxao_cpx4_member = sxLayout(0x60700035, "cpx4_member", LE, sxao_cpx4_member_fields);
+function sxao_cpx(c) {
+    var version = [0];
+    if (!sxao_word(c, 0, 1, false, version)) {
+        return false;
+    }
+    if (version[0] !== 0x2C) {
+        var n = [0];
+        return sxao_word(c, 4, 2, false, n) && sxao_add(c, sxao_cpx_header, 0) && sxao_table(c, sxao_cpx_member, 6, 26, n[0]);
+    }
+    var size = [0];
+    var off = [0];
+    var names = [0];
+    var nsize = [0];
+    if (!sxao_word(c, 8, 4, false, size) || !sxao_word(c, 12, 4, false, off) || !sxao_word(c, 16, 4, false, nsize) || !sxao_word(c, 20, 4, false, names) || !sxao_add(c, sxao_cpx4_header, 0) || size[0] % 28 || !sxao_table(c, sxao_cpx4_member, off[0], 28, Math.floor(size[0] / 28)) || !sxao_span(c, names[0], nsize[0])) {
+        return false;
+    }
+    for (var i = 0; i < Math.floor(size[0] / 28) && c.count < 20000; i++) {
+        var rel = [0];
+        n = [0];
+        if (!sxao_word(c, off[0] + i * 28, 4, false, rel)) {
+            return false;
+        }
+        if (rel[0] < nsize[0] && sxao_zlen(c, names[0] + rel[0], names[0] + nsize[0], n) && !sxao_text(c, sxao_archiveobsolete_name, names[0] + rel[0], n[0], false)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_cpx_build(c) {
+    return sxao_cpx(c);
+}

@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/chm/xx_chm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_chm_itsp_fields = layout([chars("signature", 4, SIGNATURE), u32("version"), u32("header_size", SIZE), u32("unknown_0"),
+    u32("chunk_size", SIZE), u32("density"), u32("tree_depth", COUNT), i32("root_index", ID), i32("first_pmgl", ID),
+    i32("last_pmgl", ID), i32("unknown_1"), u32("chunk_count", COUNT), u32("language_id", ID), blob("guid", 16, ID),
+    u32("header_size_again", SIZE), blob("unknown_2", 12)]);
+var sx_p_chm_itsp = sxLayout(0x60070031, "chm_itsp", LE, sx_p_chm_itsp_fields);
+var sx_p_chm_pmgl_fields = layout([chars("signature", 4, SIGNATURE), u32("free_space", SIZE), u32("unknown"),
+    i32("previous", ID), i32("next", ID)]);
+var sx_p_chm_pmgl = sxLayout(0x60070032, "chm_pmgl", LE, sx_p_chm_pmgl_fields);
+var sx_p_chm_pmgi_fields = layout([chars("signature", 4, SIGNATURE), u32("free_space", SIZE)]);
+var sx_p_chm_pmgi = sxLayout(0x60070033, "chm_pmgi", LE, sx_p_chm_pmgi_fields);
+var sx_p_chm_section0_fields = layout([u32("magic", SIGNATURE), u32("unknown"), u64("file_size", SIZE), blob("unknown_tail", 8)]);
+var sx_p_chm_section0 = sxLayout(0x60070034, "chm_section0", LE, sx_p_chm_section0_fields);
+function sx_p_chm(c) {
+    var v;
+    var hs;
+    var chunk;
+    var count;
+    var section;
+    var section_size;
+    var dir;
+    var dir_size;
+    if (!sx_p_sig(c, 0, "ITSF", 4) || (v = sx_u32(c, 4, false)) === null || v !== 2 && v !== 3 || (hs = sx_u32(c, 8, false)) === null || hs !== (v === 3 ? 96 : 88) || !sx_add(c, v === 3 ? sx_p_chm_itsf3 : sx_p_chm_itsf2, 0, hs) || (section = sx_u64(c, 56, false)) === null || (section_size = sx_u64(c, 64, false)) === null || section_size < 24 || !sx_p_span(c, section, section_size) || !sx_add(c, sx_p_chm_section0, (section >= SX_I64_MAX ? section - SX_U64_MAX : section), 24) || (dir = sx_u64(c, 72, false)) === null || (dir_size = sx_u64(c, 80, false)) === null || dir_size < 84 || !sx_p_span(c, dir, dir_size) || !sx_p_sig(c, (dir >= SX_I64_MAX ? dir - SX_U64_MAX : dir), "ITSP", 4) || (chunk = sx_u32(c, (dir + 16 >= SX_I64_MAX ? dir + 16 - SX_U64_MAX : dir + 16), false)) === null || chunk < 20 || (count = sx_u32(c, (dir + 44 >= SX_I64_MAX ? dir + 44 - SX_U64_MAX : dir + 44), false)) === null || count * chunk > sxU64(dir_size - 84) || !sx_add(c, sx_p_chm_itsp, (dir >= SX_I64_MAX ? dir - SX_U64_MAX : dir), 84)) {
+        return false;
+    }
+    var off = (dir >= SX_I64_MAX ? dir - SX_U64_MAX : dir) + 84;
+    for (var i = 0; i < count; i++, off += chunk) {
+        var free;
+        if ((free = sx_u32(c, off + 4, false)) === null || free > chunk) {
+            return false;
+        }
+        if (sx_p_sig(c, off, "PMGL", 4)) {
+            if (free > (chunk - 20) >>> 0 || !sx_add(c, sx_p_chm_pmgl, off, 20)) {
+                return false;
+            }
+        } else if (sx_p_sig(c, off, "PMGI", 4)) {
+            if (free > (chunk - 8) >>> 0 || !sx_add(c, sx_p_chm_pmgi, off, 8)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_chm_build(c) {
+    return sx_p_chm(c);
+}

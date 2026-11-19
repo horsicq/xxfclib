@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/culchan_mdc/xx_culchan_mdc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcmore_mdc_track_count_fields = layout([u16("track_count", COUNT)]);
+var sxpcmore_mdc_track_count = sxLayout(0x6099000D, "mdc_track_count", BE, sxpcmore_mdc_track_count_fields);
+function sxpcmore_string(c, p) {
+    var ch = [0];
+    var n = 0;
+    while (n < 4096 && sxpcmore_u8(c, p + n, ch)) {
+        n++;
+        if (!ch[0]) {
+            if (c.count >= 24000) {
+                return true;
+            }
+            for (var i = 0; i < c.count; i++) {
+                var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+                var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+                if (p < a + z && a < p + n) {
+                    return true;
+                }
+            }
+            return sx_add(c, sxpcmore_pcmore_text, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+        }
+    }
+    return true;
+}
+function sxpcmorebe16(b) {
+    return b[0] << 8 | b[1];
+}
+function sxpcmore_mdc(c) {
+    var h = [];
+    if (!sxpcmore_read(c, 0, h, 64) || sxMemcmp(h, "MDC\x1A\x00\x08\x00@", 8)) {
+        return false;
+    }
+    if (!sxpcmore_put(c, sxpcmore_mdc_header, 0, 1)) {
+        return false;
+    }
+    var table = sxpcmore_be32(h, 16);
+    var comment = sxpcmore_be32(h, 20);
+    var n = [];
+    if (table >= 64 && sxpcmore_read(c, table, n, 2)) {
+        var count = sxpcmorebe16(n);
+        if (!sxpcmore_put(c, sxpcmore_mdc_track_count, table, 1)) {
+            return false;
+        }
+        if (sxpcmore_span(c, table + 2, count * 8) && !sxpcmore_put(c, sxpcmore_mdc_track, table + 2, count)) {
+            return false;
+        }
+    }
+    if (comment >= 64 && sxpcmore_span(c, comment, 1) && !sxpcmore_string(c, comment)) {
+        return false;
+    }
+    return true;
+}
+function sx_culchan_mdc_build(c) {
+    var ok = false;
+    ok = sxpcmore_mdc(c);
+    return !!(c.count && sxpcmore_finish(c));
+}

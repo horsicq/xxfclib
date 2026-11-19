@@ -1,0 +1,107 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/windows_registry_hive/xx_windows_registry_hive_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_regf_header_fields = layout([chars("signature", 4, SIGNATURE), u32("primary_sequence"), u32("secondary_sequence"),
+    u64("last_written"), u32("major"), u32("minor"), u32("file_type", ID), u32("file_format", ID),
+    u32("root_cell_offset", OFFSET), u32("hive_bins_size", SIZE), u32("clustering_factor"), bytes("filename", 64)]);
+var sxbx_regf_header = sxLayout(0x60300019, "regf_header", LE, sxbx_regf_header_fields);
+var sxbx_regf_checksum_fields = layout([u32("xor32", SIGNATURE)]);
+var sxbx_regf_checksum = sxLayout(0x6030001A, "regf_checksum", LE, sxbx_regf_checksum_fields);
+var sxbx_regf_hbin_fields = layout([chars("signature", 4, SIGNATURE), u32("bin_offset", OFFSET), u32("bin_size", SIZE),
+    u32("reserved1"), u32("reserved2"), u64("timestamp"), u32("spare")]);
+var sxbx_regf_hbin = sxLayout(0x6030001B, "regf_hbin", LE, sxbx_regf_hbin_fields);
+var sxbx_regf_cell_fields = layout([i32("signed_cell_size")]);
+var sxbx_regf_cell = sxLayout(0x6030001C, "regf_cell", LE, sxbx_regf_cell_fields);
+var sxbx_regf_nk_fields = layout([chars("signature", 2, SIGNATURE), u16("flags", FLAGS), u64("last_written"),
+    u32("access_bits"), u32("parent_offset", OFFSET), u32("subkey_count", COUNT), u32("volatile_subkey_count", COUNT),
+    u32("subkey_list_offset", OFFSET), u32("volatile_list_offset", OFFSET), u32("value_count", COUNT),
+    u32("values_offset", OFFSET), u32("security_offset", OFFSET), u32("class_offset", OFFSET),
+    u32("max_subkey_name_size", SIZE), u32("max_subkey_class_size", SIZE), u32("max_value_name_size", SIZE),
+    u32("max_value_data_size", SIZE), u32("work_variable"), u16("name_size", SIZE), u16("class_size", SIZE)]);
+var sxbx_regf_nk = sxLayout(0x6030001D, "regf_nk", LE, sxbx_regf_nk_fields);
+var sxbx_regf_sk_fields = layout([chars("signature", 2, SIGNATURE), u16("reserved"), u32("previous_offset", OFFSET),
+    u32("next_offset", OFFSET), u32("reference_count", COUNT), u32("descriptor_size", SIZE)]);
+var sxbx_regf_sk = sxLayout(0x6030001E, "regf_sk", LE, sxbx_regf_sk_fields);
+var sxbx_regf_list_fields = layout([chars("signature", 2, SIGNATURE), u16("entry_count", COUNT)]);
+var sxbx_regf_list = sxLayout(0x6030001F, "regf_list", LE, sxbx_regf_list_fields);
+var sxbx_regf_list_offset_fields = layout([u32("cell_offset", OFFSET)]);
+var sxbx_regf_list_offset = sxLayout(0x60300020, "regf_list_offset", LE, sxbx_regf_list_offset_fields);
+var sxbx_regf_list_hash_fields = layout([u32("cell_offset", OFFSET), u32("name_hash_or_hint")]);
+var sxbx_regf_list_hash = sxLayout(0x60300021, "regf_list_hash", LE, sxbx_regf_list_hash_fields);
+var sxbx_regf_vk_fields = layout([chars("signature", 2, SIGNATURE), u16("name_size", SIZE), u32("data_size_flags", FLAGS),
+    u32("data_offset_or_inline"), u32("value_type", ID), u16("flags", FLAGS), u16("spare")]);
+var sxbx_regf_vk = sxLayout(0x60300022, "regf_vk", LE, sxbx_regf_vk_fields);
+var sxbx_regf_db_fields = layout([chars("signature", 2, SIGNATURE), u16("segment_count", COUNT),
+    u32("segment_list_offset", OFFSET)]);
+var sxbx_regf_db = sxLayout(0x60300023, "regf_db", LE, sxbx_regf_db_fields);
+function sxbx16(b, b_o, be) {
+    return sxbx_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxbx_regf(c) {
+    var b = [];
+    if (!sxbx_add(c, sxbx_regf_header, 0) || !sxbx_add(c, sxbx_regf_checksum, 508)) {
+        return false;
+    }
+    var p = 4096;
+    for (var bins = 0; bins < 20000 && c.count < 20000; bins++) {
+        if (!sxbx_read(c, p, b, 32) || sxMemcmp(b, "hbin", 4)) {
+            break;
+        }
+        var size = sxbx32(b, 8, false);
+        if (size < 4096 || size % 4096 || !sxbx_span(c, p, size)) {
+            break;
+        }
+        if (!sxbx_add(c, sxbx_regf_hbin, p)) {
+            return false;
+        }
+        var q = p + 32;
+        var end = p + size;
+        while (q < end && c.count < 20000) {
+            if (!sxbx_read(c, q, b, 4)) {
+                break;
+            }
+            var signedsize = sxbx32(b, 0, false) | 0;
+            var z = signedsize < 0 ? sxU64((-signedsize >= SX_I64_MAX ? -signedsize - SX_U64_MAX : -signedsize)) : (signedsize < 0 ? signedsize + SX_U64_MAX : signedsize);
+            if (z < 8 || z % 8 || z > sxU64(end - q)) {
+                break;
+            }
+            if (!sxbx_add(c, sxbx_regf_cell, q)) {
+                return false;
+            }
+            if (signedsize < 0 && sxbx_read(c, q + 4, b, sxU64(z - 4) < 76 ? sxU64(z - 4) : 76)) {
+                var l = null;
+                var n = 0;
+                if (!sxMemcmp(b, "nk", 2) && z >= 80 && sxbx16(b, 72, false) <= sxU64(z - 80)) {
+                    l = sxbx_regf_nk;
+                } else if (!sxMemcmp(b, "sk", 2) && z >= 24 && sxbx32(b, 16, false) <= sxU64(z - 24)) {
+                    l = sxbx_regf_sk;
+                } else if (!sxMemcmp(b, "vk", 2) && z >= 24 && sxbx16(b, 2, false) <= sxU64(z - 24)) {
+                    l = sxbx_regf_vk;
+                } else if (!sxMemcmp(b, "db", 2) && z >= 12) {
+                    l = sxbx_regf_db;
+                } else if ((!sxMemcmp(b, "lf", 2) || !sxMemcmp(b, "lh", 2) || !sxMemcmp(b, "li", 2) || !sxMemcmp(b, "ri", 2)) && z >= 8) {
+                    n = sxbx16(b, 2, false);
+                    var stride = b[1] === 102 /*f*/ || b[1] === 104 /*h*/ ? 8 : 4;
+                    if (n <= Math.floor(sxU64(z - 8) / stride)) {
+                        l = sxbx_regf_list;
+                        if (!sxbx_table(c, stride === 8 ? sxbx_regf_list_hash : sxbx_regf_list_offset, q + 8, n)) {
+                            return false;
+                        }
+                    }
+                }
+                if (l !== null && !sxbx_add(c, l, q + 4)) {
+                    return false;
+                }
+            }
+            q += z;
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_windows_registry_hive_build(c) {
+    return sxbx_regf(c);
+}

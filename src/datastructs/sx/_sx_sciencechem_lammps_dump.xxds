@@ -1,0 +1,150 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/lammps_dump/xx_lammps_dump_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_lammps_timestep_fields = layout([field("lammps_timestep", "ascii_signed", 0)]);
+var sxsch_lammps_timestep = sxLayout(0x6061006F, "chemistry_lammps_timestep", LE, sxsch_lammps_timestep_fields);
+var sxsch_boundary_code_fields = layout([field("boundary_code", "char", 0, STRING)]);
+var sxsch_boundary_code = sxLayout(0x60610073, "chemistry_boundary_code", LE, sxsch_boundary_code_fields);
+var sxsch_column_name_fields = layout([field("column_name", "char", 0, STRING)]);
+var sxsch_column_name = sxLayout(0x60610074, "chemistry_column_name", LE, sxsch_column_name_fields);
+function sxsch_lammps_col(q, t) {
+    if (sxsch_eq(q, sxCopy_sxsch_token(null, t), "id")) {
+        return sxsch_atom_id;
+    }
+    if (sxsch_eq(q, sxCopy_sxsch_token(null, t), "type")) {
+        return sxsch_species_index;
+    }
+    if (sxsch_eq(q, sxCopy_sxsch_token(null, t), "element")) {
+        return sxsch_element;
+    }
+    var keys = ["x", "y", "z", "xu", "yu", "zu", "xs", "ys", "zs", "vx", "vy", "vz"];
+    var rows = [sxsch_lammps_coordinate_x, sxsch_lammps_coordinate_y, sxsch_lammps_coordinate_z, sxsch_lammps_coordinate_x, sxsch_lammps_coordinate_y, sxsch_lammps_coordinate_z, sxsch_fractional_x, sxsch_fractional_y, sxsch_fractional_z, sxsch_lammps_velocity_x, sxsch_lammps_velocity_y, sxsch_lammps_velocity_z];
+    for (var i = 0; i < 12; i++) {
+        if (sxsch_eq(q, sxCopy_sxsch_token(null, t), keys[i])) {
+            return rows[i];
+        }
+    }
+    return sxsch_real_value;
+}
+function sxsch_dump(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(80, sxNew_sxsch_token);
+    var cols = [];
+    var n = [0];
+    var ncol = 0;
+    var phase = 0;
+    var bounds = 0;
+    var count = [0];
+    while (sxsch_next(q, l, t[0], 80, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "ITEM:")) {
+            if (n[0] < 2) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (sxsch_eq(q, sxCopy_sxsch_token(null, t[1]), "TIMESTEP")) {
+                phase = 1;
+                {
+                    if (!sxsch_emit(q, sxsch_section, sxCopy_sxsch_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+            } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[1]), "NUMBER")) {
+                phase = 2;
+                if (!sxsch_each(q, t, 1, (n[0] - 1) >>> 0, sxsch_keyword)) {
+                    return false;
+                }
+            } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[1]), "BOX")) {
+                if (n[0] !== 6 && n[0] !== 9) {
+                    return false;
+                }
+                phase = 3;
+                bounds = 3;
+                if (!sxsch_each(q, t, 1, (n[0] - 4) >>> 0, sxsch_keyword) || !sxsch_each(q, t, n[0] + -3, 3, sxsch_boundary_code)) {
+                    return false;
+                }
+            } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[1]), "ATOMS")) {
+                if (n[0] < 7 || n[0] > 66) {
+                    return false;
+                }
+                phase = 4;
+                ncol = (n[0] - 2) >>> 0;
+                {
+                    if (!sxsch_emit(q, sxsch_section, sxCopy_sxsch_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+                for (var i = 0; i < ncol; i++) {
+                    {
+                        if (!sxsch_emit(q, sxsch_column_name, sxCopy_sxsch_token(null, t[(i + 2) >>> 0]))) {
+                            return false;
+                        }
+                    }
+                    cols[i] = sxsch_lammps_col(q, sxCopy_sxsch_token(null, t[(i + 2) >>> 0]));
+                }
+            } else {
+                return false;
+            }
+        } else if (phase === 1) {
+            if (n[0] !== 1) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_lammps_timestep, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+        } else if (phase === 2) {
+            if (n[0] !== 1 || !sxsch_number(q, sxCopy_sxsch_token(null, t[0]), count)) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_atom_count, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+        } else if (phase === 3) {
+            if (!bounds || n[0] !== 2 && n[0] !== 3) {
+                return false;
+            }
+            bounds--;
+            {
+                if (!sxsch_emit(q, sxsch_box_lower, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsch_emit(q, sxsch_box_upper, sxCopy_sxsch_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (n[0] === 3) {
+                {
+                    if (!sxsch_emit(q, sxsch_box_tilt, sxCopy_sxsch_token(null, t[2]))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (phase === 4) {
+            if (!count[0] || n[0] !== ncol || !sxsch_fields(q, t, 0, n[0], cols, ncol)) {
+                return false;
+            }
+            count[0]--;
+        } else {
+            return false;
+        }
+    }
+    return count[0] === 0;
+}
+function sx_lammps_dump_build(q) {
+    return sxsch_dump(q);
+}

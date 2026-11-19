@@ -1,0 +1,810 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_installerwire.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiw_shell_interpreter_fields = layout([field("shell_interpreter", "utf8", 0, STRING)]);
+var sxiw_shell_interpreter = sxLayout(0x60790015, "shell_interpreter", LE, sxiw_shell_interpreter_fields);
+var sxiw_shell_assignment_name_fields = layout([field("shell_assignment_name", "utf8", 0, STRING)]);
+var sxiw_shell_assignment_name = sxLayout(0x60790016, "shell_assignment_name", LE, sxiw_shell_assignment_name_fields);
+var sxiw_shell_assignment_value_fields = layout([field("shell_assignment_value", "utf8", 0, STRING)]);
+var sxiw_shell_assignment_value = sxLayout(0x60790017, "shell_assignment_value", LE, sxiw_shell_assignment_value_fields);
+var sxiw_shell_line_count_fields = layout([field("shell_line_count", "ascii_signed", 0, COUNT)]);
+var sxiw_shell_line_count = sxLayout(0x60790018, "shell_line_count", LE, sxiw_shell_line_count_fields);
+var sxiw_shell_block_index_fields = layout([field("shell_block_index", "ascii_signed", 0)]);
+var sxiw_shell_block_index = sxLayout(0x60790019, "shell_block_index", LE, sxiw_shell_block_index_fields);
+var sxiw_shell_payload_size_fields = layout([field("shell_payload_size", "ascii_signed", 0, SIZE)]);
+var sxiw_shell_payload_size = sxLayout(0x6079001A, "shell_payload_size", LE, sxiw_shell_payload_size_fields);
+var sxiw_shell_block_size_fields = layout([field("shell_block_size", "ascii_signed", 0, SIZE)]);
+var sxiw_shell_block_size = sxLayout(0x6079001B, "shell_block_size", LE, sxiw_shell_block_size_fields);
+var sxiw_aa_header_fields = layout([field("file_size", "uint32be", 4, SIZE), field("magic", "uint32be", 4, SIGNATURE),
+    field("toc_count", "uint32be", 4, COUNT), field("unknown", "uint32be", 4)]);
+var sxiw_aa_header = sxLayout(0x60790039, "aa_header", BE, sxiw_aa_header_fields);
+var sxiw_aa_toc_fields = layout([field("block_index", "uint32be", 4, ID), field("block_offset", "uint32be", 4, OFFSET),
+    field("block_size", "uint32be", 4, SIZE)]);
+var sxiw_aa_toc = sxLayout(0x6079003A, "aa_toc", BE, sxiw_aa_toc_fields);
+var sxiw_aa_dictionary_count_fields = layout([field("entry_count", "uint32be", 4, COUNT)]);
+var sxiw_aa_dictionary_count = sxLayout(0x6079003B, "aa_dictionary_count", LE, sxiw_aa_dictionary_count_fields);
+var sxiw_aa_dictionary_entry_fields = layout([u8("unknown"), field("key_length", "uint32be", 4, SIZE),
+    field("value_length", "uint32be", 4, SIZE)]);
+var sxiw_aa_dictionary_entry = sxLayout(0x6079003C, "aa_dictionary_entry", LE, sxiw_aa_dictionary_entry_fields);
+var sxiw_aa_dictionary_key_fields = layout([field("aa_dictionary_key", "utf8", 0, STRING)]);
+var sxiw_aa_dictionary_key = sxLayout(0x6079003D, "aa_dictionary_key", LE, sxiw_aa_dictionary_key_fields);
+var sxiw_aa_dictionary_value_fields = layout([field("aa_dictionary_value", "utf8", 0, STRING)]);
+var sxiw_aa_dictionary_value = sxLayout(0x6079003E, "aa_dictionary_value", LE, sxiw_aa_dictionary_value_fields);
+var sxiw_asf_object_fields = layout([bytes("object_guid", 16, ID), field("object_size", "uint64le", 8, SIZE)]);
+var sxiw_asf_object = sxLayout(0x6079003F, "asf_object", LE, sxiw_asf_object_fields);
+var sxiw_asf_header_fields = layout([bytes("object_guid", 16, SIGNATURE), field("object_size", "uint64le", 8, SIZE),
+    field("header_object_count", "uint32le", 4, COUNT), u8("reserved1", RESERVED), u8("reserved2", RESERVED)]);
+var sxiw_asf_header = sxLayout(0x60790040, "asf_header", LE, sxiw_asf_header_fields);
+var sxiw_asf_file_properties_fields = layout([bytes("file_id", 16, ID), field("file_size", "uint64le", 8, SIZE),
+    field("creation_filetime", "uint64le", 8), field("data_packet_count", "uint64le", 8, COUNT),
+    field("play_duration_100ns", "uint64le", 8), field("send_duration_100ns", "uint64le", 8),
+    field("preroll_ms", "uint64le", 8), field("flags", "uint32le", 4, FLAGS), field("minimum_packet_size", "uint32le", 4, SIZE),
+    field("maximum_packet_size", "uint32le", 4, SIZE), field("maximum_bitrate", "uint32le", 4)]);
+var sxiw_asf_file_properties = sxLayout(0x60790041, "asf_file_properties", LE, sxiw_asf_file_properties_fields);
+var sxiw_asf_stream_properties_fields = layout([bytes("stream_type_guid", 16, ID), bytes("error_correction_guid", 16, ID),
+    field("time_shift_100ns", "uint64le", 8), field("type_specific_size", "uint32le", 4, SIZE),
+    field("error_correction_size", "uint32le", 4, SIZE), field("stream_flags", "uint16le", 2, FLAGS),
+    field("reserved", "uint32le", 4, RESERVED)]);
+var sxiw_asf_stream_properties = sxLayout(0x60790042, "asf_stream_properties", LE, sxiw_asf_stream_properties_fields);
+var sxiw_asf_header_extension_fields = layout([bytes("reserved_guid", 16, RESERVED),
+    field("reserved_word", "uint16le", 2, RESERVED), field("extension_data_size", "uint32le", 4, SIZE)]);
+var sxiw_asf_header_extension = sxLayout(0x60790043, "asf_header_extension", LE, sxiw_asf_header_extension_fields);
+var sxiw_asf_data_header_fields = layout([bytes("file_id", 16, ID), field("data_packet_count", "uint64le", 8, COUNT),
+    field("reserved", "uint16le", 2, RESERVED)]);
+var sxiw_asf_data_header = sxLayout(0x60790044, "asf_data_header", LE, sxiw_asf_data_header_fields);
+var sxiw_asf_content_lengths_fields = layout([field("title_length", "uint16le", 2, SIZE),
+    field("author_length", "uint16le", 2, SIZE), field("copyright_length", "uint16le", 2, SIZE),
+    field("description_length", "uint16le", 2, SIZE), field("rating_length", "uint16le", 2, SIZE)]);
+var sxiw_asf_content_lengths = sxLayout(0x60790045, "asf_content_lengths", LE, sxiw_asf_content_lengths_fields);
+var sxiw_asf_descriptor_count_fields = layout([field("descriptor_count", "uint16le", 2, COUNT)]);
+var sxiw_asf_descriptor_count = sxLayout(0x60790046, "asf_descriptor_count", LE, sxiw_asf_descriptor_count_fields);
+var sxiw_asf_name_length_fields = layout([field("name_length", "uint16le", 2, SIZE)]);
+var sxiw_asf_name_length = sxLayout(0x60790047, "asf_name_length", LE, sxiw_asf_name_length_fields);
+var sxiw_asf_value_header_fields = layout([field("data_type", "uint16le", 2, ID), field("value_length", "uint16le", 2, SIZE)]);
+var sxiw_asf_value_header = sxLayout(0x60790048, "asf_value_header", LE, sxiw_asf_value_header_fields);
+var sxiw_asf_metadata_header_fields = layout([field("language_index", "uint16le", 2), field("stream_number", "uint16le", 2, ID),
+    field("name_length", "uint16le", 2, SIZE), field("data_type", "uint16le", 2, ID), field("value_length", "uint32le", 4, SIZE)]);
+var sxiw_asf_metadata_header = sxLayout(0x60790049, "asf_metadata_header", LE, sxiw_asf_metadata_header_fields);
+var sxiw_asf_bitrate_fields = layout([field("stream_flags", "uint16le", 2, FLAGS), field("average_bitrate", "uint32le", 4)]);
+var sxiw_asf_bitrate = sxLayout(0x6079004A, "asf_bitrate", LE, sxiw_asf_bitrate_fields);
+var sxiw_asf_language_length_fields = layout([u8("language_id_length", SIZE)]);
+var sxiw_asf_language_length = sxLayout(0x6079004B, "asf_language_length", LE, sxiw_asf_language_length_fields);
+var sxiw_asf_utf16_units_fields = layout([field("asf_utf16_units", "uint16", 0)]);
+var sxiw_asf_utf16_units = sxLayout(0x6079004C, "asf_utf16_units", LE, sxiw_asf_utf16_units_fields);
+var sxiw_asf_binary_value_fields = layout([field("asf_binary_value", "uint8", 0)]);
+var sxiw_asf_binary_value = sxLayout(0x6079004D, "asf_binary_value", LE, sxiw_asf_binary_value_fields);
+var sxiw_aa_chapter_fields = layout([field("chapter_size", "uint32be", 4, SIZE), field("unknown", "uint32be", 4)]);
+var sxiw_aa_chapter = sxLayout(0x60790060, "aa_chapter", BE, sxiw_aa_chapter_fields);
+var sxiw_asf_simple_index_fields = layout([bytes("file_id", 16, ID), field("interval_100ns", "uint64le", 8),
+    field("maximum_packet_count", "uint32le", 4, COUNT), field("entry_count", "uint32le", 4, COUNT)]);
+var sxiw_asf_simple_index = sxLayout(0x60790061, "asf_simple_index", LE, sxiw_asf_simple_index_fields);
+var sxiw_asf_index_entry_fields = layout([field("packet_number", "uint32le", 4), field("packet_count", "uint16le", 2, COUNT)]);
+var sxiw_asf_index_entry = sxLayout(0x60790062, "asf_index_entry", LE, sxiw_asf_index_entry_fields);
+var sxiw_asf_value_word_fields = layout([field("word", "uint16le", 2)]);
+var sxiw_asf_value_word = sxLayout(0x60790063, "asf_value_word", LE, sxiw_asf_value_word_fields);
+var sxiw_asf_value_dword_fields = layout([field("dword", "uint32le", 4)]);
+var sxiw_asf_value_dword = sxLayout(0x60790064, "asf_value_dword", LE, sxiw_asf_value_dword_fields);
+var sxiw_asf_value_qword_fields = layout([field("qword", "uint64le", 8)]);
+var sxiw_asf_value_qword = sxLayout(0x60790065, "asf_value_qword", LE, sxiw_asf_value_qword_fields);
+var sxiw_asf_value_boolean_fields = layout([field("boolean", "uint32le", 4)]);
+var sxiw_asf_value_boolean = sxLayout(0x60790066, "asf_value_boolean", LE, sxiw_asf_value_boolean_fields);
+var sxiw_shell_block_count_fields = layout([field("shell_block_count", "ascii_signed", 0, COUNT)]);
+var sxiw_shell_block_count = sxLayout(0x60790070, "shell_block_count", LE, sxiw_shell_block_count_fields);
+var sxiw_shell_start_line_fields = layout([field("shell_start_line", "ascii_signed", 0)]);
+var sxiw_shell_start_line = sxLayout(0x60790072, "shell_start_line", LE, sxiw_shell_start_line_fields);
+var sxiw_shell_skip_parameter_fields = layout([field("shell_skip_parameter", "ascii_signed", 0)]);
+var sxiw_shell_skip_parameter = sxLayout(0x60790073, "shell_skip_parameter", LE, sxiw_shell_skip_parameter_fields);
+function sx_installerwire_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60790000 || id >= 0x607A0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60790001:
+        text = "The stored bytes are position-obfuscated. These arrays preserve ciphertext spans; decoded positions are not source bytes.";
+        break;
+    case 0x60790005:
+        text = "Java strings use modified UTF8, which differs from ordinary UTF8 for NUL and supplementary characters.";
+        break;
+    case 0x60790008:
+        text = "Serialization handle, not a physical file offset.";
+        break;
+    case 0x60790021:
+        text = "The following ZIP bytes are stored with an additive transform of0x67. The banner itself is plain.";
+        break;
+    case 0x60790034:
+        text = "Length is low31 bits plus high shifted left31; the high flag in the low word selects this encoding.";
+        break;
+    case 0x60790042:
+        text = "Stream flags include7-bit stream number and encrypted-content bit15; time shift is temporal, not a file position.";
+        break;
+    case 0x6079004C:
+        text = "Original little-endian UTF16 code units, including any trailing NUL. Supplementary characters occupy a surrogate pair.";
+        break;
+    case 0x6079004D:
+        text = "Stored metadata bytes. No interpretation is assigned to unsupported value types.";
+        break;
+    case 0x6079004E:
+        text = "Encoded Java modified-UTF8 bytes, including its special NUL and surrogate encodings; not ordinary UTF8.";
+        break;
+    case 0x6079004F:
+        text = "Physical Latin1 bytes; strings are length-delimited, not NUL-terminated.";
+        break;
+    case 0x60790050:
+        text = "Physical little-endian UTF16 code units; strings are length-delimited.";
+        break;
+    case 0x60790052:
+        text = "CRC16 checksum, not format magic.";
+        break;
+    case 0x60790054:
+        text = "Stored at file offset0x68. Each stored byte has swapped nibbles; adjacent bytes are swapped. Indexed fragments refer to the little-endian LZMA-alone dictionary and size words. UINT64_MAX decoded size means unknown.";
+        break;
+    case 0x60790055:
+        text = "Dahua replaces the first local signature PK with DH; all remaining fields retain ZIP wire encoding. CRC32 is a checksum; DOS date/time are packed words.";
+        break;
+    case 0x60790059:
+        text = "ZIP name bytes; character encoding depends on flags and Unicode extra fields.";
+        break;
+    case 0x6079005A:
+        text = "ZIP comment bytes; no unconditional character encoding is assumed.";
+        break;
+    case 0x6079005D:
+        text = "Split size/time words are encoded high/low16 bits, not independent byte quantities.";
+        break;
+    case 0x6079005E:
+        text = "Split size/time words are encoded high/low16 bits, not independent byte quantities.";
+        break;
+    case 0x6079005F:
+        text = "Physical pathname bytes, including the trailing NUL.";
+        break;
+    case 0x60790067:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x60790068:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x60790069:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x6079006A:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x6079006B:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x6079006C:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x6079006D:
+        text = "mtime is Java milliseconds since Unix epoch. Offset in previous pack belongs to another physical pack; -1 means this pack. Version-dependent int field naming is retained as a union where the native reader does not distinguish it.";
+        break;
+    case 0x60790070:
+        text = "Count of BLOCKSIZE-sized units, not bytes.";
+        break;
+    case 0x60790071:
+        text = "ArrayList serialized element count.";
+        break;
+    case 0x60790072:
+        text = "One-based starting line number for tail +N; not a count of lines.";
+        break;
+    case 0x60790073:
+        text = "Makeself1.x skip parameter: one-based starting line for tail +$skip. Native modern filesizes branches instead interpret skip as a count.";
+        break;
+    default:
+        break;
+    }
+    if (r.name === "creation_filetime") {
+        text = "FILETIME ticks of100 nanoseconds since1601-01-01 UTC, not Unix seconds.";
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxiw_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxiw_read(c, p, b, n) {
+    return sxiw_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxiw_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxiw_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxiw_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxiw_uint(b, 0, n, be);
+    return true;
+}
+function sxiw_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxiw_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxiw_add(c, l, p) {
+    return sxiw_put(c, l, p, 0, false);
+}
+function sxiw_text(c, l, p, n, aliases) {
+    var max = sxVariableLimit(l.fields[sxU64(l.field_count - 1)].type);
+    return (!n || n > sxU64(max ? max : 4096) ? 1 : (sxiw_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxiw_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxiw_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxiw_order, true);
+    return !c.failed;
+}
+function sxiw_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxiw_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxiw_emit(c, p, end, l) {
+    var n = sxU64(l.fields[sxU64(l.field_count - 1)].offset + l.fields[sxU64(l.field_count - 1)].size);
+    if (p[0] > end || n > sxU64(end - p[0]) || !sxiw_add(c, l, p[0])) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxiw_aa(c) {
+    var n = [0];
+    var p = [16];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var largest = 0;
+    var lsize = 0;
+    if (!sxiw_add(c, sxiw_aa_header, 0) || !sxiw_word(c, 8, 4, true, n) || n[0] < 2 || n[0] > 65536 || !sxiw_span(c, p[0], n[0] * 12)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++, p[0] += 12) {
+        var off = [0];
+        var z = [0];
+        if (!sxiw_word(c, p[0] + 4, 4, true, off) || !sxiw_word(c, p[0] + 8, 4, true, z) || !sxiw_add(c, sxiw_aa_toc, p[0])) {
+            return false;
+        }
+        if (i && z[0] > lsize && sxiw_span(c, off[0], z[0])) {
+            largest = off[0];
+            lsize = z[0];
+        }
+    }
+    if (p[0] + 24 > end) {
+        return true;
+    }
+    p[0] += 24;
+    if (!sxiw_word(c, p[0], 4, true, n) || !sxiw_emit(c, p, end, sxiw_aa_dictionary_count) || n[0] > 65536) {
+        return true;
+    }
+    for (i = 0; i < n[0]; i++) {
+        var k = [0];
+        var v = [0];
+        if (!sxiw_word(c, p[0] + 1, 4, true, k) || !sxiw_word(c, p[0] + 5, 4, true, v) || p[0] > end || 9 > sxU64(end - p[0]) || k[0] > sxU64(sxU64(end - p[0]) - 9) || v[0] > sxU64(sxU64(sxU64(end - p[0]) - 9) - k[0]) || !sxiw_emit(c, p, end, sxiw_aa_dictionary_entry)) {
+            break;
+        }
+        if (!sxiw_text(c, sxiw_aa_dictionary_key, p[0], k[0], false)) {
+            break;
+        }
+        p[0] += k[0];
+        if (!sxiw_text(c, sxiw_aa_dictionary_value, p[0], v[0], false)) {
+            break;
+        }
+        p[0] += v[0];
+    }
+    p[0] = largest;
+    end = largest + lsize;
+    for (i = 0; lsize && p[0] < end && i < 20000; i++) {
+        z = [0];
+        if (sxU64(end - p[0]) < 8 || !sxiw_word(c, p[0], 4, true, z) || !z[0] || z[0] > sxU64(sxU64(end - p[0]) - 8) || !sxiw_add(c, sxiw_aa_chapter, p[0])) {
+            break;
+        }
+        p[0] += 8 + z[0];
+    }
+    return true;
+}
+var sxiw_guid_header = [48, 38, 178, 117, 142, 102, 207, 17, 166, 217, 0, 170, 0, 98, 206, 108];
+var sxiw_guid_file_header = [161, 220, 171, 140, 71, 169, 207, 17, 142, 228, 0, 192, 12, 32, 83, 101];
+var sxiw_guid_stream_header = [145, 7, 220, 183, 183, 169, 207, 17, 142, 230, 0, 192, 12, 32, 83, 101];
+var sxiw_guid_head1_guid = [181, 3, 191, 95, 46, 169, 207, 17, 142, 227, 0, 192, 12, 32, 83, 101];
+var sxiw_guid_data_header = [54, 38, 178, 117, 142, 102, 207, 17, 166, 217, 0, 170, 0, 98, 206, 108];
+var sxiw_guid_comment_header = [51, 38, 178, 117, 142, 102, 207, 17, 166, 217, 0, 170, 0, 98, 206, 108];
+var sxiw_guid_extended_content_header = [64, 164, 208, 210, 7, 227, 210, 17, 151, 240, 0, 160, 201, 94, 168, 80];
+var sxiw_guid_metadata_header = [234, 203, 248, 197, 175, 91, 119, 72, 132, 103, 170, 140, 68, 250, 76, 202];
+var sxiw_guid_metadata_library_header = [148, 28, 35, 68, 152, 148, 209, 73, 161, 65, 29, 19, 78, 69, 112, 84];
+var sxiw_guid_language_guid = [169, 70, 67, 124, 224, 239, 252, 75, 178, 41, 57, 62, 222, 65, 92, 133];
+var sxiw_guid_bitrate = [206, 117, 248, 123, 141, 70, 209, 17, 141, 130, 0, 96, 151, 201, 162, 178];
+var sxiw_guid_simple_index_header = [144, 8, 0, 51, 177, 229, 207, 17, 137, 244, 0, 160, 201, 3, 73, 203];
+function sxiw_asf_value(c, p, z, type) {
+    var l = type === 0 ? sxiw_asf_utf16_units : type === 2 ? sxiw_asf_value_boolean : type === 3 ? sxiw_asf_value_dword : type === 4 ? sxiw_asf_value_qword : type === 5 ? sxiw_asf_value_word : sxiw_asf_binary_value;
+    if (type === 0 && sxAnd64(z, 1)) {
+        return true;
+    }
+    if (type >= 2 && type <= 5) {
+        var expected = type === 4 ? 8 : type === 5 ? 2 : 4;
+        return (z === expected ? (sxiw_add(c, l, p) ? 1 : 0) : 1) !== 0;
+    }
+    return sxiw_text(c, l, p, z, false);
+}
+function sxiw_asf_objects(c, p, end, depth, maximum) {
+    if (depth > 16 || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || p > end) {
+        return false;
+    }
+    for (var k = 0; k < maximum && p < end && c.count < 20000; k++) {
+        var guid = [];
+        var z = [0];
+        var q = [0];
+        var stop;
+        var n = [0];
+        if (sxU64(end - p) < 24 || !sxiw_read(c, p, guid, 16) || !sxiw_word(c, p + 16, 8, false, z) || z[0] < 24 || z[0] > sxU64(end - p)) {
+            return true;
+        }
+        q[0] = p + 24;
+        stop = p + z[0];
+        if (!sxMemcmp(guid, sxiw_guid_header, 16)) {
+            if (z[0] < 30 || !sxiw_word(c, p + 24, 4, false, n) || !sxiw_add(c, sxiw_asf_header, p)) {
+                return false;
+            }
+            if (!sxiw_asf_objects(c, p + 30, stop, (depth + 1) >>> 0, n[0])) {
+                return false;
+            }
+            p = stop;
+            continue;
+        }
+        if (!sxiw_add(c, sxiw_asf_object, p)) {
+            return false;
+        }
+        if (!sxMemcmp(guid, sxiw_guid_file_header, 16)) {
+            if (sxU64(stop - q[0]) >= 80 && !sxiw_add(c, sxiw_asf_file_properties, q[0])) {
+                return false;
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_stream_header, 16)) {
+            if (sxU64(stop - q[0]) >= 54 && !sxiw_add(c, sxiw_asf_stream_properties, q[0])) {
+                return false;
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_data_header, 16)) {
+            if (sxU64(stop - q[0]) >= 26 && !sxiw_add(c, sxiw_asf_data_header, q[0])) {
+                return false;
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_head1_guid, 16)) {
+            var sz = [0];
+            if (sxU64(stop - q[0]) >= 22 && sxiw_word(c, q[0] + 18, 4, false, sz) && sz[0] <= sxU64(sxU64(stop - q[0]) - 22)) {
+                if (!sxiw_add(c, sxiw_asf_header_extension, q[0]) || !sxiw_asf_objects(c, q[0] + 22, q[0] + 22 + sz[0], (depth + 1) >>> 0, 20000)) {
+                    return false;
+                }
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_comment_header, 16)) {
+            var lens = [];
+            if (sxU64(stop - q[0]) >= 10 && sxiw_read(c, q[0], lens, 10)) {
+                if (!sxiw_add(c, sxiw_asf_content_lengths, q[0])) {
+                    return false;
+                }
+                q[0] += 10;
+                for (var i = 0; i < 5; i++) {
+                    var a = sxiw_uint(lens, (i * 2) >>> 0, 2, false);
+                    if (a > sxU64(stop - q[0])) {
+                        break;
+                    }
+                    if (!sxAnd64(a, 1) && !sxiw_text(c, sxiw_asf_utf16_units, q[0], a, false)) {
+                        return false;
+                    }
+                    q[0] += a;
+                }
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_extended_content_header, 16) || !sxMemcmp(guid, sxiw_guid_metadata_header, 16) || !sxMemcmp(guid, sxiw_guid_metadata_library_header, 16)) {
+            var ext = !sxMemcmp(guid, sxiw_guid_extended_content_header, 16);
+            if (sxU64(stop - q[0]) >= 2 && sxiw_word(c, q[0], 2, false, n) && sxiw_emit(c, q, stop, sxiw_asf_descriptor_count)) {
+                for (i = 0; i < n[0] && c.count < 20000; i++) {
+                    var nam = [0];
+                    var typ = [0];
+                    var val = [0];
+                    if (ext) {
+                        if (sxU64(stop - q[0]) < 2 || !sxiw_word(c, q[0], 2, false, nam) || nam[0] > sxU64(sxU64(stop - q[0]) - 2) || !sxiw_emit(c, q, stop, sxiw_asf_name_length)) {
+                            break;
+                        }
+                        if (!sxAnd64(nam[0], 1) && !sxiw_text(c, sxiw_asf_utf16_units, q[0], nam[0], false)) {
+                            return false;
+                        }
+                        q[0] += nam[0];
+                        if (sxU64(stop - q[0]) < 4 || !sxiw_word(c, q[0], 2, false, typ) || !sxiw_word(c, q[0] + 2, 2, false, val) || val[0] > sxU64(sxU64(stop - q[0]) - 4) || !sxiw_emit(c, q, stop, sxiw_asf_value_header)) {
+                            break;
+                        }
+                    } else {
+                        if (sxU64(stop - q[0]) < 12 || !sxiw_word(c, q[0] + 4, 2, false, nam) || !sxiw_word(c, q[0] + 6, 2, false, typ) || !sxiw_word(c, q[0] + 8, 4, false, val) || nam[0] > sxU64(sxU64(stop - q[0]) - 12) || val[0] > sxU64(sxU64(sxU64(stop - q[0]) - 12) - nam[0]) || !sxiw_emit(c, q, stop, sxiw_asf_metadata_header)) {
+                            break;
+                        }
+                        if (!sxAnd64(nam[0], 1) && !sxiw_text(c, sxiw_asf_utf16_units, q[0], nam[0], false)) {
+                            return false;
+                        }
+                        q[0] += nam[0];
+                    }
+                    if (!sxiw_asf_value(c, q[0], val[0], typ[0] >>> 0)) {
+                        return false;
+                    }
+                    q[0] += val[0];
+                }
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_language_guid, 16)) {
+            if (sxU64(stop - q[0]) >= 2 && sxiw_word(c, q[0], 2, false, n) && sxiw_emit(c, q, stop, sxiw_asf_descriptor_count)) {
+                for (i = 0; i < n[0]; i++) {
+                    var z_2 = [0];
+                    if (q[0] >= stop || !sxiw_word(c, q[0], 1, false, z_2) || z_2[0] > sxU64(sxU64(stop - q[0]) - 1) || !sxiw_emit(c, q, stop, sxiw_asf_language_length)) {
+                        break;
+                    }
+                    if (!sxAnd64(z_2[0], 1) && !sxiw_text(c, sxiw_asf_utf16_units, q[0], z_2[0], false)) {
+                        return false;
+                    }
+                    q[0] += z_2[0];
+                }
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_bitrate, 16)) {
+            if (sxU64(stop - q[0]) >= 2 && sxiw_word(c, q[0], 2, false, n) && sxiw_emit(c, q, stop, sxiw_asf_descriptor_count)) {
+                if (n[0] <= Math.floor(sxU64(stop - q[0]) / 6) && !sxiw_table(c, sxiw_asf_bitrate, q[0], 6, n[0])) {
+                    return false;
+                }
+            }
+        } else if (!sxMemcmp(guid, sxiw_guid_simple_index_header, 16)) {
+            if (sxU64(stop - q[0]) >= 32 && sxiw_word(c, q[0] + 28, 4, false, n) && sxiw_emit(c, q, stop, sxiw_asf_simple_index)) {
+                if (n[0] <= Math.floor(sxU64(stop - q[0]) / 6) && !sxiw_table(c, sxiw_asf_index_entry, q[0], 6, n[0])) {
+                    return false;
+                }
+            }
+        }
+        p = stop;
+    }
+    return true;
+}
+function sxiw_asf(c) {
+    var size = [0];
+    var n = [0];
+    if (!sxiw_add(c, sxiw_asf_header, 0) || !sxiw_word(c, 16, 8, false, size) || !sxiw_word(c, 24, 4, false, n)) {
+        return false;
+    }
+    if (size[0] < 30 || size[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return true;
+    }
+    return sxiw_asf_objects(c, 30, size[0], 1, n[0]) && sxiw_asf_objects(c, size[0], (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0, 20000);
+}
+function sxiw_shell_word(c) {
+    return c >= 97 /*a*/ && c <= 122 /*z*/ || c >= 65 /*A*/ && c <= 90 /*Z*/ || c >= 48 /*0*/ && c <= 57 /*9*/ || c === 95 /*_*/;
+}
+function sxiw_shell(c, bound) {
+    done: {
+        var end = bound < (c.size < 0 ? c.size + SX_U64_MAX : c.size) ? bound : (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        if (end > 65536) {
+            end = 65536;
+        }
+        var b = sxAlloc(end + 1);
+        if (b === null) {
+            return false;
+        }
+        var ok = sxiw_read(c, 0, b, end);
+        if (!ok) {
+            break done;
+        }
+        b[end] = 0;
+        var legacy = sxStrstr(b, "This script was generated using Makeself 1.") !== null;
+        var p = 0;
+        while (p < end && c.count < 20000) {
+            var start = p;
+            while (p < end && b[p] && b[p] !== 10) {
+                p++;
+            }
+            var e = p;
+            if (p < end && b[p]) {
+                p++;
+            } else {
+                end = p;
+            }
+            if (e > start && b[sxU64(e - 1)] === 13) {
+                e--;
+            }
+            if (sxU64(e - start) >= 2 && b[start] === 35 /*#*/ && b[start + 1] === 33 /*!*/) {
+                var a = start + 2;
+                while (a < e && (b[a] === 32 || b[a] === 9)) {
+                    a++;
+                }
+                if (!sxiw_text(c, sxiw_shell_interpreter, a, sxU64(e - a), false)) {
+                    ok = false;
+                    break;
+                }
+                continue;
+            }
+            var q = start;
+            while (q < e && sxiw_shell_word(b[q])) {
+                q++;
+            }
+            if (q > start && q < e && b[q] === 61 /*=*/) {
+                var k = sxU64(q - start);
+                a = q + 1;
+                var z = e;
+                while (a < z && (b[a] === 32 || b[a] === 9)) {
+                    a++;
+                }
+                while (z > a && (b[sxU64(z - 1)] === 32 || b[sxU64(z - 1)] === 9)) {
+                    z--;
+                }
+                if (sxU64(z - a) >= 2 && b[a] === 34 /*"*/ && b[sxU64(z - 1)] === 34 /*"*/) {
+                    a++;
+                    z--;
+                }
+                var l = sxiw_shell_assignment_value;
+                if (k === 4 && !sxMemcmpAt(b, start, "skip", 0, 4)) {
+                    l = legacy ? sxiw_shell_skip_parameter : sxiw_shell_line_count;
+                } else if (k === 9 && !sxMemcmpAt(b, start, "BLOCKSIZE", 0, 9)) {
+                    l = sxiw_shell_block_size;
+                } else if (k === 9 && !sxMemcmpAt(b, start, "ARCHSTART", 0, 9) || k === 8 && !sxMemcmpAt(b, start, "JRESTART", 0, 8)) {
+                    l = sxiw_shell_block_index;
+                } else if (k === 12 && !sxMemcmpAt(b, start, "ARCHREALSIZE", 0, 12) || k === 11 && !sxMemcmpAt(b, start, "JREREALSIZE", 0, 11) || k === 11 && !sxMemcmpAt(b, start, "RESREALSIZE", 0, 11)) {
+                    l = sxiw_shell_payload_size;
+                } else if (k === 8 && !sxMemcmpAt(b, start, "ARCHSIZE", 0, 8) || k === 7 && !sxMemcmpAt(b, start, "RESSIZE", 0, 7)) {
+                    l = sxiw_shell_block_count;
+                }
+                var sizes = k === 9 && !sxMemcmpAt(b, start, "filesizes", 0, 9);
+                if (!sxiw_text(c, sxiw_shell_assignment_name, start, k, false)) {
+                    ok = false;
+                    break;
+                }
+                if (sizes) {
+                    while (a < z) {
+                        while (a < z && (b[a] === 32 || b[a] === 9)) {
+                            a++;
+                        }
+                        var x = a;
+                        while (a < z && b[a] >= 48 /*0*/ && b[a] <= 57 /*9*/) {
+                            a++;
+                        }
+                        if (x === a) {
+                            break;
+                        }
+                        if (!sxiw_text(c, sxiw_shell_payload_size, x, sxU64(a - x), false)) {
+                            ok = false;
+                            break;
+                        }
+                    }
+                } else {
+                    if (l !== sxiw_shell_assignment_value) {
+                        var numeric = a < z;
+                        for (x = a; x < z; x++) {
+                            if (b[x] < 48 /*0*/ || b[x] > 57 /*9*/) {
+                                numeric = false;
+                            }
+                        }
+                        if (!numeric) {
+                            l = sxiw_shell_assignment_value;
+                        }
+                    }
+                    if (!sxiw_text(c, l, a, sxU64(z - a), false)) {
+                        ok = false;
+                        break;
+                    }
+                }
+            } else {
+                for (a = start; a + 4 < e; a++) {
+                    if (a > start && sxiw_shell_word(b[sxU64(a - 1)]) || sxMemcmpAt(b, a, "tail", 0, 4)) {
+                        continue;
+                    }
+                    var q_2 = a + 4;
+                    while (q_2 < e && (b[q_2] === 32 || b[q_2] === 9)) {
+                        q_2++;
+                    }
+                    if (q_2 + 2 < e && b[q_2] === 45 /*-*/ && b[q_2 + 1] === 110 /*n*/) {
+                        q_2 += 2;
+                        while (q_2 < e && (b[q_2] === 32 || b[q_2] === 9)) {
+                            q_2++;
+                        }
+                    }
+                    if (q_2 >= e || b[q_2++] !== 43 /*+*/) {
+                        continue;
+                    }
+                    var n = q_2;
+                    while (q_2 < e && b[q_2] >= 48 /*0*/ && b[q_2] <= 57 /*9*/) {
+                        q_2++;
+                    }
+                    if (q_2 > n && !sxiw_text(c, sxiw_shell_start_line, n, sxU64(q_2 - n), false)) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sxiw_shell_bound(c) {
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.free_archive_records_reading === null) {
+        return end;
+    }
+    var s = sxArcCreate(f);
+    if (s === null) {
+        return end;
+    }
+    for (var i = 0; i < 256; i++) {
+        var r = sxArcCurrent(f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.data_offset >= f.base_address) {
+            var p = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+            if (p < end) {
+                end = p;
+            }
+        }
+        if (!sxArcNext(f, s)) {
+            break;
+        }
+    }
+    sxArcFree(f, s);
+    return end;
+}
+function sxiw_starkit(c) {
+    var base = [0];
+    var size = [0];
+    var inner = [0];
+    if (!sxContainerSpan(c.f, base, size, inner)) {
+        return false;
+    }
+    var view = sxCopyFormat(null, c.f);
+    var prior = c.f;
+    var oldsize = c.size;
+    view.base_address = base[0];
+    c.f = view;
+    c.size = size[0];
+    var ok = sxiw_shell(c, (inner[0] - base[0] < 0 ? inner[0] - base[0] + SX_U64_MAX : inner[0] - base[0]));
+    if (ok) {
+        view.base_address = inner[0];
+        c.size = size[0] - (inner[0] - base[0]);
+        ok = sxbx_starkit(c);
+    }
+    view.base_address = base[0];
+    c.size = size[0];
+    sxQsort(c.items, 0, c.count, sxiw_order, true);
+    if (c.count) {
+        ok = sxiw_finish(c);
+    }
+    c.f = prior;
+    c.size = oldsize;
+    return ok;
+}
+function sxiw_starkit_lookup(id, name) {
+    for (var i = 0; i < 115; i++) {
+        var l = sx_installerwire_layouts[i];
+        if (name !== null && !sxStrcmp(name, l.name) || name === null && id === l.id) {
+            return l;
+        }
+    }
+    for (i = 0; i < sx_binaryextra_family.layout_count; i++) {
+        l = sx_binaryextra_family.layouts[i];
+        if (!sxStrncmp(l.name, "starkit_", 8) && (name !== null && !sxStrcmp(name, l.name) || name === null && id === l.id)) {
+            return l;
+        }
+    }
+    return null;
+}
+function sx_installerwire_supports(type) {
+    switch (type) {
+    case "IS7INX":
+    case "IZPACK":
+    case "SOLARISPKG":
+    case "OPC":
+    case "MAKESELF":
+    case "SUN_JAVA_BINSH":
+    case "INSTALLANYWHERE_UNIX":
+    case "BINSH_SFX":
+    case "SIS":
+    case "DAHUA_ZIP":
+    case "ARCADYAN":
+    case "BINSH_STARKIT":
+    case "ASF":
+    case "AUDIBLE_AA":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_installerwire_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !(c.f.handle_base_info !== null ? sxBaseInfo(c.f) : sxBaseInfo(c.f)) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "IS7INX":
+        ok = sx_is7inx_build(c);
+        break;
+    case "IZPACK":
+        ok = sx_izpack_build(c);
+        break;
+    case "SOLARISPKG":
+        ok = sx_solarispkg_build(c);
+        break;
+    case "OPC":
+        ok = sx_opc_build(c);
+        break;
+    case "MAKESELF":
+    case "SUN_JAVA_BINSH":
+    case "INSTALLANYWHERE_UNIX":
+    case "BINSH_SFX":
+        ok = sxiw_shell(c, sxiw_shell_bound(c));
+        break;
+    case "BINSH_STARKIT":
+        return sxiw_starkit(c);
+    case "SIS":
+        ok = sx_sis_build(c);
+        break;
+    case "DAHUA_ZIP":
+        ok = sx_dahuazip_build(c);
+        break;
+    case "ARCADYAN":
+        ok = sx_arcadyan_build(c);
+        break;
+    case "ASF":
+        ok = sxiw_asf(c);
+        break;
+    case "AUDIBLE_AA":
+        ok = sxiw_aa(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxiw_finish(c));
+}

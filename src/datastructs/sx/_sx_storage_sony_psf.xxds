@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/sony_psf/xx_sony_psf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_psf_header_fields = layout([field("signature", "byte[3]", 3, SIGNATURE), u8("version"), u32("reserved_size", SIZE),
+    u32("compressed_program_size", SIZE), u32("compressed_program_crc32", CHECKSUM)]);
+var sx_st_psf_header = sxLayout(0x60080012, "psf_header", LE, sx_st_psf_header_fields);
+function sx_sony_psf_build(c) {
+    var ok = false;
+    ok = sx_add(c, sx_st_psf_header, 0, 16);
+    return ok && sx_st_finish(c);
+}

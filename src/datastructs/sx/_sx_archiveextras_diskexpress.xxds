@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/diskexpress/xx_diskexpress_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_diskexpress_header_fields = layout([chars("magic", 2, SIGNATURE), u8("major"), u8("minor"), u8("release"),
+    u8("disk_type", ID), u32("image_crc32", CHECKSUM), u8("method", ID), u8("last_cylinder"), u8("last_head"),
+    u8("unused", RESERVED), u8("flags", FLAGS), bytes("reserved", 289, RESERVED), u32("header_crc32", CHECKSUM),
+    chars("description", 200, STRING), u32("description_crc32", CHECKSUM)]);
+var sxae_diskexpress_header = sxLayout(0x60170031, "diskexpress_header", LE, sxae_diskexpress_header_fields);
+var sxae_diskexpress_track_fields = layout([u16("encoded_size", SIZE)]);
+var sxae_diskexpress_track = sxLayout(0x60170032, "diskexpress_track", LE, sxae_diskexpress_track_fields);
+function sxae_diskexpress(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 15) || sxMemcmp(b, "AS", 2) || !sxae_add(c, sxae_diskexpress_header, 0)) {
+        return false;
+    }
+    if (!b[10]) {
+        return true;
+    }
+    var n = b[11] * 2 + (b[12] > 1 ? 1 : b[12]) + 1;
+    var p = 512;
+    if (n > 200) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var z;
+        if ((z = sx_u16(c, p, false)) === null || !z || !sxae_add(c, sxae_diskexpress_track, p) || !sxae_data(c, p + 2, z)) {
+            return false;
+        }
+        p += 2 + z;
+    }
+    return p === c.size;
+}
+function sx_diskexpress_build(c) {
+    return sxae_diskexpress(c);
+}

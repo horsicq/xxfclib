@@ -1,0 +1,166 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/android_resources_arsc/xx_android_resources_arsc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_am_android_table_header_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u32("package_count", COUNT)]);
+var sx_am_android_table_header = sxLayout(0x601B000B, "android_table_header", LE, sx_am_android_table_header_fields);
+var sx_am_android_package_header_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u32("package_id", ID), field("package_name", "uint16[128]", 256), u32("type_strings", OFFSET), u32("last_public_type", ID),
+    u32("key_strings", OFFSET), u32("last_public_key", ID)]);
+var sx_am_android_package_header = sxLayout(0x601B000C, "android_package_header", LE, sx_am_android_package_header_fields);
+var sx_am_android_package_header_extended_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u32("package_id", ID), field("package_name", "uint16[128]", 256), u32("type_strings", OFFSET), u32("last_public_type", ID),
+    u32("key_strings", OFFSET), u32("last_public_key", ID), u32("type_id_offset", ID)]);
+var sx_am_android_package_header_extended = sxLayout(0x601B000D, "android_package_header_extended", LE, sx_am_android_package_header_extended_fields);
+var sx_am_android_type_spec_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u8("type_id", ID), u8("reserved", RESERVED), u16("type_count", COUNT), u32("entry_count", COUNT)]);
+var sx_am_android_type_spec = sxLayout(0x601B000E, "android_type_spec", LE, sx_am_android_type_spec_fields);
+var sx_am_android_type_spec_flags_fields = layout([u32("configuration_flags", FLAGS)]);
+var sx_am_android_type_spec_flags = sxLayout(0x601B000F, "android_type_spec_flags", LE, sx_am_android_type_spec_flags_fields);
+var sx_am_android_config_size_fields = layout([u32("config_size", SIZE)]);
+var sx_am_android_config_size = sxLayout(0x601B0011, "android_config_size", LE, sx_am_android_config_size_fields);
+var sx_am_android_config_base_fields = layout([u32("config_size", SIZE), u16("mobile_country_code", ID),
+    u16("mobile_network_code", ID), field("language", "byte[2]", 2), field("country", "byte[2]", 2), u8("orientation", ID),
+    u8("touchscreen", ID), u16("density"), u8("keyboard", ID), u8("navigation", ID), u8("input_flags", FLAGS),
+    u8("grammatical_inflection", ID), u16("screen_width"), u16("screen_height"), u16("sdk_version", ID),
+    u16("minor_version", RESERVED)]);
+var sx_am_android_config_base = sxLayout(0x601B0012, "android_config_base", LE, sx_am_android_config_base_fields);
+var sx_am_android_config_screen_fields = layout([u8("screen_layout", FLAGS), u8("ui_mode", FLAGS),
+    u16("smallest_screen_width_dp")]);
+var sx_am_android_config_screen = sxLayout(0x601B0013, "android_config_screen", LE, sx_am_android_config_screen_fields);
+var sx_am_android_config_size_dp_fields = layout([u16("screen_width_dp"), u16("screen_height_dp")]);
+var sx_am_android_config_size_dp = sxLayout(0x601B0014, "android_config_size_dp", LE, sx_am_android_config_size_dp_fields);
+var sx_am_android_config_locale_fields = layout([chars("locale_script", 4, NONE), chars("locale_variant", 8, NONE)]);
+var sx_am_android_config_locale = sxLayout(0x601B0015, "android_config_locale", LE, sx_am_android_config_locale_fields);
+var sx_am_android_config_color_fields = layout([u8("screen_layout2", FLAGS), u8("color_mode", FLAGS), u16("reserved", RESERVED)]);
+var sx_am_android_config_color = sxLayout(0x601B0016, "android_config_color", LE, sx_am_android_config_color_fields);
+var sx_am_android_entry_offset_fields = layout([u32("entry_offset", OFFSET)]);
+var sx_am_android_entry_offset = sxLayout(0x601B0017, "android_entry_offset", LE, sx_am_android_entry_offset_fields);
+var sx_am_android_value_fields = layout([u16("value_size", SIZE), u8("reserved", RESERVED), u8("data_type", ID), u32("data")]);
+var sx_am_android_value = sxLayout(0x601B001A, "android_value", LE, sx_am_android_value_fields);
+var sx_am_android_table_map_fields = layout([u32("name_resource_id", ID), u16("value_size", SIZE), u8("reserved", RESERVED),
+    u8("data_type", ID), u32("data")]);
+var sx_am_android_table_map = sxLayout(0x601B001B, "android_table_map", LE, sx_am_android_table_map_fields);
+function sx_am_config(c, at, end) {
+    var n;
+    if ((n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), false)) === null || n < 4 || at > end || n > sxU64(end - at)) {
+        return false;
+    }
+    if (n < 28) {
+        return sx_add(c, sx_am_android_config_size, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4);
+    }
+    if (!sx_add(c, sx_am_android_config_base, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 28)) {
+        return false;
+    }
+    if (n >= 32 && !sx_add(c, sx_am_android_config_screen, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 28, 4)) {
+        return false;
+    }
+    if (n >= 36 && !sx_add(c, sx_am_android_config_size_dp, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 32, 4)) {
+        return false;
+    }
+    if (n >= 48 && !sx_add(c, sx_am_android_config_locale, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 36, 12)) {
+        return false;
+    }
+    if (n >= 52 && !sx_add(c, sx_am_android_config_color, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 48, 4)) {
+        return false;
+    }
+    return true;
+}
+function sx_am_type(c, q) {
+    var b = [];
+    if (q.header < 24 || !sx_read(c, (q.at >= SX_I64_MAX ? q.at - SX_U64_MAX : q.at), b, 20) || !sx_add(c, sx_am_android_type_header, (q.at >= SX_I64_MAX ? q.at - SX_U64_MAX : q.at), 20) || !sx_am_config(c, q.at + 20, q.at + q.header)) {
+        return false;
+    }
+    var n = sxGetU32(b, 20, 12, false);
+    var start = sxGetU32(b, 20, 16, false);
+    if (b[9] || n > 65536 || start < q.header + n * 4 || start > sxU64(q.end - q.at) || !sx_table(c, sx_am_android_entry_offset, (q.at + q.header >= SX_I64_MAX ? q.at + q.header - SX_U64_MAX : q.at + q.header), 4, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var off;
+        if ((off = sx_u32(c, (q.at + q.header + i * 4 >= SX_I64_MAX ? q.at + q.header + i * 4 - SX_U64_MAX : q.at + q.header + i * 4), false)) === null) {
+            return false;
+        }
+        if (off === 4294967295) {
+            continue;
+        }
+        var pos = q.at + start + off;
+        if (pos > q.end || sxU64(q.end - pos) < 8 || !sx_read(c, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos), b, 8)) {
+            return false;
+        }
+        var size = sxGetU16(b, 8, 0, false);
+        var flags = sxGetU16(b, 8, 2, false);
+        if (flags & 1) {
+            var count;
+            if (size !== 16 || sxU64(q.end - pos) < 16 || (count = sx_u32(c, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos) + 12, false)) === null || count > 4096 || count * 12 > sxU64(sxU64(q.end - pos) - 16) || !sx_add(c, sx_am_android_table_map_entry, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos), 16) || !sx_table(c, sx_am_android_table_map, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos) + 16, 12, count)) {
+                return false;
+            }
+        } else if (size !== 8 || sxU64(q.end - pos) < 16 || !sx_add(c, sx_am_android_table_entry, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos), 8) || !sx_add(c, sx_am_android_value, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos) + 8, 8)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_am_package(c, q) {
+    if (q.header !== 284 && q.header !== 288 || !sx_add(c, q.header === 284 ? sx_am_android_package_header : sx_am_android_package_header_extended, (q.at >= SX_I64_MAX ? q.at - SX_U64_MAX : q.at), q.header)) {
+        return false;
+    }
+    var at = q.at + q.header;
+    var chunks = 0;
+    while (at < q.end) {
+        var z = sxNew_sx_am_chunk_info();
+        if (++chunks > 100000 || !sx_am_chunk(c, at, q.end, z)) {
+            return false;
+        }
+        if (z.type === 1) {
+            if (!sx_am_pool(c, z)) {
+                return false;
+            }
+        } else if (z.type === 514) {
+            var n;
+            if (z.header !== 16 || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 12, false)) === null || n > 65536 || n * 4 > sxU64(sxU64(z.end - at) - 16) || !sx_add(c, sx_am_android_type_spec, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 16) || !sx_table(c, sx_am_android_type_spec_flags, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 16, 4, n)) {
+                return false;
+            }
+        } else if (z.type === 513) {
+            if (!sx_am_type(c, z)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        at = z.end;
+    }
+    return at === q.end;
+}
+function sx_am_table(c, root) {
+    if (root.type !== 2 || root.header !== 12 || !sx_add(c, sx_am_android_table_header, 0, 12)) {
+        return false;
+    }
+    var at = 12;
+    var chunks = 0;
+    while (at < root.end) {
+        var q = sxNew_sx_am_chunk_info();
+        if (++chunks > 100000 || !sx_am_chunk(c, at, root.end, q)) {
+            return false;
+        }
+        if (q.type === 1) {
+            if (!sx_am_pool(c, q)) {
+                return false;
+            }
+        } else if (q.type === 512) {
+            if (!sx_am_package(c, q)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        at = q.end;
+    }
+    return at === root.end;
+}
+function sx_android_resources_arsc_build(c, root) {
+    return sx_am_table(c, root);
+}

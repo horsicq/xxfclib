@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_brres/xx_nintendo_brres_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_brres_header_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("version", ID),
+    u32("file_size", SIZE), u16("root_offset", OFFSET), u16("section_count", COUNT)]);
+var sxmx_brres_header = sxLayout(0x602E001F, "brres_header", BE, sxmx_brres_header_fields);
+var sxmx_brres_root_fields = layout([chars("magic", 4, SIGNATURE), i32("size", SIZE)]);
+var sxmx_brres_root = sxLayout(0x602E0020, "brres_root", BE, sxmx_brres_root_fields);
+var sxmx_brres_dictionary_fields = layout([i32("size", SIZE), i32("entry_count", COUNT)]);
+var sxmx_brres_dictionary = sxLayout(0x602E0021, "brres_dictionary", BE, sxmx_brres_dictionary_fields);
+var sxmx_brres_node_fields = layout([u16("reference_id", ID), u16("unknown"), u16("left_index", ID), u16("right_index", ID),
+    i32("name_relative", OFFSET), i32("data_relative", OFFSET)]);
+var sxmx_brres_node = sxLayout(0x602E0022, "brres_node", BE, sxmx_brres_node_fields);
+var sxmx_brres_resource_fields = layout([chars("tag", 4, ID), i32("size", SIZE), i32("version", ID),
+    i32("archive_relative", OFFSET)]);
+var sxmx_brres_resource = sxLayout(0x602E0023, "brres_resource", BE, sxmx_brres_resource_fields);
+function sxmx_brres(v) {
+    if (!sxmx_row(v, sxmx_brres_header, 0, v.n)) {
+        return false;
+    }
+    var root = sxmx_u16(v.p, 12, true);
+    var master = root + 8;
+    if (!sxmx_row(v, sxmx_brres_root, root, v.n) || !sxmx_row(v, sxmx_brres_dictionary, master, v.n)) {
+        return false;
+    }
+    var groups = sxmx_u32(v.p, master + 4, true);
+    if (!sxmx_table(v, sxmx_brres_node, master + 8, groups + 1, v.n)) {
+        return false;
+    }
+    for (var i = 0; i < groups; i++) {
+        var sub = (master >= SX_I64_MAX ? master - SX_U64_MAX : master) + (sxmx_u32(v.p, master + 24 + i * 16 + 12, true) | 0);
+        if (sub < 0 || (sub < 0 ? sub + SX_U64_MAX : sub) > v.n || !sxmx_row(v, sxmx_brres_dictionary, (sub < 0 ? sub + SX_U64_MAX : sub), v.n)) {
+            return false;
+        }
+        var n = sxmx_u32(v.p, sub + 4, true);
+        if (!sxmx_table(v, sxmx_brres_node, (sub < 0 ? sub + SX_U64_MAX : sub) + 8, n + 1, v.n)) {
+            return false;
+        }
+        for (var j = 0; j < n; j++) {
+            var at = sub + (sxmx_u32(v.p, sub + 24 + j * 16 + 12, true) | 0);
+            if (at < 0 || (at < 0 ? at + SX_U64_MAX : at) > v.n || !sxmx_row(v, sxmx_brres_resource, (at < 0 ? at + SX_U64_MAX : at), v.n)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_nintendo_brres_build(v) {
+    return sxmx_brres(v);
+}

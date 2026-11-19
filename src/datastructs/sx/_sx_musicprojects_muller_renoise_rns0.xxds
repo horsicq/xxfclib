@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/muller_renoise_rns0/xx_muller_renoise_rns0_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmp_renoise_legacy_text_fields = layout([field("text", "char", 0, STRING)]);
+var sxmp_renoise_legacy_text = sxLayout(0x607B001B, "renoise_legacy_text", LE, sxmp_renoise_legacy_text_fields);
+var sxmp_renoise_legacy_header_fields = layout([chars("signature", 3, SIGNATURE), chars("version_text", 4, STRING)]);
+var sxmp_renoise_legacy_header = sxLayout(0x607B003E, "renoise_legacy_header", LE, sxmp_renoise_legacy_header_fields);
+var sxmp_renoise_legacy_chunk_header_fields = layout([chars("start_marker", 20, SIGNATURE), chars("chunk_type", 20, ID)]);
+var sxmp_renoise_legacy_chunk_header = sxLayout(0x607B003F, "renoise_legacy_chunk_header", LE, sxmp_renoise_legacy_chunk_header_fields);
+var sxmp_renoise_legacy_info_v0_fields = layout([chars("song_name", 20, STRING), chars("author", 20, STRING),
+    chars("style", 20, STRING)]);
+var sxmp_renoise_legacy_info_v0 = sxLayout(0x607B0040, "renoise_legacy_info_v0", LE, sxmp_renoise_legacy_info_v0_fields);
+var sxmp_renoise_legacy_string_length_fields = layout([u32("text_length", SIZE)]);
+var sxmp_renoise_legacy_string_length = sxLayout(0x607B0041, "renoise_legacy_string_length", LE, sxmp_renoise_legacy_string_length_fields);
+function sxmp_renoise_legacy(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 49;
+    if (!sxmp_row(v, sxmp_renoise_legacy_header, 0, e) || !sxmp_row(v, sxmp_renoise_legacy_chunk_header, 9, e)) {
+        return false;
+    }
+    if (sxmp_eq(v, 29, "Header V00         \x00", 20, e)) {
+        return sxmp_row(v, sxmp_renoise_legacy_info_v0, p, e);
+    }
+    if (sxmp_eq(v, 29, "Header V01         \x00", 20, e) || sxmp_eq(v, 29, "Header V02         \x00", 20, e)) {
+        for (var i = 0; i < 3; i++) {
+            var z = [0];
+            if (!sxmp_row(v, sxmp_renoise_legacy_string_length, p, e) || !sxmp_u(v, p, 4, z, e) || !sxmp_emit(v, sxmp_renoise_legacy_text, p + 4, z[0], e)) {
+                return false;
+            }
+            p += 4 + z[0];
+        }
+    }
+    return true;
+}
+function sx_muller_renoise_rns0_build(v) {
+    return sxmp_renoise_legacy(v);
+}

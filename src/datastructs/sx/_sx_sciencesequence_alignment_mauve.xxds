@@ -1,0 +1,112 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/alignment_mauve/xx_alignment_mauve_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_mauve_sequence_id_fields = layout([field("mauve_sequence_id", "ascii_signed", 0, ID)]);
+var sxseq_mauve_sequence_id = sxLayout(0x60730027, "sequence_mauve_sequence_id", LE, sxseq_mauve_sequence_id_fields);
+var sxseq_mauve_start_fields = layout([field("mauve_start", "ascii_signed", 0)]);
+var sxseq_mauve_start = sxLayout(0x60730028, "sequence_mauve_start", LE, sxseq_mauve_start_fields);
+var sxseq_mauve_end_fields = layout([field("mauve_end", "ascii_signed", 0)]);
+var sxseq_mauve_end = sxLayout(0x60730029, "sequence_mauve_end", LE, sxseq_mauve_end_fields);
+var sxseq_source_filename_fields = layout([field("source_filename", "char", 0, STRING)]);
+var sxseq_source_filename = sxLayout(0x6073002A, "sequence_source_filename", LE, sxseq_source_filename_fields);
+function sxseq_mauve(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(16, sxNew_sxseq_token);
+    if (!sxseq_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxseq_emit(q, sxseq_signature, sxCopy_sxseq_token(null, line))) {
+            return false;
+        }
+    }
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxseq_token(line, sxseq_trim(q, sxCopy_sxseq_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        if (q.b[line.a] === 35 /*#*/) {
+            {
+                if (!sxseq_emit(q, sxseq_comment, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, line), "=")) {
+            {
+                if (!sxseq_emit(q, sxseq_terminator, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (q.b[line.a] === 62 /*>*/) {
+            var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 16, false);
+            if (n < 4 || n > 16) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            var c = 0;
+            var d;
+            while (c < t[1].z && q.b[t[1].a + c] !== 58 /*:*/) {
+                c++;
+            }
+            d = c + 1;
+            while (d < t[1].z && q.b[t[1].a + d] !== 45 /*-*/) {
+                d++;
+            }
+            if (!c || d >= t[1].z || d === c + 1) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_mauve_sequence_id, sxCopy_sxseq_token(null, { a: t[1].a, z: c }))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_mauve_start, sxCopy_sxseq_token(null, { a: t[1].a + c + 1, z: d - c - 1 }))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_mauve_end, sxCopy_sxseq_token(null, { a: t[1].a + d + 1, z: t[1].z - d - 1 }))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_strand, sxCopy_sxseq_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_source_filename, sxCopy_sxseq_token(null, t[3]))) {
+                    return false;
+                }
+            }
+            if (n > 4) {
+                {
+                    if (!sxseq_emit(q, sxseq_comment, sxCopy_sxseq_token(null, { a: t[4].a, z: line.a + line.z - t[4].a }))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxseq_chunks(q, sxseq_sequence_text, sxCopy_sxseq_token(null, line))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_alignment_mauve_build(q) {
+    return sxseq_mauve(q);
+}

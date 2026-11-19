@@ -1,0 +1,717 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveend.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_archiveend_name_fields = layout([field("archiveend_name", "char", 0, STRING)]);
+var sxaend_archiveend_name = sxLayout(0x60840001, "archiveend_name", LE, sxaend_archiveend_name_fields);
+var sxaend_archiveend_comment_fields = layout([field("archiveend_comment", "char", 0, STRING)]);
+var sxaend_archiveend_comment = sxLayout(0x60840002, "archiveend_comment", LE, sxaend_archiveend_comment_fields);
+var sxaend_sfx_arcv2_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("header_size", SIZE),
+    u32("volume_flags"), u16("disk_number")]);
+var sxaend_sfx_arcv2_header = sxLayout(0x6084002C, "sfx_arcv2_header", LE, sxaend_sfx_arcv2_header_fields);
+var sxaend_sfx_arcv2_block_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("header_size", SIZE),
+    u32("flags"), u32("volume_payload_size", SIZE), u8("name_size", SIZE)]);
+var sxaend_sfx_arcv2_block = sxLayout(0x6084002D, "sfx_arcv2_block", LE, sxaend_sfx_arcv2_block_fields);
+var sxaend_sfx_arcv2_attributes_fields = layout([u32("uncompressed_size", SIZE), u32("compressed_size", SIZE),
+    u32("attributes"), u32("dos_timestamp"), bytes("opaque", 8), u32("packed_crc32", CHECKSUM)]);
+var sxaend_sfx_arcv2_attributes = sxLayout(0x6084002E, "sfx_arcv2_attributes", LE, sxaend_sfx_arcv2_attributes_fields);
+var sxaend_sfx_tgcf_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("opaque1", 2), u16("version"),
+    bytes("opaque2", 18), u16("volume_name_size", SIZE)]);
+var sxaend_sfx_tgcf_header = sxLayout(0x6084002F, "sfx_tgcf_header", BE, sxaend_sfx_tgcf_header_fields);
+var sxaend_sfx_tgcf_list_offset_fields = layout([u32("member_list_offset", OFFSET)]);
+var sxaend_sfx_tgcf_list_offset = sxLayout(0x60840030, "sfx_tgcf_list_offset", BE, sxaend_sfx_tgcf_list_offset_fields);
+var sxaend_sfx_tgcf_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxaend_sfx_tgcf_crc = sxLayout(0x60840031, "sfx_tgcf_crc", BE, sxaend_sfx_tgcf_crc_fields);
+var sxaend_sfx_tgcf_member_prefix_fields = layout([chars("signature", 4, SIGNATURE), bytes("opaque", 8), u16("split_kind"),
+    u16("method")]);
+var sxaend_sfx_tgcf_member_prefix = sxLayout(0x60840032, "sfx_tgcf_member_prefix", LE, sxaend_sfx_tgcf_member_prefix_fields);
+var sxaend_sfx_tgcf_member_attributes_fields = layout([u32("timestamp"), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u32("crc32", CHECKSUM), u32("attributes")]);
+var sxaend_sfx_tgcf_member_attributes = sxLayout(0x60840033, "sfx_tgcf_member_attributes", BE, sxaend_sfx_tgcf_member_attributes_fields);
+var sxaend_sfx_tgcf_member_flag_fields = layout([u8("flag")]);
+var sxaend_sfx_tgcf_member_flag = sxLayout(0x60840034, "sfx_tgcf_member_flag", LE, sxaend_sfx_tgcf_member_flag_fields);
+var sxaend_sfx_tgcf_payload_offset_fields = layout([u32("payload_offset", OFFSET)]);
+var sxaend_sfx_tgcf_payload_offset = sxLayout(0x60840035, "sfx_tgcf_payload_offset", BE, sxaend_sfx_tgcf_payload_offset_fields);
+var sxaend_sfx_imp_header_fields = layout([chars("signature", 4, SIGNATURE), u32("directory_offset", OFFSET),
+    u32("member_count", COUNT), bytes("opaque", 26), u16("flags", FLAGS), u16("header_crc16", CHECKSUM)]);
+var sxaend_sfx_imp_header = sxLayout(0x60840036, "sfx_imp_header", LE, sxaend_sfx_imp_header_fields);
+var sxaend_sfx_imp_directory_block_fields = layout([bytes("signature", 6, SIGNATURE),
+    field("method_and_lengths", "uint48", 6, FLAGS)]);
+var sxaend_sfx_imp_directory_block = sxLayout(0x60840037, "sfx_imp_directory_block", LE, sxaend_sfx_imp_directory_block_fields);
+var sxaend_sfx_cazip_header_fields = layout([bytes("lead_in", 3, SIGNATURE), chars("signature", 5, SIGNATURE),
+    chars("version", 2, NONE), u16("fixed_word"), u16("volume_flag"), u32("crc32", CHECKSUM), bytes("reserved", 2)]);
+var sxaend_sfx_cazip_header = sxLayout(0x60840038, "sfx_cazip_header", LE, sxaend_sfx_cazip_header_fields);
+var sxaend_sfx_cazip_dcl_prefix_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxaend_sfx_cazip_dcl_prefix = sxLayout(0x60840039, "sfx_cazip_dcl_prefix", LE, sxaend_sfx_cazip_dcl_prefix_fields);
+var sxaend_sfx_starkit_header_fields = layout([bytes("magic", 4, SIGNATURE), u32("file_size", SIZE)]);
+var sxaend_sfx_starkit_header = sxLayout(0x6084003A, "sfx_starkit_header", BE, sxaend_sfx_starkit_header_fields);
+var sxaend_sfx_starkit_commit_fields = layout([u32("commit_tag", FLAGS), u32("footer_offset", OFFSET),
+    u32("root_size_and_tag", FLAGS), u32("root_offset", OFFSET)]);
+var sxaend_sfx_starkit_commit = sxLayout(0x6084003B, "sfx_starkit_commit", BE, sxaend_sfx_starkit_commit_fields);
+var sxaend_sfx_starkit_root_prefix_fields = layout([u8("root_tag", FLAGS), u8("schema_size_and_tag", FLAGS)]);
+var sxaend_sfx_starkit_root_prefix = sxLayout(0x6084003C, "sfx_starkit_root_prefix", LE, sxaend_sfx_starkit_root_prefix_fields);
+var sxaend_sfx_spis_header_fields = layout([bytes("signature", 5, SIGNATURE), chars("method_tag", 3, NONE),
+    u32("uncompressed_size", SIZE), u8("archive_type"), u32("checksum", CHECKSUM), u32("flags")]);
+var sxaend_sfx_spis_header = sxLayout(0x6084003D, "sfx_spis_header", LE, sxaend_sfx_spis_header_fields);
+var sxaend_sfx_spis_member_fields = layout([u16("name_size", SIZE), u32("dos_timestamp"), u16("attributes"),
+    u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u8("method"), u32("checksum", CHECKSUM), u32("flags")]);
+var sxaend_sfx_spis_member = sxLayout(0x6084003E, "sfx_spis_member", LE, sxaend_sfx_spis_member_fields);
+var sxaend_pfx_lha_member_fields = layout([u8("header_size_minus_two"), u8("header_checksum", CHECKSUM), chars("method", 5, ID),
+    u32("packed_size", SIZE), u32("uncompressed_size", SIZE), u32("dos_date_time"), u8("attributes", FLAGS), u8("header_level"),
+    u8("name_size", SIZE)]);
+var sxaend_pfx_lha_member = sxLayout(0x60840040, "pfx_lha_member", LE, sxaend_pfx_lha_member_fields);
+var sxaend_pfx_lha_crc_fields = layout([u16("data_crc16", CHECKSUM)]);
+var sxaend_pfx_lha_crc = sxLayout(0x60840041, "pfx_lha_crc", LE, sxaend_pfx_lha_crc_fields);
+var sxaend_sfx_zip_local_fields = layout([u32("signature", SIGNATURE), u16("version_needed"), u16("flags", FLAGS),
+    u16("method", ID), u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u16("name_size", SIZE), u16("extra_size", SIZE)]);
+var sxaend_sfx_zip_local = sxLayout(0x60840042, "sfx_zip_local", LE, sxaend_sfx_zip_local_fields);
+var sxaend_sfx_zip_extra_fields = layout([u16("tag", ID), u16("payload_size", SIZE)]);
+var sxaend_sfx_zip_extra = sxLayout(0x60840043, "sfx_zip_extra", LE, sxaend_sfx_zip_extra_fields);
+var sxaend_localzip_softpaq_member_fields = layout([u8("name_size", SIZE)]);
+var sxaend_localzip_softpaq_member = sxLayout(0x60840045, "localzip_softpaq_member", LE, sxaend_localzip_softpaq_member_fields);
+function sx_archiveend_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60840000 || id >= 0x60850000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60840003:
+        text = "Checksum is the low 16 bits of the sum of decoded bytes. A zero first name byte marks the final 30-byte record.";
+        break;
+    case 0x60840004:
+        text = "First member offset = 128 + 4*archive_offset_longs, relative to the carrier start.";
+        break;
+    case 0x60840005:
+        text = "Header checksum makes the sum of all big-endian header words zero. Name/comment lengths are four-byte units. Block displacement is relative to this header; zero is the final archive block.";
+        break;
+    case 0x60840006:
+        text = "Continuation header is 20 bytes. Next displacement is relative to this block; zero marks the final archive block.";
+        break;
+    case 0x60840007:
+        text = "0xFFFFFFFF ends the archive; otherwise followed by a 60-byte member header.";
+        break;
+    case 0x60840009:
+        text = "Mode 1 has a length-prefixed archive comment before members.";
+        break;
+    case 0x6084000B:
+        text = "Zero terminates the archive.";
+        break;
+    case 0x6084000D:
+        text = "Physical two-byte trailer; native reader does not interpret it.";
+        break;
+    case 0x6084000E:
+        text = "CRC32 uses the native raw initial-zero convention. Other member payloads are stored bytes.";
+        break;
+    case 0x6084000F:
+        text = "Data-file v1.00 exit instructions and compressed-stream CRC16/ARC. Native reports but does not enforce the stored CRC.";
+        break;
+    case 0x60840012:
+        text = "Packed length=((first&15)<<16)|packed_size_low. Plain length=((uncompressed_size_high>>2)<<16)|uncompressed_size_low. High first nibble is flags; 0x80 continuation is outside native scope.";
+        break;
+    case 0x60840013:
+        text = "Mode 0=fixed literals, 1=coded literals. Dictionary selector 4/5/6 means 1/2/4 KiB. The authenticated native decoder determines each stream end.";
+        break;
+    case 0x60840014:
+        text = "TX body size excludes the first ten bytes. Native supports six- and eight-byte screen directory rows.";
+        break;
+    case 0x60840015:
+        text = "Zero marker means a decoded byte symbol; 0x0A ends a display line.";
+        break;
+    case 0x60840016:
+        text = "One-based node indices; the last node is the Huffman root.";
+        break;
+    case 0x60840017:
+        text = "Offset is relative to the TX compressed line-data area.";
+        break;
+    case 0x60840018:
+        text = "Offset is relative to the TX compressed line-data area.";
+        break;
+    case 0x60840019:
+        text = "Three equal nonzero producer geometry words; their screen-unit meaning is not assumed.";
+        break;
+    case 0x6084001A:
+        text = "Total stored line size includes this one-byte prefix; following bits encode display characters and controls.";
+        break;
+    case 0x6084001B:
+        text = "Norton Secret Stuff stores encrypted member bodies, in eight-byte blocks. Compression 0=stored, nonzero=compressed. Only serialized header fields are shown; ciphertext remains raw.";
+        break;
+    case 0x6084001E:
+        text = "Node/map offsets are relative to this context header. Map entries select contexts; zero map_offset uses context zero.";
+        break;
+    case 0x6084001F:
+        text = "Leaf flags for the Huffman node slots; bit index is the node index.";
+        break;
+    case 0x60840020:
+        text = "A leaf slot holds a symbol; a branch slot holds child index/2; zero branch child is an end code.";
+        break;
+    case 0x60840021:
+        text = "Context index selected after decoding the corresponding symbol.";
+        break;
+    case 0x60840027:
+        text = "Total header size=first byte+2. Header checksum is byte sum from method through header end modulo256. DOS date/time is packed, not Unix seconds.";
+        break;
+    case 0x6084002B:
+        text = "Six-bit characters encode decoded bytes. Tilde followed by an encoded count expands a zero run; no decoded-byte coordinates are invented.";
+        break;
+    case 0x6084002C:
+        text = "Physical arcv2 header inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084002D:
+        text = "Physical arcv2 block inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084002E:
+        text = "Physical arcv2 attributes inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084002F:
+        text = "Physical tgcf header inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840030:
+        text = "Physical tgcf list offset inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840031:
+        text = "Physical tgcf crc inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840032:
+        text = "Physical tgcf member prefix inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840033:
+        text = "Physical tgcf member attributes inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840034:
+        text = "Physical tgcf member flag inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840035:
+        text = "Physical tgcf payload offset inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840036:
+        text = "Physical imp header inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840037:
+        text = "Physical imp directory block inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840038:
+        text = "Physical cazip header inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x60840039:
+        text = "Physical cazip dcl prefix inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084003A:
+        text = "Physical starkit header inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084003B:
+        text = "Physical starkit commit inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084003C:
+        text = "Physical starkit root prefix inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084003D:
+        text = "Physical spis header inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084003E:
+        text = "Physical spis member inside the authenticated carrier. Offsets retain the inner archive coordinate system. Encoded payload and unmodeled optional tables remain raw.";
+        break;
+    case 0x6084003F:
+        text = "GEMDOS sizes are bytes. Physical archive starts at 28+text_size and is bounded by data_size.";
+        break;
+    case 0x60840040:
+        text = "LArc PFX level0 LZ5/LH1 header. Stored packed length may exceed the authenticated DATA segment in known producer variants; its encoded value is preserved. DOS timestamp/attributes remain encoded.";
+        break;
+    case 0x60840041:
+        text = "Known PFX LZ5 producer variants do not enforce the stored CRC; no checksum verification is implied by this field role.";
+        break;
+    case 0x60840043:
+        text = "ZIP extra-field TLV header; unknown field payload remains raw.";
+        break;
+    case 0x60840044:
+        text = "All three contiguous stored-member offsets are relative to the outer executable start.";
+        break;
+    case 0x60840047:
+        text = "Original physical RAR1.5 header bytes are retained. The native extractor may repair known producer CRC/solid flags in its private decoded view only.";
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxaend_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxaend_read(c, p, b, n) {
+    return sxaend_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxaend_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxaend_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxaend_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxaend_uint(b, 0, n, be);
+    return true;
+}
+function sxaend_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxaend_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxaend_add(c, l, p) {
+    return sxaend_put(c, l, p, 0, false);
+}
+function sxaend_text(c, l, p, n, aliases) {
+    var max = sxVariableLimit(l.fields[sxU64(l.field_count - 1)].type);
+    return (!n || n > sxU64(max ? max : 4096) ? 1 : (sxaend_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxaend_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxaend_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxaend_order, true);
+    return !c.failed;
+}
+function sxaend_name(c, p, n) {
+    return sxaend_text(c, sxaend_archiveend_name, p, n, false);
+}
+function sxaend_first_source(c, at, size) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return false;
+    }
+    var r = f.get_current_archive_record(f, s);
+    var ok = r !== null && r.data_offset >= f.base_address && r.compressed_size > 0;
+    if (ok) {
+        at[0] = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+        size[0] = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        ok = sxaend_span(c, at[0], size[0]);
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sxaend_arcv2(c, p, z) {
+    var end = p + z;
+    if (z < 14 || !sxaend_add(c, sxaend_sfx_arcv2_header, p)) {
+        return false;
+    }
+    p += 14;
+    for (var i = 0; p < end && i < 20000; i++) {
+        var h = [];
+        if (sxU64(end - p) < 17 || !sxaend_read(c, p, h, 17) || sxMemcmp(h, "BLCK", 4)) {
+            return false;
+        }
+        var hs = sxaend_uint(h, 6, 2, false);
+        var n = sxaend_uint(h, 12, 4, false);
+        if (hs !== 45 + h[16] || hs > sxU64(end - p) || n > sxU64(sxU64(end - p) - hs) || !sxaend_add(c, sxaend_sfx_arcv2_block, p) || !sxaend_name(c, p + 17, h[16]) || !sxaend_add(c, sxaend_sfx_arcv2_attributes, p + 17 + h[16])) {
+            return false;
+        }
+        p += hs + n;
+    }
+    return true;
+}
+function sxaend_imp(c, base, z) {
+    var rel = [0];
+    var n = [0];
+    if (z < 42 || !sxaend_word(c, base + 4, 4, false, rel) || !sxaend_word(c, base + 8, 4, false, n) || rel[0] > z || !sxaend_add(c, sxaend_sfx_imp_header, base)) {
+        return false;
+    }
+    var p = base + rel[0];
+    var end = base + z;
+    for (var i = 0; p < end && i < 20000; i++) {
+        var h = [];
+        if (sxU64(end - p) < 12 || !sxaend_read(c, p, h, 12) || sxMemcmp(h, "IMPDE\x00", 6) || !sxaend_add(c, sxaend_sfx_imp_directory_block, p)) {
+            return false;
+        }
+        var bits = sxaend_uint(h, 6, 6, false);
+        var packed = sxAnd64(sxShr64(bits, 25), 0xFFFFF);
+        if (packed < 6 || packed > sxU64(sxU64(end - p) - 6)) {
+            return false;
+        }
+        p += 6 + packed;
+    }
+    return true;
+}
+function sxaend_starkit(c, p, z) {
+    var n = [0];
+    var off = [0];
+    if (z < 24 || !sxaend_add(c, sxaend_sfx_starkit_header, p) || !sxaend_add(c, sxaend_sfx_starkit_commit, sxU64(p + z - 16)) || !sxaend_word(c, sxU64(p + z - 8), 4, true, n) || !sxaend_word(c, sxU64(p + z - 4), 4, true, off)) {
+        return false;
+    }
+    n[0] = sxAnd64(n[0], 0x7FFFFFFF);
+    if (n[0] < 2 || off[0] > z || n[0] > sxU64(z - off[0])) {
+        return true;
+    }
+    var b = [];
+    if (!sxaend_read(c, p + off[0], b, 2) || b[0] !== 128 || !(b[1] & 128)) {
+        return true;
+    }
+    if (!sxaend_add(c, sxaend_sfx_starkit_root_prefix, p + off[0])) {
+        return false;
+    }
+    var len = b[1] & 127;
+    return (len <= sxU64(n[0] - 2) ? (sxaend_text(c, sxaend_archiveend_comment, p + off[0] + 2, len, false) ? 1 : 0) : 1) !== 0;
+}
+function sxaend_zip_record(c, p, z) {
+    var h = [];
+    if (z < 30 || !sxaend_read(c, p, h, 30) || sxMemcmp(h, "PK\x03\x04", 4)) {
+        return false;
+    }
+    var n = sxaend_uint(h, 26, 2, false);
+    var extra = sxaend_uint(h, 28, 2, false);
+    if (n > sxU64(z - 30) || extra > sxU64(sxU64(z - 30) - n) || !sxaend_add(c, sxaend_sfx_zip_local, p) || !sxaend_name(c, p + 30, n)) {
+        return false;
+    }
+    var q = p + 30 + n;
+    var end = q + extra;
+    while (q + 4 <= end) {
+        var a = [0];
+        if (!sxaend_word(c, q + 2, 2, false, a) || a[0] > sxU64(sxU64(end - q) - 4)) {
+            break;
+        }
+        if (!sxaend_add(c, sxaend_sfx_zip_extra, q)) {
+            return false;
+        }
+        q += 4 + a[0];
+    }
+    return true;
+}
+function sxaend_tgcf_record(c, p, z) {
+    var h = [];
+    if (z < 43 || !sxaend_read(c, p, h, 36) || sxMemcmp(h, "TGCF", 4) || !sxaend_add(c, sxaend_sfx_tgcf_member_prefix, p) || !sxaend_add(c, sxaend_sfx_tgcf_member_attributes, p + 16)) {
+        return false;
+    }
+    var q = p + 36;
+    var end = p + z;
+    for (var n = 0; n < 2; n++) {
+        var start = q;
+        var ch = [0];
+        while (q < end) {
+            if (!sxaend_read(c, q++, ch, 1)) {
+                return false;
+            }
+            if (!ch[0]) {
+                break;
+            }
+        }
+        if (q === end || !sxaend_name(c, start, sxU64(q - start))) {
+            return false;
+        }
+    }
+    if (sxU64(end - q) !== 5 && sxU64(end - q) !== 9) {
+        return false;
+    }
+    if (!sxaend_add(c, sxaend_sfx_tgcf_member_flag, q++)) {
+        return false;
+    }
+    if (sxU64(end - q) === 8) {
+        if (!sxaend_add(c, sxaend_sfx_tgcf_payload_offset, q)) {
+            return false;
+        }
+        q += 4;
+    }
+    return sxaend_add(c, sxaend_sfx_tgcf_crc, q);
+}
+function sxaend_tgcf_header(c, first) {
+    var at = [0];
+    var z = [0];
+    if (!sxTgcfSpan(c.f, at, z) || at[0] < c.f.base_address || z[0] < 28) {
+        return true;
+    }
+    var p = (at[0] - c.f.base_address < 0 ? at[0] - c.f.base_address + SX_U64_MAX : at[0] - c.f.base_address);
+    var end = p + (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]);
+    var h = [];
+    if (!sxaend_span(c, p, (z[0] < 0 ? z[0] + SX_U64_MAX : z[0])) || !sxaend_read(c, p, h, 28) || sxMemcmp(h, "TGCF", 4)) {
+        return true;
+    }
+    var ver = sxaend_uint(h, 6, 2, true);
+    var n = sxaend_uint(h, 26, 2, true);
+    var list = [0];
+    var q = p + 28 + n;
+    if (ver !== 0x130 && ver !== 0x140 && ver !== 0x160 || !n || n > 1024 || q > end || (ver >= 0x160 ? 8 : 4) > sxU64(end - q)) {
+        return true;
+    }
+    if (ver >= 0x160) {
+        if (!sxaend_word(c, q, 4, true, list) || list[0] > (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]) || p + list[0] !== first) {
+            return true;
+        }
+    } else if (q + 4 !== first) {
+        return true;
+    }
+    if (!sxaend_add(c, sxaend_sfx_tgcf_header, p) || !sxaend_name(c, p + 28, n)) {
+        return false;
+    }
+    if (ver >= 0x160) {
+        if (!sxaend_add(c, sxaend_sfx_tgcf_list_offset, q)) {
+            return false;
+        }
+        q += 4;
+    }
+    return sxaend_add(c, sxaend_sfx_tgcf_crc, q);
+}
+function sxaend_carrier_records(c) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    for (var i = 0; i < 20000; i++) {
+        var r = f.get_current_archive_record(f, s);
+        if (r === null) {
+            break;
+        }
+        var p = 0;
+        var z = 0;
+        var header = r.header_offset >= f.base_address && r.header_size > 0;
+        if (header) {
+            p = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+            z = (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size);
+            header = sxaend_span(c, p, z);
+        }
+        switch (f.file_type) {
+        case "SFX_ARCV2":
+        case "SFX_IMP":
+        case "SFX_CAZIP":
+        case "SFX_STARKIT":
+            if (r.data_offset < f.base_address || r.compressed_size <= 0) {
+                ok = false;
+                break;
+            }
+            p = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+            z = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+            if (!sxaend_span(c, p, z)) {
+                ok = false;
+                break;
+            }
+            ok = f.file_type === "SFX_ARCV2" ? sxaend_arcv2(c, p, z) : f.file_type === "SFX_IMP" ? sxaend_imp(c, p, z) : f.file_type === "SFX_STARKIT" ? sxaend_starkit(c, p, z) : z >= 24 && sxaend_add(c, sxaend_sfx_cazip_header, p) && sxaend_add(c, sxaend_sfx_cazip_dcl_prefix, p + 20);
+            break;
+        case "SFX_TGCF":
+            if (header) {
+                if (!i) {
+                    ok = sxaend_tgcf_header(c, p);
+                }
+                if (ok) {
+                    ok = sxaend_tgcf_record(c, p, z);
+                }
+            }
+            break;
+        case "SFX_SPIS":
+            if (!i) {
+                var start = 0;
+                var candidate = false;
+                if (header && p >= 21) {
+                    start = sxU64(p - 21);
+                    candidate = true;
+                } else if (!header && r.data_offset >= f.base_address && r.compressed_size >= 21) {
+                    start = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+                    candidate = sxaend_span(c, start, (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size));
+                }
+                if (candidate) {
+                    var blob = [];
+                    if (sxaend_read(c, start, blob, 21) && !sxMemcmp(blob, "SPIS\x1A", 5) && blob[12] === 1 && !sxaend_add(c, sxaend_sfx_spis_header, start)) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+            if (header) {
+                var h = [];
+                if (z === 21 && sxaend_read(c, p, h, 5) && !sxMemcmp(h, "SPIS\x1A", 5)) {
+                    ok = sxaend_add(c, sxaend_sfx_spis_header, p);
+                } else if (z >= 25 && sxaend_read(c, p, h, 25) && sxaend_uint(h, 0, 2, false) === sxU64(z - 25)) {
+                    ok = sxaend_add(c, sxaend_sfx_spis_member, p) && sxaend_name(c, p + 25, sxU64(z - 25));
+                }
+            }
+            break;
+        case "SFX_LOCALZIP":
+            if (header) {
+                h = [];
+                if (z >= 30 && sxaend_read(c, p, h, 4) && !sxMemcmp(h, "PK\x03\x04", 4)) {
+                    ok = sxaend_zip_record(c, p, z);
+                } else if (z >= 2) {
+                    var n = [0];
+                    if (sxaend_word(c, p, 1, false, n) && n[0] === sxU64(z - 1)) {
+                        ok = sxaend_add(c, sxaend_localzip_softpaq_member, p) && sxaend_name(c, p + 1, n[0]);
+                    }
+                }
+            }
+            break;
+        case "LARC_PFX":
+            if (header) {
+                h = [];
+                if (z < 24 || !sxaend_read(c, p, h, 22) || h[0] + 2 !== z || h[21] > sxU64(z - 24)) {
+                    ok = false;
+                    break;
+                }
+                ok = sxaend_add(c, sxaend_pfx_lha_member, p) && sxaend_name(c, p + 22, h[21]) && sxaend_add(c, sxaend_pfx_lha_crc, p + 22 + h[21]);
+            }
+            break;
+        default:
+            ok = false;
+            break;
+        }
+        if (!ok || !f.archive_record_move_to_next(f, s, c.pd)) {
+            break;
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sx_archiveend_supports(t) {
+    switch (t) {
+    case "SDS_SFX":
+    case "LHPAK_SFX":
+    case "LHSFX":
+    case "S_OMNI":
+    case "PMARC_SFX":
+    case "SFX_VMS_DCX":
+    case "SFX_NSS":
+    case "COPYQMEXE":
+    case "DCLRAW":
+    case "DIET_COMPRESSION":
+    case "BOO":
+    case "SFX_ARCV2":
+    case "SFX_IMP":
+    case "SFX_CAZIP":
+    case "SFX_STARKIT":
+    case "SFX_TGCF":
+    case "SFX_SPIS":
+    case "LARC_PFX":
+    case "SFX_LOCALZIP":
+    case "SFX_RSFX":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archiveend_build(c) {
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "SDS_SFX":
+        ok = sx_sds_sfx_build(c);
+        break;
+    case "LHPAK_SFX":
+        ok = sx_lhpak_sfx_build(c);
+        break;
+    case "LHSFX":
+        ok = sx_lhsfx_build(c);
+        break;
+    case "S_OMNI":
+        ok = sx_s_omni_build(c);
+        break;
+    case "PMARC_SFX":
+        ok = sx_pmarc_sfx_build(c);
+        break;
+    case "SFX_VMS_DCX":
+        ok = sx_sfx_vms_dcx_build(c);
+        break;
+    case "SFX_NSS":
+        ok = sx_sfx_nss_build(c);
+        break;
+    case "COPYQMEXE":
+        ok = sx_copyqmexe_build(c);
+        break;
+    case "DCLRAW":
+        ok = sx_dclraw_build(c);
+        break;
+    case "DIET_COMPRESSION":
+        ok = sx_diet_compression_build(c);
+        break;
+    case "BOO":
+        ok = sx_boo_build(c);
+        break;
+    case "SFX_ARCV2":
+        ok = sx_sfx_arcv2_build(c);
+        break;
+    case "SFX_IMP":
+        ok = sx_sfx_imp_build(c);
+        break;
+    case "SFX_CAZIP":
+        ok = sx_sfx_cazip_build(c);
+        break;
+    case "SFX_STARKIT":
+        ok = sx_sfx_starkit_build(c);
+        break;
+    case "SFX_TGCF":
+        ok = sx_sfx_tgcf_build(c);
+        break;
+    case "SFX_SPIS":
+        ok = sx_sfx_spis_build(c);
+        break;
+    case "LARC_PFX":
+        ok = sx_larc_pfx_build(c);
+        break;
+    case "SFX_LOCALZIP":
+        ok = sx_sfx_localzip_build(c);
+        break;
+    case "SFX_RSFX":
+        ok = sx_sfx_rsfx_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!(c.count && sxaend_finish(c));
+}

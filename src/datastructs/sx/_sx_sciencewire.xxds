@@ -1,0 +1,922 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencewire.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_igor_wave5_le_fields = layout([u32("next", POINTER), u32("creationDate"), u32("modDate"), i32("npnts", COUNT),
+    i16("type", ID), i16("dLock", RESERVED), chars("whpad1", 6, RESERVED), i16("whVersion", ID), chars("bname", 32, STRING),
+    i32("whpad2", RESERVED), u32("dFolder", POINTER), i32("nDim0", COUNT), i32("nDim1", COUNT), i32("nDim2", COUNT),
+    i32("nDim3", COUNT), field("sfA0", "float64", 8), field("sfA1", "float64", 8), field("sfA2", "float64", 8),
+    field("sfA3", "float64", 8), field("sfB0", "float64", 8), field("sfB1", "float64", 8), field("sfB2", "float64", 8),
+    field("sfB3", "float64", 8), chars("dataUnits", 4, STRING), chars("dimUnits", 16, STRING), i16("fsValid"),
+    i16("whpad3", RESERVED), field("topFullScale", "float64", 8), field("botFullScale", "float64", 8),
+    u32("dataEUnits", POINTER), u32("dimEUnits0", POINTER), u32("dimEUnits1", POINTER), u32("dimEUnits2", POINTER),
+    u32("dimEUnits3", POINTER), u32("dimLabels0", POINTER), u32("dimLabels1", POINTER), u32("dimLabels2", POINTER),
+    u32("dimLabels3", POINTER), u32("waveNoteH", POINTER), i32("whUnused0", RESERVED), i32("whUnused1", RESERVED),
+    i32("whUnused2", RESERVED), i32("whUnused3", RESERVED), i32("whUnused4", RESERVED), i32("whUnused5", RESERVED),
+    i32("whUnused6", RESERVED), i32("whUnused7", RESERVED), i32("whUnused8", RESERVED), i32("whUnused9", RESERVED),
+    i32("whUnused10", RESERVED), i32("whUnused11", RESERVED), i32("whUnused12", RESERVED), i32("whUnused13", RESERVED),
+    i32("whUnused14", RESERVED), i32("whUnused15", RESERVED), i16("aModified"), i16("wModified"), i16("swModified"),
+    chars("useBits", 1, NONE), chars("kindBits", 1, RESERVED), u32("formula", POINTER), i32("depID"), i16("whpad4", RESERVED),
+    i16("srcFldr"), u32("fileName", POINTER), u32("sIndices", POINTER)]);
+var sxsw_igor_wave5_le = sxLayout(0x602D0020, "igor_wave5_le", LE, sxsw_igor_wave5_le_fields);
+var sxsw_igor_wave5_be_fields = layout([u32("next", POINTER), u32("creationDate"), u32("modDate"), i32("npnts", COUNT),
+    i16("type", ID), i16("dLock", RESERVED), chars("whpad1", 6, RESERVED), i16("whVersion", ID), chars("bname", 32, STRING),
+    i32("whpad2", RESERVED), u32("dFolder", POINTER), i32("nDim0", COUNT), i32("nDim1", COUNT), i32("nDim2", COUNT),
+    i32("nDim3", COUNT), field("sfA0", "float64", 8), field("sfA1", "float64", 8), field("sfA2", "float64", 8),
+    field("sfA3", "float64", 8), field("sfB0", "float64", 8), field("sfB1", "float64", 8), field("sfB2", "float64", 8),
+    field("sfB3", "float64", 8), chars("dataUnits", 4, STRING), chars("dimUnits", 16, STRING), i16("fsValid"),
+    i16("whpad3", RESERVED), field("topFullScale", "float64", 8), field("botFullScale", "float64", 8),
+    u32("dataEUnits", POINTER), u32("dimEUnits0", POINTER), u32("dimEUnits1", POINTER), u32("dimEUnits2", POINTER),
+    u32("dimEUnits3", POINTER), u32("dimLabels0", POINTER), u32("dimLabels1", POINTER), u32("dimLabels2", POINTER),
+    u32("dimLabels3", POINTER), u32("waveNoteH", POINTER), i32("whUnused0", RESERVED), i32("whUnused1", RESERVED),
+    i32("whUnused2", RESERVED), i32("whUnused3", RESERVED), i32("whUnused4", RESERVED), i32("whUnused5", RESERVED),
+    i32("whUnused6", RESERVED), i32("whUnused7", RESERVED), i32("whUnused8", RESERVED), i32("whUnused9", RESERVED),
+    i32("whUnused10", RESERVED), i32("whUnused11", RESERVED), i32("whUnused12", RESERVED), i32("whUnused13", RESERVED),
+    i32("whUnused14", RESERVED), i32("whUnused15", RESERVED), i16("aModified"), i16("wModified"), i16("swModified"),
+    chars("useBits", 1, NONE), chars("kindBits", 1, RESERVED), u32("formula", POINTER), i32("depID"), i16("whpad4", RESERVED),
+    i16("srcFldr"), u32("fileName", POINTER), u32("sIndices", POINTER)]);
+var sxsw_igor_wave5_be = sxLayout(0x602D0022, "igor_wave5_be", BE, sxsw_igor_wave5_be_fields);
+var sxsw_lecroy_descriptor_le_fields = layout([chars("descriptor_name", 16, SIGNATURE), chars("template_name", 16, ID),
+    i16("communication_type", ID), i16("communication_order", ID), i32("descriptor_size", SIZE), i32("user_text_size", SIZE),
+    i32("reserved_descriptor_size", RESERVED), i32("trigger_time_size", SIZE), i32("ris_time_size", SIZE),
+    i32("reserved_array1_size", RESERVED), i32("wave_array1_size", SIZE), i32("wave_array2_size", SIZE),
+    i32("reserved_array2_size", RESERVED), i32("reserved_array3_size", RESERVED), chars("instrument_name", 16, STRING),
+    i32("instrument_number", ID), chars("trace_label", 16, STRING), i16("reserved2", RESERVED), i16("reserved3", RESERVED),
+    i32("wave_array_count", COUNT), i32("points_per_screen", COUNT), i32("first_valid_point"), i32("last_valid_point"),
+    i32("first_point"), i32("sparsing_factor"), i32("segment_index", ID), i32("subarray_count", COUNT),
+    i32("sweeps_per_acquisition", COUNT), i16("points_per_pair", COUNT), i16("pair_offset"),
+    field("vertical_gain", "float32", 4), field("vertical_offset", "float32", 4), field("maximum_value", "float32", 4),
+    field("minimum_value", "float32", 4), i16("nominal_bits"), i16("nominal_subarray_count", COUNT),
+    field("horizontal_interval", "float32", 4), field("horizontal_offset", "float64", 8), field("pixel_offset", "float64", 8),
+    chars("vertical_unit", 48, STRING), chars("horizontal_unit", 48, STRING), field("horizontal_uncertainty", "float32", 4),
+    field("trigger_seconds", "float64", 8), i8("trigger_minute"), i8("trigger_hour"), i8("trigger_day"), i8("trigger_month"),
+    i16("trigger_year"), i16("trigger_unused", RESERVED), field("acquisition_duration", "float32", 4), i16("record_type", ID),
+    i16("processing_done", ID), i16("reserved5", RESERVED), i16("ris_sweeps", COUNT), i16("timebase", ID),
+    i16("vertical_coupling", ID), field("probe_attenuation", "float32", 4), i16("fixed_vertical_gain", ID),
+    u16("bandwidth_limit", ID), field("vertical_vernier", "float32", 4), field("acquisition_vertical_offset", "float32", 4),
+    i16("wave_source", ID)]);
+var sxsw_lecroy_descriptor_le = sxLayout(0x602D0024, "lecroy_descriptor_le", LE, sxsw_lecroy_descriptor_le_fields);
+var sxsw_lecroy_descriptor_be_fields = layout([chars("descriptor_name", 16, SIGNATURE), chars("template_name", 16, ID),
+    i16("communication_type", ID), i16("communication_order", ID), i32("descriptor_size", SIZE), i32("user_text_size", SIZE),
+    i32("reserved_descriptor_size", RESERVED), i32("trigger_time_size", SIZE), i32("ris_time_size", SIZE),
+    i32("reserved_array1_size", RESERVED), i32("wave_array1_size", SIZE), i32("wave_array2_size", SIZE),
+    i32("reserved_array2_size", RESERVED), i32("reserved_array3_size", RESERVED), chars("instrument_name", 16, STRING),
+    i32("instrument_number", ID), chars("trace_label", 16, STRING), i16("reserved2", RESERVED), i16("reserved3", RESERVED),
+    i32("wave_array_count", COUNT), i32("points_per_screen", COUNT), i32("first_valid_point"), i32("last_valid_point"),
+    i32("first_point"), i32("sparsing_factor"), i32("segment_index", ID), i32("subarray_count", COUNT),
+    i32("sweeps_per_acquisition", COUNT), i16("points_per_pair", COUNT), i16("pair_offset"),
+    field("vertical_gain", "float32", 4), field("vertical_offset", "float32", 4), field("maximum_value", "float32", 4),
+    field("minimum_value", "float32", 4), i16("nominal_bits"), i16("nominal_subarray_count", COUNT),
+    field("horizontal_interval", "float32", 4), field("horizontal_offset", "float64", 8), field("pixel_offset", "float64", 8),
+    chars("vertical_unit", 48, STRING), chars("horizontal_unit", 48, STRING), field("horizontal_uncertainty", "float32", 4),
+    field("trigger_seconds", "float64", 8), i8("trigger_minute"), i8("trigger_hour"), i8("trigger_day"), i8("trigger_month"),
+    i16("trigger_year"), i16("trigger_unused", RESERVED), field("acquisition_duration", "float32", 4), i16("record_type", ID),
+    i16("processing_done", ID), i16("reserved5", RESERVED), i16("ris_sweeps", COUNT), i16("timebase", ID),
+    i16("vertical_coupling", ID), field("probe_attenuation", "float32", 4), i16("fixed_vertical_gain", ID),
+    u16("bandwidth_limit", ID), field("vertical_vernier", "float32", 4), field("acquisition_vertical_offset", "float32", 4),
+    i16("wave_source", ID)]);
+var sxsw_lecroy_descriptor_be = sxLayout(0x602D0028, "lecroy_descriptor_be", BE, sxsw_lecroy_descriptor_be_fields);
+var sxsw_grib2_section_fields = layout([u32("section_size", SIZE), u8("section_number", ID)]);
+var sxsw_grib2_section = sxLayout(0x602D002C, "grib2_section", BE, sxsw_grib2_section_fields);
+var sxsw_grib2_bitmap_fields = layout([u32("section_size", SIZE), u8("section_number", ID), u8("bitmap_indicator", ID)]);
+var sxsw_grib2_bitmap = sxLayout(0x602D0031, "grib2_bitmap", BE, sxsw_grib2_bitmap_fields);
+var sxsw_wmo_end_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxsw_wmo_end = sxLayout(0x602D0032, "wmo_end", LE, sxsw_wmo_end_fields);
+var sxsw_stata_type_le_fields = layout([u16("type", ID)]);
+var sxsw_stata_type_le = sxLayout(0x602D004D, "stata_type_le", LE, sxsw_stata_type_le_fields);
+var sxsw_stata_type_be_fields = layout([u16("type", ID)]);
+var sxsw_stata_type_be = sxLayout(0x602D0054, "stata_type_be", BE, sxsw_stata_type_be_fields);
+var sxsw_rosbag_op_fields = layout([u8("operation", ID)]);
+var sxsw_rosbag_op = sxLayout(0x602D005B, "rosbag_op", LE, sxsw_rosbag_op_fields);
+var sxsw_dicom_preamble_fields = layout([bytes("preamble", 128), chars("signature", 4, SIGNATURE)]);
+var sxsw_dicom_preamble = sxLayout(0x602D0067, "dicom_preamble", LE, sxsw_dicom_preamble_fields);
+var sxsw_dicom_implicit_le_fields = layout([u16("group", ID), u16("element", ID), u32("value_size", SIZE)]);
+var sxsw_dicom_implicit_le = sxLayout(0x602D0068, "dicom_implicit_le", LE, sxsw_dicom_implicit_le_fields);
+var sxsw_dicom_short_le_fields = layout([u16("group", ID), u16("element", ID), chars("value_representation", 2, ID),
+    u16("value_size", SIZE)]);
+var sxsw_dicom_short_le = sxLayout(0x602D0069, "dicom_short_le", LE, sxsw_dicom_short_le_fields);
+var sxsw_dicom_wide_le_fields = layout([u16("group", ID), u16("element", ID), chars("value_representation", 2, ID),
+    u16("reserved", RESERVED), u32("value_size", SIZE)]);
+var sxsw_dicom_wide_le = sxLayout(0x602D006A, "dicom_wide_le", LE, sxsw_dicom_wide_le_fields);
+var sxsw_dicom_implicit_be_fields = layout([u16("group", ID), u16("element", ID), u32("value_size", SIZE)]);
+var sxsw_dicom_implicit_be = sxLayout(0x602D006B, "dicom_implicit_be", BE, sxsw_dicom_implicit_be_fields);
+var sxsw_dicom_short_be_fields = layout([u16("group", ID), u16("element", ID), chars("value_representation", 2, ID),
+    u16("value_size", SIZE)]);
+var sxsw_dicom_short_be = sxLayout(0x602D006C, "dicom_short_be", BE, sxsw_dicom_short_be_fields);
+var sxsw_dicom_wide_be_fields = layout([u16("group", ID), u16("element", ID), chars("value_representation", 2, ID),
+    u16("reserved", RESERVED), u32("value_size", SIZE)]);
+var sxsw_dicom_wide_be = sxLayout(0x602D006D, "dicom_wide_be", BE, sxsw_dicom_wide_be_fields);
+var sxsw_dicom_meta_size_fields = layout([u32("group_length", SIZE)]);
+var sxsw_dicom_meta_size = sxLayout(0x602D006E, "dicom_meta_size", LE, sxsw_dicom_meta_size_fields);
+var sxsw_dicom_frame_offset_fields = layout([u32("offset", OFFSET)]);
+var sxsw_dicom_frame_offset = sxLayout(0x602D006F, "dicom_frame_offset", LE, sxsw_dicom_frame_offset_fields);
+var sxsw_tecplot_variable_type_le_fields = layout([i32("type", ID)]);
+var sxsw_tecplot_variable_type_le = sxLayout(0x602D0076, "tecplot_variable_type_le", LE, sxsw_tecplot_variable_type_le_fields);
+var sxsw_tecplot_variable_type_be_fields = layout([i32("type", ID)]);
+var sxsw_tecplot_variable_type_be = sxLayout(0x602D007F, "tecplot_variable_type_be", BE, sxsw_tecplot_variable_type_be_fields);
+function sx_sciencewire_static_comment(r, id) {
+    if (r === null || r.name === null || id < 0x602D0000 || id >= 0x602E0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x602D0001:
+        if (r.name === "value_and_comment") {
+            text = "FITS card text; quoted slashes are not assumed to start a comment.";
+        }
+        break;
+    case 0x602D0002:
+        if (r.name === "integer_text") {
+            text = "Signed decimal FITS integer stored in a twenty-character text field.";
+        }
+        break;
+    case 0x602D0004:
+        if (r.name === "type") {
+            text = "1=numeric, 2=character.";
+        }
+        if (r.name === "observation_offset") {
+            text = "Byte displacement within one observation, not an absolute file position.";
+        }
+        break;
+    case 0x602D0005:
+        if (r.name === "case_size") {
+            text = "Number of eight-byte slots per case.";
+        }
+        break;
+    case 0x602D0006:
+        if (r.name === "variable_type") {
+            text = "0=numeric, positive=string byte length, -1=continuation slot.";
+        }
+        if (r.name === "missing_value_count") {
+            text = "Negative values encode a missing-value range.";
+        }
+        break;
+    case 0x602D000C:
+        if (r.name === "value_bytes") {
+            text = "Stored numeric or string value, interpreted through the linked variable.";
+        }
+        break;
+    case 0x602D000E:
+        if (r.name === "case_size") {
+            text = "Number of eight-byte slots per case.";
+        }
+        break;
+    case 0x602D000F:
+        if (r.name === "variable_type") {
+            text = "0=numeric, positive=string byte length, -1=continuation slot.";
+        }
+        if (r.name === "missing_value_count") {
+            text = "Negative values encode a missing-value range.";
+        }
+        break;
+    case 0x602D0015:
+        if (r.name === "value_bytes") {
+            text = "Stored numeric or string value, interpreted through the linked variable.";
+        }
+        break;
+    case 0x602D0018:
+        if (r.name === "first_variant_offset") {
+            text = "Relative to byte four; add four to locate the first variant.";
+        }
+        break;
+    case 0x602D0019:
+        if (r.name === "flags") {
+            text = "Bits0..1 compression, bits2..5 layout, bit31 sample identifiers. Native scope is uncompressed layout1.";
+        }
+        break;
+    case 0x602D001E:
+        if (r.name === "position") {
+            text = "One-based chromosome coordinate, not a byte offset.";
+        }
+        break;
+    case 0x602D0020:
+        if (r.name === "next") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "creationDate") {
+            text = "Seconds since1904-01-01.";
+        }
+        if (r.name === "modDate") {
+            text = "Seconds since1904-01-01.";
+        }
+        if (r.name === "dFolder") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dataEUnits") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits0") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits1") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits2") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits3") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels0") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels1") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels2") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels3") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "waveNoteH") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "formula") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "fileName") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "sIndices") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        break;
+    case 0x602D0022:
+        if (r.name === "next") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "creationDate") {
+            text = "Seconds since1904-01-01.";
+        }
+        if (r.name === "modDate") {
+            text = "Seconds since1904-01-01.";
+        }
+        if (r.name === "dFolder") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dataEUnits") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits0") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits1") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits2") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimEUnits3") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels0") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels1") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels2") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "dimLabels3") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "waveNoteH") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "formula") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "fileName") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        if (r.name === "sIndices") {
+            text = "In-memory pointer slot preserved verbatim; not a file offset.";
+        }
+        break;
+    case 0x602D0023:
+        if (r.name === "x_offset") {
+            text = "Spatial translation, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Spatial translation, not a file offset.";
+        }
+        if (r.name === "z_offset") {
+            text = "Spatial translation, not a file offset.";
+        }
+        break;
+    case 0x602D0024:
+        if (r.name === "pair_offset") {
+            text = "Sample position, not a file byte offset.";
+        }
+        if (r.name === "vertical_offset") {
+            text = "Signal translation, not a byte offset.";
+        }
+        if (r.name === "horizontal_offset") {
+            text = "Time origin, not a byte offset.";
+        }
+        if (r.name === "pixel_offset") {
+            text = "Time quantity, not a byte offset.";
+        }
+        if (r.name === "acquisition_vertical_offset") {
+            text = "Signal translation, not a byte offset.";
+        }
+        break;
+    case 0x602D0027:
+        if (r.name === "x_offset") {
+            text = "Spatial translation, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Spatial translation, not a file offset.";
+        }
+        if (r.name === "z_offset") {
+            text = "Spatial translation, not a file offset.";
+        }
+        break;
+    case 0x602D0028:
+        if (r.name === "pair_offset") {
+            text = "Sample position, not a file byte offset.";
+        }
+        if (r.name === "vertical_offset") {
+            text = "Signal translation, not a byte offset.";
+        }
+        if (r.name === "horizontal_offset") {
+            text = "Time origin, not a byte offset.";
+        }
+        if (r.name === "pixel_offset") {
+            text = "Time quantity, not a byte offset.";
+        }
+        if (r.name === "acquisition_vertical_offset") {
+            text = "Signal translation, not a byte offset.";
+        }
+        break;
+    case 0x602D0036:
+        if (r.name === "flags") {
+            text = "Bit7 observed data; bit6 compressed data.";
+        }
+        break;
+    case 0x602D0037:
+        if (r.name === "descriptor") {
+            text = "Packed F-X-Y descriptor:2bits F,6bits X,8bits Y.";
+        }
+        break;
+    case 0x602D0038:
+        if (r.name === "timestamp") {
+            text = "Sample-clock ticks, not Unix time.";
+        }
+        break;
+    case 0x602D003A:
+        if (r.name === "next_file") {
+            text = "Legacy next-file pointer slot, not an on-disk byte position.";
+        }
+        if (r.name === "sample_rate") {
+            text = "Samples per second.";
+        }
+        if (r.name === "channel_block_size") {
+            text = "Channel-block byte stride; zero or one selects interleaved samples.";
+        }
+        break;
+    case 0x602D003C:
+        if (r.name === "offset") {
+            text = "Reserved zero in the supported event-table variant.";
+        }
+        break;
+    case 0x602D003D:
+        if (r.name === "offset") {
+            text = "Absolute byte position in the sample data.";
+        }
+        break;
+    case 0x602D003E:
+        if (r.name === "offset") {
+            text = "Absolute byte position in the sample data.";
+        }
+        break;
+    case 0x602D003F:
+        if (r.name === "global_sample_frame") {
+            text = "Frame units measured from the file origin; multiply by channels and sample width to obtain a byte position.";
+        }
+        break;
+    case 0x602D0064:
+        if (r.name === "nanoseconds") {
+            text = "Fractional nanoseconds within the second.";
+        }
+        break;
+    case 0x602D0065:
+        if (r.name === "record_offset") {
+            text = "Relative to the beginning of the uncompressed chunk data.";
+        }
+        break;
+    case 0x602D0068:
+        if (r.name === "value_size") {
+            text = "0xffffffff means undefined length.";
+        }
+        break;
+    case 0x602D006A:
+        if (r.name === "value_size") {
+            text = "0xffffffff means undefined length.";
+        }
+        break;
+    case 0x602D006B:
+        if (r.name === "value_size") {
+            text = "0xffffffff means undefined length.";
+        }
+        break;
+    case 0x602D006D:
+        if (r.name === "value_size") {
+            text = "0xffffffff means undefined length.";
+        }
+        break;
+    case 0x602D006F:
+        if (r.name === "offset") {
+            text = "Relative to the first fragment item after the basic offset table.";
+        }
+        break;
+    case 0x602D0071:
+        if (r.name === "character") {
+            text = "ASCII character stored as a signed 32-bit integer, including the terminating zero.";
+        }
+        break;
+    case 0x602D0073:
+        if (r.name === "marker") {
+            text = "299.0 identifies a zone;357.0 ends the header.";
+        }
+        break;
+    case 0x602D007A:
+        if (r.name === "character") {
+            text = "ASCII character stored as a signed 32-bit integer, including the terminating zero.";
+        }
+        break;
+    case 0x602D007C:
+        if (r.name === "marker") {
+            text = "299.0 identifies a zone;357.0 ends the header.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+var sx_sciencewire_comment_names = ["CHANNEL_1", "CHANNEL_2", "CHANNEL_3", "CHANNEL_4"];
+var sx_sciencewire_comment_names_2 = ["SINGLE_SWEEP", "INTERLEAVED", "HISTOGRAM", "GRAPH", "FILTER_COEFFICIENT", "COMPLEX",
+    "EXTREMA", "SEQUENCE_OBSOLETE", "CENTERED_RIS", "PEAK_DETECT"];
+var sx_sciencewire_comment_names_3 = ["NO_PROCESSING", "FIR_FILTER", "INTERPOLATED", "SPARSED", "AUTOSCALED", "NO_RESULT", "ROLLING", "CUMULATIVE"];
+var sx_sciencewire_comment_names_4 = ["INDICATOR", "IDENTIFICATION", "LOCAL_USE", "GRID_DEFINITION", "PRODUCT_DEFINITION",
+    "DATA_REPRESENTATION", "BITMAP", "DATA"];
+function sx_sciencewire_comment(r, id) {
+    if (!sx_sciencewire_static_comment(r, id)) {
+        return false;
+    }
+    if (r === null || r.name === null || id < 0x602D0000 || id >= 0x602E0000 || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/ || r.value.t === 12 /*XX_VAR_TYPE_STRING*/ || r.value.t === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var text = null;
+    if (id === sxsw_rosbag_op.id) {
+        switch (v) {
+        case 2:
+            text = "MSG_DATA";
+            break;
+        case 3:
+            text = "BAG_HEADER";
+            break;
+        case 4:
+            text = "INDEX_DATA";
+            break;
+        case 5:
+            text = "CHUNK";
+            break;
+        case 6:
+            text = "CHUNK_INFO";
+            break;
+        case 7:
+            text = "CONNECTION";
+            break;
+        default:
+            break;
+        }
+    }
+    if ((id === sxsw_tecplot_variable_type_le.id || id === sxsw_tecplot_variable_type_be.id) && r.name === "type") {
+        switch (v) {
+        case 1:
+            text = "FLOAT";
+            break;
+        case 2:
+            text = "DOUBLE";
+            break;
+        case 3:
+            text = "LONGINT";
+            break;
+        case 4:
+            text = "SHORTINT";
+            break;
+        case 5:
+            text = "BYTE";
+            break;
+        default:
+            break;
+        }
+    }
+    if ((id === sxsw_stata_type_le.id || id === sxsw_stata_type_be.id) && r.name === "type") {
+        switch (v) {
+        case 65526:
+            text = "DOUBLE";
+            break;
+        case 65527:
+            text = "FLOAT";
+            break;
+        case 65528:
+            text = "LONG";
+            break;
+        case 65529:
+            text = "INT";
+            break;
+        case 65530:
+            text = "BYTE";
+            break;
+        default:
+            if (v && v <= 2045) {
+                text = "Fixed-width string";
+            }
+            break;
+        }
+    }
+    if ((id === sxsw_igor_wave5_le.id || id === sxsw_igor_wave5_be.id) && r.name === "type") {
+        switch (v) {
+        case 2:
+            text = "NT_FP32";
+            break;
+        case 4:
+            text = "NT_FP64";
+            break;
+        case 8:
+            text = "NT_I8";
+            break;
+        case 16:
+            text = "NT_I16";
+            break;
+        case 32:
+            text = "NT_I32";
+            break;
+        case 72:
+            text = "NT_I8|NT_UNSIGNED";
+            break;
+        case 80:
+            text = "NT_I16|NT_UNSIGNED";
+            break;
+        case 96:
+            text = "NT_I32|NT_UNSIGNED";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === sxsw_lecroy_descriptor_le.id || id === sxsw_lecroy_descriptor_be.id) {
+        if (r.name === "communication_type") {
+            if (v === 0) {
+                text = "BYTE";
+            } else if (v === 1) {
+                text = "WORD";
+            }
+        }
+        if (r.name === "communication_order") {
+            if (v === 0) {
+                text = "HIFIRST";
+            } else if (v === 1) {
+                text = "LOFIRST";
+            }
+        }
+        if (r.name === "bandwidth_limit") {
+            if (v === 0) {
+                text = "OFF";
+            } else if (v === 1) {
+                text = "ON";
+            }
+        }
+        if (r.name === "wave_source") {
+            if (v < 4) {
+                text = sx_sciencewire_comment_names[v];
+            } else if (v === 9) {
+                text = "UNKNOWN";
+            }
+        }
+        if (r.name === "record_type") {
+            if (v < 10) {
+                text = sx_sciencewire_comment_names_2[v];
+            }
+        }
+        if (r.name === "processing_done") {
+            if (v < 8) {
+                text = sx_sciencewire_comment_names_3[v];
+            }
+        }
+    }
+    if (r.name === "section_number" && id >= sxsw_grib2_section.id && id <= sxsw_grib2_bitmap.id) {
+        if (v < 8) {
+            text = sx_sciencewire_comment_names_4[v];
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxsw16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxsw32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxsw_span(c, at, n) {
+    return c !== null && at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxsw_add(c, l, at, bytes) {
+    return sxsw_span(c, at, (bytes < 0 ? bytes + SX_U64_MAX : bytes)) && (c.count >= 32000 || sx_add(c, l, at, bytes));
+}
+function sxsw_table(c, l, at, bytes, count) {
+    return bytes > 0 && count <= Math.floor(SX_I64_MAX / (bytes < 0 ? bytes + SX_U64_MAX : bytes)) && sxsw_span(c, at, (bytes < 0 ? bytes + SX_U64_MAX : bytes) * count) && (c.count >= 32000 || sx_table(c, l, at, bytes, count));
+}
+function sxsw_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : 0;
+}
+function sxsw_finish(c) {
+    var n = c.count;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxsw_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + bytes;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsw_order, true);
+    return !c.failed;
+}
+function sxsw_text_integer(p, p_o, n, out) {
+    var negative = false;
+    var digit = false;
+    var space = false;
+    var v = 0;
+    var i = 0;
+    while (i < n && p[p_o + i] === 32) {
+        i++;
+    }
+    if (i < n && (p[p_o + i] === 45 /*-*/ || p[p_o + i] === 43 /*+*/)) {
+        negative = p[p_o + i++] === 45 /*-*/;
+    }
+    for (; i < n; i++) {
+        if (p[p_o + i] === 32) {
+            space = true;
+            continue;
+        }
+        if (space || p[p_o + i] < 48 /*0*/ || p[p_o + i] > 57 /*9*/ || v > Math.floor((SX_I64_MAX - (p[p_o + i] - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        digit = true;
+        v = sxU64(v * 10 + p[p_o + i] - 48 /*0*/);
+    }
+    out[0] = negative ? sxI64(-(v >= SX_I64_MAX ? v - SX_U64_MAX : v)) : (v >= SX_I64_MAX ? v - SX_U64_MAX : v);
+    return digit;
+}
+function sxsw_dc_header(c, at, end, be, explicit_vr, v) {
+    var b = [];
+    if (at > end - 8 || !sx_read(c, at, b, 8)) {
+        return false;
+    }
+    v.group = sxsw16(b, 0, be);
+    v.element = sxsw16(b, 2, be);
+    v.vr[0] = v.vr[1] = v.vr[2] = 0;
+    v.header = 8;
+    var l = be ? sxsw_dicom_implicit_be : sxsw_dicom_implicit_le;
+    if (explicit_vr && v.group !== 0xFFFE) {
+        v.vr[0] = b[4] << 24 >> 24;
+        v.vr[1] = b[5] << 24 >> 24;
+        var wide = b[4] === 79 /*O*/ || b[4] === 83 /*S*/ && (b[5] === 81 /*Q*/ || b[5] === 86 /*V*/) || b[4] === 85 /*U*/ && (b[5] === 67 /*C*/ || b[5] === 78 /*N*/ || b[5] === 82 /*R*/ || b[5] === 84 /*T*/ || b[5] === 86 /*V*/);
+        if (wide) {
+            if (at > end - 12 || !sx_read_at(c, at + 8, b, 8, 4)) {
+                return false;
+            }
+            v.bytes = sxsw32(b, 8, be);
+            v.header = 12;
+            l = be ? sxsw_dicom_wide_be : sxsw_dicom_wide_le;
+        } else {
+            v.bytes = sxsw16(b, 6, be);
+            l = be ? sxsw_dicom_short_be : sxsw_dicom_short_le;
+        }
+    } else {
+        v.bytes = sxsw32(b, 4, be);
+    }
+    return sxsw_add(c, l, at, v.header);
+}
+function sxsw_dc_sequence(c, cursor, end, be, explicit_vr, depth, undefined_, pixels) {
+    if (depth > 32) {
+        return false;
+    }
+    var at = [cursor[0]];
+    var index = 0;
+    while (at[0] < end) {
+        var v = sxNew_sxsw_dc_element();
+        if (pixels && index >= 4097 || !sxsw_dc_header(c, at[0], end, be, false, v) || v.group !== 0xFFFE) {
+            return false;
+        }
+        at[0] += v.header;
+        if (v.element === 0xE0DD) {
+            if (!undefined_ || v.bytes) {
+                return false;
+            }
+            cursor[0] = at[0];
+            return true;
+        }
+        if (v.element !== 0xE000) {
+            return false;
+        }
+        if (pixels) {
+            if (v.bytes === 4294967295 || v.bytes > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                return false;
+            }
+            if (!index && (v.bytes % 4 || !sxsw_table(c, sxsw_dicom_frame_offset, at[0], 4, Math.floor(v.bytes / 4)))) {
+                return false;
+            }
+            at[0] += v.bytes;
+        } else {
+            var undef = v.bytes === 4294967295;
+            if (!undef && v.bytes > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                return false;
+            }
+            var limit = undef ? end : at[0] + v.bytes;
+            if (!sxsw_dc_dataset(c, at, limit, be, explicit_vr, (depth + 1) >>> 0, undef)) {
+                return false;
+            }
+        }
+        index++;
+    }
+    cursor[0] = at[0];
+    return !undefined_ && at[0] === end;
+}
+function sxsw_dc_dataset(c, cursor, end, be, explicit_vr, depth, undefined_) {
+    if (depth > 32) {
+        return false;
+    }
+    var at = [cursor[0]];
+    while (at[0] < end) {
+        var v = sxNew_sxsw_dc_element();
+        if (!sxsw_dc_header(c, at[0], end, be, explicit_vr, v)) {
+            return false;
+        }
+        at[0] += v.header;
+        if (v.group === 0xFFFE && v.element === 0xE00D) {
+            if (!undefined_ || v.bytes) {
+                return false;
+            }
+            cursor[0] = at[0];
+            return true;
+        }
+        var undef = v.bytes === 4294967295;
+        var pixels = v.group === 0x7FE0 && v.element === 0x0010;
+        var sequence = v.vr[0] === 83 /*S*/ && v.vr[1] === 81 /*Q*/;
+        if (undef || sequence) {
+            if (!undef && v.bytes > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                return false;
+            }
+            var limit = undef ? end : at[0] + v.bytes;
+            if (!sxsw_dc_sequence(c, at, limit, be, explicit_vr, depth, undef, pixels)) {
+                return false;
+            }
+        } else {
+            if (v.bytes > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                return false;
+            }
+            at[0] += v.bytes;
+        }
+    }
+    cursor[0] = at[0];
+    return !undefined_ && at[0] === end;
+}
+function sxsw_dicom(c) {
+    var n;
+    if ((n = sx_u32(c, 140, false)) === null || !sxsw_span(c, 144, n) || !sxsw_add(c, sxsw_dicom_preamble, 0, 132)) {
+        return false;
+    }
+    var at = [132];
+    var end = 144 + n;
+    var be = false;
+    var explicit_vr = true;
+    while (at[0] < end) {
+        var v = sxNew_sxsw_dc_element();
+        if (!sxsw_dc_header(c, at[0], end, false, true, v)) {
+            return false;
+        }
+        at[0] += v.header;
+        if (v.bytes > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+            return false;
+        }
+        if (v.group === 2 && v.element === 0 && !sxsw_add(c, sxsw_dicom_meta_size, at[0], 4)) {
+            return false;
+        }
+        if (v.group === 2 && v.element === 0x10) {
+            var b = [];
+            if (v.bytes >= 80 || !sx_read(c, at[0], b, v.bytes)) {
+                return false;
+            }
+            var len = v.bytes;
+            while (len && (b[(len - 1) >>> 0] === 0 || b[(len - 1) >>> 0] === 32)) {
+                len--;
+            }
+            b[len] = 0;
+            explicit_vr = sxStrcmp(b, "1.2.840.10008.1.2") !== 0;
+            be = !sxStrcmp(b, "1.2.840.10008.1.2.2");
+        }
+        at[0] += v.bytes;
+    }
+    return at[0] === end && sxsw_dc_dataset(c, at, c.size, be, explicit_vr, 0, false);
+}
+function sx_sciencewire_supports(t) {
+    switch (t) {
+    case "FITS":
+    case "DICOM":
+    case "SAS_XPORT":
+    case "SPSS_SAV":
+    case "STATA_DTA":
+    case "ROSBAG1":
+    case "GENOMICS_BGEN":
+    case "IGOR_IBW":
+    case "MICROSCOPY_SPIDER":
+    case "WMO_GRIB":
+    case "WMO_BUFR":
+    case "LECROY_TRC":
+    case "NEUROSCAN_CNT":
+    case "TECPLOT_PLT":
+    case "OPENEPHYS_CONTINUOUS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_sciencewire_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "FITS":
+        ok = sx_fits_build(c);
+        break;
+    case "DICOM":
+        ok = sxsw_dicom(c);
+        break;
+    case "SAS_XPORT":
+        ok = sx_sas_xport_build(c);
+        break;
+    case "SPSS_SAV":
+        ok = sx_spss_sav_build(c);
+        break;
+    case "STATA_DTA":
+        ok = sx_stata_dta_build(c);
+        break;
+    case "ROSBAG1":
+        ok = sx_rosbag1_build(c);
+        break;
+    case "GENOMICS_BGEN":
+        ok = sx_genomics_bgen_build(c);
+        break;
+    case "IGOR_IBW":
+        ok = sx_igor_ibw_build(c);
+        break;
+    case "MICROSCOPY_SPIDER":
+        ok = sx_microscopy_spider_build(c);
+        break;
+    case "WMO_GRIB":
+        ok = sx_wmo_grib_build(c);
+        break;
+    case "WMO_BUFR":
+        ok = sx_wmo_bufr_build(c);
+        break;
+    case "LECROY_TRC":
+        ok = sx_lecroy_trc_build(c);
+        break;
+    case "NEUROSCAN_CNT":
+        ok = sx_neuroscan_cnt_build(c);
+        break;
+    case "TECPLOT_PLT":
+        ok = sx_tecplot_plt_build(c);
+        break;
+    case "OPENEPHYS_CONTINUOUS":
+        ok = sx_openephys_continuous_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sxsw_finish(c);
+}

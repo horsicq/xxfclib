@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/ap4/xx_ap4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaul_ap4_table_fields = layout([u8("marker0", SIGNATURE), u8("marker1", SIGNATURE), u8("count_copy", COUNT),
+    u8("marker3", SIGNATURE), u8("records", COUNT)]);
+var sxaul_ap4_table = sxLayout(0x60380096, "ap4_table", LE, sxaul_ap4_table_fields);
+var sxaul_ap4_entry_fields = layout([u32("data_offset", OFFSET), u32("data_bytes", SIZE), u8("flags", FLAGS)]);
+var sxaul_ap4_entry = sxLayout(0x60380097, "ap4_entry", BE, sxaul_ap4_entry_fields);
+function sxaul_ap4(c) {
+    var at = [0];
+    var end = c.size;
+    var first = -1;
+    var limit = end;
+    var block = [];
+    while (at[0] + 5 <= limit && c.count < 31000) {
+        var search = first < 0 ? 65536 : first + 67108864;
+        if (search > limit) {
+            search = limit;
+        }
+        var found = false;
+        while (at[0] + 5 <= search) {
+            if (false) {
+                return false;
+            }
+            var n = sxU64(search - at[0] > 4100 ? 4100 : search - at[0]);
+            if (!sx_read(c, at[0], block, n)) {
+                return false;
+            }
+            var i = 0;
+            for (; i + 5 <= n; i++) {
+                if (!block[i] && block[i + 1] === 1 && block[i + 3] === 1 && block[i + 2] === block[i + 4]) {
+                    at[0] += (i >= SX_I64_MAX ? i - SX_U64_MAX : i);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                break;
+            }
+            at[0] += sxI64(sxU64(n - 4));
+        }
+        if (!found) {
+            break;
+        }
+        var count = sxaul_num(c, at[0] + 4, 1, false);
+        var start = at[0];
+        if (count * 9 + 5 > (limit - at[0] < 0 ? limit - at[0] + SX_U64_MAX : limit - at[0])) {
+            break;
+        }
+        {
+            if (!sxaul_take(c, sxaul_ap4_table, at, end, 1)) {
+                return false;
+            }
+        }
+        for (i = 0; i < count; i++) {
+            var off = sxaul_num(c, at[0] + ((9 * i) >>> 0), 4, true);
+            var size = sxaul_num(c, at[0] + ((9 * i) >>> 0) + 4, 4, true);
+            if (size && off && off + size <= (end < 0 ? end + SX_U64_MAX : end) && off < limit) {
+                limit = off;
+            }
+        }
+        {
+            if (!sxaul_take(c, sxaul_ap4_entry, at, end, count)) {
+                return false;
+            }
+        }
+        if (count && first < 0) {
+            first = start;
+        }
+    }
+    return !c.failed && c.count > 0;
+}
+function sx_ap4_build(c) {
+    return sxaul_ap4(c) && sxaul_finish(c);
+}

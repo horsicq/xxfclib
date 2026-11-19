@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// LE / LX (linear executable). The header is at offset 0 when the file starts
+// with its signature, else at the offset stored at 0x3C of the MZ stub. Table
+// offsets in it are relative to that header, except e32_nrestab and
+// e32_debuginfo which are relative to the file start. The reader rejects
+// files with a non-zero byte or word order and verifies that every table
+// reported here lies inside the file; the overlay is everything after
+// Format.size().
+
+function fileTypes() { return ["LE", "LX"]; }
+
+function isLx() { return Format.type() === "LX"; }
+
+function zeroMeansHeaderPageSize(value) { return value === 0 ? "0 means the header page size" : undefined; }
+
+function headerFields() {
+    var lx = isLx();
+    return layout([
+        u16("e32_magic", ID), u8("e32_border"), u8("e32_worder"),
+        at(0x08, u16("e32_cpu", ID)), u16("e32_os", ID), u32("e32_ver"), u32("e32_mflags", FLAGS),
+        u32("e32_mpages", COUNT), u32("e32_startobj", ID), u32("e32_eip", VA), u32("e32_stackobj", ID),
+        u32("e32_esp", VA), u32("e32_pagesize", SIZE),
+        lx ? u32("e32_pageshift", NONE, "Left-shift count for page data offsets")
+           : u32("e32_lastpagesize", SIZE, zeroMeansHeaderPageSize),
+        u32("e32_fixupsize", SIZE), at(0x38, u32("e32_ldrsize", SIZE)),
+        at(0x40, u32("e32_objtab", OFFSET)), u32("e32_objcnt", COUNT), u32("e32_objmap", OFFSET),
+        at(0x50, u32("e32_rsrctab", OFFSET)), u32("e32_rsrccnt", COUNT), at(0x5C, u32("e32_enttab", OFFSET)),
+        at(0x70, u32("e32_impmod", OFFSET)), u32("e32_impmodcnt", COUNT), at(0x80, u32("e32_datapage", OFFSET)),
+        at(0x88, u32("e32_nrestab", OFFSET)), u32("e32_cbnrestab", SIZE),
+        at(0x98, u32("e32_debuginfo", OFFSET)), u32("e32_debuglen", SIZE) ]);
+}
+
+function pageMapFields() {
+    if (isLx()) {
+        return layout([ u32("o32_pagedataoffset", OFFSET), u16("o32_pagesize", SIZE, zeroMeansHeaderPageSize),
+                        u16("o32_pageflags", FLAGS) ]);
+    }
+    return layout([ u8("o16_pagenum_hi", OFFSET), u8("o16_pagenum_mid", OFFSET), u8("o16_pagenum_lo", OFFSET),
+                    u8("o16_pageflags", FLAGS) ]);
+}
+
+function structs() {
+    return [
+        { id: 1, name: "IMAGE_DOS_HEADER", fields: [
+            u16("e_magic", SIGNATURE), u16("e_cblp", NONE, "Bytes in final 512-byte page; 0 means 512"),
+            u16("e_cp", COUNT, "512-byte pages"), u16("e_crlc", COUNT),
+            u16("e_cparhdr", COUNT, "16-byte paragraphs"), u16("e_minalloc", COUNT, "16-byte paragraphs"),
+            u16("e_maxalloc", COUNT, "16-byte paragraphs"), u16("e_ss", VA), u16("e_sp", VA), u16("e_csum", CHECKSUM),
+            u16("e_ip", VA), u16("e_cs", VA), u16("e_lfarlc", OFFSET), u16("e_ovno", ID),
+            field("e_res", "uint16[4]", 8, RESERVED), u16("e_oemid", ID), u16("e_oeminfo"),
+            field("e_res2", "uint16[10]", 20, RESERVED), u32("e_lfanew", OFFSET) ] },
+        { id: 2, name: "LINEAR_EXECUTABLE_HEADER", fields: headerFields },
+        { id: 3, name: "LINEAR_OBJECT_TABLE", fields: [
+            u32("o32_size", SIZE), u32("o32_base", VA), u32("o32_flags", FLAGS), u32("o32_pagemap", ID),
+            u32("o32_mapsize", COUNT), u32("o32_reserved", RESERVED) ] },
+        { id: 4, name: "LINEAR_PAGE_MAP", fields: pageMapFields },
+        { id: 5, name: "LINEAR_RESOURCE_TABLE", fields: [
+            u16("type", ID), u16("name", ID), u32("size", SIZE), u16("object", ID), u32("offset", OFFSET) ] },
+        { id: 6, name: "NONRESIDENT_NAME_TABLE" },
+        { id: 7, name: "DEBUG_DATA" }
+    ];
+}
+
+// The header offset the reader settled on: 0 when the file starts with the
+// LE/LX signature itself, else e_lfanew.
+function linearOffset() {
+    var signature = isLx() ? 0x584C : 0x454C;
+    return File.u16(0) === signature ? 0 : File.u32(0x3C);
+}
+
+function scan() {
+    var header = linearOffset(), lx = isLx(), count, size, formatSize, available = File.size();
+    if (header !== 0) Structs.add("IMAGE_DOS_HEADER", 0, 64);
+    Structs.add("LINEAR_EXECUTABLE_HEADER", header, 0xAC);
+    count = File.u32(header + 0x44);
+    if (count !== 0) Structs.table("LINEAR_OBJECT_TABLE", header + File.u32(header + 0x40), 24, count, ENTRY);
+    count = File.u32(header + 0x14);
+    if (count !== 0) Structs.table("LINEAR_PAGE_MAP", header + File.u32(header + 0x48), lx ? 8 : 4, count, ENTRY);
+    count = File.u32(header + 0x54);
+    if (count !== 0) Structs.table("LINEAR_RESOURCE_TABLE", header + File.u32(header + 0x50), 14, count, ENTRY);
+    size = File.u32(header + 0x8C);
+    if (size !== 0) Structs.add("NONRESIDENT_NAME_TABLE", File.u32(header + 0x88), size, RAW);
+    size = File.u32(header + 0x9C);
+    if (size !== 0) Structs.add("DEBUG_DATA", File.u32(header + 0x98), size, RAW);
+    formatSize = Format.size();
+    if (formatSize > 0 && formatSize < available) Structs.raw(formatSize, available - formatSize);
+}

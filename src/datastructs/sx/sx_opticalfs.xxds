@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_opticalfs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_opticalfs");
+include("_sx_opticalfs_hfsplus");
+include("_sx_opticalfs_iso9660");
+include("_sx_opticalfs_udf");
+
+function fileTypes() { return ["ISO9660", "UDF", "HFSPLUS"]; }
+
+var sx_opticalfs_layouts = [sxo_iso_directory_record, sxo_iso_path_table_l, sxo_iso_path_table_m,
+    sxo_iso_primary_volume_descriptor, sxo_iso_supplementary_volume_descriptor, sxo_iso_boot_record,
+    sxo_iso_volume_partition_descriptor, sxo_iso_volume_descriptor_terminator, sxo_iso_volume_descriptor_header,
+    sxo_udf_volume_recognition_descriptor, sxo_udf_descriptor_tag, sxo_udf_anchor_volume_descriptor,
+    sxo_udf_primary_volume_descriptor, sxo_udf_partition_descriptor, sxo_udf_logical_volume_descriptor,
+    sxo_udf_partition_map_type1, sxo_udf_partition_map_header, sxo_udf_terminating_descriptor, sxo_udf_file_set_descriptor,
+    sxo_udf_file_entry, sxo_udf_extended_file_entry, sxo_udf_file_identifier_descriptor, sxo_udf_short_allocation_descriptor,
+    sxo_udf_long_allocation_descriptor, sxo_udf_extended_allocation_descriptor, sxo_hfsplus_volume_header,
+    sxo_hfsplus_btree_node_descriptor, sxo_hfsplus_btree_header, sxo_hfsplus_btree_record_offset, sxo_hfsplus_catalog_key,
+    sxo_hfsplus_catalog_folder, sxo_hfsplus_catalog_file, sxo_hfsplus_catalog_thread];
+
+function structs() {
+    return sxCatalog([sxo_iso_directory_record, sxo_iso_path_table_l, sxo_iso_path_table_m, sxo_iso_primary_volume_descriptor,
+        sxo_iso_supplementary_volume_descriptor, sxo_iso_boot_record, sxo_iso_volume_partition_descriptor,
+        sxo_iso_volume_descriptor_terminator, sxo_iso_volume_descriptor_header, sxo_udf_volume_recognition_descriptor,
+        sxo_udf_descriptor_tag, sxo_udf_anchor_volume_descriptor, sxo_udf_primary_volume_descriptor,
+        sxo_udf_partition_descriptor, sxo_udf_logical_volume_descriptor, sxo_udf_partition_map_type1,
+        sxo_udf_partition_map_header, sxo_udf_terminating_descriptor, sxo_udf_file_set_descriptor, sxo_udf_file_entry,
+        sxo_udf_extended_file_entry, sxo_udf_file_identifier_descriptor, sxo_udf_short_allocation_descriptor,
+        sxo_udf_long_allocation_descriptor, sxo_udf_extended_allocation_descriptor, sxo_hfsplus_volume_header,
+        sxo_hfsplus_btree_node_descriptor, sxo_hfsplus_btree_header, sxo_hfsplus_btree_record_offset, sxo_hfsplus_catalog_key,
+        sxo_hfsplus_catalog_folder, sxo_hfsplus_catalog_file, sxo_hfsplus_catalog_thread], sx_opticalfs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_opticalfs_build, false);
+}

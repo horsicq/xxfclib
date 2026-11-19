@@ -1,0 +1,501 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivemore.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_rtpatch_header_fields = layout([chars("magic", 2, SIGNATURE), u16("generation", ID), bytes("builder_metadata", 22)]);
+var sxar_rtpatch_header = sxLayout(0x601C0001, "rtpatch_header", LE, sxar_rtpatch_header_fields);
+var sxar_rtpatch_destination_count_fields = layout([u8("destination_count", COUNT)]);
+var sxar_rtpatch_destination_count = sxLayout(0x601C0002, "rtpatch_destination_count", LE, sxar_rtpatch_destination_count_fields);
+var sxar_rtpatch_stream_sizes_fields = layout([u32("unpacked_size", SIZE), u32("packed_size", SIZE)]);
+var sxar_rtpatch_stream_sizes = sxLayout(0x601C0003, "rtpatch_stream_sizes", LE, sxar_rtpatch_stream_sizes_fields);
+var sxar_rtpatch_destination_fields = layout([chars("name", 14, STRING), u16("attributes", FLAGS), u32("unpacked_size", SIZE),
+    u16("date"), u16("time"), bytes("builder_metadata", 10)]);
+var sxar_rtpatch_destination = sxLayout(0x601C0004, "rtpatch_destination", LE, sxar_rtpatch_destination_fields);
+var sxar_rtpatch_codec_header_fields = layout([u16("magic", SIGNATURE), u8("raw_literal_flag", FLAGS), u8("marker", SIGNATURE),
+    field("rescale_periods", "uint24", 3), u8("window_and_first_bits")]);
+var sxar_rtpatch_codec_header = sxLayout(0x601C0005, "rtpatch_codec_header", BE, sxar_rtpatch_codec_header_fields);
+var sxar_rtpatch_name_size_fields = layout([u8("name_size", SIZE)]);
+var sxar_rtpatch_name_size = sxLayout(0x601C0006, "rtpatch_name_size", LE, sxar_rtpatch_name_size_fields);
+var sxar_packit_marker_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxar_packit_marker = sxLayout(0x601C0017, "packit_marker", BE, sxar_packit_marker_fields);
+var sxar_packit_stored_header_fields = layout([u8("name_size", SIZE), chars("name", 63, STRING), chars("file_type", 4, ID),
+    chars("creator", 4, ID), u16("finder_flags", FLAGS), u16("locked", FLAGS), u32("data_fork_size", SIZE),
+    u32("resource_fork_size", SIZE), u32("created"), u32("modified"), u16("header_crc16", CHECKSUM)]);
+var sxar_packit_stored_header = sxLayout(0x601C0018, "packit_stored_header", BE, sxar_packit_stored_header_fields);
+var sxar_packit_forks_crc_fields = layout([u16("forks_crc16", CHECKSUM)]);
+var sxar_packit_forks_crc = sxLayout(0x601C0019, "packit_forks_crc", BE, sxar_packit_forks_crc_fields);
+function sx_archivemore_comment(r, id) {
+    if (r === null || r.name === null || id < 0x601C0000 || id >= 0x601D0000) {
+        return true;
+    }
+    if (r.type !== null && !sxStrncmp(r.type, "ascii_", 6) && sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x601C0004:
+        if (r.name === "date") {
+            text = "Packed DOS date/time bits.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time bits.";
+        }
+        break;
+    case 0x601C0005:
+        if (r.name === "rescale_periods") {
+            text = "Two packed 12-bit rescale periods; first in the high 12 bits.";
+        }
+        if (r.name === "window_and_first_bits") {
+            text = "High nibble is the window selector; low nibble starts the compressed payload.";
+        }
+        break;
+    case 0x601C0007:
+        if (r.name === "sector_shift") {
+            text = "File sectors contain 512 multiplied by 2 raised to sector_shift bytes.";
+        }
+        break;
+    case 0x601C0008:
+        if (r.name === "sector_shift") {
+            text = "File sectors contain 512 multiplied by 2 raised to sector_shift bytes.";
+        }
+        if (r.name === "hash_table_offset_low") {
+            text = "Low 32 bits of the byte offset; combine hash_table_offset_high.";
+        }
+        if (r.name === "block_table_offset_low") {
+            text = "Low 32 bits of the byte offset; combine block_table_offset_high.";
+        }
+        if (r.name === "hash_table_offset_high") {
+            text = "Upper 16 bits of the byte offset.";
+        }
+        if (r.name === "block_table_offset_high") {
+            text = "Upper 16 bits of the byte offset.";
+        }
+        break;
+    case 0x601C0009:
+        if (r.name === "sector_shift") {
+            text = "File sectors contain 512 multiplied by 2 raised to sector_shift bytes.";
+        }
+        if (r.name === "hash_table_offset_low") {
+            text = "Low 32 bits of the byte offset; combine hash_table_offset_high.";
+        }
+        if (r.name === "block_table_offset_low") {
+            text = "Low 32 bits of the byte offset; combine block_table_offset_high.";
+        }
+        if (r.name === "hash_table_offset_high") {
+            text = "Upper 16 bits of the byte offset.";
+        }
+        if (r.name === "block_table_offset_high") {
+            text = "Upper 16 bits of the byte offset.";
+        }
+        break;
+    case 0x601C000A:
+        if (r.name === "sector_shift") {
+            text = "File sectors contain 512 multiplied by 2 raised to sector_shift bytes.";
+        }
+        if (r.name === "hash_table_offset_low") {
+            text = "Low 32 bits of the byte offset; combine hash_table_offset_high.";
+        }
+        if (r.name === "block_table_offset_low") {
+            text = "Low 32 bits of the byte offset; combine block_table_offset_high.";
+        }
+        if (r.name === "hash_table_offset_high") {
+            text = "Upper 16 bits of the byte offset.";
+        }
+        if (r.name === "block_table_offset_high") {
+            text = "Upper 16 bits of the byte offset.";
+        }
+        break;
+    case 0x601C000B:
+        if (r.name === "file_offset_high") {
+            text = "Upper 16 bits of a file offset; encrypted block-table entry contains the low word.";
+        }
+        break;
+    case 0x601C000E:
+        if (r.name === "window_vertical") {
+            text = "Window pixel coordinate.";
+        }
+        if (r.name === "window_horizontal") {
+            text = "Window pixel coordinate.";
+        }
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        break;
+    case 0x601C000F:
+        if (r.name === "window_vertical") {
+            text = "Window pixel coordinate.";
+        }
+        if (r.name === "window_horizontal") {
+            text = "Window pixel coordinate.";
+        }
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "total_unpacked_size") {
+            text = "Reserved for compressed MacBinary files; not used by the plain native reader.";
+        }
+        break;
+    case 0x601C0010:
+        if (r.name === "window_vertical") {
+            text = "Window pixel coordinate.";
+        }
+        if (r.name === "window_horizontal") {
+            text = "Window pixel coordinate.";
+        }
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "total_unpacked_size") {
+            text = "Reserved for compressed MacBinary files; not used by the plain native reader.";
+        }
+        break;
+    case 0x601C0011:
+        if (r.name === "block_count_low") {
+            text = "Low 16 bits of the ProDOS block count, not a byte size.";
+        }
+        if (r.name === "modified_date") {
+            text = "Packed ProDOS date.";
+        }
+        if (r.name === "modified_time") {
+            text = "Packed ProDOS time.";
+        }
+        if (r.name === "created_date") {
+            text = "Packed ProDOS date.";
+        }
+        if (r.name === "created_time") {
+            text = "Packed ProDOS time.";
+        }
+        if (r.name === "eof_low") {
+            text = "Low 24 bits of the declared byte size; combine eof_high. Directories store no payload.";
+        }
+        if (r.name === "block_count_high") {
+            text = "High 16 bits of the ProDOS block count.";
+        }
+        if (r.name === "eof_high") {
+            text = "High 8 bits of the declared byte size.";
+        }
+        break;
+    case 0x601C0013:
+        if (r.name === "filesystem_info") {
+            text = "Low byte is the native pathname separator; high byte is reserved.";
+        }
+        if (r.name === "auxiliary_type_or_block_count") {
+            text = "File auxiliary type, or disk block count for disk-image threads.";
+        }
+        if (r.name === "storage_type_or_block_size") {
+            text = "File storage type, or disk block size in bytes for disk-image threads.";
+        }
+        break;
+    case 0x601C0016:
+        if (r.name === "thread_crc16") {
+            text = "Version 2 checks compressed bytes; version 3 checks uncompressed bytes, seeded 0xFFFF.";
+        }
+        if (r.name === "unpacked_size") {
+            text = "Disk-image threads may instead derive their byte size from the record block count.";
+        }
+        break;
+    case 0x601C0018:
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        break;
+    case 0x601C001B:
+        if (r.name === "resource_method") {
+            text = "Method bits plus folder/encryption markers; 32 starts a folder and 33 ends one.";
+        }
+        if (r.name === "data_method") {
+            text = "Fork compression method and password flag; 0 is stored.";
+        }
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        break;
+    case 0x601C001E:
+        if (r.name === "name_size_and_folder") {
+            text = "Low 7 bits are name length; bit 7 marks a directory.";
+        }
+        break;
+    case 0x601C0020:
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "crc32_register") {
+            text = "Uncomplemented CRC32 over resource then data fork.";
+        }
+        if (r.name === "flags") {
+            text = "Bit 0 encrypted; bit 1 resource LZH; bit 2 data LZH.";
+        }
+        break;
+    case 0x601C0029:
+        if (r.name === "packed_fields0") {
+            text = "Bits 0..19 literals; 20..39 literal bytes; 40..59 matches; 60..62 literal bit accumulator.";
+        }
+        if (r.name === "packed_fields1") {
+            text = "Four 10-bit literal states; bits 40..59 LMD payload bytes; 60..62 LMD bit accumulator.";
+        }
+        if (r.name === "packed_fields2") {
+            text = "Bits 0..31 header byte size; 32..41 L state; 42..51 M state; 52..61 D state.";
+        }
+        break;
+    case 0x601C0031:
+        if (r.name === "status") {
+            text = "0 active, 0xFE deleted, 0xFF unused; stale fields in inactive entries are not live references.";
+        }
+        if (r.name === "first_sector") {
+            text = "File-relative sector number; multiply by 128 for a byte offset.";
+        }
+        if (r.name === "sector_count") {
+            text = "Count of 128-byte sectors.";
+        }
+        if (r.name === "created_date") {
+            text = "Days since 1977-12-31; zero means unset.";
+        }
+        if (r.name === "modified_date") {
+            text = "Days since 1977-12-31; zero means unset.";
+        }
+        if (r.name === "created_time") {
+            text = "Packed DOS date/time bits.";
+        }
+        if (r.name === "modified_time") {
+            text = "Packed DOS date/time bits.";
+        }
+        break;
+    case 0x601C0035:
+        if (r.name === "mode") {
+            text = "Octal permission bits stored as a blank-padded digit string.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxar_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxar_read(c, p, b, b_o, n) {
+    return sxar_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxar16(b, b_o, be) {
+    return sxGetU16At(b, b_o, 2, 0, be);
+}
+function sxar32(b, b_o, be) {
+    return sxGetU32At(b, b_o, 4, 0, be);
+}
+function sxar64(b, b_o) {
+    return sxGetU64At(b, b_o, 8, 0, false);
+}
+function sxar_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    return c.count < 20000 && p <= SX_I64_MAX && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), f.offset + f.size);
+}
+function sxar_native_records(c, pit) {
+    var b = [];
+    var generation = 0;
+    var end = 0;
+    var ok = true;
+    if (!pit) {
+        if (!sxar_read(c, 0, b, 0, 26) || !sxar_add(c, sxar_rtpatch_header, 0)) {
+            return false;
+        }
+        generation = sxar16(b, 2, false);
+    }
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return c.count !== 0;
+    }
+    var state = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (state === null) {
+        return c.count !== 0;
+    }
+    for (var i = 0; i < 20000; i++) {
+        var r = c.f.get_current_archive_record(c.f, state);
+        if (r === null) {
+            break;
+        }
+        var absolute = r.header_offset;
+        if (pit && absolute < c.f.base_address && (r.header_size === 4 || r.header_size === 98) && r.data_offset >= c.f.base_address + r.header_size) {
+            absolute = r.data_offset - r.header_size;
+        }
+        if (absolute >= c.f.base_address) {
+            var p = (absolute - c.f.base_address < 0 ? absolute - c.f.base_address + SX_U64_MAX : absolute - c.f.base_address);
+            var data = r.data_offset >= c.f.base_address ? (r.data_offset - c.f.base_address < 0 ? r.data_offset - c.f.base_address + SX_U64_MAX : r.data_offset - c.f.base_address) : SX_U64_MAX;
+            if (pit) {
+                if (p >= end && sxar_read(c, p, b, 0, 4) && !sxMemcmp(b, "PMa", 3)) {
+                    if (!sxar_add(c, sxar_packit_marker, p)) {
+                        ok = false;
+                        break;
+                    }
+                    if (b[3] === 103 /*g*/ && sxar_read(c, p + 4, b, 0, 94)) {
+                        var z = [sxar32(b, 76, true) + sxar32(b, 80, true)];
+                        if (sxar_span(c, p + 98, z[0] + 2)) {
+                            if (!sxar_add(c, sxar_packit_stored_header, p + 4) || !sxar_add(c, sxar_packit_forks_crc, p + 98 + z[0])) {
+                                ok = false;
+                                break;
+                            }
+                            end = p + 100 + z[0];
+                        }
+                    } else if (data <= SX_I64_MAX && r.compressed_size >= 0 && sxar_span(c, data, (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size))) {
+                        end = data + (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+                    }
+                }
+            } else if (p >= 26 && p >= end && r.header_size >= 42 && data === p + (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size) && sxar_read(c, p, b, 0, 42)) {
+                var n = sxar32(b, 0, false);
+                var whole = p > 0 && sxar_read(c, sxU64(p - 1), b, 42, 1) && b[42] === 1 && n === sxar32(b, 24, false) && r.compressed_size >= 0 && sxar32(b, 4, false) === (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+                if (whole && (generation <= 320 && r.header_size === 42 || generation >= 400 && r.header_size >= 53)) {
+                    var name = p + 50;
+                    var valid = true;
+                    if (generation >= 400) {
+                        z = [0];
+                        valid = sxar_read(c, name, z, 0, 1) && z[0] >= 2 && name + 1 + z[0] === data;
+                    }
+                    if (valid) {
+                        if (!sxar_add(c, sxar_rtpatch_destination_count, sxU64(p - 1)) || !sxar_add(c, sxar_rtpatch_stream_sizes, p) || !sxar_add(c, sxar_rtpatch_destination, p + 8) || generation >= 400 && !sxar_add(c, sxar_rtpatch_name_size, name)) {
+                            ok = false;
+                            break;
+                        }
+                        if (sxar_read(c, data, b, 0, 8) && b[0] === 0xB5 && b[1] === 0x9C && !sxar_add(c, sxar_rtpatch_codec_header, data)) {
+                            ok = false;
+                            break;
+                        }
+                        end = data + (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+                    }
+                }
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, state, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, state);
+    if (pit && end && sxar_read(c, end, b, 0, 4) && !sxMemcmp(b, "PEnd", 4) && !sxar_add(c, sxar_packit_marker, end)) {
+        ok = false;
+    }
+    return ok && c.count !== 0;
+}
+function sxar_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxar_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxar_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxar_order, true);
+    return !c.failed;
+}
+function sx_archivemore_supports(type) {
+    switch (type) {
+    case "RTPATCH":
+    case "MPQ":
+    case "APPLESINGLE":
+    case "MACBINARY":
+    case "BINARYII":
+    case "NUFX":
+    case "PACKIT_MAC":
+    case "STUFFIT":
+    case "COMPACTPRO":
+    case "EGG":
+    case "LZFSE":
+    case "LZF_STREAM":
+    case "FASTLZ_SIXPACK":
+    case "LBR":
+    case "PDP11AR":
+    case "BIGAF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivemore_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "RTPATCH":
+        ok = sx_rtpatch_build(c);
+        break;
+    case "MPQ":
+        ok = sx_mpq_build(c);
+        break;
+    case "APPLESINGLE":
+        ok = sx_applesingle_build(c);
+        break;
+    case "MACBINARY":
+        ok = sx_macbinary_build(c);
+        break;
+    case "BINARYII":
+        ok = sx_binaryii_build(c);
+        break;
+    case "NUFX":
+        ok = sx_nufx_build(c);
+        break;
+    case "PACKIT_MAC":
+        ok = sx_packit_mac_build(c);
+        break;
+    case "STUFFIT":
+        ok = sx_stuffit_build(c);
+        break;
+    case "COMPACTPRO":
+        ok = sx_compactpro_build(c);
+        break;
+    case "EGG":
+        ok = sx_egg_build(c);
+        break;
+    case "LZFSE":
+        ok = sx_lzfsestream_build(c);
+        break;
+    case "LZF_STREAM":
+        ok = sx_lzf_stream_build(c);
+        break;
+    case "FASTLZ_SIXPACK":
+        ok = sx_fastlz_sixpack_build(c);
+        break;
+    case "LBR":
+        ok = sx_lbr_build(c);
+        break;
+    case "PDP11AR":
+        ok = sx_pdp11ar_build(c);
+        break;
+    case "BIGAF":
+        ok = sx_bigaf_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxar_finish(c);
+}

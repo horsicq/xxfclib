@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/nowcompress/xx_nowcompress_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_nowcompress_header_fields = layout([bytes("signature", 2, SIGNATURE), bytes("unknown2", 6), u32("entry_count", COUNT),
+    bytes("unknown12", 12)]);
+var sxag_nowcompress_header = sxLayout(0x60250005, "nowcompress_header", BE, sxag_nowcompress_header_fields);
+var sxag_nowcompress_entry_fields = layout([u8("name_size", SIZE), chars("name", 31, STRING), bytes("unknown32", 4),
+    u16("flags", FLAGS), bytes("finder_info", 16), u32("created"), u32("modified"), u32("accessed"), bytes("unknown66", 16),
+    u16("child_count", COUNT), u16("unknown84"), u32("data_size", SIZE), u32("resource_size", SIZE), u32("unknown94"),
+    u32("stream_start", OFFSET), u32("stream_end", OFFSET), u32("checksum", CHECKSUM)]);
+var sxag_nowcompress_entry = sxLayout(0x60250006, "nowcompress_entry", BE, sxag_nowcompress_entry_fields);
+var sxag_nowcompress_stream_fields = layout([u32("first_data_offset", OFFSET)]);
+var sxag_nowcompress_stream = sxLayout(0x60250007, "nowcompress_stream", BE, sxag_nowcompress_stream_fields);
+var sxag_nowcompress_block_fields = layout([u16("flags", FLAGS), u16("padding_size", SIZE), u32("next_data_offset", OFFSET)]);
+var sxag_nowcompress_block = sxLayout(0x60250008, "nowcompress_block", BE, sxag_nowcompress_block_fields);
+var sxag_nowcompress_stream_end_fields = layout([u32("unknown"), u32("checksum", CHECKSUM)]);
+var sxag_nowcompress_stream_end = sxLayout(0x60250009, "nowcompress_stream_end", BE, sxag_nowcompress_stream_end_fields);
+function sxag_now(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 24) || !sxag_add(c, sxag_nowcompress_header, 0)) {
+        return false;
+    }
+    var n = sxag32(b, 8, true);
+    if (!n || n > 20000 || !sxag_span(c, 24, n * 110)) {
+        return true;
+    }
+    if (!sxag_table(c, sxag_nowcompress_entry, 24, n)) {
+        return false;
+    }
+    var directory_end = 24 + n * 110;
+    for (var i = 0; i < n && c.count < 20000; i++) {
+        if (!sxag_read(c, 24 + i * 110, b, 110)) {
+            break;
+        }
+        if (sxag16(b, 36, true) & 16 || !sxag32(b, 86, true) && !sxag32(b, 90, true)) {
+            continue;
+        }
+        var start = sxag32(b, 98, true);
+        var end = sxag32(b, 102, true);
+        if (start < directory_end || end <= start || !sxag_span(c, start, sxU64(end - start)) || !sxag_read(c, start, b, 4)) {
+            continue;
+        }
+        var first = sxag32(b, 0, true);
+        if (first < start + 20 || first > end || sxU64(sxU64(first - start) - 4) % 8) {
+            continue;
+        }
+        var blocks = sxU64(Math.floor(sxU64(sxU64(first - start) - 4) / 8) - 1);
+        if (!blocks || blocks > 8191 || !sxag_free(c, start, sxU64(first - start))) {
+            continue;
+        }
+        if (!sxag_add(c, sxag_nowcompress_stream, start) || !sxag_table(c, sxag_nowcompress_block, start + 4, blocks) || !sxag_add(c, sxag_nowcompress_stream_end, sxU64(first - 8))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_nowcompress_build(c) {
+    return sxag_now(c);
+}

@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/pixel_pxtone_ptnoise/xx_pixel_pxtone_ptnoise_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_pxt_noise_header_fields = layout([chars("magic", 8, SIGNATURE), u32("version", ID)]);
+var sxmn_pxt_noise_header = sxLayout(0x60760023, "pxt_noise_header", LE, sxmn_pxt_noise_header_fields);
+var sxmn_pxt_noise_samples1_fields = layout([field("samples_44100hz", "uleb128_64", 1, COUNT)]);
+var sxmn_pxt_noise_samples1 = sxLayout(0x60760024, "pxt_noise_samples1", LE, sxmn_pxt_noise_samples1_fields);
+var sxmn_pxt_noise_samples2_fields = layout([field("samples_44100hz", "uleb128_64", 2, COUNT)]);
+var sxmn_pxt_noise_samples2 = sxLayout(0x60760025, "pxt_noise_samples2", LE, sxmn_pxt_noise_samples2_fields);
+var sxmn_pxt_noise_samples3_fields = layout([field("samples_44100hz", "uleb128_64", 3, COUNT)]);
+var sxmn_pxt_noise_samples3 = sxLayout(0x60760026, "pxt_noise_samples3", LE, sxmn_pxt_noise_samples3_fields);
+var sxmn_pxt_noise_samples4_fields = layout([field("samples_44100hz", "uleb128_64", 4, COUNT)]);
+var sxmn_pxt_noise_samples4 = sxLayout(0x60760027, "pxt_noise_samples4", LE, sxmn_pxt_noise_samples4_fields);
+var sxmn_pxt_noise_samples5_fields = layout([field("samples_44100hz", "uleb128_64", 5, COUNT)]);
+var sxmn_pxt_noise_samples5 = sxLayout(0x60760028, "pxt_noise_samples5", LE, sxmn_pxt_noise_samples5_fields);
+var sxmn_pxt_noise_units_fields = layout([i8("units", COUNT)]);
+var sxmn_pxt_noise_units = sxLayout(0x60760029, "pxt_noise_units", LE, sxmn_pxt_noise_units_fields);
+function sxmn_noise(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 12;
+    var b = [0];
+    var value = 0;
+    if (!sxmn_row(v, sxmn_pxt_noise_header, 0, end)) {
+        return false;
+    }
+    var width = 0;
+    do {
+        if (width === 5 || !sxmn_word(v, at + width, 1, false, b, 0, end) || width === 4 && sxAnd64(b[0], 240)) {
+            return false;
+        }
+        value = sxOr64(value, sxShl64(sxAnd64(b[0], 127), (7 * width) >>> 0));
+        width++;
+    } while (sxAnd64(b[0], 128));
+    if (value > 2147483647) {
+        return false;
+    }
+    var ls = [sxmn_pxt_noise_samples1, sxmn_pxt_noise_samples2, sxmn_pxt_noise_samples3, sxmn_pxt_noise_samples4, sxmn_pxt_noise_samples5];
+    if (!sxmn_row(v, ls[(width - 1) >>> 0], at, end) || !sxmn_row(v, sxmn_pxt_noise_units, at + width, end) || !sxmn_word(v, at + width, 1, false, b, 0, end) || b[0] > 4) {
+        return false;
+    }
+    return true;
+}
+function sx_pixel_pxtone_ptnoise_build(v) {
+    return sxmn_noise(v);
+}

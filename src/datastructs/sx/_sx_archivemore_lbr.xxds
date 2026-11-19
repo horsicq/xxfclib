@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lbr/xx_lbr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_lbr_directory_entry_fields = layout([u8("status", ID), chars("name", 8, STRING), chars("extension", 3, STRING),
+    u16("first_sector"), u16("sector_count", COUNT), u16("crc16", CHECKSUM), u16("created_date"), u16("modified_date"),
+    u16("created_time"), u16("modified_time"), u8("pad_size", SIZE), bytes("reserved", 5, RESERVED)]);
+var sxar_lbr_directory_entry = sxLayout(0x601C0031, "lbr_directory_entry", LE, sxar_lbr_directory_entry_fields);
+function sxar_lbr(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 32)) {
+        return false;
+    }
+    var n = sxar16(b, 14, false) * 4;
+    if (!n || n > 20000 || !sxar_span(c, 0, n * 32)) {
+        return false;
+    }
+    return sx_table(c, sxar_lbr_directory_entry, 0, 32, n);
+}
+function sx_lbr_build(c) {
+    return sxar_lbr(c);
+}

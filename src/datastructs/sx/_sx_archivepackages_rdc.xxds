@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/rdc/xx_rdc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_rdc_block_fields = layout([i16("size_or_stored_length")]);
+var sxap_rdc_block = sxLayout(0x6072002E, "rdc_block", LE, sxap_rdc_block_fields);
+function sxap_rdc(c) {
+    var p = 0;
+    while (sxap_span(c, p, 2)) {
+        var word = [0];
+        if (!sxap_word(c, p, 2, false, word) || !sxap_add(c, sxap_rdc_block, p)) {
+            return false;
+        }
+        p += 2;
+        if (!word[0]) {
+            break;
+        }
+        var n = sxAnd64(word[0], 0x8000) ? sxU64(0x10000 - word[0]) : word[0];
+        if (!sxap_span(c, p, n)) {
+            return true;
+        }
+        p += n;
+    }
+    return true;
+}
+function sx_rdc_build(c) {
+    return sxap_rdc(c);
+}

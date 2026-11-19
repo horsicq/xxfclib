@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/thomashermann_thm/xx_thomashermann_thm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamore_thm_order_fields = layout([u8("pattern", ID)]);
+var sxamore_thm_order = sxLayout(0x60950011, "thm_order", LE, sxamore_thm_order_fields);
+function sxamore_thm(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var origin = [0];
+    var n = [0];
+    var rows = [0];
+    if (!sxamore_be(v, 46, 4, origin, 0, e) || !origin[0] || sxAnd64(origin[0], 1) || origin[0] >= 0x80000000 || !sxamore_be(v, 35, 1, n, 0, e) || n[0] > 31 || !sxamore_be(v, 41, 1, rows, 0, e)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        var x = [0];
+        var want = i < 4 ? (64 + ((i * 1024) >>> 0)) >>> 0 : (4160 + ((((i - 4) >>> 0) * 256) >>> 0)) >>> 0;
+        if (!sxamore_be(v, (i * 4) >>> 0, 4, x, 0, e) || x[0] < origin[0] || sxU64(x[0] - origin[0]) !== want) {
+            return false;
+        }
+    }
+    if (!sxamore_row(v, sxamore_thm_header, 0, e) || !sxamore_table(v, sxamore_original_address, 64, 1024, e) || !sxamore_table(v, sxamore_thm_order, 4160, 1024, e) || !sxamore_table(v, sxamore_original_address, 5184, 32, e) || !sxamore_table(v, sxamore_thm_sample, 5358, n[0], e)) {
+        return false;
+    }
+    return true;
+}
+function sx_thomashermann_thm_build(v) {
+    return sxamore_thm(v);
+}

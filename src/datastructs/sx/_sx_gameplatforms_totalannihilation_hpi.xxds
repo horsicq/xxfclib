@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/totalannihilation_hpi/xx_totalannihilation_hpi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_hpi_header_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), u32("directory_end_offset", OFFSET),
+    u32("encryption_key", FLAGS), u32("root_directory_offset", OFFSET)]);
+var sxgp_hpi_header = sxLayout(0x6036003F, "hpi_header", LE, sxgp_hpi_header_fields);
+var sxgp_hpi_directory_fields = layout([u32("entry_count", COUNT), u32("entries_offset", OFFSET)]);
+var sxgp_hpi_directory = sxLayout(0x60360040, "hpi_directory", LE, sxgp_hpi_directory_fields);
+var sxgp_hpi_entry_fields = layout([u32("name_offset", OFFSET), u32("record_offset", OFFSET), u8("is_directory", FLAGS)]);
+var sxgp_hpi_entry = sxLayout(0x60360041, "hpi_entry", LE, sxgp_hpi_entry_fields);
+var sxgp_hpi_file_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE), u8("compression", ID)]);
+var sxgp_hpi_file = sxLayout(0x60360042, "hpi_file", LE, sxgp_hpi_file_fields);
+function sxgp_hpi(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var de = [0];
+    var root = [0];
+    var queue = [];
+    var used = 0;
+    var count = 1;
+    if (!sxgp_row(v, sxgp_hpi_header, 0, end) || !sxgp_word(v, 8, 4, false, de, 0, end) || de[0] > end || !sxgp_word(v, 16, 4, false, root, 0, end)) {
+        return false;
+    }
+    queue[0] = root[0];
+    while (used < count) {
+        var at = queue[used++];
+        var n = [0];
+        var table = [0];
+        if (!sxgp_row(v, sxgp_hpi_directory, at, de[0]) || !sxgp_word(v, at, 4, false, n, 0, de[0]) || n[0] > 65536 || !sxgp_word(v, at + 4, 4, false, table, 0, de[0]) || !sxgp_table(v, sxgp_hpi_entry, table[0], n[0], de[0])) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            var p = table[0] + i * 9;
+            var rec = [0];
+            var kind = [0];
+            if (!sxgp_word(v, p + 4, 4, false, rec, 0, de[0]) || !sxgp_word(v, p + 8, 1, false, kind, 0, de[0])) {
+                return false;
+            }
+            if (kind[0]) {
+                if (count === 1024) {
+                    return false;
+                }
+                for (var j = 0; j < count; j++) {
+                    if (queue[j] === rec[0]) {
+                        return false;
+                    }
+                }
+                queue[count++] = rec[0];
+            } else if (!sxgp_row(v, sxgp_hpi_file, rec[0], de[0])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_totalannihilation_hpi_build(v) {
+    return sxgp_hpi(v);
+}

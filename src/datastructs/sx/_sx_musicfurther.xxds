@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musicfurther.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfurther_fls_sample_descriptor_fields = layout([u8("loop_start_plus_one"), u8("loop_length", COUNT),
+    u16("data_address", VA)]);
+var sxfurther_fls_sample_descriptor = sxLayout(0x60980004, "fls_sample_descriptor", LE, sxfurther_fls_sample_descriptor_fields);
+var sxfurther_fls_delay_fields = layout([u8("ticks_per_row")]);
+var sxfurther_fls_delay = sxLayout(0x60980005, "fls_delay", LE, sxfurther_fls_delay_fields);
+var sxfurther_fls_order_fields = layout([u8("pattern_number", ID)]);
+var sxfurther_fls_order = sxLayout(0x60980006, "fls_order", LE, sxfurther_fls_order_fields);
+var sxfurther_fls_ornament_step_fields = layout([i8("pitch_shift")]);
+var sxfurther_fls_ornament_step = sxLayout(0x60980008, "fls_ornament_step", LE, sxfurther_fls_ornament_step_fields);
+var sxfurther_fls_sample_tick_fields = layout([u8("amplitude_tone_high", FLAGS), u8("noise_tone_control", FLAGS), u8("tone_low")]);
+var sxfurther_fls_sample_tick = sxLayout(0x60980009, "fls_sample_tick", LE, sxfurther_fls_sample_tick_fields);
+function sx_musicfurther_supports(t) {
+    return t === "DIE_MUSIC_AMADEUSVOXON_FLASHTRACKER";
+}
+function sx_musicfurther_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0) {
+        return false;
+    }
+    return sx_amadeusvoxon_flashtracker_build(c);
+}
+function sx_musicfurther_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60980001 || id >= 0x60990000) {
+        return true;
+    }
+    var s = null;
+    if (r.property & 0x00000002) {
+        s = "Original 16-bit Z80 target address before relocation; bounded metadata mapping follows the original loader's authenticated load base";
+    } else if (id === sxfurther_fls_sample_descriptor.id) {
+        if (r.name === "loop_start_plus_one") {
+            s = "Zero disables the sample loop; otherwise stored value minus one is the first loop tick";
+        } else {
+            s = "Stored count of repeated ticks when loop_start_plus_one is nonzero; 32 physical ticks are always stored";
+        }
+    } else if (id === sxfurther_fls_delay.id) {
+        s = "Playback interrupt ticks per row; not a wall-clock timestamp";
+    } else if (id === sxfurther_fls_order.id) {
+        s = "One-based pattern-table number; zero ends the stored order list";
+    } else if (id === sxfurther_fls_ornament_step.id) {
+        s = "Signed semitone pitch shift; 32 stored steps, with replay looping derived from the selected sample";
+    } else if (id === sxfurther_fls_sample_tick.id) {
+        if (r.name === "amplitude_tone_high") {
+            s = "Low nibble AY amplitude; high nibble supplies bits 8..11 of the tone delta magnitude";
+        } else if (r.name === "noise_tone_control") {
+            s = "Bits 0..4 signed noise delta; bit 5 selects positive tone delta; bit 6 disables tone; bit 7 disables noise";
+        } else {
+            s = "Low 8 bits of the tone delta magnitude; sign is stored in noise_tone_control bit 5";
+        }
+    }
+    return s === null || sxSetComment(r, s);
+}

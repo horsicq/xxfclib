@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/lvm2/xx_lvm2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_lvm2_label_header_fields = layout([chars("signature", 8, SIGNATURE), u64("sector_number"), u32("crc32", CHECKSUM),
+    u32("pv_header_offset", OFFSET), chars("type", 8, STRING)]);
+var sxvi_lvm2_label_header = sxLayout(0x60530001, "lvm2_label_header", LE, sxvi_lvm2_label_header_fields);
+var sxvi_lvm2_pv_header_fields = layout([chars("pv_uuid", 32, ID), u64("device_size", SIZE)]);
+var sxvi_lvm2_pv_header = sxLayout(0x60530002, "lvm2_pv_header", LE, sxvi_lvm2_pv_header_fields);
+var sxvi_lvm2_disk_location_fields = layout([u64("offset", OFFSET), u64("size", SIZE)]);
+var sxvi_lvm2_disk_location = sxLayout(0x60530003, "lvm2_disk_location", LE, sxvi_lvm2_disk_location_fields);
+var sxvi_lvm2_pv_extension_fields = layout([u32("version", ID), u32("flags", FLAGS)]);
+var sxvi_lvm2_pv_extension = sxLayout(0x60530004, "lvm2_pv_extension", LE, sxvi_lvm2_pv_extension_fields);
+var sxvi_lvm2_mda_header_fields = layout([u32("crc32", CHECKSUM), chars("magic", 16, SIGNATURE), u32("version", ID),
+    u64("start", OFFSET), u64("size", SIZE)]);
+var sxvi_lvm2_mda_header = sxLayout(0x60530005, "lvm2_mda_header", LE, sxvi_lvm2_mda_header_fields);
+var sxvi_lvm2_raw_location_fields = layout([u64("offset", OFFSET), u64("size", SIZE), u32("crc32", CHECKSUM),
+    u32("flags", FLAGS)]);
+var sxvi_lvm2_raw_location = sxLayout(0x60530006, "lvm2_raw_location", LE, sxvi_lvm2_raw_location_fields);
+function sxvi_lvm(c) {
+    var h = [];
+    var b = [];
+    var label = SX_U64_MAX;
+    var pv = 0;
+    for (var i = 0; i < 4; i++) {
+        if (sxvi_read(c, (i * 512) >>> 0, h, 512) && !sxMemcmp(h, "LABELONE", 8) && !sxMemcmpAt(h, 24, "LVM2 001", 0, 8) && sxvi64(h, 8, 0) === i) {
+            label = (i * 512) >>> 0;
+            pv = sxvi32(h, 20, 0);
+            break;
+        }
+    }
+    if (label === SX_U64_MAX || pv < 32 || pv > 440 || !sxvi_put(c, sxvi_lvm2_label_header, label, 1) || !sxvi_put(c, sxvi_lvm2_pv_header, label + pv, 1)) {
+        return false;
+    }
+    var pos = pv + 40;
+    var metas = [];
+    var count = 0;
+    for (var list = 0; list < 2; list++) {
+        var end = false;
+        while (pos + 16 <= 512) {
+            var off = sxvi64(h, pos, 0);
+            var z = sxvi64(h, pos + 8, 0);
+            if (!sxvi_put(c, sxvi_lvm2_disk_location, label + pos, 1)) {
+                return false;
+            }
+            pos += 16;
+            if (!off && !z) {
+                end = true;
+                break;
+            }
+            if (list && count < 28 && z >= 512 && sxvi_span(c, off, z)) {
+                metas[count++] = off;
+            }
+        }
+        if (!end) {
+            return true;
+        }
+    }
+    if (pos + 8 <= 512 && sxvi32(h, pos, 0) && sxvi32(h, pos, 0) <= 2) {
+        if (!sxvi_put(c, sxvi_lvm2_pv_extension, label + pos, 1)) {
+            return false;
+        }
+        pos += 8;
+        while (pos + 16 <= 512) {
+            off = sxvi64(h, pos, 0);
+            z = sxvi64(h, pos + 8, 0);
+            if (!sxvi_put(c, sxvi_lvm2_disk_location, label + pos, 1)) {
+                return false;
+            }
+            pos += 16;
+            if (!off && !z) {
+                break;
+            }
+        }
+    }
+    for (i = 0; i < count; i++) {
+        var p = metas[i];
+        if (!sxvi_read(c, p, b, 512) || sxMemcmpAt(b, 4, " LVM2 x[5A%r0N*>", 0, 16) || sxvi32(b, 20, 0) !== 1) {
+            continue;
+        }
+        if (!sxvi_put(c, sxvi_lvm2_mda_header, p, 1)) {
+            return false;
+        }
+        for (var q = 40; (q + 24) >>> 0 <= 512; q = (q + 24) >>> 0) {
+            if (!sxvi_put(c, sxvi_lvm2_raw_location, p + q, 1)) {
+                return false;
+            }
+            if (!sxvi64(b, q, 0)) {
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sx_lvm2_build(c) {
+    return sxvi_lvm(c);
+}

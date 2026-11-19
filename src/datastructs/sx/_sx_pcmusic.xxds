@@ -1,0 +1,608 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_pcmusic.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_pc_text_fields = layout([field("text", "char", 0)]);
+var sxpcm_pc_text = sxLayout(0x60940001, "pc_text", LE, sxpcm_pc_text_fields);
+var sxpcm_pc_u16_length_fields = layout([u16("byte_length", SIZE)]);
+var sxpcm_pc_u16_length = sxLayout(0x60940003, "pc_u16_length", LE, sxpcm_pc_u16_length_fields);
+var sxpcm_pc_u32_length_fields = layout([u32("byte_length", SIZE)]);
+var sxpcm_pc_u32_length = sxLayout(0x60940004, "pc_u32_length", LE, sxpcm_pc_u32_length_fields);
+var sxpcm_pc_pattern_index_fields = layout([u8("pattern_index")]);
+var sxpcm_pc_pattern_index = sxLayout(0x60940005, "pc_pattern_index", LE, sxpcm_pc_pattern_index_fields);
+var sxpcm_pc_pattern_count_fields = layout([u8("pattern_count", COUNT)]);
+var sxpcm_pc_pattern_count = sxLayout(0x60940006, "pc_pattern_count", LE, sxpcm_pc_pattern_count_fields);
+var sxpcm_pc_present_fields = layout([u8("present", FLAGS)]);
+var sxpcm_pc_present = sxLayout(0x60940008, "pc_present", LE, sxpcm_pc_present_fields);
+var sxpcm_defy_header_fields = layout([chars("signature", 12, SIGNATURE), u8("version", ID), chars("title", 20, NONE),
+    chars("author", 20, NONE), u8("pattern_count", COUNT), u8("instrument_last_index")]);
+var sxpcm_defy_header = sxLayout(0x6094000A, "defy_header", LE, sxpcm_defy_header_fields);
+var sxpcm_taylor_counts_fields = layout([u8("pattern_rows_minus_one"), u8("order_count_minus_one"),
+    u8("pattern_count_minus_one")]);
+var sxpcm_taylor_counts = sxLayout(0x60940014, "taylor_counts", LE, sxpcm_taylor_counts_fields);
+var sxpcm_cybertracker_header_fields = layout([u16("load_address", VA), chars("signature", 8, SIGNATURE),
+    u8("minor_version", ID), u8("major_version", ID), u8("table_count", COUNT)]);
+var sxpcm_cybertracker_header = sxLayout(0x60940019, "cybertracker_header", LE, sxpcm_cybertracker_header_fields);
+var sxpcm_cybertracker_vibrato_fields = layout([u8("speed"), u8("depth")]);
+var sxpcm_cybertracker_vibrato = sxLayout(0x6094001A, "cybertracker_vibrato", LE, sxpcm_cybertracker_vibrato_fields);
+var sxpcm_cybertracker_vibrato_depth_fields = layout([u8("depth")]);
+var sxpcm_cybertracker_vibrato_depth = sxLayout(0x6094001B, "cybertracker_vibrato_depth", LE, sxpcm_cybertracker_vibrato_depth_fields);
+var sxpcm_cybertracker_vibrato_speed_fields = layout([u8("speed")]);
+var sxpcm_cybertracker_vibrato_speed = sxLayout(0x6094001C, "cybertracker_vibrato_speed", LE, sxpcm_cybertracker_vibrato_speed_fields);
+var sxpcm_cybertracker_arpeggio_fields = layout([u8("packed_semitone_offsets", FLAGS)]);
+var sxpcm_cybertracker_arpeggio = sxLayout(0x6094001D, "cybertracker_arpeggio", LE, sxpcm_cybertracker_arpeggio_fields);
+var sxpcm_cybertracker_adsr_fields = layout([u8("attack_decay", FLAGS), u8("sustain_release", FLAGS)]);
+var sxpcm_cybertracker_adsr = sxLayout(0x6094001E, "cybertracker_adsr", LE, sxpcm_cybertracker_adsr_fields);
+var sxpcm_cybertracker_name_fields = layout([chars("name", 16, NONE)]);
+var sxpcm_cybertracker_name = sxLayout(0x6094001F, "cybertracker_name", LE, sxpcm_cybertracker_name_fields);
+var sxpcm_cybertracker_multieffect_fields = layout([u8("effect", ID), u8("parameter")]);
+var sxpcm_cybertracker_multieffect = sxLayout(0x60940020, "cybertracker_multieffect", LE, sxpcm_cybertracker_multieffect_fields);
+var sxpcm_cybertracker_song_length_fields = layout([u8("position_count", COUNT)]);
+var sxpcm_cybertracker_song_length = sxLayout(0x60940021, "cybertracker_song_length", LE, sxpcm_cybertracker_song_length_fields);
+var sxpcm_cybertracker_song_repeat_fields = layout([u8("repeat_position")]);
+var sxpcm_cybertracker_song_repeat = sxLayout(0x60940022, "cybertracker_song_repeat", LE, sxpcm_cybertracker_song_repeat_fields);
+var sxpcm_cybertracker_loop_start_fields = layout([u8("loop_point")]);
+var sxpcm_cybertracker_loop_start = sxLayout(0x60940023, "cybertracker_loop_start", LE, sxpcm_cybertracker_loop_start_fields);
+var sxpcm_cybertracker_envelope_length_fields = layout([u8("point_count", COUNT)]);
+var sxpcm_cybertracker_envelope_length = sxLayout(0x60940024, "cybertracker_envelope_length", LE, sxpcm_cybertracker_envelope_length_fields);
+var sxpcm_cybertracker_x_low_fields = layout([u8("x_low")]);
+var sxpcm_cybertracker_x_low = sxLayout(0x60940025, "cybertracker_x_low", LE, sxpcm_cybertracker_x_low_fields);
+var sxpcm_cybertracker_x_high_fields = layout([u8("x_high")]);
+var sxpcm_cybertracker_x_high = sxLayout(0x60940026, "cybertracker_x_high", LE, sxpcm_cybertracker_x_high_fields);
+var sxpcm_cybertracker_y_low_fields = layout([u8("y_low")]);
+var sxpcm_cybertracker_y_low = sxLayout(0x60940027, "cybertracker_y_low", LE, sxpcm_cybertracker_y_low_fields);
+var sxpcm_cybertracker_y_high_fields = layout([u8("y_high")]);
+var sxpcm_cybertracker_y_high = sxLayout(0x60940028, "cybertracker_y_high", LE, sxpcm_cybertracker_y_high_fields);
+var sxpcm_cybertracker_pattern_length_fields = layout([u8("encoded_pattern_byte_length", SIZE)]);
+var sxpcm_cybertracker_pattern_length = sxLayout(0x60940029, "cybertracker_pattern_length", LE, sxpcm_cybertracker_pattern_length_fields);
+var sxpcm_victracker_song_fields = layout([u8("first_step"), u8("last_step"), u8("repeat_step"), u8("speed_flags", FLAGS)]);
+var sxpcm_victracker_song = sxLayout(0x6094002B, "victracker_song", LE, sxpcm_victracker_song_fields);
+var sxpcm_victracker_sequence_length_fields = layout([u8("last_row_index")]);
+var sxpcm_victracker_sequence_length = sxLayout(0x60940030, "victracker_sequence_length", LE, sxpcm_victracker_sequence_length_fields);
+var sxpcm_muap_header_fields = layout([field("channel_offsets", "uint16[17]", 34, OFFSET)]);
+var sxpcm_muap_header = sxLayout(0x60940032, "muap_header", LE, sxpcm_muap_header_fields);
+var sxpcm_muap_tone_fields = layout([bytes("operator_detune_multiple", 4, FLAGS), bytes("operator_total_level", 4, FLAGS),
+    bytes("operator_keyscale_attack", 4, FLAGS), bytes("operator_am_decay", 4, FLAGS), bytes("operator_sustain_rate", 4, FLAGS),
+    bytes("operator_sustain_release", 4, FLAGS), u8("feedback_algorithm", FLAGS)]);
+var sxpcm_muap_tone = sxLayout(0x60940033, "muap_tone", LE, sxpcm_muap_tone_fields);
+var sxpcm_pmd_header_fields = layout([i8("target_mode", ID), field("fm_channel_offsets", "uint16[6]", 12, OFFSET),
+    field("ssg_channel_offsets", "uint16[3]", 6, OFFSET), u16("adpcm_channel_offset", OFFSET),
+    u16("rhythm_channel_offset", OFFSET), u16("rhythm_table_offset", OFFSET)]);
+var sxpcm_pmd_header = sxLayout(0x60940034, "pmd_header", LE, sxpcm_pmd_header_fields);
+var sxpcm_pmd_program_pointer_fields = layout([u16("program_offset", OFFSET)]);
+var sxpcm_pmd_program_pointer = sxLayout(0x60940035, "pmd_program_pointer", LE, sxpcm_pmd_program_pointer_fields);
+var sxpcm_pmd_memo_header_fields = layout([u16("memo_table_offset", OFFSET), u8("driver_version", ID), u8("driver_marker")]);
+var sxpcm_pmd_memo_header = sxLayout(0x60940036, "pmd_memo_header", LE, sxpcm_pmd_memo_header_fields);
+var sxpcm_pmd_memo_pointer_fields = layout([u16("string_offset", OFFSET)]);
+var sxpcm_pmd_memo_pointer = sxLayout(0x60940037, "pmd_memo_pointer", LE, sxpcm_pmd_memo_pointer_fields);
+var sxpcm_toast_signature_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxpcm_toast_signature = sxLayout(0x60940038, "toast_signature", LE, sxpcm_toast_signature_fields);
+var sxpcm_toast_synth_fields = layout([bytes("waveform", 16, ID), bytes("link", 16), field("link_factor", "float32[16]", 64),
+    field("output_factor", "float32[16]", 64), field("start_volume", "float32[16]", 64),
+    field("start_volume_factor", "float32[16]", 64), field("start_phase_factor", "float32[16]", 64), bytes("panning", 16),
+    field("event_offset", "int32[16]", 64), field("note_offset", "int32[16]", 64), field("volume_offset", "int32[16]", 64)]);
+var sxpcm_toast_synth = sxLayout(0x60940039, "toast_synth", LE, sxpcm_toast_synth_fields);
+var sxpcm_toast_adsr_fields = layout([field("attack_step", "float32[16]", 64), field("decay_step", "float32[16]", 64),
+    field("decay_destination", "float32[16]", 64), bytes("sustain", 16, FLAGS), field("release_step", "float32[16]", 64)]);
+var sxpcm_toast_adsr = sxLayout(0x6094003A, "toast_adsr", LE, sxpcm_toast_adsr_fields);
+var sxpcm_toast_settings_fields = layout([u8("minor_row_highlight"), u8("major_row_highlight"), u8("drum_mode", ID),
+    u8("chip_mode", ID), u8("channel_count", COUNT)]);
+var sxpcm_toast_settings = sxLayout(0x6094003B, "toast_settings", LE, sxpcm_toast_settings_fields);
+var sxpcm_toast_channel_fields = layout([u8("mode", ID), u8("mute", FLAGS), u8("active", FLAGS)]);
+var sxpcm_toast_channel = sxLayout(0x6094003C, "toast_channel", LE, sxpcm_toast_channel_fields);
+var sxpcm_toast_instrument_fields = layout([u8("name_length", SIZE), chars("name_storage", 24, NONE)]);
+var sxpcm_toast_instrument = sxLayout(0x6094003D, "toast_instrument", LE, sxpcm_toast_instrument_fields);
+var sxpcm_toast_orders_fields = layout([u16("order_count", COUNT)]);
+var sxpcm_toast_orders = sxLayout(0x6094003E, "toast_orders", LE, sxpcm_toast_orders_fields);
+var sxpcm_toast_restart_fields = layout([u8("restart_position")]);
+var sxpcm_toast_restart = sxLayout(0x6094003F, "toast_restart", LE, sxpcm_toast_restart_fields);
+var sxpcm_mvs_event_fields = layout([u8("octave_and_note", FLAGS), u8("instrument", ID), u8("effect", ID),
+    u8("effect_parameter")]);
+var sxpcm_mvs_event = sxLayout(0x60940044, "mvs_event", LE, sxpcm_mvs_event_fields);
+var sxpcm_axs_form_fields = layout([chars("signature", 4, SIGNATURE), u32("form_byte_size", SIZE), chars("form_type", 4, ID)]);
+var sxpcm_axs_form = sxLayout(0x60940045, "axs_form", BE, sxpcm_axs_form_fields);
+var sxpcm_axs_settings_fields = layout([blob("opaque_prefix", 2), u8("tempo_bpm"), blob("opaque_parameter_3", 1),
+    u8("sync_flags", FLAGS), u8("delay_fraction_code", ID), u8("delay_5ms_units"), u8("pan"), u8("feedback"),
+    u8("reverb_preset", ID), u8("block_count", COUNT), u8("sequence_count", COUNT), blob("opaque_tail", 8)]);
+var sxpcm_axs_settings = sxLayout(0x60940047, "axs_settings", LE, sxpcm_axs_settings_fields);
+var sxpcm_axs_sequence_fields = layout([u8("block_index"), blob("opaque_index_extension", 3),
+    u16("disabled_channel_mask", FLAGS), blob("opaque_tail", 2)]);
+var sxpcm_axs_sequence = sxLayout(0x60940048, "axs_sequence", LE, sxpcm_axs_sequence_fields);
+var sxpcm_beaver_sample_flags_fields = layout([u8("sample_flags", FLAGS)]);
+var sxpcm_beaver_sample_flags = sxLayout(0x6094004B, "beaver_sample_flags", LE, sxpcm_beaver_sample_flags_fields);
+var sxpcm_beaver_arpeggio_step_fields = layout([bytes("note_indexes", 3), i8("octave"), u8("velocity"), u8("length_ticks")]);
+var sxpcm_beaver_arpeggio_step = sxLayout(0x60940060, "beaver_arpeggio_step", LE, sxpcm_beaver_arpeggio_step_fields);
+var sxpcm_beaver_song_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version", ID), u8("channel_count", COUNT),
+    u8("pattern_count", COUNT), u8("instrument_count", COUNT), u8("initial_bpm"), u8("initial_pattern_tick"),
+    u8("sequence_tick_units")]);
+var sxpcm_beaver_song_header = sxLayout(0x60940064, "beaver_song_header", LE, sxpcm_beaver_song_header_fields);
+function sxpcm_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxpcm_read(c, p, b, n) {
+    return sxpcm_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxpcm16(b, b_o) {
+    return b[b_o] | b[b_o + 1] << 8;
+}
+function sxpcm_u16(c, p, v) {
+    var b = [];
+    if (!sxpcm_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxpcm16(b, 0);
+    return true;
+}
+function sxpcm_u8(c, p, v) {
+    return sxpcm_read(c, p, v, 1);
+}
+function sxpcm_eq(c, p, s, n) {
+    var b = [];
+    return n <= 64 && sxpcm_read(c, p, b, n) && !sxMemcmp(b, s, n);
+}
+function sxpcm_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+}
+function sxpcm_put(c, l, p, count) {
+    var z = sxpcm_width(l);
+    if (!count) {
+        return true;
+    }
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxpcm_span(c, p, count * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    var end = p + count * z;
+    for (var i = 0; i < c.count; i++) {
+        var rel = c.items[i].offset - c.f.base_address;
+        var n = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (rel >= 0 && p < (rel < 0 ? rel + SX_U64_MAX : rel) + n && (rel < 0 ? rel + SX_U64_MAX : rel) < end) {
+            return true;
+        }
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxpcm_opt(c, l, p, count) {
+    var z = sxpcm_width(l);
+    return (!count || !z || count > Math.floor(SX_U64_MAX / z) || !sxpcm_span(c, p, count * z) ? 1 : (sxpcm_put(c, l, p, count) ? 1 : 0)) !== 0;
+}
+function sxpcm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxpcm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxpcm_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxpcm_order, true);
+    return !c.failed;
+}
+function sxpcm_lines(c, l, p, count) {
+    return sxpcm_opt(c, l, p, count);
+}
+function sxpcm32(b) {
+    return (b[0] | b[1] << 8 | b[2] << 16 | (b[3] << 24) >>> 0) >>> 0;
+}
+function sxpcmbe16(b) {
+    return b[0] << 8 | b[1];
+}
+function sxpcm_text(c, p, n) {
+    if (!sxpcm_span(c, p, n)) {
+        return false;
+    }
+    if (!n || c.count >= 24000) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < a + z && a < p + n) {
+            return true;
+        }
+    }
+    return sx_add(c, sxpcm_pc_text, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxpcm_u32(c, p, v) {
+    var b = [];
+    if (!sxpcm_read(c, p, b, 4)) {
+        return false;
+    }
+    v[0] = sxpcm32(b);
+    return true;
+}
+var sxpcm_cyber_module = [sxpcm_cybertracker_vibrato_depth, sxpcm_cybertracker_vibrato_speed, sxpcm_cybertracker_arpeggio,
+    sxpcm_cybertracker_adsr, sxpcm_cybertracker_name, sxpcm_cybertracker_multieffect, sxpcm_cybertracker_song_length,
+    sxpcm_cybertracker_song_repeat, sxpcm_cybertracker_loop_start, sxpcm_cybertracker_x_low, sxpcm_cybertracker_x_high,
+    sxpcm_cybertracker_y_low, sxpcm_cybertracker_y_high, null, sxpcm_cybertracker_pattern_length,
+    sxpcm_cybertracker_envelope_length, null];
+var sxpcm_cyber_inst = [sxpcm_cybertracker_vibrato, sxpcm_cybertracker_arpeggio, sxpcm_cybertracker_adsr,
+    sxpcm_cybertracker_name, sxpcm_cybertracker_loop_start, sxpcm_cybertracker_envelope_length, sxpcm_cybertracker_x_low,
+    sxpcm_cybertracker_x_high, sxpcm_cybertracker_y_low, sxpcm_cybertracker_y_high];
+function sxpcm_cyber(c, instrument) {
+    var h = [];
+    if (!sxpcm_read(c, 0, h, 13) || sxMemcmpAt(h, 2, instrument ? "NNTRKINS" : "NNTRKMZX", 0, 8) || h[11] !== 1 || h[10] > 1 || !sxpcm_put(c, sxpcm_cybertracker_header, 0, 1)) {
+        return false;
+    }
+    var p = 13;
+    for (var i = 0; i < h[12]; i++) {
+        var n = [0];
+        if (!sxpcm_u16(c, p, n) || !sxpcm_put(c, sxpcm_pc_u16_length, p, 1)) {
+            return true;
+        }
+        p += 2;
+        if (!sxpcm_span(c, p, n[0])) {
+            return true;
+        }
+        var l = instrument ? i < 10 ? sxpcm_cyber_inst[i] : null : i < 17 ? sxpcm_cyber_module[i] : null;
+        if (l !== null) {
+            var z = sxpcm_width(l);
+            if (n[0] % z === 0 && !sxpcm_put(c, l, p, Math.floor(n[0] / z))) {
+                return false;
+            }
+        }
+        p += n[0];
+    }
+    return true;
+}
+function sxpcm_muap(c, tones) {
+    if (tones) {
+        return sxpcm_put(c, sxpcm_muap_tone, 0, 256);
+    }
+    return sxpcm_put(c, sxpcm_muap_header, 0, 1);
+}
+function sxpcm_toast_pattern(c, p, channels) {
+    var present = [0];
+    if (!sxpcm_u8(c, p[0], present) || !sxpcm_put(c, sxpcm_pc_present, p[0]++, 1)) {
+        return false;
+    }
+    if (!present[0]) {
+        return true;
+    }
+    for (var ch = 0; ch < channels; ch++) {
+        var row = 0;
+        var work = 0;
+        while (row < 64) {
+            var b = [0];
+            var n = [0];
+            var back = [0];
+            if (++work > 65536 || !sxpcm_u8(c, p[0]++, b)) {
+                return false;
+            }
+            if (b[0] & 128) {
+                n[0] = b[0] & 127;
+                if (!n[0]) {
+                    row++;
+                    continue;
+                }
+                if (!sxpcm_u8(c, p[0]++, back) || back[0] > row || !back[0]) {
+                    return false;
+                }
+                row = (row + n[0]) >>> 0;
+                if (row > 64) {
+                    row = 64;
+                }
+            } else {
+                var size = 0;
+                for (var j = 0; j < 6; j++) {
+                    size = (size + (b[0] >> j & 1)) >>> 0;
+                }
+                if (!sxpcm_span(c, p[0], size)) {
+                    return false;
+                }
+                p[0] += size;
+                if (b[0] & 64) {
+                    if (!sxpcm_u8(c, p[0]++, n)) {
+                        return false;
+                    }
+                    row = (row + n[0]) >>> 0;
+                    if (row > 64) {
+                        row = 64;
+                    }
+                } else {
+                    row++;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sxpcm_toast(c, instrument) {
+    if (instrument) {
+        if (!sxpcm_eq(c, 0, "T0ASTINS", 8) || !sxpcm_put(c, sxpcm_toast_signature, 0, 1)) {
+            return false;
+        }
+        return sxpcm_opt(c, sxpcm_toast_instrument, 8, 1);
+    }
+    var modern = sxpcm_eq(c, 0, "T0AST\x01\x00\x01", 8);
+    if (!modern && !sxpcm_eq(c, 0, "T0AST0OK", 8)) {
+        return false;
+    }
+    if (!sxpcm_put(c, sxpcm_toast_signature, 0, 1) || !sxpcm_put(c, sxpcm_toast_synth, 8, 1)) {
+        return false;
+    }
+    var p = [568];
+    if (modern) {
+        if (!sxpcm_put(c, sxpcm_toast_adsr, p[0], 1)) {
+            return true;
+        }
+        p[0] += 272;
+    }
+    var n = [0];
+    var present = [0];
+    if (!sxpcm_u8(c, p[0] + 4, n) || !sxpcm_put(c, sxpcm_toast_settings, p[0], 1)) {
+        return true;
+    }
+    p[0] += 5;
+    if (n[0] > 16) {
+        return true;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxpcm_u8(c, p[0], present) || !sxpcm_put(c, sxpcm_pc_present, p[0]++, 1)) {
+            return true;
+        }
+        if (present[0]) {
+            if (!sxpcm_put(c, sxpcm_toast_channel, p[0], 1)) {
+                return true;
+            }
+            p[0] += 3;
+        }
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (!sxpcm_u8(c, p[0], present) || !sxpcm_put(c, sxpcm_pc_present, p[0]++, 1)) {
+            return true;
+        }
+        if (present[0]) {
+            if (!sxpcm_put(c, sxpcm_toast_instrument, p[0], 1)) {
+                return true;
+            }
+            p[0] += 25;
+        }
+    }
+    var orders = [0];
+    if (!sxpcm_u16(c, p[0], orders) || !sxpcm_put(c, sxpcm_toast_orders, p[0], 1)) {
+        return true;
+    }
+    p[0] += 2;
+    if (orders[0] > 256 || !sxpcm_put(c, sxpcm_pc_pattern_index, p[0], orders[0])) {
+        return true;
+    }
+    p[0] += orders[0];
+    for (i = 0; i < 256; i++) {
+        if (!sxpcm_toast_pattern(c, p, n[0])) {
+            return true;
+        }
+    }
+    if (!sxpcm_put(c, sxpcm_toast_restart, p[0]++, 1)) {
+        return true;
+    }
+    for (i = 0; i < 3; i++) {
+        var length = [0];
+        if (!sxpcm_u32(c, p[0], length) || !sxpcm_put(c, sxpcm_pc_u32_length, p[0], 1)) {
+            return true;
+        }
+        p[0] += 4;
+        if (!sxpcm_text(c, p[0], length[0])) {
+            return true;
+        }
+        p[0] += length[0];
+    }
+    return true;
+}
+function sx_pcmusic_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_CYBERBRAIN_CYBERTRACKER":
+    case "DIE_MUSIC_CYBERBRAIN_CYBERTRACKER_CI":
+    case "DIE_MUSIC_DEFY_ADLIBTRACKER_DTM":
+    case "DIE_MUSIC_TAYLOR_FMTRACKER":
+    case "DIE_MUSIC_XORJS_FMTRACKER":
+    case "DIE_MUSIC_PACKEN_MUAP98_TONESDTA":
+    case "DIE_MUSIC_BERO_T0AST":
+    case "DIE_MUSIC_BERO_TOAST_INS":
+    case "DIE_MUSIC_KAHLIN_VICTRACKER":
+    case "DIE_MUSIC_KAJAPON_PROFESSIONALMD_M":
+    case "DIE_MUSIC_PACKEN_MUAP98_OBJECT":
+    case "DIE_MUSIC_SPP_BENITRACKERADLIB_PIS":
+    case "DIE_MUSIC_KANEDA_MVSTRACKERSUITE_MUS":
+    case "DIE_MUSIC_RESOLUTION_AXS":
+    case "DIE_MUSIC_GNILK_BEAVERSWEEPER_GTK":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_pcmusic_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_CYBERBRAIN_CYBERTRACKER":
+        ok = sx_cyberbrain_cybertracker_build(c);
+        break;
+    case "DIE_MUSIC_CYBERBRAIN_CYBERTRACKER_CI":
+        ok = sx_cyberbrain_cybertracker_ci_build(c);
+        break;
+    case "DIE_MUSIC_DEFY_ADLIBTRACKER_DTM":
+        ok = sx_defy_adlibtracker_dtm_build(c);
+        break;
+    case "DIE_MUSIC_TAYLOR_FMTRACKER":
+        ok = sx_taylor_fmtracker_build(c);
+        break;
+    case "DIE_MUSIC_XORJS_FMTRACKER":
+        ok = sx_xorjs_fmtracker_build(c);
+        break;
+    case "DIE_MUSIC_PACKEN_MUAP98_TONESDTA":
+        ok = sx_packen_muap98_tonesdta_build(c);
+        break;
+    case "DIE_MUSIC_BERO_T0AST":
+        ok = sx_bero_t0ast_build(c);
+        break;
+    case "DIE_MUSIC_BERO_TOAST_INS":
+        ok = sx_bero_toast_ins_build(c);
+        break;
+    case "DIE_MUSIC_KAHLIN_VICTRACKER":
+        ok = sx_kahlin_victracker_build(c);
+        break;
+    case "DIE_MUSIC_KAJAPON_PROFESSIONALMD_M":
+        ok = sx_kajapon_professionalmd_m_build(c);
+        break;
+    case "DIE_MUSIC_PACKEN_MUAP98_OBJECT":
+        ok = sx_packen_muap98_object_build(c);
+        break;
+    case "DIE_MUSIC_SPP_BENITRACKERADLIB_PIS":
+        ok = sx_spp_benitrackeradlib_pis_build(c);
+        break;
+    case "DIE_MUSIC_KANEDA_MVSTRACKERSUITE_MUS":
+        ok = sx_kaneda_mvstrackersuite_mus_build(c);
+        break;
+    case "DIE_MUSIC_RESOLUTION_AXS":
+        ok = sx_resolution_axs_build(c);
+        break;
+    case "DIE_MUSIC_GNILK_BEAVERSWEEPER_GTK":
+        ok = sx_gnilk_beaversweeper_gtk_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!(c.count && sxpcm_finish(c));
+}
+function sx_pcmusic_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60940000 || id >= 0x60950000) {
+        return true;
+    }
+    if (id === sxpcm_defy_header.id && r.name === "instrument_last_index") {
+        return sxSetComment(r, "Stored instrument count minus one; the producer reserves a default instrument for each of nine channels.");
+    }
+    if (id === sxpcm_taylor_counts.id && r.name === "pattern_rows_minus_one") {
+        return sxSetComment(r, "Stored count minus one; add one for the corresponding row/order/pattern count.");
+    }
+    if (id === sxpcm_taylor_counts.id && r.name === "order_count_minus_one") {
+        return sxSetComment(r, "Stored count minus one; add one for the corresponding row/order/pattern count.");
+    }
+    if (id === sxpcm_taylor_counts.id && r.name === "pattern_count_minus_one") {
+        return sxSetComment(r, "Stored count minus one; add one for the corresponding row/order/pattern count.");
+    }
+    if (id === sxpcm_cybertracker_loop_start.id && r.name === "loop_point") {
+        return sxSetComment(r, "Zero-based envelope point index; 0xFF disables looping.");
+    }
+    if (id === sxpcm_cybertracker_x_low.id && r.name === "x_low") {
+        return sxSetComment(r, "Stored low byte plane of the envelope x coordinate; combine with the corresponding plane without changing source bytes.");
+    }
+    if (id === sxpcm_cybertracker_x_high.id && r.name === "x_high") {
+        return sxSetComment(r, "Stored high byte plane of the envelope x coordinate; combine with the corresponding plane without changing source bytes.");
+    }
+    if (id === sxpcm_cybertracker_y_low.id && r.name === "y_low") {
+        return sxSetComment(r, "Stored low byte plane of the envelope y coordinate; combine with the corresponding plane without changing source bytes.");
+    }
+    if (id === sxpcm_cybertracker_y_high.id && r.name === "y_high") {
+        return sxSetComment(r, "Stored high byte plane of the envelope y coordinate; combine with the corresponding plane without changing source bytes.");
+    }
+    if (id === sxpcm_cybertracker_pattern_length.id && r.name === "encoded_pattern_byte_length") {
+        return sxSetComment(r, "Number of saved pattern-memory bytes, as defined by the original Cybertracker1.01 format guide; not a row count.");
+    }
+    if (id === sxpcm_victracker_song.id && r.name === "last_step") {
+        return sxSetComment(r, "Inclusive last sequence step, not a count.");
+    }
+    if (id === sxpcm_victracker_song.id && r.name === "speed_flags") {
+        return sxSetComment(r, "Low six bits are initial speed; high two bits select loop, repeat or one-shot behavior.");
+    }
+    if (id === sxpcm_victracker_sequence_length.id && r.name === "last_row_index") {
+        return sxSetComment(r, "Inclusive last row index; the producer iterates rows zero through this value (maximum31).");
+    }
+    if (id === sxpcm_muap_header.id && r.name === "channel_offsets") {
+        return sxSetComment(r, "Seventeen stored module-relative byte offsets into channel bytecode; the original player supports FM, SSG, rhythm and expanded channels.");
+    }
+    if (id === sxpcm_pmd_memo_header.id && r.name === "driver_marker") {
+        return sxSetComment(r, "Version0x40 does not validate this byte; later supported versions require marker0xFE.");
+    }
+    if (id === sxpcm_pmd_header.id && r.name === "fm_channel_offsets") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_header.id && r.name === "ssg_channel_offsets") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_header.id && r.name === "adpcm_channel_offset") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_header.id && r.name === "rhythm_channel_offset") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_header.id && r.name === "rhythm_table_offset") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_program_pointer.id && r.name === "program_offset") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_memo_header.id && r.name === "memo_table_offset") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_pmd_memo_pointer.id && r.name === "string_offset") {
+        return sxSetComment(r, "Stored byte offset relative to module byte 1, immediately after target_mode; not relative to the field or absolute device origin.");
+    }
+    if (id === sxpcm_toast_synth.id && r.name === "event_offset") {
+        return sxSetComment(r, "Signed synthesizer parameter offset; this is not a byte offset into the source file.");
+    }
+    if (id === sxpcm_toast_synth.id && r.name === "note_offset") {
+        return sxSetComment(r, "Signed synthesizer parameter offset; this is not a byte offset into the source file.");
+    }
+    if (id === sxpcm_toast_synth.id && r.name === "volume_offset") {
+        return sxSetComment(r, "Signed synthesizer parameter offset; this is not a byte offset into the source file.");
+    }
+    if (id === sxpcm_toast_instrument.id && r.name === "name_storage") {
+        return sxSetComment(r, "Pascal shortstring stores up to24 bytes; name_length selects meaningful bytes and remaining storage is preserved.");
+    }
+    if (id === sxpcm_mvs_event.id && r.name === "octave_and_note") {
+        return sxSetComment(r, "Low nibble is serialized note code, high nibble the adjusted octave; C decrements the stored octave, and byte0 is blank.");
+    }
+    if (id === sxpcm_mvs_event.id && r.name === "instrument") {
+        return sxSetComment(r, "Physical0xFF represents the editor's absent-instrument sentinel (-1).");
+    }
+    if (id === sxpcm_axs_form.id && r.name === "form_byte_size") {
+        return sxSetComment(r, "Bytes following the8-byte FORM prefix, including theAXSF form type.");
+    }
+    if (id === sxpcm_axs_settings.id && r.name === "sync_flags") {
+        return sxSetComment(r, "Original AXS Check identifies0 as disabled and0x40 as enabled.");
+    }
+    if (id === sxpcm_axs_settings.id && r.name === "delay_fraction_code") {
+        return sxSetComment(r, "Original parser maps codes1..6 to quarter-note fractions1/4,1/3,2/4,2/3,3/4,4/4.");
+    }
+    if (id === sxpcm_axs_settings.id && r.name === "delay_5ms_units") {
+        return sxSetComment(r, "Stored delay in units of5milliseconds; physical value is not multiplied.");
+    }
+    if (id === sxpcm_axs_sequence.id && r.name === "disabled_channel_mask") {
+        return sxSetComment(r, "Original parser treats a set bit as channel disabled; sixteen channel bits, little-endian.");
+    }
+    if (id === sxpcm_beaver_sample_flags.id && r.name === "sample_flags") {
+        return sxSetComment(r, "Bit0 stores an embedded16-bit mono sample; bit1 enables looping and bit2 ping-pong looping.");
+    }
+    if (id === sxpcm_beaver_song_header.id && r.name === "sequence_tick_units") {
+        return sxSetComment(r, "Stored unit is sixteen sequence ticks; the original player computes def_seqtick=16*internal_seqtick.");
+    }
+    if (id === sxpcm_beaver_arpeggio_step.id && r.name === "note_indexes") {
+        return sxSetComment(r, "Indexes into the currently held-note list:0 is its first note and0xFF means no note; these are not voice indexes.");
+    }
+    if (r.property & 0x00000004) {
+        return sxSetComment(r, "Stored byte offset relative to the module start, unless the enclosing structure specifies another origin.");
+    }
+    if (r.property & 0x00000002) {
+        return sxSetComment(r, "Encoded target-machine memory address; the field source-file offset is shown separately.");
+    }
+    return true;
+}

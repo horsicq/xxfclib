@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/dkbs/xx_dkbs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_dkbs_header_fields = layout([chars("board_id", 32, NONE), field("unknown1", "byte[8]", 8),
+    chars("firmware_version", 32, NONE), field("unknown2", "byte[32]", 32), u32("payload_size", SIZE),
+    field("unknown3", "byte[4]", 4), chars("boot_device", 32, NONE), field("unknown4", "byte[16]", 16)]);
+var sx_fm_dkbs_header = sxLayout(0x60220003, "dkbs_header", FILE, sx_fm_dkbs_header_fields);
+function sx_dkbs_build(c) {
+    return sx_fm_add(c, sx_fm_dkbs_header, 0, 160);
+}

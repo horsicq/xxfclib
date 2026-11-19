@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/parallels_hdd/xx_parallels_hdd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_parallels_header_extended_fields = layout([field("magic", "byte[16]", 16, SIGNATURE), u32("version"),
+    u32("heads", COUNT), u32("cylinders", COUNT), u32("cluster_sectors", COUNT), u32("bat_entries", COUNT),
+    u64("sector_count", COUNT), u32("in_use", ID), u32("data_sector", ID), u32("flags", FLAGS), u64("extension_sector", ID)]);
+var sx_dm_parallels_header_extended = sxLayout(0x6029001E, "parallels_header_extended", LE, sx_dm_parallels_header_extended_fields);
+var sx_dm_parallels_header_old_fields = layout([field("magic", "byte[16]", 16, SIGNATURE), u32("version"), u32("heads", COUNT),
+    u32("cylinders", COUNT), u32("cluster_sectors", COUNT), u32("bat_entries", COUNT), u32("sector_count", COUNT),
+    u32("reserved_sector_count_high", RESERVED), u32("in_use", ID), u32("data_sector", ID), u32("flags", FLAGS),
+    u64("extension_sector", ID)]);
+var sx_dm_parallels_header_old = sxLayout(0x6029001F, "parallels_header_old", LE, sx_dm_parallels_header_old_fields);
+function sx_dm_parallels(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 64)) {
+        return false;
+    }
+    var ext = !sxMemcmp(h, "WithouFreSpacExt", 16);
+    if (!sx_dm_add(c, ext ? sx_dm_parallels_header_extended : sx_dm_parallels_header_old, 0, 64)) {
+        return false;
+    }
+    var n = sx_dm_u32(h, 32, false);
+    return !sx_dm_span(c, 64, n * 4) || sx_dm_table(c, ext ? sx_dm_parallels_bat_cluster : sx_dm_parallels_bat_sector, 64, 4, n);
+}
+function sx_parallels_hdd_build(c) {
+    return sx_dm_parallels(c);
+}

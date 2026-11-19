@@ -1,0 +1,86 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/creative_voc/xx_creative_voc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_voc_header_fields = layout([field("signature", "byte[20]", 20, SIGNATURE), u16("data_offset", OFFSET), u16("version"),
+    u16("version_checksum", CHECKSUM)]);
+var sx_st_voc_header = sxLayout(0x60080008, "voc_header", LE, sx_st_voc_header_fields);
+var sx_st_voc_block_fields = layout([u8("type", ID), field("payload_size", "uint24", 3, SIZE)]);
+var sx_st_voc_block = sxLayout(0x60080009, "voc_block", LE, sx_st_voc_block_fields);
+var sx_st_voc_terminator_fields = layout([u8("type", ID)]);
+var sx_st_voc_terminator = sxLayout(0x6008000A, "voc_terminator", LE, sx_st_voc_terminator_fields);
+var sx_st_voc_sound_fields = layout([u8("time_constant"), u8("codec", ID)]);
+var sx_st_voc_sound = sxLayout(0x6008000B, "voc_sound", LE, sx_st_voc_sound_fields);
+var sx_st_voc_silence_fields = layout([u16("sample_count_minus_one"), u8("time_constant")]);
+var sx_st_voc_silence = sxLayout(0x6008000C, "voc_silence", LE, sx_st_voc_silence_fields);
+var sx_st_voc_marker_fields = layout([u16("marker", ID)]);
+var sx_st_voc_marker = sxLayout(0x6008000D, "voc_marker", LE, sx_st_voc_marker_fields);
+var sx_st_voc_repeat_fields = layout([u16("repeat_count", COUNT)]);
+var sx_st_voc_repeat = sxLayout(0x6008000E, "voc_repeat", LE, sx_st_voc_repeat_fields);
+var sx_st_voc_sound_v2_fields = layout([u32("sample_rate"), u8("bits_per_sample"), u8("channels", COUNT), u16("codec", ID),
+    field("reserved", "byte[4]", 4, RESERVED)]);
+var sx_st_voc_sound_v2 = sxLayout(0x6008000F, "voc_sound_v2", LE, sx_st_voc_sound_v2_fields);
+function sx_st_voc(c) {
+    var offset;
+    var at;
+    if (!sx_add(c, sx_st_voc_header, 0, 26) || (offset = sx_u16(c, 20, false)) === null) {
+        return false;
+    }
+    at = offset;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var n;
+        var l = null;
+        var z = 0;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 1)) {
+            return false;
+        }
+        if (!h[0]) {
+            return sx_add(c, sx_st_voc_terminator, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1);
+        }
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 4) || !sx_add(c, sx_st_voc_block, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+            return false;
+        }
+        n = sxGetU24(h, 4, 1, false);
+        at += 4;
+        if (!sx_st_fits(c, at, n)) {
+            return false;
+        }
+        switch (h[0]) {
+        case 1:
+            l = sx_st_voc_sound;
+            z = 2;
+            break;
+        case 3:
+            l = sx_st_voc_silence;
+            z = 3;
+            break;
+        case 4:
+            l = sx_st_voc_marker;
+            z = 2;
+            break;
+        case 6:
+            l = sx_st_voc_repeat;
+            z = 2;
+            break;
+        case 9:
+            l = sx_st_voc_sound_v2;
+            z = 12;
+            break;
+        default:
+            break;
+        }
+        if (l !== null && (n < z || !sx_add(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), z))) {
+            return false;
+        }
+        at += n;
+    }
+    return false;
+}
+function sx_creative_voc_build(c) {
+    var ok = false;
+    ok = sx_st_voc(c);
+    return ok && sx_st_finish(c);
+}

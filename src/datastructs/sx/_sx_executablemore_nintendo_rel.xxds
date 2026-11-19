@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/nintendo_rel/xx_nintendo_rel_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_rel_header_fields = layout([u32("module_id", ID), u32("next_module_address", VA), u32("previous_module_address", VA),
+    u32("section_count", COUNT), u32("section_table_offset", OFFSET), u32("module_name_offset", OFFSET),
+    u32("module_name_size", SIZE), u32("version", ID), u32("bss_size", SIZE), u32("relocation_table_offset", OFFSET),
+    u32("import_table_offset", OFFSET), u32("import_table_size", SIZE), u8("prolog_section", ID), u8("epilog_section", ID),
+    u8("unresolved_section", ID), u8("bss_section", ID), u32("prolog_offset", OFFSET), u32("epilog_offset", OFFSET),
+    u32("unresolved_offset", OFFSET)]);
+var sxexm_rel_header = sxLayout(0x602B002C, "rel_header", BE, sxexm_rel_header_fields);
+var sxexm_rel_v2_extension_fields = layout([u32("section_alignment", SIZE), u32("bss_alignment", SIZE)]);
+var sxexm_rel_v2_extension = sxLayout(0x602B002D, "rel_v2_extension", BE, sxexm_rel_v2_extension_fields);
+var sxexm_rel_v3_extension_fields = layout([u32("section_alignment", SIZE), u32("bss_alignment", SIZE), u32("fix_size", SIZE)]);
+var sxexm_rel_v3_extension = sxLayout(0x602B002E, "rel_v3_extension", BE, sxexm_rel_v3_extension_fields);
+var sxexm_rel_section_fields = layout([u32("offset_and_executable", FLAGS), u32("section_size", SIZE)]);
+var sxexm_rel_section = sxLayout(0x602B002F, "rel_section", BE, sxexm_rel_section_fields);
+var sxexm_rel_import_fields = layout([u32("module_id", ID), u32("relocations_offset", OFFSET)]);
+var sxexm_rel_import = sxLayout(0x602B0030, "rel_import", BE, sxexm_rel_import_fields);
+var sxexm_rel_relocation_fields = layout([u16("offset_delta", OFFSET), u8("relocation_type", ID), u8("section", ID),
+    u32("addend")]);
+var sxexm_rel_relocation = sxLayout(0x602B0031, "rel_relocation", BE, sxexm_rel_relocation_fields);
+function sxexm_rel(c) {
+    var h = [];
+    if (!sxexm_read(c, 0, h, 64) || !sxexm_add(c, sxexm_rel_header, 0)) {
+        return false;
+    }
+    var v = sxexm32(h, 28, true);
+    var p = sxexm32(h, 40, true);
+    var n = Math.floor(sxexm32(h, 44, true) / 8);
+    if (!sxexm_table(c, sxexm_rel_section, sxexm32(h, 16, true), sxexm32(h, 12, true)) || !sxexm_table(c, sxexm_rel_import, p, n)) {
+        return false;
+    }
+    if ((v === 2 || v === 3) && sxexm_span(c, 64, v === 2 ? 8 : 12) && !sxexm_add(c, v === 2 ? sxexm_rel_v2_extension : sxexm_rel_v3_extension, 64)) {
+        return false;
+    }
+    if (n > 20000 || !sxexm_span(c, p, n * 8)) {
+        return true;
+    }
+    for (var i = 0; i < n && c.count < 20000; i++) {
+        var q = [0];
+        if (!sxexm_word(c, p + i * 8 + 4, 4, true, q) || !q[0]) {
+            continue;
+        }
+        for (var j = 0; j < 20000 && c.count < 20000; j++, q[0] += 8) {
+            var r = [];
+            if (!sxexm_read(c, q[0], r, 8) || !sxexm_free(c, q[0], 8)) {
+                break;
+            }
+            if (!sxexm_add(c, sxexm_rel_relocation, q[0])) {
+                return false;
+            }
+            if (r[2] === 203) {
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sx_nintendo_rel_build(c) {
+    var ok = false;
+    ok = sxexm_rel(c);
+    return ok && sxexm_finish(c);
+}

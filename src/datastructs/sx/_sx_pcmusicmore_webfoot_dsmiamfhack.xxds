@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/webfoot_dsmiamfhack/xx_webfoot_dsmiamfhack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcmore_webfoot_dmf_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version", ID), u8("sample_count", COUNT),
+    u8("order_count", COUNT), u16("logical_track_count", COUNT), u8("channel_count", COUNT)]);
+var sxpcmore_webfoot_dmf_header = sxLayout(0x60990002, "webfoot_dmf_header", LE, sxpcmore_webfoot_dmf_header_fields);
+var sxpcmore_webfoot_dmf_timing_fields = layout([u8("tempo_bpm"), u8("speed")]);
+var sxpcmore_webfoot_dmf_timing = sxLayout(0x60990004, "webfoot_dmf_timing", LE, sxpcmore_webfoot_dmf_timing_fields);
+var sxpcmore_webfoot_dmf_order_fields = layout([u16("row_count", COUNT)]);
+var sxpcmore_webfoot_dmf_order = sxLayout(0x60990005, "webfoot_dmf_order", LE, sxpcmore_webfoot_dmf_order_fields);
+function sxpcmore_u16(c, p, v) {
+    var b = [];
+    if (!sxpcmore_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxpcmore16(b, 0);
+    return true;
+}
+function sxpcmore_webfoot(c) {
+    var h = [];
+    if (!sxpcmore_read(c, 0, h, 9) || sxMemcmp(h, "DMF\x0E", 4)) {
+        return false;
+    }
+    if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_header, 0, 1)) {
+        return false;
+    }
+    var samples = h[4];
+    var orders = h[5];
+    var tracks = sxpcmore16(h, 6);
+    var channels = h[8];
+    var p = 9;
+    if (!channels || channels > 32) {
+        return true;
+    }
+    if (!sxpcmore_span(c, p, 34)) {
+        return true;
+    }
+    if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_panning, p, 1) || !sxpcmore_put(c, sxpcmore_webfoot_dmf_timing, p + 32, 1)) {
+        return false;
+    }
+    p += 34;
+    for (var i = 0; i < orders; i++) {
+        if (!sxpcmore_span(c, p, (2 + ((2 * channels) >>> 0)) >>> 0)) {
+            return true;
+        }
+        if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_order, p, 1) || !sxpcmore_put(c, sxpcmore_webfoot_dmf_track_reference, p + 2, channels)) {
+            return false;
+        }
+        p += (2 + ((2 * channels) >>> 0)) >>> 0;
+    }
+    if (!sxpcmore_span(c, p, (20 * samples) >>> 0)) {
+        return true;
+    }
+    if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_sample, p, samples)) {
+        return false;
+    }
+    p += (20 * samples) >>> 0;
+    if (!sxpcmore_span(c, p, (2 * tracks) >>> 0)) {
+        return true;
+    }
+    var highest = 0;
+    for (i = 0; i < tracks; i++) {
+        var n = [0];
+        if (!sxpcmore_u16(c, p + ((2 * i) >>> 0), n)) {
+            return false;
+        }
+        if (n[0] > highest) {
+            highest = n[0];
+        }
+    }
+    if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_track_map, p, tracks)) {
+        return false;
+    }
+    p += (2 * tracks) >>> 0;
+    for (i = 0; i < highest; i++) {
+        var b = [];
+        if (!sxpcmore_read(c, p, b, 3)) {
+            return true;
+        }
+        if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_track, p, 1)) {
+            return false;
+        }
+        p += 3;
+        n = [sxpcmore16(b, 0)];
+        if (!sxpcmore_span(c, p, 3 * n[0])) {
+            return true;
+        }
+        if (!sxpcmore_put(c, sxpcmore_webfoot_dmf_event, p, n[0])) {
+            return false;
+        }
+        p += 3 * n[0];
+    }
+    return true;
+}
+function sx_webfoot_dsmiamfhack_build(c) {
+    var ok = false;
+    ok = sxpcmore_webfoot(c);
+    return !!(c.count && sxpcmore_finish(c));
+}

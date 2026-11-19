@@ -1,0 +1,328 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_legacy.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_wii_lz77_header_fields = layout([u8("method", ID), field("original_size", "uint24", 3, SIZE)]);
+var sxl_wii_lz77_header = sxLayout(0x600A0005, "wii_lz77_header", LE, sxl_wii_lz77_header_fields);
+var sxl_squeeze_tree_node_fields = layout([i16("zero_child"), i16("one_child")]);
+var sxl_squeeze_tree_node = sxLayout(0x600A000B, "squeeze_tree_node", LE, sxl_squeeze_tree_node_fields);
+var sxl_filename_byte_fields = layout([chars("character", 1, STRING)]);
+var sxl_filename_byte = sxLayout(0x600A000C, "filename_byte", LE, sxl_filename_byte_fields);
+var sxl_logitech_header_fields = layout([blob("signature", 2, SIGNATURE), chars("missing_filename_character", 1, STRING),
+    u8("unknown"), u32("original_size", SIZE)]);
+var sxl_logitech_header = sxLayout(0x600A000F, "logitech_header", LE, sxl_logitech_header_fields);
+var sxl_dma_packed_header_fields = layout([blob("signature", 4, SIGNATURE), chars("filename", 14, STRING),
+    u32("original_size", SIZE), u16("dos_date"), u16("dos_time"), blob("pack_tag", 6, SIGNATURE), u16("version")]);
+var sxl_dma_packed_header = sxLayout(0x600A0010, "dma_packed_header", LE, sxl_dma_packed_header_fields);
+var sxl_dcl_header_fields = layout([u8("literal_coding", ID), u8("dictionary_bits")]);
+var sxl_dcl_header = sxLayout(0x600A0011, "dcl_header", LE, sxl_dcl_header_fields);
+var sxl_gas_huff_header_fields = layout([u32("original_size", SIZE), u16("node_count_minus_one"), u16("root_index", ID)]);
+var sxl_gas_huff_header = sxLayout(0x600A0012, "gas_huff_header", LE, sxl_gas_huff_header_fields);
+var sxl_legacy_frame_header_fields = layout([u32("signature", SIGNATURE), u8("flags", FLAGS), u8("block_descriptor", FLAGS),
+    u64("content_size", SIZE), u8("header_checksum", CHECKSUM)]);
+var sxl_legacy_frame_header = sxLayout(0x600A001B, "legacy_frame_header", LE, sxl_legacy_frame_header_fields);
+var sxl_legacy_frame_block_fields = layout([u32("size_and_flags", FLAGS)]);
+var sxl_legacy_frame_block = sxLayout(0x600A001C, "legacy_frame_block", LE, sxl_legacy_frame_block_fields);
+var sxl_legacy_frame_skip_fields = layout([u32("signature", SIGNATURE), u32("content_size", SIZE)]);
+var sxl_legacy_frame_skip = sxLayout(0x600A001D, "legacy_frame_skip", LE, sxl_legacy_frame_skip_fields);
+var sxl_legacy_frame_checksum_fields = layout([u32("xxhash32", CHECKSUM)]);
+var sxl_legacy_frame_checksum = sxLayout(0x600A001E, "legacy_frame_checksum", LE, sxl_legacy_frame_checksum_fields);
+var sxl_qm_block_fields = layout([u8("tag", ID), u32("content_size", SIZE)]);
+var sxl_qm_block = sxLayout(0x600A0028, "qm_block", BE, sxl_qm_block_fields);
+var sxl_qm_message_field_fields = layout([u8("tag", ID), u32("content_size", SIZE)]);
+var sxl_qm_message_field = sxLayout(0x600A002A, "qm_message_field", BE, sxl_qm_message_field_fields);
+var sxl_qm_message_end_fields = layout([u8("tag", ID)]);
+var sxl_qm_message_end = sxLayout(0x600A002B, "qm_message_end", BE, sxl_qm_message_end_fields);
+var sxl_qm_message_obsolete_fields = layout([u8("tag", ID), u32("obsolete_value")]);
+var sxl_qm_message_obsolete = sxLayout(0x600A002C, "qm_message_obsolete", BE, sxl_qm_message_obsolete_fields);
+var sxl_pef_header_fields = layout([blob("tag1", 4, SIGNATURE), blob("tag2", 4, SIGNATURE), chars("architecture", 4, ID),
+    u32("format_version"), u32("created_mac_epoch"), u32("old_definition_version"), u32("old_implementation_version"),
+    u32("current_version"), u16("section_count", COUNT), u16("instantiated_count", COUNT), u32("reserved", RESERVED)]);
+var sxl_pef_header = sxLayout(0x600A002F, "pef_header", BE, sxl_pef_header_fields);
+var sxl_pef_section_fields = layout([i32("name_offset", OFFSET), u32("default_address", VA), u32("total_size", SIZE),
+    u32("unpacked_size", SIZE), u32("packed_size", SIZE), u32("container_offset", OFFSET), u8("section_kind", ID),
+    u8("share_kind", ID), u8("alignment"), u8("reserved", RESERVED)]);
+var sxl_pef_section = sxLayout(0x600A0030, "pef_section", BE, sxl_pef_section_fields);
+var sxl_pef_loader_fields = layout([i32("main_section", ID), u32("main_offset", OFFSET), i32("init_section", ID),
+    u32("init_offset", OFFSET), i32("term_section", ID), u32("term_offset", OFFSET), u32("imported_library_count", COUNT),
+    u32("imported_symbol_count", COUNT), u32("relocation_section_count", COUNT), u32("relocation_offset", OFFSET),
+    u32("strings_offset", OFFSET), u32("export_hash_offset", OFFSET), u32("export_hash_power"),
+    u32("exported_symbol_count", COUNT)]);
+var sxl_pef_loader = sxLayout(0x600A0031, "pef_loader", BE, sxl_pef_loader_fields);
+var sxl_arcfs_directory_fields = layout([u8("method", ID), chars("filename", 11, STRING), u32("original_size", SIZE),
+    u32("load_address"), u32("execution_address"), u32("attributes", FLAGS), u32("packed_size", SIZE),
+    u32("offset_and_flags", FLAGS)]);
+var sxl_arcfs_directory = sxLayout(0x600A0036, "arcfs_directory", LE, sxl_arcfs_directory_fields);
+function sxl_span(c, o, n) {
+    return o <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - o);
+}
+function sxl_sig(c, o, s, n) {
+    var b = [];
+    return n <= 64 && sx_read(c, o, b, n) && !sxMemcmp(b, s, n);
+}
+function sxl_byte(c, o, v) {
+    return sx_read(c, o, v, 1);
+}
+function sxl_name(c, off, limit, next) {
+    var at = off;
+    var b = [0];
+    while (at < limit) {
+        if (!sxl_byte(c, at++, b)) {
+            return false;
+        }
+        if (!b[0]) {
+            next[0] = at;
+            return sx_table(c, sxl_filename_byte, off, 1, (at - off < 0 ? at - off + SX_U64_MAX : at - off));
+        }
+    }
+    return false;
+}
+function sxl_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var gap = Math.floor(n / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < n; i++) {
+            var item = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > item.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, item);
+        }
+    }
+    for (i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        var total = c.items[i].total_size;
+        if (off < end || !sxl_span(c, (off < 0 ? off + SX_U64_MAX : off), (total < 0 ? total + SX_U64_MAX : total)) || !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        end = off + total;
+    }
+    if (!sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    for (gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (i = gap; i < c.count; i++) {
+            item = sxCopy_xx_data_struct(null, c.items[i]);
+            j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > item.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, item);
+        }
+    }
+    return true;
+}
+function sxl_dcl(c, dma) {
+    var at = dma ? 34 : 8;
+    var h = [];
+    var n;
+    if (dma) {
+        if (!sxl_sig(c, 0, "dm\x10\x11", 4) || !sxl_sig(c, 26, "PAKPAK\x00*", 8) || (n = sx_u32(c, 18, false)) === null || !sx_add(c, sxl_dma_packed_header, 0, 34)) {
+            return false;
+        }
+    } else if (!sxl_sig(c, 0, "\xDA\xFA", 2) || (n = sx_u32(c, 4, false)) === null || !sx_add(c, sxl_logitech_header, 0, 8)) {
+        return false;
+    }
+    return !!(n && sx_read(c, at, h, 2) && h[0] <= 1 && h[1] >= 4 && h[1] <= 6 && sx_add(c, sxl_dcl_header, at, 2) && sxl_span(c, (at + 2 < 0 ? at + 2 + SX_U64_MAX : at + 2), 1));
+}
+function sxl_frame(c, expected) {
+    var at = 0;
+    var any = false;
+    while (at < c.size) {
+        var magic;
+        var n;
+        var h = [];
+        var maximum;
+        if ((magic = sx_u32(c, at, false)) === null) {
+            return false;
+        }
+        if ((magic & 0xFFFFFFF0) >>> 0 === 0x184D2A50) {
+            if ((n = sx_u32(c, at + 4, false)) === null || !sxl_span(c, (at + 8 < 0 ? at + 8 + SX_U64_MAX : at + 8), n) || !sx_add(c, sxl_legacy_frame_skip, at, 8)) {
+                return false;
+            }
+            at += 8 + n;
+            continue;
+        }
+        if (magic !== expected || !sx_read(c, at + 4, h, 2) || h[0] >> 6 !== 1 || h[0] & 3 || !(h[0] & 8) || h[1] & 0x8F || h[1] >> 4 < 4 || h[1] >> 4 > 7 || !sx_add(c, sxl_legacy_frame_header, at, 15)) {
+            return false;
+        }
+        maximum = sxShl64(1, 8 + 2 * (h[1] >> 4));
+        at += 15;
+        any = true;
+        for (; ; ) {
+            if ((n = sx_u32(c, at, false)) === null || !sx_add(c, sxl_legacy_frame_block, at, 4)) {
+                return false;
+            }
+            at += 4;
+            if (!n) {
+                break;
+            }
+            var size = n & 0x7FFFFFFF;
+            if (!size || size > maximum || !sxl_span(c, (at < 0 ? at + SX_U64_MAX : at), size)) {
+                return false;
+            }
+            at += size;
+            if (h[0] & 16) {
+                if (!sx_add(c, sxl_legacy_frame_checksum, at, 4)) {
+                    return false;
+                }
+                at += 4;
+            }
+        }
+        if (h[0] & 4) {
+            if (!sx_add(c, sxl_legacy_frame_checksum, at, 4)) {
+                return false;
+            }
+            at += 4;
+        }
+    }
+    return any;
+}
+function sx_legacy_supports(t) {
+    switch (t) {
+    case "MS_COMPRESS":
+    case "ASH0":
+    case "WII_LZ77":
+    case "LZV1":
+    case "ORACLE_SQUEEZE":
+    case "SOFTRONICS":
+    case "LOGITECH_COMPRESS":
+    case "DMA_PACKED":
+    case "GAS_HUFF":
+    case "HUF":
+    case "LZDIET":
+    case "LZPIS2":
+    case "LZ5":
+    case "LIZARD":
+    case "RNC":
+    case "GNU_GETTEXT_MO":
+    case "QT_QM":
+    case "ATARIST":
+    case "PEF":
+    case "ARTIPACK":
+    case "ARCFS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_legacy_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "MS_COMPRESS":
+        ok = sx_mscompress_build(c);
+        break;
+    case "WII_LZ77":
+        ok = sx_wiilz77_build(c);
+        break;
+    case "ASH0":
+        ok = sx_ash0_build(c);
+        break;
+    case "LZV1":
+        ok = sx_lzv1_build(c);
+        break;
+    case "ORACLE_SQUEEZE":
+        ok = sx_oraclesqueeze_build(c);
+        break;
+    case "SOFTRONICS":
+        ok = sx_softronics_build(c);
+        break;
+    case "LOGITECH_COMPRESS":
+    case "DMA_PACKED":
+        ok = sxl_dcl(c, c.f.file_type === "DMA_PACKED");
+        break;
+    case "GAS_HUFF":
+        ok = sx_gashuff_build(c);
+        break;
+    case "HUF":
+        ok = sx_huf_build(c);
+        break;
+    case "LZDIET":
+        ok = sx_lzdiet_build(c);
+        break;
+    case "LZPIS2":
+        ok = sx_lzpis2_build(c);
+        break;
+    case "LZ5":
+    case "LIZARD":
+        ok = sxl_frame(c, c.f.file_type === "LZ5" ? 0x184D2205 : 0x184D2206);
+        break;
+    case "RNC":
+        ok = sx_rnc_build(c);
+        break;
+    case "GNU_GETTEXT_MO":
+        ok = sx_ue2_documents_schema_build(c);
+        break;
+    case "QT_QM":
+        ok = sx_ue2_documents_schema_build(c);
+        break;
+    case "ATARIST":
+        ok = sx_atarist_build(c);
+        break;
+    case "PEF":
+        ok = sx_pef_build(c);
+        break;
+    case "ARTIPACK":
+        ok = sx_artipack_build(c);
+        break;
+    case "ARCFS":
+        ok = sx_arcfs_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxl_finish(c);
+}
+function sx_legacy_comment(r, id) {
+    if (r === null || r.name === null || id < 0x600A0000 || id >= 0x600B0000) {
+        return true;
+    }
+    var n = r.name;
+    var s = null;
+    var v = sxVarU64(r.value);
+    if (!sxStrcmp(n, "dos_date")) {
+        s = "Packed MS-DOS date: year since 1980, month, day";
+    } else if (!sxStrcmp(n, "dos_time")) {
+        s = "Packed MS-DOS time: hours, minutes, two-second units";
+    } else if (id === sxl_dcl_header.id) {
+        if (!sxStrcmp(n, "literal_coding")) {
+            s = v ? "Huffman literals" : "Raw literals";
+        } else {
+            s = "Dictionary size is 64 times 2 to this power, in bytes";
+        }
+    } else if (id === sxl_wii_lz77_header.id && !sxStrcmp(n, "method")) {
+        s = v === 16 ? "Nintendo LZ10" : v === 17 ? "Nintendo LZ11" : null;
+    } else if (id === sxl_squeeze_tree_node.id) {
+        s = "Nonnegative: node index; negative: -symbol-1; -257 is end of stream";
+    } else if (id === sxl_gas_huff_header.id && !sxStrcmp(n, "node_count_minus_one")) {
+        s = "Physical tree record count is this value plus one";
+    } else if (id === sxl_legacy_frame_block.id) {
+        s = !v ? "End mark" : sxAnd64(v, 0x80000000) ? "Uncompressed block; low 31 bits are byte size" : "Compressed block byte size";
+    } else if (id === sxl_legacy_frame_header.id && !sxStrcmp(n, "block_descriptor")) {
+        s = "Bits 4..6 select maximum block size; remaining bits reserved";
+    } else if (id === sxl_qm_block.id && !sxStrcmp(n, "tag")) {
+        s = v === 0x42 ? "Hashes" : v === 0x69 ? "Messages" : v === 0xA7 ? "Language" : v === 0x2F ? "Contexts" : v === 0x88 ? "Numerus rules" : v === 0x96 ? "Dependencies" : null;
+    } else if ((id === sxl_qm_message_field.id || id === sxl_qm_message_end.id || id === sxl_qm_message_obsolete.id) && !sxStrcmp(n, "tag")) {
+        s = v === 1 ? "End" : v === 2 ? "SourceText16" : v === 3 ? "Translation" : v === 4 ? "Context16" : v === 5 ? "Obsolete1" : v === 6 ? "SourceText" : v === 7 ? "Context" : v === 8 ? "Comment" : v === 9 ? "Obsolete2" : null;
+    } else if (id === sxl_qm_message_field.id && !sxStrcmp(n, "content_size") && v === 4294967295) {
+        s = "Null byte array; no payload bytes";
+    } else if (id === sxl_pef_section.id && !sxStrcmp(n, "alignment")) {
+        s = "log2(alignment in bytes)";
+    } else if (id === sxl_pef_section.id && !sxStrcmp(n, "name_offset") && sxVarI64(r.value) === -1) {
+        s = "No section name";
+    } else if (id === sxl_pef_header.id && !sxStrcmp(n, "created_mac_epoch")) {
+        s = "Seconds since 1904-01-01";
+    } else if (id === sxl_pef_loader.id && !sxStrcmp(n, "export_hash_power")) {
+        s = "log2(number of export hash slots)";
+    } else if (id === sxl_arcfs_directory.id && !sxStrcmp(n, "offset_and_flags")) {
+        s = "Bit 31: directory; low 31 bits: data-relative byte offset or directory-header offset";
+    } else if (id === sxl_arcfs_directory.id && (!sxStrcmp(n, "load_address") || !sxStrcmp(n, "execution_address"))) {
+        s = "RISC OS load/exec address, or packed filetype and centisecond timestamp";
+    }
+    return s === null || sxSetComment(r, s);
+}

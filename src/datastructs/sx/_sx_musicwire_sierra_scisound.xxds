@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/sierra_scisound/xx_sierra_scisound_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_sci0_header_fields = layout([u8("resource_type", ID), u8("resource_header_size", SIZE),
+    u8("digital_sample_flag", FLAGS)]);
+var sxmw_sci0_header = sxLayout(0x60870038, "sci0_header", LE, sxmw_sci0_header_fields);
+var sxmw_sci0_channel_fields = layout([u8("channel_enabled", FLAGS), u8("initial_instrument", ID)]);
+var sxmw_sci0_channel = sxLayout(0x60870039, "sci0_channel", LE, sxmw_sci0_channel_fields);
+var sxmw_sci1_header_fields = layout([u8("resource_type", ID), u8("resource_header_size", SIZE), u8("version_marker", ID),
+    blob("opaque", 9)]);
+var sxmw_sci1_header = sxLayout(0x6087003A, "sci1_header", LE, sxmw_sci1_header_fields);
+var sxmw_sci1_section_end_fields = layout([blob("unknown", 2)]);
+var sxmw_sci1_section_end = sxLayout(0x6087003C, "sci1_section_end", LE, sxmw_sci1_section_end_fields);
+function sxmw_sci(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var x = [0];
+    if (!sxmw_eq(v, 0, "\x84\x00", 2, end) || !sxmw_u(v, 2, 1, x, 0, end)) {
+        return false;
+    }
+    if (x[0] !== 0xF0) {
+        return sxmw_take(v, sxmw_sci0_header, p, 1, end) && sxmw_take(v, sxmw_sci0_channel, p, 16, end);
+    }
+    if (!sxmw_take(v, sxmw_sci1_header, p, 1, end)) {
+        return false;
+    }
+    for (var section = 0; section < 256; section++) {
+        for (var track = 0; track < 16; track++) {
+            var at = [0];
+            if (!sxmw_u(v, p[0] + 1, 2, at, 0, end) || !sxmw_span(v, 4, at[0], end) || !sxmw_u(v, p[0] + 5, 1, x, 0, end) || !sxmw_take(v, sxmw_sci1_track, p, 1, end)) {
+                return false;
+            }
+            if (x[0] === 255) {
+                break;
+            }
+            if (track === 15) {
+                return false;
+            }
+        }
+        if (!sxmw_u(v, p[0], 1, x, 0, end) || !sxmw_take(v, sxmw_sci1_section_end, p, 1, end)) {
+            return false;
+        }
+        if (x[0] === 255) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_sierra_scisound_build(v) {
+    return sxmw_sci(v);
+}

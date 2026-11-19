@@ -1,0 +1,118 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/fontforge_sfd/xx_fontforge_sfd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_glyph_index_fields = layout([field("glyph_index", "ascii_signed", 0)]);
+var sxmt_glyph_index = sxLayout(0x60520029, "modeltext_glyph_index", LE, sxmt_glyph_index_fields);
+var sxmt_curve_flags_fields = layout([field("curve_flags", "ascii_signed", 0)]);
+var sxmt_curve_flags = sxLayout(0x60520038, "modeltext_curve_flags", LE, sxmt_curve_flags_fields);
+function sxmt_sfd(q) {
+    var a = [0];
+    var e = [0];
+    var k = [0];
+    var z = [0];
+    var glyph = false;
+    var curve = false;
+    while (sxmt_line(q, a, e, false)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var next = q.p;
+        q.p = a[0];
+        if (!sxmt_token(q, e[0], k, z, false)) {
+            return false;
+        }
+        var numeric = q.b[k[0]] >= 48 /*0*/ && q.b[k[0]] <= 57 /*9*/ || q.b[k[0]] === 45 /*-*/ || q.b[k[0]] === 43 /*+*/ || q.b[k[0]] === 46 /*.*/;
+        if (curve && numeric) {
+            q.p = a[0];
+            var i = 0;
+            while (sxmt_token(q, e[0], a, z, false)) {
+                var command = z[0] === 1 && (q.b[a[0]] === 109 /*m*/ || q.b[a[0]] === 108 /*l*/ || q.b[a[0]] === 99 /*c*/);
+                if (command) {
+                    {
+                        if (!sxmt_emit(q, sxmt_keyword, a[0], z[0])) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxmt_value(q, sxmt_curve_flags, e[0], null)) {
+                            return false;
+                        }
+                    }
+                    break;
+                }
+                if (i++ >= 6 || !sxmt_emit(q, i % 2 ? sxmt_x : sxmt_y, a[0], z[0])) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxmt_emit(q, sxmt_keyword, k[0], z[0])) {
+                    return false;
+                }
+            }
+            if (sxmt_eq(q, k[0], z[0], "StartChar:")) {
+                glyph = true;
+                if (!sxmt_remainder(q, sxmt_glyph_name, e[0])) {
+                    return false;
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "EndChar")) {
+                glyph = false;
+                curve = false;
+            } else if (sxmt_eq(q, k[0], z[0], "Fore")) {
+                curve = true;
+            } else if (sxmt_eq(q, k[0], z[0], "EndSplineSet")) {
+                curve = false;
+            } else if (sxmt_eq(q, k[0], z[0], "BeginChars:")) {
+                {
+                    if (!sxmt_value(q, sxmt_property_total, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_glyph_count, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (glyph && sxmt_eq(q, k[0], z[0], "Encoding:")) {
+                {
+                    if (!sxmt_value(q, sxmt_glyph_index, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_codepoint, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "SplineFontDB:")) {
+                {
+                    if (!sxmt_value(q, sxmt_version, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "Ascent:") || sxmt_eq(q, k[0], z[0], "Descent:") || sxmt_eq(q, k[0], z[0], "DisplaySize:") || sxmt_eq(q, k[0], z[0], "Width:") || sxmt_eq(q, k[0], z[0], "VWidth:") || sxmt_eq(q, k[0], z[0], "NeedsXUIDChange:") || sxmt_eq(q, k[0], z[0], "AntiAlias:")) {
+                {
+                    if (!sxmt_value(q, sxmt_integer_value, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "ItalicAngle:") || sxmt_eq(q, k[0], z[0], "UnderlinePosition:") || sxmt_eq(q, k[0], z[0], "UnderlineWidth:")) {
+                {
+                    if (!sxmt_value(q, sxmt_font_metric, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (!sxmt_remainder(q, sxmt_string_value, e[0])) {
+                return false;
+            }
+        }
+        q.p = next;
+    }
+    return true;
+}
+function sx_fontforge_sfd_build(q) {
+    return sxmt_sfd(q);
+}

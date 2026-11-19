@@ -1,0 +1,426 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_storage.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_caf_chunk_fields = layout([chars("type", 4, STRING), i64("size")]);
+var sx_st_caf_chunk = sxLayout(0x60080004, "caf_chunk", BE, sx_st_caf_chunk_fields);
+var sx_st_ivf_frame_fields = layout([u32("size", SIZE), u64("timestamp")]);
+var sx_st_ivf_frame = sxLayout(0x6008002A, "ivf_frame", LE, sx_st_ivf_frame_fields);
+var sx_st_qcow1_header_fields = layout([u32("magic", SIGNATURE), u32("version"), u64("backing_file_offset", OFFSET),
+    u32("backing_file_size", SIZE), u32("mtime", TIMESTAMP), u64("virtual_size", SIZE), u8("cluster_bits"), u8("l2_bits"),
+    u16("padding", RESERVED), u32("crypt_method", ID), u64("l1_table_offset", OFFSET)]);
+var sx_st_qcow1_header = sxLayout(0x60080049, "qcow1_header", BE, sx_st_qcow1_header_fields);
+var sx_st_qcow2_header_fields = layout([u32("magic", SIGNATURE), u32("version"), u64("backing_file_offset", OFFSET),
+    u32("backing_file_size", SIZE), u32("cluster_bits"), u64("virtual_size", SIZE), u32("crypt_method", ID),
+    u32("l1_size", COUNT), u64("l1_table_offset", OFFSET), u64("refcount_table_offset", OFFSET),
+    u32("refcount_table_clusters", COUNT), u32("snapshot_count", COUNT), u64("snapshots_offset", OFFSET)]);
+var sx_st_qcow2_header = sxLayout(0x6008004A, "qcow2_header", BE, sx_st_qcow2_header_fields);
+var sx_st_qcow3_header_fields = layout([u32("magic", SIGNATURE), u32("version"), u64("backing_file_offset", OFFSET),
+    u32("backing_file_size", SIZE), u32("cluster_bits"), u64("virtual_size", SIZE), u32("crypt_method", ID),
+    u32("l1_size", COUNT), u64("l1_table_offset", OFFSET), u64("refcount_table_offset", OFFSET),
+    u32("refcount_table_clusters", COUNT), u32("snapshot_count", COUNT), u64("snapshots_offset", OFFSET),
+    u64("incompatible_features", FLAGS), u64("compatible_features", FLAGS), u64("autoclear_features", FLAGS),
+    u32("refcount_order"), u32("header_length", SIZE)]);
+var sx_st_qcow3_header = sxLayout(0x6008004B, "qcow3_header", BE, sx_st_qcow3_header_fields);
+var sx_st_qcow_compression_fields = layout([u8("compression_type", ID)]);
+var sx_st_qcow_compression = sxLayout(0x6008004C, "qcow_compression", BE, sx_st_qcow_compression_fields);
+var sx_st_qcow_extension_fields = layout([u32("type", ID), u32("length", SIZE)]);
+var sx_st_qcow_extension = sxLayout(0x6008004D, "qcow_extension", BE, sx_st_qcow_extension_fields);
+var sx_st_qcow_crypto_extension_fields = layout([u64("header_offset", OFFSET), u64("header_size", SIZE)]);
+var sx_st_qcow_crypto_extension = sxLayout(0x6008004E, "qcow_crypto_extension", BE, sx_st_qcow_crypto_extension_fields);
+var sx_st_qcow_l1_entry_fields = layout([u64("offset_and_flags", OFFSET)]);
+var sx_st_qcow_l1_entry = sxLayout(0x6008004F, "qcow_l1_entry", BE, sx_st_qcow_l1_entry_fields);
+var sx_st_qcow_l2_entry_fields = layout([u64("offset_and_flags", OFFSET)]);
+var sx_st_qcow_l2_entry = sxLayout(0x60080050, "qcow_l2_entry", BE, sx_st_qcow_l2_entry_fields);
+var sx_st_qcow_l2_extended_fields = layout([u64("offset_and_flags", OFFSET), u32("subcluster_zero_bitmap", FLAGS),
+    u32("subcluster_allocation_bitmap", FLAGS)]);
+var sx_st_qcow_l2_extended = sxLayout(0x60080051, "qcow_l2_extended", BE, sx_st_qcow_l2_extended_fields);
+var sx_st_qcow1_l1_entry_fields = layout([u64("l2_table_offset", OFFSET)]);
+var sx_st_qcow1_l1_entry = sxLayout(0x60080052, "qcow1_l1_entry", BE, sx_st_qcow1_l1_entry_fields);
+var sx_st_qcow1_l2_entry_fields = layout([u64("offset_and_compressed_flag", OFFSET)]);
+var sx_st_qcow1_l2_entry = sxLayout(0x60080053, "qcow1_l2_entry", BE, sx_st_qcow1_l2_entry_fields);
+var sx_st_qcow_refcount_pointer_fields = layout([u64("block_offset", OFFSET)]);
+var sx_st_qcow_refcount_pointer = sxLayout(0x60080054, "qcow_refcount_pointer", BE, sx_st_qcow_refcount_pointer_fields);
+var sx_st_qcow_snapshot_fields = layout([u64("l1_table_offset", OFFSET), u32("l1_size", COUNT), u16("id_string_size", SIZE),
+    u16("name_size", SIZE), u32("date_seconds", TIMESTAMP), u32("date_nanoseconds"), u64("vm_clock_nanoseconds"),
+    u32("vm_state_size", SIZE), u32("extra_data_size", SIZE)]);
+var sx_st_qcow_snapshot = sxLayout(0x60080055, "qcow_snapshot", BE, sx_st_qcow_snapshot_fields);
+var sx_st_luks1_header_fields = layout([field("magic", "byte[6]", 6, SIGNATURE), u16("version"),
+    chars("cipher_name", 32, STRING), chars("cipher_mode", 32, STRING), chars("hash_spec", 32, STRING),
+    u32("payload_sector", OFFSET), u32("key_bytes", SIZE), field("master_key_digest", "byte[20]", 20, CHECKSUM),
+    field("master_key_salt", "byte[32]", 32), u32("master_key_iterations", COUNT), chars("uuid", 40, STRING)]);
+var sx_st_luks1_header = sxLayout(0x60080056, "luks1_header", BE, sx_st_luks1_header_fields);
+var sx_st_luks1_keyslot_fields = layout([u32("active", ID), u32("iterations", COUNT), field("salt", "byte[32]", 32),
+    u32("key_material_sector", OFFSET), u32("stripes", COUNT)]);
+var sx_st_luks1_keyslot = sxLayout(0x60080057, "luks1_keyslot", BE, sx_st_luks1_keyslot_fields);
+var sx_st_cramfs_inode_be_fields = layout([u32("mode_uid", FLAGS), u32("size_gid"), u32("name_length_and_offset", OFFSET)]);
+var sx_st_cramfs_inode_be = sxLayout(0x6008005F, "cramfs_inode_be", BE, sx_st_cramfs_inode_be_fields);
+function sx_storage_supports(t) {
+    switch (t) {
+    case "MIDI":
+    case "CAF":
+    case "CREATIVE_VOC":
+    case "SONY_VAG":
+    case "SONY_PSF":
+    case "AUDIO_DSF":
+    case "AUDIO_DFF":
+    case "AUDIO_WAVE64":
+    case "AUDIO_ADX":
+    case "AUDIO_WAVPACK":
+    case "IVF":
+    case "IDTECH_ROQ":
+    case "FLASH_VIDEO_FLV":
+    case "RAD_BINK":
+    case "RAD_SMACKER":
+    case "AUTODESK_FLIC":
+    case "QCOW":
+    case "QCOW1":
+    case "LUKS":
+    case "ROMFS":
+    case "CRAMFS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_st_fits(c, o, n) {
+    return c !== null && c.size >= 0 && o <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - o);
+}
+function sx_st_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var item = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > item.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, item);
+        }
+    }
+}
+function sx_st_finish(c) {
+    var end = 0;
+    var n = c.count;
+    sx_st_sort(c);
+    for (var i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        if (off < end) {
+            return false;
+        }
+        if (off > end && !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        end = off + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sx_st_sort(c);
+    return !c.failed;
+}
+function sx_st_free(c, o, n) {
+    if (!sx_st_fits(c, o, n) || c.count >= 20000) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var x = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (o < x + z && x < o + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_st_qcow_l1(c, at, count, bits, l2bits, v1, extended) {
+    var l2bytes = sxShl64(8, l2bits);
+    if (count > 1048576 || !v1 && sxAnd64(at, sxU64(sxShl64(1, bits) - 1)) || !sx_st_free(c, at, count * 8)) {
+        return true;
+    }
+    if (!sx_table(c, v1 ? sx_st_qcow1_l1_entry : sx_st_qcow_l1_entry, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8, count)) {
+        return false;
+    }
+    for (var j = 0; j < count && j < 8192; j++) {
+        var entry;
+        if ((entry = sx_u64(c, (at + j * 8 >= SX_I64_MAX ? at + j * 8 - SX_U64_MAX : at + j * 8), true)) === null) {
+            return false;
+        }
+        var p = v1 ? entry : sxAnd64(entry, sxK(0xFFFFFF, 0xFFFFFE00));
+        var bytes = v1 ? l2bytes : sxShl64(1, bits);
+        if (!p || !sx_st_free(c, p, bytes)) {
+            continue;
+        }
+        if (!sx_table(c, v1 ? sx_st_qcow1_l2_entry : extended ? sx_st_qcow_l2_extended : sx_st_qcow_l2_entry, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), extended ? 16 : 8, Math.floor(bytes / (extended ? 16 : 8)))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_st_qcow(c, v1) {
+    var h = [];
+    var version;
+    var bits;
+    var l2bits;
+    var l1count = 0;
+    var l1;
+    var size;
+    var cluster;
+    var extended = false;
+    if (!sx_read(c, 0, h, v1 ? 48 : 72)) {
+        return false;
+    }
+    version = sxGetU32(h, 104, 4, true);
+    size = sxGetU64(h, 104, 24, true);
+    if (v1) {
+        bits = h[32];
+        l2bits = h[33];
+        l1 = sxGetU64(h, 104, 40, true);
+        if (bits < 9 || bits > 16 || l2bits < 6 || l2bits > 13 || !sx_add(c, sx_st_qcow1_header, 0, 48)) {
+            return false;
+        }
+        var per = sxShl64(1, (bits + l2bits) >>> 0);
+        var count = Math.floor(size / per) + (size % per !== 0 ? 1 : 0);
+        return sx_st_qcow_l1(c, l1, count, bits, l2bits, true, false);
+    }
+    bits = sxGetU32(h, 104, 20, true);
+    if (bits < 9 || bits > 21) {
+        return false;
+    }
+    cluster = sxShl64(1, bits);
+    l1count = sxGetU32(h, 104, 36, true);
+    l1 = sxGetU64(h, 104, 40, true);
+    var header = 72;
+    var backing = sxGetU64(h, 104, 8, true);
+    var ext_end = backing ? backing : cluster;
+    if (version === 3) {
+        if (!sx_read(c, 0, h, 104) || !sx_add(c, sx_st_qcow3_header, 0, 104)) {
+            return false;
+        }
+        header = sxGetU32(h, 104, 100, true);
+        extended = sxAnd64(sxGetU64(h, 104, 72, true), 16) !== 0;
+        if (header < 104 || header > cluster) {
+            return false;
+        }
+        if (header > 104 && sx_st_fits(c, 104, 1) && !sx_add(c, sx_st_qcow_compression, 104, 1)) {
+            return false;
+        }
+    } else if (version !== 2 || !sx_add(c, sx_st_qcow2_header, 0, 72)) {
+        return false;
+    }
+    if (ext_end <= cluster && ext_end <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && header <= ext_end) {
+        for (var i = 0; i < 4096 && sxU64(ext_end - header) >= 8; i++) {
+            var type;
+            var n;
+            if ((type = sx_u32(c, (header >= SX_I64_MAX ? header - SX_U64_MAX : header), true)) === null || (n = sx_u32(c, (header >= SX_I64_MAX ? header - SX_U64_MAX : header) + 4, true)) === null) {
+                return false;
+            }
+            if (n > sxU64(sxU64(ext_end - header) - 8)) {
+                break;
+            }
+            if (!sx_add(c, sx_st_qcow_extension, (header >= SX_I64_MAX ? header - SX_U64_MAX : header), 8)) {
+                return false;
+            }
+            header += 8;
+            if (!type) {
+                break;
+            }
+            if (type === 0x0537BE77 && n === 16) {
+                var off;
+                var len;
+                var magic = [];
+                if (!sx_add(c, sx_st_qcow_crypto_extension, (header >= SX_I64_MAX ? header - SX_U64_MAX : header), 16) || (off = sx_u64(c, (header >= SX_I64_MAX ? header - SX_U64_MAX : header), true)) === null || (len = sx_u64(c, (header >= SX_I64_MAX ? header - SX_U64_MAX : header) + 8, true)) === null) {
+                    return false;
+                }
+                if (len >= 592 && sx_st_fits(c, off, len) && sx_st_free(c, off, 592)) {
+                    if (!sx_read(c, (off >= SX_I64_MAX ? off - SX_U64_MAX : off), magic, 8)) {
+                        return false;
+                    }
+                    if (!sxMemcmp(magic, "LUKS\xBA\xBE\x00\x01", 8) && (!sx_add(c, sx_st_luks1_header, (off >= SX_I64_MAX ? off - SX_U64_MAX : off), 208) || !sx_table(c, sx_st_luks1_keyslot, (off >= SX_I64_MAX ? off - SX_U64_MAX : off) + 208, 48, 8))) {
+                        return false;
+                    }
+                }
+            }
+            header += n;
+            if (header > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF8)) {
+                return false;
+            }
+            header = sxAnd64(header + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+        }
+    }
+    l2bits = (bits - (extended ? 4 : 3)) >>> 0;
+    var rc = sxGetU64(h, 104, 48, true);
+    var rcc = sxGetU32(h, 104, 56, true);
+    if (rcc <= Math.floor(SX_U64_MAX / cluster) && rcc * cluster <= 0x4000000 && sx_st_free(c, rc, rcc * cluster) && !sx_table(c, sx_st_qcow_refcount_pointer, (rc >= SX_I64_MAX ? rc - SX_U64_MAX : rc), 8, Math.floor(rcc * cluster / 8))) {
+        return false;
+    }
+    if (!sx_st_qcow_l1(c, l1, l1count, bits, l2bits, false, extended)) {
+        return false;
+    }
+    count = sxGetU32(h, 104, 60, true);
+    var at = sxGetU64(h, 104, 64, true);
+    for (var j = 0; j < count && j < 4096; j++) {
+        var sh = [];
+        if (!sx_st_free(c, at, 40)) {
+            break;
+        }
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), sh, 40)) {
+            return false;
+        }
+        n = 40 + sxGetU32(sh, 40, 36, true) + sxGetU16(sh, 40, 12, true) + sxGetU16(sh, 40, 14, true);
+        if (!sx_st_free(c, at, n)) {
+            break;
+        }
+        if (!sx_add(c, sx_st_qcow_snapshot, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 40)) {
+            return false;
+        }
+        if (!sx_st_qcow_l1(c, sxGetU64(sh, 40, 0, true), sxGetU32(sh, 40, 8, true), bits, l2bits, false, extended)) {
+            return false;
+        }
+        at += n;
+        if (at > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF8)) {
+            return false;
+        }
+        at = sxAnd64(at + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+    }
+    return true;
+}
+function sx_storage_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "MIDI") {
+        return sx_midi_build(c);
+    }
+    if (c.f.file_type === "CAF") {
+        return sx_caf_build(c);
+    }
+    if (c.f.file_type === "CREATIVE_VOC") {
+        return sx_creative_voc_build(c);
+    }
+    if (c.f.file_type === "SONY_VAG") {
+        return sx_sony_vag_build(c);
+    }
+    if (c.f.file_type === "SONY_PSF") {
+        return sx_sony_psf_build(c);
+    }
+    if (c.f.file_type === "AUDIO_DSF") {
+        return sx_audio_dsf_build(c);
+    }
+    if (c.f.file_type === "AUDIO_DFF") {
+        return sx_audio_dff_build(c);
+    }
+    if (c.f.file_type === "AUDIO_WAVE64") {
+        return sx_audio_wave64_build(c);
+    }
+    if (c.f.file_type === "AUDIO_ADX") {
+        return sx_audio_adx_build(c);
+    }
+    if (c.f.file_type === "AUDIO_WAVPACK") {
+        return sx_audio_wavpack_build(c);
+    }
+    if (c.f.file_type === "IVF") {
+        return sx_ivf_build(c);
+    }
+    if (c.f.file_type === "IDTECH_ROQ") {
+        return sx_idtech_roq_build(c);
+    }
+    if (c.f.file_type === "FLASH_VIDEO_FLV") {
+        return sx_flash_video_flv_build(c);
+    }
+    if (c.f.file_type === "RAD_BINK") {
+        return sx_rad_bink_build(c);
+    }
+    if (c.f.file_type === "RAD_SMACKER") {
+        return sx_rad_smacker_build(c);
+    }
+    if (c.f.file_type === "AUTODESK_FLIC") {
+        return sx_autodesk_flic_build(c);
+    }
+    if (c.f.file_type === "QCOW") {
+        return sx_qcow_build(c);
+    }
+    if (c.f.file_type === "QCOW1") {
+        return sx_qcow1_build(c);
+    }
+    if (c.f.file_type === "LUKS") {
+        return sx_luks_build(c);
+    }
+    if (c.f.file_type === "ROMFS") {
+        return sx_romfs_build(c);
+    }
+    if (c.f.file_type === "CRAMFS") {
+        return sx_cramfs_build(c);
+    }
+    return false;
+}
+function sx_storage_comment(r, id) {
+    if (id < 0x60080000 || id >= 0x60090000 || r.name === null) {
+        return true;
+    }
+    var n = r.name;
+    var text = null;
+    if (!sxStrcmp(n, "sample_rate")) {
+        text = "Samples per second (Hz)";
+    } else if (!sxStrcmp(n, "bits_per_sample") || !sxStrcmp(n, "sample_bits") || !sxStrcmp(n, "bits_per_channel") || !sxStrcmp(n, "depth")) {
+        text = "Bits per sample or pixel; not a byte count";
+    } else if (!sxStrcmp(n, "average_bytes_per_second")) {
+        text = "Byte rate in bytes per second";
+    } else if (!sxStrcmp(n, "cluster_bits")) {
+        text = "Encoded exponent: cluster bytes = 1 << cluster_bits";
+    } else if (!sxStrcmp(n, "l2_bits")) {
+        text = "Encoded exponent: L2 entry count = 1 << l2_bits";
+    } else if (!sxStrcmp(n, "refcount_order")) {
+        text = "Encoded exponent: bits per reference count = 1 << refcount_order";
+    } else if (!sxStrcmp(n, "payload_sector") || !sxStrcmp(n, "key_material_sector")) {
+        text = "Offset in 512-byte sectors relative to the volume";
+    } else if (!sxStrcmp(n, "word_count")) {
+        text = "Encoded payload length in two-byte words, including odd-byte padding";
+    } else if (!sxStrcmp(n, "four_byte_units")) {
+        text = "Palette packet length in four-byte units, including this byte";
+    } else if (!sxStrcmp(n, "time_constant")) {
+        text = "Encoded rate: samples per second = 1000000 / (256 - value)";
+    } else if (!sxStrcmp(n, "division")) {
+        text = "Bit 15 clear: ticks per quarter note; set: signed SMPTE frame rate and ticks per frame";
+    } else if (!sxStrcmp(n, "predictor_and_shift")) {
+        text = "High nibble: ADPCM predictor; low nibble: sample shift";
+    } else if (!sxStrcmp(n, "timestamp_low24")) {
+        text = "Low 24 bits of millisecond timestamp; combine with timestamp_high8";
+    } else if (!sxStrcmp(n, "timestamp_high8")) {
+        text = "High 8 bits of millisecond timestamp";
+    } else if (!sxStrcmp(n, "composition_time")) {
+        text = "Signed composition-time offset in milliseconds";
+    } else if (!sxStrcmp(n, "offset_and_keyframe_flag")) {
+        text = "Physical byte offset in bits 1..31; bit 0 is the keyframe flag";
+    } else if (!sxStrcmp(n, "size_and_flags")) {
+        text = "Frame byte length in bits 2..31; low two bits are flags";
+    } else if (!sxStrcmp(n, "next_offset_and_type")) {
+        text = "Next inode byte offset in bits 4..31; bit 3 executable, bits 0..2 inode type";
+    } else if (!sxStrcmp(n, "spec_info")) {
+        text = "Type-dependent: directory child, hardlink target, device number, or zero";
+    } else if (!sxStrcmp(n, "mode_uid")) {
+        text = id === sx_st_cramfs_inode_be.id ? "High 16 bits: mode; low 16 bits: UID" : "Low 16 bits: mode; high 16 bits: UID";
+    } else if (!sxStrcmp(n, "size_gid")) {
+        text = id === sx_st_cramfs_inode_be.id ? "High 24 bits: byte size; low 8 bits: GID" : "Low 24 bits: byte size; high 8 bits: GID";
+    } else if (!sxStrcmp(n, "name_length_and_offset")) {
+        text = id === sx_st_cramfs_inode_be.id ? "High 6 bits: name length in four-byte units; low 26 bits: offset in four-byte units" : "Low 6 bits: name length in four-byte units; high 26 bits: offset in four-byte units";
+    } else if (!sxStrcmp(n, "end_offset_and_flags")) {
+        text = "Block end offset; high two flag bits apply only with extended block pointers";
+    } else if (!sxStrcmp(n, "speed_jiffies")) {
+        text = "Delay in units of 1/70 second";
+    } else if (!sxStrcmp(n, "speed_milliseconds") || !sxStrcmp(n, "delay")) {
+        text = "Delay in milliseconds";
+    } else if (!sxStrcmp(n, "frame_duration")) {
+        text = "Positive: milliseconds; negative: absolute value in 1/100000 second units";
+    } else if (!sxStrcmp(n, "data_offset_minus_four")) {
+        text = "Audio starts at this encoded offset plus four bytes";
+    } else if (!sxStrcmp(n, "size_marker")) {
+        text = "RoQ sentinel 0xFFFFFFFF; not a byte count";
+    } else if (!sxStrcmp(n, "timestamp") && id === sx_st_ivf_frame.id) {
+        text = "Timestamp in IVF time-base ticks (denominator / numerator seconds)";
+    } else if (!sxStrcmp(n, "size") && id === sx_st_caf_chunk.id) {
+        text = "Signed payload byte length; -1 means data extends to end of file";
+    }
+    return text === null || sxSetComment(r, text);
+}

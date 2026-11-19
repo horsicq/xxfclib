@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_xsm/xx_adlib_xsm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_xsm_header_fields = layout([chars("signature", 6, SIGNATURE), field("notes_per_channel", "uint16_t", 2, COUNT)]);
+var sxad_adlib_xsm_header = sxLayout(0x600F0045, "adlib_xsm_header", LE, sxad_adlib_xsm_header_fields);
+var sxad_adlib_xsm_instrument_fields = layout([field("modulator_characteristics", "uint8_t", 1, FLAGS),
+    field("carrier_characteristics", "uint8_t", 1, FLAGS), field("modulator_scale_level", "uint8_t", 1, FLAGS),
+    field("carrier_scale_level", "uint8_t", 1, FLAGS), field("modulator_attack_decay", "uint8_t", 1, FLAGS),
+    field("carrier_attack_decay", "uint8_t", 1, FLAGS), field("modulator_sustain_release", "uint8_t", 1, FLAGS),
+    field("carrier_sustain_release", "uint8_t", 1, FLAGS), field("modulator_waveform", "uint8_t", 1, FLAGS),
+    field("carrier_waveform", "uint8_t", 1, FLAGS), field("feedback_connection", "uint8_t", 1, FLAGS),
+    field("unused", "uint8_t[5]", 5, RESERVED)]);
+var sxad_adlib_xsm_instrument = sxLayout(0x600F0046, "adlib_xsm_instrument", LE, sxad_adlib_xsm_instrument_fields);
+var sxad_adlib_xsm_note_fields = layout([field("note", "uint8_t", 1)]);
+var sxad_adlib_xsm_note = sxLayout(0x600F0047, "adlib_xsm_note", LE, sxad_adlib_xsm_note_fields);
+function sxad_xsm(c) {
+    var n;
+    if (!sxad_tag(c, 0, "ofTAZ!", 6) || (n = sx_u16(c, 6, false)) === null || !n || n > 3200 || c.size !== 152 + n * 9) {
+        return false;
+    }
+    return sx_add(c, sxad_adlib_xsm_header, 0, 8) && sx_table(c, sxad_adlib_xsm_instrument, 8, 16, 9) && sx_table(c, sxad_adlib_xsm_note, 152, 1, n * 9);
+}
+function sx_adlib_xsm_build(c) {
+    return sxad_xsm(c);
+}

@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/dmk/xx_dmk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_dmk_header_fields = layout([u8("write_protected", FLAGS), u8("cylinder_count", COUNT), u16("track_size", SIZE),
+    u8("flags", FLAGS), field("reserved", "byte[7]", 7, RESERVED), u32("real_disk_flags", FLAGS)]);
+var sxsl_dmk_header = sxLayout(0x60330023, "dmk_header", LE, sxsl_dmk_header_fields);
+var sxsl_dmk_idam_pointer_fields = layout([u16("offset_and_density", FLAGS)]);
+var sxsl_dmk_idam_pointer = sxLayout(0x60330024, "dmk_idam_pointer", LE, sxsl_dmk_idam_pointer_fields);
+var sxsl_dmk_idam_fields = layout([u8("id_address_mark", SIGNATURE), u8("cylinder"), u8("head"), u8("sector"), u8("size_code"),
+    field("crc16", "uint16be", 2, CHECKSUM)]);
+var sxsl_dmk_idam = sxLayout(0x60330025, "dmk_idam", LE, sxsl_dmk_idam_fields);
+var sxsl_dmk_idam_doubled_fields = layout([u8("id_address_mark", SIGNATURE), u8("id_address_mark_copy"), u8("cylinder"),
+    u8("cylinder_copy"), u8("head"), u8("head_copy"), u8("sector"), u8("sector_copy"), u8("size_code"), u8("size_code_copy"),
+    u8("crc_high", CHECKSUM), u8("crc_high_copy", CHECKSUM), u8("crc_low", CHECKSUM), u8("crc_low_copy", CHECKSUM)]);
+var sxsl_dmk_idam_doubled = sxLayout(0x60330053, "dmk_idam_doubled", LE, sxsl_dmk_idam_doubled_fields);
+function sxsl_dmk(c) {
+    var h = [];
+    if (!sxsl_read(c, 0, h, 16) || !sxsl_put(c, sxsl_dmk_header, 0, 1)) {
+        return false;
+    }
+    var z = sxsl16(h, 2);
+    var n = h[1] * (h[4] & 16 ? 1 : 2);
+    if (z <= 128 || z >= 16384) {
+        return true;
+    }
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        var p = 16 + i * z;
+        if (!sxsl_span(c, p, z)) {
+            break;
+        }
+        if (!sxsl_put(c, sxsl_dmk_idam_pointer, p, 64)) {
+            return false;
+        }
+        for (var j = 0; j < 64 && c.count < 24000; j++) {
+            var w = [0];
+            if (!sxsl_word(c, p + ((2 * j) >>> 0), 2, false, w) || !w[0]) {
+                break;
+            }
+            var q = sxAnd64(w[0], 0x3FFF);
+            var step = sxAnd64(w[0], 0x8000) || h[4] & 64 ? 1 : 2;
+            if (q < 128 || q + 7 * step > z) {
+                continue;
+            }
+            if (!sxsl_put(c, step === 1 ? sxsl_dmk_idam : sxsl_dmk_idam_doubled, p + q, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_dmk_build(c) {
+    var ok = false;
+    ok = sxsl_dmk(c);
+    return ok && sxsl_finish(c);
+}

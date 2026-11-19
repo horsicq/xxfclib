@@ -1,0 +1,111 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/ogre_mesh/xx_ogre_mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_ogre_mesh_header_fields = layout([u16("signature", SIGNATURE), chars("serializer_version", 24, STRING)]);
+var sxmo_ogre_mesh_header = sxLayout(0x6021001D, "ogre_mesh_header", LE, sxmo_ogre_mesh_header_fields);
+var sxmo_ogre_mesh_chunk_fields = layout([u16("chunk_type", ID), u32("chunk_size", SIZE)]);
+var sxmo_ogre_mesh_chunk = sxLayout(0x6021001E, "ogre_mesh_chunk", LE, sxmo_ogre_mesh_chunk_fields);
+var sxmo_ogre_mesh_animation_fields = layout([u8("skeletally_animated", FLAGS)]);
+var sxmo_ogre_mesh_animation = sxLayout(0x6021001F, "ogre_mesh_animation", LE, sxmo_ogre_mesh_animation_fields);
+var sxmo_ogre_submesh_fields = layout([u8("use_shared_vertices", FLAGS), u32("index_count", COUNT),
+    u8("indices_are_32bit", FLAGS)]);
+var sxmo_ogre_submesh = sxLayout(0x60210020, "ogre_submesh", LE, sxmo_ogre_submesh_fields);
+var sxmo_ogre_index16_fields = layout([u16("vertex_index", ID)]);
+var sxmo_ogre_index16 = sxLayout(0x60210021, "ogre_index16", LE, sxmo_ogre_index16_fields);
+var sxmo_ogre_vertex_count_fields = layout([u32("vertex_count", COUNT)]);
+var sxmo_ogre_vertex_count = sxLayout(0x60210022, "ogre_vertex_count", LE, sxmo_ogre_vertex_count_fields);
+var sxmo_ogre_vertex_element_fields = layout([u16("source", ID), u16("element_type", ID), u16("semantic", ID),
+    u16("offset", OFFSET), u16("semantic_index", ID)]);
+var sxmo_ogre_vertex_element = sxLayout(0x60210023, "ogre_vertex_element", LE, sxmo_ogre_vertex_element_fields);
+var sxmo_ogre_vertex_buffer_fields = layout([u16("binding_index", ID), u16("vertex_size", SIZE)]);
+var sxmo_ogre_vertex_buffer = sxLayout(0x60210024, "ogre_vertex_buffer", LE, sxmo_ogre_vertex_buffer_fields);
+var sxmo_ogre_position_fields = layout([field("x", "float32", 4), field("y", "float32", 4), field("z", "float32", 4)]);
+var sxmo_ogre_position = sxLayout(0x60210025, "ogre_position", LE, sxmo_ogre_position_fields);
+var sxmo_ogre_operation_fields = layout([u16("operation_type", ID)]);
+var sxmo_ogre_operation = sxLayout(0x60210026, "ogre_operation", LE, sxmo_ogre_operation_fields);
+var sxmo_ogre_bounds_fields = layout([field("minimum", "float32[3]", 12), field("maximum", "float32[3]", 12),
+    field("radius", "float32", 4)]);
+var sxmo_ogre_bounds = sxLayout(0x60210027, "ogre_bounds", LE, sxmo_ogre_bounds_fields);
+function sxmo_ogre_mesh_chunks(c, p, end, depth, budget) {
+    while (p < end && depth < 8 && budget[0] < 16000) {
+        budget[0]++;
+        var h = [];
+        if (sxU64(end - p) < 6 || !sxmo_read(c, p, h, 6)) {
+            break;
+        }
+        var tag = sxmo16(h, 0, false);
+        var n = sxmo32(h, 2, false);
+        if (n < 6 || n > sxU64(end - p)) {
+            break;
+        }
+        var q = [p + 6];
+        var stop = p + n;
+        if (!sxmo_add(c, sxmo_ogre_mesh_chunk, p)) {
+            return false;
+        }
+        if (tag === 0x3000 && sxU64(stop - q[0]) >= 1) {
+            if (!sxmo_take(c, sxmo_ogre_mesh_animation, q, stop) || !sxmo_ogre_mesh_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (tag === 0x4000 && sxmo_string(c, q, stop, 10) && sxU64(stop - q[0]) >= 6) {
+            if (!sxmo_read(c, q[0], h, 6)) {
+                return false;
+            }
+            var count = sxmo32(h, 1, false);
+            var z = h[5] ? 4 : 2;
+            if (!h[5] && count <= 1000000 && count * z <= sxU64(sxU64(stop - q[0]) - 6)) {
+                if (!sxmo_take(c, sxmo_ogre_submesh, q, stop) || !sxmo_table(c, sxmo_ogre_index16, q[0], count)) {
+                    return false;
+                }
+                q[0] += count * z;
+                if (!sxmo_ogre_mesh_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                    return false;
+                }
+            }
+        } else if (tag === 0x5000 && sxU64(stop - q[0]) >= 4) {
+            if (!sxmo_take(c, sxmo_ogre_vertex_count, q, stop) || !sxmo_ogre_mesh_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (tag === 0x5100) {
+            if (!sxmo_ogre_mesh_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (tag === 0x5110 && sxU64(stop - q[0]) >= 10) {
+            if (!sxmo_add(c, sxmo_ogre_vertex_element, q[0])) {
+                return false;
+            }
+        } else if (tag === 0x5200 && sxU64(stop - q[0]) >= 4) {
+            if (!sxmo_take(c, sxmo_ogre_vertex_buffer, q, stop) || !sxmo_ogre_mesh_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (tag === 0x5210 && sxU64(stop - q[0]) % 12 === 0 && Math.floor(sxU64(stop - q[0]) / 12) <= 1000000) {
+            if (!sxmo_table(c, sxmo_ogre_position, q[0], Math.floor(sxU64(stop - q[0]) / 12))) {
+                return false;
+            }
+        } else if (tag === 0x4010 && sxU64(stop - q[0]) >= 2) {
+            if (!sxmo_add(c, sxmo_ogre_operation, q[0])) {
+                return false;
+            }
+        } else if (tag === 0x9000 && sxU64(stop - q[0]) >= 28 && !sxmo_add(c, sxmo_ogre_bounds, q[0])) {
+            return false;
+        }
+        p = stop;
+    }
+    return !c.failed;
+}
+function sxmo_ogre_mesh(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 26) || sxMemcmp(h, "\x00\x10[MeshSerializer_v1.100]\n", 26) || !sxmo_add(c, sxmo_ogre_mesh_header, 0)) {
+        return false;
+    }
+    var budget = [0];
+    return sxmo_ogre_mesh_chunks(c, 26, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0, budget);
+}
+function sx_ogre_mesh_build(c) {
+    var ok = false;
+    ok = sxmo_ogre_mesh(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

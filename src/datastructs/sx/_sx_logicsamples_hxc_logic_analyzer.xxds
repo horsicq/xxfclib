@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hxc_logic_analyzer/xx_hxc_logic_analyzer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlogic_logic_signal_sample_fields = layout([u8("channel_levels", FLAGS)]);
+var sxlogic_logic_signal_sample = sxLayout(0x60A00001, "logic_signal_sample", LE, sxlogic_logic_signal_sample_fields);
+function sx_hxc_logic_analyzer_build(c) {
+    return sx_table(c, sxlogic_logic_signal_sample, 0, 1, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

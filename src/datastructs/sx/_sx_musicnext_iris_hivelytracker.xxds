@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/iris_hivelytracker/xx_iris_hivelytracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_hvl_subsong_fields = layout([u16("position", ID)]);
+var sxmn_hvl_subsong = sxLayout(0x60760042, "hvl_subsong", BE, sxmn_hvl_subsong_fields);
+var sxmn_hvl_position_fields = layout([u8("track", ID), i8("transpose")]);
+var sxmn_hvl_position = sxLayout(0x60760043, "hvl_position", LE, sxmn_hvl_position_fields);
+var sxmn_hvl_empty_event_fields = layout([u8("empty_marker", ID)]);
+var sxmn_hvl_empty_event = sxLayout(0x60760044, "hvl_empty_event", LE, sxmn_hvl_empty_event_fields);
+var sxmn_hvl_event_fields = layout([u8("note", ID), u8("instrument", ID), u8("effects", FLAGS), u8("first_parameter"),
+    u8("second_parameter")]);
+var sxmn_hvl_event = sxLayout(0x60760045, "hvl_event", LE, sxmn_hvl_event_fields);
+var sxmn_hvl_instrument_fields = layout([u8("volume"), u8("filter_wave_flags", FLAGS), u8("attack_frames"), u8("attack_volume"),
+    u8("decay_frames"), u8("decay_volume"), u8("sustain_frames"), u8("release_frames"), u8("release_volume"), blob("unused", 3),
+    u8("filter_lower_flags", FLAGS), u8("vibrato_delay"), u8("release_vibrato_flags", FLAGS), u8("vibrato_speed"),
+    u8("square_lower"), u8("square_upper"), u8("square_speed"), u8("filter_upper_flags", FLAGS), u8("playlist_speed"),
+    u8("playlist_entries", COUNT)]);
+var sxmn_hvl_instrument = sxLayout(0x60760046, "hvl_instrument", LE, sxmn_hvl_instrument_fields);
+var sxmn_hvl_playlist_fields = layout([u8("effect_flags", FLAGS), u8("effect_wave_flags", FLAGS), u8("note_flags", FLAGS),
+    u8("first_parameter"), u8("second_parameter")]);
+var sxmn_hvl_playlist = sxLayout(0x60760047, "hvl_playlist", LE, sxmn_hvl_playlist_fields);
+var sxmn_hvl_name_byte_fields = layout([chars("name_byte", 1, STRING)]);
+var sxmn_hvl_name_byte = sxLayout(0x60760048, "hvl_name_byte", LE, sxmn_hvl_name_byte_fields);
+function sxmn_hvl(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var flags = [0];
+    var pos;
+    var channels = [0];
+    var subs = [0];
+    var rows = [0];
+    var last = [0];
+    var ins = [0];
+    var at = [0];
+    var names = [0];
+    if (!sxmn_row(v, sxmn_hvl_header, 0, end) || !sxmn_word(v, 4, 2, true, names, 0, end) || !sxmn_word(v, 6, 2, true, flags, 0, end) || !sxmn_word(v, 8, 1, false, channels, 0, end) || !sxmn_word(v, 10, 1, false, rows, 0, end) || !sxmn_word(v, 11, 1, false, last, 0, end) || !sxmn_word(v, 12, 1, false, ins, 0, end) || !sxmn_word(v, 13, 1, false, subs, 0, end)) {
+        return false;
+    }
+    pos = sxAnd64(flags[0], 4095);
+    channels[0] = sxShr64(channels[0], 2) + 4;
+    if (!pos || channels[0] > 16 || !rows[0] || rows[0] > 64 || ins[0] > 63 || !sxmn_table(v, sxmn_hvl_subsong, 16, subs[0], end) || !sxmn_table(v, sxmn_hvl_position, 16 + subs[0] * 2, pos * channels[0], end)) {
+        return false;
+    }
+    at[0] = 16 + subs[0] * 2 + pos * channels[0] * 2;
+    for (var t = sxAnd64(flags[0], 0x8000) ? 1 : 0; t <= last[0]; t++) {
+        for (var r = 0; r < rows[0]; r++) {
+            var b = [0];
+            if (!sxmn_word(v, at[0], 1, false, b, 0, end) || !sxmn_row(v, b[0] === 63 ? sxmn_hvl_empty_event : sxmn_hvl_event, at[0], end)) {
+                return false;
+            }
+            at[0] += b[0] === 63 ? 1 : 5;
+        }
+    }
+    for (var i = 0; i < ins[0]; i++) {
+        var n = [0];
+        if (!sxmn_row(v, sxmn_hvl_instrument, at[0], end) || !sxmn_word(v, at[0] + 21, 1, false, n, 0, end) || !sxmn_table(v, sxmn_hvl_playlist, at[0] + 22, n[0], end)) {
+            return false;
+        }
+        at[0] += 22 + n[0] * 5;
+    }
+    if (names[0] < at[0] || names[0] > end) {
+        return false;
+    }
+    at[0] = names[0];
+    for (i = 0; i <= ins[0]; i++) {
+        var start = at[0];
+        if (!sxmn_cstring(v, at, end, 65536) || !sxmn_table(v, sxmn_hvl_name_byte, start, sxU64(at[0] - start), end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_iris_hivelytracker_build(v) {
+    return sxmn_hvl(v);
+}

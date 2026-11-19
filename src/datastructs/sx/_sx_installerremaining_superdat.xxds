@@ -1,0 +1,143 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/superdat/xx_superdat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_superdat_group_fields = layout([field("signature", "uint32le", 4, SIGNATURE)]);
+var sxir_superdat_group = sxLayout(0x6080001B, "superdat_group", LE, sxir_superdat_group_fields);
+var sxir_superdat_member_fields = layout([chars("signature", 14, SIGNATURE), chars("name", 260, NONE),
+    field("uncompressed_size", "uint32le", 4, SIZE), field("packed_size", "uint32le", 4, SIZE), u8("hour"), u8("minute"),
+    u8("second"), u8("year_since_1900"), u8("month"), u8("day")]);
+var sxir_superdat_member = sxLayout(0x6080001C, "superdat_member", LE, sxir_superdat_member_fields);
+var sxir_superdat_lh1_stream_fields = layout([field("uncompressed_size", "uint32le", 4, SIZE)]);
+var sxir_superdat_lh1_stream = sxLayout(0x6080001D, "superdat_lh1_stream", LE, sxir_superdat_lh1_stream_fields);
+var sxir_superdat_group_trailer_fields = layout([chars("signature", 8, SIGNATURE), bytes("unknown_08", 3),
+    bytes("unknown_checksum_bytes", 4), field("trailer_size", "uint16le", 2, SIZE)]);
+var sxir_superdat_group_trailer = sxLayout(0x6080001E, "superdat_group_trailer", LE, sxir_superdat_group_trailer_fields);
+var sxir_superdat_original_footer_fields = layout([field("group_size", "uint32le", 4, SIZE)]);
+var sxir_superdat_original_footer = sxLayout(0x6080001F, "superdat_original_footer", LE, sxir_superdat_original_footer_fields);
+var sxir_superdat_footer_v0_fields = layout([chars("signature", 17, SIGNATURE), field("group_size", "uint32le", 4, SIZE),
+    field("group_offset", "uint32le", 4, OFFSET), field("member_count", "uint32le", 4, COUNT), bytes("unknown_tail", 4)]);
+var sxir_superdat_footer_v0 = sxLayout(0x60800020, "superdat_footer_v0", LE, sxir_superdat_footer_v0_fields);
+var sxir_superdat_footer_v1_fields = layout([chars("signature", 17, SIGNATURE), field("group_size", "uint32le", 4, SIZE),
+    field("group_offset", "uint32le", 4, OFFSET), field("zero_count", "uint32le", 4, RESERVED),
+    field("member_count", "uint32le", 4, COUNT), bytes("unknown_tail", 4)]);
+var sxir_superdat_footer_v1 = sxLayout(0x60800021, "superdat_footer_v1", LE, sxir_superdat_footer_v1_fields);
+var sxir_superdat_footer_v12_fields = layout([chars("signature", 17, SIGNATURE), bytes("signing_bytes", 268),
+    field("group_size", "uint32le", 4, SIZE), field("group_offset", "uint32le", 4, OFFSET),
+    field("member_count", "uint32le", 4, COUNT)]);
+var sxir_superdat_footer_v12 = sxLayout(0x60800022, "superdat_footer_v12", LE, sxir_superdat_footer_v12_fields);
+var sxir_superdat_manifest_170_fields = layout([chars("name", 144, NONE), field("checksum", "uint32le", 4, CHECKSUM),
+    bytes("unknown_94", 12), field("uncompressed_size", "uint32le", 4, SIZE), bytes("unknown_a4", 6)]);
+var sxir_superdat_manifest_170 = sxLayout(0x60800023, "superdat_manifest_170", LE, sxir_superdat_manifest_170_fields);
+var sxir_superdat_manifest_178_fields = layout([chars("name", 144, NONE), field("checksum", "uint32le", 4, CHECKSUM),
+    bytes("unknown_94", 12), field("uncompressed_size", "uint32le", 4, SIZE), bytes("unknown_a4", 6),
+    field("classification", "uint32le", 4, ID), bytes("unknown_ae", 4)]);
+var sxir_superdat_manifest_178 = sxLayout(0x60800024, "superdat_manifest_178", LE, sxir_superdat_manifest_178_fields);
+function sxir_superdat(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var pe = [0];
+    var cert = [0];
+    var footer = 0;
+    var at = [0];
+    var count = [0];
+    var declared = [0];
+    var kind = 3;
+    var found = false;
+    if (!sxir_pe(v, 0, end, pe, cert)) {
+        return false;
+    }
+    end = cert[0];
+    if (end >= 33) {
+        var begin = end > 131072 ? sxU64(end - 131072) : 0;
+        var scan = begin;
+        var candidate = [0];
+        while (sxU64(end - scan) >= 33 && sxir_find(v, scan, end, "_SUPERDAT_HEADER\x00", 17, false, candidate)) {
+            var z = [0];
+            var start = [0];
+            var n = [0];
+            if (!sxir_u(v, candidate[0] + 17, 4, false, z, end) || !sxir_u(v, candidate[0] + 21, 4, false, start, end) || !sxir_u(v, candidate[0] + 25, 4, false, n, end)) {
+                return false;
+            }
+            var k = n[0] ? 0 : 1;
+            if (!n[0] && !sxir_u(v, candidate[0] + 29, 4, false, n, end)) {
+                return false;
+            }
+            if (z[0] && n[0] && n[0] <= 65536 && start[0] <= candidate[0] && sxir_span(v, candidate[0], k ? 37 : 33, end)) {
+                footer = candidate[0];
+                declared[0] = z[0];
+                at[0] = start[0];
+                count[0] = n[0];
+                kind = k;
+                found = true;
+            }
+            scan = candidate[0] + 1;
+        }
+    }
+    if (!found && end >= 297 && sxir_eq(v, sxU64(end - 297), "_SUPERDAT_HEADER\x00", 17, end)) {
+        var zero = [0];
+        if (!sxir_u(v, sxU64(end - 280), 4, false, zero, end) || !sxir_u(v, sxU64(end - 12), 4, false, declared, end) || !sxir_u(v, sxU64(end - 8), 4, false, at, end) || !sxir_u(v, sxU64(end - 4), 4, false, count, end)) {
+            return false;
+        }
+        if (!zero[0] && declared[0] && count[0] && count[0] < 65536 && at[0] < sxU64(end - 297)) {
+            footer = sxU64(end - 297);
+            kind = 2;
+            found = true;
+        }
+    }
+    if (!found) {
+        if (end < 8 || !sxir_u(v, sxU64(end - 4), 4, false, declared, end) || declared[0] <= 17 || declared[0] > sxU64(end - 8)) {
+            return false;
+        }
+        footer = sxU64(end - 4);
+        at[0] = sxU64(sxU64(end - 8) - declared[0]);
+        kind = 3;
+    }
+    if (!sxir_row(v, kind === 0 ? sxir_superdat_footer_v0 : kind === 1 ? sxir_superdat_footer_v1 : kind === 2 ? sxir_superdat_footer_v12 : sxir_superdat_original_footer, footer, end)) {
+        return false;
+    }
+    var last_group = 0;
+    var members = 0;
+    for (var groups = 0; ; groups++) {
+        if (groups >= 8 || !sxir_eq(v, at[0], "\xEF\xBE\xAD\xDE", 4, footer) || !sxir_row(v, sxir_superdat_group, at[0], footer)) {
+            return false;
+        }
+        last_group = at[0];
+        members = 0;
+        at[0] += 4;
+        while (!sxir_eq(v, at[0], "NAISIGN\x00", 8, footer)) {
+            z = [0];
+            var plain = [0];
+            var actual = [0];
+            if (++members > 65536 || !sxir_eq(v, at[0], "__NAILZHUFLIB\x00", 14, footer) || !sxir_u(v, at[0] + 274, 4, false, plain, footer) || !sxir_u(v, at[0] + 278, 4, false, z, footer) || z[0] < 4 || !sxir_u(v, at[0] + 288, 4, false, actual, footer) || plain[0] !== actual[0] || !sxir_row(v, sxir_superdat_member, at[0], footer) || !sxir_row(v, sxir_superdat_lh1_stream, at[0] + 288, footer) || !sxir_span(v, at[0] + 288, z[0], footer)) {
+                return false;
+            }
+            at[0] += 288 + z[0];
+        }
+        if (!members || !sxir_row(v, sxir_superdat_group_trailer, at[0], footer)) {
+            return false;
+        }
+        at[0] += 17;
+        if (!sxir_eq(v, at[0], "\xEF\xBE\xAD\xDE", 4, end)) {
+            break;
+        }
+    }
+    if (sxU64(sxU64(at[0] - last_group) - 4) !== declared[0]) {
+        return false;
+    }
+    if (kind === 3) {
+        return at[0] === footer;
+    }
+    var stride = kind === 2 ? 170 : 178;
+    var bootstrap = kind === 2 ? 1 : 2;
+    if (members !== count[0] + bootstrap || at[0] > footer || sxU64(footer - at[0]) !== count[0] * stride + (kind === 1 ? 12 : 0)) {
+        return false;
+    }
+    return sxir_table(v, kind === 2 ? sxir_superdat_manifest_170 : sxir_superdat_manifest_178, at[0], count[0], footer);
+}
+function sx_superdat_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_superdat(v);
+}

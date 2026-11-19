@@ -1,0 +1,104 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/vtk_legacy/xx_vtk_legacy_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxsm_vtk(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(16, sxNew_sxsm_token);
+    var n = [0];
+    if (!sxsm_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, line))) {
+            return false;
+        }
+    }
+    if (!sxsm_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_title, sxCopy_sxsm_token(null, line))) {
+            return false;
+        }
+    }
+    while (sxsm_next(q, line, t[0], 16, n, "")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "BINARY")) {
+            continue;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "DATASET")) {
+            if (n[0] !== 2) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_type_name, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "DIMENSIONS")) {
+            if (n[0] !== 4 || !sxsm_each(q, t, 1, 3, sxsm_axis_count)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "ORIGIN") || sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "SPACING")) {
+            if (n[0] !== 4 || !sxsm_xyz(q, t[1], sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "ORIGIN") ? 1 : 2)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "POINT_DATA") || sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "CELL_DATA")) {
+            if (n[0] !== 2) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_value_count, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "SCALARS")) {
+            if (n[0] !== 3 && n[0] !== 4) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_name, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_type_name, sxCopy_sxsm_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            if (n[0] === 4) {
+                {
+                    if (!sxsm_emit(q, sxsm_component_count, sxCopy_sxsm_token(null, t[3]))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "LOOKUP_TABLE")) {
+            if (n[0] !== 2) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_name, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_vtk_legacy_build(q) {
+    return sxsm_vtk(q);
+}

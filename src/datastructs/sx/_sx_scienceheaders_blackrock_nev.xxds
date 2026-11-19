@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/blackrock_nev/xx_blackrock_nev_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_nev_header_fields = layout([chars("signature", 8, SIGNATURE), u8("major_version", ID), u8("minor_version", ID),
+    u16("flags", FLAGS), u32("header_size", SIZE), u32("packet_size", SIZE), u32("timestamp_resolution"),
+    u32("sample_resolution"), u16("year"), u16("month"), u16("day_of_week"), u16("day"), u16("hour"), u16("minute"),
+    u16("second"), u16("millisecond"), chars("application", 32, STRING), chars("comment", 256, STRING),
+    u32("extended_header_count", COUNT)]);
+var sxsh_nev_header = sxLayout(0x602A0004, "nev_header", LE, sxsh_nev_header_fields);
+var sxsh_nev_extension_fields = layout([chars("type", 8, ID), bytes("payload", 24)]);
+var sxsh_nev_extension = sxLayout(0x602A0005, "nev_extension", LE, sxsh_nev_extension_fields);
+var sxsh_nev_text_extension_fields = layout([chars("type", 8, ID), chars("text", 24, STRING)]);
+var sxsh_nev_text_extension = sxLayout(0x602A0006, "nev_text_extension", LE, sxsh_nev_text_extension_fields);
+var sxsh_nev_waveform_extension_fields = layout([chars("type", 8, ID), u16("electrode_id", ID), u8("connector_bank", ID),
+    u8("connector_pin", ID), i16("digital_factor"), u16("energy_threshold"), i16("high_threshold"), i16("low_threshold"),
+    u8("sorted_unit_count", COUNT), u8("bytes_per_sample", SIZE), bytes("reserved", 10, RESERVED)]);
+var sxsh_nev_waveform_extension = sxLayout(0x602A0007, "nev_waveform_extension", LE, sxsh_nev_waveform_extension_fields);
+var sxsh_nev_label_extension_fields = layout([chars("type", 8, ID), u16("electrode_id", ID), chars("label", 16, STRING),
+    bytes("reserved", 6, RESERVED)]);
+var sxsh_nev_label_extension = sxLayout(0x602A0008, "nev_label_extension", LE, sxsh_nev_label_extension_fields);
+var sxsh_nev_spike_fields = layout([u32("timestamp"), u16("packet_id", ID), u8("unit_id", ID), u8("reserved", RESERVED)]);
+var sxsh_nev_spike = sxLayout(0x602A000A, "nev_spike", LE, sxsh_nev_spike_fields);
+var sxsh_nev_digital_fields = layout([u32("timestamp"), u16("packet_id", ID), u8("reason", FLAGS), u8("reserved", RESERVED),
+    u16("digital_value", FLAGS)]);
+var sxsh_nev_digital = sxLayout(0x602A000B, "nev_digital", LE, sxsh_nev_digital_fields);
+function sxsh_nev(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 336) || sxMemcmp(b, "NEURALEV", 8)) {
+        return false;
+    }
+    var header = sxsh32(b, 12, false);
+    var packet = sxsh32(b, 16, false);
+    var count = sxsh32(b, 332, false);
+    if (count > 1024 || header !== (336 + ((count * 32) >>> 0)) >>> 0 || packet < 8 || packet > 65536 || !sxsh_add(c, sxsh_nev_header, 0, 336)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        var at = 336 + i * 32;
+        if (!sx_read(c, at, b, 32)) {
+            return false;
+        }
+        var l = sxsh_nev_extension;
+        if (!sxMemcmp(b, "NEUEVWAV", 8)) {
+            l = sxsh_nev_waveform_extension;
+        } else if (!sxMemcmp(b, "NEUEVLBL", 8)) {
+            l = sxsh_nev_label_extension;
+        } else if (!sxMemcmp(b, "NEUEVFLT", 8)) {
+            l = sxsh_nev_filter_extension;
+        } else if (!sxMemcmp(b, "ARRAYNME", 8) || !sxMemcmp(b, "ECOMMENT", 8) || !sxMemcmp(b, "CCOMMENT", 8)) {
+            l = sxsh_nev_text_extension;
+        }
+        if (!sxsh_add(c, l, at, 32)) {
+            return false;
+        }
+    }
+    at = header;
+    for (i = 0; at < c.size; i++) {
+        if (i >= 4095 || !sxsh_span(c, at, packet) || !sx_read(c, at, b, 8)) {
+            return false;
+        }
+        var digital = sxsh16(b, 4, false) === 0;
+        if (digital && packet < 10 || !sxsh_add(c, digital ? sxsh_nev_digital : sxsh_nev_spike, at, digital ? 10 : 8)) {
+            return false;
+        }
+        at += packet;
+    }
+    return at === c.size;
+}
+function sx_blackrock_nev_build(c) {
+    var ok = false;
+    ok = sxsh_nev(c);
+    return ok && sxsh_finish(c);
+}

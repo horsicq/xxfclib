@@ -1,0 +1,67 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/ascii_musica_bgm/xx_ascii_musica_bgm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxportable_bgm_bsave_header_fields = layout([u8("marker", SIGNATURE), u16("load_address", VA), u16("last_address", VA),
+    u16("entry_address", VA)]);
+var sxportable_bgm_bsave_header = sxLayout(0x6091001C, "bgm_bsave_header", LE, sxportable_bgm_bsave_header_fields);
+function sxportable_clear(c, p, n) {
+    for (var i = 0; i < c.count; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < at + z && at < p + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxportable_bgm(c) {
+    var h = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxportable_read(c, 0, h, 7, end) || h[0] !== 0xFE) {
+        return false;
+    }
+    var base = sxGetU16(h, 7, 1, false);
+    var last = sxGetU16(h, 7, 3, false);
+    var entry = sxGetU16(h, 7, 5, false);
+    if (last < base || entry < base) {
+        return false;
+    }
+    var declared = sxU64(8 + last - base);
+    var p = sxU64(7 + entry - base);
+    if (declared > end || p < 7 || !sxportable_span(c, p, 35, declared) || !sxportable_row(c, sxportable_bgm_bsave_header, 0, 7, end) || !sxportable_row(c, sxportable_bgm_channel_header, p, 35, end)) {
+        return false;
+    }
+    if (sxportable_span(c, 80, 15, declared) && sxportable_clear(c, 80, 15) && sxportable_read(c, 80, h, 15, declared) && !sxMemcmp(h, "BTO", 3)) {
+        if (!sxportable_row(c, sxportable_bgm_bto_header, 80, 15, end)) {
+            return false;
+        }
+        var load = sxGetU16(h, 15, 9, false);
+        for (var i = 11; i <= 13; i = (i + 2) >>> 0) {
+            var address = sxGetU16(h, 15, i, false);
+            if (address < load) {
+                continue;
+            }
+            var at = sxU64(7 + address - load);
+            var q = at;
+            var ch = [0];
+            while (q < declared && sxU64(q - at) < 256) {
+                if (!sxportable_byte(c, q++, ch, declared)) {
+                    return false;
+                }
+                if (ch[0] < 0x20) {
+                    break;
+                }
+            }
+            if (q > at && sxportable_clear(c, at, sxU64(q - at)) && !sxportable_row(c, sxportable_bgm_encoded_text, at, sxU64(q - at), end)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_ascii_musica_bgm_build(c) {
+    return sxportable_bgm(c);
+}

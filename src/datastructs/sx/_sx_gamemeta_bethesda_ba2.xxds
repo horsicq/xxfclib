@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/bethesda_ba2/xx_bethesda_ba2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_game_name_length16_fields = layout([u16("name_size", SIZE)]);
+var sxgm_game_name_length16 = sxLayout(0x60270040, "game_name_length16", LE, sxgm_game_name_length16_fields);
+var sxgm_ba2_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), chars("archive_type", 4, ID),
+    u32("entry_count", COUNT), u64("names_offset", OFFSET)]);
+var sxgm_ba2_header = sxLayout(0x60270041, "ba2_header", LE, sxgm_ba2_header_fields);
+var sxgm_ba2_v2_extension_fields = layout([u64("unknown")]);
+var sxgm_ba2_v2_extension = sxLayout(0x60270042, "ba2_v2_extension", LE, sxgm_ba2_v2_extension_fields);
+var sxgm_ba2_v3_compression_fields = layout([u32("compression", ID)]);
+var sxgm_ba2_v3_compression = sxLayout(0x60270043, "ba2_v3_compression", LE, sxgm_ba2_v3_compression_fields);
+var sxgm_ba2_general_entry_fields = layout([u32("name_hash", CHECKSUM), chars("extension", 4, STRING),
+    u32("directory_hash", CHECKSUM), u32("flags", FLAGS), u64("data_offset", OFFSET), u32("packed_size", SIZE),
+    u32("unpacked_size", SIZE), u32("alignment", SIGNATURE)]);
+var sxgm_ba2_general_entry = sxLayout(0x60270044, "ba2_general_entry", LE, sxgm_ba2_general_entry_fields);
+function sxgm_ba2(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 24) || !sxgm_add(c, sxgm_ba2_header, 0)) {
+        return false;
+    }
+    var v = sxgm32(b, 4, false);
+    var n = sxgm32(b, 12, false);
+    var p = sxgm_uint(b, 16, 8, false);
+    var h = v === 2 ? 32 : v === 3 ? 36 : 24;
+    if (v === 2 || v === 3) {
+        if (!sxgm_span(c, 24, (h - 24) >>> 0)) {
+            return true;
+        }
+        if (!sxgm_add(c, sxgm_ba2_v2_extension, 24)) {
+            return false;
+        }
+        if (v === 3 && !sxgm_add(c, sxgm_ba2_v3_compression, 32)) {
+            return false;
+        }
+    }
+    if (sxMemcmpAt(b, 8, "GNRL", 0, 4)) {
+        return true;
+    }
+    if (!sxgm_table(c, sxgm_ba2_general_entry, h, n)) {
+        return false;
+    }
+    for (var i = 0; i < n && i < 20000 && c.count < 20000; i++) {
+        var z = [0];
+        if (!sxgm_word(c, p, 2, false, z) || !sxgm_span(c, p + 2, z[0])) {
+            break;
+        }
+        if (!sxgm_add(c, sxgm_game_name_length16, p)) {
+            return false;
+        }
+        p += 2 + z[0];
+    }
+    return true;
+}
+function sx_bethesda_ba2_build(c) {
+    return sxgm_ba2(c);
+}

@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/arq/xx_arq_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_arq_container_fields = layout([chars("magic", 4, SIGNATURE), u32("total_unpacked_size", SIZE),
+    u32("reserved", RESERVED)]);
+var sxae_arq_container = sxLayout(0x60170008, "arq_container", LE, sxae_arq_container_fields);
+var sxae_arq_member_prefix_fields = layout([chars("magic", 4, SIGNATURE), u16("signature", SIGNATURE), u16("name_size", SIZE)]);
+var sxae_arq_member_prefix = sxLayout(0x60170009, "arq_member_prefix", LE, sxae_arq_member_prefix_fields);
+var sxae_arq_member_tail_fields = layout([u32("modified"), u16("attributes", FLAGS), u32("reserved", RESERVED),
+    u32("packed_size", SIZE), u32("unpacked_size", SIZE), u32("packed_crc32", CHECKSUM), u16("method", ID), u8("flags", FLAGS),
+    bytes("reserved_tail", 8, RESERVED)]);
+var sxae_arq_member_tail = sxLayout(0x6017000A, "arq_member_tail", LE, sxae_arq_member_tail_fields);
+function sxae_arq(c) {
+    var p = 0;
+    var b = [];
+    if (!sx_read(c, 0, b, 4)) {
+        return false;
+    }
+    if (sxae32(b, 0) === 0x02045767) {
+        if (!sxae_add(c, sxae_arq_container, 0)) {
+            return false;
+        }
+        p = 12;
+    }
+    for (var k = 0; k < 20000; k++) {
+        if (!sx_read(c, p, b, 8) || sxae32(b, 0) !== 0x01045767) {
+            return false;
+        }
+        var n = sxae16(b, 6);
+        var t = p + 8 + n;
+        var z;
+        if (!sxae_bound(c, p, 41 + n) || !sxae_add(c, sxae_arq_member_prefix, p) || !sxae_add(c, sxae_arq_member_tail, t)) {
+            return false;
+        }
+        if (!n) {
+            return true;
+        }
+        if ((z = sx_u32(c, t + 10, false)) === null || !sxae_data(c, t + 33, z)) {
+            return false;
+        }
+        p = t + 33 + z;
+    }
+    return false;
+}
+function sx_arq_build(c) {
+    return sxae_arq(c);
+}

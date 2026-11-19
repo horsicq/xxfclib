@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/ico/xx_ico_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_image_ico(c) {
+    var reserved;
+    var type;
+    var count;
+    var i;
+    if ((reserved = sx_u16(c, 0, false)) === null || reserved || (type = sx_u16(c, 2, false)) === null || type !== 1 && type !== 2 || (count = sx_u16(c, 4, false)) === null || !count || count > 4096 || !sx_image_range(c, 6, count * 16) || !sx_add(c, sxi_ico_header, 0, 6)) {
+        return false;
+    }
+    for (i = 0; i < count; ++i) {
+        var at = 6 + i * 16;
+        var size;
+        var off;
+        if ((size = sx_u32(c, at + 8, false)) === null || (off = sx_u32(c, at + 12, false)) === null || off < 6 + count * 16 || !size || !sx_add(c, type === 2 ? sxi_cur_entry : sxi_ico_entry, at, 16) || !sx_raw(c, off, size)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ico_build(c) {
+    return sx_image_ico(c);
+}

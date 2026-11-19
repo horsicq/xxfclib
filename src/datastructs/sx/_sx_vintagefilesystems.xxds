@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_vintagefilesystems.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_vintagefilesystems_supports(type) {
+    return type === "THOMSON_FD" || type === "NORTHSTAR_NSI";
+}
+function sxvintage_compare(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxvintage_finish(c) {
+    var count = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, count, sxvintage_compare, true);
+    for (var i = 0; i < count; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var size = c.items[i].total_size;
+        if (at < end || size <= 0 || at > c.size || size > c.size - at) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxvintage_compare, true);
+    return !c.failed;
+}
+function sx_vintagefilesystems_build(c) {
+    if (c === null || c.f === null || !sx_vintagefilesystems_supports(c.f.file_type)) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "NORTHSTAR_NSI") {
+        return sx_northstar_nsi_build(c);
+    }
+    return sx_thomson_fd_build(c);
+}
+function sx_vintagefilesystems_comment(r, id) {
+    if (r === null || r.name === null || id < 0x609D0001 || id > 0x609D0007) {
+        return true;
+    }
+    if (r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    if (id >= 0x609D0006) {
+        if (r.name === "disk_address") {
+            return sxSetComment(r, "Stored logical disk-sector address. This profile uses 512-byte sectors; no transformed sector order or synthesized byte offset is inserted.");
+        }
+        if (r.name === "stored_length") {
+            return sxSetComment(r, "Original directory length word, preserved without conversion. The supported double-density producer and release-5 disk count 512-byte sectors; older manuals describe different block units.");
+        }
+        if (r.name === "go_address") {
+            return sxSetComment(r, "Stored 16-bit load/start address for a North Star type-1 executable.");
+        }
+        if (r.name === "type_density") {
+            var v = sxVarU64(r.value);
+            var names = ["DOUBLE_DENSITY | Data", "DOUBLE_DENSITY | Executable", "DOUBLE_DENSITY | BASIC"];
+            return sxSetComment(r, sxAnd64(v, 127) < 3 ? names[sxAnd64(v, 127)] : "DOUBLE_DENSITY | User/unknown stored file type");
+        }
+        return sxSetComment(r, "Original North Star double-density directory bytes. Unspecified type data and unused entries stay opaque.");
+    }
+    if (r.name === "first_block") {
+        return sxSetComment(r, "Stored allocation-block index, not a byte offset. Each block holds eight sectors; the original on-disk value is preserved.");
+    }
+    if (r.name === "last_sector_bytes") {
+        return sxSetComment(r, "Stored big-endian byte count used in the last data sector. Double-density file payload uses at most 255 bytes per physical 256-byte sector.");
+    }
+    if (r.name === "year") {
+        return sxSetComment(r, "Stored two-digit year; no century is inserted as a physical member.");
+    }
+    if (r.name === "file_type") {
+        names = ["BASIC program", "BASIC data", "Machine code", "ASCII assembler"];
+        v = sxVarU64(r.value);
+        return sxSetComment(r, v < 4 ? names[v] : "Unknown stored file type");
+    }
+    if (r.name === "format_flag") {
+        return sxSetComment(r, sxVarU64(r.value) === 0 ? "Binary/tokenized" : sxVarU64(r.value) === 255 ? "ASCII" : "Unknown stored format flag");
+    }
+    if (r.name === "allocation_value") {
+        v = sxVarU64(r.value);
+        var text = v === 255 ? "Free block" : v === 254 ? "Reserved metadata block (formatter value FE)" : v === 251 ? "Reserved block (documented value FB)" : v >= 193 && v <= 200 ? "Final block: low nibble is the number of used sectors" : "Next allocation-block index";
+        return sxSetComment(r, text);
+    }
+    if (r.name === "entry_state") {
+        return sxSetComment(r, sxVarU64(r.value) === 255 ? "End of directory" : sxVarU64(r.value) === 0 ? "Free directory entry" : "Stored directory marker");
+    }
+    return sxSetComment(r, "Original Thomson BASIC-DOS filesystem bytes. Unknown spans stay opaque; geometry and transformed sector-order values are not inserted as stored fields.");
+}

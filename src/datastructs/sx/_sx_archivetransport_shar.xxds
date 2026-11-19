@@ -1,0 +1,227 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/shar/xx_shar_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxatp_shar_command_fields = layout([field("command", "char", 0)]);
+var sxatp_shar_command = sxLayout(0x6089007A, "shar_command", LE, sxatp_shar_command_fields);
+var sxatp_shar_redirection_fields = layout([field("redirection_operator", "char", 0)]);
+var sxatp_shar_redirection = sxLayout(0x6089007B, "shar_redirection", LE, sxatp_shar_redirection_fields);
+var sxatp_shar_heredoc_operator_fields = layout([field("here_document_operator", "char", 0)]);
+var sxatp_shar_heredoc_operator = sxLayout(0x6089007C, "shar_heredoc_operator", LE, sxatp_shar_heredoc_operator_fields);
+var sxatp_shar_delimiter_fields = layout([field("delimiter", "char", 0)]);
+var sxatp_shar_delimiter = sxLayout(0x6089007D, "shar_delimiter", LE, sxatp_shar_delimiter_fields);
+var sxatp_shar_name_fields = layout([field("member_name", "char", 0)]);
+var sxatp_shar_name = sxLayout(0x6089007E, "shar_name", LE, sxatp_shar_name_fields);
+var sxatp_shar_quoted_marker_fields = layout([field("quoting_marker", "char", 0)]);
+var sxatp_shar_quoted_marker = sxLayout(0x6089007F, "shar_quoted_marker", LE, sxatp_shar_quoted_marker_fields);
+var sxatp_shar_terminator_fields = layout([field("terminating_delimiter", "char", 0)]);
+var sxatp_shar_terminator = sxLayout(0x60890080, "shar_terminator", LE, sxatp_shar_terminator_fields);
+var sxatp_shar_prefix_expression_fields = layout([field("prefix_expression", "char", 0)]);
+var sxatp_shar_prefix_expression = sxLayout(0x60890081, "shar_prefix_expression", LE, sxatp_shar_prefix_expression_fields);
+var sxatp_shar_uu_begin_fields = layout([field("uuencode_begin_line", "char", 0)]);
+var sxatp_shar_uu_begin = sxLayout(0x60890082, "shar_uu_begin", LE, sxatp_shar_uu_begin_fields);
+function sxatp_line(c, p, b, cap, n, next) {
+    n[0] = 0;
+    var q = p;
+    while (q < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var x = [0];
+        if (!sxatp_read(c, q, x, 0, 1)) {
+            return false;
+        }
+        q++;
+        if (x[0] === 13 || x[0] === 10) {
+            if (x[0] === 13 && q < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+                var y = [0];
+                if (!sxatp_read(c, q, y, 0, 1)) {
+                    return false;
+                }
+                if (y[0] === 10) {
+                    q++;
+                }
+            }
+            next[0] = q;
+            return true;
+        }
+        if (n[0] >= cap) {
+            return false;
+        }
+        b[n[0]++] = x[0];
+    }
+    next[0] = q;
+    return q > p;
+}
+function sxatp_shword(c, b, n, p, base, l, end, start, len) {
+    while (p < n && (b[p] === 32 || b[p] === 9 || b[p] === 13)) {
+        p++;
+    }
+    if (p >= n) {
+        return false;
+    }
+    var original = p;
+    if (b[p] === 92) {
+        p++;
+    }
+    if (p >= n) {
+        return false;
+    }
+    var a = p;
+    var z;
+    if (b[p] === 39 /*'*/ || b[p] === 34 /*"*/) {
+        var quote = b[p++];
+        a = p;
+        while (p < n && b[p] !== quote) {
+            p++;
+        }
+        if (p >= n) {
+            return false;
+        }
+        z = sxU64(p - a);
+        end[0] = p + 1;
+    } else {
+        a = p;
+        while (p < n && !sxatp_space(b[p]) && !sxStrchr(";&|<>()", b[p])) {
+            p++;
+        }
+        z = sxU64(p - a);
+        end[0] = p;
+    }
+    if (!z) {
+        return false;
+    }
+    if (a > original && !sxatp_text(c, sxatp_shar_quoted_marker, base + original, sxU64(a - original), false)) {
+        return false;
+    }
+    if (end[0] > a + z && !sxatp_text(c, sxatp_shar_quoted_marker, base + a + z, sxU64(sxU64(end[0] - a) - z), false)) {
+        return false;
+    }
+    if (!sxatp_text(c, l, base + a, z, false)) {
+        return false;
+    }
+    start[0] = a;
+    len[0] = z;
+    return true;
+}
+function sxatp_shar_one(c, p, header_size, end) {
+    var b = [];
+    var n = [0];
+    var next = [0];
+    if (!header_size || !sxatp_line(c, p, b, 0x1000, n, next) || sxU64(next[0] - p) > header_size) {
+        return false;
+    }
+    var a = 0;
+    while (a < n[0] && (b[a] === 32 || b[a] === 9)) {
+        a++;
+    }
+    var cmd = a;
+    while (a < n[0] && !sxatp_space(b[a]) && !sxStrchr(";&|<>()", b[a])) {
+        a++;
+    }
+    if (!sxatp_text(c, sxatp_shar_command, p + cmd, sxU64(a - cmd), false)) {
+        return false;
+    }
+    var here = a;
+    while (here + 1 < n[0] && (b[here] !== 60 /*<*/ || b[here + 1] !== 60 /*<*/)) {
+        here++;
+    }
+    if (here + 1 >= n[0]) {
+        return false;
+    }
+    var op = 2;
+    if (here + 2 < n[0] && b[here + 2] === 45 /*-*/) {
+        op++;
+    }
+    if (!sxatp_text(c, sxatp_shar_heredoc_operator, p + here, op, false)) {
+        return false;
+    }
+    var de = [0];
+    var ds = [0];
+    var dn = [0];
+    if (!sxatp_shword(c, b, n[0], here + op, p, sxatp_shar_delimiter, de, ds, dn)) {
+        return false;
+    }
+    for (var k = a; k + 5 < here; k++) {
+        if (b[k] === 115 /*s*/ && b[k + 1] === 47 && b[k + 2] === 94 /*^*/) {
+            var z = [b[k + 3] === 92 && b[k + 4] === 116 /*t*/ ? 7 : 6];
+            if (k + z[0] <= here && b[sxU64(k + z[0] - 1)] === 47 && b[sxU64(k + z[0] - 2)] === 47) {
+                if (!sxatp_text(c, sxatp_shar_prefix_expression, p + k, z[0], false)) {
+                    return false;
+                }
+            }
+        }
+    }
+    var red = a;
+    while (red < n[0] && (b[red] !== 62 /*>*/ || red >= here && red < de[0])) {
+        red++;
+    }
+    if (red < n[0]) {
+        var rz = red + 1 < n[0] && b[red + 1] === 62 /*>*/ ? 2 : 1;
+        var e = [0];
+        var s = [0];
+        z = [0];
+        if (!sxatp_text(c, sxatp_shar_redirection, p + red, rz, false) || !sxatp_shword(c, b, n[0], red + rz, p, sxatp_shar_name, e, s, z)) {
+            return false;
+        }
+    } else if (next[0] < p + header_size) {
+        z = [0];
+        var nn = [0];
+        if (!sxatp_line(c, next[0], b, 0x1000, z, nn) || !sxatp_text(c, sxatp_shar_uu_begin, next[0], z[0], false)) {
+            return false;
+        }
+    }
+    if (end < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var t = [];
+        z = [0];
+        nn = [0];
+        if (!sxatp_line(c, end, t, 0x1000, z, nn)) {
+            return false;
+        }
+        k = 0;
+        if (op === 3) {
+            while (k < z[0] && t[k] === 9) {
+                k++;
+            }
+        }
+        if (sxU64(z[0] - k) === dn[0] && !sxatp_text(c, sxatp_shar_terminator, end + k, dn[0], false)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxatp_shar(c) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    for (var i = 0; i < 20000; i++) {
+        var r = f.get_current_archive_record(f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset < f.base_address || r.header_size <= 0 || r.data_offset < f.base_address || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var p = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+        var d = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+        var z = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        if (!sxatp_span(c, p, (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size)) || !sxatp_span(c, d, z) || !sxatp_shar_one(c, p, (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size), d + z)) {
+            ok = false;
+            break;
+        }
+        if (!f.archive_record_move_to_next(f, s, c.pd)) {
+            break;
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sx_shar_build(c) {
+    return sxatp_shar(c);
+}

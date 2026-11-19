@@ -1,0 +1,172 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/protein_pdb/xx_protein_pdb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_pdb_atom_name_fields = layout([field("pdb_atom_name", "char", 0, STRING)]);
+var sxsa_pdb_atom_name = sxLayout(0x60510056, "science_pdb_atom_name", LE, sxsa_pdb_atom_name_fields);
+var sxsa_pdb_altloc_fields = layout([field("pdb_altloc", "char", 0, STRING)]);
+var sxsa_pdb_altloc = sxLayout(0x60510057, "science_pdb_altloc", LE, sxsa_pdb_altloc_fields);
+var sxsa_pdb_residue_fields = layout([field("pdb_residue", "char", 0, STRING)]);
+var sxsa_pdb_residue = sxLayout(0x60510058, "science_pdb_residue", LE, sxsa_pdb_residue_fields);
+var sxsa_pdb_chain_fields = layout([field("pdb_chain", "char", 0, STRING)]);
+var sxsa_pdb_chain = sxLayout(0x60510059, "science_pdb_chain", LE, sxsa_pdb_chain_fields);
+var sxsa_pdb_icode_fields = layout([field("pdb_icode", "char", 0, STRING)]);
+var sxsa_pdb_icode = sxLayout(0x6051005A, "science_pdb_icode", LE, sxsa_pdb_icode_fields);
+var sxsa_pdb_element_fields = layout([field("pdb_element", "char", 0, STRING)]);
+var sxsa_pdb_element = sxLayout(0x6051005B, "science_pdb_element", LE, sxsa_pdb_element_fields);
+var sxsa_pdb_charge_fields = layout([field("pdb_charge", "char", 0, STRING)]);
+var sxsa_pdb_charge = sxLayout(0x6051005C, "science_pdb_charge", LE, sxsa_pdb_charge_fields);
+var sxsa_pdb_serial_fields = layout([field("pdb_serial", "ascii_signed", 0)]);
+var sxsa_pdb_serial = sxLayout(0x6051005D, "science_pdb_serial", LE, sxsa_pdb_serial_fields);
+var sxsa_pdb_residue_sequence_fields = layout([field("pdb_residue_sequence", "ascii_signed", 0)]);
+var sxsa_pdb_residue_sequence = sxLayout(0x6051005E, "science_pdb_residue_sequence", LE, sxsa_pdb_residue_sequence_fields);
+var sxsa_pdb_x_fields = layout([field("pdb_x", "ascii_real", 0)]);
+var sxsa_pdb_x = sxLayout(0x6051005F, "science_pdb_x", LE, sxsa_pdb_x_fields);
+var sxsa_pdb_y_fields = layout([field("pdb_y", "ascii_real", 0)]);
+var sxsa_pdb_y = sxLayout(0x60510060, "science_pdb_y", LE, sxsa_pdb_y_fields);
+var sxsa_pdb_z_fields = layout([field("pdb_z", "ascii_real", 0)]);
+var sxsa_pdb_z = sxLayout(0x60510061, "science_pdb_z", LE, sxsa_pdb_z_fields);
+var sxsa_pdb_occupancy_fields = layout([field("pdb_occupancy", "ascii_real", 0)]);
+var sxsa_pdb_occupancy = sxLayout(0x60510062, "science_pdb_occupancy", LE, sxsa_pdb_occupancy_fields);
+var sxsa_pdb_temperature_fields = layout([field("pdb_temperature", "ascii_real", 0)]);
+var sxsa_pdb_temperature = sxLayout(0x60510063, "science_pdb_temperature", LE, sxsa_pdb_temperature_fields);
+var sxsa_pdb_u11_fields = layout([field("pdb_u11", "ascii_signed", 0)]);
+var sxsa_pdb_u11 = sxLayout(0x60510064, "science_pdb_u11", LE, sxsa_pdb_u11_fields);
+var sxsa_pdb_u22_fields = layout([field("pdb_u22", "ascii_signed", 0)]);
+var sxsa_pdb_u22 = sxLayout(0x60510065, "science_pdb_u22", LE, sxsa_pdb_u22_fields);
+var sxsa_pdb_u33_fields = layout([field("pdb_u33", "ascii_signed", 0)]);
+var sxsa_pdb_u33 = sxLayout(0x60510066, "science_pdb_u33", LE, sxsa_pdb_u33_fields);
+var sxsa_pdb_u12_fields = layout([field("pdb_u12", "ascii_signed", 0)]);
+var sxsa_pdb_u12 = sxLayout(0x60510067, "science_pdb_u12", LE, sxsa_pdb_u12_fields);
+var sxsa_pdb_u13_fields = layout([field("pdb_u13", "ascii_signed", 0)]);
+var sxsa_pdb_u13 = sxLayout(0x60510068, "science_pdb_u13", LE, sxsa_pdb_u13_fields);
+var sxsa_pdb_u23_fields = layout([field("pdb_u23", "ascii_signed", 0)]);
+var sxsa_pdb_u23 = sxLayout(0x60510069, "science_pdb_u23", LE, sxsa_pdb_u23_fields);
+function sxsa_pdb(q) {
+    var line = sxNew_sxsa_token();
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (line.z < 3) {
+            return false;
+        }
+        var k = sxCopy_sxsa_token(null, sxsa_trim(q, sxCopy_sxsa_token(null, { a: line.a, z: line.z < 6 ? line.z : 6 })));
+        {
+            if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, k))) {
+                return false;
+            }
+        }
+        var atom = sxsa_eq(q, sxCopy_sxsa_token(null, k), "ATOM") || sxsa_eq(q, sxCopy_sxsa_token(null, k), "HETATM");
+        var aniso = sxsa_eq(q, sxCopy_sxsa_token(null, k), "ANISOU");
+        var ter = sxsa_eq(q, sxCopy_sxsa_token(null, k), "TER");
+        if (atom || aniso || ter) {
+            {
+                if (!sxsa_column(q, sxsa_pdb_serial, sxCopy_sxsa_token(null, line), 6, 5)) {
+                    return false;
+                }
+            }
+            if (!ter) {
+                {
+                    if (!sxsa_column(q, sxsa_pdb_atom_name, sxCopy_sxsa_token(null, line), 12, 4)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsa_column(q, sxsa_pdb_altloc, sxCopy_sxsa_token(null, line), 16, 1)) {
+                        return false;
+                    }
+                }
+            }
+            {
+                if (!sxsa_column(q, sxsa_pdb_residue, sxCopy_sxsa_token(null, line), 17, 3)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsa_column(q, sxsa_pdb_chain, sxCopy_sxsa_token(null, line), 21, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsa_column(q, sxsa_pdb_residue_sequence, sxCopy_sxsa_token(null, line), 22, 4)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsa_column(q, sxsa_pdb_icode, sxCopy_sxsa_token(null, line), 26, 1)) {
+                    return false;
+                }
+            }
+            if (atom) {
+                {
+                    if (!sxsa_column(q, sxsa_pdb_x, sxCopy_sxsa_token(null, line), 30, 8)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsa_column(q, sxsa_pdb_y, sxCopy_sxsa_token(null, line), 38, 8)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsa_column(q, sxsa_pdb_z, sxCopy_sxsa_token(null, line), 46, 8)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsa_column(q, sxsa_pdb_occupancy, sxCopy_sxsa_token(null, line), 54, 6)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsa_column(q, sxsa_pdb_temperature, sxCopy_sxsa_token(null, line), 60, 6)) {
+                        return false;
+                    }
+                }
+            }
+            if (aniso) {
+                var u = [sxsa_pdb_u11, sxsa_pdb_u22, sxsa_pdb_u33, sxsa_pdb_u12, sxsa_pdb_u13, sxsa_pdb_u23];
+                for (var i = 0; i < 6; i++) {
+                    if (!sxsa_column(q, u[i], sxCopy_sxsa_token(null, line), (28 + ((7 * i) >>> 0)) >>> 0, 7)) {
+                        return false;
+                    }
+                }
+            }
+            if (line.z >= 78) {
+                {
+                    if (!sxsa_column(q, sxsa_pdb_element, sxCopy_sxsa_token(null, line), 76, 2)) {
+                        return false;
+                    }
+                }
+            }
+            if (line.z >= 80) {
+                {
+                    if (!sxsa_column(q, sxsa_pdb_charge, sxCopy_sxsa_token(null, line), 78, 2)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxsa_eq(q, sxCopy_sxsa_token(null, k), "CONECT")) {
+            for (var o = 6; (o + 5) >>> 0 <= (line.z < 0 ? line.z + SX_U64_MAX : line.z); o = (o + 5) >>> 0) {
+                {
+                    if (!sxsa_column(q, sxsa_pdb_serial, sxCopy_sxsa_token(null, line), o, 5)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (line.z > 6) {
+            {
+                if (!sxsa_emit(q, sxsa_comment, sxCopy_sxsa_token(null, { a: line.a + 6, z: line.z - 6 }))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_protein_pdb_build(q) {
+    return sxsa_pdb(q);
+}

@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/southern_magneticfieldspacker/xx_southern_magneticfieldspacker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxmodv_mfp(v) {
+    var count = [0];
+    var copy = [0];
+    if (!sxmodv_span(v, 0, 382)) {
+        return false;
+    }
+    for (var i = 0; i < 31; i++) {
+        if (!sxmodv_row(v, sxmodv_mod_compact_sample, (i * 8) >>> 0)) {
+            return false;
+        }
+    }
+    if (!sxmodv_row(v, sxmodv_mfp_controls, 248)) {
+        return false;
+    }
+    for (i = 0; i < 128; i++) {
+        if (!sxmodv_row(v, sxmodv_mod_order, (250 + i) >>> 0)) {
+            return false;
+        }
+    }
+    if (!sxmodv_row(v, sxmodv_mfp_counts, 378) || !sxmodv_word(v, 378, 2, count, 0) || !sxmodv_word(v, 380, 2, copy, 0) || count[0] !== copy[0] || !count[0] || count[0] > 127 || !sxmodv_span(v, 382, count[0] * 8)) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        if (!sxmodv_row(v, sxmodv_mfp_channels, 382 + i * 8)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_southern_magneticfieldspacker_build(v) {
+    return sxmodv_mfp(v);
+}

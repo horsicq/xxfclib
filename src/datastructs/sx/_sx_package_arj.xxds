@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/arj/xx_arj_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_arj_prefix_fields = layout([u16("magic", SIGNATURE), u16("header_size", SIZE)]);
+var sx_p_arj_prefix = sxLayout(0x60070001, "arj_prefix", LE, sx_p_arj_prefix_fields);
+var sx_p_arj_main_fields = layout([u8("first_header_size", SIZE), u8("archiver_version"), u8("minimum_version"),
+    u8("host_os", ID), u8("flags", FLAGS), u8("method", ID), u8("file_type", ID), u8("reserved", RESERVED),
+    u32("created", TIMESTAMP), u32("modified", TIMESTAMP), u32("archive_size", SIZE), u32("security_offset", OFFSET),
+    u16("filespec_position", OFFSET), u16("security_size", SIZE), u8("encryption_version"), u8("last_chapter")]);
+var sx_p_arj_main = sxLayout(0x60070002, "arj_main", LE, sx_p_arj_main_fields);
+var sx_p_arj_file_fields = layout([u8("first_header_size", SIZE), u8("archiver_version"), u8("minimum_version"),
+    u8("host_os", ID), u8("flags", FLAGS), u8("method", ID), u8("file_type", ID), u8("reserved", RESERVED),
+    u32("modified", TIMESTAMP), u32("packed_size", SIZE), u32("original_size", SIZE), u32("crc32", CHECKSUM),
+    u16("filespec_position", OFFSET), u16("access_mode", FLAGS), u8("first_chapter"), u8("last_chapter")]);
+var sx_p_arj_file = sxLayout(0x60070003, "arj_file", LE, sx_p_arj_file_fields);
+var sx_p_crc32_fields = layout([u32("crc32", CHECKSUM)]);
+var sx_p_crc32 = sxLayout(0x60070004, "crc32", LE, sx_p_crc32_fields);
+function sx_p_arj(c) {
+    var off = 0;
+    var main = true;
+    while (off < c.size) {
+        var n;
+        var packed = [0];
+        var first = [0];
+        if (!sx_p_sig(c, off, "`\xEA", 2) || (n = sx_u16(c, off + 2, false)) === null || !sx_add(c, sx_p_arj_prefix, off, 4)) {
+            return false;
+        }
+        if (!n) {
+            return off + 4 === c.size;
+        }
+        if (n < 30 || n > 2600 || !sx_p_span(c, (off + 4 < 0 ? off + 4 + SX_U64_MAX : off + 4), n + 4) || !sx_p_byte(c, off + 4, first) || first[0] < 30 || first[0] >= n) {
+            return false;
+        }
+        if (!sx_add(c, main ? sx_p_arj_main : sx_p_arj_file, off + 4, 30) || !sx_add(c, sx_p_crc32, off + 4 + n, 4)) {
+            return false;
+        }
+        if (!main && !sx_p_uint(c, off + 16, 4, packed)) {
+            return false;
+        }
+        var str = [off + 4 + first[0]];
+        if (!sx_p_zstring(c, str, off + 4 + n)) {
+            return false;
+        }
+        off += 8 + n;
+        for (; ; ) {
+            var ext;
+            if ((ext = sx_u16(c, off, false)) === null || !sx_add(c, sx_p_length16, off, 2)) {
+                return false;
+            }
+            off += 2;
+            if (!ext) {
+                break;
+            }
+            if (!sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), ext + 4) || !sx_add(c, sx_p_crc32, off + ext, 4)) {
+                return false;
+            }
+            off += ext + 4;
+        }
+        if (!sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), packed[0])) {
+            return false;
+        }
+        off += (packed[0] >= SX_I64_MAX ? packed[0] - SX_U64_MAX : packed[0]);
+        main = false;
+    }
+    return !main;
+}
+function sx_arj_build(c) {
+    return sx_p_arj(c);
+}

@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/solitaire_deluxe/xx_solitaire_deluxe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_solitaire_header_fields = layout([chars("banner", 100, SIGNATURE), u8("eof_marker", SIGNATURE),
+    u32("marker", SIGNATURE), chars("producer", 2, SIGNATURE), bytes("unknown", 8), u16("category_count", COUNT),
+    u16("member_count", COUNT)]);
+var sxap_solitaire_header = sxLayout(0x6072002C, "solitaire_header", LE, sxap_solitaire_header_fields);
+var sxap_solitaire_member_fields = layout([chars("name", 13, NONE), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u16("attributes", FLAGS), u16("value")]);
+var sxap_solitaire_member = sxLayout(0x6072002D, "solitaire_member", LE, sxap_solitaire_member_fields);
+function sxap_solitaire(c) {
+    var files = [0];
+    var categories = [0];
+    var p;
+    if (!sxap_word(c, 115, 2, false, categories) || !sxap_word(c, 117, 2, false, files) || !sxap_add(c, sxap_solitaire_header, 0) || !sxap_table(c, sxap_solitaire_member, 119, 25, files[0])) {
+        return false;
+    }
+    p = 119 + 25 * files[0] + 22 * categories[0];
+    for (var i = 0; i < files[0]; i++) {
+        var z = [0];
+        if (!sxap_word(c, 119 + 25 * i + 17, 4, false, z)) {
+            return false;
+        }
+        if (!sxap_span(c, p, z[0])) {
+            return true;
+        }
+        if (!sxap_dcl(c, p, z[0])) {
+            return false;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_solitaire_deluxe_build(c) {
+    return sxap_solitaire(c);
+}

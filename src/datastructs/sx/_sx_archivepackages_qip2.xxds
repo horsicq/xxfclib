@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/qip2/xx_qip2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_qip_header_fields = layout([chars("signature", 2, SIGNATURE), u16("member_count", COUNT), u32("index_size", SIZE),
+    u32("version"), u32("reserved")]);
+var sxap_qip_header = sxLayout(0x60720017, "qip_header", LE, sxap_qip_header_fields);
+var sxap_qip_index_fields = layout([u32("member_offset", OFFSET), chars("name", 12, NONE)]);
+var sxap_qip_index = sxLayout(0x60720018, "qip_index", LE, sxap_qip_index_fields);
+var sxap_qip_member_v1_fields = layout([chars("signature", 2, SIGNATURE), u16("kind"), u32("compressed_size", SIZE),
+    u16("sequence_number"), u8("flags", FLAGS), u16("dos_time"), u16("dos_date"), u32("uncompressed_size", SIZE),
+    chars("name", 13, NONE)]);
+var sxap_qip_member_v1 = sxLayout(0x60720019, "qip_member_v1", LE, sxap_qip_member_v1_fields);
+var sxap_qip_member_v2_fields = layout([chars("signature", 2, SIGNATURE), u16("kind"), u32("compressed_size", SIZE),
+    u16("sequence_number"), u8("flags", FLAGS), u16("dos_time"), u16("dos_date"), u32("unknown"),
+    u32("uncompressed_size", SIZE), chars("name", 13, NONE)]);
+var sxap_qip_member_v2 = sxLayout(0x6072001A, "qip_member_v2", LE, sxap_qip_member_v2_fields);
+function sxap_qip(c) {
+    var n = [0];
+    var ver = [0];
+    if (!sxap_word(c, 2, 2, false, n) || !sxap_word(c, 8, 4, false, ver) || !sxap_add(c, sxap_qip_header, 0) || !sxap_table(c, sxap_qip_index, 16, 16, n[0])) {
+        return false;
+    }
+    var width = ver[0] === 1 ? 32 : 36;
+    for (var i = 0; i < n[0]; i++) {
+        var p = [0];
+        var z = [0];
+        if (!sxap_word(c, 16 + i * 16, 4, false, p) || !sxap_word(c, p[0] + 4, 4, false, z) || !sxap_add(c, ver[0] === 1 ? sxap_qip_member_v1 : sxap_qip_member_v2, p[0]) || !sxap_span(c, p[0] + width, z[0]) || !sxap_dcl(c, p[0] + width, z[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_qip2_build(c) {
+    return sxap_qip(c);
+}

@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nexas_pac/xx_nexas_pac_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_nexas_footer_fields = layout([u32("packed_index_bytes", SIZE)]);
+var sxga_nexas_footer = sxLayout(0x603B0044, "nexas_footer", LE, sxga_nexas_footer_fields);
+function sxga_nexas_candidate(v, width, n, end, mode) {
+    var z = (width + 12) >>> 0;
+    var table = n * z;
+    if (table > 16777216 || !sxga_span(v, 12, table, end)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var b = [];
+        if (!sxga_read(v, 12 + i * z, b, z, end)) {
+            return false;
+        }
+        var nonspace = false;
+        var length = 0;
+        while (length < width && b[length]) {
+            if (b[length] > 32) {
+                nonspace = true;
+            }
+            length++;
+        }
+        var at = sxGetU32At(b, width, 4, 0, false);
+        var raw = sxGetU32At(b, width + 4, 4, 0, false);
+        var packed = sxGetU32At(b, width + 8, 4, 0, false);
+        if (!length || !nonspace || at < 12 + table || !sxga_span(v, at, packed, end) || !mode && packed !== raw) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxga_nexas(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var mode = [0];
+    if (!sxga_row(v, sxga_nexas_header, 0, end) || !sxga_word(v, 4, 4, false, n, 0, end) || !n[0] || n[0] > 0xFFFFF || !sxga_word(v, 8, 4, false, mode, 0, end)) {
+        return false;
+    }
+    if (sxga_nexas_candidate(v, 32, n[0], end, mode[0])) {
+        return sxga_table(v, sxga_nexas_entry32, 12, n[0], end);
+    }
+    if (sxga_nexas_candidate(v, 64, n[0], end, mode[0])) {
+        return sxga_table(v, sxga_nexas_entry64, 12, n[0], end);
+    }
+    return end >= 4 && sxga_row(v, sxga_nexas_footer, sxU64(end - 4), end);
+}
+function sx_nexas_pac_build(v) {
+    return sxga_nexas(v);
+}

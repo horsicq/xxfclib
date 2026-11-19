@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_bfres/xx_nintendo_bfres_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_bfres_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u16("byte_order", ID),
+    u16("header_size", SIZE), u32("file_size", SIZE), u32("alignment", SIZE), i32("name_relative", OFFSET),
+    u32("string_pool_size", SIZE), i32("string_pool_relative", OFFSET), i32("model_dictionary_relative", OFFSET),
+    i32("texture_dictionary_relative", OFFSET), i32("skeletal_animation_dictionary_relative", OFFSET),
+    i32("shader_parameter_animation_dictionary_relative", OFFSET), i32("color_animation_dictionary_relative", OFFSET),
+    i32("texture_srt_animation_dictionary_relative", OFFSET), i32("texture_pattern_animation_dictionary_relative", OFFSET),
+    i32("bone_visibility_animation_dictionary_relative", OFFSET),
+    i32("material_visibility_animation_dictionary_relative", OFFSET), i32("shape_animation_dictionary_relative", OFFSET),
+    i32("scene_animation_dictionary_relative", OFFSET), i32("external_file_dictionary_relative", OFFSET),
+    u16("model_count", COUNT), u16("texture_count", COUNT), u16("skeletal_animation_count", COUNT),
+    u16("shader_parameter_animation_count", COUNT), u16("color_animation_count", COUNT),
+    u16("texture_srt_animation_count", COUNT), u16("texture_pattern_animation_count", COUNT),
+    u16("bone_visibility_animation_count", COUNT), u16("material_visibility_animation_count", COUNT),
+    u16("shape_animation_count", COUNT), u16("scene_animation_count", COUNT), u16("external_file_count", COUNT),
+    u32("user_pointer", POINTER)]);
+var sxmx_bfres_header = sxLayout(0x602E0049, "bfres_header", BE, sxmx_bfres_header_fields);
+var sxmx_bfres_external_fields = layout([i32("data_relative", OFFSET), u32("data_size", SIZE)]);
+var sxmx_bfres_external = sxLayout(0x602E004C, "bfres_external", BE, sxmx_bfres_external_fields);
+function sxmx_bfres(v) {
+    var at = [0];
+    if (!sxmx_row(v, sxmx_bfres_header, 0, v.n) || !sxmx_relative(v, 76, true, at) || !sxmx_row(v, sxmx_bfres_dictionary, at[0], v.n)) {
+        return false;
+    }
+    var n = sxmx_u32(v.p, at[0] + 4, true);
+    if (n > 1024 || !sxmx_table(v, sxmx_bfres_node, at[0] + 8, n + 1, v.n)) {
+        return false;
+    }
+    for (var i = 1; i <= n; i++) {
+        var target = [0];
+        if (!sxmx_relative(v, at[0] + 8 + i * 16 + 12, true, target) || !sxmx_row(v, sxmx_bfres_external, target[0], v.n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_nintendo_bfres_build(v) {
+    return sxmx_bfres(v);
+}

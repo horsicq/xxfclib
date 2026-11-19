@@ -1,0 +1,204 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzw15v/xx_lzw15v_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarwire_lzw15v_code9_bit0_fields = layout([field("dictionary_code", "msb_bits[0,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit0 = sxLayout(0x608D0046, "lzw15v_code9_bit0", LE, sxarwire_lzw15v_code9_bit0_fields);
+var sxarwire_lzw15v_code9_bit1_fields = layout([field("dictionary_code", "msb_bits[1,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit1 = sxLayout(0x608D0047, "lzw15v_code9_bit1", LE, sxarwire_lzw15v_code9_bit1_fields);
+var sxarwire_lzw15v_code9_bit2_fields = layout([field("dictionary_code", "msb_bits[2,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit2 = sxLayout(0x608D0048, "lzw15v_code9_bit2", LE, sxarwire_lzw15v_code9_bit2_fields);
+var sxarwire_lzw15v_code9_bit3_fields = layout([field("dictionary_code", "msb_bits[3,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit3 = sxLayout(0x608D0049, "lzw15v_code9_bit3", LE, sxarwire_lzw15v_code9_bit3_fields);
+var sxarwire_lzw15v_code9_bit4_fields = layout([field("dictionary_code", "msb_bits[4,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit4 = sxLayout(0x608D004A, "lzw15v_code9_bit4", LE, sxarwire_lzw15v_code9_bit4_fields);
+var sxarwire_lzw15v_code9_bit5_fields = layout([field("dictionary_code", "msb_bits[5,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit5 = sxLayout(0x608D004B, "lzw15v_code9_bit5", LE, sxarwire_lzw15v_code9_bit5_fields);
+var sxarwire_lzw15v_code9_bit6_fields = layout([field("dictionary_code", "msb_bits[6,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit6 = sxLayout(0x608D004C, "lzw15v_code9_bit6", LE, sxarwire_lzw15v_code9_bit6_fields);
+var sxarwire_lzw15v_code9_bit7_fields = layout([field("dictionary_code", "msb_bits[7,9]", 2, ID)]);
+var sxarwire_lzw15v_code9_bit7 = sxLayout(0x608D004D, "lzw15v_code9_bit7", LE, sxarwire_lzw15v_code9_bit7_fields);
+var sxarwire_lzw15v_code10_bit0_fields = layout([field("dictionary_code", "msb_bits[0,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit0 = sxLayout(0x608D004E, "lzw15v_code10_bit0", LE, sxarwire_lzw15v_code10_bit0_fields);
+var sxarwire_lzw15v_code10_bit1_fields = layout([field("dictionary_code", "msb_bits[1,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit1 = sxLayout(0x608D004F, "lzw15v_code10_bit1", LE, sxarwire_lzw15v_code10_bit1_fields);
+var sxarwire_lzw15v_code10_bit2_fields = layout([field("dictionary_code", "msb_bits[2,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit2 = sxLayout(0x608D0050, "lzw15v_code10_bit2", LE, sxarwire_lzw15v_code10_bit2_fields);
+var sxarwire_lzw15v_code10_bit3_fields = layout([field("dictionary_code", "msb_bits[3,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit3 = sxLayout(0x608D0051, "lzw15v_code10_bit3", LE, sxarwire_lzw15v_code10_bit3_fields);
+var sxarwire_lzw15v_code10_bit4_fields = layout([field("dictionary_code", "msb_bits[4,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit4 = sxLayout(0x608D0052, "lzw15v_code10_bit4", LE, sxarwire_lzw15v_code10_bit4_fields);
+var sxarwire_lzw15v_code10_bit5_fields = layout([field("dictionary_code", "msb_bits[5,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit5 = sxLayout(0x608D0053, "lzw15v_code10_bit5", LE, sxarwire_lzw15v_code10_bit5_fields);
+var sxarwire_lzw15v_code10_bit6_fields = layout([field("dictionary_code", "msb_bits[6,10]", 2, ID)]);
+var sxarwire_lzw15v_code10_bit6 = sxLayout(0x608D0054, "lzw15v_code10_bit6", LE, sxarwire_lzw15v_code10_bit6_fields);
+var sxarwire_lzw15v_code10_bit7_fields = layout([field("dictionary_code", "msb_bits[7,10]", 3, ID)]);
+var sxarwire_lzw15v_code10_bit7 = sxLayout(0x608D0055, "lzw15v_code10_bit7", LE, sxarwire_lzw15v_code10_bit7_fields);
+var sxarwire_lzw15v_code11_bit0_fields = layout([field("dictionary_code", "msb_bits[0,11]", 2, ID)]);
+var sxarwire_lzw15v_code11_bit0 = sxLayout(0x608D0056, "lzw15v_code11_bit0", LE, sxarwire_lzw15v_code11_bit0_fields);
+var sxarwire_lzw15v_code11_bit1_fields = layout([field("dictionary_code", "msb_bits[1,11]", 2, ID)]);
+var sxarwire_lzw15v_code11_bit1 = sxLayout(0x608D0057, "lzw15v_code11_bit1", LE, sxarwire_lzw15v_code11_bit1_fields);
+var sxarwire_lzw15v_code11_bit2_fields = layout([field("dictionary_code", "msb_bits[2,11]", 2, ID)]);
+var sxarwire_lzw15v_code11_bit2 = sxLayout(0x608D0058, "lzw15v_code11_bit2", LE, sxarwire_lzw15v_code11_bit2_fields);
+var sxarwire_lzw15v_code11_bit3_fields = layout([field("dictionary_code", "msb_bits[3,11]", 2, ID)]);
+var sxarwire_lzw15v_code11_bit3 = sxLayout(0x608D0059, "lzw15v_code11_bit3", LE, sxarwire_lzw15v_code11_bit3_fields);
+var sxarwire_lzw15v_code11_bit4_fields = layout([field("dictionary_code", "msb_bits[4,11]", 2, ID)]);
+var sxarwire_lzw15v_code11_bit4 = sxLayout(0x608D005A, "lzw15v_code11_bit4", LE, sxarwire_lzw15v_code11_bit4_fields);
+var sxarwire_lzw15v_code11_bit5_fields = layout([field("dictionary_code", "msb_bits[5,11]", 2, ID)]);
+var sxarwire_lzw15v_code11_bit5 = sxLayout(0x608D005B, "lzw15v_code11_bit5", LE, sxarwire_lzw15v_code11_bit5_fields);
+var sxarwire_lzw15v_code11_bit6_fields = layout([field("dictionary_code", "msb_bits[6,11]", 3, ID)]);
+var sxarwire_lzw15v_code11_bit6 = sxLayout(0x608D005C, "lzw15v_code11_bit6", LE, sxarwire_lzw15v_code11_bit6_fields);
+var sxarwire_lzw15v_code11_bit7_fields = layout([field("dictionary_code", "msb_bits[7,11]", 3, ID)]);
+var sxarwire_lzw15v_code11_bit7 = sxLayout(0x608D005D, "lzw15v_code11_bit7", LE, sxarwire_lzw15v_code11_bit7_fields);
+var sxarwire_lzw15v_code12_bit0_fields = layout([field("dictionary_code", "msb_bits[0,12]", 2, ID)]);
+var sxarwire_lzw15v_code12_bit0 = sxLayout(0x608D005E, "lzw15v_code12_bit0", LE, sxarwire_lzw15v_code12_bit0_fields);
+var sxarwire_lzw15v_code12_bit1_fields = layout([field("dictionary_code", "msb_bits[1,12]", 2, ID)]);
+var sxarwire_lzw15v_code12_bit1 = sxLayout(0x608D005F, "lzw15v_code12_bit1", LE, sxarwire_lzw15v_code12_bit1_fields);
+var sxarwire_lzw15v_code12_bit2_fields = layout([field("dictionary_code", "msb_bits[2,12]", 2, ID)]);
+var sxarwire_lzw15v_code12_bit2 = sxLayout(0x608D0060, "lzw15v_code12_bit2", LE, sxarwire_lzw15v_code12_bit2_fields);
+var sxarwire_lzw15v_code12_bit3_fields = layout([field("dictionary_code", "msb_bits[3,12]", 2, ID)]);
+var sxarwire_lzw15v_code12_bit3 = sxLayout(0x608D0061, "lzw15v_code12_bit3", LE, sxarwire_lzw15v_code12_bit3_fields);
+var sxarwire_lzw15v_code12_bit4_fields = layout([field("dictionary_code", "msb_bits[4,12]", 2, ID)]);
+var sxarwire_lzw15v_code12_bit4 = sxLayout(0x608D0062, "lzw15v_code12_bit4", LE, sxarwire_lzw15v_code12_bit4_fields);
+var sxarwire_lzw15v_code12_bit5_fields = layout([field("dictionary_code", "msb_bits[5,12]", 3, ID)]);
+var sxarwire_lzw15v_code12_bit5 = sxLayout(0x608D0063, "lzw15v_code12_bit5", LE, sxarwire_lzw15v_code12_bit5_fields);
+var sxarwire_lzw15v_code12_bit6_fields = layout([field("dictionary_code", "msb_bits[6,12]", 3, ID)]);
+var sxarwire_lzw15v_code12_bit6 = sxLayout(0x608D0064, "lzw15v_code12_bit6", LE, sxarwire_lzw15v_code12_bit6_fields);
+var sxarwire_lzw15v_code12_bit7_fields = layout([field("dictionary_code", "msb_bits[7,12]", 3, ID)]);
+var sxarwire_lzw15v_code12_bit7 = sxLayout(0x608D0065, "lzw15v_code12_bit7", LE, sxarwire_lzw15v_code12_bit7_fields);
+var sxarwire_lzw15v_code13_bit0_fields = layout([field("dictionary_code", "msb_bits[0,13]", 2, ID)]);
+var sxarwire_lzw15v_code13_bit0 = sxLayout(0x608D0066, "lzw15v_code13_bit0", LE, sxarwire_lzw15v_code13_bit0_fields);
+var sxarwire_lzw15v_code13_bit1_fields = layout([field("dictionary_code", "msb_bits[1,13]", 2, ID)]);
+var sxarwire_lzw15v_code13_bit1 = sxLayout(0x608D0067, "lzw15v_code13_bit1", LE, sxarwire_lzw15v_code13_bit1_fields);
+var sxarwire_lzw15v_code13_bit2_fields = layout([field("dictionary_code", "msb_bits[2,13]", 2, ID)]);
+var sxarwire_lzw15v_code13_bit2 = sxLayout(0x608D0068, "lzw15v_code13_bit2", LE, sxarwire_lzw15v_code13_bit2_fields);
+var sxarwire_lzw15v_code13_bit3_fields = layout([field("dictionary_code", "msb_bits[3,13]", 2, ID)]);
+var sxarwire_lzw15v_code13_bit3 = sxLayout(0x608D0069, "lzw15v_code13_bit3", LE, sxarwire_lzw15v_code13_bit3_fields);
+var sxarwire_lzw15v_code13_bit4_fields = layout([field("dictionary_code", "msb_bits[4,13]", 3, ID)]);
+var sxarwire_lzw15v_code13_bit4 = sxLayout(0x608D006A, "lzw15v_code13_bit4", LE, sxarwire_lzw15v_code13_bit4_fields);
+var sxarwire_lzw15v_code13_bit5_fields = layout([field("dictionary_code", "msb_bits[5,13]", 3, ID)]);
+var sxarwire_lzw15v_code13_bit5 = sxLayout(0x608D006B, "lzw15v_code13_bit5", LE, sxarwire_lzw15v_code13_bit5_fields);
+var sxarwire_lzw15v_code13_bit6_fields = layout([field("dictionary_code", "msb_bits[6,13]", 3, ID)]);
+var sxarwire_lzw15v_code13_bit6 = sxLayout(0x608D006C, "lzw15v_code13_bit6", LE, sxarwire_lzw15v_code13_bit6_fields);
+var sxarwire_lzw15v_code13_bit7_fields = layout([field("dictionary_code", "msb_bits[7,13]", 3, ID)]);
+var sxarwire_lzw15v_code13_bit7 = sxLayout(0x608D006D, "lzw15v_code13_bit7", LE, sxarwire_lzw15v_code13_bit7_fields);
+var sxarwire_lzw15v_code14_bit0_fields = layout([field("dictionary_code", "msb_bits[0,14]", 2, ID)]);
+var sxarwire_lzw15v_code14_bit0 = sxLayout(0x608D006E, "lzw15v_code14_bit0", LE, sxarwire_lzw15v_code14_bit0_fields);
+var sxarwire_lzw15v_code14_bit1_fields = layout([field("dictionary_code", "msb_bits[1,14]", 2, ID)]);
+var sxarwire_lzw15v_code14_bit1 = sxLayout(0x608D006F, "lzw15v_code14_bit1", LE, sxarwire_lzw15v_code14_bit1_fields);
+var sxarwire_lzw15v_code14_bit2_fields = layout([field("dictionary_code", "msb_bits[2,14]", 2, ID)]);
+var sxarwire_lzw15v_code14_bit2 = sxLayout(0x608D0070, "lzw15v_code14_bit2", LE, sxarwire_lzw15v_code14_bit2_fields);
+var sxarwire_lzw15v_code14_bit3_fields = layout([field("dictionary_code", "msb_bits[3,14]", 3, ID)]);
+var sxarwire_lzw15v_code14_bit3 = sxLayout(0x608D0071, "lzw15v_code14_bit3", LE, sxarwire_lzw15v_code14_bit3_fields);
+var sxarwire_lzw15v_code14_bit4_fields = layout([field("dictionary_code", "msb_bits[4,14]", 3, ID)]);
+var sxarwire_lzw15v_code14_bit4 = sxLayout(0x608D0072, "lzw15v_code14_bit4", LE, sxarwire_lzw15v_code14_bit4_fields);
+var sxarwire_lzw15v_code14_bit5_fields = layout([field("dictionary_code", "msb_bits[5,14]", 3, ID)]);
+var sxarwire_lzw15v_code14_bit5 = sxLayout(0x608D0073, "lzw15v_code14_bit5", LE, sxarwire_lzw15v_code14_bit5_fields);
+var sxarwire_lzw15v_code14_bit6_fields = layout([field("dictionary_code", "msb_bits[6,14]", 3, ID)]);
+var sxarwire_lzw15v_code14_bit6 = sxLayout(0x608D0074, "lzw15v_code14_bit6", LE, sxarwire_lzw15v_code14_bit6_fields);
+var sxarwire_lzw15v_code14_bit7_fields = layout([field("dictionary_code", "msb_bits[7,14]", 3, ID)]);
+var sxarwire_lzw15v_code14_bit7 = sxLayout(0x608D0075, "lzw15v_code14_bit7", LE, sxarwire_lzw15v_code14_bit7_fields);
+var sxarwire_lzw15v_code15_bit0_fields = layout([field("dictionary_code", "msb_bits[0,15]", 2, ID)]);
+var sxarwire_lzw15v_code15_bit0 = sxLayout(0x608D0076, "lzw15v_code15_bit0", LE, sxarwire_lzw15v_code15_bit0_fields);
+var sxarwire_lzw15v_code15_bit1_fields = layout([field("dictionary_code", "msb_bits[1,15]", 2, ID)]);
+var sxarwire_lzw15v_code15_bit1 = sxLayout(0x608D0077, "lzw15v_code15_bit1", LE, sxarwire_lzw15v_code15_bit1_fields);
+var sxarwire_lzw15v_code15_bit2_fields = layout([field("dictionary_code", "msb_bits[2,15]", 3, ID)]);
+var sxarwire_lzw15v_code15_bit2 = sxLayout(0x608D0078, "lzw15v_code15_bit2", LE, sxarwire_lzw15v_code15_bit2_fields);
+var sxarwire_lzw15v_code15_bit3_fields = layout([field("dictionary_code", "msb_bits[3,15]", 3, ID)]);
+var sxarwire_lzw15v_code15_bit3 = sxLayout(0x608D0079, "lzw15v_code15_bit3", LE, sxarwire_lzw15v_code15_bit3_fields);
+var sxarwire_lzw15v_code15_bit4_fields = layout([field("dictionary_code", "msb_bits[4,15]", 3, ID)]);
+var sxarwire_lzw15v_code15_bit4 = sxLayout(0x608D007A, "lzw15v_code15_bit4", LE, sxarwire_lzw15v_code15_bit4_fields);
+var sxarwire_lzw15v_code15_bit5_fields = layout([field("dictionary_code", "msb_bits[5,15]", 3, ID)]);
+var sxarwire_lzw15v_code15_bit5 = sxLayout(0x608D007B, "lzw15v_code15_bit5", LE, sxarwire_lzw15v_code15_bit5_fields);
+var sxarwire_lzw15v_code15_bit6_fields = layout([field("dictionary_code", "msb_bits[6,15]", 3, ID)]);
+var sxarwire_lzw15v_code15_bit6 = sxLayout(0x608D007C, "lzw15v_code15_bit6", LE, sxarwire_lzw15v_code15_bit6_fields);
+var sxarwire_lzw15v_code15_bit7_fields = layout([field("dictionary_code", "msb_bits[7,15]", 3, ID)]);
+var sxarwire_lzw15v_code15_bit7 = sxLayout(0x608D007D, "lzw15v_code15_bit7", LE, sxarwire_lzw15v_code15_bit7_fields);
+var sxarwire_set_lzw15v_code9 = [sxarwire_lzw15v_code9_bit0, sxarwire_lzw15v_code9_bit1, sxarwire_lzw15v_code9_bit2,
+    sxarwire_lzw15v_code9_bit3, sxarwire_lzw15v_code9_bit4, sxarwire_lzw15v_code9_bit5, sxarwire_lzw15v_code9_bit6,
+    sxarwire_lzw15v_code9_bit7];
+var sxarwire_set_lzw15v_code10 = [sxarwire_lzw15v_code10_bit0, sxarwire_lzw15v_code10_bit1, sxarwire_lzw15v_code10_bit2,
+    sxarwire_lzw15v_code10_bit3, sxarwire_lzw15v_code10_bit4, sxarwire_lzw15v_code10_bit5, sxarwire_lzw15v_code10_bit6,
+    sxarwire_lzw15v_code10_bit7];
+var sxarwire_set_lzw15v_code11 = [sxarwire_lzw15v_code11_bit0, sxarwire_lzw15v_code11_bit1, sxarwire_lzw15v_code11_bit2,
+    sxarwire_lzw15v_code11_bit3, sxarwire_lzw15v_code11_bit4, sxarwire_lzw15v_code11_bit5, sxarwire_lzw15v_code11_bit6,
+    sxarwire_lzw15v_code11_bit7];
+var sxarwire_set_lzw15v_code12 = [sxarwire_lzw15v_code12_bit0, sxarwire_lzw15v_code12_bit1, sxarwire_lzw15v_code12_bit2,
+    sxarwire_lzw15v_code12_bit3, sxarwire_lzw15v_code12_bit4, sxarwire_lzw15v_code12_bit5, sxarwire_lzw15v_code12_bit6,
+    sxarwire_lzw15v_code12_bit7];
+var sxarwire_set_lzw15v_code13 = [sxarwire_lzw15v_code13_bit0, sxarwire_lzw15v_code13_bit1, sxarwire_lzw15v_code13_bit2,
+    sxarwire_lzw15v_code13_bit3, sxarwire_lzw15v_code13_bit4, sxarwire_lzw15v_code13_bit5, sxarwire_lzw15v_code13_bit6,
+    sxarwire_lzw15v_code13_bit7];
+var sxarwire_set_lzw15v_code14 = [sxarwire_lzw15v_code14_bit0, sxarwire_lzw15v_code14_bit1, sxarwire_lzw15v_code14_bit2,
+    sxarwire_lzw15v_code14_bit3, sxarwire_lzw15v_code14_bit4, sxarwire_lzw15v_code14_bit5, sxarwire_lzw15v_code14_bit6,
+    sxarwire_lzw15v_code14_bit7];
+var sxarwire_set_lzw15v_code15 = [sxarwire_lzw15v_code15_bit0, sxarwire_lzw15v_code15_bit1, sxarwire_lzw15v_code15_bit2,
+    sxarwire_lzw15v_code15_bit3, sxarwire_lzw15v_code15_bit4, sxarwire_lzw15v_code15_bit5, sxarwire_lzw15v_code15_bit6,
+    sxarwire_lzw15v_code15_bit7];
+function sxarwire_lzw_set(n) {
+    switch (n) {
+    case 9:
+        return sxarwire_set_lzw15v_code9;
+    case 10:
+        return sxarwire_set_lzw15v_code10;
+    case 11:
+        return sxarwire_set_lzw15v_code11;
+    case 12:
+        return sxarwire_set_lzw15v_code12;
+    case 13:
+        return sxarwire_set_lzw15v_code13;
+    case 14:
+        return sxarwire_set_lzw15v_code14;
+    case 15:
+        return sxarwire_set_lzw15v_code15;
+    default:
+        return null;
+    }
+}
+function sxarwire_lzw(c) {
+    var b = { c: c, bit: 0, lsb: false, cached_at: 0, cached: 0, have: false };
+    var width = 9;
+    var first = true;
+    var code = [0];
+    var next = 259;
+    while (c.count < 20000) {
+        if (!sxarwire_field(b, sxarwire_lzw_set(width), width, code)) {
+            return false;
+        }
+        if (code[0] === 256) {
+            return true;
+        }
+        if (first) {
+            if (code[0] > 255) {
+                return false;
+            }
+            first = false;
+            next = 259;
+            continue;
+        }
+        if (code[0] === 257) {
+            if (width === 15) {
+                return false;
+            }
+            width++;
+            continue;
+        }
+        if (code[0] === 258) {
+            width = 9;
+            first = true;
+            continue;
+        }
+        if (code[0] > next || next > sxShl64(1, width)) {
+            return false;
+        }
+        if (next < 32768) {
+            next++;
+        }
+    }
+    return true;
+}
+function sx_lzw15v_build(c) {
+    return sxarwire_lzw(c);
+}

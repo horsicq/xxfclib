@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_firmwaremore.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_firmwaremore");
+include("_sx_firmwaremore_autel");
+include("_sx_firmwaremore_bios_firmware");
+include("_sx_firmwaremore_d_link_alpha_encimg_v2");
+include("_sx_firmwaremore_d_link_fpkg_cpkg");
+include("_sx_firmwaremore_dkbs");
+include("_sx_firmwaremore_dlke");
+include("_sx_firmwaremore_dmsfw");
+include("_sx_firmwaremore_encrpted_img");
+include("_sx_firmwaremore_gns1");
+include("_sx_firmwaremore_htc_nbh_rom_image");
+include("_sx_firmwaremore_mh01");
+include("_sx_firmwaremore_rompaq");
+include("_sx_firmwaremore_shrs");
+include("_sx_firmwaremore_xiaomi_hdr1");
+include("_sx_firmwaremore_xiaomi_hdr2");
+
+function fileTypes() { return ["ROMPAQ", "AUTEL", "DKBS", "DLKE", "ENCRPTED_IMG", "MH01", "SHRS", "DMSFW",
+    "D_LINK_ALPHA_ENCIMG_V2", "D_LINK_FPKG_CPKG", "HTC_NBH_ROM_IMAGE", "XIAOMI_HDR1", "XIAOMI_HDR2", "BIOS_FIRMWARE", "GNS1"]; }
+
+var sx_firmwaremore_layouts = [sx_fm_rompaq_header, sx_fm_dms_swapped_header, sx_fm_dkbs_header, sx_fm_shrs_header_prefix,
+    sx_fm_mh01_signature_header, sx_fm_mh01_payload_header, sx_fm_autel_header, sx_fm_dlke_arm_header,
+    sx_fm_encrpted_img_header, sx_fm_alpha_encimg_header_prefix, sx_fm_alpha_encimg_payload_le, sx_fm_alpha_encimg_payload_be,
+    sx_fm_alpha_encimg_header_suffix, sx_fm_dlink_package_header, sx_fm_dlink_fpkg_extra, sx_fm_dlink_package_entry,
+    sx_fm_htc_nbh_header, sx_fm_htc_nbh_block_header, sx_fm_htc_dbh_prefix, sx_fm_htc_dbh_section_type,
+    sx_fm_htc_dbh_section_offset, sx_fm_htc_dbh_section_size, sx_fm_htc_dbh_identity, sx_fm_xiaomi_hdr1_prefix,
+    sx_fm_xiaomi_hdr2_prefix, sx_fm_xiaomi_blob_offset, sx_fm_xiaomi_blob_header, sx_fm_xiaomi_signature,
+    sx_fm_bios_far_reset_jump, sx_fm_bios_near_reset_jump, sx_fm_gns1_ftab_header, sx_fm_gns1_ftab_entry, sx_fm_gns1_segment,
+    sx_fm_gns1_terminator];
+
+function structs() {
+    return sxCatalog([sx_fm_rompaq_header, sx_fm_dms_swapped_header, sx_fm_dkbs_header, sx_fm_shrs_header_prefix,
+        sx_fm_mh01_signature_header, sx_fm_mh01_payload_header, sx_fm_autel_header, sx_fm_dlke_arm_header,
+        sx_fm_encrpted_img_header, sx_fm_alpha_encimg_header_prefix, sx_fm_alpha_encimg_payload_le,
+        sx_fm_alpha_encimg_payload_be, sx_fm_alpha_encimg_header_suffix, sx_fm_dlink_package_header, sx_fm_dlink_fpkg_extra,
+        sx_fm_dlink_package_entry, sx_fm_htc_nbh_header, sx_fm_htc_nbh_block_header, sx_fm_htc_dbh_prefix,
+        sx_fm_htc_dbh_section_type, sx_fm_htc_dbh_section_offset, sx_fm_htc_dbh_section_size, sx_fm_htc_dbh_identity,
+        sx_fm_xiaomi_hdr1_prefix, sx_fm_xiaomi_hdr2_prefix, sx_fm_xiaomi_blob_offset, sx_fm_xiaomi_blob_header,
+        sx_fm_xiaomi_signature, sx_fm_bios_far_reset_jump, sx_fm_bios_near_reset_jump, sx_fm_gns1_ftab_header,
+        sx_fm_gns1_ftab_entry, sx_fm_gns1_segment, sx_fm_gns1_terminator], sx_firmwaremore_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_firmwaremore_build, false);
+}

@@ -1,0 +1,1164 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_systems.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_s_wince_image_header_fields = layout([chars("signature", 7, SIGNATURE), u32("image_start", VA), u32("image_length", SIZE)]);
+var sx_s_wince_image_header = sxLayout(0x600C0001, "wince_image_header", LE, sx_s_wince_image_header_fields);
+var sx_s_wince_record_header_fields = layout([u32("load_address", VA), u32("data_length", SIZE), u32("checksum", CHECKSUM)]);
+var sx_s_wince_record_header = sxLayout(0x600C0002, "wince_record_header", LE, sx_s_wince_record_header_fields);
+var sx_s_wince_terminator_fields = layout([u32("terminator", SIGNATURE), u32("entry_point", VA), u32("checksum", CHECKSUM)]);
+var sx_s_wince_terminator = sxLayout(0x600C0003, "wince_terminator", LE, sx_s_wince_terminator_fields);
+var sx_s_binhdr_header_fields = layout([chars("board_id", 4, ID), u32("reserved1", RESERVED), u32("build_date_encoded"),
+    u8("version_major"), u8("version_minor"), chars("magic", 4, SIGNATURE), u8("hardware_id", ID),
+    field("reserved2", "uint24", 3, RESERVED), u64("reserved3", RESERVED)]);
+var sx_s_binhdr_header = sxLayout(0x600C0004, "binhdr_header", LE, sx_s_binhdr_header_fields);
+var sx_s_rtk_header_fields = layout([chars("magic", 4, SIGNATURE), u32("image_size", SIZE), u32("checksum", CHECKSUM),
+    u32("unknown0"), u32("header_size_excluding_magic", SIZE), u32("unknown1"), u32("unknown2"), u32("identifier", ID)]);
+var sx_s_rtk_header = sxLayout(0x600C0005, "rtk_header", LE, sx_s_rtk_header_fields);
+var sx_s_packimg_header_fields = layout([chars("tag", 12, SIGNATURE), u32("unknown"), u32("data_size", SIZE),
+    blob("unknown_tail", 12)]);
+var sx_s_packimg_header = sxLayout(0x600C0006, "packimg_header", LE, sx_s_packimg_header_fields);
+var sx_s_dlob_entity_header_fields = layout([u32("magic", SIGNATURE), u16("reserved", RESERVED), u16("metadata_size", SIZE),
+    u32("image_size", SIZE)]);
+var sx_s_dlob_entity_header = sxLayout(0x600C0007, "dlob_entity_header", BE, sx_s_dlob_entity_header_fields);
+var sx_s_dlob_digest_fields = layout([blob("md5", 16, CHECKSUM)]);
+var sx_s_dlob_digest = sxLayout(0x600C0008, "dlob_digest", BE, sx_s_dlob_digest_fields);
+var sx_s_chk_header_fields = layout([u32("magic", SIGNATURE), u32("header_size", SIZE), blob("reserved", 8, RESERVED),
+    u32("kernel_checksum", CHECKSUM), u32("rootfs_checksum", CHECKSUM), u32("kernel_size", SIZE), u32("rootfs_size", SIZE),
+    u32("image_checksum", CHECKSUM), u32("header_checksum", CHECKSUM)]);
+var sx_s_chk_header = sxLayout(0x600C0009, "chk_header", BE, sx_s_chk_header_fields);
+var sx_s_csman_header_le_fields = layout([chars("magic", 2, SIGNATURE), u16("unknown0"), u32("compressed_size", SIZE),
+    u32("unknown1"), u32("decompressed_size", SIZE)]);
+var sx_s_csman_header_le = sxLayout(0x600C000A, "csman_header_le", LE, sx_s_csman_header_le_fields);
+var sx_s_csman_entry_le_fields = layout([u32("key", ID), u16("value_size", SIZE)]);
+var sx_s_csman_entry_le = sxLayout(0x600C000B, "csman_entry_le", LE, sx_s_csman_entry_le_fields);
+var sx_s_csman_terminator_le_fields = layout([u32("zero_key", SIGNATURE)]);
+var sx_s_csman_terminator_le = sxLayout(0x600C000C, "csman_terminator_le", LE, sx_s_csman_terminator_le_fields);
+var sx_s_csman_header_be_fields = layout([chars("magic", 2, SIGNATURE), u16("unknown0"), u32("compressed_size", SIZE),
+    u32("unknown1"), u32("decompressed_size", SIZE)]);
+var sx_s_csman_header_be = sxLayout(0x600C000D, "csman_header_be", BE, sx_s_csman_header_be_fields);
+var sx_s_csman_entry_be_fields = layout([u32("key", ID), u16("value_size", SIZE)]);
+var sx_s_csman_entry_be = sxLayout(0x600C000E, "csman_entry_be", BE, sx_s_csman_entry_be_fields);
+var sx_s_csman_terminator_be_fields = layout([u32("zero_key", SIGNATURE)]);
+var sx_s_csman_terminator_be = sxLayout(0x600C000F, "csman_terminator_be", BE, sx_s_csman_terminator_be_fields);
+var sx_s_matter_ota_preamble_fields = layout([u32("magic", SIGNATURE), u64("total_size", SIZE), u32("tlv_header_size", SIZE)]);
+var sx_s_matter_ota_preamble = sxLayout(0x600C0010, "matter_ota_preamble", LE, sx_s_matter_ota_preamble_fields);
+var sx_s_twoimg_header_fields = layout([chars("magic", 4, SIGNATURE), chars("creator", 4, ID), u16("header_size", SIZE),
+    u16("version"), u32("image_format", ID), u32("flags", FLAGS), u32("block_count", COUNT), u32("data_offset", OFFSET),
+    u32("data_length", SIZE), u32("comment_offset", OFFSET), u32("comment_length", SIZE), u32("creator_data_offset", OFFSET),
+    u32("creator_data_length", SIZE), blob("reserved", 16, RESERVED)]);
+var sx_s_twoimg_header = sxLayout(0x600C0011, "twoimg_header", LE, sx_s_twoimg_header_fields);
+var sx_s_t64_header_fields = layout([chars("signature", 32, SIGNATURE), u16("version"), u16("directory_slots", COUNT),
+    u16("used_slots", COUNT), u16("reserved", RESERVED), chars("tape_name", 24, STRING)]);
+var sx_s_t64_header = sxLayout(0x600C0012, "t64_header", LE, sx_s_t64_header_fields);
+var sx_s_t64_directory_entry_fields = layout([u8("entry_type", ID), u8("file_type", ID), u16("start_address", VA),
+    u16("end_address", VA), u16("reserved0", RESERVED), u32("data_offset", OFFSET), u32("reserved1", RESERVED),
+    chars("file_name", 16, STRING)]);
+var sx_s_t64_directory_entry = sxLayout(0x600C0013, "t64_directory_entry", LE, sx_s_t64_directory_entry_fields);
+var sx_s_scl_header_fields = layout([chars("magic", 8, SIGNATURE), u8("file_count", COUNT)]);
+var sx_s_scl_header = sxLayout(0x600C0014, "scl_header", LE, sx_s_scl_header_fields);
+var sx_s_scl_catalogue_entry_fields = layout([chars("name", 8, STRING), field("file_type", "char", 1, ID),
+    u16("start_address_or_basic_length"), u16("file_length", SIZE), u8("sector_count", COUNT)]);
+var sx_s_scl_catalogue_entry = sxLayout(0x600C0015, "scl_catalogue_entry", LE, sx_s_scl_catalogue_entry_fields);
+var sx_s_ciso_header_fields = layout([chars("magic", 4, SIGNATURE), u32("header_size", SIZE), u64("uncompressed_size", SIZE),
+    u32("block_size", SIZE), u8("version"), u8("alignment_shift"), u16("reserved", RESERVED)]);
+var sx_s_ciso_header = sxLayout(0x600C0016, "ciso_header", LE, sx_s_ciso_header_fields);
+var sx_s_ciso_index_entry_fields = layout([u32("encoded_block_offset", FLAGS)]);
+var sx_s_ciso_index_entry = sxLayout(0x600C0017, "ciso_index_entry", LE, sx_s_ciso_index_entry_fields);
+var sx_s_dax_header_fields = layout([chars("magic", 4, SIGNATURE), u32("uncompressed_size", SIZE), u32("version"),
+    u32("uncompressed_area_count", COUNT), blob("reserved", 16, RESERVED)]);
+var sx_s_dax_header = sxLayout(0x600C0018, "dax_header", LE, sx_s_dax_header_fields);
+var sx_s_dax_frame_offset_fields = layout([u32("frame_offset", OFFSET)]);
+var sx_s_dax_frame_offset = sxLayout(0x600C0019, "dax_frame_offset", LE, sx_s_dax_frame_offset_fields);
+var sx_s_dax_frame_size_fields = layout([u16("compressed_size", SIZE)]);
+var sx_s_dax_frame_size = sxLayout(0x600C001A, "dax_frame_size", LE, sx_s_dax_frame_size_fields);
+var sx_s_dax_uncompressed_area_fields = layout([u32("first_frame"), u32("frame_count", COUNT)]);
+var sx_s_dax_uncompressed_area = sxLayout(0x600C001B, "dax_uncompressed_area", LE, sx_s_dax_uncompressed_area_fields);
+var sx_s_palm_database_header_fields = layout([chars("name", 32, STRING), u16("attributes", FLAGS), u16("version"),
+    u32("creation_time", TIMESTAMP), u32("modification_time", TIMESTAMP), u32("backup_time", TIMESTAMP),
+    u32("modification_number"), u32("app_info_offset", OFFSET), u32("sort_info_offset", OFFSET), chars("database_type", 4, ID),
+    chars("creator", 4, ID), u32("unique_id_seed"), u32("next_record_list_offset", OFFSET), u16("record_count", COUNT)]);
+var sx_s_palm_database_header = sxLayout(0x600C001C, "palm_database_header", BE, sx_s_palm_database_header_fields);
+var sx_s_palm_record_entry_fields = layout([u32("data_offset", OFFSET), u8("attributes", FLAGS),
+    field("unique_id", "uint24", 3, ID)]);
+var sx_s_palm_record_entry = sxLayout(0x600C001D, "palm_record_entry", BE, sx_s_palm_record_entry_fields);
+var sx_s_palm_resource_entry_fields = layout([chars("type", 4, ID), u16("id", ID), u32("data_offset", OFFSET)]);
+var sx_s_palm_resource_entry = sxLayout(0x600C001E, "palm_resource_entry", BE, sx_s_palm_resource_entry_fields);
+var sx_s_dbase3_header_fields = layout([u8("version"), u8("year_since_1900"), u8("month"), u8("day"),
+    u32("record_count", COUNT), u16("header_size", SIZE), u16("record_size", SIZE), blob("reserved0", 2, RESERVED),
+    u8("transaction_flag", FLAGS), u8("encryption_flag", FLAGS), blob("reserved1", 12, RESERVED), u8("mdx_flag", FLAGS),
+    u8("language_driver_id", ID), u16("reserved2", RESERVED)]);
+var sx_s_dbase3_header = sxLayout(0x600C001F, "dbase3_header", LE, sx_s_dbase3_header_fields);
+var sx_s_dbase3_field_descriptor_fields = layout([chars("name", 11, STRING), field("field_type", "char", 1, ID),
+    u32("memory_address", VA), u8("field_length", SIZE), u8("decimal_count", COUNT), blob("reserved", 14, RESERVED)]);
+var sx_s_dbase3_field_descriptor = sxLayout(0x600C0020, "dbase3_field_descriptor", LE, sx_s_dbase3_field_descriptor_fields);
+var sx_s_dbase3_record_marker_fields = layout([field("deletion_marker", "char", 1, FLAGS)]);
+var sx_s_dbase3_record_marker = sxLayout(0x600C0021, "dbase3_record_marker", LE, sx_s_dbase3_record_marker_fields);
+var sx_s_dbase3_header_terminator_fields = layout([u8("terminator", SIGNATURE)]);
+var sx_s_dbase3_header_terminator = sxLayout(0x600C0022, "dbase3_header_terminator", LE, sx_s_dbase3_header_terminator_fields);
+var sx_s_dns_header_fields = layout([u16("transaction_id", ID), u16("flags", FLAGS), u16("question_count", COUNT),
+    u16("answer_count", COUNT), u16("authority_count", COUNT), u16("additional_count", COUNT)]);
+var sx_s_dns_header = sxLayout(0x600C0023, "dns_header", BE, sx_s_dns_header_fields);
+var sx_s_dns_question_fields = layout([u16("type", ID), u16("class", ID)]);
+var sx_s_dns_question = sxLayout(0x600C0024, "dns_question", BE, sx_s_dns_question_fields);
+var sx_s_dns_resource_header_fields = layout([u16("type", ID), u16("class", ID), u32("ttl_seconds"), u16("rdata_length", SIZE)]);
+var sx_s_dns_resource_header = sxLayout(0x600C0025, "dns_resource_header", BE, sx_s_dns_resource_header_fields);
+var sx_s_modbus_mbap_header_fields = layout([u16("transaction_id", ID), u16("protocol_id", ID), u16("length", SIZE),
+    u8("unit_id", ID)]);
+var sx_s_modbus_mbap_header = sxLayout(0x600C0026, "modbus_mbap_header", BE, sx_s_modbus_mbap_header_fields);
+var sx_s_modbus_read_request_fields = layout([u8("function", ID), u16("starting_register", ID), u16("register_count", COUNT)]);
+var sx_s_modbus_read_request = sxLayout(0x600C0027, "modbus_read_request", BE, sx_s_modbus_read_request_fields);
+var sx_s_modbus_write_multiple_response_fields = layout([u8("function", ID), u16("starting_register", ID),
+    u16("register_count", COUNT)]);
+var sx_s_modbus_write_multiple_response = sxLayout(0x600C0028, "modbus_write_multiple_response", BE, sx_s_modbus_write_multiple_response_fields);
+var sx_s_modbus_write_single_fields = layout([u8("function", ID), u16("register_address", ID), u16("value")]);
+var sx_s_modbus_write_single = sxLayout(0x600C0029, "modbus_write_single", BE, sx_s_modbus_write_single_fields);
+var sx_s_modbus_read_response_fields = layout([u8("function", ID), u8("byte_count", SIZE)]);
+var sx_s_modbus_read_response = sxLayout(0x600C002A, "modbus_read_response", BE, sx_s_modbus_read_response_fields);
+var sx_s_modbus_write_multiple_fields = layout([u8("function", ID), u16("starting_register", ID), u16("register_count", COUNT),
+    u8("byte_count", SIZE)]);
+var sx_s_modbus_write_multiple = sxLayout(0x600C002B, "modbus_write_multiple", BE, sx_s_modbus_write_multiple_fields);
+var sx_s_modbus_exception_fields = layout([u8("function", ID), u8("exception_code", ID)]);
+var sx_s_modbus_exception = sxLayout(0x600C002C, "modbus_exception", BE, sx_s_modbus_exception_fields);
+var sx_s_modbus_register_value_fields = layout([u16("value")]);
+var sx_s_modbus_register_value = sxLayout(0x600C002D, "modbus_register_value", BE, sx_s_modbus_register_value_fields);
+var sx_s_someip_header_fields = layout([u16("service_id", ID), u16("method_id", ID), u32("length", SIZE), u16("client_id", ID),
+    u16("session_id", ID), u8("protocol_version"), u8("interface_version"), u8("message_type", ID), u8("return_code", ID)]);
+var sx_s_someip_header = sxLayout(0x600C002E, "someip_header", BE, sx_s_someip_header_fields);
+var sx_s_coap_header_fields = layout([u8("version_type_token_length", FLAGS), u8("code", ID), u16("message_id", ID)]);
+var sx_s_coap_header = sxLayout(0x600C002F, "coap_header", BE, sx_s_coap_header_fields);
+var sx_s_coap_option_header_fields = layout([u8("delta_length_nibbles", FLAGS)]);
+var sx_s_coap_option_header = sxLayout(0x600C0030, "coap_option_header", BE, sx_s_coap_option_header_fields);
+var sx_s_coap_delta_extension8_fields = layout([u8("encoded_delta_extension")]);
+var sx_s_coap_delta_extension8 = sxLayout(0x600C0031, "coap_delta_extension8", BE, sx_s_coap_delta_extension8_fields);
+var sx_s_coap_delta_extension16_fields = layout([u16("encoded_delta_extension")]);
+var sx_s_coap_delta_extension16 = sxLayout(0x600C0032, "coap_delta_extension16", BE, sx_s_coap_delta_extension16_fields);
+var sx_s_coap_length_extension8_fields = layout([u8("encoded_length_extension")]);
+var sx_s_coap_length_extension8 = sxLayout(0x600C0033, "coap_length_extension8", BE, sx_s_coap_length_extension8_fields);
+var sx_s_coap_length_extension16_fields = layout([u16("encoded_length_extension")]);
+var sx_s_coap_length_extension16 = sxLayout(0x600C0034, "coap_length_extension16", BE, sx_s_coap_length_extension16_fields);
+var sx_s_stun_header_fields = layout([u16("message_type", ID), u16("message_length", SIZE), u32("magic_cookie", SIGNATURE),
+    blob("transaction_id", 12, ID)]);
+var sx_s_stun_header = sxLayout(0x600C0035, "stun_header", BE, sx_s_stun_header_fields);
+var sx_s_stun_attribute_header_fields = layout([u16("type", ID), u16("length", SIZE)]);
+var sx_s_stun_attribute_header = sxLayout(0x600C0036, "stun_attribute_header", BE, sx_s_stun_attribute_header_fields);
+var sx_s_dhcp_header_fields = layout([u8("operation", ID), u8("hardware_type", ID), u8("hardware_address_length", SIZE),
+    u8("hops", COUNT), u32("transaction_id", ID), u16("seconds_elapsed"), u16("flags", FLAGS), blob("client_ipv4", 4),
+    blob("your_ipv4", 4), blob("server_ipv4", 4), blob("gateway_ipv4", 4), blob("client_hardware_address", 16),
+    chars("server_host_name", 64, STRING), chars("boot_file_name", 128, STRING), u32("magic_cookie", SIGNATURE)]);
+var sx_s_dhcp_header = sxLayout(0x600C0037, "dhcp_header", BE, sx_s_dhcp_header_fields);
+var sx_s_dhcp_option_fields = layout([u8("code", ID), u8("length", SIZE)]);
+var sx_s_dhcp_option = sxLayout(0x600C0038, "dhcp_option", BE, sx_s_dhcp_option_fields);
+var sx_s_dhcp_option_marker_fields = layout([u8("code", ID)]);
+var sx_s_dhcp_option_marker = sxLayout(0x600C0039, "dhcp_option_marker", BE, sx_s_dhcp_option_marker_fields);
+var sx_s_radius_header_fields = layout([u8("code", ID), u8("identifier", ID), u16("length", SIZE),
+    blob("authenticator", 16, SIGNATURE)]);
+var sx_s_radius_header = sxLayout(0x600C003A, "radius_header", BE, sx_s_radius_header_fields);
+var sx_s_radius_attribute_fields = layout([u8("type", ID), u8("length_including_header", SIZE)]);
+var sx_s_radius_attribute = sxLayout(0x600C003B, "radius_attribute", BE, sx_s_radius_attribute_fields);
+var sx_s_ntp_header_fields = layout([u8("leap_version_mode", FLAGS), u8("stratum"), i8("poll_exponent"),
+    i8("precision_exponent"), i32("root_delay_16_16"), u32("root_dispersion_16_16"), blob("reference_id", 4, ID),
+    u64("reference_timestamp_32_32"), u64("origin_timestamp_32_32"), u64("receive_timestamp_32_32"),
+    u64("transmit_timestamp_32_32")]);
+var sx_s_ntp_header = sxLayout(0x600C003C, "ntp_header", BE, sx_s_ntp_header_fields);
+var sx_s_rip_header_fields = layout([u8("command", ID), u8("version"), u16("reserved", RESERVED)]);
+var sx_s_rip_header = sxLayout(0x600C003D, "rip_header", BE, sx_s_rip_header_fields);
+var sx_s_rip_route_fields = layout([u16("address_family", ID), u16("route_tag", ID), blob("ipv4_address", 4),
+    blob("subnet_mask", 4), blob("next_hop", 4), u32("metric")]);
+var sx_s_rip_route = sxLayout(0x600C003E, "rip_route", BE, sx_s_rip_route_fields);
+var sx_s_vrrp2_header_fields = layout([u8("version_type", FLAGS), u8("virtual_router_id", ID), u8("priority"),
+    u8("address_count", COUNT), u8("authentication_type", ID), u8("advertisement_interval_seconds"), u16("checksum", CHECKSUM)]);
+var sx_s_vrrp2_header = sxLayout(0x600C003F, "vrrp2_header", BE, sx_s_vrrp2_header_fields);
+var sx_s_vrrp2_ipv4_fields = layout([blob("virtual_ipv4", 4)]);
+var sx_s_vrrp2_ipv4 = sxLayout(0x600C0040, "vrrp2_ipv4", BE, sx_s_vrrp2_ipv4_fields);
+var sx_s_vrrp2_authentication_fields = layout([blob("authentication_data", 8)]);
+var sx_s_vrrp2_authentication = sxLayout(0x600C0041, "vrrp2_authentication", BE, sx_s_vrrp2_authentication_fields);
+var sx_s_igmp3_report_header_fields = layout([u8("type", ID), u8("reserved0", RESERVED), u16("checksum", CHECKSUM),
+    u16("reserved1", RESERVED), u16("record_count", COUNT)]);
+var sx_s_igmp3_report_header = sxLayout(0x600C0042, "igmp3_report_header", BE, sx_s_igmp3_report_header_fields);
+var sx_s_igmp3_group_record_fields = layout([u8("record_type", ID), u8("auxiliary_word_count", COUNT),
+    u16("source_count", COUNT), blob("multicast_ipv4", 4)]);
+var sx_s_igmp3_group_record = sxLayout(0x600C0043, "igmp3_group_record", BE, sx_s_igmp3_group_record_fields);
+var sx_s_igmp3_source_ipv4_fields = layout([blob("source_ipv4", 4)]);
+var sx_s_igmp3_source_ipv4 = sxLayout(0x600C0044, "igmp3_source_ipv4", BE, sx_s_igmp3_source_ipv4_fields);
+var sx_s_lldp_tlv_header_fields = layout([u16("type_length_bits", FLAGS)]);
+var sx_s_lldp_tlv_header = sxLayout(0x600C0045, "lldp_tlv_header", BE, sx_s_lldp_tlv_header_fields);
+var sx_s_lldp_identifier_subtype_fields = layout([u8("subtype", ID)]);
+var sx_s_lldp_identifier_subtype = sxLayout(0x600C0046, "lldp_identifier_subtype", BE, sx_s_lldp_identifier_subtype_fields);
+var sx_s_lldp_ttl_fields = layout([u16("ttl_seconds")]);
+var sx_s_lldp_ttl = sxLayout(0x600C0047, "lldp_ttl", BE, sx_s_lldp_ttl_fields);
+var sx_s_lldp_capabilities_fields = layout([u16("supported", FLAGS), u16("enabled", FLAGS)]);
+var sx_s_lldp_capabilities = sxLayout(0x600C0048, "lldp_capabilities", BE, sx_s_lldp_capabilities_fields);
+var sx_s_arp_ethernet_ipv4_fields = layout([u16("hardware_type", ID), u16("protocol_type", ID), u8("hardware_length", SIZE),
+    u8("protocol_length", SIZE), u16("operation", ID), blob("sender_mac", 6), blob("sender_ipv4", 4), blob("target_mac", 6),
+    blob("target_ipv4", 4)]);
+var sx_s_arp_ethernet_ipv4 = sxLayout(0x600C0049, "arp_ethernet_ipv4", BE, sx_s_arp_ethernet_ipv4_fields);
+var sx_s_mongodb_opmsg_header_fields = layout([i32("message_length", SIZE), i32("request_id", ID), i32("response_to", ID),
+    i32("opcode", ID), u32("flags", FLAGS)]);
+var sx_s_mongodb_opmsg_header = sxLayout(0x600C004A, "mongodb_opmsg_header", LE, sx_s_mongodb_opmsg_header_fields);
+var sx_s_mongodb_section_kind_fields = layout([u8("kind", ID)]);
+var sx_s_mongodb_section_kind = sxLayout(0x600C004B, "mongodb_section_kind", LE, sx_s_mongodb_section_kind_fields);
+var sx_s_mongodb_sequence_size_fields = layout([i32("size_including_self", SIZE)]);
+var sx_s_mongodb_sequence_size = sxLayout(0x600C004C, "mongodb_sequence_size", LE, sx_s_mongodb_sequence_size_fields);
+var sx_s_mongodb_document_size_fields = layout([i32("document_size", SIZE)]);
+var sx_s_mongodb_document_size = sxLayout(0x600C004D, "mongodb_document_size", LE, sx_s_mongodb_document_size_fields);
+var sx_s_mongodb_checksum_fields = layout([u32("crc32c", CHECKSUM)]);
+var sx_s_mongodb_checksum = sxLayout(0x600C004E, "mongodb_checksum", LE, sx_s_mongodb_checksum_fields);
+var sx_s_dbus_header_le_fields = layout([field("byte_order", "char", 1, ID), u8("message_type", ID), u8("flags", FLAGS),
+    u8("protocol_version"), u32("body_length", SIZE), u32("serial", ID), u32("header_fields_length", SIZE)]);
+var sx_s_dbus_header_le = sxLayout(0x600C004F, "dbus_header_le", LE, sx_s_dbus_header_le_fields);
+var sx_s_dbus_header_be_fields = layout([field("byte_order", "char", 1, ID), u8("message_type", ID), u8("flags", FLAGS),
+    u8("protocol_version"), u32("body_length", SIZE), u32("serial", ID), u32("header_fields_length", SIZE)]);
+var sx_s_dbus_header_be = sxLayout(0x600C0050, "dbus_header_be", BE, sx_s_dbus_header_be_fields);
+var sx_s_shell_link_header_fields = layout([u32("header_size", SIZE), blob("class_id", 16, ID), u32("link_flags", FLAGS),
+    u32("file_attributes", FLAGS), u64("creation_time", TIMESTAMP), u64("access_time", TIMESTAMP), u64("write_time", TIMESTAMP),
+    u32("file_size", SIZE), i32("icon_index"), u32("show_command", ID), u16("hot_key", FLAGS), u16("reserved0", RESERVED),
+    u32("reserved1", RESERVED), u32("reserved2", RESERVED)]);
+var sx_s_shell_link_header = sxLayout(0x600C0051, "shell_link_header", LE, sx_s_shell_link_header_fields);
+var sx_s_shell_link_idlist_size_fields = layout([u16("idlist_size", SIZE)]);
+var sx_s_shell_link_idlist_size = sxLayout(0x600C0052, "shell_link_idlist_size", LE, sx_s_shell_link_idlist_size_fields);
+var sx_s_shell_link_item_id_fields = layout([u16("item_size", SIZE)]);
+var sx_s_shell_link_item_id = sxLayout(0x600C0053, "shell_link_item_id", LE, sx_s_shell_link_item_id_fields);
+var sx_s_shell_link_info_fields = layout([u32("link_info_size", SIZE), u32("header_size", SIZE), u32("flags", FLAGS),
+    u32("volume_id_offset", OFFSET), u32("local_base_path_offset", OFFSET), u32("network_relative_link_offset", OFFSET),
+    u32("common_path_suffix_offset", OFFSET)]);
+var sx_s_shell_link_info = sxLayout(0x600C0054, "shell_link_info", LE, sx_s_shell_link_info_fields);
+var sx_s_shell_link_info_unicode_offsets_fields = layout([u32("local_base_path_unicode_offset", OFFSET),
+    u32("common_path_suffix_unicode_offset", OFFSET)]);
+var sx_s_shell_link_info_unicode_offsets = sxLayout(0x600C0055, "shell_link_info_unicode_offsets", LE, sx_s_shell_link_info_unicode_offsets_fields);
+var sx_s_shell_link_string_count_fields = layout([u16("character_count", COUNT)]);
+var sx_s_shell_link_string_count = sxLayout(0x600C0056, "shell_link_string_count", LE, sx_s_shell_link_string_count_fields);
+var sx_s_shell_link_extra_header_fields = layout([u32("block_size", SIZE), u32("signature", ID)]);
+var sx_s_shell_link_extra_header = sxLayout(0x600C0057, "shell_link_extra_header", LE, sx_s_shell_link_extra_header_fields);
+var sx_s_shell_link_terminal_fields = layout([u32("zero_size", SIGNATURE)]);
+var sx_s_shell_link_terminal = sxLayout(0x600C0058, "shell_link_terminal", LE, sx_s_shell_link_terminal_fields);
+var sx_s_icc_profile_header_fields = layout([u32("profile_size", SIZE), chars("preferred_cmm", 4, ID), u32("version"),
+    chars("device_class", 4, ID), chars("color_space", 4, ID), chars("profile_connection_space", 4, ID), u16("year"),
+    u16("month"), u16("day"), u16("hour"), u16("minute"), u16("second"), chars("signature", 4, SIGNATURE),
+    chars("platform", 4, ID), u32("flags", FLAGS), chars("manufacturer", 4, ID), chars("device_model", 4, ID),
+    u64("attributes", FLAGS), u32("rendering_intent", ID), i32("illuminant_x_16_16"), i32("illuminant_y_16_16"),
+    i32("illuminant_z_16_16"), chars("creator", 4, ID), blob("profile_id", 16, SIGNATURE), blob("reserved", 28, RESERVED)]);
+var sx_s_icc_profile_header = sxLayout(0x600C0059, "icc_profile_header", BE, sx_s_icc_profile_header_fields);
+var sx_s_icc_tag_count_fields = layout([u32("tag_count", COUNT)]);
+var sx_s_icc_tag_count = sxLayout(0x600C005A, "icc_tag_count", BE, sx_s_icc_tag_count_fields);
+var sx_s_icc_tag_entry_fields = layout([chars("tag_signature", 4, ID), u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sx_s_icc_tag_entry = sxLayout(0x600C005B, "icc_tag_entry", BE, sx_s_icc_tag_entry_fields);
+var sx_s_icc_tag_type_fields = layout([chars("type_signature", 4, ID), u32("reserved", RESERVED)]);
+var sx_s_icc_tag_type = sxLayout(0x600C005C, "icc_tag_type", BE, sx_s_icc_tag_type_fields);
+var sx_s_pcapng_block_header_le_fields = layout([u32("block_type", ID), u32("block_length", SIZE)]);
+var sx_s_pcapng_block_header_le = sxLayout(0x600C005D, "pcapng_block_header_le", LE, sx_s_pcapng_block_header_le_fields);
+var sx_s_pcapng_block_trailer_le_fields = layout([u32("block_length", SIZE)]);
+var sx_s_pcapng_block_trailer_le = sxLayout(0x600C005E, "pcapng_block_trailer_le", LE, sx_s_pcapng_block_trailer_le_fields);
+var sx_s_pcapng_section_body_le_fields = layout([u32("byte_order_magic", SIGNATURE), u16("major_version"), u16("minor_version"),
+    i64("section_length", SIZE)]);
+var sx_s_pcapng_section_body_le = sxLayout(0x600C005F, "pcapng_section_body_le", LE, sx_s_pcapng_section_body_le_fields);
+var sx_s_pcapng_interface_body_le_fields = layout([u16("link_type", ID), u16("reserved", RESERVED), u32("snap_length", SIZE)]);
+var sx_s_pcapng_interface_body_le = sxLayout(0x600C0060, "pcapng_interface_body_le", LE, sx_s_pcapng_interface_body_le_fields);
+var sx_s_pcapng_enhanced_packet_body_le_fields = layout([u32("interface_id", ID), u32("timestamp_high"), u32("timestamp_low"),
+    u32("captured_length", SIZE), u32("original_length", SIZE)]);
+var sx_s_pcapng_enhanced_packet_body_le = sxLayout(0x600C0061, "pcapng_enhanced_packet_body_le", LE, sx_s_pcapng_enhanced_packet_body_le_fields);
+var sx_s_pcapng_simple_packet_body_le_fields = layout([u32("original_length", SIZE)]);
+var sx_s_pcapng_simple_packet_body_le = sxLayout(0x600C0062, "pcapng_simple_packet_body_le", LE, sx_s_pcapng_simple_packet_body_le_fields);
+var sx_s_pcapng_obsolete_packet_body_le_fields = layout([u16("interface_id", ID), u16("dropped_packets", COUNT),
+    u32("timestamp_high"), u32("timestamp_low"), u32("captured_length", SIZE), u32("original_length", SIZE)]);
+var sx_s_pcapng_obsolete_packet_body_le = sxLayout(0x600C0063, "pcapng_obsolete_packet_body_le", LE, sx_s_pcapng_obsolete_packet_body_le_fields);
+var sx_s_pcapng_option_le_fields = layout([u16("code", ID), u16("length", SIZE)]);
+var sx_s_pcapng_option_le = sxLayout(0x600C0064, "pcapng_option_le", LE, sx_s_pcapng_option_le_fields);
+var sx_s_icu_data_header_le_fields = layout([u16("header_size", SIZE), blob("magic", 2, SIGNATURE), u16("info_size", SIZE),
+    u16("reserved_word", RESERVED), u8("big_endian", FLAGS), u8("charset_family", ID), u8("uchar_size", SIZE),
+    u8("reserved_byte", RESERVED), chars("data_format", 4, ID), blob("format_version", 4), blob("data_version", 4)]);
+var sx_s_icu_data_header_le = sxLayout(0x600C0065, "icu_data_header_le", LE, sx_s_icu_data_header_le_fields);
+var sx_s_icu_toc_count_le_fields = layout([u32("file_count", COUNT)]);
+var sx_s_icu_toc_count_le = sxLayout(0x600C0066, "icu_toc_count_le", LE, sx_s_icu_toc_count_le_fields);
+var sx_s_icu_toc_entry_le_fields = layout([u32("name_offset", OFFSET), u32("data_offset", OFFSET)]);
+var sx_s_icu_toc_entry_le = sxLayout(0x600C0067, "icu_toc_entry_le", LE, sx_s_icu_toc_entry_le_fields);
+var sx_s_pcapng_block_header_be_fields = layout([u32("block_type", ID), u32("block_length", SIZE)]);
+var sx_s_pcapng_block_header_be = sxLayout(0x600C0068, "pcapng_block_header_be", BE, sx_s_pcapng_block_header_be_fields);
+var sx_s_pcapng_block_trailer_be_fields = layout([u32("block_length", SIZE)]);
+var sx_s_pcapng_block_trailer_be = sxLayout(0x600C0069, "pcapng_block_trailer_be", BE, sx_s_pcapng_block_trailer_be_fields);
+var sx_s_pcapng_section_body_be_fields = layout([u32("byte_order_magic", SIGNATURE), u16("major_version"), u16("minor_version"),
+    i64("section_length", SIZE)]);
+var sx_s_pcapng_section_body_be = sxLayout(0x600C006A, "pcapng_section_body_be", BE, sx_s_pcapng_section_body_be_fields);
+var sx_s_pcapng_interface_body_be_fields = layout([u16("link_type", ID), u16("reserved", RESERVED), u32("snap_length", SIZE)]);
+var sx_s_pcapng_interface_body_be = sxLayout(0x600C006B, "pcapng_interface_body_be", BE, sx_s_pcapng_interface_body_be_fields);
+var sx_s_pcapng_enhanced_packet_body_be_fields = layout([u32("interface_id", ID), u32("timestamp_high"), u32("timestamp_low"),
+    u32("captured_length", SIZE), u32("original_length", SIZE)]);
+var sx_s_pcapng_enhanced_packet_body_be = sxLayout(0x600C006C, "pcapng_enhanced_packet_body_be", BE, sx_s_pcapng_enhanced_packet_body_be_fields);
+var sx_s_pcapng_simple_packet_body_be_fields = layout([u32("original_length", SIZE)]);
+var sx_s_pcapng_simple_packet_body_be = sxLayout(0x600C006D, "pcapng_simple_packet_body_be", BE, sx_s_pcapng_simple_packet_body_be_fields);
+var sx_s_pcapng_obsolete_packet_body_be_fields = layout([u16("interface_id", ID), u16("dropped_packets", COUNT),
+    u32("timestamp_high"), u32("timestamp_low"), u32("captured_length", SIZE), u32("original_length", SIZE)]);
+var sx_s_pcapng_obsolete_packet_body_be = sxLayout(0x600C006E, "pcapng_obsolete_packet_body_be", BE, sx_s_pcapng_obsolete_packet_body_be_fields);
+var sx_s_pcapng_option_be_fields = layout([u16("code", ID), u16("length", SIZE)]);
+var sx_s_pcapng_option_be = sxLayout(0x600C006F, "pcapng_option_be", BE, sx_s_pcapng_option_be_fields);
+var sx_s_icu_data_header_be_fields = layout([u16("header_size", SIZE), blob("magic", 2, SIGNATURE), u16("info_size", SIZE),
+    u16("reserved_word", RESERVED), u8("big_endian", FLAGS), u8("charset_family", ID), u8("uchar_size", SIZE),
+    u8("reserved_byte", RESERVED), chars("data_format", 4, ID), blob("format_version", 4), blob("data_version", 4)]);
+var sx_s_icu_data_header_be = sxLayout(0x600C0070, "icu_data_header_be", BE, sx_s_icu_data_header_be_fields);
+var sx_s_icu_toc_count_be_fields = layout([u32("file_count", COUNT)]);
+var sx_s_icu_toc_count_be = sxLayout(0x600C0071, "icu_toc_count_be", BE, sx_s_icu_toc_count_be_fields);
+var sx_s_icu_toc_entry_be_fields = layout([u32("name_offset", OFFSET), u32("data_offset", OFFSET)]);
+var sx_s_icu_toc_entry_be = sxLayout(0x600C0072, "icu_toc_entry_be", BE, sx_s_icu_toc_entry_be_fields);
+function sx_systems_supports(type) {
+    switch (type) {
+    case "WINCE":
+    case "BINHDR":
+    case "RTK":
+    case "PACKIMG":
+    case "DLOB":
+    case "CHK":
+    case "CSMAN":
+    case "MATTER_OTA":
+    case "TWOIMG":
+    case "T64":
+    case "SCL":
+    case "CISO":
+    case "CISO2":
+    case "ZISO":
+    case "DAX":
+    case "PDB":
+    case "DBASE_DBF":
+    case "DNS_MESSAGE":
+    case "MODBUS_TCP":
+    case "SOMEIP_MESSAGE":
+    case "COAP_MESSAGE":
+    case "STUN_MESSAGE":
+    case "DHCP_MESSAGE":
+    case "RADIUS_PACKET":
+    case "NTP_MESSAGE":
+    case "RIP_MESSAGE":
+    case "VRRP_MESSAGE":
+    case "IGMP_MESSAGE":
+    case "LLDP_MESSAGE":
+    case "ARP_PACKET":
+    case "MONGODB_WIRE":
+    case "DBUS_MESSAGE":
+    case "WINDOWS_SHELL_LINK":
+    case "ICC":
+    case "PCAPNG":
+    case "ICU_DATA_PACKAGE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_s_u32(c, o, be) {
+    var v = 0;
+    if (o > SX_I64_MAX || (v = sx_u32(c, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), be)) === null) {
+        c.failed = true;
+    }
+    return v;
+}
+function sx_s_u64(c, o, be) {
+    var v = 0;
+    if (o > SX_I64_MAX || (v = sx_u64(c, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), be)) === null) {
+        c.failed = true;
+    }
+    return v;
+}
+function sx_s_u16(c, o, be) {
+    var v = 0;
+    if (o > SX_I64_MAX || (v = sx_u16(c, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), be)) === null) {
+        c.failed = true;
+    }
+    return v;
+}
+function sx_s_u8(c, o) {
+    var v = [0];
+    if (o > SX_I64_MAX || !sx_read(c, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), v, 1)) {
+        c.failed = true;
+    }
+    return v[0];
+}
+function sx_s_range(c, o, n) {
+    return o <= SX_I64_MAX && sx_range(c, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), n);
+}
+function sx_s_extent(l) {
+    var n = 0;
+    for (var i = 0; i < l.field_count; i++) {
+        var e = l.fields[i].offset + l.fields[i].size;
+        if (e > n) {
+            n = e;
+        }
+    }
+    return n;
+}
+function sx_s_record(c, l, o) {
+    return o <= SX_I64_MAX && sx_add(c, l, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), sx_s_extent(l));
+}
+function sx_s_table(c, l, o, n) {
+    return n <= 100000 && o <= SX_I64_MAX && sx_table(c, l, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), sx_s_extent(l), n);
+}
+function sx_s_sift(a, n, root) {
+    while (root < Math.floor(n / 2)) {
+        var child = root * 2 + 1;
+        if (child + 1 < n && a[child].offset < a[child + 1].offset) {
+            child++;
+        }
+        if (a[root].offset >= a[child].offset) {
+            break;
+        }
+        var t = sxCopy_xx_data_struct(null, a[root]);
+        a[root] = sxCopy_xx_data_struct(null, a[child]);
+        a[child] = sxCopy_xx_data_struct(null, t);
+        root = child;
+    }
+}
+function sx_s_sort(a, n) {
+    for (var i = Math.floor(n / 2); i > 0; i--) {
+        sx_s_sift(a, n, sxU64(i - 1));
+    }
+    for (i = n; i > 1; i--) {
+        var t = sxCopy_xx_data_struct(null, a[0]);
+        a[0] = sxCopy_xx_data_struct(null, a[sxU64(i - 1)]);
+        a[sxU64(i - 1)] = sxCopy_xx_data_struct(null, t);
+        sx_s_sift(a, sxU64(i - 1), 0);
+    }
+}
+function sx_s_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sx_s_sort(c.items, n);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        var at = (d.offset - c.f.base_address < 0 ? d.offset - c.f.base_address + SX_U64_MAX : d.offset - c.f.base_address);
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), sxI64(sxU64(at - end)))) {
+            return false;
+        }
+        end = at + (d.total_size < 0 ? d.total_size + SX_U64_MAX : d.total_size);
+    }
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || !sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), c.size - (end >= SX_I64_MAX ? end - SX_U64_MAX : end))) {
+        return false;
+    }
+    sx_s_sort(c.items, c.count);
+    return !c.failed;
+}
+function sx_s_dns_name(c, at, end) {
+    for (var labels = 0; labels < 128; labels++) {
+        if (at[0] >= end) {
+            return false;
+        }
+        var n = sx_s_u8(c, at[0]++);
+        if (!n) {
+            return true;
+        }
+        if ((n & 192) === 192) {
+            if (at[0] >= end) {
+                return false;
+            }
+            at[0]++;
+            return !c.failed;
+        }
+        if (n > 63 || n > sxU64(end - at[0])) {
+            return false;
+        }
+        at[0] += n;
+    }
+    return false;
+}
+function sx_s_options(c, at, end, be) {
+    var cursor = at;
+    var count = 0;
+    while (cursor < end) {
+        if (++count > 65536 || sxU64(end - cursor) < 4) {
+            return true;
+        }
+        var n = sx_s_u16(c, cursor + 2, be);
+        var code = sx_s_u16(c, cursor, be);
+        if (n > sxU64(sxU64(end - cursor) - 4)) {
+            return true;
+        }
+        cursor += 4 + sxAnd64(n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        if (cursor > end) {
+            return true;
+        }
+        if (!code) {
+            if (n) {
+                return true;
+            }
+            break;
+        }
+    }
+    while (at < cursor) {
+        n = sx_s_u16(c, at + 2, be);
+        if (!sx_s_record(c, be ? sx_s_pcapng_option_be : sx_s_pcapng_option_le, at)) {
+            return false;
+        }
+        at += 4 + sxAnd64(n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    }
+    return !c.failed;
+}
+function sx_s_pcapng(c) {
+    var at = 0;
+    var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var be = false;
+    var blocks = 0;
+    while (at < limit) {
+        if (sxU64(limit - at) < 12) {
+            break;
+        }
+        var type = sx_s_u32(c, at, false);
+        if (type === 0x0A0D0D0A) {
+            if (sxU64(limit - at) < 28) {
+                break;
+            }
+            var magic = sx_s_u32(c, at + 8, false);
+            if (magic !== 0x1A2B3C4D && magic !== 0x4D3C2B1A) {
+                break;
+            }
+            be = magic === 0x4D3C2B1A;
+        }
+        type = sx_s_u32(c, at, be);
+        var n = sx_s_u32(c, at + 4, be);
+        var head = 8;
+        var payload = 0;
+        if (n < 12 || sxAnd64(n, 3) || n > sxU64(limit - at) || sx_s_u32(c, sxU64(at + n - 4), be) !== n) {
+            break;
+        }
+        if (++blocks > 65536 || !sx_s_record(c, be ? sx_s_pcapng_block_header_be : sx_s_pcapng_block_header_le, at) || !sx_s_record(c, be ? sx_s_pcapng_block_trailer_be : sx_s_pcapng_block_trailer_le, sxU64(at + n - 4))) {
+            return false;
+        }
+        var body = null;
+        if (type === 0x0A0D0D0A && n >= 28) {
+            body = be ? sx_s_pcapng_section_body_be : sx_s_pcapng_section_body_le;
+            head = 24;
+        } else if (type === 1 && n >= 20) {
+            body = be ? sx_s_pcapng_interface_body_be : sx_s_pcapng_interface_body_le;
+            head = 16;
+        } else if ((type === 6 || type === 2) && n >= 32) {
+            var cap = sx_s_u32(c, at + 20, be);
+            if (cap <= sxU64(n - 32)) {
+                body = type === 6 ? be ? sx_s_pcapng_enhanced_packet_body_be : sx_s_pcapng_enhanced_packet_body_le : be ? sx_s_pcapng_obsolete_packet_body_be : sx_s_pcapng_obsolete_packet_body_le;
+                head = 28;
+                payload = sxAnd64(cap + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+            }
+        } else if (type === 3 && n >= 16) {
+            body = be ? sx_s_pcapng_simple_packet_body_be : sx_s_pcapng_simple_packet_body_le;
+            head = sxU64(n - 4);
+        }
+        if (body !== null && !sx_s_record(c, body, at + 8)) {
+            return false;
+        }
+        if (body !== null && type !== 3 && head + payload <= sxU64(n - 4) && !sx_s_options(c, at + head + payload, sxU64(at + n - 4), be)) {
+            return false;
+        }
+        at += n;
+    }
+    return blocks > 0 && !c.failed;
+}
+function sx_systems_walk(c) {
+    var at = [0];
+    var n = 0;
+    var off = 0;
+    var size = 0;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var v = 0;
+    var be = false;
+    switch (c.f.file_type) {
+    case "WINCE":
+        if (!sx_s_record(c, sx_s_wince_image_header, 0)) {
+            return false;
+        }
+        at[0] = 15;
+        for (var i = 0; i < 65536; i++) {
+            v = sx_s_u32(c, at[0], false);
+            n = sx_s_u32(c, at[0] + 4, false);
+            if (!sx_s_record(c, v ? sx_s_wince_record_header : sx_s_wince_terminator, at[0])) {
+                return false;
+            }
+            at[0] += 12;
+            if (!v) {
+                return true;
+            }
+            if (!sx_s_range(c, at[0], n)) {
+                return false;
+            }
+            at[0] += n;
+        }
+        return false;
+    case "BINHDR":
+        return sx_s_record(c, sx_s_binhdr_header, 0);
+    case "RTK":
+        off = 4 + sx_s_u32(c, 16, false);
+        size = sx_s_u32(c, 4, false);
+        return off >= 32 && sx_s_range(c, off, size) && sx_s_record(c, sx_s_rtk_header, 0);
+    case "PACKIMG":
+        return sx_s_range(c, 32, sx_s_u32(c, 16, false)) && sx_s_record(c, sx_s_packimg_header, 0);
+    case "DLOB":
+        if (!sx_s_record(c, sx_s_dlob_entity_header, 0)) {
+            return false;
+        }
+        at[0] = 12 + sx_s_u16(c, 6, true);
+        if (!sx_s_record(c, sx_s_dlob_entity_header, at[0]) || !sx_s_record(c, sx_s_dlob_digest, at[0] + 12)) {
+            return false;
+        }
+        return sx_s_range(c, at[0] + 28 + sx_s_u16(c, at[0] + 6, true), sx_s_u32(c, at[0] + 8, true));
+    case "CHK":
+        off = sx_s_u32(c, 4, true);
+        n = sx_s_u32(c, 24, true);
+        size = sx_s_u32(c, 28, true);
+        return off >= 40 && sx_s_range(c, off, n + size) && sx_s_record(c, sx_s_chk_header, 0);
+    case "CSMAN":
+        be = sx_s_u8(c, 0) === 83 /*S*/;
+        n = sx_s_u32(c, 4, be);
+        size = sx_s_u32(c, 12, be);
+        if (!sx_s_range(c, 16, n) || !sx_s_record(c, be ? sx_s_csman_header_be : sx_s_csman_header_le, 0)) {
+            return false;
+        }
+        if (n !== size) {
+            return true;
+        }
+        at[0] = 16;
+        end = 16 + n;
+        while (at[0] < end) {
+            if (sxU64(end - at[0]) < 4) {
+                return false;
+            }
+            v = sx_s_u32(c, at[0], be);
+            if (!v) {
+                return sx_s_record(c, be ? sx_s_csman_terminator_be : sx_s_csman_terminator_le, at[0]);
+            }
+            if (sxU64(end - at[0]) < 6) {
+                return false;
+            }
+            n = sx_s_u16(c, at[0] + 4, be);
+            if (n > sxU64(sxU64(end - at[0]) - 6) || !sx_s_record(c, be ? sx_s_csman_entry_be : sx_s_csman_entry_le, at[0])) {
+                return false;
+            }
+            at[0] += 6 + n;
+        }
+        return false;
+    case "MATTER_OTA":
+        n = sx_s_u64(c, 4, false);
+        size = sx_s_u32(c, 12, false);
+        return n >= 16 && size <= sxU64(n - 16) && sx_s_range(c, 0, n) && sx_s_record(c, sx_s_matter_ota_preamble, 0);
+    case "TWOIMG":
+        return sx_s_record(c, sx_s_twoimg_header, 0);
+    case "T64":
+        if (!sx_s_record(c, sx_s_t64_header, 0)) {
+            return false;
+        }
+        n = sx_s_u16(c, 34, false);
+        at[0] = 64;
+        for (i = 0; i < n && at[0] <= end && sxU64(end - at[0]) >= 32; i++, at[0] += 32) {
+            v = sx_s_u8(c, at[0]);
+            off = sx_s_u32(c, at[0] + 8, false);
+            if (!sx_s_record(c, sx_s_t64_directory_entry, at[0])) {
+                return false;
+            }
+            if (v > 0 && v <= 4 && off >= at[0] + 32 && off < end) {
+                end = off;
+            }
+        }
+        break;
+    case "SCL":
+        return sx_s_record(c, sx_s_scl_header, 0) && sx_s_table(c, sx_s_scl_catalogue_entry, 9, sx_s_u8(c, 8));
+    case "CISO":
+    case "CISO2":
+    case "ZISO":
+    case "DAX":
+        if (sx_s_u32(c, 0, false) === 0x00584144) {
+            n = Math.floor((sx_s_u32(c, 4, false) + 8191) / 8192);
+            size = sx_s_u32(c, 12, false);
+            return sx_s_record(c, sx_s_dax_header, 0) && sx_s_table(c, sx_s_dax_frame_offset, 32, n) && sx_s_table(c, sx_s_dax_frame_size, 32 + 4 * n, n) && sx_s_table(c, sx_s_dax_uncompressed_area, 32 + 6 * n, size);
+        }
+        size = sx_s_u32(c, 16, false);
+        n = sx_s_u64(c, 8, false);
+        return !!(size && n % size === 0 && Math.floor(n / size) < 100000 && sx_s_record(c, sx_s_ciso_header, 0) && sx_s_table(c, sx_s_ciso_index_entry, 24, Math.floor(n / size) + 1));
+    case "PDB":
+        v = sx_s_u16(c, 32, true);
+        n = sx_s_u16(c, 76, true);
+        return sx_s_record(c, sx_s_palm_database_header, 0) && sx_s_table(c, v & 1 ? sx_s_palm_resource_entry : sx_s_palm_record_entry, 78, n);
+    case "DBASE_DBF":
+        off = sx_s_u16(c, 8, false);
+        size = sx_s_u16(c, 10, false);
+        n = sx_s_u32(c, 4, false);
+        if (off < 33 || sxU64(off - 33) % 32 || !size || n > 100000 || !sx_s_record(c, sx_s_dbase3_header, 0) || !sx_s_table(c, sx_s_dbase3_field_descriptor, 32, Math.floor(sxU64(off - 33) / 32)) || !sx_s_record(c, sx_s_dbase3_header_terminator, sxU64(off - 1)) || n > Math.floor(SX_U64_MAX / size) || !sx_s_range(c, off, n * size)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            if (!sx_s_record(c, sx_s_dbase3_record_marker, off + i * size)) {
+                return false;
+            }
+        }
+        break;
+    case "DNS_MESSAGE":
+        if (!sx_s_record(c, sx_s_dns_header, 0)) {
+            return false;
+        }
+        n = sx_s_u16(c, 4, true);
+        at[0] = 12;
+        for (i = 0; i < n; i++) {
+            if (!sx_s_dns_name(c, at, end) || !sx_s_record(c, sx_s_dns_question, at[0])) {
+                return false;
+            }
+            at[0] += 4;
+        }
+        n = sx_s_u16(c, 6, true) + sx_s_u16(c, 8, true) + sx_s_u16(c, 10, true);
+        if (n > 100000) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            if (!sx_s_dns_name(c, at, end) || !sx_s_record(c, sx_s_dns_resource_header, at[0])) {
+                return false;
+            }
+            size = sx_s_u16(c, at[0] + 8, true);
+            at[0] += 10;
+            if (!sx_s_range(c, at[0], size)) {
+                return false;
+            }
+            at[0] += size;
+        }
+        break;
+    case "MODBUS_TCP":
+        while (at[0] < end) {
+            n = sx_s_u16(c, at[0] + 4, true);
+            if (n < 2 || !sx_s_range(c, at[0], 6 + n) || !sx_s_record(c, sx_s_modbus_mbap_header, at[0])) {
+                return false;
+            }
+            off = at[0] + 7;
+            size = sxU64(n - 1);
+            v = sx_s_u8(c, off);
+            var l = null;
+            if (v & 128) {
+                l = sx_s_modbus_exception;
+            } else if (v === 3) {
+                l = size === 5 ? sx_s_modbus_read_request : sx_s_modbus_read_response;
+            } else if (v === 5 || v === 6) {
+                l = sx_s_modbus_write_single;
+            } else if (v === 16) {
+                l = size === 5 ? sx_s_modbus_write_multiple_response : sx_s_modbus_write_multiple;
+            } else {
+                return false;
+            }
+            if (sxU64(sx_s_extent(l)) > size || !sx_s_record(c, l, off)) {
+                return false;
+            }
+            if (v === 3 && size !== 5) {
+                var bytes = sx_s_u8(c, off + 1);
+                if (bytes !== sxU64(size - 2) || sxAnd64(bytes, 1) || !sx_s_table(c, sx_s_modbus_register_value, off + 2, Math.floor(bytes / 2))) {
+                    return false;
+                }
+            }
+            if (v === 16 && size !== 5) {
+                bytes = sx_s_u8(c, off + 5);
+                if (bytes !== sxU64(size - 6) || sxAnd64(bytes, 1) || !sx_s_table(c, sx_s_modbus_register_value, off + 6, Math.floor(bytes / 2))) {
+                    return false;
+                }
+            }
+            at[0] += 6 + n;
+        }
+        break;
+    case "SOMEIP_MESSAGE":
+        while (at[0] < end) {
+            n = sx_s_u32(c, at[0] + 4, true);
+            if (n < 8 || !sx_s_range(c, at[0], 8 + n) || !sx_s_record(c, sx_s_someip_header, at[0])) {
+                return false;
+            }
+            at[0] += 8 + n;
+        }
+        break;
+    case "COAP_MESSAGE":
+        if (!sx_s_record(c, sx_s_coap_header, 0)) {
+            return false;
+        }
+        at[0] = 4 + (sx_s_u8(c, 0) & 15);
+        if (at[0] > end) {
+            return false;
+        }
+        while (at[0] < end) {
+            v = sx_s_u8(c, at[0]);
+            if (v === 255) {
+                break;
+            }
+            if (!sx_s_record(c, sx_s_coap_option_header, at[0]++)) {
+                return false;
+            }
+            n = 0;
+            for (var part = 0; part < 2; part++) {
+                var nib = part ? v & 15 : v >>> 4;
+                var val = nib;
+                l = null;
+                if (nib === 15) {
+                    return false;
+                }
+                if (nib === 13) {
+                    l = part ? sx_s_coap_length_extension8 : sx_s_coap_delta_extension8;
+                    val = 13 + sx_s_u8(c, at[0]);
+                }
+                if (nib === 14) {
+                    l = part ? sx_s_coap_length_extension16 : sx_s_coap_delta_extension16;
+                    val = 269 + sx_s_u16(c, at[0], true);
+                }
+                if (l !== null) {
+                    if (!sx_s_record(c, l, at[0])) {
+                        return false;
+                    }
+                    at[0] += sxU64(sx_s_extent(l));
+                }
+                if (part) {
+                    n = val;
+                }
+            }
+            if (!sx_s_range(c, at[0], n)) {
+                return false;
+            }
+            at[0] += n;
+        }
+        break;
+    case "STUN_MESSAGE":
+        if (!sx_s_record(c, sx_s_stun_header, 0)) {
+            return false;
+        }
+        at[0] = 20;
+        end = 20 + sx_s_u16(c, 2, true);
+        if (!sx_s_range(c, 0, end)) {
+            return false;
+        }
+        while (at[0] < end) {
+            if (sxU64(end - at[0]) < 4) {
+                return false;
+            }
+            n = sx_s_u16(c, at[0] + 2, true);
+            n = sxAnd64(n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+            if (n > sxU64(sxU64(end - at[0]) - 4) || !sx_s_record(c, sx_s_stun_attribute_header, at[0])) {
+                return false;
+            }
+            at[0] += 4 + n;
+        }
+        break;
+    case "DHCP_MESSAGE":
+        if (!sx_s_record(c, sx_s_dhcp_header, 0)) {
+            return false;
+        }
+        at[0] = 240;
+        while (at[0] < end) {
+            v = sx_s_u8(c, at[0]);
+            if (v === 0 || v === 255) {
+                if (!sx_s_record(c, sx_s_dhcp_option_marker, at[0]++)) {
+                    return false;
+                }
+                if (v === 255) {
+                    break;
+                }
+                continue;
+            }
+            n = sx_s_u8(c, at[0] + 1);
+            if (!sx_s_range(c, at[0], 2 + n) || !sx_s_record(c, sx_s_dhcp_option, at[0])) {
+                return false;
+            }
+            at[0] += 2 + n;
+        }
+        break;
+    case "RADIUS_PACKET":
+        if (!sx_s_record(c, sx_s_radius_header, 0)) {
+            return false;
+        }
+        at[0] = 20;
+        end = sx_s_u16(c, 2, true);
+        if (end < 20 || !sx_s_range(c, 0, end)) {
+            return false;
+        }
+        while (at[0] < end) {
+            n = sx_s_u8(c, at[0] + 1);
+            if (n < 2 || n > sxU64(end - at[0]) || !sx_s_record(c, sx_s_radius_attribute, at[0])) {
+                return false;
+            }
+            at[0] += n;
+        }
+        break;
+    case "NTP_MESSAGE":
+        return sx_s_record(c, sx_s_ntp_header, 0);
+    case "RIP_MESSAGE":
+        return end >= 4 && sxU64(end - 4) % 20 === 0 && sx_s_record(c, sx_s_rip_header, 0) && sx_s_table(c, sx_s_rip_route, 4, Math.floor(sxU64(end - 4) / 20));
+    case "VRRP_MESSAGE":
+        n = sx_s_u8(c, 3);
+        return sx_s_record(c, sx_s_vrrp2_header, 0) && sx_s_table(c, sx_s_vrrp2_ipv4, 8, n) && sx_s_record(c, sx_s_vrrp2_authentication, 8 + n * 4);
+    case "IGMP_MESSAGE":
+        if (!sx_s_record(c, sx_s_igmp3_report_header, 0)) {
+            return false;
+        }
+        n = sx_s_u16(c, 6, true);
+        at[0] = 8;
+        for (i = 0; i < n; i++) {
+            v = sx_s_u8(c, at[0] + 1);
+            size = sx_s_u16(c, at[0] + 2, true);
+            if (!sx_s_record(c, sx_s_igmp3_group_record, at[0]) || !sx_s_table(c, sx_s_igmp3_source_ipv4, at[0] + 8, size)) {
+                return false;
+            }
+            at[0] += 8 + size * 4;
+            if (!sx_s_range(c, at[0], (v * 4) >>> 0)) {
+                return false;
+            }
+            at[0] += (v * 4) >>> 0;
+        }
+        break;
+    case "LLDP_MESSAGE":
+        while (at[0] < end) {
+            v = sx_s_u16(c, at[0], true);
+            n = v & 511;
+            v = v >>> 9;
+            if (!sx_s_range(c, at[0], 2 + n) || !sx_s_record(c, sx_s_lldp_tlv_header, at[0])) {
+                return false;
+            }
+            at[0] += 2;
+            if (v === 1 || v === 2) {
+                if (!n || !sx_s_record(c, sx_s_lldp_identifier_subtype, at[0])) {
+                    return false;
+                }
+            } else if (v === 3) {
+                if (n !== 2 || !sx_s_record(c, sx_s_lldp_ttl, at[0])) {
+                    return false;
+                }
+            } else if (v === 7) {
+                if (n !== 4 || !sx_s_record(c, sx_s_lldp_capabilities, at[0])) {
+                    return false;
+                }
+            }
+            at[0] += n;
+            if (!v) {
+                break;
+            }
+        }
+        break;
+    case "ARP_PACKET":
+        return sx_s_record(c, sx_s_arp_ethernet_ipv4, 0);
+    case "MONGODB_WIRE":
+        while (at[0] < end) {
+            size = sx_s_u32(c, at[0], false);
+            v = sx_s_u32(c, at[0] + 16, false);
+            if (size < 20 || !sx_s_range(c, at[0], size) || !sx_s_record(c, sx_s_mongodb_opmsg_header, at[0])) {
+                return false;
+            }
+            var next = at[0] + size;
+            var stop = next;
+            if (v & 1) {
+                if (size < 24 || !sx_s_record(c, sx_s_mongodb_checksum, sxU64(next - 4))) {
+                    return false;
+                }
+                stop = sxU64(stop - 4);
+            }
+            at[0] += 20;
+            while (at[0] < stop) {
+                v = sx_s_u8(c, at[0]);
+                if (!sx_s_record(c, sx_s_mongodb_section_kind, at[0]++)) {
+                    return false;
+                }
+                if (!v) {
+                    n = sx_s_u32(c, at[0], false);
+                    if (n < 5 || n > sxU64(stop - at[0]) || !sx_s_record(c, sx_s_mongodb_document_size, at[0])) {
+                        return false;
+                    }
+                    at[0] += n;
+                } else if (v === 1) {
+                    n = sx_s_u32(c, at[0], false);
+                    if (n < 5 || n > sxU64(stop - at[0]) || !sx_s_record(c, sx_s_mongodb_sequence_size, at[0])) {
+                        return false;
+                    }
+                    var seqend = at[0] + n;
+                    at[0] += 4;
+                    var nul = false;
+                    while (at[0] < seqend) {
+                        if (!sx_s_u8(c, at[0]++)) {
+                            nul = true;
+                            break;
+                        }
+                    }
+                    if (!nul) {
+                        return false;
+                    }
+                    while (at[0] < seqend) {
+                        n = sx_s_u32(c, at[0], false);
+                        if (n < 5 || n > sxU64(seqend - at[0]) || !sx_s_record(c, sx_s_mongodb_document_size, at[0])) {
+                            return false;
+                        }
+                        at[0] += n;
+                    }
+                } else {
+                    return false;
+                }
+            }
+            at[0] = next;
+        }
+        break;
+    case "DBUS_MESSAGE":
+        be = sx_s_u8(c, 0) === 66 /*B*/;
+        return sx_s_record(c, be ? sx_s_dbus_header_be : sx_s_dbus_header_le, 0);
+    case "WINDOWS_SHELL_LINK":
+        if (!sx_s_record(c, sx_s_shell_link_header, 0)) {
+            return false;
+        }
+        v = sx_s_u32(c, 20, false);
+        at[0] = 76;
+        if (v & 1) {
+            n = sx_s_u16(c, at[0], false);
+            if (!sx_s_record(c, sx_s_shell_link_idlist_size, at[0]) || !sx_s_range(c, at[0] + 2, n)) {
+                return false;
+            }
+            at[0] += 2;
+            stop = at[0] + n;
+            while (at[0] < stop) {
+                size = sx_s_u16(c, at[0], false);
+                if (sxU64(stop - at[0]) < 2 || !sx_s_record(c, sx_s_shell_link_item_id, at[0])) {
+                    return false;
+                }
+                if (!size) {
+                    at[0] += 2;
+                    break;
+                }
+                if (size < 2 || size > sxU64(stop - at[0])) {
+                    return false;
+                }
+                at[0] += size;
+            }
+            if (at[0] !== stop) {
+                return false;
+            }
+        }
+        if (v & 2) {
+            n = sx_s_u32(c, at[0], false);
+            size = sx_s_u32(c, at[0] + 4, false);
+            if (n < 28 || size < 28 || size > n || !sx_s_range(c, at[0], n) || !sx_s_record(c, sx_s_shell_link_info, at[0])) {
+                return false;
+            }
+            if (size >= 36 && !sx_s_record(c, sx_s_shell_link_info_unicode_offsets, at[0] + 28)) {
+                return false;
+            }
+            at[0] += n;
+        }
+        for (var bit = 2; bit <= 6; bit++) {
+            if ((v & (1 << bit) >>> 0) >>> 0) {
+                n = sx_s_u16(c, at[0], false);
+                if (!sx_s_range(c, at[0], 2 + n * (v & 128 ? 2 : 1)) || !sx_s_record(c, sx_s_shell_link_string_count, at[0])) {
+                    return false;
+                }
+                at[0] += 2 + n * (v & 128 ? 2 : 1);
+            }
+        }
+        while (at[0] < end) {
+            n = sx_s_u32(c, at[0], false);
+            if (!n) {
+                return sx_s_record(c, sx_s_shell_link_terminal, at[0]);
+            }
+            if (n < 8 || !sx_s_range(c, at[0], n) || !sx_s_record(c, sx_s_shell_link_extra_header, at[0])) {
+                return false;
+            }
+            at[0] += n;
+        }
+        return false;
+    case "ICC":
+        if (!sx_s_record(c, sx_s_icc_profile_header, 0) || !sx_s_record(c, sx_s_icc_tag_count, 128)) {
+            return false;
+        }
+        n = sx_s_u32(c, 128, true);
+        if (n > 1024 || !sx_s_table(c, sx_s_icc_tag_entry, 132, n)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            off = sx_s_u32(c, 132 + 12 * i + 4, true);
+            size = sx_s_u32(c, 132 + 12 * i + 8, true);
+            var duplicate = false;
+            for (var j = 0; j < i; j++) {
+                if (sx_s_u32(c, 132 + 12 * j + 4, true) === off) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (size < 8 || !sx_s_range(c, off, size) || !duplicate && !sx_s_record(c, sx_s_icc_tag_type, off)) {
+                return false;
+            }
+        }
+        break;
+    case "PCAPNG":
+        return sx_s_pcapng(c);
+    case "ICU_DATA_PACKAGE":
+        be = sx_s_u8(c, 8) !== 0;
+        off = sx_s_u16(c, 0, be);
+        n = sx_s_u32(c, off, be);
+        if (!sx_s_record(c, be ? sx_s_icu_data_header_be : sx_s_icu_data_header_le, 0) || !sx_s_record(c, be ? sx_s_icu_toc_count_be : sx_s_icu_toc_count_le, off) || !sx_s_table(c, be ? sx_s_icu_toc_entry_be : sx_s_icu_toc_entry_le, off + 4, n)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            at[0] = off + sx_s_u32(c, off + 4 + 8 * i + 4, be);
+            if (!sx_s_record(c, be ? sx_s_icu_data_header_be : sx_s_icu_data_header_le, at[0])) {
+                return false;
+            }
+        }
+        break;
+    default:
+        return false;
+    }
+    return !c.failed;
+}
+function sx_systems_build(c) {
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    return sx_systems_walk(c) && c.count > 0 && sx_s_finish(c);
+}
+function sx_s_contains(text, text_o, part) {
+    var n = sxStrlen(part);
+    for (; sxAt(text, text_o); text_o++) {
+        if (!sxStrncmpAt(text, text_o, part, 0, n)) {
+            return true;
+        }
+    }
+    return false;
+}
+function sx_systems_comment(r, id) {
+    if (r === null || r.name === null || id < 0x600C0000 || id > 0x600CFFFF) {
+        return true;
+    }
+    var comment = null;
+    if (r.name === "register_address" || r.name === "starting_register") {
+        comment = "Zero-based Modbus register address";
+    } else if (id === sx_s_ciso_index_entry.id) {
+        comment = "Low 31 bits: block offset shifted left by alignment_shift; high bit: version-dependent storage flag";
+    } else if (r.name === "alignment_shift") {
+        comment = "Base-2 shift applied to encoded block offsets";
+    } else if (r.name === "header_size_excluding_magic") {
+        comment = "Byte length excluding the first four magic bytes";
+    } else if (r.name === "build_date_encoded") {
+        comment = "Raw vendor build-date encoding";
+    } else if (id === sx_s_palm_database_header.id && r.property & 0x00000080) {
+        comment = "Seconds in the Palm database epoch (1904-01-01)";
+    } else if (id === sx_s_ntp_header.id) {
+        if (sx_s_contains(r.name, 0, "timestamp_32_32")) {
+            comment = "NTP fixed point: seconds since 1900 in upper 32 bits; fractional seconds in lower 32 bits";
+        } else if (sx_s_contains(r.name, 0, "16_16")) {
+            comment = "Fixed point seconds with 16 fractional bits";
+        } else if (sx_s_contains(r.name, 0, "exponent")) {
+            comment = "Signed base-2 exponent in seconds";
+        } else if (r.name === "leap_version_mode") {
+            comment = "Leap indicator bits 6..7; version bits 3..5; mode bits 0..2";
+        }
+    } else if (r.name === "timestamp_high" || r.name === "timestamp_low") {
+        comment = "One 32-bit half of the packet timestamp; units are selected by interface options";
+    } else if (r.name === "section_length") {
+        comment = "Bytes following this Section Header Block; -1 means unspecified";
+    } else if (r.name === "auxiliary_word_count") {
+        comment = "Number of 32-bit auxiliary-data words";
+    } else if (id === sx_s_lldp_tlv_header.id) {
+        comment = "TLV type in upper 7 bits; value byte length in lower 9 bits";
+    } else if (id === sx_s_coap_header.id && r.name === "version_type_token_length") {
+        comment = "Version bits 6..7; type bits 4..5; token byte length bits 0..3";
+    } else if (id === sx_s_coap_option_header.id) {
+        comment = "High nibble: option-number delta; low nibble: value length; 13/14 select extended encodings";
+    } else if (sx_s_contains(r.name, 0, "encoded_") && sx_s_contains(r.name, 0, "_extension")) {
+        comment = "Encoded extension: add 13 for an 8-bit extension, or 269 for a 16-bit extension";
+    } else if (id === sx_s_shell_link_header.id && r.property & 0x00000080) {
+        comment = "FILETIME: 100-nanosecond intervals since 1601-01-01 UTC";
+    } else if (r.name === "start_address_or_basic_length") {
+        comment = "TR-DOS start address, or BASIC program length according to file type";
+    } else if (id === sx_s_scl_catalogue_entry.id && r.name === "sector_count") {
+        comment = "Number of 256-byte sectors";
+    } else if (id === sx_s_icc_profile_header.id && sx_s_contains(r.name, 0, "16_16")) {
+        comment = "Signed 16.16 fixed point tristimulus value";
+    }
+    return comment === null || sxSetComment(r, comment);
+}

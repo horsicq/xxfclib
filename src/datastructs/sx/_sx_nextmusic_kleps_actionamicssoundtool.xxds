@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kleps_actionamicssoundtool/xx_kleps_actionamicssoundtool_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_ast_banner_fields = layout([blob("signature", 22, SIGNATURE), blob("unknown", 2), chars("version_text", 3, NONE)]);
+var sxnextm_ast_banner = sxLayout(0x608B000C, "ast_banner", LE, sxnextm_ast_banner_fields);
+var sxnextm_ast_module_size_fields = layout([u32("module_bytes", SIZE)]);
+var sxnextm_ast_module_size = sxLayout(0x608B000D, "ast_module_size", BE, sxnextm_ast_module_size_fields);
+var sxnextm_ast_instrument_fields = layout([u8("sample_list_index", ID), u8("sample_value_count", COUNT),
+    u8("sample_start_counter_delta"), u8("sample_counter_end"), u8("arpeggio_list_index", ID),
+    u8("arpeggio_value_count", COUNT), u8("arpeggio_start_counter_delta"), u8("arpeggio_counter_end"),
+    u8("frequency_list_index", ID), u8("frequency_value_count", COUNT), u8("frequency_start_counter_delta"),
+    u8("frequency_counter_end"), i8("portamento_increment"), u8("portamento_delay"), i8("note_transpose"), u8("unknown0"),
+    u8("attack_end_volume"), u8("attack_speed"), u8("decay_end_volume"), u8("decay_speed"), u8("sustain_delay"),
+    u8("release_end_volume"), u8("release_speed"), blob("unknown_tail", 9)]);
+var sxnextm_ast_instrument = sxLayout(0x608B000E, "ast_instrument", LE, sxnextm_ast_instrument_fields);
+var sxnextm_ast_subsong_fields = layout([u8("first_position", ID), u8("last_position", ID), u8("loop_position", ID), u8("speed")]);
+var sxnextm_ast_subsong = sxLayout(0x608B000F, "ast_subsong", LE, sxnextm_ast_subsong_fields);
+function sxnextm_ast(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var len = [];
+    var at = [];
+    var p = 62;
+    if (!sxnextm_eq(v, 62, "ACTIONAMICS SOUND TOOL", 22, e) || !sxnextm_row(v, sxnextm_ast_header, 0, e) || !sxnextm_row(v, sxnextm_ast_banner, 62, e)) {
+        return false;
+    }
+    for (var i = 0; i < 15; i++) {
+        if (!sxnextm_be(v, (2 + ((4 * i) >>> 0)) >>> 0, 4, len, i, e) || !sxnextm_span(v, p, len[i], e)) {
+            return false;
+        }
+        at[i] = p;
+        p += len[i];
+    }
+    if (len[0] < 27 || len[1] < 4 || len[2] !== len[3] || len[2] !== len[4] || len[2] % 4 || len[5] % 32 || len[6] % 16 || len[7] % 16 || len[8] % 16 || len[11] % 4 || len[13] % 64 || len[14] % 2 || !sxnextm_row(v, sxnextm_ast_module_size, at[1], at[1] + len[1])) {
+        return false;
+    }
+    if (!sxnextm_table(v, sxnextm_u8, at[2], len[2], e) || !sxnextm_table(v, sxnextm_i8, at[3], len[3] + len[4], e) || !sxnextm_table(v, sxnextm_ast_instrument, at[5], Math.floor(len[5] / 32), e)) {
+        return false;
+    }
+    for (i = 6; i <= 8; i++) {
+        if (!sxnextm_table(v, sxnextm_i8, at[i], len[i], e)) {
+            return false;
+        }
+    }
+    if (!sxnextm_table(v, sxnextm_ast_subsong, at[11], Math.floor(len[11] / 4), e) || !sxnextm_table(v, sxnextm_ast_sample, at[13], Math.floor(len[13] / 64), e) || !sxnextm_table(v, sxnextm_offset16, at[14], Math.floor(len[14] / 2), e)) {
+        return false;
+    }
+    return true;
+}
+function sx_kleps_actionamicssoundtool_build(v) {
+    return sxnextm_ast(v);
+}

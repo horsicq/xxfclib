@@ -1,0 +1,138 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ntfs/xx_ntfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fs_ntfs_boot_sector_fields = layout([field("jump_boot", "byte[3]", 3), chars("system_id", 8, SIGNATURE),
+    u16("bytes_per_sector", SIZE), u8("sectors_per_cluster", COUNT), field("unused1", "byte[7]", 7, RESERVED),
+    u8("media_type", ID), field("unused2", "byte[2]", 2, RESERVED), u16("sectors_per_track", COUNT), u16("head_count", COUNT),
+    u32("hidden_sector_count", COUNT), field("unused3", "byte[4]", 4, RESERVED), u8("bios_drive_number", ID),
+    u8("unused4", RESERVED), u8("extended_signature", SIGNATURE), u8("unused5", RESERVED), u64("sector_count", COUNT),
+    u64("mft_cluster", ID), u64("mft_mirror_cluster", ID), i8("record_size_encoding"), field("unused6", "byte[3]", 3, RESERVED),
+    i8("index_size_encoding"), field("unused7", "byte[3]", 3, RESERVED), u64("volume_serial", ID), u32("checksum", CHECKSUM),
+    field("boot_code", "byte[426]", 426), u16("boot_signature", SIGNATURE)]);
+var sx_fs_ntfs_boot_sector = sxLayout(0x60100015, "ntfs_boot_sector", LE, sx_fs_ntfs_boot_sector_fields);
+var sx_fs_ntfs_update_sequence_fields = layout([u16("sequence_value", ID)]);
+var sx_fs_ntfs_update_sequence = sxLayout(0x60100017, "ntfs_update_sequence", LE, sx_fs_ntfs_update_sequence_fields);
+var sx_fs_ntfs_attribute_resident_fields = layout([u32("value_length", SIZE), u16("value_offset", OFFSET),
+    u8("resident_flags", FLAGS), u8("reserved", RESERVED)]);
+var sx_fs_ntfs_attribute_resident = sxLayout(0x60100019, "ntfs_attribute_resident", LE, sx_fs_ntfs_attribute_resident_fields);
+var sx_fs_ntfs_attribute_nonresident_fields = layout([u64("lowest_vcn", ID), u64("highest_vcn", ID),
+    u16("mapping_pairs_offset", OFFSET), u8("compression_unit_shift"), field("reserved", "byte[5]", 5, RESERVED),
+    u64("allocated_length", SIZE), u64("file_length", SIZE), u64("valid_data_length", SIZE)]);
+var sx_fs_ntfs_attribute_nonresident = sxLayout(0x6010001A, "ntfs_attribute_nonresident", LE, sx_fs_ntfs_attribute_nonresident_fields);
+var sx_fs_ntfs_attribute_end_fields = layout([u32("attribute_type", ID)]);
+var sx_fs_ntfs_attribute_end = sxLayout(0x6010001B, "ntfs_attribute_end", LE, sx_fs_ntfs_attribute_end_fields);
+function sx_fs_ntfs_unprotected(o, n, sector) {
+    if (!n) {
+        return false;
+    }
+    var tail = sxU64((Math.floor(o / sector) + 1) * sector - 2);
+    return o < tail && n <= sxU64(tail - o);
+}
+function sx_fs_ntfs_record(c, at, bytes, sector, prefix_only) {
+    var h = [];
+    if (!sx_fs_fits(c, at, bytes) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 48) || sxMemcmp(h, "FILE", 4)) {
+        return true;
+    }
+    var used = sxGetU32(h, 48, 24, false);
+    var off = sxGetU16(h, 48, 20, false);
+    var usa = sxGetU16(h, 48, 4, false);
+    var count = sxGetU16(h, 48, 6, false);
+    if (used > bytes || off < 48 || off > used || usa < 48 || usa > bytes || count > Math.floor(sxU64(bytes - usa) / 2)) {
+        return true;
+    }
+    if (!sx_fs_emit(c, sx_fs_ntfs_file_record_header, at, 48, 1)) {
+        return false;
+    }
+    if (prefix_only) {
+        return true;
+    }
+    if (sx_fs_ntfs_unprotected(usa, count * 2, sector) && !sx_fs_emit(c, sx_fs_ntfs_update_sequence, at + usa, 2, count)) {
+        return false;
+    }
+    for (var index = 0; index < 256 && off + 4 <= used; index++) {
+        var a = [];
+        var type;
+        if ((type = sx_u32(c, (at + off >= SX_I64_MAX ? at + off - SX_U64_MAX : at + off), false)) === null) {
+            return false;
+        }
+        if (type === 4294967295) {
+            if (sx_fs_ntfs_unprotected(off, 4, sector) && !sx_fs_emit(c, sx_fs_ntfs_attribute_end, at + off, 4, 1)) {
+                return false;
+            }
+            break;
+        }
+        if (off + 24 > used || !sx_fs_ntfs_unprotected(off, 24, sector)) {
+            break;
+        }
+        if (!sx_read(c, (at + off >= SX_I64_MAX ? at + off - SX_U64_MAX : at + off), a, 24)) {
+            return false;
+        }
+        var n = sxGetU32(a, 24, 4, false);
+        var head = a[8] ? 64 : 24;
+        if (a[8] > 1 || n < head || n > sxU64(used - off) || n & 7) {
+            break;
+        }
+        if (!sx_fs_emit(c, sx_fs_ntfs_attribute_common, at + off, 16, 1)) {
+            return false;
+        }
+        if (sx_fs_ntfs_unprotected(off + 16, sxU64(head - 16), sector)) {
+            if (!sx_fs_emit(c, a[8] ? sx_fs_ntfs_attribute_nonresident : sx_fs_ntfs_attribute_resident, at + off + 16, sxU64(head - 16), 1)) {
+                return false;
+            }
+        }
+        off += n;
+    }
+    return true;
+}
+function sx_fs_ntfs(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 512) || !sx_add(c, sx_fs_ntfs_boot_sector, 0, 512)) {
+        return false;
+    }
+    var sector = sxGetU16(b, 512, 11, false);
+    var spc = b[13];
+    var encoded = b[64] << 24 >> 24;
+    if (sector !== 512 && sector !== 1024 && sector !== 2048 && sector !== 4096 || !spc || spc > 128) {
+        return false;
+    }
+    var cluster = sector * spc;
+    var record = 0;
+    var mft = sxGetU64(b, 512, 48, false);
+    var mirror = sxGetU64(b, 512, 56, false);
+    if (encoded < 0 && encoded >= -16) {
+        record = sxShl64(1, (-encoded | 0) >>> 0);
+    } else if (encoded > 0) {
+        record = (encoded < 0 ? encoded + SX_U64_MAX : encoded) * cluster;
+    }
+    if (record < sector || record > 65536 || record % sector) {
+        return false;
+    }
+    if (mft <= Math.floor(sx_fs_limit(c) / cluster) && !sx_fs_ntfs_record(c, mft * cluster, record, sector, false)) {
+        return false;
+    }
+    if (mirror && mirror <= Math.floor(sx_fs_limit(c) / cluster) && !sx_fs_ntfs_record(c, mirror * cluster, record, sector, false)) {
+        return false;
+    }
+    var s = sxArcCreate(c.f);
+    if (s !== null) {
+        var n = 0;
+        do {
+            var r = sxArcCurrent(c.f, s);
+            if (r === null) {
+                break;
+            }
+            if (r.header_offset >= c.f.base_address && !sx_fs_ntfs_record(c, (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address), record, sector, true)) {
+                sxArcFree(c.f, s);
+                return false;
+            }
+        } while (++n < 4096 && sxArcNext(c.f, s));
+        sxArcFree(c.f, s);
+    }
+    return true;
+}
+function sx_ntfs_build(c) {
+    return sx_fs_ntfs(c);
+}

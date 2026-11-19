@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/woff2/xx_woff2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_woff2_header_fields = layout([chars("signature", 4, SIGNATURE), u32("flavor", ID), u32("length", SIZE),
+    u16("number_of_tables", COUNT), u16("reserved", RESERVED), u32("total_sfnt_size", SIZE), u32("total_compressed_size", SIZE),
+    u16("major_version"), u16("minor_version"), u32("metadata_offset", OFFSET), u32("metadata_length", SIZE),
+    u32("metadata_original_length", SIZE), u32("private_offset", OFFSET), u32("private_length", SIZE)]);
+var sx_c_woff2_header = sxLayout(0x6002002C, "woff2_header", BE, sx_c_woff2_header_fields);
+var sx_c_woff2_table_flags_fields = layout([u8("flags", FLAGS)]);
+var sx_c_woff2_table_flags = sxLayout(0x6002002D, "woff2_table_flags", BE, sx_c_woff2_table_flags_fields);
+var sx_c_woff2_table_tag_fields = layout([chars("tag", 4, ID)]);
+var sx_c_woff2_table_tag = sxLayout(0x6002002E, "woff2_table_tag", BE, sx_c_woff2_table_tag_fields);
+var sx_c_woff2_base128_1_fields = layout([field("length", "uintbase128", 1, SIZE)]);
+var sx_c_woff2_base128_1 = sxLayout(0x6002002F, "woff2_uintbase128_1", BE, sx_c_woff2_base128_1_fields);
+var sx_c_woff2_base128_2_fields = layout([field("length", "uintbase128", 2, SIZE)]);
+var sx_c_woff2_base128_2 = sxLayout(0x60020030, "woff2_uintbase128_2", BE, sx_c_woff2_base128_2_fields);
+var sx_c_woff2_base128_3_fields = layout([field("length", "uintbase128", 3, SIZE)]);
+var sx_c_woff2_base128_3 = sxLayout(0x60020031, "woff2_uintbase128_3", BE, sx_c_woff2_base128_3_fields);
+var sx_c_woff2_base128_4_fields = layout([field("length", "uintbase128", 4, SIZE)]);
+var sx_c_woff2_base128_4 = sxLayout(0x60020032, "woff2_uintbase128_4", BE, sx_c_woff2_base128_4_fields);
+var sx_c_woff2_base128_5_fields = layout([field("length", "uintbase128", 5, SIZE)]);
+var sx_c_woff2_base128_5 = sxLayout(0x60020033, "woff2_uintbase128_5", BE, sx_c_woff2_base128_5_fields);
+var sx_c_woff2_base128_rows = [sx_c_woff2_base128_1, sx_c_woff2_base128_2, sx_c_woff2_base128_3, sx_c_woff2_base128_4, sx_c_woff2_base128_5];
+function sx_c_woff2_base128(c, at, value) {
+    var v = 0;
+    var start = at[0];
+    for (var i = 0; i < 5; ++i) {
+        var b = [0];
+        if (!sx_read(c, at[0]++, b, 1) || !i && b[0] === 0x80 || (v & 0xFE000000) >>> 0) {
+            return false;
+        }
+        v = ((v << 7) >>> 0 | b[0] & 127) >>> 0;
+        if (!(b[0] & 128)) {
+            value[0] = v;
+            return sx_add(c, sx_c_woff2_base128_rows[i], start, (i + 1) >>> 0);
+        }
+    }
+    return false;
+}
+function sx_c_woff2(c) {
+    var h = [];
+    var count;
+    var total;
+    var packed;
+    var at = [48];
+    if (!sx_read(c, 0, h, 48) || sxMemcmp(h, "wOF2", 4)) {
+        return false;
+    }
+    count = sxGetU16At(h, 12, 2, 0, true);
+    total = sxGetU32At(h, 8, 4, 0, true);
+    packed = sxGetU32At(h, 20, 4, 0, true);
+    if (!count || total > c.size || total < 48 || !packed || sxGetU16At(h, 14, 2, 0, true) || !sx_add(c, sx_c_woff2_header, 0, 48)) {
+        return false;
+    }
+    if (sxGetU32At(h, 4, 4, 0, true) === 0x74746366) {
+        return false;
+    }
+    for (var i = 0; i < count; ++i) {
+        var flags = [0];
+        var tag = [0, 0, 0, 0];
+        var len = [0];
+        var index;
+        var transform;
+        var glyf_loca;
+        if (!sx_read(c, at[0], flags, 1) || !sx_add(c, sx_c_woff2_table_flags, at[0]++, 1)) {
+            return false;
+        }
+        index = flags[0] & 63;
+        transform = flags[0] >> 6;
+        if (index === 63) {
+            if (!sx_read(c, at[0], tag, 4) || !sx_add(c, sx_c_woff2_table_tag, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+        }
+        glyf_loca = index === 10 || index === 11 || index === 63 && (!sxMemcmp(tag, "glyf", 4) || !sxMemcmp(tag, "loca", 4));
+        if (!sx_c_woff2_base128(c, at, len)) {
+            return false;
+        }
+        if (glyf_loca && transform !== 3 || !glyf_loca && transform !== 0) {
+            if (!sx_c_woff2_base128(c, at, len)) {
+                return false;
+            }
+        }
+    }
+    if (at[0] > total || packed > (total - at[0] < 0 ? total - at[0] + SX_U64_MAX : total - at[0]) || !sx_raw(c, at[0], packed)) {
+        return false;
+    }
+    at[0] += packed;
+    for (i = 0; i < 2; ++i) {
+        var off = sxGetU32At(h, i ? 40 : 28, 4, 0, true);
+        var n = sxGetU32At(h, i ? 44 : 32, 4, 0, true);
+        if (!off && !n) {
+            continue;
+        }
+        if (!off || !n || off < at[0] || off > total || n > (total - off) >>> 0 || !sx_raw(c, at[0], off - at[0]) || !sx_raw(c, off, n)) {
+            return false;
+        }
+        at[0] = off + n;
+    }
+    return at[0] <= total && sx_raw(c, at[0], c.size - at[0]);
+}
+function sx_woff2_build(c) {
+    return sx_c_woff2(c);
+}

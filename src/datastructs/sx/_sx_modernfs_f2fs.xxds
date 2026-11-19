@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/f2fs/xx_f2fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_f2fs_superblock_prefix_fields = layout([u32("magic", SIGNATURE), u16("major_version", ID), u16("minor_version", ID),
+    u32("log2_sector_size"), u32("log2_sectors_per_block"), u32("log2_block_size"), u32("log2_blocks_per_segment"),
+    u32("segments_per_section", COUNT), u32("sections_per_zone", COUNT), u32("checksum_offset", OFFSET),
+    u64("block_count", COUNT), u32("section_count", COUNT), u32("segment_count", COUNT), u32("checkpoint_segments", COUNT),
+    u32("sit_segments", COUNT), u32("nat_segments", COUNT), u32("ssa_segments", COUNT), u32("main_segments", COUNT),
+    u32("segment0_block"), u32("checkpoint_block"), u32("sit_block"), u32("nat_block"), u32("ssa_block"), u32("main_block"),
+    u32("root_inode", ID), u32("node_inode", ID), u32("meta_inode", ID), field("uuid", "byte[16]", 16, ID),
+    field("volume_name", "uint16[512]", 1024), u32("extension_count", COUNT), field("extension_list", "byte[512]", 512),
+    u32("checkpoint_payload_blocks", COUNT), chars("version", 256, STRING), chars("initial_version", 256, STRING),
+    u32("features", FLAGS), u8("encryption_level", ID), field("encryption_salt", "byte[16]", 16)]);
+var sxmf_f2fs_superblock_prefix = sxLayout(0x6042000B, "f2fs_superblock_prefix", LE, sxmf_f2fs_superblock_prefix_fields);
+var sxmf_f2fs_device_fields = layout([chars("path", 64, STRING), u32("total_segments", COUNT)]);
+var sxmf_f2fs_device = sxLayout(0x6042000C, "f2fs_device", LE, sxmf_f2fs_device_fields);
+var sxmf_f2fs_superblock_tail_fields = layout([field("quota_inodes", "uint32[3]", 12, ID), u8("hot_extension_count", COUNT),
+    u16("encoding", ID), u16("encoding_flags", FLAGS), field("checkpoint_stop_reasons", "byte[32]", 32, FLAGS),
+    field("errors", "byte[16]", 16, FLAGS), field("reserved", "byte[258]", 258, RESERVED), u32("crc", CHECKSUM)]);
+var sxmf_f2fs_superblock_tail = sxLayout(0x6042000D, "f2fs_superblock_tail", LE, sxmf_f2fs_superblock_tail_fields);
+var sxmf_f2fs_checkpoint_header_fields = layout([u64("version"), u64("user_blocks", COUNT), u64("valid_blocks", COUNT),
+    u32("reserved_segments", COUNT), u32("overprovision_segments", COUNT), u32("free_segments", COUNT),
+    field("current_node_segments", "uint32[8]", 32), field("current_node_block_offsets", "uint16[8]", 16),
+    field("current_data_segments", "uint32[8]", 32), field("current_data_block_offsets", "uint16[8]", 16), u32("flags", FLAGS),
+    u32("pack_total_blocks", COUNT), u32("pack_summary_start"), u32("valid_nodes", COUNT), u32("valid_inodes", COUNT),
+    u32("next_free_node", ID), u32("sit_bitmap_bytes", SIZE), u32("nat_bitmap_bytes", SIZE), u32("checksum_offset", OFFSET),
+    u64("elapsed_time"), bytes("allocation_type", 16, ID)]);
+var sxmf_f2fs_checkpoint_header = sxLayout(0x6042000E, "f2fs_checkpoint_header", LE, sxmf_f2fs_checkpoint_header_fields);
+var sxmf_f2fs_nat_entry_fields = layout([u8("version"), u32("inode", ID), u32("block")]);
+var sxmf_f2fs_nat_entry = sxLayout(0x6042000F, "f2fs_nat_entry", LE, sxmf_f2fs_nat_entry_fields);
+var sxmf_f2fs_node_footer_fields = layout([u32("node_id", ID), u32("inode", ID), u32("flags", FLAGS), u64("checkpoint_version"),
+    u32("next_block")]);
+var sxmf_f2fs_node_footer = sxLayout(0x60420010, "f2fs_node_footer", LE, sxmf_f2fs_node_footer_fields);
+function sxmf_f2fs_sb(c, p) {
+    return sxmf_put(c, sxmf_f2fs_superblock_prefix, p, 1) && sxmf_put(c, sxmf_f2fs_device, p + 2201, 8) && sxmf_put(c, sxmf_f2fs_superblock_tail, p + 2745, 1);
+}
+function sxmf_f2fs(c) {
+    var h = [];
+    var b = [];
+    if (!sxmf_read(c, 1024, h, 0, 128) || sxmf32(h, 0, 0) !== 0xF2F52010 || sxmf32(h, 16, 0) !== 12) {
+        return false;
+    }
+    var blocks = sxmf64(h, 36, 0);
+    if (!blocks || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 4096) || !sxmf_f2fs_sb(c, 1024)) {
+        return false;
+    }
+    if (sxmf_read(c, 5120, b, 0, 4) && sxmf32(b, 0, 0) === 0xF2F52010 && sxmf_span(c, 5120, 3072) && !sxmf_f2fs_sb(c, 5120)) {
+        return false;
+    }
+    var cp = sxmf32(h, 76, 0);
+    var nat = sxmf32(h, 84, 0);
+    var seglog = sxmf32(h, 20, 0);
+    var root = sxmf32(h, 96, 0);
+    for (var i = 0; i < 2; i++) {
+        var block = cp;
+        if (i) {
+            if (seglog > 31) {
+                break;
+            }
+            block += sxShl64(1, seglog);
+        }
+        if (block >= blocks || !sxmf_read(c, block * 4096, b, 0, 192)) {
+            continue;
+        }
+        var total = sxmf32(b, 136, 0);
+        var crc = sxmf32(b, 164, 0);
+        if (!sxmf64(b, 0, 0) || total < 2 || total > sxU64(blocks - block) || crc < 192 || crc > 4092) {
+            continue;
+        }
+        if (!sxmf_put(c, sxmf_f2fs_checkpoint_header, block * 4096, 1)) {
+            return false;
+        }
+    }
+    if (nat && nat < blocks && sxmf32(h, 60, 0) && !sxmf_put(c, sxmf_f2fs_nat_entry, nat * 4096, 455)) {
+        return false;
+    }
+    if (nat && nat < blocks && root < 455 && sxmf_read(c, nat * 4096 + root * 9, b, 0, 9)) {
+        var node = sxmf32(b, 5, 0);
+        if (node && node < blocks && sxmf_read(c, node * 4096 + 4072, b, 0, 24) && sxmf32(b, 0, 0) === root && sxmf32(b, 4, 0) === root && !sxmf_put(c, sxmf_f2fs_node_footer, node * 4096 + 4072, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_f2fs_build(c) {
+    return sxmf_f2fs(c);
+}

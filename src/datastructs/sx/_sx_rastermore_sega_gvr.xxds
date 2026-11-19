@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/sega_gvr/xx_sega_gvr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_gvr_prefix_fields = layout([chars("signature", 4, SIGNATURE), u32("chunk_size", SIZE), u16("reserved", RESERVED),
+    u8("palette_format_and_flags", FLAGS), u8("texture_format", ID)]);
+var sxrm_gvr_prefix = sxLayout(0x601D0021, "gvr_prefix", LE, sxrm_gvr_prefix_fields);
+var sxrm_gvr_dimensions_fields = layout([u16("width", COUNT), u16("height", COUNT)]);
+var sxrm_gvr_dimensions = sxLayout(0x601D0022, "gvr_dimensions", BE, sxrm_gvr_dimensions_fields);
+function sx_sega_gvr_build(c) {
+    return sxrm_add(c, sxrm_gvr_prefix, 0) && sxrm_add(c, sxrm_gvr_dimensions, 12);
+}

@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/swag/xx_swag_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_swag_member_fields = layout([u8("header_length"), u8("header_checksum", CHECKSUM), chars("method", 5, ID),
+    i32("packed_size", SIZE), i32("unpacked_size", SIZE), u16("time"), u16("date"), u16("attributes", FLAGS),
+    u32("crc32_register", CHECKSUM), u8("archive_name_size", SIZE), chars("archive_name", 39, STRING),
+    bytes("unused", 121, RESERVED), u8("name_size", SIZE)]);
+var sxae_swag_member = sxLayout(0x60170027, "swag_member", LE, sxae_swag_member_fields);
+var sxae_swag_member_crc_fields = layout([u16("crc16", CHECKSUM)]);
+var sxae_swag_member_crc = sxLayout(0x60170028, "swag_member_crc", LE, sxae_swag_member_crc_fields);
+var sxae_swag_footer_fields = layout([u8("copyright_size", SIZE), chars("copyright", 60, STRING), u8("collection_size", SIZE),
+    chars("collection", 65, STRING), u16("member_count", COUNT)]);
+var sxae_swag_footer = sxLayout(0x60170029, "swag_footer", LE, sxae_swag_footer_fields);
+function sxae_swag(c) {
+    var count;
+    var p = 0;
+    var foot = c.size - 129;
+    if (foot < 0 || (count = sx_u16(c, foot + 127, false)) === null || !count || !sxae_add(c, sxae_swag_footer, foot)) {
+        return false;
+    }
+    for (var i = 0; i < count && i < 20000; i++) {
+        var b = [];
+        if (p > foot - 187) {
+            break;
+        }
+        if (!sx_read(c, p, b, 187)) {
+            return false;
+        }
+        var z = sxae32(b, 7);
+        if (b[0] !== 187 + b[186] || !b[186] || b[186] > 12 || sxMemcmpAt(b, 2, "-sw1-", 0, 5) || z > 2147483647 || !sxae_bound(c, p, (2 + b[0] + z) >>> 0) || p + 2 + b[0] + z > foot) {
+            break;
+        }
+        if (!sxae_add(c, sxae_swag_member, p) || !sxae_add(c, sxae_swag_member_crc, p + b[0]) || !sxae_data(c, p + 2 + b[0], z)) {
+            return false;
+        }
+        p += (2 + b[0] + z) >>> 0;
+    }
+    if (foot - p === 129 || foot - p === 130) {
+        var a = [];
+        b = [];
+        if (!sx_read(c, foot - 129, a, 129) || !sx_read(c, foot, b, 129)) {
+            return false;
+        }
+        if (!sxMemcmp(a, b, 129) && !sxae_add(c, sxae_swag_footer, foot - 129)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_swag_build(c) {
+    return sxae_swag(c);
+}

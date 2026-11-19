@@ -1,0 +1,151 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/torque_dts/xx_torque_dts_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_dts_header_fields = layout([u32("version"), u32("buffer_size_words", COUNT), u32("start16_words"), u32("start8_words")]);
+var sxbrs_dts_header = sxLayout(0x603E000A, "dts_header", LE, sxbrs_dts_header_fields);
+var sxbrs_dts_counts_fields = layout([i32("num_nodes", COUNT), i32("num_objects", COUNT), i32("num_decals", COUNT),
+    i32("num_subshapes", COUNT), i32("num_ifl_materials", COUNT), i32("num_node_rotations", COUNT),
+    i32("num_node_translations", COUNT), i32("num_node_uniform_scales", COUNT), i32("num_node_aligned_scales", COUNT),
+    i32("num_node_arbitrary_scales", COUNT), i32("num_ground_frames", COUNT), i32("num_object_states", COUNT),
+    i32("num_decal_states", COUNT), i32("num_triggers", COUNT), i32("num_details", COUNT), i32("num_meshes", COUNT),
+    i32("num_names", COUNT), i32("smallest_visible_size"), i32("smallest_visible_detail")]);
+var sxbrs_dts_counts = sxLayout(0x603E000B, "dts_counts", LE, sxbrs_dts_counts_fields);
+var sxbrs_dts_bounds_fields = layout([field("radius", "float32", 4), field("tube_radius", "float32", 4),
+    field("center_x", "float32", 4), field("center_y", "float32", 4), field("center_z", "float32", 4),
+    field("min_x", "float32", 4), field("min_y", "float32", 4), field("min_z", "float32", 4), field("max_x", "float32", 4),
+    field("max_y", "float32", 4), field("max_z", "float32", 4)]);
+var sxbrs_dts_bounds = sxLayout(0x603E000C, "dts_bounds", LE, sxbrs_dts_bounds_fields);
+var sxbrs_dts_node_fields = layout([i32("name_index"), i32("parent_index"), i32("first_object_index"), i32("first_child_index"),
+    i32("next_sibling_index")]);
+var sxbrs_dts_node = sxLayout(0x603E000D, "dts_node", LE, sxbrs_dts_node_fields);
+var sxbrs_dts_subshape_first_fields = layout([i32("first_node"), i32("first_object"), i32("first_decal")]);
+var sxbrs_dts_subshape_first = sxLayout(0x603E000E, "dts_subshape_first", LE, sxbrs_dts_subshape_first_fields);
+var sxbrs_dts_subshape_count_fields = layout([i32("num_nodes", COUNT), i32("num_objects", COUNT), i32("num_decals", COUNT)]);
+var sxbrs_dts_subshape_count = sxLayout(0x603E000F, "dts_subshape_count", LE, sxbrs_dts_subshape_count_fields);
+var sxbrs_dts_rotation_fields = layout([i16("x"), i16("y"), i16("z"), i16("w")]);
+var sxbrs_dts_rotation = sxLayout(0x603E0010, "dts_rotation", LE, sxbrs_dts_rotation_fields);
+var sxbrs_dts_translation_fields = layout([field("x", "float32", 4), field("y", "float32", 4), field("z", "float32", 4)]);
+var sxbrs_dts_translation = sxLayout(0x603E0011, "dts_translation", LE, sxbrs_dts_translation_fields);
+var sxbrs_dts_guard32_fields = layout([u32("guard")]);
+var sxbrs_dts_guard32 = sxLayout(0x603E0012, "dts_guard32", LE, sxbrs_dts_guard32_fields);
+var sxbrs_dts_guard16_fields = layout([u16("guard")]);
+var sxbrs_dts_guard16 = sxLayout(0x603E0013, "dts_guard16", LE, sxbrs_dts_guard16_fields);
+var sxbrs_dts_guard8_fields = layout([u8("guard")]);
+var sxbrs_dts_guard8 = sxLayout(0x603E0014, "dts_guard8", LE, sxbrs_dts_guard8_fields);
+var sxbrs_dts_name_byte_fields = layout([chars("character", 1, STRING)]);
+var sxbrs_dts_name_byte = sxLayout(0x603E0015, "dts_name_byte", LE, sxbrs_dts_name_byte_fields);
+var sxbrs_dts_footer_fields = layout([i32("sequence_count", COUNT), u8("material_list_version"), u32("material_count", COUNT)]);
+var sxbrs_dts_footer = sxLayout(0x603E0016, "dts_footer", LE, sxbrs_dts_footer_fields);
+function sxbrs_dts_guard(c, a, ae, b, be, d, de, guard) {
+    if (sxbrs_num(c, a[0], 4, false) !== guard || sxbrs_num(c, b[0], 2, false) !== guard || sxbrs_num(c, d[0], 1, false) !== guard) {
+        return false;
+    }
+    return sxbrs_take(c, sxbrs_dts_guard32, a, ae, 1) && sxbrs_take(c, sxbrs_dts_guard16, b, be, 1) && sxbrs_take(c, sxbrs_dts_guard8, d, de, 1);
+}
+function sxbrs_dts(c) {
+    if (c.size < 25 || sxAnd64(sxbrs_num(c, 0, 4, false), 65535) !== 24) {
+        return false;
+    }
+    var size = sxbrs_num(c, 4, 4, false);
+    var s16 = sxbrs_num(c, 8, 4, false);
+    var s8 = sxbrs_num(c, 12, 4, false);
+    if (s16 < 19 || s16 > s8 || s8 > size || size > Math.floor((c.size - 25 < 0 ? c.size - 25 + SX_U64_MAX : c.size - 25) / 4)) {
+        return false;
+    }
+    var at = [16];
+    var end = 16 + (s16 >= SX_I64_MAX ? s16 - SX_U64_MAX : s16) * 4;
+    var b = [end];
+    var be = 16 + (s8 >= SX_I64_MAX ? s8 - SX_U64_MAX : s8) * 4;
+    var d = [be];
+    var de = 16 + (size >= SX_I64_MAX ? size - SX_U64_MAX : size) * 4;
+    var nodes = sxbrs_num(c, 16, 4, false);
+    var names = sxbrs_num(c, 80, 4, false);
+    if (!nodes || nodes > 256 || !names || names > 1024) {
+        return false;
+    }
+    if (!sxbrs_add(c, sxbrs_dts_header, 0)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_dts_counts, at, end, 1)) {
+            return false;
+        }
+    }
+    var guard = 0;
+    if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_dts_bounds, at, end, 1)) {
+            return false;
+        }
+    }
+    if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_dts_node, at, end, nodes)) {
+            return false;
+        }
+    }
+    for (var i = 2; i <= 5; i++) {
+        if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++)) {
+            return false;
+        }
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_dts_subshape_first, at, end, 1)) {
+            return false;
+        }
+    }
+    if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_dts_subshape_count, at, end, 1)) {
+            return false;
+        }
+    }
+    if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++)) {
+        return false;
+    }
+    if (!sxbrs_take(c, sxbrs_dts_rotation, b, be, nodes)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_dts_translation, at, end, nodes)) {
+            return false;
+        }
+    }
+    for (i = 8; i <= 15; i++) {
+        if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++)) {
+            return false;
+        }
+    }
+    var start = d[0];
+    for (i = 0; i < names; i++) {
+        var length = 0;
+        while (d[0] < de && sxbrs_num(c, d[0]++, 1, false)) {
+            if (++length >= 4096) {
+                return false;
+            }
+        }
+        if (!length || d[0] > de) {
+            return false;
+        }
+    }
+    var cursor = [start];
+    if (!sxbrs_take(c, sxbrs_dts_name_byte, cursor, d[0], (d[0] - start < 0 ? d[0] - start + SX_U64_MAX : d[0] - start))) {
+        return false;
+    }
+    if (!sxbrs_dts_guard(c, at, end, b, be, d, de, guard++) || at[0] !== end) {
+        return false;
+    }
+    return sxbrs_add(c, sxbrs_dts_footer, de);
+}
+function sx_torque_dts_build(c) {
+    return sxbrs_dts(c);
+}

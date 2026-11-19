@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/fmc1/xx_fmc1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_fmc1_header_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxacl_fmc1_header = sxLayout(0x6050001D, "fmc1_header", LE, sxacl_fmc1_header_fields);
+var sxacl_fmc1_member_fields = layout([chars("name", 12, NONE), u16("dos_time"), u16("dos_date"), u16("unknown"),
+    i16("reserved"), i32("compressed_size", SIZE)]);
+var sxacl_fmc1_member = sxLayout(0x6050001E, "fmc1_member", LE, sxacl_fmc1_member_fields);
+function sx_fmc1_build(c) {
+    return sxacl_add(c, sxacl_fmc1_header, 0) && sxacl_chain(c, sxacl_fmc1_member, 4, 24, 20, true, false);
+}

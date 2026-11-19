@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/westwood_vqa/xx_westwood_vqa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_vqa_form_fields = layout([blob("signature", 4, SIGNATURE), u32("data_size", SIZE), blob("form_type", 4, ID)]);
+var sxnx_vqa_form = sxLayout(0x603200C2, "vqa_form", BE, sxnx_vqa_form_fields);
+var sxnx_vqa_chunk_fields = layout([blob("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxnx_vqa_chunk = sxLayout(0x603200C3, "vqa_chunk", BE, sxnx_vqa_chunk_fields);
+var sxnx_vqa_header_fields = layout([u16("version", ID), u16("flags", FLAGS), u16("frame_count", COUNT), u16("width"),
+    u16("height"), u8("block_width"), u8("block_height"), u8("frame_rate"), u8("codebook_parts", COUNT),
+    u16("color_count", COUNT), u16("max_blocks", COUNT), blob("opaque1", 6), u16("sample_rate"), u8("channel_count", COUNT),
+    u8("sample_bits"), blob("opaque2", 14)]);
+var sxnx_vqa_header = sxLayout(0x603200C4, "vqa_header", LE, sxnx_vqa_header_fields);
+var sxnx_vqa_frame_index_fields = layout([u32("word_offset_and_flags", FLAGS)]);
+var sxnx_vqa_frame_index = sxLayout(0x603200C5, "vqa_frame_index", LE, sxnx_vqa_frame_index_fields);
+var sxnx_vqa_sound_fields = layout([u16("unpacked_bytes", SIZE), u16("packed_bytes", SIZE)]);
+var sxnx_vqa_sound = sxLayout(0x603200C6, "vqa_sound", LE, sxnx_vqa_sound_fields);
+function sxnx_vqa_chunks(v, p, end, nested) {
+    while (p < end) {
+        if (!sxnx_row(v, sxnx_vqa_chunk, p, end)) {
+            return false;
+        }
+        var z = sxnx_u32(v.p, p + 4, true);
+        var id = sxnx_u32(v.p, p, true);
+        p += 8;
+        if (!sxnx_need(v, p, z + (z & 1), end)) {
+            return false;
+        }
+        if (id === 0x46494E46) {
+            if (z % 4 || !sxnx_table(v, sxnx_vqa_frame_index, p, Math.floor(z / 4), p + z)) {
+                return false;
+            }
+        } else if (!nested && (id === 0x56514652 || id === 0x5651464C)) {
+            if (!sxnx_vqa_chunks(v, p, p + z, true)) {
+                return false;
+            }
+        } else if (id === 0x534E4431) {
+            if (!sxnx_row(v, sxnx_vqa_sound, p, p + z)) {
+                return false;
+            }
+        } else if (id === 0x43504C30) {
+            if (z % 3 || !sxnx_table(v, sxnx_rgb_palette_entry, p, Math.floor(z / 3), p + z)) {
+                return false;
+            }
+        }
+        p += (z + (z & 1)) >>> 0;
+    }
+    return p === end;
+}
+function sxnx_vqa(v) {
+    return sxnx_row(v, sxnx_vqa_form, 0, v.n) && sxnx_row(v, sxnx_vqa_chunk, 12, v.n) && sxnx_row(v, sxnx_vqa_header, 20, v.n) && sxnx_vqa_chunks(v, 62, v.n, false);
+}
+function sx_westwood_vqa_build(v) {
+    return sxnx_vqa(v);
+}

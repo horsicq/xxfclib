@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/dl_poly_config/xx_dl_poly_config_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_dlp_level_fields = layout([field("dlp_level", "ascii_signed", 0)]);
+var sxsch_dlp_level = sxLayout(0x6061005F, "chemistry_dlp_level", LE, sxsch_dlp_level_fields);
+var sxsch_dlp_periodicity_fields = layout([field("dlp_periodicity", "ascii_signed", 0)]);
+var sxsch_dlp_periodicity = sxLayout(0x60610060, "chemistry_dlp_periodicity", LE, sxsch_dlp_periodicity_fields);
+function sxsch_dlp(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(4, sxNew_sxsch_token);
+    var n = [0];
+    var level = [0];
+    var periodic = [0];
+    var atoms = [0];
+    if (!sxsch_line(q, l)) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_title, sxCopy_sxsch_token(null, l))) {
+            return false;
+        }
+    }
+    if (!sxsch_next(q, l, t[0], 4, n, "") || n[0] !== 3 || !sxsch_number(q, sxCopy_sxsch_token(null, t[0]), level) || level[0] > 2 || !sxsch_number(q, sxCopy_sxsch_token(null, t[1]), periodic) || !sxsch_number(q, sxCopy_sxsch_token(null, t[2]), atoms)) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_dlp_level, sxCopy_sxsch_token(null, t[0]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsch_emit(q, sxsch_dlp_periodicity, sxCopy_sxsch_token(null, t[1]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsch_emit(q, sxsch_atom_count, sxCopy_sxsch_token(null, t[2]))) {
+            return false;
+        }
+    }
+    if (periodic[0]) {
+        for (var j = 0; j < 3; j++) {
+            if (!sxsch_next(q, l, t[0], 4, n, "") || n[0] !== 3 || !sxsch_xyz(q, t[0], 3)) {
+                return false;
+            }
+        }
+    }
+    for (var a = 0; a < atoms[0]; a++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsch_next(q, l, t[0], 4, n, "") || n[0] !== 2) {
+            return false;
+        }
+        {
+            if (!sxsch_emit(q, sxsch_element, sxCopy_sxsch_token(null, t[0]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_atom_id, sxCopy_sxsch_token(null, t[1]))) {
+                return false;
+            }
+        }
+        for (var k = 0; k <= level[0]; k++) {
+            if (!sxsch_next(q, l, t[0], 4, n, "") || n[0] !== 3 || !sxsch_xyz(q, t[0], k === 0 ? 0 : k === 1 ? 9 : 10)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_dl_poly_config_build(q) {
+    return sxsch_dlp(q);
+}

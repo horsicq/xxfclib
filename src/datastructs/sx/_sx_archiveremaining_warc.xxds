@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/warc/xx_warc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_warc_version_fields = layout([field("warc_version", "char", 0, ID)]);
+var sxarm_warc_version = sxLayout(0x607C0002, "warc_version", LE, sxarm_warc_version_fields);
+var sxarm_warc_field_name_fields = layout([field("warc_field_name", "char", 0, STRING)]);
+var sxarm_warc_field_name = sxLayout(0x607C0003, "warc_field_name", LE, sxarm_warc_field_name_fields);
+var sxarm_warc_field_value_fields = layout([field("warc_field_value", "utf8", 0, STRING)]);
+var sxarm_warc_field_value = sxLayout(0x607C0004, "warc_field_value", LE, sxarm_warc_field_value_fields);
+var sxarm_warc_content_length_fields = layout([field("warc_content_length", "ascii_decimal", 0, SIZE)]);
+var sxarm_warc_content_length = sxLayout(0x607C0005, "warc_content_length", LE, sxarm_warc_content_length_fields);
+var sxarm_warc_segment_number_fields = layout([field("warc_segment_number", "ascii_decimal", 0)]);
+var sxarm_warc_segment_number = sxLayout(0x607C0006, "warc_segment_number", LE, sxarm_warc_segment_number_fields);
+var sxarm_warc_segment_total_length_fields = layout([field("warc_segment_total_length", "ascii_decimal", 0, SIZE)]);
+var sxarm_warc_segment_total_length = sxLayout(0x607C0007, "warc_segment_total_length", LE, sxarm_warc_segment_total_length_fields);
+var sxarm_warc_digest_fields = layout([field("warc_digest", "char", 0, CHECKSUM)]);
+var sxarm_warc_digest = sxLayout(0x607C0008, "warc_digest", LE, sxarm_warc_digest_fields);
+function sxarm_warc(c) {
+    var p = 0;
+    var next = [0];
+    var z = [0];
+    var b = [];
+    var n = [0];
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxarm_line(c, p, b, 0x1000, n, next)) {
+            return false;
+        }
+        if (!n[0]) {
+            p = next[0];
+            continue;
+        }
+        if (n[0] !== 8 || !sxarm_eq(b, 0, 5, "WARC/") || !sxarm_text(c, sxarm_warc_version, p, n[0], false)) {
+            return false;
+        }
+        p = next[0];
+        var length = false;
+        var header_start = p;
+        for (; ; ) {
+            if (sxU64(p - header_start) > 1048576 || !sxarm_line(c, p, b, 0x1000, n, next)) {
+                return false;
+            }
+            if (!n[0]) {
+                p = next[0];
+                break;
+            }
+            var k = 0;
+            while (k < n[0] && b[k] !== 58 /*:*/) {
+                k++;
+            }
+            if (k === n[0] || !k) {
+                return true;
+            }
+            var a = k + 1;
+            while (a < n[0] && (b[a] === 32 || b[a] === 9)) {
+                a++;
+            }
+            var e = n[0];
+            while (e > a && (b[sxU64(e - 1)] === 32 || b[sxU64(e - 1)] === 9)) {
+                e--;
+            }
+            var l = sxarm_warc_field_value;
+            if (sxarm_eq(b, 0, k, "Content-Length")) {
+                l = sxarm_warc_content_length;
+                if (!sxarm_uint_text(b, a, sxU64(e - a), 10, z)) {
+                    return true;
+                }
+                length = true;
+            } else if (sxarm_eq(b, 0, k, "WARC-Segment-Number")) {
+                l = sxarm_warc_segment_number;
+            } else if (sxarm_eq(b, 0, k, "WARC-Segment-Total-Length")) {
+                l = sxarm_warc_segment_total_length;
+            } else if (sxarm_eq(b, 0, k, "WARC-Block-Digest") || sxarm_eq(b, 0, k, "WARC-Payload-Digest")) {
+                l = sxarm_warc_digest;
+            }
+            if (!sxarm_text(c, sxarm_warc_field_name, p, k, false) || !sxarm_text(c, l, p + a, sxU64(e - a), false)) {
+                return false;
+            }
+            p = next[0];
+        }
+        if (!length || !sxarm_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_warc_build(c) {
+    return sxarm_warc(c);
+}

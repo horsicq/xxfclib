@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/sfx_sydex_diskette_image/xx_sfx_sydex_diskette_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_sydex_wb_header_fields = layout([chars("magic", 2, SIGNATURE), u16("last_page_bytes", SIZE), u16("page_count", COUNT),
+    u16("decoded_text_bytes", SIZE)]);
+var sxdr_sydex_wb_header = sxLayout(0x607F0001, "sydex_wb_header", LE, sxdr_sydex_wb_header_fields);
+var sxdr_sydex_image_header_fields = layout([chars("magic", 3, SIGNATURE), u16("track_bytes", SIZE),
+    u8("sectors_per_track", COUNT), u8("heads", COUNT), u8("cylinders", COUNT), u8("stored_cylinders", COUNT),
+    field("unknown_09", "byte[6]", 6), i16("encryption"), field("unknown_11", "byte[2]", 2), i16("description_bytes", SIZE),
+    u16("description_crc16", CHECKSUM), chars("serial_marker", 4, SIGNATURE), u32("serial_number", ID),
+    u16("header_crc16", CHECKSUM)]);
+var sxdr_sydex_image_header = sxLayout(0x607F0002, "sydex_image_header", LE, sxdr_sydex_image_header_fields);
+var sxdr_sydex_track_header_fields = layout([u16("decoded_crc16", CHECKSUM), i16("signed_packed_length")]);
+var sxdr_sydex_track_header = sxLayout(0x607F0003, "sydex_track_header", LE, sxdr_sydex_track_header_fields);
+var sxdr_sydex_description_fields = layout([field("description", "utf8", 0)]);
+var sxdr_sydex_description = sxLayout(0x607F0028, "sydex_description", LE, sxdr_sydex_description_fields);
+function sxdr_crc16arc(b, n) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v ^= b[i];
+        for (var j = 0; j < 8; j++) {
+            v = v & 1 ? v >> 1 ^ 0xA001 : v >> 1;
+        }
+    }
+    return v;
+}
+function sxdr_sydex_header(c, p, h) {
+    if (!sxdr_read(c, p, h, 33) || sxMemcmp(h, "SXD", 3) || sxdr_crc16arc(h, 31) !== sxdr16(h, 31, false) || sxdr16(h, 15, false) || sxdr16(h, 3, false) < 128 || sxdr16(h, 3, false) > 32768 || !h[5] || !h[6] || !h[7] || !h[8] || h[8] > h[7] || sxdr16(h, 19, false) > 32767) {
+        return false;
+    }
+    return true;
+}
+function sxdr_sydex(c) {
+    var mz = [];
+    var wb = [];
+    var h = [];
+    var overlay;
+    var stage;
+    var p;
+    var pages;
+    var last;
+    if (!sxdr_read(c, 0, mz, 6) || sxMemcmp(mz, "MZ", 2) || (pages = sxdr16(mz, 4, false)) === 0 || (last = sxdr16(mz, 2, false)) >= 512) {
+        return false;
+    }
+    overlay = ((pages - 1) >>> 0) * 512 + (last ? last : 512);
+    if (overlay < 64 || !sxdr_read(c, overlay, wb, 10) || sxMemcmp(wb, "WB", 2) || (pages = sxdr16(wb, 4, false)) === 0 || (last = sxdr16(wb, 2, false)) >= 512 || !sxdr16(wb, 6, false) || sxdr16(wb, 8, false) !== 0xE4D5 && sxdr16(wb, 8, false) !== 0xE5CC) {
+        return false;
+    }
+    stage = ((pages - 1) >>> 0) * 512 + (last ? last : 512);
+    p = overlay + stage;
+    if (stage < 10 || !sxdr_sydex_header(c, p, h)) {
+        var found = false;
+        for (var i = 10; i <= 0x20000 && sxdr_span(c, overlay + i, 33); i++) {
+            var b = [0];
+            if (!sxdr_read(c, overlay + i, b, 1)) {
+                return false;
+            }
+            if (b[0] === 83 /*S*/ && sxdr_sydex_header(c, overlay + i, h)) {
+                p = overlay + i;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return false;
+        }
+    }
+    if (!sxdr_put(c, sxdr_sydex_wb_header, overlay, 1) || !sxdr_put(c, sxdr_sydex_image_header, p, 1)) {
+        return false;
+    }
+    var n = sxdr16(h, 19, false);
+    var count = h[6] * h[8];
+    if (!sxdr_span(c, p + 33, n)) {
+        return true;
+    }
+    if (!sxdr_text(c, sxdr_sydex_description, p + 33, n)) {
+        return false;
+    }
+    p += 33 + n;
+    for (i = 0; i < count; i++) {
+        var q = [];
+        if (!sxdr_read(c, p, q, 4)) {
+            break;
+        }
+        var len = sxdr16(q, 2, false) << 16 >> 16;
+        if (!len) {
+            break;
+        }
+        if (!sxdr_put(c, sxdr_sydex_track_header, p, 1)) {
+            return false;
+        }
+        p += 4;
+        var z = (len < 0 ? -len | 0 : len) >>> 0;
+        if (!sxdr_span(c, p, z)) {
+            break;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_sfx_sydex_diskette_image_build(c) {
+    return sxdr_sydex(c);
+}

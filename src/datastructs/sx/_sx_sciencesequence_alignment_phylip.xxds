@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/alignment_phylip/xx_alignment_phylip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_alignment_columns_fields = layout([field("alignment_columns", "ascii_signed", 0, COUNT)]);
+var sxseq_alignment_columns = sxLayout(0x60730012, "sequence_alignment_columns", LE, sxseq_alignment_columns_fields);
+var sxseq_sequence_count_fields = layout([field("sequence_count", "ascii_signed", 0, COUNT)]);
+var sxseq_sequence_count = sxLayout(0x60730013, "sequence_sequence_count", LE, sxseq_sequence_count_fields);
+function sxseq_phylip(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(128, sxNew_sxseq_token);
+    var rows = [0];
+    if (!sxseq_line(q, line)) {
+        return false;
+    }
+    var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 128, false);
+    if (n !== 2 || !sxseq_number(q, sxCopy_sxseq_token(null, t[0]), rows) || rows[0] < 2 || rows[0] > 1024) {
+        return false;
+    }
+    {
+        if (!sxseq_emit(q, sxseq_sequence_count, sxCopy_sxseq_token(null, t[0]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxseq_emit(q, sxseq_alignment_columns, sxCopy_sxseq_token(null, t[1]))) {
+            return false;
+        }
+    }
+    var row = 0;
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_trim(q, sxCopy_sxseq_token(null, line)).z) {
+            continue;
+        }
+        if (row < rows[0]) {
+            if (line.z <= 10) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_identifier, sxCopy_sxseq_token(null, { a: line.a, z: 10 }))) {
+                    return false;
+                }
+            }
+            line.a += 10;
+            line.z -= 10;
+        }
+        n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 128, false);
+        if (!n || n > 128) {
+            return false;
+        }
+        for (var i = 0; i < n; i++) {
+            {
+                if (!sxseq_emit(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[i]))) {
+                    return false;
+                }
+            }
+        }
+        row++;
+    }
+    return row >= rows[0];
+}
+function sx_alignment_phylip_build(q) {
+    return sxseq_phylip(q);
+}

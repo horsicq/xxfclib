@@ -1,0 +1,135 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/mgt/xx_mgt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_mgt_directory_core_fields = layout([u8("type_and_flags", FLAGS), chars("filename", 10, NONE),
+    field("sectors_used", "uint16be", 2, COUNT), u8("first_track_and_side"), u8("first_sector"),
+    field("allocation_bitmap", "byte[195]", 195)]);
+var sxdt_mgt_directory_core = sxLayout(0x607A0019, "mgt_directory_core", LE, sxdt_mgt_directory_core_fields);
+var sxdt_mgt_sector_link_fields = layout([u8("next_track_and_side"), u8("next_sector")]);
+var sxdt_mgt_sector_link = sxLayout(0x607A001A, "mgt_sector_link", LE, sxdt_mgt_sector_link_fields);
+var sxdt_mgt_compatibility_tail_fields = layout([field("legacy_header", "byte[10]", 10)]);
+var sxdt_mgt_compatibility_tail = sxLayout(0x607A003A, "mgt_compatibility_tail", LE, sxdt_mgt_compatibility_tail_fields);
+var sxdt_mgt_disk_label_fields = layout([chars("disk_label", 10, NONE)]);
+var sxdt_mgt_disk_label = sxLayout(0x607A003B, "mgt_disk_label", LE, sxdt_mgt_disk_label_fields);
+var sxdt_mgt_sam_tail_fields = layout([u8("flags", FLAGS), field("file_type_information", "byte[11]", 11),
+    field("reserved1", "byte[4]", 4, RESERVED), u8("start_page"), u16("start_offset"), u8("length_pages", COUNT),
+    u16("length_remainder"), u8("execution_page"), u16("execution_offset_or_line"), u8("save_day"), u8("save_month"),
+    u8("save_year"), u8("save_hour"), u8("save_minute"), u8("directory_tag", ID), u8("reserved2", RESERVED),
+    field("disk_identifier", "uint16be", 2, ID), u8("parent_directory_tag", ID), u8("extra_directory_tracks", COUNT)]);
+var sxdt_mgt_sam_tail = sxLayout(0x607A003C, "mgt_sam_tail", LE, sxdt_mgt_sam_tail_fields);
+var sxdt_mgt_dos_file_header_fields = layout([u8("file_type", ID), u16("length_remainder"), u16("start_offset"),
+    u16("parameter"), u8("length_pages", COUNT), u8("start_page")]);
+var sxdt_mgt_dos_file_header = sxLayout(0x607A003D, "mgt_dos_file_header", LE, sxdt_mgt_dos_file_header_fields);
+var sxdt_mgt_legacy_tail_fields = layout([field("type_specific_storage", "byte[36]", 36)]);
+var sxdt_mgt_legacy_tail = sxLayout(0x607A0065, "mgt_legacy_tail", LE, sxdt_mgt_legacy_tail_fields);
+function sxdt_mgt_position(track, sector, out) {
+    if (sector < 1 || sector > 10 || (track & 127) >= 80) {
+        return false;
+    }
+    out[0] = ((track & 127) * 2 + (track >>> 7)) * 5120 + ((((sector - 1) >>> 0) * 512) >>> 0);
+    return true;
+}
+function sxdt_mgt_entry(c, p, first) {
+    var e = [];
+    if (!sxdt_read(c, p, e, 0, 256)) {
+        return false;
+    }
+    var type = e[0] & 63;
+    if (!sxdt_put(c, sxdt_mgt_directory_core, p, 1) || !sxdt_put(c, first && type >= 16 ? sxdt_mgt_disk_label : sxdt_mgt_compatibility_tail, p + 210, 1) || !sxdt_put(c, type >= 16 && type <= 31 ? sxdt_mgt_sam_tail : sxdt_mgt_legacy_tail, p + 220, 1)) {
+        return false;
+    }
+    if (!type || type === 21) {
+        return true;
+    }
+    var count = sxdt16(e, 11, 1);
+    var t = e[13];
+    var s = e[14];
+    if (count > 1560) {
+        return true;
+    }
+    var seen = sxZeros(195);
+    for (var i = 0; i < count && c.count < 24000; i++) {
+        var at = [0];
+        if (!sxdt_mgt_position(t, s, at) || !(t & 128) && t < 4) {
+            break;
+        }
+        var bit = ((((((((t & 127) + (t & 128 ? 80 : 0) - 4) >>> 0) * 10) >>> 0) + s) >>> 0) - 1) >>> 0;
+        if (bit >= 1560 || !(e[15 + Math.floor(bit / 8)] & 1 << bit % 8) || seen[Math.floor(bit / 8)] & 1 << bit % 8) {
+            break;
+        }
+        seen[Math.floor(bit / 8)] |= 1 << bit % 8;
+        if (!i && (type >= 1 && type <= 4 || type === 7 || type >= 16 && type <= 20) && !sxdt_put(c, sxdt_mgt_dos_file_header, at[0], 1)) {
+            return false;
+        }
+        if (!sxdt_put(c, sxdt_mgt_sector_link, at[0] + 510, 1)) {
+            return false;
+        }
+        var link = [];
+        if (!sxdt_read(c, at[0] + 510, link, 0, 2)) {
+            break;
+        }
+        t = link[0];
+        s = link[1];
+        if (!t && !s) {
+            break;
+        }
+    }
+    return true;
+}
+function sxdt_mgt(c) {
+    if (c.size < 819200) {
+        return false;
+    }
+    var used = sxZeros(195);
+    var first = [];
+    var e = [];
+    if (!sxdt_read(c, 0, first, 0, 256)) {
+        return false;
+    }
+    for (var t = 0; t < 4; t++) {
+        for (var j = 0; j < 20; j++) {
+            var p = [t * 10240 + ((j * 256) >>> 0)];
+            if (!sxdt_read(c, p[0], e, 0, 256) || !sxdt_mgt_entry(c, p[0], t === 0 && j === 0)) {
+                return false;
+            }
+            if (e[0] & 63 && (e[0] & 63) !== 21) {
+                for (var k = 0; k < 195; k++) {
+                    used[k] |= e[(15 + k) >>> 0];
+                }
+            }
+        }
+    }
+    var extra = first[255];
+    var type = first[0] & 63;
+    if (extra < 1 || extra > 35 || type === 5 || type === 9) {
+        return true;
+    }
+    for (var bit = 1; bit < (extra * 10) >>> 0; bit++) {
+        if (used[Math.floor(bit / 8)] & 1 << bit % 8) {
+            return true;
+        }
+    }
+    for (t = 4; t < (4 + extra) >>> 0; t++) {
+        for (var s = 1; s <= 10; s++) {
+            if (t === 4 && s === 1 && used[0] & 1) {
+                continue;
+            }
+            p = [0];
+            if (!sxdt_mgt_position(t, s, p)) {
+                return false;
+            }
+            if (!sxdt_mgt_entry(c, p[0], false) || !sxdt_mgt_entry(c, p[0] + 256, false)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_mgt_build(c) {
+    var ok = false;
+    ok = sxdt_mgt(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

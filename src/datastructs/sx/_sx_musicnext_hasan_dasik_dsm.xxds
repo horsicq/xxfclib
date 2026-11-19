@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/hasan_dasik_dsm/xx_hasan_dasik_dsm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_dsm1_header_fields = layout([blob("magic", 4, SIGNATURE), chars("name", 28, STRING), blob("unknown32", 4),
+    u8("eof_marker", SIGNATURE), u8("channels", COUNT), u8("orders", COUNT), u8("instruments", COUNT), u8("patterns", COUNT),
+    u8("speed"), u8("tempo"), u8("global_volume"), blob("unknown44", 4)]);
+var sxmn_dsm1_header = sxLayout(0x60760056, "dsm1_header", LE, sxmn_dsm1_header_fields);
+var sxmn_dsm1_instrument_paragraph_fields = layout([u16("instrument_paragraph")]);
+var sxmn_dsm1_instrument_paragraph = sxLayout(0x60760057, "dsm1_instrument_paragraph", LE, sxmn_dsm1_instrument_paragraph_fields);
+var sxmn_dsm1_pattern_paragraph_fields = layout([u16("pattern_paragraph")]);
+var sxmn_dsm1_pattern_paragraph = sxLayout(0x60760058, "dsm1_pattern_paragraph", LE, sxmn_dsm1_pattern_paragraph_fields);
+var sxmn_dsm1_pattern_fields = layout([u16("packed_bytes", SIZE)]);
+var sxmn_dsm1_pattern = sxLayout(0x6076005A, "dsm1_pattern", LE, sxmn_dsm1_pattern_fields);
+function sxmn_dsm1(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var ins = [0];
+    var patterns = [0];
+    if (!sxmn_row(v, sxmn_dsm1_header, 0, end) || !sxmn_word(v, 39, 1, false, ins, 0, end) || !sxmn_word(v, 40, 1, false, patterns, 0, end) || !sxmn_table(v, sxmn_dsm_order, 48, 128, end) || !sxmn_table(v, sxmn_dsm1_instrument_paragraph, 176, ins[0], end) || !sxmn_table(v, sxmn_dsm1_pattern_paragraph, 176 + 2 * ins[0], patterns[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < ins[0]; i++) {
+        var para = [0];
+        var at;
+        var hi = [0];
+        var lo = [0];
+        var z = [0];
+        if (!sxmn_word(v, 176 + 2 * i, 2, false, para, 0, end)) {
+            return false;
+        }
+        if (!para[0]) {
+            continue;
+        }
+        at = para[0] * 16;
+        if (!sxmn_row(v, sxmn_dsm1_instrument, at, end) || !sxmn_word(v, at + 35, 1, false, hi, 0, end) || !sxmn_word(v, at + 36, 2, false, lo, 0, end) || !sxmn_word(v, at + 38, 2, false, z, 0, end) || !sxmn_span(v, sxOr64(sxShl64(hi[0], 16), lo[0]) * 16, z[0], end)) {
+            return false;
+        }
+    }
+    for (i = 0; i < patterns[0]; i++) {
+        para = [0];
+        z = [0];
+        if (!sxmn_word(v, 176 + 2 * ins[0] + 2 * i, 2, false, para, 0, end)) {
+            return false;
+        }
+        if (!para[0]) {
+            continue;
+        }
+        at = para[0] * 16;
+        if (!sxmn_row(v, sxmn_dsm1_pattern, at, end) || !sxmn_word(v, at, 2, false, z, 0, end) || !sxmn_span(v, at + 2, z[0], end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_hasan_dasik_dsm_build(v) {
+    return sxmn_dsm1(v);
+}

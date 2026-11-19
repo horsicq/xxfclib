@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/hog2/xx_hog2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxga_hog(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    if (!sxga_row(v, sxga_hog2_header, 0, end) || !sxga_word(v, 4, 4, false, n, 0, end)) {
+        return false;
+    }
+    return sxga_table(v, sxga_hog2_entry, 68, n[0], end);
+}
+function sx_hog2_build(v) {
+    return sxga_hog(v);
+}

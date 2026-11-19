@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/mbr/xx_mbr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_v_mbr_disk_signature_fields = layout([u32("disk_signature", ID), u16("reserved", RESERVED)]);
+var sx_v_mbr_disk_signature = sxLayout(0x60050026, "mbr_disk_signature", LE, sx_v_mbr_disk_signature_fields);
+var sx_v_mbr_boot_signature_fields = layout([u16("magic", SIGNATURE)]);
+var sx_v_mbr_boot_signature = sxLayout(0x60050028, "mbr_boot_signature", LE, sx_v_mbr_boot_signature_fields);
+function sx_v_mbr_extended(t) {
+    return t === 5 || t === 15 || t === 0x85;
+}
+function sx_v_mbr_sector(c, at, primary) {
+    return (!primary || sx_add(c, sx_v_mbr_disk_signature, at + 440, 6)) && sx_table(c, sx_v_mbr_partition_entry, at + 446, 16, 4) && sx_add(c, sx_v_mbr_boot_signature, at + 510, 2);
+}
+function sx_v_mbr(c) {
+    var b = [];
+    var seen = [];
+    var ns = 0;
+    if (!sx_read(c, 0, b, 512) || !sx_v_mbr_sector(c, 0, true)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        var e = b, e_o = 446 + i * 16;
+        var root = sxGetU32At(e, e_o, 16, 8, false);
+        var length = sxGetU32At(e, e_o, 16, 12, false);
+        var cur = root;
+        if (!sx_v_mbr_extended(e[e_o + 4]) || !root || !length) {
+            continue;
+        }
+        for (var steps = 0; steps < 256; steps++) {
+            var sector = [];
+            var duplicate = false;
+            if (cur < root || sxU64(cur - root) >= length || cur > (0x3FFFFF * 4294967296 + 0xFFFFFFFF) || !sx_v_fits(c, cur * 512, 512)) {
+                break;
+            }
+            for (var j = 0; j < ns; j++) {
+                if (seen[j] === cur) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (duplicate || ns === 256) {
+                break;
+            }
+            if (!sx_read(c, (cur * 512 >= SX_I64_MAX ? cur * 512 - SX_U64_MAX : cur * 512), sector, 512)) {
+                return false;
+            }
+            if (sector[510] !== 0x55 || sector[511] !== 0xAA) {
+                break;
+            }
+            seen[ns++] = cur;
+            if (!sx_v_mbr_sector(c, (cur * 512 >= SX_I64_MAX ? cur * 512 - SX_U64_MAX : cur * 512), false)) {
+                return false;
+            }
+            var link = sector, link_o = 462;
+            var rel = sxGetU32At(link, link_o, 16, 8, false);
+            if (!sx_v_mbr_extended(link[link_o + 4]) || !rel || rel >= length) {
+                break;
+            }
+            cur = root + rel;
+        }
+    }
+    return true;
+}
+function sx_mbr_build(c) {
+    if (!sx_v_mbr(c)) {
+        return false;
+    }
+    return true;
+}

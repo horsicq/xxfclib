@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sfx_szdd/xx_sfx_szdd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_cm_sfx_szdd_header_fields = layout([field("magic", "byte[8]", 8, SIGNATURE), u8("compression_mode", ID),
+    u8("original_last_character"), u32("uncompressed_size", SIZE)]);
+var sx_cm_sfx_szdd_header = sxLayout(0x60240001, "sfx_szdd_header", LE, sx_cm_sfx_szdd_header_fields);
+var sx_cm_sfx_szdd_legacy_header_fields = layout([field("magic", "byte[7]", 7, SIGNATURE), u8("compression_mode", ID),
+    u32("uncompressed_size", SIZE)]);
+var sx_cm_sfx_szdd_legacy_header = sxLayout(0x60240002, "sfx_szdd_legacy_header", LE, sx_cm_sfx_szdd_legacy_header_fields);
+function sx_cm_szdd(c) {
+    var s = sx_cm_records(c);
+    if (s === null) {
+        return false;
+    }
+    var r = c.f.get_current_archive_record(c.f, s);
+    var ok = false;
+    if (r !== null && r.data_offset >= c.f.base_address && r.compressed_size >= 14) {
+        var p = r.data_offset - c.f.base_address;
+        var h = [];
+        if (sx_cm_span(c, p, (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size)) && sx_cm_read(c, p, h, 14)) {
+            if (!sxMemcmp(h, "SZDD\x88\xF0'3", 8) && h[8] === 65 /*A*/) {
+                ok = sx_cm_add(c, sx_cm_sfx_szdd_header, p, 14);
+            } else if (!sxMemcmp(h, "ZDD\x88\xF0'3A", 8)) {
+                ok = sx_cm_add(c, sx_cm_sfx_szdd_legacy_header, p, 12);
+            }
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sx_sfx_szdd_build(c) {
+    return sx_cm_szdd(c);
+}

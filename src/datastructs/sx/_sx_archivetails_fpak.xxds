@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/fpak/xx_fpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_fpak_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u32("set_compressed_size", SIZE),
+    u32("set_uncompressed_size", SIZE), u16("description_size", SIZE)]);
+var sxat_fpak_header = sxLayout(0x6064000D, "fpak_header", LE, sxat_fpak_header_fields);
+var sxat_fpac_header_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxat_fpac_header = sxLayout(0x6064000E, "fpac_header", LE, sxat_fpac_header_fields);
+var sxat_fpak_segment_fields = layout([chars("signature", 4, SIGNATURE), u16("flags", FLAGS), u16("method"), u16("dos_time"),
+    u16("dos_date"), u32("crc32", CHECKSUM), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("segment_size", SIZE), u16("name_size", SIZE)]);
+var sxat_fpak_segment = sxLayout(0x6064000F, "fpak_segment", LE, sxat_fpak_segment_fields);
+function sxat_fpak(c) {
+    var magic = [];
+    var p;
+    var n = [0];
+    if (!sxat_read(c, 0, magic, 4)) {
+        return false;
+    }
+    if (!sxMemcmp(magic, "FPAK", 4)) {
+        if (!sxat_word(c, 14, 2, false, n) || !sxat_add(c, sxat_fpak_header, 0) || !sxat_span(c, 16, n[0])) {
+            return false;
+        }
+        p = 16 + n[0];
+    } else if (!sxMemcmp(magic, "FPAC", 4)) {
+        if (!sxat_add(c, sxat_fpac_header, 0)) {
+            return false;
+        }
+        p = 4;
+    } else {
+        return false;
+    }
+    while (sxat_span(c, p, 30)) {
+        var h = [];
+        if (!sxat_read(c, p, h, 30) || sxMemcmp(h, "FPPF", 4)) {
+            return true;
+        }
+        var z = sxat_uint(h, 24, 4, false);
+        var name = sxat_uint(h, 28, 2, false);
+        if (!sxat_add(c, sxat_fpak_segment, p) || !sxat_span(c, p + 30, name)) {
+            return false;
+        }
+        p += 30 + name;
+        if (!sxat_span(c, p, z)) {
+            return true;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_fpak_build(c) {
+    return sxat_fpak(c);
+}

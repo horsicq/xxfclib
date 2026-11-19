@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/sauer_artandmagic/xx_sauer_artandmagic_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamip_art_marker_fields = layout([blob("signature", 4, SIGNATURE)]);
+var sxamip_art_marker = sxLayout(0x60900037, "art_marker", LE, sxamip_art_marker_fields);
+function sxamip_art(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var x = [0];
+    var p;
+    var q;
+    if (e < 0x160 || !sxamip_eq(v, 26, "EXIT", 4, e) || !sxamip_eq(v, sxU64(e - 4), "EXIT", 4, e) || !sxamip_be(v, 0xE2, 2, x, 0, e)) {
+        return false;
+    }
+    p = sxAnd64(x[0] + 0xE2, 65535);
+    if (sxAnd64(p, 32768)) {
+        return false;
+    }
+    if (!sxamip_be(v, 0x15E, 2, x, 0, e)) {
+        return false;
+    }
+    q = sxAnd64(x[0] + 0x155, 65535);
+    if (sxAnd64(q, 32768) || q < p + 40 || sxU64(sxU64(q - p) - 40) % 4 || !sxamip_span(v, p, sxU64(q - p) + 4, e)) {
+        return false;
+    }
+    if (!sxamip_row(v, sxamip_art_table_operand, 0xE2, e) || !sxamip_row(v, sxamip_art_limit_operand, 0x15E, e) || !sxamip_row(v, sxamip_art_marker, 26, e) || !sxamip_row(v, sxamip_art_marker, sxU64(e - 4), e)) {
+        return false;
+    }
+    for (var i = 0; i < 5; i++) {
+        if (!sxamip_row(v, sxamip_art_relocation, p + ((i * 8) >>> 0), e)) {
+            return false;
+        }
+    }
+    return sxamip_table(v, sxamip_art_relocation, p + 40, Math.floor(sxU64(sxU64(q - p) - 40) / 4) + 1, e);
+}
+function sx_sauer_artandmagic_build(v) {
+    return sxamip_art(v);
+}

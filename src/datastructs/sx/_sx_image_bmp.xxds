@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/bmp/xx_bmp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_bmp_file_fields = layout([u16("bfType", SIGNATURE), u32("bfSize", SIZE), u16("bfReserved1", RESERVED),
+    u16("bfReserved2", RESERVED), u32("bfOffBits", OFFSET)]);
+var sxi_bmp_file = sxLayout(0x6001000E, "BITMAPFILEHEADER", LE, sxi_bmp_file_fields);
+var sxi_bmp_core_fields = layout([u32("bcSize", SIZE), u16("bcWidth"), u16("bcHeight"), u16("bcPlanes", COUNT),
+    u16("bcBitCount")]);
+var sxi_bmp_core = sxLayout(0x6001000F, "BITMAPCOREHEADER", LE, sxi_bmp_core_fields);
+var sxi_bmp_rgbtriple_fields = layout([u8("rgbtBlue"), u8("rgbtGreen"), u8("rgbtRed")]);
+var sxi_bmp_rgbtriple = sxLayout(0x60010013, "RGBTRIPLE", LE, sxi_bmp_rgbtriple_fields);
+var sxi_bmp_rgbquad_fields = layout([u8("rgbBlue"), u8("rgbGreen"), u8("rgbRed"), u8("rgbReserved", RESERVED)]);
+var sxi_bmp_rgbquad = sxLayout(0x60010014, "RGBQUAD", LE, sxi_bmp_rgbquad_fields);
+var sxi_bmp_masks_fields = layout([u32("red_mask", FLAGS), u32("green_mask", FLAGS), u32("blue_mask", FLAGS)]);
+var sxi_bmp_masks = sxLayout(0x60010015, "BITMAP_BITFIELDS", LE, sxi_bmp_masks_fields);
+var sxi_bmp_alpha_masks_fields = layout([u32("red_mask", FLAGS), u32("green_mask", FLAGS), u32("blue_mask", FLAGS),
+    u32("alpha_mask", FLAGS)]);
+var sxi_bmp_alpha_masks = sxLayout(0x60010016, "BITMAP_ALPHA_BITFIELDS", LE, sxi_bmp_alpha_masks_fields);
+function sx_image_bmp(c) {
+    var magic = [];
+    var bits;
+    var length;
+    var pixels;
+    var dib;
+    var compression = 0;
+    var colors = 0;
+    var at;
+    var palette_size;
+    var header;
+    var color;
+    if (!sx_read(c, 0, magic, 2) || sxMemcmp(magic, "BM", 2) || (length = sx_u32(c, 2, false)) === null || (pixels = sx_u32(c, 10, false)) === null || (dib = sx_u32(c, 14, false)) === null || length > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || pixels > length) {
+        return false;
+    }
+    if (dib === 12) {
+        header = sxi_bmp_core;
+        color = sxi_bmp_rgbtriple;
+        palette_size = 3;
+    } else if (dib === 40 || dib === 108 || dib === 124) {
+        header = dib === 40 ? sxi_bmp_info : dib === 108 ? sxi_bmp_v4 : sxi_bmp_v5;
+        color = sxi_bmp_rgbquad;
+        palette_size = 4;
+        if ((compression = sx_u32(c, 30, false)) === null || (colors = sx_u32(c, 46, false)) === null) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+    if (14 + dib > pixels || !sx_add(c, sxi_bmp_file, 0, 14) || !sx_add(c, header, 14, dib) || (bits = sx_u16(c, dib === 12 ? 24 : 28, false)) === null) {
+        return false;
+    }
+    at = 14 + dib;
+    if (dib === 40 && (compression === 3 || compression === 6)) {
+        var masks = compression === 6 ? 16 : 12;
+        if ((at < 0 ? at + SX_U64_MAX : at) + (masks < 0 ? masks + SX_U64_MAX : masks) > pixels || !sx_add(c, compression === 6 ? sxi_bmp_alpha_masks : sxi_bmp_masks, at, masks)) {
+            return false;
+        }
+        at += masks;
+    }
+    if (bits <= 8 && bits && !colors) {
+        colors = (1 << bits) >>> 0;
+    }
+    if (colors * (palette_size < 0 ? palette_size + SX_U64_MAX : palette_size) > (pixels - at < 0 ? pixels - at + SX_U64_MAX : pixels - at) || !sx_table(c, color, at, palette_size, colors)) {
+        return false;
+    }
+    at += colors * palette_size;
+    return sx_raw(c, at, pixels - at) && sx_raw(c, pixels, length - pixels);
+}
+function sx_bmp_build(c) {
+    return sx_image_bmp(c);
+}

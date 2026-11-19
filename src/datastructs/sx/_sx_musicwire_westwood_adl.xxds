@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/westwood_adl/xx_westwood_adl_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_adl_program8_fields = layout([u8("program", ID)]);
+var sxmw_adl_program8 = sxLayout(0x6087003D, "adl_program8", LE, sxmw_adl_program8_fields);
+var sxmw_adl_program16_fields = layout([u16("program", ID)]);
+var sxmw_adl_program16 = sxLayout(0x6087003E, "adl_program16", LE, sxmw_adl_program16_fields);
+function sxmw_adl(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var base = 500;
+    var n = 500;
+    var p = [0];
+    var x = [0];
+    var old = false;
+    if (end < 720) {
+        return false;
+    }
+    for (var i = 0; i < 500; i = (i + 2) >>> 0) {
+        if (!sxmw_u(v, i, 2, x, 0, end)) {
+            return false;
+        }
+        if (x[0] >= 500 && x[0] < 65535) {
+            old = true;
+            break;
+        }
+    }
+    if (old) {
+        base = sxmw_eq(v, 120, "lwm\xFF\xFF\xFFno", 8, end) ? 250 : 120;
+        n = 250;
+        for (i = 0; i < 150; i++) {
+            if (!sxmw_u(v, base + ((2 * i) >>> 0), 2, x, 0, end)) {
+                return false;
+            }
+            if (x[0] && x[0] < 1000) {
+                n = 150;
+                break;
+            }
+        }
+    }
+    if (!sxmw_span(v, base, n * 4, end) || !sxmw_take(v, old ? sxmw_adl_program8 : sxmw_adl_program16, p, old ? base : 250, end)) {
+        return false;
+    }
+    if (!sxmw_take(v, sxmw_adl_program_offset, p, n, end) || !sxmw_take(v, sxmw_adl_instrument_offset, p, n, end)) {
+        return false;
+    }
+    for (i = 0; i < n * 2; i++) {
+        if (!sxmw_u(v, base + i * 2, 2, x, 0, end)) {
+            return false;
+        }
+        if (x[0] && x[0] !== 65535 && !sxmw_span(v, base, x[0], end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_westwood_adl_build(v) {
+    return sxmw_adl(v);
+}

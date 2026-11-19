@@ -1,0 +1,2346 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modernfs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_ufs1_legacy_superblock_le_fields = layout([i32("first_field"), i32("unused1", RESERVED), i32("superblock_fragment"),
+    i32("cylinder_block_fragment"), i32("inode_block_fragment"), i32("data_block_fragment"), i32("cylinder_group_offset"),
+    i32("cylinder_group_mask", FLAGS), i32("old_write_time", TIMESTAMP), i32("old_fragment_count", COUNT),
+    i32("old_data_fragment_count", COUNT), i32("cylinder_group_count", COUNT), i32("block_size", SIZE),
+    i32("fragment_size", SIZE), i32("fragments_per_block", COUNT), i32("min_free_percent"), i32("rotation_delay"),
+    i32("revolutions_per_second"), i32("block_mask", FLAGS), i32("fragment_mask", FLAGS), i32("block_shift"),
+    i32("fragment_shift"), i32("max_contiguous_blocks", COUNT), i32("max_blocks_per_group", COUNT), i32("fragments_shift"),
+    i32("filesystem_to_disk_shift"), i32("superblock_size", SIZE), i32("old_summary_mask", FLAGS), i32("old_summary_shift"),
+    i32("indirect_entries", COUNT), i32("inodes_per_block", COUNT), i32("sectors_per_fragment", COUNT), i32("optimization", ID),
+    i32("sectors_per_track_with_spares", COUNT), i32("interleave"), i32("track_skew"),
+    field("filesystem_id", "int32[2]", 8, ID), i32("old_summary_fragment"), i32("summary_size", SIZE),
+    i32("cylinder_group_size", SIZE), i32("old_tracks_per_cylinder", COUNT), i32("sectors_per_track", COUNT),
+    i32("sectors_per_cylinder", COUNT), i32("cylinders", COUNT), i32("cylinders_per_group", COUNT),
+    i32("inodes_per_group", COUNT), i32("fragments_per_group", COUNT), i32("old_directory_count", COUNT),
+    i32("old_free_blocks", COUNT), i32("old_free_inodes", COUNT), i32("old_free_fragments", COUNT), i8("modified", FLAGS),
+    i8("clean", FLAGS), i8("read_only", FLAGS), u8("old_flags", FLAGS), chars("mount_name", 512, STRING), i32("cylinder_rotor"),
+    field("incore_pointer_padding", "byte[128]", 128), i32("cylinders_per_rotation"),
+    field("old_rotation_table", "int16[128]", 256), field("snapshot_inodes", "int32[20]", 80, ID),
+    i32("average_file_size", SIZE), i32("average_files_per_directory", COUNT),
+    field("spare_constants", "byte[104]", 104, RESERVED), i32("pending_blocks", COUNT), i32("pending_inodes", COUNT),
+    i32("contiguous_summary_count", COUNT), i32("max_inline_symlink", SIZE), i32("inode_format", ID),
+    u64("max_file_size", SIZE), i64("block_mask64", FLAGS), i64("fragment_mask64", FLAGS), i32("state", FLAGS),
+    i32("rotation_table_format", ID), i32("rotational_positions", COUNT), i32("rotation_position_offset", OFFSET),
+    i32("rotation_block_offset", OFFSET), u32("magic", SIGNATURE)]);
+var sxmf_ufs1_legacy_superblock_le = sxLayout(0x6042004B, "ufs1_legacy_superblock_le", LE, sxmf_ufs1_legacy_superblock_le_fields);
+var sxmf_ufs1_legacy_superblock_be_fields = layout([i32("first_field"), i32("unused1", RESERVED), i32("superblock_fragment"),
+    i32("cylinder_block_fragment"), i32("inode_block_fragment"), i32("data_block_fragment"), i32("cylinder_group_offset"),
+    i32("cylinder_group_mask", FLAGS), i32("old_write_time", TIMESTAMP), i32("old_fragment_count", COUNT),
+    i32("old_data_fragment_count", COUNT), i32("cylinder_group_count", COUNT), i32("block_size", SIZE),
+    i32("fragment_size", SIZE), i32("fragments_per_block", COUNT), i32("min_free_percent"), i32("rotation_delay"),
+    i32("revolutions_per_second"), i32("block_mask", FLAGS), i32("fragment_mask", FLAGS), i32("block_shift"),
+    i32("fragment_shift"), i32("max_contiguous_blocks", COUNT), i32("max_blocks_per_group", COUNT), i32("fragments_shift"),
+    i32("filesystem_to_disk_shift"), i32("superblock_size", SIZE), i32("old_summary_mask", FLAGS), i32("old_summary_shift"),
+    i32("indirect_entries", COUNT), i32("inodes_per_block", COUNT), i32("sectors_per_fragment", COUNT), i32("optimization", ID),
+    i32("sectors_per_track_with_spares", COUNT), i32("interleave"), i32("track_skew"),
+    field("filesystem_id", "int32[2]", 8, ID), i32("old_summary_fragment"), i32("summary_size", SIZE),
+    i32("cylinder_group_size", SIZE), i32("old_tracks_per_cylinder", COUNT), i32("sectors_per_track", COUNT),
+    i32("sectors_per_cylinder", COUNT), i32("cylinders", COUNT), i32("cylinders_per_group", COUNT),
+    i32("inodes_per_group", COUNT), i32("fragments_per_group", COUNT), i32("old_directory_count", COUNT),
+    i32("old_free_blocks", COUNT), i32("old_free_inodes", COUNT), i32("old_free_fragments", COUNT), i8("modified", FLAGS),
+    i8("clean", FLAGS), i8("read_only", FLAGS), u8("old_flags", FLAGS), chars("mount_name", 512, STRING), i32("cylinder_rotor"),
+    field("incore_pointer_padding", "byte[128]", 128), i32("cylinders_per_rotation"),
+    field("old_rotation_table", "int16[128]", 256), field("snapshot_inodes", "int32[20]", 80, ID),
+    i32("average_file_size", SIZE), i32("average_files_per_directory", COUNT),
+    field("spare_constants", "byte[104]", 104, RESERVED), i32("pending_blocks", COUNT), i32("pending_inodes", COUNT),
+    i32("contiguous_summary_count", COUNT), i32("max_inline_symlink", SIZE), i32("inode_format", ID),
+    u64("max_file_size", SIZE), i64("block_mask64", FLAGS), i64("fragment_mask64", FLAGS), i32("state", FLAGS),
+    i32("rotation_table_format", ID), i32("rotational_positions", COUNT), i32("rotation_position_offset", OFFSET),
+    i32("rotation_block_offset", OFFSET), u32("magic", SIGNATURE)]);
+var sxmf_ufs1_legacy_superblock_be = sxLayout(0x6042004C, "ufs1_legacy_superblock_be", BE, sxmf_ufs1_legacy_superblock_be_fields);
+var sxmf_ufs_modern_superblock_le_fields = layout([i32("first_field"), i32("unused1", RESERVED), i32("superblock_fragment"),
+    i32("cylinder_block_fragment"), i32("inode_block_fragment"), i32("data_block_fragment"), i32("cylinder_group_offset"),
+    i32("cylinder_group_mask", FLAGS), i32("old_write_time", TIMESTAMP), i32("old_fragment_count", COUNT),
+    i32("old_data_fragment_count", COUNT), u32("cylinder_group_count", COUNT), i32("block_size", SIZE),
+    i32("fragment_size", SIZE), i32("fragments_per_block", COUNT), i32("min_free_percent"), i32("rotation_delay"),
+    i32("revolutions_per_second"), i32("block_mask", FLAGS), i32("fragment_mask", FLAGS), i32("block_shift"),
+    i32("fragment_shift"), i32("max_contiguous_blocks", COUNT), i32("max_blocks_per_group", COUNT), i32("fragments_shift"),
+    i32("filesystem_to_disk_shift"), i32("superblock_size", SIZE), i32("old_summary_mask", FLAGS), i32("old_summary_shift"),
+    i32("indirect_entries", COUNT), u32("inodes_per_block", COUNT), i32("sectors_per_fragment", COUNT), i32("optimization", ID),
+    i32("sectors_per_track_with_spares", COUNT), i32("interleave"), i32("track_skew"),
+    field("filesystem_id", "int32[2]", 8, ID), i32("old_summary_fragment"), i32("summary_size", SIZE),
+    i32("cylinder_group_size", SIZE), i32("old_tracks_per_cylinder", COUNT), i32("sectors_per_track", COUNT),
+    i32("sectors_per_cylinder", COUNT), i32("cylinders", COUNT), i32("cylinders_per_group", COUNT),
+    u32("inodes_per_group", COUNT), i32("fragments_per_group", COUNT), i32("old_directory_count", COUNT),
+    i32("old_free_blocks", COUNT), i32("old_free_inodes", COUNT), i32("old_free_fragments", COUNT), i8("modified", FLAGS),
+    i8("clean", FLAGS), i8("read_only", FLAGS), u8("old_flags", FLAGS), chars("mount_name", 468, STRING),
+    chars("volume_name", 32, STRING), u64("system_uid", ID), i32("alignment_padding", RESERVED), i32("cylinder_rotor"),
+    field("incore_pointer_padding", "byte[128]", 128), i32("old_cylinders_per_rotation"), i32("max_block_size", SIZE),
+    i64("unreferenced_inodes", COUNT), i64("provider_fragments", COUNT), i64("metadata_fragments", COUNT),
+    u64("saved_max_file_size", SIZE), field("spare_constants64", "int64[12]", 96, RESERVED),
+    i64("actual_superblock_offset", OFFSET), i64("standard_superblock_offset", OFFSET), i64("directories", COUNT),
+    i64("free_blocks", COUNT), i64("free_inodes", COUNT), i64("free_fragments", COUNT), i64("free_clusters", COUNT),
+    field("summary_spare", "int64[3]", 24, RESERVED), i64("write_time", TIMESTAMP), i64("fragment_count", COUNT),
+    i64("data_fragment_count", COUNT), i64("summary_fragment"), i64("pending_blocks", COUNT), u32("pending_inodes", COUNT),
+    field("snapshot_inodes", "uint32[20]", 80, ID), u32("average_file_size", SIZE), u32("average_files_per_directory", COUNT),
+    u32("available_spare", RESERVED), i64("mount_time", TIMESTAMP), i32("suj_free_head", ID),
+    field("spare_constants32", "int32[21]", 84, RESERVED), u32("checksum", CHECKSUM), u32("metadata_checksum_flags", FLAGS),
+    i32("flags", FLAGS), i32("contiguous_summary_count", COUNT), i32("max_inline_symlink", SIZE), i32("inode_format", ID),
+    u64("max_file_size", SIZE), i64("block_mask64", FLAGS), i64("fragment_mask64", FLAGS), i32("state", FLAGS),
+    i32("rotation_table_format", ID), i32("rotational_positions", COUNT), i32("rotation_position_offset", OFFSET),
+    i32("rotation_block_offset", OFFSET), u32("magic", SIGNATURE)]);
+var sxmf_ufs_modern_superblock_le = sxLayout(0x6042004D, "ufs_modern_superblock_le", LE, sxmf_ufs_modern_superblock_le_fields);
+var sxmf_ufs_modern_superblock_be_fields = layout([i32("first_field"), i32("unused1", RESERVED), i32("superblock_fragment"),
+    i32("cylinder_block_fragment"), i32("inode_block_fragment"), i32("data_block_fragment"), i32("cylinder_group_offset"),
+    i32("cylinder_group_mask", FLAGS), i32("old_write_time", TIMESTAMP), i32("old_fragment_count", COUNT),
+    i32("old_data_fragment_count", COUNT), u32("cylinder_group_count", COUNT), i32("block_size", SIZE),
+    i32("fragment_size", SIZE), i32("fragments_per_block", COUNT), i32("min_free_percent"), i32("rotation_delay"),
+    i32("revolutions_per_second"), i32("block_mask", FLAGS), i32("fragment_mask", FLAGS), i32("block_shift"),
+    i32("fragment_shift"), i32("max_contiguous_blocks", COUNT), i32("max_blocks_per_group", COUNT), i32("fragments_shift"),
+    i32("filesystem_to_disk_shift"), i32("superblock_size", SIZE), i32("old_summary_mask", FLAGS), i32("old_summary_shift"),
+    i32("indirect_entries", COUNT), u32("inodes_per_block", COUNT), i32("sectors_per_fragment", COUNT), i32("optimization", ID),
+    i32("sectors_per_track_with_spares", COUNT), i32("interleave"), i32("track_skew"),
+    field("filesystem_id", "int32[2]", 8, ID), i32("old_summary_fragment"), i32("summary_size", SIZE),
+    i32("cylinder_group_size", SIZE), i32("old_tracks_per_cylinder", COUNT), i32("sectors_per_track", COUNT),
+    i32("sectors_per_cylinder", COUNT), i32("cylinders", COUNT), i32("cylinders_per_group", COUNT),
+    u32("inodes_per_group", COUNT), i32("fragments_per_group", COUNT), i32("old_directory_count", COUNT),
+    i32("old_free_blocks", COUNT), i32("old_free_inodes", COUNT), i32("old_free_fragments", COUNT), i8("modified", FLAGS),
+    i8("clean", FLAGS), i8("read_only", FLAGS), u8("old_flags", FLAGS), chars("mount_name", 468, STRING),
+    chars("volume_name", 32, STRING), u64("system_uid", ID), i32("alignment_padding", RESERVED), i32("cylinder_rotor"),
+    field("incore_pointer_padding", "byte[128]", 128), i32("old_cylinders_per_rotation"), i32("max_block_size", SIZE),
+    i64("unreferenced_inodes", COUNT), i64("provider_fragments", COUNT), i64("metadata_fragments", COUNT),
+    u64("saved_max_file_size", SIZE), field("spare_constants64", "int64[12]", 96, RESERVED),
+    i64("actual_superblock_offset", OFFSET), i64("standard_superblock_offset", OFFSET), i64("directories", COUNT),
+    i64("free_blocks", COUNT), i64("free_inodes", COUNT), i64("free_fragments", COUNT), i64("free_clusters", COUNT),
+    field("summary_spare", "int64[3]", 24, RESERVED), i64("write_time", TIMESTAMP), i64("fragment_count", COUNT),
+    i64("data_fragment_count", COUNT), i64("summary_fragment"), i64("pending_blocks", COUNT), u32("pending_inodes", COUNT),
+    field("snapshot_inodes", "uint32[20]", 80, ID), u32("average_file_size", SIZE), u32("average_files_per_directory", COUNT),
+    u32("available_spare", RESERVED), i64("mount_time", TIMESTAMP), i32("suj_free_head", ID),
+    field("spare_constants32", "int32[21]", 84, RESERVED), u32("checksum", CHECKSUM), u32("metadata_checksum_flags", FLAGS),
+    i32("flags", FLAGS), i32("contiguous_summary_count", COUNT), i32("max_inline_symlink", SIZE), i32("inode_format", ID),
+    u64("max_file_size", SIZE), i64("block_mask64", FLAGS), i64("fragment_mask64", FLAGS), i32("state", FLAGS),
+    i32("rotation_table_format", ID), i32("rotational_positions", COUNT), i32("rotation_position_offset", OFFSET),
+    i32("rotation_block_offset", OFFSET), u32("magic", SIGNATURE)]);
+var sxmf_ufs_modern_superblock_be = sxLayout(0x6042004E, "ufs_modern_superblock_be", BE, sxmf_ufs_modern_superblock_be_fields);
+var sxmf_sufs_superblock_le_fields = layout([u32("link"), u32("rolled", FLAGS), i32("superblock_fragment"),
+    i32("cylinder_block_fragment"), i32("inode_block_fragment"), i32("data_block_fragment"), i32("cylinder_group_offset"),
+    i32("cylinder_group_mask", FLAGS), i32("old_write_time", TIMESTAMP), i32("old_fragment_count", COUNT),
+    i32("old_data_fragment_count", COUNT), i32("cylinder_group_count", COUNT), i32("block_size", SIZE),
+    i32("fragment_size", SIZE), i32("fragments_per_block", COUNT), i32("min_free_percent"), i32("rotation_delay"),
+    i32("revolutions_per_second"), i32("block_mask", FLAGS), i32("fragment_mask", FLAGS), i32("block_shift"),
+    i32("fragment_shift"), i32("max_contiguous_blocks", COUNT), i32("max_blocks_per_group", COUNT), i32("fragments_shift"),
+    i32("filesystem_to_disk_shift"), i32("superblock_size", SIZE), i32("old_summary_mask", FLAGS), i32("old_summary_shift"),
+    i32("indirect_entries", COUNT), i32("inodes_per_block", COUNT), i32("sectors_per_fragment", COUNT), i32("optimization", ID),
+    i32("state", FLAGS), i32("summary_state", FLAGS), i32("track_skew"), field("filesystem_id", "int32[2]", 8, ID),
+    i32("old_summary_fragment"), i32("summary_size", SIZE), i32("cylinder_group_size", SIZE),
+    i32("old_tracks_per_cylinder", COUNT), i32("sectors_per_track", COUNT), i32("sectors_per_cylinder", COUNT),
+    i32("cylinders", COUNT), i32("cylinders_per_group", COUNT), i32("inodes_per_group", COUNT),
+    i32("fragments_per_group", COUNT), i32("old_directory_count", COUNT), i32("old_free_blocks", COUNT),
+    i32("old_free_inodes", COUNT), i32("old_free_fragments", COUNT), i8("modified", FLAGS), i8("clean", FLAGS),
+    i8("read_only", FLAGS), u8("flags", FLAGS), chars("mount_name", 512, STRING), i32("cylinder_rotor"),
+    field("incore_pointer_padding", "byte[128]", 128), i32("cylinders_per_rotation"),
+    field("old_rotation_table", "int16[128]", 256), field("spare_constants", "int32[51]", 204, RESERVED),
+    i32("minor_version", ID), i32("log_block"), i32("reclaim", FLAGS), i32("spare_constant", RESERVED),
+    i32("sectors_per_track_with_spares", COUNT), i64("block_mask64", FLAGS), i64("fragment_mask64", FLAGS),
+    i32("rotation_table_format", ID), i32("rotational_positions", COUNT), i32("rotation_position_offset", OFFSET),
+    i32("rotation_block_offset", OFFSET), u32("magic", SIGNATURE)]);
+var sxmf_sufs_superblock_le = sxLayout(0x6042004F, "sufs_superblock_le", LE, sxmf_sufs_superblock_le_fields);
+var sxmf_sufs_superblock_be_fields = layout([u32("link"), u32("rolled", FLAGS), i32("superblock_fragment"),
+    i32("cylinder_block_fragment"), i32("inode_block_fragment"), i32("data_block_fragment"), i32("cylinder_group_offset"),
+    i32("cylinder_group_mask", FLAGS), i32("old_write_time", TIMESTAMP), i32("old_fragment_count", COUNT),
+    i32("old_data_fragment_count", COUNT), i32("cylinder_group_count", COUNT), i32("block_size", SIZE),
+    i32("fragment_size", SIZE), i32("fragments_per_block", COUNT), i32("min_free_percent"), i32("rotation_delay"),
+    i32("revolutions_per_second"), i32("block_mask", FLAGS), i32("fragment_mask", FLAGS), i32("block_shift"),
+    i32("fragment_shift"), i32("max_contiguous_blocks", COUNT), i32("max_blocks_per_group", COUNT), i32("fragments_shift"),
+    i32("filesystem_to_disk_shift"), i32("superblock_size", SIZE), i32("old_summary_mask", FLAGS), i32("old_summary_shift"),
+    i32("indirect_entries", COUNT), i32("inodes_per_block", COUNT), i32("sectors_per_fragment", COUNT), i32("optimization", ID),
+    i32("sectors_per_track_with_spares", COUNT), i32("summary_state", FLAGS), i32("track_skew"),
+    field("filesystem_id", "int32[2]", 8, ID), i32("old_summary_fragment"), i32("summary_size", SIZE),
+    i32("cylinder_group_size", SIZE), i32("old_tracks_per_cylinder", COUNT), i32("sectors_per_track", COUNT),
+    i32("sectors_per_cylinder", COUNT), i32("cylinders", COUNT), i32("cylinders_per_group", COUNT),
+    i32("inodes_per_group", COUNT), i32("fragments_per_group", COUNT), i32("old_directory_count", COUNT),
+    i32("old_free_blocks", COUNT), i32("old_free_inodes", COUNT), i32("old_free_fragments", COUNT), i8("modified", FLAGS),
+    i8("clean", FLAGS), i8("read_only", FLAGS), u8("flags", FLAGS), chars("mount_name", 512, STRING), i32("cylinder_rotor"),
+    field("incore_pointer_padding", "byte[128]", 128), i32("cylinders_per_rotation"),
+    field("old_rotation_table", "int16[128]", 256), field("spare_constants", "int32[51]", 204, RESERVED),
+    i32("minor_version", ID), i32("log_block"), i32("reclaim", FLAGS), i32("spare_constant", RESERVED), i32("state", FLAGS),
+    i64("block_mask64", FLAGS), i64("fragment_mask64", FLAGS), i32("rotation_table_format", ID),
+    i32("rotational_positions", COUNT), i32("rotation_position_offset", OFFSET), i32("rotation_block_offset", OFFSET),
+    u32("magic", SIGNATURE)]);
+var sxmf_sufs_superblock_be = sxLayout(0x60420050, "sufs_superblock_be", BE, sxmf_sufs_superblock_be_fields);
+var sxmf_ufs_cylinder_group_prefix_le_fields = layout([i32("old_link"), u32("magic", SIGNATURE),
+    i32("old_write_time", TIMESTAMP), u32("cylinder_group_index"), i16("old_cylinder_count", COUNT),
+    i16("old_inode_blocks", COUNT), u32("data_fragments", COUNT), i32("directory_count", COUNT), i32("free_blocks", COUNT),
+    i32("free_inodes", COUNT), i32("free_fragments", COUNT), u32("block_rotor"), u32("fragment_rotor"), u32("inode_rotor"),
+    field("fragment_summary", "uint32[8]", 32, COUNT), i32("old_block_totals_offset", OFFSET),
+    i32("old_positions_offset", OFFSET), u32("used_inode_map_offset", OFFSET), u32("free_fragment_map_offset", OFFSET),
+    u32("next_free_offset", OFFSET)]);
+var sxmf_ufs_cylinder_group_prefix_le = sxLayout(0x60420051, "ufs_cylinder_group_prefix_le", LE, sxmf_ufs_cylinder_group_prefix_le_fields);
+var sxmf_ufs_cylinder_group_prefix_be_fields = layout([i32("old_link"), u32("magic", SIGNATURE),
+    i32("old_write_time", TIMESTAMP), u32("cylinder_group_index"), i16("old_cylinder_count", COUNT),
+    i16("old_inode_blocks", COUNT), u32("data_fragments", COUNT), i32("directory_count", COUNT), i32("free_blocks", COUNT),
+    i32("free_inodes", COUNT), i32("free_fragments", COUNT), u32("block_rotor"), u32("fragment_rotor"), u32("inode_rotor"),
+    field("fragment_summary", "uint32[8]", 32, COUNT), i32("old_block_totals_offset", OFFSET),
+    i32("old_positions_offset", OFFSET), u32("used_inode_map_offset", OFFSET), u32("free_fragment_map_offset", OFFSET),
+    u32("next_free_offset", OFFSET)]);
+var sxmf_ufs_cylinder_group_prefix_be = sxLayout(0x60420052, "ufs_cylinder_group_prefix_be", BE, sxmf_ufs_cylinder_group_prefix_be_fields);
+var sxmf_ufs_cylinder_group_tail_le_fields = layout([u32("cluster_summary_offset", OFFSET), u32("cluster_map_offset", OFFSET),
+    u32("cluster_blocks", COUNT), u32("inode_blocks", COUNT), u32("initialized_inodes", COUNT),
+    u32("unreferenced_inodes", COUNT), i32("reserved", RESERVED), u32("checksum", CHECKSUM), i64("write_time", TIMESTAMP),
+    field("spare", "int64[3]", 24, RESERVED)]);
+var sxmf_ufs_cylinder_group_tail_le = sxLayout(0x60420053, "ufs_cylinder_group_tail_le", LE, sxmf_ufs_cylinder_group_tail_le_fields);
+var sxmf_ufs_cylinder_group_tail_be_fields = layout([u32("cluster_summary_offset", OFFSET), u32("cluster_map_offset", OFFSET),
+    u32("cluster_blocks", COUNT), u32("inode_blocks", COUNT), u32("initialized_inodes", COUNT),
+    u32("unreferenced_inodes", COUNT), i32("reserved", RESERVED), u32("checksum", CHECKSUM), i64("write_time", TIMESTAMP),
+    field("spare", "int64[3]", 24, RESERVED)]);
+var sxmf_ufs_cylinder_group_tail_be = sxLayout(0x60420054, "ufs_cylinder_group_tail_be", BE, sxmf_ufs_cylinder_group_tail_be_fields);
+var sxmf_ufs1_inode_le_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u32("free_link_or_directory_depth"),
+    u64("file_size", SIZE), u32("access_time", TIMESTAMP), i32("access_nanoseconds"), u32("modification_time", TIMESTAMP),
+    i32("modification_nanoseconds"), u32("change_time", TIMESTAMP), i32("change_nanoseconds"),
+    field("direct_fragments", "int32[12]", 48), field("indirect_fragments", "int32[3]", 12), u32("flags", FLAGS),
+    u32("allocated_sectors", COUNT), u32("generation"), u32("uid", ID), u32("gid", ID), u64("modification_revision")]);
+var sxmf_ufs1_inode_le = sxLayout(0x60420055, "ufs1_inode_le", LE, sxmf_ufs1_inode_le_fields);
+var sxmf_ufs1_inode_be_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u32("free_link_or_directory_depth"),
+    u64("file_size", SIZE), u32("access_time", TIMESTAMP), i32("access_nanoseconds"), u32("modification_time", TIMESTAMP),
+    i32("modification_nanoseconds"), u32("change_time", TIMESTAMP), i32("change_nanoseconds"),
+    field("direct_fragments", "int32[12]", 48), field("indirect_fragments", "int32[3]", 12), u32("flags", FLAGS),
+    u32("allocated_sectors", COUNT), u32("generation"), u32("uid", ID), u32("gid", ID), u64("modification_revision")]);
+var sxmf_ufs1_inode_be = sxLayout(0x60420056, "ufs1_inode_be", BE, sxmf_ufs1_inode_be_fields);
+var sxmf_ufs1_symlink_inode_le_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT),
+    u32("free_link_or_directory_depth"), u64("file_size", SIZE), u32("access_time", TIMESTAMP), i32("access_nanoseconds"),
+    u32("modification_time", TIMESTAMP), i32("modification_nanoseconds"), u32("change_time", TIMESTAMP),
+    i32("change_nanoseconds"), chars("inline_symlink", 60, STRING), u32("flags", FLAGS), u32("allocated_sectors", COUNT),
+    u32("generation"), u32("uid", ID), u32("gid", ID), u64("modification_revision")]);
+var sxmf_ufs1_symlink_inode_le = sxLayout(0x60420057, "ufs1_symlink_inode_le", LE, sxmf_ufs1_symlink_inode_le_fields);
+var sxmf_ufs1_symlink_inode_be_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT),
+    u32("free_link_or_directory_depth"), u64("file_size", SIZE), u32("access_time", TIMESTAMP), i32("access_nanoseconds"),
+    u32("modification_time", TIMESTAMP), i32("modification_nanoseconds"), u32("change_time", TIMESTAMP),
+    i32("change_nanoseconds"), chars("inline_symlink", 60, STRING), u32("flags", FLAGS), u32("allocated_sectors", COUNT),
+    u32("generation"), u32("uid", ID), u32("gid", ID), u64("modification_revision")]);
+var sxmf_ufs1_symlink_inode_be = sxLayout(0x60420058, "ufs1_symlink_inode_be", BE, sxmf_ufs1_symlink_inode_be_fields);
+var sxmf_ufs2_inode_le_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u32("uid", ID), u32("gid", ID),
+    u32("block_size", SIZE), u64("file_size", SIZE), u64("allocated_sectors", COUNT), i64("access_time", TIMESTAMP),
+    i64("modification_time", TIMESTAMP), i64("change_time", TIMESTAMP), i64("birth_time", TIMESTAMP),
+    i32("modification_nanoseconds"), i32("access_nanoseconds"), i32("change_nanoseconds"), i32("birth_nanoseconds"),
+    u32("generation"), u32("kernel_flags", FLAGS), u32("flags", FLAGS), u32("xattr_size", SIZE),
+    field("xattr_fragments", "int64[2]", 16), field("direct_fragments", "int64[12]", 96),
+    field("indirect_fragments", "int64[3]", 24), u64("modification_revision"), u32("free_link_or_directory_depth"),
+    u32("checksum", CHECKSUM), field("spare", "uint32[2]", 8, RESERVED)]);
+var sxmf_ufs2_inode_le = sxLayout(0x60420059, "ufs2_inode_le", LE, sxmf_ufs2_inode_le_fields);
+var sxmf_ufs2_inode_be_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u32("uid", ID), u32("gid", ID),
+    u32("block_size", SIZE), u64("file_size", SIZE), u64("allocated_sectors", COUNT), i64("access_time", TIMESTAMP),
+    i64("modification_time", TIMESTAMP), i64("change_time", TIMESTAMP), i64("birth_time", TIMESTAMP),
+    i32("modification_nanoseconds"), i32("access_nanoseconds"), i32("change_nanoseconds"), i32("birth_nanoseconds"),
+    u32("generation"), u32("kernel_flags", FLAGS), u32("flags", FLAGS), u32("xattr_size", SIZE),
+    field("xattr_fragments", "int64[2]", 16), field("direct_fragments", "int64[12]", 96),
+    field("indirect_fragments", "int64[3]", 24), u64("modification_revision"), u32("free_link_or_directory_depth"),
+    u32("checksum", CHECKSUM), field("spare", "uint32[2]", 8, RESERVED)]);
+var sxmf_ufs2_inode_be = sxLayout(0x6042005A, "ufs2_inode_be", BE, sxmf_ufs2_inode_be_fields);
+var sxmf_ufs2_symlink_inode_le_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u32("uid", ID), u32("gid", ID),
+    u32("block_size", SIZE), u64("file_size", SIZE), u64("allocated_sectors", COUNT), i64("access_time", TIMESTAMP),
+    i64("modification_time", TIMESTAMP), i64("change_time", TIMESTAMP), i64("birth_time", TIMESTAMP),
+    i32("modification_nanoseconds"), i32("access_nanoseconds"), i32("change_nanoseconds"), i32("birth_nanoseconds"),
+    u32("generation"), u32("kernel_flags", FLAGS), u32("flags", FLAGS), u32("xattr_size", SIZE),
+    field("xattr_fragments", "int64[2]", 16), chars("inline_symlink", 120, STRING), u64("modification_revision"),
+    u32("free_link_or_directory_depth"), u32("checksum", CHECKSUM), field("spare", "uint32[2]", 8, RESERVED)]);
+var sxmf_ufs2_symlink_inode_le = sxLayout(0x6042005B, "ufs2_symlink_inode_le", LE, sxmf_ufs2_symlink_inode_le_fields);
+var sxmf_ufs2_symlink_inode_be_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u32("uid", ID), u32("gid", ID),
+    u32("block_size", SIZE), u64("file_size", SIZE), u64("allocated_sectors", COUNT), i64("access_time", TIMESTAMP),
+    i64("modification_time", TIMESTAMP), i64("change_time", TIMESTAMP), i64("birth_time", TIMESTAMP),
+    i32("modification_nanoseconds"), i32("access_nanoseconds"), i32("change_nanoseconds"), i32("birth_nanoseconds"),
+    u32("generation"), u32("kernel_flags", FLAGS), u32("flags", FLAGS), u32("xattr_size", SIZE),
+    field("xattr_fragments", "int64[2]", 16), chars("inline_symlink", 120, STRING), u64("modification_revision"),
+    u32("free_link_or_directory_depth"), u32("checksum", CHECKSUM), field("spare", "uint32[2]", 8, RESERVED)]);
+var sxmf_ufs2_symlink_inode_be = sxLayout(0x6042005C, "ufs2_symlink_inode_be", BE, sxmf_ufs2_symlink_inode_be_fields);
+var sxmf_sufs_inode_le_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), u16("short_uid", ID),
+    u16("short_gid", ID), u64("file_size", SIZE), i32("access_time", TIMESTAMP), i32("access_microseconds"),
+    i32("modification_time", TIMESTAMP), i32("modification_microseconds"), i32("change_time", TIMESTAMP),
+    i32("change_microseconds"), field("direct_fragments", "int32[12]", 48), field("indirect_fragments", "int32[3]", 12),
+    i32("flags", FLAGS), i32("allocated_sectors", COUNT), i32("generation"), i32("shadow_inode", ID), u32("uid", ID),
+    u32("gid", ID), u32("xattr_directory_inode", ID)]);
+var sxmf_sufs_inode_le = sxLayout(0x6042005D, "sufs_inode_le", LE, sxmf_sufs_inode_le_fields);
+var sxmf_sufs_inode_be_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), u16("short_uid", ID),
+    u16("short_gid", ID), u64("file_size", SIZE), i32("access_time", TIMESTAMP), i32("access_microseconds"),
+    i32("modification_time", TIMESTAMP), i32("modification_microseconds"), i32("change_time", TIMESTAMP),
+    i32("change_microseconds"), field("direct_fragments", "int32[12]", 48), field("indirect_fragments", "int32[3]", 12),
+    i32("flags", FLAGS), i32("allocated_sectors", COUNT), i32("generation"), i32("shadow_inode", ID), u32("uid", ID),
+    u32("gid", ID), u32("xattr_directory_inode", ID)]);
+var sxmf_sufs_inode_be = sxLayout(0x6042005E, "sufs_inode_be", BE, sxmf_sufs_inode_be_fields);
+var sxmf_ufs_directory_entry_le_fields = layout([u32("inode", ID), u16("record_length", SIZE), u8("type", ID),
+    u8("name_length", SIZE)]);
+var sxmf_ufs_directory_entry_le = sxLayout(0x6042005F, "ufs_directory_entry_le", LE, sxmf_ufs_directory_entry_le_fields);
+var sxmf_ufs_directory_entry_be_fields = layout([u32("inode", ID), u16("record_length", SIZE), u8("type", ID),
+    u8("name_length", SIZE)]);
+var sxmf_ufs_directory_entry_be = sxLayout(0x60420060, "ufs_directory_entry_be", BE, sxmf_ufs_directory_entry_be_fields);
+var sxmf_sufs_directory_entry_le_fields = layout([u32("inode", ID), u16("record_length", SIZE), u16("name_length", SIZE)]);
+var sxmf_sufs_directory_entry_le = sxLayout(0x60420061, "sufs_directory_entry_le", LE, sxmf_sufs_directory_entry_le_fields);
+var sxmf_sufs_directory_entry_be_fields = layout([u32("inode", ID), u16("record_length", SIZE), u16("name_length", SIZE)]);
+var sxmf_sufs_directory_entry_be = sxLayout(0x60420062, "sufs_directory_entry_be", BE, sxmf_sufs_directory_entry_be_fields);
+var sxmf_ufs_fragment_pointer32_le_fields = layout([i32("fragment")]);
+var sxmf_ufs_fragment_pointer32_le = sxLayout(0x60420063, "ufs_fragment_pointer32_le", LE, sxmf_ufs_fragment_pointer32_le_fields);
+var sxmf_ufs_fragment_pointer32_be_fields = layout([i32("fragment")]);
+var sxmf_ufs_fragment_pointer32_be = sxLayout(0x60420064, "ufs_fragment_pointer32_be", BE, sxmf_ufs_fragment_pointer32_be_fields);
+var sxmf_ufs_fragment_pointer64_le_fields = layout([i64("fragment")]);
+var sxmf_ufs_fragment_pointer64_le = sxLayout(0x60420065, "ufs_fragment_pointer64_le", LE, sxmf_ufs_fragment_pointer64_le_fields);
+var sxmf_ufs_fragment_pointer64_be_fields = layout([i64("fragment")]);
+var sxmf_ufs_fragment_pointer64_be = sxLayout(0x60420066, "ufs_fragment_pointer64_be", BE, sxmf_ufs_fragment_pointer64_be_fields);
+var sxmf_ufs1_legacy_inode_le_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT),
+    field("old_uid_gid_or_inode", "byte[4]", 4), u64("file_size", SIZE), i32("access_time", TIMESTAMP),
+    i32("access_nanoseconds"), i32("modification_time", TIMESTAMP), i32("modification_nanoseconds"),
+    i32("change_time", TIMESTAMP), i32("change_nanoseconds"), field("direct_fragments", "int32[12]", 48),
+    field("indirect_fragments", "int32[3]", 12), u32("flags", FLAGS), u32("allocated_sectors", COUNT), u32("generation"),
+    u32("uid", ID), u32("gid", ID), field("spare", "int32[2]", 8, RESERVED)]);
+var sxmf_ufs1_legacy_inode_le = sxLayout(0x6042008C, "ufs1_legacy_inode_le", LE, sxmf_ufs1_legacy_inode_le_fields);
+var sxmf_ufs1_legacy_inode_be_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT),
+    field("old_uid_gid_or_inode", "byte[4]", 4), u64("file_size", SIZE), i32("access_time", TIMESTAMP),
+    i32("access_nanoseconds"), i32("modification_time", TIMESTAMP), i32("modification_nanoseconds"),
+    i32("change_time", TIMESTAMP), i32("change_nanoseconds"), field("direct_fragments", "int32[12]", 48),
+    field("indirect_fragments", "int32[3]", 12), u32("flags", FLAGS), u32("allocated_sectors", COUNT), u32("generation"),
+    u32("uid", ID), u32("gid", ID), field("spare", "int32[2]", 8, RESERVED)]);
+var sxmf_ufs1_legacy_inode_be = sxLayout(0x6042008D, "ufs1_legacy_inode_be", BE, sxmf_ufs1_legacy_inode_be_fields);
+var sxmf_ufs1_legacy_symlink_inode_le_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT),
+    field("old_uid_gid_or_inode", "byte[4]", 4), u64("file_size", SIZE), i32("access_time", TIMESTAMP),
+    i32("access_nanoseconds"), i32("modification_time", TIMESTAMP), i32("modification_nanoseconds"),
+    i32("change_time", TIMESTAMP), i32("change_nanoseconds"), chars("inline_symlink", 60, STRING), u32("flags", FLAGS),
+    u32("allocated_sectors", COUNT), u32("generation"), u32("uid", ID), u32("gid", ID), field("spare", "int32[2]", 8, RESERVED)]);
+var sxmf_ufs1_legacy_symlink_inode_le = sxLayout(0x6042008E, "ufs1_legacy_symlink_inode_le", LE, sxmf_ufs1_legacy_symlink_inode_le_fields);
+var sxmf_ufs1_legacy_symlink_inode_be_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT),
+    field("old_uid_gid_or_inode", "byte[4]", 4), u64("file_size", SIZE), i32("access_time", TIMESTAMP),
+    i32("access_nanoseconds"), i32("modification_time", TIMESTAMP), i32("modification_nanoseconds"),
+    i32("change_time", TIMESTAMP), i32("change_nanoseconds"), chars("inline_symlink", 60, STRING), u32("flags", FLAGS),
+    u32("allocated_sectors", COUNT), u32("generation"), u32("uid", ID), u32("gid", ID), field("spare", "int32[2]", 8, RESERVED)]);
+var sxmf_ufs1_legacy_symlink_inode_be = sxLayout(0x6042008F, "ufs1_legacy_symlink_inode_be", BE, sxmf_ufs1_legacy_symlink_inode_be_fields);
+function sx_modernfs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60420000 || id >= 0x60430000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    if (id === 0x6042004B && r.name === "magic" && integer) {
+        switch (value) {
+        case 72020:
+            return sxSetComment(r, "FS_UFS1_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042004C && r.name === "magic" && integer) {
+        switch (value) {
+        case 72020:
+            return sxSetComment(r, "FS_UFS1_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042004D && r.name === "magic" && integer) {
+        switch (value) {
+        case 72020:
+            return sxSetComment(r, "FS_UFS1_MAGIC");
+        case 424935705:
+            return sxSetComment(r, "FS_UFS2_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042004E && r.name === "magic" && integer) {
+        switch (value) {
+        case 72020:
+            return sxSetComment(r, "FS_UFS1_MAGIC");
+        case 424935705:
+            return sxSetComment(r, "FS_UFS2_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042004F && r.name === "magic" && integer) {
+        switch (value) {
+        case 72020:
+            return sxSetComment(r, "FS_MAGIC (Solaris UFS)");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420050 && r.name === "magic" && integer) {
+        switch (value) {
+        case 72020:
+            return sxSetComment(r, "FS_MAGIC (Solaris UFS)");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420051 && r.name === "magic" && integer) {
+        switch (value) {
+        case 590421:
+            return sxSetComment(r, "CG_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420052 && r.name === "magic" && integer) {
+        switch (value) {
+        case 590421:
+            return sxSetComment(r, "CG_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042005F && r.name === "type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "DT_FIFO");
+        case 2:
+            return sxSetComment(r, "DT_CHR");
+        case 4:
+            return sxSetComment(r, "DT_DIR");
+        case 6:
+            return sxSetComment(r, "DT_BLK");
+        case 8:
+            return sxSetComment(r, "DT_REG");
+        case 10:
+            return sxSetComment(r, "DT_LNK");
+        case 12:
+            return sxSetComment(r, "DT_SOCK");
+        case 14:
+            return sxSetComment(r, "DT_WHT");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420060 && r.name === "type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "DT_FIFO");
+        case 2:
+            return sxSetComment(r, "DT_CHR");
+        case 4:
+            return sxSetComment(r, "DT_DIR");
+        case 6:
+            return sxSetComment(r, "DT_BLK");
+        case 8:
+            return sxSetComment(r, "DT_REG");
+        case 10:
+            return sxSetComment(r, "DT_LNK");
+        case 12:
+            return sxSetComment(r, "DT_SOCK");
+        case 14:
+            return sxSetComment(r, "DT_WHT");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042000B && r.name === "magic" && integer) {
+        switch (value) {
+        case 4076150800:
+            return sxSetComment(r, "F2FS_SUPER_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420006 && r.name === "magic" && integer) {
+        switch (value) {
+        case 13364:
+            return sxSetComment(r, "NILFS_SUPER_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420009 && r.name === "magic" && integer) {
+        switch (value) {
+        case 514849297:
+            return sxSetComment(r, "NILFS_SEGSUM_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420002 && r.name === "magic" && integer) {
+        switch (value) {
+        case 930524809:
+            return sxSetComment(r, "Fossil header magic");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420003 && r.name === "magic" && integer) {
+        switch (value) {
+        case 591438769:
+            return sxSetComment(r, "Fossil superblock magic");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420011 && r.name === "version" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "ReiserFS 3.5 (old disk format)");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420012 && r.name === "version" && integer) {
+        switch (value) {
+        case 2:
+            return sxSetComment(r, "ReiserFS 3.6 disk format");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420075 && r.name === "plugin" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "stat40");
+        case 2:
+            return sxSetComment(r, "cde40");
+        case 3:
+            return sxSetComment(r, "nodeptr40");
+        case 5:
+            return sxSetComment(r, "extent40");
+        case 6:
+            return sxSetComment(r, "tail40");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420016 && r.name === "id" && integer) {
+        switch (value) {
+        case 1397117696:
+            return sxSetComment(r, "SFS0");
+        case 1397117698:
+            return sxSetComment(r, "SFS2");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042002E && r.name === "magic" && integer) {
+        switch (value) {
+        case 4158917294:
+            return sxSetComment(r, "FNODE_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420033 && r.name === "magic" && integer) {
+        switch (value) {
+        case 937691822:
+            return sxSetComment(r, "ANODE_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420034 && r.name === "magic" && integer) {
+        switch (value) {
+        case 2011433646:
+            return sxSetComment(r, "DNODE_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420078 && r.name === "type" && integer) {
+        switch (value) {
+        case 73:
+            return sxSetComment(r, "HAMMER_BTREE_TYPE_INTERNAL");
+        case 76:
+            return sxSetComment(r, "HAMMER_BTREE_TYPE_LEAF");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420079 && r.name === "type" && integer) {
+        switch (value) {
+        case 73:
+            return sxSetComment(r, "HAMMER_BTREE_TYPE_INTERNAL");
+        case 76:
+            return sxSetComment(r, "HAMMER_BTREE_TYPE_LEAF");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042007C && r.name === "record_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "HAMMER_RECTYPE_INODE");
+        case 16:
+            return sxSetComment(r, "HAMMER_RECTYPE_DATA");
+        case 17:
+            return sxSetComment(r, "HAMMER_RECTYPE_DIRENTRY");
+        case 20:
+            return sxSetComment(r, "HAMMER_RECTYPE_SYMLINK");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042007D && r.name === "record_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "HAMMER_RECTYPE_INODE");
+        case 16:
+            return sxSetComment(r, "HAMMER_RECTYPE_DATA");
+        case 17:
+            return sxSetComment(r, "HAMMER_RECTYPE_DIRENTRY");
+        case 20:
+            return sxSetComment(r, "HAMMER_RECTYPE_SYMLINK");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420041 && r.name === "magic" && integer) {
+        switch (value) {
+        case 12235020:
+            return sxSetComment(r, "UBERBLOCK_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420042 && r.name === "magic" && integer) {
+        switch (value) {
+        case 12235020:
+            return sxSetComment(r, "UBERBLOCK_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042003D && r.name === "magic" && integer) {
+        switch (value) {
+        case (0x210DA7A * 4294967296 + 0xB10C7A11):
+            return sxSetComment(r, "ZEC_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042003E && r.name === "magic" && integer) {
+        switch (value) {
+        case (0x210DA7A * 4294967296 + 0xB10C7A11):
+            return sxSetComment(r, "ZEC_MAGIC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420045 && r.name === "magic" && integer) {
+        switch (value) {
+        case 3774210530:
+            return sxSetComment(r, "EROFS_SUPER_MAGIC_V1");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420048 && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "EROFS_FT_UNKNOWN");
+        case 1:
+            return sxSetComment(r, "EROFS_FT_REG_FILE");
+        case 2:
+            return sxSetComment(r, "EROFS_FT_DIR");
+        case 3:
+            return sxSetComment(r, "EROFS_FT_CHRDEV");
+        case 4:
+            return sxSetComment(r, "EROFS_FT_BLKDEV");
+        case 5:
+            return sxSetComment(r, "EROFS_FT_FIFO");
+        case 6:
+            return sxSetComment(r, "EROFS_FT_SOCK");
+        case 7:
+            return sxSetComment(r, "EROFS_FT_SYMLINK");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042006B && r.name === "magic" && integer) {
+        switch (value) {
+        case 3221344269:
+            return sxSetComment(r, "VMFS volume magic");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042006D && r.name === "magic" && integer) {
+        switch (value) {
+        case 799797598:
+            return sxSetComment(r, "VMFS filesystem magic");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6042006F && r.name === "allocation_format" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Direct file-block ID array");
+        case 4305:
+            return sxSetComment(r, "Inline inode data");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420082 && r.name === "record_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Primary volume descriptor");
+        case 2:
+            return sxSetComment(r, "Supplementary volume descriptor");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60420083 && r.name === "record_type" && integer) {
+        switch (value) {
+        case 255:
+            return sxSetComment(r, "Volume descriptor terminator");
+        default:
+            break;
+        }
+    }
+    switch (id) {
+    case 0x60420001:
+        if (r.name === "container_size") {
+            s = "Format-dependent container size, observed starting with ReFS 3.4";
+        }
+        break;
+    case 0x60420002:
+        if (r.name === "super_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "label_block") {
+            s = "Filesystem block number of the label area";
+        } else if (r.name === "data_block") {
+            s = "Filesystem block number of the data area";
+        } else if (r.name === "end_block") {
+            s = "First block past the filesystem";
+        }
+        break;
+    case 0x60420003:
+        if (r.name === "active_root_block") {
+            s = "Data-area block number; -1 denotes no block";
+        } else if (r.name === "next_archive_root_block") {
+            s = "Data-area block number; -1 denotes no block";
+        } else if (r.name === "current_archive_root_block") {
+            s = "Data-area block number; -1 denotes no block";
+        }
+        break;
+    case 0x60420005:
+        if (r.name === "volume_blocks") {
+            s = "Volume size in hardware/LVM blocks, not aggregate blocks";
+        } else if (r.name === "log2_block_factor") {
+            s = "log2 aggregate block size divided by hardware block size";
+        } else if (r.name === "secondary_inode_table_block_high") {
+            s = "High 8 bits of the 40-bit filesystem block number";
+        } else if (r.name === "secondary_inode_table_block_low") {
+            s = "Low 32 bits of the 40-bit filesystem block number";
+        } else if (r.name === "secondary_inode_map_block_high") {
+            s = "High 8 bits of the 40-bit filesystem block number";
+        } else if (r.name === "secondary_inode_map_block_low") {
+            s = "Low 32 bits of the 40-bit filesystem block number";
+        } else if (r.name === "log_extent_block_high") {
+            s = "High 8 bits of the 40-bit filesystem block number";
+        } else if (r.name === "log_extent_block_low") {
+            s = "Low 32 bits of the 40-bit filesystem block number";
+        } else if (r.name === "fsck_extent_block_high") {
+            s = "High 8 bits of the 40-bit filesystem block number";
+        } else if (r.name === "fsck_extent_block_low") {
+            s = "Low 32 bits of the 40-bit filesystem block number";
+        } else if (r.name === "update_nanoseconds") {
+            s = "Nanosecond component of the update time";
+        } else if (r.name === "extension_blocks") {
+            s = "Extended volume size in hardware/LVM blocks";
+        } else if (r.name === "extension_fsck_block_high") {
+            s = "High 8 bits of the 40-bit filesystem block number";
+        } else if (r.name === "extension_fsck_block_low") {
+            s = "Low 32 bits of the 40-bit filesystem block number";
+        } else if (r.name === "extension_log_block_high") {
+            s = "High 8 bits of the 40-bit filesystem block number";
+        } else if (r.name === "extension_log_block_low") {
+            s = "Low 32 bits of the 40-bit filesystem block number";
+        }
+        break;
+    case 0x60420006:
+        if (r.name === "log_block_size") {
+            s = "Filesystem block bytes = 1024 << log_block_size";
+        } else if (r.name === "first_data_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "last_partial_segment_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "check_interval") {
+            s = "Duration in seconds";
+        } else if (r.name === "commit_interval") {
+            s = "Segment commit interval in seconds";
+        }
+        break;
+    case 0x60420007:
+        if (r.name === "block_map") {
+            s = "Encoded mapping; the first word contains mapping flags";
+        }
+        break;
+    case 0x60420009:
+        if (r.name === "next_segment_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x6042000B:
+        if (r.name === "checksum_offset") {
+            s = "Byte offset from the beginning of this superblock";
+        } else if (r.name === "segment0_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "checkpoint_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "sit_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "nat_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "ssa_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "main_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "volume_name") {
+            s = "UTF-16LE volume name";
+        } else if (r.name === "extension_list") {
+            s = "64 filename extensions, eight bytes each";
+        }
+        break;
+    case 0x6042000E:
+        if (r.name === "current_node_block_offsets") {
+            s = "Block offsets within the corresponding segments";
+        } else if (r.name === "current_data_block_offsets") {
+            s = "Block offsets within the corresponding segments";
+        } else if (r.name === "pack_summary_start") {
+            s = "Block offset from checkpoint pack start";
+        } else if (r.name === "checksum_offset") {
+            s = "Byte offset from the checkpoint block start";
+        } else if (r.name === "elapsed_time") {
+            s = "Elapsed mount duration in seconds";
+        }
+        break;
+    case 0x6042000F:
+        if (r.name === "block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420010:
+        if (r.name === "next_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420011:
+        if (r.name === "root_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "journal_first_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "journal_max_commit_age") {
+            s = "Duration in seconds";
+        } else if (r.name === "journal_max_transaction_age") {
+            s = "Duration in seconds";
+        }
+        break;
+    case 0x60420012:
+        if (r.name === "root_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "journal_first_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "journal_max_commit_age") {
+            s = "Duration in seconds";
+        } else if (r.name === "journal_max_transaction_age") {
+            s = "Duration in seconds";
+        } else if (r.name === "check_interval") {
+            s = "Duration in seconds";
+        }
+        break;
+    case 0x60420013:
+        if (r.name === "right_delimiting_key") {
+            s = "Version-dependent 128-bit ReiserFS key";
+        }
+        break;
+    case 0x60420014:
+        if (r.name === "key") {
+            s = "Version-dependent 128-bit ReiserFS key";
+        } else if (r.name === "free_space_or_entry_count") {
+            s = "Free space for indirect items, directory entry count for directory items";
+        } else if (r.name === "item_location") {
+            s = "Byte offset inside this tree block";
+        }
+        break;
+    case 0x60420015:
+        if (r.name === "block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420016:
+        if (r.name === "self_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "creation_time") {
+            s = "Seconds since 1978-01-01";
+        } else if (r.name === "first_byte") {
+            s = "Partition start byte relative to the disk";
+        } else if (r.name === "last_byte") {
+            s = "First byte after this partition, relative to the disk";
+        } else if (r.name === "bitmap_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "admin_space_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "root_object_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "extent_tree_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "object_tree_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420019:
+        if (r.name === "previous_block_or_object") {
+            s = "High bit selects object-node ownership";
+        }
+        break;
+    case 0x6042001A:
+        if (r.name === "previous_block_or_object") {
+            s = "High bit selects object-node ownership";
+        }
+        break;
+    case 0x6042001C:
+        if (r.name === "last_root_avatar_index") {
+            s = "Number of root copies minus one";
+        } else if (r.name === "root_avatars") {
+            s = "Volume block numbers of the root-directory copies";
+        }
+        break;
+    case 0x6042001D:
+        if (r.name === "next_block") {
+            s = "Directory-relative block index; -1 terminates the chain";
+        } else if (r.name === "previous_block") {
+            s = "Directory-relative block index; -1 denotes the first block";
+        } else if (r.name === "first_free") {
+            s = "Byte offset within this directory block";
+        } else if (r.name === "first_used") {
+            s = "Byte offset within this directory block";
+        }
+        break;
+    case 0x6042001E:
+        if (r.name === "last_avatar_index") {
+            s = "Number of physical copies minus one";
+        }
+        break;
+    case 0x6042001F:
+        if (r.name === "block") {
+            s = "Volume block number";
+        }
+        break;
+    case 0x60420020:
+        if (r.name === "log_start_block") {
+            s = "Encoded filesystem block number";
+        } else if (r.name === "version_flags") {
+            s = "Low four bits contain the superblock version";
+        } else if (r.name === "log2_ag_blocks") {
+            s = "Ceiling of log2 allocation group block count";
+        } else if (r.name === "log_stripe_unit") {
+            s = "Log stripe unit in bytes";
+        } else if (r.name === "bad_features2") {
+            s = "Historic duplicate feature word caused by missing alignment";
+        }
+        break;
+    case 0x60420021:
+        if (r.name === "log_start_block") {
+            s = "Encoded filesystem block number";
+        } else if (r.name === "version_flags") {
+            s = "Low four bits contain the superblock version";
+        } else if (r.name === "log2_ag_blocks") {
+            s = "Ceiling of log2 allocation group block count";
+        } else if (r.name === "log_stripe_unit") {
+            s = "Log stripe unit in bytes";
+        } else if (r.name === "bad_features2") {
+            s = "Historic duplicate feature word caused by missing alignment";
+        } else if (r.name === "crc") {
+            s = "CRC32C is stored little endian within this big-endian header";
+        } else if (r.name === "metadata_directory_inode") {
+            s = "Defined when the metadata-directory feature is enabled";
+        } else if (r.name === "realtime_group_count") {
+            s = "Defined when realtime groups are enabled";
+        } else if (r.name === "realtime_group_extents") {
+            s = "Extents per realtime group";
+        } else if (r.name === "internal_realtime_start_block") {
+            s = "Filesystem block number; feature dependent";
+        } else if (r.name === "reserved_realtime_blocks") {
+            s = "Reserved zoned realtime blocks";
+        }
+        break;
+    case 0x60420022:
+        if (r.name === "block_tree_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "count_tree_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "reverse_map_root") {
+            s = "Allocation-group-relative block number; reserved without RMAPBT";
+        } else if (r.name === "free_list_first") {
+            s = "Index into the AGFL table";
+        } else if (r.name === "free_list_last") {
+            s = "Index into the AGFL table";
+        }
+        break;
+    case 0x60420023:
+        if (r.name === "block_tree_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "count_tree_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "reverse_map_root") {
+            s = "Allocation-group-relative block number; reserved without RMAPBT";
+        } else if (r.name === "free_list_first") {
+            s = "Index into the AGFL table";
+        } else if (r.name === "free_list_last") {
+            s = "Index into the AGFL table";
+        } else if (r.name === "refcount_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "crc") {
+            s = "CRC32C stored little endian";
+        }
+        break;
+    case 0x60420024:
+        if (r.name === "inode_tree_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "new_inode") {
+            s = "Allocation-group-relative inode number";
+        } else if (r.name === "last_directory_inode") {
+            s = "Allocation-group-relative inode number";
+        }
+        break;
+    case 0x60420025:
+        if (r.name === "inode_tree_root") {
+            s = "Allocation-group-relative block number";
+        } else if (r.name === "new_inode") {
+            s = "Allocation-group-relative inode number";
+        } else if (r.name === "last_directory_inode") {
+            s = "Allocation-group-relative inode number";
+        } else if (r.name === "crc") {
+            s = "CRC32C stored little endian";
+        } else if (r.name === "free_inode_root") {
+            s = "Allocation-group-relative block number";
+        }
+        break;
+    case 0x60420026:
+        if (r.name === "metatype_or_old_link_count") {
+            s = "Metadata type for metadata-directory inodes, old link count for version 1";
+        } else if (r.name === "project_id_low") {
+            s = "Low 16 bits of the project ID";
+        } else if (r.name === "project_id_high") {
+            s = "High 16 bits of the project ID";
+        } else if (r.name === "extent_count_or_padding") {
+            s = "NREXT64 extent count, or historical padding and flush counter";
+        } else if (r.name === "access_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        } else if (r.name === "modification_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        } else if (r.name === "change_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        } else if (r.name === "data_or_attribute_extents") {
+            s = "Attribute extent count if NREXT64 is enabled; otherwise data extents";
+        } else if (r.name === "attribute_extents_or_padding") {
+            s = "Attribute extent count without NREXT64; otherwise padding";
+        } else if (r.name === "attribute_fork_offset_units") {
+            s = "Byte offset = value * 8 from literal inode area";
+        } else if (r.name === "next_unlinked_inode") {
+            s = "Allocation-group-relative inode number";
+        }
+        break;
+    case 0x60420027:
+        if (r.name === "metatype_or_old_link_count") {
+            s = "Metadata type for metadata-directory inodes, old link count for version 1";
+        } else if (r.name === "project_id_low") {
+            s = "Low 16 bits of the project ID";
+        } else if (r.name === "project_id_high") {
+            s = "High 16 bits of the project ID";
+        } else if (r.name === "extent_count_or_padding") {
+            s = "NREXT64 extent count, or historical padding and flush counter";
+        } else if (r.name === "access_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        } else if (r.name === "modification_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        } else if (r.name === "change_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        } else if (r.name === "data_or_attribute_extents") {
+            s = "Attribute extent count if NREXT64 is enabled; otherwise data extents";
+        } else if (r.name === "attribute_extents_or_padding") {
+            s = "Attribute extent count without NREXT64; otherwise padding";
+        } else if (r.name === "attribute_fork_offset_units") {
+            s = "Byte offset = value * 8 from literal inode area";
+        } else if (r.name === "next_unlinked_inode") {
+            s = "Allocation-group-relative inode number";
+        } else if (r.name === "cow_extent_or_used_blocks") {
+            s = "CoW extent size in blocks, or used realtime-group blocks for zoned rtrmap inode";
+        } else if (r.name === "creation_timestamp") {
+            s = "Legacy signed seconds and nanoseconds, or BIGTIME encoded nanoseconds";
+        }
+        break;
+    case 0x60420028:
+        if (r.name === "master_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "root_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420029:
+        if (r.name === "self_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "allocation_goal_meta") {
+            s = "Filesystem block number";
+        } else if (r.name === "allocation_goal_data") {
+            s = "Filesystem block number";
+        } else if (r.name === "hash_depth") {
+            s = "Number of hash-table address bits";
+        } else if (r.name === "xattr_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x6042002A:
+        if (r.name === "block") {
+            s = "Filesystem block number of the inode";
+        }
+        break;
+    case 0x6042002B:
+        if (r.name === "next_leaf_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x6042002C:
+        if (r.name === "root_fnode_sector") {
+            s = "512-byte sector number";
+        } else if (r.name === "bitmap_directory_sector") {
+            s = "512-byte sector number";
+        } else if (r.name === "bad_block_directory_sector") {
+            s = "512-byte sector number";
+        }
+        break;
+    case 0x6042002D:
+        if (r.name === "superblock_crc") {
+            s = "Used by HPFS386; reserved by ordinary HPFS";
+        } else if (r.name === "spareblock_crc") {
+            s = "Used by HPFS386; reserved by ordinary HPFS";
+        }
+        break;
+    case 0x6042002F:
+        if (r.name === "first_free") {
+            s = "Byte offset relative to the B+tree header, with high bit encoded in flags bit 0";
+        }
+        break;
+    case 0x60420030:
+        if (r.name === "file_sector") {
+            s = "Logical 512-byte sector number in the file";
+        } else if (r.name === "disk_sector") {
+            s = "Volume-relative 512-byte sector number";
+        }
+        break;
+    case 0x60420031:
+        if (r.name === "file_sector_limit") {
+            s = "Exclusive logical sector upper bound";
+        }
+        break;
+    case 0x60420032:
+        if (r.name === "ea_offset") {
+            s = "Byte offset from the fnode start";
+        } else if (r.name === "dasd_limit") {
+            s = "HPFS386 DASD allocation limit";
+        } else if (r.name === "dasd_usage") {
+            s = "HPFS386 DASD usage";
+        }
+        break;
+    case 0x60420034:
+        if (r.name === "first_free") {
+            s = "Byte offset from the 2048-byte dnode start";
+        } else if (r.name === "parent_sector") {
+            s = "Root dnode points to the directory fnode; other dnodes point to a parent dnode";
+        }
+        break;
+    case 0x60420035:
+        if (r.name === "acl_count_bits") {
+            s = "Low three bits contain the ACL count";
+        }
+        break;
+    case 0x60420037:
+        if (r.name === "boot_begin") {
+            s = "Byte offset relative to the volume device";
+        } else if (r.name === "memory_log_begin") {
+            s = "Byte offset relative to the volume device";
+        } else if (r.name === "buffer_begin") {
+            s = "Byte offset relative to the volume device";
+        } else if (r.name === "buffer_end") {
+            s = "First byte after volume buffers";
+        } else if (r.name === "btree_root") {
+            s = "Encoded zone/volume/offset address, not a direct file offset";
+        }
+        break;
+    case 0x60420038:
+        if (r.name === "boot_begin") {
+            s = "Byte offset relative to the volume device";
+        } else if (r.name === "memory_log_begin") {
+            s = "Byte offset relative to the volume device";
+        } else if (r.name === "buffer_begin") {
+            s = "Byte offset relative to the volume device";
+        } else if (r.name === "buffer_end") {
+            s = "First byte after volume buffers";
+        } else if (r.name === "btree_root") {
+            s = "Encoded zone/volume/offset address, not a direct file offset";
+        }
+        break;
+    case 0x60420039:
+        if (r.name === "physical_offset") {
+            s = "Encoded HAMMER address";
+        } else if (r.name === "first_offset") {
+            s = "Encoded HAMMER address";
+        } else if (r.name === "next_offset") {
+            s = "Encoded HAMMER address";
+        } else if (r.name === "allocation_offset") {
+            s = "Encoded HAMMER address";
+        }
+        break;
+    case 0x6042003A:
+        if (r.name === "physical_offset") {
+            s = "Encoded HAMMER address";
+        } else if (r.name === "first_offset") {
+            s = "Encoded HAMMER address";
+        } else if (r.name === "next_offset") {
+            s = "Encoded HAMMER address";
+        } else if (r.name === "allocation_offset") {
+            s = "Encoded HAMMER address";
+        }
+        break;
+    case 0x6042003B:
+        if (r.name === "address") {
+            s = "Encoded zone-2 HAMMER address";
+        }
+        break;
+    case 0x6042003C:
+        if (r.name === "address") {
+            s = "Encoded zone-2 HAMMER address";
+        }
+        break;
+    case 0x6042003F:
+        if (r.name === "dva0_word0") {
+            s = "Packed vdev ID and allocation size in 512-byte units";
+        } else if (r.name === "dva0_word1") {
+            s = "Packed gang flag and offset in 512-byte units";
+        } else if (r.name === "dva1_word0") {
+            s = "Packed vdev ID and allocation size in 512-byte units";
+        } else if (r.name === "dva1_word1") {
+            s = "Packed gang flag and offset in 512-byte units";
+        } else if (r.name === "dva2_word0") {
+            s = "Packed vdev ID and allocation size in 512-byte units";
+        } else if (r.name === "dva2_word1") {
+            s = "Packed gang flag and offset in 512-byte units";
+        } else if (r.name === "properties") {
+            s = "Encoded size, compression, checksum type, level, and byte order";
+        } else if (r.name === "properties2") {
+            s = "Additional properties in recent pools; historically padding";
+        } else if (r.name === "physical_birth_word") {
+            s = "Encoded physical birth transaction group";
+        } else if (r.name === "logical_birth_word") {
+            s = "Encoded logical birth transaction group";
+        }
+        break;
+    case 0x60420040:
+        if (r.name === "dva0_word0") {
+            s = "Packed vdev ID and allocation size in 512-byte units";
+        } else if (r.name === "dva0_word1") {
+            s = "Packed gang flag and offset in 512-byte units";
+        } else if (r.name === "dva1_word0") {
+            s = "Packed vdev ID and allocation size in 512-byte units";
+        } else if (r.name === "dva1_word1") {
+            s = "Packed gang flag and offset in 512-byte units";
+        } else if (r.name === "dva2_word0") {
+            s = "Packed vdev ID and allocation size in 512-byte units";
+        } else if (r.name === "dva2_word1") {
+            s = "Packed gang flag and offset in 512-byte units";
+        } else if (r.name === "properties") {
+            s = "Encoded size, compression, checksum type, level, and byte order";
+        } else if (r.name === "properties2") {
+            s = "Additional properties in recent pools; historically padding";
+        } else if (r.name === "physical_birth_word") {
+            s = "Encoded physical birth transaction group";
+        } else if (r.name === "logical_birth_word") {
+            s = "Encoded logical birth transaction group";
+        }
+        break;
+    case 0x60420043:
+        if (r.name === "mmp_delay") {
+            s = "Nanoseconds since last multihost write; zero disables MMP";
+        } else if (r.name === "mmp_config") {
+            s = "Packed validity, write interval, sequence, and failure intervals";
+        } else if (r.name === "raidz_reflow_info") {
+            s = "Recent RAID-Z expansion state; reserved in earlier pools";
+        }
+        break;
+    case 0x60420044:
+        if (r.name === "mmp_delay") {
+            s = "Nanoseconds since last multihost write; zero disables MMP";
+        } else if (r.name === "mmp_config") {
+            s = "Packed validity, write interval, sequence, and failure intervals";
+        } else if (r.name === "raidz_reflow_info") {
+            s = "Recent RAID-Z expansion state; reserved in earlier pools";
+        }
+        break;
+    case 0x60420045:
+        if (r.name === "block_size_bits") {
+            s = "Filesystem block bytes = 1 << block_size_bits";
+        } else if (r.name === "extension_slots") {
+            s = "Additional 16-byte superblock slots";
+        } else if (r.name === "metadata_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "xattr_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "compression_algorithms_or_lz4_distance") {
+            s = "Algorithm mask with COMPR_CFGS; otherwise LZ4 maximum distance";
+        } else if (r.name === "device_table_slot") {
+            s = "Slot index; byte offset = value * 128";
+        } else if (r.name === "xattr_prefix_start") {
+            s = "Offset in four-byte units";
+        } else if (r.name === "reserved_or_extension") {
+            s = "Newer EROFS revisions assign fields here; not interpreted by the native reader";
+        }
+        break;
+    case 0x60420046:
+        if (r.name === "format") {
+            s = "Bit 0 selects extended inode; bits 1..3 select data layout";
+        } else if (r.name === "xattr_count") {
+            s = "Encoded xattr-body count";
+        } else if (r.name === "block_or_device_or_chunk_info") {
+            s = "Data block number, encoded device, or chunk-format word according to inode type/layout";
+        }
+        break;
+    case 0x60420047:
+        if (r.name === "xattr_count") {
+            s = "Encoded xattr-body count";
+        } else if (r.name === "block_or_device_or_chunk_info") {
+            s = "Data block number, encoded device, or chunk-format word according to inode type/layout";
+        }
+        break;
+    case 0x60420048:
+        if (r.name === "name_offset") {
+            s = "Byte offset within the directory block";
+        }
+        break;
+    case 0x60420049:
+        if (r.name === "mapped_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x6042004A:
+        if (r.name === "block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x6042004B:
+        if (r.name === "first_field") {
+            s = "Historic in-core link word";
+        } else if (r.name === "superblock_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "cylinder_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "inode_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "data_block_fragment") {
+            s = "First data fragment within a cylinder group";
+        } else if (r.name === "cylinder_group_offset") {
+            s = "Fragment offset used by the legacy cylinder-group placement formula";
+        } else if (r.name === "rotation_delay") {
+            s = "Milliseconds";
+        } else if (r.name === "filesystem_to_disk_shift") {
+            s = "Shift converting fragment numbers to 512-byte sector numbers";
+        } else if (r.name === "old_summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "incore_pointer_padding") {
+            s = "Historical in-memory pointers; pointer width is host dependent, so retained physically";
+        } else if (r.name === "rotation_position_offset") {
+            s = "Byte offset from the superblock start";
+        } else if (r.name === "rotation_block_offset") {
+            s = "Byte offset from the superblock start";
+        }
+        break;
+    case 0x6042004C:
+        if (r.name === "first_field") {
+            s = "Historic in-core link word";
+        } else if (r.name === "superblock_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "cylinder_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "inode_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "data_block_fragment") {
+            s = "First data fragment within a cylinder group";
+        } else if (r.name === "cylinder_group_offset") {
+            s = "Fragment offset used by the legacy cylinder-group placement formula";
+        } else if (r.name === "rotation_delay") {
+            s = "Milliseconds";
+        } else if (r.name === "filesystem_to_disk_shift") {
+            s = "Shift converting fragment numbers to 512-byte sector numbers";
+        } else if (r.name === "old_summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "incore_pointer_padding") {
+            s = "Historical in-memory pointers; pointer width is host dependent, so retained physically";
+        } else if (r.name === "rotation_position_offset") {
+            s = "Byte offset from the superblock start";
+        } else if (r.name === "rotation_block_offset") {
+            s = "Byte offset from the superblock start";
+        }
+        break;
+    case 0x6042004D:
+        if (r.name === "first_field") {
+            s = "Historic in-core link word";
+        } else if (r.name === "superblock_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "cylinder_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "inode_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "data_block_fragment") {
+            s = "First data fragment within a cylinder group";
+        } else if (r.name === "cylinder_group_offset") {
+            s = "Fragment offset used by the legacy cylinder-group placement formula";
+        } else if (r.name === "rotation_delay") {
+            s = "Milliseconds";
+        } else if (r.name === "filesystem_to_disk_shift") {
+            s = "Shift converting fragment numbers to 512-byte sector numbers";
+        } else if (r.name === "old_summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "incore_pointer_padding") {
+            s = "Historical in-memory pointers; pointer width is host dependent, so retained physically";
+        } else if (r.name === "provider_fragments") {
+            s = "Provider size in filesystem fragments";
+        } else if (r.name === "actual_superblock_offset") {
+            s = "Byte offset relative to the volume";
+        } else if (r.name === "standard_superblock_offset") {
+            s = "Byte offset relative to the volume";
+        } else if (r.name === "summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "rotation_position_offset") {
+            s = "Byte offset from the superblock start";
+        } else if (r.name === "rotation_block_offset") {
+            s = "Byte offset from the superblock start";
+        }
+        break;
+    case 0x6042004E:
+        if (r.name === "first_field") {
+            s = "Historic in-core link word";
+        } else if (r.name === "superblock_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "cylinder_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "inode_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "data_block_fragment") {
+            s = "First data fragment within a cylinder group";
+        } else if (r.name === "cylinder_group_offset") {
+            s = "Fragment offset used by the legacy cylinder-group placement formula";
+        } else if (r.name === "rotation_delay") {
+            s = "Milliseconds";
+        } else if (r.name === "filesystem_to_disk_shift") {
+            s = "Shift converting fragment numbers to 512-byte sector numbers";
+        } else if (r.name === "old_summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "incore_pointer_padding") {
+            s = "Historical in-memory pointers; pointer width is host dependent, so retained physically";
+        } else if (r.name === "provider_fragments") {
+            s = "Provider size in filesystem fragments";
+        } else if (r.name === "actual_superblock_offset") {
+            s = "Byte offset relative to the volume";
+        } else if (r.name === "standard_superblock_offset") {
+            s = "Byte offset relative to the volume";
+        } else if (r.name === "summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "rotation_position_offset") {
+            s = "Byte offset from the superblock start";
+        } else if (r.name === "rotation_block_offset") {
+            s = "Byte offset from the superblock start";
+        }
+        break;
+    case 0x6042004F:
+        if (r.name === "link") {
+            s = "Historic in-core link word";
+        } else if (r.name === "rolled") {
+            s = "Logging roll state";
+        } else if (r.name === "superblock_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "cylinder_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "inode_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "data_block_fragment") {
+            s = "First data fragment within a cylinder group";
+        } else if (r.name === "cylinder_group_offset") {
+            s = "Fragment offset used by the legacy cylinder-group placement formula";
+        } else if (r.name === "rotation_delay") {
+            s = "Milliseconds";
+        } else if (r.name === "filesystem_to_disk_shift") {
+            s = "Shift converting fragment numbers to 512-byte sector numbers";
+        } else if (r.name === "old_summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "log_block") {
+            s = "Filesystem block number of the embedded log";
+        } else if (r.name === "rotation_position_offset") {
+            s = "Byte offset from the superblock start";
+        } else if (r.name === "rotation_block_offset") {
+            s = "Byte offset from the superblock start";
+        }
+        break;
+    case 0x60420050:
+        if (r.name === "link") {
+            s = "Historic in-core link word";
+        } else if (r.name === "rolled") {
+            s = "Logging roll state";
+        } else if (r.name === "superblock_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "cylinder_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "inode_block_fragment") {
+            s = "Filesystem fragment number, relative to a cylinder group";
+        } else if (r.name === "data_block_fragment") {
+            s = "First data fragment within a cylinder group";
+        } else if (r.name === "cylinder_group_offset") {
+            s = "Fragment offset used by the legacy cylinder-group placement formula";
+        } else if (r.name === "rotation_delay") {
+            s = "Milliseconds";
+        } else if (r.name === "filesystem_to_disk_shift") {
+            s = "Shift converting fragment numbers to 512-byte sector numbers";
+        } else if (r.name === "old_summary_fragment") {
+            s = "Filesystem fragment number";
+        } else if (r.name === "log_block") {
+            s = "Filesystem block number of the embedded log";
+        } else if (r.name === "rotation_position_offset") {
+            s = "Byte offset from the superblock start";
+        } else if (r.name === "rotation_block_offset") {
+            s = "Byte offset from the superblock start";
+        }
+        break;
+    case 0x60420051:
+        if (r.name === "old_block_totals_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "old_positions_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "used_inode_map_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "free_fragment_map_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "next_free_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        }
+        break;
+    case 0x60420052:
+        if (r.name === "old_block_totals_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "old_positions_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "used_inode_map_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "free_fragment_map_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        } else if (r.name === "next_free_offset") {
+            s = "Byte offset inside this cylinder-group block";
+        }
+        break;
+    case 0x60420053:
+        if (r.name === "cluster_summary_offset") {
+            s = "Byte offset inside the cylinder-group block";
+        } else if (r.name === "cluster_map_offset") {
+            s = "Byte offset inside the cylinder-group block";
+        }
+        break;
+    case 0x60420054:
+        if (r.name === "cluster_summary_offset") {
+            s = "Byte offset inside the cylinder-group block";
+        } else if (r.name === "cluster_map_offset") {
+            s = "Byte offset inside the cylinder-group block";
+        }
+        break;
+    case 0x60420055:
+        if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x60420056:
+        if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x60420057:
+        if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x60420058:
+        if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x60420059:
+        if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        } else if (r.name === "xattr_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        }
+        break;
+    case 0x6042005A:
+        if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        } else if (r.name === "xattr_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        }
+        break;
+    case 0x6042005B:
+        if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        } else if (r.name === "xattr_fragments") {
+            s = "Filesystem fragment numbers";
+        }
+        break;
+    case 0x6042005C:
+        if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        } else if (r.name === "xattr_fragments") {
+            s = "Filesystem fragment numbers";
+        }
+        break;
+    case 0x6042005D:
+        if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x6042005E:
+        if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x60420063:
+        if (r.name === "fragment") {
+            s = "Filesystem fragment number";
+        }
+        break;
+    case 0x60420064:
+        if (r.name === "fragment") {
+            s = "Filesystem fragment number";
+        }
+        break;
+    case 0x60420065:
+        if (r.name === "fragment") {
+            s = "Filesystem fragment number";
+        }
+        break;
+    case 0x60420066:
+        if (r.name === "fragment") {
+            s = "Filesystem fragment number";
+        }
+        break;
+    case 0x60420067:
+        if (r.name === "old_log_start") {
+            s = "Filesystem block number";
+        } else if (r.name === "old_log_end") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_allocation_unit_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "extent_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "extent_operation_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_list_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "free_data_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "first_extent_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_extent_operation_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_list_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_free_data_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "max_tier") {
+            s = "log2 data blocks per allocation unit";
+        }
+        break;
+    case 0x60420068:
+        if (r.name === "old_log_start") {
+            s = "Filesystem block number";
+        } else if (r.name === "old_log_end") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_allocation_unit_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "extent_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "extent_operation_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_list_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "free_data_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "first_extent_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_extent_operation_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_list_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_free_data_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "max_tier") {
+            s = "log2 data blocks per allocation unit";
+        }
+        break;
+    case 0x60420069:
+        if (r.name === "old_log_start") {
+            s = "Filesystem block number";
+        } else if (r.name === "old_log_end") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_allocation_unit_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "extent_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "extent_operation_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_list_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "free_data_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "first_extent_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_extent_operation_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_list_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_free_data_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "max_tier") {
+            s = "log2 data blocks per allocation unit";
+        } else if (r.name === "object_location_extents") {
+            s = "Filesystem block numbers of primary and replica OLT";
+        }
+        break;
+    case 0x6042006A:
+        if (r.name === "old_log_start") {
+            s = "Filesystem block number";
+        } else if (r.name === "old_log_end") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_allocation_unit_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "extent_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "extent_operation_map_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "inode_list_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "free_data_block") {
+            s = "Block offset inside each allocation unit";
+        } else if (r.name === "first_extent_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_map_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_extent_operation_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_inode_list_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_free_data_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "max_tier") {
+            s = "log2 data blocks per allocation unit";
+        } else if (r.name === "object_location_extents") {
+            s = "Filesystem block numbers of primary and replica OLT";
+        }
+        break;
+    case 0x6042006B:
+        if (r.name === "lun_identity") {
+            s = "Version-dependent LUN identity";
+        } else if (r.name === "size_units") {
+            s = "Physical volume size divided by 256";
+        } else if (r.name === "creation_time") {
+            s = "Stored time word, believed to use microseconds";
+        } else if (r.name === "modification_time") {
+            s = "Stored time word, believed to use microseconds";
+        }
+        break;
+    case 0x6042006C:
+        if (r.name === "blocks") {
+            s = "Segment count plus extent count, according to vmfs-tools";
+        } else if (r.name === "creation_time") {
+            s = "Stored time word, believed to use microseconds";
+        } else if (r.name === "modification_time") {
+            s = "Stored time word, believed to use microseconds";
+        }
+        break;
+    case 0x60420071:
+        if (r.name === "block_id") {
+            s = "Packed allocation type, flags, and block index";
+        }
+        break;
+    case 0x60420073:
+        if (r.name === "root_block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420074:
+        if (r.name === "free_space_start") {
+            s = "Byte offset in this node";
+        }
+        break;
+    case 0x60420075:
+        if (r.name === "locality_and_type") {
+            s = "Low four bits contain key type; upper 60 bits locality";
+        } else if (r.name === "object_and_type") {
+            s = "Low 60 bits object ID; high bits encode key variant";
+        } else if (r.name === "offset") {
+            s = "Encoded key offset; meaning depends on the item plugin";
+        } else if (r.name === "data_offset") {
+            s = "Byte offset inside this node";
+        }
+        break;
+    case 0x60420076:
+        if (r.name === "block") {
+            s = "Filesystem block number";
+        }
+        break;
+    case 0x60420077:
+        if (r.name === "block") {
+            s = "Filesystem block number; zero denotes a sparse extent";
+        }
+        break;
+    case 0x60420078:
+        if (r.name === "parent") {
+            s = "Encoded HAMMER zone/volume/offset address";
+        }
+        break;
+    case 0x60420079:
+        if (r.name === "parent") {
+            s = "Encoded HAMMER zone/volume/offset address";
+        }
+        break;
+    case 0x6042007A:
+        if (r.name === "key") {
+            s = "Index key: logical byte end offset or a directory-name hash, depending on record type";
+        } else if (r.name === "subtree") {
+            s = "Encoded HAMMER zone/volume/offset address";
+        }
+        break;
+    case 0x6042007B:
+        if (r.name === "key") {
+            s = "Index key: logical byte end offset or a directory-name hash, depending on record type";
+        } else if (r.name === "subtree") {
+            s = "Encoded HAMMER zone/volume/offset address";
+        }
+        break;
+    case 0x6042007C:
+        if (r.name === "key") {
+            s = "Index key: logical byte end offset or a directory-name hash, depending on record type";
+        } else if (r.name === "data_address") {
+            s = "Encoded HAMMER zone/volume/offset address";
+        }
+        break;
+    case 0x6042007D:
+        if (r.name === "key") {
+            s = "Index key: logical byte end offset or a directory-name hash, depending on record type";
+        } else if (r.name === "data_address") {
+            s = "Encoded HAMMER zone/volume/offset address";
+        }
+        break;
+    case 0x6042007E:
+        if (r.name === "change_time") {
+            s = "HAMMER timestamp in microseconds since Unix epoch";
+        } else if (r.name === "inline_extension") {
+            s = "Inline symlink bytes for a sufficiently short symlink";
+        } else if (r.name === "modification_time") {
+            s = "HAMMER timestamp in microseconds since Unix epoch";
+        } else if (r.name === "access_time") {
+            s = "HAMMER timestamp in microseconds since Unix epoch";
+        }
+        break;
+    case 0x6042007F:
+        if (r.name === "change_time") {
+            s = "HAMMER timestamp in microseconds since Unix epoch";
+        } else if (r.name === "inline_extension") {
+            s = "Inline symlink bytes for a sufficiently short symlink";
+        } else if (r.name === "modification_time") {
+            s = "HAMMER timestamp in microseconds since Unix epoch";
+        } else if (r.name === "access_time") {
+            s = "HAMMER timestamp in microseconds since Unix epoch";
+        }
+        break;
+    case 0x60420082:
+        if (r.name === "path_table_block") {
+            s = "Logical 2048-byte block number";
+        } else if (r.name === "creation_date") {
+            s = "ASCII YYYYMMDDhhmmsscc";
+        } else if (r.name === "modification_date") {
+            s = "ASCII YYYYMMDDhhmmsscc";
+        } else if (r.name === "expiration_date") {
+            s = "ASCII YYYYMMDDhhmmsscc";
+        } else if (r.name === "effective_date") {
+            s = "ASCII YYYYMMDDhhmmsscc";
+        }
+        break;
+    case 0x60420084:
+        if (r.name === "directory_block") {
+            s = "Logical 2048-byte block number";
+        }
+        break;
+    case 0x60420085:
+        if (r.name === "file_block") {
+            s = "Logical 2048-byte block number";
+        }
+        break;
+    case 0x60420087:
+        if (r.name === "minute_bcd") {
+            s = "Packed BCD minute of absolute sector position";
+        } else if (r.name === "second_bcd") {
+            s = "Packed BCD second of absolute sector position";
+        } else if (r.name === "frame_bcd") {
+            s = "Packed BCD frame of absolute sector position";
+        }
+        break;
+    case 0x60420089:
+        if (r.name === "position") {
+            s = "Byte position within the logical VMFS volume";
+        } else if (r.name === "heartbeat_position") {
+            s = "Byte position within the logical VMFS volume";
+        } else if (r.name === "modification_time") {
+            s = "Stored metadata time word; units are not established here";
+        }
+        break;
+    case 0x6042008A:
+        if (r.name === "data_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "modification_time") {
+            s = "Seconds since 1978-01-01";
+        }
+        break;
+    case 0x6042008B:
+        if (r.name === "hash_table_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "first_directory_block") {
+            s = "Filesystem block number";
+        } else if (r.name === "modification_time") {
+            s = "Seconds since 1978-01-01";
+        }
+        break;
+    case 0x6042008C:
+        if (r.name === "old_uid_gid_or_inode") {
+            s = "Legacy union: two 16-bit owner IDs or an in-core inode number";
+        } else if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x6042008D:
+        if (r.name === "old_uid_gid_or_inode") {
+            s = "Legacy union: two 16-bit owner IDs or an in-core inode number";
+        } else if (r.name === "direct_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "indirect_fragments") {
+            s = "Filesystem fragment numbers";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x6042008E:
+        if (r.name === "old_uid_gid_or_inode") {
+            s = "Legacy union: two 16-bit owner IDs or an in-core inode number";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    case 0x6042008F:
+        if (r.name === "old_uid_gid_or_inode") {
+            s = "Legacy union: two 16-bit owner IDs or an in-core inode number";
+        } else if (r.name === "allocated_sectors") {
+            s = "512-byte sectors";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxmf_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxmf_read(c, p, b, b_o, n) {
+    return sxmf_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxmf16(b, b_o, o) {
+    return o === 1 ? b[b_o] << 8 | b[b_o + 1] : b[b_o + 1] << 8 | b[b_o];
+}
+function sxmf32(b, b_o, o) {
+    if (o === 2) {
+        return ((sxmf16(b, b_o, 0) << 16) >>> 0 | sxmf16(b, b_o + 2, 0)) >>> 0;
+    }
+    return o === 1 ? ((sxmf16(b, b_o, 1) << 16) >>> 0 | sxmf16(b, b_o + 2, 1)) >>> 0 : ((sxmf16(b, b_o + 2, 0) << 16) >>> 0 | sxmf16(b, b_o, 0)) >>> 0;
+}
+function sxmf64(b, b_o, o) {
+    return o === 1 ? sxOr64(sxShl64(sxmf32(b, b_o, 1), 32), sxmf32(b, b_o + 4, 1)) : sxOr64(sxShl64(sxmf32(b, b_o + 4, 0), 32), sxmf32(b, b_o, 0));
+}
+function sxmf_pow(v) {
+    return !!(v && !sxAnd64(v, sxU64(v - 1)));
+}
+function sxmf_put(c, l, p, n) {
+    if (!n) {
+        return true;
+    }
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var lo = 0;
+    var hi = c.count;
+    if (n > 1048576 || n > Math.floor(SX_U64_MAX / z) || !sxmf_span(c, p, n * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        var at = (c.items[m].offset - c.f.base_address < 0 ? c.items[m].offset - c.f.base_address + SX_U64_MAX : c.items[m].offset - c.f.base_address);
+        if (at < p) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && sxU64(c.items[sxU64(lo - 1)].offset - c.f.base_address) + sxU64(c.items[sxU64(lo - 1)].total_size) > p) {
+        return true;
+    }
+    if (lo < c.count && (c.items[lo].offset - c.f.base_address < 0 ? c.items[lo].offset - c.f.base_address + SX_U64_MAX : c.items[lo].offset - c.f.base_address) < p + n * z) {
+        return true;
+    }
+    var prior = c.count;
+    if (!sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n)) {
+        return false;
+    }
+    if (lo < prior) {
+        var row = sxCopy_xx_data_struct(null, c.items[prior]);
+        sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(prior - lo) * 56) / 56), sxCopy_xx_data_struct);
+        c.items[lo] = sxCopy_xx_data_struct(null, row);
+    }
+    return true;
+}
+function sxmf_queue_add(q, p, kind, depth) {
+    if (!p || depth > 32 || q.count >= 0x1000) {
+        return;
+    }
+    for (var i = 0; i < q.count; i++) {
+        if (q.items[i].p === p && q.items[i].kind === kind) {
+            return;
+        }
+    }
+    q.items[q.count++] = sxCopy_sxmf_task(null, { p: p, kind: kind, depth: depth });
+}
+function sxmf_ufs_dir(c, p, size, bs, order, solar) {
+    var h = [];
+    for (var at = 0, visits = 0; at + 8 <= size && visits++ < 262144 && c.count < 24000; ) {
+        var limit = sxU64(bs - at % bs);
+        if (limit > sxU64(size - at)) {
+            limit = sxU64(size - at);
+        }
+        if (!sxmf_read(c, p + at, h, 0, 8)) {
+            break;
+        }
+        var n = sxmf16(h, 4, order);
+        var name = solar ? sxmf16(h, 6, order) : h[7];
+        if (n < 8 || n > limit || sxAnd64(n, 3) || name > sxU64(n - 8)) {
+            break;
+        }
+        if (!sxmf_put(c, solar ? order === 1 ? sxmf_sufs_directory_entry_be : sxmf_sufs_directory_entry_le : order === 1 ? sxmf_ufs_directory_entry_be : sxmf_ufs_directory_entry_le, p + at, 1)) {
+            return false;
+        }
+        at += n;
+    }
+    return true;
+}
+function sxmf_ufs(c) {
+    var solar = c.f.file_type === "SUFS";
+    var two = c.f.file_type === "UFS2";
+    var candidates = [two ? 65536 : 8192, 262144, 0];
+    var sbp = 0;
+    var order = 2;
+    var h = [];
+    var magic = two ? 0x19540119 : 0x011954;
+    for (var i = 0; i < (two ? 3 : 1); i++) {
+        if (sxmf_read(c, candidates[i], h, 0, 1376)) {
+            if (sxmf32(h, 1372, 0) === magic) {
+                order = 0;
+            } else if (sxmf32(h, 1372, 1) === magic) {
+                order = 1;
+            } else {
+                continue;
+            }
+            sbp = candidates[i];
+            break;
+        }
+    }
+    if (order === 2) {
+        return false;
+    }
+    var updated = !!(two || h[211] & 0x80);
+    var sl = solar ? order === 1 ? sxmf_sufs_superblock_be : sxmf_sufs_superblock_le : updated ? order === 1 ? sxmf_ufs_modern_superblock_be : sxmf_ufs_modern_superblock_le : order === 1 ? sxmf_ufs1_legacy_superblock_be : sxmf_ufs1_legacy_superblock_le;
+    if (!sxmf_put(c, sl, sbp, 1)) {
+        return false;
+    }
+    var bs = sxmf32(h, 48, order);
+    var fs = sxmf32(h, 52, order);
+    var groups = sxmf32(h, 44, order);
+    var ipg = sxmf32(h, 184, order);
+    var fpg = sxmf32(h, 188, order);
+    var iblk = sxmf32(h, 16, order);
+    var cblk = sxmf32(h, 12, order);
+    var sblk = sxmf32(h, 8, order);
+    var goff = sxmf32(h, 24, order);
+    var gmask = sxmf32(h, 28, order);
+    var cgsize = sxmf32(h, 160, order);
+    var isize = two ? 256 : 128;
+    if (!sxmf_pow(bs) || bs < 4096 || bs > 65536 || !sxmf_pow(fs) || fs < 512 || fs > bs || !groups || groups > 4096 || !ipg || ipg > 262144 || !fpg || cgsize < 104 || cgsize > bs || iblk >= fpg || cblk >= iblk) {
+        return true;
+    }
+    var cg = sxAlloc(cgsize);
+    var ino = [];
+    var q = sxNew_sxmf_queue();
+    if (cg === null || q === null) {
+        return false;
+    }
+    var ok = true;
+    var visited = 0;
+    for (var g = 0; g < groups && visited < 262144 && c.count < 24000; g++) {
+        var start = g * fpg + (two ? 0 : goff * sxAnd64(g, sxNot64(gmask)));
+        if (start > SX_U64_MAX - iblk || start + iblk > Math.floor(SX_U64_MAX / fs)) {
+            break;
+        }
+        var ip = (start + iblk) * fs;
+        var cp = (start + cblk) * fs;
+        var sp = (start + sblk) * fs;
+        if (!sxmf_read(c, cp, cg, 0, cgsize) || sxmf32(cg, 4, order) !== 0x90255 || sxmf32(cg, 12, order) !== g) {
+            continue;
+        }
+        if (!sxmf_put(c, order === 1 ? sxmf_ufs_cylinder_group_prefix_be : sxmf_ufs_cylinder_group_prefix_le, cp, 1)) {
+            ok = false;
+            break;
+        }
+        var bitmap = sxmf32(cg, 92, order);
+        if (two && cgsize >= 168 && bitmap >= 168 && !sxmf_put(c, order === 1 ? sxmf_ufs_cylinder_group_tail_be : sxmf_ufs_cylinder_group_tail_le, cp + 104, 1)) {
+            ok = false;
+            break;
+        }
+        var sig = [];
+        if (sp !== sbp && sxmf_read(c, sp + 1372, sig, 0, 4) && sxmf32(sig, 0, order) === magic && !sxmf_put(c, sl, sp, 1)) {
+            ok = false;
+            break;
+        }
+        if (bitmap > cgsize || Math.floor((ipg + 7) / 8) > sxU64(cgsize - bitmap) || ipg > Math.floor(SX_U64_MAX / isize) || !sxmf_span(c, ip, ipg * isize)) {
+            continue;
+        }
+        for (var j = 0; j < ipg && visited++ < 262144 && c.count < 24000; j++) {
+            if (!(cg[bitmap + Math.floor(j / 8)] & 1 << sxAnd64(j, 7))) {
+                continue;
+            }
+            var at = ip + j * isize;
+            if (!sxmf_read(c, at, ino, 0, isize)) {
+                break;
+            }
+            var mode = sxmf16(ino, 0, order);
+            var kind = mode & 61440;
+            if (!kind) {
+                continue;
+            }
+            var size = sxmf64(ino, two ? 16 : 8, order);
+            var sectors = two ? sxmf64(ino, 24, order) : sxmf32(ino, 104, order);
+            var inlink = kind === 40960 && !sectors && size <= (two ? 120 : 60);
+            var l = solar ? order === 1 ? sxmf_sufs_inode_be : sxmf_sufs_inode_le : two ? inlink ? order === 1 ? sxmf_ufs2_symlink_inode_be : sxmf_ufs2_symlink_inode_le : order === 1 ? sxmf_ufs2_inode_be : sxmf_ufs2_inode_le : updated ? inlink ? order === 1 ? sxmf_ufs1_symlink_inode_be : sxmf_ufs1_symlink_inode_le : order === 1 ? sxmf_ufs1_inode_be : sxmf_ufs1_inode_le : inlink ? order === 1 ? sxmf_ufs1_legacy_symlink_inode_be : sxmf_ufs1_legacy_symlink_inode_le : order === 1 ? sxmf_ufs1_legacy_inode_be : sxmf_ufs1_legacy_inode_le;
+            if (!sxmf_put(c, l, at, 1)) {
+                ok = false;
+                break;
+            }
+            if (inlink) {
+                continue;
+            }
+            var po = two ? 112 : 40;
+            var pw = two ? 8 : 4;
+            for (var k = 0; k < 3; k++) {
+                var ptr = two ? sxmf64(ino, po + ((12 * pw) >>> 0) + sxMul32(k, pw), order) : sxmf32(ino, po + ((12 * pw) >>> 0) + sxMul32(k, pw), order);
+                if (ptr < Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / fs)) {
+                    sxmf_queue_add(q, ptr * fs, (k + 1) >>> 0, 0);
+                }
+            }
+            if (kind === 16384) {
+                for (k = 0; k < 12 && k * bs < size; k++) {
+                    ptr = two ? sxmf64(ino, po + sxMul32(k, pw), order) : sxmf32(ino, po + sxMul32(k, pw), order);
+                    var n = sxU64(size - k * bs);
+                    if (n > bs) {
+                        n = bs;
+                    }
+                    if (ptr && ptr < Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / fs) && sxmf_span(c, ptr * fs, n) && !sxmf_ufs_dir(c, ptr * fs, n, 512, order, solar)) {
+                        ok = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!ok) {
+            break;
+        }
+    }
+    var b = sxAlloc(bs);
+    if (b === null) {
+        ok = false;
+    }
+    while (ok && q.index < q.count && c.count < 24000) {
+        var t = sxCopy_sxmf_task(null, q.items[q.index++]);
+        if (!sxmf_read(c, t.p, b, 0, bs)) {
+            continue;
+        }
+        pw = two ? 8 : 4;
+        if (!sxmf_put(c, two ? order === 1 ? sxmf_ufs_fragment_pointer64_be : sxmf_ufs_fragment_pointer64_le : order === 1 ? sxmf_ufs_fragment_pointer32_be : sxmf_ufs_fragment_pointer32_le, t.p, Math.floor(bs / pw))) {
+            ok = false;
+            break;
+        }
+        if (t.kind > 1) {
+            for (k = 0; k < Math.floor(bs / pw); k++) {
+                ptr = two ? sxmf64(b, k * pw, order) : sxmf32(b, k * pw, order);
+                if (ptr < Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / fs)) {
+                    sxmf_queue_add(q, ptr * fs, (t.kind - 1) >>> 0, (t.depth + 1) >>> 0);
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_modernfs_supports(type) {
+    switch (type) {
+    case "UFS1":
+    case "UFS2":
+    case "SUFS":
+    case "F2FS":
+    case "JFS":
+    case "NILFS2":
+    case "REISERFS":
+    case "AMIGA_SFS":
+    case "XFS":
+    case "ZFS":
+    case "GFS2":
+    case "FOSSIL_FS":
+    case "HAMMER_FS":
+    case "REFS":
+    case "VXFS":
+    case "VMFS":
+    case "HPFS":
+    case "EROFS":
+    case "CDI_FS":
+    case "OPERA_FS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxmf_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxmf_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxmf_order, true);
+    return !c.failed;
+}
+function sx_modernfs_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "UFS1":
+    case "UFS2":
+    case "SUFS":
+        ok = sxmf_ufs(c);
+        break;
+    case "F2FS":
+        ok = sx_f2fs_build(c);
+        break;
+    case "JFS":
+        ok = sx_jfs_build(c);
+        break;
+    case "NILFS2":
+        ok = sx_nilfs2_build(c);
+        break;
+    case "REISERFS":
+        ok = sx_reiserfs_build(c);
+        break;
+    case "AMIGA_SFS":
+        ok = sx_amiga_sfs_build(c);
+        break;
+    case "XFS":
+        ok = sx_xfs_build(c);
+        break;
+    case "ZFS":
+        ok = sx_zfs_build(c);
+        break;
+    case "GFS2":
+        ok = sx_gfs2_build(c);
+        break;
+    case "FOSSIL_FS":
+        ok = sx_fossil_fs_build(c);
+        break;
+    case "HAMMER_FS":
+        ok = sx_hammer_fs_build(c);
+        break;
+    case "REFS":
+        ok = sx_refs_build(c);
+        break;
+    case "VXFS":
+        ok = sx_vxfs_build(c);
+        break;
+    case "VMFS":
+        ok = sx_vmfs_build(c);
+        break;
+    case "HPFS":
+        ok = sx_hpfs_build(c);
+        break;
+    case "EROFS":
+        ok = sx_erofs_build(c);
+        break;
+    case "CDI_FS":
+        ok = sx_cdi_fs_build(c);
+        break;
+    case "OPERA_FS":
+        ok = sx_opera_fs_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!((ok || c.count) && !c.failed && c.count && sxmf_finish(c));
+}

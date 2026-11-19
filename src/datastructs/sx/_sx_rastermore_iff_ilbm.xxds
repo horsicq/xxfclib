@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/iff_ilbm/xx_iff_ilbm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_ilbm_form_fields = layout([chars("signature", 4, SIGNATURE), u32("form_size", SIZE), chars("form_type", 4, ID)]);
+var sxrm_ilbm_form = sxLayout(0x601D0023, "ilbm_form", BE, sxrm_ilbm_form_fields);
+var sxrm_ilbm_chunk_fields = layout([chars("chunk_type", 4, ID), u32("data_size", SIZE)]);
+var sxrm_ilbm_chunk = sxLayout(0x601D0024, "ilbm_chunk", BE, sxrm_ilbm_chunk_fields);
+var sxrm_ilbm_bitmap_header_fields = layout([u16("width", COUNT), u16("height", COUNT), i16("x"), i16("y"), u8("planes", COUNT),
+    u8("masking", ID), u8("compression", ID), u8("padding", RESERVED), u16("transparent_color", ID), u8("x_aspect"),
+    u8("y_aspect"), i16("page_width", COUNT), i16("page_height", COUNT)]);
+var sxrm_ilbm_bitmap_header = sxLayout(0x601D0025, "ilbm_bitmap_header", BE, sxrm_ilbm_bitmap_header_fields);
+var sxrm_ilbm_palette_entry_fields = layout([u8("red"), u8("green"), u8("blue")]);
+var sxrm_ilbm_palette_entry = sxLayout(0x601D0026, "ilbm_palette_entry", BE, sxrm_ilbm_palette_entry_fields);
+var sxrm_ilbm_view_mode_fields = layout([u32("flags", FLAGS)]);
+var sxrm_ilbm_view_mode = sxLayout(0x601D0027, "ilbm_view_mode", BE, sxrm_ilbm_view_mode_fields);
+function sxrm_ilbm(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 12) || sxMemcmp(h, "FORM", 4) || sxMemcmpAt(h, 8, "ILBM", 0, 4) || !sxrm_add(c, sxrm_ilbm_form, 0)) {
+        return false;
+    }
+    var end = sxrm32(h, 4, true) + 8;
+    var p = 12;
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    for (var step = 0; p < end && step < 4096; step++) {
+        if (sxU64(end - p) < 8 || !sxrm_read(c, p, h, 0, 8)) {
+            break;
+        }
+        var n = sxrm32(h, 4, true);
+        if (n > sxU64(sxU64(end - p) - 8)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_ilbm_chunk, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "BMHD", 4) && n >= 20) {
+            if (!sxrm_add(c, sxrm_ilbm_bitmap_header, p + 8)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "CMAP", 4) && Math.floor(n / 3) <= 256 && n >= 3) {
+            if (!sxrm_table(c, sxrm_ilbm_palette_entry, p + 8, Math.floor(n / 3))) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "CAMG", 4) && n >= 4) {
+            if (!sxrm_add(c, sxrm_ilbm_view_mode, p + 8)) {
+                return false;
+            }
+        }
+        p += 8 + n + (n & 1);
+    }
+    return !c.failed;
+}
+function sx_iff_ilbm_build(c) {
+    return sxrm_ilbm(c);
+}

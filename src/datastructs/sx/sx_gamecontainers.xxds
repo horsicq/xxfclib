@@ -1,0 +1,86 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gamecontainers.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_gamecontainers");
+include("_sx_gamecontainers_battleisle");
+include("_sx_gamecontainers_beatthehouse");
+include("_sx_gamecontainers_bgi");
+include("_sx_gamecontainers_bgi2");
+include("_sx_gamecontainers_catsystem_kif");
+include("_sx_gamecontainers_cpk");
+include("_sx_gamecontainers_dxa");
+include("_sx_gamecontainers_krml");
+include("_sx_gamecontainers_livemaker");
+include("_sx_gamecontainers_malie_lib");
+include("_sx_gamecontainers_megatechvol");
+include("_sx_gamecontainers_mxs");
+include("_sx_gamecontainers_nitroplus_npa");
+include("_sx_gamecontainers_nitroplus_npk2");
+include("_sx_gamecontainers_noa");
+include("_sx_gamecontainers_qlie_pack");
+include("_sx_gamecontainers_res");
+include("_sx_gamecontainers_rpg_maker_rgssad");
+include("_sx_gamecontainers_rsc");
+include("_sx_gamecontainers_sci");
+include("_sx_gamecontainers_seadata");
+include("_sx_gamecontainers_sinner");
+include("_sx_gamecontainers_stk");
+include("_sx_gamecontainers_stos_memory_bank");
+include("_sx_gamecontainers_valve_gcf_cache");
+include("_sx_gamecontainers_visionaire_studio_vis");
+include("_sx_gamecontainers_ypf");
+
+function fileTypes() { return ["KRML", "SCI", "SEADATA", "STK", "BEATTHEHOUSE", "BATTLEISLE", "MXS", "SINNER", "MEGATECHVOL",
+    "RES", "RSC", "VISIONAIRE_STUDIO_VIS", "BGI", "BGI2", "CPK", "DXA", "LIVEMAKER", "NOA", "RPG_MAKER_RGSSAD",
+    "STOS_MEMORY_BANK", "VALVE_GCF_CACHE", "YPF", "NITROPLUS_NPK2", "CATSYSTEM_KIF", "MALIE_LIB", "NITROPLUS_NPA", "QLIE_PACK"]; }
+
+var sx_gamecontainers_layouts = [sxgco_filename_byte, sxgco_encoded_byte, sxgco_count16, sxgco_offset32, sxgco_size32,
+    sxgco_name_size32, sxgco_krml_header, sxgco_krml_entry, sxgco_sci_header, sxgco_sci_entry, sxgco_seadata_header,
+    sxgco_seadata_entry, sxgco_seadata_end, sxgco_stk_entry, sxgco_stk2_header, sxgco_stk2_directory, sxgco_stk2_entry,
+    sxgco_bth_header, sxgco_battle_tct, sxgco_battle_entry, sxgco_mxs_entry, sxgco_sinner_header, sxgco_sinner_entry,
+    sxgco_res_entry, sxgco_rsc_entry, sxgco_vis_header_le, sxgco_vis_header_be, sxgco_vis_index_marker, sxgco_vis_entry,
+    sxgco_bgi_header, sxgco_bgi_entry, sxgco_bgi2_entry, sxgco_dxa_header1, sxgco_dxa_header4, sxgco_dxa_header6,
+    sxgco_livemaker_header, sxgco_livemaker_offset, sxgco_livemaker_flags, sxgco_livemaker_scramble, sxgco_noa_header,
+    sxgco_noa_record, sxgco_noa_entry, sxgco_rgss_header, sxgco_rgss_seed, sxgco_rgss_name_size, sxgco_rgss_data_size,
+    sxgco_rgss_entry3, sxgco_rgss_end3, sxgco_stos_header, sxgco_stos_sprite, sxgco_stos_sprite_param,
+    sxgco_stos_palette_header, sxgco_stos_color, sxgco_stos_icon_header, sxgco_npk2_header, sxgco_kif_header, sxgco_kif_entry32,
+    sxgco_kif_entry64, sxgco_malie_header, sxgco_malieu_header, sxgco_malie_entry, sxgco_malieu_entry, sxgco_ypf_header,
+    sxgco_ypf_name, sxgco_ypf_fields, sxgco_ypf_extra8, sxgco_ypf_offset_high, sxgco_npa_header, sxgco_npa_name_size,
+    sxgco_npa_fields, sxgco_qlie_footer, sxgco_qlie_name_units, sxgco_qlie_entry, sxgco_cpk_packet, sxgco_cpk_utf_header,
+    sxgco_cpk_utf_column, sxgco_cpk_crilayla, sxgco_gcf_header, sxgco_gcf_block_header, sxgco_gcf_block_entry,
+    sxgco_gcf_fragment_header, sxgco_gcf_block_link, sxgco_gcf_map_header, sxgco_gcf_map_entry, sxgco_gcf_directory_header,
+    sxgco_gcf_directory_file, sxgco_gcf_directory_folder, sxgco_gcf_directory_map, sxgco_gcf_directory_link,
+    sxgco_gcf_checksum_header, sxgco_gcf_data_header3, sxgco_gcf_data_header5, sxgco_noa_directory_record, sxgco_noa_count,
+    sxgco_stos_icon, sxgco_gcf_info_word, sxgco_gcf_directory_index, sxgco_gcf_checksum_map_header,
+    sxgco_gcf_checksum_map_entry, sxgco_gcf_checksum];
+
+function structs() {
+    return sxCatalog([sxgco_filename_byte, sxgco_encoded_byte, sxgco_count16, sxgco_offset32, sxgco_size32, sxgco_name_size32,
+        sxgco_krml_header, sxgco_krml_entry, sxgco_sci_header, sxgco_sci_entry, sxgco_seadata_header, sxgco_seadata_entry,
+        sxgco_seadata_end, sxgco_stk_entry, sxgco_stk2_header, sxgco_stk2_directory, sxgco_stk2_entry, sxgco_bth_header,
+        sxgco_battle_tct, sxgco_battle_entry, sxgco_mxs_entry, sxgco_sinner_header, sxgco_sinner_entry, sxgco_res_entry,
+        sxgco_rsc_entry, sxgco_vis_header_le, sxgco_vis_header_be, sxgco_vis_index_marker, sxgco_vis_entry, sxgco_bgi_header,
+        sxgco_bgi_entry, sxgco_bgi2_entry, sxgco_dxa_header1, sxgco_dxa_header4, sxgco_dxa_header6, sxgco_livemaker_header,
+        sxgco_livemaker_offset, sxgco_livemaker_flags, sxgco_livemaker_scramble, sxgco_noa_header, sxgco_noa_record,
+        sxgco_noa_entry, sxgco_rgss_header, sxgco_rgss_seed, sxgco_rgss_name_size, sxgco_rgss_data_size, sxgco_rgss_entry3,
+        sxgco_rgss_end3, sxgco_stos_header, sxgco_stos_sprite, sxgco_stos_sprite_param, sxgco_stos_palette_header,
+        sxgco_stos_color, sxgco_stos_icon_header, sxgco_npk2_header, sxgco_kif_header, sxgco_kif_entry32, sxgco_kif_entry64,
+        sxgco_malie_header, sxgco_malieu_header, sxgco_malie_entry, sxgco_malieu_entry, sxgco_ypf_header, sxgco_ypf_name,
+        sxgco_ypf_fields, sxgco_ypf_extra8, sxgco_ypf_offset_high, sxgco_npa_header, sxgco_npa_name_size, sxgco_npa_fields,
+        sxgco_qlie_footer, sxgco_qlie_name_units, sxgco_qlie_entry, sxgco_cpk_packet, sxgco_cpk_utf_header,
+        sxgco_cpk_utf_column, sxgco_cpk_crilayla, sxgco_gcf_header, sxgco_gcf_block_header, sxgco_gcf_block_entry,
+        sxgco_gcf_fragment_header, sxgco_gcf_block_link, sxgco_gcf_map_header, sxgco_gcf_map_entry, sxgco_gcf_directory_header,
+        sxgco_gcf_directory_file, sxgco_gcf_directory_folder, sxgco_gcf_directory_map, sxgco_gcf_directory_link,
+        sxgco_gcf_checksum_header, sxgco_gcf_data_header3, sxgco_gcf_data_header5, sxgco_noa_directory_record, sxgco_noa_count,
+        sxgco_stos_icon, sxgco_gcf_info_word, sxgco_gcf_directory_index, sxgco_gcf_checksum_map_header,
+        sxgco_gcf_checksum_map_entry, sxgco_gcf_checksum], sx_gamecontainers_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_gamecontainers_build, false);
+}

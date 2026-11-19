@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/blackrock_nsx/xx_blackrock_nsx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_nsx_header_fields = layout([chars("signature", 8, SIGNATURE), u8("major_version", ID), u8("minor_version", ID),
+    u32("header_size", SIZE), chars("label", 16, STRING), chars("comment", 256, STRING), u32("period"), u32("time_resolution"),
+    u16("year"), u16("month"), u16("day_of_week"), u16("day"), u16("hour"), u16("minute"), u16("second"), u16("millisecond"),
+    u32("channel_count", COUNT)]);
+var sxsh_nsx_header = sxLayout(0x602A0001, "nsx_header", LE, sxsh_nsx_header_fields);
+var sxsh_nsx_packet_fields = layout([u8("marker", SIGNATURE), u32("timestamp"), u32("sample_count", COUNT)]);
+var sxsh_nsx_packet = sxLayout(0x602A0003, "nsx_packet", LE, sxsh_nsx_packet_fields);
+function sxsh_nsx(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 314) || sxMemcmp(b, "NEURALCD", 8)) {
+        return false;
+    }
+    var count = sxsh32(b, 310, false);
+    var header = sxsh32(b, 10, false);
+    var at = header;
+    if (!count || count > 1024 || header !== (314 + ((66 * count) >>> 0)) >>> 0 || !sxsh_add(c, sxsh_nsx_header, 0, 314) || !sxsh_table(c, sxsh_nsx_channel, 314, 66, count)) {
+        return false;
+    }
+    for (var i = 0; at < c.size; i++) {
+        if (i >= 4095 || !sx_read(c, at, b, 9) || b[0] !== 1) {
+            return false;
+        }
+        var n = sxsh32(b, 5, false) * count * 2;
+        if (!n || !sxsh_span(c, at + 9, n) || !sxsh_add(c, sxsh_nsx_packet, at, 9)) {
+            return false;
+        }
+        at += 9 + (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    }
+    return at === c.size;
+}
+function sx_blackrock_nsx_build(c) {
+    var ok = false;
+    ok = sxsh_nsx(c);
+    return ok && sxsh_finish(c);
+}

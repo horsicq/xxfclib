@@ -1,0 +1,123 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/rawcd/xx_rawcd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_rawcd_sector_header_fields = layout([field("sync", "byte[12]", 12, SIGNATURE), u8("minute_bcd"), u8("second_bcd"),
+    u8("frame_bcd"), u8("mode", ID)]);
+var sxdt_rawcd_sector_header = sxLayout(0x607A0016, "rawcd_sector_header", LE, sxdt_rawcd_sector_header_fields);
+var sxdt_rawcd_xa_subheader_fields = layout([u8("file_number", ID), u8("channel_number", ID), u8("submode", FLAGS),
+    u8("coding_information", FLAGS), u8("file_number_copy", ID), u8("channel_number_copy", ID), u8("submode_copy", FLAGS),
+    u8("coding_information_copy", FLAGS)]);
+var sxdt_rawcd_xa_subheader = sxLayout(0x607A0017, "rawcd_xa_subheader", LE, sxdt_rawcd_xa_subheader_fields);
+var sxdt_rawcd_edc_fields = layout([u32("edc", CHECKSUM)]);
+var sxdt_rawcd_edc = sxLayout(0x607A0018, "rawcd_edc", LE, sxdt_rawcd_edc_fields);
+var sxdt_cd_frames_sync = [0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 0];
+function sxdt_cd_frames(b) {
+    if (sxMemcmp(b, sxdt_cd_frames_sync, 12)) {
+        return -1;
+    }
+    var n = [];
+    for (var i = 0; i < 3; i++) {
+        var v = b[(12 + i) >>> 0];
+        if ((v & 15) > 9 || v >>> 4 > 9) {
+            return -1;
+        }
+        n[i] = (v >>> 4) * 10 + (v & 15);
+    }
+    if (n[1] >= 60 || n[2] >= 75) {
+        return -1;
+    }
+    return ((((((n[0] * 4500) >>> 0) + ((n[1] * 75) >>> 0)) >>> 0) + n[2]) >>> 0) | 0;
+}
+function sxdt_cd_descriptor(c, p) {
+    var b = [];
+    return sxdt_read(c, p, b, 0, 7) && (b[0] <= 3 || b[0] === 255) && b[6] === 1 && (!sxMemcmpAt(b, 1, "CD001", 0, 5) || !sxMemcmpAt(b, 1, "CD-I ", 0, 5));
+}
+var sxdt_rawcd_sizes = [2352, 2448, 2368];
+var sxdt_rawcd_z = [2336, 2352, 2352, 2448, 2448];
+var sxdt_rawcd_d = [8, 16, 24, 16, 24];
+function sxdt_rawcd(c) {
+    var first = [];
+    var b = [];
+    var stride = 0;
+    var data = 0;
+    var synced = false;
+    if (!sxdt_read(c, 0, first, 0, 24)) {
+        return false;
+    }
+    var frames = sxdt_cd_frames(first);
+    if (frames >= 0 && (first[15] === 1 || first[15] === 2)) {
+        for (var i = 0; i < 3; i++) {
+            if (sxdt_read(c, sxdt_rawcd_sizes[i], b, 0, 24) && sxdt_cd_frames(b) === frames + 1 && b[15] <= 2) {
+                stride = sxdt_rawcd_sizes[i];
+                data = first[15] === 1 ? 16 : 24;
+                synced = true;
+                break;
+            }
+        }
+    }
+    if (!stride) {
+        for (i = 0; i < 5; i++) {
+            if ((c.size < 0 ? c.size + SX_U64_MAX : c.size) % sxdt_rawcd_z[i] || !sxdt_cd_descriptor(c, sxdt_rawcd_z[i] * 16 + sxdt_rawcd_d[i]) || !sxdt_cd_descriptor(c, sxdt_rawcd_z[i] * 17 + sxdt_rawcd_d[i])) {
+                continue;
+            }
+            if (i) {
+                if (!sxdt_read(c, sxdt_rawcd_z[i] * 16, b, 0, 24) || sxdt_cd_frames(b) < 0 || b[15] !== (sxdt_rawcd_d[i] === 16 ? 1 : 2)) {
+                    continue;
+                }
+            }
+            stride = sxdt_rawcd_z[i];
+            data = sxdt_rawcd_d[i];
+            synced = i !== 0;
+            break;
+        }
+    }
+    if (!stride) {
+        return false;
+    }
+    var sectors = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / stride);
+    if (sectors > 1000000) {
+        sectors = 1000000;
+    }
+    for (i = 0; i < sectors && c.count < 24000; i++) {
+        var p = i * stride;
+        if (!sxdt_read(c, p, b, 0, 24)) {
+            break;
+        }
+        var mode = 2;
+        var xa = 0;
+        if (synced) {
+            if (sxdt_cd_frames(b) < 0) {
+                continue;
+            }
+            mode = b[15] & 3;
+            if (mode > 2) {
+                continue;
+            }
+            if (!sxdt_put(c, sxdt_rawcd_sector_header, p, 1)) {
+                return false;
+            }
+            xa = 16;
+        }
+        if (mode === 1) {
+            if (!sxdt_put(c, sxdt_rawcd_edc, p + 2064, 1)) {
+                return false;
+            }
+        } else if (mode === 2) {
+            if (sxMemcmpAt(b, xa, b, xa + 4, 4)) {
+                continue;
+            }
+            if (!sxdt_put(c, sxdt_rawcd_xa_subheader, p + xa, 1) || !sxdt_put(c, sxdt_rawcd_edc, p + xa + 8 + (b[(xa + 2) >>> 0] & 32 ? 2324 : 2048), 1)) {
+                return false;
+            }
+        }
+    }
+    return c.count !== 0;
+}
+function sx_rawcd_build(c) {
+    var ok = false;
+    ok = sxdt_rawcd(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

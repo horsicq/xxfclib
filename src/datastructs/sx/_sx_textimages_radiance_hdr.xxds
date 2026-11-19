@@ -1,0 +1,161 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/radiance_hdr/xx_radiance_hdr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_axis_y_fields = layout([field("axis_y", "char", 0, STRING)]);
+var sxti_axis_y = sxLayout(0x60410006, "textimage_axis_y", LE, sxti_axis_y_fields);
+var sxti_axis_x_fields = layout([field("axis_x", "char", 0, STRING)]);
+var sxti_axis_x = sxLayout(0x60410007, "textimage_axis_x", LE, sxti_axis_x_fields);
+var sxti_radiance_scanline_header_fields = layout([u16("marker", SIGNATURE), u16("width")]);
+var sxti_radiance_scanline_header = sxLayout(0x60410060, "textimage_radiance_scanline_header", BE, sxti_radiance_scanline_header_fields);
+var sxti_radiance_run_fields = layout([u8("run_code"), u8("sample")]);
+var sxti_radiance_run = sxLayout(0x60410061, "textimage_radiance_run", LE, sxti_radiance_run_fields);
+var sxti_radiance_literal_fields = layout([u8("sample_count", COUNT)]);
+var sxti_radiance_literal = sxLayout(0x60410062, "textimage_radiance_literal", LE, sxti_radiance_literal_fields);
+function sxti_radiance(q) {
+    var a = [0];
+    var end = [0];
+    var header = true;
+    var w = [0];
+    var h = [0];
+    if (!sxti_line(q, a, end, false)) {
+        return false;
+    }
+    {
+        if (!sxti_emit(q, sxti_magic, a[0], end[0] - a[0])) {
+            return false;
+        }
+    }
+    while (q.p < q.n && header) {
+        a[0] = q.p;
+        while (q.p < q.n && q.b[q.p] !== 10) {
+            q.p++;
+        }
+        end[0] = q.p;
+        if (q.p < q.n) {
+            q.p++;
+        }
+        if (end[0] > a[0] && q.b[end[0] - 1] === 13) {
+            end[0]--;
+        }
+        if (a[0] === end[0]) {
+            header = false;
+            break;
+        }
+        var eq = a[0];
+        while (eq < end[0] && q.b[eq] !== 61 /*=*/) {
+            eq++;
+        }
+        if (eq < end[0]) {
+            {
+                if (!sxti_emit(q, sxti_define_name, a[0], eq - a[0])) {
+                    return false;
+                }
+            }
+            {
+                if (!sxti_emit(q, sxti_metadata_text, eq + 1, end[0] - eq - 1)) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxti_emit(q, sxti_metadata_text, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+        }
+    }
+    if (header || !sxti_line(q, a, end, false)) {
+        return false;
+    }
+    var next = q.p;
+    q.p = a[0];
+    {
+        if (!sxti_value(q, sxti_axis_y, end[0], null)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_height, end[0], h)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_axis_x, end[0], null)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_width, end[0], w)) {
+            return false;
+        }
+    }
+    q.p = next;
+    if (!w[0] || !h[0] || w[0] > 32767 || h[0] > 4096) {
+        return false;
+    }
+    for (var row = 0; row < h[0]; row++) {
+        if (q.n - q.p < 4) {
+            return false;
+        }
+        var b = q.b, b_o = q.p;
+        var rle = w[0] >= 8 && b[b_o] === 2 && b[b_o + 1] === 2 && !(b[b_o + 2] & 128);
+        if (rle) {
+            {
+                if (!sxti_emit(q, sxti_radiance_scanline_header, q.p, 4)) {
+                    return false;
+                }
+            }
+            if (b[b_o + 2] * 256 + b[b_o + 3] !== w[0]) {
+                return false;
+            }
+            q.p += 4;
+            for (var channel = 0; channel < 4; channel++) {
+                var samples = 0;
+                while (samples < w[0]) {
+                    if (q.p === q.n) {
+                        return false;
+                    }
+                    var op = q.b[q.p];
+                    var n = op > 128 ? (op - 128) >>> 0 : op;
+                    if (!n || n > sxU64(w[0] - samples)) {
+                        return false;
+                    }
+                    var bytes = op > 128 ? 2 : (n + 1) >>> 0;
+                    if (bytes > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p)) {
+                        return false;
+                    }
+                    if (op > 128) {
+                        {
+                            if (!sxti_emit(q, sxti_radiance_run, q.p, 2)) {
+                                return false;
+                            }
+                        }
+                    } else {
+                        {
+                            if (!sxti_emit(q, sxti_radiance_literal, q.p, 1)) {
+                                return false;
+                            }
+                        }
+                    }
+                    q.p += bytes;
+                    samples += n;
+                }
+            }
+        } else {
+            if (w[0] > Math.floor((q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p) / 4)) {
+                return false;
+            }
+            q.p += (w[0] * 4 >= SX_I64_MAX ? w[0] * 4 - SX_U64_MAX : w[0] * 4);
+        }
+        if (q.c.count >= 32000) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_radiance_hdr_build(q) {
+    return sxti_radiance(q);
+}

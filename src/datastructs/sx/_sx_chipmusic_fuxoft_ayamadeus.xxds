@@ -1,0 +1,87 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/fuxoft_ayamadeus/xx_fuxoft_ayamadeus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_text_fields = layout([field("text", "char", 0)]);
+var sxchip_chip_text = sxLayout(0x608F0001, "chip_text", LE, sxchip_chip_text_fields);
+var sxchip_chip_ay_amadeus_address_fields = layout([u16("load_address", VA)]);
+var sxchip_chip_ay_amadeus_address = sxLayout(0x608F0006, "chip_ay_amadeus_address", BE, sxchip_chip_ay_amadeus_address_fields);
+function sxchip_string(c, p) {
+    var ch = [0];
+    var n = 0;
+    while (n < 4096 && sxchip_u8(c, p + n, ch)) {
+        n++;
+        if (!ch[0]) {
+            if (c.count >= 24000) {
+                return true;
+            }
+            for (var i = 0; i < c.count; i++) {
+                var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+                var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+                if (p < a + z && a < p + n) {
+                    return true;
+                }
+            }
+            return sx_add(c, sxchip_chip_text, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+        }
+    }
+    return true;
+}
+function sxchipbe16(b, b_o) {
+    return b[b_o] << 8 | b[b_o + 1];
+}
+function sxchip_delta(c, origin, delta, out) {
+    if (delta < 0) {
+        var d = (-delta < 0 ? -delta + SX_U64_MAX : -delta);
+        if (d > origin) {
+            return false;
+        }
+        out[0] = sxU64(origin - d);
+    } else {
+        if ((delta < 0 ? delta + SX_U64_MAX : delta) > SX_U64_MAX - origin) {
+            return false;
+        }
+        out[0] = origin + (delta & 0xFFFF);
+    }
+    return sxchip_span(c, out[0], 0);
+}
+function sxchip_amadeus(c) {
+    var h = [];
+    if (!sxchip_read(c, 0, h, 20) || sxMemcmp(h, "ZXAYAMAD", 8)) {
+        return false;
+    }
+    if (!sxchip_put(c, sxchip_chip_ay_amadeus_header, 0, 1)) {
+        return false;
+    }
+    var p = [0];
+    for (var i = 12; i <= 14; i = (i + 2) >>> 0) {
+        if (sxchipbe16(h, i) && sxchip_delta(c, i, sxchipbe16(h, i) << 16 >> 16, p) && !sxchip_string(c, p[0])) {
+            return false;
+        }
+    }
+    if (!sxchip_delta(c, 18, sxchipbe16(h, 18) << 16 >> 16, p)) {
+        return true;
+    }
+    for (i = 0; i <= h[16]; i++, p[0] += 4) {
+        var r = [];
+        if (!sxchip_read(c, p[0], r, 4)) {
+            break;
+        }
+        if (!sxchip_put(c, sxchip_chip_ay_song, p[0], 1)) {
+            return false;
+        }
+        var q = [0];
+        if (sxchip_delta(c, p[0], sxchipbe16(r, 0) << 16 >> 16, q) && !sxchip_string(c, q[0])) {
+            return false;
+        }
+        if (sxchip_delta(c, p[0] + 2, sxchipbe16(r, 2) << 16 >> 16, q) && !sxchip_opt(c, sxchip_chip_ay_amadeus_address, q[0], 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_fuxoft_ayamadeus_build(c) {
+    return sxchip_amadeus(c);
+}

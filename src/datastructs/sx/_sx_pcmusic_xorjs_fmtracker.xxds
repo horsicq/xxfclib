@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/xorjs_fmtracker/xx_xorjs_fmtracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_xorjs_header_fields = layout([chars("signature", 8, SIGNATURE), u8("speed"), u8("bpm")]);
+var sxpcm_xorjs_header = sxLayout(0x60940016, "xorjs_header", LE, sxpcm_xorjs_header_fields);
+var sxpcm_xorjs_instrument_fields = layout([u8("modulator_characteristics", FLAGS), u8("modulator_level", FLAGS),
+    u8("modulator_attack_decay", FLAGS), u8("modulator_sustain_release", FLAGS), u8("modulator_waveform", ID),
+    u8("modulator_feedback_connection", FLAGS), u8("carrier_characteristics", FLAGS), u8("carrier_level", FLAGS),
+    u8("carrier_attack_decay", FLAGS), u8("carrier_sustain_release", FLAGS), u8("carrier_waveform", ID),
+    u8("carrier_feedback_connection", FLAGS), chars("name", 24, NONE)]);
+var sxpcm_xorjs_instrument = sxLayout(0x60940017, "xorjs_instrument", LE, sxpcm_xorjs_instrument_fields);
+var sxpcm_xorjs_event_fields = layout([u8("note"), u8("instrument", ID), u8("volume")]);
+var sxpcm_xorjs_event = sxLayout(0x60940018, "xorjs_event", LE, sxpcm_xorjs_event_fields);
+function sxpcm_xorjs(c) {
+    if (!sxpcm_eq(c, 0, "JSR_FMT~", 8) || !sxpcm_put(c, sxpcm_xorjs_header, 0, 1)) {
+        return false;
+    }
+    if (!sxpcm_put(c, sxpcm_xorjs_instrument, 10, 256) || !sxpcm_put(c, sxpcm_pc_pattern_index, 9226, 256)) {
+        return true;
+    }
+    var n = [0];
+    if (!sxpcm_u8(c, 9482, n) || !sxpcm_put(c, sxpcm_pc_pattern_count, 9482, 1)) {
+        return true;
+    }
+    var p = 9483;
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxpcm_put(c, sxpcm_pc_pattern_index, p++, 1)) {
+            return true;
+        }
+        if (!sxpcm_put(c, sxpcm_xorjs_event, p, 1152)) {
+            return true;
+        }
+        p += 3456;
+    }
+    return true;
+}
+function sx_xorjs_fmtracker_build(c) {
+    return sxpcm_xorjs(c);
+}

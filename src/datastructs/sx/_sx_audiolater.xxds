@@ -1,0 +1,1589 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_audiolater.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaul_amd_header_fields = layout([chars("title", 24, STRING), chars("author", 24, STRING)]);
+var sxaul_amd_header = sxLayout(0x60380001, "amd_header", LE, sxaul_amd_header_fields);
+var sxaul_amd_instrument_fields = layout([chars("name", 23, STRING), u8("opl_parameter0", FLAGS), u8("opl_parameter1", FLAGS),
+    u8("opl_parameter2", FLAGS), u8("opl_parameter3", FLAGS), u8("opl_parameter4", FLAGS), u8("opl_parameter5", FLAGS),
+    u8("opl_parameter6", FLAGS), u8("opl_parameter7", FLAGS), u8("opl_parameter8", FLAGS), u8("opl_parameter9", FLAGS),
+    u8("opl_parameter10", FLAGS)]);
+var sxaul_amd_instrument = sxLayout(0x60380002, "amd_instrument", LE, sxaul_amd_instrument_fields);
+var sxaul_amd_orders_fields = layout([u8("order_count", COUNT), u8("pattern_count_minus_one", COUNT), bytes("orders", 128, ID),
+    bytes("magic", 9, SIGNATURE), u8("version", ID)]);
+var sxaul_amd_orders = sxLayout(0x60380003, "amd_orders", LE, sxaul_amd_orders_fields);
+var sxaul_amd_event_fields = layout([u8("decimal_parameter"), u8("instrument_effect", FLAGS), u8("note_instrument", FLAGS)]);
+var sxaul_amd_event = sxLayout(0x60380004, "amd_event", LE, sxaul_amd_event_fields);
+var sxaul_amd_empty_run_fields = layout([u8("empty_row_run", COUNT)]);
+var sxaul_amd_empty_run = sxLayout(0x60380005, "amd_empty_run", LE, sxaul_amd_empty_run_fields);
+var sxaul_track_u16_fields = layout([u16("track_index", ID)]);
+var sxaul_track_u16 = sxLayout(0x60380006, "track_u16", LE, sxaul_track_u16_fields);
+var sxaul_count_u16_fields = layout([u16("count", COUNT)]);
+var sxaul_count_u16 = sxLayout(0x60380007, "count_u16", LE, sxaul_count_u16_fields);
+var sxaul_order_u8_fields = layout([u8("order", ID)]);
+var sxaul_order_u8 = sxLayout(0x60380008, "order_u8", LE, sxaul_order_u8_fields);
+var sxaul_mkj_header_fields = layout([chars("magic", 6, SIGNATURE), field("version", "float32", 4), u16("channels", COUNT)]);
+var sxaul_mkj_header = sxLayout(0x60380009, "mkj_header", LE, sxaul_mkj_header_fields);
+var sxaul_mkj_instrument_fields = layout([u16("opl_parameter0", FLAGS), u16("opl_parameter1", FLAGS),
+    u16("opl_parameter2", FLAGS), u16("opl_parameter3", FLAGS), u16("opl_parameter4", FLAGS), u16("opl_parameter5", FLAGS),
+    u16("opl_parameter6", FLAGS), u16("opl_parameter7", FLAGS)]);
+var sxaul_mkj_instrument = sxLayout(0x6038000A, "mkj_instrument", LE, sxaul_mkj_instrument_fields);
+var sxaul_mkj_channel_enabled_fields = layout([u16("enabled", FLAGS)]);
+var sxaul_mkj_channel_enabled = sxLayout(0x6038000B, "mkj_channel_enabled", LE, sxaul_mkj_channel_enabled_fields);
+var sxaul_mkj_event_fields = layout([i16("event")]);
+var sxaul_mkj_event = sxLayout(0x6038000C, "mkj_event", LE, sxaul_mkj_event_fields);
+var sxaul_sa2_header_fields = layout([chars("magic", 4, SIGNATURE), u8("version", ID)]);
+var sxaul_sa2_header = sxLayout(0x6038000D, "sa2_header", LE, sxaul_sa2_header_fields);
+var sxaul_sa2_instrument_fields = layout([u8("opl_parameter0", FLAGS), u8("opl_parameter1", FLAGS), u8("opl_parameter2", FLAGS),
+    u8("opl_parameter3", FLAGS), u8("opl_parameter4", FLAGS), u8("opl_parameter5", FLAGS), u8("opl_parameter6", FLAGS),
+    u8("opl_parameter7", FLAGS), u8("opl_parameter8", FLAGS), u8("opl_parameter9", FLAGS), u8("opl_parameter10", FLAGS),
+    u8("arpeggio_start", ID), u8("arpeggio_speed"), u8("arpeggio_position", ID), u8("arpeggio_speed_counter")]);
+var sxaul_sa2_instrument = sxLayout(0x6038000E, "sa2_instrument", LE, sxaul_sa2_instrument_fields);
+var sxaul_sa2_name_fields = layout([chars("name", 17, STRING)]);
+var sxaul_sa2_name = sxLayout(0x6038000F, "sa2_name", LE, sxaul_sa2_name_fields);
+var sxaul_sa2_names_padding_fields = layout([bytes("padding", 3, RESERVED)]);
+var sxaul_sa2_names_padding = sxLayout(0x60380010, "sa2_names_padding", LE, sxaul_sa2_names_padding_fields);
+var sxaul_sa2_song_fields = layout([u16("patterns", COUNT), u8("orders", COUNT), u8("restart_order", ID), u16("bpm")]);
+var sxaul_sa2_song = sxLayout(0x60380011, "sa2_song", LE, sxaul_sa2_song_fields);
+var sxaul_sa2_arpeggio_fields = layout([u8("arpeggio")]);
+var sxaul_sa2_arpeggio = sxLayout(0x60380012, "sa2_arpeggio", LE, sxaul_sa2_arpeggio_fields);
+var sxaul_sa2_arpcommand_fields = layout([u8("command", ID)]);
+var sxaul_sa2_arpcommand = sxLayout(0x60380013, "sa2_arpcommand", LE, sxaul_sa2_arpcommand_fields);
+var sxaul_sa2_track_fields = layout([u8("track", ID)]);
+var sxaul_sa2_track = sxLayout(0x60380014, "sa2_track", LE, sxaul_sa2_track_fields);
+var sxaul_sa2_channels_fields = layout([u16("active_channels", FLAGS)]);
+var sxaul_sa2_channels = sxLayout(0x60380015, "sa2_channels", LE, sxaul_sa2_channels_fields);
+var sxaul_sa2_event_fields = layout([u8("note_instrument", FLAGS), u8("instrument_effect", FLAGS), u8("parameter", FLAGS)]);
+var sxaul_sa2_event = sxLayout(0x60380016, "sa2_event", LE, sxaul_sa2_event_fields);
+var sxaul_fmc_header_fields = layout([chars("magic", 4, SIGNATURE), chars("title", 21, STRING), u8("channels", COUNT)]);
+var sxaul_fmc_header = sxLayout(0x60380017, "fmc_header", LE, sxaul_fmc_header_fields);
+var sxaul_fmc_order_padding_fields = layout([bytes("reserved", 2, RESERVED)]);
+var sxaul_fmc_order_padding = sxLayout(0x60380018, "fmc_order_padding", LE, sxaul_fmc_order_padding_fields);
+var sxaul_fmc_instrument_fields = layout([u8("synthesis", ID), u8("feedback"), u8("modulator_attack"), u8("modulator_decay"),
+    u8("modulator_sustain"), u8("modulator_release"), u8("modulator_volume"), u8("modulator_key_scale_level"),
+    u8("modulator_frequency_multiple"), u8("modulator_waveform"), u8("modulator_sustain_sound"), u8("modulator_key_scale_rate"),
+    u8("modulator_vibrato"), u8("modulator_tremolo"), u8("carrier_attack"), u8("carrier_decay"), u8("carrier_sustain"),
+    u8("carrier_release"), u8("carrier_volume"), u8("carrier_key_scale_level"), u8("carrier_frequency_multiple"),
+    u8("carrier_waveform"), u8("carrier_sustain_sound"), u8("carrier_key_scale_rate"), u8("carrier_vibrato"),
+    u8("carrier_tremolo"), i8("pitch_shift"), chars("name", 21, STRING)]);
+var sxaul_fmc_instrument = sxLayout(0x60380019, "fmc_instrument", LE, sxaul_fmc_instrument_fields);
+var sxaul_fmc_event_fields = layout([u8("note_instrument", FLAGS), u8("instrument_effect", FLAGS), u8("parameter", FLAGS)]);
+var sxaul_fmc_event = sxLayout(0x6038001A, "fmc_event", LE, sxaul_fmc_event_fields);
+var sxaul_rix_header_fields = layout([u16("magic", SIGNATURE), u8("rhythm_mode", FLAGS), bytes("unknown3", 5),
+    u16("instrument_offset", OFFSET), bytes("unknown10", 2), u16("music_offset", OFFSET), bytes("unknown14", 6)]);
+var sxaul_rix_header = sxLayout(0x6038001B, "rix_header", LE, sxaul_rix_header_fields);
+var sxaul_rix_instrument_fields = layout([u16("modulator_parameter0"), u16("modulator_parameter1"), u16("modulator_parameter2"),
+    u16("modulator_parameter3"), u16("modulator_parameter4"), u16("modulator_parameter5"), u16("modulator_parameter6"),
+    u16("modulator_parameter7"), u16("modulator_parameter8"), u16("modulator_parameter9"), u16("modulator_parameter10"),
+    u16("modulator_parameter11"), u16("modulator_parameter12"), u16("carrier_parameter0"), u16("carrier_parameter1"),
+    u16("carrier_parameter2"), u16("carrier_parameter3"), u16("carrier_parameter4"), u16("carrier_parameter5"),
+    u16("carrier_parameter6"), u16("carrier_parameter7"), u16("carrier_parameter8"), u16("carrier_parameter9"),
+    u16("carrier_parameter10"), u16("carrier_parameter11"), u16("carrier_parameter12"), u16("modulator_flag", FLAGS),
+    u16("carrier_flag", FLAGS), bytes("unknown_tail", 8)]);
+var sxaul_rix_instrument = sxLayout(0x6038001C, "rix_instrument", LE, sxaul_rix_instrument_fields);
+var sxaul_rix_event_fields = layout([u8("operand"), u8("opcode", FLAGS)]);
+var sxaul_rix_event = sxLayout(0x6038001D, "rix_event", LE, sxaul_rix_event_fields);
+var sxaul_sop_header_fields = layout([chars("magic", 7, SIGNATURE), field("version", "uint24", 3, ID),
+    chars("filename", 13, STRING), chars("title", 31, STRING), u8("rhythm_mode", FLAGS), u8("reserved55", RESERVED),
+    u8("ticks_per_beat"), u8("reserved57", RESERVED), u8("beats_per_measure"), u8("basic_tempo"), chars("comment", 13, STRING),
+    u8("tracks", COUNT), u8("instruments", COUNT), u8("reserved75", RESERVED)]);
+var sxaul_sop_header = sxLayout(0x6038001E, "sop_header", LE, sxaul_sop_header_fields);
+var sxaul_sop_channel_mode_fields = layout([u8("mode", FLAGS)]);
+var sxaul_sop_channel_mode = sxLayout(0x6038001F, "sop_channel_mode", LE, sxaul_sop_channel_mode_fields);
+var sxaul_sop_instrument_fields = layout([u8("type", ID), chars("filename", 8, STRING), chars("name", 19, STRING)]);
+var sxaul_sop_instrument = sxLayout(0x60380020, "sop_instrument", LE, sxaul_sop_instrument_fields);
+var sxaul_sop_opl2_fields = layout([u8("opl_parameter0", FLAGS), u8("opl_parameter1", FLAGS), u8("opl_parameter2", FLAGS),
+    u8("opl_parameter3", FLAGS), u8("opl_parameter4", FLAGS), u8("opl_parameter5", FLAGS), u8("opl_parameter6", FLAGS),
+    u8("opl_parameter7", FLAGS), u8("opl_parameter8", FLAGS), u8("opl_parameter9", FLAGS), u8("opl_parameter10", FLAGS)]);
+var sxaul_sop_opl2 = sxLayout(0x60380021, "sop_opl2", LE, sxaul_sop_opl2_fields);
+var sxaul_sop_opl4_fields = layout([u8("opl_parameter0", FLAGS), u8("opl_parameter1", FLAGS), u8("opl_parameter2", FLAGS),
+    u8("opl_parameter3", FLAGS), u8("opl_parameter4", FLAGS), u8("opl_parameter5", FLAGS), u8("opl_parameter6", FLAGS),
+    u8("opl_parameter7", FLAGS), u8("opl_parameter8", FLAGS), u8("opl_parameter9", FLAGS), u8("opl_parameter10", FLAGS),
+    u8("opl_parameter11", FLAGS), u8("opl_parameter12", FLAGS), u8("opl_parameter13", FLAGS), u8("opl_parameter14", FLAGS),
+    u8("opl_parameter15", FLAGS), u8("opl_parameter16", FLAGS), u8("opl_parameter17", FLAGS), u8("opl_parameter18", FLAGS),
+    u8("opl_parameter19", FLAGS), u8("opl_parameter20", FLAGS), u8("opl_parameter21", FLAGS)]);
+var sxaul_sop_opl4 = sxLayout(0x60380022, "sop_opl4", LE, sxaul_sop_opl4_fields);
+var sxaul_sop_sample_fields = layout([u16("value1"), u16("value2"), u16("sample_bytes", SIZE), u16("value4"),
+    u16("base_frequency"), u16("value6"), u16("value7"), u8("value8"), u16("value9"), u16("value10")]);
+var sxaul_sop_sample = sxLayout(0x60380023, "sop_sample", LE, sxaul_sop_sample_fields);
+var sxaul_sop_track_fields = layout([u16("events", COUNT), u32("data_bytes", SIZE)]);
+var sxaul_sop_track = sxLayout(0x60380024, "sop_track", LE, sxaul_sop_track_fields);
+var sxaul_sop_event_fields = layout([u16("delta_ticks"), u8("type", ID), u8("value")]);
+var sxaul_sop_event = sxLayout(0x60380025, "sop_event", LE, sxaul_sop_event_fields);
+var sxaul_sop_duration_fields = layout([u16("duration_ticks")]);
+var sxaul_sop_duration = sxLayout(0x60380026, "sop_duration", LE, sxaul_sop_duration_fields);
+var sxaul_cff_header_fields = layout([bytes("magic", 16, SIGNATURE), u8("version", ID), u16("payload_bytes", SIZE),
+    u8("packed", FLAGS), bytes("reserved", 12, RESERVED)]);
+var sxaul_cff_header = sxLayout(0x60380027, "cff_header", LE, sxaul_cff_header_fields);
+var sxaul_cff_instrument_fields = layout([u8("opl_parameter0", FLAGS), u8("opl_parameter1", FLAGS), u8("opl_parameter2", FLAGS),
+    u8("opl_parameter3", FLAGS), u8("opl_parameter4", FLAGS), u8("opl_parameter5", FLAGS), u8("opl_parameter6", FLAGS),
+    u8("opl_parameter7", FLAGS), u8("opl_parameter8", FLAGS), u8("opl_parameter9", FLAGS), u8("opl_parameter10", FLAGS),
+    u8("opl_parameter11", FLAGS), chars("name", 20, STRING)]);
+var sxaul_cff_instrument = sxLayout(0x60380028, "cff_instrument", LE, sxaul_cff_instrument_fields);
+var sxaul_cff_song_fields = layout([u8("patterns", COUNT), chars("marker", 31, SIGNATURE), chars("author", 20, STRING),
+    chars("title", 20, STRING)]);
+var sxaul_cff_song = sxLayout(0x60380029, "cff_song", LE, sxaul_cff_song_fields);
+var sxaul_cff_order_tail_fields = layout([u8("unknown")]);
+var sxaul_cff_order_tail = sxLayout(0x6038002A, "cff_order_tail", LE, sxaul_cff_order_tail_fields);
+var sxaul_cff_event_fields = layout([u8("note", ID), u8("effect", ID), u8("parameter")]);
+var sxaul_cff_event = sxLayout(0x6038002B, "cff_event", LE, sxaul_cff_event_fields);
+var sxaul_msc_header_fields = layout([bytes("magic", 16, SIGNATURE), u16("version", ID), chars("description", 64, STRING),
+    u16("timer_divisor"), u16("block_count", COUNT), u16("decoded_block_capacity", SIZE)]);
+var sxaul_msc_header = sxLayout(0x6038002C, "msc_header", LE, sxaul_msc_header_fields);
+var sxaul_msc_block_fields = layout([u16("encoded_bytes", SIZE)]);
+var sxaul_msc_block = sxLayout(0x6038002D, "msc_block", LE, sxaul_msc_block_fields);
+var sxaul_ims_header_fields = layout([u8("major_version", ID), u8("minor_version", ID), u32("tune_id", ID),
+    chars("name", 30, STRING), u8("ticks_per_beat"), u8("beats_per_measure"), u32("total_ticks"), u32("data_bytes", SIZE),
+    u32("commands", COUNT), bytes("reserved50", 8, RESERVED), u8("sound_mode", ID), u8("pitch_bend_range"), u16("basic_tempo"),
+    bytes("reserved62", 8, RESERVED)]);
+var sxaul_ims_header = sxLayout(0x6038002E, "ims_header", LE, sxaul_ims_header_fields);
+var sxaul_ims_timbres_fields = layout([u16("signature", SIGNATURE), u16("count", COUNT)]);
+var sxaul_ims_timbres = sxLayout(0x6038002F, "ims_timbres", LE, sxaul_ims_timbres_fields);
+var sxaul_ims_timbre_fields = layout([chars("name", 9, STRING)]);
+var sxaul_ims_timbre = sxLayout(0x60380030, "ims_timbre", LE, sxaul_ims_timbre_fields);
+var sxaul_mtr_header_fields = layout([chars("magic", 10, SIGNATURE), field("channels_minus_one", "ascii_hex[2]", 2, COUNT),
+    chars("separator12", 1, RESERVED), field("digital_channels", "ascii_hex[2]", 2, COUNT), chars("separator15", 1, RESERVED),
+    field("patterns_minus_one", "ascii_hex[2]", 2, COUNT), chars("separator18", 1, RESERVED),
+    field("orders_minus_one", "ascii_hex[2]", 2, COUNT), chars("separator21", 1, RESERVED),
+    field("instruments", "ascii_hex[2]", 2, COUNT), chars("separator24", 1, RESERVED),
+    field("restart_order", "ascii_hex[2]", 2, ID), chars("separator27", 1, RESERVED), field("timer_divisor", "ascii_hex[4]", 4),
+    chars("separator32", 1, RESERVED), field("payload_bytes", "ascii_hex[8]", 8, SIZE), chars("padding", 8, RESERVED),
+    u8("terminator", SIGNATURE), chars("title", 20, STRING)]);
+var sxaul_mtr_header = sxLayout(0x60380031, "mtr_header", LE, sxaul_mtr_header_fields);
+var sxaul_mtr_instrument_fields = layout([chars("name", 20, STRING), u8("instrument_type", ID), u8("opl_parameter0", FLAGS),
+    u8("opl_parameter1", FLAGS), u8("opl_parameter2", FLAGS), u8("opl_parameter3", FLAGS), u8("opl_parameter4", FLAGS),
+    u8("opl_parameter5", FLAGS), u8("opl_parameter6", FLAGS), u8("opl_parameter7", FLAGS), u8("opl_parameter8", FLAGS),
+    u8("opl_parameter9", FLAGS), u8("opl_parameter10", FLAGS), u8("opl_parameter11", FLAGS), bytes("unused", 31, RESERVED)]);
+var sxaul_mtr_instrument = sxLayout(0x60380032, "mtr_instrument", LE, sxaul_mtr_instrument_fields);
+var sxaul_mtr_event_fields = layout([u8("note", FLAGS), u8("instrument", FLAGS), u8("effect", ID), u8("value")]);
+var sxaul_mtr_event = sxLayout(0x60380033, "mtr_event", LE, sxaul_mtr_event_fields);
+var sxaul_mtr_producer_fields = layout([chars("producer", 11, STRING)]);
+var sxaul_mtr_producer = sxLayout(0x60380034, "mtr_producer", LE, sxaul_mtr_producer_fields);
+var sxaul_parsec_driver_header_fields = layout([chars("magic", 4, SIGNATURE), u16("interface_version", ID),
+    u16("entry_points", COUNT), u16("format_revision", ID), u16("footer_offset", OFFSET), chars("embedded_magic", 4, SIGNATURE),
+    u16("flags", FLAGS), bytes("reserved", 6, RESERVED)]);
+var sxaul_parsec_driver_header = sxLayout(0x60380035, "parsec_driver_header", LE, sxaul_parsec_driver_header_fields);
+var sxaul_palladix_driver_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID), u16("entry_points", COUNT),
+    u16("interfaces", COUNT), u16("footer_offset", OFFSET), chars("module_magic", 4, SIGNATURE),
+    field("reserved", "uint16[4]", 8, RESERVED)]);
+var sxaul_palladix_driver_header = sxLayout(0x60380036, "palladix_driver_header", LE, sxaul_palladix_driver_header_fields);
+var sxaul_driver_entry_fields = layout([u16("entry_offset", OFFSET)]);
+var sxaul_driver_entry = sxLayout(0x60380037, "driver_entry", LE, sxaul_driver_entry_fields);
+var sxaul_driver_footer_fields = layout([chars("signature", 20, SIGNATURE)]);
+var sxaul_driver_footer = sxLayout(0x60380038, "driver_footer", LE, sxaul_driver_footer_fields);
+var sxaul_pma_header_fields = layout([chars("magic", 3, SIGNATURE), u8("mode", ID), u8("speed_scale"), u16("speed")]);
+var sxaul_pma_header = sxLayout(0x60380039, "pma_header", LE, sxaul_pma_header_fields);
+var sxaul_pma_channel_fields = layout([u16("channel_offset", OFFSET)]);
+var sxaul_pma_channel = sxLayout(0x6038003A, "pma_channel", LE, sxaul_pma_channel_fields);
+var sxaul_pma_flags_fields = layout([u8("flags", FLAGS)]);
+var sxaul_pma_flags = sxLayout(0x6038003B, "pma_flags", LE, sxaul_pma_flags_fields);
+var sxaul_pma_instrument_fields = layout([u16("instrument_offset", OFFSET)]);
+var sxaul_pma_instrument = sxLayout(0x6038003C, "pma_instrument", LE, sxaul_pma_instrument_fields);
+var sxaul_pma_byte_fields = layout([u8("operand")]);
+var sxaul_pma_byte = sxLayout(0x6038003D, "pma_byte", LE, sxaul_pma_byte_fields);
+var sxaul_pma_word_fields = layout([u16("operand")]);
+var sxaul_pma_word = sxLayout(0x6038003E, "pma_word", LE, sxaul_pma_word_fields);
+var sxaul_mdh_header_fields = layout([chars("magic", 4, SIGNATURE), u16("reserved", RESERVED), u16("track_offset", OFFSET),
+    u8("active_records", COUNT), u8("reserved9", RESERVED)]);
+var sxaul_mdh_header = sxLayout(0x6038003F, "mdh_header", LE, sxaul_mdh_header_fields);
+var sxaul_mdh_record_fields = layout([u8("reserved0", RESERVED), u16("code", ID), u8("reserved3", RESERVED), bytes("levels", 4)]);
+var sxaul_mdh_record = sxLayout(0x60380040, "mdh_record", LE, sxaul_mdh_record_fields);
+var sxaul_mdh_end_fields = layout([u16("terminator", SIGNATURE)]);
+var sxaul_mdh_end = sxLayout(0x60380041, "mdh_end", LE, sxaul_mdh_end_fields);
+var sxaul_sm8_header_fields = layout([chars("magic", 6, SIGNATURE), u16("pcm_bytes", SIZE), u16("pit_divisor")]);
+var sxaul_sm8_header = sxLayout(0x60380042, "sm8_header", LE, sxaul_sm8_header_fields);
+var sxaul_pvf_header_fields = layout([chars("magic", 3, SIGNATURE), field("version", "ascii_decimal[1]", 1, ID),
+    chars("newline", 1, RESERVED)]);
+var sxaul_pvf_header = sxLayout(0x60380043, "pvf_header", LE, sxaul_pvf_header_fields);
+var sxaul_pvf_channels1_fields = layout([field("channels", "ascii_decimal[1]", 1, COUNT)]);
+var sxaul_pvf_channels1 = sxLayout(0x60380044, "pvf_channels1", LE, sxaul_pvf_channels1_fields);
+var sxaul_pvf_sample_bits1_fields = layout([field("sample_bits", "ascii_decimal[1]", 1)]);
+var sxaul_pvf_sample_bits1 = sxLayout(0x60380045, "pvf_sample_bits1", LE, sxaul_pvf_sample_bits1_fields);
+var sxaul_pvf_channels2_fields = layout([field("channels", "ascii_decimal[2]", 2, COUNT)]);
+var sxaul_pvf_channels2 = sxLayout(0x60380046, "pvf_channels2", LE, sxaul_pvf_channels2_fields);
+var sxaul_pvf_sample_bits2_fields = layout([field("sample_bits", "ascii_decimal[2]", 2)]);
+var sxaul_pvf_sample_bits2 = sxLayout(0x60380047, "pvf_sample_bits2", LE, sxaul_pvf_sample_bits2_fields);
+var sxaul_pvf_channels3_fields = layout([field("channels", "ascii_decimal[3]", 3, COUNT)]);
+var sxaul_pvf_channels3 = sxLayout(0x60380048, "pvf_channels3", LE, sxaul_pvf_channels3_fields);
+var sxaul_pvf_sample_bits3_fields = layout([field("sample_bits", "ascii_decimal[3]", 3)]);
+var sxaul_pvf_sample_bits3 = sxLayout(0x60380049, "pvf_sample_bits3", LE, sxaul_pvf_sample_bits3_fields);
+var sxaul_pvf_channels4_fields = layout([field("channels", "ascii_decimal[4]", 4, COUNT)]);
+var sxaul_pvf_channels4 = sxLayout(0x6038004A, "pvf_channels4", LE, sxaul_pvf_channels4_fields);
+var sxaul_pvf_sample_rate4_fields = layout([field("sample_rate", "ascii_decimal[4]", 4)]);
+var sxaul_pvf_sample_rate4 = sxLayout(0x6038004B, "pvf_sample_rate4", LE, sxaul_pvf_sample_rate4_fields);
+var sxaul_pvf_sample_bits4_fields = layout([field("sample_bits", "ascii_decimal[4]", 4)]);
+var sxaul_pvf_sample_bits4 = sxLayout(0x6038004C, "pvf_sample_bits4", LE, sxaul_pvf_sample_bits4_fields);
+var sxaul_pvf_channels5_fields = layout([field("channels", "ascii_decimal[5]", 5, COUNT)]);
+var sxaul_pvf_channels5 = sxLayout(0x6038004D, "pvf_channels5", LE, sxaul_pvf_channels5_fields);
+var sxaul_pvf_sample_rate5_fields = layout([field("sample_rate", "ascii_decimal[5]", 5)]);
+var sxaul_pvf_sample_rate5 = sxLayout(0x6038004E, "pvf_sample_rate5", LE, sxaul_pvf_sample_rate5_fields);
+var sxaul_pvf_sample_bits5_fields = layout([field("sample_bits", "ascii_decimal[5]", 5)]);
+var sxaul_pvf_sample_bits5 = sxLayout(0x6038004F, "pvf_sample_bits5", LE, sxaul_pvf_sample_bits5_fields);
+var sxaul_pvf_channels6_fields = layout([field("channels", "ascii_decimal[6]", 6, COUNT)]);
+var sxaul_pvf_channels6 = sxLayout(0x60380050, "pvf_channels6", LE, sxaul_pvf_channels6_fields);
+var sxaul_pvf_sample_rate6_fields = layout([field("sample_rate", "ascii_decimal[6]", 6)]);
+var sxaul_pvf_sample_rate6 = sxLayout(0x60380051, "pvf_sample_rate6", LE, sxaul_pvf_sample_rate6_fields);
+var sxaul_pvf_sample_bits6_fields = layout([field("sample_bits", "ascii_decimal[6]", 6)]);
+var sxaul_pvf_sample_bits6 = sxLayout(0x60380052, "pvf_sample_bits6", LE, sxaul_pvf_sample_bits6_fields);
+var sxaul_pvf_channels7_fields = layout([field("channels", "ascii_decimal[7]", 7, COUNT)]);
+var sxaul_pvf_channels7 = sxLayout(0x60380053, "pvf_channels7", LE, sxaul_pvf_channels7_fields);
+var sxaul_pvf_sample_rate7_fields = layout([field("sample_rate", "ascii_decimal[7]", 7)]);
+var sxaul_pvf_sample_rate7 = sxLayout(0x60380054, "pvf_sample_rate7", LE, sxaul_pvf_sample_rate7_fields);
+var sxaul_pvf_sample_bits7_fields = layout([field("sample_bits", "ascii_decimal[7]", 7)]);
+var sxaul_pvf_sample_bits7 = sxLayout(0x60380055, "pvf_sample_bits7", LE, sxaul_pvf_sample_bits7_fields);
+var sxaul_pvf_channels8_fields = layout([field("channels", "ascii_decimal[8]", 8, COUNT)]);
+var sxaul_pvf_channels8 = sxLayout(0x60380056, "pvf_channels8", LE, sxaul_pvf_channels8_fields);
+var sxaul_pvf_sample_rate8_fields = layout([field("sample_rate", "ascii_decimal[8]", 8)]);
+var sxaul_pvf_sample_rate8 = sxLayout(0x60380057, "pvf_sample_rate8", LE, sxaul_pvf_sample_rate8_fields);
+var sxaul_pvf_sample_bits8_fields = layout([field("sample_bits", "ascii_decimal[8]", 8)]);
+var sxaul_pvf_sample_bits8 = sxLayout(0x60380058, "pvf_sample_bits8", LE, sxaul_pvf_sample_bits8_fields);
+var sxaul_pvf_channels9_fields = layout([field("channels", "ascii_decimal[9]", 9, COUNT)]);
+var sxaul_pvf_channels9 = sxLayout(0x60380059, "pvf_channels9", LE, sxaul_pvf_channels9_fields);
+var sxaul_pvf_sample_rate9_fields = layout([field("sample_rate", "ascii_decimal[9]", 9)]);
+var sxaul_pvf_sample_rate9 = sxLayout(0x6038005A, "pvf_sample_rate9", LE, sxaul_pvf_sample_rate9_fields);
+var sxaul_pvf_sample_bits9_fields = layout([field("sample_bits", "ascii_decimal[9]", 9)]);
+var sxaul_pvf_sample_bits9 = sxLayout(0x6038005B, "pvf_sample_bits9", LE, sxaul_pvf_sample_bits9_fields);
+var sxaul_pvf_channels10_fields = layout([field("channels", "ascii_decimal[10]", 10, COUNT)]);
+var sxaul_pvf_channels10 = sxLayout(0x6038005C, "pvf_channels10", LE, sxaul_pvf_channels10_fields);
+var sxaul_pvf_sample_rate10_fields = layout([field("sample_rate", "ascii_decimal[10]", 10)]);
+var sxaul_pvf_sample_rate10 = sxLayout(0x6038005D, "pvf_sample_rate10", LE, sxaul_pvf_sample_rate10_fields);
+var sxaul_pvf_sample_bits10_fields = layout([field("sample_bits", "ascii_decimal[10]", 10)]);
+var sxaul_pvf_sample_bits10 = sxLayout(0x6038005E, "pvf_sample_bits10", LE, sxaul_pvf_sample_bits10_fields);
+var sxaul_pvf_channels11_fields = layout([field("channels", "ascii_decimal[11]", 11, COUNT)]);
+var sxaul_pvf_channels11 = sxLayout(0x6038005F, "pvf_channels11", LE, sxaul_pvf_channels11_fields);
+var sxaul_pvf_sample_rate11_fields = layout([field("sample_rate", "ascii_decimal[11]", 11)]);
+var sxaul_pvf_sample_rate11 = sxLayout(0x60380060, "pvf_sample_rate11", LE, sxaul_pvf_sample_rate11_fields);
+var sxaul_pvf_sample_bits11_fields = layout([field("sample_bits", "ascii_decimal[11]", 11)]);
+var sxaul_pvf_sample_bits11 = sxLayout(0x60380061, "pvf_sample_bits11", LE, sxaul_pvf_sample_bits11_fields);
+var sxaul_pvf_channels12_fields = layout([field("channels", "ascii_decimal[12]", 12, COUNT)]);
+var sxaul_pvf_channels12 = sxLayout(0x60380062, "pvf_channels12", LE, sxaul_pvf_channels12_fields);
+var sxaul_pvf_sample_rate12_fields = layout([field("sample_rate", "ascii_decimal[12]", 12)]);
+var sxaul_pvf_sample_rate12 = sxLayout(0x60380063, "pvf_sample_rate12", LE, sxaul_pvf_sample_rate12_fields);
+var sxaul_pvf_sample_bits12_fields = layout([field("sample_bits", "ascii_decimal[12]", 12)]);
+var sxaul_pvf_sample_bits12 = sxLayout(0x60380064, "pvf_sample_bits12", LE, sxaul_pvf_sample_bits12_fields);
+var sxaul_pvf_channels13_fields = layout([field("channels", "ascii_decimal[13]", 13, COUNT)]);
+var sxaul_pvf_channels13 = sxLayout(0x60380065, "pvf_channels13", LE, sxaul_pvf_channels13_fields);
+var sxaul_pvf_sample_rate13_fields = layout([field("sample_rate", "ascii_decimal[13]", 13)]);
+var sxaul_pvf_sample_rate13 = sxLayout(0x60380066, "pvf_sample_rate13", LE, sxaul_pvf_sample_rate13_fields);
+var sxaul_pvf_sample_bits13_fields = layout([field("sample_bits", "ascii_decimal[13]", 13)]);
+var sxaul_pvf_sample_bits13 = sxLayout(0x60380067, "pvf_sample_bits13", LE, sxaul_pvf_sample_bits13_fields);
+var sxaul_pvf_channels14_fields = layout([field("channels", "ascii_decimal[14]", 14, COUNT)]);
+var sxaul_pvf_channels14 = sxLayout(0x60380068, "pvf_channels14", LE, sxaul_pvf_channels14_fields);
+var sxaul_pvf_sample_rate14_fields = layout([field("sample_rate", "ascii_decimal[14]", 14)]);
+var sxaul_pvf_sample_rate14 = sxLayout(0x60380069, "pvf_sample_rate14", LE, sxaul_pvf_sample_rate14_fields);
+var sxaul_pvf_sample_bits14_fields = layout([field("sample_bits", "ascii_decimal[14]", 14)]);
+var sxaul_pvf_sample_bits14 = sxLayout(0x6038006A, "pvf_sample_bits14", LE, sxaul_pvf_sample_bits14_fields);
+var sxaul_pvf_channels15_fields = layout([field("channels", "ascii_decimal[15]", 15, COUNT)]);
+var sxaul_pvf_channels15 = sxLayout(0x6038006B, "pvf_channels15", LE, sxaul_pvf_channels15_fields);
+var sxaul_pvf_sample_rate15_fields = layout([field("sample_rate", "ascii_decimal[15]", 15)]);
+var sxaul_pvf_sample_rate15 = sxLayout(0x6038006C, "pvf_sample_rate15", LE, sxaul_pvf_sample_rate15_fields);
+var sxaul_pvf_sample_bits15_fields = layout([field("sample_bits", "ascii_decimal[15]", 15)]);
+var sxaul_pvf_sample_bits15 = sxLayout(0x6038006D, "pvf_sample_bits15", LE, sxaul_pvf_sample_bits15_fields);
+var sxaul_pvf_channels16_fields = layout([field("channels", "ascii_decimal[16]", 16, COUNT)]);
+var sxaul_pvf_channels16 = sxLayout(0x6038006E, "pvf_channels16", LE, sxaul_pvf_channels16_fields);
+var sxaul_pvf_sample_rate16_fields = layout([field("sample_rate", "ascii_decimal[16]", 16)]);
+var sxaul_pvf_sample_rate16 = sxLayout(0x6038006F, "pvf_sample_rate16", LE, sxaul_pvf_sample_rate16_fields);
+var sxaul_pvf_sample_bits16_fields = layout([field("sample_bits", "ascii_decimal[16]", 16)]);
+var sxaul_pvf_sample_bits16 = sxLayout(0x60380070, "pvf_sample_bits16", LE, sxaul_pvf_sample_bits16_fields);
+var sxaul_pvf_channels17_fields = layout([field("channels", "ascii_decimal[17]", 17, COUNT)]);
+var sxaul_pvf_channels17 = sxLayout(0x60380071, "pvf_channels17", LE, sxaul_pvf_channels17_fields);
+var sxaul_pvf_sample_rate17_fields = layout([field("sample_rate", "ascii_decimal[17]", 17)]);
+var sxaul_pvf_sample_rate17 = sxLayout(0x60380072, "pvf_sample_rate17", LE, sxaul_pvf_sample_rate17_fields);
+var sxaul_pvf_sample_bits17_fields = layout([field("sample_bits", "ascii_decimal[17]", 17)]);
+var sxaul_pvf_sample_bits17 = sxLayout(0x60380073, "pvf_sample_bits17", LE, sxaul_pvf_sample_bits17_fields);
+var sxaul_pvf_channels18_fields = layout([field("channels", "ascii_decimal[18]", 18, COUNT)]);
+var sxaul_pvf_channels18 = sxLayout(0x60380074, "pvf_channels18", LE, sxaul_pvf_channels18_fields);
+var sxaul_pvf_sample_rate18_fields = layout([field("sample_rate", "ascii_decimal[18]", 18)]);
+var sxaul_pvf_sample_rate18 = sxLayout(0x60380075, "pvf_sample_rate18", LE, sxaul_pvf_sample_rate18_fields);
+var sxaul_pvf_sample_bits18_fields = layout([field("sample_bits", "ascii_decimal[18]", 18)]);
+var sxaul_pvf_sample_bits18 = sxLayout(0x60380076, "pvf_sample_bits18", LE, sxaul_pvf_sample_bits18_fields);
+var sxaul_pvf_channels19_fields = layout([field("channels", "ascii_decimal[19]", 19, COUNT)]);
+var sxaul_pvf_channels19 = sxLayout(0x60380077, "pvf_channels19", LE, sxaul_pvf_channels19_fields);
+var sxaul_pvf_sample_rate19_fields = layout([field("sample_rate", "ascii_decimal[19]", 19)]);
+var sxaul_pvf_sample_rate19 = sxLayout(0x60380078, "pvf_sample_rate19", LE, sxaul_pvf_sample_rate19_fields);
+var sxaul_pvf_sample_bits19_fields = layout([field("sample_bits", "ascii_decimal[19]", 19)]);
+var sxaul_pvf_sample_bits19 = sxLayout(0x60380079, "pvf_sample_bits19", LE, sxaul_pvf_sample_bits19_fields);
+var sxaul_pvf_channels20_fields = layout([field("channels", "ascii_decimal[20]", 20, COUNT)]);
+var sxaul_pvf_channels20 = sxLayout(0x6038007A, "pvf_channels20", LE, sxaul_pvf_channels20_fields);
+var sxaul_pvf_sample_rate20_fields = layout([field("sample_rate", "ascii_decimal[20]", 20)]);
+var sxaul_pvf_sample_rate20 = sxLayout(0x6038007B, "pvf_sample_rate20", LE, sxaul_pvf_sample_rate20_fields);
+var sxaul_pvf_sample_bits20_fields = layout([field("sample_bits", "ascii_decimal[20]", 20)]);
+var sxaul_pvf_sample_bits20 = sxLayout(0x6038007C, "pvf_sample_bits20", LE, sxaul_pvf_sample_bits20_fields);
+var sxaul_pvf_channels21_fields = layout([field("channels", "ascii_decimal[21]", 21, COUNT)]);
+var sxaul_pvf_channels21 = sxLayout(0x6038007D, "pvf_channels21", LE, sxaul_pvf_channels21_fields);
+var sxaul_pvf_sample_rate21_fields = layout([field("sample_rate", "ascii_decimal[21]", 21)]);
+var sxaul_pvf_sample_rate21 = sxLayout(0x6038007E, "pvf_sample_rate21", LE, sxaul_pvf_sample_rate21_fields);
+var sxaul_pvf_sample_bits21_fields = layout([field("sample_bits", "ascii_decimal[21]", 21)]);
+var sxaul_pvf_sample_bits21 = sxLayout(0x6038007F, "pvf_sample_bits21", LE, sxaul_pvf_sample_bits21_fields);
+var sxaul_pvf_channels22_fields = layout([field("channels", "ascii_decimal[22]", 22, COUNT)]);
+var sxaul_pvf_channels22 = sxLayout(0x60380080, "pvf_channels22", LE, sxaul_pvf_channels22_fields);
+var sxaul_pvf_sample_rate22_fields = layout([field("sample_rate", "ascii_decimal[22]", 22)]);
+var sxaul_pvf_sample_rate22 = sxLayout(0x60380081, "pvf_sample_rate22", LE, sxaul_pvf_sample_rate22_fields);
+var sxaul_pvf_sample_bits22_fields = layout([field("sample_bits", "ascii_decimal[22]", 22)]);
+var sxaul_pvf_sample_bits22 = sxLayout(0x60380082, "pvf_sample_bits22", LE, sxaul_pvf_sample_bits22_fields);
+var sxaul_pvf_channels23_fields = layout([field("channels", "ascii_decimal[23]", 23, COUNT)]);
+var sxaul_pvf_channels23 = sxLayout(0x60380083, "pvf_channels23", LE, sxaul_pvf_channels23_fields);
+var sxaul_pvf_sample_rate23_fields = layout([field("sample_rate", "ascii_decimal[23]", 23)]);
+var sxaul_pvf_sample_rate23 = sxLayout(0x60380084, "pvf_sample_rate23", LE, sxaul_pvf_sample_rate23_fields);
+var sxaul_pvf_sample_bits23_fields = layout([field("sample_bits", "ascii_decimal[23]", 23)]);
+var sxaul_pvf_sample_bits23 = sxLayout(0x60380085, "pvf_sample_bits23", LE, sxaul_pvf_sample_bits23_fields);
+var sxaul_pvf_channels24_fields = layout([field("channels", "ascii_decimal[24]", 24, COUNT)]);
+var sxaul_pvf_channels24 = sxLayout(0x60380086, "pvf_channels24", LE, sxaul_pvf_channels24_fields);
+var sxaul_pvf_sample_rate24_fields = layout([field("sample_rate", "ascii_decimal[24]", 24)]);
+var sxaul_pvf_sample_rate24 = sxLayout(0x60380087, "pvf_sample_rate24", LE, sxaul_pvf_sample_rate24_fields);
+var sxaul_pvf_sample_bits24_fields = layout([field("sample_bits", "ascii_decimal[24]", 24)]);
+var sxaul_pvf_sample_bits24 = sxLayout(0x60380088, "pvf_sample_bits24", LE, sxaul_pvf_sample_bits24_fields);
+var sxaul_swa_header_fields = layout([u32("header_bytes", SIZE), u32("version", ID), u32("sample_rate"), bytes("unknown12", 24),
+    chars("marker", 5, SIGNATURE)]);
+var sxaul_swa_header = sxLayout(0x60380089, "swa_header", BE, sxaul_swa_header_fields);
+var sxaul_swa_frame_fields = layout([u32("mpeg_header", FLAGS)]);
+var sxaul_swa_frame = sxLayout(0x6038008A, "swa_frame", BE, sxaul_swa_frame_fields);
+var sxaul_hmi_header_fields = layout([chars("magic", 18, SIGNATURE), bytes("opaque_12", 194), u8("beats_per_minute"),
+    bytes("opaque_d5", 15), u8("track_count", COUNT), bytes("opaque_e5", 141)]);
+var sxaul_hmi_header = sxLayout(0x6038008B, "hmi_header", LE, sxaul_hmi_header_fields);
+var sxaul_hmi_track_offset_fields = layout([u32("track_offset", OFFSET)]);
+var sxaul_hmi_track_offset = sxLayout(0x6038008C, "hmi_track_offset", LE, sxaul_hmi_track_offset_fields);
+var sxaul_hmi_track_fields = layout([chars("magic", 13, SIGNATURE), bytes("opaque_d", 74), u32("header_bytes", SIZE)]);
+var sxaul_hmi_track = sxLayout(0x6038008D, "hmi_track", LE, sxaul_hmi_track_fields);
+function sx_audiolater_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60380000 || id >= 0x60390000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60380002:
+        if (r.name === "opl_parameter0") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter8") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter9") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter10") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        break;
+    case 0x60380003:
+        if (r.name === "pattern_count_minus_one") {
+            text = "Stored count minus one.";
+        }
+        if (r.name === "version") {
+            text = "0x10=unpacked patterns;0x11=packed tracks.";
+        }
+        break;
+    case 0x60380004:
+        if (r.name === "decimal_parameter") {
+            text = "Low7 bits hold a decimal effect parameter.";
+        }
+        if (r.name === "instrument_effect") {
+            text = "High nibble:low instrument bits;low nibble:effect.";
+        }
+        if (r.name === "note_instrument") {
+            text = "Bit0:high instrument bit;bits1..3:octave;bits4..7:note.";
+        }
+        break;
+    case 0x60380005:
+        if (r.name === "empty_row_run") {
+            text = "Bit7 marks a run;low7 bits give its row count.";
+        }
+        break;
+    case 0x60380009:
+        if (r.name === "version") {
+            text = "Native reader currently accepts1.0.";
+        }
+        break;
+    case 0x6038000A:
+        if (r.name === "opl_parameter0") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored16-bit word;native values restricted to8 bits.";
+        }
+        break;
+    case 0x6038000D:
+        if (r.name === "version") {
+            text = "Native reader accepts version9.";
+        }
+        break;
+    case 0x6038000E:
+        if (r.name === "opl_parameter0") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter8") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter9") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter10") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        break;
+    case 0x60380016:
+        if (r.name === "note_instrument") {
+            text = "Bits1..7:note;bit0:high instrument bit.";
+        }
+        if (r.name === "instrument_effect") {
+            text = "High nibble:low instrument bits;low nibble:effect.";
+        }
+        if (r.name === "parameter") {
+            text = "Two effect-parameter nibbles.";
+        }
+        break;
+    case 0x6038001A:
+        if (r.name === "note_instrument") {
+            text = "Bits0..6:note;bit7:high instrument bit.";
+        }
+        if (r.name === "instrument_effect") {
+            text = "High nibble:low instrument bits;low nibble:effect.";
+        }
+        if (r.name === "parameter") {
+            text = "Two effect-parameter nibbles.";
+        }
+        break;
+    case 0x6038001D:
+        if (r.name === "opcode") {
+            text = "High<0x80:delay word;0x80:stop;0x90..0xc0:command,low nibble channel.";
+        }
+        break;
+    case 0x6038001F:
+        if (r.name === "mode") {
+            text = "Low7 bits:channel mode;bit7 retains stored flag.";
+        }
+        break;
+    case 0x60380020:
+        if (r.name === "type") {
+            text = "0=4OP,1=2OP,6..10=percussion,11=sample,12=empty.";
+        }
+        break;
+    case 0x60380021:
+        if (r.name === "opl_parameter0") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter8") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter9") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter10") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        break;
+    case 0x60380022:
+        if (r.name === "opl_parameter0") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter8") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter9") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter10") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter11") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter12") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter13") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter14") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter15") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter16") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter17") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter18") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter19") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter20") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter21") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        break;
+    case 0x60380028:
+        if (r.name === "opl_parameter0") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter8") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter9") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter10") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter11") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        break;
+    case 0x6038002B:
+        if (r.name === "effect") {
+            text = "ASCII effect letter or zero.";
+        }
+        break;
+    case 0x60380031:
+        if (r.name === "channels_minus_one") {
+            text = "Stored count minus one.";
+        }
+        if (r.name === "patterns_minus_one") {
+            text = "Stored count minus one.";
+        }
+        if (r.name === "orders_minus_one") {
+            text = "Stored count minus one.";
+        }
+        if (r.name === "payload_bytes") {
+            text = "Stored byte size after the50-byte prefix.";
+        }
+        break;
+    case 0x60380032:
+        if (r.name === "instrument_type") {
+            text = "0/1/2;2 selects the OPL bank.";
+        }
+        if (r.name === "opl_parameter0") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter1") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter2") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter3") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter4") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter5") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter6") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter7") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter8") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter9") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter10") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        if (r.name === "opl_parameter11") {
+            text = "Stored OPL parameter byte; preserve physical register order.";
+        }
+        break;
+    case 0x60380033:
+        if (r.name === "note") {
+            text = "Low nibble:note;high nibble:octave.";
+        }
+        if (r.name === "instrument") {
+            text = "Low6 bits:instrument.";
+        }
+        break;
+    case 0x6038003A:
+        if (r.name === "channel_offset") {
+            text = "Zero means the channel is inactive; nonzero offsets are relative to the file base.";
+        }
+        break;
+    case 0x6038003B:
+        if (r.name === "flags") {
+            text = "Zero ends channel;0x80 is a delay-only event;other bits select operands.";
+        }
+        break;
+    case 0x60380042:
+        if (r.name === "pit_divisor") {
+            text = "Original PIT clock divisor; samples are unsigned 8-bit mono PCM.";
+        }
+        break;
+    case 0x60380043:
+        if (r.name === "version") {
+            text = "1=binary big-endian PCM;2=ASCII decimal samples.";
+        }
+        break;
+    case 0x60380089:
+        if (r.name === "header_bytes") {
+            text = "Measured from byte4; MPEG payload starts at header_bytes+4.";
+        }
+        break;
+    case 0x6038008A:
+        if (r.name === "mpeg_header") {
+            text = "Stored MPEG LayerIII frame header; compressed frame payload remains raw.";
+        }
+        break;
+    case 0x6038008D:
+        if (r.name === "header_bytes") {
+            text = "Track-relative event-data offset; opaque header extension remains raw.";
+        }
+        break;
+    case 0x6038008E:
+        if (r.name === "flags") {
+            text = "Bit0=notes present;bit1=license present.";
+        }
+        if (r.name === "compressed_bytes") {
+            text = "Informational stored value.";
+        }
+        if (r.name === "header_checksum") {
+            text = "Adler32 seed0 over header and NUL filename, with checksum bytes zeroed.";
+        }
+        if (r.name === "method") {
+            text = "4=fast,5=standard,6=LPC8,7=LPC128.";
+        }
+        if (r.name === "audio_start") {
+            text = "Offset in the decoded SoundFont, not this physical file.";
+        }
+        if (r.name === "post_audio_start") {
+            text = "Offset in the decoded SoundFont, not this physical file.";
+        }
+        break;
+    case 0x60380091:
+        if (r.name === "flags") {
+            text = "Bit0=notes,bit1=license,bit2=encryption.";
+        }
+        if (r.name === "declared_sf2_bytes") {
+            text = "Advisory output size; decoder measures actual output.";
+        }
+        break;
+    case 0x60380092:
+        if (r.name === "chunk_bytes") {
+            text = "Bytes after this length field, including tag and output length.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxaul_num(c, at, width, be) {
+    var b = [];
+    if (!width || width > 4 || !sx_read(c, at, b, width)) {
+        c.failed = true;
+        return 0;
+    }
+    var v = 0;
+    for (var i = 0; i < width; i++) {
+        v = (v | (b[i] << ((8 * (be ? (((width - 1) >>> 0) - i) >>> 0 : i)) >>> 0)) >>> 0) >>> 0;
+    }
+    return v;
+}
+function sxaul_take(c, l, at, end, count) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var width = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (at[0] < 0 || end < at[0] || !width || count > Math.floor((end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) / width)) {
+        return false;
+    }
+    if (count && c.count < 32000 && !sx_table(c, l, at[0], (width >= SX_I64_MAX ? width - SX_U64_MAX : width), count > 65536 ? 65536 : count)) {
+        return false;
+    }
+    at[0] += (count * width >= SX_I64_MAX ? count * width - SX_U64_MAX : count * width);
+    return !c.failed;
+}
+function sxaul_skip(at, end, n) {
+    if (at[0] < 0 || end < at[0] || n > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+        return false;
+    }
+    at[0] += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    return true;
+}
+function sxaul_eq(a, a_o, b) {
+    return !sxStrcmpAt(a, a_o, b, 0);
+}
+function sxaul_prefix(a, a_o, b) {
+    return !sxStrncmpAt(a, a_o, b, 0, sxStrlen(b));
+}
+var sxaul_pvf_numbers = [
+    [sxaul_pvf_channels1, sxaul_pvf_channels2, sxaul_pvf_channels3, sxaul_pvf_channels4, sxaul_pvf_channels5, sxaul_pvf_channels6, sxaul_pvf_channels7, sxaul_pvf_channels8, sxaul_pvf_channels9, sxaul_pvf_channels10, sxaul_pvf_channels11, sxaul_pvf_channels12, sxaul_pvf_channels13, sxaul_pvf_channels14, sxaul_pvf_channels15, sxaul_pvf_channels16, sxaul_pvf_channels17, sxaul_pvf_channels18, sxaul_pvf_channels19, sxaul_pvf_channels20, sxaul_pvf_channels21, sxaul_pvf_channels22, sxaul_pvf_channels23, sxaul_pvf_channels24],
+    [null, null, null, sxaul_pvf_sample_rate4, sxaul_pvf_sample_rate5, sxaul_pvf_sample_rate6, sxaul_pvf_sample_rate7, sxaul_pvf_sample_rate8, sxaul_pvf_sample_rate9, sxaul_pvf_sample_rate10, sxaul_pvf_sample_rate11, sxaul_pvf_sample_rate12, sxaul_pvf_sample_rate13, sxaul_pvf_sample_rate14, sxaul_pvf_sample_rate15, sxaul_pvf_sample_rate16, sxaul_pvf_sample_rate17, sxaul_pvf_sample_rate18, sxaul_pvf_sample_rate19, sxaul_pvf_sample_rate20, sxaul_pvf_sample_rate21, sxaul_pvf_sample_rate22, sxaul_pvf_sample_rate23, sxaul_pvf_sample_rate24],
+    [sxaul_pvf_sample_bits1, sxaul_pvf_sample_bits2, sxaul_pvf_sample_bits3, sxaul_pvf_sample_bits4, sxaul_pvf_sample_bits5, sxaul_pvf_sample_bits6, sxaul_pvf_sample_bits7, sxaul_pvf_sample_bits8, sxaul_pvf_sample_bits9, sxaul_pvf_sample_bits10, sxaul_pvf_sample_bits11, sxaul_pvf_sample_bits12, sxaul_pvf_sample_bits13, sxaul_pvf_sample_bits14, sxaul_pvf_sample_bits15, sxaul_pvf_sample_bits16, sxaul_pvf_sample_bits17, sxaul_pvf_sample_bits18, sxaul_pvf_sample_bits19, sxaul_pvf_sample_bits20, sxaul_pvf_sample_bits21, sxaul_pvf_sample_bits22, sxaul_pvf_sample_bits23, sxaul_pvf_sample_bits24]];
+var sxaul_component_rates = [[11025, 12000, 8000], [0, 0, 0], [22050, 24000, 16000], [44100, 48000, 32000]];
+var sxaul_component_br = [[0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0],
+    [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0]];
+function sxaul_component(c, name, name_o, at, size) {
+    at = [at];
+    var end = at[0] + size;
+    var n;
+    switch (c.f.file_type) {
+    case "ADLIB_AMD":
+        if (sxaul_eq(name, name_o, "descriptor.amd")) {
+            {
+                if (!sxaul_take(c, sxaul_amd_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instruments.amd")) {
+            {
+                if (!sxaul_take(c, sxaul_amd_instrument, at, end, 26)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "orders.amd")) {
+            {
+                if (!sxaul_take(c, sxaul_amd_orders, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "pattern.amd")) {
+            {
+                if (!sxaul_take(c, sxaul_amd_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "track-map.amd")) {
+            {
+                if (!sxaul_take(c, sxaul_track_u16, at, end, sxU64(sxDiv(size - 2, 2)))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_count_u16, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "track.amd")) {
+            {
+                if (!sxaul_take(c, sxaul_track_u16, at, end, 1)) {
+                    return false;
+                }
+            }
+            while (at[0] < end) {
+                n = sxaul_num(c, at[0], 1, false);
+                if (n & 128) {
+                    {
+                        if (!sxaul_take(c, sxaul_amd_empty_run, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    {
+                        if (!sxaul_take(c, sxaul_amd_event, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case "ADLIB_MKJ":
+        if (sxaul_eq(name, name_o, "descriptor.mkj")) {
+            {
+                if (!sxaul_take(c, sxaul_mkj_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.mkj")) {
+            {
+                if (!sxaul_take(c, sxaul_mkj_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "channel-table.mkj")) {
+            {
+                if (!sxaul_take(c, sxaul_count_u16, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_mkj_channel_enabled, at, end, sxU64(sxDiv(size - 2, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "event-grid.mkj")) {
+            {
+                if (!sxaul_take(c, sxaul_mkj_event, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "ADLIB_SA2":
+        if (sxaul_eq(name, name_o, "descriptor.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument-names.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_name, at, end, 29)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_sa2_names_padding, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "orders.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_order_u8, at, end, 128)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "song-info.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_song, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "arpeggios.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_arpeggio, at, end, 256)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_sa2_arpcommand, at, end, 256)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "track-map.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_track, at, end, 576)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "active-channels.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_channels, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "track.sa2")) {
+            {
+                if (!sxaul_take(c, sxaul_sa2_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "FAUST_FMC":
+        if (sxaul_eq(name, name_o, "descriptor.fmc")) {
+            {
+                if (!sxaul_take(c, sxaul_fmc_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "orders.fmc")) {
+            {
+                if (!sxaul_take(c, sxaul_order_u8, at, end, 256)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_fmc_order_padding, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.fmc")) {
+            {
+                if (!sxaul_take(c, sxaul_fmc_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "pattern.fmc")) {
+            {
+                if (!sxaul_take(c, sxaul_fmc_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "SOFTSTAR_RIX":
+        if (sxaul_eq(name, name_o, "descriptor.rix")) {
+            {
+                if (!sxaul_take(c, sxaul_rix_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.rix")) {
+            {
+                if (!sxaul_take(c, sxaul_rix_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "event-stream.rix")) {
+            {
+                if (!sxaul_take(c, sxaul_rix_event, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "ADLIB_SOP":
+        if (sxaul_eq(name, name_o, "descriptor.sop")) {
+            {
+                if (!sxaul_take(c, sxaul_sop_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "channel-modes.sop")) {
+            {
+                if (!sxaul_take(c, sxaul_sop_channel_mode, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.sop")) {
+            n = sxaul_num(c, at[0], 1, false);
+            {
+                if (!sxaul_take(c, sxaul_sop_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (!n) {
+                {
+                    if (!sxaul_take(c, sxaul_sop_opl4, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else if (n === 11) {
+                {
+                    if (!sxaul_take(c, sxaul_sop_sample, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else if (n !== 12) {
+                {
+                    if (!sxaul_take(c, sxaul_sop_opl2, at, end, 1)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "control-track.sop") || sxaul_eq(name, name_o, "event-track.sop")) {
+            {
+                if (!sxaul_take(c, sxaul_sop_track, at, end, 1)) {
+                    return false;
+                }
+            }
+            while (at[0] < end) {
+                n = sxaul_num(c, at[0] + 2, 1, false);
+                {
+                    if (!sxaul_take(c, sxaul_sop_event, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (n === 2) {
+                    {
+                        if (!sxaul_take(c, sxaul_sop_duration, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case "CUDFM_CFF":
+        if (sxaul_eq(name, name_o, "descriptor.cff")) {
+            {
+                if (!sxaul_take(c, sxaul_cff_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.cff")) {
+            {
+                if (!sxaul_take(c, sxaul_cff_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "song-info.cff")) {
+            {
+                if (!sxaul_take(c, sxaul_cff_song, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "orders.cff")) {
+            {
+                if (!sxaul_take(c, sxaul_order_u8, at, end, 64)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_cff_order_tail, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "pattern.cff")) {
+            {
+                if (!sxaul_take(c, sxaul_cff_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "CERES_MSC":
+        if (sxaul_eq(name, name_o, "descriptor.msc")) {
+            {
+                if (!sxaul_take(c, sxaul_msc_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "encoded-commands.msc")) {
+            {
+                if (!sxaul_take(c, sxaul_msc_block, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "IMPLAY_MUSIC":
+        if (sxaul_eq(name, name_o, "descriptor.ims")) {
+            {
+                if (!sxaul_take(c, sxaul_ims_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "timbre-names.ims")) {
+            n = sxaul_num(c, at[0] + 2, 2, false);
+            {
+                if (!sxaul_take(c, sxaul_ims_timbres, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_ims_timbre, at, end, n)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "ADLIB_MTR":
+        if (sxaul_eq(name, name_o, "descriptor.mtr")) {
+            {
+                if (!sxaul_take(c, sxaul_mtr_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "orders.mtr")) {
+            {
+                if (!sxaul_take(c, sxaul_order_u8, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "instrument.mtr")) {
+            {
+                if (!sxaul_take(c, sxaul_mtr_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "pattern.mtr")) {
+            {
+                if (!sxaul_take(c, sxaul_mtr_event, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "producer-tag.mtr")) {
+            {
+                if (!sxaul_take(c, sxaul_mtr_producer, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "PARSEC_DTC":
+    case "PARSEC_DMA":
+        if (sxaul_eq(name, name_o, "header.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_parsec_driver_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "entry-points.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_driver_entry, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "footer.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_driver_footer, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "PALLADIX_MUS":
+    case "PALLADIX_SND":
+        if (sxaul_eq(name, name_o, "header.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_palladix_driver_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "entry-points.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_driver_entry, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "footer.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_driver_footer, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "PALLADIX_PMA":
+        if (sxaul_eq(name, name_o, "control.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_pma_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "channel-table.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_pma_channel, at, end, 9)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "program.bin")) {
+            for (var ch = 0; ch < 9; ch++) {
+                at[0] = sxaul_num(c, (7 + ((2 * ch) >>> 0)) >>> 0, 2, false);
+                if (!at[0]) {
+                    continue;
+                }
+                for (var e = 0; at[0] < end && e < 65536 && c.count < 31000; e++) {
+                    n = sxaul_num(c, at[0], 1, false);
+                    {
+                        if (!sxaul_take(c, sxaul_pma_flags, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    if (!n) {
+                        break;
+                    }
+                    if (n === 128) {
+                        {
+                            if (!sxaul_take(c, sxaul_pma_byte, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                        continue;
+                    }
+                    if (n & 1) {
+                        {
+                            if (!sxaul_take(c, sxaul_pma_instrument, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                    }
+                    if (n & 2) {
+                        {
+                            if (!sxaul_take(c, sxaul_pma_byte, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                    }
+                    if (n & 8) {
+                        {
+                            if (!sxaul_take(c, sxaul_pma_byte, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                    }
+                    if (n & 16) {
+                        {
+                            if (!sxaul_take(c, sxaul_pma_word, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                    }
+                    if (n & 64) {
+                        {
+                            if (!sxaul_take(c, sxaul_pma_word, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                    }
+                    {
+                        if (!sxaul_take(c, sxaul_pma_byte, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case "MDH":
+        if (sxaul_eq(name, name_o, "control.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_mdh_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "record-table.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_mdh_record, at, end, 8)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "track.bin")) {
+            at[0] = end - 2;
+            {
+                if (!sxaul_take(c, sxaul_mdh_end, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "SM8":
+        if (sxaul_eq(name, name_o, "header.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_sm8_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "AUDIO_PVF":
+        if (sxaul_eq(name, name_o, "header.txt")) {
+            {
+                if (!sxaul_take(c, sxaul_pvf_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            for (var i = 0; i < 3; i++) {
+                while (at[0] < end && (sxaul_num(c, at[0], 1, false) === 32 || sxaul_num(c, at[0], 1, false) === 9 || sxaul_num(c, at[0], 1, false) === 13)) {
+                    at[0]++;
+                }
+                var start = at[0];
+                while (at[0] < end && sxaul_num(c, at[0], 1, false) >= 48 /*0*/ && sxaul_num(c, at[0], 1, false) <= 57 /*9*/) {
+                    at[0]++;
+                }
+                var width = (at[0] - start < 0 ? at[0] - start + SX_U64_MAX : at[0] - start);
+                if (width && width <= 24) {
+                    var cursor = [start];
+                    if (!sxaul_take(c, sxaul_pvf_numbers[i][sxU64(width - 1)], cursor, at[0], 1)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        break;
+    case "AUDIO_SHOCKWAVE_SWA":
+        if (sxaul_eq(name, name_o, "header.bin")) {
+            {
+                if (!sxaul_take(c, sxaul_swa_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_eq(name, name_o, "audio.mp3")) {
+            while (at[0] < end && c.count < 31000) {
+                var h = sxaul_num(c, at[0], 4, true);
+                var v = h >>> 19 & 3;
+                var r = h >>> 10 & 3;
+                var bi = h >>> 12 & 15;
+                if (v === 1 || r === 3 || !bi || bi === 15) {
+                    break;
+                }
+                var length = (Math.floor((((v === 3 ? 144000 : 72000) * sxaul_component_br[(v === 3 ? 1 : 0)][bi]) >>> 0) / sxaul_component_rates[v][r]) + (h >>> 9 & 1)) >>> 0;
+                {
+                    if (!sxaul_take(c, sxaul_swa_frame, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (length < 4 || (length - 4) >>> 0 > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                    break;
+                }
+                {
+                    if (!sxaul_skip(at, end, (length - 4) >>> 0)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        break;
+    case "HMI_MIDI":
+        if (sxaul_eq(name, name_o, "song-header.bin")) {
+            n = sxaul_num(c, 228, 1, false);
+            {
+                if (!sxaul_take(c, sxaul_hmi_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxaul_take(c, sxaul_hmi_track_offset, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (sxaul_prefix(name, name_o, "track-")) {
+            {
+                if (!sxaul_take(c, sxaul_hmi_track, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    default:
+        return false;
+    }
+    return !c.failed;
+}
+function sxaul_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxaul_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxaul_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxaul_order, true);
+    return !c.failed;
+}
+function sx_audiolater_supports(type) {
+    switch (type) {
+    case "AP4":
+    case "SFPACK":
+    case "ADLIB_AMD":
+    case "ADLIB_MKJ":
+    case "ADLIB_SA2":
+    case "FAUST_FMC":
+    case "SOFTSTAR_RIX":
+    case "ADLIB_SOP":
+    case "CUDFM_CFF":
+    case "CERES_MSC":
+    case "IMPLAY_MUSIC":
+    case "ADLIB_MTR":
+    case "SFARK_COMPRESSED_SOUNDFONT":
+    case "AUDIO_PVF":
+    case "AUDIO_SHOCKWAVE_SWA":
+    case "HMI_MIDI":
+    case "PARSEC_DTC":
+    case "PARSEC_DMA":
+    case "PALLADIX_MUS":
+    case "PALLADIX_SND":
+    case "PALLADIX_PMA":
+    case "MDH":
+    case "SM8":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_audiolater_build(c) {
+    if (c === null || c.size < 1 || c.size > 268435456) {
+        return false;
+    }
+    if (c.f.file_type === "SFARK_COMPRESSED_SOUNDFONT") {
+        return sx_sfark_compressed_soundfont_build(c);
+    }
+    if (c.f.file_type === "SFPACK") {
+        return sx_sfpack_build(c);
+    }
+    if (c.f.file_type === "AP4") {
+        return sx_ap4_build(c);
+    }
+    if (c.f.create_archive_records_reading === null) {
+        return false;
+    }
+    var s = sxArcCreate(c.f);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    var walked = 0;
+    while (ok && s.has_record) {
+        var r = sxArcCurrent(c.f, s);
+        var name = r !== null ? sxArcName(r) : null;
+        if (++walked > 65536 || r === null || name === null || r.data_offset < c.f.base_address || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var at = r.data_offset - c.f.base_address;
+        var n = r.compressed_size;
+        if (!sx_range(c, at, (n < 0 ? n + SX_U64_MAX : n)) || !sxaul_component(c, name, (sxStrlen(name) >= 5 && sxAt(name, 4) === 45 /*-*/ ? 5 : 0), at, n)) {
+            ok = false;
+            break;
+        }
+        if (!sxArcNext(c.f, s)) {
+            break;
+        }
+    }
+    if (walked !== (s.total_records < 0 ? s.total_records + SX_U64_MAX : s.total_records)) {
+        ok = false;
+    }
+    sxArcFree(c.f, s);
+    return ok && c.count > 0 && sxaul_finish(c);
+}

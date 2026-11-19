@@ -1,0 +1,22 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/mrc/xx_mrc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsc_mrc_label_fields = layout([chars("label", 80, STRING)]);
+var sxsc_mrc_label = sxLayout(0x60280003, "mrc_label", LE, sxsc_mrc_label_fields);
+function sxsc_mrc(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 224) || sxMemcmpAt(b, 208, "MAP ", 0, 4)) {
+        return false;
+    }
+    var be = b[212] === 0x11 && b[213] === 0x11;
+    if (!be && !(b[212] === 0x44 && (b[213] === 0x44 || b[213] === 0x41))) {
+        return false;
+    }
+    return sxsc_add(c, be ? sxsc_mrc_header_be : sxsc_mrc_header_le, 0, 224) && sxsc_table(c, sxsc_mrc_label, 224, 80, 10);
+}
+function sx_mrc_build(c) {
+    return sxsc_mrc(c);
+}

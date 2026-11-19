@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/talin_maxtrax_musicx/xx_talin_maxtrax_musicx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamip_count32_fields = layout([u32("count", COUNT)]);
+var sxamip_count32 = sxLayout(0x60900003, "count32", BE, sxamip_count32_fields);
+function sxamip_mxtx(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [8];
+    var flags = [0];
+    var n = [0];
+    var z = [0];
+    var samples = [0];
+    if (!sxamip_eq(v, 0, "MXTX", 4, e) || !sxamip_row(v, sxamip_mxtx_header, 0, e) || !sxamip_be(v, 6, 2, flags, 0, e)) {
+        return false;
+    }
+    if (sxAnd64(flags[0], 0x8000)) {
+        return true;
+    }
+    if (!sxamip_be(v, p[0], 2, n, 0, e) || !sxamip_take(v, sxamip_count16, p, 1, e)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxamip_be(v, p[0], 4, z, 0, e) || !sxamip_take(v, sxamip_count32, p, 1, e) || !sxamip_take(v, sxamip_mxtx_event, p, z[0], e)) {
+            return false;
+        }
+    }
+    if (!sxamip_be(v, p[0], 2, samples, 0, e) || !sxamip_take(v, sxamip_count16, p, 1, e)) {
+        return false;
+    }
+    for (i = 0; i < samples[0]; i++) {
+        var oct = [0];
+        var a = [0];
+        var b = [0];
+        var na = [0];
+        var nr = [0];
+        if (!sxamip_span(v, p[0], 20, e) || !sxamip_be(v, p[0] + 6, 2, oct, 0, e) || !sxamip_be(v, p[0] + 8, 4, a, 0, e) || !sxamip_be(v, p[0] + 12, 4, b, 0, e) || !sxamip_be(v, p[0] + 16, 2, na, 0, e) || !sxamip_be(v, p[0] + 18, 2, nr, 0, e) || !sxamip_take(v, sxamip_mxtx_sample, p, 1, e) || !sxamip_take(v, sxamip_mxtx_envelope, p, na[0] + nr[0], e)) {
+            return false;
+        }
+        z[0] = a[0] + b[0];
+        if (oct[0] > 64 && z[0]) {
+            return false;
+        }
+        for (var k = 0; k < oct[0] && z[0]; k++) {
+            if (!sxamip_skip(v, p, z[0], e)) {
+                return false;
+            }
+            if (k + 1 < oct[0]) {
+                if (z[0] > SX_I64_MAX) {
+                    return false;
+                }
+                z[0] *= 2;
+            }
+        }
+    }
+    return true;
+}
+function sx_talin_maxtrax_musicx_build(v) {
+    return sxamip_mxtx(v);
+}

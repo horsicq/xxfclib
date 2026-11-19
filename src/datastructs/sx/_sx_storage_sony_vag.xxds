@@ -1,0 +1,18 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/sony_vag/xx_sony_vag_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_vag_header_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u32("version"), u32("reserved", RESERVED),
+    u32("data_size", SIZE), u32("sample_rate"), field("reserved2", "byte[12]", 12, RESERVED), chars("name", 16, STRING)]);
+var sx_st_vag_header = sxLayout(0x60080010, "vag_header", BE, sx_st_vag_header_fields);
+var sx_st_vag_adpcm_frame_fields = layout([u8("predictor_and_shift"), u8("flags", FLAGS),
+    field("encoded_samples", "byte[14]", 14)]);
+var sx_st_vag_adpcm_frame = sxLayout(0x60080011, "vag_adpcm_frame", LE, sx_st_vag_adpcm_frame_fields);
+function sx_sony_vag_build(c) {
+    var ok = false;
+    var n;
+    ok = sx_add(c, sx_st_vag_header, 0, 48) && (n = sx_u32(c, 12, true)) !== null && sx_table(c, sx_st_vag_adpcm_frame, 48, 16, Math.floor(n / 16));
+    return ok && sx_st_finish(c);
+}

@@ -1,0 +1,114 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cab/xx_cab_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_cab_reserve_sizes_fields = layout([u16("cbCFHeader", SIZE), u8("cbCFFolder", SIZE), u8("cbCFData", SIZE)]);
+var sx_a_cab_reserve_sizes = sxLayout(0x6004000A, "cab_reserve_sizes", LE, sx_a_cab_reserve_sizes_fields);
+var sx_a_cab_file_fields = layout([u32("cbFile", SIZE), u32("uoffFolderStart", OFFSET), u16("iFolder", ID),
+    u16("date", TIMESTAMP), u16("time", TIMESTAMP), u16("attribs", FLAGS)]);
+var sx_a_cab_file = sxLayout(0x6004000C, "cab_file", LE, sx_a_cab_file_fields);
+var sx_a_cab_data_fields = layout([u32("csum", SIGNATURE), u16("cbData", SIZE), u16("cbUncomp", SIZE)]);
+var sx_a_cab_data = sxLayout(0x6004000D, "cab_data", LE, sx_a_cab_data_fields);
+function sx_a_cstring(c, at, end) {
+    var start = at[0];
+    var b = [0];
+    if (start < 0 || end > c.size) {
+        return false;
+    }
+    while (at[0] < end) {
+        if (!sx_read(c, at[0], b, 1)) {
+            return false;
+        }
+        at[0]++;
+        if (!b[0]) {
+            return sx_raw(c, start, at[0] - start);
+        }
+    }
+    return false;
+}
+function sx_a_cab(c) {
+    var h = [];
+    var r = [0, 0, 0, 0];
+    var end;
+    var files;
+    var flags;
+    var folders;
+    var count;
+    var at = [36];
+    var folder_at;
+    if (!sx_read(c, 0, h, 36) || sxMemcmp(h, "MSCF", 4)) {
+        return false;
+    }
+    end = sxGetU32(h, 36, 8, false);
+    files = sxGetU32(h, 36, 16, false);
+    folders = sxGetU16(h, 36, 26, false);
+    count = sxGetU16(h, 36, 28, false);
+    flags = sxGetU16(h, 36, 30, false);
+    if (end < 36 || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || files > end || flags & 0xFFFFFFF8 || !sx_add(c, sx_a_cab_header, 0, 36)) {
+        return false;
+    }
+    if (flags & 4) {
+        if (!sx_read(c, at[0], r, 4) || !sx_add(c, sx_a_cab_reserve_sizes, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+        if (!sx_a_raw_advance(c, at, sxGetU16(r, 4, 0, false))) {
+            return false;
+        }
+    }
+    if (flags & 1) {
+        if (!sx_a_cstring(c, at, end) || !sx_a_cstring(c, at, end)) {
+            return false;
+        }
+    }
+    if (flags & 2) {
+        if (!sx_a_cstring(c, at, end) || !sx_a_cstring(c, at, end)) {
+            return false;
+        }
+    }
+    folder_at = at[0];
+    for (var i = 0; i < folders; i = i + 1 & 0xFFFF) {
+        if (at[0] > end || 8 + r[2] > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) || !sx_add(c, sx_a_cab_folder, at[0], 8)) {
+            return false;
+        }
+        at[0] += 8;
+        if (!sx_a_raw_advance(c, at, r[2])) {
+            return false;
+        }
+    }
+    at[0] = files;
+    for (i = 0; i < count; i = i + 1 & 0xFFFF) {
+        if (at[0] > end || end - at[0] < 16 || !sx_add(c, sx_a_cab_file, at[0], 16)) {
+            return false;
+        }
+        at[0] += 16;
+        if (!sx_a_cstring(c, at, end)) {
+            return false;
+        }
+    }
+    for (i = 0; i < folders; i = i + 1 & 0xFFFF) {
+        var data;
+        var blocks;
+        var fo = folder_at + i * (8 + r[2]);
+        if ((data = sx_u32(c, fo, false)) === null || (blocks = sx_u16(c, fo + 4, false)) === null) {
+            return false;
+        }
+        at[0] = data;
+        for (var j = 0; j < blocks; j = j + 1 & 0xFFFF) {
+            var packed;
+            if (at[0] > end || 8 + r[3] > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) || (packed = sx_u16(c, at[0] + 4, false)) === null || !sx_add(c, sx_a_cab_data, at[0], 8)) {
+                return false;
+            }
+            at[0] += 8;
+            if (!sx_a_raw_advance(c, at, r[3]) || packed > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) || !sx_a_raw_advance(c, at, packed)) {
+                return false;
+            }
+        }
+    }
+    return sx_raw(c, end, c.size - end);
+}
+function sx_cab_build(c) {
+    return sx_a_cab(c);
+}

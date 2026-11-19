@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/fuxoft_aylanguage_fxm/xx_fuxoft_aylanguage_fxm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_fxm_header_fields = layout([chars("signature", 4, SIGNATURE), u16("load_address", VA)]);
+var sxchip_chip_fxm_header = sxLayout(0x608F0002, "chip_fxm_header", LE, sxchip_chip_fxm_header_fields);
+var sxchip_chip_fxm_channels_fields = layout([u16("channel_a_address", VA), u16("channel_b_address", VA),
+    u16("channel_c_address", VA)]);
+var sxchip_chip_fxm_channels = sxLayout(0x608F0003, "chip_fxm_channels", LE, sxchip_chip_fxm_channels_fields);
+function sxchip_fxm(c) {
+    if (!sxchip_eq(c, 0, "FXSM", 4) || !sxchip_span(c, 0, 6)) {
+        return false;
+    }
+    return sxchip_put(c, sxchip_chip_fxm_header, 0, 1) && sxchip_opt(c, sxchip_chip_fxm_channels, 6, 1);
+}
+function sx_fuxoft_aylanguage_fxm_build(c) {
+    return sxchip_fxm(c);
+}

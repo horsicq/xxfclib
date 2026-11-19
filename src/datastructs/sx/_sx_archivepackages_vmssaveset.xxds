@@ -1,0 +1,115 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/vmssaveset/xx_vmssaveset_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_vms_backup_block_fields = layout([u16("header_size", SIZE), u16("operating_system"), u16("subsystem"),
+    u16("application"), u32("block_number"), bytes("spare1", 20), u16("structure_level"), u16("volume_number"),
+    u32("crc32", CHECKSUM), i32("block_size", SIZE), u32("flags", FLAGS), chars("saveset_name", 32, NONE),
+    field("file_id", "uint16[3]", 6), field("directory_id", "uint16[3]", 6), chars("filename", 128, NONE), u8("record_format"),
+    u8("record_attributes", FLAGS), u16("record_size", SIZE), u8("bucket_size"), u8("fixed_control_size", SIZE),
+    u16("maximum_record", SIZE), u32("file_size"), bytes("spare2", 22), u16("checksum", CHECKSUM)]);
+var sxap_vms_backup_block = sxLayout(0x6072003B, "vms_backup_block", LE, sxap_vms_backup_block_fields);
+var sxap_vms_backup_record_fields = layout([u16("payload_size", SIZE), u16("record_type"), u32("flags", FLAGS),
+    u32("address", VA), u32("spare")]);
+var sxap_vms_backup_record = sxLayout(0x6072003C, "vms_backup_record", LE, sxap_vms_backup_record_fields);
+var sxap_vms_backup_file_version_fields = layout([u16("structure_level")]);
+var sxap_vms_backup_file_version = sxLayout(0x6072003D, "vms_backup_file_version", LE, sxap_vms_backup_file_version_fields);
+var sxap_vms_backup_attribute_fields = layout([u16("payload_size", SIZE), u16("tag")]);
+var sxap_vms_backup_attribute = sxLayout(0x6072003E, "vms_backup_attribute", LE, sxap_vms_backup_attribute_fields);
+var sxap_vms_backup_fid_fields = layout([u16("number"), u16("sequence"), u16("relative_volume_and_extension")]);
+var sxap_vms_backup_fid = sxLayout(0x6072003F, "vms_backup_fid", LE, sxap_vms_backup_fid_fields);
+var sxap_vms_backup_characteristics_fields = layout([u32("characteristics", FLAGS)]);
+var sxap_vms_backup_characteristics = sxLayout(0x60720040, "vms_backup_characteristics", LE, sxap_vms_backup_characteristics_fields);
+var sxap_vms_backup_date_fields = layout([u64("vms_time")]);
+var sxap_vms_backup_date = sxLayout(0x60720041, "vms_backup_date", LE, sxap_vms_backup_date_fields);
+var sxap_vms_backup_fat_fields = layout([u8("record_type"), u8("record_attributes", FLAGS), u16("record_size", SIZE),
+    field("high_block", "uint32_pdp", 4), field("eof_block", "uint32_pdp", 4), u16("first_free_byte"), u8("bucket_size"),
+    u8("fixed_control_size", SIZE), u16("maximum_record", SIZE), u16("default_extend"), u16("global_buffers", COUNT),
+    bytes("reserved", 8), u16("version_limit")]);
+var sxap_vms_backup_fat = sxLayout(0x60720042, "vms_backup_fat", LE, sxap_vms_backup_fat_fields);
+function sxap_saveset(c) {
+    var p = 0;
+    var first = 0;
+    while (sxap_span(c, p, 256)) {
+        var z = [0];
+        var app = [0];
+        if (!sxap_word(c, p + 40, 4, false, z) || !sxap_word(c, p + 6, 2, false, app) || !sxap_add(c, sxap_vms_backup_block, p)) {
+            return false;
+        }
+        if (!first) {
+            first = z[0];
+        }
+        if (app[0] === 2 && !z[0]) {
+            z[0] = first;
+        }
+        if (z[0] <= 256 || z[0] > 2147483647) {
+            return true;
+        }
+        var end = p + z[0];
+        var q = p + 256;
+        if (!sxap_span(c, p, z[0])) {
+            end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        }
+        if (app[0] !== 2) {
+            while (q <= end && sxU64(end - q) >= 16) {
+                var len = [0];
+                var type = [0];
+                if (!sxap_word(c, q, 2, false, len) || !sxap_word(c, q + 2, 2, false, type) || !sxap_add(c, sxap_vms_backup_record, q)) {
+                    return false;
+                }
+                q += 16;
+                if (len[0] > sxU64(end - q)) {
+                    return true;
+                }
+                if (type[0] === 3 && len[0] >= 2) {
+                    if (!sxap_add(c, sxap_vms_backup_file_version, q)) {
+                        return false;
+                    }
+                    var a = q + 2;
+                    var stop = q + len[0];
+                    while (a <= stop && sxU64(stop - a) >= 4) {
+                        var n = [0];
+                        var tag = [0];
+                        if (!sxap_word(c, a, 2, false, n) || !sxap_word(c, a + 2, 2, false, tag) || !sxap_add(c, sxap_vms_backup_attribute, a)) {
+                            return false;
+                        }
+                        a += 4;
+                        if (n[0] > sxU64(stop - a)) {
+                            return true;
+                        }
+                        if (tag[0] === 0x2A) {
+                            if (!sxap_text(c, sxap_archivepackages_name, a, n[0], false)) {
+                                return false;
+                            }
+                        } else if (tag[0] === 0x2C && n[0] === 6) {
+                            if (!sxap_add(c, sxap_vms_backup_fid, a)) {
+                                return false;
+                            }
+                        } else if (tag[0] === 0x33 && n[0] === 4) {
+                            if (!sxap_add(c, sxap_vms_backup_characteristics, a)) {
+                                return false;
+                            }
+                        } else if (tag[0] === 0x34 && n[0] === 32) {
+                            if (!sxap_add(c, sxap_vms_backup_fat, a)) {
+                                return false;
+                            }
+                        } else if ((tag[0] === 0x36 || tag[0] === 0x37) && n[0] === 8) {
+                            if (!sxap_add(c, sxap_vms_backup_date, a)) {
+                                return false;
+                            }
+                        }
+                        a += n[0];
+                    }
+                }
+                q += len[0];
+            }
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_vmssaveset_build(c) {
+    return sxap_saveset(c);
+}

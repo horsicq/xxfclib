@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/astc_texture/xx_astc_texture_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_astc_header_fields = layout([u32("magic", SIGNATURE), u8("block_width"), u8("block_height"), u8("block_depth"),
+    field("width", "uint24", 3), field("height", "uint24", 3), field("depth", "uint24", 3)]);
+var sxm_astc_header = sxLayout(0x60060012, "astc_header", LE, sxm_astc_header_fields);
+function sx_astc_texture_build(c, h, n) {
+    return n >= 16 && !sxMemcmp(h, "\x13\xAB\xA1\\", 4) && sxm_fixed(c, sxm_astc_header, 16);
+}

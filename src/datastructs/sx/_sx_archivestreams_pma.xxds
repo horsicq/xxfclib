@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pma/xx_pma_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_pma_header_fields = layout([u8("header_payload_size", SIZE), u8("header_checksum", CHECKSUM), chars("method", 5, NONE),
+    u32("compressed_size", SIZE), u32("uncompressed_size", SIZE), u32("dos_timestamp"), u8("attributes", FLAGS),
+    u8("header_level"), u8("name_size", SIZE)]);
+var sxas_pma_header = sxLayout(0x60430018, "pma_header", LE, sxas_pma_header_fields);
+var sxas_pma_crc16_fields = layout([u16("crc16", CHECKSUM)]);
+var sxas_pma_crc16 = sxLayout(0x60430019, "pma_crc16", LE, sxas_pma_crc16_fields);
+function sxas_pma(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var b = [];
+        if (!sxas_read(c, p, b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+        if (!sxas_read(c, p, b, 22)) {
+            return false;
+        }
+        var hs = b[0] + 2;
+        var n = b[21];
+        var packed = sxas_uint(b, 7, 4, false);
+        if (hs < 24 + n || !sxas_span(c, p, hs) || !sxas_span(c, p + hs, packed) || !sxas_add(c, sxas_pma_header, p) || !sxas_add(c, sxas_pma_crc16, p + 22 + n)) {
+            return false;
+        }
+        p += hs + packed;
+    }
+    return true;
+}
+function sx_pma_build(c) {
+    return sxas_pma(c);
+}

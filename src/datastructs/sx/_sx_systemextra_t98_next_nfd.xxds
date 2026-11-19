@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/t98_next_nfd/xx_t98_next_nfd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_nfd_header_fields = layout([chars("signature", 16, SIGNATURE), chars("comment", 256, STRING),
+    u32("data_offset", OFFSET), u8("write_protected", FLAGS), u8("head_count", COUNT),
+    field("reserved", "byte[10]", 10, RESERVED)]);
+var sxse_nfd_header = sxLayout(0x602F0057, "nfd_header", LE, sxse_nfd_header_fields);
+var sxse_nfd_sector_r0_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u8("mfm", FLAGS), u8("deleted_data_mark", FLAGS), u8("status", FLAGS), u8("fdc_st0", FLAGS), u8("fdc_st1", FLAGS),
+    u8("fdc_st2", FLAGS), u8("pda"), field("reserved", "byte[5]", 5, RESERVED)]);
+var sxse_nfd_sector_r0 = sxLayout(0x602F0058, "nfd_sector_r0", LE, sxse_nfd_sector_r0_fields);
+var sxse_nfd_sector_r1_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u8("mfm", FLAGS), u8("deleted_data_mark", FLAGS), u8("status", FLAGS), u8("fdc_st0", FLAGS), u8("fdc_st1", FLAGS),
+    u8("fdc_st2", FLAGS), u8("retry_count", COUNT), u8("pda"), field("reserved", "byte[4]", 4, RESERVED)]);
+var sxse_nfd_sector_r1 = sxLayout(0x602F0059, "nfd_sector_r1", LE, sxse_nfd_sector_r1_fields);
+var sxse_nfd_track_offset_fields = layout([u32("track_offset", OFFSET)]);
+var sxse_nfd_track_offset = sxLayout(0x602F005A, "nfd_track_offset", LE, sxse_nfd_track_offset_fields);
+var sxse_nfd_additional_info_fields = layout([u32("additional_info"), field("reserved", "byte[12]", 12, RESERVED)]);
+var sxse_nfd_additional_info = sxLayout(0x602F005B, "nfd_additional_info", LE, sxse_nfd_additional_info_fields);
+var sxse_nfd_track_header_fields = layout([u16("sector_count", COUNT), u16("diagnostic_count", COUNT),
+    field("reserved", "byte[12]", 12, RESERVED)]);
+var sxse_nfd_track_header = sxLayout(0x602F005C, "nfd_track_header", LE, sxse_nfd_track_header_fields);
+var sxse_nfd_diagnostic_fields = layout([u8("command", ID), u8("cylinder", ID), u8("head", ID), u8("sector_id", ID),
+    u8("size_code"), u8("status", FLAGS), u8("fdc_st0", FLAGS), u8("fdc_st1", FLAGS), u8("fdc_st2", FLAGS),
+    u8("retry_count", COUNT), u32("data_size", SIZE), u8("pda"), u8("reserved", RESERVED)]);
+var sxse_nfd_diagnostic = sxLayout(0x602F005D, "nfd_diagnostic", LE, sxse_nfd_diagnostic_fields);
+function sxse_nfd(c) {
+    var b = [];
+    if (!sxse_read(c, 0, b, 288) || sxMemcmp(b, "T98FDDIMAGE.R", 13) || !sxse_put(c, sxse_nfd_header, 0, 288, 1)) {
+        return false;
+    }
+    var limit = sxse_u32(b, 272, false);
+    if (!sxse_span(c, 0, limit)) {
+        return false;
+    }
+    if (b[13] === 48 /*0*/) {
+        return limit >= 0x10A00 && sxse_put(c, sxse_nfd_sector_r0, 288, 16, 4238);
+    }
+    if (b[13] !== 49 /*1*/ || limit < 960 || !sxse_put(c, sxse_nfd_track_offset, 288, 4, 164) || !sxse_put(c, sxse_nfd_additional_info, 944, 16, 1)) {
+        return false;
+    }
+    for (var i = 0; i < 164; i++) {
+        var p;
+        if ((p = sx_u32(c, (288 + ((4 * i) >>> 0)) >>> 0, false)) === null) {
+            return false;
+        }
+        if (!p) {
+            continue;
+        }
+        if (p < 960 || p > limit || sxU64(limit - p) < 16 || !sxse_read(c, p, b, 16)) {
+            return false;
+        }
+        var n = sxse_u16(b, 0, false);
+        var d = sxse_u16(b, 2, false);
+        if (n > 255 || d > 255 || 16 * (1 + n + d) > sxU64(limit - p) || !sxse_put(c, sxse_nfd_track_header, p, 16, 1) || !sxse_put(c, sxse_nfd_sector_r1, p + 16, 16, n) || !sxse_put(c, sxse_nfd_diagnostic, p + 16 + ((16 * n) >>> 0), 16, d)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_t98_next_nfd_build(c) {
+    return sxse_nfd(c);
+}

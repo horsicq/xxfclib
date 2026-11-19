@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/charmm_crd/xx_charmm_crd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_residue_id_fields = layout([field("residue_id", "char", 0, STRING)]);
+var sxsch_residue_id = sxLayout(0x6061000A, "chemistry_residue_id", LE, sxsch_residue_id_fields);
+var sxsch_segment_name_fields = layout([field("segment_name", "char", 0, STRING)]);
+var sxsch_segment_name = sxLayout(0x6061000B, "chemistry_segment_name", LE, sxsch_segment_name_fields);
+var sxsch_residue_index_fields = layout([field("residue_index", "ascii_signed", 0)]);
+var sxsch_residue_index = sxLayout(0x6061001A, "chemistry_residue_index", LE, sxsch_residue_index_fields);
+var sxsch_weight_fields = layout([field("weight", "ascii_real", 0)]);
+var sxsch_weight = sxLayout(0x60610023, "chemistry_weight", LE, sxsch_weight_fields);
+function sxsch_charmm(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(12, sxNew_sxsch_token);
+    var n = [0];
+    var atoms = [0];
+    if (!sxsch_next(q, l, t[0], 12, n, "*")) {
+        return false;
+    }
+    if (!n[0] || n[0] > 2 || !sxsch_number(q, sxCopy_sxsch_token(null, t[0]), atoms)) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_atom_count, sxCopy_sxsch_token(null, t[0]))) {
+            return false;
+        }
+    }
+    if (n[0] === 2) {
+        {
+            if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[1]))) {
+                return false;
+            }
+        }
+    }
+    for (var a = 0; a < atoms[0]; a++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsch_next(q, l, t[0], 12, n, "*") || n[0] !== 10) {
+            return false;
+        }
+        {
+            if (!sxsch_emit(q, sxsch_atom_id, sxCopy_sxsch_token(null, t[0]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_residue_index, sxCopy_sxsch_token(null, t[1]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_residue_name, sxCopy_sxsch_token(null, t[2]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_atom_name, sxCopy_sxsch_token(null, t[3]))) {
+                return false;
+            }
+        }
+        if (!sxsch_xyz(q, t[4], 0)) {
+            return false;
+        }
+        {
+            if (!sxsch_emit(q, sxsch_segment_name, sxCopy_sxsch_token(null, t[7]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_residue_id, sxCopy_sxsch_token(null, t[8]))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_weight, sxCopy_sxsch_token(null, t[9]))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_charmm_crd_build(q) {
+    return sxsch_charmm(q);
+}

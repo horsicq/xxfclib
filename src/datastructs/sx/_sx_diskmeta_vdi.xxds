@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vdi/xx_vdi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_vdi_preheader_fields = layout([chars("text", 64, NONE), u32("signature", SIGNATURE), u32("version")]);
+var sx_dm_vdi_preheader = sxLayout(0x60290018, "vdi_preheader", LE, sx_dm_vdi_preheader_fields);
+function sx_dm_vdi(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 456) || sx_dm_u32(h, 64, false) !== 0xBEDA107F) {
+        return false;
+    }
+    if (!sx_dm_add(c, sx_dm_vdi_preheader, 0, 72) || !sx_dm_add(c, sx_dm_vdi_header_v1, 72, 384)) {
+        return false;
+    }
+    var p = sx_dm_u32(h, 340, false);
+    var n = sx_dm_u32(h, 384, false);
+    return !sx_dm_span(c, p, n * 4) || sx_dm_table(c, sx_dm_vdi_block_map_entry, p, 4, n);
+}
+function sx_vdi_build(c) {
+    return sx_dm_vdi(c);
+}

@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/nintendo_bch/xx_nintendo_bch_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_bch21_header_fields = layout([chars("signature", 4, SIGNATURE), u8("backward_compatibility", ID),
+    u8("forward_compatibility", ID), u16("converter_version", ID), i32("contents_offset", OFFSET),
+    i32("strings_offset", OFFSET), i32("commands_offset", OFFSET), i32("raw_data_offset", OFFSET),
+    i32("raw_extra_offset", OFFSET), i32("relocations_offset", OFFSET), i32("contents_size", SIZE), i32("strings_size", SIZE),
+    i32("commands_size", SIZE), i32("raw_data_size", SIZE), i32("raw_extra_size", SIZE), i32("relocations_size", SIZE),
+    i32("uninitialized_data_size", SIZE), i32("uninitialized_commands_size", SIZE), u8("flags", FLAGS), u8("padding", RESERVED),
+    u16("address_count", COUNT)]);
+var sxmo_bch21_header = sxLayout(0x6021001B, "bch21_header", LE, sxmo_bch21_header_fields);
+var sxmo_bch_relocation_fields = layout([u32("encoded_relocation", FLAGS)]);
+var sxmo_bch_relocation = sxLayout(0x6021001C, "bch_relocation", LE, sxmo_bch_relocation_fields);
+function sxmo_bch(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 68) || sxMemcmp(h, "BCH\x00", 4) || h[4] !== 0x21 || h[5] !== 0x21 || !sxmo_add(c, sxmo_bch21_header, 0)) {
+        return false;
+    }
+    var p = sxmo32(h, 28, false);
+    var z = sxmo32(h, 52, false);
+    if (p >= 68 && z % 4 === 0 && Math.floor(z / 4) <= 4096 && sxmo_span(c, p, z) && !sxmo_table(c, sxmo_bch_relocation, p, Math.floor(z / 4))) {
+        return false;
+    }
+    return true;
+}
+function sx_nintendo_bch_build(c) {
+    var ok = false;
+    ok = sxmo_bch(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

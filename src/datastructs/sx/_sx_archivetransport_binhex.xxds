@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/binhex/xx_binhex_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxatp_binhex_banner_fields = layout([chars("banner", 45, SIGNATURE)]);
+var sxatp_binhex_banner = sxLayout(0x60890071, "binhex_banner", LE, sxatp_binhex_banner_fields);
+var sxatp_binhex_delimiter_fields = layout([chars("delimiter", 1, NONE)]);
+var sxatp_binhex_delimiter = sxLayout(0x60890072, "binhex_delimiter", LE, sxatp_binhex_delimiter_fields);
+var sxatp_binhex_encoded_run_fields = layout([field("encoded_six_bit_characters", "char", 0)]);
+var sxatp_binhex_encoded_run = sxLayout(0x60890073, "binhex_encoded_run", LE, sxatp_binhex_encoded_run_fields);
+var sxatp_transport_whitespace_fields = layout([field("whitespace", "uint8", 0)]);
+var sxatp_transport_whitespace = sxLayout(0x60890075, "transport_whitespace", LE, sxatp_transport_whitespace_fields);
+function sxatp_hqxchar(x) {
+    var a = "!\"#$%&'()*+,-012345689@ABCDEFGHIJKLMNPQRSTUVXYZ[`abcdefhijklmpqr";
+    return !!(x && sxStrchr(a, x) !== null);
+}
+function sxatp_binhex(c) {
+    if (!sxatp_add(c, sxatp_binhex_banner, 0)) {
+        return false;
+    }
+    var p = 45;
+    var colons = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 20000) {
+        var x = [0];
+        if (!sxatp_read(c, p, x, 0, 1)) {
+            return false;
+        }
+        if (x[0] === 58 /*:*/) {
+            if (!sxatp_add(c, sxatp_binhex_delimiter, p++)) {
+                return false;
+            }
+            if (++colons === 2) {
+                return true;
+            }
+            continue;
+        }
+        var l = sxatp_space(x[0]) ? sxatp_transport_whitespace : colons === 1 && sxatp_hqxchar(x[0]) ? sxatp_binhex_encoded_run : null;
+        if (l === null) {
+            return false;
+        }
+        var q = p + 1;
+        while (q < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxU64(q - p) < 4096) {
+            var y = [0];
+            if (!sxatp_read(c, q, y, 0, 1)) {
+                return false;
+            }
+            if (l === sxatp_transport_whitespace ? !sxatp_space(y[0]) : !sxatp_hqxchar(y[0])) {
+                break;
+            }
+            q++;
+        }
+        if (!sxatp_text(c, l, p, sxU64(q - p), false)) {
+            return false;
+        }
+        p = q;
+    }
+    return true;
+}
+function sx_binhex_build(c) {
+    return sxatp_binhex(c);
+}

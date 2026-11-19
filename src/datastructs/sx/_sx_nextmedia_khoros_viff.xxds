@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/khoros_viff/xx_khoros_viff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_viff_header_le_fields = layout([u8("identifier", SIGNATURE), u8("file_type", ID), u8("release", ID), u8("version", ID),
+    u8("machine_dependency", ID), blob("reserved", 3, RESERVED), chars("comment", 512, STRING), u32("rows", COUNT),
+    u32("columns", COUNT), u32("subrows", COUNT), i32("x_offset"), i32("y_offset"), field("x_bits_per_pixel", "float", 4),
+    field("y_bits_per_pixel", "float", 4), u32("location_type", ID), u32("location_dimension", COUNT),
+    u32("image_count", COUNT), u32("band_count", COUNT), u32("storage_type", ID), u32("encoding", ID), u32("map_scheme", ID),
+    u32("map_storage_type", ID), u32("map_rows", COUNT), u32("map_columns", COUNT), u32("map_subrows", COUNT),
+    u32("map_enable", FLAGS), u32("maps_per_cycle", COUNT), u32("color_space", ID), blob("reserved_tail", 420, RESERVED)]);
+var sxnx_viff_header_le = sxLayout(0x60320024, "viff_header_le", LE, sxnx_viff_header_le_fields);
+var sxnx_viff_header_be_fields = layout([u8("identifier", SIGNATURE), u8("file_type", ID), u8("release", ID), u8("version", ID),
+    u8("machine_dependency", ID), blob("reserved", 3, RESERVED), chars("comment", 512, STRING), u32("rows", COUNT),
+    u32("columns", COUNT), u32("subrows", COUNT), i32("x_offset"), i32("y_offset"), field("x_bits_per_pixel", "float", 4),
+    field("y_bits_per_pixel", "float", 4), u32("location_type", ID), u32("location_dimension", COUNT),
+    u32("image_count", COUNT), u32("band_count", COUNT), u32("storage_type", ID), u32("encoding", ID), u32("map_scheme", ID),
+    u32("map_storage_type", ID), u32("map_rows", COUNT), u32("map_columns", COUNT), u32("map_subrows", COUNT),
+    u32("map_enable", FLAGS), u32("maps_per_cycle", COUNT), u32("color_space", ID), blob("reserved_tail", 420, RESERVED)]);
+var sxnx_viff_header_be = sxLayout(0x60320025, "viff_header_be", BE, sxnx_viff_header_be_fields);
+var sxnx_viff_header_dec_fields = layout([u8("identifier", SIGNATURE), u8("file_type", ID), u8("release", ID),
+    u8("version", ID), u8("machine_dependency", ID), blob("reserved", 3, RESERVED), chars("comment", 512, STRING),
+    u32("rows", COUNT), u32("columns", COUNT), u32("subrows", COUNT), i32("x_offset"), i32("y_offset"),
+    blob("x_bits_per_pixel_vax", 4), blob("y_bits_per_pixel_vax", 4), u32("location_type", ID),
+    u32("location_dimension", COUNT), u32("image_count", COUNT), u32("band_count", COUNT), u32("storage_type", ID),
+    u32("encoding", ID), u32("map_scheme", ID), u32("map_storage_type", ID), u32("map_rows", COUNT), u32("map_columns", COUNT),
+    u32("map_subrows", COUNT), u32("map_enable", FLAGS), u32("maps_per_cycle", COUNT), u32("color_space", ID),
+    blob("reserved_tail", 420, RESERVED)]);
+var sxnx_viff_header_dec = sxLayout(0x60320026, "viff_header_dec", LE, sxnx_viff_header_dec_fields);
+function sxnx_viff(v) {
+    return sxnx_need(v, 0, 5, v.n) && sxnx_row(v, v.p[4] === 2 ? sxnx_viff_header_be : v.p[4] === 4 ? sxnx_viff_header_dec : sxnx_viff_header_le, 0, v.n);
+}
+function sx_khoros_viff_build(v) {
+    return sxnx_viff(v);
+}

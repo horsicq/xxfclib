@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/hlb/xx_hlb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_hlb_header_fields = layout([u16("magic", SIGNATURE), u16("entry_count", COUNT), u32("directory_offset", OFFSET)]);
+var sxag_hlb_header = sxLayout(0x6025002D, "hlb_header", LE, sxag_hlb_header_fields);
+var sxag_hlb_entry_fields = layout([i32("data_offset", OFFSET), chars("name", 14, STRING)]);
+var sxag_hlb_entry = sxLayout(0x6025002E, "hlb_entry", LE, sxag_hlb_entry_fields);
+var sxag_hlb_footer_fields = layout([u32("directory_offset", OFFSET)]);
+var sxag_hlb_footer = sxLayout(0x6025002F, "hlb_footer", LE, sxag_hlb_footer_fields);
+function sxag_hlb(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 8) || !sxag_add(c, sxag_hlb_header, 0)) {
+        return false;
+    }
+    var n = sxag16(b, 2, false);
+    var p = sxag32(b, 4, false);
+    if (!n || n > 20000 || p < 8 || !sxag_span(c, p, n * 18 + 4)) {
+        return true;
+    }
+    return sxag_table(c, sxag_hlb_entry, p, n) && sxag_add(c, sxag_hlb_footer, p + n * 18);
+}
+function sx_hlb_build(c) {
+    return sxag_hlb(c);
+}

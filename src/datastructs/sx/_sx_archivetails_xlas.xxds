@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/xlas/xx_xlas_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_xlas_header_fields = layout([chars("signature", 4, SIGNATURE), u32("directory_offset", OFFSET),
+    u32("member_count", COUNT)]);
+var sxat_xlas_header = sxLayout(0x60640020, "xlas_header", LE, sxat_xlas_header_fields);
+var sxat_xlas_member_fields = layout([chars("name", 12, NONE), u32("payload_offset", OFFSET), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u16("method")]);
+var sxat_xlas_member = sxLayout(0x60640021, "xlas_member", LE, sxat_xlas_member_fields);
+function sxat_xlas(c) {
+    var p = [0];
+    var n = [0];
+    return sxat_word(c, 4, 4, false, p) && sxat_word(c, 8, 4, false, n) && sxat_add(c, sxat_xlas_header, 0) && sxat_table(c, sxat_xlas_member, p[0], 26, n[0]);
+}
+function sx_xlas_build(c) {
+    return sxat_xlas(c);
+}

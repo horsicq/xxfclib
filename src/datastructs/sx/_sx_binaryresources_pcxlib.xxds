@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/pcxlib/xx_pcxlib_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_pcxlib_header_fields = layout([chars("magic", 7, SIGNATURE), bytes("opaque_7", 115)]);
+var sxbrs_pcxlib_header = sxLayout(0x603E001A, "pcxlib_header", LE, sxbrs_pcxlib_header_fields);
+var sxbrs_pcxlib_member_fields = layout([u8("tag", SIGNATURE), chars("filename", 13, STRING), u32("stored_size", SIZE),
+    bytes("opaque_12", 4), u16("method", ID), bytes("opaque_18", 60)]);
+var sxbrs_pcxlib_member = sxLayout(0x603E001B, "pcxlib_member", LE, sxbrs_pcxlib_member_fields);
+function sxbrs_pcxlib(c) {
+    var at = [0];
+    var end = c.size;
+    if (end < 206 || !sxbrs_eq(c, 0, "pcxLib\x00", 7)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_pcxlib_header, at, end, 1)) {
+            return false;
+        }
+    }
+    var count = 0;
+    while (at[0] < end) {
+        if (++count > 1000000 || sxbrs_num(c, at[0], 1, false) !== 1 || sxbrs_num(c, at[0] + 22, 2, false) !== 0) {
+            return false;
+        }
+        var n = sxbrs_num(c, at[0] + 14, 4, false);
+        {
+            if (!sxbrs_take(c, sxbrs_pcxlib_member, at, end, 1)) {
+                return false;
+            }
+        }
+        {
+            if (!sxbrs_skip(at, end, n)) {
+                return false;
+            }
+        }
+    }
+    return count > 0;
+}
+function sx_pcxlib_build(c) {
+    return sxbrs_pcxlib(c);
+}

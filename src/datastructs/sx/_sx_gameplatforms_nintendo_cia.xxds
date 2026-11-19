@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_cia/xx_nintendo_cia_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_cia_header_fields = layout([u32("header_size", SIZE), u16("type", ID), u16("version", ID),
+    u32("certificates_size", SIZE), u32("ticket_size", SIZE), u32("tmd_size", SIZE), u32("metadata_size", SIZE),
+    u64("content_size", SIZE), blob("content_index_bitmap", 8192, FLAGS)]);
+var sxgp_cia_header = sxLayout(0x6036008A, "cia_header", LE, sxgp_cia_header_fields);
+var sxgp_cia_signature_fields = layout([u32("signature_type", ID), blob("signature", 256, SIGNATURE),
+    blob("padding", 60, RESERVED)]);
+var sxgp_cia_signature = sxLayout(0x6036008B, "cia_signature", BE, sxgp_cia_signature_fields);
+var sxgp_cia_tmd_fields = layout([chars("issuer", 64, STRING), u8("version", ID), u8("ca_crl_version", ID),
+    u8("signer_crl_version", ID), u8("reserved", RESERVED), u64("system_version", ID), u64("title_id", ID),
+    u32("title_type", FLAGS), u16("group_id", ID), field("save_data_size", "uint32le", 4, SIZE),
+    field("private_save_data_size", "uint32le", 4, SIZE), blob("reserved2", 4, RESERVED), u8("twl_flag", FLAGS),
+    blob("reserved3", 49, RESERVED), u32("access_rights", FLAGS), u16("title_version", ID), u16("content_count", COUNT),
+    u16("boot_content", ID), u16("reserved4", RESERVED), blob("content_info_sha256", 32, CHECKSUM)]);
+var sxgp_cia_tmd = sxLayout(0x6036008C, "cia_tmd", BE, sxgp_cia_tmd_fields);
+var sxgp_cia_content_info_fields = layout([u16("index_offset", ID), u16("content_count", COUNT), blob("sha256", 32, CHECKSUM)]);
+var sxgp_cia_content_info = sxLayout(0x6036008D, "cia_content_info", BE, sxgp_cia_content_info_fields);
+var sxgp_cia_content_fields = layout([u32("content_id", ID), u16("content_index", ID), u16("type", FLAGS),
+    u64("content_size", SIZE), blob("sha256", 32, CHECKSUM)]);
+var sxgp_cia_content = sxLayout(0x6036008E, "cia_content", BE, sxgp_cia_content_fields);
+var sxgp_cia_metadata_fields = layout([blob("dependencies", 384, ID), blob("reserved", 384, RESERVED), u32("core_version", ID),
+    blob("reserved2", 252, RESERVED)]);
+var sxgp_cia_metadata = sxLayout(0x6036008F, "cia_metadata", LE, sxgp_cia_metadata_fields);
+function sxgp_cia(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var tmd = 0x2DC0;
+    var ts = [0];
+    var ms = [0];
+    var cs = [0];
+    var n = [0];
+    var meta;
+    if (!sxgp_row(v, sxgp_cia_header, 0, end) || !sxgp_word(v, 16, 4, false, ts, 0, end) || !sxgp_word(v, 20, 4, false, ms, 0, end) || !sxgp_word(v, 24, 8, false, cs, 0, end) || !sxgp_span(v, tmd, ts[0], end)) {
+        return false;
+    }
+    var stop = tmd + ts[0];
+    if (!sxgp_row(v, sxgp_cia_signature, tmd, stop) || !sxgp_row(v, sxgp_cia_tmd, tmd + 0x140, stop) || !sxgp_table(v, sxgp_cia_content_info, tmd + 0x204, 64, stop) || !sxgp_word(v, tmd + 0x1DE, 2, true, n, 0, stop) || n[0] > 1024 || !sxgp_table(v, sxgp_cia_content, tmd + 0xB04, n[0], stop)) {
+        return false;
+    }
+    var content = sxAnd64(stop + 63, sxK(0xFFFFFFFF, 0xFFFFFFC0));
+    if (!sxgp_span(v, content, cs[0], end)) {
+        return false;
+    }
+    meta = sxAnd64(content + cs[0] + 63, sxK(0xFFFFFFFF, 0xFFFFFFC0));
+    return !ms[0] || sxgp_span(v, meta, ms[0], end) && sxgp_row(v, sxgp_cia_metadata, meta, meta + ms[0]);
+}
+function sx_nintendo_cia_build(v) {
+    return sxgp_cia(v);
+}

@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/wintermutedcp/xx_wintermutedcp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_name_length8_fields = layout([u8("name_bytes", SIZE)]);
+var sxga_name_length8 = sxLayout(0x603B0003, "name_length8", LE, sxga_name_length8_fields);
+var sxga_dcp_directory_fields = layout([u8("cd", ID), u32("files", COUNT)]);
+var sxga_dcp_directory = sxLayout(0x603B0031, "dcp_directory", LE, sxga_dcp_directory_fields);
+function sxga_dcp(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [128];
+    var version = [0];
+    var dirs = [0];
+    var n = [0];
+    var z = [0];
+    if (!sxga_row(v, sxga_dcp_header, 0, end) || !sxga_word(v, 8, 4, false, version, 0, end) || !sxga_word(v, 124, 4, false, dirs, 0, end) || dirs[0] > 1000000) {
+        return false;
+    }
+    if (version[0] === 0x200) {
+        if (!sxga_row(v, sxga_dcp_directory_offset, 128, end) || !sxga_word(v, 128, 4, false, at, 0, end)) {
+            return false;
+        }
+    }
+    for (var i = 0; i < dirs[0]; i++) {
+        if (!sxga_row(v, sxga_name_length8, at[0], end) || !sxga_word(v, at[0], 1, false, z, 0, end)) {
+            return false;
+        }
+        at[0]++;
+        if (!sxga_named(v, at[0], z[0], end, false)) {
+            return false;
+        }
+        at[0] += z[0];
+        if (!sxga_row(v, sxga_dcp_directory, at[0], end) || !sxga_word(v, at[0] + 1, 4, false, n, 0, end) || n[0] > 1000000) {
+            return false;
+        }
+        at[0] += 5;
+        for (var j = 0; j < n[0]; j++) {
+            if (!sxga_row(v, sxga_name_length8, at[0], end) || !sxga_word(v, at[0], 1, false, z, 0, end)) {
+                return false;
+            }
+            at[0]++;
+            if (!sxga_named(v, at[0], z[0], end, version[0] === 0x200)) {
+                return false;
+            }
+            at[0] += z[0];
+            if (!sxga_row(v, version[0] === 0x200 ? sxga_dcp_entry2 : sxga_dcp_entry1, at[0], end)) {
+                return false;
+            }
+            at[0] += version[0] === 0x200 ? 24 : 16;
+        }
+    }
+    return true;
+}
+function sx_wintermutedcp_build(v) {
+    return sxga_dcp(v);
+}

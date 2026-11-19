@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_ncsd/xx_nintendo_ncsd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_ncsd_header_fields = layout([blob("signature", 256, SIGNATURE), blob("magic", 4, SIGNATURE),
+    u32("content_media_units"), u64("media_id", ID), blob("filesystem_types", 8, ID), blob("crypto_types", 8, ID)]);
+var sxgp_ncsd_header = sxLayout(0x60360027, "ncsd_header", LE, sxgp_ncsd_header_fields);
+var sxgp_ncsd_partition_fields = layout([u32("offset_media_units"), u32("size_media_units")]);
+var sxgp_ncsd_partition = sxLayout(0x60360028, "ncsd_partition", LE, sxgp_ncsd_partition_fields);
+var sxgp_ncsd_tail_fields = layout([blob("extended_header_sha256", 32, CHECKSUM), u32("additional_header_size", SIZE),
+    u32("sector_zero_offset_encoded"), blob("partition_flags", 8, FLAGS), u64("partition_id_0", ID), u64("partition_id_1", ID),
+    u64("partition_id_2", ID), u64("partition_id_3", ID), u64("partition_id_4", ID), u64("partition_id_5", ID),
+    u64("partition_id_6", ID), u64("partition_id_7", ID), blob("reserved", 47, RESERVED), u8("extra_save_key_selector", ID)]);
+var sxgp_ncsd_tail = sxLayout(0x60360029, "ncsd_tail", LE, sxgp_ncsd_tail_fields);
+function sxgp_ncsd(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (!sxgp_row(v, sxgp_ncsd_header, 0, end) || !sxgp_table(v, sxgp_ncsd_partition, 0x120, 8, end) || !sxgp_row(v, sxgp_ncsd_tail, 0x160, end)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        var at = [0];
+        var z = [0];
+        if (!sxgp_word(v, (0x120 + ((i * 8) >>> 0)) >>> 0, 4, false, at, 0, end) || !sxgp_word(v, (0x124 + ((i * 8) >>> 0)) >>> 0, 4, false, z, 0, end)) {
+            return false;
+        }
+        if (z[0]) {
+            at[0] *= 512;
+            z[0] *= 512;
+            if (!sxgp_span(v, at[0], z[0], end) || !sxgp_ncch_at(v, at[0], at[0] + z[0], false)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_nintendo_ncsd_build(v) {
+    return sxgp_ncsd(v);
+}

@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/bioware_biff/xx_bioware_biff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_biff_header_fields = layout([chars("signature", 4, SIGNATURE), chars("version", 4, ID), u32("variable_count", COUNT),
+    u32("fixed_count", COUNT), u32("table_offset", OFFSET)]);
+var sxgm_biff_header = sxLayout(0x60270031, "biff_header", LE, sxgm_biff_header_fields);
+var sxgm_biff_entry_v1_fields = layout([u32("resource_id", ID), u32("data_offset", OFFSET), u32("data_size", SIZE),
+    u32("resource_type", ID)]);
+var sxgm_biff_entry_v1 = sxLayout(0x60270032, "biff_entry_v1", LE, sxgm_biff_entry_v1_fields);
+var sxgm_biff_entry_v2_fields = layout([u64("resource_id", ID), u32("data_offset", OFFSET), u32("data_size", SIZE),
+    u32("resource_type", ID)]);
+var sxgm_biff_entry_v2 = sxLayout(0x60270033, "biff_entry_v2", LE, sxgm_biff_entry_v2_fields);
+function sxgm_biff(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 20) || !sxgm_add(c, sxgm_biff_header, 0)) {
+        return false;
+    }
+    return sxgm_table(c, b[7] === 49 /*1*/ ? sxgm_biff_entry_v2 : sxgm_biff_entry_v1, sxgm32(b, 16, false), sxgm32(b, 8, false));
+}
+function sx_bioware_biff_build(c) {
+    return sxgm_biff(c);
+}

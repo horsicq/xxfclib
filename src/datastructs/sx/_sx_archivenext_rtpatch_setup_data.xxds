@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/rtpatch_setup_data/xx_rtpatch_setup_data_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_rtpatch_setup_member_fields = layout([i32("compressed_size", SIZE), i32("uncompressed_size", SIZE),
+    u16("attributes", FLAGS), u16("dos_date"), u16("dos_time"), u16("name_size", SIZE)]);
+var sxan_rtpatch_setup_member = sxLayout(0x60770020, "rtpatch_setup_member", LE, sxan_rtpatch_setup_member_fields);
+function sxan_rtsetup(c) {
+    var p = 0;
+    var n = [0];
+    var z = [0];
+    while (sxan_span(c, p, 16)) {
+        if (!sxan_word(c, p, 4, false, z) || z[0] > 2147483647 || !sxan_word(c, p + 14, 2, false, n) || n[0] < 2 || n[0] > 13 || !sxan_add(c, sxan_rtpatch_setup_member, p) || !sxan_named(c, p + 16, n[0])) {
+            return false;
+        }
+        p += 16 + n[0];
+        if (!sxan_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_rtpatch_setup_data_build(c) {
+    var ok = false;
+    ok = sxan_rtsetup(c);
+    return !!(c.count && sxan_finish(c));
+}

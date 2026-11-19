@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/gamos/xx_gamos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_gamos_header_fields = layout([bytes("signature", 18, SIGNATURE), u8("zero"), u8("marker1"), u16("reserved"),
+    u8("marker2"), u16("member_count", COUNT), bytes("unused", 8)]);
+var sxat_gamos_header = sxLayout(0x6064000B, "gamos_header", LE, sxat_gamos_header_fields);
+var sxat_gamos_member_fields = layout([chars("name", 13, NONE), u8("method"), i32("payload_offset", OFFSET),
+    u16("compressed_size", SIZE), u16("uncompressed_size", SIZE)]);
+var sxat_gamos_member = sxLayout(0x6064000C, "gamos_member", LE, sxat_gamos_member_fields);
+function sxat_gamos(c) {
+    var n = [0];
+    return sxat_word(c, 23, 2, false, n) && sxat_add(c, sxat_gamos_header, 0) && sxat_table(c, sxat_gamos_member, 33, 22, n[0]);
+}
+function sx_gamos_build(c) {
+    return sxat_gamos(c);
+}

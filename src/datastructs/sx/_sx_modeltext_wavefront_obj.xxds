@@ -1,0 +1,86 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/wavefront_obj/xx_wavefront_obj_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_group_name_fields = layout([field("group_name", "utf8", 0, STRING)]);
+var sxmt_group_name = sxLayout(0x6052000B, "modeltext_group_name", LE, sxmt_group_name_fields);
+var sxmt_texture_index_fields = layout([field("texture_index", "ascii_signed", 0)]);
+var sxmt_texture_index = sxLayout(0x6052001D, "modeltext_texture_index", LE, sxmt_texture_index_fields);
+var sxmt_normal_index_fields = layout([field("normal_index", "ascii_signed", 0)]);
+var sxmt_normal_index = sxLayout(0x6052001E, "modeltext_normal_index", LE, sxmt_normal_index_fields);
+var sxmt_smoothing_group_fields = layout([field("smoothing_group", "ascii_signed", 0)]);
+var sxmt_smoothing_group = sxLayout(0x60520021, "modeltext_smoothing_group", LE, sxmt_smoothing_group_fields);
+var sxmt_w_fields = layout([field("w", "ascii_real", 0)]);
+var sxmt_w = sxLayout(0x6052003C, "modeltext_w", LE, sxmt_w_fields);
+var sxmt_normal_x_fields = layout([field("normal_x", "ascii_real", 0)]);
+var sxmt_normal_x = sxLayout(0x6052003F, "modeltext_normal_x", LE, sxmt_normal_x_fields);
+var sxmt_normal_y_fields = layout([field("normal_y", "ascii_real", 0)]);
+var sxmt_normal_y = sxLayout(0x60520040, "modeltext_normal_y", LE, sxmt_normal_y_fields);
+var sxmt_normal_z_fields = layout([field("normal_z", "ascii_real", 0)]);
+var sxmt_normal_z = sxLayout(0x60520041, "modeltext_normal_z", LE, sxmt_normal_z_fields);
+function sxmt_obj(q) {
+    var a = [0];
+    var end = [0];
+    while (sxmt_line(q, a, end, true)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var next = q.p;
+        q.p = a[0];
+        var k = [0];
+        var z = [0];
+        if (!sxmt_token(q, end[0], k, z, false)) {
+            return false;
+        }
+        {
+            if (!sxmt_emit(q, sxmt_keyword, k[0], z[0])) {
+                return false;
+            }
+        }
+        if (sxmt_eq(q, k[0], z[0], "v") || sxmt_eq(q, k[0], z[0], "vt") || sxmt_eq(q, k[0], z[0], "vn")) {
+            var tex = sxmt_eq(q, k[0], z[0], "vt");
+            var normal = sxmt_eq(q, k[0], z[0], "vn");
+            var ls = [tex ? sxmt_u : normal ? sxmt_normal_x : sxmt_x, tex ? sxmt_v : normal ? sxmt_normal_y : sxmt_y, tex ? sxmt_w : normal ? sxmt_normal_z : sxmt_z, sxmt_w];
+            var i = 0;
+            while (sxmt_token(q, end[0], a, z, true)) {
+                if (i >= 4 || !sxmt_emit(q, ls[i++], a[0], z[0])) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "f")) {
+            while (sxmt_token(q, end[0], a, z, true)) {
+                var start = a[0];
+                var stop = a[0] + z[0];
+                i = 0;
+                ls = [sxmt_vertex_index, sxmt_texture_index, sxmt_normal_index];
+                for (var p = a[0]; p <= stop; p++) {
+                    if (p === stop || q.b[p] === 47) {
+                        if (i >= 3) {
+                            return false;
+                        }
+                        if (p > start && !sxmt_emit(q, ls[i], start, p - start)) {
+                            return false;
+                        }
+                        start = p + 1;
+                        i++;
+                    }
+                }
+            }
+        } else {
+            while (q.p < end[0] && sxmt_space(q.b[q.p])) {
+                q.p++;
+            }
+            var l = sxmt_eq(q, k[0], z[0], "s") ? sxmt_eq(q, q.p, end[0] - q.p, "off") ? sxmt_string_value : sxmt_smoothing_group : sxmt_eq(q, k[0], z[0], "usemtl") || sxmt_eq(q, k[0], z[0], "mtllib") ? sxmt_material_name : sxmt_group_name;
+            if (!sxmt_emit(q, l, q.p, end[0] - q.p)) {
+                return false;
+            }
+        }
+        q.p = next;
+    }
+    return q.c.count > 0;
+}
+function sx_wavefront_obj_build(q) {
+    return sxmt_obj(q);
+}

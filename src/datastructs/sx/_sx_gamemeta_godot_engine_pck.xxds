@@ -1,0 +1,139 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/godot_engine_pck/xx_godot_engine_pck_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_godot_pck_v1_fields = layout([chars("signature", 4, SIGNATURE), u32("pack_version", ID), u32("engine_major", ID),
+    u32("engine_minor", ID), u32("engine_patch", ID), field("reserved", "uint32[16]", 64, RESERVED)]);
+var sxgm_godot_pck_v1 = sxLayout(0x60270006, "godot_pck_v1", LE, sxgm_godot_pck_v1_fields);
+var sxgm_godot_pck_v2_fields = layout([chars("signature", 4, SIGNATURE), u32("pack_version", ID), u32("engine_major", ID),
+    u32("engine_minor", ID), u32("engine_patch", ID), u32("flags", FLAGS), u64("file_base", OFFSET),
+    field("reserved", "uint32[16]", 64, RESERVED)]);
+var sxgm_godot_pck_v2 = sxLayout(0x60270007, "godot_pck_v2", LE, sxgm_godot_pck_v2_fields);
+var sxgm_godot_pck_v3_fields = layout([chars("signature", 4, SIGNATURE), u32("pack_version", ID), u32("engine_major", ID),
+    u32("engine_minor", ID), u32("engine_patch", ID), u32("flags", FLAGS), u64("file_base", OFFSET),
+    u64("directory_offset", OFFSET), field("reserved", "uint32[16]", 64, RESERVED)]);
+var sxgm_godot_pck_v3 = sxLayout(0x60270008, "godot_pck_v3", LE, sxgm_godot_pck_v3_fields);
+var sxgm_godot_pck_v4_salted_fields = layout([chars("signature", 4, SIGNATURE), u32("pack_version", ID),
+    u32("engine_major", ID), u32("engine_minor", ID), u32("engine_patch", ID), u32("flags", FLAGS), u64("file_base", OFFSET),
+    u64("directory_offset", OFFSET), bytes("salt", 32), bytes("reserved", 32, RESERVED)]);
+var sxgm_godot_pck_v4_salted = sxLayout(0x60270009, "godot_pck_v4_salted", LE, sxgm_godot_pck_v4_salted_fields);
+var sxgm_godot_file_count_fields = layout([u32("file_count", COUNT)]);
+var sxgm_godot_file_count = sxLayout(0x6027000A, "godot_file_count", LE, sxgm_godot_file_count_fields);
+var sxgm_godot_path_length_fields = layout([u32("path_size", SIZE)]);
+var sxgm_godot_path_length = sxLayout(0x6027000B, "godot_path_length", LE, sxgm_godot_path_length_fields);
+var sxgm_godot_entry_v1_fields = layout([u64("data_offset", OFFSET), u64("data_size", SIZE), bytes("md5", 16, CHECKSUM)]);
+var sxgm_godot_entry_v1 = sxLayout(0x6027000C, "godot_entry_v1", LE, sxgm_godot_entry_v1_fields);
+var sxgm_godot_entry_v2_fields = layout([u64("data_offset", OFFSET), u64("data_size", SIZE), bytes("md5", 16, CHECKSUM),
+    u32("flags", FLAGS)]);
+var sxgm_godot_entry_v2 = sxLayout(0x6027000D, "godot_entry_v2", LE, sxgm_godot_entry_v2_fields);
+var sxgm_godot_encrypted_block_fields = layout([bytes("md5", 16, CHECKSUM), u64("plain_size", SIZE), bytes("iv", 16)]);
+var sxgm_godot_encrypted_block = sxLayout(0x6027000E, "godot_encrypted_block", LE, sxgm_godot_encrypted_block_fields);
+var sxgm_godot_trailer_fields = layout([u64("pack_size", SIZE), chars("signature", 4, SIGNATURE)]);
+var sxgm_godot_trailer = sxLayout(0x6027000F, "godot_trailer", LE, sxgm_godot_trailer_fields);
+function sxgm_godot_locate(c, pack, end) {
+    var b = [];
+    pack[0] = 0;
+    end[0] = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxgm_read(c, 0, b, 4)) {
+        return false;
+    }
+    if (!sxMemcmp(b, "GDPC", 4)) {
+        return true;
+    }
+    if (end[0] >= 100 && sxgm_read(c, sxU64(end[0] - 12), b, 12) && !sxMemcmpAt(b, 8, "GDPC", 0, 4)) {
+        var n = sxgm_uint(b, 0, 8, false);
+        if (n >= 88 && n <= sxU64(end[0] - 12) && sxgm_read(c, sxU64(sxU64(end[0] - 12) - n), b, 4) && !sxMemcmp(b, "GDPC", 4)) {
+            pack[0] = sxU64(sxU64(end[0] - 12) - n);
+            end[0] = sxU64(end[0] - 12);
+            return sxgm_add(c, sxgm_godot_trailer, end[0]);
+        }
+    }
+    if (!sxgm_read(c, 0, b, 64) || sxMemcmp(b, "MZ", 2)) {
+        return false;
+    }
+    var pe = sxgm32(b, 60, false);
+    if (pe > 0x10000000 || !sxgm_read(c, pe, b, 24) || sxMemcmp(b, "PE\x00\x00", 4)) {
+        return false;
+    }
+    n = sxgm16(b, 6, false);
+    var p = pe + 24 + sxgm16(b, 20, false);
+    if (!n || n > 96 || !sxgm_span(c, p, n * 40)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxgm_read(c, p + ((i * 40) >>> 0), b, 40)) {
+            return false;
+        }
+        if (sxMemcmp(b, "pck\x00\x00\x00\x00\x00", 8)) {
+            continue;
+        }
+        var at = sxgm32(b, 20, false);
+        var z = sxgm32(b, 16, false);
+        if (at > end[0]) {
+            continue;
+        }
+        var limit = z > sxU64(end[0] - at) ? end[0] : at + z;
+        for (var slack = 0; slack < 8 && sxU64(limit - at) >= (88 + slack) >>> 0; slack++) {
+            if (sxgm_read(c, at + slack, b, 4) && !sxMemcmp(b, "GDPC", 4)) {
+                pack[0] = at + slack;
+                end[0] = limit;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function sxgm_godot(c) {
+    var b = [];
+    var pack = [0];
+    var end = [0];
+    if (!sxgm_godot_locate(c, pack, end) || sxU64(end[0] - pack[0]) < 20 || !sxgm_read(c, pack[0], b, 20)) {
+        return false;
+    }
+    var v = sxgm32(b, 4, false);
+    var flags = 0;
+    var h = v <= 1 ? 84 : v === 2 ? 96 : 104;
+    if (v > 4 || sxU64(end[0] - pack[0]) < h || !sxgm_read(c, pack[0], b, h)) {
+        return false;
+    }
+    if (v >= 2) {
+        flags = sxgm32(b, 20, false);
+    }
+    var l = v <= 1 ? sxgm_godot_pck_v1 : v === 2 ? sxgm_godot_pck_v2 : v === 4 && (flags & 5) === 5 ? sxgm_godot_pck_v4_salted : sxgm_godot_pck_v3;
+    if (!sxgm_add(c, l, pack[0])) {
+        return false;
+    }
+    var rel = v >= 3 ? sxgm_uint(b, 32, 8, false) : h;
+    if (rel > sxU64(end[0] - pack[0]) || sxU64(sxU64(end[0] - pack[0]) - rel) < 4) {
+        return true;
+    }
+    var p = pack[0] + rel;
+    var n = [0];
+    if (!sxgm_word(c, p, 4, false, n) || !sxgm_add(c, sxgm_godot_file_count, p)) {
+        return false;
+    }
+    p += 4;
+    if (flags & 1) {
+        if (sxU64(end[0] - p) >= 40 && !sxgm_add(c, sxgm_godot_encrypted_block, p)) {
+            return false;
+        }
+        return true;
+    }
+    var tail = v >= 2 ? 36 : 32;
+    for (var i = 0; i < n[0] && i < 20000 && c.count < 20000; i++) {
+        var z = [0];
+        if (sxU64(end[0] - p) < 4 || !sxgm_word(c, p, 4, false, z) || !z[0] || z[0] > sxU64(sxU64(end[0] - p) - 4) || sxU64(sxU64(sxU64(end[0] - p) - 4) - z[0]) < tail) {
+            break;
+        }
+        if (!sxgm_add(c, sxgm_godot_path_length, p) || !sxgm_add(c, v >= 2 ? sxgm_godot_entry_v2 : sxgm_godot_entry_v1, p + 4 + z[0])) {
+            return false;
+        }
+        p += 4 + z[0] + tail;
+    }
+    return true;
+}
+function sx_godot_engine_pck_build(c) {
+    return sxgm_godot(c);
+}

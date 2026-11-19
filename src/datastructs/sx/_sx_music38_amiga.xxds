@@ -1,0 +1,390 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_music38_amiga.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxam38_dln_earlier_header_fields = layout([u16("channel_table_base_offset", OFFSET), u16("subsong_boundary_offset", OFFSET)]);
+var sxam38_dln_earlier_header = sxLayout(0x60AF0001, "dln_earlier_header", BE, sxam38_dln_earlier_header_fields);
+var sxam38_dln_later_header_fields = layout([u16("channel_table_offset", OFFSET), u16("secondary_word")]);
+var sxam38_dln_later_header = sxLayout(0x60AF0002, "dln_later_header", BE, sxam38_dln_later_header_fields);
+var sxam38_dln_earlier_song_fields = layout([u32("initial_replay_word"), u32("channel_1_offset", OFFSET),
+    u32("channel_2_offset", OFFSET), u32("channel_3_offset", OFFSET), u32("channel_4_offset", OFFSET), blob("reserved", 12)]);
+var sxam38_dln_earlier_song = sxLayout(0x60AF0003, "dln_earlier_song", BE, sxam38_dln_earlier_song_fields);
+var sxam38_dln_later_song_fields = layout([u32("channel_1_offset", OFFSET), u32("channel_2_offset", OFFSET),
+    u32("channel_3_offset", OFFSET), u32("channel_4_offset", OFFSET)]);
+var sxam38_dln_later_song = sxLayout(0x60AF0004, "dln_later_song", BE, sxam38_dln_later_song_fields);
+var sxam38_dln_sample_fields = layout([u16("kind", ID), u32("sample_offset", OFFSET), u16("sample_length_words"),
+    u32("repeat_offset", OFFSET), u16("repeat_length_words")]);
+var sxam38_dln_sample = sxLayout(0x60AF0005, "dln_sample", BE, sxam38_dln_sample_fields);
+var sxam38_barrett_form_fields = layout([chars("signature", 4, SIGNATURE), u32("form_size", SIZE), chars("form_type", 4, ID)]);
+var sxam38_barrett_form = sxLayout(0x60AF0006, "barrett_form", BE, sxam38_barrett_form_fields);
+var sxam38_barrett_chunk_fields = layout([chars("chunk_id", 4, ID), u32("chunk_size", SIZE)]);
+var sxam38_barrett_chunk = sxLayout(0x60AF0007, "barrett_chunk", BE, sxam38_barrett_chunk_fields);
+var sxam38_barrett_sample_name_fields = layout([chars("name", 20, STRING)]);
+var sxam38_barrett_sample_name = sxLayout(0x60AF0008, "barrett_sample_name", BE, sxam38_barrett_sample_name_fields);
+function sx_music38_amiga_supports(t) {
+    return t === "DIE_MUSIC_DAVELOWE_NEW" || t === "DIE_MUSIC_STEVEBARRETT";
+}
+function sxam38_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxam38_read(c, p, out, n) {
+    return sxam38_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), out, n);
+}
+function sxam38_be16(b, b_o) {
+    return b[b_o] << 8 | b[b_o + 1];
+}
+function sxam38_be32(b, b_o) {
+    return ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0;
+}
+function sxam38_u16(c, p, v) {
+    var b = [];
+    if (!sxam38_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxam38_be16(b, 0);
+    return true;
+}
+function sxam38_u32(c, p, v) {
+    var b = [];
+    if (!sxam38_read(c, p, b, 4)) {
+        return false;
+    }
+    v[0] = sxam38_be32(b, 0);
+    return true;
+}
+function sxam38_gap(c, end, p) {
+    if (p < end[0] || !sxam38_span(c, end[0], sxU64(p - end[0]))) {
+        return false;
+    }
+    if (p > end[0] && !sx_raw(c, (end[0] >= SX_I64_MAX ? end[0] - SX_U64_MAX : end[0]), sxI64(sxU64(p - end[0])))) {
+        return false;
+    }
+    end[0] = p;
+    return true;
+}
+function sxam38_dln(c) {
+    var h = [];
+    var b = [];
+    if (!sxam38_read(c, 0, h, 28)) {
+        return false;
+    }
+    var base = sxam38_be16(h, 0);
+    var second = sxam38_be16(h, 2);
+    if (base !== 4 && base !== 8) {
+        return false;
+    }
+    var earlier = sxam38_be32(h, 24) === 0;
+    if (earlier && base !== 4) {
+        return false;
+    }
+    var ch = earlier ? 8 : base;
+    var songs = 0;
+    var width = earlier ? 32 : 16;
+    if (earlier) {
+        if (second < 40 || (second - 8) % 32) {
+            return false;
+        }
+        songs = sxU64(sxDiv(second - 8, 32));
+    } else {
+        var n = 0;
+        var v = [0];
+        for (var p = ch; sxam38_span(c, p, 4); p += 4) {
+            if (!sxam38_u32(c, p, v)) {
+                return false;
+            }
+            if (!v[0] || v[0] >= 32768 || v[0] & 1) {
+                break;
+            }
+            if (n >= 16384) {
+                return false;
+            }
+            n++;
+        }
+        if (!n || n % 4) {
+            return false;
+        }
+        songs = Math.floor(n / 4);
+    }
+    if (!songs || !sxam38_span(c, ch, width * songs)) {
+        return false;
+    }
+    var chend = ch + width * songs;
+    var anchor = 0;
+    for (var k = 0; k < 4; k++) {
+        var seq = [0];
+        var command = [0];
+        if (!sxam38_u32(c, ch + ((4 * k) >>> 0), seq)) {
+            return false;
+        }
+        if (seq[0] < chend || seq[0] & 1 || !sxam38_u32(c, seq[0], command)) {
+            return false;
+        }
+        var q = command[0];
+        var op = [0];
+        if (sxAnd64(q, 1) || !sxam38_u16(c, q, op)) {
+            return false;
+        }
+        if (op[0] === 0x30) {
+            q += 2;
+            if (!sxam38_u16(c, q, op)) {
+                return false;
+            }
+        }
+        if (op[0] !== 12) {
+            continue;
+        }
+        if (!sxam38_read(c, q, b, 12)) {
+            return false;
+        }
+        if (sxam38_be16(b, 6) === 4) {
+            anchor = sxam38_be32(b, 8);
+            break;
+        }
+    }
+    var anchor_tag = [0];
+    if (!anchor || anchor < chend || !sxam38_u16(c, anchor, anchor_tag) || anchor_tag[0] !== 1) {
+        return false;
+    }
+    var first = anchor;
+    var tag = [0];
+    var reverse_steps = 0;
+    while (first >= 14) {
+        if (!sxam38_u16(c, sxU64(first - 14), tag)) {
+            return false;
+        }
+        if (tag[0] !== 1) {
+            break;
+        }
+        if (reverse_steps++ >= 4096) {
+            return false;
+        }
+        first = sxU64(first - 14);
+    }
+    var prev = [0];
+    if (first < 2 || !sxam38_u16(c, sxU64(first - 2), prev)) {
+        return false;
+    }
+    if (prev[0] !== 0 && prev[0] !== 8) {
+        first += 14;
+    }
+    if (first < chend) {
+        return false;
+    }
+    var count = 0;
+    p = first;
+    while (sxam38_span(c, p, 2)) {
+        if (!sxam38_u16(c, p, tag)) {
+            return false;
+        }
+        if (tag[0] !== 1) {
+            break;
+        }
+        if (count >= 4096 || !sxam38_read(c, p, b, 14)) {
+            return false;
+        }
+        var so = sxam38_be32(b, 2);
+        var sn = sxam38_be16(b, 6) * 2;
+        var ro = sxam38_be32(b, 8);
+        var rn = sxam38_be16(b, 12) * 2;
+        if (!sxam38_span(c, so, sn) || !sxam38_span(c, ro, rn)) {
+            return false;
+        }
+        p += 14;
+        count++;
+    }
+    if (!count || !sxam38_span(c, p, 2)) {
+        return false;
+    }
+    var end = [0];
+    if (!sx_add(c, earlier ? sxam38_dln_earlier_header : sxam38_dln_later_header, 0, 4)) {
+        return false;
+    }
+    end[0] = 4;
+    var directory = earlier ? base : ch;
+    if (!sxam38_gap(c, end, directory) || !sx_table(c, earlier ? sxam38_dln_earlier_song : sxam38_dln_later_song, (directory >= SX_I64_MAX ? directory - SX_U64_MAX : directory), (width >= SX_I64_MAX ? width - SX_U64_MAX : width), songs)) {
+        return false;
+    }
+    end[0] = directory + width * songs;
+    if (!sxam38_gap(c, end, first) || !sx_table(c, sxam38_dln_sample, (first >= SX_I64_MAX ? first - SX_U64_MAX : first), 14, count)) {
+        return false;
+    }
+    end[0] = p;
+    return sxam38_gap(c, end, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}
+function sxam38_barrett_walk(c, sample, emit) {
+    var p = sample;
+    var end = [0];
+    var samples = 0;
+    var chunks = 0;
+    if (emit && !sxam38_gap(c, end, p)) {
+        return false;
+    }
+    while (sxam38_span(c, p, 4)) {
+        var h = [];
+        var magic = [0];
+        if (!sxam38_u32(c, p, magic)) {
+            return false;
+        }
+        if (magic[0] !== 0x464F524D) {
+            break;
+        }
+        if (!sxam38_read(c, p, h, 104) || sxam38_be32(h, 8) !== 0x38535658 || sxam38_be32(h, 12) !== 0x56484452 || sxam38_be32(h, 96) !== 0x424F4459) {
+            return false;
+        }
+        var length = sxam38_be32(h, 100);
+        var total = 104 + length;
+        var form = sxam38_be32(h, 4);
+        if (form + 8 !== total || !sxam38_span(c, p, total) || samples >= 4096) {
+            return false;
+        }
+        if (emit) {
+            if (!sx_add(c, sxam38_barrett_form, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 12)) {
+                return false;
+            }
+            end[0] = p + 12;
+        }
+        var q = p + 12;
+        var stop = p + total;
+        while (q < stop) {
+            if (chunks++ >= 32768) {
+                return false;
+            }
+            var ch = [];
+            if (sxU64(stop - q) < 8 || !sxam38_read(c, q, ch, 8)) {
+                return false;
+            }
+            var n = sxam38_be32(ch, 4);
+            var padded = n + sxAnd64(n, 1);
+            if (padded > sxU64(sxU64(stop - q) - 8)) {
+                return false;
+            }
+            if (emit) {
+                if (!sxam38_gap(c, end, q) || !sx_add(c, sxam38_barrett_chunk, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 8)) {
+                    return false;
+                }
+                end[0] = q + 8;
+                if (q === p + 40 && sxam38_be32(ch, 0) === 0x4E414D45 && n >= 20) {
+                    if (!sx_add(c, sxam38_barrett_sample_name, (end[0] >= SX_I64_MAX ? end[0] - SX_U64_MAX : end[0]), 20)) {
+                        return false;
+                    }
+                    end[0] += 20;
+                }
+                if (!sxam38_gap(c, end, q + 8 + padded)) {
+                    return false;
+                }
+            }
+            q += 8 + padded;
+        }
+        if (q !== stop) {
+            return false;
+        }
+        samples++;
+        p = stop;
+    }
+    if (!samples) {
+        return false;
+    }
+    return !emit || sxam38_gap(c, end, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}
+function sxam38_barrett(c) {
+    var h = [];
+    if (!sxam38_read(c, 0, h, 16)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (sxam38_be16(h, (4 * i) >>> 0) !== 0x6000) {
+            return false;
+        }
+    }
+    var init = 2 + (sxam38_be16(h, 2) << 16 >> 16);
+    if (init < 16 || !sxam38_span(c, (init < 0 ? init + SX_U64_MAX : init), 16)) {
+        return false;
+    }
+    var sample = 0;
+    for (var p = (init < 0 ? init + SX_U64_MAX : init); p < (init < 0 ? init + SX_U64_MAX : init) + 16; p += 2) {
+        var b = [];
+        if (!sxam38_read(c, p, b, 4)) {
+            return false;
+        }
+        if (sxam38_be16(b, 0) === 0x41FA) {
+            var target = (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + 2 + (sxam38_be16(b, 2) << 16 >> 16);
+            if (target < 0) {
+                return false;
+            }
+            sample = (target < 0 ? target + SX_U64_MAX : target);
+            break;
+        }
+    }
+    return !!(sample && sxam38_barrett_walk(c, sample, false) && sxam38_barrett_walk(c, sample, true));
+}
+function sxam38_raw(c) {
+    var b = [0];
+    if (c === null || c.count || c.failed || c.size <= 0 || !sxam38_read(c, 0, b, 1)) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}
+function sx_music38_amiga_build(c) {
+    if (c === null || c.f === null || !sx_music38_amiga_supports(c.f.file_type)) {
+        return false;
+    }
+    var ok = c.f.file_type === "DIE_MUSIC_DAVELOWE_NEW" ? sxam38_dln(c) : sxam38_barrett(c);
+    if (!ok) {
+        ok = sxam38_raw(c);
+    }
+    return ok && !c.failed;
+}
+function sx_music38_amiga_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60AF0001 || id > 0x60AF0008) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60AF0001) {
+        if (r.name === "channel_table_base_offset") {
+            s = "Stored byte base used by the earlier replay; InitSound adds four to find the first channel table.";
+        } else {
+            s = "Stored module-relative boundary offset; InitPlayer derives the earlier subsong count as (value-8)/32.";
+        }
+    } else if (id === 0x60AF0002) {
+        if (r.name === "channel_table_offset") {
+            s = "Byte offset of the later replay's contiguous four-channel subsong directory, relative to the module start.";
+        } else {
+            s = "Second physical header word; no additional semantic interpretation is inferred for this replay variant.";
+        }
+    } else if (id === 0x60AF0003 || id === 0x60AF0004) {
+        if (r.name === "reserved") {
+            s = "Twelve bytes remaining after the earlier replay control word and four channel offsets; preserved without a claimed musical meaning.";
+        } else if (r.name === "initial_replay_word") {
+            s = "Unrelocated initial replay control word copied to lbL0097D0 by Init_2; no file-offset interpretation is inferred.";
+        } else {
+            s = "Byte offset of this channel's sequence of 32-bit pattern offsets, relative to the module start.";
+        }
+    } else if (id === 0x60AF0005) {
+        if (r.name === "kind") {
+            s = "Stored tag1 identifies a sampled-instrument record; the loader counts consecutive14-byte records with this value.";
+        } else if (sxStrstr(r.name, "length_words")) {
+            s = "Length in two-byte PCM words; multiply by two for bytes.";
+        } else {
+            s = "Byte offset of sample or repeat PCM data relative to the module start; preserved before the replay adds its load base.";
+        }
+    } else if (id === 0x60AF0006) {
+        if (r.name === "form_size") {
+            s = "Big-endian byte length following the eight-byte FORM identifier and size. The Barrett ripper advances by104 plus the BODY byte length.";
+        } else if (r.name === "form_type") {
+            s = "8SVX sampled-audio form carried by this Barrett module.";
+        } else {
+            s = "FORM identifier of a physical sampled-audio container.";
+        }
+    } else if (id === 0x60AF0007) {
+        if (r.name === "chunk_id") {
+            s = "Physical chunk identifier within this sample's FORM, including VHDR, NAME and BODY.";
+        } else {
+            s = "Big-endian payload byte length, excluding the eight-byte chunk header; odd payloads require one padding byte.";
+        }
+    } else if (id === 0x60AF0008) {
+        s = "First twenty name bytes at sample offset+48, exported by the original Barrett SampleInit routine.";
+    }
+    return s === null || sxSetComment(r, s);
+}

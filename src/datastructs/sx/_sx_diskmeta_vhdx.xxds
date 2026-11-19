@@ -1,0 +1,173 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vhdx/xx_vhdx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_vhdx_file_identifier_fields = layout([field("signature", "byte[8]", 8, SIGNATURE),
+    field("creator_utf16", "uint16[256]", 512)]);
+var sx_dm_vhdx_file_identifier = sxLayout(0x60290001, "vhdx_file_identifier", LE, sx_dm_vhdx_file_identifier_fields);
+var sx_dm_vhdx_header_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u32("checksum", CHECKSUM),
+    u64("sequence_number"), field("file_write_guid", "byte[16]", 16, ID), field("data_write_guid", "byte[16]", 16, ID),
+    field("log_guid", "byte[16]", 16, ID), u16("log_version"), u16("version"), u32("log_length", SIZE),
+    u64("log_offset", OFFSET), field("reserved", "byte[4016]", 4016, RESERVED)]);
+var sx_dm_vhdx_header = sxLayout(0x60290002, "vhdx_header", LE, sx_dm_vhdx_header_fields);
+var sx_dm_vhdx_region_table_header_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u32("checksum", CHECKSUM),
+    u32("entry_count", COUNT), u32("reserved", RESERVED)]);
+var sx_dm_vhdx_region_table_header = sxLayout(0x60290003, "vhdx_region_table_header", LE, sx_dm_vhdx_region_table_header_fields);
+var sx_dm_vhdx_region_table_entry_fields = layout([field("guid", "byte[16]", 16, ID), u64("file_offset", OFFSET),
+    u32("length", SIZE), u32("flags", FLAGS)]);
+var sx_dm_vhdx_region_table_entry = sxLayout(0x60290004, "vhdx_region_table_entry", LE, sx_dm_vhdx_region_table_entry_fields);
+var sx_dm_vhdx_metadata_table_header_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u16("reserved1", RESERVED),
+    u16("entry_count", COUNT), field("reserved2", "byte[20]", 20, RESERVED)]);
+var sx_dm_vhdx_metadata_table_header = sxLayout(0x60290005, "vhdx_metadata_table_header", LE, sx_dm_vhdx_metadata_table_header_fields);
+var sx_dm_vhdx_file_parameters_fields = layout([u32("block_size", SIZE), u32("flags", FLAGS)]);
+var sx_dm_vhdx_file_parameters = sxLayout(0x60290007, "vhdx_file_parameters", LE, sx_dm_vhdx_file_parameters_fields);
+var sx_dm_vhdx_disk_size_fields = layout([u64("virtual_disk_size", SIZE)]);
+var sx_dm_vhdx_disk_size = sxLayout(0x60290008, "vhdx_disk_size", LE, sx_dm_vhdx_disk_size_fields);
+var sx_dm_vhdx_logical_sector_size_fields = layout([u32("logical_sector_size", SIZE)]);
+var sx_dm_vhdx_logical_sector_size = sxLayout(0x60290009, "vhdx_logical_sector_size", LE, sx_dm_vhdx_logical_sector_size_fields);
+var sx_dm_vhdx_physical_sector_size_fields = layout([u32("physical_sector_size", SIZE)]);
+var sx_dm_vhdx_physical_sector_size = sxLayout(0x6029000A, "vhdx_physical_sector_size", LE, sx_dm_vhdx_physical_sector_size_fields);
+var sx_dm_vhdx_virtual_disk_id_fields = layout([field("virtual_disk_id", "byte[16]", 16, ID)]);
+var sx_dm_vhdx_virtual_disk_id = sxLayout(0x6029000B, "vhdx_virtual_disk_id", LE, sx_dm_vhdx_virtual_disk_id_fields);
+var sx_dm_vhdx_parent_locator_fields = layout([field("locator_type", "byte[16]", 16, ID), u16("reserved", RESERVED),
+    u16("key_value_count", COUNT)]);
+var sx_dm_vhdx_parent_locator = sxLayout(0x6029000C, "vhdx_parent_locator", LE, sx_dm_vhdx_parent_locator_fields);
+var sx_dm_guid_bat = [0x66, 0x77, 0xC2, 0x2D, 0x23, 0xF6, 0x00, 0x42, 0x9D, 0x64, 0x11, 0x5E, 0x9B, 0xFD, 0x4A, 0x08];
+var sx_dm_guid_metadata = [0x06, 0xA2, 0x7C, 0x8B, 0x90, 0x47, 0x9A, 0x4B, 0xB8, 0xFE, 0x57, 0x5F, 0x05, 0x0F, 0x88, 0x6E];
+var sx_dm_guid_file_parameters = [0x37, 0x67, 0xA1, 0xCA, 0x36, 0xFA, 0x43, 0x4D, 0xB3, 0xB6, 0x33, 0xF0, 0xAA, 0x44, 0xE7, 0x6B];
+var sx_dm_guid_disk_size = [0x24, 0x42, 0xA5, 0x2F, 0x1B, 0xCD, 0x76, 0x48, 0xB2, 0x11, 0x5D, 0xBE, 0xD8, 0x3B, 0xF4, 0xB8];
+var sx_dm_guid_disk_id = [0xAB, 0x12, 0xCA, 0xBE, 0xE6, 0xB2, 0x23, 0x45, 0x93, 0xEF, 0xC3, 0x09, 0xE0, 0x00, 0xC7, 0x46];
+var sx_dm_guid_logical_sector = [0x1D, 0xBF, 0x41, 0x81, 0x6F, 0xA9, 0x09, 0x47, 0xBA, 0x47, 0xF2, 0x33, 0xA8, 0xFA, 0xAB, 0x5F];
+var sx_dm_guid_physical_sector = [0xC7, 0x48, 0xA3, 0xCD, 0x5D, 0x44, 0x71, 0x44, 0x9C, 0xC9, 0xE9, 0x88, 0x52, 0x51, 0xC5, 0x56];
+var sx_dm_guid_parent_locator = [0x2D, 0x5F, 0xD3, 0xA8, 0x0B, 0xB3, 0x4D, 0x45, 0xAB, 0xF7, 0xD3, 0xD8, 0x48, 0x34, 0xAB, 0x0C];
+function sx_dm_vhdx_metadata(c, p, z, bat, batsz) {
+    var h = [];
+    var v = [];
+    if (z < 65536 || !sx_dm_read(c, p, h, 32) || sxMemcmp(h, "metadata", 8)) {
+        return true;
+    }
+    var n = sx_dm_u16(h, 10, false);
+    if (n > 2047 || 32 + n * 32 > z) {
+        return true;
+    }
+    if (!sx_dm_add(c, sx_dm_vhdx_metadata_table_header, p, 32) || !sx_dm_table(c, sx_dm_vhdx_metadata_table_entry, p + 32, 32, n)) {
+        return false;
+    }
+    var disk = 0;
+    var block = 0;
+    var logical = 0;
+    var flags = 0;
+    for (var i = 0; i < n; i++) {
+        if (!sx_dm_read(c, p + 32 + ((i * 32) >>> 0), h, 32)) {
+            return false;
+        }
+        var o = sx_dm_u32(h, 16, false);
+        var len = sx_dm_u32(h, 20, false);
+        if (o < 65536 || o > z || len > sxU64(z - o) || !sx_dm_span(c, p + o, len) || sx_dm_u32(h, 24, false) & 1) {
+            continue;
+        }
+        var l = null;
+        var need = 0;
+        if (!sxMemcmp(h, sx_dm_guid_file_parameters, 16)) {
+            l = sx_dm_vhdx_file_parameters;
+            need = 8;
+            if (len === 8 && sx_dm_read(c, p + o, v, 8)) {
+                block = sx_dm_u32(v, 0, false);
+                flags = sx_dm_u32(v, 4, false);
+            }
+        } else if (!sxMemcmp(h, sx_dm_guid_disk_size, 16)) {
+            l = sx_dm_vhdx_disk_size;
+            need = 8;
+            if (len === 8 && sx_dm_read(c, p + o, v, 8)) {
+                disk = sx_dm_u64(v, 0, false);
+            }
+        } else if (!sxMemcmp(h, sx_dm_guid_logical_sector, 16)) {
+            l = sx_dm_vhdx_logical_sector_size;
+            need = 4;
+            if (len === 4 && sx_dm_read(c, p + o, v, 4)) {
+                logical = sx_dm_u32(v, 0, false);
+            }
+        } else if (!sxMemcmp(h, sx_dm_guid_physical_sector, 16)) {
+            l = sx_dm_vhdx_physical_sector_size;
+            need = 4;
+        } else if (!sxMemcmp(h, sx_dm_guid_disk_id, 16)) {
+            l = sx_dm_vhdx_virtual_disk_id;
+            need = 16;
+        } else if (!sxMemcmp(h, sx_dm_guid_parent_locator, 16) && len >= 20 && sx_dm_read(c, p + o, v, 20)) {
+            var cnt = sx_dm_u16(v, 18, false);
+            if (20 + cnt * 12 <= len) {
+                if (!sx_dm_add(c, sx_dm_vhdx_parent_locator, p + o, 20) || !sx_dm_table(c, sx_dm_vhdx_parent_locator_entry, p + o + 20, 12, cnt)) {
+                    return false;
+                }
+            }
+        }
+        if (l !== null && len === need && !sx_dm_add(c, l, p + o, need)) {
+            return false;
+        }
+    }
+    if (block >= 1048576 && block <= 268435456 && (logical === 512 || logical === 4096) && disk && disk <= 0x400000000000) {
+        var blocks = Math.floor(sxU64(disk - 1) / block) + 1;
+        var ratio = Math.floor(sxShl64(logical, 23) / block);
+        var entries = flags & 2 ? (Math.floor(sxU64(blocks - 1) / ratio) + 1) * (ratio + 1) : blocks + Math.floor(sxU64(blocks - 1) / ratio);
+        if (entries <= Math.floor(batsz / 8) && sx_dm_span(c, bat, entries * 8) && !sx_dm_table(c, sx_dm_vhdx_bat_entry, bat, 8, entries)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_dm_vhdx(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 8) || sxMemcmp(h, "vhdxfile", 8) || !sx_dm_add(c, sx_dm_vhdx_file_identifier, 0, 520)) {
+        return false;
+    }
+    for (var i = 1; i <= 2; i++) {
+        var p = i * 65536;
+        if (sx_dm_read(c, p, h, 8) && !sxMemcmp(h, "head", 4) && sx_dm_span(c, p, 4096) && !sx_dm_add(c, sx_dm_vhdx_header, p, 4096)) {
+            return false;
+        }
+    }
+    for (var copy = 3; copy <= 4; copy++) {
+        p = copy * 65536;
+        if (!sx_dm_read(c, p, h, 16) || sxMemcmp(h, "regi", 4) || !sx_dm_crc(c, p, 65536, sx_dm_u32(h, 4, false), true, false, true)) {
+            continue;
+        }
+        var n = sx_dm_u32(h, 8, false);
+        if (n > 2047) {
+            continue;
+        }
+        if (!sx_dm_add(c, sx_dm_vhdx_region_table_header, p, 16) || !sx_dm_table(c, sx_dm_vhdx_region_table_entry, p + 16, 32, n)) {
+            return false;
+        }
+        var bat = 0;
+        var batsz = 0;
+        var meta = 0;
+        var metasz = 0;
+        for (i = 0; i < n; i++) {
+            if (!sx_dm_read(c, p + 16 + ((i * 32) >>> 0), h, 32)) {
+                return false;
+            }
+            var o = sx_dm_u64(h, 16, false);
+            var z = sx_dm_u32(h, 24, false);
+            if (!sx_dm_span(c, o, z)) {
+                continue;
+            }
+            if (!sxMemcmp(h, sx_dm_guid_bat, 16)) {
+                bat = o;
+                batsz = z;
+            }
+            if (!sxMemcmp(h, sx_dm_guid_metadata, 16)) {
+                meta = o;
+                metasz = z;
+            }
+        }
+        if (meta && !sx_dm_vhdx_metadata(c, meta, metasz, bat, batsz)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_vhdx_build(c) {
+    return sx_dm_vhdx(c);
+}

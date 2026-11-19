@@ -1,0 +1,80 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/gdbm_dump/xx_gdbm_dump_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_record_count_fields = layout([field("record_count", "ascii_signed", 0, COUNT)]);
+var sxtw_record_count = sxLayout(0x6071003D, "textwire_record_count", LE, sxtw_record_count_fields);
+function sxtw_gdbm(q) {
+    var a = [0];
+    var end = [0];
+    while (sxtw_line(q, a, end)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (end[0] - a[0] > 6 && sxtw_eq(q, a[0], 6, "#:len=")) {
+            {
+                if (!sxtw_emit(q, sxtw_byte_length, a[0] + 6, end[0] - a[0] - 6)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (end[0] - a[0] > 8 && sxtw_eq(q, a[0], 8, "#:count=")) {
+            {
+                if (!sxtw_emit(q, sxtw_record_count, a[0] + 8, end[0] - a[0] - 8)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (end[0] - a[0] > 2 && sxtw_eq(q, a[0], 2, "#:")) {
+            var p = a[0] + 2;
+            while (p < end[0]) {
+                var k = p;
+                while (p < end[0] && q.b[p] !== 61 /*=*/) {
+                    p++;
+                }
+                if (p === end[0]) {
+                    break;
+                }
+                var kn = p - k;
+                var v = ++p;
+                while (p < end[0] && q.b[p] !== 44 /*,*/) {
+                    p++;
+                }
+                {
+                    if (!sxtw_emit(q, sxtw_field_name, k, kn)) {
+                        return false;
+                    }
+                }
+                var l = sxtw_eq(q, k, kn, "uid") ? sxtw_uid : sxtw_eq(q, k, kn, "gid") ? sxtw_gid : sxtw_eq(q, k, kn, "mode") ? sxtw_octal_mode : sxtw_eq(q, k, kn, "version") ? sxtw_version : sxtw_eq(q, k, kn, "file") ? sxtw_path : sxtw_field_value;
+                if (!sxtw_emit(q, l, v, p - v)) {
+                    return false;
+                }
+                if (p < end[0]) {
+                    p++;
+                }
+            }
+            continue;
+        }
+        if (a[0] < end[0] && q.b[a[0]] === 35 /*#*/) {
+            {
+                if (!sxtw_emit(q, sxtw_text, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxtw_emit(q, sxtw_base64_text, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gdbm_dump_build(q) {
+    return sxtw_gdbm(q);
+}

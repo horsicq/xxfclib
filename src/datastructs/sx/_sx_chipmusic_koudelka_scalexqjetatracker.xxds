@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/koudelka_scalexqjetatracker/xx_koudelka_scalexqjetatracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_sqt_sample_reference_fields = layout([u16("sample_reference", VA)]);
+var sxchip_chip_sqt_sample_reference = sxLayout(0x608F0014, "chip_sqt_sample_reference", LE, sxchip_chip_sqt_sample_reference_fields);
+var sxchip_chip_sqt_ornament_reference_fields = layout([u16("ornament_reference", VA)]);
+var sxchip_chip_sqt_ornament_reference = sxLayout(0x608F0015, "chip_sqt_ornament_reference", LE, sxchip_chip_sqt_ornament_reference_fields);
+var sxchip_chip_sqt_pattern_reference_fields = layout([u16("pattern_reference", VA)]);
+var sxchip_chip_sqt_pattern_reference = sxLayout(0x608F0016, "chip_sqt_pattern_reference", LE, sxchip_chip_sqt_pattern_reference_fields);
+var sxchip_chip_sqt_loop_fields = layout([u8("loop_index"), u8("loop_length", COUNT)]);
+var sxchip_chip_sqt_loop = sxLayout(0x608F0018, "chip_sqt_loop", LE, sxchip_chip_sqt_loop_fields);
+function sxchip_sqt(c) {
+    var h = [];
+    if (!sxchip_read(c, 0, h, 12)) {
+        return false;
+    }
+    if (!sxchip_put(c, sxchip_chip_sqt_header, 0, 1)) {
+        return false;
+    }
+    var declared = sxchip16(h, 0);
+    var s = sxchip16(h, 2);
+    var o = sxchip16(h, 4);
+    var t = sxchip16(h, 6);
+    var p = sxchip16(h, 8);
+    if (s < 10 || o <= s || t < o || p <= t) {
+        return true;
+    }
+    var delta = sxU64(s - 10);
+    s = 12;
+    o = sxU64(o - delta) + 2;
+    t = sxU64(t - delta) + 2;
+    p = sxU64(p - delta);
+    if (declared > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || declared < 12 || o < s || t < o || p < t || p >= declared) {
+        return true;
+    }
+    var sn = Math.floor(sxU64(o - s) / 2);
+    var on = Math.floor(sxU64(t - o) / 2);
+    if (sn > 26 || on > 26 || sxU64(o - s) % 2 || sxU64(t - o) % 2) {
+        return true;
+    }
+    if (!sxchip_put(c, sxchip_chip_sqt_sample_reference, s, sn) || !sxchip_put(c, sxchip_chip_sqt_ornament_reference, o, on)) {
+        return false;
+    }
+    var maxpat = 0;
+    var pos = p;
+    for (var n = 0; n < 1024 && pos + 7 <= declared; n++, pos += 7) {
+        var r = [];
+        if (!sxchip_read(c, pos, r, 7)) {
+            break;
+        }
+        if (!sxchip_put(c, sxchip_chip_sqt_position, pos, 1)) {
+            return false;
+        }
+        if (!(r[0] & 127) || !(r[2] & 127) || !(r[4] & 127)) {
+            break;
+        }
+        for (var j = 0; j < 6; j = (j + 2) >>> 0) {
+            if ((r[j] & 127) > maxpat) {
+                maxpat = r[j] & 127;
+            }
+        }
+    }
+    if (maxpat > 99) {
+        return true;
+    }
+    if (!sxchip_opt(c, sxchip_chip_sqt_pattern_reference, t, maxpat)) {
+        return false;
+    }
+    for (var k = 0; k < 2; k++) {
+        var at = k ? o : s;
+        n = k ? on : sn;
+        for (var i = 0; i < n; i++) {
+            var ref = [0];
+            if (!sxchip_u16(c, at + 2 * i, ref)) {
+                break;
+            }
+            if (ref[0] < delta) {
+                continue;
+            }
+            var q = sxU64(ref[0] - delta);
+            if (!sxchip_span(c, q, k ? 34 : 98)) {
+                continue;
+            }
+            if (!sxchip_put(c, sxchip_chip_sqt_loop, q, 1)) {
+                return false;
+            }
+            if (!sxchip_put(c, k ? sxchip_chip_note_step : sxchip_chip_sqt_sample_line, q + 2, 32)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_koudelka_scalexqjetatracker_build(c) {
+    return sxchip_sqt(c);
+}

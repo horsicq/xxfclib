@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musiclogs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_musiclogs");
+include("_sx_musiclogs_clip_midi2");
+include("_sx_musiclogs_compute_sidplayer_mus");
+include("_sx_musiclogs_ym2151opmreglog_cym");
+
+function fileTypes() { return ["DIE_MUSIC_FERNANDEZ_ADLIB", "DIE_MUSIC_CLIP_MIDI2", "DIE_MUSIC_COMPUTE_SIDPLAYER_MUS",
+    "DIE_MUSIC_IDAPOGEE_MUSICFORMAT", "DIE_MUSIC_YM2151OPMREGLOG_CYM"]; }
+
+var sx_musiclogs_layouts = [sxlog_midi_clip_header, sxlog_midi_ump_utility, sxlog_midi_ump_system, sxlog_midi_ump_midi1_note,
+    sxlog_midi_ump_midi1_channel, sxlog_midi_ump_midi2_note, sxlog_midi_ump_midi2_channel, sxlog_midi_ump_sysex7,
+    sxlog_midi_ump_data128, sxlog_midi_ump_flex, sxlog_midi_ump_stream, sxlog_sidplayer_header, sxlog_sidplayer_command,
+    sxlog_sidplayer_halt, sxlog_sidplayer_description, sxlog_imf_length, sxlog_adlib_header, sxlog_adlib_title,
+    sxlog_adlib_game, sxlog_adlib_separator, sxlog_adlib_length, sxlog_imf_register_event, sxlog_imf_final_write,
+    sxlog_cym_register_write, sxlog_cym_frame_wait];
+
+function structs() {
+    return sxCatalog([sxlog_midi_clip_header, sxlog_midi_ump_utility, sxlog_midi_ump_system, sxlog_midi_ump_midi1_note,
+        sxlog_midi_ump_midi1_channel, sxlog_midi_ump_midi2_note, sxlog_midi_ump_midi2_channel, sxlog_midi_ump_sysex7,
+        sxlog_midi_ump_data128, sxlog_midi_ump_flex, sxlog_midi_ump_stream, sxlog_sidplayer_header, sxlog_sidplayer_command,
+        sxlog_sidplayer_halt, sxlog_sidplayer_description, sxlog_imf_length, sxlog_adlib_header, sxlog_adlib_title,
+        sxlog_adlib_game, sxlog_adlib_separator, sxlog_adlib_length, sxlog_imf_register_event, sxlog_imf_final_write,
+        sxlog_cym_register_write, sxlog_cym_frame_wait], sx_musiclogs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_musiclogs_build, false);
+}

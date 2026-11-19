@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ain/xx_ain_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_ain_header_fields = layout([chars("magic", 1, SIGNATURE), u8("version_method", FLAGS), u16("flags", FLAGS),
+    bytes("unknown4", 4), u16("member_count", COUNT), bytes("unknown10", 4), u32("directory_offset", OFFSET),
+    bytes("unknown18", 4), u16("header_checksum", CHECKSUM)]);
+var sxae_ain_header = sxLayout(0x60170033, "ain_header", LE, sxae_ain_header_fields);
+function sxae_ain(c) {
+    var b = [];
+    var p;
+    if (!sx_read(c, 0, b, 24) || b[0] !== 33 /*!*/ || (p = sxae32(b, 14)) < 24 || p >= c.size) {
+        return false;
+    }
+    return sxae_add(c, sxae_ain_header, 0);
+}
+function sx_ain_build(c) {
+    return sxae_ain(c);
+}

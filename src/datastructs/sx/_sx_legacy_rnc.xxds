@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/rnc/xx_rnc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_bullfrog_tag_fields = layout([blob("signature", 8, SIGNATURE)]);
+var sxl_bullfrog_tag = sxLayout(0x600A001F, "bullfrog_tag", BE, sxl_bullfrog_tag_fields);
+var sxl_rnc_header_fields = layout([blob("signature", 3, SIGNATURE), u8("method", ID), u32("original_size", SIZE),
+    u32("packed_size", SIZE), u16("original_crc16", CHECKSUM), u16("packed_crc16", CHECKSUM), u8("leeway", SIZE),
+    u8("chunk_count", COUNT)]);
+var sxl_rnc_header = sxLayout(0x600A0020, "rnc_header", BE, sxl_rnc_header_fields);
+function sxl_rnc(c) {
+    var at = 0;
+    var h = [];
+    var packed;
+    var n;
+    if (!sx_read(c, 0, h, 4)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "BULL", 4)) {
+        if (!sxl_sig(c, 0, "BULLFROG", 8) || !sx_add(c, sxl_bullfrog_tag, 0, 8)) {
+            return false;
+        }
+        at = 8;
+    }
+    return !!(sx_read(c, at, h, 4) && !sxMemcmp(h, "RNC", 3) && (h[3] === 1 || h[3] === 2) && (n = sx_u32(c, at + 4, true)) !== null && n && (packed = sx_u32(c, at + 8, true)) !== null && packed && sxl_span(c, (at + 18 < 0 ? at + 18 + SX_U64_MAX : at + 18), packed) && sx_add(c, sxl_rnc_header, at, 18));
+}
+function sx_rnc_build(c) {
+    return sxl_rnc(c);
+}

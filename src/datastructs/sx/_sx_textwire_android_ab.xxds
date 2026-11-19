@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/android_ab/xx_android_ab_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_backup_version_fields = layout([field("backup_version", "ascii_signed", 0)]);
+var sxtw_backup_version = sxLayout(0x60710025, "textwire_backup_version", LE, sxtw_backup_version_fields);
+var sxtw_compression_fields = layout([field("compression", "ascii_signed", 0)]);
+var sxtw_compression = sxLayout(0x60710026, "textwire_compression", LE, sxtw_compression_fields);
+function sxtw_android(q) {
+    var a = [0];
+    var end = [0];
+    var l = [sxtw_signature, sxtw_backup_version, sxtw_compression, sxtw_encryption];
+    for (var i = 0; i < 4; i++) {
+        if (!sxtw_line(q, a, end) || !sxtw_emit(q, l[i], a[0], end[0] - a[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_android_ab_build(q) {
+    return sxtw_android(q);
+}

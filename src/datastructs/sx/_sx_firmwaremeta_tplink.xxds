@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/tplink/xx_tplink_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_tplink_build(c) {
+    var ok = false;
+    var n = sx_fw_native_header_size(c);
+    ok = (n === 512 ? (sx_add(c, sx_fw_tplink_linux_header, 0, 512) ? 1 : 0) : n === 148 ? (sx_add(c, sx_fw_tplink_rtos_header_prefix, 0, 32) ? 1 : 0) : 0) !== 0;
+    return ok && sx_fw_finish(c);
+}

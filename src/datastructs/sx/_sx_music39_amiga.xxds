@@ -1,0 +1,301 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_music39_amiga.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxam39_sean_song_fields = layout([u16("sequence_offset", OFFSET), blob("replay_data", 6)]);
+var sxam39_sean_song = sxLayout(0x60B20001, "sean_song", BE, sxam39_sean_song_fields);
+var sxam39_ashley_song_fields = layout([u32("channel_1_word"), u32("channel_2_word"), u32("channel_3_word"),
+    u32("channel_4_word")]);
+var sxam39_ashley_song = sxLayout(0x60B20002, "ashley_song", BE, sxam39_ashley_song_fields);
+var sxam39_ashley_sample_fields = layout([blob("replay_data_1", 32), i32("sample_offset", OFFSET), blob("replay_data_2", 4),
+    u16("sample_length_words"), blob("replay_data_3", 2)]);
+var sxam39_ashley_sample = sxLayout(0x60B20003, "ashley_sample", BE, sxam39_ashley_sample_fields);
+function sx_music39_amiga_supports(t) {
+    return t === "DIE_MUSIC_SEANCONRAN_SCR" || t === "DIE_MUSIC_ASHLEYHOGG_ASH";
+}
+function sxam39_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxam39_read(c, p, out, n) {
+    return sxam39_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), out, n);
+}
+function sxam39_be16(b, b_o) {
+    return b[b_o] << 8 | b[b_o + 1];
+}
+function sxam39_be32(b, b_o) {
+    return ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0;
+}
+function sxam39_u16(c, p, v) {
+    var b = [];
+    if (!sxam39_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxam39_be16(b, 0);
+    return true;
+}
+function sxam39_relative(c, p, out) {
+    var w = [0];
+    if (!sxam39_u16(c, p, w)) {
+        return false;
+    }
+    var target;
+    if (w[0] & 0x8000) {
+        var magnitude = 65536 - w[0];
+        if (p < magnitude) {
+            return false;
+        }
+        target = sxU64(p - magnitude);
+    } else {
+        target = p + w[0];
+    }
+    if (!sxam39_span(c, target, 1)) {
+        return false;
+    }
+    out[0] = target;
+    return true;
+}
+function sxam39_find(c, p, needle, out) {
+    for (var steps = 0; steps < 4096 && sxam39_span(c, p, 2); steps++, p += 2) {
+        var v = [0];
+        if (!sxam39_u16(c, p, v)) {
+            return false;
+        }
+        if (v[0] === needle) {
+            out[0] = p;
+            return true;
+        }
+    }
+    return false;
+}
+function sxam39_gap(c, end, p) {
+    if (p < end[0] || !sxam39_span(c, end[0], sxU64(p - end[0]))) {
+        return false;
+    }
+    if (p > end[0] && !sx_raw(c, (end[0] >= SX_I64_MAX ? end[0] - SX_U64_MAX : end[0]), sxI64(sxU64(p - end[0])))) {
+        return false;
+    }
+    end[0] = p;
+    return true;
+}
+function sxam39_sean(c) {
+    var h = [];
+    if (!sxam39_read(c, 0, h, 12)) {
+        return false;
+    }
+    var p;
+    if ((sxam39_be32(h, 0) === 0x0FFF0FE2 || sxam39_be32(h, 0) === 0x10000FE2) && sxam39_be32(h, 4) === 0x0FC40FA7 && sxam39_be32(h, 8) === 0x0F8B0F6E) {
+        p = 292;
+    } else if (sxam39_be32(h, 0) === 0x0F1C0F0E && sxam39_be32(h, 4) === 0x0F000EF2 && sxam39_be32(h, 8) === 0x0EE40ED6) {
+        p = 452;
+    } else {
+        return false;
+    }
+    var found = false;
+    var op = [0];
+    for (var steps = 0; steps < 4096 && sxam39_span(c, p, 4); steps++, p += 2) {
+        var b = [];
+        if (!sxam39_read(c, p, b, 4)) {
+            return false;
+        }
+        op[0] = sxam39_be16(b, 0);
+        if (op[0] === 0x45FA || op[0] === 0x43F9 || op[0] === 0x41F9) {
+            found = true;
+            p += 2;
+            break;
+        }
+        if (!sxam39_be32(b, 0)) {
+            return false;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    found = false;
+    for (steps = 0; steps < 4096 && sxam39_span(c, p, 2); steps++, p += 2) {
+        if (!sxam39_u16(c, p, op)) {
+            return false;
+        }
+        if (op[0] === 0x7000) {
+            return false;
+        }
+        if (op[0] === 0x7200) {
+            found = true;
+            p += 2;
+            break;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    var table = [0];
+    for (steps = 0; steps < 4096 && sxam39_span(c, p, 4); steps++, p += 2) {
+        b = [];
+        if (!sxam39_read(c, p, b, 4)) {
+            return false;
+        }
+        op[0] = sxam39_be16(b, 0);
+        if (!sxam39_be32(b, 0) || sxam39_be32(b, 0) === 0x21C80070) {
+            return false;
+        }
+        if (op[0] === 0x43FA) {
+            if (!sxam39_relative(c, p + 2, table)) {
+                return false;
+            }
+            break;
+        }
+        if (op[0] === 0x43EA) {
+            var v = sxam39_be16(b, 2) << 16 >> 16;
+            if (v <= 0) {
+                return false;
+            }
+            table[0] = v & 0xFFFF;
+            break;
+        }
+    }
+    var first = [0];
+    if (!table[0] || !sxam39_u16(c, table[0], first) || first[0] >= 32768 || first[0] <= table[0] || sxU64(first[0] - table[0]) % 8) {
+        return false;
+    }
+    var count = Math.floor(sxU64(first[0] - table[0]) / 8);
+    if (!count || count > 4096 || !sxam39_span(c, table[0], count * 8)) {
+        return false;
+    }
+    var bytes_seen = 0;
+    for (var i = 0; i < count; i++) {
+        var off = [0];
+        if (!sxam39_u16(c, table[0] + i * 8, off) || off[0] >= 32768 || off[0] < first[0] || !sxam39_span(c, off[0], 1)) {
+            return false;
+        }
+        var terminated = false;
+        for (var q = off[0]; sxam39_span(c, q, 1) && bytes_seen < 65536; q++, bytes_seen++) {
+            b = [0];
+            if (!sxam39_read(c, q, b, 1)) {
+                return false;
+            }
+            if (b[0] === 0xFF) {
+                bytes_seen++;
+                terminated = true;
+                break;
+            }
+        }
+        if (!terminated) {
+            return false;
+        }
+    }
+    var end = [0];
+    if (!sxam39_gap(c, end, table[0]) || !sx_table(c, sxam39_sean_song, (table[0] >= SX_I64_MAX ? table[0] - SX_U64_MAX : table[0]), 8, count)) {
+        return false;
+    }
+    end[0] = table[0] + count * 8;
+    return sxam39_gap(c, end, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}
+function sxam39_ashley(c) {
+    var h = [];
+    if (!sxam39_read(c, 0, h, 24)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (sxam39_be16(h, (4 * i) >>> 0) !== 0x6000) {
+            return false;
+        }
+    }
+    if (sxam39_be32(h, 16) !== 0x303C0000 || sxam39_be32(h, 20) !== 0x662233C0) {
+        return false;
+    }
+    var init = [0];
+    var songs_end_op = [0];
+    var songs_op = [0];
+    var songs = [0];
+    var songs_end = [0];
+    if (!sxam39_relative(c, 2, init) || !sxam39_find(c, init[0], 0x1970, songs_end_op) || songs_end_op[0] < 2 || !sxam39_relative(c, sxU64(songs_end_op[0] - 2), songs_end) || !sxam39_find(c, songs_end_op[0] + 2, 0x41FA, songs_op) || !sxam39_relative(c, songs_op[0] + 2, songs)) {
+        return false;
+    }
+    if (songs_end[0] <= songs[0] || sxU64(songs_end[0] - songs[0]) % 16) {
+        return false;
+    }
+    var song_count = Math.floor(sxU64(songs_end[0] - songs[0]) / 16);
+    if (song_count > 2048 || !sxam39_span(c, songs[0], song_count * 16)) {
+        return false;
+    }
+    var info_op = [0];
+    var info = [0];
+    var pcm_op = [0];
+    var pcm = [0];
+    var end1_op = [0];
+    var end2_op = [0];
+    var info_end = [0];
+    if (!sxam39_find(c, 16, 0xC2FC, info_op) || !sxam39_relative(c, info_op[0] + 6, info) || !sxam39_find(c, info_op[0] + 6, 0x47FA, pcm_op) || !sxam39_relative(c, pcm_op[0] + 2, pcm) || !sxam39_find(c, pcm_op[0] + 2, 0x49FA, end1_op) || !sxam39_find(c, end1_op[0] + 2, 0x49FA, end2_op) || !sxam39_relative(c, end2_op[0] + 2, info_end)) {
+        return false;
+    }
+    if (info[0] < songs_end[0] || info_end[0] <= info[0] || sxU64(info_end[0] - info[0]) % 44 || pcm[0] < info_end[0]) {
+        return false;
+    }
+    var samples = Math.floor(sxU64(info_end[0] - info[0]) / 44);
+    if (samples > 4096 || !sxam39_span(c, info[0], samples * 44)) {
+        return false;
+    }
+    for (i = 0; i < samples; i++) {
+        var b = [];
+        if (!sxam39_read(c, info[0] + i * 44 + 32, b, 12)) {
+            return false;
+        }
+        var off = sxam39_be32(b, 0) | 0;
+        var bytes = sxam39_be16(b, 8) * 2;
+        if (off >= 0 && (!sxam39_span(c, pcm[0], off >>> 0) || !sxam39_span(c, pcm[0] + (off >>> 0), bytes))) {
+            return false;
+        }
+    }
+    var end = [0];
+    if (!sxam39_gap(c, end, songs[0]) || !sx_table(c, sxam39_ashley_song, (songs[0] >= SX_I64_MAX ? songs[0] - SX_U64_MAX : songs[0]), 16, song_count)) {
+        return false;
+    }
+    end[0] = songs_end[0];
+    if (!sxam39_gap(c, end, info[0]) || !sx_table(c, sxam39_ashley_sample, (info[0] >= SX_I64_MAX ? info[0] - SX_U64_MAX : info[0]), 44, samples)) {
+        return false;
+    }
+    end[0] = info_end[0];
+    return sxam39_gap(c, end, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}
+function sxam39_raw(c) {
+    var b = [0];
+    if (c === null || c.count || c.failed || c.size <= 0 || !sxam39_read(c, 0, b, 1)) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}
+function sx_music39_amiga_build(c) {
+    if (c === null || c.f === null || !sx_music39_amiga_supports(c.f.file_type)) {
+        return false;
+    }
+    var ok = c.f.file_type === "DIE_MUSIC_SEANCONRAN_SCR" ? sxam39_sean(c) : sxam39_ashley(c);
+    if (!ok) {
+        ok = sxam39_raw(c);
+    }
+    return ok && !c.failed;
+}
+function sx_music39_amiga_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60B20001 || id > 0x60B20003) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60B20001) {
+        if (r.name === "sequence_offset") {
+            s = "Module-relative byte offset of the selected song's initial sequence, loaded by InitSound before scanning for its0xFF terminator.";
+        } else {
+            s = "Six physical bytes remaining in the source's8-byte subsong record; no musical meaning is inferred.";
+        }
+    } else if (id === 0x60B20002) {
+        s = "Physical32-bit per-channel value in the old replay's16-byte song record. InitSound tests each value for zero; no unproved address relocation is applied.";
+    } else if (id === 0x60B20003) {
+        if (r.name === "sample_offset") {
+            s = "Signed byte offset relative to the PCM sample-data base located by the original old replay. Negative values are skipped by SampleInit; this is not a module-relative byte offset.";
+        } else if (r.name === "sample_length_words") {
+            s = "PCM length in two-byte audio words; the original SampleInit doubles this stored value.";
+        } else {
+            s = "Physical instrument metadata preserved as bytes because its musical meaning is not established by the retained loader.";
+        }
+    }
+    return s === null || sxSetComment(r, s);
+}

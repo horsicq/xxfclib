@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/rsdos_fs/xx_rsdos_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_rsdos_vdk_header_fields = layout([chars("signature", 2, SIGNATURE), u16("header_size", SIZE), u8("version", ID),
+    u8("minimum_version", ID), u8("source_id", ID), u8("source_version", ID), u8("cylinders", COUNT), u8("sides", COUNT),
+    u8("flags", FLAGS), u8("compression_and_name_length")]);
+var sxdn_rsdos_vdk_header = sxLayout(0x6078000D, "rsdos_vdk_header", LE, sxdn_rsdos_vdk_header_fields);
+var sxdn_rsdos_granule_fields = layout([u8("next_or_terminal")]);
+var sxdn_rsdos_granule = sxLayout(0x6078000E, "rsdos_granule", LE, sxdn_rsdos_granule_fields);
+var sxdn_rsdos_directory_entry_fields = layout([chars("filename", 8, NONE), chars("extension", 3, NONE), u8("file_type", ID),
+    u8("ascii_flag", FLAGS), u8("first_granule"), u16("last_sector_bytes", SIZE), field("reserved", "byte[16]", 16)]);
+var sxdn_rsdos_directory_entry = sxLayout(0x6078000F, "rsdos_directory_entry", BE, sxdn_rsdos_directory_entry_fields);
+function sxdn_rsdos(c) {
+    var h = (c.size < 0 ? c.size + SX_U64_MAX : c.size) % 256;
+    var heads = 1;
+    var declared_tracks = 0;
+    var b = [];
+    if (h) {
+        if (!sxdn_read(c, 0, b, h < 12 ? h : 12)) {
+            return false;
+        }
+        if (h >= 12 && b[0] === 100 /*d*/ && b[1] === 107 /*k*/ && sxdn16(b, 2, 0) === h) {
+            heads = b[9];
+            declared_tracks = b[8];
+            if (!sxdn_put(c, sxdn_rsdos_vdk_header, 0, 1)) {
+                return false;
+            }
+        } else {
+            heads = h > 1 ? b[1] : 1;
+            if (!sxdn_jvc_header(c, h)) {
+                return false;
+            }
+        }
+    }
+    if (heads < 1 || heads > 2) {
+        return c.count !== 0;
+    }
+    var tracks = Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - h) / (heads * 18 * 256));
+    var n = (declared_tracks ? declared_tracks : tracks) > 1 ? sxU64((declared_tracks ? declared_tracks : tracks) - 1) * 2 : 0;
+    if (n > 255) {
+        n = 255;
+    }
+    if (n < 68) {
+        n = 68;
+    }
+    var p = h + (17 * heads * 18 + 1) * 256;
+    if (!sxdn_span(c, p, 2560)) {
+        return c.count !== 0;
+    }
+    return sxdn_put(c, sxdn_rsdos_granule, p, n) && sxdn_put(c, sxdn_rsdos_directory_entry, p + 256, 72);
+}
+function sx_rsdos_fs_build(c) {
+    return sxdn_rsdos(c);
+}

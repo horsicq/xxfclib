@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/wbmp_image/xx_wbmp_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_wbmp_header_fields = layout([u8("type", ID), u8("fixed_header", FLAGS)]);
+var sxnx_wbmp_header = sxLayout(0x6032001B, "wbmp_header", LE, sxnx_wbmp_header_fields);
+var sxnx_wbmp_width_1_fields = layout([field("width", "uintbase128", 1, COUNT)]);
+var sxnx_wbmp_width_1 = sxLayout(0x6032001C, "wbmp_width_1", LE, sxnx_wbmp_width_1_fields);
+var sxnx_wbmp_height_1_fields = layout([field("height", "uintbase128", 1, COUNT)]);
+var sxnx_wbmp_height_1 = sxLayout(0x6032001D, "wbmp_height_1", LE, sxnx_wbmp_height_1_fields);
+var sxnx_wbmp_width_2_fields = layout([field("width", "uintbase128", 2, COUNT)]);
+var sxnx_wbmp_width_2 = sxLayout(0x6032001E, "wbmp_width_2", LE, sxnx_wbmp_width_2_fields);
+var sxnx_wbmp_height_2_fields = layout([field("height", "uintbase128", 2, COUNT)]);
+var sxnx_wbmp_height_2 = sxLayout(0x6032001F, "wbmp_height_2", LE, sxnx_wbmp_height_2_fields);
+function sxnx_wbmp(v) {
+    if (!sxnx_row(v, sxnx_wbmp_header, 0, v.n)) {
+        return false;
+    }
+    var p = [2];
+    for (var i = 0; i < 2; i++) {
+        var start = p[0];
+        var n = [0];
+        var width = [0];
+        if (!sxnx_varuint(v, p, v.n, n, width) || width[0] > 2) {
+            return false;
+        }
+        var l = i ? width[0] === 1 ? sxnx_wbmp_height_1 : sxnx_wbmp_height_2 : width[0] === 1 ? sxnx_wbmp_width_1 : sxnx_wbmp_width_2;
+        if (!sxnx_row(v, l, start, p[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_wbmp_image_build(v) {
+    return sxnx_wbmp(v);
+}

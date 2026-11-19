@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/rhino_digitalmugician/xx_rhino_digitalmugician_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_dmu_header_fields = layout([chars("magic", 24, SIGNATURE), u16("arpeggios_enabled", FLAGS), u16("tracks", COUNT),
+    u32("sequence_0_count", COUNT), u32("sequence_1_count", COUNT), u32("sequence_2_count", COUNT),
+    u32("sequence_3_count", COUNT), u32("sequence_4_count", COUNT), u32("sequence_5_count", COUNT),
+    u32("sequence_6_count", COUNT), u32("sequence_7_count", COUNT), u32("instruments", COUNT), u32("waveforms", COUNT),
+    u32("samples", COUNT), u32("sample_data_bytes", SIZE)]);
+var sxmta_dmu_header = sxLayout(0x6081005C, "dmu_header", BE, sxmta_dmu_header_fields);
+var sxmta_dmu_subsong_fields = layout([u8("loop_enabled", FLAGS), u8("loop_order"), u8("speed"), u8("sequences", COUNT),
+    chars("name", 12, NONE)]);
+var sxmta_dmu_subsong = sxLayout(0x6081005D, "dmu_subsong", LE, sxmta_dmu_subsong_fields);
+var sxmta_dmu_sequence_fields = layout([u8("track", ID), i8("transpose")]);
+var sxmta_dmu_sequence = sxLayout(0x6081005E, "dmu_sequence", LE, sxmta_dmu_sequence_fields);
+var sxmta_dmu_instrument_fields = layout([u8("waveform", ID), u8("loop_words", COUNT), u8("volume"), u8("volume_speed"),
+    u8("arpeggio", ID), u8("pitch"), u8("effect_index", ID), u8("delay"), u8("finetune"), u8("pitch_loop"), u8("pitch_speed"),
+    u8("effect", ID), u8("source_wave1", ID), u8("source_wave2", ID), u8("effect_speed"), u8("volume_loop", FLAGS)]);
+var sxmta_dmu_instrument = sxLayout(0x6081005F, "dmu_instrument", LE, sxmta_dmu_instrument_fields);
+var sxmta_dmu_event_fields = layout([u8("note"), u8("instrument", ID), u8("effect", ID), u8("parameter")]);
+var sxmta_dmu_event = sxLayout(0x60810061, "dmu_event", LE, sxmta_dmu_event_fields);
+function sxmta_dmu(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [76];
+    var ni = [0];
+    var nw = [0];
+    var ns = [0];
+    var nt = [0];
+    var n;
+    var x = [0];
+    var seq = 0;
+    var arp = [0];
+    var total = [0];
+    if (!sxmta_eq(v, 0, " MUGICIAN/SOFTEYES 1990 ", 23, end) && !sxmta_eq(v, 0, " MUGICIAN2/SOFTEYES 1990", 23, end) || !sxmta_row(v, sxmta_dmu_header, 0, end) || !sxmta_be(v, 24, 2, arp, 0, end) || !sxmta_be(v, 26, 2, nt, 0, end) || !sxmta_be(v, 60, 4, ni, 0, end) || !sxmta_be(v, 64, 4, nw, 0, end) || !sxmta_be(v, 68, 4, ns, 0, end) || !sxmta_be(v, 72, 4, total, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        if (!sxmta_be(v, (28 + ((i * 4) >>> 0)) >>> 0, 4, x, 0, end)) {
+            return false;
+        }
+        seq += x[0];
+    }
+    if (!sxmta_take(v, sxmta_dmu_subsong, p, 8, end) || !sxmta_take(v, sxmta_dmu_sequence, p, seq * 4, end) || !sxmta_take(v, sxmta_dmu_instrument, p, ni[0], end) || !sxmta_skip(v, p, nw[0] * 128, end)) {
+        return false;
+    }
+    n = p[0];
+    if (!sxmta_take(v, sxmta_dmu_sample, p, ns[0], end) || !sxmta_take(v, sxmta_dmu_event, p, nt[0] * 64, end)) {
+        return false;
+    }
+    for (i = 0; i < ns[0]; i++) {
+        var a = [0];
+        var b = [0];
+        if (!sxmta_be(v, n + i * 32, 4, a, 0, end) || !sxmta_be(v, n + i * 32 + 4, 4, b, 0, end) || a[0] > b[0] || b[0] > total[0]) {
+            return false;
+        }
+    }
+    if (!sxmta_skip(v, p, total[0], end) || arp[0] && !sxmta_take(v, sxmta_is_unsigned_value, p, 256, end)) {
+        return false;
+    }
+    return true;
+}
+function sx_rhino_digitalmugician_build(v) {
+    return sxmta_dmu(v);
+}

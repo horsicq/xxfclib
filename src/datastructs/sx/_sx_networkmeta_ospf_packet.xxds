@@ -1,0 +1,22 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/ospf_packet/xx_ospf_packet_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_ospfv2_neighbor_fields = layout([blob("neighbor_router_id", 4)]);
+var sxnm_ospfv2_neighbor = sxLayout(0x6026000E, "ospfv2_neighbor", BE, sxnm_ospfv2_neighbor_fields);
+function sxnm_ospf(v) {
+    if (!sxnm_row(v, sxnm_ospfv2_header, 0, v.n) || !sxnm_row(v, sxnm_ospfv2_hello, 24, v.n) || sxnm_u16(v.p, 2) !== v.n) {
+        return false;
+    }
+    for (var at = 44; at < v.n; at += 4) {
+        if (!sxnm_row(v, sxnm_ospfv2_neighbor, at, v.n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ospf_packet_build(v) {
+    return sxnm_ospf(v);
+}

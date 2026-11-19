@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zxzip/xx_zxzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_zxzip_header_fields = layout([chars("name", 8, NONE), chars("signature", 3, SIGNATURE), u16("chain_size", SIZE),
+    u8("reserved"), u8("size_high_guard"), u16("header_checksum", CHECKSUM)]);
+var sxat_zxzip_header = sxLayout(0x60640001, "zxzip_header", LE, sxat_zxzip_header_fields);
+var sxat_zxzip_member_fields = layout([chars("name", 8, NONE), chars("trdos_type", 1, NONE), u16("start_or_basic_size"),
+    u16("length", SIZE), u8("sector_count", COUNT), u16("compressed_size", SIZE), u32("checksum", CHECKSUM), u8("method"),
+    u8("submethod")]);
+var sxat_zxzip_member = sxLayout(0x60640002, "zxzip_member", LE, sxat_zxzip_member_fields);
+function sxat_zxzip(c) {
+    var p = 17;
+    var remain = [0];
+    if (!sxat_word(c, 11, 2, false, remain) || !sxat_add(c, sxat_zxzip_header, 0)) {
+        return false;
+    }
+    while (remain[0] >= 22) {
+        var z = [0];
+        if (!sxat_word(c, p + 14, 2, false, z) || !sxat_add(c, sxat_zxzip_member, p)) {
+            return false;
+        }
+        p += 22;
+        remain[0] = sxU64(remain[0] - 22);
+        if (z[0] > remain[0] || !sxat_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+        remain[0] = sxU64(remain[0] - z[0]);
+    }
+    return true;
+}
+function sx_zxzip_build(c) {
+    return sxat_zxzip(c);
+}

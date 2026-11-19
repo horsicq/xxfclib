@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/virtual98/xx_virtual98_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_virtual98_header_fields = layout([chars("signature", 8, SIGNATURE), chars("comment", 128, NONE),
+    u32("padding", RESERVED), u16("megabyte_size"), u16("sector_size", SIZE), u8("sectors_per_track", COUNT),
+    u8("head_count", COUNT), u16("cylinder_count", COUNT), u32("total_sectors", COUNT),
+    field("padding2", "byte[68]", 68, RESERVED)]);
+var sxsl_virtual98_header = sxLayout(0x6033001E, "virtual98_header", LE, sxsl_virtual98_header_fields);
+function sx_virtual98_build(c) {
+    var ok = false;
+    ok = sxsl_put(c, sxsl_virtual98_header, 0, 1);
+    return ok && sxsl_finish(c);
+}

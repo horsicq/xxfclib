@@ -1,0 +1,110 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/jeroentel/xx_jeroentel_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxamore_jt(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var period_address = [0];
+    var period_at;
+    var origin;
+    var op = [];
+    var info_table = [0];
+    var subsong = [0];
+    var address = [0];
+    if (!sxamore_find(v, p, e, 0x1400E302, 4, 2) || !sxamore_be(v, p[0] + 6, 4, period_address, 0, e)) {
+        return false;
+    }
+    op[0] = p[0] + 6;
+    if (!sxamore_find(v, p, e, 0x03580328, 4, 2) || period_address[0] < p[0]) {
+        return false;
+    }
+    period_at = p[0];
+    origin = sxU64(period_address[0] - period_at);
+    p[0] = 0;
+    var a = [0];
+    var b = [0];
+    var aa = sxamore_find(v, a, e, 0xB23C00FF, 4, 2);
+    var bb = sxamore_find(v, b, e, 0x0C0100FF, 4, 2);
+    if (!aa && !bb) {
+        return false;
+    }
+    p[0] = aa && (!bb || a[0] < b[0]) ? a[0] : b[0];
+    if (!sxamore_find(v, p, e, 0x267C, 2, 2)) {
+        return false;
+    }
+    op[1] = p[0] + 2;
+    p[0] += 6;
+    if (!sxamore_find(v, p, e, 0x49F9, 2, 2)) {
+        return false;
+    }
+    op[2] = p[0] + 2;
+    if (!sxamore_be(v, p[0] + 2, 4, address, 0, e) || !sxamore_map(address[0], origin, e, info_table)) {
+        return false;
+    }
+    p[0] += 6;
+    if (!sxamore_find(v, p, e, 0x0026267C, 4, 2)) {
+        return false;
+    }
+    op[3] = p[0] + 4;
+    p[0] += 8;
+    if (!sxamore_find(v, p, e, 0x23F4, 2, 2) || p[0] < 4) {
+        return false;
+    }
+    op[4] = sxU64(p[0] - 4);
+    if (!sxamore_be(v, sxU64(p[0] - 4), 4, address, 0, e) || !sxamore_map(address[0], origin, e, subsong)) {
+        return false;
+    }
+    var first = [0];
+    if (!sxamore_be(v, info_table[0], 4, address, 0, e) || !sxamore_map(address[0], origin, e, first) || first[0] <= info_table[0] || sxU64(first[0] - info_table[0]) % 4 || Math.floor(sxU64(first[0] - info_table[0]) / 4) > 4096) {
+        return false;
+    }
+    for (var i = 0; i < 5; i++) {
+        if (!sxamore_row(v, sxamore_original_address, op[i], e)) {
+            return false;
+        }
+    }
+    var seen = false;
+    for (i = 0; i < 4096; i++, subsong[0] += 18) {
+        var marker = [0];
+        var channels = [];
+        if (!sxamore_be(v, subsong[0] + 16, 1, marker, 0, e)) {
+            return false;
+        }
+        if (marker[0] !== 12) {
+            break;
+        }
+        for (var j = 0; j < 4; j++) {
+            if (!sxamore_be(v, subsong[0] + ((j * 4) >>> 0), 4, channels, j, e)) {
+                return false;
+            }
+        }
+        if (channels[0] === channels[1] && channels[0] === channels[2] && channels[0] === channels[3]) {
+            break;
+        }
+        if (!sxamore_row(v, sxamore_jt_subsong, subsong[0], e)) {
+            return false;
+        }
+        seen = true;
+    }
+    if (!seen) {
+        return false;
+    }
+    for (var row = info_table[0]; row < first[0]; row += 4) {
+        var at = [0];
+        var length = [0];
+        var data = [0];
+        if (!sxamore_be(v, row, 4, address, 0, e) || !sxamore_map(address[0], origin, e, at) || !sxamore_be(v, at[0] + 2, 2, length, 0, e) || !sxamore_be(v, at[0] + 4, 4, address, 0, e) || !sxamore_row(v, sxamore_original_address, row, e) || !sxamore_row(v, sxamore_jt_sample, at[0], e)) {
+            return false;
+        }
+        if (address[0] && (!sxamore_map(address[0], origin, e, data) || !sxamore_span(v, data[0], length[0] * 2, e))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_jeroentel_build(v) {
+    return sxamore_jt(v);
+}

@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_container.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_container");
+include("_sx_container_aiff");
+include("_sx_container_audio_au");
+include("_sx_container_audio_riff_ima");
+include("_sx_container_audio_rifx_wave");
+include("_sx_container_audio_wwise_wem");
+include("_sx_container_flac");
+include("_sx_container_ogg");
+include("_sx_container_pcap");
+include("_sx_container_riff");
+include("_sx_container_sfnt");
+include("_sx_container_soundfont2");
+include("_sx_container_sqlite3");
+include("_sx_container_sqlite_wal");
+include("_sx_container_woff");
+include("_sx_container_woff2");
+
+function fileTypes() { return ["RIFF", "FLAC", "OGG", "AIFF", "SFNT", "WOFF", "WOFF2", "PCAP", "SQLITE3", "SQLITE_WAL",
+    "AUDIO_AU", "SOUNDFONT2", "AUDIO_RIFX_WAVE", "AUDIO_WWISE_WEM", "AUDIO_RIFF_IMA"]; }
+
+var sx_container_layouts = [sx_c_riff_header_le, sx_c_riff_header_be, sx_c_riff_chunk_header_le, sx_c_riff_chunk_header_be,
+    sx_c_riff_list_header_le, sx_c_riff_list_header_be, sx_c_wave_format_le, sx_c_wave_format_be,
+    sx_c_wave_format_extension_size_le, sx_c_wave_format_extension_size_be, sx_c_wave_format_extensible_le,
+    sx_c_wave_format_extensible_be, sx_c_wave_fact_le, sx_c_wave_fact_be, sx_c_avi_main_header, sx_c_avi_stream_header,
+    sx_c_avi_index_entry, sx_c_avi_bitmap_info_header, sx_c_webp_extended_header, sx_c_webp_animation_header,
+    sx_c_webp_animation_frame_header, sx_c_sf2_preset_header, sx_c_sf2_bag, sx_c_sf2_modulator, sx_c_sf2_generator,
+    sx_c_sf2_instrument, sx_c_sf2_sample_header, sx_c_ogg_page_header, sx_c_ogg_lacing_value, sx_c_pcap_file_header_le,
+    sx_c_pcap_file_header_be, sx_c_pcap_packet_header_le, sx_c_pcap_packet_header_be, sx_c_sqlite3_database_header,
+    sx_c_sqlite_btree_leaf_page_header, sx_c_sqlite_btree_interior_page_header, sx_c_sqlite_cell_pointer,
+    sx_c_sqlite_wal_header, sx_c_sqlite_wal_frame_header, sx_c_sfnt_offset_table, sx_c_sfnt_table_record, sx_c_woff_header,
+    sx_c_woff_table_record, sx_c_woff2_header, sx_c_woff2_table_flags, sx_c_woff2_table_tag, sx_c_woff2_base128_1,
+    sx_c_woff2_base128_2, sx_c_woff2_base128_3, sx_c_woff2_base128_4, sx_c_woff2_base128_5, sx_c_font_head_table,
+    sx_c_font_horizontal_header, sx_c_font_maxp_header, sx_c_font_maxp_v1_limits, sx_c_font_name_header, sx_c_font_name_record,
+    sx_c_font_cmap_header, sx_c_font_cmap_encoding_record, sx_c_flac_marker, sx_c_flac_metadata_block_header,
+    sx_c_flac_streaminfo, sx_c_flac_application_header, sx_c_flac_seekpoint, sx_c_aiff_form_header, sx_c_aiff_chunk_header,
+    sx_c_aiff_common_chunk, sx_c_aifc_compression_type, sx_c_aiff_sound_data_header, sx_c_aiff_format_version, sx_c_au_header];
+
+function structs() {
+    return sxCatalog([sx_c_riff_header_le, sx_c_riff_header_be, sx_c_riff_chunk_header_le, sx_c_riff_chunk_header_be,
+        sx_c_riff_list_header_le, sx_c_riff_list_header_be, sx_c_wave_format_le, sx_c_wave_format_be,
+        sx_c_wave_format_extension_size_le, sx_c_wave_format_extension_size_be, sx_c_wave_format_extensible_le,
+        sx_c_wave_format_extensible_be, sx_c_wave_fact_le, sx_c_wave_fact_be, sx_c_avi_main_header, sx_c_avi_stream_header,
+        sx_c_avi_index_entry, sx_c_avi_bitmap_info_header, sx_c_webp_extended_header, sx_c_webp_animation_header,
+        sx_c_webp_animation_frame_header, sx_c_sf2_preset_header, sx_c_sf2_bag, sx_c_sf2_modulator, sx_c_sf2_generator,
+        sx_c_sf2_instrument, sx_c_sf2_sample_header, sx_c_ogg_page_header, sx_c_ogg_lacing_value, sx_c_pcap_file_header_le,
+        sx_c_pcap_file_header_be, sx_c_pcap_packet_header_le, sx_c_pcap_packet_header_be, sx_c_sqlite3_database_header,
+        sx_c_sqlite_btree_leaf_page_header, sx_c_sqlite_btree_interior_page_header, sx_c_sqlite_cell_pointer,
+        sx_c_sqlite_wal_header, sx_c_sqlite_wal_frame_header, sx_c_sfnt_offset_table, sx_c_sfnt_table_record, sx_c_woff_header,
+        sx_c_woff_table_record, sx_c_woff2_header, sx_c_woff2_table_flags, sx_c_woff2_table_tag, sx_c_woff2_base128_1,
+        sx_c_woff2_base128_2, sx_c_woff2_base128_3, sx_c_woff2_base128_4, sx_c_woff2_base128_5, sx_c_font_head_table,
+        sx_c_font_horizontal_header, sx_c_font_maxp_header, sx_c_font_maxp_v1_limits, sx_c_font_name_header,
+        sx_c_font_name_record, sx_c_font_cmap_header, sx_c_font_cmap_encoding_record, sx_c_flac_marker,
+        sx_c_flac_metadata_block_header, sx_c_flac_streaminfo, sx_c_flac_application_header, sx_c_flac_seekpoint,
+        sx_c_aiff_form_header, sx_c_aiff_chunk_header, sx_c_aiff_common_chunk, sx_c_aifc_compression_type,
+        sx_c_aiff_sound_data_header, sx_c_aiff_format_version, sx_c_au_header], sx_container_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_container_build, false);
+}

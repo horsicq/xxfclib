@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/diskdupe/xx_diskdupe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_diskdupe_header_fields = layout([chars("signature", 21, SIGNATURE), field("unknown_15", "byte[46]", 46),
+    u8("track_count", COUNT), u16("block_size", SIZE), field("unknown_46", "byte[2]", 2)]);
+var sxsl_diskdupe_header = sxLayout(0x60330006, "diskdupe_header", LE, sxsl_diskdupe_header_fields);
+var sxsl_diskdupe_track_fields = layout([field("block_offset", "uint24", 3), u8("status", ID), u8("unknown")]);
+var sxsl_diskdupe_track = sxLayout(0x60330007, "diskdupe_track", LE, sxsl_diskdupe_track_fields);
+function sxsl_diskdupe(c) {
+    var b = [];
+    return sxsl_read(c, 0, b, 72) && sxsl_put(c, sxsl_diskdupe_header, 0, 1) && sxsl_put(c, sxsl_diskdupe_track, 72, b[67]);
+}
+function sx_diskdupe_build(c) {
+    var ok = false;
+    ok = sxsl_diskdupe(c);
+    return ok && sxsl_finish(c);
+}

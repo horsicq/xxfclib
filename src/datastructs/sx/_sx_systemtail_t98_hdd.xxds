@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/t98_hdd/xx_t98_hdd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_t98_header_fields = layout([u32("cylinders", COUNT), field("reserved", "byte[252]", 252, RESERVED)]);
+var sxst_t98_header = sxLayout(0x60370033, "t98_header", LE, sxst_t98_header_fields);
+function sx_t98_hdd_build(c) {
+    return sxst_put(c, sxst_t98_header, 0, 1);
+}

@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/ktx2/xx_ktx2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_ktx2_header_fields = layout([blob("identifier", 12, SIGNATURE), u32("vk_format", ID), u32("type_size", SIZE),
+    u32("pixel_width"), u32("pixel_height"), u32("pixel_depth"), u32("layer_count", COUNT), u32("face_count", COUNT),
+    u32("level_count", COUNT), u32("supercompression_scheme", ID), u32("dfd_offset", OFFSET), u32("dfd_length", SIZE),
+    u32("kvd_offset", OFFSET), u32("kvd_length", SIZE), u64("sgd_offset", OFFSET), u64("sgd_length", SIZE)]);
+var sxm_ktx2_header = sxLayout(0x60060016, "ktx2_header", LE, sxm_ktx2_header_fields);
+var sxm_ktx2_level_fields = layout([u64("byte_offset", OFFSET), u64("byte_length", SIZE), u64("uncompressed_byte_length", SIZE)]);
+var sxm_ktx2_level = sxLayout(0x60060017, "ktx2_level", LE, sxm_ktx2_level_fields);
+function sxm_ktx2(c, h) {
+    var levels = sxGetU32(h, 80, 40, false);
+    var at;
+    if (sxMemcmp(h, "\xABKTX 20\xBB\r\n\x1A\n", 12) || levels > 32) {
+        return false;
+    }
+    if (!levels) {
+        levels = 1;
+    }
+    if (!sx_add(c, sxm_ktx2_header, 0, 80) || !sx_table(c, sxm_ktx2_level, 80, 24, levels)) {
+        return false;
+    }
+    at = 80 + levels * 24;
+    for (var i = 0; i < levels; i++) {
+        var off;
+        var n;
+        if ((off = sx_u64(c, 80 + i * 24, false)) === null || (n = sx_u64(c, 88 + i * 24, false)) === null || !sxm_span(c, off, n)) {
+            return false;
+        }
+    }
+    for (i = 48; i <= 56; i = (i + 8) >>> 0) {
+        off = sxGetU32(h, 80, i, false);
+        n = sxGetU32(h, 80, (i + 4) >>> 0, false);
+        if (n && !sxm_span(c, off, n)) {
+            return false;
+        }
+    }
+    if (!sxm_span(c, sxGetU64(h, 80, 64, false), sxGetU64(h, 80, 72, false))) {
+        return false;
+    }
+    return sxm_tail(c, at);
+}
+function sx_ktx2_build(c, h, n) {
+    return n >= 80 && sxm_ktx2(c, h);
+}

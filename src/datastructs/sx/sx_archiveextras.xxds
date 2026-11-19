@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveextras.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archiveextras");
+include("_sx_archiveextras_ain");
+include("_sx_archiveextras_amigalzx");
+include("_sx_archiveextras_arq");
+include("_sx_archiveextras_asymetrix");
+include("_sx_archiveextras_bsn");
+include("_sx_archiveextras_chz");
+include("_sx_archiveextras_diskexpress");
+include("_sx_archiveextras_gxl");
+include("_sx_archiveextras_hap");
+include("_sx_archiveextras_kwaj");
+include("_sx_archiveextras_rta");
+include("_sx_archiveextras_seaarc");
+include("_sx_archiveextras_sqx");
+include("_sx_archiveextras_sqz");
+include("_sx_archiveextras_swag");
+include("_sx_archiveextras_zpak");
+
+function fileTypes() { return ["AIN", "ARQ", "SWAG", "AMIGALZX", "SEAARC", "ASYMETRIX", "ZPAK", "SQX", "HAP", "RTA", "SQZ",
+    "DISKEXPRESS", "GXL", "BSN", "KWAJ", "CHZ"]; }
+
+var sx_archiveextras_layouts = [sxae_arc_member_old, sxae_arc_member, sxae_arc_end, sxae_bsn_header, sxae_bsn_member_prefix,
+    sxae_bsn_member_sizes, sxae_bsn_end, sxae_arq_container, sxae_arq_member_prefix, sxae_arq_member_tail, sxae_gxl_header,
+    sxae_gxl_member, sxae_rta_header, sxae_rta_string_size, sxae_rta_member, sxae_rta_codec_header, sxae_rta_end,
+    sxae_sqz_header, sxae_sqz_member, sxae_sqz_block, sxae_sqz_block4, sxae_sqz_comment, sxae_sqz_end, sxae_sqx_main,
+    sxae_sqx_record, sxae_sqx_file32, sxae_sqx_file64, sxae_hap_header, sxae_hap_member, sxae_kwaj_header,
+    sxae_kwaj_unpacked_size, sxae_kwaj_unknown, sxae_kwaj_extension_size, sxae_kwaj_mszip_block, sxae_kwaj_mszip_end,
+    sxae_chz_file, sxae_chz_directory, sxae_chz_directory_end, sxae_swag_member, sxae_swag_member_crc, sxae_swag_footer,
+    sxae_zpak_header, sxae_zpak_member, sxae_zpak_chunk_marker, sxae_zpak_chunk, sxae_asymetrix_header, sxae_asymetrix_member,
+    sxae_asymetrix_block, sxae_diskexpress_header, sxae_diskexpress_track, sxae_ain_header, sxae_amigalzx_header,
+    sxae_amigalzx_member];
+
+function structs() {
+    return sxCatalog([sxae_arc_member_old, sxae_arc_member, sxae_arc_end, sxae_bsn_header, sxae_bsn_member_prefix,
+        sxae_bsn_member_sizes, sxae_bsn_end, sxae_arq_container, sxae_arq_member_prefix, sxae_arq_member_tail, sxae_gxl_header,
+        sxae_gxl_member, sxae_rta_header, sxae_rta_string_size, sxae_rta_member, sxae_rta_codec_header, sxae_rta_end,
+        sxae_sqz_header, sxae_sqz_member, sxae_sqz_block, sxae_sqz_block4, sxae_sqz_comment, sxae_sqz_end, sxae_sqx_main,
+        sxae_sqx_record, sxae_sqx_file32, sxae_sqx_file64, sxae_hap_header, sxae_hap_member, sxae_kwaj_header,
+        sxae_kwaj_unpacked_size, sxae_kwaj_unknown, sxae_kwaj_extension_size, sxae_kwaj_mszip_block, sxae_kwaj_mszip_end,
+        sxae_chz_file, sxae_chz_directory, sxae_chz_directory_end, sxae_swag_member, sxae_swag_member_crc, sxae_swag_footer,
+        sxae_zpak_header, sxae_zpak_member, sxae_zpak_chunk_marker, sxae_zpak_chunk, sxae_asymetrix_header,
+        sxae_asymetrix_member, sxae_asymetrix_block, sxae_diskexpress_header, sxae_diskexpress_track, sxae_ain_header,
+        sxae_amigalzx_header, sxae_amigalzx_member], sx_archiveextras_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archiveextras_build, false);
+}

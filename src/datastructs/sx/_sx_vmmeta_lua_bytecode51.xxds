@@ -1,0 +1,164 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/lua_bytecode51/xx_lua_bytecode51_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_vm_lua51_header_fields = layout([chars("signature", 4, SIGNATURE), u8("version", ID), u8("format", ID),
+    u8("little_endian", ID), u8("integer_size", SIZE), u8("size_t_size", SIZE), u8("instruction_size", SIZE),
+    u8("number_size", SIZE), u8("integral_numbers", ID)]);
+var sx_vm_lua51_header = sxLayout(0x6016001B, "lua51_header", LE, sx_vm_lua51_header_fields);
+var sx_vm_lua51_code_count_fields = layout([i32("code_count", COUNT)]);
+var sx_vm_lua51_code_count = sxLayout(0x6016001D, "lua51_code_count", LE, sx_vm_lua51_code_count_fields);
+var sx_vm_lua51_constants_count_fields = layout([i32("constants_count", COUNT)]);
+var sx_vm_lua51_constants_count = sxLayout(0x6016001E, "lua51_constants_count", LE, sx_vm_lua51_constants_count_fields);
+var sx_vm_lua51_prototypes_count_fields = layout([i32("prototypes_count", COUNT)]);
+var sx_vm_lua51_prototypes_count = sxLayout(0x6016001F, "lua51_prototypes_count", LE, sx_vm_lua51_prototypes_count_fields);
+var sx_vm_lua51_lineinfo_count_fields = layout([i32("lineinfo_count", COUNT)]);
+var sx_vm_lua51_lineinfo_count = sxLayout(0x60160020, "lua51_lineinfo_count", LE, sx_vm_lua51_lineinfo_count_fields);
+var sx_vm_lua51_locals_count_fields = layout([i32("locals_count", COUNT)]);
+var sx_vm_lua51_locals_count = sxLayout(0x60160021, "lua51_locals_count", LE, sx_vm_lua51_locals_count_fields);
+var sx_vm_lua51_upvalues_count_fields = layout([i32("upvalues_count", COUNT)]);
+var sx_vm_lua51_upvalues_count = sxLayout(0x60160022, "lua51_upvalues_count", LE, sx_vm_lua51_upvalues_count_fields);
+var sx_vm_lua51_boolean_fields = layout([u8("value")]);
+var sx_vm_lua51_boolean = sxLayout(0x60160026, "lua51_boolean", LE, sx_vm_lua51_boolean_fields);
+var sx_vm_lua51_number_bits_fields = layout([u64("ieee754_bits")]);
+var sx_vm_lua51_number_bits = sxLayout(0x60160027, "lua51_number_bits", LE, sx_vm_lua51_number_bits_fields);
+var sx_vm_lua51_instruction_fields = layout([u32("encoded_instruction")]);
+var sx_vm_lua51_instruction = sxLayout(0x60160028, "lua51_instruction", LE, sx_vm_lua51_instruction_fields);
+var sx_vm_lua51_lineinfo_fields = layout([i32("source_line")]);
+var sx_vm_lua51_lineinfo = sxLayout(0x6016002A, "lua51_lineinfo", LE, sx_vm_lua51_lineinfo_fields);
+var sx_vm_lua51_local_range_fields = layout([i32("start_instruction_index"), i32("end_instruction_index")]);
+var sx_vm_lua51_local_range = sxLayout(0x6016002B, "lua51_local_range", LE, sx_vm_lua51_local_range_fields);
+function sx_vm_count(c, at, l, v) {
+    if (!sx_vm_span(c, at[0], 4) || (v[0] = sx_u32(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), false)) === null || !sx_add(c, l, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 4)) {
+        return false;
+    }
+    at[0] += 4;
+    return true;
+}
+function sx_vm_lua_string(s) {
+    var size = 0;
+    if (!sx_vm_span(s.c, s.at, s.width)) {
+        return false;
+    }
+    if (s.width === 4) {
+        var n;
+        if ((n = sx_u32(s.c, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), false)) === null) {
+            return false;
+        }
+        size = n;
+    } else if ((size = sx_u64(s.c, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), false)) === null) {
+        return false;
+    }
+    if (size > 16777216 || !sx_vm_span(s.c, s.at + s.width, size) || !sx_add(s.c, s.width === 4 ? sx_vm_lua51_string32 : sx_vm_lua51_string64, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), s.width)) {
+        return false;
+    }
+    s.at += s.width + size;
+    return true;
+}
+function sx_vm_lua_proto(s, depth) {
+    var sxb1, sxr2, sxb3, sxr4, sxb5, sxr6, sxb7, sxr8, sxb9, sxr10, sxb11, sxr12;
+    var c = s.c;
+    var count = [0];
+    if (depth > 32 || ++s.prototypes > 1024 || !sx_vm_lua_string(s) || !sx_add(c, sx_vm_lua51_prototype, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), 12)) {
+        return false;
+    }
+    s.at += 12;
+    if (!(sxr2 = sx_vm_count(c, (sxb1 = [s.at]), sx_vm_lua51_code_count, count), s.at = sxb1[0], sxr2) || !count[0] || count[0] > 65536 || s.instructions + count[0] > 1000000 || !sx_vm_span(c, s.at, count[0] * 4)) {
+        return false;
+    }
+    var run = 0;
+    for (var i = 0; i < count[0]; i++) {
+        var word;
+        if ((word = sx_u32(c, (s.at + i * 4 >= SX_I64_MAX ? s.at + i * 4 - SX_U64_MAX : s.at + i * 4), false)) === null) {
+            return false;
+        }
+        if ((word & 63) > 37) {
+            return false;
+        }
+        if ((word & 63) === 34 && (word >>> 14 & 511) === 0) {
+            if ((i + 1) >>> 0 >= count[0] || !sx_table(c, sx_vm_lua51_instruction, (s.at + run * 4 >= SX_I64_MAX ? s.at + run * 4 - SX_U64_MAX : s.at + run * 4), 4, (((i - run) >>> 0) + 1) >>> 0) || !sx_add(c, sx_vm_lua51_setlist_extra, sxI64(s.at + ((i + 1) >>> 0) * 4), 4)) {
+                return false;
+            }
+            i++;
+            run = (i + 1) >>> 0;
+        }
+    }
+    if (run < count[0] && !sx_table(c, sx_vm_lua51_instruction, (s.at + run * 4 >= SX_I64_MAX ? s.at + run * 4 - SX_U64_MAX : s.at + run * 4), 4, (count[0] - run) >>> 0)) {
+        return false;
+    }
+    s.at += count[0] * 4;
+    s.instructions += count[0];
+    if (!(sxr4 = sx_vm_count(c, (sxb3 = [s.at]), sx_vm_lua51_constants_count, count), s.at = sxb3[0], sxr4) || count[0] > 65536) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        var t = [0];
+        if (!sx_read(c, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), t, 1) || !sx_add(c, sx_vm_lua51_constant_tag, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), 1)) {
+            return false;
+        }
+        s.at++;
+        if (t[0] === 0) {
+            continue;
+        }
+        if (t[0] === 1) {
+            if (!sx_add(c, sx_vm_lua51_boolean, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), 1)) {
+                return false;
+            }
+            s.at++;
+        } else if (t[0] === 3) {
+            if (!sx_add(c, sx_vm_lua51_number_bits, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), 8)) {
+                return false;
+            }
+            s.at += 8;
+        } else if (t[0] === 4) {
+            if (!sx_vm_lua_string(s)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    if (!(sxr6 = sx_vm_count(c, (sxb5 = [s.at]), sx_vm_lua51_prototypes_count, count), s.at = sxb5[0], sxr6) || count[0] > 1024) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        if (!sx_vm_lua_proto(s, (depth + 1) >>> 0)) {
+            return false;
+        }
+    }
+    if (!(sxr8 = sx_vm_count(c, (sxb7 = [s.at]), sx_vm_lua51_lineinfo_count, count), s.at = sxb7[0], sxr8) || count[0] > 65536 || !sx_table(c, sx_vm_lua51_lineinfo, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), 4, count[0])) {
+        return false;
+    }
+    s.at += count[0] * 4;
+    if (!(sxr10 = sx_vm_count(c, (sxb9 = [s.at]), sx_vm_lua51_locals_count, count), s.at = sxb9[0], sxr10) || count[0] > 65536) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        if (!sx_vm_lua_string(s) || !sx_add(c, sx_vm_lua51_local_range, (s.at >= SX_I64_MAX ? s.at - SX_U64_MAX : s.at), 8)) {
+            return false;
+        }
+        s.at += 8;
+    }
+    if (!(sxr12 = sx_vm_count(c, (sxb11 = [s.at]), sx_vm_lua51_upvalues_count, count), s.at = sxb11[0], sxr12) || count[0] > 60) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        if (!sx_vm_lua_string(s)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_vm_lua(c) {
+    var h = [];
+    if (!sx_read(c, 0, h, 12) || h[6] !== 1 || h[7] !== 4 || h[8] !== 4 && h[8] !== 8 || h[9] !== 4 || h[10] !== 8 || h[11] || !sx_add(c, sx_vm_lua51_header, 0, 12)) {
+        return false;
+    }
+    var s = { c: c, at: 12, instructions: 0, width: h[8], prototypes: 0 };
+    return sx_vm_lua_proto(s, 0) && s.at === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_lua_bytecode51_build(c) {
+    return sx_vm_lua(c);
+}

@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_bfsha/xx_nintendo_bfsha_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_fsha_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u16("byte_order", ID),
+    u16("header_size", SIZE), u32("file_size", SIZE), u32("alignment", SIZE), i32("name_relative", OFFSET),
+    u32("string_pool_size", SIZE), i32("string_pool_relative", OFFSET), i32("path_relative", OFFSET), u16("model_count", COUNT),
+    u16("unknown_26"), u32("unknown_28"), i32("model_dictionary_relative", OFFSET), u32("unknown_30"), u32("unknown_34")]);
+var sxmx_fsha_header = sxLayout(0x602E0076, "fsha_header", BE, sxmx_fsha_header_fields);
+var sxmx_fsha_string_length_fields = layout([u32("byte_length", SIZE)]);
+var sxmx_fsha_string_length = sxLayout(0x602E0077, "fsha_string_length", BE, sxmx_fsha_string_length_fields);
+var sxmx_fsha_model_fields = layout([blob("opaque_0", 6), u16("program_count", COUNT), blob("opaque_8", 20),
+    u32("program_index", ID), i32("name_relative", OFFSET), blob("opaque_24", 52), i32("programs_relative", OFFSET),
+    u32("unknown_5c"), i32("archive_relative", OFFSET), blob("unknown_64", 12)]);
+var sxmx_fsha_model = sxLayout(0x602E0078, "fsha_model", BE, sxmx_fsha_model_fields);
+var sxmx_fsha_program_fields = layout([blob("opaque_0", 40), i32("vertex_shader_relative", OFFSET),
+    i32("geometry_shader_relative", OFFSET), i32("pixel_shader_relative", OFFSET), i32("model_relative", OFFSET)]);
+var sxmx_fsha_program = sxLayout(0x602E0079, "fsha_program", BE, sxmx_fsha_program_fields);
+var sxmx_fsha_vertex_shader_fields = layout([blob("gpu_registers", 208), u32("code_size", SIZE), i32("code_relative", OFFSET),
+    u32("shader_mode", ID), blob("unused_native_metadata", 88)]);
+var sxmx_fsha_vertex_shader = sxLayout(0x602E007A, "fsha_vertex_shader", BE, sxmx_fsha_vertex_shader_fields);
+var sxmx_fsha_pixel_shader_fields = layout([blob("gpu_registers", 164), u32("code_size", SIZE), i32("code_relative", OFFSET),
+    u32("shader_mode", ID), blob("unused_native_metadata", 56)]);
+var sxmx_fsha_pixel_shader = sxLayout(0x602E007B, "fsha_pixel_shader", BE, sxmx_fsha_pixel_shader_fields);
+function sxmx_fsha_shader(v, word, pixel) {
+    var at = [0];
+    if (!sxmx_relative(v, word, true, at)) {
+        return false;
+    }
+    if (at[0] === word && !sxmx_u32(v.p, word, true)) {
+        return true;
+    }
+    return sxmx_row(v, pixel ? sxmx_fsha_pixel_shader : sxmx_fsha_vertex_shader, at[0], v.n);
+}
+function sxmx_fsha(v) {
+    var dict = [0];
+    var pool = [0];
+    if (!sxmx_row(v, sxmx_fsha_header, 0, v.n) || !sxmx_relative(v, 44, true, dict) || !sxmx_row(v, sxmx_bfres_dictionary, dict[0], v.n) || !sxmx_relative(v, 28, true, pool)) {
+        return false;
+    }
+    var n = sxmx_u32(v.p, dict[0] + 4, true);
+    if (n > 32 || !sxmx_table(v, sxmx_bfres_node, dict[0] + 8, n + 1, v.n)) {
+        return false;
+    }
+    var size = sxmx_u32(v.p, 24, true);
+    if (!sxmx_need(v, pool[0], size, v.n)) {
+        return false;
+    }
+    var at = pool[0];
+    var end = pool[0] + size;
+    while (at < end) {
+        if (!sxmx_row(v, sxmx_fsha_string_length, at, end)) {
+            return false;
+        }
+        var z = sxmx_u32(v.p, at, true);
+        at += 4;
+        if (!sxmx_need(v, at, z + 1, end)) {
+            return false;
+        }
+        at = sxAnd64(at + z + 1 + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        if (at > end) {
+            return false;
+        }
+    }
+    for (var i = 1; i <= n; i++) {
+        var model = [0];
+        var program = [0];
+        if (!sxmx_relative(v, dict[0] + 8 + i * 16 + 12, true, model) || !sxmx_row(v, sxmx_fsha_model, model[0], v.n) || !sxmx_relative(v, model[0] + 88, true, program)) {
+            return false;
+        }
+        var count = sxmx_u16(v.p, model[0] + 6, true);
+        if (count > 256 || !sxmx_table(v, sxmx_fsha_program, program[0], count, v.n)) {
+            return false;
+        }
+        for (var j = 0; j < count; j++) {
+            var p = program[0] + j * 56;
+            if (!sxmx_fsha_shader(v, p + 40, false) || !sxmx_fsha_shader(v, p + 48, true)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_nintendo_bfsha_build(v) {
+    return sxmx_fsha(v);
+}

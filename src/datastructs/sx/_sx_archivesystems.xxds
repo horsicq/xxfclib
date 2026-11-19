@@ -1,0 +1,442 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivesystems.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_archivesystems_dcl_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxasy_archivesystems_dcl = sxLayout(0x60440038, "archivesystems_dcl", LE, sxasy_archivesystems_dcl_fields);
+function sx_archivesystems_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60440000 || id >= 0x60450000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60440001:
+        if (r.name === "version") {
+            text = "ARCV 0x0200";
+        }
+        if (r.name === "volume_flags") {
+            text = "1 single, 2 first, 4 middle, 8 last volume";
+        }
+        break;
+    case 0x60440002:
+        if (r.name === "flags") {
+            text = "1 whole, 2 split head, 8 split tail; 0x10 stored, 0x20 compressed";
+        }
+        break;
+    case 0x60440003:
+        if (r.name === "compressed_size") {
+            text = "Total compressed bytes across volumes";
+        }
+        if (r.name === "dos_timestamp") {
+            text = "Packed DOS date and time";
+        }
+        if (r.name === "packed_crc32") {
+            text = "CRC-32/JAMCRC of the stored packed bytes";
+        }
+        break;
+    case 0x60440004:
+        if (r.name === "version") {
+            text = "ARCV 0x0400";
+        }
+        if (r.name === "subvariant") {
+            text = "Observed 1 or 5";
+        }
+        break;
+    case 0x60440005:
+        if (r.name === "chunk_type") {
+            text = "Low byte 1 FILE, 3 EOFM";
+        }
+        break;
+    case 0x60440008:
+        if (r.name === "filetime") {
+            text = "Windows FILETIME, 100 ns since 1601";
+        }
+        if (r.name === "compressed_size") {
+            text = "0xFFFFFFFF indicates a split stream";
+        }
+        if (r.name === "method") {
+            text = "0 stored, 2 compressed";
+        }
+        break;
+    case 0x60440009:
+        if (r.name === "chunk_type") {
+            text = "Low byte 1 split, 5 whole";
+        }
+        break;
+    case 0x6044000B:
+        if (r.name === "directory_index") {
+            text = "One based directory index; zero means root";
+        }
+        break;
+    case 0x6044000C:
+        if (r.name === "encoded_name_length") {
+            text = "1..8: basename length and 2/4-byte size; 11..18: basename length minus 10 and 1-byte size; extension occupies 3 bytes";
+        }
+        break;
+    case 0x60440010:
+        if (r.name === "method") {
+            text = "0 stored, 1 PKWARE DCL";
+        }
+        break;
+    case 0x60440011:
+        if (r.name === "pack_time") {
+            text = "Unix seconds";
+        }
+        if (r.name === "file_time") {
+            text = "Unix seconds, zero unspecified";
+        }
+        if (r.name === "uncompressed_size") {
+            text = "Zero selects stored data";
+        }
+        if (r.name === "unpacked_checksum") {
+            text = "Unidentified checksum algorithm";
+        }
+        if (r.name === "packed_checksum") {
+            text = "Unidentified checksum algorithm";
+        }
+        if (r.name === "complemented_data_offset") {
+            text = "One's complement of the data offset";
+        }
+        break;
+    case 0x60440012:
+        if (r.name === "positive_count_word") {
+            text = "Positive header word; not used as the member traversal count";
+        }
+        if (r.name === "complemented_record_offset") {
+            text = "One's complement of the first record offset";
+        }
+        break;
+    case 0x60440013:
+        if (r.name === "file_time") {
+            text = "Unix seconds";
+        }
+        break;
+    case 0x60440014:
+        if (r.name === "file_time") {
+            text = "Unix seconds";
+        }
+        break;
+    case 0x60440015:
+        if (r.name === "end_tag") {
+            text = "0xFFFF terminates the member chain";
+        }
+        break;
+    case 0x60440018:
+        if (r.name === "method") {
+            text = "0 stored, 8 raw DEFLATE";
+        }
+        break;
+    case 0x6044001D:
+        if (r.name === "modification_time") {
+            text = "Unix seconds";
+        }
+        if (r.name === "creation_time") {
+            text = "Unix seconds";
+        }
+        if (r.name === "checksum1") {
+            text = "Unidentified checksum algorithm";
+        }
+        if (r.name === "checksum2") {
+            text = "Unidentified checksum algorithm";
+        }
+        break;
+    case 0x6044001E:
+        if (r.name === "header_payload_size") {
+            text = "Excludes size and checksum bytes";
+        }
+        if (r.name === "checksum") {
+            text = "Sum of base-header bytes after this byte modulo 256";
+        }
+        if (r.name === "method") {
+            text = "-ARS- stored; -ARA- LHA lh5";
+        }
+        if (r.name === "skip_size") {
+            text = "Compressed payload plus all extended-header bytes";
+        }
+        break;
+    case 0x6044001F:
+        if (r.name === "crc16") {
+            text = "CRC-16/ARC of the member data";
+        }
+        break;
+    case 0x60440020:
+        if (r.name === "next_header_size") {
+            text = "Zero ends the extended-header chain; nonzero includes type/body and its final next-size word";
+        }
+        break;
+    case 0x60440021:
+        if (r.name === "type") {
+            text = "Extension type; remaining body bytes are preserved raw";
+        }
+        break;
+    case 0x60440022:
+        if (r.name === "flag") {
+            text = "Observed 0x21, not a codec selector";
+        }
+        if (r.name === "uncompressed_size") {
+            text = "Zero selects stored data, positive selects DCL";
+        }
+        break;
+    case 0x60440025:
+        if (r.name === "kind") {
+            text = "1 path record";
+        }
+        break;
+    case 0x60440026:
+        if (r.name === "kind") {
+            text = "0 member record";
+        }
+        break;
+    case 0x60440027:
+        if (r.name === "encoded_signature") {
+            text = "Biased RCF signature F7 E8 EB";
+        }
+        break;
+    case 0x6044002F:
+        if (r.name === "split_kind") {
+            text = "2 continuation fragment";
+        }
+        if (r.name === "method") {
+            text = "0 stored, 4 zlib";
+        }
+        break;
+    case 0x60440030:
+        if (r.name === "timestamp") {
+            text = "Stored timestamp, retained without assuming an epoch";
+        }
+        break;
+    case 0x60440034:
+        if (r.name === "method") {
+            text = "0x0A NetWare LZH";
+        }
+        break;
+    case 0x60440035:
+        if (r.name === "record_size") {
+            text = "Includes this four-byte size word";
+        }
+        if (r.name === "name_count") {
+            text = "Stored tag length plus one; the counted NUL is not physically present";
+        }
+        break;
+    case 0x60440036:
+        if (r.name === "date_text") {
+            text = "MM-DD-YY";
+        }
+        if (r.name === "time_text") {
+            text = "HH:MM:SS";
+        }
+        if (r.name === "attribute_identifier_text") {
+            text = "Printable attributes and identifier text with no further established field boundaries";
+        }
+        if (r.name === "name_size") {
+            text = "Exact stored DOS-name bytes, followed by an additional NUL";
+        }
+        break;
+    case 0x60440037:
+        if (r.name === "method") {
+            text = "0x0A NetWare LZH";
+        }
+        break;
+    case 0x60440038:
+        if (r.name === "literal_mode") {
+            text = "0 binary literals, 1 coded literals";
+        }
+        if (r.name === "dictionary_bits") {
+            text = "4, 5 or 6; PKWARE DCL dictionary size parameter";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxasy_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxasy_read(c, p, b, n) {
+    return sxasy_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxasy_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxasy_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxasy_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxasy_uint(b, 0, n, be);
+    return true;
+}
+function sxasy_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (c.count >= 20000 || !sxasy_span(c, p, n)) {
+        return false;
+    }
+    var absolute = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < absolute) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo < c.count && c.items[lo].offset < absolute + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > absolute) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxasy_zstr(c, p, end, cap) {
+    for (var i = 0; i < cap && p[0] < end; i++) {
+        var b = [0];
+        if (!sxasy_read(c, p[0]++, b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxasy_dcl(c, p, n) {
+    var h = [];
+    return (n < 2 || !sxasy_read(c, p, h, 2) || h[0] > 1 || h[1] < 4 || h[1] > 6 ? 1 : (sxasy_add(c, sxasy_archivesystems_dcl, p) ? 1 : 0)) !== 0;
+}
+function sxasy_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxasy_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxasy_order, true);
+    return !c.failed;
+}
+function sx_archivesystems_supports(type) {
+    switch (type) {
+    case "ARCV2":
+    case "ARCV4":
+    case "CRU":
+    case "POWERBOARDBBS":
+    case "FLD":
+    case "IGF1":
+    case "IGF2":
+    case "INTEDUFT":
+    case "JM93":
+    case "MIZ":
+    case "MVA":
+    case "POVLABLZH":
+    case "QIP1":
+    case "QUARTERDECKQP":
+    case "RCF":
+    case "RIVERSOFT":
+    case "TGCF":
+    case "TRC":
+    case "NETWAREPACKED":
+    case "NETWARE2":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivesystems_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "ARCV2":
+        ok = sx_arcv2_build(c);
+        break;
+    case "ARCV4":
+        ok = sx_arcv4_build(c);
+        break;
+    case "CRU":
+        ok = sx_cru_build(c);
+        break;
+    case "POWERBOARDBBS":
+        ok = sx_powerboardbbs_build(c);
+        break;
+    case "FLD":
+        ok = sx_fld_build(c);
+        break;
+    case "IGF1":
+        ok = sx_igf1_build(c);
+        break;
+    case "IGF2":
+        ok = sx_igf2_build(c);
+        break;
+    case "INTEDUFT":
+        ok = sx_inteduft_build(c);
+        break;
+    case "JM93":
+        ok = sx_jm93_build(c);
+        break;
+    case "MIZ":
+        ok = sx_miz_build(c);
+        break;
+    case "MVA":
+        ok = sx_mva_build(c);
+        break;
+    case "POVLABLZH":
+        ok = sx_povlablzh_build(c);
+        break;
+    case "QIP1":
+        ok = sx_qip1_build(c);
+        break;
+    case "QUARTERDECKQP":
+        ok = sx_quarterdeckqp_build(c);
+        break;
+    case "RCF":
+        ok = sx_rcf_build(c);
+        break;
+    case "RIVERSOFT":
+        ok = sx_riversoft_build(c);
+        break;
+    case "TGCF":
+        ok = sx_tgcf_build(c);
+        break;
+    case "TRC":
+        ok = sx_trc_build(c);
+        break;
+    case "NETWAREPACKED":
+        ok = sx_netwarepacked_build(c);
+        break;
+    case "NETWARE2":
+        ok = sx_netware2_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxasy_finish(c));
+}

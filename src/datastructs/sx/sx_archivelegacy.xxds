@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivelegacy.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivelegacy");
+include("_sx_archivelegacy_amplus");
+include("_sx_archivelegacy_applelink_pe");
+include("_sx_archivelegacy_arc_cbm");
+include("_sx_archivelegacy_ascend");
+include("_sx_archivelegacy_cfl");
+include("_sx_archivelegacy_chieflzmulti");
+include("_sx_archivelegacy_dpk");
+include("_sx_archivelegacy_ealib");
+include("_sx_archivelegacy_fiz");
+include("_sx_archivelegacy_hlb");
+include("_sx_archivelegacy_ibmzpak");
+include("_sx_archivelegacy_jam");
+include("_sx_archivelegacy_marc");
+include("_sx_archivelegacy_nowcompress");
+include("_sx_archivelegacy_swagpacket");
+include("_sx_archivelegacy_ti99arc");
+include("_sx_archivelegacy_trcpak");
+include("_sx_archivelegacy_tws");
+include("_sx_archivelegacy_vmarc");
+include("_sx_archivelegacy_zfsf");
+
+function fileTypes() { return ["ASCEND", "MARC", "ZFSF", "TWS", "HLB", "JAM", "SWAGPACKET", "TRCPAK", "CFL", "DPK", "FIZ",
+    "IBMZPAK", "CHIEFLZMULTI", "EALIB", "TI99ARC", "VMARC", "NOWCOMPRESS", "AMPLUS", "ARC_CBM", "APPLELINK_PE"]; }
+
+var sx_archivelegacy_layouts = [sxag_amplus_header, sxag_amplus_chunk, sxag_amplus_data, sxag_amplus_file,
+    sxag_nowcompress_header, sxag_nowcompress_entry, sxag_nowcompress_stream, sxag_nowcompress_block,
+    sxag_nowcompress_stream_end, sxag_applelink_header, sxag_applelink_member, sxag_arc_cbm_member, sxag_arc_cbm_v2,
+    sxag_vmarc_member, sxag_vmarc_record, sxag_ti99_tifiles, sxag_ti99_fiad, sxag_ti99_record_count, sxag_ti99_fiad_times,
+    sxag_ti99_entry, sxag_ti99_catalog_end, sxag_zfsf_header, sxag_zfsf_group, sxag_zfsf_entry, sxag_trcpak_header,
+    sxag_trcpak_entry, sxag_chieflz_header, sxag_chieflz_entry, sxag_ibmzpak_header, sxag_ibmzpak_entry, sxag_ibmzpak_count,
+    sxag_archivelegacy_dcl, sxag_ascend_header, sxag_cfl_header, sxag_cfl_directory_block, sxag_cfl_directory_size,
+    sxag_cfl_entry, sxag_cfl_member_block, sxag_dpk_header, sxag_dpk_entry, sxag_swagpacket_header, sxag_swagpacket_entry,
+    sxag_marc_header, sxag_marc_entry, sxag_hlb_header, sxag_hlb_entry, sxag_hlb_footer, sxag_jam_header, sxag_jam_file_count,
+    sxag_jam_directory_count, sxag_jam_file, sxag_jam_directory, sxag_tws_header, sxag_tws_entry, sxag_fiz_member,
+    sxag_ealib_header, sxag_ealib_entry, sxag_ealib_packed_size];
+
+function structs() {
+    return sxCatalog([sxag_amplus_header, sxag_amplus_chunk, sxag_amplus_data, sxag_amplus_file, sxag_nowcompress_header,
+        sxag_nowcompress_entry, sxag_nowcompress_stream, sxag_nowcompress_block, sxag_nowcompress_stream_end,
+        sxag_applelink_header, sxag_applelink_member, sxag_arc_cbm_member, sxag_arc_cbm_v2, sxag_vmarc_member,
+        sxag_vmarc_record, sxag_ti99_tifiles, sxag_ti99_fiad, sxag_ti99_record_count, sxag_ti99_fiad_times, sxag_ti99_entry,
+        sxag_ti99_catalog_end, sxag_zfsf_header, sxag_zfsf_group, sxag_zfsf_entry, sxag_trcpak_header, sxag_trcpak_entry,
+        sxag_chieflz_header, sxag_chieflz_entry, sxag_ibmzpak_header, sxag_ibmzpak_entry, sxag_ibmzpak_count,
+        sxag_archivelegacy_dcl, sxag_ascend_header, sxag_cfl_header, sxag_cfl_directory_block, sxag_cfl_directory_size,
+        sxag_cfl_entry, sxag_cfl_member_block, sxag_dpk_header, sxag_dpk_entry, sxag_swagpacket_header, sxag_swagpacket_entry,
+        sxag_marc_header, sxag_marc_entry, sxag_hlb_header, sxag_hlb_entry, sxag_hlb_footer, sxag_jam_header,
+        sxag_jam_file_count, sxag_jam_directory_count, sxag_jam_file, sxag_jam_directory, sxag_tws_header, sxag_tws_entry,
+        sxag_fiz_member, sxag_ealib_header, sxag_ealib_entry, sxag_ealib_packed_size], sx_archivelegacy_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivelegacy_build, false);
+}

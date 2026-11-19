@@ -1,0 +1,1643 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binarylater.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_wire_uint8_le_fields = layout([u8("value")]);
+var sxbl_wire_uint8_le = sxLayout(0x60350001, "wire_uint8_le", LE, sxbl_wire_uint8_le_fields);
+var sxbl_wire_int8_le_fields = layout([i8("value")]);
+var sxbl_wire_int8_le = sxLayout(0x60350002, "wire_int8_le", LE, sxbl_wire_int8_le_fields);
+var sxbl_wire_uint16_le_fields = layout([u16("value")]);
+var sxbl_wire_uint16_le = sxLayout(0x60350003, "wire_uint16_le", LE, sxbl_wire_uint16_le_fields);
+var sxbl_wire_int16_le_fields = layout([i16("value")]);
+var sxbl_wire_int16_le = sxLayout(0x60350004, "wire_int16_le", LE, sxbl_wire_int16_le_fields);
+var sxbl_wire_uint24_le_fields = layout([field("value", "uint24", 3)]);
+var sxbl_wire_uint24_le = sxLayout(0x60350005, "wire_uint24_le", LE, sxbl_wire_uint24_le_fields);
+var sxbl_wire_int24_le_fields = layout([field("value", "int24", 3)]);
+var sxbl_wire_int24_le = sxLayout(0x60350006, "wire_int24_le", LE, sxbl_wire_int24_le_fields);
+var sxbl_wire_uint32_le_fields = layout([u32("value")]);
+var sxbl_wire_uint32_le = sxLayout(0x60350007, "wire_uint32_le", LE, sxbl_wire_uint32_le_fields);
+var sxbl_wire_int32_le_fields = layout([i32("value")]);
+var sxbl_wire_int32_le = sxLayout(0x60350008, "wire_int32_le", LE, sxbl_wire_int32_le_fields);
+var sxbl_wire_uint40_le_fields = layout([field("value", "uint40", 5)]);
+var sxbl_wire_uint40_le = sxLayout(0x60350009, "wire_uint40_le", LE, sxbl_wire_uint40_le_fields);
+var sxbl_wire_int40_le_fields = layout([field("value", "int40", 5)]);
+var sxbl_wire_int40_le = sxLayout(0x6035000A, "wire_int40_le", LE, sxbl_wire_int40_le_fields);
+var sxbl_wire_uint48_le_fields = layout([field("value", "uint48", 6)]);
+var sxbl_wire_uint48_le = sxLayout(0x6035000B, "wire_uint48_le", LE, sxbl_wire_uint48_le_fields);
+var sxbl_wire_int48_le_fields = layout([field("value", "int48", 6)]);
+var sxbl_wire_int48_le = sxLayout(0x6035000C, "wire_int48_le", LE, sxbl_wire_int48_le_fields);
+var sxbl_wire_uint56_le_fields = layout([field("value", "uint56", 7)]);
+var sxbl_wire_uint56_le = sxLayout(0x6035000D, "wire_uint56_le", LE, sxbl_wire_uint56_le_fields);
+var sxbl_wire_int56_le_fields = layout([field("value", "int56", 7)]);
+var sxbl_wire_int56_le = sxLayout(0x6035000E, "wire_int56_le", LE, sxbl_wire_int56_le_fields);
+var sxbl_wire_uint64_le_fields = layout([u64("value")]);
+var sxbl_wire_uint64_le = sxLayout(0x6035000F, "wire_uint64_le", LE, sxbl_wire_uint64_le_fields);
+var sxbl_wire_int64_le_fields = layout([i64("value")]);
+var sxbl_wire_int64_le = sxLayout(0x60350010, "wire_int64_le", LE, sxbl_wire_int64_le_fields);
+var sxbl_wire_float32_le_fields = layout([field("value", "float32", 4)]);
+var sxbl_wire_float32_le = sxLayout(0x60350011, "wire_float32_le", LE, sxbl_wire_float32_le_fields);
+var sxbl_wire_float64_le_fields = layout([field("value", "float64", 8)]);
+var sxbl_wire_float64_le = sxLayout(0x60350012, "wire_float64_le", LE, sxbl_wire_float64_le_fields);
+var sxbl_wire_byte_size1_le_fields = layout([u8("byte_size", SIZE)]);
+var sxbl_wire_byte_size1_le = sxLayout(0x60350013, "wire_byte_size1_le", LE, sxbl_wire_byte_size1_le_fields);
+var sxbl_wire_item_count1_le_fields = layout([u8("item_count", COUNT)]);
+var sxbl_wire_item_count1_le = sxLayout(0x60350014, "wire_item_count1_le", LE, sxbl_wire_item_count1_le_fields);
+var sxbl_wire_byte_size2_le_fields = layout([u16("byte_size", SIZE)]);
+var sxbl_wire_byte_size2_le = sxLayout(0x60350015, "wire_byte_size2_le", LE, sxbl_wire_byte_size2_le_fields);
+var sxbl_wire_item_count2_le_fields = layout([u16("item_count", COUNT)]);
+var sxbl_wire_item_count2_le = sxLayout(0x60350016, "wire_item_count2_le", LE, sxbl_wire_item_count2_le_fields);
+var sxbl_wire_byte_size4_le_fields = layout([u32("byte_size", SIZE)]);
+var sxbl_wire_byte_size4_le = sxLayout(0x60350017, "wire_byte_size4_le", LE, sxbl_wire_byte_size4_le_fields);
+var sxbl_wire_item_count4_le_fields = layout([u32("item_count", COUNT)]);
+var sxbl_wire_item_count4_le = sxLayout(0x60350018, "wire_item_count4_le", LE, sxbl_wire_item_count4_le_fields);
+var sxbl_wire_byte_size8_le_fields = layout([u64("byte_size", SIZE)]);
+var sxbl_wire_byte_size8_le = sxLayout(0x60350019, "wire_byte_size8_le", LE, sxbl_wire_byte_size8_le_fields);
+var sxbl_wire_item_count8_le_fields = layout([u64("item_count", COUNT)]);
+var sxbl_wire_item_count8_le = sxLayout(0x6035001A, "wire_item_count8_le", LE, sxbl_wire_item_count8_le_fields);
+var sxbl_wire_uint8_be_fields = layout([u8("value")]);
+var sxbl_wire_uint8_be = sxLayout(0x6035001B, "wire_uint8_be", BE, sxbl_wire_uint8_be_fields);
+var sxbl_wire_int8_be_fields = layout([i8("value")]);
+var sxbl_wire_int8_be = sxLayout(0x6035001C, "wire_int8_be", BE, sxbl_wire_int8_be_fields);
+var sxbl_wire_uint16_be_fields = layout([u16("value")]);
+var sxbl_wire_uint16_be = sxLayout(0x6035001D, "wire_uint16_be", BE, sxbl_wire_uint16_be_fields);
+var sxbl_wire_int16_be_fields = layout([i16("value")]);
+var sxbl_wire_int16_be = sxLayout(0x6035001E, "wire_int16_be", BE, sxbl_wire_int16_be_fields);
+var sxbl_wire_uint24_be_fields = layout([field("value", "uint24", 3)]);
+var sxbl_wire_uint24_be = sxLayout(0x6035001F, "wire_uint24_be", BE, sxbl_wire_uint24_be_fields);
+var sxbl_wire_int24_be_fields = layout([field("value", "int24", 3)]);
+var sxbl_wire_int24_be = sxLayout(0x60350020, "wire_int24_be", BE, sxbl_wire_int24_be_fields);
+var sxbl_wire_uint32_be_fields = layout([u32("value")]);
+var sxbl_wire_uint32_be = sxLayout(0x60350021, "wire_uint32_be", BE, sxbl_wire_uint32_be_fields);
+var sxbl_wire_int32_be_fields = layout([i32("value")]);
+var sxbl_wire_int32_be = sxLayout(0x60350022, "wire_int32_be", BE, sxbl_wire_int32_be_fields);
+var sxbl_wire_uint40_be_fields = layout([field("value", "uint40", 5)]);
+var sxbl_wire_uint40_be = sxLayout(0x60350023, "wire_uint40_be", BE, sxbl_wire_uint40_be_fields);
+var sxbl_wire_int40_be_fields = layout([field("value", "int40", 5)]);
+var sxbl_wire_int40_be = sxLayout(0x60350024, "wire_int40_be", BE, sxbl_wire_int40_be_fields);
+var sxbl_wire_uint48_be_fields = layout([field("value", "uint48", 6)]);
+var sxbl_wire_uint48_be = sxLayout(0x60350025, "wire_uint48_be", BE, sxbl_wire_uint48_be_fields);
+var sxbl_wire_int48_be_fields = layout([field("value", "int48", 6)]);
+var sxbl_wire_int48_be = sxLayout(0x60350026, "wire_int48_be", BE, sxbl_wire_int48_be_fields);
+var sxbl_wire_uint56_be_fields = layout([field("value", "uint56", 7)]);
+var sxbl_wire_uint56_be = sxLayout(0x60350027, "wire_uint56_be", BE, sxbl_wire_uint56_be_fields);
+var sxbl_wire_int56_be_fields = layout([field("value", "int56", 7)]);
+var sxbl_wire_int56_be = sxLayout(0x60350028, "wire_int56_be", BE, sxbl_wire_int56_be_fields);
+var sxbl_wire_uint64_be_fields = layout([u64("value")]);
+var sxbl_wire_uint64_be = sxLayout(0x60350029, "wire_uint64_be", BE, sxbl_wire_uint64_be_fields);
+var sxbl_wire_int64_be_fields = layout([i64("value")]);
+var sxbl_wire_int64_be = sxLayout(0x6035002A, "wire_int64_be", BE, sxbl_wire_int64_be_fields);
+var sxbl_wire_float32_be_fields = layout([field("value", "float32", 4)]);
+var sxbl_wire_float32_be = sxLayout(0x6035002B, "wire_float32_be", BE, sxbl_wire_float32_be_fields);
+var sxbl_wire_float64_be_fields = layout([field("value", "float64", 8)]);
+var sxbl_wire_float64_be = sxLayout(0x6035002C, "wire_float64_be", BE, sxbl_wire_float64_be_fields);
+var sxbl_wire_byte_size1_be_fields = layout([u8("byte_size", SIZE)]);
+var sxbl_wire_byte_size1_be = sxLayout(0x6035002D, "wire_byte_size1_be", BE, sxbl_wire_byte_size1_be_fields);
+var sxbl_wire_item_count1_be_fields = layout([u8("item_count", COUNT)]);
+var sxbl_wire_item_count1_be = sxLayout(0x6035002E, "wire_item_count1_be", BE, sxbl_wire_item_count1_be_fields);
+var sxbl_wire_byte_size2_be_fields = layout([u16("byte_size", SIZE)]);
+var sxbl_wire_byte_size2_be = sxLayout(0x6035002F, "wire_byte_size2_be", BE, sxbl_wire_byte_size2_be_fields);
+var sxbl_wire_item_count2_be_fields = layout([u16("item_count", COUNT)]);
+var sxbl_wire_item_count2_be = sxLayout(0x60350030, "wire_item_count2_be", BE, sxbl_wire_item_count2_be_fields);
+var sxbl_wire_byte_size4_be_fields = layout([u32("byte_size", SIZE)]);
+var sxbl_wire_byte_size4_be = sxLayout(0x60350031, "wire_byte_size4_be", BE, sxbl_wire_byte_size4_be_fields);
+var sxbl_wire_item_count4_be_fields = layout([u32("item_count", COUNT)]);
+var sxbl_wire_item_count4_be = sxLayout(0x60350032, "wire_item_count4_be", BE, sxbl_wire_item_count4_be_fields);
+var sxbl_wire_byte_size8_be_fields = layout([u64("byte_size", SIZE)]);
+var sxbl_wire_byte_size8_be = sxLayout(0x60350033, "wire_byte_size8_be", BE, sxbl_wire_byte_size8_be_fields);
+var sxbl_wire_item_count8_be_fields = layout([u64("item_count", COUNT)]);
+var sxbl_wire_item_count8_be = sxLayout(0x60350034, "wire_item_count8_be", BE, sxbl_wire_item_count8_be_fields);
+var sxbl_wire_byte_size_var1_fields = layout([field("byte_size", "zigzag64", 1, SIZE)]);
+var sxbl_wire_byte_size_var1 = sxLayout(0x60350042, "wire_byte_size_var1", LE, sxbl_wire_byte_size_var1_fields);
+var sxbl_wire_item_count_var1_fields = layout([field("item_count", "zigzag64", 1, COUNT)]);
+var sxbl_wire_item_count_var1 = sxLayout(0x60350043, "wire_item_count_var1", LE, sxbl_wire_item_count_var1_fields);
+var sxbl_wire_integer_var1_fields = layout([field("integer", "zigzag64", 1)]);
+var sxbl_wire_integer_var1 = sxLayout(0x60350044, "wire_integer_var1", LE, sxbl_wire_integer_var1_fields);
+var sxbl_wire_sequence_var1_fields = layout([field("sequence", "uleb128_64", 1, ID)]);
+var sxbl_wire_sequence_var1 = sxLayout(0x60350045, "wire_sequence_var1", LE, sxbl_wire_sequence_var1_fields);
+var sxbl_wire_unsigned_size_var1_fields = layout([field("unsigned_size", "uleb128_64", 1, SIZE)]);
+var sxbl_wire_unsigned_size_var1 = sxLayout(0x60350046, "wire_unsigned_size_var1", LE, sxbl_wire_unsigned_size_var1_fields);
+var sxbl_wire_unsigned_count_var1_fields = layout([field("unsigned_count", "uleb128_64", 1, COUNT)]);
+var sxbl_wire_unsigned_count_var1 = sxLayout(0x60350047, "wire_unsigned_count_var1", LE, sxbl_wire_unsigned_count_var1_fields);
+var sxbl_wire_field_id_var1_fields = layout([field("field_id", "zigzag16", 1, ID)]);
+var sxbl_wire_field_id_var1 = sxLayout(0x60350048, "wire_field_id_var1", LE, sxbl_wire_field_id_var1_fields);
+var sxbl_wire_byte_size_var2_fields = layout([field("byte_size", "zigzag64", 2, SIZE)]);
+var sxbl_wire_byte_size_var2 = sxLayout(0x60350049, "wire_byte_size_var2", LE, sxbl_wire_byte_size_var2_fields);
+var sxbl_wire_item_count_var2_fields = layout([field("item_count", "zigzag64", 2, COUNT)]);
+var sxbl_wire_item_count_var2 = sxLayout(0x6035004A, "wire_item_count_var2", LE, sxbl_wire_item_count_var2_fields);
+var sxbl_wire_integer_var2_fields = layout([field("integer", "zigzag64", 2)]);
+var sxbl_wire_integer_var2 = sxLayout(0x6035004B, "wire_integer_var2", LE, sxbl_wire_integer_var2_fields);
+var sxbl_wire_sequence_var2_fields = layout([field("sequence", "uleb128_64", 2, ID)]);
+var sxbl_wire_sequence_var2 = sxLayout(0x6035004C, "wire_sequence_var2", LE, sxbl_wire_sequence_var2_fields);
+var sxbl_wire_unsigned_size_var2_fields = layout([field("unsigned_size", "uleb128_64", 2, SIZE)]);
+var sxbl_wire_unsigned_size_var2 = sxLayout(0x6035004D, "wire_unsigned_size_var2", LE, sxbl_wire_unsigned_size_var2_fields);
+var sxbl_wire_unsigned_count_var2_fields = layout([field("unsigned_count", "uleb128_64", 2, COUNT)]);
+var sxbl_wire_unsigned_count_var2 = sxLayout(0x6035004E, "wire_unsigned_count_var2", LE, sxbl_wire_unsigned_count_var2_fields);
+var sxbl_wire_field_id_var2_fields = layout([field("field_id", "zigzag16", 2, ID)]);
+var sxbl_wire_field_id_var2 = sxLayout(0x6035004F, "wire_field_id_var2", LE, sxbl_wire_field_id_var2_fields);
+var sxbl_wire_byte_size_var3_fields = layout([field("byte_size", "zigzag64", 3, SIZE)]);
+var sxbl_wire_byte_size_var3 = sxLayout(0x60350050, "wire_byte_size_var3", LE, sxbl_wire_byte_size_var3_fields);
+var sxbl_wire_item_count_var3_fields = layout([field("item_count", "zigzag64", 3, COUNT)]);
+var sxbl_wire_item_count_var3 = sxLayout(0x60350051, "wire_item_count_var3", LE, sxbl_wire_item_count_var3_fields);
+var sxbl_wire_integer_var3_fields = layout([field("integer", "zigzag64", 3)]);
+var sxbl_wire_integer_var3 = sxLayout(0x60350052, "wire_integer_var3", LE, sxbl_wire_integer_var3_fields);
+var sxbl_wire_sequence_var3_fields = layout([field("sequence", "uleb128_64", 3, ID)]);
+var sxbl_wire_sequence_var3 = sxLayout(0x60350053, "wire_sequence_var3", LE, sxbl_wire_sequence_var3_fields);
+var sxbl_wire_unsigned_size_var3_fields = layout([field("unsigned_size", "uleb128_64", 3, SIZE)]);
+var sxbl_wire_unsigned_size_var3 = sxLayout(0x60350054, "wire_unsigned_size_var3", LE, sxbl_wire_unsigned_size_var3_fields);
+var sxbl_wire_unsigned_count_var3_fields = layout([field("unsigned_count", "uleb128_64", 3, COUNT)]);
+var sxbl_wire_unsigned_count_var3 = sxLayout(0x60350055, "wire_unsigned_count_var3", LE, sxbl_wire_unsigned_count_var3_fields);
+var sxbl_wire_field_id_var3_fields = layout([field("field_id", "zigzag16", 3, ID)]);
+var sxbl_wire_field_id_var3 = sxLayout(0x60350056, "wire_field_id_var3", LE, sxbl_wire_field_id_var3_fields);
+var sxbl_wire_byte_size_var4_fields = layout([field("byte_size", "zigzag64", 4, SIZE)]);
+var sxbl_wire_byte_size_var4 = sxLayout(0x60350057, "wire_byte_size_var4", LE, sxbl_wire_byte_size_var4_fields);
+var sxbl_wire_item_count_var4_fields = layout([field("item_count", "zigzag64", 4, COUNT)]);
+var sxbl_wire_item_count_var4 = sxLayout(0x60350058, "wire_item_count_var4", LE, sxbl_wire_item_count_var4_fields);
+var sxbl_wire_integer_var4_fields = layout([field("integer", "zigzag64", 4)]);
+var sxbl_wire_integer_var4 = sxLayout(0x60350059, "wire_integer_var4", LE, sxbl_wire_integer_var4_fields);
+var sxbl_wire_sequence_var4_fields = layout([field("sequence", "uleb128_64", 4, ID)]);
+var sxbl_wire_sequence_var4 = sxLayout(0x6035005A, "wire_sequence_var4", LE, sxbl_wire_sequence_var4_fields);
+var sxbl_wire_unsigned_size_var4_fields = layout([field("unsigned_size", "uleb128_64", 4, SIZE)]);
+var sxbl_wire_unsigned_size_var4 = sxLayout(0x6035005B, "wire_unsigned_size_var4", LE, sxbl_wire_unsigned_size_var4_fields);
+var sxbl_wire_unsigned_count_var4_fields = layout([field("unsigned_count", "uleb128_64", 4, COUNT)]);
+var sxbl_wire_unsigned_count_var4 = sxLayout(0x6035005C, "wire_unsigned_count_var4", LE, sxbl_wire_unsigned_count_var4_fields);
+var sxbl_wire_field_id_var4_fields = layout([field("field_id", "zigzag16", 4, ID)]);
+var sxbl_wire_field_id_var4 = sxLayout(0x6035005D, "wire_field_id_var4", LE, sxbl_wire_field_id_var4_fields);
+var sxbl_wire_byte_size_var5_fields = layout([field("byte_size", "zigzag64", 5, SIZE)]);
+var sxbl_wire_byte_size_var5 = sxLayout(0x6035005E, "wire_byte_size_var5", LE, sxbl_wire_byte_size_var5_fields);
+var sxbl_wire_item_count_var5_fields = layout([field("item_count", "zigzag64", 5, COUNT)]);
+var sxbl_wire_item_count_var5 = sxLayout(0x6035005F, "wire_item_count_var5", LE, sxbl_wire_item_count_var5_fields);
+var sxbl_wire_integer_var5_fields = layout([field("integer", "zigzag64", 5)]);
+var sxbl_wire_integer_var5 = sxLayout(0x60350060, "wire_integer_var5", LE, sxbl_wire_integer_var5_fields);
+var sxbl_wire_sequence_var5_fields = layout([field("sequence", "uleb128_64", 5, ID)]);
+var sxbl_wire_sequence_var5 = sxLayout(0x60350061, "wire_sequence_var5", LE, sxbl_wire_sequence_var5_fields);
+var sxbl_wire_unsigned_size_var5_fields = layout([field("unsigned_size", "uleb128_64", 5, SIZE)]);
+var sxbl_wire_unsigned_size_var5 = sxLayout(0x60350062, "wire_unsigned_size_var5", LE, sxbl_wire_unsigned_size_var5_fields);
+var sxbl_wire_unsigned_count_var5_fields = layout([field("unsigned_count", "uleb128_64", 5, COUNT)]);
+var sxbl_wire_unsigned_count_var5 = sxLayout(0x60350063, "wire_unsigned_count_var5", LE, sxbl_wire_unsigned_count_var5_fields);
+var sxbl_wire_field_id_var5_fields = layout([field("field_id", "zigzag16", 5, ID)]);
+var sxbl_wire_field_id_var5 = sxLayout(0x60350064, "wire_field_id_var5", LE, sxbl_wire_field_id_var5_fields);
+var sxbl_wire_byte_size_var6_fields = layout([field("byte_size", "zigzag64", 6, SIZE)]);
+var sxbl_wire_byte_size_var6 = sxLayout(0x60350065, "wire_byte_size_var6", LE, sxbl_wire_byte_size_var6_fields);
+var sxbl_wire_item_count_var6_fields = layout([field("item_count", "zigzag64", 6, COUNT)]);
+var sxbl_wire_item_count_var6 = sxLayout(0x60350066, "wire_item_count_var6", LE, sxbl_wire_item_count_var6_fields);
+var sxbl_wire_integer_var6_fields = layout([field("integer", "zigzag64", 6)]);
+var sxbl_wire_integer_var6 = sxLayout(0x60350067, "wire_integer_var6", LE, sxbl_wire_integer_var6_fields);
+var sxbl_wire_sequence_var6_fields = layout([field("sequence", "uleb128_64", 6, ID)]);
+var sxbl_wire_sequence_var6 = sxLayout(0x60350068, "wire_sequence_var6", LE, sxbl_wire_sequence_var6_fields);
+var sxbl_wire_unsigned_size_var6_fields = layout([field("unsigned_size", "uleb128_64", 6, SIZE)]);
+var sxbl_wire_unsigned_size_var6 = sxLayout(0x60350069, "wire_unsigned_size_var6", LE, sxbl_wire_unsigned_size_var6_fields);
+var sxbl_wire_unsigned_count_var6_fields = layout([field("unsigned_count", "uleb128_64", 6, COUNT)]);
+var sxbl_wire_unsigned_count_var6 = sxLayout(0x6035006A, "wire_unsigned_count_var6", LE, sxbl_wire_unsigned_count_var6_fields);
+var sxbl_wire_field_id_var6_fields = layout([field("field_id", "zigzag16", 6, ID)]);
+var sxbl_wire_field_id_var6 = sxLayout(0x6035006B, "wire_field_id_var6", LE, sxbl_wire_field_id_var6_fields);
+var sxbl_wire_byte_size_var7_fields = layout([field("byte_size", "zigzag64", 7, SIZE)]);
+var sxbl_wire_byte_size_var7 = sxLayout(0x6035006C, "wire_byte_size_var7", LE, sxbl_wire_byte_size_var7_fields);
+var sxbl_wire_item_count_var7_fields = layout([field("item_count", "zigzag64", 7, COUNT)]);
+var sxbl_wire_item_count_var7 = sxLayout(0x6035006D, "wire_item_count_var7", LE, sxbl_wire_item_count_var7_fields);
+var sxbl_wire_integer_var7_fields = layout([field("integer", "zigzag64", 7)]);
+var sxbl_wire_integer_var7 = sxLayout(0x6035006E, "wire_integer_var7", LE, sxbl_wire_integer_var7_fields);
+var sxbl_wire_sequence_var7_fields = layout([field("sequence", "uleb128_64", 7, ID)]);
+var sxbl_wire_sequence_var7 = sxLayout(0x6035006F, "wire_sequence_var7", LE, sxbl_wire_sequence_var7_fields);
+var sxbl_wire_unsigned_size_var7_fields = layout([field("unsigned_size", "uleb128_64", 7, SIZE)]);
+var sxbl_wire_unsigned_size_var7 = sxLayout(0x60350070, "wire_unsigned_size_var7", LE, sxbl_wire_unsigned_size_var7_fields);
+var sxbl_wire_unsigned_count_var7_fields = layout([field("unsigned_count", "uleb128_64", 7, COUNT)]);
+var sxbl_wire_unsigned_count_var7 = sxLayout(0x60350071, "wire_unsigned_count_var7", LE, sxbl_wire_unsigned_count_var7_fields);
+var sxbl_wire_field_id_var7_fields = layout([field("field_id", "zigzag16", 7, ID)]);
+var sxbl_wire_field_id_var7 = sxLayout(0x60350072, "wire_field_id_var7", LE, sxbl_wire_field_id_var7_fields);
+var sxbl_wire_byte_size_var8_fields = layout([field("byte_size", "zigzag64", 8, SIZE)]);
+var sxbl_wire_byte_size_var8 = sxLayout(0x60350073, "wire_byte_size_var8", LE, sxbl_wire_byte_size_var8_fields);
+var sxbl_wire_item_count_var8_fields = layout([field("item_count", "zigzag64", 8, COUNT)]);
+var sxbl_wire_item_count_var8 = sxLayout(0x60350074, "wire_item_count_var8", LE, sxbl_wire_item_count_var8_fields);
+var sxbl_wire_integer_var8_fields = layout([field("integer", "zigzag64", 8)]);
+var sxbl_wire_integer_var8 = sxLayout(0x60350075, "wire_integer_var8", LE, sxbl_wire_integer_var8_fields);
+var sxbl_wire_sequence_var8_fields = layout([field("sequence", "uleb128_64", 8, ID)]);
+var sxbl_wire_sequence_var8 = sxLayout(0x60350076, "wire_sequence_var8", LE, sxbl_wire_sequence_var8_fields);
+var sxbl_wire_unsigned_size_var8_fields = layout([field("unsigned_size", "uleb128_64", 8, SIZE)]);
+var sxbl_wire_unsigned_size_var8 = sxLayout(0x60350077, "wire_unsigned_size_var8", LE, sxbl_wire_unsigned_size_var8_fields);
+var sxbl_wire_unsigned_count_var8_fields = layout([field("unsigned_count", "uleb128_64", 8, COUNT)]);
+var sxbl_wire_unsigned_count_var8 = sxLayout(0x60350078, "wire_unsigned_count_var8", LE, sxbl_wire_unsigned_count_var8_fields);
+var sxbl_wire_field_id_var8_fields = layout([field("field_id", "zigzag16", 8, ID)]);
+var sxbl_wire_field_id_var8 = sxLayout(0x60350079, "wire_field_id_var8", LE, sxbl_wire_field_id_var8_fields);
+var sxbl_wire_byte_size_var9_fields = layout([field("byte_size", "zigzag64", 9, SIZE)]);
+var sxbl_wire_byte_size_var9 = sxLayout(0x6035007A, "wire_byte_size_var9", LE, sxbl_wire_byte_size_var9_fields);
+var sxbl_wire_item_count_var9_fields = layout([field("item_count", "zigzag64", 9, COUNT)]);
+var sxbl_wire_item_count_var9 = sxLayout(0x6035007B, "wire_item_count_var9", LE, sxbl_wire_item_count_var9_fields);
+var sxbl_wire_integer_var9_fields = layout([field("integer", "zigzag64", 9)]);
+var sxbl_wire_integer_var9 = sxLayout(0x6035007C, "wire_integer_var9", LE, sxbl_wire_integer_var9_fields);
+var sxbl_wire_sequence_var9_fields = layout([field("sequence", "uleb128_64", 9, ID)]);
+var sxbl_wire_sequence_var9 = sxLayout(0x6035007D, "wire_sequence_var9", LE, sxbl_wire_sequence_var9_fields);
+var sxbl_wire_unsigned_size_var9_fields = layout([field("unsigned_size", "uleb128_64", 9, SIZE)]);
+var sxbl_wire_unsigned_size_var9 = sxLayout(0x6035007E, "wire_unsigned_size_var9", LE, sxbl_wire_unsigned_size_var9_fields);
+var sxbl_wire_unsigned_count_var9_fields = layout([field("unsigned_count", "uleb128_64", 9, COUNT)]);
+var sxbl_wire_unsigned_count_var9 = sxLayout(0x6035007F, "wire_unsigned_count_var9", LE, sxbl_wire_unsigned_count_var9_fields);
+var sxbl_wire_field_id_var9_fields = layout([field("field_id", "zigzag16", 9, ID)]);
+var sxbl_wire_field_id_var9 = sxLayout(0x60350080, "wire_field_id_var9", LE, sxbl_wire_field_id_var9_fields);
+var sxbl_wire_byte_size_var10_fields = layout([field("byte_size", "zigzag64", 10, SIZE)]);
+var sxbl_wire_byte_size_var10 = sxLayout(0x60350081, "wire_byte_size_var10", LE, sxbl_wire_byte_size_var10_fields);
+var sxbl_wire_item_count_var10_fields = layout([field("item_count", "zigzag64", 10, COUNT)]);
+var sxbl_wire_item_count_var10 = sxLayout(0x60350082, "wire_item_count_var10", LE, sxbl_wire_item_count_var10_fields);
+var sxbl_wire_integer_var10_fields = layout([field("integer", "zigzag64", 10)]);
+var sxbl_wire_integer_var10 = sxLayout(0x60350083, "wire_integer_var10", LE, sxbl_wire_integer_var10_fields);
+var sxbl_wire_sequence_var10_fields = layout([field("sequence", "uleb128_64", 10, ID)]);
+var sxbl_wire_sequence_var10 = sxLayout(0x60350084, "wire_sequence_var10", LE, sxbl_wire_sequence_var10_fields);
+var sxbl_wire_unsigned_size_var10_fields = layout([field("unsigned_size", "uleb128_64", 10, SIZE)]);
+var sxbl_wire_unsigned_size_var10 = sxLayout(0x60350085, "wire_unsigned_size_var10", LE, sxbl_wire_unsigned_size_var10_fields);
+var sxbl_wire_unsigned_count_var10_fields = layout([field("unsigned_count", "uleb128_64", 10, COUNT)]);
+var sxbl_wire_unsigned_count_var10 = sxLayout(0x60350086, "wire_unsigned_count_var10", LE, sxbl_wire_unsigned_count_var10_fields);
+var sxbl_wire_field_id_var10_fields = layout([field("field_id", "zigzag16", 10, ID)]);
+var sxbl_wire_field_id_var10 = sxLayout(0x60350087, "wire_field_id_var10", LE, sxbl_wire_field_id_var10_fields);
+var sxbl_der_header_short_fields = layout([u8("tag", FLAGS), u8("content_size", SIZE)]);
+var sxbl_der_header_short = sxLayout(0x603500E8, "der_header_short", BE, sxbl_der_header_short_fields);
+var sxbl_der_header_long1_fields = layout([u8("tag", FLAGS), u8("length_form", FLAGS), u8("content_size", SIZE)]);
+var sxbl_der_header_long1 = sxLayout(0x603500E9, "der_header_long1", BE, sxbl_der_header_long1_fields);
+var sxbl_der_header_long2_fields = layout([u8("tag", FLAGS), u8("length_form", FLAGS), u16("content_size", SIZE)]);
+var sxbl_der_header_long2 = sxLayout(0x603500EA, "der_header_long2", BE, sxbl_der_header_long2_fields);
+var sxbl_der_header_long3_fields = layout([u8("tag", FLAGS), u8("length_form", FLAGS), field("content_size", "uint24", 3, SIZE)]);
+var sxbl_der_header_long3 = sxLayout(0x603500EB, "der_header_long3", BE, sxbl_der_header_long3_fields);
+var sxbl_der_header_long4_fields = layout([u8("tag", FLAGS), u8("length_form", FLAGS), u32("content_size", SIZE)]);
+var sxbl_der_header_long4 = sxLayout(0x603500EC, "der_header_long4", BE, sxbl_der_header_long4_fields);
+var sxbl_der_unused_bits_fields = layout([u8("unused_bits")]);
+var sxbl_der_unused_bits = sxLayout(0x603500ED, "der_unused_bits", LE, sxbl_der_unused_bits_fields);
+var sxbl_der_boolean_fields = layout([u8("encoded_boolean")]);
+var sxbl_der_boolean = sxLayout(0x603500EE, "der_boolean", LE, sxbl_der_boolean_fields);
+var sxbl_der_utc_time_fields = layout([chars("utc_time", 13, STRING)]);
+var sxbl_der_utc_time = sxLayout(0x603500EF, "der_utc_time", LE, sxbl_der_utc_time_fields);
+var sxbl_der_generalized_time_fields = layout([chars("generalized_time", 15, STRING)]);
+var sxbl_der_generalized_time = sxLayout(0x603500F0, "der_generalized_time", LE, sxbl_der_generalized_time_fields);
+var sxbl_openssh_key_magic_fields = layout([chars("magic", 15, SIGNATURE)]);
+var sxbl_openssh_key_magic = sxLayout(0x603500F1, "openssh_key_magic", LE, sxbl_openssh_key_magic_fields);
+var sxbl_ssh_string_size_fields = layout([u32("byte_size", SIZE)]);
+var sxbl_ssh_string_size = sxLayout(0x603500F2, "ssh_string_size", BE, sxbl_ssh_string_size_fields);
+var sxbl_ssh_key_count_fields = layout([u32("key_count", COUNT)]);
+var sxbl_ssh_key_count = sxLayout(0x603500F3, "ssh_key_count", BE, sxbl_ssh_key_count_fields);
+var sxbl_ssh_checkints_fields = layout([u32("checkint1"), u32("checkint2")]);
+var sxbl_ssh_checkints = sxLayout(0x603500F4, "ssh_checkints", BE, sxbl_ssh_checkints_fields);
+var sxbl_ssh_certificate_serial_fields = layout([u64("serial", ID), u32("certificate_type", ID)]);
+var sxbl_ssh_certificate_serial = sxLayout(0x603500F5, "ssh_certificate_serial", BE, sxbl_ssh_certificate_serial_fields);
+var sxbl_ssh_certificate_validity_fields = layout([u64("valid_after"), u64("valid_before")]);
+var sxbl_ssh_certificate_validity = sxLayout(0x603500F6, "ssh_certificate_validity", BE, sxbl_ssh_certificate_validity_fields);
+var sxbl_ssh_padding_fields = layout([u8("padding_byte")]);
+var sxbl_ssh_padding = sxLayout(0x603500F7, "ssh_padding", LE, sxbl_ssh_padding_fields);
+function sxbl_ion_integer_comment(r) {
+    var sign = false;
+    var prefix = 0;
+    var n = [0];
+    var b;
+    var v = 0;
+    var width = 0;
+    if (r === null || r.type === null) {
+        return false;
+    }
+    if (!sxStrncmp(r.type, "ion_varuint[", 12)) {
+        prefix = 12;
+    } else if (!sxStrncmp(r.type, "ion_varint[", 11)) {
+        prefix = 11;
+        sign = true;
+    } else {
+        return true;
+    }
+    var at = prefix;
+    for (; sxAt(r.type, at) >= 48 /*0*/ && sxAt(r.type, at) <= 57 /*9*/; at++) {
+        if (width > 10) {
+            return false;
+        }
+        width = (((width * 10) >>> 0) + ((sxAt(r.type, at) - 48 /*0*/) >>> 0)) >>> 0;
+    }
+    if (at === prefix || sxAt(r.type, at) !== 93 /*]*/ || sxAt(r.type, at + 1) || !width || width > 10 || r.size !== width) {
+        return false;
+    }
+    b = sxVarBytes(r.value, function (sxn) { n[0] = sxn; });
+    if (b === null || n[0] !== width) {
+        return false;
+    }
+    var negative = sign && (b[0] & 64) !== 0;
+    for (var i = 0; i < n[0]; i++) {
+        var bits = b[i] & (sign && !i ? 63 : 127);
+        if (((b[i] & 128) !== 0) !== (i + 1 === n[0]) || v > Math.floor((SX_U64_MAX - bits) / 128)) {
+            return sxSetComment(r, "Invalid or overflowing Ion variable integer; encoded bytes preserved");
+        }
+        v = v * 128 + bits;
+    }
+    if (sign && v > (negative ? (0x80000000 * 4294967296 + 0x0) : SX_I64_MAX)) {
+        return sxSetComment(r, "Ion signed magnitude exceeds int64; encoded bytes preserved");
+    }
+    var a = [];
+    var out = [];
+    var len;
+    if (sign) {
+        var value = negative ? v === (0x80000000 * 4294967296 + 0x0) ? -(0x80000000 * 4294967296 + 0x0) : sxI64(-(v >= SX_I64_MAX ? v - SX_U64_MAX : v)) : (v >= SX_I64_MAX ? v - SX_U64_MAX : v);
+        sxVarSetI64(r.value, value);
+        len = negative && !v ? sxSnprintf(a, 0, 48, "-0", []) : sxSnprintf(a, 0, 48, "%lld", [value]);
+    } else {
+        var hex = (r.property & 3175) !== 0;
+        sxVarSetU64(r.value, v);
+        len = sxSnprintf(a, 0, 48, hex ? "0x%llX" : "%llu", [v]);
+    }
+    if (len < 0 || len >= 48) {
+        return false;
+    }
+    for (i = 0; i <= len; i++) {
+        out[i] = a[i] & 0xFF;
+    }
+    return sxSetDisplay(r, out) && sxSetComment(r, sign ? negative && !v ? "Ion VarInt negative zero; physical sign bit retained." : "Decoded Ion VarInt: sign-magnitude, MSB-first seven-bit groups; final-byte high bit set." : "Decoded Ion VarUInt: MSB-first seven-bit groups; final-byte high bit set.");
+}
+var sx_binarylater_comment_major = ["CBOR unsigned integer; low5 bits hold the inline value or argument-width selector.",
+    "CBOR negative integer; logical value=-1-argument; low5 bits select inline argument or width.",
+    "CBOR byte string; low5 bits hold inline byte length or length-width selector.",
+    "CBOR UTF8 string; low5 bits hold inline byte length or length-width selector.",
+    "CBOR array; low5 bits hold inline item count or count-width selector.",
+    "CBOR map; low5 bits hold inline pair count or count-width selector.",
+    "CBOR semantic tag; low5 bits hold inline tag number or argument-width selector.",
+    "CBOR simple value or IEEE754 float; low5 bits select the representation."];
+var sx_binarylater_comment_names = ["nil", "reserved", "false", "true", "bin8", "bin16", "bin32", "ext8", "ext16", "ext32",
+    "float32", "float64", "uint8", "uint16", "uint32", "uint64", "int8", "int16", "int32", "int64", "fixext1", "fixext2",
+    "fixext4", "fixext8", "fixext16", "str8", "str16", "str32", "array16", "array32", "map16", "map32"];
+var sx_binarylater_comment_kind = ["Ion NOP padding; low nibble determines encoded payload length.",
+    "Ion bool:0=false,1=true,15=null.bool.", "Ion nonnegative integer; low nibble determines magnitude byte length.",
+    "Ion negative integer; low nibble determines magnitude byte length.", "Ion float; payload width0,4 or8;15=null.float.",
+    "Ion decimal; exponent VarInt followed by signed-magnitude coefficient bytes.",
+    "Ion timestamp (outside native supported subset).", "Ion symbol ID.", "Ion UTF8 string.", "Ion character large object.",
+    "Ion binary large object.", "Ion list.", "Ion S-expression.", "Ion struct; fields carry MSB VarUInt symbol IDs.",
+    "Ion annotation wrapper.", "Reserved Ion type."];
+var sx_binarylater_comment_names_2 = ["STOP", "BOOLEAN_TRUE", "BOOLEAN_FALSE", "BYTE", "I16 ZigZag", "I32 ZigZag", "I64 ZigZag",
+    "DOUBLE", "BINARY", "LIST", "SET", "MAP", "STRUCT", "UUID", "reserved", "reserved"];
+function sx_binarylater_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60350000 || id >= 0x60360000) {
+        return true;
+    }
+    if (!sxStrncmp(r.type, "ion_varuint[", 12) || !sxStrncmp(r.type, "ion_varint[", 11)) {
+        return sxbl_ion_integer_comment(r);
+    }
+    var text = null;
+    switch (id) {
+    case 0x60350036:
+        text = sx_binarylater_comment_major[sxAnd64(sxShr64(sxVarU64(r.value), 5), 7)];
+        break;
+    case 0x60350037:
+        var v = sxVarU64(r.value);
+        if (v < 128) {
+            text = "MessagePack positive fixint; this byte is the unsigned value.";
+        } else if (v >= 224) {
+            text = "MessagePack negative fixint; signed value=byte-256.";
+        } else if (v < 144) {
+            text = "MessagePack fixmap; low4 bits are key/value pair count.";
+        } else if (v < 160) {
+            text = "MessagePack fixarray; low4 bits are element count.";
+        } else if (v < 192) {
+            text = "MessagePack fixstr; low5 bits are UTF8 byte length.";
+        } else {
+            text = sx_binarylater_comment_names[sxU64(v - 192)];
+        }
+        break;
+    case 0x6035003A:
+        text = sx_binarylater_comment_kind[sxAnd64(sxShr64(sxVarU64(r.value), 4), 15)];
+        break;
+    case 0x6035003B:
+        text = sx_binarylater_comment_names_2[sxAnd64(sxVarU64(r.value), 15)];
+        break;
+    case 0x6035003C:
+        text = "Thrift collection: low4 bits element type; high4 bits count,15 means following VarUInt count.";
+        break;
+    case 0x6035003D:
+        text = "Thrift map: high4 bits key type; low4 bits value type.";
+        break;
+    case 0x60350041:
+        v = sxVarU64(r.value);
+        text = v < 184 ? "RLP string prefix; byte length=prefix-0x80." : v < 192 ? "RLP long string; following length-of-length=prefix-0xb7." : v < 248 ? "RLP list prefix; payload byte length=prefix-0xc0." : "RLP long list; following length-of-length=prefix-0xf7.";
+        break;
+    case 0x603500E8:
+        if (r.name === "tag") {
+            switch (sxVarU64(r.value)) {
+            case 1:
+                text = "BOOLEAN";
+                break;
+            case 2:
+                text = "INTEGER";
+                break;
+            case 3:
+                text = "BIT STRING";
+                break;
+            case 4:
+                text = "OCTET STRING";
+                break;
+            case 5:
+                text = "NULL";
+                break;
+            case 6:
+                text = "OBJECT IDENTIFIER";
+                break;
+            case 10:
+                text = "ENUMERATED";
+                break;
+            case 12:
+                text = "UTF8String";
+                break;
+            case 19:
+                text = "PrintableString";
+                break;
+            case 22:
+                text = "IA5String";
+                break;
+            case 23:
+                text = "UTCTime";
+                break;
+            case 24:
+                text = "GeneralizedTime";
+                break;
+            case 48:
+                text = "SEQUENCE (constructed)";
+                break;
+            case 49:
+                text = "SET (constructed)";
+                break;
+            default:
+                text = "Tag class=high2 bits;bit5=constructed;low5 bits=tag number.";
+                break;
+            }
+        } else if (r.name === "length_form") {
+            text = "High bit marks long form; low7 bits give following length-byte width.";
+        }
+        break;
+    case 0x603500E9:
+        if (r.name === "tag") {
+            switch (sxVarU64(r.value)) {
+            case 1:
+                text = "BOOLEAN";
+                break;
+            case 2:
+                text = "INTEGER";
+                break;
+            case 3:
+                text = "BIT STRING";
+                break;
+            case 4:
+                text = "OCTET STRING";
+                break;
+            case 5:
+                text = "NULL";
+                break;
+            case 6:
+                text = "OBJECT IDENTIFIER";
+                break;
+            case 10:
+                text = "ENUMERATED";
+                break;
+            case 12:
+                text = "UTF8String";
+                break;
+            case 19:
+                text = "PrintableString";
+                break;
+            case 22:
+                text = "IA5String";
+                break;
+            case 23:
+                text = "UTCTime";
+                break;
+            case 24:
+                text = "GeneralizedTime";
+                break;
+            case 48:
+                text = "SEQUENCE (constructed)";
+                break;
+            case 49:
+                text = "SET (constructed)";
+                break;
+            default:
+                text = "Tag class=high2 bits;bit5=constructed;low5 bits=tag number.";
+                break;
+            }
+        } else if (r.name === "length_form") {
+            text = "High bit marks long form; low7 bits give following length-byte width.";
+        }
+        break;
+    case 0x603500EA:
+        if (r.name === "tag") {
+            switch (sxVarU64(r.value)) {
+            case 1:
+                text = "BOOLEAN";
+                break;
+            case 2:
+                text = "INTEGER";
+                break;
+            case 3:
+                text = "BIT STRING";
+                break;
+            case 4:
+                text = "OCTET STRING";
+                break;
+            case 5:
+                text = "NULL";
+                break;
+            case 6:
+                text = "OBJECT IDENTIFIER";
+                break;
+            case 10:
+                text = "ENUMERATED";
+                break;
+            case 12:
+                text = "UTF8String";
+                break;
+            case 19:
+                text = "PrintableString";
+                break;
+            case 22:
+                text = "IA5String";
+                break;
+            case 23:
+                text = "UTCTime";
+                break;
+            case 24:
+                text = "GeneralizedTime";
+                break;
+            case 48:
+                text = "SEQUENCE (constructed)";
+                break;
+            case 49:
+                text = "SET (constructed)";
+                break;
+            default:
+                text = "Tag class=high2 bits;bit5=constructed;low5 bits=tag number.";
+                break;
+            }
+        } else if (r.name === "length_form") {
+            text = "High bit marks long form; low7 bits give following length-byte width.";
+        }
+        break;
+    case 0x603500EB:
+        if (r.name === "tag") {
+            switch (sxVarU64(r.value)) {
+            case 1:
+                text = "BOOLEAN";
+                break;
+            case 2:
+                text = "INTEGER";
+                break;
+            case 3:
+                text = "BIT STRING";
+                break;
+            case 4:
+                text = "OCTET STRING";
+                break;
+            case 5:
+                text = "NULL";
+                break;
+            case 6:
+                text = "OBJECT IDENTIFIER";
+                break;
+            case 10:
+                text = "ENUMERATED";
+                break;
+            case 12:
+                text = "UTF8String";
+                break;
+            case 19:
+                text = "PrintableString";
+                break;
+            case 22:
+                text = "IA5String";
+                break;
+            case 23:
+                text = "UTCTime";
+                break;
+            case 24:
+                text = "GeneralizedTime";
+                break;
+            case 48:
+                text = "SEQUENCE (constructed)";
+                break;
+            case 49:
+                text = "SET (constructed)";
+                break;
+            default:
+                text = "Tag class=high2 bits;bit5=constructed;low5 bits=tag number.";
+                break;
+            }
+        } else if (r.name === "length_form") {
+            text = "High bit marks long form; low7 bits give following length-byte width.";
+        }
+        break;
+    case 0x603500EC:
+        if (r.name === "tag") {
+            switch (sxVarU64(r.value)) {
+            case 1:
+                text = "BOOLEAN";
+                break;
+            case 2:
+                text = "INTEGER";
+                break;
+            case 3:
+                text = "BIT STRING";
+                break;
+            case 4:
+                text = "OCTET STRING";
+                break;
+            case 5:
+                text = "NULL";
+                break;
+            case 6:
+                text = "OBJECT IDENTIFIER";
+                break;
+            case 10:
+                text = "ENUMERATED";
+                break;
+            case 12:
+                text = "UTF8String";
+                break;
+            case 19:
+                text = "PrintableString";
+                break;
+            case 22:
+                text = "IA5String";
+                break;
+            case 23:
+                text = "UTCTime";
+                break;
+            case 24:
+                text = "GeneralizedTime";
+                break;
+            case 48:
+                text = "SEQUENCE (constructed)";
+                break;
+            case 49:
+                text = "SET (constructed)";
+                break;
+            default:
+                text = "Tag class=high2 bits;bit5=constructed;low5 bits=tag number.";
+                break;
+            }
+        } else if (r.name === "length_form") {
+            text = "High bit marks long form; low7 bits give following length-byte width.";
+        }
+        break;
+    case 0x60350035:
+        switch (sxVarU64(r.value)) {
+        case 1:
+            text = "BSON double";
+            break;
+        case 2:
+            text = "BSON UTF8 string";
+            break;
+        case 3:
+            text = "BSON embedded document";
+            break;
+        case 4:
+            text = "BSON array";
+            break;
+        case 5:
+            text = "BSON binary";
+            break;
+        case 6:
+            text = "BSON undefined";
+            break;
+        case 7:
+            text = "BSON ObjectID";
+            break;
+        case 8:
+            text = "BSON boolean";
+            break;
+        case 9:
+            text = "BSON UTC datetime";
+            break;
+        case 10:
+            text = "BSON null";
+            break;
+        case 11:
+            text = "BSON regex";
+            break;
+        case 12:
+            text = "BSON DBPointer";
+            break;
+        case 13:
+            text = "BSON JavaScript";
+            break;
+        case 14:
+            text = "BSON symbol";
+            break;
+        case 15:
+            text = "BSON code with scope";
+            break;
+        case 16:
+            text = "BSON int32";
+            break;
+        case 17:
+            text = "BSON timestamp";
+            break;
+        case 18:
+            text = "BSON int64";
+            break;
+        case 19:
+            text = "BSON decimal128";
+            break;
+        case 127:
+            text = "BSON max key";
+            break;
+        case 255:
+            text = "BSON min key";
+            break;
+        default:
+            text = "Unknown or unsupported physical type marker";
+            break;
+        }
+        break;
+    case 0x60350038:
+        switch (sxVarU64(r.value)) {
+        case 90:
+            text = "null";
+            break;
+        case 78:
+            text = "no-op";
+            break;
+        case 84:
+            text = "true";
+            break;
+        case 70:
+            text = "false";
+            break;
+        case 105:
+            text = "int8";
+            break;
+        case 85:
+            text = "uint8";
+            break;
+        case 73:
+            text = "int16";
+            break;
+        case 108:
+            text = "int32";
+            break;
+        case 76:
+            text = "int64";
+            break;
+        case 100:
+            text = "float32";
+            break;
+        case 68:
+            text = "float64";
+            break;
+        case 67:
+            text = "char";
+            break;
+        case 83:
+            text = "UTF8 string";
+            break;
+        case 72:
+            text = "high-precision number text";
+            break;
+        case 91:
+            text = "array start";
+            break;
+        case 93:
+            text = "array end";
+            break;
+        case 123:
+            text = "object start";
+            break;
+        case 125:
+            text = "object end";
+            break;
+        case 36:
+            text = "optimized type prefix";
+            break;
+        case 35:
+            text = "counted container prefix";
+            break;
+        default:
+            text = "Unknown or unsupported physical type marker";
+            break;
+        }
+        break;
+    case 0x60350039:
+        switch (sxVarU64(r.value)) {
+        case 70:
+            text = "NEW_FLOAT_EXT";
+            break;
+        case 77:
+            text = "BIT_BINARY_EXT";
+            break;
+        case 88:
+            text = "NEW_PID_EXT";
+            break;
+        case 89:
+            text = "NEW_PORT_EXT";
+            break;
+        case 90:
+            text = "NEWER_REFERENCE_EXT";
+            break;
+        case 97:
+            text = "SMALL_INTEGER_EXT";
+            break;
+        case 98:
+            text = "INTEGER_EXT";
+            break;
+        case 99:
+            text = "FLOAT_EXT";
+            break;
+        case 100:
+            text = "ATOM_EXT";
+            break;
+        case 101:
+            text = "REFERENCE_EXT";
+            break;
+        case 102:
+            text = "PORT_EXT";
+            break;
+        case 103:
+            text = "PID_EXT";
+            break;
+        case 104:
+            text = "SMALL_TUPLE_EXT";
+            break;
+        case 105:
+            text = "LARGE_TUPLE_EXT";
+            break;
+        case 106:
+            text = "NIL_EXT";
+            break;
+        case 107:
+            text = "STRING_EXT";
+            break;
+        case 108:
+            text = "LIST_EXT";
+            break;
+        case 109:
+            text = "BINARY_EXT";
+            break;
+        case 110:
+            text = "SMALL_BIG_EXT";
+            break;
+        case 111:
+            text = "LARGE_BIG_EXT";
+            break;
+        case 114:
+            text = "NEW_REFERENCE_EXT";
+            break;
+        case 115:
+            text = "SMALL_ATOM_EXT";
+            break;
+        case 116:
+            text = "MAP_EXT";
+            break;
+        case 118:
+            text = "ATOM_UTF8_EXT";
+            break;
+        case 119:
+            text = "SMALL_ATOM_UTF8_EXT";
+            break;
+        case 120:
+            text = "V4_PORT_EXT";
+            break;
+        default:
+            text = "Unknown or unsupported physical type marker";
+            break;
+        }
+        break;
+    case 0x6035003E:
+        switch (sxVarU64(r.value)) {
+        case 74:
+            text = "BININT";
+            break;
+        case 75:
+            text = "BININT1";
+            break;
+        case 77:
+            text = "BININT2";
+            break;
+        case 71:
+            text = "BINFLOAT";
+            break;
+        case 85:
+            text = "SHORT_BINSTRING";
+            break;
+        case 84:
+            text = "BINSTRING";
+            break;
+        case 66:
+            text = "BINBYTES";
+            break;
+        case 67:
+            text = "SHORT_BINBYTES";
+            break;
+        case 88:
+            text = "BINUNICODE";
+            break;
+        case 113:
+            text = "BINPUT";
+            break;
+        case 104:
+            text = "BINGET";
+            break;
+        case 114:
+            text = "LONG_BINPUT";
+            break;
+        case 106:
+            text = "LONG_BINGET";
+            break;
+        case 78:
+            text = "NONE";
+            break;
+        case 93:
+            text = "EMPTY_LIST";
+            break;
+        case 125:
+            text = "EMPTY_DICT";
+            break;
+        case 41:
+            text = "EMPTY_TUPLE";
+            break;
+        case 40:
+            text = "MARK";
+            break;
+        case 48:
+            text = "POP";
+            break;
+        case 49:
+            text = "POP_MARK";
+            break;
+        case 50:
+            text = "DUP";
+            break;
+        case 116:
+            text = "TUPLE";
+            break;
+        case 108:
+            text = "LIST";
+            break;
+        case 100:
+            text = "DICT";
+            break;
+        case 101:
+            text = "APPENDS";
+            break;
+        case 117:
+            text = "SETITEMS";
+            break;
+        case 97:
+            text = "APPEND";
+            break;
+        case 115:
+            text = "SETITEM";
+            break;
+        case 46:
+            text = "STOP";
+            break;
+        case 136:
+            text = "NEWTRUE";
+            break;
+        case 137:
+            text = "NEWFALSE";
+            break;
+        case 138:
+            text = "LONG1";
+            break;
+        case 139:
+            text = "LONG4";
+            break;
+        case 140:
+            text = "SHORT_BINUNICODE";
+            break;
+        case 141:
+            text = "BINUNICODE8";
+            break;
+        case 142:
+            text = "BINBYTES8";
+            break;
+        case 143:
+            text = "EMPTY_SET";
+            break;
+        case 144:
+            text = "ADDITEMS";
+            break;
+        case 145:
+            text = "FROZENSET";
+            break;
+        case 148:
+            text = "MEMOIZE";
+            break;
+        case 149:
+            text = "FRAME";
+            break;
+        case 150:
+            text = "BYTEARRAY8";
+            break;
+        case 133:
+            text = "TUPLE1";
+            break;
+        case 134:
+            text = "TUPLE2";
+            break;
+        case 135:
+            text = "TUPLE3";
+            break;
+        default:
+            text = "Unknown or unsupported physical type marker";
+            break;
+        }
+        break;
+    case 0x6035003F:
+        switch (sxAnd64(sxVarU64(r.value), 127)) {
+        case 78:
+            text = "None (high bit registers a reference when set)";
+            break;
+        case 70:
+            text = "False (high bit registers a reference when set)";
+            break;
+        case 84:
+            text = "True (high bit registers a reference when set)";
+            break;
+        case 46:
+            text = "Ellipsis (high bit registers a reference when set)";
+            break;
+        case 48:
+            text = "NULL dictionary terminator (high bit registers a reference when set)";
+            break;
+        case 105:
+            text = "int32 (high bit registers a reference when set)";
+            break;
+        case 73:
+            text = "legacy int64 (high bit registers a reference when set)";
+            break;
+        case 103:
+            text = "binary float64 (high bit registers a reference when set)";
+            break;
+        case 121:
+            text = "binary complex (high bit registers a reference when set)";
+            break;
+        case 108:
+            text = "15-bit-limb integer (high bit registers a reference when set)";
+            break;
+        case 114:
+            text = "reference (high bit registers a reference when set)";
+            break;
+        case 115:
+            text = "bytes (high bit registers a reference when set)";
+            break;
+        case 116:
+            text = "interned string (high bit registers a reference when set)";
+            break;
+        case 117:
+            text = "Unicode string (high bit registers a reference when set)";
+            break;
+        case 97:
+            text = "ASCII string (high bit registers a reference when set)";
+            break;
+        case 65:
+            text = "interned ASCII (high bit registers a reference when set)";
+            break;
+        case 122:
+            text = "short ASCII (high bit registers a reference when set)";
+            break;
+        case 90:
+            text = "short interned ASCII (high bit registers a reference when set)";
+            break;
+        case 40:
+            text = "tuple (high bit registers a reference when set)";
+            break;
+        case 41:
+            text = "small tuple (high bit registers a reference when set)";
+            break;
+        case 91:
+            text = "list (high bit registers a reference when set)";
+            break;
+        case 123:
+            text = "dictionary (high bit registers a reference when set)";
+            break;
+        case 60:
+            text = "set (high bit registers a reference when set)";
+            break;
+        case 62:
+            text = "frozenset (high bit registers a reference when set)";
+            break;
+        default:
+            text = "Unknown or unsupported physical type marker";
+            break;
+        }
+        break;
+    case 0x60350040:
+        switch (sxVarU64(r.value)) {
+        case 112:
+            text = "TC_NULL";
+            break;
+        case 113:
+            text = "TC_REFERENCE";
+            break;
+        case 114:
+            text = "TC_CLASSDESC";
+            break;
+        case 116:
+            text = "TC_STRING";
+            break;
+        case 117:
+            text = "TC_ARRAY";
+            break;
+        case 120:
+            text = "TC_ENDBLOCKDATA";
+            break;
+        case 124:
+            text = "TC_LONGSTRING";
+            break;
+        default:
+            text = "Unknown or unsupported physical type marker";
+            break;
+        }
+        break;
+    case 0x60350088:
+        if (r.name === "document_size") {
+            text = "Includes the four-byte length and final zero terminator.";
+        }
+        break;
+    case 0x60350089:
+        if (r.name === "string_size") {
+            text = "UTF8 byte count including its zero terminator.";
+        }
+        break;
+    case 0x6035008E:
+        if (r.name === "encoded_decimal") {
+            text = "IEEE754 decimal128 stored little-endian; encoded bits retained.";
+        }
+        break;
+    case 0x60350093:
+        if (r.name === "ieee754_binary16_bits") {
+            text = "Encoded half-precision IEEE754 bits.";
+        }
+        break;
+    case 0x60350094:
+        if (r.name === "extension_type") {
+            text = "-1 is the timestamp extension.";
+        }
+        break;
+    case 0x60350095:
+        if (r.name === "nanoseconds_and_seconds") {
+            text = "High30bits nanoseconds, low34bits seconds since Unix epoch.";
+        }
+        break;
+    case 0x60350099:
+        if (r.name === "sign") {
+            text = "0 positive,1 negative; following magnitude digits are little-endian base256.";
+        }
+        break;
+    case 0x6035009A:
+        if (r.name === "last_byte_bits") {
+            text = "Significant bits in the final binary byte,1..8.";
+        }
+        break;
+    case 0x603500D7:
+        if (r.name === "version_and_message_type") {
+            text = "Low5bits protocol version, high3bits message type.";
+        }
+        break;
+    case 0x603500DE:
+        if (r.name === "signed_digit_count") {
+            text = "Absolute value is the number of15-bit limbs; sign is the integer sign.";
+        }
+        break;
+    case 0x603500DF:
+        if (r.name === "magnitude_digit") {
+            text = "Little-endian15-bit limb, least-significant limb first.";
+        }
+        break;
+    case 0x603500E5:
+        if (r.name === "wire_handle") {
+            text = "Handle values start at0x7e0000; not a byte address.";
+        }
+        break;
+    case 0x603500ED:
+        if (r.name === "unused_bits") {
+            text = "Unused low bits in final BIT STRING byte,0..7.";
+        }
+        break;
+    case 0x603500EE:
+        if (r.name === "encoded_boolean") {
+            text = "DER false=0,true=255.";
+        }
+        break;
+    case 0x603500F6:
+        if (r.name === "valid_after") {
+            text = "Seconds since Unix epoch.";
+        }
+        if (r.name === "valid_before") {
+            text = "Seconds since Unix epoch;UINT64_MAX means forever.";
+        }
+        break;
+    case 0x603500F7:
+        if (r.name === "padding_byte") {
+            text = "Sequential padding bytes1,2,...; no implicit bytes are represented.";
+        }
+        break;
+    case 0x603500FA:
+        if (r.name === "binary_size") {
+            text = "Legacy subtype2 inner data byte count; excludes this length field.";
+        }
+        break;
+    case 0x603500FC:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x603500FE:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x60350100:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x60350102:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x60350104:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x60350106:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x60350108:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x6035010A:
+        if (r.name === "absolute_magnitude") {
+            text = "Negative Ion integer: the logical value is the negative of this unsigned magnitude.";
+        }
+        break;
+    case 0x6035010C:
+        if (r.name === "encoded_argument") {
+            text = "CBOR negative integer logical value is -1 minus this unsigned argument.";
+        }
+        break;
+    case 0x6035010F:
+        if (r.name === "encoded_argument") {
+            text = "CBOR negative integer logical value is -1 minus this unsigned argument.";
+        }
+        break;
+    case 0x60350112:
+        if (r.name === "encoded_argument") {
+            text = "CBOR negative integer logical value is -1 minus this unsigned argument.";
+        }
+        break;
+    case 0x60350115:
+        if (r.name === "encoded_argument") {
+            text = "CBOR negative integer logical value is -1 minus this unsigned argument.";
+        }
+        break;
+    case 0x60350119:
+        if (r.name === "literal_byte") {
+            text = "RLP single-byte string0x00..0x7f; this byte is the payload itself.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxbl_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxbl_read(c, p, b, n) {
+    return sxbl_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxbl_uint(b, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxbl_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxbl_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxbl_uint(b, n, be);
+    return true;
+}
+function sxbl_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = f.offset + f.size;
+    return c.count < 20000 && sxbl_span(c, p, (n < 0 ? n + SX_U64_MAX : n)) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), n);
+}
+function sxbl_emit(c, p, end, l) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (p[0] > end || n > sxU64(end - p[0]) || !sxbl_add(c, l, p[0])) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxbl_skip(c, p, end, n) {
+    if (p[0] > end || n > sxU64(end - p[0]) || !sxbl_span(c, p[0], n)) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxbl_byte(c, p, v) {
+    return sxbl_read(c, p, v, 1);
+}
+function sxbl_numeric(c, p, end, z, sign, be) {
+    var leu = [sxbl_wire_uint8_le, sxbl_wire_uint16_le, sxbl_wire_uint24_le, sxbl_wire_uint32_le, sxbl_wire_uint40_le, sxbl_wire_uint48_le, sxbl_wire_uint56_le, sxbl_wire_uint64_le];
+    var les = [sxbl_wire_int8_le, sxbl_wire_int16_le, sxbl_wire_int24_le, sxbl_wire_int32_le, sxbl_wire_int40_le, sxbl_wire_int48_le, sxbl_wire_int56_le, sxbl_wire_int64_le];
+    var beu = [sxbl_wire_uint8_be, sxbl_wire_uint16_be, sxbl_wire_uint24_be, sxbl_wire_uint32_be, sxbl_wire_uint40_be, sxbl_wire_uint48_be, sxbl_wire_uint56_be, sxbl_wire_uint64_be];
+    var bes = [sxbl_wire_int8_be, sxbl_wire_int16_be, sxbl_wire_int24_be, sxbl_wire_int32_be, sxbl_wire_int40_be, sxbl_wire_int48_be, sxbl_wire_int56_be, sxbl_wire_int64_be];
+    return !!(z && z <= 8 && sxbl_emit(c, p, end, (be ? sign ? bes : beu : sign ? les : leu)[(z - 1) >>> 0]));
+}
+function sxbl_float(c, p, end, z, be) {
+    return (z === 4 || z === 8) && sxbl_emit(c, p, end, be ? z === 4 ? sxbl_wire_float32_be : sxbl_wire_float64_be : z === 4 ? sxbl_wire_float32_le : sxbl_wire_float64_le);
+}
+function sxbl_length(c, p, end, z, be, count, v) {
+    var le = [sxbl_wire_byte_size1_le, sxbl_wire_byte_size2_le, sxbl_wire_byte_size4_le, sxbl_wire_byte_size8_le, sxbl_wire_item_count1_le, sxbl_wire_item_count2_le, sxbl_wire_item_count4_le, sxbl_wire_item_count8_le];
+    var big = [sxbl_wire_byte_size1_be, sxbl_wire_byte_size2_be, sxbl_wire_byte_size4_be, sxbl_wire_byte_size8_be, sxbl_wire_item_count1_be, sxbl_wire_item_count2_be, sxbl_wire_item_count4_be, sxbl_wire_item_count8_be];
+    var k = z === 1 ? 0 : z === 2 ? 1 : z === 4 ? 2 : z === 8 ? 3 : 8;
+    return k < 4 && sxbl_word(c, p[0], z, be, v) && sxbl_emit(c, p, end, (be ? big : le)[(k + (count ? 4 : 0)) >>> 0]);
+}
+function sxbl_string(c, p, end, z, be) {
+    var n = [0];
+    return sxbl_length(c, p, end, z, be, false, n) && sxbl_skip(c, p, end, n[0]);
+}
+function sxbl_der(c, p, end, depth) {
+    var b = [];
+    if (depth > 32 || !sxbl_read(c, p[0], b, 2) || p[0] > end || sxU64(end - p[0]) < 2) {
+        return false;
+    }
+    var z = b[1] & 128 ? b[1] & 127 : 0;
+    var n = [b[1]];
+    var longh = [sxbl_der_header_long1, sxbl_der_header_long2, sxbl_der_header_long3, sxbl_der_header_long4];
+    if (b[1] & 128) {
+        if (!z || z > 4 || !sxbl_word(c, p[0] + 2, z, true, n)) {
+            return false;
+        }
+    }
+    if (n[0] > sxU64(sxU64(end - p[0]) - 2) || z > sxU64(sxU64(sxU64(end - p[0]) - 2) - n[0])) {
+        return false;
+    }
+    var stop = p[0] + 2 + z + n[0];
+    if (!sxbl_emit(c, p, stop, z ? longh[(z - 1) >>> 0] : sxbl_der_header_short)) {
+        return false;
+    }
+    if (b[0] & 32) {
+        while (p[0] < stop) {
+            var keep = c.count;
+            var before = p[0];
+            if (!sxbl_der(c, p, stop, (depth + 1) >>> 0)) {
+                c.count = keep;
+                p[0] = stop;
+                return true;
+            }
+            if (p[0] <= before) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (b[0] === 1 && n[0] === 1) {
+        return sxbl_emit(c, p, stop, sxbl_der_boolean);
+    }
+    if ((b[0] === 2 || b[0] === 10) && n[0] && n[0] <= 8) {
+        return sxbl_numeric(c, p, stop, n[0] >>> 0, true, true);
+    }
+    if (b[0] === 3 && n[0]) {
+        if (!sxbl_emit(c, p, stop, sxbl_der_unused_bits)) {
+            return false;
+        }
+    } else if (b[0] === 23 && n[0] === 13) {
+        return sxbl_emit(c, p, stop, sxbl_der_utc_time);
+    } else if (b[0] === 24 && n[0] === 15) {
+        return sxbl_emit(c, p, stop, sxbl_der_generalized_time);
+    }
+    p[0] = stop;
+    return true;
+}
+function sxbl_var(c, p, end, role, out) {
+    var v0 = [sxbl_wire_byte_size_var1, sxbl_wire_byte_size_var2, sxbl_wire_byte_size_var3, sxbl_wire_byte_size_var4, sxbl_wire_byte_size_var5, sxbl_wire_byte_size_var6, sxbl_wire_byte_size_var7, sxbl_wire_byte_size_var8, sxbl_wire_byte_size_var9, sxbl_wire_byte_size_var10];
+    var v1 = [sxbl_wire_item_count_var1, sxbl_wire_item_count_var2, sxbl_wire_item_count_var3, sxbl_wire_item_count_var4, sxbl_wire_item_count_var5, sxbl_wire_item_count_var6, sxbl_wire_item_count_var7, sxbl_wire_item_count_var8, sxbl_wire_item_count_var9, sxbl_wire_item_count_var10];
+    var v2 = [sxbl_wire_integer_var1, sxbl_wire_integer_var2, sxbl_wire_integer_var3, sxbl_wire_integer_var4, sxbl_wire_integer_var5, sxbl_wire_integer_var6, sxbl_wire_integer_var7, sxbl_wire_integer_var8, sxbl_wire_integer_var9, sxbl_wire_integer_var10];
+    var v3 = [sxbl_wire_sequence_var1, sxbl_wire_sequence_var2, sxbl_wire_sequence_var3, sxbl_wire_sequence_var4, sxbl_wire_sequence_var5, sxbl_wire_sequence_var6, sxbl_wire_sequence_var7, sxbl_wire_sequence_var8, sxbl_wire_sequence_var9, sxbl_wire_sequence_var10];
+    var v4 = [sxbl_wire_unsigned_size_var1, sxbl_wire_unsigned_size_var2, sxbl_wire_unsigned_size_var3, sxbl_wire_unsigned_size_var4, sxbl_wire_unsigned_size_var5, sxbl_wire_unsigned_size_var6, sxbl_wire_unsigned_size_var7, sxbl_wire_unsigned_size_var8, sxbl_wire_unsigned_size_var9, sxbl_wire_unsigned_size_var10];
+    var v5 = [sxbl_wire_unsigned_count_var1, sxbl_wire_unsigned_count_var2, sxbl_wire_unsigned_count_var3, sxbl_wire_unsigned_count_var4, sxbl_wire_unsigned_count_var5, sxbl_wire_unsigned_count_var6, sxbl_wire_unsigned_count_var7, sxbl_wire_unsigned_count_var8, sxbl_wire_unsigned_count_var9, sxbl_wire_unsigned_count_var10];
+    var v6 = [sxbl_wire_field_id_var1, sxbl_wire_field_id_var2, sxbl_wire_field_id_var3, sxbl_wire_field_id_var4, sxbl_wire_field_id_var5, sxbl_wire_field_id_var6, sxbl_wire_field_id_var7, sxbl_wire_field_id_var8, sxbl_wire_field_id_var9, sxbl_wire_field_id_var10];
+    var arrays = [v0, v1, v2, v3, v4, v5, v6];
+    if (role > 6) {
+        return false;
+    }
+    var at = p[0];
+    var v = 0;
+    var n = 0;
+    var b = [0];
+    do {
+        if (p[0] >= end || n === 10 || !sxbl_byte(c, p[0]++, b) || n === 9 && (b[0] & 127) > 1) {
+            return false;
+        }
+        v = sxOr64(v, sxShl64(b[0] & 127, (7 * n++) >>> 0));
+    } while (b[0] & 128);
+    if (!sxbl_add(c, arrays[role][(n - 1) >>> 0], at)) {
+        return false;
+    }
+    out[0] = v;
+    return true;
+}
+function sxbl_ssh_string(c, p, end, start, n) {
+    if (!sxbl_word(c, p[0], 4, true, n) || !sxbl_emit(c, p, end, sxbl_ssh_string_size)) {
+        return false;
+    }
+    start[0] = p[0];
+    return sxbl_skip(c, p, end, n[0]);
+}
+function sxbl_ssh_list(c, p, end) {
+    p = [p];
+    for (var i = 0; p[0] < end && i < 512; i++) {
+        var at = [0];
+        var n = [0];
+        if (!sxbl_ssh_string(c, p, end, at, n)) {
+            return false;
+        }
+    }
+    return p[0] === end;
+}
+function sxbl_ssh(c, cert) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var at = [0];
+    var n = [0];
+    var priv = [0];
+    var lim;
+    if (!cert) {
+        if (!sxbl_emit(c, p, end, sxbl_openssh_key_magic)) {
+            return false;
+        }
+        for (var i = 0; i < 3; i++) {
+            if (!sxbl_ssh_string(c, p, end, at, n)) {
+                return false;
+            }
+        }
+        if (!sxbl_emit(c, p, end, sxbl_ssh_key_count) || !sxbl_ssh_string(c, p, end, at, n) || !sxbl_ssh_list(c, at[0], at[0] + n[0]) || !sxbl_ssh_string(c, p, end, priv, n)) {
+            return false;
+        }
+        lim = priv[0] + n[0];
+        if (!sxbl_emit(c, priv, lim, sxbl_ssh_checkints)) {
+            return false;
+        }
+        for (i = 0; i < 4; i++) {
+            if (!sxbl_ssh_string(c, priv, lim, at, n)) {
+                return false;
+            }
+        }
+        while (priv[0] < lim) {
+            if (!sxbl_emit(c, priv, lim, sxbl_ssh_padding)) {
+                return false;
+            }
+        }
+        return p[0] === end;
+    }
+    for (i = 0; i < 3; i++) {
+        if (!sxbl_ssh_string(c, p, end, at, n)) {
+            return false;
+        }
+    }
+    if (!sxbl_emit(c, p, end, sxbl_ssh_certificate_serial) || !sxbl_ssh_string(c, p, end, at, n) || !sxbl_ssh_string(c, p, end, at, n) || !sxbl_ssh_list(c, at[0], at[0] + n[0]) || !sxbl_emit(c, p, end, sxbl_ssh_certificate_validity)) {
+        return false;
+    }
+    for (i = 0; i < 2; i++) {
+        if (!sxbl_ssh_string(c, p, end, at, n) || !sxbl_ssh_list(c, at[0], at[0] + n[0])) {
+            return false;
+        }
+    }
+    if (!sxbl_ssh_string(c, p, end, at, n)) {
+        return false;
+    }
+    for (i = 0; i < 2; i++) {
+        if (!sxbl_ssh_string(c, p, end, at, n) || !sxbl_ssh_list(c, at[0], at[0] + n[0])) {
+            return false;
+        }
+    }
+    return p[0] === end;
+}
+function sxbl_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxbl_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxbl_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxbl_order, true);
+    return !c.failed;
+}
+function sx_binarylater_supports(t) {
+    switch (t) {
+    case "MONGODB_BSON":
+    case "CBOR":
+    case "PYTHON_PICKLE":
+    case "MSGPACK":
+    case "UBJSON":
+    case "ERLANG_EXTERNAL_TERM":
+    case "AMAZON_ION_BINARY":
+    case "THRIFT_COMPACT":
+    case "JAVA_SERIALIZATION":
+    case "PYTHON_MARSHAL":
+    case "DER":
+    case "X509_CERTIFICATE":
+    case "PKCS10_CSR":
+    case "PKCS12_PFX":
+    case "PKCS7_CMS":
+    case "X509_CRL":
+    case "OCSP_RESPONSE":
+    case "PKCS8_PRIVATE_KEY":
+    case "OPENSSH_PRIVATE_KEY":
+    case "OPENSSH_CERTIFICATE":
+    case "ETHEREUM_RLP":
+    case "AVRO_OBJECT":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_binarylater_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var ok = false;
+    switch (c.f.file_type) {
+    case "MONGODB_BSON":
+        ok = sx_mongodb_bson_build(c);
+        break;
+    case "CBOR":
+        ok = sx_cbor_build(c);
+        break;
+    case "MSGPACK":
+        ok = sx_msgpack_build(c);
+        break;
+    case "UBJSON":
+        ok = sx_ubjson_build(c);
+        break;
+    case "ERLANG_EXTERNAL_TERM":
+        ok = sx_erlang_external_term_build(c);
+        break;
+    case "AMAZON_ION_BINARY":
+        ok = sx_amazon_ion_binary_build(c);
+        break;
+    case "THRIFT_COMPACT":
+        ok = sx_thrift_compact_build(c);
+        break;
+    case "PYTHON_MARSHAL":
+        ok = sx_python_marshal_build(c);
+        break;
+    case "PYTHON_PICKLE":
+        ok = sx_python_pickle_build(c);
+        break;
+    case "JAVA_SERIALIZATION":
+        ok = sx_java_serialization_build(c);
+        break;
+    case "OPENSSH_PRIVATE_KEY":
+        ok = sx_openssh_private_key_build(c);
+        break;
+    case "OPENSSH_CERTIFICATE":
+        ok = sx_openssh_certificate_build(c);
+        break;
+    case "ETHEREUM_RLP":
+        ok = sx_ethereum_rlp_build(c);
+        break;
+    case "AVRO_OBJECT":
+        ok = sx_avro_object_build(c);
+        break;
+    case "DER":
+    case "X509_CERTIFICATE":
+    case "PKCS10_CSR":
+    case "PKCS12_PFX":
+    case "PKCS7_CMS":
+    case "X509_CRL":
+    case "OCSP_RESPONSE":
+    case "PKCS8_PRIVATE_KEY":
+        ok = sxbl_der(c, p, end, 0);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxbl_finish(c));
+}

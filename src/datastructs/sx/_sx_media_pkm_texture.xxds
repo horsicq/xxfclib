@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/pkm_texture/xx_pkm_texture_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_pkm_header_fields = layout([chars("magic", 4, SIGNATURE), chars("version", 2, ID), u16("texture_format", ID),
+    u16("encoded_width"), u16("encoded_height"), u16("width"), u16("height")]);
+var sxm_pkm_header = sxLayout(0x60060013, "pkm_header", BE, sxm_pkm_header_fields);
+function sx_pkm_texture_build(c, h, n) {
+    return n >= 16 && (!sxMemcmp(h, "PKM 10", 6) || !sxMemcmp(h, "PKM 20", 6)) && sxm_fixed(c, sxm_pkm_header, 16);
+}

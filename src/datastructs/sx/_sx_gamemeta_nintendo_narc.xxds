@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_narc/xx_nintendo_narc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_narc_header_fields = layout([chars("signature", 4, SIGNATURE), u16("byte_order_mark", ID), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT)]);
+var sxgm_narc_header = sxLayout(0x6027001F, "narc_header", LE, sxgm_narc_header_fields);
+var sxgm_narc_fat_fields = layout([chars("signature", 4, SIGNATURE), u32("block_size", SIZE), u32("entry_count", COUNT)]);
+var sxgm_narc_fat = sxLayout(0x60270020, "narc_fat", LE, sxgm_narc_fat_fields);
+var sxgm_narc_entry_fields = layout([u32("start_offset", OFFSET), u32("end_offset", OFFSET)]);
+var sxgm_narc_entry = sxLayout(0x60270021, "narc_entry", LE, sxgm_narc_entry_fields);
+var sxgm_narc_block_fields = layout([chars("signature", 4, ID), u32("block_size", SIZE)]);
+var sxgm_narc_block = sxLayout(0x60270022, "narc_block", LE, sxgm_narc_block_fields);
+function sxgm_narc(c) {
+    var b = [];
+    if (!sxgm_add(c, sxgm_narc_header, 0) || !sxgm_read(c, 16, b, 12) || !sxgm_add(c, sxgm_narc_fat, 16)) {
+        return false;
+    }
+    var fat = sxgm32(b, 4, false);
+    var n = sxgm32(b, 8, false);
+    if (fat < 12 || !sxgm_span(c, 16, fat) || !sxgm_table(c, sxgm_narc_entry, 28, n)) {
+        return true;
+    }
+    var p = 16 + fat;
+    if (!sxgm_read(c, p, b, 8)) {
+        return true;
+    }
+    var z = sxgm32(b, 4, false);
+    if (z < 8 || !sxgm_span(c, p, z)) {
+        return true;
+    }
+    if (!sxgm_add(c, sxgm_narc_block, p)) {
+        return false;
+    }
+    p += z;
+    if (sxgm_span(c, p, 8) && !sxgm_add(c, sxgm_narc_block, p)) {
+        return false;
+    }
+    return true;
+}
+function sx_nintendo_narc_build(c) {
+    return sxgm_narc(c);
+}

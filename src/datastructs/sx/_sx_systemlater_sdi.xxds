@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/sdi/xx_sdi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_sdi_header_fields = layout([chars("signature", 8, SIGNATURE), u64("type", ID), u64("boot_offset", OFFSET),
+    u64("boot_size", SIZE), u64("vendor_id", ID), u64("device_id", ID), field("device_model", "byte[16]", 16),
+    u64("device_role", ID), u64("reserved1", RESERVED), field("runtime_guid", "byte[16]", 16), u64("runtime_oem_revision"),
+    u64("reserved2", RESERVED), i64("page_alignment"), field("reserved3", "byte[384]", 384, RESERVED), u64("checksum", CHECKSUM)]);
+var sxsl_sdi_header = sxLayout(0x6033001B, "sdi_header", LE, sxsl_sdi_header_fields);
+var sxsl_sdi_section_fields = layout([chars("section_type", 8, ID), u64("attributes", FLAGS), i64("data_offset", OFFSET),
+    i64("data_size", SIZE), u64("partition_type", ID), field("reserved", "byte[24]", 24, RESERVED)]);
+var sxsl_sdi_section = sxLayout(0x6033001C, "sdi_section", LE, sxsl_sdi_section_fields);
+function sxsl_sdi(c) {
+    var page = [0];
+    var b = [];
+    if (!sxsl_put(c, sxsl_sdi_header, 0, 1) || !sxsl_word(c, 112, 8, false, page)) {
+        return false;
+    }
+    if (!page[0] || page[0] > 2048) {
+        return true;
+    }
+    page[0] *= 512;
+    for (var p = page[0]; p + 64 <= 2 * page[0] && c.count < 24000; p += 64) {
+        if (!sxsl_read(c, p, b, 8)) {
+            break;
+        }
+        var tag = sxsl_uint(b, 0, 8, false);
+        if (!tag) {
+            break;
+        }
+        if (!sxsl_put(c, sxsl_sdi_section, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sdi_build(c) {
+    var ok = false;
+    ok = sxsl_sdi(c);
+    return ok && sxsl_finish(c);
+}

@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/mpq/xx_mpq_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_mpq_header_v0_fields = layout([chars("magic", 4, SIGNATURE), u32("header_size", SIZE), u32("archive_size_32", SIZE),
+    u16("format_version", ID), u16("sector_shift"), u32("hash_table_offset_low", OFFSET), u32("block_table_offset_low", OFFSET),
+    u32("hash_entry_count", COUNT), u32("block_entry_count", COUNT)]);
+var sxar_mpq_header_v0 = sxLayout(0x601C0007, "mpq_header_v0", LE, sxar_mpq_header_v0_fields);
+var sxar_mpq_header_v1_fields = layout([chars("magic", 4, SIGNATURE), u32("header_size", SIZE), u32("archive_size_32", SIZE),
+    u16("format_version", ID), u16("sector_shift"), u32("hash_table_offset_low", OFFSET), u32("block_table_offset_low", OFFSET),
+    u32("hash_entry_count", COUNT), u32("block_entry_count", COUNT), u64("high_block_table_offset", OFFSET),
+    u16("hash_table_offset_high"), u16("block_table_offset_high")]);
+var sxar_mpq_header_v1 = sxLayout(0x601C0008, "mpq_header_v1", LE, sxar_mpq_header_v1_fields);
+var sxar_mpq_header_v2_fields = layout([chars("magic", 4, SIGNATURE), u32("header_size", SIZE), u32("archive_size_32", SIZE),
+    u16("format_version", ID), u16("sector_shift"), u32("hash_table_offset_low", OFFSET), u32("block_table_offset_low", OFFSET),
+    u32("hash_entry_count", COUNT), u32("block_entry_count", COUNT), u64("high_block_table_offset", OFFSET),
+    u16("hash_table_offset_high"), u16("block_table_offset_high"), u64("archive_size_64", SIZE),
+    u64("bet_table_offset", OFFSET), u64("het_table_offset", OFFSET)]);
+var sxar_mpq_header_v2 = sxLayout(0x601C0009, "mpq_header_v2", LE, sxar_mpq_header_v2_fields);
+var sxar_mpq_header_v3_fields = layout([chars("magic", 4, SIGNATURE), u32("header_size", SIZE), u32("archive_size_32", SIZE),
+    u16("format_version", ID), u16("sector_shift"), u32("hash_table_offset_low", OFFSET), u32("block_table_offset_low", OFFSET),
+    u32("hash_entry_count", COUNT), u32("block_entry_count", COUNT), u64("high_block_table_offset", OFFSET),
+    u16("hash_table_offset_high"), u16("block_table_offset_high"), u64("archive_size_64", SIZE),
+    u64("bet_table_offset", OFFSET), u64("het_table_offset", OFFSET), u64("hash_table_size", SIZE),
+    u64("block_table_size", SIZE), u64("high_block_table_size", SIZE), u64("het_table_size", SIZE), u64("bet_table_size", SIZE),
+    u32("raw_chunk_size", SIZE), bytes("block_table_md5", 16, CHECKSUM), bytes("hash_table_md5", 16, CHECKSUM),
+    bytes("high_block_table_md5", 16, CHECKSUM), bytes("bet_table_md5", 16, CHECKSUM), bytes("het_table_md5", 16, CHECKSUM),
+    bytes("header_md5", 16, CHECKSUM)]);
+var sxar_mpq_header_v3 = sxLayout(0x601C000A, "mpq_header_v3", LE, sxar_mpq_header_v3_fields);
+var sxar_mpq_high_block_entry_fields = layout([u16("file_offset_high")]);
+var sxar_mpq_high_block_entry = sxLayout(0x601C000B, "mpq_high_block_entry", LE, sxar_mpq_high_block_entry_fields);
+function sxar_mpq(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 32)) {
+        return false;
+    }
+    var v = sxar16(b, 12, false);
+    var a = [sxar_mpq_header_v0, sxar_mpq_header_v1, sxar_mpq_header_v2, sxar_mpq_header_v3];
+    var widths = [32, 44, 68, 208];
+    if (v > 3 || !sxar_read(c, 0, b, 0, widths[v]) || !sxar_add(c, a[v], 0)) {
+        return false;
+    }
+    if (v === 1) {
+        var p = sxar64(b, 32);
+        var n = sxar32(b, 28, false);
+        if (p >= sxar32(b, 4, false) && p && n <= 20000 && sxar_span(c, p, n * 2) && !sx_table(c, sxar_mpq_high_block_entry, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 2, n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_mpq_build(c) {
+    return sxar_mpq(c);
+}

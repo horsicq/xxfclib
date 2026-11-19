@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/solarispkg_zip/xx_solarispkg_zip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_solaris_zip_signature_fields = layout([chars("signature", 25, SIGNATURE)]);
+var sxir_solaris_zip_signature = sxLayout(0x60800025, "solaris_zip_signature", LE, sxir_solaris_zip_signature_fields);
+var sxir_solaris_zip_object_fields = layout([bytes("signature", 4, SIGNATURE), field("stored_object_size", "uint32le", 4, SIZE),
+    bytes("unknown_08", 4)]);
+var sxir_solaris_zip_object = sxLayout(0x60800026, "solaris_zip_object", LE, sxir_solaris_zip_object_fields);
+var sxir_solaris_zip_group_fields = layout([bytes("signature", 4, SIGNATURE), field("block_count", "uint32le", 4, COUNT),
+    field("maximum_block_size", "uint32le", 4, SIZE)]);
+var sxir_solaris_zip_group = sxLayout(0x60800027, "solaris_zip_group", LE, sxir_solaris_zip_group_fields);
+var sxir_solaris_zip_block_fields = layout([field("uncompressed_size", "uint32le", 4, SIZE),
+    field("stored_size", "uint32le", 4, SIZE), field("group_relative_offset", "uint32le", 4, OFFSET)]);
+var sxir_solaris_zip_block = sxLayout(0x60800028, "solaris_zip_block", LE, sxir_solaris_zip_block_fields);
+function sxir_solaris_zip(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (!sxir_eq(v, 0, "# PaCkAgE DaTaStReAm:zip\n", 25, end) || !sxir_row(v, sxir_solaris_zip_signature, 0, end)) {
+        return false;
+    }
+    for (var at = 512; at <= end && sxU64(end - at) >= 512; ) {
+        if (!sxir_eq(v, at, "\x19\x9ETL", 4, end)) {
+            at += 512;
+            continue;
+        }
+        var n = [0];
+        var count = [0];
+        var body = at + 512;
+        if (!sxir_u(v, at + 4, 4, false, n, end) || n[0] < 12 || !sxir_span(v, body, n[0], end) || !sxir_row(v, sxir_solaris_zip_object, at, end) || !sxir_eq(v, body, "\x19\x9ETG", 4, body + n[0]) || !sxir_u(v, body + 4, 4, false, count, body + n[0]) || !count[0] || count[0] > 262144 || !sxir_row(v, sxir_solaris_zip_group, body, body + n[0]) || !sxir_table(v, sxir_solaris_zip_block, body + 12, count[0], body + n[0])) {
+            return false;
+        }
+        var pad = 512 - sxAnd64(n[0], 511) & 511;
+        if (!sxir_span(v, body + n[0], pad, end)) {
+            return false;
+        }
+        at = body + n[0] + pad;
+    }
+    return true;
+}
+function sx_solarispkg_zip_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_solaris_zip(v);
+}

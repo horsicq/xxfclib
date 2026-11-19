@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vice_x64/xx_vice_x64_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_x64_header_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u8("version_major"), u8("version_minor"),
+    u8("device_type", ID), u8("track_count", COUNT), u8("second_side", FLAGS), u8("error_map_present", FLAGS),
+    field("reserved", "byte[22]", 22, RESERVED), chars("description", 31, STRING), u8("terminator", RESERVED)]);
+var sxse_x64_header = sxLayout(0x602F0001, "x64_header", LE, sxse_x64_header_fields);
+function sx_vice_x64_build(c) {
+    return sxse_put(c, sxse_x64_header, 0, 64, 1);
+}

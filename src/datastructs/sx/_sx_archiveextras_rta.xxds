@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/rta/xx_rta_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_rta_header_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxae_rta_header = sxLayout(0x6017000D, "rta_header", LE, sxae_rta_header_fields);
+var sxae_rta_string_size_fields = layout([u8("string_size", SIZE)]);
+var sxae_rta_string_size = sxLayout(0x6017000E, "rta_string_size", LE, sxae_rta_string_size_fields);
+var sxae_rta_member_fields = layout([u8("attributes", FLAGS), u16("date"), u16("time"), i32("unpacked_size", SIZE),
+    i32("packed_size", SIZE)]);
+var sxae_rta_member = sxLayout(0x6017000F, "rta_member", LE, sxae_rta_member_fields);
+var sxae_rta_codec_header_fields = layout([u16("magic", SIGNATURE), u8("raw_literal_flag", FLAGS), u8("marker", SIGNATURE)]);
+var sxae_rta_codec_header = sxLayout(0x60170010, "rta_codec_header", BE, sxae_rta_codec_header_fields);
+var sxae_rta_end_fields = layout([u8("marker", SIGNATURE)]);
+var sxae_rta_end = sxLayout(0x60170011, "rta_end", LE, sxae_rta_end_fields);
+function sxae_rta(c) {
+    var b = [];
+    var n = [0];
+    var p = 4;
+    if (!sx_read(c, 0, b, 4) || sxMemcmp(b, "KJd\x00", 4) || !sxae_add(c, sxae_rta_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000; i++) {
+        if (!sx_read(c, p, n, 1)) {
+            return false;
+        }
+        if (!n[0]) {
+            return sxae_add(c, sxae_rta_end, p);
+        }
+        if (!sxae_add(c, sxae_rta_string_size, p) || !sxae_bound(c, p + 1, n[0])) {
+            return false;
+        }
+        p += 1 + n[0];
+        if (!sx_read(c, p, n, 1) || !sxae_add(c, sxae_rta_string_size, p) || !sxae_bound(c, p + 1, n[0])) {
+            return false;
+        }
+        p += 1 + n[0];
+        if (!sx_read(c, p, b, 13) || !sxae_add(c, sxae_rta_member, p)) {
+            return false;
+        }
+        var z = sxae32(b, 9);
+        p += 13;
+        if (z > 2147483647 || !sxae_bound(c, p, z)) {
+            return false;
+        }
+        if (z) {
+            var h = [];
+            if (z < 4 || !sx_read(c, p, h, 4) || h[0] !== 0xB5 || h[1] !== 0x9C || h[2] > 1 || h[3] !== 255 || !sxae_add(c, sxae_rta_codec_header, p) || !sxae_data(c, p + 4, (z - 4) >>> 0)) {
+                return false;
+            }
+        }
+        p += z;
+    }
+    return false;
+}
+function sx_rta_build(c) {
+    return sxae_rta(c);
+}

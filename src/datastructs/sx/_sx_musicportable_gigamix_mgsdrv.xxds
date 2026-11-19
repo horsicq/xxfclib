@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/gigamix_mgsdrv/xx_gigamix_mgsdrv_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxportable_mgs_identity_fields = layout([chars("magic", 3, SIGNATURE), chars("version", 3, NONE), bytes("line_ending", 2)]);
+var sxportable_mgs_identity = sxLayout(0x60910018, "mgs_identity", LE, sxportable_mgs_identity_fields);
+var sxportable_mgs_identity_single_newline_fields = layout([chars("magic", 3, SIGNATURE), chars("version", 3, NONE),
+    u8("line_ending")]);
+var sxportable_mgs_identity_single_newline = sxLayout(0x60910019, "mgs_identity_single_newline", LE, sxportable_mgs_identity_single_newline_fields);
+var sxportable_mgs_text_end_fields = layout([u8("cr"), u8("lf"), u8("dos_text_eof"), u8("nul")]);
+var sxportable_mgs_text_end = sxLayout(0x6091001B, "mgs_text_end", LE, sxportable_mgs_text_end_fields);
+function sxportable_mgs(c) {
+    var h = [];
+    var tail = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxportable_read(c, 0, h, 8, end) || sxMemcmp(h, "MGS", 3) || h[6] !== 13 && h[6] !== 10) {
+        return false;
+    }
+    var start = h[6] === 13 && h[7] === 10 ? 8 : 7;
+    var limit = end < start + 256 ? end : start + 256;
+    var identity = start === 8 ? sxportable_mgs_identity : sxportable_mgs_identity_single_newline;
+    for (var p = start; p + 4 <= limit; p++) {
+        if (!sxportable_read(c, p, tail, 4, end)) {
+            return false;
+        }
+        if (!sxMemcmp(tail, "\r\n\x1A\x00", 4)) {
+            return sxportable_row(c, identity, 0, start, end) && (p === start || sxportable_row(c, sxportable_mgs_description, start, sxU64(p - start), end)) && sxportable_row(c, sxportable_mgs_text_end, p, 4, end);
+        }
+    }
+    return false;
+}
+function sx_gigamix_mgsdrv_build(c) {
+    return sxportable_mgs(c);
+}

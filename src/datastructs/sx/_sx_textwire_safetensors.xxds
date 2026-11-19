@@ -1,0 +1,177 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/safetensors/xx_safetensors_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_json_key_fields = layout([field("json_key", "utf8", 0, STRING)]);
+var sxtw_json_key = sxLayout(0x6071001A, "textwire_json_key", LE, sxtw_json_key_fields);
+var sxtw_json_string_fields = layout([field("json_string", "utf8", 0, STRING)]);
+var sxtw_json_string = sxLayout(0x6071001B, "textwire_json_string", LE, sxtw_json_string_fields);
+var sxtw_tensor_dtype_fields = layout([field("tensor_dtype", "utf8", 0, STRING)]);
+var sxtw_tensor_dtype = sxLayout(0x6071001C, "textwire_tensor_dtype", LE, sxtw_tensor_dtype_fields);
+var sxtw_shape_dimension_fields = layout([field("shape_dimension", "ascii_signed", 0, COUNT)]);
+var sxtw_shape_dimension = sxLayout(0x60710031, "textwire_shape_dimension", LE, sxtw_shape_dimension_fields);
+var sxtw_tensor_data_offset_fields = layout([field("tensor_data_offset", "ascii_signed", 0, OFFSET)]);
+var sxtw_tensor_data_offset = sxLayout(0x60710041, "textwire_tensor_data_offset", LE, sxtw_tensor_data_offset_fields);
+var sxtw_safetensors_header_fields = layout([field("json_header_bytes", "uint64le", 8, SIZE)]);
+var sxtw_safetensors_header = sxLayout(0x60710049, "textwire_safetensors_header", LE, sxtw_safetensors_header_fields);
+function sxtw_json_key_matches(q, a, n, want) {
+    var k = 0;
+    var end = a + n;
+    while (a < end) {
+        var c = q.b[a++];
+        if (c === 92) {
+            if (a === end) {
+                return false;
+            }
+            c = q.b[a++];
+            if (c === 117 /*u*/) {
+                var v = [0];
+                if (end - a < 4 || !sxtw_number(q, a, 4, 16, v) || v[0] > 127) {
+                    return false;
+                }
+                c = v[0] >>> 0;
+                a += 4;
+            } else if (c === 98 /*b*/) {
+                c = 8;
+            } else if (c === 102 /*f*/) {
+                c = 12;
+            } else if (c === 110 /*n*/) {
+                c = 10;
+            } else if (c === 114 /*r*/) {
+                c = 13;
+            } else if (c === 116 /*t*/) {
+                c = 9;
+            } else if (c !== 34 /*"*/ && c !== 92 && c !== 47) {
+                return false;
+            }
+        }
+        if (!sxAt(want, k) || (sxAt(want, k++) & 0xFF) !== c) {
+            return false;
+        }
+    }
+    return sxAt(want, k) === 0;
+}
+function sxtw_safetensors(q) {
+    if (q.n < 8) {
+        return false;
+    }
+    var n = sxGetU64(q.b, 8, 0, false);
+    if (n > sxU64((q.n < 0 ? q.n + SX_U64_MAX : q.n) - 8) || n > 1048576) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_safetensors_header, 0, 8)) {
+            return false;
+        }
+    }
+    var p = 8;
+    var end = 8 + (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    var depth = 0;
+    var array = 0;
+    var metadata = false;
+    var number = sxtw_integer_value;
+    var string = sxtw_json_string;
+    while (p < end) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (false) {
+            return false;
+        }
+        var c = q.b[p];
+        if (c === 34 /*"*/) {
+            var a = ++p;
+            while (p < end && q.b[p] !== 34 /*"*/) {
+                if (q.b[p] === 92) {
+                    if (++p === end) {
+                        return false;
+                    }
+                }
+                p++;
+            }
+            if (p === end) {
+                return false;
+            }
+            var z = p - a;
+            p++;
+            var next = p;
+            while (next < end && sxtw_space(q.b[next])) {
+                next++;
+            }
+            var key = next < end && q.b[next] === 58 /*:*/;
+            if (key) {
+                {
+                    if (!sxtw_emit(q, sxtw_json_key, a, z)) {
+                        return false;
+                    }
+                }
+                number = sxtw_integer_value;
+                string = sxtw_json_string;
+                if (depth === 1) {
+                    metadata = sxtw_json_key_matches(q, a, z, "__metadata__");
+                }
+                if (depth === 2 && !metadata) {
+                    if (sxtw_json_key_matches(q, a, z, "data_offsets")) {
+                        number = sxtw_tensor_data_offset;
+                    } else if (sxtw_json_key_matches(q, a, z, "shape")) {
+                        number = sxtw_shape_dimension;
+                    } else if (sxtw_json_key_matches(q, a, z, "dtype")) {
+                        string = sxtw_tensor_dtype;
+                    }
+                }
+            } else if (!sxtw_emit(q, string, a, z)) {
+                return false;
+            }
+            continue;
+        }
+        if (c === 123 /*{*/) {
+            depth++;
+            p++;
+            continue;
+        }
+        if (c === 125 /*}*/) {
+            if (!depth) {
+                return false;
+            }
+            depth--;
+            number = sxtw_integer_value;
+            string = sxtw_json_string;
+            p++;
+            continue;
+        }
+        if (c === 91 /*[*/) {
+            array++;
+            p++;
+            continue;
+        }
+        if (c === 93 /*]*/) {
+            if (!array) {
+                return false;
+            }
+            array--;
+            p++;
+            continue;
+        }
+        if (c >= 48 /*0*/ && c <= 57 /*9*/) {
+            a = p;
+            while (p < end && q.b[p] >= 48 /*0*/ && q.b[p] <= 57 /*9*/) {
+                p++;
+            }
+            if (!sxtw_emit(q, number, a, p - a)) {
+                return false;
+            }
+            continue;
+        }
+        if (c === 58 /*:*/ || c === 44 /*,*/ || sxtw_space(c)) {
+            p++;
+            continue;
+        }
+        return false;
+    }
+    return depth === 0 && array === 0;
+}
+function sx_safetensors_build(q) {
+    return sxtw_safetensors(q);
+}

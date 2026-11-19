@@ -1,0 +1,127 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/dec_sixel/xx_dec_sixel_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_sixel_parameter_fields = layout([field("sixel_parameter", "ascii_signed", 0)]);
+var sxtw_sixel_parameter = sxLayout(0x60710032, "textwire_sixel_parameter", LE, sxtw_sixel_parameter_fields);
+var sxtw_aspect_numerator_fields = layout([field("aspect_numerator", "ascii_signed", 0)]);
+var sxtw_aspect_numerator = sxLayout(0x60710033, "textwire_aspect_numerator", LE, sxtw_aspect_numerator_fields);
+var sxtw_aspect_denominator_fields = layout([field("aspect_denominator", "ascii_signed", 0)]);
+var sxtw_aspect_denominator = sxLayout(0x60710034, "textwire_aspect_denominator", LE, sxtw_aspect_denominator_fields);
+var sxtw_width_fields = layout([field("width", "ascii_signed", 0)]);
+var sxtw_width = sxLayout(0x60710035, "textwire_width", LE, sxtw_width_fields);
+var sxtw_height_fields = layout([field("height", "ascii_signed", 0)]);
+var sxtw_height = sxLayout(0x60710036, "textwire_height", LE, sxtw_height_fields);
+var sxtw_color_register_fields = layout([field("color_register", "ascii_signed", 0)]);
+var sxtw_color_register = sxLayout(0x60710037, "textwire_color_register", LE, sxtw_color_register_fields);
+var sxtw_color_mode_fields = layout([field("color_mode", "ascii_signed", 0)]);
+var sxtw_color_mode = sxLayout(0x60710038, "textwire_color_mode", LE, sxtw_color_mode_fields);
+var sxtw_red_percent_fields = layout([field("red_percent", "ascii_signed", 0)]);
+var sxtw_red_percent = sxLayout(0x60710039, "textwire_red_percent", LE, sxtw_red_percent_fields);
+var sxtw_green_percent_fields = layout([field("green_percent", "ascii_signed", 0)]);
+var sxtw_green_percent = sxLayout(0x6071003A, "textwire_green_percent", LE, sxtw_green_percent_fields);
+var sxtw_blue_percent_fields = layout([field("blue_percent", "ascii_signed", 0)]);
+var sxtw_blue_percent = sxLayout(0x6071003B, "textwire_blue_percent", LE, sxtw_blue_percent_fields);
+var sxtw_repeat_count_fields = layout([field("repeat_count", "ascii_signed", 0, COUNT)]);
+var sxtw_repeat_count = sxLayout(0x6071003C, "textwire_repeat_count", LE, sxtw_repeat_count_fields);
+var sxtw_sixel_symbol_fields = layout([u8("symbol")]);
+var sxtw_sixel_symbol = sxLayout(0x60710047, "textwire_sixel_symbol", LE, sxtw_sixel_symbol_fields);
+function sxtw_sixel_number(q, pos, l) {
+    var a = pos[0];
+    while (pos[0] < q.n && q.b[pos[0]] >= 48 /*0*/ && q.b[pos[0]] <= 57 /*9*/) {
+        pos[0]++;
+    }
+    return pos[0] > a && sxtw_emit(q, l, a, pos[0] - a);
+}
+function sxtw_sixel(q) {
+    if (q.n < 12 || q.b[0] !== 27 || q.b[1] !== 80 /*P*/) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_signature, 0, 2)) {
+            return false;
+        }
+    }
+    var p = [2];
+    while (p[0] < q.n && q.b[p[0]] !== 113 /*q*/) {
+        if (!sxtw_sixel_number(q, p, sxtw_sixel_parameter)) {
+            return false;
+        }
+        if (p[0] < q.n && q.b[p[0]] === 59 /*;*/) {
+            p[0]++;
+        }
+    }
+    if (q.n - p[0] < 2 || q.b[p[0]++] !== 113 /*q*/ || q.b[p[0]++] !== 34 /*"*/) {
+        return false;
+    }
+    var l = [sxtw_aspect_numerator, sxtw_aspect_denominator, sxtw_width, sxtw_height];
+    for (var i = 0; i < 4; i++) {
+        if (!sxtw_sixel_number(q, p, l[i])) {
+            return false;
+        }
+        if (i < 3 && (p[0] === q.n || q.b[p[0]++] !== 59 /*;*/)) {
+            return false;
+        }
+    }
+    while (p[0] < q.n - 2) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var c = q.b[p[0]++];
+        if (c === 35 /*#*/) {
+            if (!sxtw_sixel_number(q, p, sxtw_color_register)) {
+                return false;
+            }
+            if (p[0] < q.n && q.b[p[0]] === 59 /*;*/) {
+                p[0]++;
+                var color = [sxtw_color_mode, sxtw_red_percent, sxtw_green_percent, sxtw_blue_percent];
+                for (i = 0; i < 4; i++) {
+                    if (!sxtw_sixel_number(q, p, color[i])) {
+                        return false;
+                    }
+                    if (i < 3 && (p[0] === q.n || q.b[p[0]++] !== 59 /*;*/)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (c === 33 /*!*/) {
+            if (!sxtw_sixel_number(q, p, sxtw_repeat_count) || p[0] >= q.n - 2) {
+                return false;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_sixel_symbol, p[0], 1)) {
+                    return false;
+                }
+            }
+            p[0]++;
+        } else if (c === 36 /*$*/ || c === 45 /*-*/) {
+            {
+                if (!sxtw_emit(q, sxtw_control, p[0] - 1, 1)) {
+                    return false;
+                }
+            }
+        } else if (c >= 63 /*?*/ && c <= 126 /*~*/) {
+            {
+                if (!sxtw_emit(q, sxtw_sixel_symbol, p[0] - 1, 1)) {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+    }
+    if (p[0] !== q.n - 2 || q.b[p[0]] !== 27 || q.b[p[0] + 1] !== 92) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_signature, p[0], 2)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_dec_sixel_build(q) {
+    return sxtw_sixel(q);
+}

@@ -1,0 +1,162 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/liss_famitracker_ftm/xx_liss_famitracker_ftm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmp_famitracker_file_header_fields = layout([chars("signature", 18, SIGNATURE), u32("format_version")]);
+var sxmp_famitracker_file_header = sxLayout(0x607B0002, "famitracker_file_header", LE, sxmp_famitracker_file_header_fields);
+var sxmp_famitracker_block_header_fields = layout([chars("block_id", 16, ID), i32("block_version"), i32("block_size", SIZE)]);
+var sxmp_famitracker_block_header = sxLayout(0x607B0003, "famitracker_block_header", LE, sxmp_famitracker_block_header_fields);
+var sxmp_famitracker_end_fields = layout([chars("end_marker", 3, SIGNATURE)]);
+var sxmp_famitracker_end = sxLayout(0x607B0004, "famitracker_end", LE, sxmp_famitracker_end_fields);
+var sxmp_famitracker_info_fields = layout([chars("song_name", 32, STRING), chars("artist", 32, STRING),
+    chars("copyright", 32, STRING)]);
+var sxmp_famitracker_info = sxLayout(0x607B0005, "famitracker_info", LE, sxmp_famitracker_info_fields);
+var sxmp_famitracker_parameters_v1_fields = layout([i32("initial_speed"), i32("channel_count", COUNT), i32("machine", ID),
+    i32("engine_speed")]);
+var sxmp_famitracker_parameters_v1 = sxLayout(0x607B0006, "famitracker_parameters_v1", LE, sxmp_famitracker_parameters_v1_fields);
+var sxmp_famitracker_parameters_v2_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed")]);
+var sxmp_famitracker_parameters_v2 = sxLayout(0x607B0007, "famitracker_parameters_v2", LE, sxmp_famitracker_parameters_v2_fields);
+var sxmp_famitracker_parameters_v3_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed"), i32("vibrato_style", ID)]);
+var sxmp_famitracker_parameters_v3 = sxLayout(0x607B0008, "famitracker_parameters_v3", LE, sxmp_famitracker_parameters_v3_fields);
+var sxmp_famitracker_parameters_v4_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed"), i32("vibrato_style", ID), i32("first_highlight"), i32("second_highlight")]);
+var sxmp_famitracker_parameters_v4 = sxLayout(0x607B0009, "famitracker_parameters_v4", LE, sxmp_famitracker_parameters_v4_fields);
+var sxmp_famitracker_parameters_v5_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed"), i32("vibrato_style", ID), i32("first_highlight"), i32("second_highlight")]);
+var sxmp_famitracker_parameters_v5 = sxLayout(0x607B000A, "famitracker_parameters_v5", LE, sxmp_famitracker_parameters_v5_fields);
+var sxmp_famitracker_parameters_v5_n163_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed"), i32("vibrato_style", ID), i32("first_highlight"), i32("second_highlight"),
+    i32("namco_channel_count", COUNT)]);
+var sxmp_famitracker_parameters_v5_n163 = sxLayout(0x607B000B, "famitracker_parameters_v5_n163", LE, sxmp_famitracker_parameters_v5_n163_fields);
+var sxmp_famitracker_parameters_v6_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed"), i32("vibrato_style", ID), i32("first_highlight"), i32("second_highlight"),
+    i32("speed_split_point")]);
+var sxmp_famitracker_parameters_v6 = sxLayout(0x607B000C, "famitracker_parameters_v6", LE, sxmp_famitracker_parameters_v6_fields);
+var sxmp_famitracker_parameters_v6_n163_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("engine_speed"), i32("vibrato_style", ID), i32("first_highlight"), i32("second_highlight"),
+    i32("namco_channel_count", COUNT), i32("speed_split_point")]);
+var sxmp_famitracker_parameters_v6_n163 = sxLayout(0x607B000D, "famitracker_parameters_v6_n163", LE, sxmp_famitracker_parameters_v6_n163_fields);
+var sxmp_famitracker_parameters_v7_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("playback_rate_type", ID), i32("playback_rate"), i32("vibrato_style", ID), i32("speed_split_point")]);
+var sxmp_famitracker_parameters_v7 = sxLayout(0x607B000E, "famitracker_parameters_v7", LE, sxmp_famitracker_parameters_v7_fields);
+var sxmp_famitracker_parameters_v7_n163_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("playback_rate_type", ID), i32("playback_rate"), i32("vibrato_style", ID),
+    i32("namco_channel_count", COUNT), i32("speed_split_point")]);
+var sxmp_famitracker_parameters_v7_n163 = sxLayout(0x607B000F, "famitracker_parameters_v7_n163", LE, sxmp_famitracker_parameters_v7_n163_fields);
+var sxmp_famitracker_parameters_v8_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("playback_rate_type", ID), i32("playback_rate"), i32("vibrato_style", ID), i32("speed_split_point"),
+    i8("detune_semitone"), i8("detune_cent")]);
+var sxmp_famitracker_parameters_v8 = sxLayout(0x607B0010, "famitracker_parameters_v8", LE, sxmp_famitracker_parameters_v8_fields);
+var sxmp_famitracker_parameters_v8_n163_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("playback_rate_type", ID), i32("playback_rate"), i32("vibrato_style", ID),
+    i32("namco_channel_count", COUNT), i32("speed_split_point"), i8("detune_semitone"), i8("detune_cent")]);
+var sxmp_famitracker_parameters_v8_n163 = sxLayout(0x607B0011, "famitracker_parameters_v8_n163", LE, sxmp_famitracker_parameters_v8_n163_fields);
+var sxmp_famitracker_parameters_v9_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("playback_rate_type", ID), i32("playback_rate"), i32("vibrato_style", ID),
+    i32("hardware_sweep_reset", FLAGS), i32("speed_split_point")]);
+var sxmp_famitracker_parameters_v9 = sxLayout(0x607B0012, "famitracker_parameters_v9", LE, sxmp_famitracker_parameters_v9_fields);
+var sxmp_famitracker_parameters_v9_n163_fields = layout([u8("expansion_chips", FLAGS), i32("channel_count", COUNT),
+    i32("machine", ID), i32("playback_rate_type", ID), i32("playback_rate"), i32("vibrato_style", ID),
+    i32("hardware_sweep_reset", FLAGS), i32("namco_channel_count", COUNT), i32("speed_split_point")]);
+var sxmp_famitracker_parameters_v9_n163 = sxLayout(0x607B0013, "famitracker_parameters_v9_n163", LE, sxmp_famitracker_parameters_v9_n163_fields);
+var sxmp_famitracker_track_count_fields = layout([u8("tracks_minus_one")]);
+var sxmp_famitracker_track_count = sxLayout(0x607B0014, "famitracker_track_count", LE, sxmp_famitracker_track_count_fields);
+var sxmp_famitracker_channel_type_fields = layout([u8("channel_type", ID)]);
+var sxmp_famitracker_channel_type = sxLayout(0x607B0015, "famitracker_channel_type", LE, sxmp_famitracker_channel_type_fields);
+var sxmp_famitracker_effect_columns_fields = layout([u8("effect_columns_minus_one")]);
+var sxmp_famitracker_effect_columns = sxLayout(0x607B0016, "famitracker_effect_columns", LE, sxmp_famitracker_effect_columns_fields);
+function sxmp_ftm_params(version, n163) {
+    switch (version) {
+    case 1:
+        return sxmp_famitracker_parameters_v1;
+    case 2:
+        return sxmp_famitracker_parameters_v2;
+    case 3:
+        return sxmp_famitracker_parameters_v3;
+    case 4:
+        return sxmp_famitracker_parameters_v4;
+    case 5:
+        return n163 ? sxmp_famitracker_parameters_v5_n163 : sxmp_famitracker_parameters_v5;
+    case 6:
+        return n163 ? sxmp_famitracker_parameters_v6_n163 : sxmp_famitracker_parameters_v6;
+    case 7:
+        return n163 ? sxmp_famitracker_parameters_v7_n163 : sxmp_famitracker_parameters_v7;
+    case 8:
+        return n163 ? sxmp_famitracker_parameters_v8_n163 : sxmp_famitracker_parameters_v8;
+    case 9:
+        return n163 ? sxmp_famitracker_parameters_v9_n163 : sxmp_famitracker_parameters_v9;
+    default:
+        return null;
+    }
+}
+function sxmp_famitracker(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 22;
+    var channels = [0];
+    if (!sxmp_row(v, sxmp_famitracker_file_header, 0, e)) {
+        return false;
+    }
+    while (p < e && v.c.count < 24000) {
+        if (sxmp_eq(v, p, "END", 3, e)) {
+            return sxmp_row(v, sxmp_famitracker_end, p, e);
+        }
+        var z = [0];
+        var version = [0];
+        if (!sxmp_row(v, sxmp_famitracker_block_header, p, e) || !sxmp_u(v, p + 16, 4, version, e) || !sxmp_u(v, p + 20, 4, z, e) || version[0] > 2147483647 || z[0] > 2147483647 || !sxmp_span(v, p + 24, z[0], e)) {
+            return false;
+        }
+        var a = [p + 24];
+        var end = a[0] + z[0];
+        if (sxmp_eq(v, p, "PARAMS\x00", 7, e)) {
+            var chips = [0];
+            var l;
+            if (version[0] !== 1 && !sxmp_u(v, a[0], 1, chips, end)) {
+                return false;
+            }
+            if (!sxmp_u(v, a[0] + (version[0] === 1 ? 4 : 1), 4, channels, end) || !channels[0] || channels[0] > 256) {
+                return false;
+            }
+            l = sxmp_ftm_params(version[0] >>> 0, channels[0] !== 5 && sxAnd64(chips[0], 16) !== 0);
+            if (l !== null && !sxmp_row(v, l, a[0], end)) {
+                return false;
+            }
+        } else if (sxmp_eq(v, p, "INFO\x00", 5, e)) {
+            if (version[0] === 1 && !sxmp_row(v, sxmp_famitracker_info, a[0], end)) {
+                return false;
+            }
+        } else if (sxmp_eq(v, p, "HEADER\x00", 7, e) && version[0] >= 1 && version[0] <= 3) {
+            var tracks = [1];
+            if (version[0] >= 2) {
+                if (!sxmp_row(v, sxmp_famitracker_track_count, a[0], end) || !sxmp_u(v, a[0], 1, tracks, end)) {
+                    return false;
+                }
+                tracks[0]++;
+                a[0]++;
+            }
+            if (version[0] >= 3) {
+                for (var i = 0; i < tracks[0]; i++) {
+                    if (!sxmp_string(v, sxmp_music_project_name, a, end)) {
+                        return false;
+                    }
+                }
+            }
+            if (channels[0]) {
+                for (i = 0; i < channels[0]; i++) {
+                    if (!sxmp_row(v, sxmp_famitracker_channel_type, a[0], end) || !sxmp_table(v, sxmp_famitracker_effect_columns, a[0] + 1, tracks[0], end)) {
+                        return false;
+                    }
+                    a[0] += tracks[0] + 1;
+                }
+            }
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_liss_famitracker_ftm_build(v) {
+    return sxmp_famitracker(v);
+}

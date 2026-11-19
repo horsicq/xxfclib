@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/aiff/xx_aiff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_aiff_form_header_fields = layout([chars("magic", 4, SIGNATURE), u32("size", SIZE), chars("form_type", 4, ID)]);
+var sx_c_aiff_form_header = sxLayout(0x60020041, "aiff_form_header", BE, sx_c_aiff_form_header_fields);
+var sx_c_aiff_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("chunk_size", SIZE)]);
+var sx_c_aiff_chunk_header = sxLayout(0x60020042, "aiff_chunk_header", BE, sx_c_aiff_chunk_header_fields);
+var sx_c_aiff_common_chunk_fields = layout([i16("channels", COUNT), u32("sample_frames", COUNT), i16("sample_size_bits", COUNT),
+    blob("sample_rate_extended80", 10)]);
+var sx_c_aiff_common_chunk = sxLayout(0x60020043, "aiff_common_chunk", BE, sx_c_aiff_common_chunk_fields);
+var sx_c_aifc_compression_type_fields = layout([chars("compression_type", 4, ID)]);
+var sx_c_aifc_compression_type = sxLayout(0x60020044, "aifc_compression_type", BE, sx_c_aifc_compression_type_fields);
+var sx_c_aiff_sound_data_header_fields = layout([u32("offset", OFFSET), u32("block_size", SIZE)]);
+var sx_c_aiff_sound_data_header = sxLayout(0x60020045, "aiff_sound_data_header", BE, sx_c_aiff_sound_data_header_fields);
+var sx_c_aiff_format_version_fields = layout([u32("timestamp", TIMESTAMP)]);
+var sx_c_aiff_format_version = sxLayout(0x60020046, "aiff_format_version", BE, sx_c_aiff_format_version_fields);
+function sx_c_aiff(c) {
+    var h = [];
+    var n;
+    var at = 12;
+    var end;
+    var compressed;
+    if (!sx_read(c, 0, h, 12) || sxMemcmp(h, "FORM", 4) || sxMemcmpAt(h, 8, "AIFF", 0, 4) && sxMemcmpAt(h, 8, "AIFC", 0, 4)) {
+        return false;
+    }
+    compressed = !sxMemcmpAt(h, 8, "AIFC", 0, 4);
+    n = sxGetU32At(h, 4, 4, 0, true);
+    end = 8 + n;
+    if (n < 4 || end > c.size || !sx_add(c, sx_c_aiff_form_header, 0, 12)) {
+        return false;
+    }
+    while (at < end) {
+        var id = [];
+        var len;
+        var width = 0;
+        var body;
+        var l = null;
+        if (end - at < 8 || !sx_read(c, at, id, 4) || (len = sx_u32(c, at + 4, true)) === null || len > (end - at - 8 < 0 ? end - at - 8 + SX_U64_MAX : end - at - 8) || !sx_add(c, sx_c_aiff_chunk_header, at, 8)) {
+            return false;
+        }
+        body = at + 8;
+        if (!sxMemcmp(id, "COMM", 4)) {
+            if (len < 18 || !sx_add(c, sx_c_aiff_common_chunk, body, 18)) {
+                return false;
+            }
+            width = 18;
+            if (compressed) {
+                if (len < 22 || !sx_add(c, sx_c_aifc_compression_type, body + 18, 4)) {
+                    return false;
+                }
+                width = 22;
+            }
+        } else if (!sxMemcmp(id, "SSND", 4)) {
+            l = sx_c_aiff_sound_data_header;
+            width = 8;
+        } else if (!sxMemcmp(id, "FVER", 4)) {
+            l = sx_c_aiff_format_version;
+            width = 4;
+        }
+        if (width > len || l !== null && !sx_add(c, l, body, width) || !sx_raw(c, body + width, (len - width) >>> 0)) {
+            return false;
+        }
+        at = body + len;
+        if (len & 1 && at < end) {
+            if (!sx_raw(c, at, 1)) {
+                return false;
+            }
+            ++at;
+        }
+    }
+    return at === end && sx_raw(c, end, c.size - end);
+}
+function sx_aiff_build(c) {
+    return sx_c_aiff(c);
+}

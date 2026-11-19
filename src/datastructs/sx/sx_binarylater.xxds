@@ -1,0 +1,157 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binarylater.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_binarylater");
+include("_sx_binarylater_amazon_ion_binary");
+include("_sx_binarylater_avro_object");
+include("_sx_binarylater_cbor");
+include("_sx_binarylater_erlang_external_term");
+include("_sx_binarylater_ethereum_rlp");
+include("_sx_binarylater_java_serialization");
+include("_sx_binarylater_mongodb_bson");
+include("_sx_binarylater_msgpack");
+include("_sx_binarylater_openssh_certificate");
+include("_sx_binarylater_openssh_private_key");
+include("_sx_binarylater_python_marshal");
+include("_sx_binarylater_python_pickle");
+include("_sx_binarylater_thrift_compact");
+include("_sx_binarylater_ubjson");
+
+function fileTypes() { return ["AVRO_OBJECT", "MONGODB_BSON", "CBOR", "PYTHON_PICKLE", "PYTHON_MARSHAL", "MSGPACK", "UBJSON",
+    "ERLANG_EXTERNAL_TERM", "PKCS7_CMS", "AMAZON_ION_BINARY", "THRIFT_COMPACT", "X509_CERTIFICATE", "PKCS10_CSR", "PKCS12_PFX",
+    "OPENSSH_PRIVATE_KEY", "JAVA_SERIALIZATION", "X509_CRL", "OCSP_RESPONSE", "PKCS8_PRIVATE_KEY", "OPENSSH_CERTIFICATE",
+    "ETHEREUM_RLP", "DER"]; }
+
+var sx_binarylater_layouts = [sxbl_wire_uint8_le, sxbl_wire_int8_le, sxbl_wire_uint16_le, sxbl_wire_int16_le,
+    sxbl_wire_uint24_le, sxbl_wire_int24_le, sxbl_wire_uint32_le, sxbl_wire_int32_le, sxbl_wire_uint40_le, sxbl_wire_int40_le,
+    sxbl_wire_uint48_le, sxbl_wire_int48_le, sxbl_wire_uint56_le, sxbl_wire_int56_le, sxbl_wire_uint64_le, sxbl_wire_int64_le,
+    sxbl_wire_float32_le, sxbl_wire_float64_le, sxbl_wire_byte_size1_le, sxbl_wire_item_count1_le, sxbl_wire_byte_size2_le,
+    sxbl_wire_item_count2_le, sxbl_wire_byte_size4_le, sxbl_wire_item_count4_le, sxbl_wire_byte_size8_le,
+    sxbl_wire_item_count8_le, sxbl_wire_uint8_be, sxbl_wire_int8_be, sxbl_wire_uint16_be, sxbl_wire_int16_be,
+    sxbl_wire_uint24_be, sxbl_wire_int24_be, sxbl_wire_uint32_be, sxbl_wire_int32_be, sxbl_wire_uint40_be, sxbl_wire_int40_be,
+    sxbl_wire_uint48_be, sxbl_wire_int48_be, sxbl_wire_uint56_be, sxbl_wire_int56_be, sxbl_wire_uint64_be, sxbl_wire_int64_be,
+    sxbl_wire_float32_be, sxbl_wire_float64_be, sxbl_wire_byte_size1_be, sxbl_wire_item_count1_be, sxbl_wire_byte_size2_be,
+    sxbl_wire_item_count2_be, sxbl_wire_byte_size4_be, sxbl_wire_item_count4_be, sxbl_wire_byte_size8_be,
+    sxbl_wire_item_count8_be, sxbl_bson_tag, sxbl_cbor_tag, sxbl_msgpack_tag, sxbl_ubjson_tag, sxbl_etf_tag, sxbl_ion_tag,
+    sxbl_thrift_field_tag, sxbl_thrift_collection_tag, sxbl_thrift_map_tag, sxbl_pickle_tag, sxbl_marshal_tag, sxbl_java_tag,
+    sxbl_rlp_tag, sxbl_wire_byte_size_var1, sxbl_wire_item_count_var1, sxbl_wire_integer_var1, sxbl_wire_sequence_var1,
+    sxbl_wire_unsigned_size_var1, sxbl_wire_unsigned_count_var1, sxbl_wire_field_id_var1, sxbl_wire_byte_size_var2,
+    sxbl_wire_item_count_var2, sxbl_wire_integer_var2, sxbl_wire_sequence_var2, sxbl_wire_unsigned_size_var2,
+    sxbl_wire_unsigned_count_var2, sxbl_wire_field_id_var2, sxbl_wire_byte_size_var3, sxbl_wire_item_count_var3,
+    sxbl_wire_integer_var3, sxbl_wire_sequence_var3, sxbl_wire_unsigned_size_var3, sxbl_wire_unsigned_count_var3,
+    sxbl_wire_field_id_var3, sxbl_wire_byte_size_var4, sxbl_wire_item_count_var4, sxbl_wire_integer_var4,
+    sxbl_wire_sequence_var4, sxbl_wire_unsigned_size_var4, sxbl_wire_unsigned_count_var4, sxbl_wire_field_id_var4,
+    sxbl_wire_byte_size_var5, sxbl_wire_item_count_var5, sxbl_wire_integer_var5, sxbl_wire_sequence_var5,
+    sxbl_wire_unsigned_size_var5, sxbl_wire_unsigned_count_var5, sxbl_wire_field_id_var5, sxbl_wire_byte_size_var6,
+    sxbl_wire_item_count_var6, sxbl_wire_integer_var6, sxbl_wire_sequence_var6, sxbl_wire_unsigned_size_var6,
+    sxbl_wire_unsigned_count_var6, sxbl_wire_field_id_var6, sxbl_wire_byte_size_var7, sxbl_wire_item_count_var7,
+    sxbl_wire_integer_var7, sxbl_wire_sequence_var7, sxbl_wire_unsigned_size_var7, sxbl_wire_unsigned_count_var7,
+    sxbl_wire_field_id_var7, sxbl_wire_byte_size_var8, sxbl_wire_item_count_var8, sxbl_wire_integer_var8,
+    sxbl_wire_sequence_var8, sxbl_wire_unsigned_size_var8, sxbl_wire_unsigned_count_var8, sxbl_wire_field_id_var8,
+    sxbl_wire_byte_size_var9, sxbl_wire_item_count_var9, sxbl_wire_integer_var9, sxbl_wire_sequence_var9,
+    sxbl_wire_unsigned_size_var9, sxbl_wire_unsigned_count_var9, sxbl_wire_field_id_var9, sxbl_wire_byte_size_var10,
+    sxbl_wire_item_count_var10, sxbl_wire_integer_var10, sxbl_wire_sequence_var10, sxbl_wire_unsigned_size_var10,
+    sxbl_wire_unsigned_count_var10, sxbl_wire_field_id_var10, sxbl_bson_document_size, sxbl_bson_string_size,
+    sxbl_bson_terminator, sxbl_bson_binary_header, sxbl_bson_object_id, sxbl_bson_timestamp, sxbl_bson_decimal128,
+    sxbl_bson_bool, sxbl_bson_code_scope_size, sxbl_bson_datetime, sxbl_cbor_self_describe, sxbl_cbor_half_float,
+    sxbl_msgpack_extension_type, sxbl_msgpack_timestamp64, sxbl_msgpack_timestamp96, sxbl_ubjson_optimized_type,
+    sxbl_etf_version, sxbl_etf_big_sign, sxbl_etf_bit_count, sxbl_etf_old_float, sxbl_etf_pid_old, sxbl_etf_pid_new,
+    sxbl_etf_port_old, sxbl_etf_port_new, sxbl_etf_port_v4, sxbl_etf_reference_id, sxbl_etf_creation1, sxbl_etf_creation4,
+    sxbl_ion_version, sxbl_ion_length1, sxbl_ion_field_id1, sxbl_ion_annotation_length1, sxbl_ion_annotation_id1,
+    sxbl_ion_decimal_exponent1, sxbl_ion_length2, sxbl_ion_field_id2, sxbl_ion_annotation_length2, sxbl_ion_annotation_id2,
+    sxbl_ion_decimal_exponent2, sxbl_ion_length3, sxbl_ion_field_id3, sxbl_ion_annotation_length3, sxbl_ion_annotation_id3,
+    sxbl_ion_decimal_exponent3, sxbl_ion_length4, sxbl_ion_field_id4, sxbl_ion_annotation_length4, sxbl_ion_annotation_id4,
+    sxbl_ion_decimal_exponent4, sxbl_ion_length5, sxbl_ion_field_id5, sxbl_ion_annotation_length5, sxbl_ion_annotation_id5,
+    sxbl_ion_decimal_exponent5, sxbl_ion_length6, sxbl_ion_field_id6, sxbl_ion_annotation_length6, sxbl_ion_annotation_id6,
+    sxbl_ion_decimal_exponent6, sxbl_ion_length7, sxbl_ion_field_id7, sxbl_ion_annotation_length7, sxbl_ion_annotation_id7,
+    sxbl_ion_decimal_exponent7, sxbl_ion_length8, sxbl_ion_field_id8, sxbl_ion_annotation_length8, sxbl_ion_annotation_id8,
+    sxbl_ion_decimal_exponent8, sxbl_ion_length9, sxbl_ion_field_id9, sxbl_ion_annotation_length9, sxbl_ion_annotation_id9,
+    sxbl_ion_decimal_exponent9, sxbl_ion_length10, sxbl_ion_field_id10, sxbl_ion_annotation_length10, sxbl_ion_annotation_id10,
+    sxbl_ion_decimal_exponent10, sxbl_thrift_message, sxbl_thrift_uuid, sxbl_pickle_protocol, sxbl_pickle_frame_size,
+    sxbl_pickle_memo1, sxbl_pickle_memo4, sxbl_pickle_signed_length, sxbl_marshal_signed_count, sxbl_marshal_long_digit,
+    sxbl_marshal_reference, sxbl_marshal_count, sxbl_marshal_string_size, sxbl_marshal_complex, sxbl_java_stream,
+    sxbl_java_handle, sxbl_java_array_count, sxbl_java_class_fields, sxbl_der_header_short, sxbl_der_header_long1,
+    sxbl_der_header_long2, sxbl_der_header_long3, sxbl_der_header_long4, sxbl_der_unused_bits, sxbl_der_boolean,
+    sxbl_der_utc_time, sxbl_der_generalized_time, sxbl_openssh_key_magic, sxbl_ssh_string_size, sxbl_ssh_key_count,
+    sxbl_ssh_checkints, sxbl_ssh_certificate_serial, sxbl_ssh_certificate_validity, sxbl_ssh_padding, sxbl_avro_magic,
+    sxbl_avro_sync, sxbl_bson_legacy_binary_size, sxbl_msgpack_timestamp32, sxbl_ion_negative_magnitude1,
+    sxbl_rlp_payload_size1, sxbl_ion_negative_magnitude2, sxbl_rlp_payload_size2, sxbl_ion_negative_magnitude3,
+    sxbl_rlp_payload_size3, sxbl_ion_negative_magnitude4, sxbl_rlp_payload_size4, sxbl_ion_negative_magnitude5,
+    sxbl_rlp_payload_size5, sxbl_ion_negative_magnitude6, sxbl_rlp_payload_size6, sxbl_ion_negative_magnitude7,
+    sxbl_rlp_payload_size7, sxbl_ion_negative_magnitude8, sxbl_rlp_payload_size8, sxbl_cbor_negative_argument1,
+    sxbl_ubjson_byte_size1, sxbl_ubjson_item_count1, sxbl_cbor_negative_argument2, sxbl_ubjson_byte_size2,
+    sxbl_ubjson_item_count2, sxbl_cbor_negative_argument4, sxbl_ubjson_byte_size4, sxbl_ubjson_item_count4,
+    sxbl_cbor_negative_argument8, sxbl_ubjson_byte_size8, sxbl_ubjson_item_count8, sxbl_etf_reference_old, sxbl_rlp_literal];
+
+function structs() {
+    return sxCatalog([sxbl_wire_uint8_le, sxbl_wire_int8_le, sxbl_wire_uint16_le, sxbl_wire_int16_le, sxbl_wire_uint24_le,
+        sxbl_wire_int24_le, sxbl_wire_uint32_le, sxbl_wire_int32_le, sxbl_wire_uint40_le, sxbl_wire_int40_le,
+        sxbl_wire_uint48_le, sxbl_wire_int48_le, sxbl_wire_uint56_le, sxbl_wire_int56_le, sxbl_wire_uint64_le,
+        sxbl_wire_int64_le, sxbl_wire_float32_le, sxbl_wire_float64_le, sxbl_wire_byte_size1_le, sxbl_wire_item_count1_le,
+        sxbl_wire_byte_size2_le, sxbl_wire_item_count2_le, sxbl_wire_byte_size4_le, sxbl_wire_item_count4_le,
+        sxbl_wire_byte_size8_le, sxbl_wire_item_count8_le, sxbl_wire_uint8_be, sxbl_wire_int8_be, sxbl_wire_uint16_be,
+        sxbl_wire_int16_be, sxbl_wire_uint24_be, sxbl_wire_int24_be, sxbl_wire_uint32_be, sxbl_wire_int32_be,
+        sxbl_wire_uint40_be, sxbl_wire_int40_be, sxbl_wire_uint48_be, sxbl_wire_int48_be, sxbl_wire_uint56_be,
+        sxbl_wire_int56_be, sxbl_wire_uint64_be, sxbl_wire_int64_be, sxbl_wire_float32_be, sxbl_wire_float64_be,
+        sxbl_wire_byte_size1_be, sxbl_wire_item_count1_be, sxbl_wire_byte_size2_be, sxbl_wire_item_count2_be,
+        sxbl_wire_byte_size4_be, sxbl_wire_item_count4_be, sxbl_wire_byte_size8_be, sxbl_wire_item_count8_be, sxbl_bson_tag,
+        sxbl_cbor_tag, sxbl_msgpack_tag, sxbl_ubjson_tag, sxbl_etf_tag, sxbl_ion_tag, sxbl_thrift_field_tag,
+        sxbl_thrift_collection_tag, sxbl_thrift_map_tag, sxbl_pickle_tag, sxbl_marshal_tag, sxbl_java_tag, sxbl_rlp_tag,
+        sxbl_wire_byte_size_var1, sxbl_wire_item_count_var1, sxbl_wire_integer_var1, sxbl_wire_sequence_var1,
+        sxbl_wire_unsigned_size_var1, sxbl_wire_unsigned_count_var1, sxbl_wire_field_id_var1, sxbl_wire_byte_size_var2,
+        sxbl_wire_item_count_var2, sxbl_wire_integer_var2, sxbl_wire_sequence_var2, sxbl_wire_unsigned_size_var2,
+        sxbl_wire_unsigned_count_var2, sxbl_wire_field_id_var2, sxbl_wire_byte_size_var3, sxbl_wire_item_count_var3,
+        sxbl_wire_integer_var3, sxbl_wire_sequence_var3, sxbl_wire_unsigned_size_var3, sxbl_wire_unsigned_count_var3,
+        sxbl_wire_field_id_var3, sxbl_wire_byte_size_var4, sxbl_wire_item_count_var4, sxbl_wire_integer_var4,
+        sxbl_wire_sequence_var4, sxbl_wire_unsigned_size_var4, sxbl_wire_unsigned_count_var4, sxbl_wire_field_id_var4,
+        sxbl_wire_byte_size_var5, sxbl_wire_item_count_var5, sxbl_wire_integer_var5, sxbl_wire_sequence_var5,
+        sxbl_wire_unsigned_size_var5, sxbl_wire_unsigned_count_var5, sxbl_wire_field_id_var5, sxbl_wire_byte_size_var6,
+        sxbl_wire_item_count_var6, sxbl_wire_integer_var6, sxbl_wire_sequence_var6, sxbl_wire_unsigned_size_var6,
+        sxbl_wire_unsigned_count_var6, sxbl_wire_field_id_var6, sxbl_wire_byte_size_var7, sxbl_wire_item_count_var7,
+        sxbl_wire_integer_var7, sxbl_wire_sequence_var7, sxbl_wire_unsigned_size_var7, sxbl_wire_unsigned_count_var7,
+        sxbl_wire_field_id_var7, sxbl_wire_byte_size_var8, sxbl_wire_item_count_var8, sxbl_wire_integer_var8,
+        sxbl_wire_sequence_var8, sxbl_wire_unsigned_size_var8, sxbl_wire_unsigned_count_var8, sxbl_wire_field_id_var8,
+        sxbl_wire_byte_size_var9, sxbl_wire_item_count_var9, sxbl_wire_integer_var9, sxbl_wire_sequence_var9,
+        sxbl_wire_unsigned_size_var9, sxbl_wire_unsigned_count_var9, sxbl_wire_field_id_var9, sxbl_wire_byte_size_var10,
+        sxbl_wire_item_count_var10, sxbl_wire_integer_var10, sxbl_wire_sequence_var10, sxbl_wire_unsigned_size_var10,
+        sxbl_wire_unsigned_count_var10, sxbl_wire_field_id_var10, sxbl_bson_document_size, sxbl_bson_string_size,
+        sxbl_bson_terminator, sxbl_bson_binary_header, sxbl_bson_object_id, sxbl_bson_timestamp, sxbl_bson_decimal128,
+        sxbl_bson_bool, sxbl_bson_code_scope_size, sxbl_bson_datetime, sxbl_cbor_self_describe, sxbl_cbor_half_float,
+        sxbl_msgpack_extension_type, sxbl_msgpack_timestamp64, sxbl_msgpack_timestamp96, sxbl_ubjson_optimized_type,
+        sxbl_etf_version, sxbl_etf_big_sign, sxbl_etf_bit_count, sxbl_etf_old_float, sxbl_etf_pid_old, sxbl_etf_pid_new,
+        sxbl_etf_port_old, sxbl_etf_port_new, sxbl_etf_port_v4, sxbl_etf_reference_id, sxbl_etf_creation1, sxbl_etf_creation4,
+        sxbl_ion_version, sxbl_ion_length1, sxbl_ion_field_id1, sxbl_ion_annotation_length1, sxbl_ion_annotation_id1,
+        sxbl_ion_decimal_exponent1, sxbl_ion_length2, sxbl_ion_field_id2, sxbl_ion_annotation_length2, sxbl_ion_annotation_id2,
+        sxbl_ion_decimal_exponent2, sxbl_ion_length3, sxbl_ion_field_id3, sxbl_ion_annotation_length3, sxbl_ion_annotation_id3,
+        sxbl_ion_decimal_exponent3, sxbl_ion_length4, sxbl_ion_field_id4, sxbl_ion_annotation_length4, sxbl_ion_annotation_id4,
+        sxbl_ion_decimal_exponent4, sxbl_ion_length5, sxbl_ion_field_id5, sxbl_ion_annotation_length5, sxbl_ion_annotation_id5,
+        sxbl_ion_decimal_exponent5, sxbl_ion_length6, sxbl_ion_field_id6, sxbl_ion_annotation_length6, sxbl_ion_annotation_id6,
+        sxbl_ion_decimal_exponent6, sxbl_ion_length7, sxbl_ion_field_id7, sxbl_ion_annotation_length7, sxbl_ion_annotation_id7,
+        sxbl_ion_decimal_exponent7, sxbl_ion_length8, sxbl_ion_field_id8, sxbl_ion_annotation_length8, sxbl_ion_annotation_id8,
+        sxbl_ion_decimal_exponent8, sxbl_ion_length9, sxbl_ion_field_id9, sxbl_ion_annotation_length9, sxbl_ion_annotation_id9,
+        sxbl_ion_decimal_exponent9, sxbl_ion_length10, sxbl_ion_field_id10, sxbl_ion_annotation_length10,
+        sxbl_ion_annotation_id10, sxbl_ion_decimal_exponent10, sxbl_thrift_message, sxbl_thrift_uuid, sxbl_pickle_protocol,
+        sxbl_pickle_frame_size, sxbl_pickle_memo1, sxbl_pickle_memo4, sxbl_pickle_signed_length, sxbl_marshal_signed_count,
+        sxbl_marshal_long_digit, sxbl_marshal_reference, sxbl_marshal_count, sxbl_marshal_string_size, sxbl_marshal_complex,
+        sxbl_java_stream, sxbl_java_handle, sxbl_java_array_count, sxbl_java_class_fields, sxbl_der_header_short,
+        sxbl_der_header_long1, sxbl_der_header_long2, sxbl_der_header_long3, sxbl_der_header_long4, sxbl_der_unused_bits,
+        sxbl_der_boolean, sxbl_der_utc_time, sxbl_der_generalized_time, sxbl_openssh_key_magic, sxbl_ssh_string_size,
+        sxbl_ssh_key_count, sxbl_ssh_checkints, sxbl_ssh_certificate_serial, sxbl_ssh_certificate_validity, sxbl_ssh_padding,
+        sxbl_avro_magic, sxbl_avro_sync, sxbl_bson_legacy_binary_size, sxbl_msgpack_timestamp32, sxbl_ion_negative_magnitude1,
+        sxbl_rlp_payload_size1, sxbl_ion_negative_magnitude2, sxbl_rlp_payload_size2, sxbl_ion_negative_magnitude3,
+        sxbl_rlp_payload_size3, sxbl_ion_negative_magnitude4, sxbl_rlp_payload_size4, sxbl_ion_negative_magnitude5,
+        sxbl_rlp_payload_size5, sxbl_ion_negative_magnitude6, sxbl_rlp_payload_size6, sxbl_ion_negative_magnitude7,
+        sxbl_rlp_payload_size7, sxbl_ion_negative_magnitude8, sxbl_rlp_payload_size8, sxbl_cbor_negative_argument1,
+        sxbl_ubjson_byte_size1, sxbl_ubjson_item_count1, sxbl_cbor_negative_argument2, sxbl_ubjson_byte_size2,
+        sxbl_ubjson_item_count2, sxbl_cbor_negative_argument4, sxbl_ubjson_byte_size4, sxbl_ubjson_item_count4,
+        sxbl_cbor_negative_argument8, sxbl_ubjson_byte_size8, sxbl_ubjson_item_count8, sxbl_etf_reference_old, sxbl_rlp_literal], sx_binarylater_comment, true, true);
+}
+
+function scan() {
+    return sxScan(sx_binarylater_build, false);
+}

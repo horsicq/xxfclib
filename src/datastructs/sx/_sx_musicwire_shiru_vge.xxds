@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/shiru_vge/xx_shiru_vge_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_vge_header_fields = layout([blob("magic", 7, SIGNATURE), chars("version_ascii", 1, NONE),
+    u32("packed_song_bytes", SIZE), u32("packed_sample_table_bytes", SIZE)]);
+var sxmw_vge_header = sxLayout(0x60870031, "vge_header", LE, sxmw_vge_header_fields);
+function sxmw_vge(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var a = [0];
+    var b = [0];
+    var ver = [0];
+    if (!sxmw_eq(v, 0, "VGEfmtV", 7, end) || !sxmw_u(v, 7, 1, ver, 0, end) || ver[0] < 49 /*1*/ || ver[0] > 51 /*3*/ || !sxmw_u(v, 8, 4, a, 0, end) || !sxmw_u(v, 12, 4, b, 0, end) || a[0] > 2147483647 || b[0] > 2147483647 || !sxmw_span(v, 16, a[0] + b[0], end) || !sxmw_row(v, sxmw_vge_header, 0, end)) {
+        return false;
+    }
+    if (ver[0] === 49 /*1*/) {
+        return true;
+    }
+    return sxmw_rle(v, 16, 16 + a[0]) && sxmw_rle(v, 16 + a[0], 16 + a[0] + b[0]);
+}
+function sx_shiru_vge_build(v) {
+    return sxmw_vge(v);
+}

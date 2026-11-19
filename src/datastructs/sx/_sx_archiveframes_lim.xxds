@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lim/xx_lim_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_lim_header_fields = layout([bytes("signature", 4, SIGNATURE), u8("reserved"), u8("unused"), u16("marker", SIGNATURE)]);
+var sxafr_lim_header = sxLayout(0x6054001B, "lim_header", LE, sxafr_lim_header_fields);
+var sxafr_lim_chunk_fields = layout([u16("tag"), i16("chunk_size", SIZE)]);
+var sxafr_lim_chunk = sxLayout(0x6054001C, "lim_chunk", LE, sxafr_lim_chunk_fields);
+var sxafr_lim_member_fields = layout([bytes("unused1", 2), u16("dos_time"), u16("dos_date"), u8("attributes", FLAGS),
+    u8("unused2"), u8("method"), i32("uncompressed_size", SIZE), i32("compressed_size", SIZE), u32("crc32", CHECKSUM)]);
+var sxafr_lim_member = sxLayout(0x6054001D, "lim_member", LE, sxafr_lim_member_fields);
+function sxafr_zstr(c, p, end, cap) {
+    for (var i = 0; i < cap && p[0] < end; i++) {
+        var b = [0];
+        if (!sxafr_read(c, p[0]++, b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxafr_lim(c) {
+    var p = [8];
+    if (!sxafr_add(c, sxafr_lim_header, 0)) {
+        return false;
+    }
+    while (p[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var tag = [0];
+        var sz = [0];
+        if (!sxafr_word(c, p[0], 2, false, tag) || !sxafr_word(c, p[0] + 2, 2, false, sz) || sz[0] < 4 || sz[0] > 32767 || tag[0] !== 0xD180 && tag[0] !== 0xF123 || !sxafr_add(c, sxafr_lim_chunk, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+        var z = [0];
+        if (tag[0] === 0xF123) {
+            if (!sxafr_word(c, p[0] + 13, 4, false, z) || z[0] > 2147483647 || !sxafr_add(c, sxafr_lim_member, p[0])) {
+                return false;
+            }
+            p[0] += 21;
+        }
+        if (!sxafr_zstr(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 4096) || !sxafr_span(c, p[0], z[0])) {
+            return false;
+        }
+        p[0] += z[0];
+    }
+    return true;
+}
+function sx_lim_build(c) {
+    return sxafr_lim(c);
+}

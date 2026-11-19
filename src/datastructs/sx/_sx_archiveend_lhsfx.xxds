@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lhsfx/xx_lhsfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_lhsfx_control_fields = layout([u32("control")]);
+var sxaend_lhsfx_control = sxLayout(0x60840007, "lhsfx_control", BE, sxaend_lhsfx_control_fields);
+var sxaend_lhsfx_member_fields = layout([u32("uncompressed_size", SIZE), u32("packed_size", SIZE), bytes("unknown_8", 4),
+    chars("name", 48, STRING)]);
+var sxaend_lhsfx_member = sxLayout(0x60840008, "lhsfx_member", BE, sxaend_lhsfx_member_fields);
+function sxaend_lhsfx(c) {
+    var p = 0x918;
+    var z = [0];
+    var t = [0];
+    for (var i = 0; i < 20000; i++) {
+        if (!sxaend_word(c, p, 4, true, t) || !sxaend_add(c, sxaend_lhsfx_control, p)) {
+            return false;
+        }
+        p += 4;
+        if (t[0] === 4294967295) {
+            return true;
+        }
+        if (!sxaend_add(c, sxaend_lhsfx_member, p) || !sxaend_word(c, p + 4, 4, true, z) || !sxaend_span(c, p + 60, z[0])) {
+            return false;
+        }
+        p += 60 + z[0];
+    }
+    return true;
+}
+function sx_lhsfx_build(c) {
+    return sxaend_lhsfx(c);
+}

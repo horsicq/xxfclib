@@ -1,0 +1,200 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/solarispkg/xx_solarispkg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiw_solaris_package_name_fields = layout([field("solaris_package_name", "utf8", 0, STRING)]);
+var sxiw_solaris_package_name = sxLayout(0x6079001C, "solaris_package_name", LE, sxiw_solaris_package_name_fields);
+var sxiw_solaris_part_count_fields = layout([field("solaris_part_count", "ascii_signed", 0, COUNT)]);
+var sxiw_solaris_part_count = sxLayout(0x6079001D, "solaris_part_count", LE, sxiw_solaris_part_count_fields);
+var sxiw_solaris_block_count_fields = layout([field("solaris_block_count", "ascii_signed", 0, COUNT)]);
+var sxiw_solaris_block_count = sxLayout(0x6079001E, "solaris_block_count", LE, sxiw_solaris_block_count_fields);
+var sxiw_solaris_banner_fields = layout([chars("signature", 21, SIGNATURE)]);
+var sxiw_solaris_banner = sxLayout(0x6079001F, "solaris_banner", LE, sxiw_solaris_banner_fields);
+var sxiw_solaris_end_header_fields = layout([chars("end_marker", 15, SIGNATURE)]);
+var sxiw_solaris_end_header = sxLayout(0x60790020, "solaris_end_header", LE, sxiw_solaris_end_header_fields);
+var sxiw_solaris_cpio_newc_fields = layout([chars("magic", 6, SIGNATURE), field("inode", "ascii_cpio_hex[8]", 8, ID),
+    field("mode", "ascii_cpio_hex[8]", 8, FLAGS), field("uid", "ascii_cpio_hex[8]", 8), field("gid", "ascii_cpio_hex[8]", 8),
+    field("link_count", "ascii_cpio_hex[8]", 8, COUNT), field("modification_time", "ascii_cpio_hex[8]", 8, TIMESTAMP),
+    field("file_size", "ascii_cpio_hex[8]", 8, SIZE), field("device_major", "ascii_cpio_hex[8]", 8),
+    field("device_minor", "ascii_cpio_hex[8]", 8), field("rdevice_major", "ascii_cpio_hex[8]", 8),
+    field("rdevice_minor", "ascii_cpio_hex[8]", 8), field("name_size", "ascii_cpio_hex[8]", 8, SIZE),
+    field("checksum", "ascii_cpio_hex[8]", 8, CHECKSUM)]);
+var sxiw_solaris_cpio_newc = sxLayout(0x6079005B, "solaris_cpio_newc", LE, sxiw_solaris_cpio_newc_fields);
+var sxiw_solaris_cpio_odc_fields = layout([chars("magic", 6, SIGNATURE), field("device", "ascii_cpio_octal[6]", 6),
+    field("inode", "ascii_cpio_octal[6]", 6, ID), field("mode", "ascii_cpio_octal[6]", 6, FLAGS),
+    field("uid", "ascii_cpio_octal[6]", 6), field("gid", "ascii_cpio_octal[6]", 6),
+    field("link_count", "ascii_cpio_octal[6]", 6, COUNT), field("rdevice", "ascii_cpio_octal[6]", 6),
+    field("modification_time", "ascii_cpio_octal[11]", 11, TIMESTAMP), field("name_size", "ascii_cpio_octal[6]", 6, SIZE),
+    field("file_size", "ascii_cpio_octal[11]", 11, SIZE)]);
+var sxiw_solaris_cpio_odc = sxLayout(0x6079005C, "solaris_cpio_odc", LE, sxiw_solaris_cpio_odc_fields);
+var sxiw_solaris_cpio_binary_le_fields = layout([u16("magic", SIGNATURE), u16("device"), u16("inode", ID), u16("mode", FLAGS),
+    u16("uid"), u16("gid"), u16("link_count", COUNT), u16("rdevice"), u16("mtime_high"), u16("mtime_low"),
+    u16("name_size", SIZE), u16("file_size_high"), u16("file_size_low")]);
+var sxiw_solaris_cpio_binary_le = sxLayout(0x6079005D, "solaris_cpio_binary_le", LE, sxiw_solaris_cpio_binary_le_fields);
+var sxiw_solaris_cpio_binary_be_fields = layout([u16("magic", SIGNATURE), u16("device"), u16("inode", ID), u16("mode", FLAGS),
+    u16("uid"), u16("gid"), u16("link_count", COUNT), u16("rdevice"), u16("mtime_high"), u16("mtime_low"),
+    u16("name_size", SIZE), u16("file_size_high"), u16("file_size_low")]);
+var sxiw_solaris_cpio_binary_be = sxLayout(0x6079005E, "solaris_cpio_binary_be", BE, sxiw_solaris_cpio_binary_be_fields);
+var sxiw_solaris_cpio_name_fields = layout([field("solaris_cpio_name", "uint8", 0)]);
+var sxiw_solaris_cpio_name = sxLayout(0x6079005F, "solaris_cpio_name", LE, sxiw_solaris_cpio_name_fields);
+function sxiw_ascii(c, p, n, radix, v) {
+    var b = [];
+    if (n > 24 || !sxiw_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = 0;
+    var any = false;
+    var i = 0;
+    while (i < n && (b[i] === 32 || !b[i])) {
+        i++;
+    }
+    for (; i < n; i++) {
+        var d;
+        if (b[i] === 32 || !b[i]) {
+            for (; i < n; i++) {
+                if (b[i] && b[i] !== 32) {
+                    return false;
+                }
+            }
+            break;
+        }
+        if (b[i] >= 48 /*0*/ && b[i] <= 57 /*9*/) {
+            d = (b[i] - 48 /*0*/) >>> 0;
+        } else if (b[i] >= 97 /*a*/ && b[i] <= 102 /*f*/) {
+            d = (b[i] - 97 /*a*/ + 10) >>> 0;
+        } else if (b[i] >= 65 /*A*/ && b[i] <= 70 /*F*/) {
+            d = (b[i] - 65 /*A*/ + 10) >>> 0;
+        } else {
+            return false;
+        }
+        if (d >= radix || v[0] > Math.floor((SX_U64_MAX - d) / radix)) {
+            return false;
+        }
+        v[0] = v[0] * radix + d;
+        any = true;
+    }
+    return true;
+}
+function sxiw_cpio(c, start, next) {
+    var p = start;
+    for (var i = 0; i < 20000 && c.count < 20000; i++) {
+        var h = [];
+        var head;
+        var name = [0];
+        var z = [0];
+        var align = 1;
+        var l;
+        if (!sxiw_read(c, p, h, 6)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "070701", 6) || !sxMemcmp(h, "070702", 6)) {
+            head = 110;
+            align = 4;
+            l = sxiw_solaris_cpio_newc;
+            if (!sxiw_ascii(c, p + 94, 8, 16, name) || !sxiw_ascii(c, p + 54, 8, 16, z)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "070707", 6)) {
+            head = 76;
+            l = sxiw_solaris_cpio_odc;
+            if (!sxiw_ascii(c, p + 59, 6, 8, name) || !sxiw_ascii(c, p + 65, 11, 8, z)) {
+                return false;
+            }
+        } else if (sxiw_uint(h, 0, 2, false) === 29127 || sxiw_uint(h, 0, 2, true) === 29127) {
+            var be = sxiw_uint(h, 0, 2, true) === 29127;
+            var hi = [0];
+            var lo = [0];
+            head = 26;
+            align = 2;
+            l = be ? sxiw_solaris_cpio_binary_be : sxiw_solaris_cpio_binary_le;
+            if (!sxiw_word(c, p + 20, 2, be, name) || !sxiw_word(c, p + 22, 2, be, hi) || !sxiw_word(c, p + 24, 2, be, lo)) {
+                return false;
+            }
+            z[0] = sxOr64(sxShl64(hi[0], 16), lo[0]);
+        } else {
+            return false;
+        }
+        if (!name[0] || name[0] > 4096 || !sxiw_span(c, p, head + name[0])) {
+            return false;
+        }
+        var data = p + head + name[0];
+        data += sxU64(align - sxU64(data - start) % align) % align;
+        if (!sxiw_span(c, data, z[0]) || !sxiw_add(c, l, p) || !sxiw_text(c, sxiw_solaris_cpio_name, p + head, name[0], false)) {
+            return false;
+        }
+        var tag = [];
+        var last = name[0] === 11 && sxiw_read(c, p + head, tag, 11) && !sxMemcmp(tag, "TRAILER!!!\x00", 11);
+        p = data + z[0];
+        p += sxU64(align - sxU64(p - start) % align) % align;
+        if (last) {
+            next[0] = p;
+            return true;
+        }
+    }
+    return false;
+}
+function sxiw_solaris(c) {
+    if (!sxiw_add(c, sxiw_solaris_banner, 0)) {
+        return false;
+    }
+    var h = [];
+    if (!sxiw_read(c, 0, h, 512)) {
+        return true;
+    }
+    var p = 21;
+    while (p < 512) {
+        var a = p;
+        while (p < 512 && h[p] !== 10 && h[p]) {
+            p++;
+        }
+        var e = p;
+        if (p < 512) {
+            p++;
+        }
+        if (sxU64(e - a) >= 15 && !sxMemcmpAt(h, a, "# end of header", 0, 15)) {
+            if (!sxiw_add(c, sxiw_solaris_end_header, a)) {
+                return false;
+            }
+            break;
+        }
+        var b = a;
+        while (b < e && h[b] !== 32 && h[b] !== 9) {
+            b++;
+        }
+        if (b > a && !sxiw_text(c, sxiw_solaris_package_name, a, sxU64(b - a), false)) {
+            return false;
+        }
+        for (var k = 0; k < 2; k++) {
+            while (b < e && (h[b] === 32 || h[b] === 9)) {
+                b++;
+            }
+            a = b;
+            while (b < e && h[b] >= 48 /*0*/ && h[b] <= 57 /*9*/) {
+                b++;
+            }
+            if (a === b) {
+                break;
+            }
+            if (!sxiw_text(c, k ? sxiw_solaris_block_count : sxiw_solaris_part_count, a, sxU64(b - a), false)) {
+                return false;
+            }
+        }
+        if (e >= 512 || !h[e]) {
+            break;
+        }
+    }
+    p = 512;
+    for (var i = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && i < 1024 && c.count < 20000; i++) {
+        var next = [0];
+        if (!sxiw_cpio(c, p, next)) {
+            break;
+        }
+        p = next[0] + (512 - next[0] % 512) % 512;
+    }
+    return true;
+}
+function sx_solarispkg_build(c) {
+    return sxiw_solaris(c);
+}

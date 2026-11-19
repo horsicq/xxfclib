@@ -1,0 +1,128 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/mqtt_packets/xx_mqtt_packets_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_mqtt_string_length_fields = layout([u16("string_length", SIZE)]);
+var sxnm_mqtt_string_length = sxLayout(0x6026007C, "mqtt_string_length", BE, sxnm_mqtt_string_length_fields);
+var sxnm_mqtt_packet_id_fields = layout([u16("packet_identifier", ID)]);
+var sxnm_mqtt_packet_id = sxLayout(0x6026007E, "mqtt_packet_id", BE, sxnm_mqtt_packet_id_fields);
+var sxnm_mqtt_requested_qos_fields = layout([u8("requested_qos", ID)]);
+var sxnm_mqtt_requested_qos = sxLayout(0x6026007F, "mqtt_requested_qos", BE, sxnm_mqtt_requested_qos_fields);
+var sxnm_mqtt_suback_result_fields = layout([u8("result_code", ID)]);
+var sxnm_mqtt_suback_result = sxLayout(0x60260080, "mqtt_suback_result", BE, sxnm_mqtt_suback_result_fields);
+var sxnm_mqtt_remaining_rows = [sxnm_mqtt_remaining_length_1, sxnm_mqtt_remaining_length_2, sxnm_mqtt_remaining_length_3, sxnm_mqtt_remaining_length_4];
+function sxnm_mq_string(v, at, end) {
+    if (!sxnm_row(v, sxnm_mqtt_string_length, at[0], end)) {
+        return false;
+    }
+    var n = sxnm_u16(v.p, at[0]);
+    at[0] += 2;
+    if (!sxnm_need(v, at[0], n, end)) {
+        return false;
+    }
+    at[0] += n;
+    return true;
+}
+function sxnm_mqtt(v) {
+    var at = [0];
+    while (at[0] < v.n) {
+        if (!sxnm_row(v, sxnm_mqtt_control_byte, at[0], v.n)) {
+            return false;
+        }
+        var flags = v.p[at[0]++];
+        var type = flags >>> 4;
+        var start = at[0];
+        var bytes = 0;
+        var w = 0;
+        for (; w < 4; w++) {
+            if (!sxnm_need(v, at[0], 1, v.n)) {
+                return false;
+            }
+            var b = v.p[at[0]++];
+            bytes = sxOr64(bytes, sxShl64(b & 127, (7 * w) >>> 0));
+            if (!(b & 128)) {
+                break;
+            }
+        }
+        if (w === 4 || !sxnm_row(v, sxnm_mqtt_remaining_rows[w], start, v.n) || !sxnm_need(v, at[0], bytes, v.n)) {
+            return false;
+        }
+        var end = at[0] + bytes;
+        if (type === 1) {
+            if (!sxnm_row(v, sxnm_mqtt_connect, at[0], end)) {
+                return false;
+            }
+            var f = v.p[at[0] + 7];
+            at[0] += 10;
+            if (!sxnm_mq_string(v, at, end)) {
+                return false;
+            }
+            if (f & 4) {
+                if (!sxnm_mq_string(v, at, end) || !sxnm_mq_string(v, at, end)) {
+                    return false;
+                }
+            }
+            if (f & 128 && !sxnm_mq_string(v, at, end)) {
+                return false;
+            }
+            if (f & 64 && !sxnm_mq_string(v, at, end)) {
+                return false;
+            }
+        } else if (type === 2) {
+            if (!sxnm_row(v, sxnm_mqtt_connack, at[0], end)) {
+                return false;
+            }
+            at[0] += 2;
+        } else if (type === 3) {
+            if (!sxnm_mq_string(v, at, end)) {
+                return false;
+            }
+            if (flags >>> 1 & 3) {
+                if (!sxnm_row(v, sxnm_mqtt_packet_id, at[0], end)) {
+                    return false;
+                }
+                at[0] += 2;
+            }
+            at[0] = end;
+        } else if (type === 8 || type === 9 || type === 10) {
+            if (!sxnm_row(v, sxnm_mqtt_packet_id, at[0], end)) {
+                return false;
+            }
+            at[0] += 2;
+            while (at[0] < end) {
+                if (type === 9) {
+                    if (!sxnm_row(v, sxnm_mqtt_suback_result, at[0], end)) {
+                        return false;
+                    }
+                    at[0]++;
+                } else {
+                    if (!sxnm_mq_string(v, at, end)) {
+                        return false;
+                    }
+                    if (type === 8) {
+                        if (!sxnm_row(v, sxnm_mqtt_requested_qos, at[0], end)) {
+                            return false;
+                        }
+                        at[0]++;
+                    }
+                }
+            }
+        } else if (type >= 4 && type <= 7 || type === 11) {
+            if (!sxnm_row(v, sxnm_mqtt_packet_id, at[0], end)) {
+                return false;
+            }
+            at[0] += 2;
+        } else if (type < 12 || type > 14) {
+            return false;
+        }
+        if (at[0] !== end) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_mqtt_packets_build(v) {
+    return sxnm_mqtt(v);
+}

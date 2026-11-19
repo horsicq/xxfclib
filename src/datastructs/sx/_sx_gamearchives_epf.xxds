@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/epf/xx_epf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxga_epf(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var n = [0];
+    return sxga_row(v, sxga_epf_header, 0, end) && sxga_word(v, 4, 4, false, at, 0, end) && sxga_word(v, 9, 2, false, n, 0, end) && sxga_table(v, sxga_epf_entry, at[0], n[0], end);
+}
+function sx_epf_build(v) {
+    return sxga_epf(v);
+}

@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_diskmeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_diskmeta");
+include("_sx_diskmeta_apm");
+include("_sx_diskmeta_apple_disk_copy_6_ndif_image");
+include("_sx_diskmeta_chd");
+include("_sx_diskmeta_cloop");
+include("_sx_diskmeta_dmg");
+include("_sx_diskmeta_encrypted_apple_disk_image");
+include("_sx_diskmeta_jffs2");
+include("_sx_diskmeta_logfs");
+include("_sx_diskmeta_parallels_hdd");
+include("_sx_diskmeta_qemu_enhanced_disk");
+include("_sx_diskmeta_qnx6");
+include("_sx_diskmeta_rdb");
+include("_sx_diskmeta_ubi");
+include("_sx_diskmeta_ubifs");
+include("_sx_diskmeta_vdi");
+include("_sx_diskmeta_vhddynamic");
+include("_sx_diskmeta_vhdx");
+include("_sx_diskmeta_vmdk");
+include("_sx_diskmeta_yaffs");
+
+function fileTypes() { return ["JFFS2", "YAFFS", "UBI", "UBIFS", "QNX6", "LOGFS", "DMG", "VHDDYNAMIC", "VMDK", "APM", "VHDX",
+    "CHD", "CLOOP", "PARALLELS_HDD", "QEMU_ENHANCED_DISK", "VDI", "APPLE_DISK_COPY_6_NDIF_IMAGE", "ENCRYPTED_APPLE_DISK_IMAGE",
+    "RDB"]; }
+
+var sx_diskmeta_layouts = [sx_dm_vhdx_file_identifier, sx_dm_vhdx_header, sx_dm_vhdx_region_table_header,
+    sx_dm_vhdx_region_table_entry, sx_dm_vhdx_metadata_table_header, sx_dm_vhdx_metadata_table_entry,
+    sx_dm_vhdx_file_parameters, sx_dm_vhdx_disk_size, sx_dm_vhdx_logical_sector_size, sx_dm_vhdx_physical_sector_size,
+    sx_dm_vhdx_virtual_disk_id, sx_dm_vhdx_parent_locator, sx_dm_vhdx_parent_locator_entry, sx_dm_vhdx_bat_entry,
+    sx_dm_vhd_footer_511, sx_dm_vhd_footer_512, sx_dm_vhd_dynamic_header, sx_dm_vhd_parent_locator, sx_dm_vhd_bat_entry,
+    sx_dm_vmdk_sparse_header, sx_dm_vmdk_grain_directory_entry, sx_dm_vmdk_grain_table_entry, sx_dm_vmdk_metadata_marker,
+    sx_dm_vdi_preheader, sx_dm_vdi_header_v1, sx_dm_vdi_block_map_entry, sx_dm_qed_header, sx_dm_qed_l1_entry,
+    sx_dm_qed_l2_entry, sx_dm_parallels_header_extended, sx_dm_parallels_header_old, sx_dm_parallels_bat_sector,
+    sx_dm_parallels_bat_cluster, sx_dm_chd_header_v1, sx_dm_chd_header_v2, sx_dm_chd_header_v3, sx_dm_chd_header_v4,
+    sx_dm_chd_header_v5, sx_dm_chd_map_v12, sx_dm_chd_map_v34, sx_dm_chd_map_v5_uncompressed,
+    sx_dm_chd_map_v5_compressed_header, sx_dm_chd_metadata_header, sx_dm_udif_trailer, sx_dm_cloop_header,
+    sx_dm_cloop_block_offset, sx_dm_encrypted_dmg_v2_header, sx_dm_encrypted_dmg_key_pointer, sx_dm_encrypted_dmg_v1_trailer,
+    sx_dm_ubi_erase_counter_header, sx_dm_ubi_volume_identifier_header, sx_dm_ubi_volume_table_record,
+    sx_dm_ubifs_common_header, sx_dm_ubifs_superblock, sx_dm_ubifs_master_node, sx_dm_ubifs_index_header,
+    sx_dm_ubifs_index_branch, sx_dm_ubifs_inode_node, sx_dm_ubifs_directory_entry, sx_dm_ubifs_data_node,
+    sx_dm_ubifs_padding_node, sx_dm_ubifs_commit_start, sx_dm_ubifs_reference_node, sx_dm_jffs2_common_header_le,
+    sx_dm_jffs2_directory_entry_le, sx_dm_jffs2_inode_le, sx_dm_jffs2_xattr_le, sx_dm_jffs2_xref_le,
+    sx_dm_yaffs_object_header_le, sx_dm_qnx6_superblock_header_le, sx_dm_qnx6_root_node_le, sx_dm_jffs2_common_header_be,
+    sx_dm_jffs2_directory_entry_be, sx_dm_jffs2_inode_be, sx_dm_jffs2_xattr_be, sx_dm_jffs2_xref_be,
+    sx_dm_yaffs_object_header_be, sx_dm_qnx6_superblock_header_be, sx_dm_qnx6_root_node_be, sx_dm_logfs_superblock,
+    sx_dm_apm_driver_descriptor_header, sx_dm_apm_driver_descriptor, sx_dm_apm_partition_entry, sx_dm_rdb_rigid_disk_block,
+    sx_dm_rdb_partition_block, sx_dm_rdb_filesystem_header, sx_dm_rdb_load_segment_header, sx_dm_ndif_bcem_header,
+    sx_dm_ndif_chunk_entry, sx_dm_ndif_resource_fork_header, sx_dm_ndif_resource_map_header, sx_dm_ndif_resource_type,
+    sx_dm_ndif_resource_reference, sx_dm_ndif_resource_length, sx_dm_ndif_resource_type_count];
+
+function structs() {
+    return sxCatalog([sx_dm_vhdx_file_identifier, sx_dm_vhdx_header, sx_dm_vhdx_region_table_header,
+        sx_dm_vhdx_region_table_entry, sx_dm_vhdx_metadata_table_header, sx_dm_vhdx_metadata_table_entry,
+        sx_dm_vhdx_file_parameters, sx_dm_vhdx_disk_size, sx_dm_vhdx_logical_sector_size, sx_dm_vhdx_physical_sector_size,
+        sx_dm_vhdx_virtual_disk_id, sx_dm_vhdx_parent_locator, sx_dm_vhdx_parent_locator_entry, sx_dm_vhdx_bat_entry,
+        sx_dm_vhd_footer_511, sx_dm_vhd_footer_512, sx_dm_vhd_dynamic_header, sx_dm_vhd_parent_locator, sx_dm_vhd_bat_entry,
+        sx_dm_vmdk_sparse_header, sx_dm_vmdk_grain_directory_entry, sx_dm_vmdk_grain_table_entry, sx_dm_vmdk_metadata_marker,
+        sx_dm_vdi_preheader, sx_dm_vdi_header_v1, sx_dm_vdi_block_map_entry, sx_dm_qed_header, sx_dm_qed_l1_entry,
+        sx_dm_qed_l2_entry, sx_dm_parallels_header_extended, sx_dm_parallels_header_old, sx_dm_parallels_bat_sector,
+        sx_dm_parallels_bat_cluster, sx_dm_chd_header_v1, sx_dm_chd_header_v2, sx_dm_chd_header_v3, sx_dm_chd_header_v4,
+        sx_dm_chd_header_v5, sx_dm_chd_map_v12, sx_dm_chd_map_v34, sx_dm_chd_map_v5_uncompressed,
+        sx_dm_chd_map_v5_compressed_header, sx_dm_chd_metadata_header, sx_dm_udif_trailer, sx_dm_cloop_header,
+        sx_dm_cloop_block_offset, sx_dm_encrypted_dmg_v2_header, sx_dm_encrypted_dmg_key_pointer,
+        sx_dm_encrypted_dmg_v1_trailer, sx_dm_ubi_erase_counter_header, sx_dm_ubi_volume_identifier_header,
+        sx_dm_ubi_volume_table_record, sx_dm_ubifs_common_header, sx_dm_ubifs_superblock, sx_dm_ubifs_master_node,
+        sx_dm_ubifs_index_header, sx_dm_ubifs_index_branch, sx_dm_ubifs_inode_node, sx_dm_ubifs_directory_entry,
+        sx_dm_ubifs_data_node, sx_dm_ubifs_padding_node, sx_dm_ubifs_commit_start, sx_dm_ubifs_reference_node,
+        sx_dm_jffs2_common_header_le, sx_dm_jffs2_directory_entry_le, sx_dm_jffs2_inode_le, sx_dm_jffs2_xattr_le,
+        sx_dm_jffs2_xref_le, sx_dm_yaffs_object_header_le, sx_dm_qnx6_superblock_header_le, sx_dm_qnx6_root_node_le,
+        sx_dm_jffs2_common_header_be, sx_dm_jffs2_directory_entry_be, sx_dm_jffs2_inode_be, sx_dm_jffs2_xattr_be,
+        sx_dm_jffs2_xref_be, sx_dm_yaffs_object_header_be, sx_dm_qnx6_superblock_header_be, sx_dm_qnx6_root_node_be,
+        sx_dm_logfs_superblock, sx_dm_apm_driver_descriptor_header, sx_dm_apm_driver_descriptor, sx_dm_apm_partition_entry,
+        sx_dm_rdb_rigid_disk_block, sx_dm_rdb_partition_block, sx_dm_rdb_filesystem_header, sx_dm_rdb_load_segment_header,
+        sx_dm_ndif_bcem_header, sx_dm_ndif_chunk_entry, sx_dm_ndif_resource_fork_header, sx_dm_ndif_resource_map_header,
+        sx_dm_ndif_resource_type, sx_dm_ndif_resource_reference, sx_dm_ndif_resource_length, sx_dm_ndif_resource_type_count], sx_diskmeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_diskmeta_build, false);
+}

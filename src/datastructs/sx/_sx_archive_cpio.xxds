@@ -1,0 +1,179 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cpio/xx_cpio_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_cpio_newc_header_fields = layout([chars("magic", 6, SIGNATURE), field("ino", "ascii_hex[8]", 8, ID),
+    field("mode", "ascii_hex[8]", 8, FLAGS), field("uid", "ascii_hex[8]", 8, ID), field("gid", "ascii_hex[8]", 8, ID),
+    field("nlink", "ascii_hex[8]", 8, COUNT), field("mtime", "ascii_hex[8]", 8, TIMESTAMP),
+    field("filesize", "ascii_hex[8]", 8, SIZE), field("devmajor", "ascii_hex[8]", 8, ID),
+    field("devminor", "ascii_hex[8]", 8, ID), field("rdevmajor", "ascii_hex[8]", 8, ID),
+    field("rdevminor", "ascii_hex[8]", 8, ID), field("namesize", "ascii_hex[8]", 8, SIZE),
+    field("check", "ascii_hex[8]", 8, SIGNATURE)]);
+var sx_a_cpio_newc_header = sxLayout(0x60040001, "cpio_newc_header", LE, sx_a_cpio_newc_header_fields);
+var sx_a_cpio_odc_header_fields = layout([chars("magic", 6, SIGNATURE), field("dev", "ascii_octal[6]", 6, ID),
+    field("ino", "ascii_octal[6]", 6, ID), field("mode", "ascii_octal[6]", 6, FLAGS), field("uid", "ascii_octal[6]", 6, ID),
+    field("gid", "ascii_octal[6]", 6, ID), field("nlink", "ascii_octal[6]", 6, COUNT), field("rdev", "ascii_octal[6]", 6, ID),
+    field("mtime", "ascii_octal[11]", 11, TIMESTAMP), field("namesize", "ascii_octal[6]", 6, SIZE),
+    field("filesize", "ascii_octal[11]", 11, SIZE)]);
+var sx_a_cpio_odc_header = sxLayout(0x60040002, "cpio_odc_header", LE, sx_a_cpio_odc_header_fields);
+var sx_a_cpio_afio_header_fields = layout([chars("magic", 6, SIGNATURE), field("dev", "ascii_hex[8]", 8, ID),
+    field("ino", "ascii_hex[16]", 16, ID), chars("mode_marker", 1, SIGNATURE), field("mode", "ascii_octal[6]", 6, FLAGS),
+    field("uid", "ascii_hex[8]", 8, ID), field("gid", "ascii_hex[8]", 8, ID), field("nlink", "ascii_hex[8]", 8, COUNT),
+    field("rdev", "ascii_hex[8]", 8, ID), field("mtime", "ascii_hex[16]", 16, TIMESTAMP), chars("name_marker", 1, SIGNATURE),
+    field("namesize", "ascii_hex[4]", 4, SIZE), field("flags", "ascii_hex[4]", 4, FLAGS),
+    field("extended_header_size", "ascii_hex[4]", 4, SIZE), chars("size_marker", 1, SIGNATURE),
+    field("filesize", "ascii_hex[16]", 16, SIZE), chars("header_end", 1, SIGNATURE)]);
+var sx_a_cpio_afio_header = sxLayout(0x60040003, "cpio_afio_header", LE, sx_a_cpio_afio_header_fields);
+var sx_a_cpio_solaris_tl_fields = layout([blob("magic", 4, SIGNATURE), u32("payload_size", SIZE)]);
+var sx_a_cpio_solaris_tl = sxLayout(0x60040006, "cpio_solaris_tl", LE, sx_a_cpio_solaris_tl_fields);
+var sx_a_cpio_solaris_tg_fields = layout([blob("magic", 4, SIGNATURE), u32("block_count", COUNT), u32("block_size", SIZE)]);
+var sx_a_cpio_solaris_tg = sxLayout(0x60040007, "cpio_solaris_tg", LE, sx_a_cpio_solaris_tg_fields);
+var sx_a_cpio_solaris_block_fields = layout([u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u32("offset", OFFSET)]);
+var sx_a_cpio_solaris_block = sxLayout(0x60040008, "cpio_solaris_block", LE, sx_a_cpio_solaris_block_fields);
+function sx_a_ascii_number(s, s_o, n, base, out) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        var d = s[s_o + i] >= 48 /*0*/ && s[s_o + i] <= 57 /*9*/ ? (s[s_o + i] - 48 /*0*/) >>> 0 : s[s_o + i] >= 97 /*a*/ && s[s_o + i] <= 102 /*f*/ ? (s[s_o + i] - 97 /*a*/ + 10) >>> 0 : s[s_o + i] >= 65 /*A*/ && s[s_o + i] <= 70 /*F*/ ? (s[s_o + i] - 65 /*A*/ + 10) >>> 0 : 4294967295;
+        if (d >= base || v > Math.floor((SX_U64_MAX - d) / base)) {
+            return false;
+        }
+        v = v * base + d;
+    }
+    out[0] = v;
+    return true;
+}
+function sx_a_cpio_solaris(c) {
+    var at = [0];
+    while (at[0] < c.size) {
+        var h = [];
+        var payload;
+        var blocks;
+        if (!sx_read(c, at[0], h, 8) || sxMemcmp(h, "\x19\x9ETL", 4)) {
+            return false;
+        }
+        payload = sxGetU32(h, 8, 4, false);
+        if (!sx_add(c, sx_a_cpio_solaris_tl, at[0], 8)) {
+            return false;
+        }
+        at[0] += 8;
+        if (!sx_a_raw_advance(c, at, 504)) {
+            return false;
+        }
+        var tg = at[0];
+        if (payload < 12 || payload > (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) || !sx_read(c, at[0], h, 12) || sxMemcmp(h, "\x19\x9ETG", 4)) {
+            return false;
+        }
+        blocks = sxGetU32(h, 12, 4, false);
+        if (blocks > Math.floor(((payload - 12) >>> 0) / 12) || !sx_add(c, sx_a_cpio_solaris_tg, at[0], 12) || !sx_table(c, sx_a_cpio_solaris_block, at[0] + 12, 12, blocks)) {
+            return false;
+        }
+        for (var i = 0; i < blocks; i++) {
+            var packed;
+            var offset;
+            if ((packed = sx_u32(c, tg + 12 + i * 12 + 4, false)) === null || (offset = sx_u32(c, tg + 12 + i * 12 + 8, false)) === null || offset > payload || packed > (payload - offset) >>> 0 || !sx_raw(c, tg + offset, packed)) {
+                return false;
+            }
+        }
+        at[0] = tg + payload;
+        var padding = (512 - (at[0] < 0 ? at[0] + SX_U64_MAX : at[0]) % 512) % 512;
+        if (!sx_a_raw_advance(c, at, padding)) {
+            return false;
+        }
+        if (at[0] < c.size) {
+            var b = [0];
+            if (!sx_read(c, at[0], b, 1)) {
+                return false;
+            }
+            if (!b[0]) {
+                return sx_raw(c, at[0], c.size - at[0]);
+            }
+        }
+    }
+    return true;
+}
+function sx_a_cpio(c) {
+    var at = [0];
+    var h = [];
+    if (!sx_read(c, 0, h, 6)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "\x19\x9ETL", 4)) {
+        return sx_a_cpio_solaris(c);
+    }
+    while (at[0] < c.size) {
+        var l;
+        var hs;
+        var namesize = [0];
+        var size = [0];
+        var extra = [0];
+        var alignment = 1;
+        if (!sx_read(c, at[0], h, 6)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "070701", 6) || !sxMemcmp(h, "070702", 6)) {
+            l = sx_a_cpio_newc_header;
+            hs = 110;
+            alignment = 4;
+            if (!sx_read(c, at[0], h, (hs < 0 ? hs + SX_U64_MAX : hs)) || !sx_a_ascii_number(h, 94, 8, 16, namesize) || !sx_a_ascii_number(h, 54, 8, 16, size)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "070707", 6)) {
+            l = sx_a_cpio_odc_header;
+            hs = 76;
+            if (!sx_read(c, at[0], h, (hs < 0 ? hs + SX_U64_MAX : hs)) || !sx_a_ascii_number(h, 59, 6, 8, namesize) || !sx_a_ascii_number(h, 65, 11, 8, size)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "070727", 6)) {
+            l = sx_a_cpio_afio_header;
+            hs = 116;
+            if (!sx_read(c, at[0], h, (hs < 0 ? hs + SX_U64_MAX : hs)) || h[30] !== 109 /*m*/ || h[85] !== 110 /*n*/ || h[98] !== 115 /*s*/ || h[115] !== 58 /*:*/ || !sx_a_ascii_number(h, 86, 4, 16, namesize) || !sx_a_ascii_number(h, 94, 4, 16, extra) || !sx_a_ascii_number(h, 99, 16, 16, size)) {
+                return false;
+            }
+        } else {
+            var be = h[0] === 0x71 && h[1] === 0xC7;
+            if (!be && !(h[0] === 0xC7 && h[1] === 0x71)) {
+                return false;
+            }
+            l = be ? sx_a_cpio_binary_be_header : sx_a_cpio_binary_le_header;
+            hs = 26;
+            alignment = 2;
+            if (!sx_read(c, at[0], h, (hs < 0 ? hs + SX_U64_MAX : hs))) {
+                return false;
+            }
+            namesize[0] = sxGetU16(h, 26, 20, be);
+            size[0] = sxOr64(sxGetU16(h, 26, 22, be) * 0x10000, sxGetU16(h, 26, 24, be));
+        }
+        if (!namesize[0] || namesize[0] > 65536 || !sx_add(c, l, at[0], hs)) {
+            return false;
+        }
+        at[0] += hs;
+        var name_at = at[0];
+        var last = [0];
+        if (!sx_a_raw_advance(c, at, namesize[0]) || !sx_read(c, at[0] - 1, last, 1) || last[0] !== 0) {
+            return false;
+        }
+        if (!sx_a_raw_advance(c, at, sxU64(alignment - (at[0] < 0 ? at[0] + SX_U64_MAX : at[0]) % alignment) % alignment)) {
+            return false;
+        }
+        var trailer = false;
+        if (namesize[0] === 11) {
+            var name = [];
+            if (!sx_read(c, name_at, name, 11)) {
+                return false;
+            }
+            trailer = !sxMemcmp(name, "TRAILER!!!", 11);
+        }
+        if (!sx_a_raw_advance(c, at, extra[0]) || !sx_a_raw_advance(c, at, size[0]) || !sx_a_raw_advance(c, at, sxU64(alignment - (at[0] < 0 ? at[0] + SX_U64_MAX : at[0]) % alignment) % alignment)) {
+            return false;
+        }
+        if (trailer) {
+            return sx_raw(c, at[0], c.size - at[0]);
+        }
+    }
+    return false;
+}
+function sx_cpio_build(c) {
+    return sx_a_cpio(c);
+}

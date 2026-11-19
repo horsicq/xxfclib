@@ -1,0 +1,171 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/dgca/xx_dgca_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxatp_dgca_chunk_fields = layout([chars("tag", 4, SIGNATURE), u32("header_size", SIZE), u64("payload_size", SIZE),
+    u32("flags", FLAGS), u32("alignment"), u32("payload_crc32", CHECKSUM), u32("header_crc32", CHECKSUM)]);
+var sxatp_dgca_chunk = sxLayout(0x60890001, "dgca_chunk", LE, sxatp_dgca_chunk_fields);
+var sxatp_dgca_iarc_prefix_fields = layout([u32("flags", FLAGS), chars("version", 4, NONE), bytes("unknown_08", 24)]);
+var sxatp_dgca_iarc_prefix = sxLayout(0x60890002, "dgca_iarc_prefix", LE, sxatp_dgca_iarc_prefix_fields);
+var sxatp_dgca_iarc_clear_tail_fields = layout([u64("password_verifier"), u64("member_count", COUNT),
+    u64("uncompressed_size", SIZE), u64("directory_size", SIZE), u64("names_size", SIZE), bytes("unknown_72", 8)]);
+var sxatp_dgca_iarc_clear_tail = sxLayout(0x60890003, "dgca_iarc_clear_tail", LE, sxatp_dgca_iarc_clear_tail_fields);
+var sxatp_dgca_stored_unit_fields = layout([u32("method", ID), u32("uncompressed_size", SIZE)]);
+var sxatp_dgca_stored_unit = sxLayout(0x60890004, "dgca_stored_unit", LE, sxatp_dgca_stored_unit_fields);
+var sxatp_dgca_compressed_unit_fields = layout([u32("method", ID), u32("uncompressed_size", SIZE), u32("flags", FLAGS),
+    u32("parameter_nibbles", FLAGS), u32("bwt_primary_index"), u32("literal_count", COUNT), u32("first_stream_size", SIZE),
+    u32("second_stream_size", SIZE)]);
+var sxatp_dgca_compressed_unit = sxLayout(0x60890005, "dgca_compressed_unit", LE, sxatp_dgca_compressed_unit_fields);
+var sxatp_dgca_plane_unit_fields = layout([u32("method", ID), u32("plane_count", COUNT)]);
+var sxatp_dgca_plane_unit = sxLayout(0x60890006, "dgca_plane_unit", LE, sxatp_dgca_plane_unit_fields);
+function sxatp_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxatp_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxatp_read(c, p, b, 0, n)) {
+        return false;
+    }
+    v[0] = sxatp_uint(b, 0, n, be);
+    return true;
+}
+function sxatp_dg_unit(c, p, end, depth, next) {
+    var b = [];
+    if (depth > 2 || p > end || sxU64(end - p) < 8 || !sxatp_read(c, p, b, 0, 8)) {
+        return false;
+    }
+    var m = sxatp_uint(b, 0, 4, false);
+    var n = sxatp_uint(b, 4, 4, false);
+    var z = 8;
+    if (m === 0) {
+        if (n > sxU64(sxU64(end - p) - 8) || !sxatp_add(c, sxatp_dgca_stored_unit, p)) {
+            return false;
+        }
+        z += n;
+    } else if (m === 1) {
+        if (sxU64(end - p) < 32 || !sxatp_read(c, p, b, 0, 32)) {
+            return false;
+        }
+        z = 32 + sxatp_uint(b, 24, 4, false) + sxatp_uint(b, 28, 4, false);
+        if (z > sxU64(end - p) || !sxatp_add(c, sxatp_dgca_compressed_unit, p)) {
+            return false;
+        }
+    } else if (m === 2 && depth === 0) {
+        if (!n || n > Math.floor(sxU64(sxU64(end - p) - 8) / 8) || !sxatp_add(c, sxatp_dgca_plane_unit, p)) {
+            return false;
+        }
+        var at = [p + 8];
+        for (var i = 0; i < n; i++) {
+            if (!sxatp_dg_unit(c, at[0], end, (depth + 1) >>> 0, at)) {
+                return false;
+            }
+        }
+        z = sxU64(at[0] - p);
+    } else {
+        return false;
+    }
+    next[0] = p + z;
+    return true;
+}
+function sxatp_dg_chunks(c, p, end, depth, encrypted) {
+    if (depth > 4) {
+        return false;
+    }
+    while (p < end) {
+        var h = [];
+        if (sxU64(end - p) < 32 || !sxatp_read(c, p, h, 0, 32)) {
+            return false;
+        }
+        var z = sxatp_uint(h, 8, 8, false);
+        if (sxatp_uint(h, 4, 4, false) !== 32 || sxatp_uint(h, 20, 4, false) !== 16 || z > sxU64(sxU64(end - p) - 32) || z > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF0)) {
+            return false;
+        }
+        var body = p + 32;
+        var next = body + sxAnd64(z + 15, sxK(0xFFFFFFFF, 0xFFFFFFF0));
+        if (next > end || !sxatp_add(c, sxatp_dgca_chunk, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "IARC", 4) && z === 80) {
+            var flags = [0];
+            if (!sxatp_word(c, body, 4, false, flags) || !sxatp_add(c, sxatp_dgca_iarc_prefix, body)) {
+                return false;
+            }
+            if (!sxAnd64(flags[0], 1) && !sxatp_add(c, sxatp_dgca_iarc_clear_tail, body + 32)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "DGCC", 4) && !encrypted) {
+            var q = [0];
+            if (!sxatp_dg_unit(c, body, body + z, 0, q)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "DGCA", 4) || !sxMemcmp(h, "INFO", 4) || !encrypted && (!sxMemcmp(h, "DATA", 4) || !sxMemcmp(h, "IFDT", 4) || !sxMemcmp(h, "IFNM", 4))) {
+            if (!sxatp_dg_chunks(c, body, body + z, (depth + 1) >>> 0, encrypted)) {
+                return false;
+            }
+        }
+        p = next;
+    }
+    return true;
+}
+function sxatp_dgca(c) {
+    var h = [];
+    if (!sxatp_read(c, 0, h, 0, 32) || sxMemcmp(h, "DGCA", 4)) {
+        return false;
+    }
+    var root = sxatp_uint(h, 8, 8, false);
+    if (root > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 32)) {
+        return false;
+    }
+    var encrypted = false;
+    var p = 32;
+    while (p < root + 32) {
+        if (sxU64(root + 32 - p) < 32 || !sxatp_read(c, p, h, 0, 32)) {
+            return false;
+        }
+        var z = sxatp_uint(h, 8, 8, false);
+        if (z > sxU64(sxU64(root + 32 - p) - 32) || z > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF0)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "INFO", 4)) {
+            var q = p + 32;
+            var e = q + z;
+            while (q < e) {
+                var a = [];
+                if (sxU64(e - q) < 32 || !sxatp_read(c, q, a, 0, 32)) {
+                    return false;
+                }
+                var n = sxatp_uint(a, 8, 8, false);
+                if (n > sxU64(sxU64(e - q) - 32) || n > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF0)) {
+                    return false;
+                }
+                if (!sxMemcmp(a, "IARC", 4)) {
+                    var f = [0];
+                    if (n < 4 || !sxatp_word(c, q + 32, 4, false, f)) {
+                        return false;
+                    }
+                    encrypted = sxAnd64(f[0], 1) !== 0;
+                }
+                var step = 32 + sxAnd64(n + 15, sxK(0xFFFFFFFF, 0xFFFFFFF0));
+                if (step > sxU64(e - q)) {
+                    return false;
+                }
+                q += step;
+            }
+        }
+        step = 32 + sxAnd64(z + 15, sxK(0xFFFFFFFF, 0xFFFFFFF0));
+        if (step > sxU64(root + 32 - p)) {
+            return false;
+        }
+        p += step;
+    }
+    return sxatp_dg_chunks(c, 0, root + 32, 0, encrypted);
+}
+function sx_dgca_build(c) {
+    return sxatp_dgca(c);
+}

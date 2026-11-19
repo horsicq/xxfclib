@@ -1,0 +1,371 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musicmaker.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmmkr_musicmaker_form_fields = layout([blob("signature", 4, SIGNATURE), u32("form_bytes", SIZE), blob("form_type", 4, ID)]);
+var sxmmkr_musicmaker_form = sxLayout(0x60A40001, "musicmaker_form", BE, sxmmkr_musicmaker_form_fields);
+var sxmmkr_musicmaker_chunk_fields = layout([chars("chunk_id", 4, ID), u32("payload_bytes", SIZE)]);
+var sxmmkr_musicmaker_chunk = sxLayout(0x60A40002, "musicmaker_chunk", BE, sxmmkr_musicmaker_chunk_fields);
+var sxmmkr_musicmaker_sdata_length_fields = layout([u32("song_bytes", SIZE)]);
+var sxmmkr_musicmaker_sdata_length = sxLayout(0x60A40003, "musicmaker_sdata_length", BE, sxmmkr_musicmaker_sdata_length_fields);
+var sxmmkr_musicmaker_standard_song_fields = layout([blob("song_marker", 2, SIGNATURE), chars("title", 20, STRING),
+    u8("format_control"), u8("pattern_length", COUNT), u16("speed")]);
+var sxmmkr_musicmaker_standard_song = sxLayout(0x60A40004, "musicmaker_standard_song", BE, sxmmkr_musicmaker_standard_song_fields);
+var sxmmkr_musicmaker_extended_song_fields = layout([blob("song_marker", 2, SIGNATURE), chars("title", 20, STRING),
+    u8("extended_marker", ID), u8("enabled_channels", FLAGS), u8("mixer_type", ID), u8("highest_note_control")]);
+var sxmmkr_musicmaker_extended_song = sxLayout(0x60A40005, "musicmaker_extended_song", BE, sxmmkr_musicmaker_extended_song_fields);
+var sxmmkr_musicmaker_standard_extension_fields = layout([u16("extension_bytes", SIZE)]);
+var sxmmkr_musicmaker_standard_extension = sxLayout(0x60A40006, "musicmaker_standard_extension", BE, sxmmkr_musicmaker_standard_extension_fields);
+var sxmmkr_musicmaker_extended_extension_fields = layout([u8("extension_marker", ID), blob("opaque_control", 1),
+    u16("extension_bytes", SIZE)]);
+var sxmmkr_musicmaker_extended_extension = sxLayout(0x60A40007, "musicmaker_extended_extension", BE, sxmmkr_musicmaker_extended_extension_fields);
+var sxmmkr_musicmaker_author_fields = layout([chars("author", 32, STRING)]);
+var sxmmkr_musicmaker_author = sxLayout(0x60A40008, "musicmaker_author", BE, sxmmkr_musicmaker_author_fields);
+var sxmmkr_musicmaker_pattern_speed_fields = layout([u16("pattern_length", COUNT), u16("speed")]);
+var sxmmkr_musicmaker_pattern_speed = sxLayout(0x60A40009, "musicmaker_pattern_speed", BE, sxmmkr_musicmaker_pattern_speed_fields);
+var sxmmkr_musicmaker_order_controls_fields = layout([u16("start_order_index"), u16("loop_order_index")]);
+var sxmmkr_musicmaker_order_controls = sxLayout(0x60A4000A, "musicmaker_order_controls", BE, sxmmkr_musicmaker_order_controls_fields);
+var sxmmkr_musicmaker_order_fields = layout([u16("macro_index_or_end", ID)]);
+var sxmmkr_musicmaker_order = sxLayout(0x60A4000B, "musicmaker_order", BE, sxmmkr_musicmaker_order_fields);
+var sxmmkr_musicmaker_instrument_header_fields = layout([blob("signature", 6, SIGNATURE), u16("instrument_count", COUNT)]);
+var sxmmkr_musicmaker_instrument_header = sxLayout(0x60A4000C, "musicmaker_instrument_header", BE, sxmmkr_musicmaker_instrument_header_fields);
+var sxmmkr_musicmaker_instrument_fields = layout([u16("sample_bytes", SIZE), u16("initial_bytes", SIZE),
+    u16("loop_start", OFFSET), u16("repeat_words")]);
+var sxmmkr_musicmaker_instrument = sxLayout(0x60A4000D, "musicmaker_instrument", BE, sxmmkr_musicmaker_instrument_fields);
+var sxmmkr_musicmaker_sample_state_fields = layout([i32("sample_processing_state")]);
+var sxmmkr_musicmaker_sample_state = sxLayout(0x60A4000E, "musicmaker_sample_state", BE, sxmmkr_musicmaker_sample_state_fields);
+var sxmmkr_musicmaker_packing_fields = layout([u16("delta_bits")]);
+var sxmmkr_musicmaker_packing = sxLayout(0x60A4000F, "musicmaker_packing", BE, sxmmkr_musicmaker_packing_fields);
+var sxmmkr_musicmaker_delta_fields = layout([i8("delta")]);
+var sxmmkr_musicmaker_delta = sxLayout(0x60A40010, "musicmaker_delta", BE, sxmmkr_musicmaker_delta_fields);
+var sxmmkr_musicmaker_lfo_length_fields = layout([u16("lfo_bytes", SIZE)]);
+var sxmmkr_musicmaker_lfo_length = sxLayout(0x60A40011, "musicmaker_lfo_length", BE, sxmmkr_musicmaker_lfo_length_fields);
+function sxmmkr_span(v, at, n, end) {
+    return end <= v.end && at <= end && n <= sxU64(end - at);
+}
+function sxmmkr_get(v, at, n, end, x) {
+    var b = [];
+    if (++v.work > 100000 || !n || n > 4 || !sxmmkr_span(v, at, n, end) || !sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, n)) {
+        return false;
+    }
+    x[0] = 0;
+    for (var i = 0; i < n; i++) {
+        x[0] = sxOr64(sxShl64(x[0], 8), b[i]);
+    }
+    return true;
+}
+function sxmmkr_table(v, l, at, z, n, end) {
+    if (!n) {
+        return true;
+    }
+    if (!z || n > sxU64(24000 - v.shown) || n > Math.floor(SX_U64_MAX / z) || !sxmmkr_span(v, at, n * z, end)) {
+        return false;
+    }
+    if (!sx_table(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), z, n)) {
+        return false;
+    }
+    v.shown += n;
+    return true;
+}
+function sxmmkr_row(v, l, at, n, end) {
+    return sxmmkr_table(v, l, at, n, 1, end);
+}
+function sxmmkr_orders(v, at, channels, end) {
+    for (var k = 0; k < channels; k++) {
+        var begin = at;
+        var x = [0];
+        do {
+            if (!sxmmkr_get(v, at, 2, end, x)) {
+                return false;
+            }
+            at += 2;
+        } while (x[0] !== 999);
+        if (!sxmmkr_table(v, sxmmkr_musicmaker_order, begin, 2, Math.floor(sxU64(at - begin) / 2), end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxmmkr_song(v, at, end) {
+    var x = [0];
+    var kind = [0];
+    var n = [0];
+    var channels = 4;
+    var orders;
+    var marker = [];
+    if (!sxmmkr_span(v, at, 26, end) || !sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), marker, 2) || sxMemcmp(marker, "SE", 2) || !sxmmkr_get(v, at + 22, 1, end, kind)) {
+        return false;
+    }
+    if (kind[0] === 255) {
+        if (!sxmmkr_row(v, sxmmkr_musicmaker_extended_song, at, 26, end) || !sxmmkr_get(v, at + 23, 1, end, x)) {
+            return false;
+        }
+        channels = 0;
+        for (var k = 0; k < 8; k++) {
+            channels += sxAnd64(sxShr64(x[0], k), 1);
+        }
+        var p = at + 26;
+        if (!sxmmkr_get(v, p, 1, end, x)) {
+            return false;
+        }
+        if (x[0] === 254) {
+            if (!sxmmkr_get(v, p + 2, 2, end, n) || !sxmmkr_row(v, sxmmkr_musicmaker_extended_extension, p, 4, end) || n[0] < 4 || n[0] >= 32768 || !sxmmkr_span(v, p, n[0], end)) {
+                return false;
+            }
+            if (n[0] >= 36 && !sxmmkr_row(v, sxmmkr_musicmaker_author, p + 4, 32, end)) {
+                return false;
+            }
+            p += n[0];
+        }
+        if (!sxmmkr_span(v, p, 234, end) || !sxmmkr_row(v, sxmmkr_musicmaker_pattern_speed, p + 230, 4, end)) {
+            return false;
+        }
+        orders = p + 234;
+    } else {
+        if (!sxmmkr_row(v, sxmmkr_musicmaker_standard_song, at, 26, end)) {
+            return false;
+        }
+        orders = at + 26;
+    }
+    if (!sxmmkr_row(v, sxmmkr_musicmaker_order_controls, orders, 4, end)) {
+        return false;
+    }
+    orders += 4;
+    if (kind[0] === 254) {
+        if (!sxmmkr_get(v, orders, 2, end, n) || n[0] < 2 || !sxmmkr_span(v, orders, n[0], end) || !sxmmkr_row(v, sxmmkr_musicmaker_standard_extension, orders, 2, end)) {
+            return false;
+        }
+        orders += n[0];
+    }
+    return sxmmkr_orders(v, orders, channels >>> 0, end);
+}
+function sxmmkr_instruments(v, at, end, packed) {
+    var sig = [];
+    var count = [0];
+    var n = [0];
+    var bits = [0];
+    var p;
+    if (!sxmmkr_span(v, at, 8, end) || !sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), sig, 6) || sxMemcmp(sig, "SEI1XX", 6) || !sxmmkr_get(v, at + 6, 2, end, count) || !sxmmkr_row(v, sxmmkr_musicmaker_instrument_header, at, 8, end)) {
+        return false;
+    }
+    if (!count[0] || count[0] > 36 || !sxmmkr_table(v, sxmmkr_musicmaker_instrument, at + 8, 8, count[0], end)) {
+        return false;
+    }
+    p = at + 8 + 8 * count[0];
+    if (packed) {
+        if (!sxmmkr_get(v, p, 2, end, bits) || bits[0] < 1 || bits[0] > 8 || !sxmmkr_row(v, sxmmkr_musicmaker_packing, p, 2, end)) {
+            return false;
+        }
+        p += 2;
+        n[0] = sxShl64(1, bits[0]);
+        if (!sxmmkr_table(v, sxmmkr_musicmaker_delta, p, 1, n[0], end)) {
+            return false;
+        }
+        p += n[0];
+    } else {
+        if (!sxmmkr_row(v, sxmmkr_musicmaker_sample_state, p, 4, end)) {
+            return false;
+        }
+        p += 4;
+    }
+    for (var i = 0; i < count[0]; i++) {
+        if (!sxmmkr_get(v, at + 8 + i * 8, 2, end, n)) {
+            return false;
+        }
+        if (packed && n[0]) {
+            n[0] = Math.floor(n[0] * bits[0] / 8) + 1;
+        }
+        if (!sxmmkr_span(v, p, n[0], end)) {
+            return false;
+        }
+        p += n[0];
+    }
+    if (!packed && sxAnd64(p, 1)) {
+        if (!sxmmkr_span(v, p, 1, end)) {
+            return false;
+        }
+        p++;
+    }
+    if (!sxmmkr_table(v, sxmmkr_musicmaker_lfo_length, p, 2, 15, end)) {
+        return false;
+    }
+    var data = p + 30;
+    for (i = 0; i < 15; i++) {
+        if (!sxmmkr_get(v, p + ((i * 2) >>> 0), 2, end, n) || !sxmmkr_span(v, data, n[0], end)) {
+            return false;
+        }
+        data += n[0];
+    }
+    return true;
+}
+function sxmmkr_container(v) {
+    var sig = [];
+    var n = [0];
+    var at = 12;
+    var end;
+    if (!sxmmkr_span(v, 0, 12, v.end) || !sx_read(v.c, 0, sig, 12) || sxMemcmp(sig, "FORM", 4) || sxMemcmpAt(sig, 8, "MMV8", 0, 4) || !sxmmkr_get(v, 4, 4, v.end, n) || n[0] < 4 || !sxmmkr_span(v, 8, n[0], v.end) || !sxmmkr_row(v, sxmmkr_musicmaker_form, 0, 12, v.end)) {
+        return false;
+    }
+    end = 8 + n[0];
+    while (at < end) {
+        var id = [];
+        if (!sxmmkr_span(v, at, 8, end) || !sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), id, 4) || !sxmmkr_get(v, at + 4, 4, end, n) || !sxmmkr_span(v, at + 8, n[0], end) || !sxmmkr_row(v, sxmmkr_musicmaker_chunk, at, 8, end)) {
+            return false;
+        }
+        at += 8;
+        var ce = at + n[0];
+        if (!sxMemcmp(id, "SDAT", 4)) {
+            var len = [0];
+            if (sxmmkr_get(v, at, 4, ce, len) && sxmmkr_row(v, sxmmkr_musicmaker_sdata_length, at, 4, ce) && sxmmkr_span(v, at + 4, len[0], ce)) {
+                sxmmkr_song(v, at + 4, at + 4 + len[0]);
+            }
+        } else if (!sxMemcmp(id, "PINS", 4)) {
+            sxmmkr_instruments(v, at, ce, true);
+        } else if (!sxMemcmp(id, "INST", 4)) {
+            sxmmkr_instruments(v, at, ce, false);
+        }
+        if (v.c.failed) {
+            return false;
+        }
+        at = ce;
+    }
+    return true;
+}
+function sxmmkr_compare(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxmmkr_finish(c) {
+    sxQsort(c.items, 0, c.count, sxmmkr_compare, true);
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxmmkr_compare, true);
+    return !c.failed;
+}
+function sx_musicmaker_supports(t) {
+    return t === "DIE_MUSIC_WINISCHHOFER_MUSICMAKER_EXT" || t === "DIE_MUSIC_MUSICMAKER_STD_IP";
+}
+function sx_musicmaker_build(c) {
+    if (c === null || c.f === null || c.size <= 0 || c.f.base_address < 0 || c.f.base_address > SX_I64_MAX - c.size || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var v = { c: c, end: (c.size < 0 ? c.size + SX_U64_MAX : c.size), shown: 0, work: 0 };
+    if (c.f.file_type === "DIE_MUSIC_WINISCHHOFER_MUSICMAKER_EXT") {
+        sxmmkr_container(v);
+    } else {
+        sxmmkr_instruments(v, 0, v.end, true);
+    }
+    if (c.failed) {
+        return false;
+    }
+    return c.count ? sxmmkr_finish(c) : sx_raw(c, 0, c.size);
+}
+function sx_musicmaker_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60A40001 || id > 0x60A4FFFF || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var n = r.name;
+    var s = null;
+    if (!sxStrcmp(n, "form_bytes")) {
+        s = "FORM payload byte length, including MMV8 type and all chunk headers/payloads; total envelope span is this value plus eight bytes.";
+    }
+    if (!sxStrcmp(n, "form_type")) {
+        s = "Original MusicMaker module form type MMV8.";
+    }
+    if (!sxStrcmp(n, "chunk_id")) {
+        s = "Original chunk identifier: SDAT song data, INST uncompressed instruments, PINS packed instruments, INAM editor names. Unknown contents stay raw.";
+    }
+    if (!sxStrcmp(n, "payload_bytes")) {
+        s = "Physical chunk payload byte length. Original chunk traversal adds this exact stored size; any producer padding is included, not synthesized.";
+    }
+    if (!sxStrcmp(n, "song_bytes")) {
+        s = "Internal SDAT song-data byte length, excluding this four-byte length prefix and any outer chunk padding.";
+    }
+    if (!sxStrcmp(n, "format_control")) {
+        s = "Original standard-song format byte; 0xFE selects the extension whose length word follows the two order controls. 0xFF instead selects extended-song framing.";
+    }
+    if (!sxStrcmp(n, "extended_marker")) {
+        s = "0xFF selects the original extended eight-channel serialization; it is not a channel count.";
+    }
+    if (!sxStrcmp(n, "enabled_channels")) {
+        s = "One enable bit per playback channel; bit0 through bit7 select channels0 through7. Only enabled channels have order lists.";
+    }
+    if (!sxStrcmp(n, "mixer_type")) {
+        s = "Stored original mixer selection/control byte; the 2017 player may substitute a different runtime mixer.";
+    }
+    if (!sxStrcmp(n, "highest_note_control")) {
+        s = "Stored highest-note/mixer-table control byte, retained before runtime mixer calculations.";
+    }
+    if (!sxStrcmp(n, "pattern_length")) {
+        s = "Stored pattern length in playback rows; standard songs store one byte, extended songs store a big-endian word.";
+    }
+    if (!sxStrcmp(n, "speed")) {
+        s = "Original timer/speed control word; not beats per minute. Player derives hardware timing from this stored value.";
+    }
+    if (!sxStrcmp(n, "extension_marker")) {
+        s = "0xFE marks the extended-song optional metadata block.";
+    }
+    if (!sxStrcmp(n, "extension_bytes")) {
+        s = id === sxmmkr_musicmaker_standard_extension.id ? "Byte length starting at this length word, skipped before the first standard-song order list." : "Byte length starting at the 0xFE marker, including its four-byte prefix; the author string occupies the next32 bytes when present. Original ADDA.W sign-extends this value, so high-bit extents are preserved but not followed.";
+    }
+    if (!sxStrcmp(n, "opaque_control")) {
+        s = "Original physically stored extension control byte; no unsupported meaning is assigned.";
+    }
+    if (!sxStrcmp(n, "author")) {
+        s = "Original fixed32-byte author text; bytes after the first NUL remain preserved in raw_value.";
+    }
+    if (!sxStrcmp(n, "title")) {
+        s = "Original fixed20-byte song title; bytes after the first NUL remain preserved in raw_value.";
+    }
+    if (!sxStrcmp(n, "start_order_index") || !sxStrcmp(n, "loop_order_index")) {
+        s = "Stored per-channel order-list index. Original player multiplies by two to address word entries; this is not a stored byte offset.";
+    }
+    if (!sxStrcmp(n, "macro_index_or_end")) {
+        s = "Original macro index; 999 ends this channel's order list. Variable macro command bytes remain raw.";
+    }
+    if (!sxStrcmp(n, "instrument_count")) {
+        s = "Number of eight-byte instrument descriptors in the marked SEI1XX bank; bounded supported source scope is1..36.";
+    }
+    if (!sxStrcmp(n, "sample_bytes")) {
+        s = "Decoded sample byte length. For PINS/IP the physical packed bytes remain raw and no decoded positions are exposed.";
+    }
+    if (!sxStrcmp(n, "initial_bytes")) {
+        s = "Initial sample segment length in bytes; the original player halves it before writing the DMA word-length register. Zero selects the one-shot path.";
+    }
+    if (!sxStrcmp(n, "loop_start")) {
+        s = "Byte offset relative to this instrument's decoded sample start; unlike repeat_words, this value is measured in bytes.";
+    }
+    if (!sxStrcmp(n, "repeat_words")) {
+        s = "Repeat length in two-byte hardware words, preserved without conversion to bytes.";
+    }
+    if (!sxStrcmp(n, "sample_processing_state")) {
+        s = "Original signed processing-state word before uncompressed samples (decompressor initializes zero; player changes it to -1 after preparation).";
+    }
+    if (!sxStrcmp(n, "delta_bits")) {
+        s = "Bits per packed delta index, scoped to1..8. Each nonempty sample occupies floor(bits*decoded_sample_bytes/8)+1 physical bytes in the original decoder, including its extra byte at exact boundaries.";
+    }
+    if (!sxStrcmp(n, "delta")) {
+        s = "Stored signed eight-bit modular sample delta selected by packed indices; delta table has 2^delta_bits entries.";
+    }
+    if (!sxStrcmp(n, "lfo_bytes")) {
+        s = "Byte length of this LFO byte stream; fifteen length words precede the concatenated raw LFO streams.";
+    }
+    return s === null || sxSetComment(r, s);
+}

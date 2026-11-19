@@ -1,0 +1,1834 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_disknext.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_jvc_header_1_fields = layout([u8("sectors_per_track", COUNT)]);
+var sxdn_jvc_header_1 = sxLayout(0x60780008, "jvc_header_1", LE, sxdn_jvc_header_1_fields);
+var sxdn_jvc_header_2_fields = layout([u8("sectors_per_track", COUNT), u8("sides", COUNT)]);
+var sxdn_jvc_header_2 = sxLayout(0x60780009, "jvc_header_2", LE, sxdn_jvc_header_2_fields);
+var sxdn_jvc_header_3_fields = layout([u8("sectors_per_track", COUNT), u8("sides", COUNT), u8("sector_size_code")]);
+var sxdn_jvc_header_3 = sxLayout(0x6078000A, "jvc_header_3", LE, sxdn_jvc_header_3_fields);
+var sxdn_jvc_header_4_fields = layout([u8("sectors_per_track", COUNT), u8("sides", COUNT), u8("sector_size_code"),
+    u8("first_sector_id", ID)]);
+var sxdn_jvc_header_4 = sxLayout(0x6078000B, "jvc_header_4", LE, sxdn_jvc_header_4_fields);
+var sxdn_jvc_header_5_fields = layout([u8("sectors_per_track", COUNT), u8("sides", COUNT), u8("sector_size_code"),
+    u8("first_sector_id", ID), u8("sector_attribute_flag", FLAGS)]);
+var sxdn_jvc_header_5 = sxLayout(0x6078000C, "jvc_header_5", LE, sxdn_jvc_header_5_fields);
+var sxdn_disk_descriptor_keyword_fields = layout([field("value", "utf8", 0)]);
+var sxdn_disk_descriptor_keyword = sxLayout(0x60780033, "disk_descriptor_keyword", LE, sxdn_disk_descriptor_keyword_fields);
+var sxdn_disk_descriptor_string_fields = layout([field("value", "utf8", 0, STRING)]);
+var sxdn_disk_descriptor_string = sxLayout(0x60780034, "disk_descriptor_string", LE, sxdn_disk_descriptor_string_fields);
+var sxdn_psa_disk_header_fields = layout([chars("signature", 21, SIGNATURE), u8("variant", ID), field("unknown0", "byte[8]", 8),
+    u32("sector_count", COUNT), field("unknown1", "byte[50]", 50)]);
+var sxdn_psa_disk_header = sxLayout(0x60780047, "psa_disk_header", LE, sxdn_psa_disk_header_fields);
+var sxdn_psa_fat_bpb_fields = layout([field("jump", "byte[3]", 3), chars("oem_name", 8, NONE), u16("bytes_per_sector", SIZE),
+    u8("sectors_per_cluster", COUNT), u16("reserved_sectors", COUNT), u8("fat_count", COUNT), u16("root_entry_count", COUNT),
+    u16("total_sectors_16", COUNT), u8("media", ID), u16("sectors_per_fat", COUNT), u16("sectors_per_track", COUNT),
+    u16("heads", COUNT), u32("hidden_sectors", COUNT), u32("total_sectors_32", COUNT)]);
+var sxdn_psa_fat_bpb = sxLayout(0x60780048, "psa_fat_bpb", LE, sxdn_psa_fat_bpb_fields);
+var sxdn_psa_fat1216_extension_fields = layout([u8("drive_number", ID), u8("reserved", RESERVED),
+    u8("extended_signature", SIGNATURE), u32("volume_serial", ID), chars("volume_label", 11, NONE),
+    chars("filesystem_label", 8, NONE)]);
+var sxdn_psa_fat1216_extension = sxLayout(0x60780049, "psa_fat1216_extension", LE, sxdn_psa_fat1216_extension_fields);
+var sxdn_gdi_track_count_fields = layout([field("track_count", "ascii_signed", 0, COUNT)]);
+var sxdn_gdi_track_count = sxLayout(0x60780065, "gdi_track_count", LE, sxdn_gdi_track_count_fields);
+var sxdn_gdi_track_number_fields = layout([field("track_number", "ascii_signed", 0)]);
+var sxdn_gdi_track_number = sxLayout(0x60780066, "gdi_track_number", LE, sxdn_gdi_track_number_fields);
+var sxdn_gdi_lba_fields = layout([field("lba", "ascii_signed", 0)]);
+var sxdn_gdi_lba = sxLayout(0x60780067, "gdi_lba", LE, sxdn_gdi_lba_fields);
+var sxdn_gdi_control_fields = layout([field("control", "ascii_signed", 0, FLAGS)]);
+var sxdn_gdi_control = sxLayout(0x60780068, "gdi_control", LE, sxdn_gdi_control_fields);
+var sxdn_gdi_sector_size_fields = layout([field("sector_size", "ascii_signed", 0, SIZE)]);
+var sxdn_gdi_sector_size = sxLayout(0x60780069, "gdi_sector_size", LE, sxdn_gdi_sector_size_fields);
+var sxdn_gdi_filename_fields = layout([field("filename", "utf8", 0, STRING)]);
+var sxdn_gdi_filename = sxLayout(0x6078006A, "gdi_filename", LE, sxdn_gdi_filename_fields);
+var sxdn_gdi_file_offset_fields = layout([field("file_offset", "ascii_signed", 0, OFFSET)]);
+var sxdn_gdi_file_offset = sxLayout(0x6078006B, "gdi_file_offset", LE, sxdn_gdi_file_offset_fields);
+var sxdn_cue_track_number_fields = layout([field("track_number", "ascii_signed", 0)]);
+var sxdn_cue_track_number = sxLayout(0x6078006C, "cue_track_number", LE, sxdn_cue_track_number_fields);
+var sxdn_cue_index_number_fields = layout([field("index_number", "ascii_signed", 0)]);
+var sxdn_cue_index_number = sxLayout(0x6078006D, "cue_index_number", LE, sxdn_cue_index_number_fields);
+var sxdn_cue_position_fields = layout([field("msf_position", "utf8", 0)]);
+var sxdn_cue_position = sxLayout(0x6078006E, "cue_position", LE, sxdn_cue_position_fields);
+var sxdn_cue_file_fields = layout([field("filename", "utf8", 0, STRING)]);
+var sxdn_cue_file = sxLayout(0x6078006F, "cue_file", LE, sxdn_cue_file_fields);
+var sxdn_cue_mode_fields = layout([field("mode", "utf8", 0, ID)]);
+var sxdn_cue_mode = sxLayout(0x60780070, "cue_mode", LE, sxdn_cue_mode_fields);
+var sxdn_cue_file_type_fields = layout([field("file_type", "utf8", 0, ID)]);
+var sxdn_cue_file_type = sxLayout(0x60780071, "cue_file_type", LE, sxdn_cue_file_type_fields);
+var sxdn_ldbst_trail_bytes_fields = layout([field("trail_bytes", "ascii_signed", 0, SIZE)]);
+var sxdn_ldbst_trail_bytes = sxLayout(0x60780072, "ldbst_trail_bytes", LE, sxdn_ldbst_trail_bytes_fields);
+var sxdn_toc_start_fields = layout([field("start_position", "utf8", 0)]);
+var sxdn_toc_start = sxLayout(0x60780073, "toc_start", LE, sxdn_toc_start_fields);
+var sxdn_toc_length_fields = layout([field("length", "utf8", 0)]);
+var sxdn_toc_length = sxLayout(0x60780074, "toc_length", LE, sxdn_toc_length_fields);
+var sxdn_toc_filename_fields = layout([field("filename", "utf8", 0, STRING)]);
+var sxdn_toc_filename = sxLayout(0x60780075, "toc_filename", LE, sxdn_toc_filename_fields);
+var sxdn_psa_fat32_extension_fields = layout([u32("sectors_per_fat_32", COUNT), u16("extended_flags", FLAGS),
+    u16("version", ID), u32("root_directory_cluster"), u16("fsinfo_sector"), u16("backup_boot_sector"),
+    field("reserved", "byte[12]", 12, RESERVED), u8("drive_number", ID), u8("reserved2", RESERVED),
+    u8("extended_signature", SIGNATURE), u32("volume_serial", ID), chars("volume_label", 11, NONE),
+    chars("filesystem_label", 8, NONE)]);
+var sxdn_psa_fat32_extension = sxLayout(0x60780076, "psa_fat32_extension", LE, sxdn_psa_fat32_extension_fields);
+var sxdn_ccd_version_fields = layout([field("version", "ascii_signed", 0, ID)]);
+var sxdn_ccd_version = sxLayout(0x60780077, "ccd_version", LE, sxdn_ccd_version_fields);
+var sxdn_ccd_version_hex_fields = layout([chars("radix_prefix", 2, NONE), field("version", "ascii_hex", 0, ID)]);
+var sxdn_ccd_version_hex = sxLayout(0x60780078, "ccd_version_hex", LE, sxdn_ccd_version_hex_fields);
+var sxdn_ccd_toc_entries_fields = layout([field("toc_entries", "ascii_signed", 0, COUNT)]);
+var sxdn_ccd_toc_entries = sxLayout(0x60780079, "ccd_toc_entries", LE, sxdn_ccd_toc_entries_fields);
+var sxdn_ccd_toc_entries_hex_fields = layout([chars("radix_prefix", 2, NONE), field("toc_entries", "ascii_hex", 0, COUNT)]);
+var sxdn_ccd_toc_entries_hex = sxLayout(0x6078007A, "ccd_toc_entries_hex", LE, sxdn_ccd_toc_entries_hex_fields);
+var sxdn_ccd_sessions_fields = layout([field("sessions", "ascii_signed", 0, COUNT)]);
+var sxdn_ccd_sessions = sxLayout(0x6078007B, "ccd_sessions", LE, sxdn_ccd_sessions_fields);
+var sxdn_ccd_sessions_hex_fields = layout([chars("radix_prefix", 2, NONE), field("sessions", "ascii_hex", 0, COUNT)]);
+var sxdn_ccd_sessions_hex = sxLayout(0x6078007C, "ccd_sessions_hex", LE, sxdn_ccd_sessions_hex_fields);
+var sxdn_ccd_data_tracks_scrambled_fields = layout([field("data_tracks_scrambled", "ascii_signed", 0, FLAGS)]);
+var sxdn_ccd_data_tracks_scrambled = sxLayout(0x6078007D, "ccd_data_tracks_scrambled", LE, sxdn_ccd_data_tracks_scrambled_fields);
+var sxdn_ccd_data_tracks_scrambled_hex_fields = layout([chars("radix_prefix", 2, NONE),
+    field("data_tracks_scrambled", "ascii_hex", 0, FLAGS)]);
+var sxdn_ccd_data_tracks_scrambled_hex = sxLayout(0x6078007E, "ccd_data_tracks_scrambled_hex", LE, sxdn_ccd_data_tracks_scrambled_hex_fields);
+var sxdn_ccd_cd_text_length_fields = layout([field("cd_text_length", "ascii_signed", 0, SIZE)]);
+var sxdn_ccd_cd_text_length = sxLayout(0x6078007F, "ccd_cd_text_length", LE, sxdn_ccd_cd_text_length_fields);
+var sxdn_ccd_cd_text_length_hex_fields = layout([chars("radix_prefix", 2, NONE), field("cd_text_length", "ascii_hex", 0, SIZE)]);
+var sxdn_ccd_cd_text_length_hex = sxLayout(0x60780080, "ccd_cd_text_length_hex", LE, sxdn_ccd_cd_text_length_hex_fields);
+var sxdn_ccd_pregap_mode_fields = layout([field("pregap_mode", "ascii_signed", 0, ID)]);
+var sxdn_ccd_pregap_mode = sxLayout(0x60780081, "ccd_pregap_mode", LE, sxdn_ccd_pregap_mode_fields);
+var sxdn_ccd_pregap_mode_hex_fields = layout([chars("radix_prefix", 2, NONE), field("pregap_mode", "ascii_hex", 0, ID)]);
+var sxdn_ccd_pregap_mode_hex = sxLayout(0x60780082, "ccd_pregap_mode_hex", LE, sxdn_ccd_pregap_mode_hex_fields);
+var sxdn_ccd_pregap_subchannel_fields = layout([field("pregap_subchannel", "ascii_signed", 0, FLAGS)]);
+var sxdn_ccd_pregap_subchannel = sxLayout(0x60780083, "ccd_pregap_subchannel", LE, sxdn_ccd_pregap_subchannel_fields);
+var sxdn_ccd_pregap_subchannel_hex_fields = layout([chars("radix_prefix", 2, NONE),
+    field("pregap_subchannel", "ascii_hex", 0, FLAGS)]);
+var sxdn_ccd_pregap_subchannel_hex = sxLayout(0x60780084, "ccd_pregap_subchannel_hex", LE, sxdn_ccd_pregap_subchannel_hex_fields);
+var sxdn_ccd_session_fields = layout([field("session", "ascii_signed", 0)]);
+var sxdn_ccd_session = sxLayout(0x60780085, "ccd_session", LE, sxdn_ccd_session_fields);
+var sxdn_ccd_session_hex_fields = layout([chars("radix_prefix", 2, NONE), field("session", "ascii_hex", 0)]);
+var sxdn_ccd_session_hex = sxLayout(0x60780086, "ccd_session_hex", LE, sxdn_ccd_session_hex_fields);
+var sxdn_ccd_point_fields = layout([field("point", "ascii_signed", 0, ID)]);
+var sxdn_ccd_point = sxLayout(0x60780087, "ccd_point", LE, sxdn_ccd_point_fields);
+var sxdn_ccd_point_hex_fields = layout([chars("radix_prefix", 2, NONE), field("point", "ascii_hex", 0, ID)]);
+var sxdn_ccd_point_hex = sxLayout(0x60780088, "ccd_point_hex", LE, sxdn_ccd_point_hex_fields);
+var sxdn_ccd_adr_fields = layout([field("adr", "ascii_signed", 0, ID)]);
+var sxdn_ccd_adr = sxLayout(0x60780089, "ccd_adr", LE, sxdn_ccd_adr_fields);
+var sxdn_ccd_adr_hex_fields = layout([chars("radix_prefix", 2, NONE), field("adr", "ascii_hex", 0, ID)]);
+var sxdn_ccd_adr_hex = sxLayout(0x6078008A, "ccd_adr_hex", LE, sxdn_ccd_adr_hex_fields);
+var sxdn_ccd_control_fields = layout([field("control", "ascii_signed", 0, FLAGS)]);
+var sxdn_ccd_control = sxLayout(0x6078008B, "ccd_control", LE, sxdn_ccd_control_fields);
+var sxdn_ccd_control_hex_fields = layout([chars("radix_prefix", 2, NONE), field("control", "ascii_hex", 0, FLAGS)]);
+var sxdn_ccd_control_hex = sxLayout(0x6078008C, "ccd_control_hex", LE, sxdn_ccd_control_hex_fields);
+var sxdn_ccd_track_number_fields = layout([field("track_number", "ascii_signed", 0)]);
+var sxdn_ccd_track_number = sxLayout(0x6078008D, "ccd_track_number", LE, sxdn_ccd_track_number_fields);
+var sxdn_ccd_track_number_hex_fields = layout([chars("radix_prefix", 2, NONE), field("track_number", "ascii_hex", 0)]);
+var sxdn_ccd_track_number_hex = sxLayout(0x6078008E, "ccd_track_number_hex", LE, sxdn_ccd_track_number_hex_fields);
+var sxdn_ccd_absolute_minute_fields = layout([field("absolute_minute", "ascii_signed", 0)]);
+var sxdn_ccd_absolute_minute = sxLayout(0x6078008F, "ccd_absolute_minute", LE, sxdn_ccd_absolute_minute_fields);
+var sxdn_ccd_absolute_minute_hex_fields = layout([chars("radix_prefix", 2, NONE), field("absolute_minute", "ascii_hex", 0)]);
+var sxdn_ccd_absolute_minute_hex = sxLayout(0x60780090, "ccd_absolute_minute_hex", LE, sxdn_ccd_absolute_minute_hex_fields);
+var sxdn_ccd_absolute_second_fields = layout([field("absolute_second", "ascii_signed", 0)]);
+var sxdn_ccd_absolute_second = sxLayout(0x60780091, "ccd_absolute_second", LE, sxdn_ccd_absolute_second_fields);
+var sxdn_ccd_absolute_second_hex_fields = layout([chars("radix_prefix", 2, NONE), field("absolute_second", "ascii_hex", 0)]);
+var sxdn_ccd_absolute_second_hex = sxLayout(0x60780092, "ccd_absolute_second_hex", LE, sxdn_ccd_absolute_second_hex_fields);
+var sxdn_ccd_absolute_frame_fields = layout([field("absolute_frame", "ascii_signed", 0)]);
+var sxdn_ccd_absolute_frame = sxLayout(0x60780093, "ccd_absolute_frame", LE, sxdn_ccd_absolute_frame_fields);
+var sxdn_ccd_absolute_frame_hex_fields = layout([chars("radix_prefix", 2, NONE), field("absolute_frame", "ascii_hex", 0)]);
+var sxdn_ccd_absolute_frame_hex = sxLayout(0x60780094, "ccd_absolute_frame_hex", LE, sxdn_ccd_absolute_frame_hex_fields);
+var sxdn_ccd_absolute_lba_fields = layout([field("absolute_lba", "ascii_signed", 0)]);
+var sxdn_ccd_absolute_lba = sxLayout(0x60780095, "ccd_absolute_lba", LE, sxdn_ccd_absolute_lba_fields);
+var sxdn_ccd_absolute_lba_hex_fields = layout([chars("radix_prefix", 2, NONE), field("absolute_lba", "ascii_hex", 0)]);
+var sxdn_ccd_absolute_lba_hex = sxLayout(0x60780096, "ccd_absolute_lba_hex", LE, sxdn_ccd_absolute_lba_hex_fields);
+var sxdn_ccd_zero_fields = layout([field("zero", "ascii_signed", 0)]);
+var sxdn_ccd_zero = sxLayout(0x60780097, "ccd_zero", LE, sxdn_ccd_zero_fields);
+var sxdn_ccd_zero_hex_fields = layout([chars("radix_prefix", 2, NONE), field("zero", "ascii_hex", 0)]);
+var sxdn_ccd_zero_hex = sxLayout(0x60780098, "ccd_zero_hex", LE, sxdn_ccd_zero_hex_fields);
+var sxdn_ccd_pminute_fields = layout([field("pminute", "ascii_signed", 0)]);
+var sxdn_ccd_pminute = sxLayout(0x60780099, "ccd_pminute", LE, sxdn_ccd_pminute_fields);
+var sxdn_ccd_pminute_hex_fields = layout([chars("radix_prefix", 2, NONE), field("pminute", "ascii_hex", 0)]);
+var sxdn_ccd_pminute_hex = sxLayout(0x6078009A, "ccd_pminute_hex", LE, sxdn_ccd_pminute_hex_fields);
+var sxdn_ccd_psecond_fields = layout([field("psecond", "ascii_signed", 0)]);
+var sxdn_ccd_psecond = sxLayout(0x6078009B, "ccd_psecond", LE, sxdn_ccd_psecond_fields);
+var sxdn_ccd_psecond_hex_fields = layout([chars("radix_prefix", 2, NONE), field("psecond", "ascii_hex", 0)]);
+var sxdn_ccd_psecond_hex = sxLayout(0x6078009C, "ccd_psecond_hex", LE, sxdn_ccd_psecond_hex_fields);
+var sxdn_ccd_pframe_fields = layout([field("pframe", "ascii_signed", 0)]);
+var sxdn_ccd_pframe = sxLayout(0x6078009D, "ccd_pframe", LE, sxdn_ccd_pframe_fields);
+var sxdn_ccd_pframe_hex_fields = layout([chars("radix_prefix", 2, NONE), field("pframe", "ascii_hex", 0)]);
+var sxdn_ccd_pframe_hex = sxLayout(0x6078009E, "ccd_pframe_hex", LE, sxdn_ccd_pframe_hex_fields);
+var sxdn_ccd_plba_fields = layout([field("plba", "ascii_signed", 0)]);
+var sxdn_ccd_plba = sxLayout(0x6078009F, "ccd_plba", LE, sxdn_ccd_plba_fields);
+var sxdn_ccd_plba_hex_fields = layout([chars("radix_prefix", 2, NONE), field("plba", "ascii_hex", 0)]);
+var sxdn_ccd_plba_hex = sxLayout(0x607800A0, "ccd_plba_hex", LE, sxdn_ccd_plba_hex_fields);
+var sxdn_ccd_mode_fields = layout([field("mode", "ascii_signed", 0, ID)]);
+var sxdn_ccd_mode = sxLayout(0x607800A1, "ccd_mode", LE, sxdn_ccd_mode_fields);
+var sxdn_ccd_mode_hex_fields = layout([chars("radix_prefix", 2, NONE), field("mode", "ascii_hex", 0, ID)]);
+var sxdn_ccd_mode_hex = sxLayout(0x607800A2, "ccd_mode_hex", LE, sxdn_ccd_mode_hex_fields);
+var sxdn_ccd_index1_fields = layout([field("index1", "ascii_signed", 0)]);
+var sxdn_ccd_index1 = sxLayout(0x607800A3, "ccd_index1", LE, sxdn_ccd_index1_fields);
+var sxdn_ccd_index1_hex_fields = layout([chars("radix_prefix", 2, NONE), field("index1", "ascii_hex", 0)]);
+var sxdn_ccd_index1_hex = sxLayout(0x607800A4, "ccd_index1_hex", LE, sxdn_ccd_index1_hex_fields);
+var sxdn_ldbst_cylinder_fields = layout([field("cylinder", "ascii_signed", 0)]);
+var sxdn_ldbst_cylinder = sxLayout(0x607800A5, "ldbst_cylinder", LE, sxdn_ldbst_cylinder_fields);
+var sxdn_ldbst_cylinder_hex_fields = layout([chars("radix_prefix", 2, NONE), field("cylinder", "ascii_hex", 0)]);
+var sxdn_ldbst_cylinder_hex = sxLayout(0x607800A6, "ldbst_cylinder_hex", LE, sxdn_ldbst_cylinder_hex_fields);
+var sxdn_ldbst_head_fields = layout([field("head", "ascii_signed", 0)]);
+var sxdn_ldbst_head = sxLayout(0x607800A7, "ldbst_head", LE, sxdn_ldbst_head_fields);
+var sxdn_ldbst_head_hex_fields = layout([chars("radix_prefix", 2, NONE), field("head", "ascii_hex", 0)]);
+var sxdn_ldbst_head_hex = sxLayout(0x607800A8, "ldbst_head_hex", LE, sxdn_ldbst_head_hex_fields);
+var sxdn_ldbst_data_rate_fields = layout([field("data_rate", "ascii_signed", 0)]);
+var sxdn_ldbst_data_rate = sxLayout(0x607800A9, "ldbst_data_rate", LE, sxdn_ldbst_data_rate_fields);
+var sxdn_ldbst_data_rate_hex_fields = layout([chars("radix_prefix", 2, NONE), field("data_rate", "ascii_hex", 0)]);
+var sxdn_ldbst_data_rate_hex = sxLayout(0x607800AA, "ldbst_data_rate_hex", LE, sxdn_ldbst_data_rate_hex_fields);
+var sxdn_ldbst_gap3_fields = layout([field("gap3", "ascii_signed", 0)]);
+var sxdn_ldbst_gap3 = sxLayout(0x607800AB, "ldbst_gap3", LE, sxdn_ldbst_gap3_fields);
+var sxdn_ldbst_gap3_hex_fields = layout([chars("radix_prefix", 2, NONE), field("gap3", "ascii_hex", 0)]);
+var sxdn_ldbst_gap3_hex = sxLayout(0x607800AC, "ldbst_gap3_hex", LE, sxdn_ldbst_gap3_hex_fields);
+var sxdn_ldbst_filler_fields = layout([field("filler", "ascii_signed", 0)]);
+var sxdn_ldbst_filler = sxLayout(0x607800AD, "ldbst_filler", LE, sxdn_ldbst_filler_fields);
+var sxdn_ldbst_filler_hex_fields = layout([chars("radix_prefix", 2, NONE), field("filler", "ascii_hex", 0)]);
+var sxdn_ldbst_filler_hex = sxLayout(0x607800AE, "ldbst_filler_hex", LE, sxdn_ldbst_filler_hex_fields);
+var sxdn_ldbst_total_length_fields = layout([field("total_length", "ascii_signed", 0, SIZE)]);
+var sxdn_ldbst_total_length = sxLayout(0x607800AF, "ldbst_total_length", LE, sxdn_ldbst_total_length_fields);
+var sxdn_ldbst_total_length_hex_fields = layout([chars("radix_prefix", 2, NONE), field("total_length", "ascii_hex", 0, SIZE)]);
+var sxdn_ldbst_total_length_hex = sxLayout(0x607800B0, "ldbst_total_length_hex", LE, sxdn_ldbst_total_length_hex_fields);
+var sxdn_ldbst_cylinders_fields = layout([field("cylinders", "ascii_signed", 0, COUNT)]);
+var sxdn_ldbst_cylinders = sxLayout(0x607800B1, "ldbst_cylinders", LE, sxdn_ldbst_cylinders_fields);
+var sxdn_ldbst_cylinders_hex_fields = layout([chars("radix_prefix", 2, NONE), field("cylinders", "ascii_hex", 0, COUNT)]);
+var sxdn_ldbst_cylinders_hex = sxLayout(0x607800B2, "ldbst_cylinders_hex", LE, sxdn_ldbst_cylinders_hex_fields);
+var sxdn_ldbst_heads_fields = layout([field("heads", "ascii_signed", 0, COUNT)]);
+var sxdn_ldbst_heads = sxLayout(0x607800B3, "ldbst_heads", LE, sxdn_ldbst_heads_fields);
+var sxdn_ldbst_heads_hex_fields = layout([chars("radix_prefix", 2, NONE), field("heads", "ascii_hex", 0, COUNT)]);
+var sxdn_ldbst_heads_hex = sxLayout(0x607800B4, "ldbst_heads_hex", LE, sxdn_ldbst_heads_hex_fields);
+var sxdn_ldbst_sectors_fields = layout([field("sectors", "ascii_signed", 0, COUNT)]);
+var sxdn_ldbst_sectors = sxLayout(0x607800B5, "ldbst_sectors", LE, sxdn_ldbst_sectors_fields);
+var sxdn_ldbst_sectors_hex_fields = layout([chars("radix_prefix", 2, NONE), field("sectors", "ascii_hex", 0, COUNT)]);
+var sxdn_ldbst_sectors_hex = sxLayout(0x607800B6, "ldbst_sectors_hex", LE, sxdn_ldbst_sectors_hex_fields);
+var sxdn_ldbst_sector_base_fields = layout([field("sector_base", "ascii_signed", 0)]);
+var sxdn_ldbst_sector_base = sxLayout(0x607800B7, "ldbst_sector_base", LE, sxdn_ldbst_sector_base_fields);
+var sxdn_ldbst_sector_base_hex_fields = layout([chars("radix_prefix", 2, NONE), field("sector_base", "ascii_hex", 0)]);
+var sxdn_ldbst_sector_base_hex = sxLayout(0x607800B8, "ldbst_sector_base_hex", LE, sxdn_ldbst_sector_base_hex_fields);
+var sxdn_ldbst_sector_size_fields = layout([field("sector_size", "ascii_signed", 0, SIZE)]);
+var sxdn_ldbst_sector_size = sxLayout(0x607800B9, "ldbst_sector_size", LE, sxdn_ldbst_sector_size_fields);
+var sxdn_ldbst_sector_size_hex_fields = layout([chars("radix_prefix", 2, NONE), field("sector_size", "ascii_hex", 0, SIZE)]);
+var sxdn_ldbst_sector_size_hex = sxLayout(0x607800BA, "ldbst_sector_size_hex", LE, sxdn_ldbst_sector_size_hex_fields);
+var sxdn_ldbst_id_cylinder_fields = layout([field("id_cylinder", "ascii_signed", 0)]);
+var sxdn_ldbst_id_cylinder = sxLayout(0x607800BB, "ldbst_id_cylinder", LE, sxdn_ldbst_id_cylinder_fields);
+var sxdn_ldbst_id_cylinder_hex_fields = layout([chars("radix_prefix", 2, NONE), field("id_cylinder", "ascii_hex", 0)]);
+var sxdn_ldbst_id_cylinder_hex = sxLayout(0x607800BC, "ldbst_id_cylinder_hex", LE, sxdn_ldbst_id_cylinder_hex_fields);
+var sxdn_ldbst_id_head_fields = layout([field("id_head", "ascii_signed", 0)]);
+var sxdn_ldbst_id_head = sxLayout(0x607800BD, "ldbst_id_head", LE, sxdn_ldbst_id_head_fields);
+var sxdn_ldbst_id_head_hex_fields = layout([chars("radix_prefix", 2, NONE), field("id_head", "ascii_hex", 0)]);
+var sxdn_ldbst_id_head_hex = sxLayout(0x607800BE, "ldbst_id_head_hex", LE, sxdn_ldbst_id_head_hex_fields);
+var sxdn_ldbst_id_sector_fields = layout([field("id_sector", "ascii_signed", 0, ID)]);
+var sxdn_ldbst_id_sector = sxLayout(0x607800BF, "ldbst_id_sector", LE, sxdn_ldbst_id_sector_fields);
+var sxdn_ldbst_id_sector_hex_fields = layout([chars("radix_prefix", 2, NONE), field("id_sector", "ascii_hex", 0, ID)]);
+var sxdn_ldbst_id_sector_hex = sxLayout(0x607800C0, "ldbst_id_sector_hex", LE, sxdn_ldbst_id_sector_hex_fields);
+var sxdn_ldbst_sector_size_code_fields = layout([field("sector_size_code", "ascii_signed", 0)]);
+var sxdn_ldbst_sector_size_code = sxLayout(0x607800C1, "ldbst_sector_size_code", LE, sxdn_ldbst_sector_size_code_fields);
+var sxdn_ldbst_sector_size_code_hex_fields = layout([chars("radix_prefix", 2, NONE), field("sector_size_code", "ascii_hex", 0)]);
+var sxdn_ldbst_sector_size_code_hex = sxLayout(0x607800C2, "ldbst_sector_size_code_hex", LE, sxdn_ldbst_sector_size_code_hex_fields);
+var sxdn_ldbst_status1_fields = layout([field("status1", "ascii_signed", 0, FLAGS)]);
+var sxdn_ldbst_status1 = sxLayout(0x607800C3, "ldbst_status1", LE, sxdn_ldbst_status1_fields);
+var sxdn_ldbst_status1_hex_fields = layout([chars("radix_prefix", 2, NONE), field("status1", "ascii_hex", 0, FLAGS)]);
+var sxdn_ldbst_status1_hex = sxLayout(0x607800C4, "ldbst_status1_hex", LE, sxdn_ldbst_status1_hex_fields);
+var sxdn_ldbst_status2_fields = layout([field("status2", "ascii_signed", 0, FLAGS)]);
+var sxdn_ldbst_status2 = sxLayout(0x607800C5, "ldbst_status2", LE, sxdn_ldbst_status2_fields);
+var sxdn_ldbst_status2_hex_fields = layout([chars("radix_prefix", 2, NONE), field("status2", "ascii_hex", 0, FLAGS)]);
+var sxdn_ldbst_status2_hex = sxLayout(0x607800C6, "ldbst_status2_hex", LE, sxdn_ldbst_status2_hex_fields);
+var sxdn_ldbst_copies_fields = layout([field("copies", "ascii_signed", 0, COUNT)]);
+var sxdn_ldbst_copies = sxLayout(0x607800C7, "ldbst_copies", LE, sxdn_ldbst_copies_fields);
+var sxdn_ldbst_copies_hex_fields = layout([chars("radix_prefix", 2, NONE), field("copies", "ascii_hex", 0, COUNT)]);
+var sxdn_ldbst_copies_hex = sxLayout(0x607800C8, "ldbst_copies_hex", LE, sxdn_ldbst_copies_hex_fields);
+var sxdn_ldbst_data_length_fields = layout([field("data_length", "ascii_signed", 0, SIZE)]);
+var sxdn_ldbst_data_length = sxLayout(0x607800C9, "ldbst_data_length", LE, sxdn_ldbst_data_length_fields);
+var sxdn_ldbst_data_length_hex_fields = layout([chars("radix_prefix", 2, NONE), field("data_length", "ascii_hex", 0, SIZE)]);
+var sxdn_ldbst_data_length_hex = sxLayout(0x607800CA, "ldbst_data_length_hex", LE, sxdn_ldbst_data_length_hex_fields);
+var sxdn_ldbst_trail_bytes_hex_fields = layout([chars("radix_prefix", 2, NONE), field("trail_bytes", "ascii_hex", 0, SIZE)]);
+var sxdn_ldbst_trail_bytes_hex = sxLayout(0x607800CB, "ldbst_trail_bytes_hex", LE, sxdn_ldbst_trail_bytes_hex_fields);
+var sxdn_ldbst_track_relative_offset_fields = layout([field("track_relative_offset", "ascii_signed", 0, OFFSET)]);
+var sxdn_ldbst_track_relative_offset = sxLayout(0x607800CC, "ldbst_track_relative_offset", LE, sxdn_ldbst_track_relative_offset_fields);
+var sxdn_ldbst_track_relative_offset_hex_fields = layout([chars("radix_prefix", 2, NONE),
+    field("track_relative_offset", "ascii_hex", 0, OFFSET)]);
+var sxdn_ldbst_track_relative_offset_hex = sxLayout(0x607800CD, "ldbst_track_relative_offset_hex", LE, sxdn_ldbst_track_relative_offset_hex_fields);
+var sxdn_ldbst_version_fields = layout([field("version", "utf8", 0, ID)]);
+var sxdn_ldbst_version = sxLayout(0x607800CE, "ldbst_version", LE, sxdn_ldbst_version_fields);
+var sxdn_ldbst_sidedness_fields = layout([field("sidedness", "utf8", 0, ID)]);
+var sxdn_ldbst_sidedness = sxLayout(0x607800CF, "ldbst_sidedness", LE, sxdn_ldbst_sidedness_fields);
+var sxdn_ldbst_complement_fields = layout([field("complement", "utf8", 0, FLAGS)]);
+var sxdn_ldbst_complement = sxLayout(0x607800D0, "ldbst_complement", LE, sxdn_ldbst_complement_fields);
+var sxdn_ldbst_recording_mode_fields = layout([field("recording_mode", "utf8", 0, ID)]);
+var sxdn_ldbst_recording_mode = sxLayout(0x607800D1, "ldbst_recording_mode", LE, sxdn_ldbst_recording_mode_fields);
+function sxdn_flags(r, value, bits, n) {
+    var out = [];
+    var used = 0;
+    var known = 0;
+    for (var i = 0; i < n; i++) {
+        known = sxOr64(known, bits[i].mask);
+        if (!sxAnd64(value, bits[i].mask)) {
+            continue;
+        }
+        var p = bits[i].name, p_o = 0;
+        var z = sxStrlenAt(p, p_o);
+        if (z + used + 24 >= 1024) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        while (sxAt(p, p_o)) {
+            out[used++] = sxAt(p, p_o++);
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var start = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var d = sxAnd64(sxShr64(unknown, shift), 15);
+            if (d || start || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", d);
+                start = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_disknext_comment_bits = [{ mask: 128, name: "FAT_MIRRORING_DISABLED" }];
+var sx_disknext_comment_bits_2 = [{ mask: 255, name: "ASCII" }];
+var sx_disknext_comment_bits_3 = [{ mask: 1, name: "CONTINUATION" }, { mask: 2, name: "PROTECTED" },
+    { mask: 8, name: "END_OF_DIRECTORY" }, { mask: 32, name: "HAS_NEXT_ENTRY" }, { mask: 128, name: "DELETED" }];
+function sx_disknext_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60780000 || id >= 0x60790000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    if (id === 0x60780076 && r.name === "extended_flags" && integer) {
+        return sxdn_flags(r, value, sx_disknext_comment_bits, 1);
+    }
+    if (id === 0x6078000F && r.name === "ascii_flag" && integer) {
+        return sxdn_flags(r, value, sx_disknext_comment_bits_2, 1);
+    }
+    if (id === 0x60780011 && r.name === "flags" && integer) {
+        return sxdn_flags(r, value, sx_disknext_comment_bits_3, 5);
+    }
+    if (id === 0x60780003 && r.name === "block_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "FILENAME");
+        case 1:
+            return sxSetComment(r, "DATA");
+        case 255:
+            return sxSetComment(r, "END");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60780004 && r.name === "file_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "BASIC");
+        case 1:
+            return sxSetComment(r, "DATA");
+        case 2:
+            return sxSetComment(r, "MACHINE_CODE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60780016 && r.name === "compression" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "STORED");
+        case 1:
+            return sxSetComment(r, "RDC");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60780027 && r.name === "block_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "STREAM_INFO");
+        case 2:
+            return sxSetComment(r, "INDEX");
+        case 3:
+            return sxSetComment(r, "STREAM_END");
+        case 4:
+            return sxSetComment(r, "DEVICE_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60780044 && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "NON_TRACK");
+        case 1:
+            return sxSetComment(r, "AUDIO");
+        case 2:
+            return sxSetComment(r, "MODE1");
+        case 3:
+            return sxSetComment(r, "MODE2");
+        case 4:
+            return sxSetComment(r, "MODE2_FORM1");
+        case 5:
+            return sxSetComment(r, "MODE2_FORM2");
+        case 6:
+            return sxSetComment(r, "DVD");
+        default:
+            break;
+        }
+    }
+    switch (id) {
+    case 0x60780001:
+        if (r.name === "producer_ebcdic") {
+            s = "EBCDIC EMT producer identifier; physical bytes preserved";
+        } else if (r.name === "version_digits_ebcdic") {
+            s = "Stored EBCDIC version digits";
+        } else if (r.name === "text_ebcdic") {
+            s = "Producer text/padding; EBCDIC bytes preserved";
+        } else if (r.name === "product_banner_ebcdic") {
+            s = "EBCDIC product/version banner";
+        }
+        break;
+    case 0x60780002:
+        if (r.name === "execution_address") {
+            s = "Zero means no supplied execution entry";
+        }
+        break;
+    case 0x60780003:
+        if (r.name === "block_type") {
+            s = "0=filename,1=data,255=end";
+        }
+        break;
+    case 0x60780004:
+        if (r.name === "file_type") {
+            s = "0=BASIC,1=data,2=machine code";
+        }
+        break;
+    case 0x60780005:
+        if (r.name === "checksum") {
+            s = "Low8bits of type+length+payload sum";
+        }
+        break;
+    case 0x60780006:
+        if (r.name === "file_type") {
+            s = "B=BASIC,C=code,D=array";
+        } else if (r.name === "start_or_parameter") {
+            s = "C:load address; B/D:format-specific parameter";
+        } else if (r.name === "stored_sector_count") {
+            s = "Number of256-byte sectors";
+        } else if (r.name === "header_checksum") {
+            s = "105+257*sum(first15bytes), reduced to16bits";
+        }
+        break;
+    case 0x60780007:
+        if (r.name === "stored_sector_count") {
+            s = "Number of256-byte sectors";
+        }
+        break;
+    case 0x6078000A:
+        if (r.name === "sector_size_code") {
+            s = "Stored code:128<<code bytes";
+        }
+        break;
+    case 0x6078000B:
+        if (r.name === "sector_size_code") {
+            s = "Stored code:128<<code bytes";
+        }
+        break;
+    case 0x6078000C:
+        if (r.name === "sector_size_code") {
+            s = "Stored code:128<<code bytes";
+        }
+        break;
+    case 0x6078000D:
+        if (r.name === "compression_and_name_length") {
+            s = "Low3bits=compression; remaining bits are producer-defined";
+        }
+        break;
+    case 0x6078000E:
+        if (r.name === "next_or_terminal") {
+            s = "255=free;192..201=terminal sectors used; otherwise next granule index";
+        }
+        break;
+    case 0x6078000F:
+        if (r.name === "last_sector_bytes") {
+            s = "Zero denotes a full256-byte last sector";
+        }
+        break;
+    case 0x60780011:
+        if (r.name === "extent_1_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_2_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_3_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_4_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "next_or_last_bytes") {
+            s = "Continued flag:next directory index; otherwise last-sector bytes with0=256";
+        }
+        break;
+    case 0x60780012:
+        if (r.name === "extent_1_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_2_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_3_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_4_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_5_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_6_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "extent_7_sector") {
+            s = "256-byte logical sector number";
+        }
+        break;
+    case 0x60780013:
+        if (r.name === "flags") {
+            s = "0x0800=uncompressed remainder";
+        }
+        break;
+    case 0x60780014:
+        if (r.name === "total_block_size") {
+            s = "Includes this2-byte length word";
+        } else if (r.name === "index_size") {
+            s = "From this index-size word, including its2bytes";
+        }
+        break;
+    case 0x60780015:
+        if (r.name === "last_literal_offset") {
+            s = "Relative to block after total-length word; inclusive literal end";
+        } else if (r.name === "repeat_count") {
+            s = "Additional copies of preceding byte";
+        }
+        break;
+    case 0x60780016:
+        if (r.name === "format_value") {
+            s = "Native accepts4..32; exact unit unestablished";
+        } else if (r.name === "compression") {
+            s = "0=stored,1=RDC block stream";
+        }
+        break;
+    case 0x60780017:
+        if (r.name === "size_or_stored_length") {
+            s = "Negative=stored bytes after negation; positive=compressed bytes; zero=end";
+        }
+        break;
+    case 0x60780019:
+        if (r.name === "count_and_repeat") {
+            s = "Low15bits=byte count; highbit=set for repeated byte, clear for literal run";
+        }
+        break;
+    case 0x6078001C:
+        if (r.name === "track_headers_size") {
+            s = "387-byte track descriptors plus1byte checksum";
+        }
+        break;
+    case 0x6078001E:
+        if (r.name === "status") {
+            s = "Native supports healthy zero status only";
+        } else if (r.name === "sector_size_code") {
+            s = "128<<code bytes";
+        } else if (r.name === "biased_payload_offset") {
+            s = "Stored offset includes0x16ad bias; relative to following segment data after subtractingbias";
+        }
+        break;
+    case 0x6078001F:
+        if (r.name === "checksum") {
+            s = "Sum of387-byte descriptors modulo256";
+        }
+        break;
+    case 0x60780022:
+        if (r.name === "type_count_continue") {
+            s = "Low2bits=sector type; bits2..6=low5count-minus-one bits; bit7=continuation";
+        }
+        break;
+    case 0x60780023:
+        if (r.name === "count_continue") {
+            s = "Low7bits extend count; highbit=continuation";
+        }
+        break;
+    case 0x60780024:
+        if (r.name === "reconstructed_edc") {
+            s = "ECMA-130 EDC over reconstructed complete output";
+        }
+        break;
+    case 0x60780027:
+        if (r.name === "payload_size") {
+            s = "EOF type13 uses0x0d0d sentinel with no payload";
+        }
+        break;
+    case 0x60780028:
+        if (r.name === "eof_sentinel") {
+            s = "0x0d0d; no payload";
+        }
+        break;
+    case 0x60780029:
+        if (r.name === "stream_position") {
+            s = "In-stream bytes only; excludes OOB blocks, not a physical file offset";
+        } else if (r.name === "transfer_time") {
+            s = "USB transfer timing counter in device ticks";
+        }
+        break;
+    case 0x6078002A:
+        if (r.name === "stream_position") {
+            s = "In-stream bytes only; excludes OOB blocks";
+        }
+        break;
+    case 0x6078002B:
+        if (r.name === "stream_position") {
+            s = "Position in flux-byte stream with OOB bytes excluded";
+        } else if (r.name === "timer") {
+            s = "Index timer counter; device clock units";
+        } else if (r.name === "system_clock") {
+            s = "Device system-clock counter; not a byte address";
+        }
+        break;
+    case 0x6078002C:
+        if (r.name === "user_or_status") {
+            s = "CP/M user0..15;0xe5=deleted";
+        } else if (r.name === "filename_and_flags") {
+            s = "High bits retained; remaining7bits are filename characters";
+        } else if (r.name === "extension_and_flags") {
+            s = "Extension high bits hold read-only/system/archive flags";
+        } else if (r.name === "record_count") {
+            s = "128-byte records in this extent";
+        } else if (r.name === "allocation_blocks") {
+            s = "Fixed SIMH CP/M allocation uses16-bit block indices";
+        }
+        break;
+    case 0x6078002D:
+        if (r.name === "value") {
+            s = "Producer version token";
+        }
+        break;
+    case 0x6078002E:
+        if (r.name === "value") {
+            s = "Stored256-byte blocks per track";
+        }
+        break;
+    case 0x60780031:
+        if (r.name === "value") {
+            s = "Encoded sector-size selector; stored blocks are always256bytes";
+        }
+        break;
+    case 0x60780033:
+        if (r.name === "value") {
+            s = "Physical grammar token";
+        }
+        break;
+    case 0x60780034:
+        if (r.name === "value") {
+            s = "Original quoted/raw text, not decoded data";
+        }
+        break;
+    case 0x60780035:
+        if (r.name === "value") {
+            s = "Original device name/value text";
+        }
+        break;
+    case 0x60780036:
+        if (r.name === "timestamp_encoded") {
+            s = "Producer timestamp; epoch and encoding not established";
+        }
+        break;
+    case 0x6078003A:
+        if (r.name === "external_file_offset") {
+            s = "Byte offset into external data file";
+        } else if (r.name === "sector_adjustment") {
+            s = "Sector-unit bias used to resolve external file position";
+        } else if (r.name === "end_sector") {
+            s = "Exclusive logical sector end";
+        }
+        break;
+    case 0x6078003C:
+        if (r.name === "disc_type") {
+            s = "MMC profile code";
+        }
+        break;
+    case 0x60780040:
+        if (r.name === "drive_path_size") {
+            s = "Bytes of following UTF16 path";
+        }
+        break;
+    case 0x60780041:
+        if (r.name === "type") {
+            s = "0x8000=audio";
+        } else if (r.name === "external_file_offset") {
+            s = "Byte offset into named external data file";
+        } else if (r.name === "filename_size") {
+            s = "Bytes of following UTF16LE filename";
+        }
+        break;
+    case 0x60780044:
+        if (r.name === "type") {
+            s = "0=non-track,1=audio,2=mode1,3=mode2,4=form1,5=form2,6=DVD";
+        }
+        break;
+    case 0x60780047:
+        if (r.name === "variant") {
+            s = "Native accepts values0..3; producer meaning unestablished";
+        } else if (r.name === "sector_count") {
+            s = "512-byte sectors in the following FAT image";
+        }
+        break;
+    case 0x60780054:
+        if (r.name === "block_log") {
+            s = "Base 2 block-size exponent, not a byte count.";
+        } else if (r.name === "root_inode_reference") {
+            s = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60780055:
+        if (r.name === "block_log") {
+            s = "Base 2 block-size exponent, not a byte count.";
+        } else if (r.name === "root_inode_reference") {
+            s = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60780056:
+        if (r.name === "block_log") {
+            s = "Base 2 block-size exponent, not a byte count.";
+        } else if (r.name === "root_inode_reference") {
+            s = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60780057:
+        if (r.name === "block_log") {
+            s = "Base 2 block-size exponent, not a byte count.";
+        } else if (r.name === "root_inode_reference") {
+            s = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60780058:
+        if (r.name === "size_and_stored_flag") {
+            s = "Low 15 bits: encoded payload byte length; bit 15: uncompressed payload. Not a plain size field.";
+        }
+        break;
+    case 0x60780059:
+        if (r.name === "metadata_offset") {
+            s = "Absolute byte offset of a metadata block from the filesystem image start.";
+        }
+        break;
+    case 0x6078005C:
+        if (r.name === "size_and_stored_flag") {
+            s = "Low 15 bits: encoded payload byte length; bit 15: uncompressed payload. Not a plain size field.";
+        }
+        break;
+    case 0x6078005D:
+        if (r.name === "metadata_offset") {
+            s = "Absolute byte offset of a metadata block from the filesystem image start.";
+        }
+        break;
+    case 0x60780060:
+        if (r.name === "root_fd_sector") {
+            s = "256-byte logical sector number";
+        } else if (r.name === "creation_ymdhm") {
+            s = "Calendar bytes, year relative1900";
+        } else if (r.name === "volume_name") {
+            s = "Last character has bit7 set";
+        }
+        break;
+    case 0x60780061:
+        if (r.name === "segment_allocation_size") {
+            s = "Sector allocation increment";
+        } else if (r.name === "record_extension") {
+            s = "Path extension for record locking";
+        } else if (r.name === "directory_entry_offset") {
+            s = "Byte position relative to the current directory, not a memory pointer";
+        }
+        break;
+    case 0x60780062:
+        if (r.name === "modification_ymdhm") {
+            s = "Calendar bytes, year relative1900";
+        } else if (r.name === "creation_ymd") {
+            s = "Calendar bytes, year relative1900";
+        }
+        break;
+    case 0x60780063:
+        if (r.name === "first_sector") {
+            s = "256-byte logical sector number";
+        }
+        break;
+    case 0x60780064:
+        if (r.name === "name") {
+            s = "Last character has bit7 set";
+        } else if (r.name === "file_descriptor_sector") {
+            s = "256-byte logical sector number";
+        }
+        break;
+    case 0x60780067:
+        if (r.name === "lba") {
+            s = "Logical sectors, not a physical byte offset";
+        }
+        break;
+    case 0x6078006A:
+        if (r.name === "filename") {
+            s = "Physical quoted/unquoted filename";
+        }
+        break;
+    case 0x6078006B:
+        if (r.name === "file_offset") {
+            s = "Byte offset in external track file";
+        }
+        break;
+    case 0x6078006E:
+        if (r.name === "msf_position") {
+            s = "Minute:second:frame;75frames per second";
+        }
+        break;
+    case 0x6078006F:
+        if (r.name === "filename") {
+            s = "External file; original quoting preserved";
+        }
+        break;
+    case 0x60780072:
+        if (r.name === "trail_bytes") {
+            s = "Decoded trailing bytes";
+        }
+        break;
+    case 0x60780073:
+        if (r.name === "start_position") {
+            s = "Minute:second:frame in external file; optional leading# denotes sample-unit count";
+        }
+        break;
+    case 0x60780074:
+        if (r.name === "length") {
+            s = "Stored MSF or sample-unit length";
+        }
+        break;
+    case 0x60780075:
+        if (r.name === "filename") {
+            s = "External file; original quoting preserved";
+        }
+        break;
+    case 0x60780078:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078007A:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078007C:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078007E:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780080:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780081:
+        if (r.name === "pregap_mode") {
+            s = "Track mode for pregap";
+        }
+        break;
+    case 0x60780082:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "pregap_mode") {
+            s = "Track mode for pregap";
+        }
+        break;
+    case 0x60780083:
+        if (r.name === "pregap_subchannel") {
+            s = "Pregap subchannel encoding selector";
+        }
+        break;
+    case 0x60780084:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "pregap_subchannel") {
+            s = "Pregap subchannel encoding selector";
+        }
+        break;
+    case 0x60780086:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780088:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078008A:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078008C:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078008E:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780090:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780092:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780094:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x60780095:
+        if (r.name === "absolute_lba") {
+            s = "Sector unit, not a byte offset";
+        }
+        break;
+    case 0x60780096:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "absolute_lba") {
+            s = "Sector unit, not a byte offset";
+        }
+        break;
+    case 0x60780098:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078009A:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078009C:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078009E:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x6078009F:
+        if (r.name === "plba") {
+            s = "Sector unit, not a byte offset";
+        }
+        break;
+    case 0x607800A0:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "plba") {
+            s = "Sector unit, not a byte offset";
+        }
+        break;
+    case 0x607800A2:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800A3:
+        if (r.name === "index1") {
+            s = "Sector position";
+        }
+        break;
+    case 0x607800A4:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "index1") {
+            s = "Sector position";
+        }
+        break;
+    case 0x607800A6:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800A8:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800A9:
+        if (r.name === "data_rate") {
+            s = "Producer data-rate selector";
+        }
+        break;
+    case 0x607800AA:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "data_rate") {
+            s = "Producer data-rate selector";
+        }
+        break;
+    case 0x607800AB:
+        if (r.name === "gap3") {
+            s = "Controller gap bytes";
+        }
+        break;
+    case 0x607800AC:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "gap3") {
+            s = "Controller gap bytes";
+        }
+        break;
+    case 0x607800AD:
+        if (r.name === "filler") {
+            s = "Stored byte value";
+        }
+        break;
+    case 0x607800AE:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "filler") {
+            s = "Stored byte value";
+        }
+        break;
+    case 0x607800AF:
+        if (r.name === "total_length") {
+            s = "Reconstructed track byte count";
+        }
+        break;
+    case 0x607800B0:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "total_length") {
+            s = "Reconstructed track byte count";
+        }
+        break;
+    case 0x607800B2:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800B4:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800B6:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800B8:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800BA:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800BC:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800BE:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800C0:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800C1:
+        if (r.name === "sector_size_code") {
+            s = "128<<code bytes";
+        }
+        break;
+    case 0x607800C2:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "sector_size_code") {
+            s = "128<<code bytes";
+        }
+        break;
+    case 0x607800C4:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800C6:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800C8:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        }
+        break;
+    case 0x607800C9:
+        if (r.name === "data_length") {
+            s = "Decoded sector bytes";
+        }
+        break;
+    case 0x607800CA:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "data_length") {
+            s = "Decoded sector bytes";
+        }
+        break;
+    case 0x607800CB:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "trail_bytes") {
+            s = "Decoded trailing bytes";
+        }
+        break;
+    case 0x607800CC:
+        if (r.name === "track_relative_offset") {
+            s = "Byte position within reconstructed track, not source-file position";
+        }
+        break;
+    case 0x607800CD:
+        if (r.name === "radix_prefix") {
+            s = "Stored0xprefix";
+        } else if (r.name === "track_relative_offset") {
+            s = "Byte position within reconstructed track, not source-file position";
+        }
+        break;
+    case 0x607800CE:
+        if (r.name === "version") {
+            s = "LDBST revision as stored; no numeric rescaling";
+        }
+        break;
+    case 0x607800CF:
+        if (r.name === "sidedness") {
+            s = "Alt means alternating sides";
+        }
+        break;
+    case 0x607800D0:
+        if (r.name === "complement") {
+            s = "N means bytes are not complemented";
+        }
+        break;
+    case 0x607800D1:
+        if (r.name === "recording_mode") {
+            s = "FM, MFM or Unknown recording mode";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxdn_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxdn_read(c, p, b, n) {
+    return sxdn_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxdn16(b, b_o, o) {
+    return o === 1 ? b[b_o] << 8 | b[b_o + 1] : b[b_o + 1] << 8 | b[b_o];
+}
+function sxdn32(b, b_o, o) {
+    if (o === 2) {
+        return ((sxdn16(b, b_o, 0) << 16) >>> 0 | sxdn16(b, b_o + 2, 0)) >>> 0;
+    }
+    return o === 1 ? ((sxdn16(b, b_o, 1) << 16) >>> 0 | sxdn16(b, b_o + 2, 1)) >>> 0 : ((sxdn16(b, b_o + 2, 0) << 16) >>> 0 | sxdn16(b, b_o, 0)) >>> 0;
+}
+function sxdn_put(c, l, p, n) {
+    if (!n) {
+        return true;
+    }
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var lo = 0;
+    var hi = c.count;
+    if (!z || n > 1048576 || n > Math.floor(SX_U64_MAX / z) || !sxdn_span(c, p, n * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        var at = (c.items[m].offset - c.f.base_address < 0 ? c.items[m].offset - c.f.base_address + SX_U64_MAX : c.items[m].offset - c.f.base_address);
+        if (at < p) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && sxU64(c.items[sxU64(lo - 1)].offset - c.f.base_address) + sxU64(c.items[sxU64(lo - 1)].total_size) > p) {
+        return true;
+    }
+    if (lo < c.count && (c.items[lo].offset - c.f.base_address < 0 ? c.items[lo].offset - c.f.base_address + SX_U64_MAX : c.items[lo].offset - c.f.base_address) < p + n * z) {
+        return true;
+    }
+    var prior = c.count;
+    if (!sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n)) {
+        return false;
+    }
+    if (lo < prior) {
+        var row = sxCopy_xx_data_struct(null, c.items[prior]);
+        sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(prior - lo) * 56) / 56), sxCopy_xx_data_struct);
+        c.items[lo] = sxCopy_xx_data_struct(null, row);
+    }
+    return true;
+}
+function sxdn_value(c, l, p, n) {
+    if (!n) {
+        return true;
+    }
+    if (!sxdn_span(c, p, n)) {
+        return false;
+    }
+    var last = l.fields[l.field_count + -1];
+    var limit = sxU64(sxVariableLimit(last.type));
+    if (n <= (last.offset < 0 ? last.offset + SX_U64_MAX : last.offset) || sxU64(n - (last.offset < 0 ? last.offset + SX_U64_MAX : last.offset)) > limit || n > 16384 || c.count >= 24000) {
+        return true;
+    }
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p)) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p)) {
+        return true;
+    }
+    if (lo < c.count && c.items[lo].offset < c.f.base_address + (p + n >= SX_I64_MAX ? p + n - SX_U64_MAX : p + n)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxdn_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxdn_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = 0;
+    for (var i = 0; i < n; i++) {
+        v[0] = sxOr64(v[0], sxShl64(b[i], (8 * (be ? (((n - i) >>> 0) - 1) >>> 0 : i)) >>> 0));
+    }
+    return true;
+}
+var sxdn_jvc_header_a = [sxdn_jvc_header_1, sxdn_jvc_header_2, sxdn_jvc_header_3, sxdn_jvc_header_4, sxdn_jvc_header_5];
+function sxdn_jvc_header(c, h) {
+    return !h || sxdn_put(c, sxdn_jvc_header_a[h > 5 ? 4 : sxU64(h - 1)], 0, 1);
+}
+function sxdn_blank(b) {
+    return b === 32 || b === 9 || b === 13;
+}
+function sxdn_eq(b, b_o, n, s) {
+    var k = sxStrlen(s);
+    if (n !== k) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var a = b[b_o + i];
+        var c = sxAt(s, i) & 0xFF;
+        if (a >= 97 /*a*/ && a <= 122 /*z*/) {
+            a = a - 32 & 0xFF;
+        }
+        if (c >= 97 /*a*/ && c <= 122 /*z*/) {
+            c = c - 32 & 0xFF;
+        }
+        if (a !== c) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxdn_text_value(t, l, a, z) {
+    while (a < z && sxdn_blank(t.b[a])) {
+        a++;
+    }
+    while (z > a && sxdn_blank(t.b[sxU64(z - 1)])) {
+        z--;
+    }
+    var last = l.fields[l.field_count + -1];
+    if (!sxStrcmp(last.type, "ascii_signed") || !sxStrcmp(last.type, "ascii_hex")) {
+        var i = a + (last.offset < 0 ? last.offset + SX_U64_MAX : last.offset);
+        var hex_ = !sxStrcmp(last.type, "ascii_hex");
+        var negative = false;
+        var value = 0;
+        var limit = SX_U64_MAX;
+        if (!hex_ && i < z && (t.b[i] === 45 /*-*/ || t.b[i] === 43 /*+*/)) {
+            negative = t.b[i] === 45 /*-*/;
+            i++;
+        }
+        if (!hex_) {
+            limit = negative ? (0x80000000 * 4294967296 + 0x0) : SX_I64_MAX;
+        }
+        var valid = i < z;
+        for (; i < z && valid; i++) {
+            var b = t.b[i];
+            var digit = b >= 48 /*0*/ && b <= 57 /*9*/ ? (b - 48 /*0*/) >>> 0 : hex_ && b >= 65 /*A*/ && b <= 70 /*F*/ ? (((b - 65 /*A*/) >>> 0) + 10) >>> 0 : hex_ && b >= 97 /*a*/ && b <= 102 /*f*/ ? (((b - 97 /*a*/) >>> 0) + 10) >>> 0 : 255;
+            var base = hex_ ? 16 : 10;
+            if (digit >= base || value > Math.floor(sxU64(limit - digit) / base)) {
+                valid = false;
+            } else {
+                value = value * base + digit;
+            }
+        }
+        if (!valid) {
+            l = sxdn_disk_descriptor_string;
+        }
+    }
+    return sxdn_value(t.c, l, a, sxU64(z - a));
+}
+function sxdn_token(t, p, end, a, z) {
+    while (p[0] < end && sxdn_blank(t.b[p[0]])) {
+        p[0]++;
+    }
+    if (p[0] === end) {
+        return false;
+    }
+    a[0] = p[0];
+    if (t.b[p[0]] === 34 /*"*/) {
+        p[0]++;
+        while (p[0] < end && t.b[p[0]] !== 34 /*"*/) {
+            p[0]++;
+        }
+        if (p[0] < end) {
+            p[0]++;
+        }
+    } else {
+        while (p[0] < end && !sxdn_blank(t.b[p[0]])) {
+            p[0]++;
+        }
+    }
+    z[0] = p[0];
+    return true;
+}
+function sxdn_text_ini(t, family) {
+    var payload = false;
+    for (var p = 0; p < t.n && t.c.count < 24000; ) {
+        var end = p;
+        while (end < t.n && t.b[end] !== 10) {
+            end++;
+        }
+        var a = p;
+        p = end < t.n ? end + 1 : end;
+        while (a < end && sxdn_blank(t.b[a])) {
+            a++;
+        }
+        while (end > a && sxdn_blank(t.b[sxU64(end - 1)])) {
+            end--;
+        }
+        if (a === end || t.b[a] === 35 /*#*/ || t.b[a] === 59 /*;*/) {
+            continue;
+        }
+        if (payload) {
+            for (var i = a; i < end; i++) {
+                if (t.b[i] === 125 /*}*/) {
+                    payload = false;
+                    break;
+                }
+            }
+            continue;
+        }
+        if (t.b[a] === 91 /*[*/) {
+            if (!sxdn_text_value(t, sxdn_disk_descriptor_keyword, a, end)) {
+                return false;
+            }
+            continue;
+        }
+        var keyend = a;
+        while (keyend < end && t.b[keyend] !== 61 /*=*/) {
+            keyend++;
+        }
+        if (keyend === end) {
+            continue;
+        }
+        var trim = keyend;
+        while (trim > a && sxdn_blank(t.b[sxU64(trim - 1)])) {
+            trim--;
+        }
+        if (!sxdn_text_value(t, sxdn_disk_descriptor_keyword, a, trim)) {
+            return false;
+        }
+        var v = keyend + 1;
+        while (v < end && sxdn_blank(t.b[v])) {
+            v++;
+        }
+        if (family === 1 && v < end && t.b[v] === 123 /*{*/) {
+            payload = true;
+            for (i = v; i < end; i++) {
+                if (t.b[i] === 125 /*}*/) {
+                    payload = false;
+                }
+            }
+            continue;
+        }
+        var z = v;
+        while (z < end && t.b[z] !== 59 /*;*/ && t.b[z] !== 35 /*#*/) {
+            z++;
+        }
+        while (z > v && sxdn_blank(t.b[sxU64(z - 1)])) {
+            z--;
+        }
+        var hex_ = sxU64(z - v) >= 2 && t.b[v] === 48 /*0*/ && (t.b[v + 1] === 120 /*x*/ || t.b[v + 1] === 88 /*X*/);
+        var l = sxdn_text_key(family, t.b, a, sxU64(trim - a), hex_);
+        if (l === null) {
+            l = sxdn_disk_descriptor_string;
+        }
+        if (!sxdn_text_value(t, l, v, z)) {
+            return false;
+        }
+    }
+    return true;
+}
+var sxdn_text_sheet_fields = [sxdn_gdi_track_number, sxdn_gdi_lba, sxdn_gdi_control, sxdn_gdi_sector_size, sxdn_gdi_filename, sxdn_gdi_file_offset];
+function sxdn_text_sheet(t, kind) {
+    var row = 0;
+    for (var p = 0; p < t.n && t.c.count < 24000; ) {
+        var end = p;
+        while (end < t.n && t.b[end] !== 10) {
+            end++;
+        }
+        var q = [p];
+        p = end < t.n ? end + 1 : end;
+        while (q[0] < end && sxdn_blank(t.b[q[0]])) {
+            q[0]++;
+        }
+        if (q[0] === end || t.b[q[0]] === 59 /*;*/ || q[0] + 1 < end && t.b[q[0]] === 47 && t.b[q[0] + 1] === 47) {
+            continue;
+        }
+        var a = [0];
+        var z = [0];
+        if (!sxdn_token(t, q, end, a, z)) {
+            continue;
+        }
+        if (kind === 2) {
+            if (!row) {
+                if (!sxdn_text_value(t, sxdn_gdi_track_count, a[0], z[0])) {
+                    return false;
+                }
+                row++;
+                continue;
+            }
+            for (var i = 0; i < 6; i++) {
+                if (i && !sxdn_token(t, q, end, a, z)) {
+                    break;
+                }
+                if (!sxdn_text_value(t, sxdn_text_sheet_fields[i], a[0], z[0])) {
+                    return false;
+                }
+            }
+            row++;
+            continue;
+        }
+        var key = a[0];
+        var keylen = sxU64(z[0] - a[0]);
+        if (!sxdn_text_value(t, sxdn_disk_descriptor_keyword, a[0], z[0])) {
+            return false;
+        }
+        if (kind === 0 && sxdn_eq(t.b, key, keylen, "REM")) {
+            if (!sxdn_text_value(t, sxdn_disk_descriptor_string, q[0], end)) {
+                return false;
+            }
+            continue;
+        }
+        var arg = 0;
+        while (sxdn_token(t, q, end, a, z)) {
+            var l = sxdn_disk_descriptor_string;
+            if (kind === 0) {
+                if (sxdn_eq(t.b, key, keylen, "FILE")) {
+                    l = arg ? sxdn_cue_file_type : sxdn_cue_file;
+                } else if (sxdn_eq(t.b, key, keylen, "TRACK")) {
+                    l = arg ? sxdn_cue_mode : sxdn_cue_track_number;
+                } else if (sxdn_eq(t.b, key, keylen, "INDEX")) {
+                    l = arg ? sxdn_cue_position : sxdn_cue_index_number;
+                } else if (sxdn_eq(t.b, key, keylen, "PREGAP") || sxdn_eq(t.b, key, keylen, "POSTGAP")) {
+                    l = sxdn_cue_position;
+                }
+            } else {
+                if (sxdn_eq(t.b, key, keylen, "TRACK")) {
+                    l = sxdn_cue_mode;
+                } else if (sxdn_eq(t.b, key, keylen, "DATAFILE") || sxdn_eq(t.b, key, keylen, "AUDIOFILE")) {
+                    l = !arg ? sxdn_toc_filename : arg === 1 && sxdn_eq(t.b, key, keylen, "AUDIOFILE") ? sxdn_toc_start : sxdn_toc_length;
+                }
+            }
+            if (!sxdn_text_value(t, l, a[0], z[0])) {
+                return false;
+            }
+            arg++;
+        }
+        row++;
+    }
+    return true;
+}
+function sxdn_text_load(c, kind) {
+    if (c.size <= 0 || c.size > 0x800000) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sxdn_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var t = { c: c, b: b, n: (c.size < 0 ? c.size + SX_U64_MAX : c.size) };
+    if (ok) {
+        ok = kind < 3 ? sxdn_text_sheet(t, kind) : sxdn_text_ini(t, kind === 3 ? 0 : 1);
+    }
+    return ok && c.count !== 0;
+}
+function sxdn_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxdn_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < 0 || c.items[i].total_size < 0 || at > c.size || c.items[i].total_size > c.size - at) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        var next = at + c.items[i].total_size;
+        if (next > end) {
+            end = next;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxdn_order, true);
+    return true;
+}
+function sxdn_psa(c) {
+    var base = [0];
+    var size = [0];
+    if (!sxContainerSpan(c.f, base, size)) {
+        return false;
+    }
+    var view = sxCopyFormat(null, c.f);
+    var prior = c.f;
+    var oldsize = c.size;
+    view.base_address = base[0];
+    c.f = view;
+    c.size = size[0];
+    var b = [];
+    var ok = sxdn_put(c, sxdn_psa_disk_header, 0, 1) && sxdn_read(c, 84, b, 36) && sxdn_put(c, sxdn_psa_fat_bpb, 84, 1);
+    if (ok) {
+        ok = sxdn_put(c, sxdn16(b, 22, 0) ? sxdn_psa_fat1216_extension : sxdn_psa_fat32_extension, 120, 1);
+    }
+    if (ok) {
+        ok = sxdn_finish(c);
+    }
+    c.f = prior;
+    c.size = oldsize;
+    return ok;
+}
+function sx_disknext_supports(t) {
+    switch (t) {
+    case "EMT":
+    case "CUE":
+    case "CCD":
+    case "CDRDAO_TOC":
+    case "GDI":
+    case "MSX_CAS":
+    case "DRAGON_CAS":
+    case "ZX_HOBETA":
+    case "BLINDWRITE4":
+    case "BLINDWRITE_5_6_IMAGE":
+    case "CFD":
+    case "DCP_DISK":
+    case "ECM":
+    case "SVD":
+    case "KRYOFLUX_STREAM":
+    case "FDCOPY_CFI":
+    case "SNATCHIT_CP2":
+    case "SIMH_DISK":
+    case "LDBST":
+    case "RSDOS_FS":
+    case "JVC":
+    case "JFFS2_OLD":
+    case "SQUASHFS_SQLZ":
+        return true;
+    case "PSA_DISK":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_disknext_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "EMT":
+        ok = sx_emt_build(c);
+        break;
+    case "CUE":
+        ok = sx_cue_build(c);
+        break;
+    case "CDRDAO_TOC":
+        ok = sx_cdrdao_toc_build(c);
+        break;
+    case "GDI":
+        ok = sx_gdi_build(c);
+        break;
+    case "CCD":
+        ok = sx_ccd_build(c);
+        break;
+    case "LDBST":
+        ok = sx_ldbst_build(c);
+        break;
+    case "MSX_CAS":
+        ok = sx_msx_cas_build(c);
+        break;
+    case "DRAGON_CAS":
+        ok = sx_dragon_cas_build(c);
+        break;
+    case "ZX_HOBETA":
+        ok = sx_zx_hobeta_build(c);
+        break;
+    case "BLINDWRITE4":
+        ok = sx_blindwrite4_build(c);
+        break;
+    case "BLINDWRITE_5_6_IMAGE":
+        ok = sx_blindwrite_5_6_image_build(c);
+        break;
+    case "CFD":
+        ok = sx_cfd_build(c);
+        break;
+    case "DCP_DISK":
+        ok = sx_dcp_disk_build(c);
+        break;
+    case "ECM":
+        ok = sx_ecm_build(c);
+        break;
+    case "SVD":
+        ok = sx_svd_build(c);
+        break;
+    case "KRYOFLUX_STREAM":
+        ok = sx_kryoflux_stream_build(c);
+        break;
+    case "FDCOPY_CFI":
+        ok = sx_fdcopy_cfi_build(c);
+        break;
+    case "SNATCHIT_CP2":
+        ok = sx_snatchit_cp2_build(c);
+        break;
+    case "SIMH_DISK":
+        ok = sx_simh_disk_build(c);
+        break;
+    case "RSDOS_FS":
+        ok = sx_rsdos_fs_build(c);
+        break;
+    case "JVC":
+        ok = sx_jvc_build(c);
+        break;
+    case "JFFS2_OLD":
+        ok = sx_jffs2_old_build(c);
+        break;
+    case "SQUASHFS_SQLZ":
+        ok = sx_squashfs_sqlz_build(c);
+        break;
+    case "PSA_DISK":
+        return sxdn_psa(c);
+    default:
+        return false;
+    }
+    return !!(ok && c.count && sxdn_finish(c));
+}
+function sxdn_text_key(family, key, key_o, keylen, hex_) {
+    if (family === 0) {
+        if (sxdn_eq(key, key_o, keylen, "Version")) {
+            return hex_ ? sxdn_ccd_version_hex : sxdn_ccd_version;
+        }
+        if (sxdn_eq(key, key_o, keylen, "TocEntries")) {
+            return hex_ ? sxdn_ccd_toc_entries_hex : sxdn_ccd_toc_entries;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Sessions")) {
+            return hex_ ? sxdn_ccd_sessions_hex : sxdn_ccd_sessions;
+        }
+        if (sxdn_eq(key, key_o, keylen, "DataTracksScrambled")) {
+            return hex_ ? sxdn_ccd_data_tracks_scrambled_hex : sxdn_ccd_data_tracks_scrambled;
+        }
+        if (sxdn_eq(key, key_o, keylen, "CDTextLength")) {
+            return hex_ ? sxdn_ccd_cd_text_length_hex : sxdn_ccd_cd_text_length;
+        }
+        if (sxdn_eq(key, key_o, keylen, "PreGapMode")) {
+            return hex_ ? sxdn_ccd_pregap_mode_hex : sxdn_ccd_pregap_mode;
+        }
+        if (sxdn_eq(key, key_o, keylen, "PreGapSubC")) {
+            return hex_ ? sxdn_ccd_pregap_subchannel_hex : sxdn_ccd_pregap_subchannel;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Session")) {
+            return hex_ ? sxdn_ccd_session_hex : sxdn_ccd_session;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Point")) {
+            return hex_ ? sxdn_ccd_point_hex : sxdn_ccd_point;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ADR")) {
+            return hex_ ? sxdn_ccd_adr_hex : sxdn_ccd_adr;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Control")) {
+            return hex_ ? sxdn_ccd_control_hex : sxdn_ccd_control;
+        }
+        if (sxdn_eq(key, key_o, keylen, "TrackNo")) {
+            return hex_ ? sxdn_ccd_track_number_hex : sxdn_ccd_track_number;
+        }
+        if (sxdn_eq(key, key_o, keylen, "AMin")) {
+            return hex_ ? sxdn_ccd_absolute_minute_hex : sxdn_ccd_absolute_minute;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ASec")) {
+            return hex_ ? sxdn_ccd_absolute_second_hex : sxdn_ccd_absolute_second;
+        }
+        if (sxdn_eq(key, key_o, keylen, "AFrame")) {
+            return hex_ ? sxdn_ccd_absolute_frame_hex : sxdn_ccd_absolute_frame;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ALBA")) {
+            return hex_ ? sxdn_ccd_absolute_lba_hex : sxdn_ccd_absolute_lba;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Zero")) {
+            return hex_ ? sxdn_ccd_zero_hex : sxdn_ccd_zero;
+        }
+        if (sxdn_eq(key, key_o, keylen, "PMin")) {
+            return hex_ ? sxdn_ccd_pminute_hex : sxdn_ccd_pminute;
+        }
+        if (sxdn_eq(key, key_o, keylen, "PSec")) {
+            return hex_ ? sxdn_ccd_psecond_hex : sxdn_ccd_psecond;
+        }
+        if (sxdn_eq(key, key_o, keylen, "PFrame")) {
+            return hex_ ? sxdn_ccd_pframe_hex : sxdn_ccd_pframe;
+        }
+        if (sxdn_eq(key, key_o, keylen, "PLBA")) {
+            return hex_ ? sxdn_ccd_plba_hex : sxdn_ccd_plba;
+        }
+        if (sxdn_eq(key, key_o, keylen, "MODE")) {
+            return hex_ ? sxdn_ccd_mode_hex : sxdn_ccd_mode;
+        }
+        if (sxdn_eq(key, key_o, keylen, "INDEX 1")) {
+            return hex_ ? sxdn_ccd_index1_hex : sxdn_ccd_index1;
+        }
+    } else if (family === 1) {
+        if (sxdn_eq(key, key_o, keylen, "Cylinder")) {
+            return hex_ ? sxdn_ldbst_cylinder_hex : sxdn_ldbst_cylinder;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Head")) {
+            return hex_ ? sxdn_ldbst_head_hex : sxdn_ldbst_head;
+        }
+        if (sxdn_eq(key, key_o, keylen, "DataRate")) {
+            return hex_ ? sxdn_ldbst_data_rate_hex : sxdn_ldbst_data_rate;
+        }
+        if (sxdn_eq(key, key_o, keylen, "GAP3")) {
+            return hex_ ? sxdn_ldbst_gap3_hex : sxdn_ldbst_gap3;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Filler")) {
+            return hex_ ? sxdn_ldbst_filler_hex : sxdn_ldbst_filler;
+        }
+        if (sxdn_eq(key, key_o, keylen, "TotalLength")) {
+            return hex_ ? sxdn_ldbst_total_length_hex : sxdn_ldbst_total_length;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Cylinders")) {
+            return hex_ ? sxdn_ldbst_cylinders_hex : sxdn_ldbst_cylinders;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Heads")) {
+            return hex_ ? sxdn_ldbst_heads_hex : sxdn_ldbst_heads;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Sectors")) {
+            return hex_ ? sxdn_ldbst_sectors_hex : sxdn_ldbst_sectors;
+        }
+        if (sxdn_eq(key, key_o, keylen, "SecBase")) {
+            return hex_ ? sxdn_ldbst_sector_base_hex : sxdn_ldbst_sector_base;
+        }
+        if (sxdn_eq(key, key_o, keylen, "SecSize")) {
+            return hex_ ? sxdn_ldbst_sector_size_hex : sxdn_ldbst_sector_size;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ID.Cylinder")) {
+            return hex_ ? sxdn_ldbst_id_cylinder_hex : sxdn_ldbst_id_cylinder;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ID.Head")) {
+            return hex_ ? sxdn_ldbst_id_head_hex : sxdn_ldbst_id_head;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ID.Sector")) {
+            return hex_ ? sxdn_ldbst_id_sector_hex : sxdn_ldbst_id_sector;
+        }
+        if (sxdn_eq(key, key_o, keylen, "ID.PSH")) {
+            return hex_ ? sxdn_ldbst_sector_size_code_hex : sxdn_ldbst_sector_size_code;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Status1")) {
+            return hex_ ? sxdn_ldbst_status1_hex : sxdn_ldbst_status1;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Status2")) {
+            return hex_ ? sxdn_ldbst_status2_hex : sxdn_ldbst_status2;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Copies")) {
+            return hex_ ? sxdn_ldbst_copies_hex : sxdn_ldbst_copies;
+        }
+        if (sxdn_eq(key, key_o, keylen, "DataLen")) {
+            return hex_ ? sxdn_ldbst_data_length_hex : sxdn_ldbst_data_length;
+        }
+        if (sxdn_eq(key, key_o, keylen, "TrailBytes")) {
+            return hex_ ? sxdn_ldbst_trail_bytes_hex : sxdn_ldbst_trail_bytes;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Offset")) {
+            return hex_ ? sxdn_ldbst_track_relative_offset_hex : sxdn_ldbst_track_relative_offset;
+        }
+    }
+    if (family === 1) {
+        if (sxdn_eq(key, key_o, keylen, "Version")) {
+            return sxdn_ldbst_version;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Sides")) {
+            return sxdn_ldbst_sidedness;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Sidedness")) {
+            return sxdn_ldbst_sidedness;
+        }
+        if (sxdn_eq(key, key_o, keylen, "Complement")) {
+            return sxdn_ldbst_complement;
+        }
+        if (sxdn_eq(key, key_o, keylen, "RecMode")) {
+            return sxdn_ldbst_recording_mode;
+        }
+    }
+    return null;
+}

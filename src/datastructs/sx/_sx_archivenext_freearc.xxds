@@ -1,0 +1,360 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/freearc/xx_freearc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_freearc_header_fields = layout([chars("signature", 4, SIGNATURE), u16("flags", FLAGS), u16("version")]);
+var sxan_freearc_header = sxLayout(0x6077006C, "freearc_header", LE, sxan_freearc_header_fields);
+var sxan_freearc_magic_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxan_freearc_magic = sxLayout(0x6077006D, "freearc_magic", LE, sxan_freearc_magic_fields);
+var sxan_freearc_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxan_freearc_crc = sxLayout(0x6077006E, "freearc_crc", LE, sxan_freearc_crc_fields);
+var sxan_freearc_time_fields = layout([u32("modification_time", TIMESTAMP)]);
+var sxan_freearc_time = sxLayout(0x6077006F, "freearc_time", LE, sxan_freearc_time_fields);
+var sxan_freearc_folder_fields = layout([u8("is_folder")]);
+var sxan_freearc_folder = sxLayout(0x60770070, "freearc_folder", LE, sxan_freearc_folder_fields);
+var sxan_freearc_method_fields = layout([field("method", "char", 0)]);
+var sxan_freearc_method = sxLayout(0x60770071, "freearc_method", LE, sxan_freearc_method_fields);
+var sxan_freearc_type1_fields = layout([field("block_type", "freearc_uint", 1)]);
+var sxan_freearc_type1 = sxLayout(0x60770072, "freearc_type1", LE, sxan_freearc_type1_fields);
+var sxan_freearc_count1_fields = layout([field("count", "freearc_uint", 1, COUNT)]);
+var sxan_freearc_count1 = sxLayout(0x60770073, "freearc_count1", LE, sxan_freearc_count1_fields);
+var sxan_freearc_offset1_fields = layout([field("relative_offset", "freearc_uint", 1, OFFSET)]);
+var sxan_freearc_offset1 = sxLayout(0x60770074, "freearc_offset1", LE, sxan_freearc_offset1_fields);
+var sxan_freearc_size1_fields = layout([field("uncompressed_size", "freearc_uint", 1, SIZE)]);
+var sxan_freearc_size1 = sxLayout(0x60770075, "freearc_size1", LE, sxan_freearc_size1_fields);
+var sxan_freearc_packed1_fields = layout([field("compressed_size", "freearc_uint", 1, SIZE)]);
+var sxan_freearc_packed1 = sxLayout(0x60770076, "freearc_packed1", LE, sxan_freearc_packed1_fields);
+var sxan_freearc_index1_fields = layout([field("directory_index", "freearc_uint", 1)]);
+var sxan_freearc_index1 = sxLayout(0x60770077, "freearc_index1", LE, sxan_freearc_index1_fields);
+var sxan_freearc_type2_fields = layout([field("block_type", "freearc_uint", 2)]);
+var sxan_freearc_type2 = sxLayout(0x60770078, "freearc_type2", LE, sxan_freearc_type2_fields);
+var sxan_freearc_count2_fields = layout([field("count", "freearc_uint", 2, COUNT)]);
+var sxan_freearc_count2 = sxLayout(0x60770079, "freearc_count2", LE, sxan_freearc_count2_fields);
+var sxan_freearc_offset2_fields = layout([field("relative_offset", "freearc_uint", 2, OFFSET)]);
+var sxan_freearc_offset2 = sxLayout(0x6077007A, "freearc_offset2", LE, sxan_freearc_offset2_fields);
+var sxan_freearc_size2_fields = layout([field("uncompressed_size", "freearc_uint", 2, SIZE)]);
+var sxan_freearc_size2 = sxLayout(0x6077007B, "freearc_size2", LE, sxan_freearc_size2_fields);
+var sxan_freearc_packed2_fields = layout([field("compressed_size", "freearc_uint", 2, SIZE)]);
+var sxan_freearc_packed2 = sxLayout(0x6077007C, "freearc_packed2", LE, sxan_freearc_packed2_fields);
+var sxan_freearc_index2_fields = layout([field("directory_index", "freearc_uint", 2)]);
+var sxan_freearc_index2 = sxLayout(0x6077007D, "freearc_index2", LE, sxan_freearc_index2_fields);
+var sxan_freearc_type3_fields = layout([field("block_type", "freearc_uint", 3)]);
+var sxan_freearc_type3 = sxLayout(0x6077007E, "freearc_type3", LE, sxan_freearc_type3_fields);
+var sxan_freearc_count3_fields = layout([field("count", "freearc_uint", 3, COUNT)]);
+var sxan_freearc_count3 = sxLayout(0x6077007F, "freearc_count3", LE, sxan_freearc_count3_fields);
+var sxan_freearc_offset3_fields = layout([field("relative_offset", "freearc_uint", 3, OFFSET)]);
+var sxan_freearc_offset3 = sxLayout(0x60770080, "freearc_offset3", LE, sxan_freearc_offset3_fields);
+var sxan_freearc_size3_fields = layout([field("uncompressed_size", "freearc_uint", 3, SIZE)]);
+var sxan_freearc_size3 = sxLayout(0x60770081, "freearc_size3", LE, sxan_freearc_size3_fields);
+var sxan_freearc_packed3_fields = layout([field("compressed_size", "freearc_uint", 3, SIZE)]);
+var sxan_freearc_packed3 = sxLayout(0x60770082, "freearc_packed3", LE, sxan_freearc_packed3_fields);
+var sxan_freearc_index3_fields = layout([field("directory_index", "freearc_uint", 3)]);
+var sxan_freearc_index3 = sxLayout(0x60770083, "freearc_index3", LE, sxan_freearc_index3_fields);
+var sxan_freearc_type4_fields = layout([field("block_type", "freearc_uint", 4)]);
+var sxan_freearc_type4 = sxLayout(0x60770084, "freearc_type4", LE, sxan_freearc_type4_fields);
+var sxan_freearc_count4_fields = layout([field("count", "freearc_uint", 4, COUNT)]);
+var sxan_freearc_count4 = sxLayout(0x60770085, "freearc_count4", LE, sxan_freearc_count4_fields);
+var sxan_freearc_offset4_fields = layout([field("relative_offset", "freearc_uint", 4, OFFSET)]);
+var sxan_freearc_offset4 = sxLayout(0x60770086, "freearc_offset4", LE, sxan_freearc_offset4_fields);
+var sxan_freearc_size4_fields = layout([field("uncompressed_size", "freearc_uint", 4, SIZE)]);
+var sxan_freearc_size4 = sxLayout(0x60770087, "freearc_size4", LE, sxan_freearc_size4_fields);
+var sxan_freearc_packed4_fields = layout([field("compressed_size", "freearc_uint", 4, SIZE)]);
+var sxan_freearc_packed4 = sxLayout(0x60770088, "freearc_packed4", LE, sxan_freearc_packed4_fields);
+var sxan_freearc_index4_fields = layout([field("directory_index", "freearc_uint", 4)]);
+var sxan_freearc_index4 = sxLayout(0x60770089, "freearc_index4", LE, sxan_freearc_index4_fields);
+var sxan_freearc_type5_fields = layout([field("block_type", "freearc_uint", 5)]);
+var sxan_freearc_type5 = sxLayout(0x6077008A, "freearc_type5", LE, sxan_freearc_type5_fields);
+var sxan_freearc_count5_fields = layout([field("count", "freearc_uint", 5, COUNT)]);
+var sxan_freearc_count5 = sxLayout(0x6077008B, "freearc_count5", LE, sxan_freearc_count5_fields);
+var sxan_freearc_offset5_fields = layout([field("relative_offset", "freearc_uint", 5, OFFSET)]);
+var sxan_freearc_offset5 = sxLayout(0x6077008C, "freearc_offset5", LE, sxan_freearc_offset5_fields);
+var sxan_freearc_size5_fields = layout([field("uncompressed_size", "freearc_uint", 5, SIZE)]);
+var sxan_freearc_size5 = sxLayout(0x6077008D, "freearc_size5", LE, sxan_freearc_size5_fields);
+var sxan_freearc_packed5_fields = layout([field("compressed_size", "freearc_uint", 5, SIZE)]);
+var sxan_freearc_packed5 = sxLayout(0x6077008E, "freearc_packed5", LE, sxan_freearc_packed5_fields);
+var sxan_freearc_index5_fields = layout([field("directory_index", "freearc_uint", 5)]);
+var sxan_freearc_index5 = sxLayout(0x6077008F, "freearc_index5", LE, sxan_freearc_index5_fields);
+var sxan_freearc_type6_fields = layout([field("block_type", "freearc_uint", 6)]);
+var sxan_freearc_type6 = sxLayout(0x60770090, "freearc_type6", LE, sxan_freearc_type6_fields);
+var sxan_freearc_count6_fields = layout([field("count", "freearc_uint", 6, COUNT)]);
+var sxan_freearc_count6 = sxLayout(0x60770091, "freearc_count6", LE, sxan_freearc_count6_fields);
+var sxan_freearc_offset6_fields = layout([field("relative_offset", "freearc_uint", 6, OFFSET)]);
+var sxan_freearc_offset6 = sxLayout(0x60770092, "freearc_offset6", LE, sxan_freearc_offset6_fields);
+var sxan_freearc_size6_fields = layout([field("uncompressed_size", "freearc_uint", 6, SIZE)]);
+var sxan_freearc_size6 = sxLayout(0x60770093, "freearc_size6", LE, sxan_freearc_size6_fields);
+var sxan_freearc_packed6_fields = layout([field("compressed_size", "freearc_uint", 6, SIZE)]);
+var sxan_freearc_packed6 = sxLayout(0x60770094, "freearc_packed6", LE, sxan_freearc_packed6_fields);
+var sxan_freearc_index6_fields = layout([field("directory_index", "freearc_uint", 6)]);
+var sxan_freearc_index6 = sxLayout(0x60770095, "freearc_index6", LE, sxan_freearc_index6_fields);
+var sxan_freearc_type7_fields = layout([field("block_type", "freearc_uint", 7)]);
+var sxan_freearc_type7 = sxLayout(0x60770096, "freearc_type7", LE, sxan_freearc_type7_fields);
+var sxan_freearc_count7_fields = layout([field("count", "freearc_uint", 7, COUNT)]);
+var sxan_freearc_count7 = sxLayout(0x60770097, "freearc_count7", LE, sxan_freearc_count7_fields);
+var sxan_freearc_offset7_fields = layout([field("relative_offset", "freearc_uint", 7, OFFSET)]);
+var sxan_freearc_offset7 = sxLayout(0x60770098, "freearc_offset7", LE, sxan_freearc_offset7_fields);
+var sxan_freearc_size7_fields = layout([field("uncompressed_size", "freearc_uint", 7, SIZE)]);
+var sxan_freearc_size7 = sxLayout(0x60770099, "freearc_size7", LE, sxan_freearc_size7_fields);
+var sxan_freearc_packed7_fields = layout([field("compressed_size", "freearc_uint", 7, SIZE)]);
+var sxan_freearc_packed7 = sxLayout(0x6077009A, "freearc_packed7", LE, sxan_freearc_packed7_fields);
+var sxan_freearc_index7_fields = layout([field("directory_index", "freearc_uint", 7)]);
+var sxan_freearc_index7 = sxLayout(0x6077009B, "freearc_index7", LE, sxan_freearc_index7_fields);
+var sxan_freearc_type8_fields = layout([field("block_type", "freearc_uint", 8)]);
+var sxan_freearc_type8 = sxLayout(0x6077009C, "freearc_type8", LE, sxan_freearc_type8_fields);
+var sxan_freearc_count8_fields = layout([field("count", "freearc_uint", 8, COUNT)]);
+var sxan_freearc_count8 = sxLayout(0x6077009D, "freearc_count8", LE, sxan_freearc_count8_fields);
+var sxan_freearc_offset8_fields = layout([field("relative_offset", "freearc_uint", 8, OFFSET)]);
+var sxan_freearc_offset8 = sxLayout(0x6077009E, "freearc_offset8", LE, sxan_freearc_offset8_fields);
+var sxan_freearc_size8_fields = layout([field("uncompressed_size", "freearc_uint", 8, SIZE)]);
+var sxan_freearc_size8 = sxLayout(0x6077009F, "freearc_size8", LE, sxan_freearc_size8_fields);
+var sxan_freearc_packed8_fields = layout([field("compressed_size", "freearc_uint", 8, SIZE)]);
+var sxan_freearc_packed8 = sxLayout(0x607700A0, "freearc_packed8", LE, sxan_freearc_packed8_fields);
+var sxan_freearc_index8_fields = layout([field("directory_index", "freearc_uint", 8)]);
+var sxan_freearc_index8 = sxLayout(0x607700A1, "freearc_index8", LE, sxan_freearc_index8_fields);
+var sxan_freearc_type9_fields = layout([field("block_type", "freearc_uint", 9)]);
+var sxan_freearc_type9 = sxLayout(0x607700A2, "freearc_type9", LE, sxan_freearc_type9_fields);
+var sxan_freearc_count9_fields = layout([field("count", "freearc_uint", 9, COUNT)]);
+var sxan_freearc_count9 = sxLayout(0x607700A3, "freearc_count9", LE, sxan_freearc_count9_fields);
+var sxan_freearc_offset9_fields = layout([field("relative_offset", "freearc_uint", 9, OFFSET)]);
+var sxan_freearc_offset9 = sxLayout(0x607700A4, "freearc_offset9", LE, sxan_freearc_offset9_fields);
+var sxan_freearc_size9_fields = layout([field("uncompressed_size", "freearc_uint", 9, SIZE)]);
+var sxan_freearc_size9 = sxLayout(0x607700A5, "freearc_size9", LE, sxan_freearc_size9_fields);
+var sxan_freearc_packed9_fields = layout([field("compressed_size", "freearc_uint", 9, SIZE)]);
+var sxan_freearc_packed9 = sxLayout(0x607700A6, "freearc_packed9", LE, sxan_freearc_packed9_fields);
+var sxan_freearc_index9_fields = layout([field("directory_index", "freearc_uint", 9)]);
+var sxan_freearc_index9 = sxLayout(0x607700A7, "freearc_index9", LE, sxan_freearc_index9_fields);
+var sxan_fa_type = [sxan_freearc_type1, sxan_freearc_type2, sxan_freearc_type3, sxan_freearc_type4, sxan_freearc_type5,
+    sxan_freearc_type6, sxan_freearc_type7, sxan_freearc_type8, sxan_freearc_type9];
+var sxan_fa_count = [sxan_freearc_count1, sxan_freearc_count2, sxan_freearc_count3, sxan_freearc_count4, sxan_freearc_count5,
+    sxan_freearc_count6, sxan_freearc_count7, sxan_freearc_count8, sxan_freearc_count9];
+var sxan_fa_offset = [sxan_freearc_offset1, sxan_freearc_offset2, sxan_freearc_offset3, sxan_freearc_offset4,
+    sxan_freearc_offset5, sxan_freearc_offset6, sxan_freearc_offset7, sxan_freearc_offset8, sxan_freearc_offset9];
+var sxan_fa_size = [sxan_freearc_size1, sxan_freearc_size2, sxan_freearc_size3, sxan_freearc_size4, sxan_freearc_size5,
+    sxan_freearc_size6, sxan_freearc_size7, sxan_freearc_size8, sxan_freearc_size9];
+var sxan_fa_packed = [sxan_freearc_packed1, sxan_freearc_packed2, sxan_freearc_packed3, sxan_freearc_packed4,
+    sxan_freearc_packed5, sxan_freearc_packed6, sxan_freearc_packed7, sxan_freearc_packed8, sxan_freearc_packed9];
+var sxan_fa_index = [sxan_freearc_index1, sxan_freearc_index2, sxan_freearc_index3, sxan_freearc_index4, sxan_freearc_index5,
+    sxan_freearc_index6, sxan_freearc_index7, sxan_freearc_index8, sxan_freearc_index9];
+function sxan_fa_num(c, p, end, v, layouts, emit) {
+    var b = [];
+    if (p[0] >= end || !sxan_read(c, p[0], b, 1)) {
+        return false;
+    }
+    var extra = 0;
+    while (extra < 8 && b[0] & (1 << extra) >>> 0) {
+        extra++;
+    }
+    var width = (extra + 1) >>> 0;
+    if (width > sxU64(end - p[0]) || !sxan_read(c, p[0], b, width)) {
+        return false;
+    }
+    v[0] = 0;
+    if (extra === 8) {
+        for (var i = 0; i < 8; i++) {
+            v[0] = sxOr64(v[0], sxShl64(b[(i + 1) >>> 0], (8 * i) >>> 0));
+        }
+    } else {
+        for (i = 0; i < width; i++) {
+            v[0] = sxOr64(v[0], sxShl64(b[i], (8 * i) >>> 0));
+        }
+        v[0] = sxShr64(v[0], width);
+    }
+    if (v[0] > SX_I64_MAX || emit && !sxan_add(c, layouts[(width - 1) >>> 0], p[0])) {
+        return false;
+    }
+    p[0] += width;
+    return true;
+}
+function sxan_crc32(c, p, n, out) {
+    var b = [];
+    var v = 4294967295;
+    if (!sxan_span(c, p, n)) {
+        return false;
+    }
+    while (n) {
+        var take = n < 1024 ? n : 1024;
+        if (!sxan_read(c, p, b, take)) {
+            return false;
+        }
+        for (var i = 0; i < take; i++) {
+            v = (v ^ b[i]) >>> 0;
+            for (var k = 0; k < 8; k++) {
+                v = (v >>> 1 ^ (0xEDB88320 & (0 - (v & 1)) >>> 0) >>> 0) >>> 0;
+            }
+        }
+        p += take;
+        n = sxU64(n - take);
+    }
+    out[0] = ~v >>> 0;
+    return true;
+}
+function sxan_fa_string(c, p, end, l, emit, stored) {
+    var n = [0];
+    var b = [];
+    if (!sxan_zlen(c, p[0], end, n)) {
+        return false;
+    }
+    if (stored !== null) {
+        stored[0] = n[0] === 8 && sxan_read(c, p[0], b, 8) && !sxMemcmp(b, "storing\x00", 8);
+    }
+    if (emit && !sxan_text(c, l, p[0], n[0], false)) {
+        return false;
+    }
+    p[0] += n[0];
+    return true;
+}
+function sxan_fa_descriptor(c, at, d, emit) {
+    var sxb1, sxr2, sxb3, sxr4, sxb5, sxr6, sxb7, sxr8, sxb9, sxr10;
+    var b = [];
+    var p = [at + 4];
+    var own = [0];
+    var actual = [0];
+    if (!sxan_read(c, at, b, 4) || sxMemcmp(b, "ArC\x01", 4) || !(sxr2 = sxan_fa_num(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), (sxb1 = [d.type]), sxan_fa_type, false), d.type = sxb1[0], sxr2) || !(sxr4 = sxan_fa_string(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), sxan_freearc_method, false, (sxb3 = [d.stored])), d.stored = sxb3[0], sxr4) || sxU64(p[0] - at) > 1040 || !(sxr6 = sxan_fa_num(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), (sxb5 = [d.plain]), sxan_fa_size, false), d.plain = sxb5[0], sxr6) || !(sxr8 = sxan_fa_num(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), (sxb7 = [d.packed]), sxan_fa_packed, false), d.packed = sxb7[0], sxr8) || !(sxr10 = sxan_word(c, p[0], 4, false, (sxb9 = [d.crc])), d.crc = sxb9[0], sxr10) || !sxan_word(c, p[0] + 4, 4, false, own) || d.packed > at || !sxan_crc32(c, at, sxU64(p[0] + 4 - at), actual) || own[0] !== actual[0]) {
+        return false;
+    }
+    d.start = sxU64(at - d.packed);
+    d.end = p[0] + 8;
+    if (emit) {
+        var v = [0];
+        p[0] = at + 4;
+        if (!sxan_add(c, sxan_freearc_magic, at) || !sxan_fa_num(c, p, d.end, v, sxan_fa_type, true) || !sxan_fa_string(c, p, d.end, sxan_freearc_method, true, null) || !sxan_fa_num(c, p, d.end, v, sxan_fa_size, true) || !sxan_fa_num(c, p, d.end, v, sxan_fa_packed, true) || !sxan_add(c, sxan_freearc_crc, p[0]) || !sxan_add(c, sxan_freearc_crc, p[0] + 4)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxan_fa_directory(c, p, z) {
+    p = [p];
+    var end = p[0] + z;
+    var blocks = [0];
+    var files = 0;
+    var dirs = [0];
+    var v = [0];
+    if (!sxan_span(c, p[0], z) || !sxan_fa_num(c, p, end, blocks, sxan_fa_count, true) || blocks[0] > 20000) {
+        return false;
+    }
+    for (var i = 0; i < blocks[0]; i++) {
+        if (!sxan_fa_num(c, p, end, v, sxan_fa_count, true) || v[0] > sxU64(20000 - files)) {
+            return false;
+        }
+        files += v[0];
+    }
+    for (i = 0; i < blocks[0]; i++) {
+        if (!sxan_fa_string(c, p, end, sxan_freearc_method, true, null)) {
+            return false;
+        }
+    }
+    for (i = 0; i < blocks[0]; i++) {
+        if (!sxan_fa_num(c, p, end, v, sxan_fa_offset, true)) {
+            return false;
+        }
+    }
+    for (i = 0; i < blocks[0]; i++) {
+        if (!sxan_fa_num(c, p, end, v, sxan_fa_packed, true)) {
+            return false;
+        }
+    }
+    if (!sxan_fa_num(c, p, end, dirs, sxan_fa_count, true) || dirs[0] > 20000) {
+        return false;
+    }
+    for (i = 0; i < dirs[0] + files; i++) {
+        if (!sxan_fa_string(c, p, end, sxan_archivenext_name, true, null)) {
+            return false;
+        }
+    }
+    for (i = 0; i < files; i++) {
+        if (!sxan_fa_num(c, p, end, v, sxan_fa_index, true)) {
+            return false;
+        }
+    }
+    for (i = 0; i < files; i++) {
+        if (!sxan_fa_num(c, p, end, v, sxan_fa_size, true)) {
+            return false;
+        }
+    }
+    if (files > Math.floor(sxU64(end - p[0]) / 4) || !sxan_table(c, sxan_freearc_time, p[0], 4, files)) {
+        return false;
+    }
+    p[0] += 4 * files;
+    if (files > sxU64(end - p[0]) || !sxan_table(c, sxan_freearc_folder, p[0], 1, files)) {
+        return false;
+    }
+    p[0] += files;
+    if (files > Math.floor(sxU64(end - p[0]) / 4) || !sxan_table(c, sxan_freearc_crc, p[0], 4, files)) {
+        return false;
+    }
+    return true;
+}
+function sxan_freearc(c) {
+    var header = sxNew_sxan_fa_desc();
+    var footer = sxNew_sxan_fa_desc();
+    if (!sxan_add(c, sxan_freearc_header, 0)) {
+        return false;
+    }
+    if (sxan_fa_descriptor(c, 8, header, false) && header.type === 1 && !sxan_fa_descriptor(c, 8, header, true)) {
+        return false;
+    }
+    var size = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var low = size > 4096 ? sxU64(size - 4096) : 0;
+    var at = size >= 4 ? sxU64(size - 4) : 0;
+    var found = false;
+    if (size < 4) {
+        return true;
+    }
+    for (; ; ) {
+        if (sxan_fa_descriptor(c, at, footer, false) && footer.type === 4) {
+            found = true;
+            break;
+        }
+        if (at === low) {
+            break;
+        }
+        at--;
+    }
+    if (!found) {
+        return true;
+    }
+    if (!sxan_fa_descriptor(c, at, footer, true)) {
+        return false;
+    }
+    var actual = [0];
+    if (!footer.stored || footer.packed !== footer.plain || !sxan_crc32(c, footer.start, footer.packed, actual) || actual[0] !== footer.crc) {
+        return true;
+    }
+    var p = [footer.start];
+    var end = footer.start + footer.packed;
+    var n = [0];
+    if (!sxan_fa_num(c, p, end, n, sxan_fa_count, true) || n[0] > 20000) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var type = [0];
+        var dist = [0];
+        var plain = [0];
+        var packed = [0];
+        var crc = [0];
+        var stored = [false];
+        if (!sxan_fa_num(c, p, end, type, sxan_fa_type, true) || !sxan_fa_string(c, p, end, sxan_freearc_method, true, stored) || !sxan_fa_num(c, p, end, dist, sxan_fa_offset, true) || !sxan_fa_num(c, p, end, plain, sxan_fa_size, true) || !sxan_fa_num(c, p, end, packed, sxan_fa_packed, true) || !sxan_word(c, p[0], 4, false, crc) || !sxan_add(c, sxan_freearc_crc, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+        if (dist[0] > footer.start || packed[0] > dist[0]) {
+            continue;
+        }
+        var start = sxU64(footer.start - dist[0]);
+        var d = sxNew_sxan_fa_desc();
+        if (sxan_fa_descriptor(c, start + packed[0], d, false) && d.type === type[0] && d.start === start && d.packed === packed[0] && d.plain === plain[0] && d.crc === crc[0] && !sxan_fa_descriptor(c, start + packed[0], d, true)) {
+            return false;
+        }
+        if (type[0] === 3 && stored[0] && packed[0] === plain[0] && sxan_crc32(c, start, packed[0], actual) && actual[0] === crc[0] && !sxan_fa_directory(c, start, packed[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_freearc_build(c) {
+    var ok = false;
+    ok = sxan_freearc(c);
+    return !!(c.count && sxan_finish(c));
+}

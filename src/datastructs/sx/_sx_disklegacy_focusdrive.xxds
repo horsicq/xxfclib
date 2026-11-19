@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/focusdrive/xx_focusdrive_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_focusdrive_header_fields = layout([chars("signature", 14, SIGNATURE), u8("opaque_byte"),
+    u8("partition_count", COUNT), field("opaque_identifier", "byte[16]", 16)]);
+var sxdleg_focusdrive_header = sxLayout(0x60750042, "focusdrive_header", LE, sxdleg_focusdrive_header_fields);
+var sxdleg_focusdrive_partition_fields = layout([u32("start_lba"), u32("block_count", COUNT),
+    field("opaque_metadata", "byte[8]", 8)]);
+var sxdleg_focusdrive_partition = sxLayout(0x60750043, "focusdrive_partition", LE, sxdleg_focusdrive_partition_fields);
+var sxdleg_focusdrive_name_header_fields = layout([field("opaque_prefix", "byte[4]", 4), u32("unpartitioned_blocks", COUNT),
+    field("opaque_metadata", "byte[24]", 24)]);
+var sxdleg_focusdrive_name_header = sxLayout(0x60750044, "focusdrive_name_header", LE, sxdleg_focusdrive_name_header_fields);
+var sxdleg_focusdrive_partition_name_fields = layout([chars("name", 32, NONE)]);
+var sxdleg_focusdrive_partition_name = sxLayout(0x60750045, "focusdrive_partition_name", LE, sxdleg_focusdrive_partition_name_fields);
+function sxdleg_focus(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 32) || sxMemcmp(h, "Parsons Engin.", 14) || !h[15] || h[15] > 30) {
+        return false;
+    }
+    return sxdleg_put(c, sxdleg_focusdrive_header, 0, 1) && sxdleg_put(c, sxdleg_focusdrive_partition, 32, h[15]) && sxdleg_put(c, sxdleg_focusdrive_name_header, 512, 1) && sxdleg_put(c, sxdleg_focusdrive_partition_name, 544, h[15]);
+}
+function sx_focusdrive_build(c) {
+    return sxdleg_focus(c);
+}

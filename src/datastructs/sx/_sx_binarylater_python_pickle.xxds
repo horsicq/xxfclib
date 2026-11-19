@@ -1,0 +1,134 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/python_pickle/xx_python_pickle_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_pickle_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_pickle_tag = sxLayout(0x6035003E, "pickle_tag", LE, sxbl_pickle_tag_fields);
+var sxbl_pickle_protocol_fields = layout([u8("opcode", SIGNATURE), u8("protocol", ID)]);
+var sxbl_pickle_protocol = sxLayout(0x603500D9, "pickle_protocol", LE, sxbl_pickle_protocol_fields);
+var sxbl_pickle_frame_size_fields = layout([u64("frame_size", SIZE)]);
+var sxbl_pickle_frame_size = sxLayout(0x603500DA, "pickle_frame_size", LE, sxbl_pickle_frame_size_fields);
+var sxbl_pickle_memo1_fields = layout([u8("memo_index", ID)]);
+var sxbl_pickle_memo1 = sxLayout(0x603500DB, "pickle_memo1", LE, sxbl_pickle_memo1_fields);
+var sxbl_pickle_memo4_fields = layout([u32("memo_index", ID)]);
+var sxbl_pickle_memo4 = sxLayout(0x603500DC, "pickle_memo4", LE, sxbl_pickle_memo4_fields);
+var sxbl_pickle_signed_length_fields = layout([i32("byte_size", SIZE)]);
+var sxbl_pickle_signed_length = sxLayout(0x603500DD, "pickle_signed_length", LE, sxbl_pickle_signed_length_fields);
+function sxbl_pickle(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var frame = 0;
+    var n = [0];
+    if (!sxbl_emit(c, p, end, sxbl_pickle_protocol)) {
+        return false;
+    }
+    for (var i = 0; p[0] < end && i < 20000; i++) {
+        var t = [0];
+        if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_pickle_tag)) {
+            return false;
+        }
+        var limit = frame ? frame : end;
+        if (t[0] === 0x95) {
+            if (frame && sxU64(p[0] - 1) !== frame) {
+                return false;
+            }
+            frame = 0;
+            if (!sxbl_word(c, p[0], 8, false, n) || !sxbl_emit(c, p, end, sxbl_pickle_frame_size) || n[0] > sxU64(end - p[0])) {
+                return false;
+            }
+            frame = p[0] + n[0];
+            continue;
+        }
+        switch (t[0]) {
+        case 46 /*.*/:
+            return true;
+        case 74 /*J*/:
+            if (!sxbl_numeric(c, p, limit, 4, true, false)) {
+                return false;
+            }
+            break;
+        case 75 /*K*/:
+        case 77 /*M*/:
+            if (!sxbl_numeric(c, p, limit, t[0] === 75 /*K*/ ? 1 : 2, false, false)) {
+                return false;
+            }
+            break;
+        case 71 /*G*/:
+            if (!sxbl_float(c, p, limit, 8, true)) {
+                return false;
+            }
+            break;
+        case 0x8A:
+        case 85 /*U*/:
+        case 67 /*C*/:
+        case 0x8C:
+            if (!sxbl_string(c, p, limit, 1, false)) {
+                return false;
+            }
+            break;
+        case 66 /*B*/:
+        case 88 /*X*/:
+            if (!sxbl_string(c, p, limit, 4, false)) {
+                return false;
+            }
+            break;
+        case 0x8B:
+        case 84 /*T*/:
+            if (!sxbl_word(c, p[0], 4, false, n) || !sxbl_emit(c, p, limit, sxbl_pickle_signed_length) || !sxbl_skip(c, p, limit, n[0])) {
+                return false;
+            }
+            break;
+        case 0x8D:
+        case 0x8E:
+        case 0x96:
+            if (!sxbl_string(c, p, limit, 8, false)) {
+                return false;
+            }
+            break;
+        case 113 /*q*/:
+        case 104 /*h*/:
+        case 114 /*r*/:
+        case 106 /*j*/:
+            if (!sxbl_emit(c, p, limit, t[0] === 113 /*q*/ || t[0] === 104 /*h*/ ? sxbl_pickle_memo1 : sxbl_pickle_memo4)) {
+                return false;
+            }
+            break;
+        case 78 /*N*/:
+        case 0x88:
+        case 0x89:
+        case 93 /*]*/:
+        case 125 /*}*/:
+        case 41 /*)*/:
+        case 0x8F:
+        case 40 /*(*/:
+        case 48 /*0*/:
+        case 49 /*1*/:
+        case 50 /*2*/:
+        case 0x85:
+        case 0x86:
+        case 0x87:
+        case 116 /*t*/:
+        case 108 /*l*/:
+        case 100 /*d*/:
+        case 101 /*e*/:
+        case 117 /*u*/:
+        case 0x90:
+        case 0x91:
+        case 97 /*a*/:
+        case 115 /*s*/:
+        case 0x94:
+            break;
+        default:
+            return false;
+        }
+        if (frame && p[0] === frame) {
+            frame = 0;
+        }
+    }
+    return false;
+}
+function sx_python_pickle_build(c) {
+    return sxbl_pickle(c);
+}

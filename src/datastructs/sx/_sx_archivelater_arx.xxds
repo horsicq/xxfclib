@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/arx/xx_arx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_arx_member_fields = layout([u8("header_size_minus2"), u8("header_checksum", CHECKSUM), chars("method", 5, ID),
+    u8("zero7", RESERVED), u32("packed_size", SIZE), u32("unpacked_size", SIZE), u16("time"), u16("date"),
+    bytes("unknown20", 2), u8("name_size", SIZE)]);
+var sxal_arx_member = sxLayout(0x60200008, "arx_member", LE, sxal_arx_member_fields);
+var sxal_arx_end_fields = layout([u8("marker", SIGNATURE)]);
+var sxal_arx_end = sxLayout(0x60200009, "arx_end", LE, sxal_arx_end_fields);
+function sxal_arx(c) {
+    var b = [];
+    var p = 0;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, 1)) {
+            break;
+        }
+        if (!b[0]) {
+            return sxal_add(c, sxal_arx_end, p);
+        }
+        var h = b[0] + 2;
+        if (h < 24 || !sxal_read(c, p, b, 23) || !sxal_span(c, p, h) || 23 + b[22] > h) {
+            break;
+        }
+        var n = sxal32(b, 8, false);
+        if (!n) {
+            n = sxal32(b, 12, false);
+        }
+        if (!sxal_add(c, sxal_arx_member, p)) {
+            return false;
+        }
+        if (!sxal_span(c, p + h, n)) {
+            break;
+        }
+        p += h + n;
+    }
+    return c.count !== 0;
+}
+function sx_arx_build(c) {
+    return sxal_arx(c);
+}

@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pascal_profile_manager/xx_pascal_profile_manager_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_ppm_header_fields = layout([u16("area_blocks", COUNT), u16("volume_count", COUNT), u8("signature_length", SIZE),
+    chars("signature", 3, SIGNATURE), field("unused", "byte[8]", 8)]);
+var sxdt_ppm_header = sxLayout(0x607A0005, "ppm_header", LE, sxdt_ppm_header_fields);
+var sxdt_ppm_volume_entry_fields = layout([u16("absolute_start_block"), u16("block_count", COUNT), u8("default_unit", ID),
+    u8("write_protection", FLAGS), u16("old_driver_address", VA)]);
+var sxdt_ppm_volume_entry = sxLayout(0x607A0006, "ppm_volume_entry", LE, sxdt_ppm_volume_entry_fields);
+var sxdt_ppm_volume_description_fields = layout([u8("length", SIZE), chars("description", 15, NONE)]);
+var sxdt_ppm_volume_description = sxLayout(0x607A0007, "ppm_volume_description", LE, sxdt_ppm_volume_description_fields);
+var sxdt_ppm_cached_volume_name_fields = layout([u8("length", SIZE), chars("name", 7, NONE)]);
+var sxdt_ppm_cached_volume_name = sxLayout(0x607A0008, "ppm_cached_volume_name", LE, sxdt_ppm_cached_volume_name_fields);
+function sxdt_ppm(c) {
+    var v = { c: c, base: 0, size: (c.size < 0 ? c.size + SX_U64_MAX : c.size), split: 0 };
+    var h = [];
+    var seen = sxZeros(8192);
+    if (!sxdt_av_prodos(v)) {
+        return false;
+    }
+    var block = 2;
+    var area = 0;
+    for (var walk = 0; block && walk < 65536; walk++) {
+        if (block >= 65536 || seen[Math.floor(block / 8)] & 1 << block % 8 || !sxdt_read(c, block * 512, h, 0, 512)) {
+            break;
+        }
+        seen[Math.floor(block / 8)] |= 1 << block % 8;
+        for (var i = block === 2 ? 1 : 0; i < 13; i++) {
+            var e = h, e_o = 4 + ((i * 39) >>> 0);
+            if (e[e_o] >> 4 === 4 && (e[e_o] & 15) === 11 && !sxMemcmpAt(e, e_o + 1, "PASCAL.AREA", 0, 11) && e[e_o + 16] === 239) {
+                area = sxdt16(e, e_o + 17, 0) * 512;
+            }
+        }
+        block = sxdt16(h, 2, 0);
+    }
+    if (!area || !sxdt_read(c, area, h, 0, 16) || sxMemcmpAt(h, 4, "\x03PPM", 0, 4)) {
+        return false;
+    }
+    var count = sxdt16(h, 2, 0);
+    if (!count || count > 31 || !sxdt_put(c, sxdt_ppm_header, area, 1) || !sxdt_put(c, sxdt_ppm_volume_entry, area + 16, count) || !sxdt_put(c, sxdt_ppm_volume_description, area + 256, 32) || !sxdt_put(c, sxdt_ppm_cached_volume_name, area + 768, 32)) {
+        return false;
+    }
+    for (i = 0; i < count; i++) {
+        if (!sxdt_read(c, area + 16 + ((i * 8) >>> 0), h, 0, 8)) {
+            return false;
+        }
+        var p = sxdt16(h, 0, 0) * 512;
+        var n = sxdt16(h, 2, 0) * 512;
+        if (!sxdt_span(c, p, n)) {
+            return false;
+        }
+        var child = { c: c, base: p, size: n, split: 0 };
+        if (!sxdt_av_pascal(child)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_pascal_profile_manager_build(c) {
+    var ok = false;
+    ok = sxdt_ppm(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

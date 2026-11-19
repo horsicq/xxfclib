@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gocad_model/xx_gocad_model_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_alpha_fields = layout([field("alpha", "ascii_real", 0)]);
+var sxsm_alpha = sxLayout(0x60630073, "mesh_alpha", LE, sxsm_alpha_fields);
+var sxsm_z_direction_fields = layout([field("z_direction", "char", 0, STRING)]);
+var sxsm_z_direction = sxLayout(0x60630076, "mesh_z_direction", LE, sxsm_z_direction_fields);
+function sxsm_gocad(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(128, sxNew_sxsm_token);
+    var n = [0];
+    while (sxsm_next(q, line, t[0], 128, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "VRTX") || sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "PVRTX")) {
+            if (n[0] < 5) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_node_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_xyz(q, t[2], 0) || !sxsm_each(q, t, 5, (n[0] - 5) >>> 0, sxsm_attribute_value)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "ATOM")) {
+            if (n[0] !== 3) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_node_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_node_index, sxCopy_sxsm_token(null, t[2]))) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "TRGL") || sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "BSTONE")) {
+            if (!sxsm_each(q, t, 1, (n[0] - 1) >>> 0, sxsm_node_index)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "BORDER")) {
+            if (n[0] !== 4) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_boundary_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_each(q, t, 2, 2, sxsm_node_index)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "*solid*color:")) {
+            if (n[0] !== 5) {
+                return false;
+            }
+            var cols = [sxsm_red, sxsm_green, sxsm_blue, sxsm_alpha];
+            if (!sxsm_fields(q, t, 1, 4, cols, 4)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "ESIZES")) {
+            if (!sxsm_each(q, t, 1, (n[0] - 1) >>> 0, sxsm_component_count)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "ZPOSITIVE")) {
+            if (n[0] !== 2) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_z_direction, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+        } else if (n[0] > 1) {
+            {
+                if (!sxsm_emit(q, sxsm_text_value, sxCopy_sxsm_token(null, { a: t[1].a, z: line.a + line.z - t[1].a }))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gocad_model_build(q) {
+    return sxsm_gocad(q);
+}

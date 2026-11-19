@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzfsestream/xx_lzfsestream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_lzfse_raw_block_fields = layout([chars("magic", 4, SIGNATURE), u32("unpacked_size", SIZE)]);
+var sxar_lzfse_raw_block = sxLayout(0x601C0026, "lzfse_raw_block", LE, sxar_lzfse_raw_block_fields);
+var sxar_lzfse_lzvn_block_fields = layout([chars("magic", 4, SIGNATURE), u32("unpacked_size", SIZE), u32("packed_size", SIZE)]);
+var sxar_lzfse_lzvn_block = sxLayout(0x601C0027, "lzfse_lzvn_block", LE, sxar_lzfse_lzvn_block_fields);
+var sxar_lzfse_v1_block_fields = layout([chars("magic", 4, SIGNATURE), u32("unpacked_size", SIZE), u32("packed_size", SIZE),
+    u32("literal_count", COUNT), u32("match_count", COUNT), u32("literal_payload_size", SIZE), u32("lmd_payload_size", SIZE),
+    i32("literal_bits"), field("literal_states", "uint16[4]", 8), i32("lmd_bits"), u16("l_state"), u16("m_state"),
+    u16("d_state"), field("l_frequencies", "uint16[20]", 40), field("m_frequencies", "uint16[20]", 40),
+    field("d_frequencies", "uint16[64]", 128), field("literal_frequencies", "uint16[256]", 512),
+    u16("alignment_padding", RESERVED)]);
+var sxar_lzfse_v1_block = sxLayout(0x601C0028, "lzfse_v1_block", LE, sxar_lzfse_v1_block_fields);
+var sxar_lzfse_v2_block_fields = layout([chars("magic", 4, SIGNATURE), u32("unpacked_size", SIZE), u64("packed_fields0"),
+    u64("packed_fields1"), u64("packed_fields2")]);
+var sxar_lzfse_v2_block = sxLayout(0x601C0029, "lzfse_v2_block", LE, sxar_lzfse_v2_block_fields);
+var sxar_lzfse_end_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxar_lzfse_end = sxLayout(0x601C002A, "lzfse_end", LE, sxar_lzfse_end_fields);
+function sxar_lzfse(c) {
+    var p = 0;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var b = [];
+        if (!sxar_read(c, p, b, 0, 4)) {
+            break;
+        }
+        var l = null;
+        var head = 0;
+        var payload = 0;
+        if (!sxMemcmp(b, "bvx$", 4)) {
+            if (!sxar_add(c, sxar_lzfse_end, p)) {
+                return false;
+            }
+            break;
+        }
+        if (!sxMemcmp(b, "bvx-", 4)) {
+            head = 8;
+            if (!sxar_read(c, p, b, 0, 8)) {
+                break;
+            }
+            payload = sxar32(b, 4, false);
+            l = sxar_lzfse_raw_block;
+        } else if (!sxMemcmp(b, "bvxn", 4)) {
+            head = 12;
+            if (!sxar_read(c, p, b, 0, 12)) {
+                break;
+            }
+            payload = sxar32(b, 8, false);
+            l = sxar_lzfse_lzvn_block;
+        } else if (!sxMemcmp(b, "bvx1", 4)) {
+            head = 772;
+            if (!sxar_read(c, p, b, 0, 28)) {
+                break;
+            }
+            payload = sxar32(b, 20, false) + sxar32(b, 24, false);
+            l = sxar_lzfse_v1_block;
+        } else if (!sxMemcmp(b, "bvx2", 4)) {
+            if (!sxar_read(c, p, b, 0, 32)) {
+                break;
+            }
+            head = sxar32(b, 24, false);
+            if (head < 32 || head > 752) {
+                break;
+            }
+            payload = sxAnd64(sxShr64(sxar64(b, 8), 20), 0xFFFFF) + (sxShr64(sxar64(b, 16), 40) & 0xFFFFF);
+            l = sxar_lzfse_v2_block;
+        } else {
+            break;
+        }
+        if (!sxar_span(c, p, head + payload)) {
+            break;
+        }
+        if (!sxar_add(c, l, p)) {
+            return false;
+        }
+        p += head + payload;
+    }
+    return c.count !== 0;
+}
+function sx_lzfsestream_build(c) {
+    return sxar_lzfse(c);
+}

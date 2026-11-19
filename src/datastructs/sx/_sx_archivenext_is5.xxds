@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/is5/xx_is5_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_is5_header_fields = layout([u32("signature", SIGNATURE), u32("version"), u32("volume_info", FLAGS),
+    u32("descriptor_offset", OFFSET), u32("descriptor_size", SIZE)]);
+var sxan_is5_header = sxLayout(0x60770007, "is5_header", LE, sxan_is5_header_fields);
+var sxan_is5_descriptor_fields = layout([bytes("unknown0", 12), u32("file_table_offset", OFFSET), u32("unknown1"),
+    u32("file_table_size", SIZE), u32("repeated_table_size", SIZE), u32("directory_count", COUNT), bytes("unknown2", 8),
+    u32("member_count", COUNT), u32("second_table_offset", OFFSET)]);
+var sxan_is5_descriptor = sxLayout(0x60770008, "is5_descriptor", LE, sxan_is5_descriptor_fields);
+var sxan_is5_member_v5_fields = layout([u32("name_offset", OFFSET), u32("directory_index"), u16("flags", FLAGS),
+    u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), bytes("unknown", 20), u32("data_offset", OFFSET)]);
+var sxan_is5_member_v5 = sxLayout(0x60770009, "is5_member_v5", LE, sxan_is5_member_v5_fields);
+var sxan_is5_member_v6_fields = layout([u16("flags", FLAGS), u64("uncompressed_size", SIZE), u64("compressed_size", SIZE),
+    u64("data_offset", OFFSET), bytes("md5", 16, CHECKSUM), bytes("unknown1", 16), u32("name_offset", OFFSET),
+    u16("directory_index"), bytes("unknown2", 23)]);
+var sxan_is5_member_v6 = sxLayout(0x6077000A, "is5_member_v6", LE, sxan_is5_member_v6_fields);
+var sxan_is5_table_offset_fields = layout([u32("entry_offset", OFFSET)]);
+var sxan_is5_table_offset = sxLayout(0x6077000B, "is5_table_offset", LE, sxan_is5_table_offset_fields);
+var sxan_is5_volume_prefix_fields = layout([u32("data_offset", OFFSET), u32("unknown"), u32("first_file_index"),
+    u32("last_file_index")]);
+var sxan_is5_volume_prefix = sxLayout(0x60770046, "is5_volume_prefix", LE, sxan_is5_volume_prefix_fields);
+function sxan_is5(c) {
+    var version = [0];
+    var desc = [0];
+    var descz = [0];
+    var table = [0];
+    var z = [0];
+    var dirs = [0];
+    var n = [0];
+    var second = [0];
+    var p = [0];
+    var no = [0];
+    var len = [0];
+    if (!sxan_add(c, sxan_is5_header, 0) || !sxan_word(c, 4, 4, false, version) || !sxan_word(c, 12, 4, false, desc) || !sxan_word(c, 16, 4, false, descz) || descz[0] < 48 || !sxan_span(c, desc[0], descz[0]) || !sxan_add(c, sxan_is5_descriptor, desc[0])) {
+        return false;
+    }
+    var major = sxShr64(version[0], 24) === 1 ? sxShr64(version[0], 12) >>> 0 & 15 : 0;
+    if (desc[0] >= 36 && !sxan_add(c, sxan_is5_volume_prefix, 20)) {
+        return false;
+    }
+    if (!sxan_word(c, desc[0] + 12, 4, false, table) || !sxan_word(c, desc[0] + 20, 4, false, z) || !sxan_word(c, desc[0] + 28, 4, false, dirs) || !sxan_word(c, desc[0] + 40, 4, false, n) || !sxan_word(c, desc[0] + 44, 4, false, second)) {
+        return false;
+    }
+    table[0] += desc[0];
+    if (!sxan_span(c, table[0], z[0]) || dirs[0] > Math.floor(z[0] / 4) || !sxan_table(c, sxan_is5_table_offset, table[0], 4, dirs[0])) {
+        return false;
+    }
+    for (var i = 0; i < dirs[0]; i++) {
+        if (!sxan_word(c, table[0] + 4 * i, 4, false, no) || no[0] >= z[0] || !sxan_zlen(c, table[0] + no[0], table[0] + z[0], len) || !sxan_named(c, table[0] + no[0], len[0])) {
+            return false;
+        }
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (major >= 6) {
+            if (second[0] > z[0] || i >= Math.floor(sxU64(z[0] - second[0]) / 87)) {
+                return false;
+            }
+            p[0] = table[0] + second[0] + i * 87;
+            if (!sxan_add(c, sxan_is5_member_v6, p[0]) || !sxan_word(c, p[0] + 58, 4, false, no)) {
+                return false;
+            }
+        } else {
+            if (dirs[0] + i >= Math.floor(z[0] / 4) || !sxan_add(c, sxan_is5_table_offset, table[0] + 4 * (dirs[0] + i)) || !sxan_word(c, table[0] + 4 * (dirs[0] + i), 4, false, p) || p[0] > z[0] || sxU64(z[0] - p[0]) < 42) {
+                return false;
+            }
+            p[0] += table[0];
+            if (!sxan_add(c, sxan_is5_member_v5, p[0]) || !sxan_word(c, p[0], 4, false, no)) {
+                return false;
+            }
+        }
+        var flags = [0];
+        var packed = [0];
+        if (!sxan_word(c, p[0] + (major >= 6 ? 0 : 8), 2, false, flags) || !sxan_word(c, p[0] + (major >= 6 ? 10 : 14), major >= 6 ? 8 : 4, false, packed)) {
+            return false;
+        }
+        if (!sxAnd64(flags[0], 8) && packed[0] && no[0] < z[0] && sxan_zlen(c, table[0] + no[0], table[0] + z[0], len) && !sxan_named(c, table[0] + no[0], len[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_is5_build(c) {
+    var ok = false;
+    ok = sxan_is5(c);
+    return !!(c.count && sxan_finish(c));
+}

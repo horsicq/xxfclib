@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bluemoon_soundclub_sn2/xx_bluemoon_soundclub_sn2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_order32_fields = layout([i32("pattern", ID)]);
+var sxmw_order32 = sxLayout(0x60870007, "order32", LE, sxmw_order32_fields);
+var sxmw_sn2_chunk_fields = layout([blob("chunk_id", 3, ID), u32("payload_bytes", SIZE)]);
+var sxmw_sn2_chunk = sxLayout(0x60870042, "sn2_chunk", LE, sxmw_sn2_chunk_fields);
+function sxmw_sn2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [31];
+    var n = [0];
+    var ce;
+    var tag = [];
+    if (!sxmw_eq(v, 0, "SN2", 3, end) || !sxmw_u(v, 3, 4, n, 0, end) || !sxmw_span(v, 7, n[0], end) || !sxmw_row(v, sxmw_sn2_header, 0, end)) {
+        return false;
+    }
+    end = 7 + n[0];
+    while (p[0] < end) {
+        if (!sxmw_read(v, p[0], tag, 3, end) || !sxmw_u(v, p[0] + 3, 4, n, 0, end) || !sxmw_span(v, p[0] + 7, n[0], end) || !sxmw_take(v, sxmw_sn2_chunk, p, 1, end)) {
+            return false;
+        }
+        ce = p[0] + n[0];
+        if (!sxMemcmp(tag, "NAM", 3)) {
+            if (!sxmw_text_emit(v, p[0], n[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SEQ", 3)) {
+            if (n[0] % 4 || !sxmw_take(v, sxmw_order32, p, Math.floor(n[0] / 4), ce)) {
+                return false;
+            }
+        }
+        p[0] = ce;
+    }
+    return true;
+}
+function sx_bluemoon_soundclub_sn2_build(v) {
+    return sxmw_sn2(v);
+}

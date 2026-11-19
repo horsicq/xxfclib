@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/photoshop_psd/xx_photoshop_psd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_psd_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version", ID), blob("reserved", 6, RESERVED),
+    u16("channels", COUNT), u32("height"), u32("width"), u16("depth_bits"), u16("color_mode", ID)]);
+var sxm_psd_header = sxLayout(0x60060006, "psd_header", BE, sxm_psd_header_fields);
+var sxm_be_length64_fields = layout([u64("length", SIZE)]);
+var sxm_be_length64 = sxLayout(0x60060008, "be_length64", BE, sxm_be_length64_fields);
+function sxm_psd(c, h) {
+    var at = 26;
+    var n;
+    var version = sxGetU16(h, 26, 4, true);
+    if (sxMemcmp(h, "8BPS", 4) || version !== 1 && version !== 2 || !sx_add(c, sxm_psd_header, 0, 26)) {
+        return false;
+    }
+    for (var i = 0; i < 3; i++) {
+        var wide = i === 2 && version === 2;
+        var small = 0;
+        if (wide) {
+            if ((n = sx_u64(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), true)) === null) {
+                return false;
+            }
+        } else {
+            if ((small = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), true)) === null) {
+                return false;
+            }
+            n = small;
+        }
+        if (!sx_add(c, wide ? sxm_be_length64 : sxm_be_length32, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), wide ? 8 : 4)) {
+            return false;
+        }
+        at += wide ? 8 : 4;
+        if (!sxm_raw(c, at, n)) {
+            return false;
+        }
+        at += n;
+    }
+    return sx_add(c, sxm_psd_compression, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2) && sxm_tail(c, at + 2);
+}
+function sx_photoshop_psd_build(c, h, n) {
+    return n >= 26 && sxm_psd(c, h);
+}

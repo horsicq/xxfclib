@@ -1,0 +1,130 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/adf/xx_adf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_adf_boot_header_fields = layout([chars("signature", 3, SIGNATURE), u8("dos_flags", FLAGS),
+    u32("boot_checksum", CHECKSUM), u32("root_block")]);
+var sxrfs_adf_boot_header = sxLayout(0x60650039, "adf_boot_header", BE, sxrfs_adf_boot_header_fields);
+var sxrfs_adf_root_block_fields = layout([i32("block_type", ID), u32("header_key"), u32("high_sequence"),
+    u32("hash_table_size", COUNT), u32("first_data"), u32("checksum", CHECKSUM), field("hash_block_numbers", "uint32[72]", 288),
+    i32("bitmap_valid", FLAGS), field("bitmap_blocks", "uint32[25]", 100), u32("bitmap_extension_block"),
+    u32("modification_days"), u32("modification_minutes"), u32("modification_ticks"), u8("volume_name_length", SIZE),
+    field("volume_name", "byte[31]", 31), field("reserved464", "byte[8]", 8, RESERVED), u32("volume_modification_days"),
+    u32("volume_modification_minutes"), u32("volume_modification_ticks"), u32("creation_days"), u32("creation_minutes"),
+    u32("creation_ticks"), u32("reserved496", RESERVED), u32("reserved500", RESERVED), u32("directory_cache_block"),
+    i32("secondary_type", ID)]);
+var sxrfs_adf_root_block = sxLayout(0x6065003A, "adf_root_block", BE, sxrfs_adf_root_block_fields);
+var sxrfs_adf_block_prefix_fields = layout([i32("block_type", ID), u32("header_key"), u32("high_sequence"),
+    u32("data_size_or_table_size"), u32("first_or_next_data_block"), u32("checksum", CHECKSUM)]);
+var sxrfs_adf_block_prefix = sxLayout(0x6065003B, "adf_block_prefix", BE, sxrfs_adf_block_prefix_fields);
+var sxrfs_adf_block_pointer_fields = layout([u32("block_number")]);
+var sxrfs_adf_block_pointer = sxLayout(0x6065003C, "adf_block_pointer", BE, sxrfs_adf_block_pointer_fields);
+var sxrfs_adf_classic_entry_tail_fields = layout([u32("reserved312", RESERVED), u16("owner_uid", ID), u16("owner_gid", ID),
+    u32("protection", FLAGS), u32("byte_size", SIZE), u8("comment_length", SIZE), field("comment", "byte[79]", 79),
+    field("reserved408", "byte[12]", 12, RESERVED), u32("modification_days"), u32("modification_minutes"),
+    u32("modification_ticks"), u8("name_length", SIZE), field("name", "byte[31]", 31),
+    field("reserved464", "byte[4]", 4, RESERVED), u32("real_entry_block"), u32("next_link_block"),
+    field("reserved476", "byte[20]", 20, RESERVED), u32("hash_chain"), u32("parent_block"), u32("extension_block"),
+    i32("secondary_type", ID)]);
+var sxrfs_adf_classic_entry_tail = sxLayout(0x6065003D, "adf_classic_entry_tail", BE, sxrfs_adf_classic_entry_tail_fields);
+var sxrfs_adf_bitmap_block_fields = layout([u32("checksum", CHECKSUM), field("free_block_bits", "uint32[127]", 508, FLAGS)]);
+var sxrfs_adf_bitmap_block = sxLayout(0x6065003E, "adf_bitmap_block", BE, sxrfs_adf_bitmap_block_fields);
+function sxrfs_adf_sum(b) {
+    var sum = 0;
+    for (var i = 0; i < 512; i = (i + 4) >>> 0) {
+        sum = (sum + sxrfs32(b, i, 1)) >>> 0;
+    }
+    return sum === 0;
+}
+function sxrfs_adf(c) {
+    var b = [];
+    var boot = [];
+    if (!sxrfs_read(c, 0, boot, 0, 4)) {
+        return false;
+    }
+    var blocks = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512) >>> 0;
+    if (blocks < 4 || blocks > 0x2000000) {
+        return false;
+    }
+    var marked = !sxMemcmp(boot, "DOS", 3) && boot[3] <= 7;
+    if (!marked && (boot[0] || boot[1] || boot[2] || boot[3] || blocks !== 1760 && blocks !== 3520)) {
+        return false;
+    }
+    var roots = [Math.floor(((blocks + 1) >>> 0) / 2), 880, 1760];
+    var root = 0;
+    for (var i = 0; i < 3; i++) {
+        if (roots[i] >= blocks || !sxrfs_read(c, roots[i] * 512, b, 0, 512)) {
+            continue;
+        }
+        if (sxrfs32(b, 0, 1) === 2 && !sxrfs32(b, 4, 1) && sxrfs32(b, 12, 1) === 72 && sxrfs32(b, 508, 1) === 1 && sxrfs_adf_sum(b)) {
+            root = roots[i];
+            break;
+        }
+    }
+    if (!root) {
+        return false;
+    }
+    if (marked && !sxrfs_put(c, sxrfs_adf_boot_header, 0, 1)) {
+        return false;
+    }
+    if (!sxrfs_put(c, sxrfs_adf_root_block, root * 512, 1)) {
+        return false;
+    }
+    for (i = 0; i < 25; i++) {
+        var bm = sxrfs32(b, 316 + ((i * 4) >>> 0), 1);
+        var bitmap = [];
+        if (bm >= 2 && bm < blocks && sxrfs_read(c, bm * 512, bitmap, 0, 512) && sxrfs_adf_sum(bitmap) && !sxrfs_put(c, sxrfs_adf_bitmap_block, bm * 512, 1)) {
+            return false;
+        }
+    }
+    var q = sxZeros(24000);
+    var seen = sxZeros(Math.floor(((blocks + 7) >>> 0) / 8));
+    if (q === null || seen === null) {
+        return false;
+    }
+    var n = 0;
+    i = 0;
+    for (var j = 0; j < 72; j++) {
+        var v = sxrfs32(b, 24 + ((j * 4) >>> 0), 1);
+        if (v >= 2 && v < blocks && n < 24000 && !(seen[Math.floor(v / 8)] & 1 << v % 8)) {
+            seen[Math.floor(v / 8)] |= 1 << v % 8;
+            q[n++] = v;
+        }
+    }
+    var ok = true;
+    while (i < n && c.count < 24000) {
+        var block = q[i++];
+        var p = block * 512;
+        if (!sxrfs_read(c, p, b, 0, 512) || sxrfs32(b, 0, 1) !== 2 || !sxrfs_adf_sum(b)) {
+            continue;
+        }
+        var type = sxrfs32(b, 508, 1) | 0;
+        if (!sxrfs_put(c, sxrfs_adf_block_prefix, p, 1)) {
+            ok = false;
+            break;
+        }
+        if (boot[3] < 6 && !sxrfs_put(c, sxrfs_adf_classic_entry_tail, p + 312, 1)) {
+            ok = false;
+            break;
+        }
+        if (type === 2 || type === -3) {
+            if (!sxrfs_put(c, sxrfs_adf_block_pointer, p + 24, 72)) {
+                ok = false;
+                break;
+            }
+        }
+        for (j = 0; j < (type === 2 ? 73 : 1); j++) {
+            v = sxrfs32(b, j === 0 ? 496 : (24 + ((((j - 1) >>> 0) * 4) >>> 0)) >>> 0, 1);
+            if (v >= 2 && v < blocks && n < 24000 && !(seen[Math.floor(v / 8)] & 1 << v % 8)) {
+                seen[Math.floor(v / 8)] |= 1 << v % 8;
+                q[n++] = v;
+            }
+        }
+    }
+    return ok;
+}
+function sx_adf_build(c) {
+    return sxrfs_adf(c);
+}

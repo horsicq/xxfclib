@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/svd/xx_svd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_svd_version_fields = layout([field("value", "utf8", 0)]);
+var sxdn_svd_version = sxLayout(0x6078002D, "svd_version", LE, sxdn_svd_version_fields);
+var sxdn_svd_sectors_fields = layout([field("value", "ascii_signed", 0, COUNT)]);
+var sxdn_svd_sectors = sxLayout(0x6078002E, "svd_sectors", LE, sxdn_svd_sectors_fields);
+var sxdn_svd_cylinders_fields = layout([field("value", "ascii_signed", 0, COUNT)]);
+var sxdn_svd_cylinders = sxLayout(0x6078002F, "svd_cylinders", LE, sxdn_svd_cylinders_fields);
+var sxdn_svd_sides_fields = layout([field("value", "ascii_signed", 0, COUNT)]);
+var sxdn_svd_sides = sxLayout(0x60780030, "svd_sides", LE, sxdn_svd_sides_fields);
+var sxdn_svd_sector_size_code_fields = layout([field("value", "ascii_signed", 0)]);
+var sxdn_svd_sector_size_code = sxLayout(0x60780031, "svd_sector_size_code", LE, sxdn_svd_sector_size_code_fields);
+var sxdn_svd_write_protect_fields = layout([field("value", "ascii_signed", 0, FLAGS)]);
+var sxdn_svd_write_protect = sxLayout(0x60780032, "svd_write_protect", LE, sxdn_svd_write_protect_fields);
+var sxdn_svd_fields = [sxdn_svd_version, sxdn_svd_sectors, sxdn_svd_cylinders, sxdn_svd_sides, sxdn_svd_sector_size_code,
+    sxdn_svd_write_protect];
+function sxdn_svd(c) {
+    var b = [];
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 512 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 512;
+    if (!sxdn_read(c, 0, b, n)) {
+        return false;
+    }
+    var t = { c: c, b: b, n: n };
+    var p = 0;
+    var count = b[0] === 50 /*2*/ ? 6 : 3;
+    for (var i = 0; i < count; i++) {
+        var a = p;
+        while (p < n && b[p] !== 10) {
+            p++;
+        }
+        if (p === n) {
+            return c.count !== 0;
+        }
+        if (!sxdn_text_value(t, sxdn_svd_fields[i], a, p)) {
+            return false;
+        }
+        p++;
+    }
+    return true;
+}
+function sx_svd_build(c) {
+    return sxdn_svd(c);
+}

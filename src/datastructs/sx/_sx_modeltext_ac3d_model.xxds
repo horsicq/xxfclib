@@ -1,0 +1,231 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/ac3d_model/xx_ac3d_model_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_material_index_fields = layout([field("material_index", "ascii_signed", 0)]);
+var sxmt_material_index = sxLayout(0x60520020, "modeltext_material_index", LE, sxmt_material_index_fields);
+var sxmt_child_count_fields = layout([field("child_count", "ascii_signed", 0, COUNT)]);
+var sxmt_child_count = sxLayout(0x60520022, "modeltext_child_count", LE, sxmt_child_count_fields);
+var sxmt_surface_count_fields = layout([field("surface_count", "ascii_signed", 0, COUNT)]);
+var sxmt_surface_count = sxLayout(0x60520024, "modeltext_surface_count", LE, sxmt_surface_count_fields);
+var sxmt_reference_count_fields = layout([field("reference_count", "ascii_signed", 0, COUNT)]);
+var sxmt_reference_count = sxLayout(0x60520025, "modeltext_reference_count", LE, sxmt_reference_count_fields);
+var sxmt_rotation_value_fields = layout([field("rotation_value", "ascii_real", 0)]);
+var sxmt_rotation_value = sxLayout(0x6052004F, "modeltext_rotation_value", LE, sxmt_rotation_value_fields);
+var sxmt_transparency_fields = layout([field("transparency", "ascii_real", 0)]);
+var sxmt_transparency = sxLayout(0x60520050, "modeltext_transparency", LE, sxmt_transparency_fields);
+var sxmt_shininess_fields = layout([field("shininess", "ascii_real", 0)]);
+var sxmt_shininess = sxLayout(0x60520051, "modeltext_shininess", LE, sxmt_shininess_fields);
+var sxmt_ambient_red_fields = layout([field("ambient_red", "ascii_real", 0)]);
+var sxmt_ambient_red = sxLayout(0x60520052, "modeltext_ambient_red", LE, sxmt_ambient_red_fields);
+var sxmt_ambient_green_fields = layout([field("ambient_green", "ascii_real", 0)]);
+var sxmt_ambient_green = sxLayout(0x60520053, "modeltext_ambient_green", LE, sxmt_ambient_green_fields);
+var sxmt_ambient_blue_fields = layout([field("ambient_blue", "ascii_real", 0)]);
+var sxmt_ambient_blue = sxLayout(0x60520054, "modeltext_ambient_blue", LE, sxmt_ambient_blue_fields);
+var sxmt_emission_red_fields = layout([field("emission_red", "ascii_real", 0)]);
+var sxmt_emission_red = sxLayout(0x60520055, "modeltext_emission_red", LE, sxmt_emission_red_fields);
+var sxmt_emission_green_fields = layout([field("emission_green", "ascii_real", 0)]);
+var sxmt_emission_green = sxLayout(0x60520056, "modeltext_emission_green", LE, sxmt_emission_green_fields);
+var sxmt_emission_blue_fields = layout([field("emission_blue", "ascii_real", 0)]);
+var sxmt_emission_blue = sxLayout(0x60520057, "modeltext_emission_blue", LE, sxmt_emission_blue_fields);
+var sxmt_specular_red_fields = layout([field("specular_red", "ascii_real", 0)]);
+var sxmt_specular_red = sxLayout(0x60520058, "modeltext_specular_red", LE, sxmt_specular_red_fields);
+var sxmt_specular_green_fields = layout([field("specular_green", "ascii_real", 0)]);
+var sxmt_specular_green = sxLayout(0x60520059, "modeltext_specular_green", LE, sxmt_specular_green_fields);
+var sxmt_specular_blue_fields = layout([field("specular_blue", "ascii_real", 0)]);
+var sxmt_specular_blue = sxLayout(0x6052005A, "modeltext_specular_blue", LE, sxmt_specular_blue_fields);
+var sxmt_surface_flags_fields = layout([field("surface_flags", "ascii_hex", 0, FLAGS)]);
+var sxmt_surface_flags = sxLayout(0x6052005D, "modeltext_surface_flags", LE, sxmt_surface_flags_fields);
+function sxmt_ac(q) {
+    var a = [0];
+    var e = [0];
+    var vertices = [0];
+    var refs = [0];
+    while (sxmt_line(q, a, e, true)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var next = q.p;
+        q.p = a[0];
+        if (vertices[0]) {
+            {
+                if (!sxmt_value(q, sxmt_x, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_y, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_z, e[0], null)) {
+                    return false;
+                }
+            }
+            vertices[0]--;
+        } else if (refs[0]) {
+            {
+                if (!sxmt_value(q, sxmt_vertex_index, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_u, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_v, e[0], null)) {
+                    return false;
+                }
+            }
+            refs[0]--;
+        } else {
+            var k = [0];
+            var z = [0];
+            if (!sxmt_token(q, e[0], k, z, false)) {
+                return false;
+            }
+            {
+                if (!sxmt_emit(q, sxmt_keyword, k[0], z[0])) {
+                    return false;
+                }
+            }
+            if (sxmt_eq(q, k[0], z[0], "AC3Db")) {
+            } else if (sxmt_eq(q, k[0], z[0], "OBJECT")) {
+                {
+                    if (!sxmt_value(q, sxmt_object_type, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "name") || sxmt_eq(q, k[0], z[0], "texture") || sxmt_eq(q, k[0], z[0], "url")) {
+                if (!sxmt_quoted(q, sxmt_name, e[0])) {
+                    return false;
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "numvert")) {
+                {
+                    if (!sxmt_value(q, sxmt_vertex_count, e[0], vertices)) {
+                        return false;
+                    }
+                }
+                if (vertices[0] > 1000000) {
+                    return false;
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "refs")) {
+                {
+                    if (!sxmt_value(q, sxmt_reference_count, e[0], refs)) {
+                        return false;
+                    }
+                }
+                if (refs[0] > 256) {
+                    return false;
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "numsurf")) {
+                {
+                    if (!sxmt_value(q, sxmt_surface_count, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "kids")) {
+                {
+                    if (!sxmt_value(q, sxmt_child_count, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "mat")) {
+                {
+                    if (!sxmt_value(q, sxmt_material_index, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "SURF")) {
+                if (!sxmt_token(q, e[0], a, z, false) || z[0] < 3 || q.b[a[0]] !== 48 /*0*/ || q.b[a[0] + 1] !== 120 /*x*/) {
+                    return false;
+                }
+                {
+                    if (!sxmt_emit(q, sxmt_surface_flags, a[0] + 2, z[0] - 2)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "loc")) {
+                {
+                    if (!sxmt_value(q, sxmt_translate_x, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_translate_y, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_translate_z, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "rot")) {
+                if (!sxmt_many(q, sxmt_rotation_value, e[0])) {
+                    return false;
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "texrep") || sxmt_eq(q, k[0], z[0], "texoff")) {
+                {
+                    if (!sxmt_value(q, sxmt_u, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_v, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (sxmt_eq(q, k[0], z[0], "MATERIAL")) {
+                if (!sxmt_quoted(q, sxmt_material_name, e[0])) {
+                    return false;
+                }
+                var ls = [sxmt_red, sxmt_green, sxmt_blue, sxmt_ambient_red, sxmt_ambient_green, sxmt_ambient_blue, sxmt_emission_red, sxmt_emission_green, sxmt_emission_blue, sxmt_specular_red, sxmt_specular_green, sxmt_specular_blue];
+                for (var i = 0; i < 4; i++) {
+                    {
+                        if (!sxmt_value(q, sxmt_keyword, e[0], null)) {
+                            return false;
+                        }
+                    }
+                    for (var j = 0; j < 3; j++) {
+                        if (!sxmt_value(q, ls[(((i * 3) >>> 0) + j) >>> 0], e[0], null)) {
+                            return false;
+                        }
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_keyword, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_shininess, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_keyword, e[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_transparency, e[0], null)) {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+        q.p = next;
+    }
+    return true;
+}
+function sx_ac3d_model_build(q) {
+    return sxmt_ac(q);
+}

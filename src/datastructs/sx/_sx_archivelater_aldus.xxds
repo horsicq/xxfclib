@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/aldus/xx_aldus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_aldus_header_fields = layout([chars("signature", 16, SIGNATURE), u16("header_size", SIZE), chars("name", 32, STRING),
+    u32("unpacked_size", SIZE)]);
+var sxal_aldus_header = sxLayout(0x60200001, "aldus_header", BE, sxal_aldus_header_fields);
+var sxal_aldus_timestamp_fields = layout([u32("modified")]);
+var sxal_aldus_timestamp = sxLayout(0x60200002, "aldus_timestamp", LE, sxal_aldus_timestamp_fields);
+var sxal_aldus_stream_fields = layout([u16("header_size", SIZE), u16("block_size", SIZE), u16("last_block_size", SIZE),
+    u32("block_count", COUNT), u32("block_table_offset", OFFSET), u32("data_offset", OFFSET), u32("archive_size", SIZE)]);
+var sxal_aldus_stream = sxLayout(0x60200003, "aldus_stream", BE, sxal_aldus_stream_fields);
+var sxal_aldus_block_size_fields = layout([u16("packed_size", SIZE)]);
+var sxal_aldus_block_size = sxLayout(0x60200004, "aldus_block_size", BE, sxal_aldus_block_size_fields);
+function sxal_aldus(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 58) || !sxal_add(c, sxal_aldus_header, 0) || !sxal_add(c, sxal_aldus_timestamp, 54)) {
+        return false;
+    }
+    var h = sxal16(b, 16, true);
+    if (h !== 100 && h !== 200 || !sxal_read(c, h, b, 22) || !sxal_add(c, sxal_aldus_stream, h)) {
+        return true;
+    }
+    var n = sxal32(b, 6, true);
+    var p = sxal32(b, 10, true);
+    if (n && n <= 20000 && p >= (h + 22) >>> 0 && sxal_span(c, p, n * 2) && !sx_table(c, sxal_aldus_block_size, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 2, n)) {
+        return false;
+    }
+    return true;
+}
+function sx_aldus_build(c) {
+    return sxal_aldus(c);
+}

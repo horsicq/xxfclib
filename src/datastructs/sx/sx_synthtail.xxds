@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_synthtail.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_synthtail");
+include("_sx_synthtail_farbrausch_v2synthesizer");
+include("_sx_synthtail_twinteam_twintrackplayer_dmo");
+
+function fileTypes() { return ["DIE_MUSIC_FARBRAUSCH_V2SYNTHESIZER", "DIE_MUSIC_TWINTEAM_TWINTRACKPLAYER_DMO"]; }
+
+var sx_synthtail_layouts = [sxsynt_v2m_header, sxsynt_v2m_time_delta_low_plane, sxsynt_v2m_time_delta_middle_plane,
+    sxsynt_v2m_time_delta_high_plane, sxsynt_v2m_time_signature_numerator_plane, sxsynt_v2m_time_signature_denominator_plane,
+    sxsynt_v2m_timing_tpq_plane, sxsynt_v2m_note_delta_plane, sxsynt_v2m_velocity_delta_plane, sxsynt_v2m_program_delta_plane,
+    sxsynt_v2m_pitch_lsb_delta_plane, sxsynt_v2m_pitch_msb_delta_plane, sxsynt_v2m_controller_delta_plane, sxsynt_v2m_tempo,
+    sxsynt_v2m_note_count, sxsynt_v2m_program_count, sxsynt_v2m_pitch_count, sxsynt_v2m_controller_count,
+    sxsynt_v2m_globals_length, sxsynt_v2m_patchmap_length, sxsynt_v2m_speech_length, sxsynt_v2m_speech_count,
+    sxsynt_v2m_speech_offset, sxsynt_dmo_cipher_header];
+
+function structs() {
+    return sxCatalog([sxsynt_v2m_header, sxsynt_v2m_time_delta_low_plane, sxsynt_v2m_time_delta_middle_plane,
+        sxsynt_v2m_time_delta_high_plane, sxsynt_v2m_time_signature_numerator_plane,
+        sxsynt_v2m_time_signature_denominator_plane, sxsynt_v2m_timing_tpq_plane, sxsynt_v2m_note_delta_plane,
+        sxsynt_v2m_velocity_delta_plane, sxsynt_v2m_program_delta_plane, sxsynt_v2m_pitch_lsb_delta_plane,
+        sxsynt_v2m_pitch_msb_delta_plane, sxsynt_v2m_controller_delta_plane, sxsynt_v2m_tempo, sxsynt_v2m_note_count,
+        sxsynt_v2m_program_count, sxsynt_v2m_pitch_count, sxsynt_v2m_controller_count, sxsynt_v2m_globals_length,
+        sxsynt_v2m_patchmap_length, sxsynt_v2m_speech_length, sxsynt_v2m_speech_count, sxsynt_v2m_speech_offset,
+        sxsynt_dmo_cipher_header], sx_synthtail_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_synthtail_build, false);
+}

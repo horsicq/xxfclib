@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ppmd/xx_ppmd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_ppmd_header_fields = layout([u32("signature", SIGNATURE), u32("attributes", FLAGS), u16("model_info", FLAGS),
+    u16("name_size_and_restore"), u32("modified")]);
+var sxal_ppmd_header = sxLayout(0x60200033, "ppmd_header", LE, sxal_ppmd_header_fields);
+function sxal_ppmd(c) {
+    if (!sxal_add(c, sxal_ppmd_header, 0)) {
+        return false;
+    }
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    var last = 0;
+    for (var i = 0; i < 1024; i++) {
+        var r = c.f.get_current_archive_record(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset > c.f.base_address) {
+            var p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+            var b = [];
+            if (p > last && sxal_read(c, p, b, 16) && sxal32(b, 0, false) === 0x84ACAF8F) {
+                if (!sxal_add(c, sxal_ppmd_header, p)) {
+                    ok = false;
+                    break;
+                }
+                last = p;
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, s, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sx_ppmd_build(c) {
+    return sxal_ppmd(c);
+}

@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_cmdfilesystems.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_cmdfilesystems");
+include("_sx_cmdfilesystems_cmd_fd");
+
+function fileTypes() { return ["CMD_D1M", "CMD_D2M", "CMD_D4M"]; }
+
+var sx_cmdfilesystems_layouts = [sxcmdfs_cmd_fd_system_header, sxcmdfs_cmd_fd_partition_sector_link,
+    sxcmdfs_cmd_fd_first_partition, sxcmdfs_cmd_fd_partition, sxcmdfs_cmd_native_header, sxcmdfs_cmd_native_bam_header];
+
+function structs() {
+    return sxCatalog([sxcmdfs_cmd_fd_system_header, sxcmdfs_cmd_fd_partition_sector_link, sxcmdfs_cmd_fd_first_partition,
+        sxcmdfs_cmd_fd_partition, sxcmdfs_cmd_native_header, sxcmdfs_cmd_native_bam_header], sx_cmdfilesystems_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_cmdfilesystems_build, false);
+}

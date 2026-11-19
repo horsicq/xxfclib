@@ -1,0 +1,138 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archive.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_cpio_binary_le_header_fields = layout([u16("magic", SIGNATURE), u16("dev", ID), u16("ino", ID), u16("mode", FLAGS),
+    u16("uid", ID), u16("gid", ID), u16("nlink", COUNT), u16("rdev", ID), u16("mtime_high"), u16("mtime_low"),
+    u16("namesize", SIZE), u16("filesize_high"), u16("filesize_low")]);
+var sx_a_cpio_binary_le_header = sxLayout(0x60040004, "cpio_binary_le_header", LE, sx_a_cpio_binary_le_header_fields);
+var sx_a_cpio_binary_be_header_fields = layout([u16("magic", SIGNATURE), u16("dev", ID), u16("ino", ID), u16("mode", FLAGS),
+    u16("uid", ID), u16("gid", ID), u16("nlink", COUNT), u16("rdev", ID), u16("mtime_high"), u16("mtime_low"),
+    u16("namesize", SIZE), u16("filesize_high"), u16("filesize_low")]);
+var sx_a_cpio_binary_be_header = sxLayout(0x60040005, "cpio_binary_be_header", BE, sx_a_cpio_binary_be_header_fields);
+var sx_a_cab_header_fields = layout([chars("signature", 4, SIGNATURE), u32("reserved1", RESERVED), u32("cbCabinet", SIZE),
+    u32("reserved2", RESERVED), u32("coffFiles", OFFSET), u32("reserved3", RESERVED), u8("versionMinor"), u8("versionMajor"),
+    u16("cFolders", COUNT), u16("cFiles", COUNT), u16("flags", FLAGS), u16("setID", ID), u16("iCabinet", ID)]);
+var sx_a_cab_header = sxLayout(0x60040009, "cab_header", LE, sx_a_cab_header_fields);
+var sx_a_cab_folder_fields = layout([u32("coffCabStart", OFFSET), u16("cCFData", COUNT), u16("typeCompress", FLAGS)]);
+var sx_a_cab_folder = sxLayout(0x6004000B, "cab_folder", LE, sx_a_cab_folder_fields);
+var sx_a_skippable_frame_fields = layout([u32("magic", SIGNATURE), u32("frame_size", SIZE)]);
+var sx_a_skippable_frame = sxLayout(0x6004000E, "skippable_frame", LE, sx_a_skippable_frame_fields);
+var sx_a_lz4_block_header_fields = layout([u32("size_and_uncompressed_flag", FLAGS)]);
+var sx_a_lz4_block_header = sxLayout(0x60040013, "lz4_block_header", LE, sx_a_lz4_block_header_fields);
+var sx_a_checksum_le_fields = layout([u32("checksum", CHECKSUM)]);
+var sx_a_checksum_le = sxLayout(0x60040014, "checksum_le", LE, sx_a_checksum_le_fields);
+var sx_a_zstd_block_header_fields = layout([field("last_type_size", "uint24", 3, FLAGS)]);
+var sx_a_zstd_block_header = sxLayout(0x60040037, "zstd_block_header", LE, sx_a_zstd_block_header_fields);
+var sx_a_lzop_header_00_fields = layout([blob("magic", 9, SIGNATURE), u16("version"), u16("library_version"), u8("method", ID),
+    u32("flags", FLAGS), u32("mode", FLAGS), u32("mtime_low", TIMESTAMP), u8("filename_length", SIZE)]);
+var sx_a_lzop_header_00 = sxLayout(0x6004003A, "lzop_header_00", BE, sx_a_lzop_header_00_fields);
+var sx_a_lzop_header_01_fields = layout([blob("magic", 9, SIGNATURE), u16("version"), u16("library_version"), u8("method", ID),
+    u32("flags", FLAGS), u32("filter", ID), u32("mode", FLAGS), u32("mtime_low", TIMESTAMP), u8("filename_length", SIZE)]);
+var sx_a_lzop_header_01 = sxLayout(0x6004003B, "lzop_header_01", BE, sx_a_lzop_header_01_fields);
+var sx_a_lzop_header_10_fields = layout([blob("magic", 9, SIGNATURE), u16("version"), u16("library_version"),
+    u16("version_needed"), u8("method", ID), u8("level"), u32("flags", FLAGS), u32("mode", FLAGS), u32("mtime_low"),
+    u32("mtime_high"), u8("filename_length", SIZE)]);
+var sx_a_lzop_header_10 = sxLayout(0x6004003C, "lzop_header_10", BE, sx_a_lzop_header_10_fields);
+var sx_a_lzop_header_11_fields = layout([blob("magic", 9, SIGNATURE), u16("version"), u16("library_version"),
+    u16("version_needed"), u8("method", ID), u8("level"), u32("flags", FLAGS), u32("filter", ID), u32("mode", FLAGS),
+    u32("mtime_low"), u32("mtime_high"), u8("filename_length", SIZE)]);
+var sx_a_lzop_header_11 = sxLayout(0x6004003D, "lzop_header_11", BE, sx_a_lzop_header_11_fields);
+function sx_a_raw_advance(c, at, size) {
+    if (at[0] < 0 || at[0] > c.size || size > (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0])) {
+        return false;
+    }
+    if (!sx_raw(c, at[0], (size >= SX_I64_MAX ? size - SX_U64_MAX : size))) {
+        return false;
+    }
+    at[0] += (size >= SX_I64_MAX ? size - SX_U64_MAX : size);
+    return true;
+}
+function sx_a_skippable(c, at) {
+    var size;
+    if ((size = sx_u32(c, at[0] + 4, false)) === null || !sx_add(c, sx_a_skippable_frame, at[0], 8)) {
+        return false;
+    }
+    at[0] += 8;
+    return sx_a_raw_advance(c, at, size);
+}
+function sx_archive_supports(t) {
+    return t === "CPIO" || t === "CAB" || t === "LZ4" || t === "ZSTD" || t === "LZIP" || t === "LZOP";
+}
+function sx_archive_build(c) {
+    if (c.f.file_type === "CPIO") {
+        return sx_cpio_build(c);
+    }
+    if (c.f.file_type === "CAB") {
+        return sx_cab_build(c);
+    }
+    if (c.f.file_type === "LZ4") {
+        return sx_lz4_build(c);
+    }
+    if (c.f.file_type === "ZSTD") {
+        return sx_zstd_build(c);
+    }
+    if (c.f.file_type === "LZIP") {
+        return sx_lzip_build(c);
+    }
+    if (c.f.file_type === "LZOP") {
+        return sx_lzop_build(c);
+    }
+    return false;
+}
+var sx_archive_comment_names = ["0", "CAB_FLAG_PREV", "CAB_FLAG_NEXT", "CAB_FLAG_PREV|CAB_FLAG_NEXT", "CAB_FLAG_RESERVE",
+    "CAB_FLAG_PREV|CAB_FLAG_RESERVE", "CAB_FLAG_NEXT|CAB_FLAG_RESERVE", "CAB_FLAG_PREV|CAB_FLAG_NEXT|CAB_FLAG_RESERVE"];
+var sx_archive_comment_names_2 = ["Raw block", "RLE block", "Compressed block", "Reserved"];
+function sx_archive_comment(r, id) {
+    var s = null;
+    var v;
+    if (r === null || r.name === null || id < 0x60040001 || id > 0x6004FFFF) {
+        return true;
+    }
+    v = sxVarU64(r.value);
+    if (id === sx_a_cpio_binary_le_header.id || id === sx_a_cpio_binary_be_header.id) {
+        if (r.name === "filesize_high") {
+            s = "High 16 bits of the 32-bit file size";
+        } else if (r.name === "filesize_low") {
+            s = "Low 16 bits of the 32-bit file size";
+        } else if (r.name === "mtime_high") {
+            s = "High 16 bits of the 32-bit modification time";
+        } else if (r.name === "mtime_low") {
+            s = "Low 16 bits of the 32-bit modification time";
+        }
+    } else if (id === sx_a_cab_folder.id && r.name === "typeCompress") {
+        switch (sxAnd64(v, 15)) {
+        case 0:
+            s = "CAB_COMP_NONE";
+            break;
+        case 1:
+            s = "CAB_COMP_MSZIP";
+            break;
+        case 2:
+            s = "CAB_COMP_QUANTUM";
+            break;
+        case 3:
+            s = "CAB_COMP_LZX";
+            break;
+        }
+    } else if (id === sx_a_cab_header.id && r.name === "flags") {
+        if (v < 8) {
+            s = sx_archive_comment_names[v];
+        }
+    } else if (r.name === "frame_content_size_encoded") {
+        s = "Decoded content size is this value + 256";
+    } else if (id === sx_a_zstd_block_header.id) {
+        s = sx_archive_comment_names_2[sxAnd64(sxShr64(v, 1), 3)];
+    } else if (id === sx_a_lz4_block_header.id) {
+        s = v === 0 ? "End mark" : sxAnd64(v, 0x80000000) ? "Uncompressed block; low 31 bits are size" : "Compressed block size";
+    } else if ((id === sx_a_lzop_header_10.id || id === sx_a_lzop_header_11.id) && r.name === "mtime_low") {
+        s = "Low 32 bits of the 64-bit modification time";
+    } else if ((id === sx_a_lzop_header_10.id || id === sx_a_lzop_header_11.id) && r.name === "mtime_high") {
+        s = "High 32 bits of the 64-bit modification time";
+    } else if (r.name === "method" && (id === sx_a_lzop_header_00.id || id === sx_a_lzop_header_01.id || id === sx_a_lzop_header_10.id || id === sx_a_lzop_header_11.id)) {
+        s = v === 1 ? "LZO1X-1" : v === 2 ? "LZO1X-1(15)" : v === 3 ? "LZO1X-999" : null;
+    }
+    return s === null || sxSetComment(r, s);
+}

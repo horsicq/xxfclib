@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/ksa_soundtrackerpro_stf_project_co/xx_ksa_soundtrackerpro_stf_project_co_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_stf_volume_fields = layout([u8("volume")]);
+var sxchip_chip_stf_volume = sxLayout(0x608F0007, "chip_stf_volume", LE, sxchip_chip_stf_volume_fields);
+var sxchip_chip_stf_position_fields = layout([u8("pattern_number"), i8("transposition")]);
+var sxchip_chip_stf_position = sxLayout(0x608F000B, "chip_stf_position", LE, sxchip_chip_stf_position_fields);
+var sxchip_chip_stf_settings_fields = layout([u8("tempo")]);
+var sxchip_chip_stf_settings = sxLayout(0x608F000F, "chip_stf_settings", LE, sxchip_chip_stf_settings_fields);
+var sxchip_chip_stf_pattern_length_fields = layout([u8("row_count", COUNT)]);
+var sxchip_chip_stf_pattern_length = sxLayout(0x608F0010, "chip_stf_pattern_length", LE, sxchip_chip_stf_pattern_length_fields);
+var sxchip_chip_stf_song_fields = layout([u8("loop_position"), chars("title", 25, NONE)]);
+var sxchip_chip_stf_song = sxLayout(0x608F0011, "chip_stf_song", LE, sxchip_chip_stf_song_fields);
+function sxchip_stf(c) {
+    if (!sxchip_span(c, 0, 3065)) {
+        return false;
+    }
+    for (var i = 0; i < 15; i++) {
+        var p = (130 * i) >>> 0;
+        if (!sxchip_put(c, sxchip_chip_stf_volume, p, 32) || !sxchip_put(c, sxchip_chip_stf_noise, p + 32, 32) || !sxchip_put(c, sxchip_chip_stf_tone, p + 64, 32) || !sxchip_put(c, sxchip_chip_stf_sample_loop, p + 128, 1)) {
+            return false;
+        }
+    }
+    if (!sxchip_put(c, sxchip_chip_stf_position, 1950, 256) || !sxchip_put(c, sxchip_chip_stf_positions_end, 2462, 1)) {
+        return false;
+    }
+    for (i = 0; i < 16; i++) {
+        p = (2463 + ((32 * i) >>> 0)) >>> 0;
+        if (!sxchip_put(c, sxchip_chip_stf_ornament, p, 1) || !sxchip_put(c, sxchip_chip_note_step, p + 2, 30)) {
+            return false;
+        }
+    }
+    if (!sxchip_put(c, sxchip_chip_stf_settings, 3007, 1) || !sxchip_put(c, sxchip_chip_stf_pattern_length, 3008, 31) || !sxchip_put(c, sxchip_chip_stf_song, 3039, 1)) {
+        return false;
+    }
+    var n = Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 3065) / 576);
+    if (n > 31) {
+        n = 31;
+    }
+    return !n || sxchip_put(c, sxchip_chip_stf_event, 3065, n * 192);
+}
+function sx_ksa_soundtrackerpro_stf_project_co_build(c) {
+    return sxchip_stf(c);
+}

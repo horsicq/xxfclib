@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ddd/xx_ddd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_ddd_initial_dictionary_fields = layout([field("dos_lead", "byte[4]", 4),
+    field("reserved_prefix", "msb_bits[0,3]", 1, RESERVED), at(4, field("volume_reversed_bits", "msb_bits[3,8]", 2)),
+    at(5, field("favorite_0_reversed_bits", "msb_bits[3,8]", 2)), at(6, field("favorite_1_reversed_bits", "msb_bits[3,8]", 2)),
+    at(7, field("favorite_2_reversed_bits", "msb_bits[3,8]", 2)), at(8, field("favorite_3_reversed_bits", "msb_bits[3,8]", 2)),
+    at(9, field("favorite_4_reversed_bits", "msb_bits[3,8]", 2)), at(10, field("favorite_5_reversed_bits", "msb_bits[3,8]", 2)),
+    at(11, field("favorite_6_reversed_bits", "msb_bits[3,8]", 2)),
+    at(12, field("favorite_7_reversed_bits", "msb_bits[3,8]", 2)),
+    at(13, field("favorite_8_reversed_bits", "msb_bits[3,8]", 2)),
+    at(14, field("favorite_9_reversed_bits", "msb_bits[3,8]", 2)),
+    at(15, field("favorite_10_reversed_bits", "msb_bits[3,8]", 2)),
+    at(16, field("favorite_11_reversed_bits", "msb_bits[3,8]", 2)),
+    at(17, field("favorite_12_reversed_bits", "msb_bits[3,8]", 2)),
+    at(18, field("favorite_13_reversed_bits", "msb_bits[3,8]", 2)),
+    at(19, field("favorite_14_reversed_bits", "msb_bits[3,8]", 2)),
+    at(20, field("favorite_15_reversed_bits", "msb_bits[3,8]", 2)),
+    at(21, field("favorite_16_reversed_bits", "msb_bits[3,8]", 2)),
+    at(22, field("favorite_17_reversed_bits", "msb_bits[3,8]", 2)),
+    at(23, field("favorite_18_reversed_bits", "msb_bits[3,8]", 2)),
+    at(24, field("favorite_19_reversed_bits", "msb_bits[3,8]", 2))]);
+var sxdr_ddd_initial_dictionary = sxLayout(0x607F0031, "ddd_initial_dictionary", LE, sxdr_ddd_initial_dictionary_fields);
+function sxdr_ddd(c) {
+    var h = [];
+    return sxdr_read(c, 0, h, 26) && !(h[4] & 0xE0) && sxdr_put(c, sxdr_ddd_initial_dictionary, 0, 1);
+}
+function sx_ddd_build(c) {
+    return sxdr_ddd(c);
+}

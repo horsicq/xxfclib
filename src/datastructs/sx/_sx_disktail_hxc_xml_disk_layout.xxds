@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hxc_xml_disk_layout/xx_hxc_xml_disk_layout_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_hxc_xml_disk_layout_build(c) {
+    var ok = false;
+    ok = sxdt_xml(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), true);
+    return !!(ok && c.count && sxdt_finish(c));
+}

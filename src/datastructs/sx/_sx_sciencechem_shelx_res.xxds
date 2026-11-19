@@ -1,0 +1,110 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/shelx_res/xx_shelx_res_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_occupancy_fields = layout([field("occupancy", "ascii_real", 0)]);
+var sxsch_occupancy = sxLayout(0x60610022, "chemistry_occupancy", LE, sxsch_occupancy_fields);
+var sxsch_wavelength_fields = layout([field("wavelength", "ascii_real", 0)]);
+var sxsch_wavelength = sxLayout(0x60610067, "chemistry_wavelength", LE, sxsch_wavelength_fields);
+var sxsch_cell_alpha_fields = layout([field("cell_alpha", "ascii_real", 0)]);
+var sxsch_cell_alpha = sxLayout(0x6061006B, "chemistry_cell_alpha", LE, sxsch_cell_alpha_fields);
+var sxsch_cell_beta_fields = layout([field("cell_beta", "ascii_real", 0)]);
+var sxsch_cell_beta = sxLayout(0x6061006C, "chemistry_cell_beta", LE, sxsch_cell_beta_fields);
+var sxsch_cell_gamma_fields = layout([field("cell_gamma", "ascii_real", 0)]);
+var sxsch_cell_gamma = sxLayout(0x6061006D, "chemistry_cell_gamma", LE, sxsch_cell_gamma_fields);
+var sxsch_shelx_lattice_fields = layout([field("shelx_lattice", "ascii_signed", 0)]);
+var sxsch_shelx_lattice = sxLayout(0x6061006E, "chemistry_shelx_lattice", LE, sxsch_shelx_lattice_fields);
+function sxsch_shelx(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(128, sxNew_sxsch_token);
+    var n = [0];
+    while (sxsch_next(q, l, t[0], 128, n, "!")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "TITL")) {
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (n[0] > 1) {
+                {
+                    if (!sxsch_emit(q, sxsch_title, sxCopy_sxsch_token(null, { a: t[1].a, z: l.a + l.z - t[1].a }))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "CELL")) {
+            if (n[0] !== 8) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            var cols = [sxsch_wavelength, sxsch_cell_a, sxsch_cell_b, sxsch_cell_c, sxsch_cell_alpha, sxsch_cell_beta, sxsch_cell_gamma];
+            if (!sxsch_fields(q, t, 1, 7, cols, 7)) {
+                return false;
+            }
+        } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "LATT")) {
+            if (n[0] !== 2) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsch_emit(q, sxsch_shelx_lattice, sxCopy_sxsch_token(null, t[1]))) {
+                    return false;
+                }
+            }
+        } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "SFAC")) {
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (!sxsch_each(q, t, 1, (n[0] - 1) >>> 0, sxsch_element)) {
+                return false;
+            }
+        } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "END")) {
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+        } else {
+            if (n[0] !== 6) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_atom_label, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsch_emit(q, sxsch_species_index, sxCopy_sxsch_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (!sxsch_xyz(q, t[2], 2)) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_occupancy, sxCopy_sxsch_token(null, t[5]))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_shelx_res_build(q) {
+    return sxsch_shelx(q);
+}

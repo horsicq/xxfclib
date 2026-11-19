@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gamemeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_gamemeta");
+include("_sx_gamemeta_bethesda_ba2");
+include("_sx_gamemeta_bethesda_bsa");
+include("_sx_gamemeta_bioware_biff");
+include("_sx_gamemeta_bioware_erf");
+include("_sx_gamemeta_bioware_rim");
+include("_sx_gamemeta_godot_engine_pck");
+include("_sx_gamemeta_idtech_bsp");
+include("_sx_gamemeta_idtech_md2");
+include("_sx_gamemeta_idtech_md3");
+include("_sx_gamemeta_idtech_mdl");
+include("_sx_gamemeta_idtech_qvm");
+include("_sx_gamemeta_lynx_lnx");
+include("_sx_gamemeta_nes_rom");
+include("_sx_gamemeta_nintendo_narc");
+include("_sx_gamemeta_nintendo_rarc");
+include("_sx_gamemeta_nintendo_sarc");
+include("_sx_gamemeta_quake_sprite");
+include("_sx_gamemeta_sony_psarc");
+include("_sx_gamemeta_valve_bsp");
+include("_sx_gamemeta_valve_studio_mdl");
+include("_sx_gamemeta_valve_vpk");
+
+function fileTypes() { return ["GODOT_ENGINE_PCK", "VALVE_VPK", "NINTENDO_RARC", "NES_ROM", "LYNX_LNX", "COMMODORE_CRT",
+    "BETHESDA_BSA", "BETHESDA_BA2", "BIOWARE_BIFF", "BIOWARE_ERF", "BIOWARE_RIM", "IDTECH_BSP", "VALVE_BSP", "IDTECH_MD2",
+    "IDTECH_MD3", "IDTECH_QVM", "QUAKE_SPRITE", "NINTENDO_NARC", "NINTENDO_SARC", "NINTENDO_PFS0", "NINTENDO_HFS0",
+    "SONY_PSARC", "IDTECH_MDL", "VALVE_STUDIO_MDL", "CRT"]; }
+
+var sx_gamemeta_layouts = [sxgm_ines_header, sxgm_nes2_header, sxgm_lynx_header, sxgm_crt_header, sxgm_crt_chip,
+    sxgm_godot_pck_v1, sxgm_godot_pck_v2, sxgm_godot_pck_v3, sxgm_godot_pck_v4_salted, sxgm_godot_file_count,
+    sxgm_godot_path_length, sxgm_godot_entry_v1, sxgm_godot_entry_v2, sxgm_godot_encrypted_block, sxgm_godot_trailer,
+    sxgm_vpk_header, sxgm_vpk_v2_sections, sxgm_vpk_entry, sxgm_vpk_archive_md5, sxgm_vpk_other_md5, sxgm_vpk_public_key_length,
+    sxgm_vpk_signature_length, sxgm_rarc_header_le, sxgm_rarc_header_be, sxgm_rarc_node_le, sxgm_rarc_node_be,
+    sxgm_rarc_file_le, sxgm_rarc_directory_le, sxgm_rarc_file_be, sxgm_rarc_directory_be, sxgm_narc_header, sxgm_narc_fat,
+    sxgm_narc_entry, sxgm_narc_block, sxgm_sarc_header_le, sxgm_sarc_header_be, sxgm_sarc_fat_le, sxgm_sarc_fat_be,
+    sxgm_sarc_entry_le, sxgm_sarc_entry_be, sxgm_sarc_names_le, sxgm_sarc_names_be, sxgm_pfs_header, sxgm_pfs_entry,
+    sxgm_hfs_entry, sxgm_psarc_header, sxgm_psarc_entry, sxgm_psarc_block_length, sxgm_biff_header, sxgm_biff_entry_v1,
+    sxgm_biff_entry_v2, sxgm_erf_header, sxgm_erf_key16, sxgm_erf_key32, sxgm_erf_resource, sxgm_erf_localized, sxgm_rim_header,
+    sxgm_rim_entry, sxgm_bsa_header, sxgm_bsa_folder, sxgm_bsa_folder105, sxgm_bsa_file, sxgm_game_name_length8,
+    sxgm_game_name_length16, sxgm_ba2_header, sxgm_ba2_v2_extension, sxgm_ba2_v3_compression, sxgm_ba2_general_entry,
+    sxgm_idtech_bsp_header, sxgm_idtech_bsp_lump, sxgm_valve_bsp_lump, sxgm_valve_bsp_revision, sxgm_md2_header,
+    sxgm_game_skin_name, sxgm_md2_texcoord, sxgm_md2_triangle, sxgm_md2_frame, sxgm_quake_vertex, sxgm_md2_gl_command,
+    sxgm_md2_gl_vertex, sxgm_md3_header, sxgm_md3_frame, sxgm_md3_tag, sxgm_md3_surface, sxgm_md3_triangle, sxgm_md3_shader,
+    sxgm_md3_texcoord, sxgm_md3_vertex, sxgm_qvm_header, sxgm_quake_sprite_header, sxgm_quake_frame_type,
+    sxgm_quake_group_count, sxgm_quake_interval, sxgm_quake_sprite_frame, sxgm_quake_mdl_header, sxgm_quake_skin_type,
+    sxgm_quake_stvert, sxgm_quake_triangle, sxgm_quake_mdl_frame, sxgm_studio_v10_header, sxgm_studio_texture,
+    sxgm_studio_skinref];
+
+function structs() {
+    return sxCatalog([sxgm_ines_header, sxgm_nes2_header, sxgm_lynx_header, sxgm_crt_header, sxgm_crt_chip, sxgm_godot_pck_v1,
+        sxgm_godot_pck_v2, sxgm_godot_pck_v3, sxgm_godot_pck_v4_salted, sxgm_godot_file_count, sxgm_godot_path_length,
+        sxgm_godot_entry_v1, sxgm_godot_entry_v2, sxgm_godot_encrypted_block, sxgm_godot_trailer, sxgm_vpk_header,
+        sxgm_vpk_v2_sections, sxgm_vpk_entry, sxgm_vpk_archive_md5, sxgm_vpk_other_md5, sxgm_vpk_public_key_length,
+        sxgm_vpk_signature_length, sxgm_rarc_header_le, sxgm_rarc_header_be, sxgm_rarc_node_le, sxgm_rarc_node_be,
+        sxgm_rarc_file_le, sxgm_rarc_directory_le, sxgm_rarc_file_be, sxgm_rarc_directory_be, sxgm_narc_header, sxgm_narc_fat,
+        sxgm_narc_entry, sxgm_narc_block, sxgm_sarc_header_le, sxgm_sarc_header_be, sxgm_sarc_fat_le, sxgm_sarc_fat_be,
+        sxgm_sarc_entry_le, sxgm_sarc_entry_be, sxgm_sarc_names_le, sxgm_sarc_names_be, sxgm_pfs_header, sxgm_pfs_entry,
+        sxgm_hfs_entry, sxgm_psarc_header, sxgm_psarc_entry, sxgm_psarc_block_length, sxgm_biff_header, sxgm_biff_entry_v1,
+        sxgm_biff_entry_v2, sxgm_erf_header, sxgm_erf_key16, sxgm_erf_key32, sxgm_erf_resource, sxgm_erf_localized,
+        sxgm_rim_header, sxgm_rim_entry, sxgm_bsa_header, sxgm_bsa_folder, sxgm_bsa_folder105, sxgm_bsa_file,
+        sxgm_game_name_length8, sxgm_game_name_length16, sxgm_ba2_header, sxgm_ba2_v2_extension, sxgm_ba2_v3_compression,
+        sxgm_ba2_general_entry, sxgm_idtech_bsp_header, sxgm_idtech_bsp_lump, sxgm_valve_bsp_lump, sxgm_valve_bsp_revision,
+        sxgm_md2_header, sxgm_game_skin_name, sxgm_md2_texcoord, sxgm_md2_triangle, sxgm_md2_frame, sxgm_quake_vertex,
+        sxgm_md2_gl_command, sxgm_md2_gl_vertex, sxgm_md3_header, sxgm_md3_frame, sxgm_md3_tag, sxgm_md3_surface,
+        sxgm_md3_triangle, sxgm_md3_shader, sxgm_md3_texcoord, sxgm_md3_vertex, sxgm_qvm_header, sxgm_quake_sprite_header,
+        sxgm_quake_frame_type, sxgm_quake_group_count, sxgm_quake_interval, sxgm_quake_sprite_frame, sxgm_quake_mdl_header,
+        sxgm_quake_skin_type, sxgm_quake_stvert, sxgm_quake_triangle, sxgm_quake_mdl_frame, sxgm_studio_v10_header,
+        sxgm_studio_texture, sxgm_studio_skinref], sx_gamemeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_gamemeta_build, false);
+}

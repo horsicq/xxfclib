@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_adx/xx_audio_adx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_adx_header_fields = layout([u16("signature", SIGNATURE), u16("data_offset_minus_four", OFFSET), u8("encoding", ID),
+    u8("block_size", SIZE), u8("sample_bits"), u8("channels", COUNT), u32("sample_rate"), u32("sample_count", COUNT),
+    u16("highpass_frequency"), u8("version"), u8("flags", FLAGS)]);
+var sx_st_adx_header = sxLayout(0x60080022, "adx_header", BE, sx_st_adx_header_fields);
+var sx_st_adx_terminator_fields = layout([u16("signature", SIGNATURE), u16("payload_size", SIZE),
+    field("padding", "byte[14]", 14, RESERVED)]);
+var sx_st_adx_terminator = sxLayout(0x60080023, "adx_terminator", BE, sx_st_adx_terminator_fields);
+function sx_audio_adx_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "AUDIO_ADX":
+        var h = [];
+        var header;
+        var frames;
+        var end;
+        ok = sx_read(c, 0, h, 20) && sx_add(c, sx_st_adx_header, 0, 20);
+        if (!ok) {
+            break;
+        }
+        header = 4 + sxGetU16(h, 20, 2, true);
+        frames = Math.floor((sxGetU32(h, 20, 12, true) + 31) / 32) * h[7];
+        end = header + frames * 18;
+        if (sx_st_fits(c, end, 18)) {
+            var magic;
+            ok = (magic = sx_u16(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), true)) !== null;
+            if (ok && magic === 0x8001) {
+                ok = sx_add(c, sx_st_adx_terminator, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), 18);
+            }
+        }
+        break;
+    }
+    return ok && sx_st_finish(c);
+}

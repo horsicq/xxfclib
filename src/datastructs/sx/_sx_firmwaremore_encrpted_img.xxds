@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/encrpted_img/xx_encrpted_img_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_encrpted_img_header_fields = layout([field("magic", "byte[12]", 12, SIGNATURE), field("unknown", "byte[4]", 4)]);
+var sx_fm_encrpted_img_header = sxLayout(0x60220009, "encrpted_img_header", LE, sx_fm_encrpted_img_header_fields);
+function sx_encrpted_img_build(c) {
+    return sx_fm_add(c, sx_fm_encrpted_img_header, 0, 16);
+}

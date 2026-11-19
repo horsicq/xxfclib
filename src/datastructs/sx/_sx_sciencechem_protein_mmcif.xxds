@@ -1,0 +1,179 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/protein_mmcif/xx_protein_mmcif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_cif_data_block_fields = layout([field("cif_data_block", "char", 0, STRING)]);
+var sxsch_cif_data_block = sxLayout(0x60610078, "chemistry_cif_data_block", LE, sxsch_cif_data_block_fields);
+var sxsch_cif_tag_fields = layout([field("cif_tag", "char", 0, STRING)]);
+var sxsch_cif_tag = sxLayout(0x60610079, "chemistry_cif_tag", LE, sxsch_cif_tag_fields);
+var sxsch_cif_group_fields = layout([field("cif_group", "char", 0, STRING)]);
+var sxsch_cif_group = sxLayout(0x6061007A, "chemistry_cif_group", LE, sxsch_cif_group_fields);
+var sxsch_cif_value_fields = layout([field("cif_value", "char", 0, STRING)]);
+var sxsch_cif_value = sxLayout(0x6061007B, "chemistry_cif_value", LE, sxsch_cif_value_fields);
+var sxsch_cif_atom_id_fields = layout([field("cif_atom_id", "ascii_signed", 0)]);
+var sxsch_cif_atom_id = sxLayout(0x6061007C, "chemistry_cif_atom_id", LE, sxsch_cif_atom_id_fields);
+function sxsch_cif_next(q, t, quoted, have) {
+    have[0] = false;
+    quoted[0] = false;
+    while (q.p < q.n) {
+        if (sxsch_space(q.b[q.p])) {
+            q.p++;
+            continue;
+        }
+        if (q.b[q.p] === 35 /*#*/) {
+            var start = q.p;
+            while (q.p < q.n && q.b[q.p] !== 10) {
+                q.p++;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_comment, sxCopy_sxsch_token(null, { a: start, z: q.p - start }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        break;
+    }
+    if (q.p === q.n) {
+        return true;
+    }
+    if (++q.work > 2000000) {
+        return false;
+    }
+    var begin = q.p;
+    var ch = q.b[q.p];
+    if (ch === 39 /*'*/ || ch === 34 /*"*/) {
+        quoted[0] = true;
+        begin = ++q.p;
+        while (q.p < q.n) {
+            if (q.b[q.p] === 10 || q.b[q.p] === 13) {
+                return false;
+            }
+            if (q.b[q.p] === ch && (q.p + 1 === q.n || sxsch_space(q.b[q.p + 1]))) {
+                sxCopy_sxsch_token(t, { a: begin, z: q.p - begin });
+                q.p++;
+                have[0] = true;
+                return true;
+            }
+            q.p++;
+        }
+        return false;
+    }
+    if (ch === 59 /*;*/ && (!q.p || q.b[q.p - 1] === 10)) {
+        quoted[0] = true;
+        begin = ++q.p;
+        while (q.p < q.n) {
+            if (q.b[q.p] === 59 /*;*/ && q.b[q.p - 1] === 10) {
+                sxCopy_sxsch_token(t, { a: begin, z: q.p - begin });
+                q.p++;
+                have[0] = true;
+                return true;
+            }
+            q.p++;
+        }
+        return false;
+    }
+    while (q.p < q.n && !sxsch_space(q.b[q.p])) {
+        q.p++;
+    }
+    sxCopy_sxsch_token(t, { a: begin, z: q.p - begin });
+    have[0] = true;
+    return true;
+}
+function sxsch_cif_reserved(q, t, quoted) {
+    return !!(!quoted && t.z && (q.b[t.a] === 95 /*_*/ || sxsch_ci(q, sxCopy_sxsch_token(null, t), "loop_") || sxsch_ci(q, sxCopy_sxsch_token(null, t), "stop_") || sxsch_ci(q, sxCopy_sxsch_token(null, t), "global_") || t.z >= 5 && (sxsch_ci(q, sxCopy_sxsch_token(null, { a: t.a, z: 5 }), "data_") || sxsch_ci(q, sxCopy_sxsch_token(null, { a: t.a, z: 5 }), "save_"))));
+}
+function sxsch_cif_type(q, t) {
+    var names = ["_atom_site.group_pdb", "_atom_site.id", "_atom_site.type_symbol", "_atom_site.label_atom_id", "_atom_site.label_comp_id", "_atom_site.cartn_x", "_atom_site.cartn_y", "_atom_site.cartn_z"];
+    var types = [sxsch_cif_group, sxsch_cif_atom_id, sxsch_element, sxsch_atom_name, sxsch_residue_name, sxsch_angstrom_x, sxsch_angstrom_y, sxsch_angstrom_z];
+    for (var i = 0; i < 8; i++) {
+        if (sxsch_ci(q, sxCopy_sxsch_token(null, t), names[i])) {
+            return types[i];
+        }
+    }
+    return sxsch_cif_value;
+}
+function sxsch_cif(q) {
+    var t = sxNew_sxsch_token();
+    var quoted = [false];
+    var have = [false];
+    if (!sxsch_cif_next(q, t, quoted, have) || !have[0]) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_cif_data_block, sxCopy_sxsch_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsch_cif_next(q, t, quoted, have)) {
+        return false;
+    }
+    while (have[0]) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!quoted[0] && sxsch_ci(q, sxCopy_sxsch_token(null, t), "loop_")) {
+            {
+                if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t))) {
+                    return false;
+                }
+            }
+            var cols = [];
+            var n = 0;
+            if (!sxsch_cif_next(q, t, quoted, have)) {
+                return false;
+            }
+            while (have[0] && !quoted[0] && t.z && q.b[t.a] === 95 /*_*/) {
+                if (n === 128) {
+                    return false;
+                }
+                cols[n++] = sxsch_cif_type(q, sxCopy_sxsch_token(null, t));
+                {
+                    if (!sxsch_emit(q, sxsch_cif_tag, sxCopy_sxsch_token(null, t))) {
+                        return false;
+                    }
+                }
+                if (!sxsch_cif_next(q, t, quoted, have)) {
+                    return false;
+                }
+            }
+            if (!n) {
+                return false;
+            }
+            var index = 0;
+            while (have[0] && !sxsch_cif_reserved(q, sxCopy_sxsch_token(null, t), quoted[0])) {
+                if (!sxsch_emit(q, cols[index % n], sxCopy_sxsch_token(null, t))) {
+                    return false;
+                }
+                index++;
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (!sxsch_cif_next(q, t, quoted, have)) {
+                    return false;
+                }
+            }
+            if (index % n) {
+                return false;
+            }
+        } else if (!quoted[0] && t.z && q.b[t.a] === 95 /*_*/) {
+            var l = sxsch_cif_type(q, sxCopy_sxsch_token(null, t));
+            {
+                if (!sxsch_emit(q, sxsch_cif_tag, sxCopy_sxsch_token(null, t))) {
+                    return false;
+                }
+            }
+            if (!sxsch_cif_next(q, t, quoted, have) || !have[0] || !sxsch_emit(q, l, sxCopy_sxsch_token(null, t)) || !sxsch_cif_next(q, t, quoted, have)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_protein_mmcif_build(q) {
+    return sxsch_cif(q);
+}

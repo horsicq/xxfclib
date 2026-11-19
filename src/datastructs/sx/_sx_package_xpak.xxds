@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/xpak/xx_xpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_xpak_header_fields = layout([chars("signature", 4, SIGNATURE), u32("archive_size", SIZE), chars("name", 13, STRING),
+    u32("original_size", SIZE)]);
+var sx_p_xpak_header = sxLayout(0x60070048, "xpak_header", LE, sx_p_xpak_header_fields);
+var sx_p_xpak_codec_fields = layout([u8("hash_size_parameter"), u16("magic", SIGNATURE), u16("window_size", SIZE),
+    u16("max_match", SIZE), u16("model_rescale_limit")]);
+var sx_p_xpak_codec = sxLayout(0x60070049, "xpak_codec", LE, sx_p_xpak_codec_fields);
+function sx_xpak_build(c) {
+    var n;
+    return sx_p_sig(c, 0, "XPAK", 4) && (n = sx_u32(c, 4, false)) !== null && n >= 35 && n <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sx_p_sig(c, 26, "\xFF\xFE", 2) && sx_add(c, sx_p_xpak_header, 0, 25) && sx_add(c, sx_p_xpak_codec, 25, 9);
+}

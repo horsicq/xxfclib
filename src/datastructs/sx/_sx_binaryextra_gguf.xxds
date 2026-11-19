@@ -1,0 +1,111 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/gguf/xx_gguf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_gguf_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version"), u64("tensor_count", COUNT),
+    u64("metadata_count", COUNT)]);
+var sxbx_gguf_header = sxLayout(0x6030008B, "gguf_header", LE, sxbx_gguf_header_fields);
+var sxbx_gguf_string_size_fields = layout([u64("utf8_size", SIZE)]);
+var sxbx_gguf_string_size = sxLayout(0x6030008C, "gguf_string_size", LE, sxbx_gguf_string_size_fields);
+var sxbx_gguf_value_type_fields = layout([u32("type", ID)]);
+var sxbx_gguf_value_type = sxLayout(0x6030008D, "gguf_value_type", LE, sxbx_gguf_value_type_fields);
+var sxbx_gguf_array_fields = layout([u32("element_type", ID), u64("element_count", COUNT)]);
+var sxbx_gguf_array = sxLayout(0x6030008E, "gguf_array", LE, sxbx_gguf_array_fields);
+var sxbx_gguf_value0_fields = layout([u8("value")]);
+var sxbx_gguf_value0 = sxLayout(0x6030008F, "gguf_value0", LE, sxbx_gguf_value0_fields);
+var sxbx_gguf_value1_fields = layout([i8("value")]);
+var sxbx_gguf_value1 = sxLayout(0x60300090, "gguf_value1", LE, sxbx_gguf_value1_fields);
+var sxbx_gguf_value2_fields = layout([u16("value")]);
+var sxbx_gguf_value2 = sxLayout(0x60300091, "gguf_value2", LE, sxbx_gguf_value2_fields);
+var sxbx_gguf_value3_fields = layout([i16("value")]);
+var sxbx_gguf_value3 = sxLayout(0x60300092, "gguf_value3", LE, sxbx_gguf_value3_fields);
+var sxbx_gguf_value4_fields = layout([u32("value")]);
+var sxbx_gguf_value4 = sxLayout(0x60300093, "gguf_value4", LE, sxbx_gguf_value4_fields);
+var sxbx_gguf_value5_fields = layout([i32("value")]);
+var sxbx_gguf_value5 = sxLayout(0x60300094, "gguf_value5", LE, sxbx_gguf_value5_fields);
+var sxbx_gguf_value6_fields = layout([field("value", "float32", 4)]);
+var sxbx_gguf_value6 = sxLayout(0x60300095, "gguf_value6", LE, sxbx_gguf_value6_fields);
+var sxbx_gguf_value7_fields = layout([u8("value")]);
+var sxbx_gguf_value7 = sxLayout(0x60300096, "gguf_value7", LE, sxbx_gguf_value7_fields);
+var sxbx_gguf_value10_fields = layout([u64("value")]);
+var sxbx_gguf_value10 = sxLayout(0x60300097, "gguf_value10", LE, sxbx_gguf_value10_fields);
+var sxbx_gguf_value11_fields = layout([i64("value")]);
+var sxbx_gguf_value11 = sxLayout(0x60300098, "gguf_value11", LE, sxbx_gguf_value11_fields);
+var sxbx_gguf_value12_fields = layout([field("value", "float64", 8)]);
+var sxbx_gguf_value12 = sxLayout(0x60300099, "gguf_value12", LE, sxbx_gguf_value12_fields);
+var sxbx_gguf_dimensions_fields = layout([u32("dimension_count", COUNT)]);
+var sxbx_gguf_dimensions = sxLayout(0x6030009A, "gguf_dimensions", LE, sxbx_gguf_dimensions_fields);
+var sxbx_gguf_dimension_fields = layout([u64("dimension", COUNT)]);
+var sxbx_gguf_dimension = sxLayout(0x6030009B, "gguf_dimension", LE, sxbx_gguf_dimension_fields);
+var sxbx_gguf_tensor_storage_fields = layout([u32("tensor_type", ID), u64("data_offset", OFFSET)]);
+var sxbx_gguf_tensor_storage = sxLayout(0x6030009C, "gguf_tensor_storage", LE, sxbx_gguf_tensor_storage_fields);
+var sxbx_gg_value_ls = [sxbx_gguf_value0, sxbx_gguf_value1, sxbx_gguf_value2, sxbx_gguf_value3, sxbx_gguf_value4,
+    sxbx_gguf_value5, sxbx_gguf_value6, sxbx_gguf_value7, null, null, sxbx_gguf_value10, sxbx_gguf_value11, sxbx_gguf_value12];
+var sxbx_gg_value_widths = [1, 1, 2, 2, 4, 4, 4, 1, 0, 0, 8, 8, 8];
+function sxbx_gg_value(c, p, end, type, depth) {
+    if (type > 12 || depth > 1 || c.count >= 20000) {
+        return false;
+    }
+    if (type === 8) {
+        return sxbx_counted(c, p, end, sxbx_gguf_string_size, 8, false, 1);
+    }
+    if (type === 9) {
+        var item = [0];
+        var n = [0];
+        if (p[0] > end || sxU64(end - p[0]) < 12 || !sxbx_word(c, p[0], 4, false, item) || item[0] > 12 || item[0] === 9 || !sxbx_word(c, p[0] + 4, 8, false, n) || n[0] > 4096 || !sxbx_add(c, sxbx_gguf_array, p[0])) {
+            return false;
+        }
+        p[0] += 12;
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxbx_gg_value(c, p, end, item[0] >>> 0, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (p[0] > end || sxbx_gg_value_widths[type] > sxU64(end - p[0]) || !sxbx_add(c, sxbx_gg_value_ls[type], p[0])) {
+        return false;
+    }
+    p[0] += sxbx_gg_value_widths[type];
+    return true;
+}
+function sxbx_gguf(c) {
+    var nt = [0];
+    var nk = [0];
+    var p = [24];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxbx_add(c, sxbx_gguf_header, 0) || !sxbx_word(c, 8, 8, false, nt) || !sxbx_word(c, 16, 8, false, nk) || nt[0] > 1024 || nk[0] > 1024) {
+        return false;
+    }
+    for (var i = 0; i < nk[0] && c.count < 20000; i++) {
+        var t = [0];
+        if (!sxbx_counted(c, p, end, sxbx_gguf_string_size, 8, false, 1) || sxU64(end - p[0]) < 4 || !sxbx_word(c, p[0], 4, false, t) || !sxbx_add(c, sxbx_gguf_value_type, p[0])) {
+            return true;
+        }
+        p[0] += 4;
+        if (!sxbx_gg_value(c, p, end, t[0] >>> 0, 0)) {
+            return true;
+        }
+    }
+    for (i = 0; i < nt[0] && c.count < 20000; i++) {
+        var n = [0];
+        if (!sxbx_counted(c, p, end, sxbx_gguf_string_size, 8, false, 1) || sxU64(end - p[0]) < 4 || !sxbx_word(c, p[0], 4, false, n) || n[0] < 1 || n[0] > 4 || !sxbx_add(c, sxbx_gguf_dimensions, p[0])) {
+            break;
+        }
+        p[0] += 4;
+        if (n[0] > Math.floor(sxU64(end - p[0]) / 8) || !sxbx_table(c, sxbx_gguf_dimension, p[0], n[0])) {
+            break;
+        }
+        p[0] += n[0] * 8;
+        if (sxU64(end - p[0]) < 12 || !sxbx_add(c, sxbx_gguf_tensor_storage, p[0])) {
+            break;
+        }
+        p[0] += 12;
+    }
+    return true;
+}
+function sx_gguf_build(c) {
+    return sxbx_gguf(c);
+}

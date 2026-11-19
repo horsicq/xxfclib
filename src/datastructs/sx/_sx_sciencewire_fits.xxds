@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/fits/xx_fits_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_fits_card_fields = layout([chars("keyword", 8, ID), chars("value_and_comment", 72, STRING)]);
+var sxsw_fits_card = sxLayout(0x602D0001, "fits_card", LE, sxsw_fits_card_fields);
+var sxsw_fits_integer_card_fields = layout([chars("keyword", 8, ID), chars("indicator", 2, NONE),
+    chars("integer_text", 20, STRING), chars("comment", 50, STRING)]);
+var sxsw_fits_integer_card = sxLayout(0x602D0002, "fits_integer_card", LE, sxsw_fits_integer_card_fields);
+function sxsw_fits(c) {
+    var at = 0;
+    for (var hdu = 0; at < c.size && hdu < 1024; hdu++) {
+        var b = [];
+        var begin = at;
+        var bitpix = 0;
+        var rank = -1;
+        var pixels = 1;
+        var end = false;
+        if (!sx_read(c, at, b, 80)) {
+            return false;
+        }
+        if (hdu && sxMemcmp(b, "XTENSION", 8)) {
+            return true;
+        }
+        for (var card = 0; card < 4096; card++) {
+            if (!sx_read(c, at, b, 80)) {
+                return false;
+            }
+            var integer = !sxMemcmp(b, "BITPIX  ", 8) || !sxMemcmp(b, "NAXIS", 5) || !sxMemcmp(b, "PCOUNT  ", 8) || !sxMemcmp(b, "GCOUNT  ", 8);
+            if (!sxsw_add(c, integer ? sxsw_fits_integer_card : sxsw_fits_card, at, 80)) {
+                return false;
+            }
+            at += 80;
+            if (!sxMemcmp(b, "END     ", 8)) {
+                end = true;
+                break;
+            }
+            if (integer) {
+                var n = [0];
+                if (!sxsw_text_integer(b, 10, 20, n)) {
+                    return false;
+                }
+                if (!sxMemcmp(b, "BITPIX  ", 8)) {
+                    bitpix = n[0];
+                } else if (!sxMemcmp(b, "NAXIS   ", 8)) {
+                    rank = n[0];
+                } else if (!sxMemcmp(b, "NAXIS", 5)) {
+                    if (n[0] < 0 || n[0] && pixels > Math.floor(SX_U64_MAX / (n[0] < 0 ? n[0] + SX_U64_MAX : n[0]))) {
+                        return false;
+                    }
+                    pixels *= (n[0] < 0 ? n[0] + SX_U64_MAX : n[0]);
+                }
+            }
+        }
+        if (!end || rank < 0 || rank > 16 || !bitpix || bitpix === -(0x80000000 * 4294967296 + 0x0)) {
+            return false;
+        }
+        var width = Math.floor(sxU64(bitpix < 0 ? (-bitpix >= SX_I64_MAX ? -bitpix - SX_U64_MAX : -bitpix) : bitpix) / 8);
+        if (!width || pixels > Math.floor(SX_I64_MAX / width)) {
+            return false;
+        }
+        var header = Math.floor(((at - begin < 0 ? at - begin + SX_U64_MAX : at - begin) + 2879) / 2880) * 2880;
+        var bytes = rank ? pixels * width : 0;
+        bytes = Math.floor((bytes + 2879) / 2880) * 2880;
+        if (!sxsw_span(c, begin, header + bytes)) {
+            return false;
+        }
+        at = begin + (header + bytes >= SX_I64_MAX ? header + bytes - SX_U64_MAX : header + bytes);
+    }
+    return at === c.size;
+}
+function sx_fits_build(c) {
+    return sxsw_fits(c);
+}

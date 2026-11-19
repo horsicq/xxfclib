@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/tivoli/xx_tivoli_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_tivoli_header_fields = layout([chars("header_line", 79, NONE)]);
+var sxafr_tivoli_header = sxLayout(0x60540022, "tivoli_header", LE, sxafr_tivoli_header_fields);
+var sxafr_tivoli_block_fields = layout([u16("flags_and_size", FLAGS)]);
+var sxafr_tivoli_block = sxLayout(0x60540023, "tivoli_block", BE, sxafr_tivoli_block_fields);
+var sxafr_tivoli_digest_fields = layout([bytes("running_md5_prefix", 8, CHECKSUM)]);
+var sxafr_tivoli_digest = sxLayout(0x60540024, "tivoli_digest", LE, sxafr_tivoli_digest_fields);
+function sxafr_tivoli(c) {
+    var p = 79;
+    if (!sxafr_add(c, sxafr_tivoli_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [0];
+        if (!sxafr_word(c, p, 2, true, h) || !sxafr_add(c, sxafr_tivoli_block, p)) {
+            return false;
+        }
+        p += 2;
+        if (!h[0]) {
+            return true;
+        }
+        var z = sxAnd64(h[0], 0x7FFF);
+        if (z < 8 || !sxafr_span(c, p, z) || !sxafr_add(c, sxafr_tivoli_digest, sxU64(p + z - 8))) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_tivoli_build(c) {
+    return sxafr_tivoli(c);
+}

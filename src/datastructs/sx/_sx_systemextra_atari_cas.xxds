@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_cas/xx_atari_cas_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_atari_cas_description_fields = layout([chars("chunk_id", 4, ID), u16("data_size", SIZE), u16("reserved")]);
+var sxse_atari_cas_description = sxLayout(0x602F0040, "atari_cas_description", LE, sxse_atari_cas_description_fields);
+var sxse_atari_cas_baud_fields = layout([chars("chunk_id", 4, ID), u16("data_size", SIZE), u16("baud_rate")]);
+var sxse_atari_cas_baud = sxLayout(0x602F0041, "atari_cas_baud", LE, sxse_atari_cas_baud_fields);
+var sxse_atari_cas_data_fields = layout([chars("chunk_id", 4, ID), u16("data_size", SIZE), u16("gap_milliseconds")]);
+var sxse_atari_cas_data = sxLayout(0x602F0042, "atari_cas_data", LE, sxse_atari_cas_data_fields);
+var sxse_atari_cas_fsk_fields = layout([chars("chunk_id", 4, ID), u16("data_size", SIZE), u16("gap_milliseconds")]);
+var sxse_atari_cas_fsk = sxLayout(0x602F0043, "atari_cas_fsk", LE, sxse_atari_cas_fsk_fields);
+function sxse_cas(c) {
+    var p = 0;
+    var b = [];
+    for (var k = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && k < 65536; k++) {
+        if (!sxse_read(c, p, b, 8)) {
+            return false;
+        }
+        var z = sxse_u16(b, 4, false);
+        var l = !sxMemcmp(b, "FUJI", 4) ? sxse_atari_cas_description : !sxMemcmp(b, "baud", 4) ? sxse_atari_cas_baud : !sxMemcmp(b, "data", 4) ? sxse_atari_cas_data : !sxMemcmp(b, "fsk ", 4) ? sxse_atari_cas_fsk : null;
+        if (l === null || !sxse_span(c, p + 8, z) || !sxse_put(c, l, p, 8, 1)) {
+            return false;
+        }
+        p += 8 + z;
+    }
+    return p === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_atari_cas_build(c) {
+    return sxse_cas(c);
+}

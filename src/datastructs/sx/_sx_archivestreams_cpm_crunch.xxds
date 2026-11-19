@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cpm_crunch/xx_cpm_crunch_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_crunch_magic_fields = layout([u16("signature", SIGNATURE)]);
+var sxas_crunch_magic = sxLayout(0x60430029, "crunch_magic", LE, sxas_crunch_magic_fields);
+var sxas_crunch_parameters_fields = layout([u8("encoder_version"), u8("decoder_version"), u8("checksum_flag"), u8("reserved")]);
+var sxas_crunch_parameters = sxLayout(0x6043002A, "crunch_parameters", LE, sxas_crunch_parameters_fields);
+function sxas_zstr(c, p, end, cap) {
+    for (var i = 0; i < cap && p[0] < end; i++) {
+        var b = [0];
+        if (!sxas_read(c, p[0]++, b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxas_crunch(c) {
+    var p = [2];
+    return sxas_add(c, sxas_crunch_magic, 0) && sxas_zstr(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 96) && sxas_add(c, sxas_crunch_parameters, p[0]);
+}
+function sx_cpm_crunch_build(c) {
+    return sxas_crunch(c);
+}

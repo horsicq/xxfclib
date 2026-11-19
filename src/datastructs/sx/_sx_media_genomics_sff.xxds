@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/genomics_sff/xx_genomics_sff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_sff_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u64("index_offset", OFFSET),
+    u32("index_length", SIZE), u32("read_count", COUNT), u16("header_length", SIZE), u16("key_length", COUNT),
+    u16("flows_per_read", COUNT), u8("flowgram_format_code", ID)]);
+var sxm_sff_header = sxLayout(0x60060038, "sff_header", BE, sxm_sff_header_fields);
+var sxm_sff_read_header_fields = layout([u16("header_length", SIZE), u16("name_length", SIZE), u32("base_count", COUNT),
+    u16("clip_quality_left"), u16("clip_quality_right"), u16("clip_adapter_left"), u16("clip_adapter_right")]);
+var sxm_sff_read_header = sxLayout(0x60060039, "sff_read_header", BE, sxm_sff_read_header_fields);
+function sxm_sff(c, h) {
+    var index = sxGetU64(h, 31, 8, true);
+    var index_size = sxGetU32(h, 31, 16, true);
+    var at = sxGetU16(h, 31, 24, true);
+    var count = sxGetU32(h, 31, 20, true);
+    var flows = sxGetU16(h, 31, 28, true);
+    if (sxMemcmp(h, ".sff", 4) || !count || count > 512 || at < 31 || !sxm_span(c, index, index_size) || !sx_add(c, sxm_sff_header, 0, 31) || !sxm_raw(c, 31, sxU64(at - 31))) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        var b = [];
+        var header;
+        var n;
+        var data;
+        if (index && at === index) {
+            var padded = sxAnd64(index_size + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+            if (!sxm_raw(c, at, padded)) {
+                return false;
+            }
+            at += padded;
+        }
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, 16)) {
+            return false;
+        }
+        header = sxGetU16(b, 16, 0, true);
+        n = sxGetU32(b, 16, 4, true);
+        if (header < 16 || !sx_add(c, sxm_sff_read_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 16) || !sxm_raw(c, at + 16, (header - 16) >>> 0)) {
+            return false;
+        }
+        at += header;
+        data = sxAnd64(flows * 2 + n * 3 + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+        if (!sxm_raw(c, at, data)) {
+            return false;
+        }
+        at += data;
+    }
+    return sxm_tail(c, at);
+}
+function sx_genomics_sff_build(c, h, n) {
+    return n >= 31 && sxm_sff(c, h);
+}

@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/azatoth_phapacker/xx_azatoth_phapacker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmodv_pha_sample_fields = layout([u16("length_words"), u8("unknown"), u8("volume"), u16("loop_start_words"),
+    u16("loop_length_words"), u32("sample_offset", OFFSET), u16("finetune_times_72")]);
+var sxmodv_pha_sample = sxLayout(0x609B0009, "pha_sample", BE, sxmodv_pha_sample_fields);
+var sxmodv_pha_control_fields = layout([blob("unknown0", 2), u16("position_table_bytes", SIZE), blob("unknown4", 10)]);
+var sxmodv_pha_control = sxLayout(0x609B000A, "pha_control", BE, sxmodv_pha_control_fields);
+var sxmodv_pha_pattern_offset_fields = layout([u32("pattern_offset", OFFSET)]);
+var sxmodv_pha_pattern_offset = sxLayout(0x609B000B, "pha_pattern_offset", BE, sxmodv_pha_pattern_offset_fields);
+function sxmodv_pha(v) {
+    if (!sxmodv_span(v, 0, 960)) {
+        return false;
+    }
+    for (var i = 0; i < 31; i++) {
+        if (!sxmodv_row(v, sxmodv_pha_sample, (i * 14) >>> 0)) {
+            return false;
+        }
+    }
+    if (!sxmodv_row(v, sxmodv_pha_control, 434)) {
+        return false;
+    }
+    for (i = 0; i < 128; i++) {
+        if (!sxmodv_row(v, sxmodv_pha_pattern_offset, (448 + ((i * 4) >>> 0)) >>> 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_azatoth_phapacker_build(v) {
+    return sxmodv_pha(v);
+}

@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/molebox/xx_molebox_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexo_molebox_package_prefix_fields = layout([bytes("encrypted_signature", 8), u32("stored_package_base", OFFSET)]);
+var sxexo_molebox_package_prefix = sxLayout(0x60880001, "molebox_package_prefix", LE, sxexo_molebox_package_prefix_fields);
+var sxexo_molebox_encrypted_tree_fields = layout([field("ciphertext", "uint8", 0)]);
+var sxexo_molebox_encrypted_tree = sxLayout(0x60880002, "molebox_encrypted_tree", LE, sxexo_molebox_encrypted_tree_fields);
+var sxexo_molebox_encrypted_header_fields = layout([bytes("ciphertext", 48)]);
+var sxexo_molebox_encrypted_header = sxLayout(0x60880003, "molebox_encrypted_header", LE, sxexo_molebox_encrypted_header_fields);
+var sxexo_molebox_encrypted_catalog_fields = layout([field("ciphertext", "uint8", 0)]);
+var sxexo_molebox_encrypted_catalog = sxLayout(0x60880004, "molebox_encrypted_catalog", LE, sxexo_molebox_encrypted_catalog_fields);
+var sxexo_molebox_encrypted_catalog_footer_fields = layout([bytes("ciphertext", 8)]);
+var sxexo_molebox_encrypted_catalog_footer = sxLayout(0x60880005, "molebox_encrypted_catalog_footer", LE, sxexo_molebox_encrypted_catalog_footer_fields);
+function sxexo_cipher(c, l, absolute, size) {
+    if (absolute < c.f.base_address || size <= 0) {
+        return false;
+    }
+    return sx_add(c, l, absolute - c.f.base_address, size > 4096 ? 4096 : size);
+}
+function sxexo_molebox(c) {
+    var m = sxNew_xx_molebox_physical_metadata();
+    if (!sxMoleboxMetadata(c.f, 0, m) || !m.package_count || m.package_count > 64) {
+        return false;
+    }
+    var count = m.package_count;
+    if (m.catalog_offset >= 0 && (!sxexo_cipher(c, sxexo_molebox_encrypted_catalog, m.catalog_offset, m.catalog_size) || !sxexo_cipher(c, sxexo_molebox_encrypted_catalog_footer, m.catalog_offset + m.catalog_size, 8))) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if (!sxMoleboxMetadata(c.f, i, m) || m.package_count !== count) {
+            return false;
+        }
+        if (m.has_verified_prefix && !sx_add(c, sxexo_molebox_package_prefix, m.package_offset - c.f.base_address, 12)) {
+            return false;
+        }
+        if (!sxexo_cipher(c, sxexo_molebox_encrypted_tree, m.tree_offset, m.tree_size) || !sxexo_cipher(c, sxexo_molebox_encrypted_header, m.header_offset, 48)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_molebox_build(c) {
+    return sxexo_molebox(c);
+}

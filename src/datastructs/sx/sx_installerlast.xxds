@@ -1,0 +1,97 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_installerlast.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_installerlast");
+include("_sx_installerlast_advanced_installer_bootstrapper");
+include("_sx_installerlast_ardi_installer");
+include("_sx_installerlast_arni_installer_container");
+include("_sx_installerlast_clickteam_install_creator");
+include("_sx_installerlast_ej_technologies_install");
+include("_sx_installerlast_gentee_installer");
+include("_sx_installerlast_ghost_installer");
+include("_sx_installerlast_ibm_zpak_installer");
+include("_sx_installerlast_inno_setup");
+include("_sx_installerlast_installer_vise_windows");
+include("_sx_installerlast_installshield_12_setup");
+include("_sx_installerlast_installshield_3");
+include("_sx_installerlast_installshield_7_setup");
+include("_sx_installerlast_installshield_7_setup2");
+include("_sx_installerlast_installshield_developer");
+include("_sx_installerlast_installshield_multiplatform");
+include("_sx_installerlast_installshield_skin");
+include("_sx_installerlast_qsetup_installation_suite");
+include("_sx_installerlast_tarma_installer");
+include("_sx_installerlast_wise_installation_system");
+
+function fileTypes() { return ["WISE_INSTALLATION_SYSTEM", "GENTEE_INSTALLER", "CLICKTEAM_INSTALL_CREATOR",
+    "CREATEINSTALL_INSTCRIN_EXTRACTOR", "ADVANCED_INSTALLER_BOOTSTRAPPER", "ARDI_INSTALLER", "ARNI_INSTALLER_CONTAINER",
+    "EJ_TECHNOLOGIES_INSTALL", "GHOST_INSTALLER", "IBM_ZPAK_INSTALLER", "INNO_SETUP", "INSTALLER_VISE_WINDOWS",
+    "INSTALLSHIELD_12_SETUP", "INSTALLSHIELD_3", "INSTALLSHIELD_7_SETUP", "INSTALLSHIELD_7_SETUP2", "INSTALLSHIELD_DEVELOPER",
+    "INSTALLSHIELD_MULTIPLATFORM", "INSTALLSHIELD_SKIN", "QSETUP_INSTALLATION_SUITE", "TARMA_INSTALLER"]; }
+
+var sx_installerlast_layouts = [sxil_installerlast_name, sxil_installerlast_utf16_name, sxil_installerlast_encoded_bytes,
+    sxil_installerlast_decimal_size, sxil_installerlast_utf16_size, sxil_advanced_installer_footer,
+    sxil_advanced_installer_record, sxil_advanced_installer_external, sxil_ardi_trailer, sxil_ardi_block_tag,
+    sxil_ardi_block_length, sxil_ardi_member_time, sxil_ardi_chain_start, sxil_arni_member, sxil_arni_end,
+    sxil_ej_technologies_header, sxil_ej_technologies_variable, sxil_ej_technologies_extra_count, sxil_ej_technologies_member,
+    sxil_ej_technologies_member_later, sxil_ej_technologies_trailer, sxil_ej_technologies_trailer_name,
+    sxil_ej_technologies_trailer_size, sxil_ibm_zpak_sfx_header, sxil_ibm_zpak_sfx_v1_directory, sxil_ibm_zpak_sfx_v2_record,
+    sxil_ibm_zpak_sfx_v1_trailer, sxil_ibm_zpak_sfx_v2_trailer, sxil_installerlast_dcl_prelude, sxil_installshield12_count,
+    sxil_installshield_ansi_base_name, sxil_installshield_utf16_base_name, sxil_installshield_ansi_relative_path,
+    sxil_installshield_utf16_relative_path, sxil_installshield_ansi_version, sxil_installshield_utf16_version,
+    sxil_installshield3_descriptor, sxil_installshield3_name_size, sxil_installshield3_member, sxil_installshield7_szdd,
+    sxil_installshield_developer_header, sxil_installshield_developer_record, sxil_installshield_multiplatform_footer,
+    sxil_installshield_multiplatform_count, sxil_installshield_multiplatform_record, sxil_installshield_multiplatform_optional,
+    sxil_installshield_multiplatform_u64, sxil_installshield_skin_encoded_name, sxil_installshield_skin_encoded_size,
+    sxil_qsetup_length, sxil_qsetup_record, sxil_qsetup_trailer, sxil_tarma_section, sxil_tarma_lzma_properties,
+    sxil_tarma_separator, sxil_gentee_locator, sxil_gentee_block_size, sxil_createinstall_record, sxil_createinstall_file_size,
+    sxil_createinstall_prelude, sxil_clickteam_creator_tag, sxil_clickteam_creator_chunk, sxil_clickteam_creator_data_chunk,
+    sxil_clickteam_creator_compression1, sxil_clickteam_creator_compression2, sxil_clickteam_creator_method, sxil_vise_header,
+    sxil_vise_footer, sxil_vise_wrapper, sxil_vise_string8, sxil_vise_string16, sxil_vise_masked_length, sxil_vise_setup_count,
+    sxil_vise_setup_fields, sxil_vise_packed_size, sxil_vise_object4, sxil_vise_object6, sxil_wise_member_crc32,
+    sxil_wise_zip_local, sxil_wise_zip_central, sxil_wise_zip_end, sxil_ghost_encoded_cab_header,
+    sxil_ghost_encoded_cab_reserve, sxil_ghost_encoded_cab_folder, sxil_ghost_encoded_cab_file, sxil_ghost_encoded_cab_data,
+    sxil_ghost_trailer26, sxil_ghost_trailer34, sxil_inno_loader_pointer, sxil_inno_loader2, sxil_inno_loader4,
+    sxil_inno_loader5, sxil_inno_loader6, sxil_inno_loader7, sxil_inno_loader_revision1, sxil_inno_loader_revision2,
+    sxil_inno_setup_version, sxil_inno_encryption_envelope, sxil_inno_block_legacy, sxil_inno_block32, sxil_inno_block64,
+    sxil_inno_block_crc32, sxil_inno_data_marker];
+
+function structs() {
+    return sxCatalog([sxil_installerlast_name, sxil_installerlast_utf16_name, sxil_installerlast_encoded_bytes,
+        sxil_installerlast_decimal_size, sxil_installerlast_utf16_size, sxil_advanced_installer_footer,
+        sxil_advanced_installer_record, sxil_advanced_installer_external, sxil_ardi_trailer, sxil_ardi_block_tag,
+        sxil_ardi_block_length, sxil_ardi_member_time, sxil_ardi_chain_start, sxil_arni_member, sxil_arni_end,
+        sxil_ej_technologies_header, sxil_ej_technologies_variable, sxil_ej_technologies_extra_count,
+        sxil_ej_technologies_member, sxil_ej_technologies_member_later, sxil_ej_technologies_trailer,
+        sxil_ej_technologies_trailer_name, sxil_ej_technologies_trailer_size, sxil_ibm_zpak_sfx_header,
+        sxil_ibm_zpak_sfx_v1_directory, sxil_ibm_zpak_sfx_v2_record, sxil_ibm_zpak_sfx_v1_trailer, sxil_ibm_zpak_sfx_v2_trailer,
+        sxil_installerlast_dcl_prelude, sxil_installshield12_count, sxil_installshield_ansi_base_name,
+        sxil_installshield_utf16_base_name, sxil_installshield_ansi_relative_path, sxil_installshield_utf16_relative_path,
+        sxil_installshield_ansi_version, sxil_installshield_utf16_version, sxil_installshield3_descriptor,
+        sxil_installshield3_name_size, sxil_installshield3_member, sxil_installshield7_szdd,
+        sxil_installshield_developer_header, sxil_installshield_developer_record, sxil_installshield_multiplatform_footer,
+        sxil_installshield_multiplatform_count, sxil_installshield_multiplatform_record,
+        sxil_installshield_multiplatform_optional, sxil_installshield_multiplatform_u64, sxil_installshield_skin_encoded_name,
+        sxil_installshield_skin_encoded_size, sxil_qsetup_length, sxil_qsetup_record, sxil_qsetup_trailer, sxil_tarma_section,
+        sxil_tarma_lzma_properties, sxil_tarma_separator, sxil_gentee_locator, sxil_gentee_block_size,
+        sxil_createinstall_record, sxil_createinstall_file_size, sxil_createinstall_prelude, sxil_clickteam_creator_tag,
+        sxil_clickteam_creator_chunk, sxil_clickteam_creator_data_chunk, sxil_clickteam_creator_compression1,
+        sxil_clickteam_creator_compression2, sxil_clickteam_creator_method, sxil_vise_header, sxil_vise_footer,
+        sxil_vise_wrapper, sxil_vise_string8, sxil_vise_string16, sxil_vise_masked_length, sxil_vise_setup_count,
+        sxil_vise_setup_fields, sxil_vise_packed_size, sxil_vise_object4, sxil_vise_object6, sxil_wise_member_crc32,
+        sxil_wise_zip_local, sxil_wise_zip_central, sxil_wise_zip_end, sxil_ghost_encoded_cab_header,
+        sxil_ghost_encoded_cab_reserve, sxil_ghost_encoded_cab_folder, sxil_ghost_encoded_cab_file, sxil_ghost_encoded_cab_data,
+        sxil_ghost_trailer26, sxil_ghost_trailer34, sxil_inno_loader_pointer, sxil_inno_loader2, sxil_inno_loader4,
+        sxil_inno_loader5, sxil_inno_loader6, sxil_inno_loader7, sxil_inno_loader_revision1, sxil_inno_loader_revision2,
+        sxil_inno_setup_version, sxil_inno_encryption_envelope, sxil_inno_block_legacy, sxil_inno_block32, sxil_inno_block64,
+        sxil_inno_block_crc32, sxil_inno_data_marker], sx_installerlast_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_installerlast_build, false);
+}

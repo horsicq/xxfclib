@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/dbz/xx_dbz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_dbz_header_fields = layout([chars("magic", 27, SIGNATURE)]);
+var sxd_dbz_header = sxLayout(0x601A003B, "dbz_header", LE, sxd_dbz_header_fields);
+function sxd_decimal(p, p_o, n, v) {
+    var i = 0;
+    v[0] = 0;
+    while (i < n && p[p_o + i] === 32) {
+        i++;
+    }
+    if (i === n) {
+        return false;
+    }
+    for (; i < n; i++) {
+        if (p[p_o + i] < 48 /*0*/ || p[p_o + i] > 57 /*9*/ || v[0] > Math.floor((SX_U64_MAX - (p[p_o + i] - 48 /*0*/ < 0 ? p[p_o + i] - 48 /*0*/ + SX_U64_MAX : p[p_o + i] - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        v[0] = v[0] * 10 + (p[p_o + i] - 48 /*0*/ < 0 ? p[p_o + i] - 48 /*0*/ + SX_U64_MAX : p[p_o + i] - 48 /*0*/);
+    }
+    return true;
+}
+function sxd_dbz(c, b) {
+    var first = [0];
+    if (!sxd_can(c, 0, 59) || !sxd_decimal(b, 41, 9, first) || first[0] < 59 || sxU64(first[0] - 27) % 32 || first[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    if (!sxd_add(c, sxd_dbz_header, 0, 27)) {
+        return false;
+    }
+    for (var at = 27; at < first[0]; at += 32) {
+        var offset = [0];
+        var size = [0];
+        if (sxd_decimal(b, at + 14, 9, offset) && sxd_decimal(b, at + 23, 9, size) && !sxd_add(c, sxd_dbz_index_record, at, 32)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_dbz_build(c, b) {
+    return sxd_dbz(c, b);
+}

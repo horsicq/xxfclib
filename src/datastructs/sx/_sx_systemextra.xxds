@@ -1,0 +1,1240 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_systemextra.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_woz_header_fields = layout([chars("signature", 4, SIGNATURE), field("corruption_check", "byte[4]", 4, SIGNATURE),
+    u32("crc32", CHECKSUM)]);
+var sxse_woz_header = sxLayout(0x602F002C, "woz_header", LE, sxse_woz_header_fields);
+var sxse_disk_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxse_disk_chunk_header = sxLayout(0x602F002D, "disk_chunk_header", LE, sxse_disk_chunk_header_fields);
+var sxse_woz_info_v1_fields = layout([u8("version"), u8("disk_type", ID), u8("write_protected", FLAGS),
+    u8("synchronized", FLAGS), u8("cleaned", FLAGS), chars("creator", 32, STRING), field("reserved", "byte[23]", 23, RESERVED)]);
+var sxse_woz_info_v1 = sxLayout(0x602F002E, "woz_info_v1", LE, sxse_woz_info_v1_fields);
+var sxse_woz_info_v2_fields = layout([u8("version"), u8("disk_type", ID), u8("write_protected", FLAGS),
+    u8("synchronized", FLAGS), u8("cleaned", FLAGS), chars("creator", 32, STRING), u8("disk_sides", COUNT),
+    u8("boot_sector_format", ID), u8("optimal_bit_timing"), u16("compatible_hardware", FLAGS), u16("required_ram_kib"),
+    u16("largest_track_blocks", COUNT), field("reserved", "byte[14]", 14, RESERVED)]);
+var sxse_woz_info_v2 = sxLayout(0x602F002F, "woz_info_v2", LE, sxse_woz_info_v2_fields);
+var sxse_woz_info_v3_fields = layout([u8("version"), u8("disk_type", ID), u8("write_protected", FLAGS),
+    u8("synchronized", FLAGS), u8("cleaned", FLAGS), chars("creator", 32, STRING), u8("disk_sides", COUNT),
+    u8("boot_sector_format", ID), u8("optimal_bit_timing"), u16("compatible_hardware", FLAGS), u16("required_ram_kib"),
+    u16("largest_track_blocks", COUNT), u16("flux_block", ID), u16("largest_flux_track_blocks", COUNT),
+    field("reserved", "byte[10]", 10, RESERVED)]);
+var sxse_woz_info_v3 = sxLayout(0x602F0030, "woz_info_v3", LE, sxse_woz_info_v3_fields);
+var sxse_woz_track_map_fields = layout([u8("track_index", ID)]);
+var sxse_woz_track_map = sxLayout(0x602F0031, "woz_track_map", LE, sxse_woz_track_map_fields);
+var sxse_woz1_track_metadata_fields = layout([u16("bytes_used", SIZE), u16("bit_count"), u16("splice_bit_position"),
+    u8("splice_nibble"), u8("splice_bit_count"), field("reserved", "byte[2]", 2, RESERVED)]);
+var sxse_woz1_track_metadata = sxLayout(0x602F0032, "woz1_track_metadata", LE, sxse_woz1_track_metadata_fields);
+var sxse_woz2_track_entry_fields = layout([u16("start_block", ID), u16("block_count", COUNT), u32("bit_count")]);
+var sxse_woz2_track_entry = sxLayout(0x602F0033, "woz2_track_entry", LE, sxse_woz2_track_entry_fields);
+var sxse_pzx_version_fields = layout([u8("major"), u8("minor")]);
+var sxse_pzx_version = sxLayout(0x602F0034, "pzx_version", LE, sxse_pzx_version_fields);
+var sxse_pzx_data_fields = layout([u32("bit_count_and_level", FLAGS), u16("tail_ticks"), u8("zero_pulse_count", COUNT),
+    u8("one_pulse_count", COUNT)]);
+var sxse_pzx_data = sxLayout(0x602F0035, "pzx_data", LE, sxse_pzx_data_fields);
+var sxse_pzx_pulse_duration_fields = layout([u16("duration_ticks")]);
+var sxse_pzx_pulse_duration = sxLayout(0x602F0036, "pzx_pulse_duration", LE, sxse_pzx_pulse_duration_fields);
+var sxse_pzx_pause_fields = layout([u32("ticks_and_level", FLAGS)]);
+var sxse_pzx_pause = sxLayout(0x602F0037, "pzx_pause", LE, sxse_pzx_pause_fields);
+var sxse_pzx_stop_fields = layout([u16("flags", FLAGS)]);
+var sxse_pzx_stop = sxLayout(0x602F0038, "pzx_stop", LE, sxse_pzx_stop_fields);
+var sxse_a2r_header_fields = layout([chars("signature", 4, SIGNATURE), field("corruption_check", "byte[4]", 4, SIGNATURE)]);
+var sxse_a2r_header = sxLayout(0x602F0046, "a2r_header", LE, sxse_a2r_header_fields);
+var sxse_a2r_info_v2_fields = layout([u8("version"), chars("creator", 32, STRING), u8("drive_type", ID),
+    u8("write_protected", FLAGS), u8("synchronized", FLAGS)]);
+var sxse_a2r_info_v2 = sxLayout(0x602F0047, "a2r_info_v2", LE, sxse_a2r_info_v2_fields);
+var sxse_a2r_info_v3_fields = layout([u8("version"), chars("creator", 32, STRING), u8("drive_type", ID),
+    u8("write_protected", FLAGS), u8("synchronized", FLAGS), u8("hard_sector_count", COUNT)]);
+var sxse_a2r_info_v3 = sxLayout(0x602F0048, "a2r_info_v3", LE, sxse_a2r_info_v3_fields);
+var sxse_a2r2_capture_fields = layout([u8("location", ID), u8("capture_type", ID), u32("data_size", SIZE), u32("loop_ticks")]);
+var sxse_a2r2_capture = sxLayout(0x602F0049, "a2r2_capture", LE, sxse_a2r2_capture_fields);
+var sxse_a2r_stream_end_fields = layout([u8("end_marker", ID)]);
+var sxse_a2r_stream_end = sxLayout(0x602F004A, "a2r_stream_end", LE, sxse_a2r_stream_end_fields);
+var sxse_a2r3_capture_chunk_fields = layout([u8("version"), u32("tick_picoseconds"), field("reserved", "byte[11]", 11, RESERVED)]);
+var sxse_a2r3_capture_chunk = sxLayout(0x602F004B, "a2r3_capture_chunk", LE, sxse_a2r3_capture_chunk_fields);
+var sxse_a2r3_capture_fields = layout([u8("marker", ID), u8("capture_type", ID), u16("location", ID), u8("index_count", COUNT)]);
+var sxse_a2r3_capture = sxLayout(0x602F004C, "a2r3_capture", LE, sxse_a2r3_capture_fields);
+var sxse_a2r3_solved_track_fields = layout([u8("marker", ID), u16("location", ID), u8("mirror_previous_count", COUNT),
+    u8("mirror_next_count", COUNT), field("reserved", "byte[6]", 6, RESERVED), u8("index_count", COUNT)]);
+var sxse_a2r3_solved_track = sxLayout(0x602F004D, "a2r3_solved_track", LE, sxse_a2r3_solved_track_fields);
+var sxse_a2r3_index_time_fields = layout([u32("index_ticks")]);
+var sxse_a2r3_index_time = sxLayout(0x602F004E, "a2r3_index_time", LE, sxse_a2r3_index_time_fields);
+var sxse_a2r_capture_size_fields = layout([u32("data_size", SIZE)]);
+var sxse_a2r_capture_size = sxLayout(0x602F004F, "a2r_capture_size", LE, sxse_a2r_capture_size_fields);
+var sxse_hfe_header_fields = layout([chars("signature", 8, SIGNATURE), u8("format_revision"), u8("cylinder_count", COUNT),
+    u8("side_count", COUNT), u8("track_encoding", ID), u16("bitrate_kbps"), u16("rpm"), u8("interface_mode", ID),
+    u8("reserved1", RESERVED), u16("track_table_block", ID), u8("write_allowed", FLAGS), u8("single_step", FLAGS),
+    u8("track0_side0_alternate", FLAGS), u8("track0_side0_encoding", ID), u8("track0_side1_alternate", FLAGS),
+    u8("track0_side1_encoding", ID), field("unused_header_bytes", "byte[486]", 486)]);
+var sxse_hfe_header = sxLayout(0x602F005E, "hfe_header", LE, sxse_hfe_header_fields);
+var sxse_hfe_track_entry_fields = layout([u16("data_block", ID), u16("track_size", SIZE)]);
+var sxse_hfe_track_entry = sxLayout(0x602F005F, "hfe_track_entry", LE, sxse_hfe_track_entry_fields);
+var sxse_stream_hfe_header_fields = layout([chars("signature", 16, SIGNATURE), u32("revision"), u32("flags", FLAGS),
+    u32("reserved_table_end", OFFSET), u32("track_table_offset", OFFSET), u32("first_stream_offset", OFFSET),
+    u32("cylinder_count", COUNT), u32("side_count", COUNT), u32("tick_period")]);
+var sxse_stream_hfe_header = sxLayout(0x602F0060, "stream_hfe_header", LE, sxse_stream_hfe_header_fields);
+var sxse_stream_hfe_track_fields = layout([u32("flags", FLAGS), u32("stream_offset", OFFSET), u32("stored_size", SIZE),
+    u32("unpacked_size", SIZE), field("opaque_10", "byte[4]", 4), u32("pulse_count", COUNT),
+    field("reserved", "byte[8]", 8, RESERVED)]);
+var sxse_stream_hfe_track = sxLayout(0x602F0061, "stream_hfe_track", LE, sxse_stream_hfe_track_fields);
+function sx_systemextra_comment(r, id) {
+    if (r === null || r.name === null || id < 0x602F0000 || id >= 0x60300000) {
+        return true;
+    }
+    var s = null;
+    var value = sxVarU64(r.value);
+    if (id === 0x602F0001 && r.name === "device_type") {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "1541 disk drive");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F000A && r.name === "computer_platform") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "C64");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F000A && r.name === "video_standard") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "PAL");
+        case 1:
+            return sxSetComment(r, "NTSC");
+        case 2:
+            return sxSetComment(r, "OLD_NTSC");
+        case 3:
+            return sxSetComment(r, "PAL_N");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F000C && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F000D && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F000E && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F000F && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0011 && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0012 && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0013 && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0014 && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0015 && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0017 && r.name === "block_id") {
+        switch (value) {
+        case 16:
+            return sxSetComment(r, "STANDARD_SPEED_DATA");
+        case 17:
+            return sxSetComment(r, "TURBO_SPEED_DATA");
+        case 18:
+            return sxSetComment(r, "PURE_TONE");
+        case 19:
+            return sxSetComment(r, "PULSE_SEQUENCE");
+        case 20:
+            return sxSetComment(r, "PURE_DATA");
+        case 32:
+            return sxSetComment(r, "PAUSE_OR_STOP");
+        case 33:
+            return sxSetComment(r, "GROUP_START");
+        case 34:
+            return sxSetComment(r, "GROUP_END");
+        case 48:
+            return sxSetComment(r, "TEXT_DESCRIPTION");
+        case 50:
+            return sxSetComment(r, "ARCHIVE_INFO");
+        case 53:
+            return sxSetComment(r, "CUSTOM_INFO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F003A && r.name === "chunk_id") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "ORIGIN_INFORMATION");
+        case 256:
+            return sxSetComment(r, "IMPLICIT_TAPE_DATA");
+        case 272:
+            return sxSetComment(r, "CARRIER_TONE");
+        case 273:
+            return sxSetComment(r, "CARRIER_WITH_DUMMY_BYTE");
+        case 274:
+            return sxSetComment(r, "INTEGER_GAP");
+        case 277:
+            return sxSetComment(r, "PHASE_CHANGE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F002E && r.name === "disk_type") {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "5.25-inch disk");
+        case 2:
+            return sxSetComment(r, "3.5-inch disk");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F002F && r.name === "disk_type") {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "5.25-inch disk");
+        case 2:
+            return sxSetComment(r, "3.5-inch disk");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0030 && r.name === "disk_type") {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "5.25-inch disk");
+        case 2:
+            return sxSetComment(r, "3.5-inch disk");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F002F && r.name === "boot_sector_format") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Unknown");
+        case 1:
+            return sxSetComment(r, "16-sector");
+        case 2:
+            return sxSetComment(r, "13-sector");
+        case 3:
+            return sxSetComment(r, "Both 13-sector and 16-sector");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0030 && r.name === "boot_sector_format") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Unknown");
+        case 1:
+            return sxSetComment(r, "16-sector");
+        case 2:
+            return sxSetComment(r, "13-sector");
+        case 3:
+            return sxSetComment(r, "Both 13-sector and 16-sector");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0049 && r.name === "capture_type") {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "TIMING");
+        case 2:
+            return sxSetComment(r, "BITS");
+        case 3:
+            return sxSetComment(r, "XTIMING");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F004C && r.name === "capture_type") {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "TIMING");
+        case 2:
+            return sxSetComment(r, "BITS");
+        case 3:
+            return sxSetComment(r, "XTIMING");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F005E && r.name === "track_encoding") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "ISOIBM_MFM");
+        case 1:
+            return sxSetComment(r, "AMIGA_MFM");
+        case 2:
+            return sxSetComment(r, "ISOIBM_FM");
+        case 3:
+            return sxSetComment(r, "EMU_FM");
+        case 255:
+            return sxSetComment(r, "UNKNOWN_ENCODING");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0058 && r.name === "mfm") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "FM");
+        case 1:
+            return sxSetComment(r, "MFM");
+        default:
+            break;
+        }
+    }
+    if (id === 0x602F0059 && r.name === "mfm") {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "FM");
+        case 1:
+            return sxSetComment(r, "MFM");
+        default:
+            break;
+        }
+    }
+    switch (id) {
+    case 0x602F0001:
+        if (r.name === "second_side") {
+            s = "Zero means no second side; one means a second side is present.";
+        }
+        break;
+    case 0x602F0003:
+        if (r.name === "track_offset") {
+            s = "File-relative byte offset of the track-length word; zero means absent.";
+        }
+        break;
+    case 0x602F0004:
+        if (r.name === "speed_zone") {
+            s = "Constant speed zone 0..3; this word is not an offset.";
+        }
+        break;
+    case 0x602F0005:
+        if (r.name === "speed_map_offset") {
+            s = "File-relative byte offset of the packed two-bit speed map.";
+        }
+        break;
+    case 0x602F0007:
+        if (r.name === "flags") {
+            s = "Bit 0 write protection; bit 1 two-sided image.";
+        }
+        break;
+    case 0x602F0009:
+        if (r.name === "halftrack_and_side") {
+            s = "Low 7 bits identify halftrack 2..85; high bit selects the second side.";
+        }
+        break;
+    case 0x602F0010:
+        if (r.name === "duration_ticks") {
+            s = "Duration in ZX Spectrum T-states.";
+        }
+        break;
+    case 0x602F0012:
+        if (r.name === "pause_milliseconds") {
+            s = "Zero means stop the tape.";
+        }
+        break;
+    case 0x602F0018:
+        if (r.name === "track_size") {
+            s = "Standard DSK track size including its 256-byte header.";
+        }
+        break;
+    case 0x602F001A:
+        if (r.name === "size_units") {
+            s = "Track size in 256-byte units; zero means an unformatted track.";
+        }
+        break;
+    case 0x602F001B:
+        if (r.name === "sector_size_code") {
+            s = "Sector byte size=128 shifted left by this code.";
+        } else if (r.name === "gap3_length") {
+            s = "Number of controller gap bytes on the disk, not bytes allocated in the file.";
+        }
+        break;
+    case 0x602F001C:
+        if (r.name === "size_code") {
+            s = "Sector byte size=128 shifted left by this code.";
+        }
+        break;
+    case 0x602F001D:
+        if (r.name === "size_code") {
+            s = "Sector byte size=128 shifted left by this code.";
+        }
+        break;
+    case 0x602F001F:
+        if (r.name === "track_length") {
+            s = "Track length in raw controller byte positions, not physical file bytes.";
+        }
+        break;
+    case 0x602F0020:
+        if (r.name === "sector_position") {
+            s = "Sector position within the track; not a file byte offset.";
+        }
+        break;
+    case 0x602F0021:
+        if (r.name === "sides_minus_one") {
+            s = "Encoded head count minus one.";
+        }
+        break;
+    case 0x602F0022:
+        if (r.name === "stored_size") {
+            s = "Equal to sectors_per_track*512 for an uncompressed track; otherwise an E5 RLE stream.";
+        }
+        break;
+    case 0x602F0023:
+        if (r.name === "version_bcd") {
+            s = "High nibble major, low nibble minor version.";
+        } else if (r.name === "flags") {
+            s = "INDEXED=0x01,96TPI=0x02,360RPM=0x04,NORMALIZED=0x08,READWRITE=0x10,FOOTER=0x20,EXTENDED_MODE=0x40,NON_SCP_CREATOR=0x80.";
+        } else if (r.name === "bitcell_width") {
+            s = "Zero encodes 16-bit flux timing samples.";
+        } else if (r.name === "heads") {
+            s = "0=both heads,1=head0 only,2=head1 only.";
+        } else if (r.name === "resolution_multiplier") {
+            s = "Capture resolution in 25 ns units, multiplied by this value plus one.";
+        }
+        break;
+    case 0x602F0024:
+        if (r.name === "track_offset") {
+            s = "File-relative track header byte offset; zero means absent.";
+        }
+        break;
+    case 0x602F0026:
+        if (r.name === "index_duration") {
+            s = "Index-to-index duration in 25 ns units.";
+        } else if (r.name === "sample_count") {
+            s = "Number of 16-bit flux timing words, not bytes.";
+        } else if (r.name === "data_offset") {
+            s = "Byte offset relative to this track header.";
+        }
+        break;
+    case 0x602F0029:
+        if (r.name === "write_splice") {
+            s = "Write-splice position in SCP ticks (25 ns); zero is used for unused tracks.";
+        }
+        break;
+    case 0x602F002A:
+        if (r.name === "creation_time") {
+            s = "Signed seconds since 1970-01-01 UTC.";
+        } else if (r.name === "modification_time") {
+            s = "Signed seconds since 1970-01-01 UTC.";
+        }
+        break;
+    case 0x602F002B:
+        if (r.name === "string_size") {
+            s = "UTF-8 byte length excluding the length word and terminating zero.";
+        }
+        break;
+    case 0x602F002F:
+        if (r.name === "optimal_bit_timing") {
+            s = "Encoded 125 ns units.";
+        } else if (r.name === "required_ram_kib") {
+            s = "Required memory in KiB; zero means unknown.";
+        } else if (r.name === "largest_track_blocks") {
+            s = "Count of 512-byte blocks.";
+        }
+        break;
+    case 0x602F0030:
+        if (r.name === "optimal_bit_timing") {
+            s = "Encoded 125 ns units.";
+        } else if (r.name === "required_ram_kib") {
+            s = "Required memory in KiB; zero means unknown.";
+        } else if (r.name === "largest_track_blocks") {
+            s = "Count of 512-byte blocks.";
+        } else if (r.name === "flux_block") {
+            s = "File-relative 512-byte block index of the FLUX chunk header.";
+        } else if (r.name === "largest_flux_track_blocks") {
+            s = "Count of 512-byte blocks.";
+        }
+        break;
+    case 0x602F0031:
+        if (r.name === "track_index") {
+            s = "0xff means no associated track.";
+        }
+        break;
+    case 0x602F0032:
+        if (r.name === "bit_count") {
+            s = "Number of valid bit cells; not a byte count.";
+        } else if (r.name === "splice_bit_position") {
+            s = "Bit position;0xffff means no splice information.";
+        }
+        break;
+    case 0x602F0033:
+        if (r.name === "start_block") {
+            s = "File-relative 512-byte block index.";
+        } else if (r.name === "block_count") {
+            s = "Number of 512-byte blocks.";
+        } else if (r.name === "bit_count") {
+            s = "Valid bit count; for a FLUX-mapped track this word is the valid flux-byte count.";
+        }
+        break;
+    case 0x602F0035:
+        if (r.name === "bit_count_and_level") {
+            s = "Low 31 bits hold data bit count; high bit gives starting pulse level.";
+        }
+        break;
+    case 0x602F0036:
+        if (r.name === "duration_ticks") {
+            s = "Spectrum T-state ticks for the selected bit waveform.";
+        }
+        break;
+    case 0x602F0037:
+        if (r.name === "ticks_and_level") {
+            s = "Low 31 bits duration in T-states; high bit starting pulse level.";
+        }
+        break;
+    case 0x602F0038:
+        if (r.name === "flags") {
+            s = "Bit 0: stop in48K mode only.";
+        }
+        break;
+    case 0x602F003B:
+        if (r.name === "cycles") {
+            s = "Carrier duration in cycles of the 2400 Hz high tone.";
+        }
+        break;
+    case 0x602F003D:
+        if (r.name === "duration_cycles") {
+            s = "Gap duration in 1200 Hz units.";
+        }
+        break;
+    case 0x602F003E:
+        if (r.name === "degrees") {
+            s = "Phase change in degrees.";
+        }
+        break;
+    case 0x602F003F:
+        if (r.name === "petscii_name") {
+            s = "Commodore PETSCII filename, not ASCII.";
+        } else if (r.name === "record_size") {
+            s = "Zero means a non-REL file; otherwise fixed record size in bytes.";
+        }
+        break;
+    case 0x602F0040:
+        if (r.name === "reserved") {
+            s = "Reserved zero";
+        }
+        break;
+    case 0x602F0041:
+        if (r.name === "baud_rate") {
+            s = "Bits per second";
+        }
+        break;
+    case 0x602F0042:
+        if (r.name === "gap_milliseconds") {
+            s = "Gap before data in milliseconds";
+        }
+        break;
+    case 0x602F0043:
+        if (r.name === "gap_milliseconds") {
+            s = "Gap before flux pulses in milliseconds";
+        }
+        break;
+    case 0x602F0044:
+        if (r.name === "file_type") {
+            s = "0=BASIC,0x80=machine code.";
+        } else if (r.name === "autostart") {
+            s = "0=no autorun,0x80=machine code autorun,0xc7=BASIC autorun.";
+        } else if (r.name === "end_address") {
+            s = "Inclusive destination address.";
+        }
+        break;
+    case 0x602F0045:
+        if (r.name === "compression_and_name_length") {
+            s = "Low 3 bits compression; high 5 bits filename length in bytes.";
+        }
+        break;
+    case 0x602F0049:
+        if (r.name === "loop_ticks") {
+            s = "Capture duration before repetition in 125 ns timing ticks.";
+        }
+        break;
+    case 0x602F004B:
+        if (r.name === "tick_picoseconds") {
+            s = "Capture timing resolution in picoseconds.";
+        }
+        break;
+    case 0x602F004E:
+        if (r.name === "index_ticks") {
+            s = "Absolute index timing relative to capture start, measured in the enclosing chunk tick period.";
+        }
+        break;
+    case 0x602F0050:
+        if (r.name === "paragraph_count_low") {
+            s = "Low 16 bits of the image length in 16-byte units.";
+        } else if (r.name === "paragraph_count_high") {
+            s = "High 16 bits of the image length in 16-byte units.";
+        } else if (r.name === "unused_header_bytes") {
+            s = "Native supported variant requires these optional extension bytes to be zero.";
+        }
+        break;
+    case 0x602F0052:
+        if (r.name === "track_length") {
+            s = "Track length in controller bytes, not physical file bytes.";
+        } else if (r.name === "track_and_side") {
+            s = "Low 7 bits cylinder, high bit side.";
+        }
+        break;
+    case 0x602F0053:
+        if (r.name === "data_offset") {
+            s = "Byte offset relative to the track data area after descriptors/fuzzy mask.";
+        } else if (r.name === "bit_position") {
+            s = "Sector position in bit cells.";
+        } else if (r.name === "read_time") {
+            s = "Controller timing value; not a wall-clock timestamp.";
+        } else if (r.name === "size_code") {
+            s = "Sector byte size=128 shifted left by this code.";
+        }
+        break;
+    case 0x602F0056:
+        if (r.name === "logical_sectors_per_track") {
+            s = "Number of 128-byte logical sectors.";
+        } else if (r.name === "block_shift") {
+            s = "Allocation block size=128 shifted left by this value.";
+        } else if (r.name === "maximum_block_number") {
+            s = "Encoded allocation block count minus one.";
+        } else if (r.name === "maximum_directory_entry") {
+            s = "Encoded directory-entry count minus one.";
+        } else if (r.name === "check_vector_size") {
+            s = "Directory check-vector entry count; high bit has fixed-media meaning.";
+        } else if (r.name === "sector_shift") {
+            s = "Physical sector size=128 shifted left by this value.";
+        }
+        break;
+    case 0x602F0058:
+        if (r.name === "size_code") {
+            s = "Sector size=128 shifted left by this code.";
+        }
+        break;
+    case 0x602F0059:
+        if (r.name === "size_code") {
+            s = "Sector size=128 shifted left by this code.";
+        }
+        break;
+    case 0x602F005A:
+        if (r.name === "track_offset") {
+            s = "File-relative byte offset of the track header; zero means absent.";
+        }
+        break;
+    case 0x602F005B:
+        if (r.name === "additional_info") {
+            s = "Stored additional-info word; the native reader does not interpret its bits.";
+        }
+        break;
+    case 0x602F005D:
+        if (r.name === "size_code") {
+            s = "Nominal sector byte size=128 shifted left by this code.";
+        }
+        break;
+    case 0x602F005E:
+        if (r.name === "track_table_block") {
+            s = "File-relative 512-byte block index of the track table.";
+        } else if (r.name === "write_allowed") {
+            s = "0=write protected,0xff=unprotected.";
+        } else if (r.name === "single_step") {
+            s = "0=double step,0xff=single step.";
+        } else if (r.name === "track0_side0_alternate") {
+            s = "Zero selects the corresponding alternate encoding;0xff uses the global encoding.";
+        } else if (r.name === "track0_side1_alternate") {
+            s = "Zero selects the corresponding alternate encoding;0xff uses the global encoding.";
+        } else if (r.name === "unused_header_bytes") {
+            s = "Unused bytes, conventionally0xff.";
+        }
+        break;
+    case 0x602F005F:
+        if (r.name === "data_block") {
+            s = "File-relative 512-byte block index.";
+        } else if (r.name === "track_size") {
+            s = "Byte length including the two interleaved sides.";
+        }
+        break;
+    case 0x602F0060:
+        if (r.name === "tick_period") {
+            s = "Encoded native clock-period value; no conversion is applied.";
+        }
+        break;
+    case 0x602F0061:
+        if (r.name === "flags") {
+            s = "Bit 0 means raw LZ4 block.";
+        } else if (r.name === "opaque_10") {
+            s = "Observed native value 5000000; semantic unit not established.";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxse_span(c, p, n) {
+    return p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxse_read(c, p, b, n) {
+    return sxse_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxse_u16(b, p, be) {
+    return sxGetU16At(b, p, 2, 0, be);
+}
+function sxse_u32(b, p, be) {
+    return sxGetU32At(b, p, 4, 0, be);
+}
+function sxse_put(c, l, p, z, n) {
+    if (!n) {
+        return true;
+    }
+    if (!z || n > Math.floor(SX_I64_MAX / z) || !sxse_span(c, p, z * n)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var b = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < a + b && a < p + z * n) {
+            return true;
+        }
+    }
+    return sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxse_chunks(c, woz, a2r) {
+    var h = [];
+    var b = [];
+    var p = woz ? 12 : a2r ? 8 : 0;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var version = 0;
+    if (woz || a2r) {
+        if (!sxse_read(c, 0, h, p)) {
+            return false;
+        }
+        version = (h[3] - 48 /*0*/) >>> 0;
+        if (!sxse_put(c, woz ? sxse_woz_header : sxse_a2r_header, 0, p, 1)) {
+            return false;
+        }
+    }
+    for (var visit = 0; p < end && visit < 65536; visit++) {
+        if (!sxse_read(c, p, h, 8)) {
+            return false;
+        }
+        var z = sxse_u32(h, 4, false);
+        var q = p + 8;
+        if (!sxse_span(c, q, z) || !sxse_put(c, sxse_disk_chunk_header, p, 8, 1)) {
+            return false;
+        }
+        if (woz) {
+            if (!sxMemcmp(h, "INFO", 4)) {
+                if (z !== 60 || !sxse_read(c, q, b, 1) || b[0] < 1 || b[0] > 3 || !sxse_put(c, b[0] === 1 ? sxse_woz_info_v1 : b[0] === 2 ? sxse_woz_info_v2 : sxse_woz_info_v3, q, 60, 1)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "TMAP", 4) || !sxMemcmp(h, "FLUX", 4)) {
+                if (z !== 160 || !sxse_put(c, sxse_woz_track_map, q, 1, 160)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "TRKS", 4)) {
+                if (version === 1) {
+                    if (z % 6656) {
+                        return false;
+                    }
+                    for (var i = 0; i < Math.floor(z / 6656); i++) {
+                        if (!sxse_put(c, sxse_woz1_track_metadata, q + i * 6656 + 6646, 10, 1)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    if (z < 1280 || !sxse_put(c, sxse_woz2_track_entry, q, 8, 160)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (a2r) {
+            if (!sxMemcmp(h, "INFO", 4)) {
+                if (z !== (version === 2 ? 36 : 37) || !sxse_put(c, version === 2 ? sxse_a2r_info_v2 : sxse_a2r_info_v3, q, z, 1)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "STRM", 4) && version === 2) {
+                var t = q;
+                var limit = q + z;
+                for (var k = 0; t < limit && k < 65536; k++) {
+                    if (!sxse_read(c, t, b, 1)) {
+                        return false;
+                    }
+                    if (b[0] === 255) {
+                        if (!sxse_put(c, sxse_a2r_stream_end, t, 1, 1)) {
+                            return false;
+                        }
+                        t++;
+                        break;
+                    }
+                    if (sxU64(limit - t) < 10 || !sxse_read(c, t, b, 10)) {
+                        return false;
+                    }
+                    var n = sxse_u32(b, 2, false);
+                    if (n > sxU64(sxU64(limit - t) - 10) || !sxse_put(c, sxse_a2r2_capture, t, 10, 1)) {
+                        return false;
+                    }
+                    t += 10 + n;
+                }
+                if (t !== limit) {
+                    return false;
+                }
+            } else if ((!sxMemcmp(h, "RWCP", 4) || !sxMemcmp(h, "SLVD", 4)) && version === 3) {
+                var solved = !sxMemcmp(h, "SLVD", 4);
+                if (z < 16 || !sxse_put(c, sxse_a2r3_capture_chunk, q, 16, 1)) {
+                    return false;
+                }
+                t = q + 16;
+                limit = q + z;
+                for (k = 0; t < limit && k < 65536; k++) {
+                    if (!sxse_read(c, t, b, 1)) {
+                        return false;
+                    }
+                    if (b[0] === 88 /*X*/) {
+                        if (!sxse_put(c, sxse_a2r_stream_end, t, 1, 1)) {
+                            return false;
+                        }
+                        t++;
+                        break;
+                    }
+                    var hs = solved ? 12 : 5;
+                    if (sxU64(limit - t) < hs || !sxse_read(c, t, b, hs)) {
+                        return false;
+                    }
+                    n = b[solved ? 11 : 4];
+                    if (hs + ((4 * n) >>> 0) + 4 > sxU64(limit - t) || !sxse_put(c, solved ? sxse_a2r3_solved_track : sxse_a2r3_capture, t, hs, 1) || !sxse_put(c, sxse_a2r3_index_time, t + hs, 4, n)) {
+                        return false;
+                    }
+                    t += (hs + ((4 * n) >>> 0)) >>> 0;
+                    var len;
+                    if ((len = sx_u32(c, (t >= SX_I64_MAX ? t - SX_U64_MAX : t), false)) === null || len > sxU64(sxU64(limit - t) - 4) || !sxse_put(c, sxse_a2r_capture_size, t, 4, 1)) {
+                        return false;
+                    }
+                    t += 4 + len;
+                }
+                if (t !== limit) {
+                    return false;
+                }
+            }
+        } else {
+            if (!sxMemcmp(h, "PZXT", 4)) {
+                if (z < 2 || !sxse_put(c, sxse_pzx_version, q, 2, 1)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "DATA", 4)) {
+                if (z < 8 || !sxse_read(c, q, b, 8) || 8 + 2 * (b[6] + b[7]) > z || !sxse_put(c, sxse_pzx_data, q, 8, 1) || !sxse_put(c, sxse_pzx_pulse_duration, q + 8, 2, b[6] + b[7])) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "PAUS", 4)) {
+                if (z !== 4 || !sxse_put(c, sxse_pzx_pause, q, 4, 1)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "STOP", 4)) {
+                if (z !== 2 || !sxse_put(c, sxse_pzx_stop, q, 2, 1)) {
+                    return false;
+                }
+            }
+        }
+        p = q + z;
+    }
+    return p === end;
+}
+function sxse_hfe(c, stream) {
+    var b = [];
+    if (!sxse_read(c, 0, b, stream ? 48 : 26)) {
+        return false;
+    }
+    if (stream) {
+        var n = sxse_u32(b, 36, false) * sxse_u32(b, 40, false);
+        var p = sxse_u32(b, 28, false);
+        return n <= 512 && p >= 48 && sxse_put(c, sxse_stream_hfe_header, 0, 48, 1) && sxse_put(c, sxse_stream_hfe_track, p, 32, n);
+    }
+    p = sxse_u16(b, 18, false) * 512;
+    return !!(b[9] && p >= 512 && sxse_put(c, sxse_hfe_header, 0, 512, 1) && sxse_put(c, sxse_hfe_track_entry, p, 4, b[9]));
+}
+function sxse_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxse_finish(c) {
+    var n = c.count;
+    var end = 0;
+    if (!n) {
+        return false;
+    }
+    sxQsort(c.items, 0, n, sxse_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxse_order, true);
+    return !c.failed;
+}
+function sx_systemextra_supports(t) {
+    switch (t) {
+    case "VICE_X64":
+    case "COMMODORE_G64":
+    case "COMMODORE_P64":
+    case "COMMODORE_TAP":
+    case "ZX_SPECTRUM_TZX":
+    case "AMSTRAD_CPC_DSK":
+    case "ATARI_ST_MSA":
+    case "SUPERCARD_SCP":
+    case "APPLE_WOZ":
+    case "ZX_SPECTRUM_PZX":
+    case "ACORN_UEF":
+    case "COMMODORE_PC64":
+    case "ATARI_CAS":
+    case "ORIC_TAP":
+    case "DRAGON_VDK":
+    case "APPLE_A2R":
+    case "ATARI_ATR":
+    case "ATARI_PASTI_STX":
+    case "HXC_MFM":
+    case "YAZE_YDSK":
+    case "T98_NEXT_NFD":
+    case "HFE":
+    case "HXC_STREAM_HFE":
+    case "HXC_HFE_EXTENDED":
+    case "HXC_HFE_HDDD_A2_VARIANT":
+    case "HXC_HFE_V3":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_systemextra_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "VICE_X64":
+        ok = sx_vice_x64_build(c);
+        break;
+    case "COMMODORE_G64":
+        ok = sx_commodore_g64_build(c);
+        break;
+    case "COMMODORE_P64":
+        ok = sx_commodore_p64_build(c);
+        break;
+    case "COMMODORE_TAP":
+        ok = sx_commodore_tap_build(c);
+        break;
+    case "ZX_SPECTRUM_TZX":
+        ok = sx_zx_spectrum_tzx_build(c);
+        break;
+    case "AMSTRAD_CPC_DSK":
+        ok = sx_amstrad_cpc_dsk_build(c);
+        break;
+    case "ATARI_ST_MSA":
+        ok = sx_atari_st_msa_build(c);
+        break;
+    case "SUPERCARD_SCP":
+        ok = sx_supercard_scp_build(c);
+        break;
+    case "APPLE_WOZ":
+        ok = sx_apple_woz_build(c);
+        break;
+    case "ZX_SPECTRUM_PZX":
+        ok = sx_zx_spectrum_pzx_build(c);
+        break;
+    case "ACORN_UEF":
+        ok = sx_acorn_uef_build(c);
+        break;
+    case "COMMODORE_PC64":
+        ok = sx_commodore_pc64_build(c);
+        break;
+    case "ATARI_CAS":
+        ok = sx_atari_cas_build(c);
+        break;
+    case "ORIC_TAP":
+        ok = sx_oric_tap_build(c);
+        break;
+    case "DRAGON_VDK":
+        ok = sx_dragon_vdk_build(c);
+        break;
+    case "APPLE_A2R":
+        ok = sx_apple_a2r_build(c);
+        break;
+    case "ATARI_ATR":
+        ok = sx_atari_atr_build(c);
+        break;
+    case "ATARI_PASTI_STX":
+        ok = sx_atari_pasti_stx_build(c);
+        break;
+    case "HXC_MFM":
+        ok = sx_hxc_mfm_build(c);
+        break;
+    case "YAZE_YDSK":
+        ok = sx_yaze_ydsk_build(c);
+        break;
+    case "T98_NEXT_NFD":
+        ok = sx_t98_next_nfd_build(c);
+        break;
+    case "HFE":
+        ok = sx_hfe_build(c);
+        break;
+    case "HXC_STREAM_HFE":
+        ok = sx_hxc_stream_hfe_build(c);
+        break;
+    case "HXC_HFE_EXTENDED":
+        ok = sx_hxc_hfe_extended_build(c);
+        break;
+    case "HXC_HFE_HDDD_A2_VARIANT":
+        ok = sx_hxc_hfe_hddd_a2_variant_build(c);
+        break;
+    case "HXC_HFE_V3":
+        ok = sx_hxc_hfe_v3_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxse_finish(c);
+}

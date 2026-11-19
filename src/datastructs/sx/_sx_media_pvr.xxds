@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/pvr/xx_pvr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_pvr_header_le_fields = layout([u32("version", SIGNATURE), u32("flags", FLAGS), u64("pixel_format", ID),
+    u32("color_space", ID), u32("channel_type", ID), u32("height"), u32("width"), u32("depth"), u32("surface_count", COUNT),
+    u32("face_count", COUNT), u32("mipmap_count", COUNT), u32("metadata_size", SIZE)]);
+var sxm_pvr_header_le = sxLayout(0x60060018, "pvr_header_le", LE, sxm_pvr_header_le_fields);
+var sxm_pvr_metadata_le_fields = layout([u32("fourcc", ID), u32("key", ID), u32("data_size", SIZE)]);
+var sxm_pvr_metadata_le = sxLayout(0x60060019, "pvr_metadata_le", LE, sxm_pvr_metadata_le_fields);
+var sxm_pvr_header_be_fields = layout([u32("version", SIGNATURE), u32("flags", FLAGS), u64("pixel_format", ID),
+    u32("color_space", ID), u32("channel_type", ID), u32("height"), u32("width"), u32("depth"), u32("surface_count", COUNT),
+    u32("face_count", COUNT), u32("mipmap_count", COUNT), u32("metadata_size", SIZE)]);
+var sxm_pvr_header_be = sxLayout(0x6006001A, "pvr_header_be", BE, sxm_pvr_header_be_fields);
+var sxm_pvr_metadata_be_fields = layout([u32("fourcc", ID), u32("key", ID), u32("data_size", SIZE)]);
+var sxm_pvr_metadata_be = sxLayout(0x6006001B, "pvr_metadata_be", BE, sxm_pvr_metadata_be_fields);
+function sxm_pvr(c, h) {
+    var be = sxGetU32(h, 52, 0, true) === 0x03525650;
+    var at = 52;
+    var end;
+    var meta;
+    if (!be && sxGetU32(h, 52, 0, false) !== 0x03525650) {
+        return false;
+    }
+    meta = sxGetU32(h, 52, 48, be);
+    if (!sxm_span(c, 52, meta) || !sx_add(c, be ? sxm_pvr_header_be : sxm_pvr_header_le, 0, 52)) {
+        return false;
+    }
+    end = 52 + meta;
+    while (at < end) {
+        var n;
+        if (sxU64(end - at) < 12 || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 8, be)) === null || n > sxU64(sxU64(end - at) - 12) || !sx_add(c, be ? sxm_pvr_metadata_be : sxm_pvr_metadata_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 12) || !sxm_raw(c, at + 12, n)) {
+            return false;
+        }
+        at += 12 + n;
+    }
+    return sxm_tail(c, at);
+}
+function sx_pvr_build(c, h, n) {
+    return n >= 52 && sxm_pvr(c, h);
+}

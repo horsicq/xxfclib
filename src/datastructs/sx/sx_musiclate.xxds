@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musiclate.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_musiclate");
+include("_sx_musiclate_microdeal_quartet_smp");
+include("_sx_musiclate_msxperformer_opx");
+include("_sx_musiclate_originsystems_ultima6");
+include("_sx_musiclate_rhino_jaytraxsyntrax_jxs");
+include("_sx_musiclate_saharasurfers_ixalance_ixs_unp");
+include("_sx_musiclate_stepanov_buzzic2");
+include("_sx_musiclate_tran_cdfm_composer670_co");
+
+function fileTypes() { return ["DIE_MUSIC_STEPANOV_BUZZIC2", "DIE_MUSIC_RHINO_JAYTRAXSYNTRAX_JXS",
+    "DIE_MUSIC_SAHARASURFERS_IXALANCE_IXS_UNP", "DIE_MUSIC_MSXPERFORMER_OPX", "DIE_MUSIC_TRAN_CDFM_COMPOSER670_CO",
+    "DIE_MUSIC_ORIGINSYSTEMS_ULTIMA6", "DIE_MUSIC_MICRODEAL_QUARTET_SMP"]; }
+
+var sx_musiclate_layouts = [sxlate_buzz2_header, sxlate_buzz2_counts, sxlate_buzz2_capacities, sxlate_buzz2_pattern,
+    sxlate_buzz2_sequence, sxlate_buzz2_name, sxlate_buzz2_instrument_count, sxlate_buzz2_instrument, sxlate_buzz2_connection,
+    sxlate_buzz2_instrument_tail, sxlate_buzz2_operation, sxlate_jxs_header, sxlate_jxs_subsong, sxlate_jxs_order,
+    sxlate_jxs_event, sxlate_jxs_pattern_name_size, sxlate_jxs_pattern_name, sxlate_jxs_instrument, sxlate_jxs_effect,
+    sxlate_jxs_sample_info, sxlate_jxs_wave, sxlate_jxs_arpeggio, sxlate_ixs_header, sxlate_ixs_orders, sxlate_ixs_record_tag,
+    sxlate_ixs_instrument, sxlate_ixs_keyboard, sxlate_ixs_envelope_flags, sxlate_ixs_envelope, sxlate_ixs_envelope_point,
+    sxlate_ixs_sample, sxlate_ixs_pattern, sxlate_opx_text_header, sxlate_opx_info, sxlate_c670_header, sxlate_c670_sample,
+    sxlate_c670_fm_instrument, sxlate_c670_orders, sxlate_c670_pattern_offset, sxlate_c670_note, sxlate_c670_volume,
+    sxlate_c670_delay, sxlate_c670_end, sxlate_quartet_header, sxlate_quartet_sequence, sxlate_ultima6_header];
+
+function structs() {
+    return sxCatalog([sxlate_buzz2_header, sxlate_buzz2_counts, sxlate_buzz2_capacities, sxlate_buzz2_pattern,
+        sxlate_buzz2_sequence, sxlate_buzz2_name, sxlate_buzz2_instrument_count, sxlate_buzz2_instrument,
+        sxlate_buzz2_connection, sxlate_buzz2_instrument_tail, sxlate_buzz2_operation, sxlate_jxs_header, sxlate_jxs_subsong,
+        sxlate_jxs_order, sxlate_jxs_event, sxlate_jxs_pattern_name_size, sxlate_jxs_pattern_name, sxlate_jxs_instrument,
+        sxlate_jxs_effect, sxlate_jxs_sample_info, sxlate_jxs_wave, sxlate_jxs_arpeggio, sxlate_ixs_header, sxlate_ixs_orders,
+        sxlate_ixs_record_tag, sxlate_ixs_instrument, sxlate_ixs_keyboard, sxlate_ixs_envelope_flags, sxlate_ixs_envelope,
+        sxlate_ixs_envelope_point, sxlate_ixs_sample, sxlate_ixs_pattern, sxlate_opx_text_header, sxlate_opx_info,
+        sxlate_c670_header, sxlate_c670_sample, sxlate_c670_fm_instrument, sxlate_c670_orders, sxlate_c670_pattern_offset,
+        sxlate_c670_note, sxlate_c670_volume, sxlate_c670_delay, sxlate_c670_end, sxlate_quartet_header,
+        sxlate_quartet_sequence, sxlate_ultima6_header], sx_musiclate_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_musiclate_build, false);
+}

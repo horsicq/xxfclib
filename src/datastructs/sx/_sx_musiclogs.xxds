@@ -1,0 +1,194 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musiclogs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlog_imf_length_fields = layout([u16("event_bytes", SIZE)]);
+var sxlog_imf_length = sxLayout(0x608C0010, "imf_length", LE, sxlog_imf_length_fields);
+var sxlog_adlib_header_fields = layout([chars("signature", 5, SIGNATURE), u8("version")]);
+var sxlog_adlib_header = sxLayout(0x608C0011, "adlib_header", LE, sxlog_adlib_header_fields);
+var sxlog_adlib_title_fields = layout([field("title", "char", 0)]);
+var sxlog_adlib_title = sxLayout(0x608C0012, "adlib_title", LE, sxlog_adlib_title_fields);
+var sxlog_adlib_game_fields = layout([field("game", "char", 0)]);
+var sxlog_adlib_game = sxLayout(0x608C0013, "adlib_game", LE, sxlog_adlib_game_fields);
+var sxlog_adlib_separator_fields = layout([u8("separator")]);
+var sxlog_adlib_separator = sxLayout(0x608C0014, "adlib_separator", LE, sxlog_adlib_separator_fields);
+var sxlog_adlib_length_fields = layout([u32("event_bytes", SIZE)]);
+var sxlog_adlib_length = sxLayout(0x608C0015, "adlib_length", LE, sxlog_adlib_length_fields);
+var sxlog_imf_register_event_fields = layout([u8("register", FLAGS), u8("value"), u16("delay_ticks")]);
+var sxlog_imf_register_event = sxLayout(0x608C0016, "imf_register_event", LE, sxlog_imf_register_event_fields);
+var sxlog_imf_final_write_fields = layout([u8("register", FLAGS), u8("value")]);
+var sxlog_imf_final_write = sxLayout(0x608C0017, "imf_final_write", LE, sxlog_imf_final_write_fields);
+function sx_musiclogs_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_CLIP_MIDI2":
+    case "DIE_MUSIC_COMPUTE_SIDPLAYER_MUS":
+    case "DIE_MUSIC_IDAPOGEE_MUSICFORMAT":
+    case "DIE_MUSIC_FERNANDEZ_ADLIB":
+    case "DIE_MUSIC_YM2151OPMREGLOG_CYM":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxlog_cstring(c, l, at) {
+    var b = [0];
+    var end = at[0];
+    while (end < c.size && end - at[0] < 4096) {
+        if (!sx_read(c, end, b, 1)) {
+            return false;
+        }
+        end++;
+        if (!b[0]) {
+            if (!sx_add(c, l, at[0], end - at[0])) {
+                return false;
+            }
+            at[0] = end;
+            return true;
+        }
+    }
+    return false;
+}
+function sxlog_imf(c, header) {
+    var at = [0];
+    var available;
+    var declared;
+    var n = 0;
+    var z = 0;
+    if (header) {
+        var b = [];
+        if (!sx_read(c, 0, b, 6) || sxMemcmp(b, "ADLIB\x01", 6) || !sx_add(c, sxlog_adlib_header, 0, 6)) {
+            return false;
+        }
+        at[0] = 6;
+        if (!sxlog_cstring(c, sxlog_adlib_title, at)) {
+            return !c.failed && sx_raw(c, at[0], c.size - at[0]);
+        }
+        if (!sxlog_cstring(c, sxlog_adlib_game, at)) {
+            return !c.failed && sx_raw(c, at[0], c.size - at[0]);
+        }
+        if (c.size - at[0] < 5) {
+            return sx_raw(c, at[0], c.size - at[0]);
+        }
+        if (!sx_add(c, sxlog_adlib_separator, at[0], 1)) {
+            return false;
+        }
+        at[0]++;
+        if ((n = sx_u32(c, at[0], false)) === null) {
+            return false;
+        }
+        if (n) {
+            if (!sx_add(c, sxlog_adlib_length, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+        }
+    } else {
+        if ((z = sx_u16(c, 0, false)) === null) {
+            return false;
+        }
+        n = z;
+        if (n) {
+            if (!sx_add(c, sxlog_imf_length, 0, 2)) {
+                return false;
+            }
+            at[0] = 2;
+        }
+    }
+    available = c.size - at[0];
+    declared = n ? n : available;
+    if (n && n & 3) {
+        return sx_raw(c, at[0], available);
+    }
+    if (declared > available) {
+        if (declared - available !== 2) {
+            return sx_raw(c, at[0], available);
+        }
+        declared = available;
+    }
+    if (declared < 2) {
+        return sx_raw(c, at[0], available);
+    }
+    var bytes = declared - declared % 4;
+    if (!sx_table(c, sxlog_imf_register_event, at[0], 4, Math.floor((bytes < 0 ? bytes + SX_U64_MAX : bytes) / 4))) {
+        return false;
+    }
+    at[0] += bytes;
+    if (declared % 4 === 2) {
+        if (!sx_add(c, sxlog_imf_final_write, at[0], 2)) {
+            return false;
+        }
+        at[0] += 2;
+    }
+    return sx_raw(c, at[0], c.size - at[0]);
+}
+function sx_musiclogs_build(c) {
+    if (c === null || c.f === null || !sx_musiclogs_supports(c.f.file_type) || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_CLIP_MIDI2":
+        return sx_clip_midi2_build(c);
+    case "DIE_MUSIC_COMPUTE_SIDPLAYER_MUS":
+        return sx_compute_sidplayer_mus_build(c);
+    case "DIE_MUSIC_IDAPOGEE_MUSICFORMAT":
+        return sxlog_imf(c, false);
+    case "DIE_MUSIC_FERNANDEZ_ADLIB":
+        return sxlog_imf(c, true);
+    case "DIE_MUSIC_YM2151OPMREGLOG_CYM":
+        return sx_ym2151opmreglog_cym_build(c);
+    default:
+        return false;
+    }
+}
+function sx_musiclogs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x608C0001 || id > 0x608C0019) {
+        return true;
+    }
+    var comment = "Physical field; unsupported packet semantics remain uninterpreted.";
+    if (r.name === "load_address") {
+        comment = "C64 load address stored in the file; SID editors and players may relocate the tune.";
+    } else if (r.name === "voice_1_size" || r.name === "voice_2_size" || r.name === "voice_3_size") {
+        comment = "Bytes in this voice stream, including its terminating HLT pair.";
+    } else if (r.name === "halt_command") {
+        comment = "SIDPLAYER_HLT (physical bytes 01 4F).";
+    } else if (r.name === "petscii_bytes") {
+        comment = "Song description in PETSCII, including a terminating NUL when present; bytes are preserved without ASCII conversion.";
+    } else if (r.name === "command") {
+        comment = "SID command byte; the low bits select a note or command family and can also hold operand bits.";
+    } else if (r.name === "option") {
+        comment = "SID option byte; interpretation depends on the paired command byte.";
+    } else if (r.name === "type_and_group") {
+        comment = "High nibble: UMP message type; low nibble: group (0 to 15).";
+    } else if (r.name === "status_and_channel") {
+        comment = "High nibble: MIDI channel status; low nibble: channel (0 to 15).";
+    } else if (r.name === "status_and_byte_count") {
+        comment = "High nibble: data-message status; low nibble: byte count or mixed-data identifier.";
+    } else if (r.name === "format_address_channel") {
+        comment = "Bits 7:6 format, bits 5:4 address, bits 3:0 channel; stored Flex Data header byte.";
+    } else if (r.name === "type_format_status") {
+        comment = "Bits 15:12 UMP_STREAM, bits 11:10 format, bits 9:0 stream status (0x20 START_OF_CLIP, 0x21 END_OF_CLIP).";
+    } else if (r.name === "message_type_reserved") {
+        comment = "UMP utility message type and reserved bits; these messages do not carry a group address.";
+    } else if (r.name === "status_and_tick_high_bits") {
+        comment = "High nibble: utility status (1 JR_CLOCK, 2 JR_TIMESTAMP, 3 DCTPQ, 4 DELTA_CLOCKSTAMP); low nibble is reserved or the upper 4 delta-tick bits.";
+    } else if (r.name === "tick_low_bits") {
+        comment = "Lower 16 timing bits. DELTA_CLOCKSTAMP also uses the preceding low nibble; DCTPQ gives ticks per quarter note.";
+    } else if (r.name === "event_bytes") {
+        comment = "Declared length in bytes of the following IMF events. A zero initial word belongs to the headerless event stream and is not a size field.";
+    } else if (r.name === "delay_ticks") {
+        comment = "Delay after this OPL2 write in playback ticks; the rate is external to the event stream.";
+    } else if (r.name === "wait_marker") {
+        comment = "CYM_WAIT_FRAME: zero byte advances the log by one 1/60-second frame.";
+    } else if (r.name === "register") {
+        comment = id === 0x608C0018 ? "YM2151 register number; zero is a separate frame-wait token." : "Stored chip register number; no synthetic timing or header fields are added.";
+    } else if (r.name === "value") {
+        comment = "Byte written to the paired chip register.";
+    } else if (r.name === "separator") {
+        comment = "Extra byte after game title; preserved without requiring a particular value.";
+    } else if (r.name === "version") {
+        comment = "Fernandez ADLIB version 1.";
+    }
+    return sxSetComment(r, comment);
+}

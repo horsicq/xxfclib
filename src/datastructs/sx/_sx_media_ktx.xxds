@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/ktx/xx_ktx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_le_length32_fields = layout([u32("length", SIZE)]);
+var sxm_le_length32 = sxLayout(0x6006000D, "le_length32", LE, sxm_le_length32_fields);
+var sxm_ktx_header_le_fields = layout([blob("identifier", 12, SIGNATURE), u32("endianness", ID), u32("gl_type", ID),
+    u32("gl_type_size", SIZE), u32("gl_format", ID), u32("gl_internal_format", ID), u32("gl_base_internal_format", ID),
+    u32("pixel_width"), u32("pixel_height"), u32("pixel_depth"), u32("array_elements", COUNT), u32("faces", COUNT),
+    u32("mipmap_levels", COUNT), u32("key_value_bytes", SIZE)]);
+var sxm_ktx_header_le = sxLayout(0x60060014, "ktx_header_le", LE, sxm_ktx_header_le_fields);
+var sxm_ktx_header_be_fields = layout([blob("identifier", 12, SIGNATURE), u32("endianness", ID), u32("gl_type", ID),
+    u32("gl_type_size", SIZE), u32("gl_format", ID), u32("gl_internal_format", ID), u32("gl_base_internal_format", ID),
+    u32("pixel_width"), u32("pixel_height"), u32("pixel_depth"), u32("array_elements", COUNT), u32("faces", COUNT),
+    u32("mipmap_levels", COUNT), u32("key_value_bytes", SIZE)]);
+var sxm_ktx_header_be = sxLayout(0x60060015, "ktx_header_be", BE, sxm_ktx_header_be_fields);
+function sxm_ktx(c, h) {
+    var be = sxGetU32(h, 64, 12, true) === 0x04030201;
+    var meta;
+    var levels;
+    var faces;
+    var layers;
+    var at = 64;
+    var end;
+    if (sxMemcmp(h, "\xABKTX 11\xBB\r\n\x1A\n", 12) || !be && sxGetU32(h, 64, 12, false) !== 0x04030201) {
+        return false;
+    }
+    meta = sxGetU32(h, 64, 60, be);
+    levels = sxGetU32(h, 64, 56, be);
+    faces = sxGetU32(h, 64, 52, be);
+    layers = sxGetU32(h, 64, 48, be);
+    if (levels > 32 || faces !== 1 && faces !== 6 || !sxm_span(c, at, meta) || !sx_add(c, be ? sxm_ktx_header_be : sxm_ktx_header_le, 0, 64)) {
+        return false;
+    }
+    end = at + meta;
+    while (at < end) {
+        var n;
+        var padded;
+        if (sxU64(end - at) < 4 || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), be)) === null || !n) {
+            return false;
+        }
+        padded = sxAnd64(n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        if (padded > sxU64(sxU64(end - at) - 4) || !sx_add(c, be ? sxm_be_length32 : sxm_le_length32, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4) || !sxm_raw(c, at + 4, padded)) {
+            return false;
+        }
+        at += 4 + padded;
+    }
+    if (!levels) {
+        levels = 1;
+    }
+    for (var i = 0; i < levels; i++) {
+        var parts = faces === 6 && !layers ? 6 : 1;
+        if ((n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), be)) === null || !n || !sx_add(c, be ? sxm_be_length32 : sxm_le_length32, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+            return false;
+        }
+        at += 4;
+        padded = sxAnd64(n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        if (!sxm_raw(c, at, padded * parts)) {
+            return false;
+        }
+        at += padded * parts;
+    }
+    return sxm_tail(c, at);
+}
+function sx_ktx_build(c, h, n) {
+    return n >= 64 && sxm_ktx(c, h);
+}

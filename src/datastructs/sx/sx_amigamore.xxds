@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_amigamore.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_amigamore");
+include("_sx_amigamore_jeroentel");
+include("_sx_amigamore_pink_pretracker_prt");
+include("_sx_amigamore_richardjoseph_rjp_sng");
+include("_sx_amigamore_robhubbard_rh");
+include("_sx_amigamore_ronklaren_rk");
+include("_sx_amigamore_schmidt_suntronic");
+include("_sx_amigamore_thomashermann_thm");
+include("_sx_amigamore_wallybeben");
+
+function fileTypes() { return ["DIE_MUSIC_RONKLAREN_RK", "DIE_MUSIC_RICHARDJOSEPH_RJP_SNG", "DIE_MUSIC_SCHMIDT_SUNTRONIC",
+    "DIE_MUSIC_WALLYBEBEN", "DIE_MUSIC_PINK_PRETRACKER_PRT", "DIE_MUSIC_ROBHUBBARD_RH", "DIE_MUSIC_JEROENTEL",
+    "DIE_MUSIC_THOMASHERMANN_THM"]; }
+
+var sx_amigamore_layouts = [sxamore_text, sxamore_nul, sxamore_original_address, sxamore_signed_displacement, sxamore_end_word,
+    sxamore_prt_header, sxamore_prt_header30, sxamore_prt_generation_order, sxamore_prt_subsong_count, sxamore_prt_subsong,
+    sxamore_prt_position, sxamore_prt_pattern, sxamore_prt_instrument_pattern, sxamore_prt_instrument, sxamore_prt_wave,
+    sxamore_thm_header, sxamore_thm_order, sxamore_thm_sample, sxamore_rh_sample_count, sxamore_rh_sample, sxamore_rh_subsong,
+    sxamore_jt_subsong, sxamore_jt_sample, sxamore_wb_subsong, sxamore_wb_count, sxamore_sun_initial_channels,
+    sxamore_rk_hunk_header, sxamore_rk_jump, sxamore_rk_selector, sxamore_rk_subsong, sxamore_rk_position,
+    sxamore_rk_position_end, sxamore_rk_cia_write, sxamore_rk_vector_write, sxamore_rjp_header, sxamore_rjp_section,
+    sxamore_rjp_sample, sxamore_rjp_subsong, sxamore_rjp_position_offset, sxamore_rjp_step_offset, sxamore_rk_index_extension,
+    sxamore_sun_end];
+
+function structs() {
+    return sxCatalog([sxamore_text, sxamore_nul, sxamore_original_address, sxamore_signed_displacement, sxamore_end_word,
+        sxamore_prt_header, sxamore_prt_header30, sxamore_prt_generation_order, sxamore_prt_subsong_count, sxamore_prt_subsong,
+        sxamore_prt_position, sxamore_prt_pattern, sxamore_prt_instrument_pattern, sxamore_prt_instrument, sxamore_prt_wave,
+        sxamore_thm_header, sxamore_thm_order, sxamore_thm_sample, sxamore_rh_sample_count, sxamore_rh_sample,
+        sxamore_rh_subsong, sxamore_jt_subsong, sxamore_jt_sample, sxamore_wb_subsong, sxamore_wb_count,
+        sxamore_sun_initial_channels, sxamore_rk_hunk_header, sxamore_rk_jump, sxamore_rk_selector, sxamore_rk_subsong,
+        sxamore_rk_position, sxamore_rk_position_end, sxamore_rk_cia_write, sxamore_rk_vector_write, sxamore_rjp_header,
+        sxamore_rjp_section, sxamore_rjp_sample, sxamore_rjp_subsong, sxamore_rjp_position_offset, sxamore_rjp_step_offset,
+        sxamore_rk_index_extension, sxamore_sun_end], sx_amigamore_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_amigamore_build, false);
+}

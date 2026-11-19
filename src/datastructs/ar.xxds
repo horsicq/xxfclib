@@ -1,0 +1,107 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Unix AR archive ("!<arch>\n"): the global header, then a chain of 60-byte
+// member headers, each followed by its data and a filler byte after an odd
+// size. A BSD "#1/<n>" name keeps the n-byte name at the start of the data.
+// The chain is walked as the reader walks it (xx_ar_walk): it ends at the
+// first header that does not parse, and a file whose first header does not
+// parse is not an archive.
+
+function fileTypes() { return ["AR"]; }
+
+var AR_MAX_MEMBERS = 256 * 1024;
+var AR_MAX_NAME_SIZE = 1024 * 1024;
+
+function structs() {
+    return [
+        { id: 1, name: "GLOBAL_HEADER", fields: [ arText("magic", 8, ID) ] },
+        { id: 2, name: "MEMBER_HEADER", fields: [
+            arText("name", 16, STRING), arText("timestamp", 12, TIMESTAMP), arText("owner_id", 6, NONE),
+            arText("group_id", 6, NONE), arText("mode", 8, FLAGS), arText("size", 10, SIZE), arText("trailer", 2, ID) ] },
+        { id: 3, name: "BSD_EXTENDED_NAME" },
+        { id: 4, name: "DATA" },
+        { id: 5, name: "PADDING" }
+    ];
+}
+
+// Text without trailing spaces and NULs, up to the first NUL.
+function arTrim(text) {
+    var length = text.length, nul;
+    while (length > 0 && (text.charCodeAt(length - 1) === 0x20 || text.charCodeAt(length - 1) === 0)) length--;
+    text = text.substring(0, length);
+    nul = text.indexOf("\0");
+    return nul < 0 ? text : text.substring(0, nul);
+}
+
+// A header text field displayed trimmed, as the archive tools show it.
+function arText(name, size, role) {
+    var f = chars(name, size, role);
+    f.display = function (value, ds) { return arTrim(File.bytes(ds.offset + f.offset, size)); };
+    return f;
+}
+
+// Unsigned decimal of a header field (xx_ar_parse_uint, base 10): leading
+// spaces, trailing spaces/NULs, digits only. -1 when it does not parse.
+function arNumber(text) {
+    var begin = 0, end = text.length, value = 0, i, c;
+    while (begin < end && text.charCodeAt(begin) === 0x20) begin++;
+    while (end > begin && (text.charCodeAt(end - 1) === 0x20 || text.charCodeAt(end - 1) === 0)) end--;
+    if (begin === end) return -1;
+    for (i = begin; i < end; i++) {
+        c = text.charCodeAt(i);
+        if (c < 0x30 || c > 0x39) return -1;
+        value = value * 10 + (c - 0x30);
+    }
+    return value;
+}
+
+// Member data size; early COFF librarians end the field with NUL and '`'.
+function arMemberSize(field) {
+    var value = arNumber(field);
+    if (value < 0 && field.charCodeAt(8) === 0 && field.charCodeAt(9) === 0x60) value = arNumber(field.substring(0, 8));
+    return value;
+}
+
+// One member at `offset`, or null where the chain ends.
+function arMember(offset, total) {
+    var header, size, end, raw, nameSize = 0;
+    if (total - offset < 60) return null;
+    header = File.bytes(offset, 60);
+    if (header.charCodeAt(58) !== 0x60 || header.charCodeAt(59) !== 0x0A) return null;
+    size = arMemberSize(header.substring(48, 58));
+    if (size < 0) return null;
+    end = offset + 60 + size;
+    if (end > total) return null;
+    if (size % 2 === 1 && end < total) end++;
+    raw = arTrim(header.substring(0, 16));
+    if (raw.length >= 3 && raw.substring(0, 3) === "#1/") {
+        nameSize = raw.length === 3 ? -1 : arNumber(raw.substring(3));
+        if (nameSize < 0 || nameSize > size || nameSize > AR_MAX_NAME_SIZE) return null;
+    }
+    return { header: offset, size: size, nameSize: nameSize, next: end };
+}
+
+function scan() {
+    var total = File.size(), offset = 8, count = 0, members = [], m, data, i;
+    if (total < 8 || File.bytes(0, 8) !== "!<arch>\n") return false;
+    while (offset < total && count < AR_MAX_MEMBERS) {
+        m = arMember(offset, total);
+        if (!m) {
+            if (count === 0) return false;
+            break;
+        }
+        members.push(m);
+        count++;
+        offset = m.next;
+    }
+    Structs.add("GLOBAL_HEADER", 0, 8);
+    for (i = 0; i < members.length; i++) {
+        m = members[i];
+        data = m.header + 60;
+        Structs.add("MEMBER_HEADER", m.header, 60);
+        if (m.nameSize) Structs.add("BSD_EXTENDED_NAME", data, m.nameSize, RAW);
+        if (m.size - m.nameSize) Structs.add("DATA", data + m.nameSize, m.size - m.nameSize, RAW);
+        if (m.size % 2 === 1 && data + m.size < total) Structs.add("PADDING", data + m.size, 1, RAW);
+    }
+}

@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_ad01/xx_sfx_ad01_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_active_delivery_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("unknown_04", 4),
+    field("zip_size", "uint32le", 4, SIZE)]);
+var sxir_active_delivery_header = sxLayout(0x6080003C, "active_delivery_header", LE, sxir_active_delivery_header_fields);
+function sxir_ad01(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var extent = [0];
+    var cert = [0];
+    var pe = [0];
+    var sections = [0];
+    var opt = [0];
+    if (!sxir_eq(v, 0, "MZ", 2, end) || !sxir_pe(v, 0, end, extent, cert) || !sxir_u(v, 60, 4, false, pe, end) || !sxir_u(v, pe[0] + 6, 2, false, sections, end) || !sxir_u(v, pe[0] + 20, 2, false, opt, end)) {
+        return false;
+    }
+    for (var i = 0; i < sections[0]; i++) {
+        var s = pe[0] + 24 + opt[0] + 40 * i;
+        if (!sxir_eq(v, s, "actdlvry", 8, end)) {
+            continue;
+        }
+        var size = [0];
+        var at = [0];
+        var z = [0];
+        if (!sxir_u(v, s + 16, 4, false, size, end) || !sxir_u(v, s + 20, 4, false, at, end) || !sxir_span(v, at[0], size[0], end) || size[0] < 34 || !sxir_eq(v, at[0], "AD01", 4, at[0] + size[0]) || !sxir_u(v, at[0] + 8, 4, false, z, at[0] + size[0]) || z[0] > sxU64(size[0] - 12) || !sxir_row(v, sxir_active_delivery_header, at[0], at[0] + size[0])) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+function sx_sfx_ad01_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_ad01(v);
+}

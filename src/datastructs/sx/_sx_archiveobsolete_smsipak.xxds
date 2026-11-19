@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/smsipak/xx_smsipak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_smsipak_header_fields = layout([chars("signature", 8, SIGNATURE), u16("stamp"), u32("member_area_end", OFFSET)]);
+var sxao_smsipak_header = sxLayout(0x6070002E, "smsipak_header", LE, sxao_smsipak_header_fields);
+var sxao_smsipak_member_fields = layout([chars("name", 12, NONE), u8("terminator"), u16("dos_date"), u16("dos_time"),
+    u32("crc32", CHECKSUM), u16("attributes", FLAGS), u8("method"), i32("uncompressed_size", SIZE),
+    i32("compressed_size", SIZE), u16("zero")]);
+var sxao_smsipak_member = sxLayout(0x6070002F, "smsipak_member", LE, sxao_smsipak_member_fields);
+var sxao_smsipak_index_fields = layout([u32("zero"), u16("member_count", COUNT)]);
+var sxao_smsipak_index = sxLayout(0x60700030, "smsipak_index", LE, sxao_smsipak_index_fields);
+var sxao_smsipak_index_entry_fields = layout([u32("member_offset", OFFSET)]);
+var sxao_smsipak_index_entry = sxLayout(0x60700031, "smsipak_index_entry", LE, sxao_smsipak_index_entry_fields);
+function sxao_smsi(c) {
+    var end = [0];
+    var p = 14;
+    if (!sxao_word(c, 10, 4, false, end) || !sxao_add(c, sxao_smsipak_header, 0) || end[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    while (p < end[0]) {
+        var z = [0];
+        var method = [0];
+        if (sxU64(end[0] - p) < 34 || !sxao_word(c, p + 28, 4, false, z) || z[0] > 2147483647 || !sxao_word(c, p + 23, 1, false, method) || !sxao_add(c, sxao_smsipak_member, p)) {
+            return false;
+        }
+        p += 34;
+        if (z[0] > sxU64(end[0] - p)) {
+            return true;
+        }
+        if (method[0] === 1 && !sxao_dcl(c, p, z[0])) {
+            return false;
+        }
+        p += z[0];
+    }
+    if (sxao_span(c, end[0], 6)) {
+        var n = [0];
+        if (!sxao_word(c, end[0] + 4, 2, false, n) || !sxao_add(c, sxao_smsipak_index, end[0]) || !sxao_table(c, sxao_smsipak_index_entry, end[0] + 6, 4, n[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_smsipak_build(c) {
+    return sxao_smsi(c);
+}

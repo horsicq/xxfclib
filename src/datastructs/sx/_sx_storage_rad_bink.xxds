@@ -1,0 +1,83 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/rad_bink/xx_rad_bink_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_bink_header_fields = layout([field("signature", "byte[3]", 3, SIGNATURE), u8("version"),
+    u32("file_size_minus_eight", SIZE), u32("frame_count", COUNT), u32("largest_frame_size", SIZE),
+    u32("duplicate_frame_count", COUNT), u32("width"), u32("height"), u32("frame_rate_numerator"),
+    u32("frame_rate_denominator"), u32("flags", FLAGS), u32("audio_track_count", COUNT)]);
+var sx_st_bink_header = sxLayout(0x60080037, "bink_header", LE, sx_st_bink_header_fields);
+var sx_st_bink_audio_maximum_fields = layout([u32("maximum_decoded_size", SIZE)]);
+var sx_st_bink_audio_maximum = sxLayout(0x60080038, "bink_audio_maximum", LE, sx_st_bink_audio_maximum_fields);
+var sx_st_bink_audio_format_fields = layout([u16("sample_rate"), u16("flags", FLAGS)]);
+var sx_st_bink_audio_format = sxLayout(0x60080039, "bink_audio_format", LE, sx_st_bink_audio_format_fields);
+var sx_st_bink_audio_id_fields = layout([u32("track_id", ID)]);
+var sx_st_bink_audio_id = sxLayout(0x6008003A, "bink_audio_id", LE, sx_st_bink_audio_id_fields);
+var sx_st_bink_frame_index_fields = layout([u32("offset_and_keyframe_flag", OFFSET)]);
+var sx_st_bink_frame_index = sxLayout(0x6008003B, "bink_frame_index", LE, sx_st_bink_frame_index_fields);
+var sx_st_bink_end_offset_fields = layout([u32("end_offset", OFFSET)]);
+var sx_st_bink_end_offset = sxLayout(0x6008003C, "bink_end_offset", LE, sx_st_bink_end_offset_fields);
+var sx_st_bink_audio_packet_fields = layout([u32("packet_size", SIZE)]);
+var sx_st_bink_audio_packet = sxLayout(0x6008003D, "bink_audio_packet", LE, sx_st_bink_audio_packet_fields);
+var sx_st_bink_audio_decoded_fields = layout([u32("decoded_size", SIZE)]);
+var sx_st_bink_audio_decoded = sxLayout(0x6008003E, "bink_audio_decoded", LE, sx_st_bink_audio_decoded_fields);
+function sx_st_bink(c) {
+    var frames;
+    var tracks;
+    var first;
+    var table;
+    if (!sx_add(c, sx_st_bink_header, 0, 44) || (frames = sx_u32(c, 8, false)) === null || (tracks = sx_u32(c, 40, false)) === null || !frames || frames > 4094 || tracks > 16) {
+        return false;
+    }
+    table = 44 + tracks * 12;
+    if (!sx_table(c, sx_st_bink_audio_maximum, 44, 4, tracks) || !sx_table(c, sx_st_bink_audio_format, (44 + ((tracks * 4) >>> 0)) >>> 0, 4, tracks) || !sx_table(c, sx_st_bink_audio_id, (44 + ((tracks * 8) >>> 0)) >>> 0, 4, tracks) || !sx_table(c, sx_st_bink_frame_index, (table >= SX_I64_MAX ? table - SX_U64_MAX : table), 4, frames) || (first = sx_u32(c, (table >= SX_I64_MAX ? table - SX_U64_MAX : table), false)) === null) {
+        return false;
+    }
+    if ((first & 0xFFFFFFFE) >>> 0 === table + frames * 4 + 4 && !sx_add(c, sx_st_bink_end_offset, (table + frames * 4 >= SX_I64_MAX ? table + frames * 4 - SX_U64_MAX : table + frames * 4), 4)) {
+        return false;
+    }
+    for (var i = 0; i < frames; i++) {
+        var begin;
+        var next;
+        var at;
+        var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        if ((begin = sx_u32(c, (table + i * 4 >= SX_I64_MAX ? table + i * 4 - SX_U64_MAX : table + i * 4), false)) === null) {
+            return false;
+        }
+        at = (begin & 0xFFFFFFFE) >>> 0;
+        if ((i + 1) >>> 0 < frames) {
+            if ((next = sx_u32(c, sxI64(table + ((i + 1) >>> 0) * 4), false)) === null) {
+                return false;
+            }
+            end = (next & 0xFFFFFFFE) >>> 0;
+        }
+        if (at > end || !sx_st_fits(c, at, sxU64(end - at))) {
+            return false;
+        }
+        for (var j = 0; j < tracks; j++) {
+            var n;
+            if (sxU64(end - at) < 4 || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), false)) === null || !sx_add(c, sx_st_bink_audio_packet, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+                return false;
+            }
+            at += 4;
+            if (n > sxU64(end - at)) {
+                return false;
+            }
+            if (n && (n < 4 || !sx_add(c, sx_st_bink_audio_decoded, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4))) {
+                return false;
+            }
+            at += n;
+        }
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_rad_bink_build(c) {
+    var ok = false;
+    ok = sx_st_bink(c);
+    return ok && sx_st_finish(c);
+}

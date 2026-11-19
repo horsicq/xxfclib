@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ssm/xx_ssm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_ssm_header_fields = layout([chars("signature", 4, SIGNATURE), chars("name", 12, NONE), u16("dos_date"),
+    u16("dos_time"), u32("uncompressed_size", SIZE), u32("window_size", SIZE), u32("unused"), u32("method")]);
+var sxap_ssm_header = sxLayout(0x6072000E, "ssm_header", LE, sxap_ssm_header_fields);
+function sx_ssm_build(c) {
+    return sxap_add(c, sxap_ssm_header, 0);
+}

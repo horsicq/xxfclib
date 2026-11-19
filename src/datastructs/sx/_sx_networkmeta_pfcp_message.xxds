@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/pfcp_message/xx_pfcp_message_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_pfcp_node_ipv4_fields = layout([blob("node_ipv4", 4)]);
+var sxnm_pfcp_node_ipv4 = sxLayout(0x60260039, "pfcp_node_ipv4", BE, sxnm_pfcp_node_ipv4_fields);
+var sxnm_pfcp_node_ipv6_fields = layout([blob("node_ipv6", 16)]);
+var sxnm_pfcp_node_ipv6 = sxLayout(0x6026003A, "pfcp_node_ipv6", BE, sxnm_pfcp_node_ipv6_fields);
+var sxnm_pfcp_dns_label_fields = layout([u8("label_length", SIZE)]);
+var sxnm_pfcp_dns_label = sxLayout(0x6026003B, "pfcp_dns_label", BE, sxnm_pfcp_dns_label_fields);
+function sxnm_pfcp(v) {
+    if (!sxnm_row(v, sxnm_pfcp_node_header, 0, v.n) || sxnm_u16(v.p, 2) !== sxU64(v.n - 4)) {
+        return false;
+    }
+    var at = 8;
+    while (at < v.n) {
+        if (!sxnm_row(v, sxnm_pfcp_information_element, at, v.n)) {
+            return false;
+        }
+        var type = sxnm_u16(v.p, at);
+        var n = sxnm_u16(v.p, at + 2);
+        at += 4;
+        if (!sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        var end = at + n;
+        if (type === 60) {
+            if (!sxnm_row(v, sxnm_pfcp_node_id_type, at, end)) {
+                return false;
+            }
+            var kind = v.p[at++];
+            if (kind < 2) {
+                if (!sxnm_row(v, kind ? sxnm_pfcp_node_ipv6 : sxnm_pfcp_node_ipv4, at, end)) {
+                    return false;
+                }
+            } else if (kind === 2) {
+                while (at < end) {
+                    if (!sxnm_row(v, sxnm_pfcp_dns_label, at, end)) {
+                        return false;
+                    }
+                    var len = v.p[at++];
+                    if (!len || !sxnm_need(v, at, len, end)) {
+                        return false;
+                    }
+                    at += len;
+                }
+            } else {
+                return false;
+            }
+        } else if (type === 96 && !sxnm_row(v, sxnm_pfcp_recovery_time, at, end)) {
+            return false;
+        }
+        at = end;
+    }
+    return true;
+}
+function sx_pfcp_message_build(v) {
+    return sxnm_pfcp(v);
+}

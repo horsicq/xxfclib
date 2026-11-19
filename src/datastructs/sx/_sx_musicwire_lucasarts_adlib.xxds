@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/lucasarts_adlib/xx_lucasarts_adlib_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_laa_header_fields = layout([blob("magic", 4, SIGNATURE), u32("payload_bytes", SIZE)]);
+var sxmw_laa_header = sxLayout(0x60870032, "laa_header", BE, sxmw_laa_header_fields);
+var sxmw_laa_chunk_fields = layout([blob("chunk_id", 4, ID), u32("payload_bytes", SIZE)]);
+var sxmw_laa_chunk = sxLayout(0x60870033, "laa_chunk", BE, sxmw_laa_chunk_fields);
+var sxmw_laa_mdhd_fields = layout([blob("opaque_driver_data", 8)]);
+var sxmw_laa_mdhd = sxLayout(0x60870034, "laa_mdhd", LE, sxmw_laa_mdhd_fields);
+var sxmw_midi_header_fields = layout([u16("format", ID), u16("tracks", COUNT), u16("division")]);
+var sxmw_midi_header = sxLayout(0x60870035, "midi_header", BE, sxmw_midi_header_fields);
+var sxmw_laa_old_header_fields = layout([u32("file_bytes", SIZE), blob("magic", 2, SIGNATURE), blob("unknown", 3),
+    u8("ticks_per_quarter"), blob("opaque", 15)]);
+var sxmw_laa_old_header = sxLayout(0x60870036, "laa_old_header", LE, sxmw_laa_old_header_fields);
+var sxmw_laa_old_instrument_fields = layout([blob("unknown_prefix", 2), u8("feedback_connection", FLAGS),
+    u8("mod_characteristics", FLAGS), u8("mod_level", FLAGS), u8("mod_attack_decay", FLAGS), u8("mod_sustain_release", FLAGS),
+    u8("mod_wave", ID), u8("carrier_characteristics", FLAGS), u8("carrier_level", FLAGS), u8("carrier_attack_decay", FLAGS),
+    u8("carrier_sustain_release", FLAGS), u8("carrier_wave", ID), blob("unknown_suffix", 3)]);
+var sxmw_laa_old_instrument = sxLayout(0x60870037, "laa_old_instrument", LE, sxmw_laa_old_instrument_fields);
+function sxmw_laa(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var n = [0];
+    var ce;
+    var tag = [];
+    if (sxmw_eq(v, 0, "ADL ", 4, end)) {
+        if (!sxmw_be(v, 4, 4, n, end) || !sxmw_row(v, sxmw_laa_header, 0, end)) {
+            return false;
+        }
+        p[0] = 8;
+        while (p[0] < end) {
+            if (!sxmw_read(v, p[0], tag, 4, end) || !sxmw_be(v, p[0] + 4, 4, n, end) || !sxmw_span(v, p[0] + 8, n[0], end) || !sxmw_take(v, sxmw_laa_chunk, p, 1, end)) {
+                return false;
+            }
+            ce = p[0] + n[0];
+            if (!sxMemcmp(tag, "MDhd", 4) && n[0] === 8) {
+                if (!sxmw_row(v, sxmw_laa_mdhd, p[0], ce)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(tag, "MThd", 4) && n[0] >= 6) {
+                if (!sxmw_row(v, sxmw_midi_header, p[0], ce)) {
+                    return false;
+                }
+            }
+            p[0] = ce;
+        }
+        return true;
+    }
+    return sxmw_eq(v, 4, "AD", 2, end) && sxmw_u(v, 0, 4, n, 0, end) && n[0] === end && sxmw_take(v, sxmw_laa_old_header, p, 1, end) && sxmw_take(v, sxmw_laa_old_instrument, p, 8, end);
+}
+function sx_lucasarts_adlib_build(v) {
+    return sxmw_laa(v);
+}

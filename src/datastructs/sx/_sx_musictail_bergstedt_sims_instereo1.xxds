@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bergstedt_sims_instereo1/xx_bergstedt_sims_instereo1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_is1_sample_info_fields = layout([u8("unknown0"), chars("name", 23, NONE), blob("unknown24", 4)]);
+var sxmta_is1_sample_info = sxLayout(0x60810087, "is1_sample_info", LE, sxmta_is1_sample_info_fields);
+var sxmta_is1_subsong_fields = layout([blob("unknown0", 4), u8("speed"), u8("rows_per_track", COUNT), u16("first_position"),
+    u16("last_position"), u16("restart_position"), blob("unknown12", 2)]);
+var sxmta_is1_subsong = sxLayout(0x6081008A, "is1_subsong", BE, sxmta_is1_subsong_fields);
+function sxmta_is1(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [204];
+    var np = [0];
+    var nr = [0];
+    var ns = [0];
+    var nw = [0];
+    var ni = [0];
+    var nsub = [0];
+    var neg = [0];
+    var nad = [0];
+    var x = [0];
+    var total = 0;
+    if (!sxmta_eq(v, 0, "ISM!V1.2", 8, end) || !sxmta_row(v, sxmta_is1_header, 0, end) || !sxmta_be(v, 8, 2, np, 0, end) || !sxmta_be(v, 10, 2, nr, 0, end) || !sxmta_u(v, 16, 1, ns, 0, end) || !sxmta_u(v, 17, 1, nw, 0, end) || !sxmta_u(v, 18, 1, ni, 0, end) || !sxmta_u(v, 19, 1, nsub, 0, end) || !sxmta_u(v, 20, 1, neg, 0, end) || !sxmta_u(v, 21, 1, nad, 0, end) || !sxmta_take(v, sxmta_is1_sample_info, p, ns[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < ns[0]; i++) {
+        if (!sxmta_be(v, p[0], 4, x, 0, end) || !sxmta_take(v, sxmta_is_sample_bytes, p, 1, end)) {
+            return false;
+        }
+        total += x[0];
+    }
+    if (!sxmta_take(v, sxmta_is_unsigned_value, p, neg[0] * 128 + nad[0] * 256, end) || !sxmta_take(v, sxmta_is1_instrument, p, ni[0], end) || !sxmta_take(v, sxmta_is_unsigned_value, p, 256, end) || !sxmta_take(v, sxmta_is1_subsong, p, nsub[0], end) || !sxmta_skip(v, p, 14, end) || !sxmta_skip(v, p, nw[0] * 256, end) || !sxmta_take(v, sxmta_is_position, p, np[0] * 4, end) || !sxmta_take(v, sxmta_is1_event, p, nr[0] + 64, end)) {
+        return false;
+    }
+    return sxmta_span(v, p[0], total, end);
+}
+function sx_bergstedt_sims_instereo1_build(v) {
+    return sxmta_is1(v);
+}

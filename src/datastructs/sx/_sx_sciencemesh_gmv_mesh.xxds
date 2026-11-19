@@ -1,0 +1,305 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gmv_mesh/xx_gmv_mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_topology_name_fields = layout([field("topology_name", "char", 0, STRING)]);
+var sxsm_topology_name = sxLayout(0x60630077, "mesh_topology_name", LE, sxsm_topology_name_fields);
+var sxsm_variable_name_fields = layout([field("variable_name", "char", 0, STRING)]);
+var sxsm_variable_name = sxLayout(0x60630078, "mesh_variable_name", LE, sxsm_variable_name_fields);
+var sxsm_material_name_fields = layout([field("material_name", "char", 0, STRING)]);
+var sxsm_material_name = sxLayout(0x60630079, "mesh_material_name", LE, sxsm_material_name_fields);
+var sxsm_material_id_fields = layout([field("material_id", "ascii_signed", 0, ID)]);
+var sxsm_material_id = sxLayout(0x6063007B, "mesh_material_id", LE, sxsm_material_id_fields);
+var sxsm_binary_count_fields = layout([i32("binary_count", COUNT)]);
+var sxsm_binary_count = sxLayout(0x60630086, "mesh_binary_count", LE, sxsm_binary_count_fields);
+var sxsm_binary_arity_fields = layout([i32("binary_arity", COUNT)]);
+var sxsm_binary_arity = sxLayout(0x60630087, "mesh_binary_arity", LE, sxsm_binary_arity_fields);
+var sxsm_binary_node_index_fields = layout([i32("binary_node_index", ID)]);
+var sxsm_binary_node_index = sxLayout(0x60630088, "mesh_binary_node_index", LE, sxsm_binary_node_index_fields);
+var sxsm_binary_material_id_fields = layout([i32("binary_material_id", ID)]);
+var sxsm_binary_material_id = sxLayout(0x60630089, "mesh_binary_material_id", LE, sxsm_binary_material_id_fields);
+var sxsm_binary_flag_value_fields = layout([i32("binary_flag_value", ID)]);
+var sxsm_binary_flag_value = sxLayout(0x6063008A, "mesh_binary_flag_value", LE, sxsm_binary_flag_value_fields);
+var sxsm_binary_cycle_fields = layout([i32("binary_cycle", ID)]);
+var sxsm_binary_cycle = sxLayout(0x6063008B, "mesh_binary_cycle", LE, sxsm_binary_cycle_fields);
+var sxsm_binary_location_fields = layout([i32("binary_location")]);
+var sxsm_binary_location = sxLayout(0x6063008C, "mesh_binary_location", LE, sxsm_binary_location_fields);
+var sxsm_binary_scalar_fields = layout([field("binary_scalar", "float", 4)]);
+var sxsm_binary_scalar = sxLayout(0x6063008D, "mesh_binary_scalar", LE, sxsm_binary_scalar_fields);
+var sxsm_binary_coordinate_fields = layout([field("binary_coordinate", "float", 4)]);
+var sxsm_binary_coordinate = sxLayout(0x6063008E, "mesh_binary_coordinate", LE, sxsm_binary_coordinate_fields);
+var sxsm_binary_velocity_fields = layout([field("binary_velocity", "float", 4)]);
+var sxsm_binary_velocity = sxLayout(0x6063008F, "mesh_binary_velocity", LE, sxsm_binary_velocity_fields);
+var sxsm_binary_time_fields = layout([field("binary_time", "float", 4)]);
+var sxsm_binary_time = sxLayout(0x60630090, "mesh_binary_time", LE, sxsm_binary_time_fields);
+var sxsm_binary_name_fields = layout([chars("binary_name", 8, STRING)]);
+var sxsm_binary_name = sxLayout(0x60630091, "mesh_binary_name", LE, sxsm_binary_name_fields);
+function sxsm_gmv_arity(q, t) {
+    return sxsm_eq(q, sxCopy_sxsm_token(null, t), "line") ? 2 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "tri") ? 3 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "quad") || sxsm_eq(q, sxCopy_sxsm_token(null, t), "tet") ? 4 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "pyramid") ? 5 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "prism") ? 6 : sxsm_eq(q, sxCopy_sxsm_token(null, t), "hex") ? 8 : 0;
+}
+function sxsm_gmv_ascii(q) {
+    var t = sxNew_sxsm_token();
+    var nodes = [0];
+    var cells = [0];
+    var n = [0];
+    var location = [0];
+    if (!sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_one(q, sxsm_encoding, true)) {
+        return false;
+    }
+    while (sxsm_lex(q, t, true)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_section, sxCopy_sxsm_token(null, t))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "nodes")) {
+            if (!sxsm_count(q, sxsm_node_count, nodes, true)) {
+                return false;
+            }
+            var cols = [sxsm_coordinate_x, sxsm_coordinate_y, sxsm_coordinate_z];
+            for (var k = 0; k < 3; k++) {
+                if (!sxsm_many(q, cols[k], nodes[0], true)) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "cells")) {
+            if (!sxsm_count(q, sxsm_element_count, cells, true)) {
+                return false;
+            }
+            for (var i = 0; i < cells[0]; i++) {
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (!sxsm_lex(q, t, true)) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_topology_name, sxCopy_sxsm_token(null, t))) {
+                        return false;
+                    }
+                }
+                var arity = sxsm_gmv_arity(q, sxCopy_sxsm_token(null, t));
+                if (!arity || !sxsm_count(q, sxsm_component_count, n, true) || n[0] !== arity || !sxsm_many(q, sxsm_node_index, n[0], true)) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "material")) {
+            if (!sxsm_count(q, sxsm_value_count, n, true) || !sxsm_count(q, sxsm_integer_value, location, true) || location[0] > 1) {
+                return false;
+            }
+            if (!sxsm_many(q, sxsm_material_name, n[0], true) || !sxsm_many(q, sxsm_material_id, location[0] ? nodes[0] : cells[0], true)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "variable")) {
+            while (sxsm_lex(q, t, true)) {
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "endvars")) {
+                    {
+                        if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t))) {
+                            return false;
+                        }
+                    }
+                    break;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_variable_name, sxCopy_sxsm_token(null, t))) {
+                        return false;
+                    }
+                }
+                if (!sxsm_count(q, sxsm_integer_value, location, true) || location[0] > 1 || !sxsm_many(q, sxsm_scalar_value, location[0] ? nodes[0] : cells[0], true)) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "cycleno")) {
+            if (!sxsm_one(q, sxsm_step_index, true)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "probtime")) {
+            if (!sxsm_one(q, sxsm_simulation_time, true)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "endgmv")) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
+function sxsm_btake(q, l, count) {
+    var z = (l.fields[0].size < 0 ? l.fields[0].size + SX_U64_MAX : l.fields[0].size);
+    if (!z || count > 1000000 || count > Math.floor((q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p) / z)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if (q.c.count >= 24000) {
+            q.p += sxI64(sxU64(count - i) * z);
+            return true;
+        }
+        if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, { a: q.p, z: (z >= SX_I64_MAX ? z - SX_U64_MAX : z) }))) {
+            return false;
+        }
+        q.p += (z >= SX_I64_MAX ? z - SX_U64_MAX : z);
+    }
+    return true;
+}
+function sxsm_bcount(q, l, v) {
+    if (q.n - q.p < 4) {
+        return false;
+    }
+    v[0] = sxGetU32At(q.b, q.p, 4, 0, false);
+    return v[0] <= 1000000 && sxsm_btake(q, l, 1);
+}
+function sxsm_bname(q, t) {
+    if (q.n - q.p < 8) {
+        return false;
+    }
+    sxCopy_sxsm_token(t, sxsm_trim(q, sxCopy_sxsm_token(null, { a: q.p, z: 8 })));
+    return sxsm_btake(q, sxsm_binary_name, 1);
+}
+function sxsm_gmv_binary(q) {
+    var nodes = [0];
+    var cells = [0];
+    var n = [0];
+    var loc = [0];
+    var types = [0];
+    var t = sxNew_sxsm_token();
+    if (!sxsm_btake(q, sxsm_binary_name, 2)) {
+        return false;
+    }
+    while (q.p < q.n) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (++q.work > 2000000 || !sxsm_bname(q, t)) {
+            return false;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "nodes")) {
+            if (!sxsm_bcount(q, sxsm_binary_count, nodes)) {
+                return false;
+            }
+            for (var k = 0; k < 3; k++) {
+                if (!sxsm_btake(q, sxsm_binary_coordinate, nodes[0])) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "cells")) {
+            if (!sxsm_bcount(q, sxsm_binary_count, cells)) {
+                return false;
+            }
+            for (var i = 0; i < cells[0]; i++) {
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (!sxsm_bname(q, t)) {
+                    return false;
+                }
+                var arity = sxsm_gmv_arity(q, sxCopy_sxsm_token(null, t));
+                if (!arity || !sxsm_bcount(q, sxsm_binary_arity, n) || n[0] !== arity || !sxsm_btake(q, sxsm_binary_node_index, n[0])) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "material")) {
+            if (!sxsm_bcount(q, sxsm_binary_count, n) || !sxsm_bcount(q, sxsm_binary_location, loc) || loc[0] > 1 || !sxsm_btake(q, sxsm_binary_name, n[0]) || !sxsm_btake(q, sxsm_binary_material_id, loc[0] ? nodes[0] : cells[0])) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "variable")) {
+            for (i = 0; i < 4096; i++) {
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (!sxsm_bname(q, t)) {
+                    return false;
+                }
+                if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "endvars")) {
+                    break;
+                }
+                if (!sxsm_bcount(q, sxsm_binary_location, loc) || loc[0] > 1 || !sxsm_btake(q, sxsm_binary_scalar, loc[0] ? nodes[0] : cells[0])) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "velocity")) {
+            if (!sxsm_bcount(q, sxsm_binary_location, loc) || loc[0] > 1) {
+                return false;
+            }
+            for (k = 0; k < 3; k++) {
+                if (!sxsm_btake(q, sxsm_binary_velocity, loc[0] ? nodes[0] : cells[0])) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "flags")) {
+            for (i = 0; i < 4096; i++) {
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (!sxsm_bname(q, t)) {
+                    return false;
+                }
+                if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "endflag")) {
+                    break;
+                }
+                if (!sxsm_bcount(q, sxsm_binary_count, types) || !sxsm_bcount(q, sxsm_binary_location, loc) || loc[0] > 1 || !sxsm_btake(q, sxsm_binary_name, types[0]) || !sxsm_btake(q, sxsm_binary_flag_value, loc[0] ? nodes[0] : cells[0])) {
+                    return false;
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "polygons")) {
+            for (i = 0; i < 1000000; i++) {
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+                if (q.n - q.p < 8) {
+                    return false;
+                }
+                sxCopy_sxsm_token(t, sxsm_trim(q, sxCopy_sxsm_token(null, { a: q.p, z: 8 })));
+                if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "endpoly")) {
+                    if (!sxsm_btake(q, sxsm_binary_name, 1)) {
+                        return false;
+                    }
+                    break;
+                }
+                if (!sxsm_bcount(q, sxsm_binary_material_id, n) || !sxsm_bcount(q, sxsm_binary_count, n) || n[0] > 64) {
+                    return false;
+                }
+                for (k = 0; k < 3; k++) {
+                    if (!sxsm_btake(q, sxsm_binary_coordinate, n[0])) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "cycleno")) {
+            if (!sxsm_btake(q, sxsm_binary_cycle, 1)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "probtime")) {
+            if (!sxsm_btake(q, sxsm_binary_time, 1)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "endgmv")) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
+function sxsm_gmv(q) {
+    return q.n >= 16 && !sxMemcmpAt(q.b, 8, "ieee    ", 0, 8) ? sxsm_gmv_binary(q) : sxsm_gmv_ascii(q);
+}
+function sx_gmv_mesh_build(q) {
+    return sxsm_gmv(q);
+}

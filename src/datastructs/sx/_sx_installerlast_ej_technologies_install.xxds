@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/ej_technologies_install/xx_ej_technologies_install_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_ej_technologies_header_fields = layout([u32("signature", SIGNATURE), i32("variable_count", COUNT)]);
+var sxil_ej_technologies_header = sxLayout(0x60850010, "ej_technologies_header", LE, sxil_ej_technologies_header_fields);
+var sxil_ej_technologies_variable_fields = layout([i32("key", ID), i32("value_size", SIZE)]);
+var sxil_ej_technologies_variable = sxLayout(0x60850011, "ej_technologies_variable", LE, sxil_ej_technologies_variable_fields);
+var sxil_ej_technologies_extra_count_fields = layout([i32("extra_count", COUNT)]);
+var sxil_ej_technologies_extra_count = sxLayout(0x60850012, "ej_technologies_extra_count", LE, sxil_ej_technologies_extra_count_fields);
+var sxil_ej_technologies_member_fields = layout([u32("file_size", SIZE)]);
+var sxil_ej_technologies_member = sxLayout(0x60850013, "ej_technologies_member", LE, sxil_ej_technologies_member_fields);
+var sxil_ej_technologies_member_later_fields = layout([u32("file_size", SIZE), u32("reserved", RESERVED)]);
+var sxil_ej_technologies_member_later = sxLayout(0x60850014, "ej_technologies_member_later", LE, sxil_ej_technologies_member_later_fields);
+var sxil_ej_technologies_trailer_fields = layout([u32("signature", SIGNATURE), u32("member_count", COUNT)]);
+var sxil_ej_technologies_trailer = sxLayout(0x60850015, "ej_technologies_trailer", BE, sxil_ej_technologies_trailer_fields);
+var sxil_ej_technologies_trailer_name_fields = layout([u16("name_length", SIZE)]);
+var sxil_ej_technologies_trailer_name = sxLayout(0x60850016, "ej_technologies_trailer_name", BE, sxil_ej_technologies_trailer_name_fields);
+var sxil_ej_technologies_trailer_size_fields = layout([u64("file_size", SIZE)]);
+var sxil_ej_technologies_trailer_size = sxLayout(0x60850017, "ej_technologies_trailer_size", BE, sxil_ej_technologies_trailer_size_fields);
+function sxil_ej(c, r) {
+    var p = [0];
+    if (!sxil_pe(c, p) || !sxil_eq(c, p[0], "\xD5\x13\xE4\xE8", 4)) {
+        return true;
+    }
+    var n = [0];
+    if (!sxil_u32(c, p[0] + 4, n) || !n[0] || n[0] >= 1024) {
+        return true;
+    }
+    if (!sxil_put(c, sxil_ej_technologies_header, p[0], 1)) {
+        return false;
+    }
+    p[0] += 8;
+    for (var pass = 0; pass < 2; pass++) {
+        if (pass) {
+            if (!sxil_u32(c, p[0], n) || n[0] >= 1024) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_ej_technologies_extra_count, p[0], 1)) {
+                return false;
+            }
+            p[0] += 4;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            var z = [0];
+            if (!sxil_u32(c, p[0] + 4, z) || z[0] > 2147483647 || !sxil_span(c, p[0] + 8, z[0])) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_ej_technologies_variable, p[0], 1) || !sxil_name(c, p[0] + 8, z[0])) {
+                return false;
+            }
+            p[0] += 8 + z[0];
+        }
+    }
+    for (i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size === 4) {
+            if (!sxil_put(c, sxil_ej_technologies_member, m.header, 1)) {
+                return false;
+            }
+        } else if (m.header_size === 8) {
+            if (!sxil_put(c, sxil_ej_technologies_member_later, m.header, 1)) {
+                return false;
+            }
+        } else if (m.header_size >= 10) {
+            var b = [];
+            if (!sxil_read(c, m.header, b, 2)) {
+                continue;
+            }
+            z = [sxil16(b, 0, true)];
+            if (z[0] + 10 === m.header_size && (!sxil_put(c, sxil_ej_technologies_trailer_name, m.header, 1) || !sxil_name(c, m.header + 2, z[0]) || !sxil_put(c, sxil_ej_technologies_trailer_size, m.header + 2 + z[0], 1))) {
+                return false;
+            }
+        }
+        var e = m.data + m.packed;
+        if (sxil_eq(c, e, "\xE8\xE4\x13\xD5", 4) && !sxil_put(c, sxil_ej_technologies_trailer, e, 1)) {
+            return false;
+        }
+    }
+    if (sxil_eq(c, p[0], "\xE8\xE4\x13\xD5", 4) && !sxil_put(c, sxil_ej_technologies_trailer, p[0], 1)) {
+        return false;
+    }
+    return true;
+}
+function sx_ej_technologies_install_build(c, records) {
+    return sxil_ej(c, records);
+}

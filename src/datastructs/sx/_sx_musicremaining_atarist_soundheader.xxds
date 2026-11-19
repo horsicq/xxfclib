@@ -1,0 +1,120 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/atarist_soundheader/xx_atarist_soundheader_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_sndh_header_fields = layout([blob("init_instruction", 4), blob("exit_instruction", 4), blob("play_instruction", 4),
+    blob("magic", 4, SIGNATURE)]);
+var sxmr_sndh_header = sxLayout(0x607D004B, "sndh_header", BE, sxmr_sndh_header_fields);
+var sxmr_sndh_tag_fields = layout([blob("tag", 4, ID)]);
+var sxmr_sndh_tag = sxLayout(0x607D004C, "sndh_tag", BE, sxmr_sndh_tag_fields);
+var sxmr_sndh_tunes_fields = layout([blob("tag", 2, ID), field("tunes", "ascii_decimal[2]", 2, COUNT)]);
+var sxmr_sndh_tunes = sxLayout(0x607D004D, "sndh_tunes", BE, sxmr_sndh_tunes_fields);
+var sxmr_sndh_default_fields = layout([blob("tag", 2, ID), field("default_tune", "ascii_decimal[2]", 2)]);
+var sxmr_sndh_default = sxLayout(0x607D004E, "sndh_default", BE, sxmr_sndh_default_fields);
+var sxmr_sndh_timer_fields = layout([blob("timer", 2, ID)]);
+var sxmr_sndh_timer = sxLayout(0x607D004F, "sndh_timer", BE, sxmr_sndh_timer_fields);
+function sxmr_sndh(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [16];
+    var n = 1;
+    var x = [0];
+    var base;
+    var last;
+    var q = [0];
+    var b = [];
+    if (!sxmr_eq(v, 12, "SNDH", 4, end) || !sxmr_row(v, sxmr_sndh_header, 0, end)) {
+        return false;
+    }
+    while (p[0] < end) {
+        if (!sxmr_read(v, p[0], b, 4, end)) {
+            return false;
+        }
+        if (!sxMemcmp(b, "HDNS", 4)) {
+            return sxmr_row(v, sxmr_sndh_tag, p[0], end);
+        }
+        if (!b[0]) {
+            p[0]++;
+            continue;
+        }
+        if (!sxMemcmp(b, "##", 2) || !sxMemcmp(b, "#!", 2) && sxMemcmp(b, "#!SN", 4)) {
+            if (b[2] < 48 /*0*/ || b[2] > 57 /*9*/ || b[3] < 48 /*0*/ || b[3] > 57 /*9*/) {
+                return false;
+            }
+            x[0] = sxU64((b[2] - 48 /*0*/) * 10 + b[3] - 48 /*0*/);
+            if (b[1] === 35 /*#*/) {
+                if (!x[0] || !sxmr_row(v, sxmr_sndh_tunes, p[0], end)) {
+                    return false;
+                }
+                n = x[0];
+            } else if (!sxmr_row(v, sxmr_sndh_default, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            continue;
+        }
+        if (!sxMemcmp(b, "TITL", 4) || !sxMemcmp(b, "COMM", 4) || !sxMemcmp(b, "RIPP", 4) || !sxMemcmp(b, "CONV", 4) || !sxMemcmp(b, "YEAR", 4) || !sxMemcmp(b, "FLAG", 4)) {
+            if (!sxmr_row(v, sxmr_sndh_tag, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            if (!sxmr_string(v, p, end)) {
+                return false;
+            }
+            continue;
+        }
+        if (b[0] === 84 /*T*/ && b[1] >= 65 /*A*/ && b[1] <= 68 /*D*/ || b[0] === 33 /*!*/ && b[1] === 86 /*V*/) {
+            if (!sxmr_row(v, sxmr_sndh_timer, p[0], end)) {
+                return false;
+            }
+            p[0] += 2;
+            if (!sxmr_string(v, p, end)) {
+                return false;
+            }
+            continue;
+        }
+        if (!sxMemcmp(b, "TIME", 4) || !sxMemcmp(b, "FRMS", 4)) {
+            if (!sxmr_row(v, sxmr_sndh_tag, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            x[0] = b[0] === 84 /*T*/ ? 2 : 4;
+            if (!sxmr_table(v, x[0] === 2 ? sxmr_sndh_seconds : sxmr_sndh_frames, p[0], n, end)) {
+                return false;
+            }
+            p[0] += n * x[0];
+            continue;
+        }
+        if (!sxMemcmp(b, "#!SN", 4)) {
+            if (!sxmr_row(v, sxmr_sndh_tag, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            base = p[0];
+            last = p[0] + 2 * n;
+            if (!sxmr_table(v, sxmr_sndh_name_offset, p[0], n, end)) {
+                return false;
+            }
+            for (var i = 0; i < n; i++) {
+                if (!sxmr_be(v, base + 2 * i, 2, x, end) || x[0] < 2 * n || !sxmr_span(v, base, x[0], end)) {
+                    return false;
+                }
+                q[0] = base + x[0];
+                if (!sxmr_string(v, q, end)) {
+                    return false;
+                }
+                if (q[0] > last) {
+                    last = q[0];
+                }
+            }
+            p[0] = last;
+            continue;
+        }
+        return true;
+    }
+    return false;
+}
+function sx_atarist_soundheader_build(v) {
+    return sxmr_sndh(v);
+}

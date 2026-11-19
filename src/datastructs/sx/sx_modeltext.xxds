@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modeltext.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_modeltext");
+include("_sx_modeltext_ac3d_model");
+include("_sx_modeltext_autocad_dxf");
+include("_sx_modeltext_autodesk_ase");
+include("_sx_modeltext_bvh_motion");
+include("_sx_modeltext_directx_x");
+include("_sx_modeltext_font_afm");
+include("_sx_modeltext_font_bdf");
+include("_sx_modeltext_fontforge_sfd");
+include("_sx_modeltext_gts_surface");
+include("_sx_modeltext_lightwave_scene");
+include("_sx_modeltext_metasequoia_mqo");
+include("_sx_modeltext_off_mesh");
+include("_sx_modeltext_pointcloud_pcd");
+include("_sx_modeltext_polygon_ply");
+include("_sx_modeltext_wavefront_obj");
+include("_sx_modeltext_xfig");
+
+function fileTypes() { return ["XFIG", "POLYGON_PLY", "POINTCLOUD_PCD", "AUTOCAD_DXF", "FONT_BDF", "WAVEFRONT_OBJ", "OFF_MESH",
+    "AC3D_MODEL", "METASEQUOIA_MQO", "AUTODESK_ASE", "FONT_AFM", "FONTFORGE_SFD", "BVH_MOTION", "DIRECTX_X", "GTS_SURFACE",
+    "LIGHTWAVE_SCENE"]; }
+
+var sx_modeltext_layouts = [sxmt_signature, sxmt_version, sxmt_encoding, sxmt_element_name, sxmt_property_name,
+    sxmt_property_type, sxmt_count_type, sxmt_field_type, sxmt_object_type, sxmt_keyword, sxmt_group_name, sxmt_material_name,
+    sxmt_font_name, sxmt_glyph_name, sxmt_channel_name, sxmt_name, sxmt_string_value, sxmt_record_text, sxmt_vertex_count,
+    sxmt_face_count, sxmt_edge_count, sxmt_list_count, sxmt_element_count, sxmt_point_count, sxmt_width, sxmt_height,
+    sxmt_sample_count, sxmt_vertex_index, sxmt_texture_index, sxmt_normal_index, sxmt_edge_index, sxmt_material_index,
+    sxmt_smoothing_group, sxmt_child_count, sxmt_data_bytes, sxmt_surface_count, sxmt_reference_count, sxmt_glyph_count,
+    sxmt_property_total, sxmt_codepoint, sxmt_glyph_index, sxmt_font_size, sxmt_resolution_x, sxmt_resolution_y,
+    sxmt_bbox_width, sxmt_bbox_height, sxmt_bbox_x, sxmt_bbox_y, sxmt_swidth_x, sxmt_swidth_y, sxmt_dwidth_x, sxmt_dwidth_y,
+    sxmt_integer_value, sxmt_frame_count, sxmt_channel_count, sxmt_curve_flags, sxmt_x, sxmt_y, sxmt_z, sxmt_w, sxmt_u, sxmt_v,
+    sxmt_normal_x, sxmt_normal_y, sxmt_normal_z, sxmt_red, sxmt_green, sxmt_blue, sxmt_alpha, sxmt_translate_x,
+    sxmt_translate_y, sxmt_translate_z, sxmt_quaternion_w, sxmt_quaternion_x, sxmt_quaternion_y, sxmt_quaternion_z,
+    sxmt_real_value, sxmt_frame_time, sxmt_rotation_value, sxmt_transparency, sxmt_shininess, sxmt_ambient_red,
+    sxmt_ambient_green, sxmt_ambient_blue, sxmt_emission_red, sxmt_emission_green, sxmt_emission_blue, sxmt_specular_red,
+    sxmt_specular_green, sxmt_specular_blue, sxmt_font_metric, sxmt_motion_value, sxmt_surface_flags, sxmt_glyph_attributes,
+    sxmt_bitmap_byte, sxmt_character_code_hex, sxmt_binary_int8_le, sxmt_binary_uint8_le, sxmt_binary_int16_le,
+    sxmt_binary_uint16_le, sxmt_binary_int32_le, sxmt_binary_uint32_le, sxmt_binary_float32_le, sxmt_binary_double_le,
+    sxmt_list_uint8_le, sxmt_list_uint16_le, sxmt_list_uint32_le, sxmt_binary_int8_be, sxmt_binary_uint8_be,
+    sxmt_binary_int16_be, sxmt_binary_uint16_be, sxmt_binary_int32_be, sxmt_binary_uint32_be, sxmt_binary_float32_be,
+    sxmt_binary_double_be, sxmt_list_uint8_be, sxmt_list_uint16_be, sxmt_list_uint32_be, sxmt_dxf_signature,
+    sxmt_dxf_group_code, sxmt_dxf_int8, sxmt_dxf_int16, sxmt_dxf_int32, sxmt_dxf_int64, sxmt_dxf_double, sxmt_dxf_chunk_length,
+    sxmt_xfile_header, sxmt_fig_orientation, sxmt_fig_justification, sxmt_fig_units, sxmt_fig_paper_size, sxmt_fig_page_mode,
+    sxmt_fig_object_code, sxmt_fig_subtype, sxmt_fig_line_style, sxmt_fig_thickness, sxmt_fig_pen_color, sxmt_fig_fill_color,
+    sxmt_fig_depth, sxmt_fig_pen_style, sxmt_fig_area_fill, sxmt_fig_direction, sxmt_fig_center_x, sxmt_fig_center_y,
+    sxmt_fig_radius_x, sxmt_fig_radius_y, sxmt_fig_start_x, sxmt_fig_start_y, sxmt_fig_end_x, sxmt_fig_end_y,
+    sxmt_fig_join_style, sxmt_fig_cap_style, sxmt_fig_radius, sxmt_fig_forward_arrow, sxmt_fig_backward_arrow,
+    sxmt_fig_point_count, sxmt_fig_color_index, sxmt_fig_transparent_color, sxmt_fig_resolution, sxmt_fig_coordinate_system,
+    sxmt_fig_magnification, sxmt_fig_style_value, sxmt_fig_angle, sxmt_fig_rgb];
+
+function structs() {
+    return sxCatalog([sxmt_signature, sxmt_version, sxmt_encoding, sxmt_element_name, sxmt_property_name, sxmt_property_type,
+        sxmt_count_type, sxmt_field_type, sxmt_object_type, sxmt_keyword, sxmt_group_name, sxmt_material_name, sxmt_font_name,
+        sxmt_glyph_name, sxmt_channel_name, sxmt_name, sxmt_string_value, sxmt_record_text, sxmt_vertex_count, sxmt_face_count,
+        sxmt_edge_count, sxmt_list_count, sxmt_element_count, sxmt_point_count, sxmt_width, sxmt_height, sxmt_sample_count,
+        sxmt_vertex_index, sxmt_texture_index, sxmt_normal_index, sxmt_edge_index, sxmt_material_index, sxmt_smoothing_group,
+        sxmt_child_count, sxmt_data_bytes, sxmt_surface_count, sxmt_reference_count, sxmt_glyph_count, sxmt_property_total,
+        sxmt_codepoint, sxmt_glyph_index, sxmt_font_size, sxmt_resolution_x, sxmt_resolution_y, sxmt_bbox_width,
+        sxmt_bbox_height, sxmt_bbox_x, sxmt_bbox_y, sxmt_swidth_x, sxmt_swidth_y, sxmt_dwidth_x, sxmt_dwidth_y,
+        sxmt_integer_value, sxmt_frame_count, sxmt_channel_count, sxmt_curve_flags, sxmt_x, sxmt_y, sxmt_z, sxmt_w, sxmt_u,
+        sxmt_v, sxmt_normal_x, sxmt_normal_y, sxmt_normal_z, sxmt_red, sxmt_green, sxmt_blue, sxmt_alpha, sxmt_translate_x,
+        sxmt_translate_y, sxmt_translate_z, sxmt_quaternion_w, sxmt_quaternion_x, sxmt_quaternion_y, sxmt_quaternion_z,
+        sxmt_real_value, sxmt_frame_time, sxmt_rotation_value, sxmt_transparency, sxmt_shininess, sxmt_ambient_red,
+        sxmt_ambient_green, sxmt_ambient_blue, sxmt_emission_red, sxmt_emission_green, sxmt_emission_blue, sxmt_specular_red,
+        sxmt_specular_green, sxmt_specular_blue, sxmt_font_metric, sxmt_motion_value, sxmt_surface_flags, sxmt_glyph_attributes,
+        sxmt_bitmap_byte, sxmt_character_code_hex, sxmt_binary_int8_le, sxmt_binary_uint8_le, sxmt_binary_int16_le,
+        sxmt_binary_uint16_le, sxmt_binary_int32_le, sxmt_binary_uint32_le, sxmt_binary_float32_le, sxmt_binary_double_le,
+        sxmt_list_uint8_le, sxmt_list_uint16_le, sxmt_list_uint32_le, sxmt_binary_int8_be, sxmt_binary_uint8_be,
+        sxmt_binary_int16_be, sxmt_binary_uint16_be, sxmt_binary_int32_be, sxmt_binary_uint32_be, sxmt_binary_float32_be,
+        sxmt_binary_double_be, sxmt_list_uint8_be, sxmt_list_uint16_be, sxmt_list_uint32_be, sxmt_dxf_signature,
+        sxmt_dxf_group_code, sxmt_dxf_int8, sxmt_dxf_int16, sxmt_dxf_int32, sxmt_dxf_int64, sxmt_dxf_double,
+        sxmt_dxf_chunk_length, sxmt_xfile_header, sxmt_fig_orientation, sxmt_fig_justification, sxmt_fig_units,
+        sxmt_fig_paper_size, sxmt_fig_page_mode, sxmt_fig_object_code, sxmt_fig_subtype, sxmt_fig_line_style,
+        sxmt_fig_thickness, sxmt_fig_pen_color, sxmt_fig_fill_color, sxmt_fig_depth, sxmt_fig_pen_style, sxmt_fig_area_fill,
+        sxmt_fig_direction, sxmt_fig_center_x, sxmt_fig_center_y, sxmt_fig_radius_x, sxmt_fig_radius_y, sxmt_fig_start_x,
+        sxmt_fig_start_y, sxmt_fig_end_x, sxmt_fig_end_y, sxmt_fig_join_style, sxmt_fig_cap_style, sxmt_fig_radius,
+        sxmt_fig_forward_arrow, sxmt_fig_backward_arrow, sxmt_fig_point_count, sxmt_fig_color_index, sxmt_fig_transparent_color,
+        sxmt_fig_resolution, sxmt_fig_coordinate_system, sxmt_fig_magnification, sxmt_fig_style_value, sxmt_fig_angle,
+        sxmt_fig_rgb], sx_modeltext_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_modeltext_build, false);
+}

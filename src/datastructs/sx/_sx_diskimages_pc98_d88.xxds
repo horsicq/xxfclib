@@ -1,0 +1,110 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pc98_d88/xx_pc98_d88_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_d88_disk_header_fields = layout([chars("disk_name", 17, STRING), bytes("reserved", 9, RESERVED),
+    u8("write_protect", FLAGS), u8("media_type", ID), u32("disk_size", SIZE)]);
+var sxdi_d88_disk_header = sxLayout(0x60150019, "d88_disk_header", LE, sxdi_d88_disk_header_fields);
+var sxdi_d88_track_offset_fields = layout([u32("track_offset", OFFSET)]);
+var sxdi_d88_track_offset = sxLayout(0x6015001A, "d88_track_offset", LE, sxdi_d88_track_offset_fields);
+var sxdi_d88_sector_header_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u16("sector_count", COUNT), u8("density", ID), u8("deleted_mark", FLAGS), u8("status", ID), bytes("reserved", 5, RESERVED),
+    u16("stored_size", SIZE)]);
+var sxdi_d88_sector_header = sxLayout(0x6015001B, "d88_sector_header", LE, sxdi_d88_sector_header_fields);
+function sxdi_d88(c) {
+    var base = 0;
+    var disks = 0;
+    var sectors = 0;
+    while (base < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && disks < 256 && sectors < 32768) {
+        var h = [];
+        var offsets = [];
+        var first = 0;
+        var count = 160;
+        if (!sxdi_read(c, base, h, 32)) {
+            return disks !== 0;
+        }
+        var size = sxdi_le32(h, 28);
+        if (size < 672 || !sxdi_span(c, base, size)) {
+            return disks !== 0;
+        }
+        for (var i = 0; i < 160; i++) {
+            if ((offsets[i] = sx_u32(c, sxI64(base + 32 + ((i * 4) >>> 0)), false)) === null) {
+                return false;
+            }
+            if (offsets[i] && !first) {
+                first = offsets[i];
+            }
+        }
+        if (first === 688) {
+            count = 164;
+        } else if (first !== 672) {
+            return disks !== 0;
+        }
+        if (size < first) {
+            return disks !== 0;
+        }
+        for (i = 160; i < count; i++) {
+            if ((offsets[i] = sx_u32(c, sxI64(base + 32 + ((i * 4) >>> 0)), false)) === null) {
+                return false;
+            }
+        }
+        var prev = 0;
+        for (i = 0; i < count; i++) {
+            if (offsets[i]) {
+                if (offsets[i] < first || offsets[i] > size || prev && offsets[i] < prev) {
+                    return disks !== 0;
+                }
+                prev = offsets[i];
+            }
+        }
+        if (!sx_add(c, sxdi_d88_disk_header, (base >= SX_I64_MAX ? base - SX_U64_MAX : base), 32) || !sx_table(c, sxdi_d88_track_offset, (base >= SX_I64_MAX ? base - SX_U64_MAX : base) + 32, 4, count)) {
+            return false;
+        }
+        disks++;
+        for (i = 0; i < count && sectors < 32768; i++) {
+            var at = offsets[i];
+            var end = size;
+            if (!at || at === size) {
+                continue;
+            }
+            for (var j = (i + 1) >>> 0; j < count; j++) {
+                if (offsets[j]) {
+                    end = offsets[j];
+                    break;
+                }
+            }
+            if (at >= end) {
+                continue;
+            }
+            var s = [];
+            if (sxU64(end - at) < 16 || !sxdi_read(c, base + at, s, 16)) {
+                continue;
+            }
+            var n = sxdi_le16(s, 4);
+            if (!n || n > 128) {
+                continue;
+            }
+            for (j = 0; j < n && sectors < 32768; j++) {
+                if (sxU64(end - at) < 16 || !sxdi_read(c, base + at, s, 16)) {
+                    break;
+                }
+                var z = sxdi_le16(s, 14);
+                if (z > sxU64(sxU64(end - at) - 16)) {
+                    break;
+                }
+                if (!sx_add(c, sxdi_d88_sector_header, (base + at >= SX_I64_MAX ? base + at - SX_U64_MAX : base + at), 16)) {
+                    return false;
+                }
+                at += (16 + z) >>> 0;
+                sectors++;
+            }
+        }
+        base += size;
+    }
+    return disks !== 0;
+}
+function sx_pc98_d88_build(c) {
+    return sxdi_d88(c);
+}

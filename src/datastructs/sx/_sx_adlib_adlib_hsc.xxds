@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_hsc/xx_adlib_hsc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_hsc_instrument_fields = layout([field("carrier_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_characteristics", "uint8_t", 1, FLAGS), field("carrier_scale_level", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level", "uint8_t", 1, FLAGS), field("carrier_attack_decay", "uint8_t", 1, FLAGS),
+    field("modulator_attack_decay", "uint8_t", 1, FLAGS), field("carrier_sustain_release", "uint8_t", 1, FLAGS),
+    field("modulator_sustain_release", "uint8_t", 1, FLAGS), field("feedback_connection", "uint8_t", 1, FLAGS),
+    field("carrier_waveform", "uint8_t", 1, FLAGS), field("modulator_waveform", "uint8_t", 1, FLAGS),
+    field("slide_encoded", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_hsc_instrument = sxLayout(0x600F000A, "adlib_hsc_instrument", LE, sxad_adlib_hsc_instrument_fields);
+var sxad_adlib_hsc_order_fields = layout([field("pattern_or_jump_or_end", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_hsc_order = sxLayout(0x600F000B, "adlib_hsc_order", LE, sxad_adlib_hsc_order_fields);
+var sxad_adlib_hsc_event_fields = layout([field("note_or_instrument", "uint8_t", 1, FLAGS),
+    field("effect_or_instrument", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_hsc_event = sxLayout(0x600F000C, "adlib_hsc_event", LE, sxad_adlib_hsc_event_fields);
+var sxad_adlib_zero_terminator_fields = layout([field("terminator", "uint8_t", 1, SIGNATURE)]);
+var sxad_adlib_zero_terminator = sxLayout(0x600F000D, "adlib_zero_terminator", LE, sxad_adlib_zero_terminator_fields);
+function sxad_hsc(c) {
+    if (c.size < 2739 || c.size > 59188) {
+        return false;
+    }
+    var payload = c.size - 1587;
+    var patterns = Math.floor((payload < 0 ? payload + SX_U64_MAX : payload) / 1152);
+    var pad = [0];
+    if (!patterns || patterns > 50 || payload % 1152 !== 0 && payload % 1152 !== 1) {
+        return false;
+    }
+    if (payload % 1152 && (!sxad_byte(c, c.size - 1, pad) || pad[0])) {
+        return false;
+    }
+    if (!sx_table(c, sxad_adlib_hsc_instrument, 0, 12, 128) || !sx_table(c, sxad_adlib_hsc_order, 1536, 1, 51) || !sx_table(c, sxad_adlib_hsc_event, 1587, 2, patterns * 576)) {
+        return false;
+    }
+    return !(payload % 1152) || sx_add(c, sxad_adlib_zero_terminator, c.size - 1, 1);
+}
+function sx_adlib_hsc_build(c) {
+    return sxad_hsc(c);
+}

@@ -1,0 +1,142 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/locus_fs/xx_locus_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_locus_superblock_prefix_le_fields = layout([u32("magic", SIGNATURE), i32("global_filesystem", ID),
+    i32("block_count", COUNT), i32("commit_low_water"), i32("commit_high_water"), i32("oldest_commit"),
+    i32("storage_mask", FLAGS), i32("last_update", TIMESTAMP), i32("free_block_count", COUNT), i32("inode_table_blocks", COUNT),
+    i16("free_block_cache_count", COUNT), u16("flags", FLAGS), i32("free_inode_count", COUNT), i32("last_inode_search"),
+    i32("estimated_prior_free_inodes", COUNT), i16("pack_number"), i16("free_inode_cache_count", COUNT),
+    field("device_information", "int16[4]", 8), u8("block_lock", FLAGS), u8("inode_lock", FLAGS), u8("modified", FLAGS),
+    u8("version", ID), chars("mount_name", 32, NONE), chars("pack_name", 8, NONE)]);
+var sxcf_locus_superblock_prefix_le = sxLayout(0x603D003F, "locus_superblock_prefix_le", LE, sxcf_locus_superblock_prefix_le_fields);
+var sxcf_locus_superblock_prefix_be_fields = layout([u32("magic", SIGNATURE), i32("global_filesystem", ID),
+    i32("block_count", COUNT), i32("commit_low_water"), i32("commit_high_water"), i32("oldest_commit"),
+    i32("storage_mask", FLAGS), i32("last_update", TIMESTAMP), i32("free_block_count", COUNT), i32("inode_table_blocks", COUNT),
+    i16("free_block_cache_count", COUNT), u16("flags", FLAGS), i32("free_inode_count", COUNT), i32("last_inode_search"),
+    i32("estimated_prior_free_inodes", COUNT), i16("pack_number"), i16("free_inode_cache_count", COUNT),
+    field("device_information", "int16[4]", 8), u8("block_lock", FLAGS), u8("inode_lock", FLAGS), u8("modified", FLAGS),
+    u8("version", ID), chars("mount_name", 32, NONE), chars("pack_name", 8, NONE)]);
+var sxcf_locus_superblock_prefix_be = sxLayout(0x603D0040, "locus_superblock_prefix_be", BE, sxcf_locus_superblock_prefix_be_fields);
+var sxcf_locus_inode_le_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), i16("user_id", ID), i16("group_id", ID),
+    i32("unique_identifier", ID), i16("reserved0", RESERVED), u16("flags", FLAGS), i32("file_size", SIZE),
+    i32("modification_time", TIMESTAMP), i32("access_time", TIMESTAMP), i32("inode_change_time", TIMESTAMP),
+    i32("commit_count"), i32("storage_mask", FLAGS), i32("version"), i32("allocated_blocks", COUNT),
+    field("reserved1", "byte[28]", 28, RESERVED), field("block_numbers", "int32[13]", 52)]);
+var sxcf_locus_inode_le = sxLayout(0x603D0041, "locus_inode_le", LE, sxcf_locus_inode_le_fields);
+var sxcf_locus_inode_be_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), i16("user_id", ID), i16("group_id", ID),
+    i32("unique_identifier", ID), i16("reserved0", RESERVED), u16("flags", FLAGS), i32("file_size", SIZE),
+    i32("modification_time", TIMESTAMP), i32("access_time", TIMESTAMP), i32("inode_change_time", TIMESTAMP),
+    i32("commit_count"), i32("storage_mask", FLAGS), i32("version"), i32("allocated_blocks", COUNT),
+    field("reserved1", "byte[28]", 28, RESERVED), field("block_numbers", "int32[13]", 52)]);
+var sxcf_locus_inode_be = sxLayout(0x603D0042, "locus_inode_be", BE, sxcf_locus_inode_be_fields);
+var sxcf_locus_inode_small_le_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), i16("user_id", ID),
+    i16("group_id", ID), i32("unique_identifier", ID), i16("reserved0", RESERVED), u16("flags", FLAGS), i32("file_size", SIZE),
+    i32("modification_time", TIMESTAMP), i32("access_time", TIMESTAMP), i32("inode_change_time", TIMESTAMP),
+    i32("commit_count"), i32("storage_mask", FLAGS), i32("version"), i32("allocated_blocks", COUNT),
+    field("reserved1", "byte[27]", 27, RESERVED), u8("small_block_flags", FLAGS), field("block_numbers", "int32[13]", 52)]);
+var sxcf_locus_inode_small_le = sxLayout(0x603D0043, "locus_inode_small_le", LE, sxcf_locus_inode_small_le_fields);
+var sxcf_locus_inode_small_be_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), i16("user_id", ID),
+    i16("group_id", ID), i32("unique_identifier", ID), i16("reserved0", RESERVED), u16("flags", FLAGS), i32("file_size", SIZE),
+    i32("modification_time", TIMESTAMP), i32("access_time", TIMESTAMP), i32("inode_change_time", TIMESTAMP),
+    i32("commit_count"), i32("storage_mask", FLAGS), i32("version"), i32("allocated_blocks", COUNT),
+    field("reserved1", "byte[27]", 27, RESERVED), u8("small_block_flags", FLAGS), field("block_numbers", "int32[13]", 52)]);
+var sxcf_locus_inode_small_be = sxLayout(0x603D0044, "locus_inode_small_be", BE, sxcf_locus_inode_small_be_fields);
+var sxcf_locus_directory_header_le_fields = layout([i32("inode_number"), u16("record_size", SIZE), u16("name_size", SIZE)]);
+var sxcf_locus_directory_header_le = sxLayout(0x603D0045, "locus_directory_header_le", LE, sxcf_locus_directory_header_le_fields);
+var sxcf_locus_directory_header_be_fields = layout([i32("inode_number"), u16("record_size", SIZE), u16("name_size", SIZE)]);
+var sxcf_locus_directory_header_be = sxLayout(0x603D0046, "locus_directory_header_be", BE, sxcf_locus_directory_header_be_fields);
+function sxcf_locus(c) {
+    var h = [];
+    var b = [];
+    var sb;
+    var o = 0;
+    var found = false;
+    for (sb = 0; sb <= 4096; sb += 512) {
+        if (!sxcf_read(c, sb, h, 128)) {
+            continue;
+        }
+        for (o = 0; o < 2; o++) {
+            var m = sxcf32(h, 0, o);
+            if (m === 0xFFEEDDCC || m === 0xFFEEDDCD) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            break;
+        }
+    }
+    if (!found || h[71] !== 1 && h[71] !== 2) {
+        return false;
+    }
+    var bs = h[71] === 1 ? 4096 : 1024;
+    var blocks = sxcf32(h, 8, o);
+    var ib = sxcf32(h, 36, o);
+    var isize = h[71] === 1 ? 512 : 128;
+    if (!sxcf_put(c, o === 1 ? sxcf_locus_superblock_prefix_be : sxcf_locus_superblock_prefix_le, sb, 1)) {
+        return false;
+    }
+    if (blocks < 2 || !ib || ib > sxU64(blocks - 2) || !sxcf_span(c, 2 * bs, ib * bs)) {
+        return true;
+    }
+    var nodes = ib * Math.floor(bs / isize);
+    if (nodes > 262144) {
+        nodes = 262144;
+    }
+    for (var i = 0; i < nodes && c.count < 24000; i++) {
+        var p = 2 * bs + i * isize;
+        if (!sxcf_read(c, p, b, 128) || !sxcf_put(c, h[71] === 1 ? o === 1 ? sxcf_locus_inode_small_be : sxcf_locus_inode_small_le : o === 1 ? sxcf_locus_inode_be : sxcf_locus_inode_le, p, 1)) {
+            return false;
+        }
+        var flags = sxcf16(b, 14, o);
+        if ((sxcf16(b, 0, o) & 0xF000) !== 0x4000 || (flags & 0x13) !== 0x12) {
+            continue;
+        }
+        var left = sxcf32(b, 16, o);
+        if (h[71] === 1 && b[75] & 1) {
+            var n = left < 384 ? left : 384;
+            if (!(flags & 0x40) && !sxcf_dir(c, p + 128, n, 0, o, 16)) {
+                return false;
+            }
+            continue;
+        }
+        for (var k = 0; k < 10 && left; k++) {
+            var nr = sxcf32(b, 76 + ((4 * k) >>> 0), o);
+            n = left < bs ? left : bs;
+            if (nr >= blocks) {
+                break;
+            }
+            if (nr) {
+                if (!(flags & 0x40)) {
+                    if (!sxcf_dir(c, nr * bs, n, 0, o, 16)) {
+                        return false;
+                    }
+                } else {
+                    for (var q = 0; q + 8 <= n && c.count < 24000; ) {
+                        var e = [];
+                        if (!sxcf_read(c, nr * bs + q, e, 8)) {
+                            return false;
+                        }
+                        var z = sxcf16(e, 4, o);
+                        var names = sxcf16(e, 6, o);
+                        if (z < 8 || z & 3 || z > sxU64(n - q) || names > (z - 8) >>> 0) {
+                            break;
+                        }
+                        if (!sxcf_put(c, o === 1 ? sxcf_locus_directory_header_be : sxcf_locus_directory_header_le, nr * bs + q, 1)) {
+                            return false;
+                        }
+                        q += z;
+                    }
+                }
+            }
+            left = sxU64(left - n);
+        }
+    }
+    return true;
+}
+function sx_locus_fs_build(c) {
+    return sxcf_locus(c);
+}

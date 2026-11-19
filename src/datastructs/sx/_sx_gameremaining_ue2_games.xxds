@@ -1,0 +1,389 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ue2_games/xx_ue2_games_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgr_bruns_een_header_fields = layout([chars("signature", 4, SIGNATURE), field("encoded_xor_seed", "uint32le", 4)]);
+var sxgr_bruns_een_header = sxLayout(0x607E0001, "bruns_een_header", LE, sxgr_bruns_een_header_fields);
+var sxgr_rpgmv_header_fields = layout([bytes("signature", 8, SIGNATURE), bytes("version", 3), bytes("remaining_bytes", 5)]);
+var sxgr_rpgmv_header = sxLayout(0x607E0002, "rpgmv_header", LE, sxgr_rpgmv_header_fields);
+var sxgr_smile_game_header_fields = layout([chars("signature", 6, SIGNATURE), field("format_version", "uint16be", 2)]);
+var sxgr_smile_game_header = sxLayout(0x607E0003, "smile_game_header", LE, sxgr_smile_game_header_fields);
+var sxgr_fallout2_footer_fields = layout([field("directory_size", "int32le", 4, SIZE), field("archive_size", "int32le", 4, SIZE)]);
+var sxgr_fallout2_footer = sxLayout(0x607E0005, "fallout2_footer", LE, sxgr_fallout2_footer_fields);
+var sxgr_fallout2_directory_fields = layout([field("file_count", "int32le", 4, COUNT)]);
+var sxgr_fallout2_directory = sxLayout(0x607E0006, "fallout2_directory", LE, sxgr_fallout2_directory_fields);
+var sxgr_fallout2_name_length_fields = layout([field("name_size", "int32le", 4, SIZE)]);
+var sxgr_fallout2_name_length = sxLayout(0x607E0007, "fallout2_name_length", LE, sxgr_fallout2_name_length_fields);
+var sxgr_game_name_length_fields = layout([field("name_size", "uint32le", 4, SIZE)]);
+var sxgr_game_name_length = sxLayout(0x607E0008, "game_name_length", LE, sxgr_game_name_length_fields);
+var sxgr_game_name_fields = layout([field("name", "uint8", 0)]);
+var sxgr_game_name = sxLayout(0x607E0009, "game_name", LE, sxgr_game_name_fields);
+var sxgr_unreal_pak_footer_v1_fields = layout([field("signature", "uint32le", 4, SIGNATURE),
+    field("format_version", "uint32le", 4), field("index_offset", "uint64le", 8, OFFSET),
+    field("index_size", "uint64le", 8, SIZE), bytes("index_sha1", 20, CHECKSUM)]);
+var sxgr_unreal_pak_footer_v1 = sxLayout(0x607E000B, "unreal_pak_footer_v1", LE, sxgr_unreal_pak_footer_v1_fields);
+var sxgr_unreal_pak_footer_v4_fields = layout([u8("encrypted_index", FLAGS), field("signature", "uint32le", 4, SIGNATURE),
+    field("format_version", "uint32le", 4), field("index_offset", "uint64le", 8, OFFSET),
+    field("index_size", "uint64le", 8, SIZE), bytes("index_sha1", 20, CHECKSUM)]);
+var sxgr_unreal_pak_footer_v4 = sxLayout(0x607E000C, "unreal_pak_footer_v4", LE, sxgr_unreal_pak_footer_v4_fields);
+var sxgr_unreal_pak_footer_v7_fields = layout([bytes("encryption_key_guid", 16, ID), u8("encrypted_index", FLAGS),
+    field("signature", "uint32le", 4, SIGNATURE), field("format_version", "uint32le", 4),
+    field("index_offset", "uint64le", 8, OFFSET), field("index_size", "uint64le", 8, SIZE), bytes("index_sha1", 20, CHECKSUM)]);
+var sxgr_unreal_pak_footer_v7 = sxLayout(0x607E000D, "unreal_pak_footer_v7", LE, sxgr_unreal_pak_footer_v7_fields);
+var sxgr_unreal_pak_string_length_fields = layout([field("signed_character_count", "int32le", 4, COUNT)]);
+var sxgr_unreal_pak_string_length = sxLayout(0x607E000E, "unreal_pak_string_length", LE, sxgr_unreal_pak_string_length_fields);
+var sxgr_unreal_pak_string_fields = layout([field("string_bytes", "uint8", 0)]);
+var sxgr_unreal_pak_string = sxLayout(0x607E000F, "unreal_pak_string", LE, sxgr_unreal_pak_string_fields);
+var sxgr_unreal_pak_directory_count_fields = layout([field("entry_count", "uint32le", 4, COUNT)]);
+var sxgr_unreal_pak_directory_count = sxLayout(0x607E0010, "unreal_pak_directory_count", LE, sxgr_unreal_pak_directory_count_fields);
+var sxgr_unreal_pak_block_count_fields = layout([field("block_count", "uint32le", 4, COUNT)]);
+var sxgr_unreal_pak_block_count = sxLayout(0x607E0013, "unreal_pak_block_count", LE, sxgr_unreal_pak_block_count_fields);
+var sxgr_unreal_pak_block_fields = layout([field("start_offset", "uint64le", 8, OFFSET),
+    field("end_offset", "uint64le", 8, OFFSET)]);
+var sxgr_unreal_pak_block = sxLayout(0x607E0014, "unreal_pak_block", LE, sxgr_unreal_pak_block_fields);
+var sxgr_gal_envelope_fields = layout([chars("signature", 4, SIGNATURE), field("ascii_version", "ascii_decimal[3]", 3),
+    field("header_size", "int32le", 4, SIZE)]);
+var sxgr_gal_envelope = sxLayout(0x607E0016, "gal_envelope", LE, sxgr_gal_envelope_fields);
+var sxgr_gal_frame_fields = layout([field("mask", "uint32le", 4, FLAGS), bytes("unknown_04", 9),
+    field("layer_count", "int32le", 4, COUNT), field("width", "int32le", 4), field("height", "int32le", 4),
+    field("bits_per_pixel", "int32le", 4)]);
+var sxgr_gal_frame = sxLayout(0x607E0018, "gal_frame", LE, sxgr_gal_frame_fields);
+var sxgr_gal_palette_entry_fields = layout([u8("blue"), u8("green"), u8("red"), u8("fourth_component")]);
+var sxgr_gal_palette_entry = sxLayout(0x607E0019, "gal_palette_entry", LE, sxgr_gal_palette_entry_fields);
+var sxgr_gal_layer_fields = layout([field("left", "int32le", 4), field("top", "int32le", 4), u8("visible", FLAGS),
+    field("transparent_color", "int32le", 4), field("alpha", "int32le", 4), u8("alpha_enabled", FLAGS),
+    field("name_size", "uint32le", 4, SIZE)]);
+var sxgr_gal_layer = sxLayout(0x607E001A, "gal_layer", LE, sxgr_gal_layer_fields);
+var sxgr_gal_layer_lock_fields = layout([u8("locked", FLAGS)]);
+var sxgr_gal_layer_lock = sxLayout(0x607E001B, "gal_layer_lock", LE, sxgr_gal_layer_lock_fields);
+var sxgr_gal_layer_size_fields = layout([field("layer_size", "int32le", 4, SIZE)]);
+var sxgr_gal_layer_size = sxLayout(0x607E001C, "gal_layer_size", LE, sxgr_gal_layer_size_fields);
+var sxgr_gal_alpha_size_fields = layout([field("alpha_size", "int32le", 4, SIZE)]);
+var sxgr_gal_alpha_size = sxLayout(0x607E001D, "gal_alpha_size", LE, sxgr_gal_alpha_size_fields);
+function sxgr_span(v, at, z, end) {
+    return end <= (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) && at <= end && z <= sxU64(end - at);
+}
+function sxgr_read(v, at, b, z, end) {
+    return ++v.work <= 4000000 && sxgr_span(v, at, z, end) && sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, z);
+}
+function sxgr_u(v, at, z, out, end) {
+    var b = [];
+    if (!z || z > 8 || !sxgr_read(v, at, b, z, end)) {
+        return false;
+    }
+    out[0] = 0;
+    for (var i = 0; i < z; i++) {
+        out[0] = sxOr64(out[0], sxShl64(b[i], (8 * i) >>> 0));
+    }
+    return true;
+}
+function sxgr_eq(v, at, s, z, end) {
+    var b = [];
+    return z <= 64 && sxgr_read(v, at, b, z, end) && !sxMemcmp(b, s, z);
+}
+function sxgr_emit(v, l, at, z, end) {
+    if (!sxgr_span(v, at, z, end)) {
+        return false;
+    }
+    if (!z || v.c.count >= 24000) {
+        return true;
+    }
+    if (!l.fields[0].size && z > sxU64(sxVariableLimit(l.fields[0].type))) {
+        return true;
+    }
+    return sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (z >= SX_I64_MAX ? z - SX_U64_MAX : z));
+}
+function sxgr_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    return sxgr_emit(v, l, at, (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size), end);
+}
+function sxgr_table(v, l, at, n, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!z || n > 4000000 || n > Math.floor(SX_U64_MAX / z) || !sxgr_span(v, at, n * z, end)) {
+        return false;
+    }
+    for (var i = 0; i < n && v.c.count < 24000; i++, at += z) {
+        if (!sxgr_row(v, l, at, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxgr_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    return a.total_size < b.total_size ? -1 : a.total_size > b.total_size ? 1 : 0;
+}
+function sxgr_finish(c) {
+    var n = c.count;
+    var k = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxgr_order, true);
+    for (var i = 0; i < n; i++) {
+        var a = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (a < end) {
+            continue;
+        }
+        c.items[k++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = a + z;
+    }
+    c.count = k;
+    n = k;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        a = c.items[i].offset - c.f.base_address;
+        z = c.items[i].total_size;
+        if (a > end && !sx_raw(c, end, a - end)) {
+            return false;
+        }
+        end = a + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxgr_order, true);
+    return !c.failed;
+}
+function sxgr_name(v, p, end) {
+    var n = [0];
+    if (!sxgr_u(v, p[0], 4, n, end) || !sxgr_row(v, sxgr_game_name_length, p[0], end)) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxgr_span(v, p[0], n[0], end) || !sxgr_emit(v, sxgr_game_name, p[0], n[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    return true;
+}
+function sxgr_fallout(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var tree = [0];
+    var count = [0];
+    if (end < 12 || !sxgr_u(v, sxU64(end - 8), 4, tree, end) || tree[0] > sxU64(end - 8) || tree[0] < 4 || !sxgr_row(v, sxgr_fallout2_footer, sxU64(end - 8), end)) {
+        return false;
+    }
+    var p = sxU64(sxU64(end - 8) - tree[0]);
+    var stop = sxU64(end - 8);
+    if (!sxgr_u(v, p, 4, count, stop) || count[0] > 65536 || !sxgr_row(v, sxgr_fallout2_directory, p, stop)) {
+        return false;
+    }
+    p += 4;
+    for (var i = 0; i < count[0] && v.c.count < 24000; i++) {
+        var name = [0];
+        if (!sxgr_u(v, p, 4, name, stop) || name[0] > 2147483647 || !sxgr_row(v, sxgr_fallout2_name_length, p, stop)) {
+            return false;
+        }
+        p += 4;
+        if (!sxgr_emit(v, sxgr_game_name, p, name[0], stop)) {
+            return false;
+        }
+        p += name[0];
+        if (!sxgr_row(v, sxgr_fallout2_entry, p, stop)) {
+            return false;
+        }
+        p += 13;
+    }
+    return true;
+}
+function sxgr_pak_string(v, p, end) {
+    var raw = [0];
+    if (!sxgr_u(v, p[0], 4, raw, end) || !sxgr_row(v, sxgr_unreal_pak_string_length, p[0], end)) {
+        return false;
+    }
+    var n = (raw[0] >>> 0) | 0;
+    if (!n || n === -0x80000000 || n > 4097 || n < -4097) {
+        return false;
+    }
+    var bytes = n < 0 ? (-n < 0 ? -n + SX_U64_MAX : -n) * 2 : (n < 0 ? n + SX_U64_MAX : n);
+    p[0] += 4;
+    if (!sxgr_span(v, p[0], bytes, end) || !sxgr_emit(v, sxgr_unreal_pak_string, p[0], bytes, end)) {
+        return false;
+    }
+    p[0] += bytes;
+    return true;
+}
+function sxgr_pak_entry(v, p, end, version, local) {
+    var start = p[0];
+    var offset = [0];
+    var method = [0];
+    var count = [0];
+    if (!sxgr_u(v, start, 8, offset, end) || !sxgr_u(v, start + 24, 4, method, end) || !sxgr_row(v, version === 1 ? sxgr_unreal_pak_entry_v1 : sxgr_unreal_pak_entry_v2, start, end)) {
+        return false;
+    }
+    p[0] += version === 1 ? 56 : 48;
+    if (version >= 3) {
+        if (method[0]) {
+            if (!sxgr_u(v, p[0], 4, count, end) || count[0] > 65536 || !sxgr_row(v, sxgr_unreal_pak_block_count, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            if (!sxgr_table(v, sxgr_unreal_pak_block, p[0], count[0], end)) {
+                return false;
+            }
+            p[0] += count[0] * 16;
+        }
+        if (!sxgr_row(v, sxgr_unreal_pak_entry_flags, p[0], end)) {
+            return false;
+        }
+        p[0] += 5;
+    }
+    if (local) {
+        var q = [offset[0]];
+        var z = sxU64(p[0] - start);
+        if (!sxgr_span(v, offset[0], z, end) || !sxgr_pak_entry(v, q, offset[0] + z, version, false)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxgr_pak(v) {
+    var n = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var footer = 0;
+    var index = [0];
+    var size = [0];
+    var version = 0;
+    var candidates = [44, 45, 61];
+    for (var i = 0; i < 3; i++) {
+        var magic = [0];
+        var ver = [0];
+        var at;
+        var z = candidates[i];
+        var pre = (z - 44) >>> 0;
+        if (n < z) {
+            continue;
+        }
+        at = sxU64(n - z);
+        if (!sxgr_u(v, at + pre, 4, magic, n) || !sxgr_u(v, at + pre + 4, 4, ver, n)) {
+            return false;
+        }
+        if (magic[0] !== 0x5A6F12E1 || ver[0] < 1 || ver[0] > 7 || z !== (ver[0] >= 7 ? 61 : ver[0] >= 4 ? 45 : 44)) {
+            continue;
+        }
+        footer = at;
+        version = ver[0];
+        if (!sxgr_u(v, at + pre + 8, 8, index, n) || !sxgr_u(v, at + pre + 16, 8, size, n) || !sxgr_row(v, ver[0] >= 7 ? sxgr_unreal_pak_footer_v7 : ver[0] >= 4 ? sxgr_unreal_pak_footer_v4 : sxgr_unreal_pak_footer_v1, at, n)) {
+            return false;
+        }
+        break;
+    }
+    if (!version || !sxgr_span(v, index[0], size[0], footer)) {
+        return false;
+    }
+    var p = [index[0]];
+    var end = index[0] + size[0];
+    var count = [0];
+    if (!sxgr_pak_string(v, p, end) || !sxgr_u(v, p[0], 4, count, end) || count[0] > 65536 || !sxgr_row(v, sxgr_unreal_pak_directory_count, p[0], end)) {
+        return false;
+    }
+    p[0] += 4;
+    for (i = 0; i < count[0] && v.c.count < 24000; i++) {
+        if (!sxgr_pak_string(v, p, end) || !sxgr_pak_entry(v, p, end, version >>> 0, true)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxgr_gal(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var header = [0];
+    var version = [0];
+    var frames = [0];
+    var compression = [0];
+    if (!sxgr_u(v, 7, 4, header, end) || header[0] < 40 || header[0] > 256 || !sxgr_u(v, 11, 4, version, end) || version[0] < 103 || version[0] > 107 || !sxgr_u(v, 27, 4, frames, end) || frames[0] > 1024 || !sxgr_u(v, 33, 1, compression, end) || compression[0] > 1 || !sxgr_row(v, sxgr_gal_envelope, 0, end) || !sxgr_row(v, sxgr_gal_header, 11, end) || !sxgr_span(v, 11, header[0], end)) {
+        return false;
+    }
+    var p = [11 + header[0]];
+    for (var i = 0; i < frames[0] && v.c.count < 24000; i++) {
+        var layers = [0];
+        var bpp = [0];
+        if (!sxgr_name(v, p, end) || !sxgr_u(v, p[0] + 13, 4, layers, end) || !sxgr_u(v, p[0] + 25, 4, bpp, end) || layers[0] > 1024 || !sxgr_row(v, sxgr_gal_frame, p[0], end)) {
+            return false;
+        }
+        p[0] += 29;
+        if (bpp[0] <= 8) {
+            if (bpp[0] !== 4 && bpp[0] !== 8) {
+                return false;
+            }
+            var colors = sxShl64(1, bpp[0]);
+            if (!sxgr_table(v, sxgr_gal_palette_entry, p[0], colors, end)) {
+                return false;
+            }
+            p[0] += colors * 4;
+        }
+        for (var j = 0; j < layers[0] && v.c.count < 24000; j++) {
+            var name = [0];
+            var packed = [0];
+            var alpha = [0];
+            if (!sxgr_u(v, p[0] + 18, 4, name, end) || !sxgr_row(v, sxgr_gal_layer, p[0], end)) {
+                return false;
+            }
+            p[0] += 22;
+            if (!sxgr_span(v, p[0], name[0], end) || !sxgr_emit(v, sxgr_game_name, p[0], name[0], end)) {
+                return false;
+            }
+            p[0] += name[0];
+            if (version[0] >= 107) {
+                if (!sxgr_row(v, sxgr_gal_layer_lock, p[0], end)) {
+                    return false;
+                }
+                p[0]++;
+            }
+            if (!sxgr_u(v, p[0], 4, packed, end) || !sxgr_row(v, sxgr_gal_layer_size, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            if (!sxgr_span(v, p[0], packed[0], end)) {
+                return false;
+            }
+            p[0] += packed[0];
+            if (!sxgr_u(v, p[0], 4, alpha, end) || !sxgr_row(v, sxgr_gal_alpha_size, p[0], end)) {
+                return false;
+            }
+            p[0] += 4;
+            if (!sxgr_span(v, p[0], alpha[0], end)) {
+                return false;
+            }
+            p[0] += alpha[0];
+        }
+    }
+    return true;
+}
+function sx_ue2_games_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    var ok = false;
+    switch (c.f.file_type) {
+    case "BRUNS_MEDIA":
+        ok = (sxgr_eq(v, 0, "EENC", 4, (c.size < 0 ? c.size + SX_U64_MAX : c.size)) || sxgr_eq(v, 0, "EENZ", 4, (c.size < 0 ? c.size + SX_U64_MAX : c.size))) && sxgr_row(v, sxgr_bruns_een_header, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+        break;
+    case "RPG_MAKER_MV":
+        ok = sxgr_row(v, sxgr_rpgmv_header, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+        break;
+    case "YCG_IMAGE":
+        ok = sxgr_row(v, sxgr_ycg_header, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+        break;
+    case "UNREAL_PAK":
+        ok = sxgr_pak(v);
+        break;
+    case "FALLOUT_DAT":
+        ok = sxgr_fallout(v);
+        break;
+    case "LIVE_MAKER_GAL":
+        ok = sxgr_gal(v);
+        break;
+    case "SMILE_GAME_PACK":
+        ok = sxgr_row(v, sxgr_smile_game_header, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+        break;
+    default:
+        break;
+    }
+    return ok && sxgr_finish(c);
+}

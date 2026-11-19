@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kaneda_mvstrackersuite_mus/xx_kaneda_mvstrackersuite_mus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_pc_order_count_fields = layout([u8("order_count", COUNT)]);
+var sxpcm_pc_order_count = sxLayout(0x60940007, "pc_order_count", LE, sxpcm_pc_order_count_fields);
+var sxpcm_mvs_header_fields = layout([chars("signature", 5, SIGNATURE)]);
+var sxpcm_mvs_header = sxLayout(0x60940042, "mvs_header", LE, sxpcm_mvs_header_fields);
+var sxpcm_mvs_instrument_fields = layout([bytes("operator_detune_multiple", 4, FLAGS), bytes("operator_total_level", 4, FLAGS),
+    bytes("operator_keyscale_attack", 4, FLAGS), bytes("operator_am_decay", 4, FLAGS), bytes("operator_sustain_rate", 4, FLAGS),
+    bytes("operator_sustain_release", 4, FLAGS), u8("feedback_algorithm", FLAGS)]);
+var sxpcm_mvs_instrument = sxLayout(0x60940043, "mvs_instrument", LE, sxpcm_mvs_instrument_fields);
+function sxpcm_mvs_name(c, p) {
+    var b = [0];
+    var start = p[0];
+    for (var i = 0; i < 256; i++) {
+        if (!sxpcm_u8(c, p[0]++, b)) {
+            return false;
+        }
+        if (!b[0]) {
+            return sxpcm_text(c, start, sxU64(p[0] - start));
+        }
+    }
+    return false;
+}
+function sxpcm_mvs(c) {
+    if (!sxpcm_eq(c, 0, "MVSM1", 5) || !sxpcm_put(c, sxpcm_mvs_header, 0, 1)) {
+        return false;
+    }
+    var p = [5];
+    for (var i = 0; i < 31; i++) {
+        if (!sxpcm_mvs_name(c, p) || !sxpcm_put(c, sxpcm_mvs_instrument, p[0], 1)) {
+            return true;
+        }
+        p[0] += 25;
+    }
+    var n = [0];
+    if (!sxpcm_u8(c, p[0], n) || !sxpcm_put(c, sxpcm_pc_order_count, p[0]++, 1)) {
+        return true;
+    }
+    if (n[0] > 64 || !sxpcm_put(c, sxpcm_pc_pattern_index, p[0], n[0])) {
+        return true;
+    }
+    p[0] += n[0];
+    if (!sxpcm_u8(c, p[0], n) || !sxpcm_put(c, sxpcm_pc_pattern_count, p[0]++, 1)) {
+        return true;
+    }
+    if (n[0] > 64) {
+        return true;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (!sxpcm_mvs_name(c, p) || !sxpcm_put(c, sxpcm_mvs_event, p[0], 256)) {
+            return true;
+        }
+        p[0] += 1024;
+    }
+    return true;
+}
+function sx_kaneda_mvstrackersuite_mus_build(c) {
+    return sxpcm_mvs(c);
+}

@@ -1,0 +1,186 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gmsh_msh/xx_gmsh_msh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_tag_count_fields = layout([field("tag_count", "ascii_signed", 0, COUNT)]);
+var sxsm_tag_count = sxLayout(0x60630017, "mesh_tag_count", LE, sxsm_tag_count_fields);
+var sxsm_element_type_fields = layout([field("element_type", "ascii_signed", 0, ID)]);
+var sxsm_element_type = sxLayout(0x60630061, "mesh_element_type", LE, sxsm_element_type_fields);
+var sxsm_tag_value_fields = layout([field("tag_value", "ascii_signed", 0)]);
+var sxsm_tag_value = sxLayout(0x60630062, "mesh_tag_value", LE, sxsm_tag_value_fields);
+function sxsm_gmsh_data(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(32, sxNew_sxsm_token);
+    var n = [0];
+    var count = [0];
+    var components = [0];
+    var entries = [0];
+    for (var kind = 0; kind < 3; kind++) {
+        if (!sxsm_next(q, line, t[0], 32, n, "#") || n[0] !== 1 || !sxsm_number(q, sxCopy_sxsm_token(null, t[0]), count) || count[0] > 16) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_tag_count, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        for (var i = 0; i < count[0]; i++) {
+            if (!sxsm_line(q, line)) {
+                return false;
+            }
+            sxCopy_sxsm_token(line, sxsm_trim(q, sxCopy_sxsm_token(null, line)));
+            var l = kind === 0 ? sxsm_name : kind === 1 ? i === 0 ? sxsm_simulation_time : sxsm_real_value : i === 0 ? sxsm_step_index : i === 1 ? sxsm_component_count : i === 2 ? sxsm_value_count : sxsm_integer_value;
+            if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, line))) {
+                return false;
+            }
+            if (kind === 2 && i === 1 && !sxsm_number(q, sxCopy_sxsm_token(null, line), components)) {
+                return false;
+            }
+            if (kind === 2 && i === 2 && !sxsm_number(q, sxCopy_sxsm_token(null, line), entries)) {
+                return false;
+            }
+        }
+    }
+    if (!components[0] || components[0] > 16 || entries[0] > 1000000) {
+        return false;
+    }
+    for (i = 0; i < entries[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsm_next(q, line, t[0], 32, n, "#") || n[0] !== 1 + components[0]) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_entity_id, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (!sxsm_each(q, t, 1, (n[0] - 1) >>> 0, sxsm_scalar_value)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsm_gmsh(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(128, sxNew_sxsm_token);
+    var n = [0];
+    while (sxsm_next(q, line, t[0], 128, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_section, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "$MeshFormat")) {
+            if (!sxsm_next(q, line, t[0], 128, n, "#") || n[0] !== 3) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_real_value, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_integer_value, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_sample_bytes, sxCopy_sxsm_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "$NodeData") || sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "$ElementData")) {
+            if (!sxsm_gmsh_data(q)) {
+                return false;
+            }
+            continue;
+        }
+        var mode = sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "$Nodes") ? 1 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "$Elements") ? 2 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "$PhysicalNames") ? 3 : 0;
+        if (!mode) {
+            continue;
+        }
+        var count = [0];
+        if (!sxsm_next(q, line, t[0], 128, n, "#") || n[0] !== 1 || !sxsm_number(q, sxCopy_sxsm_token(null, t[0]), count) || count[0] > 1000000) {
+            return false;
+        }
+        if (!sxsm_emit(q, mode === 1 ? sxsm_node_count : mode === 2 ? sxsm_element_count : sxsm_value_count, sxCopy_sxsm_token(null, t[0]))) {
+            return false;
+        }
+        for (var i = 0; i < count[0]; i++) {
+            if (q.c.count >= 24000) {
+                return true;
+            }
+            if (!sxsm_next(q, line, t[0], 128, n, "#")) {
+                return false;
+            }
+            if (mode === 1) {
+                if (n[0] !== 4) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_node_id, sxCopy_sxsm_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                if (!sxsm_xyz(q, t[1], 0)) {
+                    return false;
+                }
+            } else if (mode === 2) {
+                var tags = [0];
+                if (n[0] < 4 || !sxsm_number(q, sxCopy_sxsm_token(null, t[2]), tags) || tags[0] > 16 || tags[0] > (n[0] - 3) >>> 0) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_element_id, sxCopy_sxsm_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_element_type, sxCopy_sxsm_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_tag_count, sxCopy_sxsm_token(null, t[2]))) {
+                        return false;
+                    }
+                }
+                if (!sxsm_each(q, t, 3, tags[0] >>> 0, sxsm_tag_value) || !sxsm_each(q, t, 3 + tags[0], (((n[0] - 3) >>> 0) - (tags[0] >>> 0)) >>> 0, sxsm_node_index)) {
+                    return false;
+                }
+            } else {
+                if (n[0] < 3) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_dimension, sxCopy_sxsm_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_property_id, sxCopy_sxsm_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_name, sxCopy_sxsm_token(null, { a: t[2].a, z: line.a + line.z - t[2].a }))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gmsh_msh_build(q) {
+    return sxsm_gmsh(q);
+}

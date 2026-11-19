@@ -1,0 +1,417 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/brotli/xx_brotli_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarwire_brotli_window1_bit0_fields = layout([field("window_bits_code", "lsb_bits[0,1]", 1)]);
+var sxarwire_brotli_window1_bit0 = sxLayout(0x608D012B, "brotli_window1_bit0", LE, sxarwire_brotli_window1_bit0_fields);
+var sxarwire_brotli_window4_bit0_fields = layout([field("window_bits_code", "lsb_bits[0,4]", 1)]);
+var sxarwire_brotli_window4_bit0 = sxLayout(0x608D012C, "brotli_window4_bit0", LE, sxarwire_brotli_window4_bit0_fields);
+var sxarwire_brotli_window7_bit0_fields = layout([field("window_bits_code", "lsb_bits[0,7]", 1)]);
+var sxarwire_brotli_window7_bit0 = sxLayout(0x608D012D, "brotli_window7_bit0", LE, sxarwire_brotli_window7_bit0_fields);
+var sxarwire_brotli_last_bit0_fields = layout([field("is_last", "lsb_bits[0,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit0 = sxLayout(0x608D012E, "brotli_last_bit0", LE, sxarwire_brotli_last_bit0_fields);
+var sxarwire_brotli_last_bit1_fields = layout([field("is_last", "lsb_bits[1,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit1 = sxLayout(0x608D012F, "brotli_last_bit1", LE, sxarwire_brotli_last_bit1_fields);
+var sxarwire_brotli_last_bit2_fields = layout([field("is_last", "lsb_bits[2,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit2 = sxLayout(0x608D0130, "brotli_last_bit2", LE, sxarwire_brotli_last_bit2_fields);
+var sxarwire_brotli_last_bit3_fields = layout([field("is_last", "lsb_bits[3,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit3 = sxLayout(0x608D0131, "brotli_last_bit3", LE, sxarwire_brotli_last_bit3_fields);
+var sxarwire_brotli_last_bit4_fields = layout([field("is_last", "lsb_bits[4,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit4 = sxLayout(0x608D0132, "brotli_last_bit4", LE, sxarwire_brotli_last_bit4_fields);
+var sxarwire_brotli_last_bit5_fields = layout([field("is_last", "lsb_bits[5,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit5 = sxLayout(0x608D0133, "brotli_last_bit5", LE, sxarwire_brotli_last_bit5_fields);
+var sxarwire_brotli_last_bit6_fields = layout([field("is_last", "lsb_bits[6,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit6 = sxLayout(0x608D0134, "brotli_last_bit6", LE, sxarwire_brotli_last_bit6_fields);
+var sxarwire_brotli_last_bit7_fields = layout([field("is_last", "lsb_bits[7,1]", 1, FLAGS)]);
+var sxarwire_brotli_last_bit7 = sxLayout(0x608D0135, "brotli_last_bit7", LE, sxarwire_brotli_last_bit7_fields);
+var sxarwire_brotli_empty_bit0_fields = layout([field("is_last_empty", "lsb_bits[0,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit0 = sxLayout(0x608D0136, "brotli_empty_bit0", LE, sxarwire_brotli_empty_bit0_fields);
+var sxarwire_brotli_empty_bit1_fields = layout([field("is_last_empty", "lsb_bits[1,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit1 = sxLayout(0x608D0137, "brotli_empty_bit1", LE, sxarwire_brotli_empty_bit1_fields);
+var sxarwire_brotli_empty_bit2_fields = layout([field("is_last_empty", "lsb_bits[2,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit2 = sxLayout(0x608D0138, "brotli_empty_bit2", LE, sxarwire_brotli_empty_bit2_fields);
+var sxarwire_brotli_empty_bit3_fields = layout([field("is_last_empty", "lsb_bits[3,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit3 = sxLayout(0x608D0139, "brotli_empty_bit3", LE, sxarwire_brotli_empty_bit3_fields);
+var sxarwire_brotli_empty_bit4_fields = layout([field("is_last_empty", "lsb_bits[4,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit4 = sxLayout(0x608D013A, "brotli_empty_bit4", LE, sxarwire_brotli_empty_bit4_fields);
+var sxarwire_brotli_empty_bit5_fields = layout([field("is_last_empty", "lsb_bits[5,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit5 = sxLayout(0x608D013B, "brotli_empty_bit5", LE, sxarwire_brotli_empty_bit5_fields);
+var sxarwire_brotli_empty_bit6_fields = layout([field("is_last_empty", "lsb_bits[6,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit6 = sxLayout(0x608D013C, "brotli_empty_bit6", LE, sxarwire_brotli_empty_bit6_fields);
+var sxarwire_brotli_empty_bit7_fields = layout([field("is_last_empty", "lsb_bits[7,1]", 1, FLAGS)]);
+var sxarwire_brotli_empty_bit7 = sxLayout(0x608D013D, "brotli_empty_bit7", LE, sxarwire_brotli_empty_bit7_fields);
+var sxarwire_brotli_nibbles_bit0_fields = layout([field("length_nibbles_code", "lsb_bits[0,2]", 1)]);
+var sxarwire_brotli_nibbles_bit0 = sxLayout(0x608D013E, "brotli_nibbles_bit0", LE, sxarwire_brotli_nibbles_bit0_fields);
+var sxarwire_brotli_nibbles_bit1_fields = layout([field("length_nibbles_code", "lsb_bits[1,2]", 1)]);
+var sxarwire_brotli_nibbles_bit1 = sxLayout(0x608D013F, "brotli_nibbles_bit1", LE, sxarwire_brotli_nibbles_bit1_fields);
+var sxarwire_brotli_nibbles_bit2_fields = layout([field("length_nibbles_code", "lsb_bits[2,2]", 1)]);
+var sxarwire_brotli_nibbles_bit2 = sxLayout(0x608D0140, "brotli_nibbles_bit2", LE, sxarwire_brotli_nibbles_bit2_fields);
+var sxarwire_brotli_nibbles_bit3_fields = layout([field("length_nibbles_code", "lsb_bits[3,2]", 1)]);
+var sxarwire_brotli_nibbles_bit3 = sxLayout(0x608D0141, "brotli_nibbles_bit3", LE, sxarwire_brotli_nibbles_bit3_fields);
+var sxarwire_brotli_nibbles_bit4_fields = layout([field("length_nibbles_code", "lsb_bits[4,2]", 1)]);
+var sxarwire_brotli_nibbles_bit4 = sxLayout(0x608D0142, "brotli_nibbles_bit4", LE, sxarwire_brotli_nibbles_bit4_fields);
+var sxarwire_brotli_nibbles_bit5_fields = layout([field("length_nibbles_code", "lsb_bits[5,2]", 1)]);
+var sxarwire_brotli_nibbles_bit5 = sxLayout(0x608D0143, "brotli_nibbles_bit5", LE, sxarwire_brotli_nibbles_bit5_fields);
+var sxarwire_brotli_nibbles_bit6_fields = layout([field("length_nibbles_code", "lsb_bits[6,2]", 1)]);
+var sxarwire_brotli_nibbles_bit6 = sxLayout(0x608D0144, "brotli_nibbles_bit6", LE, sxarwire_brotli_nibbles_bit6_fields);
+var sxarwire_brotli_nibbles_bit7_fields = layout([field("length_nibbles_code", "lsb_bits[7,2]", 2)]);
+var sxarwire_brotli_nibbles_bit7 = sxLayout(0x608D0145, "brotli_nibbles_bit7", LE, sxarwire_brotli_nibbles_bit7_fields);
+var sxarwire_brotli_reserved_bit0_fields = layout([field("reserved", "lsb_bits[0,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit0 = sxLayout(0x608D0146, "brotli_reserved_bit0", LE, sxarwire_brotli_reserved_bit0_fields);
+var sxarwire_brotli_reserved_bit1_fields = layout([field("reserved", "lsb_bits[1,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit1 = sxLayout(0x608D0147, "brotli_reserved_bit1", LE, sxarwire_brotli_reserved_bit1_fields);
+var sxarwire_brotli_reserved_bit2_fields = layout([field("reserved", "lsb_bits[2,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit2 = sxLayout(0x608D0148, "brotli_reserved_bit2", LE, sxarwire_brotli_reserved_bit2_fields);
+var sxarwire_brotli_reserved_bit3_fields = layout([field("reserved", "lsb_bits[3,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit3 = sxLayout(0x608D0149, "brotli_reserved_bit3", LE, sxarwire_brotli_reserved_bit3_fields);
+var sxarwire_brotli_reserved_bit4_fields = layout([field("reserved", "lsb_bits[4,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit4 = sxLayout(0x608D014A, "brotli_reserved_bit4", LE, sxarwire_brotli_reserved_bit4_fields);
+var sxarwire_brotli_reserved_bit5_fields = layout([field("reserved", "lsb_bits[5,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit5 = sxLayout(0x608D014B, "brotli_reserved_bit5", LE, sxarwire_brotli_reserved_bit5_fields);
+var sxarwire_brotli_reserved_bit6_fields = layout([field("reserved", "lsb_bits[6,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit6 = sxLayout(0x608D014C, "brotli_reserved_bit6", LE, sxarwire_brotli_reserved_bit6_fields);
+var sxarwire_brotli_reserved_bit7_fields = layout([field("reserved", "lsb_bits[7,1]", 1, RESERVED)]);
+var sxarwire_brotli_reserved_bit7 = sxLayout(0x608D014D, "brotli_reserved_bit7", LE, sxarwire_brotli_reserved_bit7_fields);
+var sxarwire_brotli_skipbytes_bit0_fields = layout([field("metadata_length_bytes", "lsb_bits[0,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit0 = sxLayout(0x608D014E, "brotli_skipbytes_bit0", LE, sxarwire_brotli_skipbytes_bit0_fields);
+var sxarwire_brotli_skipbytes_bit1_fields = layout([field("metadata_length_bytes", "lsb_bits[1,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit1 = sxLayout(0x608D014F, "brotli_skipbytes_bit1", LE, sxarwire_brotli_skipbytes_bit1_fields);
+var sxarwire_brotli_skipbytes_bit2_fields = layout([field("metadata_length_bytes", "lsb_bits[2,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit2 = sxLayout(0x608D0150, "brotli_skipbytes_bit2", LE, sxarwire_brotli_skipbytes_bit2_fields);
+var sxarwire_brotli_skipbytes_bit3_fields = layout([field("metadata_length_bytes", "lsb_bits[3,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit3 = sxLayout(0x608D0151, "brotli_skipbytes_bit3", LE, sxarwire_brotli_skipbytes_bit3_fields);
+var sxarwire_brotli_skipbytes_bit4_fields = layout([field("metadata_length_bytes", "lsb_bits[4,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit4 = sxLayout(0x608D0152, "brotli_skipbytes_bit4", LE, sxarwire_brotli_skipbytes_bit4_fields);
+var sxarwire_brotli_skipbytes_bit5_fields = layout([field("metadata_length_bytes", "lsb_bits[5,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit5 = sxLayout(0x608D0153, "brotli_skipbytes_bit5", LE, sxarwire_brotli_skipbytes_bit5_fields);
+var sxarwire_brotli_skipbytes_bit6_fields = layout([field("metadata_length_bytes", "lsb_bits[6,2]", 1, COUNT)]);
+var sxarwire_brotli_skipbytes_bit6 = sxLayout(0x608D0154, "brotli_skipbytes_bit6", LE, sxarwire_brotli_skipbytes_bit6_fields);
+var sxarwire_brotli_skipbytes_bit7_fields = layout([field("metadata_length_bytes", "lsb_bits[7,2]", 2, COUNT)]);
+var sxarwire_brotli_skipbytes_bit7 = sxLayout(0x608D0155, "brotli_skipbytes_bit7", LE, sxarwire_brotli_skipbytes_bit7_fields);
+var sxarwire_brotli_skiplen8_bit0_fields = layout([field("metadata_length_minus_one", "lsb_bits[0,8]", 1)]);
+var sxarwire_brotli_skiplen8_bit0 = sxLayout(0x608D0156, "brotli_skiplen8_bit0", LE, sxarwire_brotli_skiplen8_bit0_fields);
+var sxarwire_brotli_skiplen8_bit1_fields = layout([field("metadata_length_minus_one", "lsb_bits[1,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit1 = sxLayout(0x608D0157, "brotli_skiplen8_bit1", LE, sxarwire_brotli_skiplen8_bit1_fields);
+var sxarwire_brotli_skiplen8_bit2_fields = layout([field("metadata_length_minus_one", "lsb_bits[2,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit2 = sxLayout(0x608D0158, "brotli_skiplen8_bit2", LE, sxarwire_brotli_skiplen8_bit2_fields);
+var sxarwire_brotli_skiplen8_bit3_fields = layout([field("metadata_length_minus_one", "lsb_bits[3,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit3 = sxLayout(0x608D0159, "brotli_skiplen8_bit3", LE, sxarwire_brotli_skiplen8_bit3_fields);
+var sxarwire_brotli_skiplen8_bit4_fields = layout([field("metadata_length_minus_one", "lsb_bits[4,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit4 = sxLayout(0x608D015A, "brotli_skiplen8_bit4", LE, sxarwire_brotli_skiplen8_bit4_fields);
+var sxarwire_brotli_skiplen8_bit5_fields = layout([field("metadata_length_minus_one", "lsb_bits[5,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit5 = sxLayout(0x608D015B, "brotli_skiplen8_bit5", LE, sxarwire_brotli_skiplen8_bit5_fields);
+var sxarwire_brotli_skiplen8_bit6_fields = layout([field("metadata_length_minus_one", "lsb_bits[6,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit6 = sxLayout(0x608D015C, "brotli_skiplen8_bit6", LE, sxarwire_brotli_skiplen8_bit6_fields);
+var sxarwire_brotli_skiplen8_bit7_fields = layout([field("metadata_length_minus_one", "lsb_bits[7,8]", 2)]);
+var sxarwire_brotli_skiplen8_bit7 = sxLayout(0x608D015D, "brotli_skiplen8_bit7", LE, sxarwire_brotli_skiplen8_bit7_fields);
+var sxarwire_brotli_skiplen16_bit0_fields = layout([field("metadata_length_minus_one", "lsb_bits[0,16]", 2)]);
+var sxarwire_brotli_skiplen16_bit0 = sxLayout(0x608D015E, "brotli_skiplen16_bit0", LE, sxarwire_brotli_skiplen16_bit0_fields);
+var sxarwire_brotli_skiplen16_bit1_fields = layout([field("metadata_length_minus_one", "lsb_bits[1,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit1 = sxLayout(0x608D015F, "brotli_skiplen16_bit1", LE, sxarwire_brotli_skiplen16_bit1_fields);
+var sxarwire_brotli_skiplen16_bit2_fields = layout([field("metadata_length_minus_one", "lsb_bits[2,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit2 = sxLayout(0x608D0160, "brotli_skiplen16_bit2", LE, sxarwire_brotli_skiplen16_bit2_fields);
+var sxarwire_brotli_skiplen16_bit3_fields = layout([field("metadata_length_minus_one", "lsb_bits[3,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit3 = sxLayout(0x608D0161, "brotli_skiplen16_bit3", LE, sxarwire_brotli_skiplen16_bit3_fields);
+var sxarwire_brotli_skiplen16_bit4_fields = layout([field("metadata_length_minus_one", "lsb_bits[4,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit4 = sxLayout(0x608D0162, "brotli_skiplen16_bit4", LE, sxarwire_brotli_skiplen16_bit4_fields);
+var sxarwire_brotli_skiplen16_bit5_fields = layout([field("metadata_length_minus_one", "lsb_bits[5,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit5 = sxLayout(0x608D0163, "brotli_skiplen16_bit5", LE, sxarwire_brotli_skiplen16_bit5_fields);
+var sxarwire_brotli_skiplen16_bit6_fields = layout([field("metadata_length_minus_one", "lsb_bits[6,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit6 = sxLayout(0x608D0164, "brotli_skiplen16_bit6", LE, sxarwire_brotli_skiplen16_bit6_fields);
+var sxarwire_brotli_skiplen16_bit7_fields = layout([field("metadata_length_minus_one", "lsb_bits[7,16]", 3)]);
+var sxarwire_brotli_skiplen16_bit7 = sxLayout(0x608D0165, "brotli_skiplen16_bit7", LE, sxarwire_brotli_skiplen16_bit7_fields);
+var sxarwire_brotli_skiplen24_bit0_fields = layout([field("metadata_length_minus_one", "lsb_bits[0,24]", 3)]);
+var sxarwire_brotli_skiplen24_bit0 = sxLayout(0x608D0166, "brotli_skiplen24_bit0", LE, sxarwire_brotli_skiplen24_bit0_fields);
+var sxarwire_brotli_skiplen24_bit1_fields = layout([field("metadata_length_minus_one", "lsb_bits[1,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit1 = sxLayout(0x608D0167, "brotli_skiplen24_bit1", LE, sxarwire_brotli_skiplen24_bit1_fields);
+var sxarwire_brotli_skiplen24_bit2_fields = layout([field("metadata_length_minus_one", "lsb_bits[2,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit2 = sxLayout(0x608D0168, "brotli_skiplen24_bit2", LE, sxarwire_brotli_skiplen24_bit2_fields);
+var sxarwire_brotli_skiplen24_bit3_fields = layout([field("metadata_length_minus_one", "lsb_bits[3,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit3 = sxLayout(0x608D0169, "brotli_skiplen24_bit3", LE, sxarwire_brotli_skiplen24_bit3_fields);
+var sxarwire_brotli_skiplen24_bit4_fields = layout([field("metadata_length_minus_one", "lsb_bits[4,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit4 = sxLayout(0x608D016A, "brotli_skiplen24_bit4", LE, sxarwire_brotli_skiplen24_bit4_fields);
+var sxarwire_brotli_skiplen24_bit5_fields = layout([field("metadata_length_minus_one", "lsb_bits[5,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit5 = sxLayout(0x608D016B, "brotli_skiplen24_bit5", LE, sxarwire_brotli_skiplen24_bit5_fields);
+var sxarwire_brotli_skiplen24_bit6_fields = layout([field("metadata_length_minus_one", "lsb_bits[6,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit6 = sxLayout(0x608D016C, "brotli_skiplen24_bit6", LE, sxarwire_brotli_skiplen24_bit6_fields);
+var sxarwire_brotli_skiplen24_bit7_fields = layout([field("metadata_length_minus_one", "lsb_bits[7,24]", 4)]);
+var sxarwire_brotli_skiplen24_bit7 = sxLayout(0x608D016D, "brotli_skiplen24_bit7", LE, sxarwire_brotli_skiplen24_bit7_fields);
+var sxarwire_brotli_length16_bit0_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[0,16]", 2)]);
+var sxarwire_brotli_length16_bit0 = sxLayout(0x608D016E, "brotli_length16_bit0", LE, sxarwire_brotli_length16_bit0_fields);
+var sxarwire_brotli_length16_bit1_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[1,16]", 3)]);
+var sxarwire_brotli_length16_bit1 = sxLayout(0x608D016F, "brotli_length16_bit1", LE, sxarwire_brotli_length16_bit1_fields);
+var sxarwire_brotli_length16_bit2_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[2,16]", 3)]);
+var sxarwire_brotli_length16_bit2 = sxLayout(0x608D0170, "brotli_length16_bit2", LE, sxarwire_brotli_length16_bit2_fields);
+var sxarwire_brotli_length16_bit3_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[3,16]", 3)]);
+var sxarwire_brotli_length16_bit3 = sxLayout(0x608D0171, "brotli_length16_bit3", LE, sxarwire_brotli_length16_bit3_fields);
+var sxarwire_brotli_length16_bit4_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[4,16]", 3)]);
+var sxarwire_brotli_length16_bit4 = sxLayout(0x608D0172, "brotli_length16_bit4", LE, sxarwire_brotli_length16_bit4_fields);
+var sxarwire_brotli_length16_bit5_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[5,16]", 3)]);
+var sxarwire_brotli_length16_bit5 = sxLayout(0x608D0173, "brotli_length16_bit5", LE, sxarwire_brotli_length16_bit5_fields);
+var sxarwire_brotli_length16_bit6_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[6,16]", 3)]);
+var sxarwire_brotli_length16_bit6 = sxLayout(0x608D0174, "brotli_length16_bit6", LE, sxarwire_brotli_length16_bit6_fields);
+var sxarwire_brotli_length16_bit7_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[7,16]", 3)]);
+var sxarwire_brotli_length16_bit7 = sxLayout(0x608D0175, "brotli_length16_bit7", LE, sxarwire_brotli_length16_bit7_fields);
+var sxarwire_brotli_length20_bit0_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[0,20]", 3)]);
+var sxarwire_brotli_length20_bit0 = sxLayout(0x608D0176, "brotli_length20_bit0", LE, sxarwire_brotli_length20_bit0_fields);
+var sxarwire_brotli_length20_bit1_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[1,20]", 3)]);
+var sxarwire_brotli_length20_bit1 = sxLayout(0x608D0177, "brotli_length20_bit1", LE, sxarwire_brotli_length20_bit1_fields);
+var sxarwire_brotli_length20_bit2_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[2,20]", 3)]);
+var sxarwire_brotli_length20_bit2 = sxLayout(0x608D0178, "brotli_length20_bit2", LE, sxarwire_brotli_length20_bit2_fields);
+var sxarwire_brotli_length20_bit3_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[3,20]", 3)]);
+var sxarwire_brotli_length20_bit3 = sxLayout(0x608D0179, "brotli_length20_bit3", LE, sxarwire_brotli_length20_bit3_fields);
+var sxarwire_brotli_length20_bit4_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[4,20]", 3)]);
+var sxarwire_brotli_length20_bit4 = sxLayout(0x608D017A, "brotli_length20_bit4", LE, sxarwire_brotli_length20_bit4_fields);
+var sxarwire_brotli_length20_bit5_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[5,20]", 4)]);
+var sxarwire_brotli_length20_bit5 = sxLayout(0x608D017B, "brotli_length20_bit5", LE, sxarwire_brotli_length20_bit5_fields);
+var sxarwire_brotli_length20_bit6_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[6,20]", 4)]);
+var sxarwire_brotli_length20_bit6 = sxLayout(0x608D017C, "brotli_length20_bit6", LE, sxarwire_brotli_length20_bit6_fields);
+var sxarwire_brotli_length20_bit7_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[7,20]", 4)]);
+var sxarwire_brotli_length20_bit7 = sxLayout(0x608D017D, "brotli_length20_bit7", LE, sxarwire_brotli_length20_bit7_fields);
+var sxarwire_brotli_length24_bit0_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[0,24]", 3)]);
+var sxarwire_brotli_length24_bit0 = sxLayout(0x608D017E, "brotli_length24_bit0", LE, sxarwire_brotli_length24_bit0_fields);
+var sxarwire_brotli_length24_bit1_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[1,24]", 4)]);
+var sxarwire_brotli_length24_bit1 = sxLayout(0x608D017F, "brotli_length24_bit1", LE, sxarwire_brotli_length24_bit1_fields);
+var sxarwire_brotli_length24_bit2_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[2,24]", 4)]);
+var sxarwire_brotli_length24_bit2 = sxLayout(0x608D0180, "brotli_length24_bit2", LE, sxarwire_brotli_length24_bit2_fields);
+var sxarwire_brotli_length24_bit3_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[3,24]", 4)]);
+var sxarwire_brotli_length24_bit3 = sxLayout(0x608D0181, "brotli_length24_bit3", LE, sxarwire_brotli_length24_bit3_fields);
+var sxarwire_brotli_length24_bit4_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[4,24]", 4)]);
+var sxarwire_brotli_length24_bit4 = sxLayout(0x608D0182, "brotli_length24_bit4", LE, sxarwire_brotli_length24_bit4_fields);
+var sxarwire_brotli_length24_bit5_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[5,24]", 4)]);
+var sxarwire_brotli_length24_bit5 = sxLayout(0x608D0183, "brotli_length24_bit5", LE, sxarwire_brotli_length24_bit5_fields);
+var sxarwire_brotli_length24_bit6_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[6,24]", 4)]);
+var sxarwire_brotli_length24_bit6 = sxLayout(0x608D0184, "brotli_length24_bit6", LE, sxarwire_brotli_length24_bit6_fields);
+var sxarwire_brotli_length24_bit7_fields = layout([field("uncompressed_length_minus_one", "lsb_bits[7,24]", 4)]);
+var sxarwire_brotli_length24_bit7 = sxLayout(0x608D0185, "brotli_length24_bit7", LE, sxarwire_brotli_length24_bit7_fields);
+var sxarwire_brotli_uncompressed_bit0_fields = layout([field("is_uncompressed", "lsb_bits[0,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit0 = sxLayout(0x608D0186, "brotli_uncompressed_bit0", LE, sxarwire_brotli_uncompressed_bit0_fields);
+var sxarwire_brotli_uncompressed_bit1_fields = layout([field("is_uncompressed", "lsb_bits[1,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit1 = sxLayout(0x608D0187, "brotli_uncompressed_bit1", LE, sxarwire_brotli_uncompressed_bit1_fields);
+var sxarwire_brotli_uncompressed_bit2_fields = layout([field("is_uncompressed", "lsb_bits[2,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit2 = sxLayout(0x608D0188, "brotli_uncompressed_bit2", LE, sxarwire_brotli_uncompressed_bit2_fields);
+var sxarwire_brotli_uncompressed_bit3_fields = layout([field("is_uncompressed", "lsb_bits[3,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit3 = sxLayout(0x608D0189, "brotli_uncompressed_bit3", LE, sxarwire_brotli_uncompressed_bit3_fields);
+var sxarwire_brotli_uncompressed_bit4_fields = layout([field("is_uncompressed", "lsb_bits[4,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit4 = sxLayout(0x608D018A, "brotli_uncompressed_bit4", LE, sxarwire_brotli_uncompressed_bit4_fields);
+var sxarwire_brotli_uncompressed_bit5_fields = layout([field("is_uncompressed", "lsb_bits[5,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit5 = sxLayout(0x608D018B, "brotli_uncompressed_bit5", LE, sxarwire_brotli_uncompressed_bit5_fields);
+var sxarwire_brotli_uncompressed_bit6_fields = layout([field("is_uncompressed", "lsb_bits[6,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit6 = sxLayout(0x608D018C, "brotli_uncompressed_bit6", LE, sxarwire_brotli_uncompressed_bit6_fields);
+var sxarwire_brotli_uncompressed_bit7_fields = layout([field("is_uncompressed", "lsb_bits[7,1]", 1, FLAGS)]);
+var sxarwire_brotli_uncompressed_bit7 = sxLayout(0x608D018D, "brotli_uncompressed_bit7", LE, sxarwire_brotli_uncompressed_bit7_fields);
+var sxarwire_brotli_fill1_bit7_fields = layout([field("zero_fill_bits", "lsb_bits[7,1]", 1, RESERVED)]);
+var sxarwire_brotli_fill1_bit7 = sxLayout(0x608D018E, "brotli_fill1_bit7", LE, sxarwire_brotli_fill1_bit7_fields);
+var sxarwire_brotli_fill2_bit6_fields = layout([field("zero_fill_bits", "lsb_bits[6,2]", 1, RESERVED)]);
+var sxarwire_brotli_fill2_bit6 = sxLayout(0x608D018F, "brotli_fill2_bit6", LE, sxarwire_brotli_fill2_bit6_fields);
+var sxarwire_brotli_fill3_bit5_fields = layout([field("zero_fill_bits", "lsb_bits[5,3]", 1, RESERVED)]);
+var sxarwire_brotli_fill3_bit5 = sxLayout(0x608D0190, "brotli_fill3_bit5", LE, sxarwire_brotli_fill3_bit5_fields);
+var sxarwire_brotli_fill4_bit4_fields = layout([field("zero_fill_bits", "lsb_bits[4,4]", 1, RESERVED)]);
+var sxarwire_brotli_fill4_bit4 = sxLayout(0x608D0191, "brotli_fill4_bit4", LE, sxarwire_brotli_fill4_bit4_fields);
+var sxarwire_brotli_fill5_bit3_fields = layout([field("zero_fill_bits", "lsb_bits[3,5]", 1, RESERVED)]);
+var sxarwire_brotli_fill5_bit3 = sxLayout(0x608D0192, "brotli_fill5_bit3", LE, sxarwire_brotli_fill5_bit3_fields);
+var sxarwire_brotli_fill6_bit2_fields = layout([field("zero_fill_bits", "lsb_bits[2,6]", 1, RESERVED)]);
+var sxarwire_brotli_fill6_bit2 = sxLayout(0x608D0193, "brotli_fill6_bit2", LE, sxarwire_brotli_fill6_bit2_fields);
+var sxarwire_brotli_fill7_bit1_fields = layout([field("zero_fill_bits", "lsb_bits[1,7]", 1, RESERVED)]);
+var sxarwire_brotli_fill7_bit1 = sxLayout(0x608D0194, "brotli_fill7_bit1", LE, sxarwire_brotli_fill7_bit1_fields);
+var sxarwire_brotli_mt_frame_fields = layout([u32("frame_magic", SIGNATURE), u32("header_payload_size", SIZE),
+    u32("compressed_size", SIZE), chars("codec_magic", 2, SIGNATURE), u16("output_limit_64k_units")]);
+var sxarwire_brotli_mt_frame = sxLayout(0x608D028E, "brotli_mt_frame", LE, sxarwire_brotli_mt_frame_fields);
+var sxarwire_set_brotli_window1 = [sxarwire_brotli_window1_bit0];
+var sxarwire_set_brotli_window4 = [sxarwire_brotli_window4_bit0];
+var sxarwire_set_brotli_window7 = [sxarwire_brotli_window7_bit0];
+var sxarwire_set_brotli_last = [sxarwire_brotli_last_bit0, sxarwire_brotli_last_bit1, sxarwire_brotli_last_bit2,
+    sxarwire_brotli_last_bit3, sxarwire_brotli_last_bit4, sxarwire_brotli_last_bit5, sxarwire_brotli_last_bit6,
+    sxarwire_brotli_last_bit7];
+var sxarwire_set_brotli_empty = [sxarwire_brotli_empty_bit0, sxarwire_brotli_empty_bit1, sxarwire_brotli_empty_bit2,
+    sxarwire_brotli_empty_bit3, sxarwire_brotli_empty_bit4, sxarwire_brotli_empty_bit5, sxarwire_brotli_empty_bit6,
+    sxarwire_brotli_empty_bit7];
+var sxarwire_set_brotli_nibbles = [sxarwire_brotli_nibbles_bit0, sxarwire_brotli_nibbles_bit1, sxarwire_brotli_nibbles_bit2,
+    sxarwire_brotli_nibbles_bit3, sxarwire_brotli_nibbles_bit4, sxarwire_brotli_nibbles_bit5, sxarwire_brotli_nibbles_bit6,
+    sxarwire_brotli_nibbles_bit7];
+var sxarwire_set_brotli_reserved = [sxarwire_brotli_reserved_bit0, sxarwire_brotli_reserved_bit1, sxarwire_brotli_reserved_bit2,
+    sxarwire_brotli_reserved_bit3, sxarwire_brotli_reserved_bit4, sxarwire_brotli_reserved_bit5, sxarwire_brotli_reserved_bit6,
+    sxarwire_brotli_reserved_bit7];
+var sxarwire_set_brotli_skipbytes = [sxarwire_brotli_skipbytes_bit0, sxarwire_brotli_skipbytes_bit1,
+    sxarwire_brotli_skipbytes_bit2, sxarwire_brotli_skipbytes_bit3, sxarwire_brotli_skipbytes_bit4,
+    sxarwire_brotli_skipbytes_bit5, sxarwire_brotli_skipbytes_bit6, sxarwire_brotli_skipbytes_bit7];
+var sxarwire_set_brotli_skiplen8 = [sxarwire_brotli_skiplen8_bit0, sxarwire_brotli_skiplen8_bit1, sxarwire_brotli_skiplen8_bit2,
+    sxarwire_brotli_skiplen8_bit3, sxarwire_brotli_skiplen8_bit4, sxarwire_brotli_skiplen8_bit5, sxarwire_brotli_skiplen8_bit6,
+    sxarwire_brotli_skiplen8_bit7];
+var sxarwire_set_brotli_skiplen16 = [sxarwire_brotli_skiplen16_bit0, sxarwire_brotli_skiplen16_bit1,
+    sxarwire_brotli_skiplen16_bit2, sxarwire_brotli_skiplen16_bit3, sxarwire_brotli_skiplen16_bit4,
+    sxarwire_brotli_skiplen16_bit5, sxarwire_brotli_skiplen16_bit6, sxarwire_brotli_skiplen16_bit7];
+var sxarwire_set_brotli_skiplen24 = [sxarwire_brotli_skiplen24_bit0, sxarwire_brotli_skiplen24_bit1,
+    sxarwire_brotli_skiplen24_bit2, sxarwire_brotli_skiplen24_bit3, sxarwire_brotli_skiplen24_bit4,
+    sxarwire_brotli_skiplen24_bit5, sxarwire_brotli_skiplen24_bit6, sxarwire_brotli_skiplen24_bit7];
+var sxarwire_set_brotli_length16 = [sxarwire_brotli_length16_bit0, sxarwire_brotli_length16_bit1, sxarwire_brotli_length16_bit2,
+    sxarwire_brotli_length16_bit3, sxarwire_brotli_length16_bit4, sxarwire_brotli_length16_bit5, sxarwire_brotli_length16_bit6,
+    sxarwire_brotli_length16_bit7];
+var sxarwire_set_brotli_length20 = [sxarwire_brotli_length20_bit0, sxarwire_brotli_length20_bit1, sxarwire_brotli_length20_bit2,
+    sxarwire_brotli_length20_bit3, sxarwire_brotli_length20_bit4, sxarwire_brotli_length20_bit5, sxarwire_brotli_length20_bit6,
+    sxarwire_brotli_length20_bit7];
+var sxarwire_set_brotli_length24 = [sxarwire_brotli_length24_bit0, sxarwire_brotli_length24_bit1, sxarwire_brotli_length24_bit2,
+    sxarwire_brotli_length24_bit3, sxarwire_brotli_length24_bit4, sxarwire_brotli_length24_bit5, sxarwire_brotli_length24_bit6,
+    sxarwire_brotli_length24_bit7];
+var sxarwire_set_brotli_uncompressed = [sxarwire_brotli_uncompressed_bit0, sxarwire_brotli_uncompressed_bit1,
+    sxarwire_brotli_uncompressed_bit2, sxarwire_brotli_uncompressed_bit3, sxarwire_brotli_uncompressed_bit4,
+    sxarwire_brotli_uncompressed_bit5, sxarwire_brotli_uncompressed_bit6, sxarwire_brotli_uncompressed_bit7];
+var sxarwire_set_brotli_fill1 = [sxarwire_brotli_fill1_bit7];
+var sxarwire_set_brotli_fill2 = [sxarwire_brotli_fill2_bit6];
+var sxarwire_set_brotli_fill3 = [sxarwire_brotli_fill3_bit5];
+var sxarwire_set_brotli_fill4 = [sxarwire_brotli_fill4_bit4];
+var sxarwire_set_brotli_fill5 = [sxarwire_brotli_fill5_bit3];
+var sxarwire_set_brotli_fill6 = [sxarwire_brotli_fill6_bit2];
+var sxarwire_set_brotli_fill7 = [sxarwire_brotli_fill7_bit1];
+function sxarwire_brotli_align(b) {
+    var n = 8 - sxAnd64(b.bit, 7) & 7;
+    if (!n) {
+        return true;
+    }
+    var start = b.bit;
+    var v = [0];
+    if (!sxarwire_take(b, n, v) || v[0]) {
+        return false;
+    }
+    var l = null;
+    switch (n) {
+    case 1:
+        l = sxarwire_set_brotli_fill1[0];
+        break;
+    case 2:
+        l = sxarwire_set_brotli_fill2[0];
+        break;
+    case 3:
+        l = sxarwire_set_brotli_fill3[0];
+        break;
+    case 4:
+        l = sxarwire_set_brotli_fill4[0];
+        break;
+    case 5:
+        l = sxarwire_set_brotli_fill5[0];
+        break;
+    case 6:
+        l = sxarwire_set_brotli_fill6[0];
+        break;
+    case 7:
+        l = sxarwire_set_brotli_fill7[0];
+        break;
+    }
+    return l !== null && sxarwire_put(b.c, l, Math.floor(start / 8));
+}
+function sxarwire_brotli_raw(c, base) {
+    var b = { c: c, bit: base * 8, lsb: true, cached_at: 0, cached: 0, have: false };
+    var v = [0];
+    var x = [0];
+    var width = 1;
+    if (!sxarwire_take(b, 1, v)) {
+        return false;
+    }
+    if (v[0]) {
+        if (!sxarwire_take(b, 3, v)) {
+            return false;
+        }
+        width = 4;
+        if (!v[0]) {
+            if (!sxarwire_take(b, 3, v) || v[0] === 1) {
+                return false;
+            }
+            width = 7;
+        }
+    }
+    if (!sxarwire_put(c, width === 1 ? sxarwire_set_brotli_window1[0] : width === 4 ? sxarwire_set_brotli_window4[0] : sxarwire_set_brotli_window7[0], base)) {
+        return false;
+    }
+    while (c.count < 20000) {
+        var last = [0];
+        var nib = [0];
+        var len = [0];
+        var uncompressed = [0];
+        if (!sxarwire_field(b, sxarwire_set_brotli_last, 1, last)) {
+            return false;
+        }
+        if (last[0]) {
+            if (!sxarwire_field(b, sxarwire_set_brotli_empty, 1, x)) {
+                return false;
+            }
+            if (x[0]) {
+                return sxarwire_brotli_align(b);
+            }
+        }
+        if (!sxarwire_field(b, sxarwire_set_brotli_nibbles, 2, nib)) {
+            return false;
+        }
+        if (nib[0] === 3) {
+            if (!sxarwire_field(b, sxarwire_set_brotli_reserved, 1, x) || x[0] || !sxarwire_field(b, sxarwire_set_brotli_skipbytes, 2, x)) {
+                return false;
+            }
+            len[0] = 0;
+            if (x[0]) {
+                var bits = ((x[0] >>> 0) * 8) >>> 0;
+                var set = bits === 8 ? sxarwire_set_brotli_skiplen8 : bits === 16 ? sxarwire_set_brotli_skiplen16 : sxarwire_set_brotli_skiplen24;
+                if (!sxarwire_field(b, set, bits, len) || x[0] > 1 && !sxShr64(len[0], (bits - 8) >>> 0)) {
+                    return false;
+                }
+                len[0]++;
+            }
+            if (!sxarwire_brotli_align(b) || !sxarwire_span(c, Math.floor(b.bit / 8), len[0]) || len[0] > Math.floor((SX_U64_MAX - b.bit) / 8)) {
+                return false;
+            }
+            b.bit += len[0] * 8;
+            if (last[0]) {
+                return true;
+            }
+            continue;
+        }
+        bits = (16 + ((4 * (nib[0] >>> 0)) >>> 0)) >>> 0;
+        set = bits === 16 ? sxarwire_set_brotli_length16 : bits === 20 ? sxarwire_set_brotli_length20 : sxarwire_set_brotli_length24;
+        if (!sxarwire_field(b, set, bits, len) || nib[0] && !sxShr64(len[0], (bits - 4) >>> 0)) {
+            return false;
+        }
+        len[0]++;
+        if (!last[0] && !sxarwire_field(b, sxarwire_set_brotli_uncompressed, 1, uncompressed)) {
+            return false;
+        }
+        if (!uncompressed[0]) {
+            return true;
+        }
+        if (!sxarwire_brotli_align(b) || !sxarwire_span(c, Math.floor(b.bit / 8), len[0]) || len[0] > Math.floor((SX_U64_MAX - b.bit) / 8)) {
+            return false;
+        }
+        b.bit += len[0] * 8;
+    }
+    return true;
+}
+function sxarwire_brotli_mt_header(h) {
+    return sxarwire_num(h, 0, 4, false) === 0x184D2A50 && sxarwire_num(h, 4, 4, false) === 8 && h[12] === 66 /*B*/ && h[13] === 82 /*R*/;
+}
+function sxarwire_brotli(c) {
+    var h = [];
+    if (!sxarwire_read(c, 0, h, 16) || !sxarwire_brotli_mt_header(h)) {
+        return sxarwire_brotli_raw(c, 0);
+    }
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 20000) {
+        if (!sxarwire_read(c, p, h, 16) || !sxarwire_brotli_mt_header(h)) {
+            return false;
+        }
+        var n = sxarwire_num(h, 8, 4, false);
+        if (!n || !sxarwire_num(h, 14, 2, false) || !sxarwire_span(c, p + 16, n) || !sxarwire_put(c, sxarwire_brotli_mt_frame, p)) {
+            return false;
+        }
+        var saved_size = c.size;
+        c.size = (p + 16 + n >= SX_I64_MAX ? p + 16 + n - SX_U64_MAX : p + 16 + n);
+        var framed = sxarwire_brotli_raw(c, p + 16);
+        c.size = saved_size;
+        if (c.failed) {
+            return false;
+        }
+        p += 16 + n;
+    }
+    return true;
+}
+function sx_brotli_build(c) {
+    return sxarwire_brotli(c);
+}

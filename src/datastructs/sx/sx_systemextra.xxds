@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_systemextra.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_systemextra");
+include("_sx_systemextra_acorn_uef");
+include("_sx_systemextra_amstrad_cpc_dsk");
+include("_sx_systemextra_apple_a2r");
+include("_sx_systemextra_apple_woz");
+include("_sx_systemextra_atari_atr");
+include("_sx_systemextra_atari_cas");
+include("_sx_systemextra_atari_pasti_stx");
+include("_sx_systemextra_atari_st_msa");
+include("_sx_systemextra_commodore_g64");
+include("_sx_systemextra_commodore_p64");
+include("_sx_systemextra_commodore_pc64");
+include("_sx_systemextra_commodore_tap");
+include("_sx_systemextra_dragon_vdk");
+include("_sx_systemextra_hfe");
+include("_sx_systemextra_hxc_hfe_extended");
+include("_sx_systemextra_hxc_hfe_hddd_a2_variant");
+include("_sx_systemextra_hxc_hfe_v3");
+include("_sx_systemextra_hxc_mfm");
+include("_sx_systemextra_hxc_stream_hfe");
+include("_sx_systemextra_oric_tap");
+include("_sx_systemextra_supercard_scp");
+include("_sx_systemextra_t98_next_nfd");
+include("_sx_systemextra_vice_x64");
+include("_sx_systemextra_yaze_ydsk");
+include("_sx_systemextra_zx_spectrum_pzx");
+include("_sx_systemextra_zx_spectrum_tzx");
+
+function fileTypes() { return ["HFE", "VICE_X64", "COMMODORE_G64", "COMMODORE_P64", "COMMODORE_TAP", "ZX_SPECTRUM_TZX",
+    "AMSTRAD_CPC_DSK", "ATARI_ST_MSA", "SUPERCARD_SCP", "APPLE_WOZ", "ZX_SPECTRUM_PZX", "ACORN_UEF", "COMMODORE_PC64",
+    "ATARI_CAS", "ORIC_TAP", "DRAGON_VDK", "APPLE_A2R", "ATARI_ATR", "ATARI_PASTI_STX", "HXC_MFM", "YAZE_YDSK",
+    "HXC_STREAM_HFE", "T98_NEXT_NFD", "HXC_HFE_EXTENDED", "HXC_HFE_HDDD_A2_VARIANT", "HXC_HFE_V3"]; }
+
+var sx_systemextra_layouts = [sxse_x64_header, sxse_g64_header, sxse_g64_track_offset, sxse_g64_constant_speed,
+    sxse_g64_speed_offset, sxse_g64_track_header, sxse_p64_header, sxse_p64_chunk_header, sxse_p64_halftrack_header,
+    sxse_c64_tap_header, sxse_tzx_header, sxse_tzx_standard_data, sxse_tzx_turbo_data, sxse_tzx_pure_tone,
+    sxse_tzx_pulse_sequence, sxse_tzx_pulse, sxse_tzx_pure_data, sxse_tzx_pause, sxse_tzx_text_header, sxse_tzx_group_end,
+    sxse_tzx_archive_info, sxse_tzx_archive_string, sxse_tzx_custom_info, sxse_cpc_disk_header, sxse_cpc_extended_disk_header,
+    sxse_cpc_track_size, sxse_cpc_track_header, sxse_cpc_sector_standard, sxse_cpc_sector_extended, sxse_cpc_offset_info,
+    sxse_cpc_track_length, sxse_cpc_sector_timing, sxse_msa_header, sxse_msa_track_header, sxse_scp_header,
+    sxse_scp_track_offset, sxse_scp_track_header, sxse_scp_revolution, sxse_scp_extension_header, sxse_scp_write_splices_header,
+    sxse_scp_write_splice, sxse_scp_footer, sxse_scp_string_header, sxse_woz_header, sxse_disk_chunk_header, sxse_woz_info_v1,
+    sxse_woz_info_v2, sxse_woz_info_v3, sxse_woz_track_map, sxse_woz1_track_metadata, sxse_woz2_track_entry, sxse_pzx_version,
+    sxse_pzx_data, sxse_pzx_pulse_duration, sxse_pzx_pause, sxse_pzx_stop, sxse_uef_header, sxse_uef_chunk, sxse_uef_carrier,
+    sxse_uef_carrier_dummy, sxse_uef_gap, sxse_uef_phase, sxse_pc64_header, sxse_atari_cas_description, sxse_atari_cas_baud,
+    sxse_atari_cas_data, sxse_atari_cas_fsk, sxse_oric_tap_header, sxse_vdk_header, sxse_a2r_header, sxse_a2r_info_v2,
+    sxse_a2r_info_v3, sxse_a2r2_capture, sxse_a2r_stream_end, sxse_a2r3_capture_chunk, sxse_a2r3_capture,
+    sxse_a2r3_solved_track, sxse_a2r3_index_time, sxse_a2r_capture_size, sxse_atr_header, sxse_stx_header, sxse_stx_track,
+    sxse_stx_sector, sxse_hxc_mfm_header, sxse_hxc_mfm_track, sxse_ydsk_header, sxse_nfd_header, sxse_nfd_sector_r0,
+    sxse_nfd_sector_r1, sxse_nfd_track_offset, sxse_nfd_additional_info, sxse_nfd_track_header, sxse_nfd_diagnostic,
+    sxse_hfe_header, sxse_hfe_track_entry, sxse_stream_hfe_header, sxse_stream_hfe_track];
+
+function structs() {
+    return sxCatalog([sxse_x64_header, sxse_g64_header, sxse_g64_track_offset, sxse_g64_constant_speed, sxse_g64_speed_offset,
+        sxse_g64_track_header, sxse_p64_header, sxse_p64_chunk_header, sxse_p64_halftrack_header, sxse_c64_tap_header,
+        sxse_tzx_header, sxse_tzx_standard_data, sxse_tzx_turbo_data, sxse_tzx_pure_tone, sxse_tzx_pulse_sequence,
+        sxse_tzx_pulse, sxse_tzx_pure_data, sxse_tzx_pause, sxse_tzx_text_header, sxse_tzx_group_end, sxse_tzx_archive_info,
+        sxse_tzx_archive_string, sxse_tzx_custom_info, sxse_cpc_disk_header, sxse_cpc_extended_disk_header, sxse_cpc_track_size,
+        sxse_cpc_track_header, sxse_cpc_sector_standard, sxse_cpc_sector_extended, sxse_cpc_offset_info, sxse_cpc_track_length,
+        sxse_cpc_sector_timing, sxse_msa_header, sxse_msa_track_header, sxse_scp_header, sxse_scp_track_offset,
+        sxse_scp_track_header, sxse_scp_revolution, sxse_scp_extension_header, sxse_scp_write_splices_header,
+        sxse_scp_write_splice, sxse_scp_footer, sxse_scp_string_header, sxse_woz_header, sxse_disk_chunk_header,
+        sxse_woz_info_v1, sxse_woz_info_v2, sxse_woz_info_v3, sxse_woz_track_map, sxse_woz1_track_metadata,
+        sxse_woz2_track_entry, sxse_pzx_version, sxse_pzx_data, sxse_pzx_pulse_duration, sxse_pzx_pause, sxse_pzx_stop,
+        sxse_uef_header, sxse_uef_chunk, sxse_uef_carrier, sxse_uef_carrier_dummy, sxse_uef_gap, sxse_uef_phase,
+        sxse_pc64_header, sxse_atari_cas_description, sxse_atari_cas_baud, sxse_atari_cas_data, sxse_atari_cas_fsk,
+        sxse_oric_tap_header, sxse_vdk_header, sxse_a2r_header, sxse_a2r_info_v2, sxse_a2r_info_v3, sxse_a2r2_capture,
+        sxse_a2r_stream_end, sxse_a2r3_capture_chunk, sxse_a2r3_capture, sxse_a2r3_solved_track, sxse_a2r3_index_time,
+        sxse_a2r_capture_size, sxse_atr_header, sxse_stx_header, sxse_stx_track, sxse_stx_sector, sxse_hxc_mfm_header,
+        sxse_hxc_mfm_track, sxse_ydsk_header, sxse_nfd_header, sxse_nfd_sector_r0, sxse_nfd_sector_r1, sxse_nfd_track_offset,
+        sxse_nfd_additional_info, sxse_nfd_track_header, sxse_nfd_diagnostic, sxse_hfe_header, sxse_hfe_track_entry,
+        sxse_stream_hfe_header, sxse_stream_hfe_track], sx_systemextra_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_systemextra_build, false);
+}

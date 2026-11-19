@@ -1,0 +1,189 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hfsplus/xx_hfsplus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxo_hfsplus_btree_header_fields = layout([u16("tree_depth"), u32("root_node"), u32("leaf_record_count", COUNT),
+    u32("first_leaf_node"), u32("last_leaf_node"), u16("node_size", SIZE), u16("maximum_key_length", SIZE),
+    u32("total_nodes", COUNT), u32("free_nodes", COUNT), u16("reserved0", RESERVED), u32("clump_size", SIZE),
+    u8("tree_type", ID), u8("key_compare_type", ID), u32("attributes", FLAGS), bytes("reserved1", 64, RESERVED)]);
+var sxo_hfsplus_btree_header = sxLayout(0x6013001C, "hfsplus_btree_header", BE, sxo_hfsplus_btree_header_fields);
+var sxo_hfsplus_btree_record_offset_fields = layout([u16("record_offset", OFFSET)]);
+var sxo_hfsplus_btree_record_offset = sxLayout(0x6013001D, "hfsplus_btree_record_offset", BE, sxo_hfsplus_btree_record_offset_fields);
+var sxo_hfsplus_catalog_key_fields = layout([u16("key_length", SIZE), u32("parent_id", ID), u16("name_code_units", COUNT)]);
+var sxo_hfsplus_catalog_key = sxLayout(0x6013001E, "hfsplus_catalog_key", BE, sxo_hfsplus_catalog_key_fields);
+var sxo_hfsplus_catalog_folder_fields = layout([i16("record_type", ID), u16("flags", FLAGS), u32("valence", COUNT),
+    u32("object_id", ID), u32("create_date", TIMESTAMP), u32("content_modification_date", TIMESTAMP),
+    u32("attribute_modification_date", TIMESTAMP), u32("access_date", TIMESTAMP), u32("backup_date", TIMESTAMP),
+    u32("owner_id"), u32("group_id"), u8("admin_flags", FLAGS), u8("owner_flags", FLAGS), u16("file_mode", FLAGS),
+    u32("special"), i16("window_top"), i16("window_left"), i16("window_bottom"), i16("window_right"),
+    u16("finder_flags", FLAGS), i16("location_vertical"), i16("location_horizontal"), i16("finder_opaque"),
+    bytes("extended_finder_info", 16), u32("text_encoding", ID), u32("folder_count", COUNT)]);
+var sxo_hfsplus_catalog_folder = sxLayout(0x6013001F, "hfsplus_catalog_folder", BE, sxo_hfsplus_catalog_folder_fields);
+var sxo_hfsplus_catalog_file_fields = layout([i16("record_type", ID), u16("flags", FLAGS), u32("reserved0", RESERVED),
+    u32("object_id", ID), u32("create_date", TIMESTAMP), u32("content_modification_date", TIMESTAMP),
+    u32("attribute_modification_date", TIMESTAMP), u32("access_date", TIMESTAMP), u32("backup_date", TIMESTAMP),
+    u32("owner_id"), u32("group_id"), u8("admin_flags", FLAGS), u8("owner_flags", FLAGS), u16("file_mode", FLAGS),
+    u32("special"), u32("file_type", ID), u32("file_creator", ID), u16("finder_flags", FLAGS), i16("location_vertical"),
+    i16("location_horizontal"), i16("finder_opaque"), bytes("extended_finder_info", 16), u32("text_encoding", ID),
+    u32("reserved2", RESERVED), u64("data_logical_size", SIZE), u32("data_clump_size", SIZE), u32("data_total_blocks", COUNT),
+    u32("data_extent0_start_block"), u32("data_extent0_block_count", COUNT), u32("data_extent1_start_block"),
+    u32("data_extent1_block_count", COUNT), u32("data_extent2_start_block"), u32("data_extent2_block_count", COUNT),
+    u32("data_extent3_start_block"), u32("data_extent3_block_count", COUNT), u32("data_extent4_start_block"),
+    u32("data_extent4_block_count", COUNT), u32("data_extent5_start_block"), u32("data_extent5_block_count", COUNT),
+    u32("data_extent6_start_block"), u32("data_extent6_block_count", COUNT), u32("data_extent7_start_block"),
+    u32("data_extent7_block_count", COUNT), u64("resource_logical_size", SIZE), u32("resource_clump_size", SIZE),
+    u32("resource_total_blocks", COUNT), u32("resource_extent0_start_block"), u32("resource_extent0_block_count", COUNT),
+    u32("resource_extent1_start_block"), u32("resource_extent1_block_count", COUNT), u32("resource_extent2_start_block"),
+    u32("resource_extent2_block_count", COUNT), u32("resource_extent3_start_block"), u32("resource_extent3_block_count", COUNT),
+    u32("resource_extent4_start_block"), u32("resource_extent4_block_count", COUNT), u32("resource_extent5_start_block"),
+    u32("resource_extent5_block_count", COUNT), u32("resource_extent6_start_block"), u32("resource_extent6_block_count", COUNT),
+    u32("resource_extent7_start_block"), u32("resource_extent7_block_count", COUNT)]);
+var sxo_hfsplus_catalog_file = sxLayout(0x60130020, "hfsplus_catalog_file", BE, sxo_hfsplus_catalog_file_fields);
+function sxo_hfs_address(c, fork, fork_o, unit, logical, size, out) {
+    var start = 0;
+    if (logical > sxGetU64At(fork, fork_o, 8, 0, true) || size > sxU64(sxGetU64At(fork, fork_o, 8, 0, true) - logical)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        var block = sxGetU32At(fork, fork_o + 16 + ((i * 8) >>> 0), 4, 0, true);
+        var count = sxGetU32At(fork, fork_o + 20 + ((i * 8) >>> 0), 4, 0, true);
+        var bytes = count * unit;
+        if (logical >= start && sxU64(logical - start) < bytes) {
+            var at = sxU64(block * unit + logical - start);
+            if (size > sxU64(bytes - sxU64(logical - start)) || at > SX_I64_MAX || !sxo_can(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), size)) {
+                return false;
+            }
+            out[0] = (at >= SX_I64_MAX ? at - SX_U64_MAX : at);
+            return true;
+        }
+        start += bytes;
+    }
+    return false;
+}
+function sxo_hfs_tree(c, fork, fork_o, unit, catalog) {
+    done: {
+        var probe = [];
+        var b = null;
+        var at = [0];
+        var node_size;
+        var nodes;
+        var first;
+        var count = 1;
+        var ok = false;
+        if (!sxGetU64At(fork, fork_o, 8, 0, true)) {
+            return true;
+        }
+        if (!sxo_hfs_address(c, fork, fork_o, unit, 0, 120, at)) {
+            return true;
+        }
+        if (!sx_read(c, at[0], probe, 120)) {
+            return false;
+        }
+        node_size = sxGetU16At(probe, 32, 2, 0, true);
+        nodes = sxGetU32At(probe, 36, 4, 0, true);
+        first = sxGetU32At(probe, 24, 4, 0, true);
+        if (node_size < 512 || node_size > 32768 || (node_size & (node_size - 1) >>> 0) >>> 0 || !nodes || nodes > 131072) {
+            return false;
+        }
+        b = sxAlloc(node_size);
+        var queue = sxAlloc(Math.floor((nodes * 4) / 4));
+        var seen = sxAlloc(nodes);
+        if (b === null || queue === null || seen === null) {
+            break done;
+        }
+        sxFill(seen, 0, nodes, 0);
+        queue[0] = 0;
+        seen[0] = 1;
+        if (first) {
+            if (first >= nodes) {
+                break done;
+            }
+            queue[count++] = first;
+            seen[first] = 1;
+        }
+        for (var q = 0; q < count; q++) {
+            if (false) {
+                break done;
+            }
+            if (!sxo_hfs_address(c, fork, fork_o, unit, queue[q] * node_size, node_size, at)) {
+                continue;
+            }
+            if (!sx_read(c, at[0], b, node_size)) {
+                break done;
+            }
+            var n = sxGetU16At(b, 10, 2, 0, true);
+            if (n > Math.floor(((node_size - 16) >>> 0) / 4)) {
+                break done;
+            }
+            if (!sxo_add(c, sxo_hfsplus_btree_node_descriptor, at[0], 14) || !sx_table(c, sxo_hfsplus_btree_record_offset, at[0] + node_size - 2 * (n + 1), 2, n + 1)) {
+                break done;
+            }
+            for (var i = 0; i < n; i = i + 1 & 0xFFFF) {
+                var begin = sxGetU16At(b, node_size + -2 - (2 * i), 2, 0, true);
+                var end = sxGetU16At(b, node_size + -4 - (2 * i), 2, 0, true);
+                if (begin < 14 || end <= begin || end > (node_size - 2 * (n + 1)) >>> 0) {
+                    break done;
+                }
+                if (queue[q] === 0 && i === 0) {
+                    if (end - begin < 106 || !sxo_add(c, sxo_hfsplus_btree_header, at[0] + begin, 106)) {
+                        break done;
+                    }
+                } else if (catalog && b[8] === 255) {
+                    var key = sxGetU16At(b, begin, 2, 0, true);
+                    var payload = begin + 2 + key;
+                    if (key < 6 || payload > end || (end - payload) >>> 0 < 2) {
+                        break done;
+                    }
+                    if (!sxo_add(c, sxo_hfsplus_catalog_key, at[0] + begin, 8)) {
+                        break done;
+                    }
+                    var type = sxGetU16At(b, payload, 2, 0, true);
+                    var l = type === 1 ? sxo_hfsplus_catalog_folder : type === 2 ? sxo_hfsplus_catalog_file : type === 3 || type === 4 ? sxo_hfsplus_catalog_thread : null;
+                    var length = type === 1 ? 88 : type === 2 ? 248 : 10;
+                    if (l !== null && (length > (end - payload) >>> 0 || !sxo_add(c, l, at[0] + payload, length))) {
+                        break done;
+                    }
+                }
+            }
+            var next = sxGetU32(b, 4, 0, true);
+            if (next) {
+                if (next >= nodes) {
+                    break done;
+                }
+                if (!seen[next]) {
+                    if (count >= nodes) {
+                        break done;
+                    }
+                    seen[next] = 1;
+                    queue[count++] = next;
+                }
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sxo_hfs_build(c) {
+    var h = [];
+    var alt = [];
+    if (!sx_read(c, 1024, h, 512) || !sxo_add(c, sxo_hfsplus_volume_header, 1024, 512)) {
+        return false;
+    }
+    var unit = sxGetU32At(h, 40, 4, 0, true);
+    var blocks = sxGetU32At(h, 44, 4, 0, true);
+    var size = unit * blocks;
+    if (size < 4096 || size > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    if (sxo_can(c, (size >= SX_I64_MAX ? size - SX_U64_MAX : size) - 1024, 512) && sx_read(c, (size >= SX_I64_MAX ? size - SX_U64_MAX : size) - 1024, alt, 512) && !sxMemcmp(h, alt, 4) && sxGetU32At(alt, 40, 4, 0, true) === unit && sxGetU32At(alt, 44, 4, 0, true) === blocks) {
+        if (!sxo_add(c, sxo_hfsplus_volume_header, (size >= SX_I64_MAX ? size - SX_U64_MAX : size) - 1024, 512)) {
+            return false;
+        }
+    }
+    return sxo_hfs_tree(c, h, 192, unit, false) && sxo_hfs_tree(c, h, 272, unit, true) && sxo_hfs_tree(c, h, 352, unit, false);
+}
+function sx_hfsplus_build(c) {
+    return sxo_hfs_build(c);
+}

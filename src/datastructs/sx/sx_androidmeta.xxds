@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_androidmeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_androidmeta");
+include("_sx_androidmeta_android_binary_xml");
+include("_sx_androidmeta_android_resources_arsc");
+
+function fileTypes() { return ["ANDROID_BINARY_XML", "ANDROID_RESOURCES_ARSC"]; }
+
+var sx_androidmeta_layouts = [sx_am_android_chunk_header, sx_am_android_string_pool_header, sx_am_android_string_offset,
+    sx_am_android_xml_node, sx_am_android_xml_namespace, sx_am_android_xml_start_element, sx_am_android_xml_end_element,
+    sx_am_android_xml_attribute, sx_am_android_xml_cdata, sx_am_android_resource_id, sx_am_android_table_header,
+    sx_am_android_package_header, sx_am_android_package_header_extended, sx_am_android_type_spec, sx_am_android_type_spec_flags,
+    sx_am_android_type_header, sx_am_android_config_size, sx_am_android_config_base, sx_am_android_config_screen,
+    sx_am_android_config_size_dp, sx_am_android_config_locale, sx_am_android_config_color, sx_am_android_entry_offset,
+    sx_am_android_table_entry, sx_am_android_table_map_entry, sx_am_android_value, sx_am_android_table_map];
+
+function structs() {
+    return sxCatalog([sx_am_android_chunk_header, sx_am_android_string_pool_header, sx_am_android_string_offset,
+        sx_am_android_xml_node, sx_am_android_xml_namespace, sx_am_android_xml_start_element, sx_am_android_xml_end_element,
+        sx_am_android_xml_attribute, sx_am_android_xml_cdata, sx_am_android_resource_id, sx_am_android_table_header,
+        sx_am_android_package_header, sx_am_android_package_header_extended, sx_am_android_type_spec,
+        sx_am_android_type_spec_flags, sx_am_android_type_header, sx_am_android_config_size, sx_am_android_config_base,
+        sx_am_android_config_screen, sx_am_android_config_size_dp, sx_am_android_config_locale, sx_am_android_config_color,
+        sx_am_android_entry_offset, sx_am_android_table_entry, sx_am_android_table_map_entry, sx_am_android_value,
+        sx_am_android_table_map], sx_androidmeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_androidmeta_build, false);
+}

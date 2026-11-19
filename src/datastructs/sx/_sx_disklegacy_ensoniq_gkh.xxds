@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ensoniq_gkh/xx_ensoniq_gkh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_gkh_header_fields = layout([chars("magic", 4, SIGNATURE), u8("number_type", ID), u8("version", ID),
+    u16("tag_count", COUNT)]);
+var sxdleg_gkh_header = sxLayout(0x60750031, "gkh_header", LE, sxdleg_gkh_header_fields);
+var sxdleg_gkh_format_tag_fields = layout([u8("tag_type", ID), u8("data_type", ID), u32("disk_format", ID), u32("dump_type", ID)]);
+var sxdleg_gkh_format_tag = sxLayout(0x60750032, "gkh_format_tag", LE, sxdleg_gkh_format_tag_fields);
+var sxdleg_gkh_geometry_tag_fields = layout([u8("tag_type", ID), u8("data_type", ID), u16("track_count", COUNT),
+    u16("head_count", COUNT), u16("sectors_per_track", COUNT), u16("sector_size", SIZE)]);
+var sxdleg_gkh_geometry_tag = sxLayout(0x60750033, "gkh_geometry_tag", LE, sxdleg_gkh_geometry_tag_fields);
+var sxdleg_gkh_location_tag_fields = layout([u8("tag_type", ID), u8("data_type", ID), u32("data_size", SIZE),
+    u32("data_offset", OFFSET)]);
+var sxdleg_gkh_location_tag = sxLayout(0x60750034, "gkh_location_tag", LE, sxdleg_gkh_location_tag_fields);
+function sxdleg_gkh(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 8) || sxMemcmp(h, "TDDFI\x01", 6)) {
+        return false;
+    }
+    var n = sxdleg16(h, 6, 0);
+    if (n < 3 || n > 5 || !sxdleg_span(c, 8, (n * 10) >>> 0) || !sxdleg_put(c, sxdleg_gkh_header, 0, 1)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var p = (8 + ((i * 10) >>> 0)) >>> 0;
+        if (!sxdleg_read(c, p, h, 0, 10)) {
+            return false;
+        }
+        var l = h[0] === 1 ? sxdleg_gkh_format_tag : h[0] === 10 ? sxdleg_gkh_geometry_tag : h[0] === 11 || h[0] === 20 || h[0] === 21 ? sxdleg_gkh_location_tag : null;
+        if (l !== null && !sxdleg_put(c, l, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ensoniq_gkh_build(c) {
+    return sxdleg_gkh(c);
+}

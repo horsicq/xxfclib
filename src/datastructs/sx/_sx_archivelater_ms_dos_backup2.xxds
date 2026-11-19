@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ms_dos_backup2/xx_ms_dos_backup2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_dos_backup2_header_fields = layout([u8("header_size", SIZE), chars("signature", 8, SIGNATURE), u8("volume_number", ID),
+    bytes("reserved", 128, RESERVED), u8("last_volume", FLAGS)]);
+var sxal_dos_backup2_header = sxLayout(0x60200049, "dos_backup2_header", LE, sxal_dos_backup2_header_fields);
+var sxal_dos_backup2_directory_fields = layout([u8("record_size", SIZE), chars("path", 63, STRING), u16("file_count", COUNT),
+    u32("next_directory_offset", OFFSET)]);
+var sxal_dos_backup2_directory = sxLayout(0x6020004A, "dos_backup2_directory", LE, sxal_dos_backup2_directory_fields);
+var sxal_dos_backup2_file_fields = layout([u8("record_size", SIZE), chars("name", 12, STRING), u8("flags", FLAGS),
+    u32("total_size", SIZE), u16("fragment_number", ID), u32("data_offset", OFFSET), u32("fragment_size", SIZE),
+    u16("attributes", FLAGS), u16("time"), u16("date")]);
+var sxal_dos_backup2_file = sxLayout(0x6020004B, "dos_backup2_file", LE, sxal_dos_backup2_file_fields);
+function sxal_backup2(c) {
+    var b = [];
+    if (!sxal_add(c, sxal_dos_backup2_header, 0)) {
+        return false;
+    }
+    var p = 139;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, 70) || b[0] !== 70) {
+            break;
+        }
+        var n = sxal16(b, 64, false);
+        var last = sxal32(b, 66, false) === 4294967295;
+        if (!sxal_add(c, sxal_dos_backup2_directory, p)) {
+            return false;
+        }
+        p += 70;
+        for (var j = 0; j < n; j++) {
+            if (!sxal_read(c, p, b, 34) || b[0] !== 34) {
+                return true;
+            }
+            if (!sxal_add(c, sxal_dos_backup2_file, p)) {
+                return false;
+            }
+            p += 34;
+        }
+        if (last) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_ms_dos_backup2_build(c) {
+    return sxal_backup2(c);
+}

@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/shrinkwrap/xx_shrinkwrap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_shrinkwrap_header_fields = layout([u8("name_length", COUNT), chars("disk_name", 63, NONE), u32("data_size", SIZE),
+    u32("tag_size", SIZE), u32("data_checksum", CHECKSUM), u32("tag_checksum", CHECKSUM), u8("disk_format", ID),
+    u8("format_byte", ID), u16("private_word", ID)]);
+var sxdleg_shrinkwrap_header = sxLayout(0x60750001, "shrinkwrap_header", BE, sxdleg_shrinkwrap_header_fields);
+function sxdleg_shrinkwrap(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 84) || h[0] > 63 || sxdleg16(h, 82, 1) !== 256) {
+        return false;
+    }
+    return sxdleg_put(c, sxdleg_shrinkwrap_header, 0, 1);
+}
+function sx_shrinkwrap_build(c) {
+    return sxdleg_shrinkwrap(c);
+}

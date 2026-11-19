@@ -1,0 +1,158 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/blender_blend/xx_blender_blend_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_blend_header_fields = layout([chars("signature", 7, SIGNATURE), chars("pointer_size", 1, ID),
+    chars("byte_order", 1, ID), chars("version", 3, ID)]);
+var sxmo_blend_header = sxLayout(0x60210028, "blend_header", LE, sxmo_blend_header_fields);
+var sxmo_blend_block32_le_fields = layout([chars("code", 4, ID), i32("data_size", SIZE), u32("old_pointer", POINTER),
+    i32("dna_structure_index", ID), i32("element_count", COUNT)]);
+var sxmo_blend_block32_le = sxLayout(0x60210029, "blend_block32_le", LE, sxmo_blend_block32_le_fields);
+var sxmo_blend_block64_le_fields = layout([chars("code", 4, ID), i32("data_size", SIZE), u64("old_pointer", POINTER),
+    i32("dna_structure_index", ID), i32("element_count", COUNT)]);
+var sxmo_blend_block64_le = sxLayout(0x6021002A, "blend_block64_le", LE, sxmo_blend_block64_le_fields);
+var sxmo_blend_dna_names_le_fields = layout([chars("signature", 4, SIGNATURE), chars("names_tag", 4, ID),
+    u32("name_count", COUNT)]);
+var sxmo_blend_dna_names_le = sxLayout(0x6021002B, "blend_dna_names_le", LE, sxmo_blend_dna_names_le_fields);
+var sxmo_blend_dna_types_le_fields = layout([chars("tag", 4, ID), u32("type_count", COUNT)]);
+var sxmo_blend_dna_types_le = sxLayout(0x6021002C, "blend_dna_types_le", LE, sxmo_blend_dna_types_le_fields);
+var sxmo_blend_dna_structures_le_fields = layout([chars("tag", 4, ID), u32("structure_count", COUNT)]);
+var sxmo_blend_dna_structures_le = sxLayout(0x6021002D, "blend_dna_structures_le", LE, sxmo_blend_dna_structures_le_fields);
+var sxmo_blend_dna_lengths_tag_le_fields = layout([chars("tag", 4, ID)]);
+var sxmo_blend_dna_lengths_tag_le = sxLayout(0x6021002E, "blend_dna_lengths_tag_le", LE, sxmo_blend_dna_lengths_tag_le_fields);
+var sxmo_blend_dna_type_size_le_fields = layout([u16("type_size", SIZE)]);
+var sxmo_blend_dna_type_size_le = sxLayout(0x6021002F, "blend_dna_type_size_le", LE, sxmo_blend_dna_type_size_le_fields);
+var sxmo_blend_dna_structure_le_fields = layout([u16("type_index", ID), u16("field_count", COUNT)]);
+var sxmo_blend_dna_structure_le = sxLayout(0x60210030, "blend_dna_structure_le", LE, sxmo_blend_dna_structure_le_fields);
+var sxmo_blend_dna_field_le_fields = layout([u16("type_index", ID), u16("name_index", ID)]);
+var sxmo_blend_dna_field_le = sxLayout(0x60210031, "blend_dna_field_le", LE, sxmo_blend_dna_field_le_fields);
+var sxmo_blend_block32_be_fields = layout([chars("code", 4, ID), i32("data_size", SIZE), u32("old_pointer", POINTER),
+    i32("dna_structure_index", ID), i32("element_count", COUNT)]);
+var sxmo_blend_block32_be = sxLayout(0x60210032, "blend_block32_be", BE, sxmo_blend_block32_be_fields);
+var sxmo_blend_block64_be_fields = layout([chars("code", 4, ID), i32("data_size", SIZE), u64("old_pointer", POINTER),
+    i32("dna_structure_index", ID), i32("element_count", COUNT)]);
+var sxmo_blend_block64_be = sxLayout(0x60210033, "blend_block64_be", BE, sxmo_blend_block64_be_fields);
+var sxmo_blend_dna_names_be_fields = layout([chars("signature", 4, SIGNATURE), chars("names_tag", 4, ID),
+    u32("name_count", COUNT)]);
+var sxmo_blend_dna_names_be = sxLayout(0x60210034, "blend_dna_names_be", BE, sxmo_blend_dna_names_be_fields);
+var sxmo_blend_dna_types_be_fields = layout([chars("tag", 4, ID), u32("type_count", COUNT)]);
+var sxmo_blend_dna_types_be = sxLayout(0x60210035, "blend_dna_types_be", BE, sxmo_blend_dna_types_be_fields);
+var sxmo_blend_dna_structures_be_fields = layout([chars("tag", 4, ID), u32("structure_count", COUNT)]);
+var sxmo_blend_dna_structures_be = sxLayout(0x60210036, "blend_dna_structures_be", BE, sxmo_blend_dna_structures_be_fields);
+var sxmo_blend_dna_lengths_tag_be_fields = layout([chars("tag", 4, ID)]);
+var sxmo_blend_dna_lengths_tag_be = sxLayout(0x60210037, "blend_dna_lengths_tag_be", BE, sxmo_blend_dna_lengths_tag_be_fields);
+var sxmo_blend_dna_type_size_be_fields = layout([u16("type_size", SIZE)]);
+var sxmo_blend_dna_type_size_be = sxLayout(0x60210038, "blend_dna_type_size_be", BE, sxmo_blend_dna_type_size_be_fields);
+var sxmo_blend_dna_structure_be_fields = layout([u16("type_index", ID), u16("field_count", COUNT)]);
+var sxmo_blend_dna_structure_be = sxLayout(0x60210039, "blend_dna_structure_be", BE, sxmo_blend_dna_structure_be_fields);
+var sxmo_blend_dna_field_be_fields = layout([u16("type_index", ID), u16("name_index", ID)]);
+var sxmo_blend_dna_field_be = sxLayout(0x6021003A, "blend_dna_field_be", BE, sxmo_blend_dna_field_be_fields);
+function sxmo_blend_dna(c, p, end, be) {
+    p = [p];
+    var h = [];
+    if (sxU64(end - p[0]) < 12 || !sxmo_read(c, p[0], h, 12) || sxMemcmp(h, "SDNANAME", 8)) {
+        return true;
+    }
+    var n = sxmo32(h, 8, be);
+    if (n > 65536) {
+        return true;
+    }
+    if (!sxmo_add(c, be ? sxmo_blend_dna_names_be : sxmo_blend_dna_names_le, p[0])) {
+        return false;
+    }
+    p[0] += 12;
+    for (var i = 0; i < n; i++) {
+        if (!sxmo_string(c, p, end, 0)) {
+            return true;
+        }
+    }
+    p[0] = sxAnd64(p[0] + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    if (p[0] > end || sxU64(end - p[0]) < 8 || !sxmo_read(c, p[0], h, 8) || sxMemcmp(h, "TYPE", 4)) {
+        return true;
+    }
+    n = sxmo32(h, 4, be);
+    if (n > 65536) {
+        return true;
+    }
+    if (!sxmo_add(c, be ? sxmo_blend_dna_types_be : sxmo_blend_dna_types_le, p[0])) {
+        return false;
+    }
+    p[0] += 8;
+    for (i = 0; i < n; i++) {
+        if (!sxmo_string(c, p, end, 0)) {
+            return true;
+        }
+    }
+    p[0] = sxAnd64(p[0] + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    if (p[0] > end || sxU64(end - p[0]) < 4 + n * 2 || !sxmo_read(c, p[0], h, 4) || sxMemcmp(h, "TLEN", 4)) {
+        return true;
+    }
+    if (!sxmo_add(c, be ? sxmo_blend_dna_lengths_tag_be : sxmo_blend_dna_lengths_tag_le, p[0]) || !sxmo_table(c, be ? sxmo_blend_dna_type_size_be : sxmo_blend_dna_type_size_le, p[0] + 4, n)) {
+        return false;
+    }
+    p[0] = sxAnd64(p[0] + 4 + ((n * 2) >>> 0) + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    if (p[0] > end || sxU64(end - p[0]) < 8 || !sxmo_read(c, p[0], h, 8) || sxMemcmp(h, "STRC", 4)) {
+        return true;
+    }
+    n = sxmo32(h, 4, be);
+    if (n > 4096) {
+        return true;
+    }
+    if (!sxmo_add(c, be ? sxmo_blend_dna_structures_be : sxmo_blend_dna_structures_le, p[0])) {
+        return false;
+    }
+    p[0] += 8;
+    for (i = 0; i < n; i++) {
+        if (p[0] > end || sxU64(end - p[0]) < 4 || !sxmo_read(c, p[0], h, 4)) {
+            break;
+        }
+        var fields = sxmo16(h, 2, be);
+        if (fields * 4 > sxU64(sxU64(end - p[0]) - 4)) {
+            break;
+        }
+        if (!sxmo_add(c, be ? sxmo_blend_dna_structure_be : sxmo_blend_dna_structure_le, p[0]) || !sxmo_table(c, be ? sxmo_blend_dna_field_be : sxmo_blend_dna_field_le, p[0] + 4, fields)) {
+            return false;
+        }
+        p[0] += 4 + fields * 4;
+    }
+    return !c.failed;
+}
+function sxmo_blend(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 12) || sxMemcmp(h, "BLENDER", 7) || h[7] !== 95 /*_*/ && h[7] !== 45 /*-*/ || h[8] !== 118 /*v*/ && h[8] !== 86 /*V*/ || !sxmo_add(c, sxmo_blend_header, 0)) {
+        return false;
+    }
+    var ptr = h[7] === 95 /*_*/ ? 4 : 8;
+    var z = (16 + ptr) >>> 0;
+    var be = h[8] === 86 /*V*/;
+    var l = ptr === 4 ? be ? sxmo_blend_block32_be : sxmo_blend_block32_le : be ? sxmo_blend_block64_be : sxmo_blend_block64_le;
+    var p = 12;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    for (var i = 0; i < 4096 && p < end; i++) {
+        if (sxU64(end - p) < z || !sxmo_read(c, p, h, z)) {
+            break;
+        }
+        var n = sxmo32(h, 4, be);
+        if (n > 2147483647 || n > sxU64(sxU64(end - p) - z)) {
+            break;
+        }
+        if (!sxmo_add(c, l, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "DNA1", 4) && !sxmo_blend_dna(c, p + z, p + z + n, be)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "ENDB", 4)) {
+            break;
+        }
+        p += (z + n) >>> 0;
+    }
+    return !c.failed;
+}
+function sx_blender_blend_build(c) {
+    var ok = false;
+    ok = sxmo_blend(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

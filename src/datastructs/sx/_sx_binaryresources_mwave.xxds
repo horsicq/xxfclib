@@ -1,0 +1,22 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/mwave/xx_mwave_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_mwave_header_fields = layout([bytes("magic", 2, SIGNATURE), u16("dos_time", TIMESTAMP), u16("dos_date", TIMESTAMP),
+    u16("constant", SIGNATURE), chars("filename", 12, STRING), bytes("reserved", 3, RESERVED), u8("compress_flags", FLAGS)]);
+var sxbrs_mwave_header = sxLayout(0x603E0019, "mwave_header", LE, sxbrs_mwave_header_fields);
+function sxbrs_mwave(c) {
+    if (c.size <= 24 || !sxbrs_eq(c, 0, "\x1F\x9D", 2) || sxbrs_num(c, 6, 2, false) !== 32 || sxbrs_num(c, 20, 3, false)) {
+        return false;
+    }
+    var flags = sxbrs_num(c, 23, 1, false);
+    if (sxAnd64(flags, 0x60) || sxAnd64(flags, 31) < 9 || sxAnd64(flags, 31) > 16) {
+        return false;
+    }
+    return sxbrs_add(c, sxbrs_mwave_header, 0);
+}
+function sx_mwave_build(c) {
+    return sxbrs_mwave(c);
+}

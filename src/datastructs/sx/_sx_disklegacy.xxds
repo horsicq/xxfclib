@@ -1,0 +1,941 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_disklegacy.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxdleg_flags(r, value, bits, n) {
+    var out = [];
+    var used = 0;
+    var known = 0;
+    for (var i = 0; i < n; i++) {
+        known = sxOr64(known, bits[i].mask);
+        if (!sxAnd64(value, bits[i].mask)) {
+            continue;
+        }
+        var p = bits[i].name, p_o = 0;
+        var z = sxStrlenAt(p, p_o);
+        if (z + used + 24 >= 1024) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        while (sxAt(p, p_o)) {
+            out[used++] = sxAt(p, p_o++);
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var start = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var d = sxAnd64(sxShr64(unknown, shift), 15);
+            if (d || start || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", d);
+                start = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_disklegacy_comment_bits = [{ mask: 1, name: "Sectors and ID fields" }, { mask: 2, name: "Raw track data" }];
+var sx_disklegacy_comment_bits_2 = [{ mask: 1, name: "Sectors and ID fields" }, { mask: 2, name: "Raw track data" }];
+var sx_disklegacy_comment_bits_3 = [{ mask: 1, name: "Missing address mark" }, { mask: 4, name: "No data" },
+    { mask: 32, name: "Data error" }, { mask: 128, name: "End of cylinder" }];
+var sx_disklegacy_comment_bits_4 = [{ mask: 1, name: "Missing address mark" }, { mask: 4, name: "No data" },
+    { mask: 32, name: "Data error" }, { mask: 128, name: "End of cylinder" }];
+var sx_disklegacy_comment_bits_5 = [{ mask: 1, name: "Missing data address mark" }, { mask: 32, name: "Data error" },
+    { mask: 64, name: "Deleted data mark" }];
+var sx_disklegacy_comment_bits_6 = [{ mask: 1, name: "Missing data address mark" }, { mask: 32, name: "Data error" },
+    { mask: 64, name: "Deleted data mark" }];
+function sx_disklegacy_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60750000 || id >= 0x60760000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    if (id === 0x60750015 && r.name === "data_flags" && integer) {
+        return sxdleg_flags(r, value, sx_disklegacy_comment_bits, 2);
+    }
+    if (id === 0x60750013 && r.name === "all_track_flags" && integer) {
+        return sxdleg_flags(r, value, sx_disklegacy_comment_bits_2, 2);
+    }
+    if (id === 0x6075000F && r.name === "status1" && integer) {
+        return sxdleg_flags(r, value, sx_disklegacy_comment_bits_3, 4);
+    }
+    if (id === 0x60750010 && r.name === "status1" && integer) {
+        return sxdleg_flags(r, value, sx_disklegacy_comment_bits_4, 4);
+    }
+    if (id === 0x6075000F && r.name === "status2" && integer) {
+        return sxdleg_flags(r, value, sx_disklegacy_comment_bits_5, 3);
+    }
+    if (id === 0x60750010 && r.name === "status2" && integer) {
+        return sxdleg_flags(r, value, sx_disklegacy_comment_bits_6, 3);
+    }
+    if (id === 0x60750005 && r.name === "compression" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Word RLE");
+        case 1:
+            return sxSetComment(r, "LZHUF");
+        case 2:
+            return sxSetComment(r, "Stored");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750005 && r.name === "disk_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Macintosh");
+        case 2:
+            return sxSetComment(r, "Lisa");
+        case 3:
+            return sxSetComment(r, "Apple II");
+        case 16:
+            return sxSetComment(r, "Macintosh HD");
+        case 17:
+            return sxSetComment(r, "DOS 720K");
+        case 18:
+            return sxSetComment(r, "DOS 1440K");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750001 && r.name === "disk_format" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "400 KiB GCR");
+        case 1:
+            return sxSetComment(r, "800 KiB GCR");
+        case 2:
+            return sxSetComment(r, "720 KiB MFM");
+        case 3:
+            return sxSetComment(r, "1440 KiB MFM");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750004 && r.name === "media_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "2HD (1024 x 8)");
+        case 1:
+            return sxSetComment(r, "2HS (1024 x 9)");
+        case 2:
+            return sxSetComment(r, "2HC (512 x 15)");
+        case 3:
+            return sxSetComment(r, "2HDE (1024 x 9)");
+        case 9:
+            return sxSetComment(r, "2HQ (512 x 18)");
+        case 17:
+            return sxSetComment(r, "N88-BASIC (256 x 26)");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750003 && r.name === "write_protection" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Write-protected");
+        case 255:
+            return sxSetComment(r, "Writable; padding in subsequent headers");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075001F && r.name === "media_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Unknown");
+        case 1:
+            return sxSetComment(r, "3.5-inch DD");
+        case 2:
+            return sxSetComment(r, "3.5-inch HD");
+        case 3:
+            return sxSetComment(r, "3.5-inch ED");
+        case 4:
+            return sxSetComment(r, "5.25-inch");
+        case 5:
+            return sxSetComment(r, "3-inch");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075001F && r.name === "platform_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Unknown");
+        case 1:
+            return sxSetComment(r, "Atari ST");
+        case 2:
+            return sxSetComment(r, "Amiga");
+        case 3:
+            return sxSetComment(r, "PC");
+        case 4:
+            return sxSetComment(r, "CPC");
+        case 5:
+            return sxSetComment(r, "MSX2");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750026 && r.name === "encoding_mode" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "None");
+        case 1:
+            return sxSetComment(r, "MFM");
+        case 2:
+            return sxSetComment(r, "PDC");
+        case 3:
+            return sxSetComment(r, "Cell array");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750027 && r.name === "type_id" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "None");
+        case 1:
+            return sxSetComment(r, "MFM_DATA");
+        case 2:
+            return sxSetComment(r, "INDEX_DATA");
+        case 3:
+            return sxSetComment(r, "BITRATE_DATA");
+        case 4:
+            return sxSetComment(r, "PDC_DATA");
+        case 5:
+            return sxSetComment(r, "WEAKBITS_DATA");
+        case 6:
+            return sxSetComment(r, "CELL_DATA");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750027 && r.name === "packer" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Stored");
+        case 1:
+            return sxSetComment(r, "zlib (historically called GZIP)");
+        case 2:
+            return sxSetComment(r, "Reserved RLE; opaque");
+        case 3:
+            return sxSetComment(r, "Reserved LZW; opaque");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750032 && r.name === "disk_format" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "EPS Disk");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750032 && r.name === "dump_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Uncompressed dump");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750034 && r.name === "tag_type" && integer) {
+        switch (value) {
+        case 11:
+            return sxSetComment(r, "Image");
+        case 20:
+            return sxSetComment(r, "Author");
+        case 21:
+            return sxSetComment(r, "Subject");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750030 && r.name === "geometry_order" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Side-major");
+        case 2:
+            return sxSetComment(r, "Cylinder-major");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750038 && r.name === "disk_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "DD geometry (code 0)");
+        case 1:
+            return sxSetComment(r, "Single-sided mixed-size geometry");
+        case 2:
+            return sxSetComment(r, "Double-sided mixed-size geometry");
+        case 3:
+            return sxSetComment(r, "EPS DD");
+        case 4:
+            return sxSetComment(r, "DD geometry (code 4)");
+        case 7:
+            return sxSetComment(r, "TS DD");
+        case 203:
+            return sxSetComment(r, "ASR HD");
+        case 204:
+            return sxSetComment(r, "TS HD");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075000E && r.name === "data_rate" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Unknown");
+        case 1:
+            return sxSetComment(r, "Single/double density");
+        case 2:
+            return sxSetComment(r, "High density");
+        case 3:
+            return sxSetComment(r, "Extended density");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075000E && r.name === "recording_mode" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Unknown");
+        case 1:
+            return sxSetComment(r, "FM");
+        case 2:
+            return sxSetComment(r, "MFM");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750011 && r.name === "recording_mode" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "MFM");
+        case 1:
+            return sxSetComment(r, "FM");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750011 && r.name === "data_rate" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "500 kbit/s");
+        case 1:
+            return sxSetComment(r, "300 kbit/s");
+        case 2:
+            return sxSetComment(r, "250 kbit/s");
+        case 3:
+            return sxSetComment(r, "1 Mbit/s");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60750011 && r.name === "sidedness" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Alternating sides");
+        case 1:
+            return sxSetComment(r, "Out and back");
+        case 2:
+            return sxSetComment(r, "Out and out");
+        case 3:
+            return sxSetComment(r, "Extended surface");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075002B && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Metadata text");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075002C && r.name === "type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "LZ4 packed 16-bit IO");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6075002D && r.name === "type" && integer) {
+        switch (value) {
+        case 2:
+            return sxSetComment(r, "LZ4 packed flux stream");
+        default:
+            break;
+        }
+    }
+    switch (id) {
+    case 0x60750001:
+        if (r.name === "data_checksum") {
+            s = "Disk Copy rolling checksum of data words";
+        } else if (r.name === "tag_checksum") {
+            s = "Disk Copy rolling checksum, excluding the first 12 tag bytes";
+        } else if (r.name === "disk_format") {
+            s = "0=400 KiB, 1=800 KiB, 2=720 KiB, 3=1440 KiB";
+        } else if (r.name === "format_byte") {
+            s = "GCR/MFM format byte";
+        } else if (r.name === "private_word") {
+            s = "Private Disk Copy marker, normally 0x0100";
+        }
+        break;
+    case 0x60750002:
+        if (r.name === "cylinder") {
+            s = "0xFF with sector_id 0xFF denotes a free descriptor";
+        } else if (r.name === "flags") {
+            s = "Density, DAM, side, error and size-code bits; free descriptors use a different size-code mapping";
+        }
+        break;
+    case 0x60750003:
+        if (r.name === "write_protection") {
+            s = "First header: 0x00 protected, 0xFF writable; later headers carry padding";
+        }
+        break;
+    case 0x60750004:
+        if (r.name === "track_present") {
+            s = "One byte per physical track; nonzero denotes stored track data";
+        } else if (r.name === "producer_metadata") {
+            s = "Unspecified producer date, time and comment area; preserved without invented subfields";
+        }
+        break;
+    case 0x60750005:
+        if (r.name === "compression") {
+            s = "0=word RLE, 1=LZHUF, 2=stored";
+        } else if (r.name === "disk_size_kib") {
+            s = "Logical disk capacity in 1024-byte units";
+        }
+        break;
+    case 0x60750006:
+        if (r.name === "encoded_length") {
+            s = "0=unused; 0xFFFF=stored 20960-byte block; otherwise words for RLE and bytes for LZHUF";
+        }
+        break;
+    case 0x60750007:
+        if (r.name === "key_header_offset") {
+            s = "File-relative offset of the encrypted 512-byte key header";
+        }
+        break;
+    case 0x60750008:
+        if (r.name === "mdx_marker") {
+            s = "0xFFFFFFFF selects the MDX physical envelope";
+        } else if (r.name === "descriptor_span") {
+            s = "Physical descriptor extent, including its 64-byte salt; encrypted payload remains raw";
+        }
+        break;
+    case 0x60750009:
+        if (r.name === "salt") {
+            s = "Physical key-derivation salt; subsequent key material is encrypted";
+        }
+        break;
+    case 0x6075000E:
+        if (r.name === "data_rate") {
+            s = "0=unknown, 1=SD/DD, 2=HD, 3=ED; unlike GEOM rate codes";
+        } else if (r.name === "recording_mode") {
+            s = "0=unknown, 1=FM, 2=MFM; native reader excludes GCR variants";
+        } else if (r.name === "gap3_length") {
+            s = "Controller format-gap byte count";
+        } else if (r.name === "track_length") {
+            s = "Approximate controller track byte length; zero if unavailable";
+        }
+        break;
+    case 0x6075000F:
+        if (r.name === "size_code") {
+            s = "Nominal sector bytes = 128 shifted left by this value";
+        } else if (r.name === "track_offset") {
+            s = "Approximate controller-track byte offset, not a file offset";
+        }
+        break;
+    case 0x60750010:
+        if (r.name === "size_code") {
+            s = "Nominal sector bytes = 128 shifted left by this value";
+        } else if (r.name === "track_offset") {
+            s = "Approximate controller-track byte offset, not a file offset";
+        } else if (r.name === "data_size") {
+            s = "Zero selects the nominal 128<<size_code length";
+        }
+        break;
+    case 0x60750011:
+        if (r.name === "data_rate") {
+            s = "0=500 kbit/s, 1=300 kbit/s, 2=250 kbit/s, 3=1 Mbit/s";
+        } else if (r.name === "read_write_gap") {
+            s = "Controller gap byte count";
+        } else if (r.name === "format_gap") {
+            s = "Controller gap byte count";
+        } else if (r.name === "recording_mode") {
+            s = "0=MFM, 1=FM; unlike track-header mode codes";
+        }
+        break;
+    case 0x60750012:
+        if (r.name === "sector_size") {
+            s = "Zero selects the legacy 512-byte sector size";
+        }
+        break;
+    case 0x60750015:
+        if (r.name === "data_flags") {
+            s = "Bit0=sector descriptors and data, bit1=raw track data";
+        }
+        break;
+    case 0x60750016:
+        if (r.name === "end_offset") {
+            s = "Relative to the start of this track";
+        }
+        break;
+    case 0x60750017:
+        if (r.name === "size_code") {
+            s = "Nominal sector bytes = 128 shifted left by this value";
+        } else if (r.name === "address_crc") {
+            s = "Address-field CRC bytes in recorded order";
+        } else if (r.name === "data_offset") {
+            s = "Relative to the start of this track";
+        }
+        break;
+    case 0x60750018:
+        if (r.name === "end_offset") {
+            s = "Relative to the start of this track";
+        } else if (r.name === "data_offset") {
+            s = "Relative to the start of this track";
+        }
+        break;
+    case 0x60750019:
+        if (r.name === "end_offset") {
+            s = "Relative to the start of this track; unsupported section body remains raw";
+        }
+        break;
+    case 0x6075001A:
+        if (r.name === "mfm_word_count") {
+            s = "Number of encoded 16-bit MFM words per track";
+        }
+        break;
+    case 0x6075001C:
+        if (r.name === "magic") {
+            s = "DFER=version1, DFE2=version2";
+        }
+        break;
+    case 0x6075001E:
+        if (r.name === "header_crc") {
+            s = "CRC16-CCITT stored big endian, unlike the surrounding header";
+        }
+        break;
+    case 0x60750020:
+        if (r.name === "string_offset") {
+            s = "Relative to the AFI_INFO block";
+        }
+        break;
+    case 0x60750021:
+        if (r.name === "track_offset") {
+            s = "Relative to the TRACKLIST block";
+        }
+        break;
+    case 0x60750022:
+        if (r.name === "data_offset") {
+            s = "Relative to the TRACK block";
+        }
+        break;
+    case 0x60750023:
+        if (r.name === "crc16") {
+            s = "CRC16-CCITT stored big endian";
+        }
+        break;
+    case 0x60750027:
+        if (r.name === "bits_per_element") {
+            s = "Encoded bit width, not bytes";
+        } else if (r.name === "packer") {
+            s = "0=stored, 1=zlib; reserved packers remain opaque";
+        }
+        break;
+    case 0x60750028:
+        if (r.name === "cell_rate") {
+            s = "Bit-cell rate in hertz";
+        }
+        break;
+    case 0x60750029:
+        if (r.name === "start_switch_offset") {
+            s = "Byte offset within this track data";
+        } else if (r.name === "stop_switch_offset") {
+            s = "Byte offset within this track data";
+        }
+        break;
+    case 0x6075002A:
+        if (r.name === "total_size") {
+            s = "Includes chunk header, block records and trailing CRC32";
+        }
+        break;
+    case 0x6075002B:
+        if (r.name === "payload_size") {
+            s = "Does not include the 8-byte common block header";
+        }
+        break;
+    case 0x6075002C:
+        if (r.name === "payload_size") {
+            s = "Does not include the 8-byte common block header";
+        }
+        break;
+    case 0x6075002D:
+        if (r.name === "payload_size") {
+            s = "Does not include the 8-byte common block header";
+        }
+        break;
+    case 0x6075002E:
+        if (r.name === "crc32") {
+            s = "Pauline stream CRC32";
+        }
+        break;
+    case 0x60750030:
+        if (r.name === "geometry_order") {
+            s = "1=side-major, 2=cylinder-major";
+        }
+        break;
+    case 0x60750031:
+        if (r.name === "number_type") {
+            s = "ASCII I selects Intel little-endian numbers";
+        }
+        break;
+    case 0x60750032:
+        if (r.name === "disk_format") {
+            s = "1=Ensoniq EPS disk";
+        } else if (r.name === "dump_type") {
+            s = "1=uncompressed data dump";
+        }
+        break;
+    case 0x60750034:
+        if (r.name === "tag_type") {
+            s = "11=image, 20=author text, 21=subject text";
+        }
+        break;
+    case 0x60750036:
+        if (r.name === "text_end") {
+            s = "CR LF and DOS end-of-text marker";
+        }
+        break;
+    case 0x60750037:
+        if (r.name === "sector_bitmap") {
+            s = "MSB-first: 0=stored sector, 1=implicit fill sector";
+        }
+        break;
+    case 0x60750038:
+        if (r.name === "computer_format") {
+            s = "Native reader supports zero only";
+        }
+        break;
+    case 0x60750039:
+        if (r.name === "sector_size_div64") {
+            s = "Physical sector byte size divided by 64";
+        }
+        break;
+    case 0x6075003A:
+        if (r.name === "halftrack_image") {
+            s = "Zero for 40-track, one for 80-half-track images";
+        }
+        break;
+    case 0x6075003B:
+        if (r.name === "stored_track_size") {
+            s = "Zero denotes failed analysis; data is stored in reverse byte order";
+        }
+        break;
+    case 0x6075003C:
+        if (r.name === "sectors_per_cluster") {
+            s = "Number of 512-byte sectors in a cluster";
+        } else if (r.name === "root_directory_cluster") {
+            s = "Cluster index, not a byte offset";
+        } else if (r.name === "partition_name") {
+            s = "UTF-16LE code units, zero-padded; ignored by the native volume reader";
+        }
+        break;
+    case 0x6075003D:
+        if (r.name === "next_cluster") {
+            s = "0=free; 0xFFFF=end of chain";
+        }
+        break;
+    case 0x6075003E:
+        if (r.name === "next_cluster") {
+            s = "0=free; 0xFFFFFFFF=end of chain";
+        }
+        break;
+    case 0x6075003F:
+        if (r.name === "first_cluster") {
+            s = "Cluster index, not a byte offset";
+        } else if (r.name === "modification_time") {
+            s = "Packed FATX clock: hour/minute/two-second fields";
+        } else if (r.name === "modification_date") {
+            s = "Packed FATX calendar date; year field is relative to 2000";
+        } else if (r.name === "creation_time") {
+            s = "Packed FATX clock: hour/minute/two-second fields";
+        } else if (r.name === "creation_date") {
+            s = "Packed FATX calendar date; year field is relative to 2000";
+        } else if (r.name === "access_time") {
+            s = "Packed FATX clock: hour/minute/two-second fields";
+        } else if (r.name === "access_date") {
+            s = "Packed FATX calendar date; year field is relative to 2000";
+        }
+        break;
+    case 0x60750040:
+        if (r.name === "root_directory_sector") {
+            s = "Logical sector index in 2048-byte units";
+        } else if (r.name === "creation_filetime") {
+            s = "Windows FILETIME: 100-nanosecond ticks since 1601-01-01 UTC";
+        }
+        break;
+    case 0x60750041:
+        if (r.name === "left_child_words") {
+            s = "Directory-relative byte offset divided by four; 0/0xFFFF means absent";
+        } else if (r.name === "right_child_words") {
+            s = "Directory-relative byte offset divided by four; 0/0xFFFF means absent";
+        } else if (r.name === "first_sector") {
+            s = "Logical sector index in 2048-byte units";
+        }
+        break;
+    case 0x60750042:
+        if (r.name === "opaque_identifier") {
+            s = "Unknown producer metadata, possibly a serial number";
+        }
+        break;
+    case 0x60750043:
+        if (r.name === "start_lba") {
+            s = "Starting logical block in 512-byte units";
+        } else if (r.name === "block_count") {
+            s = "Partition length in 512-byte blocks";
+        } else if (r.name === "opaque_metadata") {
+            s = "Native reader requires zero";
+        }
+        break;
+    case 0x60750044:
+        if (r.name === "unpartitioned_blocks") {
+            s = "Number of 512-byte blocks outside the partition map";
+        }
+        break;
+    case 0x60750047:
+        if (r.name === "start_lba") {
+            s = "Starting logical block in 512-byte units";
+        }
+        break;
+    case 0x60750048:
+        if (r.name === "block_count") {
+            s = "Partition length in 512-byte blocks";
+        } else if (r.name === "drive_switch") {
+            s = "Drive-switch metadata for a two-drive configuration";
+        }
+        break;
+    case 0x60750049:
+        if (r.name === "block_kind") {
+            s = "ASCII T denotes a track descriptor";
+        }
+        break;
+    case 0x6075004A:
+        if (r.name === "block_kind") {
+            s = "ASCII T denotes a track descriptor";
+        }
+        break;
+    case 0x6075004B:
+        if (r.name === "block_kind") {
+            s = "ASCII S denotes sector bytes";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxdleg_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxdleg_read(c, p, b, b_o, n) {
+    return sxdleg_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxdleg16(b, b_o, o) {
+    return o === 1 ? b[b_o] << 8 | b[b_o + 1] : b[b_o + 1] << 8 | b[b_o];
+}
+function sxdleg32(b, b_o, o) {
+    if (o === 2) {
+        return ((sxdleg16(b, b_o, 0) << 16) >>> 0 | sxdleg16(b, b_o + 2, 0)) >>> 0;
+    }
+    return o === 1 ? ((sxdleg16(b, b_o, 1) << 16) >>> 0 | sxdleg16(b, b_o + 2, 1)) >>> 0 : ((sxdleg16(b, b_o + 2, 0) << 16) >>> 0 | sxdleg16(b, b_o, 0)) >>> 0;
+}
+function sxdleg_put(c, l, p, n) {
+    if (!n) {
+        return true;
+    }
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var lo = 0;
+    var hi = c.count;
+    if (n > 1048576 || n > Math.floor(SX_U64_MAX / z) || !sxdleg_span(c, p, n * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        var at = (c.items[m].offset - c.f.base_address < 0 ? c.items[m].offset - c.f.base_address + SX_U64_MAX : c.items[m].offset - c.f.base_address);
+        if (at < p) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && sxU64(c.items[sxU64(lo - 1)].offset - c.f.base_address) + sxU64(c.items[sxU64(lo - 1)].total_size) > p) {
+        return true;
+    }
+    if (lo < c.count && (c.items[lo].offset - c.f.base_address < 0 ? c.items[lo].offset - c.f.base_address + SX_U64_MAX : c.items[lo].offset - c.f.base_address) < p + n * z) {
+        return true;
+    }
+    var prior = c.count;
+    if (!sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n)) {
+        return false;
+    }
+    if (lo < prior) {
+        var row = sxCopy_xx_data_struct(null, c.items[prior]);
+        sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(prior - lo) * 56) / 56), sxCopy_xx_data_struct);
+        c.items[lo] = sxCopy_xx_data_struct(null, row);
+    }
+    return true;
+}
+function sxdleg_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxdleg_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + z > end) {
+            end = p + z;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxdleg_order, true);
+    return !c.failed;
+}
+function sx_disklegacy_supports(t) {
+    switch (t) {
+    case "SHRINKWRAP":
+    case "TRS_80_JV3":
+    case "X68000_DIM":
+    case "DART":
+    case "DAEMON_TOOLS_MDX":
+    case "LDBS":
+    case "ATARI_DIM":
+    case "ATARI_STT":
+    case "ATARI_STW":
+    case "DISCFERRET_DFI":
+    case "HXC_AFI":
+    case "HXC_QD":
+    case "HXC_STREAM":
+    case "ORIC_DSK":
+    case "ENSONIQ_GKH":
+    case "ENSONIQ_EDE":
+    case "SAMCOUPE_SAD":
+    case "TRACKSTAR":
+    case "FATX":
+    case "XBOX_XDVDFS":
+    case "FOCUSDRIVE":
+    case "MICRODRIVE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_disklegacy_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "SHRINKWRAP":
+        ok = sx_shrinkwrap_build(c);
+        break;
+    case "TRS_80_JV3":
+        ok = sx_trs_80_jv3_build(c);
+        break;
+    case "X68000_DIM":
+        ok = sx_x68000_dim_build(c);
+        break;
+    case "DART":
+        ok = sx_dart_build(c);
+        break;
+    case "DAEMON_TOOLS_MDX":
+        ok = sx_daemon_tools_mdx_build(c);
+        break;
+    case "LDBS":
+        ok = sx_ldbs_build(c);
+        break;
+    case "ATARI_DIM":
+        ok = sx_atari_dim_build(c);
+        break;
+    case "ATARI_STT":
+        ok = sx_atari_stt_build(c);
+        break;
+    case "ATARI_STW":
+        ok = sx_atari_stw_build(c);
+        break;
+    case "DISCFERRET_DFI":
+        ok = sx_discferret_dfi_build(c);
+        break;
+    case "HXC_AFI":
+        ok = sx_hxc_afi_build(c);
+        break;
+    case "HXC_QD":
+        ok = sx_hxc_qd_build(c);
+        break;
+    case "HXC_STREAM":
+        ok = sx_hxc_stream_build(c);
+        break;
+    case "ORIC_DSK":
+        ok = sx_oric_dsk_build(c);
+        break;
+    case "ENSONIQ_GKH":
+        ok = sx_ensoniq_gkh_build(c);
+        break;
+    case "ENSONIQ_EDE":
+        ok = sx_ensoniq_ede_build(c);
+        break;
+    case "SAMCOUPE_SAD":
+        ok = sx_samcoupe_sad_build(c);
+        break;
+    case "TRACKSTAR":
+        ok = sx_trackstar_build(c);
+        break;
+    case "FATX":
+        ok = sx_fatx_build(c);
+        break;
+    case "XBOX_XDVDFS":
+        ok = sx_xbox_xdvdfs_build(c);
+        break;
+    case "FOCUSDRIVE":
+        ok = sx_focusdrive_build(c);
+        break;
+    case "MICRODRIVE":
+        ok = sx_microdrive_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!((ok || c.count) && c.count && !c.failed && sxdleg_finish(c));
+}

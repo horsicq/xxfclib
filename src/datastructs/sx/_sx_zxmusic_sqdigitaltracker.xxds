@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/sqdigitaltracker/xx_sqdigitaltracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_sqd_sample_fields = layout([u16("start_address", VA), u16("loop_address", VA), u8("is_looped", FLAGS), u8("bank", ID),
+    blob("padding", 2, RESERVED)]);
+var sxzxm_sqd_sample = sxLayout(0x608A005A, "sqd_sample", LE, sxzxm_sqd_sample_fields);
+var sxzxm_sqd_title_fields = layout([chars("title", 32, NONE)]);
+var sxzxm_sqd_title = sxLayout(0x608A005B, "sqd_title", LE, sxzxm_sqd_title_fields);
+var sxzxm_sqd_event_fields = layout([u8("note_command", FLAGS), u8("sample_volume", FLAGS)]);
+var sxzxm_sqd_event = sxLayout(0x608A005E, "sqd_event", LE, sxzxm_sqd_event_fields);
+function sxzxm_sqd(c) {
+    if (!sxzxm_span(c, 0, 1024)) {
+        return false;
+    }
+    if (!sxzxm_put(c, sxzxm_sqd_layout, 192, 8) || !sxzxm_put(c, sxzxm_sqd_title, 256, 1) || !sxzxm_put(c, sxzxm_sqd_sample, 288, 16) || !sxzxm_put(c, sxzxm_zx_position, 416, 100) || !sxzxm_put(c, sxzxm_sqd_positions_limit, 516, 1) || !sxzxm_put(c, sxzxm_sqd_playback, 528, 1) || !sxzxm_put(c, sxzxm_chiptracker_sample_name, 768, 16)) {
+        return false;
+    }
+    for (var i = 0; i < 32; i++) {
+        if (!sxzxm_opt(c, sxzxm_sqd_event, (1024 + ((512 * i) >>> 0)) >>> 0, 256)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sqdigitaltracker_build(c) {
+    return sxzxm_sqd(c);
+}

@@ -1,0 +1,87 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sqx/xx_sqx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_sqx_main_fields = layout([u16("header_crc16", CHECKSUM), u8("kind", ID), u16("flags", FLAGS), u16("header_size", SIZE),
+    chars("signature", 5, SIGNATURE), bytes("writer_and_reserved", 13)]);
+var sxae_sqx_main = sxLayout(0x60170018, "sqx_main", LE, sxae_sqx_main_fields);
+var sxae_sqx_record_fields = layout([u16("header_crc16", CHECKSUM), u8("kind", ID), u16("flags", FLAGS),
+    u16("header_size", SIZE)]);
+var sxae_sqx_record = sxLayout(0x60170019, "sqx_record", LE, sxae_sqx_record_fields);
+var sxae_sqx_file32_fields = layout([u8("filter", ID), bytes("filter_parameters", 4), u8("method", ID), u32("crc32", CHECKSUM),
+    u32("attributes", FLAGS), u32("modified"), u32("packed_size_low", SIZE), u32("unpacked_size_low", SIZE),
+    u16("name_size", SIZE)]);
+var sxae_sqx_file32 = sxLayout(0x6017001A, "sqx_file32", LE, sxae_sqx_file32_fields);
+var sxae_sqx_file64_fields = layout([u8("filter", ID), bytes("filter_parameters", 4), u8("method", ID), u32("crc32", CHECKSUM),
+    u32("attributes", FLAGS), u32("modified"), u32("packed_size_low"), u32("unpacked_size_low"), u32("packed_size_high"),
+    u32("unpacked_size_high"), u16("name_size", SIZE)]);
+var sxae_sqx_file64 = sxLayout(0x6017001B, "sqx_file64", LE, sxae_sqx_file64_fields);
+function sxae_sqx(c) {
+    var b = [];
+    var p = 25;
+    if (!sx_read(c, 0, b, 25) || b[2] !== 82 /*R*/ || sxae16(b, 5) !== 25 || sxMemcmpAt(b, 7, "-sqx-", 0, 5) || !sxae_add(c, sxae_sqx_main, 0)) {
+        return false;
+    }
+    for (var i = 0; p < c.size && i < 20000; i++) {
+        if (!sxae_bound(c, p, 7)) {
+            return true;
+        }
+        if (!sx_read(c, p, b, 7)) {
+            return false;
+        }
+        var kind = b[2];
+        var fl = sxae16(b, 3);
+        var z = sxae16(b, 5);
+        var packed = 0;
+        if (z < 7 || !sxae_bound(c, p, z)) {
+            return true;
+        }
+        if (!sxae_add(c, sxae_sqx_record, p)) {
+            return false;
+        }
+        if (kind === 65 /*A*/ || kind === 83 /*S*/ || kind === 88 /*X*/) {
+            return true;
+        }
+        if (kind === 68 /*D*/) {
+            var n = fl & 0x80 ? 36 : 28;
+            if (fl & 8) {
+                return true;
+            }
+            if (z < (7 + n) >>> 0 || !sx_read(c, p + 7, b, n) || !sxae_add(c, fl & 0x80 ? sxae_sqx_file64 : sxae_sqx_file32, p + 7)) {
+                return false;
+            }
+            packed = sxae32(b, 18);
+            if (fl & 0x80) {
+                packed = sxOr64(packed, sxShl64(sxae32(b, 26), 32));
+            }
+        }
+        p += z;
+        while (fl & 0x8000) {
+            if (++i >= 20000 || !sxae_bound(c, p, 7)) {
+                return true;
+            }
+            if (!sx_read(c, p, b, 7)) {
+                return false;
+            }
+            fl = sxae16(b, 3);
+            z = sxae16(b, 5);
+            if (z < 7 || !sxae_bound(c, p, z)) {
+                return true;
+            }
+            if (!sxae_add(c, sxae_sqx_record, p)) {
+                return false;
+            }
+            p += z;
+        }
+        if (!sxae_data(c, p, packed)) {
+            return false;
+        }
+        p += (packed >= SX_I64_MAX ? packed - SX_U64_MAX : packed);
+    }
+    return p === c.size;
+}
+function sx_sqx_build(c) {
+    return sxae_sqx(c);
+}

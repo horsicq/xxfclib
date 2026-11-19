@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/aff/xx_aff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_aff_segment_header_fields = layout([chars("magic", 4, SIGNATURE), u32("name_length", SIZE), u32("data_length", SIZE),
+    u32("argument", FLAGS)]);
+var sxvi_aff_segment_header = sxLayout(0x60530036, "aff_segment_header", BE, sxvi_aff_segment_header_fields);
+var sxvi_aff_segment_footer_fields = layout([chars("magic", 4, SIGNATURE), u32("segment_size", SIZE)]);
+var sxvi_aff_segment_footer = sxLayout(0x60530037, "aff_segment_footer", BE, sxvi_aff_segment_footer_fields);
+var sxvi_aff_quadword_fields = layout([u32("low"), u32("high")]);
+var sxvi_aff_quadword = sxLayout(0x60530038, "aff_quadword", BE, sxvi_aff_quadword_fields);
+function sxvi_aff(c) {
+    if (!sxvi_magic(c, 0, "AFF10\r\n\x00", 8)) {
+        return false;
+    }
+    var p = 8;
+    var h = [];
+    var name = [];
+    for (var count = 0; count < 262144 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; count++) {
+        if (!sxvi_read(c, p, h, 16) || sxMemcmp(h, "AFF\x00", 4)) {
+            break;
+        }
+        var n = sxvi32(h, 4, 1);
+        var z = sxvi32(h, 8, 1);
+        if (n >= 128 || !sxvi_span(c, p + 16, n) || z > sxU64(sxU64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) - 16) - n) || !sxvi_span(c, p + 16 + n + z, 8)) {
+            break;
+        }
+        var tail = p + 16 + n + z;
+        var f = [];
+        if (!sxvi_read(c, tail, f, 8) || sxMemcmp(f, "ATT\x00", 4) || sxvi32(f, 4, 1) !== 24 + n + z) {
+            break;
+        }
+        if (!sxvi_put(c, sxvi_aff_segment_header, p, 1) || !sxvi_put(c, sxvi_aff_segment_footer, tail, 1)) {
+            return false;
+        }
+        if (n && sxvi_read(c, p + 16, name, n) && n === 9 && !sxMemcmp(name, "imagesize", 9) && z === 8 && sxvi32(h, 12, 1) === 2 && !sxvi_put(c, sxvi_aff_quadword, p + 16 + n, 1)) {
+            return false;
+        }
+        p = tail + 8;
+    }
+    return c.count !== 0;
+}
+function sx_aff_build(c) {
+    return sxvi_aff(c);
+}

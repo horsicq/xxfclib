@@ -1,0 +1,1084 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivenext.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_pc_install_member_fields = layout([u32("next_offset", OFFSET), u32("attributes", FLAGS), u16("dos_time"),
+    u16("time_padding"), u16("dos_date"), u16("date_padding"), u32("payload_size", SIZE), chars("name", 256, NONE)]);
+var sxan_pc_install_member = sxLayout(0x6077001C, "pc_install_member", LE, sxan_pc_install_member_fields);
+var sxan_pc_install_trailer_fields = layout([chars("signature", 8, SIGNATURE), u32("first_record_offset", OFFSET),
+    u32("last_record_offset", OFFSET)]);
+var sxan_pc_install_trailer = sxLayout(0x6077001D, "pc_install_trailer", LE, sxan_pc_install_trailer_fields);
+var sxan_pc_install_group_fields = layout([bytes("cross_volume", 14), u16("marker1", SIGNATURE), u16("member_count", COUNT),
+    u16("marker2", SIGNATURE), bytes("reserved", 38)]);
+var sxan_pc_install_group = sxLayout(0x6077001E, "pc_install_group", LE, sxan_pc_install_group_fields);
+var sxan_pc_install_group_member_fields = layout([chars("name", 128, NONE), u32("attributes", FLAGS), u32("reserved1"),
+    u32("compressed_size", SIZE), u16("dos_date"), u16("date_padding"), u16("dos_time"), u16("time_padding"),
+    bytes("unknown", 8), u32("uncompressed_size", SIZE), bytes("unknown_tail", 8)]);
+var sxan_pc_install_group_member = sxLayout(0x6077001F, "pc_install_group_member", LE, sxan_pc_install_group_member_fields);
+var sxan_spoon_footer_fields = layout([u32("unknown1"), u32("unknown2"), u32("directory_offset", OFFSET),
+    u32("member_count", COUNT), bytes("signature", 8, SIGNATURE)]);
+var sxan_spoon_footer = sxLayout(0x60770021, "spoon_footer", LE, sxan_spoon_footer_fields);
+var sxan_spoon_member_fields = layout([u32("stream_offset", OFFSET), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u32("byte_sum", CHECKSUM), u8("name_size", SIZE)]);
+var sxan_spoon_member = sxLayout(0x60770022, "spoon_member", LE, sxan_spoon_member_fields);
+var sxan_ckpedp_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u32("member_count", COUNT),
+    u32("unknown")]);
+var sxan_ckpedp_header = sxLayout(0x6077002A, "ckpedp_header", LE, sxan_ckpedp_header_fields);
+var sxan_ckpedp_name_size_fields = layout([u16("name_units", COUNT)]);
+var sxan_ckpedp_name_size = sxLayout(0x6077002B, "ckpedp_name_size", LE, sxan_ckpedp_name_size_fields);
+var sxan_ckpedp_member_tail_fields = layout([bytes("unknown", 8), u32("reserved"), u32("data_offset", OFFSET),
+    u32("payload_size", SIZE)]);
+var sxan_ckpedp_member_tail = sxLayout(0x6077002C, "ckpedp_member_tail", LE, sxan_ckpedp_member_tail_fields);
+var sxan_ckpedp_encoded_name_fields = layout([field("encoded_name", "uint8", 0)]);
+var sxan_ckpedp_encoded_name = sxLayout(0x6077002D, "ckpedp_encoded_name", LE, sxan_ckpedp_encoded_name_fields);
+var sxan_parsec_rib_header_fields = layout([chars("signature", 4, SIGNATURE), u32("uncompressed_size", SIZE)]);
+var sxan_parsec_rib_header = sxLayout(0x6077002E, "parsec_rib_header", LE, sxan_parsec_rib_header_fields);
+var sxan_parsec_member_offset_fields = layout([u32("data_offset", OFFSET)]);
+var sxan_parsec_member_offset = sxLayout(0x6077002F, "parsec_member_offset", LE, sxan_parsec_member_offset_fields);
+var sxan_parsec_member_size_fields = layout([u32("payload_size", SIZE)]);
+var sxan_parsec_member_size = sxLayout(0x60770030, "parsec_member_size", LE, sxan_parsec_member_size_fields);
+var sxan_archivenext_name_fields = layout([field("name", "char", 0)]);
+var sxan_archivenext_name = sxLayout(0x60770043, "archivenext_name", LE, sxan_archivenext_name_fields);
+var sxan_pc_install_tag_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxan_pc_install_tag = sxLayout(0x60770049, "pc_install_tag", LE, sxan_pc_install_tag_fields);
+var sxan_lha_dialect_header_fields = layout([u8("header_size", SIZE), u8("header_sum", CHECKSUM), chars("method", 5, NONE),
+    u32("compressed_size", SIZE), u32("uncompressed_size", SIZE), u32("dos_datetime"), u8("attributes", FLAGS), u8("level"),
+    u8("name_size", SIZE)]);
+var sxan_lha_dialect_header = sxLayout(0x60770058, "lha_dialect_header", LE, sxan_lha_dialect_header_fields);
+var sxan_lha_dialect_crc_fields = layout([u16("crc16", CHECKSUM)]);
+var sxan_lha_dialect_crc = sxLayout(0x60770059, "lha_dialect_crc", LE, sxan_lha_dialect_crc_fields);
+var sxan_lha_dialect_os_fields = layout([u8("originating_os")]);
+var sxan_lha_dialect_os = sxLayout(0x6077005A, "lha_dialect_os", LE, sxan_lha_dialect_os_fields);
+var sxan_lha_dialect_next_fields = layout([u16("next_header_size", SIZE)]);
+var sxan_lha_dialect_next = sxLayout(0x6077005B, "lha_dialect_next", LE, sxan_lha_dialect_next_fields);
+var sxan_lha_dialect_type_fields = layout([u8("extension_type")]);
+var sxan_lha_dialect_type = sxLayout(0x6077005C, "lha_dialect_type", LE, sxan_lha_dialect_type_fields);
+var sxan_lha_dialect_end_fields = layout([u8("terminator")]);
+var sxan_lha_dialect_end = sxLayout(0x6077005D, "lha_dialect_end", LE, sxan_lha_dialect_end_fields);
+function sx_archivenext_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60770000 || id >= 0x60780000) {
+        return true;
+    }
+    if (r.type !== null && (!sxStrncmp(r.type, "ascii_decimal[", 14) || !sxStrncmp(r.type, "ascii_octal_padded[", 19)) && r.value.t !== 8 /*XX_VAR_TYPE_UINT64*/ && r.value.t !== 4 /*XX_VAR_TYPE_INT64*/) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60770001:
+        if (r.name === "timestamp") {
+            text = "Stored archive timestamp; epoch not established";
+        }
+        if (r.name === "archive_size") {
+            text = "Total across all volumes";
+        }
+        break;
+    case 0x60770003:
+        if (r.name === "data_offset") {
+            text = "Offset in the archive volume";
+        }
+        break;
+    case 0x60770008:
+        if (r.name === "file_table_offset") {
+            text = "Relative to cabinet descriptor";
+        }
+        if (r.name === "second_table_offset") {
+            text = "Relative to the file table";
+        }
+        break;
+    case 0x60770009:
+        if (r.name === "name_offset") {
+            text = "Relative to file table";
+        }
+        if (r.name === "data_offset") {
+            text = "Relative to applicable cabinet volume";
+        }
+        break;
+    case 0x6077000A:
+        if (r.name === "data_offset") {
+            text = "Relative to applicable cabinet volume";
+        }
+        if (r.name === "md5") {
+            text = "Stored checksum or digest";
+        }
+        if (r.name === "name_offset") {
+            text = "Relative to file table";
+        }
+        break;
+    case 0x6077000B:
+        if (r.name === "entry_offset") {
+            text = "Relative to file table";
+        }
+        break;
+    case 0x60770012:
+        if (r.name === "creation_time") {
+            text = "Windows FILETIME100ns ticks since1601";
+        }
+        if (r.name === "access_time") {
+            text = "Windows FILETIME100ns ticks since1601";
+        }
+        if (r.name === "modification_time") {
+            text = "Windows FILETIME100ns ticks since1601";
+        }
+        break;
+    case 0x60770016:
+        if (r.name === "name") {
+            text = "DOS codepage437 bytes";
+        }
+        break;
+    case 0x60770017:
+        if (r.name === "declared_size") {
+            text = "Whole setup size, including stub when present";
+        }
+        break;
+    case 0x60770018:
+        if (r.name === "crc32") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770019:
+        if (r.name === "writer_memory") {
+            text = "Uninitialized writer bytes, not interpreted";
+        }
+        break;
+    case 0x6077001C:
+        if (r.name === "next_offset") {
+            text = "Stored original base-relative record offset; may require native relocation";
+        }
+        break;
+    case 0x60770022:
+        if (r.name === "byte_sum") {
+            text = "Stored checksum or digest";
+        }
+        if (r.name === "name_size") {
+            text = "Includes NUL terminator";
+        }
+        break;
+    case 0x60770024:
+        if (r.name === "name_size") {
+            text = "UTF16LE byte count";
+        }
+        if (r.name === "cipher_selector") {
+            text = "0,0xffffffff,0xfffffffd=none;2,6=name-keyed filter";
+        }
+        if (r.name === "storage") {
+            text = "0=stored,1=zlib stream";
+        }
+        break;
+    case 0x60770025:
+        if (r.name === "runtime_byte_sum") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770027:
+        if (r.name === "crc32") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770028:
+        if (r.name === "crc32") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770029:
+        if (r.name === "data_offset") {
+            text = "Zero denotes directory termination in supported variants";
+        }
+        break;
+    case 0x6077002B:
+        if (r.name === "name_units") {
+            text = "Encoded bytes for CKP, encoded UTF16LE units for EDP";
+        }
+        break;
+    case 0x6077002D:
+        if (r.name === "encoded_name") {
+            text = "Inverted bytes/UTF16LE plus native character remapping; retained exactly as stored";
+        }
+        break;
+    case 0x6077002F:
+        if (r.name === "data_offset") {
+            text = "First entry also equals physical directory size; final offset word is zero";
+        }
+        break;
+    case 0x60770032:
+        if (r.name === "marker") {
+            text = "Native-supported value32";
+        }
+        if (r.name === "timestamp") {
+            text = "Stored timestamp; epoch not established";
+        }
+        if (r.name === "method") {
+            text = "0=stored,1=framed Ptero LZW";
+        }
+        break;
+    case 0x60770036:
+        if (r.name === "type") {
+            text = "1=stored contiguous,3=block chain";
+        }
+        if (r.name === "adler32") {
+            text = "Stored checksum or digest";
+        }
+        if (r.name === "name_size") {
+            text = "Excludes terminating NUL";
+        }
+        if (r.name === "name_offset") {
+            text = "Relative to name table";
+        }
+        break;
+    case 0x60770038:
+        if (r.name === "compressed_size") {
+            text = "Zero means stored bytes of uncompressed_size";
+        }
+        break;
+    case 0x6077003C:
+        if (r.name === "data_offset") {
+            text = "Relative to end of directory";
+        }
+        if (r.name === "name_units") {
+            text = "UTF16BE code units";
+        }
+        break;
+    case 0x6077003D:
+        if (r.name === "data_offset") {
+            text = "Relative to end of directory";
+        }
+        if (r.name === "name_units") {
+            text = "UTF16BE code units";
+        }
+        break;
+    case 0x6077003F:
+        if (r.name === "stored_size") {
+            text = "Includes four-byte expected-size word, excludes this word";
+        }
+        break;
+    case 0x60770041:
+        if (r.name === "data_offset") {
+            text = "Relative to the end of the complete text directory";
+        }
+        break;
+    case 0x60770044:
+        if (r.name === "name_units") {
+            text = "UTF16LE serialized units; retained as an array";
+        }
+        break;
+    case 0x60770045:
+        if (r.name === "name_units") {
+            text = "UTF16BE serialized units; retained as an array";
+        }
+        break;
+    case 0x6077004B:
+        if (r.name === "signature_type") {
+            text = "0x10001=RSA2048/SHA1";
+        }
+        if (r.name === "signature") {
+            text = "RSA2048 signature bytes";
+        }
+        break;
+    case 0x6077004F:
+        if (r.name === "sha1") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770051:
+        if (r.name === "sha1") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770052:
+        if (r.name === "block_separation") {
+            text = "Bit0 selects single/double hash-table copies; bit1 selects top copy";
+        }
+        if (r.name === "file_table_blocks") {
+            text = "Number of4096-byte logical blocks";
+        }
+        if (r.name === "first_file_table_block") {
+            text = "Logical block index";
+        }
+        break;
+    case 0x60770053:
+        if (r.name === "top_sha1") {
+            text = "Stored checksum or digest";
+        }
+        if (r.name === "allocated_blocks") {
+            text = "4096-byte logical blocks";
+        }
+        if (r.name === "unallocated_blocks") {
+            text = "4096-byte logical blocks";
+        }
+        break;
+    case 0x60770055:
+        if (r.name === "sha1") {
+            text = "Stored checksum or digest";
+        }
+        if (r.name === "status") {
+            text = ">=0x80 allocated; parent bit0x40 selects alternate hash table";
+        }
+        if (r.name === "next_block") {
+            text = "Logical block index;0xffffff terminates chain";
+        }
+        break;
+    case 0x60770056:
+        if (r.name === "name_length_flags") {
+            text = "Low6 bits=name byte count;0x40=consecutive;0x80=directory";
+        }
+        if (r.name === "allocated_blocks") {
+            text = "4096-byte logical blocks";
+        }
+        if (r.name === "first_block") {
+            text = "Logical block index";
+        }
+        break;
+    case 0x60770057:
+        if (r.name === "parent_index") {
+            text = "0xffff=root";
+        }
+        if (r.name === "creation_time") {
+            text = "Packed FAT date/time";
+        }
+        if (r.name === "access_time") {
+            text = "Packed FAT date/time";
+        }
+        break;
+    case 0x60770058:
+        if (r.name === "header_size") {
+            text = "Excludes this byte and checksum byte";
+        }
+        if (r.name === "header_sum") {
+            text = "Stored checksum or digest";
+        }
+        if (r.name === "compressed_size") {
+            text = "Level1 includes extended headers";
+        }
+        break;
+    case 0x60770059:
+        if (r.name === "crc16") {
+            text = "CRC16 checksum";
+        }
+        break;
+    case 0x6077005C:
+        if (r.name === "extension_type") {
+            text = "0=header CRC16;1=replacement filename;2=directory with0xff separators";
+        }
+        break;
+    case 0x6077005E:
+        if (r.name === "xor_checksum") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x6077005F:
+        if (r.name === "stored_size") {
+            text = "Physical extent minus12; includes checksum word";
+        }
+        if (r.name === "xor_checksum") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770060:
+        if (r.name === "stored_size") {
+            text = "Physical extent minus8; includes final checksum and size words";
+        }
+        break;
+    case 0x60770062:
+        if (r.name === "encoded_size") {
+            text = "XOR with0x4d443131 gives two repeated16-bit plaintext lengths";
+        }
+        break;
+    case 0x60770064:
+        if (r.name === "xor_checksum") {
+            text = "Stored checksum or digest";
+        }
+        break;
+    case 0x60770065:
+        if (r.name === "encoded_header") {
+            text = "Whole transformed record header: decoded marker16, length32 and name10; byte rotations and previous-byte mixing prevent independent ciphertext-field semantics";
+        }
+        break;
+    case 0x60770066:
+        if (r.name === "rolling_checksum") {
+            text = "16-bit rotate-left sum over decoded member bytes";
+        }
+        break;
+    case 0x6077006A:
+        if (r.name === "data_offset") {
+            text = "Relative to data area";
+        }
+        if (r.name === "name_offset_flags") {
+            text = "Low24 bits=name-table-relative offset; physical name begins two bytes later";
+        }
+        if (r.name === "directory_offset_flags") {
+            text = "Low24 bits=name-table-relative offset; zero=no parent";
+        }
+        break;
+    case 0x6077006E:
+        if (r.name === "crc32") {
+            text = "CRC32 of the applicable physical or decoded block";
+        }
+        break;
+    case 0x60770072:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x60770073:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x60770074:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x60770077:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x60770078:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x60770079:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x6077007A:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x6077007D:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x6077007E:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x6077007F:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x60770080:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x60770083:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x60770084:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x60770085:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x60770086:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x60770089:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x6077008A:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x6077008B:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x6077008C:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x6077008F:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x60770090:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x60770091:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x60770092:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x60770095:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x60770096:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x60770097:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x60770098:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x6077009B:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x6077009C:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x6077009D:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x6077009E:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x607700A1:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x607700A2:
+        if (r.name === "block_type") {
+            text = "1=header,3=directory,4=footer";
+        }
+        break;
+    case 0x607700A3:
+        if (r.name === "count") {
+            text = "Physical FreeArc variable-length count";
+        }
+        break;
+    case 0x607700A4:
+        if (r.name === "relative_offset") {
+            text = "Backward distance from containing directory/footer data start";
+        }
+        break;
+    case 0x607700A7:
+        if (r.name === "directory_index") {
+            text = "Zero-based directory index";
+        }
+        break;
+    case 0x607700AB:
+        if (r.name === "marker") {
+            text = "0=header terminator/reserved;1=segment;253=SHA1 follows;254=no SHA1;255=end block";
+        }
+        break;
+    case 0x607700AC:
+        if (r.name === "run_size") {
+            text = "Zero ends stored segment; decoded payload may include PCOMP controls";
+        }
+        break;
+    case 0x607700AD:
+        if (r.name === "sha1") {
+            text = "SHA1 digest of decoded segment bytes";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxan_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxan_read(c, p, b, n) {
+    return sxan_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxan_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxan_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxan_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxan_uint(b, 0, n, be);
+    return true;
+}
+function sxan_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxan_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxan_add(c, l, p) {
+    return sxan_put(c, l, p, 0, false);
+}
+function sxan_text(c, l, p, n, aliases) {
+    var max = sxVariableLimit(l.fields[sxU64(l.field_count - 1)].type);
+    return (!n || n > sxU64(max ? max : 4096) ? 1 : (sxan_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxan_zlen(c, p, end, n) {
+    var b = [0];
+    n[0] = 0;
+    while (p < end && n[0] < 4096) {
+        if (!sxan_read(c, p++, b, 1)) {
+            return false;
+        }
+        n[0]++;
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxan_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxan_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxan_order, true);
+    return !c.failed;
+}
+function sxan_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxan_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxan_pe_overlay(c, out) {
+    var h = [];
+    var pe = [0];
+    var sections;
+    var optional;
+    var end = 0;
+    if (!sxan_read(c, 0, h, 2) || h[0] !== 77 /*M*/ || h[1] !== 90 /*Z*/ || !sxan_word(c, 60, 4, false, pe) || !sxan_read(c, pe[0], h, 24) || sxMemcmp(h, "PE\x00\x00", 4)) {
+        return false;
+    }
+    sections = sxan_uint(h, 6, 2, false);
+    optional = sxan_uint(h, 20, 2, false);
+    if (!sections || sections > 4096 || !sxan_span(c, pe[0] + 24, optional) || !sxan_span(c, pe[0] + 24 + optional, 40 * sections)) {
+        return false;
+    }
+    for (var i = 0; i < sections; i++) {
+        if (!sxan_read(c, pe[0] + 24 + optional + 40 * i, h, 40)) {
+            return false;
+        }
+        var z = sxan_uint(h, 16, 4, false);
+        var p = sxan_uint(h, 20, 4, false);
+        if (!sxan_span(c, p, z)) {
+            return false;
+        }
+        if (z && p + z > end) {
+            end = p + z;
+        }
+    }
+    if (!end) {
+        return false;
+    }
+    out[0] = end;
+    return true;
+}
+function sxan_named(c, p, n) {
+    return sxan_span(c, p, n) && sxan_text(c, sxan_archivenext_name, p, n, false);
+}
+function sxan_callback(c, kind) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    var last = 0;
+    var first = SX_U64_MAX;
+    var nested_first = SX_U64_MAX;
+    for (var i = 0; i < 20000; i++) {
+        var r = f.get_current_archive_record(f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset >= f.base_address && r.header_size > 0) {
+            var p = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+            var z = (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size);
+            if (sxan_span(c, p, z)) {
+                if (kind === 1 && z >= 17) {
+                    ok = sxan_add(c, sxan_spoon_member, p) && sxan_named(c, p + 17, sxU64(z - 17));
+                    if (p + z > last) {
+                        last = p + z;
+                    }
+                } else if (kind === 2) {
+                    if (z === 276) {
+                        ok = sxan_add(c, sxan_pc_install_member, p);
+                        if (p < first) {
+                            first = p;
+                        }
+                        if (nested_first === p + 276 + 58 && r.compressed_size >= 58 && r.data_offset === r.header_offset + 276) {
+                            ok = ok && sxan_add(c, sxan_pc_install_group, p + 276);
+                        }
+                        nested_first = SX_U64_MAX;
+                    } else if (z === 168) {
+                        if (p < nested_first) {
+                            nested_first = p;
+                        }
+                        ok = sxan_add(c, sxan_pc_install_group_member, p);
+                    }
+                }
+            }
+        }
+        if (!ok || !f.archive_record_move_to_next(f, s, c.pd)) {
+            break;
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    if (!ok) {
+        return false;
+    }
+    if (kind === 1 && last && sxan_span(c, last, 24)) {
+        return sxan_add(c, sxan_spoon_footer, last);
+    }
+    if (kind === 2) {
+        if (first >= 8 && first !== SX_U64_MAX && !sxan_add(c, sxan_pc_install_tag, sxU64(first - 8))) {
+            return false;
+        }
+        return c.size < 16 || sxan_add(c, sxan_pc_install_trailer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 16));
+    }
+    return true;
+}
+function sxan_ckpedp(c) {
+    var n = [0];
+    var p = 14;
+    var len = [0];
+    var width = c.f.file_type === "EDP" ? 2 : 1;
+    if (!sxan_add(c, sxan_ckpedp_header, 0) || !sxan_word(c, 6, 4, false, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxan_word(c, p, 2, false, len) || !sxan_add(c, sxan_ckpedp_name_size, p) || !sxan_span(c, p + 2, len[0] * width) || !sxan_text(c, sxan_ckpedp_encoded_name, p + 2, len[0] * width, false)) {
+            return false;
+        }
+        p += 2 + len[0] * width;
+        if (!sxan_add(c, sxan_ckpedp_member_tail, p)) {
+            return false;
+        }
+        p += 20;
+    }
+    return true;
+}
+function sxan_parsec(c) {
+    var z = [0];
+    var n;
+    var p = [0];
+    var len = [0];
+    var h = [];
+    if (c.f.file_type === "PARSEC_RIB") {
+        return sxan_add(c, sxan_parsec_rib_header, 0);
+    }
+    if (!sxan_word(c, 0, 4, false, z) || z[0] < 12 || sxU64(z[0] - 4) % 8 || !sxan_span(c, 0, z[0])) {
+        return false;
+    }
+    n = Math.floor(sxU64(z[0] - 4) / 8);
+    if (!sxan_table(c, sxan_parsec_member_offset, 0, 4, n + 1) || !sxan_table(c, sxan_parsec_member_size, 4 * (n + 1), 4, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxan_word(c, 4 * i, 4, false, p) || !sxan_word(c, 4 * (n + 1 + i), 4, false, len)) {
+            return false;
+        }
+        if (len[0] >= 8 && sxan_span(c, p[0], len[0]) && sxan_read(c, p[0], h, 8) && !sxMemcmp(h, "RIB\x00", 4) && !sxan_add(c, sxan_parsec_rib_header, p[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxan_lha(c) {
+    var p = 0;
+    while (sxan_span(c, p, 1)) {
+        var h = [];
+        if (!sxan_read(c, p, h, 1)) {
+            return false;
+        }
+        if (!h[0]) {
+            return sxan_add(c, sxan_lha_dialect_end, p);
+        }
+        if (!sxan_read(c, p, h, 22)) {
+            return true;
+        }
+        var total = h[0] + 2;
+        var packed = sxan_uint(h, 7, 4, false);
+        var len = h[21];
+        var q;
+        var next = [0];
+        var used = 0;
+        if (h[20] > 1 || total < 24 + len || !sxan_span(c, p, total) || !sxan_add(c, sxan_lha_dialect_header, p) || !sxan_named(c, p + 22, len) || !sxan_add(c, sxan_lha_dialect_crc, p + 22 + len)) {
+            return false;
+        }
+        q = p + total;
+        if (h[20] === 1) {
+            if (total < 27 + len || !sxan_add(c, sxan_lha_dialect_os, p + 24 + len) || !sxan_add(c, sxan_lha_dialect_next, sxU64(p + total - 2)) || !sxan_word(c, sxU64(p + total - 2), 2, false, next)) {
+                return false;
+            }
+            for (var i = 0; next[0] && i < 20000; i++) {
+                var z = next[0];
+                if (z < 3 || used > packed || z > sxU64(packed - used) || !sxan_span(c, q, z) || !sxan_add(c, sxan_lha_dialect_type, q) || !sxan_add(c, sxan_lha_dialect_next, sxU64(q + z - 2)) || !sxan_word(c, sxU64(q + z - 2), 2, false, next)) {
+                    return false;
+                }
+                var type = [0];
+                if (!sxan_word(c, q, 1, false, type)) {
+                    return false;
+                }
+                if (type[0] === 0 && z >= 5) {
+                    if (!sxan_add(c, sxan_lha_dialect_crc, q + 1)) {
+                        return false;
+                    }
+                } else if ((type[0] === 1 || type[0] === 2) && !sxan_named(c, q + 1, sxU64(z - 3))) {
+                    return false;
+                }
+                q += z;
+                used += z;
+            }
+        }
+        if (used > packed || !sxan_span(c, q, sxU64(packed - used))) {
+            return true;
+        }
+        p = sxU64(q + packed - used);
+    }
+    return true;
+}
+function sx_archivenext_supports(type) {
+    switch (type) {
+    case "IS3":
+    case "IS5":
+    case "IS11":
+    case "GKSETUP":
+    case "PCINSTALL":
+    case "FINSTALL":
+    case "IFAH_INSTALLER":
+    case "O_SETUP":
+    case "PC_INSTALL_SETUP":
+    case "RTPATCH_SETUP_DATA":
+    case "SPOON_INSTALLER":
+    case "INSTALLSHIELD_ISSETUPSTREAM":
+    case "ESCHALON_SETUP_EPSF":
+    case "SETUP_FACTORY":
+    case "WESTWOOD_PAK":
+    case "CKP":
+    case "EDP":
+    case "PARSEC_RIB":
+    case "PARSEC_ARCHIVE":
+    case "PTERO_BIGF":
+    case "PIRS":
+    case "SBPAK":
+    case "TITAN_QUEST":
+    case "CGJP":
+    case "BIRDIES":
+    case "XUIZ":
+    case "WII_WAD":
+    case "FREEARC":
+    case "ZPAQ":
+    case "BYTEKILLER":
+    case "DCS":
+    case "AUDIALS":
+    case "OSL2000":
+    case "MICROFOX_PUT":
+    case "SAR":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivenext_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "IS3") {
+        return sx_is3_build(c);
+    }
+    if (c.f.file_type === "IS5") {
+        return sx_is5_build(c);
+    }
+    if (c.f.file_type === "IS11") {
+        return sx_is11_build(c);
+    }
+    if (c.f.file_type === "GKSETUP") {
+        return sx_gksetup_build(c);
+    }
+    if (c.f.file_type === "PCINSTALL") {
+        return sx_pcinstall_build(c);
+    }
+    if (c.f.file_type === "FINSTALL") {
+        return sx_finstall_build(c);
+    }
+    if (c.f.file_type === "IFAH_INSTALLER") {
+        return sx_ifah_installer_build(c);
+    }
+    if (c.f.file_type === "O_SETUP") {
+        return sx_o_setup_build(c);
+    }
+    if (c.f.file_type === "PC_INSTALL_SETUP") {
+        return sx_pc_install_setup_build(c);
+    }
+    if (c.f.file_type === "RTPATCH_SETUP_DATA") {
+        return sx_rtpatch_setup_data_build(c);
+    }
+    if (c.f.file_type === "SPOON_INSTALLER") {
+        return sx_spoon_installer_build(c);
+    }
+    if (c.f.file_type === "INSTALLSHIELD_ISSETUPSTREAM") {
+        return sx_installshield_issetupstream_build(c);
+    }
+    if (c.f.file_type === "ESCHALON_SETUP_EPSF") {
+        return sx_eschalon_setup_epsf_build(c);
+    }
+    if (c.f.file_type === "SETUP_FACTORY") {
+        return sx_setup_factory_build(c);
+    }
+    if (c.f.file_type === "WESTWOOD_PAK") {
+        return sx_westwood_pak_build(c);
+    }
+    if (c.f.file_type === "CKP") {
+        return sx_ckp_build(c);
+    }
+    if (c.f.file_type === "EDP") {
+        return sx_edp_build(c);
+    }
+    if (c.f.file_type === "PARSEC_RIB") {
+        return sx_parsec_rib_build(c);
+    }
+    if (c.f.file_type === "PARSEC_ARCHIVE") {
+        return sx_parsec_archive_build(c);
+    }
+    if (c.f.file_type === "PTERO_BIGF") {
+        return sx_ptero_bigf_build(c);
+    }
+    if (c.f.file_type === "PIRS") {
+        return sx_pirs_build(c);
+    }
+    if (c.f.file_type === "SBPAK") {
+        return sx_sbpak_build(c);
+    }
+    if (c.f.file_type === "TITAN_QUEST") {
+        return sx_titan_quest_build(c);
+    }
+    if (c.f.file_type === "CGJP") {
+        return sx_cgjp_build(c);
+    }
+    if (c.f.file_type === "BIRDIES") {
+        return sx_birdies_build(c);
+    }
+    if (c.f.file_type === "XUIZ") {
+        return sx_xuiz_build(c);
+    }
+    if (c.f.file_type === "WII_WAD") {
+        return sx_wii_wad_build(c);
+    }
+    if (c.f.file_type === "FREEARC") {
+        return sx_freearc_build(c);
+    }
+    if (c.f.file_type === "ZPAQ") {
+        return sx_zpaq_build(c);
+    }
+    if (c.f.file_type === "BYTEKILLER") {
+        return sx_bytekiller_build(c);
+    }
+    if (c.f.file_type === "DCS") {
+        return sx_dcs_build(c);
+    }
+    if (c.f.file_type === "AUDIALS") {
+        return sx_audials_build(c);
+    }
+    if (c.f.file_type === "OSL2000") {
+        return sx_osl2000_build(c);
+    }
+    if (c.f.file_type === "MICROFOX_PUT") {
+        return sx_microfox_put_build(c);
+    }
+    if (c.f.file_type === "SAR") {
+        return sx_sar_build(c);
+    }
+    return !!(c.count && sxan_finish(c));
+}

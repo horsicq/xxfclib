@@ -1,0 +1,136 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/tecplot_plt/xx_tecplot_plt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_tecplot_prefix_le_fields = layout([chars("signature", 8, SIGNATURE), i32("byte_order", ID), i32("file_type", ID)]);
+var sxsw_tecplot_prefix_le = sxLayout(0x602D0070, "tecplot_prefix_le", LE, sxsw_tecplot_prefix_le_fields);
+var sxsw_tecplot_codepoint_le_fields = layout([i32("character")]);
+var sxsw_tecplot_codepoint_le = sxLayout(0x602D0071, "tecplot_codepoint_le", LE, sxsw_tecplot_codepoint_le_fields);
+var sxsw_tecplot_variable_count_le_fields = layout([i32("variable_count", COUNT)]);
+var sxsw_tecplot_variable_count_le = sxLayout(0x602D0072, "tecplot_variable_count_le", LE, sxsw_tecplot_variable_count_le_fields);
+var sxsw_tecplot_marker_le_fields = layout([field("marker", "float32", 4)]);
+var sxsw_tecplot_marker_le = sxLayout(0x602D0073, "tecplot_marker_le", LE, sxsw_tecplot_marker_le_fields);
+var sxsw_tecplot_ordered_zone_le_fields = layout([i32("parent_zone", ID), i32("strand_id", ID),
+    field("solution_time", "float64", 8), i32("zone_color", ID), i32("zone_type", ID), i32("specify_variable_location", FLAGS),
+    i32("raw_local_face_neighbors", FLAGS), i32("miscellaneous_face_neighbor_count", COUNT), i32("dimension_i", COUNT),
+    i32("dimension_j", COUNT), i32("dimension_k", COUNT)]);
+var sxsw_tecplot_ordered_zone_le = sxLayout(0x602D0074, "tecplot_ordered_zone_le", LE, sxsw_tecplot_ordered_zone_le_fields);
+var sxsw_tecplot_auxiliary_flag_le_fields = layout([i32("auxiliary_data", FLAGS)]);
+var sxsw_tecplot_auxiliary_flag_le = sxLayout(0x602D0075, "tecplot_auxiliary_flag_le", LE, sxsw_tecplot_auxiliary_flag_le_fields);
+var sxsw_tecplot_data_flags_le_fields = layout([i32("passive_variables", FLAGS), i32("variable_sharing", FLAGS),
+    i32("connectivity_sharing", ID)]);
+var sxsw_tecplot_data_flags_le = sxLayout(0x602D0077, "tecplot_data_flags_le", LE, sxsw_tecplot_data_flags_le_fields);
+var sxsw_tecplot_range_le_fields = layout([field("minimum", "float64", 8), field("maximum", "float64", 8)]);
+var sxsw_tecplot_range_le = sxLayout(0x602D0078, "tecplot_range_le", LE, sxsw_tecplot_range_le_fields);
+var sxsw_tecplot_prefix_be_fields = layout([chars("signature", 8, SIGNATURE), i32("byte_order", ID), i32("file_type", ID)]);
+var sxsw_tecplot_prefix_be = sxLayout(0x602D0079, "tecplot_prefix_be", BE, sxsw_tecplot_prefix_be_fields);
+var sxsw_tecplot_codepoint_be_fields = layout([i32("character")]);
+var sxsw_tecplot_codepoint_be = sxLayout(0x602D007A, "tecplot_codepoint_be", BE, sxsw_tecplot_codepoint_be_fields);
+var sxsw_tecplot_variable_count_be_fields = layout([i32("variable_count", COUNT)]);
+var sxsw_tecplot_variable_count_be = sxLayout(0x602D007B, "tecplot_variable_count_be", BE, sxsw_tecplot_variable_count_be_fields);
+var sxsw_tecplot_marker_be_fields = layout([field("marker", "float32", 4)]);
+var sxsw_tecplot_marker_be = sxLayout(0x602D007C, "tecplot_marker_be", BE, sxsw_tecplot_marker_be_fields);
+var sxsw_tecplot_ordered_zone_be_fields = layout([i32("parent_zone", ID), i32("strand_id", ID),
+    field("solution_time", "float64", 8), i32("zone_color", ID), i32("zone_type", ID), i32("specify_variable_location", FLAGS),
+    i32("raw_local_face_neighbors", FLAGS), i32("miscellaneous_face_neighbor_count", COUNT), i32("dimension_i", COUNT),
+    i32("dimension_j", COUNT), i32("dimension_k", COUNT)]);
+var sxsw_tecplot_ordered_zone_be = sxLayout(0x602D007D, "tecplot_ordered_zone_be", BE, sxsw_tecplot_ordered_zone_be_fields);
+var sxsw_tecplot_auxiliary_flag_be_fields = layout([i32("auxiliary_data", FLAGS)]);
+var sxsw_tecplot_auxiliary_flag_be = sxLayout(0x602D007E, "tecplot_auxiliary_flag_be", BE, sxsw_tecplot_auxiliary_flag_be_fields);
+var sxsw_tecplot_data_flags_be_fields = layout([i32("passive_variables", FLAGS), i32("variable_sharing", FLAGS),
+    i32("connectivity_sharing", ID)]);
+var sxsw_tecplot_data_flags_be = sxLayout(0x602D0080, "tecplot_data_flags_be", BE, sxsw_tecplot_data_flags_be_fields);
+var sxsw_tecplot_range_be_fields = layout([field("minimum", "float64", 8), field("maximum", "float64", 8)]);
+var sxsw_tecplot_range_be = sxLayout(0x602D0081, "tecplot_range_be", BE, sxsw_tecplot_range_be_fields);
+function sxsw_tec_string(c, at, be) {
+    var n;
+    var begin = at[0];
+    for (var i = 0; i < 4096; i++) {
+        if ((n = sx_u32(c, at[0], be)) === null || n > 127) {
+            return false;
+        }
+        at[0] += 4;
+        if (!n) {
+            return sxsw_table(c, be ? sxsw_tecplot_codepoint_be : sxsw_tecplot_codepoint_le, begin, 4, (i + 1) >>> 0);
+        }
+    }
+    return false;
+}
+function sxsw_tecplot(c) {
+    var x;
+    var vars;
+    var points = [];
+    var zones = 0;
+    var at = [16];
+    if ((x = sx_u32(c, 8, false)) === null) {
+        return false;
+    }
+    var be = x !== 1;
+    if (!sxsw_add(c, be ? sxsw_tecplot_prefix_be : sxsw_tecplot_prefix_le, 0, 16) || !sxsw_tec_string(c, at, be) || (vars = sx_u32(c, at[0], be)) === null || !vars || vars > 64 || !sxsw_add(c, be ? sxsw_tecplot_variable_count_be : sxsw_tecplot_variable_count_le, at[0], 4)) {
+        return false;
+    }
+    at[0] += 4;
+    for (var i = 0; i < vars; i++) {
+        if (!sxsw_tec_string(c, at, be)) {
+            return false;
+        }
+    }
+    while (true) {
+        if ((x = sx_u32(c, at[0], be)) === null || !sxsw_add(c, be ? sxsw_tecplot_marker_be : sxsw_tecplot_marker_le, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+        if (x === 0x43B28000) {
+            break;
+        }
+        var b = [];
+        if (x !== 0x43958000 || zones >= 32 || !sxsw_tec_string(c, at, be) || !sx_read(c, at[0], b, 48) || !sxsw_add(c, be ? sxsw_tecplot_ordered_zone_be : sxsw_tecplot_ordered_zone_le, at[0], 48)) {
+            return false;
+        }
+        var count = 1;
+        for (i = 0; i < 3; i++) {
+            var dim = sxsw32(b, 36 + ((i * 4) >>> 0), be);
+            if (!dim || count > Math.floor(1048576 / dim)) {
+                return false;
+            }
+            count *= dim;
+        }
+        points[zones++] = count;
+        at[0] += 48;
+        if (!sxsw_add(c, be ? sxsw_tecplot_auxiliary_flag_be : sxsw_tecplot_auxiliary_flag_le, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+    }
+    for (var z = 0; z < zones; z++) {
+        var types = [];
+        if (!sxsw_add(c, be ? sxsw_tecplot_marker_be : sxsw_tecplot_marker_le, at[0], 4) || !sxsw_table(c, be ? sxsw_tecplot_variable_type_be : sxsw_tecplot_variable_type_le, at[0] + 4, 4, vars)) {
+            return false;
+        }
+        at[0] += 4;
+        for (i = 0; i < vars; i++) {
+            if ((types[i] = sx_u32(c, at[0], be)) === null || types[i] < 1 || types[i] > 5) {
+                return false;
+            }
+            at[0] += 4;
+        }
+        if (!sxsw_add(c, be ? sxsw_tecplot_data_flags_be : sxsw_tecplot_data_flags_le, at[0], 12) || !sxsw_table(c, be ? sxsw_tecplot_range_be : sxsw_tecplot_range_le, at[0] + 12, 16, vars)) {
+            return false;
+        }
+        at[0] += (12 + ((vars * 16) >>> 0)) >>> 0;
+        for (i = 0; i < vars; i++) {
+            var width = types[i] === 2 ? 8 : types[i] <= 3 ? 4 : types[i] === 4 ? 2 : 1;
+            var bytes = points[z] * width;
+            if (!sxsw_span(c, at[0], bytes)) {
+                return false;
+            }
+            at[0] += (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes);
+        }
+    }
+    return at[0] === c.size;
+}
+function sx_tecplot_plt_build(c) {
+    return sxsw_tecplot(c);
+}

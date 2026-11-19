@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/goldsrc_bsp/xx_goldsrc_bsp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_bsp_header_fields = layout([i32("version", ID)]);
+var sxga_bsp_header = sxLayout(0x603B0050, "bsp_header", LE, sxga_bsp_header_fields);
+var sxga_bsp_vertex_fields = layout([field("x", "float", 4), field("y", "float", 4), field("z", "float", 4)]);
+var sxga_bsp_vertex = sxLayout(0x603B0053, "bsp_vertex", LE, sxga_bsp_vertex_fields);
+var sxga_bsp_texinfo_fields = layout([field("s_x", "float", 4), field("s_y", "float", 4), field("s_z", "float", 4),
+    field("s_shift", "float", 4), field("t_x", "float", 4), field("t_y", "float", 4), field("t_z", "float", 4),
+    field("t_shift", "float", 4), i32("miptex", ID), i32("flags", FLAGS)]);
+var sxga_bsp_texinfo = sxLayout(0x603B0055, "bsp_texinfo", LE, sxga_bsp_texinfo_fields);
+var sxga_bsp_marksurface_fields = layout([u16("face", ID)]);
+var sxga_bsp_marksurface = sxLayout(0x603B0059, "bsp_marksurface", LE, sxga_bsp_marksurface_fields);
+var sxga_bsp_edge_fields = layout([u16("vertex0", ID), u16("vertex1", ID)]);
+var sxga_bsp_edge = sxLayout(0x603B005A, "bsp_edge", LE, sxga_bsp_edge_fields);
+var sxga_bsp_model_fields = layout([field("min_x", "float", 4), field("min_y", "float", 4), field("min_z", "float", 4),
+    field("max_x", "float", 4), field("max_y", "float", 4), field("max_z", "float", 4), field("origin_x", "float", 4),
+    field("origin_y", "float", 4), field("origin_z", "float", 4), i32("headnode0", ID), i32("headnode1", ID),
+    i32("headnode2", ID), i32("headnode3", ID), i32("visibility_leaves", COUNT), i32("first_face", ID), i32("faces", COUNT)]);
+var sxga_bsp_model = sxLayout(0x603B005C, "bsp_model", LE, sxga_bsp_model_fields);
+var sxga_bsp_textures_fields = layout([i32("textures", COUNT)]);
+var sxga_bsp_textures = sxLayout(0x603B005D, "bsp_textures", LE, sxga_bsp_textures_fields);
+var sxga_bsp_palette_fields = layout([u16("colors", COUNT)]);
+var sxga_bsp_palette = sxLayout(0x603B0060, "bsp_palette", LE, sxga_bsp_palette_fields);
+var sxga_bsp_color_fields = layout([u8("red"), u8("green"), u8("blue")]);
+var sxga_bsp_color = sxLayout(0x603B0061, "bsp_color", LE, sxga_bsp_color_fields);
+function sxga_bsp(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var offsets = [];
+    var sizes = [];
+    if (!sxga_row(v, sxga_bsp_header, 0, end) || !sxga_table(v, sxga_bsp_lump, 4, 15, end)) {
+        return false;
+    }
+    for (var i = 0; i < 15; i++) {
+        if (!sxga_word(v, (4 + ((i * 8) >>> 0)) >>> 0, 4, false, offsets, i, end) || !sxga_word(v, (8 + ((i * 8) >>> 0)) >>> 0, 4, false, sizes, i, end) || !sxga_span(v, offsets[i], sizes[i], end)) {
+            return false;
+        }
+    }
+    var plane = sizes[1] % 20 === 0 ? 1 : 0;
+    var layouts = [null, null, null, sxga_bsp_vertex, null, sxga_bsp_node, sxga_bsp_texinfo, sxga_bsp_face, null, sxga_bsp_clipnode, sxga_bsp_leaf, sxga_bsp_marksurface, sxga_bsp_edge, sxga_bsp_surfedge, sxga_bsp_model];
+    layouts[plane] = sxga_bsp_plane;
+    for (i = 0; i < 15; i++) {
+        if (layouts[i] !== null && sizes[i]) {
+            var l = layouts[i];
+            var f = l.fields[l.field_count + -1];
+            var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+            if (sizes[i] % z || !sxga_table(v, l, offsets[i], Math.floor(sizes[i] / z), end)) {
+                return false;
+            }
+        }
+    }
+    if (sizes[2]) {
+        var at = offsets[2];
+        var limit = at + sizes[2];
+        var n = [0];
+        if (!sxga_row(v, sxga_bsp_textures, at, limit) || !sxga_word(v, at, 4, false, n, 0, limit) || !sxga_table(v, sxga_bsp_texture_offset, at + 4, n[0], limit)) {
+            return false;
+        }
+        for (i = 0; i < n[0]; i++) {
+            var rel = [0];
+            var tex;
+            var w = [0];
+            var h = [0];
+            var mip = [0];
+            var palette;
+            var colors = [0];
+            if (!sxga_word(v, at + 4 + i * 4, 4, false, rel, 0, limit)) {
+                return false;
+            }
+            if (rel[0] < 4 + 4 * n[0] || rel[0] > sizes[2] || sxU64(sizes[2] - rel[0]) < 40) {
+                continue;
+            }
+            tex = at + rel[0];
+            if (!sxga_row(v, sxga_bsp_miptex, tex, limit) || !sxga_word(v, tex + 16, 4, false, w, 0, limit) || !sxga_word(v, tex + 20, 4, false, h, 0, limit) || !sxga_word(v, tex + 36, 4, false, mip, 0, limit)) {
+                return false;
+            }
+            if (!w[0] || !h[0] || w[0] > sizes[2] || h[0] > sizes[2] || w[0] * h[0] > sizes[2] || mip[0] > sxU64(sizes[2] - rel[0])) {
+                continue;
+            }
+            var valid = true;
+            for (var level = 0; level < 4; level++) {
+                var mo = [0];
+                var sz = sxShr64(w[0], level) * sxShr64(h[0], level);
+                if (!sxga_word(v, tex + 24 + ((4 * level) >>> 0), 4, false, mo, 0, limit)) {
+                    return false;
+                }
+                if (mo[0] < 40 || mo[0] > sxU64(limit - tex) || sz > sxU64(sxU64(limit - tex) - mo[0])) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (!valid) {
+                continue;
+            }
+            palette = tex + mip[0] + sxShr64(w[0], 3) * sxShr64(h[0], 3);
+            if (!sxga_span(v, palette, 2, limit)) {
+                continue;
+            }
+            if (!sxga_word(v, palette, 2, false, colors, 0, limit)) {
+                return false;
+            }
+            if (colors[0] > 256 || !sxga_span(v, palette + 2, colors[0] * 3, limit)) {
+                continue;
+            }
+            if (!sxga_row(v, sxga_bsp_palette, palette, limit) || !sxga_table(v, sxga_bsp_color, palette + 2, colors[0], limit)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_goldsrc_bsp_build(v) {
+    return sxga_bsp(v);
+}

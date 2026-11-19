@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/casio_fz_1_disk/xx_casio_fz_1_disk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_casio_disk_header_fields = layout([chars("disk_name", 12, NONE), field("signature", "byte[4]", 4, SIGNATURE),
+    chars("password", 12, NONE), field("reserved", "byte[4]", 4, RESERVED)]);
+var sxdt_casio_disk_header = sxLayout(0x607A0011, "casio_disk_header", LE, sxdt_casio_disk_header_fields);
+var sxdt_casio_allocation_byte_fields = layout([u8("sector_bitmap", FLAGS)]);
+var sxdt_casio_allocation_byte = sxLayout(0x607A0012, "casio_allocation_byte", LE, sxdt_casio_allocation_byte_fields);
+var sxdt_casio_directory_entry_fields = layout([chars("filename", 12, NONE), u8("content_type", ID), u8("continuation", FLAGS),
+    u16("head_sector")]);
+var sxdt_casio_directory_entry = sxLayout(0x607A0013, "casio_directory_entry", LE, sxdt_casio_directory_entry_fields);
+var sxdt_casio_file_extent_fields = layout([u16("start_sector"), u16("end_sector")]);
+var sxdt_casio_file_extent = sxLayout(0x607A0014, "casio_file_extent", LE, sxdt_casio_file_extent_fields);
+var sxdt_casio_file_counts_fields = layout([u16("bank_count", COUNT), u16("voice_count", COUNT), u16("wave_block_count", COUNT)]);
+var sxdt_casio_file_counts = sxLayout(0x607A0015, "casio_file_counts", LE, sxdt_casio_file_counts_fields);
+function sxdt_casio(c) {
+    var d = [];
+    var h = [];
+    if (c.size !== 1310720 || !sxdt_read(c, 1024, d, 0, 1024) || !sxdt_put(c, sxdt_casio_disk_header, 0, 1) || !sxdt_put(c, sxdt_casio_allocation_byte, 128, 768) || !sxdt_put(c, sxdt_casio_directory_entry, 1024, 64)) {
+        return false;
+    }
+    for (var i = 0; i < 64; i++) {
+        var e = d, e_o = (i * 16) >>> 0;
+        var sector = sxdt16(e, e_o + 14, 0);
+        if (!e[e_o] || e[e_o + 12] > 5 || e[e_o + 13] > 1 || sector < 2 || sector >= 1280) {
+            continue;
+        }
+        var valid = true;
+        for (var j = 0; j < 12 && e[e_o + j]; j++) {
+            if (e[e_o + j] < 32 || e[e_o + j] === 127) {
+                valid = false;
+            }
+        }
+        var p = sector * 1024;
+        if (!valid || !sxdt_read(c, p, h, 0, 1024)) {
+            continue;
+        }
+        if (e[e_o + 12] !== 4 && (sxdt16(h, 1018, 0) > 8 || sxdt16(h, 1020, 0) > 64)) {
+            continue;
+        }
+        var seen = sxZeros(160);
+        var n = 0;
+        var any = false;
+        for (; n < 64; n++) {
+            var a = sxdt16(h, (n * 4) >>> 0, 0);
+            var b = sxdt16(h, ((n * 4) >>> 0) + 2, 0);
+            if (!a && !b) {
+                n++;
+                break;
+            }
+            if (a < 2 || a > b || b >= 1280) {
+                valid = false;
+                break;
+            }
+            any = true;
+            for (var k = a; k <= b; k++) {
+                if (seen[Math.floor(k / 8)] & 1 << k % 8) {
+                    valid = false;
+                }
+                seen[Math.floor(k / 8)] |= 1 << k % 8;
+            }
+        }
+        if (!valid || !any || sxdt16(h, 0, 0) !== sector && seen[Math.floor(sector / 8)] & 1 << sector % 8) {
+            continue;
+        }
+        if (!sxdt_put(c, sxdt_casio_file_extent, p, n) || !sxdt_put(c, sxdt_casio_file_counts, p + 1018, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_casio_fz_1_disk_build(c) {
+    var ok = false;
+    ok = sxdt_casio(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

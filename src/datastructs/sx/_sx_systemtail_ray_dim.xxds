@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ray_dim/xx_ray_dim_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_raydim_header_indices_fields = layout([chars("signature", 80, SIGNATURE), u8("disk_type", ID), u8("cylinders_indices"),
+    u8("sectors_per_track", COUNT), u8("heads_indices")]);
+var sxst_raydim_header_indices = sxLayout(0x6037002E, "raydim_header_indices", LE, sxst_raydim_header_indices_fields);
+var sxst_raydim_header_counts_fields = layout([chars("signature", 80, SIGNATURE), u8("disk_type", ID),
+    u8("cylinders_counts", COUNT), u8("sectors_per_track", COUNT), u8("heads_counts", COUNT)]);
+var sxst_raydim_header_counts = sxLayout(0x6037002F, "raydim_header_counts", LE, sxst_raydim_header_counts_fields);
+var sxst_raydim_sector_status_fields = layout([u8("status", FLAGS)]);
+var sxst_raydim_sector_status = sxLayout(0x60370030, "raydim_sector_status", LE, sxst_raydim_sector_status_fields);
+function sxst_ray(c) {
+    var h = [];
+    if (!sxst_read(c, 0, h, 84)) {
+        return false;
+    }
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var tracks = (h[81] + 1) * (h[83] + 1);
+    var bytes = h[82] * 512;
+    var original = !!(h[83] <= 1 && h[82] && n === 84 + tracks * (bytes + h[82]));
+    if (!sxst_put(c, original ? sxst_raydim_header_indices : sxst_raydim_header_counts, 0, 1)) {
+        return false;
+    }
+    if (original) {
+        for (var i = 0; i < tracks && c.count < 24000; i++) {
+            if (!sxst_put(c, sxst_raydim_sector_status, 84 + i * (bytes + h[82]) + bytes, h[82])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_ray_dim_build(c) {
+    return sxst_ray(c);
+}

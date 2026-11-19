@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/spis/xx_spis_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_spis_header_fields = layout([bytes("signature", 5, SIGNATURE), chars("method_tag", 3, NONE),
+    u32("uncompressed_size", SIZE), u8("archive_type"), u32("checksum", CHECKSUM), u32("flags")]);
+var sxacl_spis_header = sxLayout(0x6050001F, "spis_header", LE, sxacl_spis_header_fields);
+var sxacl_spis_member_fields = layout([u16("name_size", SIZE), u32("dos_timestamp"), u16("attributes"),
+    u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u8("method"), u32("checksum", CHECKSUM), u32("flags")]);
+var sxacl_spis_member = sxLayout(0x60500020, "spis_member", LE, sxacl_spis_member_fields);
+function sxacl_spis(c) {
+    var p = 0;
+    var members = false;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxacl_read(c, p, h, 5)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "SPIS\x1A", 5)) {
+            if (!sxacl_read(c, p, h, 21) || !sxacl_add(c, sxacl_spis_header, p)) {
+                return false;
+            }
+            members = h[12] === 1;
+            p += 21;
+            if (!members) {
+                return true;
+            }
+        } else {
+            if (!members || !sxacl_read(c, p, h, 25)) {
+                return false;
+            }
+            var n = sxacl_uint(h, 0, 2, false);
+            var z = sxacl_uint(h, 12, 4, false);
+            if (!n || n > 4096 || !sxacl_span(c, p + 25, n) || !sxacl_span(c, p + 25 + n, z) || !sxacl_add(c, sxacl_spis_member, p)) {
+                return false;
+            }
+            p += 25 + n + z;
+        }
+    }
+    return true;
+}
+function sx_spis_build(c) {
+    return sxacl_spis(c);
+}

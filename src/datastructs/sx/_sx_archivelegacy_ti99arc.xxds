@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ti99arc/xx_ti99arc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_ti99_tifiles_fields = layout([bytes("signature", 8, SIGNATURE), u16("sector_count", COUNT), u8("flags", FLAGS),
+    u8("records_per_sector", COUNT), u8("final_sector_bytes"), u8("record_size", SIZE)]);
+var sxag_ti99_tifiles = sxLayout(0x60250010, "ti99_tifiles", BE, sxag_ti99_tifiles_fields);
+var sxag_ti99_fiad_fields = layout([chars("name", 10, STRING), u16("reserved", RESERVED), u8("flags", FLAGS),
+    u8("records_per_sector", COUNT), u16("sector_count", COUNT), u8("final_sector_bytes"), u8("record_size", SIZE)]);
+var sxag_ti99_fiad = sxLayout(0x60250011, "ti99_fiad", BE, sxag_ti99_fiad_fields);
+var sxag_ti99_record_count_fields = layout([u16("record_count", COUNT)]);
+var sxag_ti99_record_count = sxLayout(0x60250012, "ti99_record_count", LE, sxag_ti99_record_count_fields);
+var sxag_ti99_fiad_times_fields = layout([bytes("created", 4), bytes("modified", 4), bytes("reserved", 100, RESERVED)]);
+var sxag_ti99_fiad_times = sxLayout(0x60250013, "ti99_fiad_times", LE, sxag_ti99_fiad_times_fields);
+var sxag_ti99_entry_fields = layout([chars("name", 10, STRING), u8("flags", FLAGS), u8("records_per_sector", COUNT),
+    u16("sector_count", COUNT), u8("final_sector_bytes"), u8("record_size", SIZE)]);
+var sxag_ti99_entry = sxLayout(0x60250014, "ti99_entry", BE, sxag_ti99_entry_fields);
+var sxag_ti99_catalog_end_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxag_ti99_catalog_end = sxLayout(0x60250015, "ti99_catalog_end", LE, sxag_ti99_catalog_end_fields);
+function sxag_ti99(c) {
+    var b = [];
+    var p = 0;
+    var compressed = false;
+    if (!sxag_read(c, 0, b, 128)) {
+        return false;
+    }
+    if (!sxMemcmp(b, "\x07TIFILES", 8)) {
+        if (!sxag_add(c, sxag_ti99_tifiles, 0) || !sxag_add(c, sxag_ti99_record_count, 14)) {
+            return false;
+        }
+        compressed = (b[10] & 2) !== 0;
+        p = 128;
+    } else {
+        var fiad = b[10] === 0 && b[11] === 0 && sxag16(b, 14, true) !== 0;
+        for (var i = 28; i < 128 && fiad; i++) {
+            if (b[i]) {
+                fiad = false;
+            }
+        }
+        var size = sxag16(b, 14, true) * 256 + 128;
+        if (fiad && size === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            if (!sxag_add(c, sxag_ti99_fiad, 0) || !sxag_add(c, sxag_ti99_record_count, 18) || !sxag_add(c, sxag_ti99_fiad_times, 20)) {
+                return false;
+            }
+            compressed = (b[12] & 2) !== 0;
+            p = 128;
+        }
+    }
+    if (compressed) {
+        return true;
+    }
+    for (var sector = 0; sector < 1024 && sxag_span(c, p, 256); sector++, p += 256) {
+        for (i = 0; i < 14; i++) {
+            var e = [];
+            var at = p + ((i * 18) >>> 0);
+            if (!sxag_read(c, at, e, 18)) {
+                return false;
+            }
+            var empty = true;
+            for (var j = 0; j < 18; j++) {
+                if (e[j]) {
+                    empty = false;
+                }
+            }
+            if (empty) {
+                continue;
+            }
+            if (!sxag_add(c, sxag_ti99_entry, at) || !sxag_add(c, sxag_ti99_record_count, at + 16)) {
+                return false;
+            }
+        }
+        if (!sxag_read(c, p + 252, b, 4) || !sxag_add(c, sxag_ti99_catalog_end, p + 252)) {
+            return false;
+        }
+        if (!sxMemcmp(b, "END!", 4)) {
+            break;
+        }
+        if (sxag32(b, 0, false)) {
+            break;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_ti99arc_build(c) {
+    return sxag_ti99(c);
+}

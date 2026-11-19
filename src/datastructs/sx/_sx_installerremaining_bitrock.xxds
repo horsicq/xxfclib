@@ -1,0 +1,115 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/bitrock/xx_bitrock_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_installer_utf8_fields = layout([field("text", "utf8", 0)]);
+var sxir_installer_utf8 = sxLayout(0x60800009, "installer_utf8", LE, sxir_installer_utf8_fields);
+var sxir_cookfs_page_digest_fields = layout([bytes("digest", 16, CHECKSUM)]);
+var sxir_cookfs_page_digest = sxLayout(0x6080000D, "cookfs_page_digest", BE, sxir_cookfs_page_digest_fields);
+var sxir_cookfs_page_size_fields = layout([field("stored_size", "uint32be", 4, SIZE)]);
+var sxir_cookfs_page_size = sxLayout(0x6080000E, "cookfs_page_size", BE, sxir_cookfs_page_size_fields);
+var sxir_cookfs_index_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxir_cookfs_index = sxLayout(0x60800010, "cookfs_index", BE, sxir_cookfs_index_fields);
+var sxir_cookfs_directory_fields = layout([field("entry_count", "uint32be", 4, COUNT)]);
+var sxir_cookfs_directory = sxLayout(0x60800011, "cookfs_directory", BE, sxir_cookfs_directory_fields);
+var sxir_cookfs_name_length_fields = layout([u8("name_size", SIZE)]);
+var sxir_cookfs_name_length = sxLayout(0x60800012, "cookfs_name_length", BE, sxir_cookfs_name_length_fields);
+var sxir_cookfs_block_fields = layout([field("page_index", "uint32be", 4, ID),
+    field("page_relative_offset", "uint32be", 4, OFFSET), field("size", "uint32be", 4, SIZE)]);
+var sxir_cookfs_block = sxLayout(0x60800014, "cookfs_block", BE, sxir_cookfs_block_fields);
+function sxir_cook_dir(v, at, end, depth) {
+    var count = [0];
+    if (depth > 64 || !sxir_u(v, at[0], 4, true, count, end) || count[0] > 65535 || !sxir_row(v, sxir_cookfs_directory, at[0], end)) {
+        return false;
+    }
+    at[0] += 4;
+    for (var i = 0; i < count[0]; i++) {
+        var n = [0];
+        var blocks = [0];
+        var zero = [0];
+        if (!sxir_u(v, at[0], 1, false, n, end) || !n[0] || !sxir_row(v, sxir_cookfs_name_length, at[0], end)) {
+            return false;
+        }
+        at[0]++;
+        if (!sxir_span(v, at[0], n[0] + 1, end) || !sxir_emit(v, sxir_installer_utf8, at[0], n[0], end) || !sxir_read(v, at[0] + n[0], zero, 1, end) || zero[0] || !sxir_row(v, sxir_installer_terminator, at[0] + n[0], end)) {
+            return false;
+        }
+        at[0] += n[0] + 1;
+        if (!sxir_u(v, at[0] + 8, 4, true, blocks, end) || !sxir_row(v, sxir_cookfs_entry, at[0], end)) {
+            return false;
+        }
+        at[0] += 12;
+        if (blocks[0] === 4294967295) {
+            if (!sxir_cook_dir(v, at, end, (depth + 1) >>> 0)) {
+                return false;
+            }
+        } else {
+            if (blocks[0] > 1000000 || !sxir_table(v, sxir_cookfs_block, at[0], blocks[0], end)) {
+                return false;
+            }
+            at[0] += blocks[0] * 12;
+        }
+    }
+    return true;
+}
+function sxir_cookfs(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var sig = [0];
+    var index_size = [0];
+    var count = [0];
+    if (v.c.f.format_size > 0 && (v.c.f.format_size < 0 ? v.c.f.format_size + SX_U64_MAX : v.c.f.format_size) < end) {
+        end = (v.c.f.format_size < 0 ? v.c.f.format_size + SX_U64_MAX : v.c.f.format_size);
+    }
+    if (end < 16 || !sxir_find(v, end > 16777216 ? sxU64(end - 16777216) : 0, end, "CFS0002", 7, true, sig) || sig[0] < 9) {
+        return false;
+    }
+    var footer = sxU64(sig[0] - 9);
+    var finish = sig[0] + 7;
+    if (!sxir_u(v, footer, 4, true, index_size, finish) || !index_size[0] || index_size[0] > 67108864 || !sxir_u(v, footer + 4, 4, true, count, finish) || count[0] > 65535 || index_size[0] > footer || count[0] * 20 > sxU64(footer - index_size[0]) || !sxir_row(v, sxir_cookfs_footer, footer, finish)) {
+        return false;
+    }
+    var table = sxU64(sxU64(footer - index_size[0]) - count[0] * 20);
+    var total = 0;
+    for (var i = 0; i < count[0]; i++) {
+        var z = [0];
+        if (!sxir_u(v, table + count[0] * 16 + 4 * i, 4, true, z, footer) || z[0] > 67108864 || z[0] > sxU64(table - total)) {
+            return false;
+        }
+        total += z[0];
+    }
+    if (!sxir_table(v, sxir_cookfs_page_digest, table, count[0], footer) || !sxir_table(v, sxir_cookfs_page_size, table + 16 * count[0], count[0], footer)) {
+        return false;
+    }
+    var p = [sxU64(table - total)];
+    for (i = 0; i < count[0]; i++) {
+        z = [0];
+        if (!sxir_u(v, table + count[0] * 16 + 4 * i, 4, true, z, footer)) {
+            return false;
+        }
+        if (z[0] && !sxir_row(v, sxir_cookfs_blob, p[0], p[0] + z[0])) {
+            return false;
+        }
+        p[0] += z[0];
+    }
+    p[0] = sxU64(footer - index_size[0]);
+    var method = [0];
+    if (!sxir_u(v, p[0], 1, false, method, footer) || !sxir_row(v, sxir_cookfs_blob, p[0], footer)) {
+        return false;
+    }
+    if (method[0]) {
+        return true;
+    }
+    p[0]++;
+    if (!sxir_eq(v, p[0], "CFS2.200", 8, footer) || !sxir_row(v, sxir_cookfs_index, p[0], footer)) {
+        return false;
+    }
+    p[0] += 8;
+    return sxir_cook_dir(v, p, footer, 0);
+}
+function sx_bitrock_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_cookfs(v);
+}

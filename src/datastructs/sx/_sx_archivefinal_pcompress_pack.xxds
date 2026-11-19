@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pcompress_pack/xx_pcompress_pack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_pcompress_magic_fields = layout([u32("signature", SIGNATURE)]);
+var sxaf_pcompress_magic = sxLayout(0x603C0025, "pcompress_magic", BE, sxaf_pcompress_magic_fields);
+var sxaf_pcompress_member_size_fields = layout([u8("name_terminator"), u32("member_block_size", SIZE)]);
+var sxaf_pcompress_member_size = sxLayout(0x603C0026, "pcompress_member_size", BE, sxaf_pcompress_member_size_fields);
+var sxaf_pcompress_lh_block_fields = layout([chars("signature", 2, SIGNATURE), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u32("raw_crc32", CHECKSUM)]);
+var sxaf_pcompress_lh_block = sxLayout(0x603C0027, "pcompress_lh_block", BE, sxaf_pcompress_lh_block_fields);
+function sxaf_pcompress(c) {
+    var p = [4];
+    if (!sxaf_add(c, sxaf_pcompress_magic, 0)) {
+        return false;
+    }
+    while (p[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxaf_zstr(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 91, 10)) {
+            return false;
+        }
+        p[0]--;
+        var n = [0];
+        if (!sxaf_word(c, p[0] + 1, 4, true, n) || !sxaf_span(c, p[0] + 5, n[0]) || !sxaf_add(c, sxaf_pcompress_member_size, p[0])) {
+            return false;
+        }
+        p[0] += 5;
+        var b = [];
+        if (n[0] > 14 && sxaf_read(c, p[0], b, 14) && b[0] === 76 /*L*/ && b[1] === 72 /*H*/ && !b[2] && !b[6] && !sxaf_add(c, sxaf_pcompress_lh_block, p[0])) {
+            return false;
+        }
+        p[0] += n[0];
+    }
+    return true;
+}
+function sx_pcompress_pack_build(c) {
+    return sxaf_pcompress(c);
+}

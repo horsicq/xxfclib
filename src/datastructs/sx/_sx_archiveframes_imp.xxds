@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/imp/xx_imp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_imp_header_fields = layout([chars("signature", 4, SIGNATURE), u32("directory_offset", OFFSET),
+    u32("member_count", COUNT), bytes("opaque", 26), u16("flags", FLAGS), u16("header_crc16", CHECKSUM)]);
+var sxafr_imp_header = sxLayout(0x60540015, "imp_header", LE, sxafr_imp_header_fields);
+var sxafr_imp_directory_block_fields = layout([bytes("signature", 6, SIGNATURE), field("method_and_lengths", "uint48", 6, FLAGS)]);
+var sxafr_imp_directory_block = sxLayout(0x60540016, "imp_directory_block", LE, sxafr_imp_directory_block_fields);
+function sxafr_imp(c) {
+    var p = [0];
+    var n = [0];
+    if (!sxafr_word(c, 4, 4, false, p) || !sxafr_word(c, 8, 4, false, n) || !sxafr_add(c, sxafr_imp_header, 0)) {
+        return false;
+    }
+    var decoded = 0;
+    for (var i = 0; n[0] && i < 20000; i++) {
+        var h = [];
+        if (!sxafr_read(c, p[0], h, 12) || sxMemcmp(h, "IMPDE\x00", 6)) {
+            return false;
+        }
+        var bits = sxafr_uint(h, 6, 6, false);
+        var plain = sxAnd64(sxShr64(bits, 5), 0xFFFFF);
+        var z = sxAnd64(sxShr64(bits, 25), 0xFFFFF);
+        if (sxAnd64(bits, 15) > 1 || plain > 8192 || !sxafr_add(c, sxafr_imp_directory_block, p[0])) {
+            return false;
+        }
+        decoded += plain;
+        if (!z || decoded >= n[0] * 38) {
+            return true;
+        }
+        if (z < 6 || !sxafr_span(c, p[0] + 6, z)) {
+            return false;
+        }
+        p[0] += 6 + z;
+    }
+    return true;
+}
+function sx_imp_build(c) {
+    return sxafr_imp(c);
+}

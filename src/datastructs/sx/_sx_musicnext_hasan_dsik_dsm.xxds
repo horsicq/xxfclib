@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/hasan_dsik_dsm/xx_hasan_dsik_dsm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_dsm_riff_fields = layout([chars("magic", 4, SIGNATURE), u32("payload_bytes", SIZE), chars("form", 4, ID)]);
+var sxmn_dsm_riff = sxLayout(0x60760034, "dsm_riff", LE, sxmn_dsm_riff_fields);
+var sxmn_dsm_chunk_fields = layout([chars("id", 4, ID), u32("payload_bytes", SIZE)]);
+var sxmn_dsm_chunk = sxLayout(0x60760035, "dsm_chunk", LE, sxmn_dsm_chunk_fields);
+var sxmn_dsm_song_fields = layout([chars("name", 28, STRING), u16("version", ID), u16("flags", FLAGS), u16("current_order", ID),
+    u16("restart_order", ID), u16("orders", COUNT), u16("samples", COUNT), u16("patterns", COUNT), u16("channels", COUNT),
+    u8("global_volume"), u8("master_volume"), u8("speed"), u8("tempo"), u8("channel0_pan"), u8("channel1_pan"),
+    u8("channel2_pan"), u8("channel3_pan"), u8("channel4_pan"), u8("channel5_pan"), u8("channel6_pan"), u8("channel7_pan"),
+    u8("channel8_pan"), u8("channel9_pan"), u8("channel10_pan"), u8("channel11_pan"), u8("channel12_pan"), u8("channel13_pan"),
+    u8("channel14_pan"), u8("channel15_pan")]);
+var sxmn_dsm_song = sxLayout(0x60760036, "dsm_song", LE, sxmn_dsm_song_fields);
+function sxmn_dsmriff(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 12;
+    var size = [0];
+    if (!sxmn_row(v, sxmn_dsm_riff, 0, end) || !sxmn_word(v, 4, 4, false, size, 0, end) || !sxmn_span(v, 8, size[0], end)) {
+        return false;
+    }
+    end = 8 + size[0];
+    while (at < end) {
+        var z = [0];
+        var id = [];
+        if (!sxmn_row(v, sxmn_dsm_chunk, at, end) || !sxmn_word(v, at + 4, 4, false, z, 0, end) || !sxmn_read(v, at, id, 4, end) || !sxmn_span(v, at + 8, z[0], end)) {
+            return false;
+        }
+        var p = at + 8;
+        var limit = p + z[0];
+        if (!sxMemcmp(id, "SONG", 4)) {
+            if (!sxmn_row(v, sxmn_dsm_song, p, limit) || !sxmn_table(v, sxmn_dsm_order, p + 64, 128, limit)) {
+                return false;
+            }
+        } else if (!sxMemcmp(id, "INST", 4)) {
+            if (!sxmn_row(v, sxmn_dsm_sample, p, limit)) {
+                return false;
+            }
+        }
+        at = limit;
+    }
+    return true;
+}
+function sx_hasan_dsik_dsm_build(v) {
+    return sxmn_dsmriff(v);
+}

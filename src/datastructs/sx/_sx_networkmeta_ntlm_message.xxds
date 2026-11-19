@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/ntlm_message/xx_ntlm_message_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_ntlm_version_fields = layout([u8("product_major", ID), u8("product_minor", ID), u16("product_build", ID),
+    blob("reserved", 3, RESERVED), u8("revision", ID)]);
+var sxnm_ntlm_version = sxLayout(0x6026005E, "ntlm_version", LE, sxnm_ntlm_version_fields);
+function sxnm_ntlm(v) {
+    if (!sxnm_row(v, sxnm_ntlm_negotiate, 0, v.n)) {
+        return false;
+    }
+    var flags = sxGetU32At(v.p, 12, 4, 0, false);
+    if (flags & 0x02000000 && !sxnm_row(v, sxnm_ntlm_version, 32, v.n)) {
+        return false;
+    }
+    for (var i = 0; i < 2; i++) {
+        var at = (16 + ((i * 8) >>> 0)) >>> 0;
+        var n = sxGetU16At(v.p, at, 2, 0, false);
+        var off = sxGetU32At(v.p, at + 4, 4, 0, false);
+        if (n && !sxnm_need(v, off, n, v.n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ntlm_message_build(v) {
+    return sxnm_ntlm(v);
+}

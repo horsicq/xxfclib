@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/jfs/xx_jfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_jfs_superblock_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u64("volume_blocks", COUNT),
+    u32("block_size", SIZE), u16("log2_block_size"), u16("log2_block_factor"), u32("physical_block_size", SIZE),
+    u16("log2_physical_block_size"), u16("padding", RESERVED), u32("allocation_group_blocks", COUNT), u32("flags", FLAGS),
+    u32("state", FLAGS), u32("compression", ID), field("secondary_inode_table_blocks", "uint24", 3, COUNT),
+    u8("secondary_inode_table_block_high"), u32("secondary_inode_table_block_low"),
+    field("secondary_inode_map_blocks", "uint24", 3, COUNT), u8("secondary_inode_map_block_high"),
+    u32("secondary_inode_map_block_low"), u32("log_device", ID), u32("log_serial"),
+    field("log_extent_blocks", "uint24", 3, COUNT), u8("log_extent_block_high"), u32("log_extent_block_low"),
+    field("fsck_extent_blocks", "uint24", 3, COUNT), u8("fsck_extent_block_high"), u32("fsck_extent_block_low"),
+    u32("update_seconds", TIMESTAMP), u32("update_nanoseconds"), u32("fsck_log_blocks", COUNT), i8("fsck_log_index"),
+    chars("pack_name", 11, STRING), u64("extension_blocks", COUNT), field("extension_fsck_blocks", "uint24", 3, COUNT),
+    u8("extension_fsck_block_high"), u32("extension_fsck_block_low"), field("extension_log_blocks", "uint24", 3, COUNT),
+    u8("extension_log_block_high"), u32("extension_log_block_low"), field("uuid", "byte[16]", 16, ID),
+    chars("label", 16, STRING), field("log_uuid", "byte[16]", 16, ID)]);
+var sxmf_jfs_superblock = sxLayout(0x60420005, "jfs_superblock", LE, sxmf_jfs_superblock_fields);
+function sxmf_jfs(c) {
+    var h = [];
+    var any = false;
+    var at = [32768, 61440];
+    for (var i = 0; i < 2; i++) {
+        if (sxmf_read(c, at[i], h, 0, 4) && !sxMemcmp(h, "JFS1", 4) && sxmf_span(c, at[i], 184)) {
+            if (!sxmf_put(c, sxmf_jfs_superblock, at[i], 1)) {
+                return false;
+            }
+            any = true;
+        }
+    }
+    return any;
+}
+function sx_jfs_build(c) {
+    return sxmf_jfs(c);
+}

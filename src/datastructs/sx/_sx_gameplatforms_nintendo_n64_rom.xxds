@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_n64_rom/xx_nintendo_n64_rom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_n64_header_fields = layout([u32("pi_boot_config", FLAGS), u32("clock_rate"), u32("entry_address", VA),
+    u32("release", ID), u32("crc1", CHECKSUM), u32("crc2", CHECKSUM), blob("reserved", 8, RESERVED), chars("name", 20, STRING),
+    blob("reserved2", 4, RESERVED), u32("manufacturer", ID), chars("cartridge_id", 2, ID), u8("country", ID), u8("version", ID)]);
+var sxgp_n64_header = sxLayout(0x6036000D, "n64_header", BE, sxgp_n64_header_fields);
+function sxgp_n64(v) {
+    return sxgp_row(v, sxgp_n64_header, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size));
+}
+function sx_nintendo_n64_rom_build(v) {
+    return sxgp_n64(v);
+}

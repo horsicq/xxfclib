@@ -1,0 +1,119 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/gif/xx_gif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_gif_header_fields = layout([chars("signature", 3, SIGNATURE), chars("version", 3, ID)]);
+var sxi_gif_header = sxLayout(0x60010017, "GIF_HEADER", LE, sxi_gif_header_fields);
+var sxi_gif_extension_fields = layout([u8("extension_introducer", SIGNATURE), u8("extension_label", ID)]);
+var sxi_gif_extension = sxLayout(0x6001001A, "GIF_EXTENSION_HEADER", LE, sxi_gif_extension_fields);
+var sxi_gif_application_fields = layout([u8("extension_introducer", SIGNATURE), u8("application_label", ID),
+    u8("block_size", SIZE), chars("application_identifier", 8, ID), bytes("application_authentication_code", 3, ID)]);
+var sxi_gif_application = sxLayout(0x6001001C, "GIF_APPLICATION_EXTENSION", LE, sxi_gif_application_fields);
+var sxi_gif_text_fields = layout([u8("extension_introducer", SIGNATURE), u8("plain_text_label", ID), u8("block_size", SIZE),
+    u16("text_grid_left_position"), u16("text_grid_top_position"), u16("text_grid_width"), u16("text_grid_height"),
+    u8("character_cell_width"), u8("character_cell_height"), u8("text_foreground_color_index"),
+    u8("text_background_color_index")]);
+var sxi_gif_text = sxLayout(0x6001001D, "GIF_PLAIN_TEXT_EXTENSION", LE, sxi_gif_text_fields);
+var sxi_gif_subblock_fields = layout([u8("block_size", SIZE)]);
+var sxi_gif_subblock = sxLayout(0x6001001E, "GIF_DATA_SUB_BLOCK_HEADER", LE, sxi_gif_subblock_fields);
+var sxi_gif_lzw_fields = layout([u8("lzw_minimum_code_size")]);
+var sxi_gif_lzw = sxLayout(0x6001001F, "GIF_LZW_MINIMUM_CODE_SIZE", LE, sxi_gif_lzw_fields);
+var sxi_gif_trailer_fields = layout([u8("trailer", SIGNATURE)]);
+var sxi_gif_trailer = sxLayout(0x60010020, "GIF_TRAILER", LE, sxi_gif_trailer_fields);
+function sx_image_gif_subblocks(c, at) {
+    var count = 0;
+    while (++count <= 100000) {
+        var n = [0];
+        if (!sx_read(c, at[0], n, 1) || !sx_add(c, sxi_gif_subblock, at[0], 1)) {
+            return false;
+        }
+        ++at[0];
+        if (!n[0]) {
+            return true;
+        }
+        if (!sx_raw(c, at[0], n[0])) {
+            return false;
+        }
+        at[0] += n[0];
+    }
+    return false;
+}
+function sx_image_gif(c) {
+    var h = [];
+    var at = [13];
+    var blocks = 0;
+    if (!sx_read(c, 0, h, 13) || sxMemcmp(h, "GIF87a", 6) && sxMemcmp(h, "GIF89a", 6) || !sx_add(c, sxi_gif_header, 0, 6) || !sx_add(c, sxi_gif_screen, 6, 7)) {
+        return false;
+    }
+    if (h[10] & 0x80) {
+        var n = 2 << (h[10] & 7);
+        if (!sx_table(c, sxi_rgb, at[0], 3, n)) {
+            return false;
+        }
+        at[0] += n * 3;
+    }
+    while (++blocks <= 100000) {
+        var kind = [0];
+        if (!sx_read(c, at[0], kind, 1)) {
+            return false;
+        }
+        if (kind[0] === 0x3B) {
+            return sx_add(c, sxi_gif_trailer, at[0], 1);
+        }
+        if (kind[0] === 0x2C) {
+            if (!sx_read(c, at[0], h, 10) || !sx_add(c, sxi_gif_image, at[0], 10)) {
+                return false;
+            }
+            at[0] += 10;
+            if (h[9] & 0x80) {
+                n = 2 << (h[9] & 7);
+                if (!sx_table(c, sxi_rgb, at[0], 3, n)) {
+                    return false;
+                }
+                at[0] += n * 3;
+            }
+            if (!sx_read(c, at[0], kind, 1) || kind[0] < 2 || kind[0] > 8 || !sx_add(c, sxi_gif_lzw, at[0], 1)) {
+                return false;
+            }
+            ++at[0];
+        } else if (kind[0] === 0x21) {
+            if (!sx_read(c, at[0], h, 3)) {
+                return false;
+            }
+            if (h[1] === 0xF9) {
+                if (h[2] !== 4 || !sx_read(c, at[0] + 7, kind, 1) || kind[0] || !sx_add(c, sxi_gif_graphic, at[0], 8)) {
+                    return false;
+                }
+                at[0] += 8;
+                continue;
+            }
+            if (h[1] === 0xFF) {
+                if (h[2] !== 11 || !sx_add(c, sxi_gif_application, at[0], 14)) {
+                    return false;
+                }
+                at[0] += 14;
+            } else if (h[1] === 0x01) {
+                if (h[2] !== 12 || !sx_add(c, sxi_gif_text, at[0], 15)) {
+                    return false;
+                }
+                at[0] += 15;
+            } else {
+                if (!sx_add(c, sxi_gif_extension, at[0], 2)) {
+                    return false;
+                }
+                at[0] += 2;
+            }
+        } else {
+            return false;
+        }
+        if (!sx_image_gif_subblocks(c, at)) {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_gif_build(c) {
+    return sx_image_gif(c);
+}

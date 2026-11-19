@@ -1,0 +1,224 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/ghost_installer/xx_ghost_installer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_ghost_encoded_cab_header_fields = layout([field("encoded_signature", "byte[4]", 4),
+    field("encoded_reserved1", "byte[4]", 4), field("encoded_cabinet_size", "byte[4]", 4),
+    field("encoded_reserved2", "byte[4]", 4), field("encoded_files_offset", "byte[4]", 4),
+    field("encoded_reserved3", "byte[4]", 4), field("encoded_version_minor", "byte[1]", 1),
+    field("encoded_version_major", "byte[1]", 1), field("encoded_folder_count", "byte[2]", 2),
+    field("encoded_file_count", "byte[2]", 2), field("encoded_flags", "byte[2]", 2), field("encoded_set_id", "byte[2]", 2),
+    field("encoded_cabinet_index", "byte[2]", 2)]);
+var sxil_ghost_encoded_cab_header = sxLayout(0x60850052, "ghost_encoded_cab_header", LE, sxil_ghost_encoded_cab_header_fields);
+var sxil_ghost_encoded_cab_reserve_fields = layout([field("encoded_header_reserve_size", "byte[2]", 2),
+    field("encoded_folder_reserve_size", "byte[1]", 1), field("encoded_data_reserve_size", "byte[1]", 1)]);
+var sxil_ghost_encoded_cab_reserve = sxLayout(0x60850053, "ghost_encoded_cab_reserve", LE, sxil_ghost_encoded_cab_reserve_fields);
+var sxil_ghost_encoded_cab_folder_fields = layout([field("encoded_data_offset", "byte[4]", 4),
+    field("encoded_data_count", "byte[2]", 2), field("encoded_compression_type", "byte[2]", 2)]);
+var sxil_ghost_encoded_cab_folder = sxLayout(0x60850054, "ghost_encoded_cab_folder", LE, sxil_ghost_encoded_cab_folder_fields);
+var sxil_ghost_encoded_cab_file_fields = layout([field("encoded_unpacked_size", "byte[4]", 4),
+    field("encoded_folder_offset", "byte[4]", 4), field("encoded_folder_index", "byte[2]", 2),
+    field("encoded_dos_date", "byte[2]", 2), field("encoded_dos_time", "byte[2]", 2), field("encoded_attributes", "byte[2]", 2)]);
+var sxil_ghost_encoded_cab_file = sxLayout(0x60850055, "ghost_encoded_cab_file", LE, sxil_ghost_encoded_cab_file_fields);
+var sxil_ghost_encoded_cab_data_fields = layout([field("encoded_checksum", "byte[4]", 4),
+    field("encoded_packed_size", "byte[2]", 2), field("encoded_unpacked_size", "byte[2]", 2)]);
+var sxil_ghost_encoded_cab_data = sxLayout(0x60850056, "ghost_encoded_cab_data", LE, sxil_ghost_encoded_cab_data_fields);
+var sxil_ghost_trailer26_fields = layout([field("metadata", "byte[20]", 20), chars("marker", 6, SIGNATURE)]);
+var sxil_ghost_trailer26 = sxLayout(0x60850057, "ghost_trailer26", LE, sxil_ghost_trailer26_fields);
+var sxil_ghost_trailer34_fields = layout([field("metadata", "byte[28]", 28), chars("marker", 6, SIGNATURE)]);
+var sxil_ghost_trailer34 = sxLayout(0x60850058, "ghost_trailer34", LE, sxil_ghost_trailer34_fields);
+function sxil_ghost_read(c, p, b, n) {
+    if (!sxil_read(c, p, b, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        b[i] ^= 0x8D;
+    }
+    return true;
+}
+function sxil_ghost_zstr(c, p, end) {
+    var first = p[0];
+    var x = [0];
+    for (var k = 0; k < 4096 && p[0] < end; k++, p[0]++) {
+        if (!sxil_ghost_read(c, p[0], x, 1)) {
+            return false;
+        }
+        if (!x[0]) {
+            p[0]++;
+            return sxil_encoded(c, first, sxU64(p[0] - first));
+        }
+    }
+    return false;
+}
+function sxil_ghost_magic(c, p) {
+    return sxil_span(c, p, 71) && sxil_eq(c, p, "\xC0\xDE\xCE\xCB\x8D\x8D\x8D\x8D", 8);
+}
+function sxil_ghost_start(c, out) {
+    if (sxil_ghost_magic(c, 0)) {
+        out[0] = 0;
+        return true;
+    }
+    var d = [];
+    var h = [];
+    var row = [];
+    if (!sxil_read(c, 0, d, 64) || d[0] !== 77 /*M*/ || d[1] !== 90 /*Z*/) {
+        return false;
+    }
+    var lf = sxil32(d, 60, false);
+    if (lf < 4 || lf > 0x10000 || !sxil_read(c, lf, h, 24) || sxMemcmp(h, "PE\x00\x00", 4)) {
+        return false;
+    }
+    var count = sxil16(h, 6, false);
+    var opt = sxil16(h, 20, false);
+    if (!count || count > 96) {
+        return false;
+    }
+    var end = 0;
+    var tab = lf + 24 + opt;
+    if (opt >= 64) {
+        var z = [0];
+        if (!sxil_u32(c, lf + 24 + 60, z)) {
+            return false;
+        }
+        end = z[0];
+    }
+    if (!sxil_span(c, tab, (40 * count) >>> 0)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if (!sxil_read(c, tab + ((40 * i) >>> 0), row, 40)) {
+            return false;
+        }
+        var n = sxil32(row, 16, false);
+        var p = [sxil32(row, 20, false)];
+        if (n && p[0] && p[0] + n > end) {
+            end = p[0] + n;
+        }
+    }
+    if (!end || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    if (sxil_ghost_magic(c, end)) {
+        out[0] = end;
+        return true;
+    }
+    if (sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - end) >= 105) {
+        var at = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 34);
+        p = [0];
+        if (sxil_eq(c, at + 28, "GIPEND", 6) && sxil_u32(c, at, p) && p[0] >= end && sxil_ghost_magic(c, p[0])) {
+            out[0] = p[0];
+            return true;
+        }
+    }
+    return false;
+}
+function sxil_ghost(c) {
+    var start = [0];
+    if (!sxil_ghost_start(c, start)) {
+        return true;
+    }
+    for (var seg = 0; seg < 64; seg++) {
+        var h = [];
+        if (!sxil_ghost_read(c, start[0], h, 36) || sxMemcmp(h, "MSCF", 4)) {
+            return true;
+        }
+        var size = sxil32(h, 8, false);
+        var files = sxil32(h, 16, false);
+        var nf = sxil16(h, 26, false);
+        var nm = sxil16(h, 28, false);
+        var flags = sxil16(h, 30, false);
+        if (size < 36 || !sxil_span(c, start[0], size) || files > size) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_ghost_encoded_cab_header, start[0], 1)) {
+            return false;
+        }
+        var p = [start[0] + 36];
+        var finish = start[0] + size;
+        var fr = 0;
+        var dr = 0;
+        if (flags & 4) {
+            var r = [];
+            if (!sxil_ghost_read(c, p[0], r, 4)) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_ghost_encoded_cab_reserve, p[0], 1)) {
+                return false;
+            }
+            var n = sxil16(r, 0, false);
+            fr = r[2];
+            dr = r[3];
+            p[0] += 4;
+            if (p[0] > finish || n > sxU64(finish - p[0])) {
+                return true;
+            }
+            p[0] += n;
+        }
+        for (var bit = 1; bit <= 2; bit = (bit * 2) >>> 0) {
+            if ((flags & bit) >>> 0) {
+                if (!sxil_ghost_zstr(c, p, finish) || !sxil_ghost_zstr(c, p, finish)) {
+                    return true;
+                }
+            }
+        }
+        if (p[0] > finish || nf > Math.floor(sxU64(finish - p[0]) / ((8 + fr) >>> 0))) {
+            return true;
+        }
+        for (var i = 0; i < nf; i++) {
+            var f = [];
+            if (!sxil_ghost_read(c, p[0], f, 8)) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_ghost_encoded_cab_folder, p[0], 1)) {
+                return false;
+            }
+            var q = start[0] + sxil32(f, 0, false);
+            n = sxil16(f, 4, false);
+            for (var j = 0; j < n; j++) {
+                var d = [];
+                if (q > finish || (8 + dr) >>> 0 > sxU64(finish - q) || !sxil_ghost_read(c, q, d, 8)) {
+                    break;
+                }
+                var z = sxil16(d, 4, false);
+                if (z > sxU64(sxU64(sxU64(finish - q) - 8) - dr)) {
+                    break;
+                }
+                if (!sxil_put(c, sxil_ghost_encoded_cab_data, q, 1)) {
+                    return false;
+                }
+                q += ((8 + dr) >>> 0) + z;
+            }
+            p[0] += (8 + fr) >>> 0;
+        }
+        p[0] = start[0] + files;
+        for (i = 0; i < nm && p[0] <= finish && 16 <= sxU64(finish - p[0]); i++) {
+            if (!sxil_put(c, sxil_ghost_encoded_cab_file, p[0], 1)) {
+                return false;
+            }
+            p[0] += 16;
+            if (!sxil_ghost_zstr(c, p, finish)) {
+                return true;
+            }
+        }
+        p[0] = finish;
+        if (sxil_eq(c, p[0] + 28, "GIPEND", 6)) {
+            if (!sxil_put(c, sxil_ghost_trailer34, p[0], 1)) {
+                return false;
+            }
+            start[0] = p[0] + 34;
+        } else if (sxil_eq(c, p[0] + 20, "GIPEND", 6)) {
+            if (!sxil_put(c, sxil_ghost_trailer26, p[0], 1)) {
+                return false;
+            }
+            start[0] = p[0] + 26;
+        } else {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_ghost_installer_build(c) {
+    return sxil_ghost(c);
+}

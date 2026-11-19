@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sfx_localzip/xx_sfx_localzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_localzip_softpaq_table_fields = layout([chars("signature", 4, SIGNATURE), bytes("unknown_4", 4),
+    u32("first_size", SIZE), u32("first_offset", OFFSET), bytes("unknown_16", 8), u32("second_size", SIZE),
+    u32("second_offset", OFFSET), u32("third_size", SIZE), u32("third_offset", OFFSET)]);
+var sxaend_localzip_softpaq_table = sxLayout(0x60840044, "localzip_softpaq_table", LE, sxaend_localzip_softpaq_table_fields);
+function sxaend_localzip(c) {
+    var cap = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 131072 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 131072;
+    for (var p = 0; p + 40 <= cap; p++) {
+        var h = [];
+        if (sxAnd64(p, 4095) === 0 && false) {
+            return false;
+        }
+        if (!sxaend_read(c, p, h, 1)) {
+            return false;
+        }
+        if (h[0] !== 33 /*!*/) {
+            continue;
+        }
+        if (!sxaend_read(c, p, h, 40) || sxMemcmp(h, "!3PS", 4)) {
+            continue;
+        }
+        var a = sxaend_uint(h, 12, 4, false);
+        var az = sxaend_uint(h, 8, 4, false);
+        var b = sxaend_uint(h, 28, 4, false);
+        var bz = sxaend_uint(h, 24, 4, false);
+        var d = sxaend_uint(h, 36, 4, false);
+        var dz = sxaend_uint(h, 32, 4, false);
+        if (a >= p + 40 && sxaend_span(c, a, az) && b === a + az && sxaend_span(c, b, bz) && d === b + bz && sxaend_span(c, d, dz) && d + dz === (c.size < 0 ? c.size + SX_U64_MAX : c.size) && !sxaend_add(c, sxaend_localzip_softpaq_table, p)) {
+            return false;
+        }
+        break;
+    }
+    return sxaend_carrier_records(c);
+}
+function sx_sfx_localzip_build(c) {
+    return sxaend_localzip(c);
+}

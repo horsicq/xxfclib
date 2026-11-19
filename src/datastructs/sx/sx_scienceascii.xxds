@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_scienceascii.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_scienceascii");
+include("_sx_scienceascii_amber_restart");
+include("_sx_scienceascii_esri_ascii_grid");
+include("_sx_scienceascii_gaussian_cube");
+include("_sx_scienceascii_genomics_agp");
+include("_sx_scienceascii_genomics_bed");
+include("_sx_scienceascii_genomics_fasta");
+include("_sx_scienceascii_genomics_fastq");
+include("_sx_scienceascii_genomics_gff3");
+include("_sx_scienceascii_genomics_gtf");
+include("_sx_scienceascii_genomics_sam");
+include("_sx_scienceascii_genomics_vcf");
+include("_sx_scienceascii_genomics_wiggle");
+include("_sx_scienceascii_gromacs_gro");
+include("_sx_scienceascii_gxf_grid");
+include("_sx_scienceascii_matrix_market");
+include("_sx_scienceascii_mdl_molfile");
+include("_sx_scienceascii_molecule_xyz");
+include("_sx_scienceascii_protein_pdb");
+include("_sx_scienceascii_tripos_mol2");
+include("_sx_scienceascii_turbomole_coord");
+
+function fileTypes() { return ["GENOMICS_FASTA", "GENOMICS_FASTQ", "GENOMICS_SAM", "GENOMICS_VCF", "GENOMICS_GFF3",
+    "PROTEIN_PDB", "MATRIX_MARKET", "GROMACS_GRO", "GAUSSIAN_CUBE", "MOLECULE_XYZ", "MDL_MOLFILE", "TRIPOS_MOL2",
+    "AMBER_RESTART", "ESRI_ASCII_GRID", "GXF_GRID", "TURBOMOLE_COORD", "GENOMICS_BED", "GENOMICS_WIGGLE", "GENOMICS_GTF",
+    "GENOMICS_AGP"]; }
+
+var sx_scienceascii_layouts = [sxsa_record_type, sxsa_metadata_key, sxsa_metadata_value, sxsa_comment, sxsa_title,
+    sxsa_sequence_id, sxsa_description, sxsa_sequence, sxsa_quality, sxsa_separator, sxsa_reference_name, sxsa_feature_source,
+    sxsa_feature_type, sxsa_strand, sxsa_attributes, sxsa_identifier, sxsa_element, sxsa_molecule_type, sxsa_charge_type,
+    sxsa_section, sxsa_atom_count, sxsa_bond_count, sxsa_substructure_count, sxsa_feature_count, sxsa_set_count,
+    sxsa_matrix_rows, sxsa_matrix_columns, sxsa_matrix_entries, sxsa_grid_columns, sxsa_grid_rows, sxsa_reference_length,
+    sxsa_position_1, sxsa_start_1, sxsa_end_1, sxsa_start_0, sxsa_end_0, sxsa_thick_start_0, sxsa_thick_end_0, sxsa_part_number,
+    sxsa_component_start_1, sxsa_component_end_1, sxsa_gap_length, sxsa_span, sxsa_step, sxsa_block_size, sxsa_block_start,
+    sxsa_score, sxsa_mapping_quality, sxsa_phase, sxsa_rgb, sxsa_gap_type, sxsa_linkage, sxsa_evidence, sxsa_orientation,
+    sxsa_component_type, sxsa_component_id, sxsa_feature_score, sxsa_variant_quality, sxsa_wiggle_value, sxsa_block_count,
+    sxsa_sam_query_name, sxsa_sam_reference, sxsa_sam_cigar, sxsa_sam_mate_reference, sxsa_sam_tag, sxsa_sam_tag_type,
+    sxsa_sam_text_value, sxsa_sam_hex_value, sxsa_sam_flag, sxsa_sam_template_length, sxsa_sam_integer_value,
+    sxsa_sam_real_value, sxsa_variant_reference, sxsa_variant_alternate, sxsa_filter_info, sxsa_info_field, sxsa_matrix_row,
+    sxsa_matrix_column, sxsa_matrix_object, sxsa_matrix_storage, sxsa_matrix_field, sxsa_matrix_symmetry, sxsa_matrix_integer,
+    sxsa_matrix_real, sxsa_matrix_imaginary, sxsa_pdb_atom_name, sxsa_pdb_altloc, sxsa_pdb_residue, sxsa_pdb_chain,
+    sxsa_pdb_icode, sxsa_pdb_element, sxsa_pdb_charge, sxsa_pdb_serial, sxsa_pdb_residue_sequence, sxsa_pdb_x, sxsa_pdb_y,
+    sxsa_pdb_z, sxsa_pdb_occupancy, sxsa_pdb_temperature, sxsa_pdb_u11, sxsa_pdb_u22, sxsa_pdb_u33, sxsa_pdb_u12, sxsa_pdb_u13,
+    sxsa_pdb_u23, sxsa_gro_residue_name, sxsa_gro_atom_name, sxsa_gro_residue_number, sxsa_gro_atom_number, sxsa_gro_x,
+    sxsa_gro_y, sxsa_gro_z, sxsa_gro_vx, sxsa_gro_vy, sxsa_gro_vz, sxsa_gro_box_xx, sxsa_gro_box_yy, sxsa_gro_box_zz,
+    sxsa_gro_box_xy, sxsa_gro_box_xz, sxsa_gro_box_yx, sxsa_gro_box_yz, sxsa_gro_box_zx, sxsa_gro_box_zy, sxsa_xyz_x,
+    sxsa_xyz_y, sxsa_xyz_z, sxsa_mol_program, sxsa_mol_comment, sxsa_mol_version, sxsa_mol_atom_list_count,
+    sxsa_mol_obsolete_count, sxsa_mol_chiral_flag, sxsa_mol_stext_count, sxsa_mol_obsolete_18, sxsa_mol_obsolete_21,
+    sxsa_mol_obsolete_24, sxsa_mol_obsolete_27, sxsa_mol_property_count, sxsa_mol_x, sxsa_mol_y, sxsa_mol_z,
+    sxsa_mol_mass_difference, sxsa_mol_charge_code, sxsa_mol_stereo_parity, sxsa_mol_hydrogen_count, sxsa_mol_stereo_care,
+    sxsa_mol_valence, sxsa_mol_h0_designator, sxsa_mol_unused_1, sxsa_mol_unused_2, sxsa_mol_mapping_number, sxsa_mol_inversion,
+    sxsa_mol_exact_change, sxsa_mol_bond_atom_1, sxsa_mol_bond_atom_2, sxsa_mol_bond_type, sxsa_mol_bond_stereo,
+    sxsa_mol_bond_unused, sxsa_mol_bond_topology, sxsa_mol_bond_reaction, sxsa_mol_property, sxsa_mol_property_atom,
+    sxsa_mol_property_value, sxsa_mol2_atom_id, sxsa_mol2_substructure_id, sxsa_mol2_bond_id, sxsa_mol2_bond_origin,
+    sxsa_mol2_bond_target, sxsa_mol2_root_atom, sxsa_mol2_dictionary_type, sxsa_mol2_inter_bonds, sxsa_mol2_atom_name,
+    sxsa_mol2_atom_type, sxsa_mol2_substructure_name, sxsa_mol2_bond_type, sxsa_mol2_substructure_type, sxsa_mol2_chain,
+    sxsa_mol2_substructure_subtype, sxsa_mol2_status, sxsa_mol2_x, sxsa_mol2_y, sxsa_mol2_z, sxsa_mol2_charge,
+    sxsa_cube_origin_x, sxsa_cube_origin_y, sxsa_cube_origin_z, sxsa_cube_vector_x, sxsa_cube_vector_y, sxsa_cube_vector_z,
+    sxsa_cube_atom_x, sxsa_cube_atom_y, sxsa_cube_atom_z, sxsa_cube_axis_count, sxsa_atomic_number, sxsa_cube_nuclear_charge,
+    sxsa_cube_value, sxsa_amber_time, sxsa_amber_coordinate, sxsa_amber_velocity, sxsa_amber_box_length, sxsa_amber_box_angle,
+    sxsa_grid_x_origin, sxsa_grid_y_origin, sxsa_grid_cell_size, sxsa_grid_x_spacing, sxsa_grid_y_spacing, sxsa_grid_nodata,
+    sxsa_grid_min, sxsa_grid_max, sxsa_grid_value, sxsa_grid_rotation, sxsa_grid_sense, sxsa_grid_type, sxsa_turbomole_units,
+    sxsa_turbomole_bohr_x, sxsa_turbomole_bohr_y, sxsa_turbomole_bohr_z, sxsa_turbomole_angstrom_x, sxsa_turbomole_angstrom_y,
+    sxsa_turbomole_angstrom_z];
+
+function structs() {
+    return sxCatalog([sxsa_record_type, sxsa_metadata_key, sxsa_metadata_value, sxsa_comment, sxsa_title, sxsa_sequence_id,
+        sxsa_description, sxsa_sequence, sxsa_quality, sxsa_separator, sxsa_reference_name, sxsa_feature_source,
+        sxsa_feature_type, sxsa_strand, sxsa_attributes, sxsa_identifier, sxsa_element, sxsa_molecule_type, sxsa_charge_type,
+        sxsa_section, sxsa_atom_count, sxsa_bond_count, sxsa_substructure_count, sxsa_feature_count, sxsa_set_count,
+        sxsa_matrix_rows, sxsa_matrix_columns, sxsa_matrix_entries, sxsa_grid_columns, sxsa_grid_rows, sxsa_reference_length,
+        sxsa_position_1, sxsa_start_1, sxsa_end_1, sxsa_start_0, sxsa_end_0, sxsa_thick_start_0, sxsa_thick_end_0,
+        sxsa_part_number, sxsa_component_start_1, sxsa_component_end_1, sxsa_gap_length, sxsa_span, sxsa_step, sxsa_block_size,
+        sxsa_block_start, sxsa_score, sxsa_mapping_quality, sxsa_phase, sxsa_rgb, sxsa_gap_type, sxsa_linkage, sxsa_evidence,
+        sxsa_orientation, sxsa_component_type, sxsa_component_id, sxsa_feature_score, sxsa_variant_quality, sxsa_wiggle_value,
+        sxsa_block_count, sxsa_sam_query_name, sxsa_sam_reference, sxsa_sam_cigar, sxsa_sam_mate_reference, sxsa_sam_tag,
+        sxsa_sam_tag_type, sxsa_sam_text_value, sxsa_sam_hex_value, sxsa_sam_flag, sxsa_sam_template_length,
+        sxsa_sam_integer_value, sxsa_sam_real_value, sxsa_variant_reference, sxsa_variant_alternate, sxsa_filter_info,
+        sxsa_info_field, sxsa_matrix_row, sxsa_matrix_column, sxsa_matrix_object, sxsa_matrix_storage, sxsa_matrix_field,
+        sxsa_matrix_symmetry, sxsa_matrix_integer, sxsa_matrix_real, sxsa_matrix_imaginary, sxsa_pdb_atom_name, sxsa_pdb_altloc,
+        sxsa_pdb_residue, sxsa_pdb_chain, sxsa_pdb_icode, sxsa_pdb_element, sxsa_pdb_charge, sxsa_pdb_serial,
+        sxsa_pdb_residue_sequence, sxsa_pdb_x, sxsa_pdb_y, sxsa_pdb_z, sxsa_pdb_occupancy, sxsa_pdb_temperature, sxsa_pdb_u11,
+        sxsa_pdb_u22, sxsa_pdb_u33, sxsa_pdb_u12, sxsa_pdb_u13, sxsa_pdb_u23, sxsa_gro_residue_name, sxsa_gro_atom_name,
+        sxsa_gro_residue_number, sxsa_gro_atom_number, sxsa_gro_x, sxsa_gro_y, sxsa_gro_z, sxsa_gro_vx, sxsa_gro_vy,
+        sxsa_gro_vz, sxsa_gro_box_xx, sxsa_gro_box_yy, sxsa_gro_box_zz, sxsa_gro_box_xy, sxsa_gro_box_xz, sxsa_gro_box_yx,
+        sxsa_gro_box_yz, sxsa_gro_box_zx, sxsa_gro_box_zy, sxsa_xyz_x, sxsa_xyz_y, sxsa_xyz_z, sxsa_mol_program,
+        sxsa_mol_comment, sxsa_mol_version, sxsa_mol_atom_list_count, sxsa_mol_obsolete_count, sxsa_mol_chiral_flag,
+        sxsa_mol_stext_count, sxsa_mol_obsolete_18, sxsa_mol_obsolete_21, sxsa_mol_obsolete_24, sxsa_mol_obsolete_27,
+        sxsa_mol_property_count, sxsa_mol_x, sxsa_mol_y, sxsa_mol_z, sxsa_mol_mass_difference, sxsa_mol_charge_code,
+        sxsa_mol_stereo_parity, sxsa_mol_hydrogen_count, sxsa_mol_stereo_care, sxsa_mol_valence, sxsa_mol_h0_designator,
+        sxsa_mol_unused_1, sxsa_mol_unused_2, sxsa_mol_mapping_number, sxsa_mol_inversion, sxsa_mol_exact_change,
+        sxsa_mol_bond_atom_1, sxsa_mol_bond_atom_2, sxsa_mol_bond_type, sxsa_mol_bond_stereo, sxsa_mol_bond_unused,
+        sxsa_mol_bond_topology, sxsa_mol_bond_reaction, sxsa_mol_property, sxsa_mol_property_atom, sxsa_mol_property_value,
+        sxsa_mol2_atom_id, sxsa_mol2_substructure_id, sxsa_mol2_bond_id, sxsa_mol2_bond_origin, sxsa_mol2_bond_target,
+        sxsa_mol2_root_atom, sxsa_mol2_dictionary_type, sxsa_mol2_inter_bonds, sxsa_mol2_atom_name, sxsa_mol2_atom_type,
+        sxsa_mol2_substructure_name, sxsa_mol2_bond_type, sxsa_mol2_substructure_type, sxsa_mol2_chain,
+        sxsa_mol2_substructure_subtype, sxsa_mol2_status, sxsa_mol2_x, sxsa_mol2_y, sxsa_mol2_z, sxsa_mol2_charge,
+        sxsa_cube_origin_x, sxsa_cube_origin_y, sxsa_cube_origin_z, sxsa_cube_vector_x, sxsa_cube_vector_y, sxsa_cube_vector_z,
+        sxsa_cube_atom_x, sxsa_cube_atom_y, sxsa_cube_atom_z, sxsa_cube_axis_count, sxsa_atomic_number,
+        sxsa_cube_nuclear_charge, sxsa_cube_value, sxsa_amber_time, sxsa_amber_coordinate, sxsa_amber_velocity,
+        sxsa_amber_box_length, sxsa_amber_box_angle, sxsa_grid_x_origin, sxsa_grid_y_origin, sxsa_grid_cell_size,
+        sxsa_grid_x_spacing, sxsa_grid_y_spacing, sxsa_grid_nodata, sxsa_grid_min, sxsa_grid_max, sxsa_grid_value,
+        sxsa_grid_rotation, sxsa_grid_sense, sxsa_grid_type, sxsa_turbomole_units, sxsa_turbomole_bohr_x, sxsa_turbomole_bohr_y,
+        sxsa_turbomole_bohr_z, sxsa_turbomole_angstrom_x, sxsa_turbomole_angstrom_y, sxsa_turbomole_angstrom_z], sx_scienceascii_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_scienceascii_build, false);
+}

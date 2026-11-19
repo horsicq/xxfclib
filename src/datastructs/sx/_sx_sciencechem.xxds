@@ -1,0 +1,859 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencechem.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_keyword_fields = layout([field("keyword", "char", 0, STRING)]);
+var sxsch_keyword = sxLayout(0x60610001, "chemistry_keyword", LE, sxsch_keyword_fields);
+var sxsch_section_fields = layout([field("section", "char", 0, STRING)]);
+var sxsch_section = sxLayout(0x60610002, "chemistry_section", LE, sxsch_section_fields);
+var sxsch_title_fields = layout([field("title", "utf8", 0, STRING)]);
+var sxsch_title = sxLayout(0x60610003, "chemistry_title", LE, sxsch_title_fields);
+var sxsch_comment_fields = layout([field("comment", "utf8", 0, STRING)]);
+var sxsch_comment = sxLayout(0x60610004, "chemistry_comment", LE, sxsch_comment_fields);
+var sxsch_text_value_fields = layout([field("text_value", "utf8", 0, STRING)]);
+var sxsch_text_value = sxLayout(0x60610005, "chemistry_text_value", LE, sxsch_text_value_fields);
+var sxsch_element_fields = layout([field("element", "char", 0, STRING)]);
+var sxsch_element = sxLayout(0x60610006, "chemistry_element", LE, sxsch_element_fields);
+var sxsch_atom_label_fields = layout([field("atom_label", "char", 0, STRING)]);
+var sxsch_atom_label = sxLayout(0x60610007, "chemistry_atom_label", LE, sxsch_atom_label_fields);
+var sxsch_atom_name_fields = layout([field("atom_name", "char", 0, STRING)]);
+var sxsch_atom_name = sxLayout(0x60610008, "chemistry_atom_name", LE, sxsch_atom_name_fields);
+var sxsch_residue_name_fields = layout([field("residue_name", "char", 0, STRING)]);
+var sxsch_residue_name = sxLayout(0x60610009, "chemistry_residue_name", LE, sxsch_residue_name_fields);
+var sxsch_units_fields = layout([field("units", "char", 0, STRING)]);
+var sxsch_units = sxLayout(0x6061000C, "chemistry_units", LE, sxsch_units_fields);
+var sxsch_coordinate_mode_fields = layout([field("coordinate_mode", "char", 0, STRING)]);
+var sxsch_coordinate_mode = sxLayout(0x6061000D, "chemistry_coordinate_mode", LE, sxsch_coordinate_mode_fields);
+var sxsch_option_name_fields = layout([field("option_name", "char", 0, STRING)]);
+var sxsch_option_name = sxLayout(0x6061000F, "chemistry_option_name", LE, sxsch_option_name_fields);
+var sxsch_option_value_fields = layout([field("option_value", "char", 0, STRING)]);
+var sxsch_option_value = sxLayout(0x60610010, "chemistry_option_value", LE, sxsch_option_value_fields);
+var sxsch_filename_fields = layout([field("filename", "char", 0, STRING)]);
+var sxsch_filename = sxLayout(0x60610011, "chemistry_filename", LE, sxsch_filename_fields);
+var sxsch_atom_count_fields = layout([field("atom_count", "ascii_signed", 0, COUNT)]);
+var sxsch_atom_count = sxLayout(0x60610014, "chemistry_atom_count", LE, sxsch_atom_count_fields);
+var sxsch_type_count_fields = layout([field("type_count", "ascii_signed", 0, COUNT)]);
+var sxsch_type_count = sxLayout(0x60610015, "chemistry_type_count", LE, sxsch_type_count_fields);
+var sxsch_atom_id_fields = layout([field("atom_id", "ascii_signed", 0)]);
+var sxsch_atom_id = sxLayout(0x60610019, "chemistry_atom_id", LE, sxsch_atom_id_fields);
+var sxsch_species_index_fields = layout([field("species_index", "ascii_signed", 0)]);
+var sxsch_species_index = sxLayout(0x6061001B, "chemistry_species_index", LE, sxsch_species_index_fields);
+var sxsch_atomic_number_fields = layout([field("atomic_number", "ascii_signed", 0)]);
+var sxsch_atomic_number = sxLayout(0x6061001C, "chemistry_atomic_number", LE, sxsch_atomic_number_fields);
+var sxsch_charge_fields = layout([field("charge", "ascii_signed", 0)]);
+var sxsch_charge = sxLayout(0x6061001D, "chemistry_charge", LE, sxsch_charge_fields);
+var sxsch_multiplicity_fields = layout([field("multiplicity", "ascii_signed", 0)]);
+var sxsch_multiplicity = sxLayout(0x6061001E, "chemistry_multiplicity", LE, sxsch_multiplicity_fields);
+var sxsch_integer_value_fields = layout([field("integer_value", "ascii_signed", 0)]);
+var sxsch_integer_value = sxLayout(0x6061001F, "chemistry_integer_value", LE, sxsch_integer_value_fields);
+var sxsch_real_value_fields = layout([field("real_value", "ascii_real", 0)]);
+var sxsch_real_value = sxLayout(0x60610020, "chemistry_real_value", LE, sxsch_real_value_fields);
+var sxsch_mass_fields = layout([field("mass", "ascii_real", 0)]);
+var sxsch_mass = sxLayout(0x60610021, "chemistry_mass", LE, sxsch_mass_fields);
+var sxsch_angstrom_x_fields = layout([field("angstrom_x", "ascii_real", 0)]);
+var sxsch_angstrom_x = sxLayout(0x6061002D, "chemistry_angstrom_x", LE, sxsch_angstrom_x_fields);
+var sxsch_angstrom_y_fields = layout([field("angstrom_y", "ascii_real", 0)]);
+var sxsch_angstrom_y = sxLayout(0x6061002E, "chemistry_angstrom_y", LE, sxsch_angstrom_y_fields);
+var sxsch_angstrom_z_fields = layout([field("angstrom_z", "ascii_real", 0)]);
+var sxsch_angstrom_z = sxLayout(0x6061002F, "chemistry_angstrom_z", LE, sxsch_angstrom_z_fields);
+var sxsch_bohr_x_fields = layout([field("bohr_x", "ascii_real", 0)]);
+var sxsch_bohr_x = sxLayout(0x60610030, "chemistry_bohr_x", LE, sxsch_bohr_x_fields);
+var sxsch_bohr_y_fields = layout([field("bohr_y", "ascii_real", 0)]);
+var sxsch_bohr_y = sxLayout(0x60610031, "chemistry_bohr_y", LE, sxsch_bohr_y_fields);
+var sxsch_bohr_z_fields = layout([field("bohr_z", "ascii_real", 0)]);
+var sxsch_bohr_z = sxLayout(0x60610032, "chemistry_bohr_z", LE, sxsch_bohr_z_fields);
+var sxsch_fractional_x_fields = layout([field("fractional_x", "ascii_real", 0)]);
+var sxsch_fractional_x = sxLayout(0x60610033, "chemistry_fractional_x", LE, sxsch_fractional_x_fields);
+var sxsch_fractional_y_fields = layout([field("fractional_y", "ascii_real", 0)]);
+var sxsch_fractional_y = sxLayout(0x60610034, "chemistry_fractional_y", LE, sxsch_fractional_y_fields);
+var sxsch_fractional_z_fields = layout([field("fractional_z", "ascii_real", 0)]);
+var sxsch_fractional_z = sxLayout(0x60610035, "chemistry_fractional_z", LE, sxsch_fractional_z_fields);
+var sxsch_lattice_angstrom_x_fields = layout([field("lattice_angstrom_x", "ascii_real", 0)]);
+var sxsch_lattice_angstrom_x = sxLayout(0x60610036, "chemistry_lattice_angstrom_x", LE, sxsch_lattice_angstrom_x_fields);
+var sxsch_lattice_angstrom_y_fields = layout([field("lattice_angstrom_y", "ascii_real", 0)]);
+var sxsch_lattice_angstrom_y = sxLayout(0x60610037, "chemistry_lattice_angstrom_y", LE, sxsch_lattice_angstrom_y_fields);
+var sxsch_lattice_angstrom_z_fields = layout([field("lattice_angstrom_z", "ascii_real", 0)]);
+var sxsch_lattice_angstrom_z = sxLayout(0x60610038, "chemistry_lattice_angstrom_z", LE, sxsch_lattice_angstrom_z_fields);
+var sxsch_lattice_bohr_x_fields = layout([field("lattice_bohr_x", "ascii_real", 0)]);
+var sxsch_lattice_bohr_x = sxLayout(0x60610039, "chemistry_lattice_bohr_x", LE, sxsch_lattice_bohr_x_fields);
+var sxsch_lattice_bohr_y_fields = layout([field("lattice_bohr_y", "ascii_real", 0)]);
+var sxsch_lattice_bohr_y = sxLayout(0x6061003A, "chemistry_lattice_bohr_y", LE, sxsch_lattice_bohr_y_fields);
+var sxsch_lattice_bohr_z_fields = layout([field("lattice_bohr_z", "ascii_real", 0)]);
+var sxsch_lattice_bohr_z = sxLayout(0x6061003B, "chemistry_lattice_bohr_z", LE, sxsch_lattice_bohr_z_fields);
+var sxsch_lattice_scaled_x_fields = layout([field("lattice_scaled_x", "ascii_real", 0)]);
+var sxsch_lattice_scaled_x = sxLayout(0x60610043, "chemistry_lattice_scaled_x", LE, sxsch_lattice_scaled_x_fields);
+var sxsch_lattice_scaled_y_fields = layout([field("lattice_scaled_y", "ascii_real", 0)]);
+var sxsch_lattice_scaled_y = sxLayout(0x60610044, "chemistry_lattice_scaled_y", LE, sxsch_lattice_scaled_y_fields);
+var sxsch_lattice_scaled_z_fields = layout([field("lattice_scaled_z", "ascii_real", 0)]);
+var sxsch_lattice_scaled_z = sxLayout(0x60610045, "chemistry_lattice_scaled_z", LE, sxsch_lattice_scaled_z_fields);
+var sxsch_coordinate_scaled_x_fields = layout([field("coordinate_scaled_x", "ascii_real", 0)]);
+var sxsch_coordinate_scaled_x = sxLayout(0x60610046, "chemistry_coordinate_scaled_x", LE, sxsch_coordinate_scaled_x_fields);
+var sxsch_coordinate_scaled_y_fields = layout([field("coordinate_scaled_y", "ascii_real", 0)]);
+var sxsch_coordinate_scaled_y = sxLayout(0x60610047, "chemistry_coordinate_scaled_y", LE, sxsch_coordinate_scaled_y_fields);
+var sxsch_coordinate_scaled_z_fields = layout([field("coordinate_scaled_z", "ascii_real", 0)]);
+var sxsch_coordinate_scaled_z = sxLayout(0x60610048, "chemistry_coordinate_scaled_z", LE, sxsch_coordinate_scaled_z_fields);
+var sxsch_lammps_coordinate_x_fields = layout([field("lammps_coordinate_x", "ascii_real", 0)]);
+var sxsch_lammps_coordinate_x = sxLayout(0x60610049, "chemistry_lammps_coordinate_x", LE, sxsch_lammps_coordinate_x_fields);
+var sxsch_lammps_coordinate_y_fields = layout([field("lammps_coordinate_y", "ascii_real", 0)]);
+var sxsch_lammps_coordinate_y = sxLayout(0x6061004A, "chemistry_lammps_coordinate_y", LE, sxsch_lammps_coordinate_y_fields);
+var sxsch_lammps_coordinate_z_fields = layout([field("lammps_coordinate_z", "ascii_real", 0)]);
+var sxsch_lammps_coordinate_z = sxLayout(0x6061004B, "chemistry_lammps_coordinate_z", LE, sxsch_lammps_coordinate_z_fields);
+var sxsch_lammps_velocity_x_fields = layout([field("lammps_velocity_x", "ascii_real", 0)]);
+var sxsch_lammps_velocity_x = sxLayout(0x6061004C, "chemistry_lammps_velocity_x", LE, sxsch_lammps_velocity_x_fields);
+var sxsch_lammps_velocity_y_fields = layout([field("lammps_velocity_y", "ascii_real", 0)]);
+var sxsch_lammps_velocity_y = sxLayout(0x6061004D, "chemistry_lammps_velocity_y", LE, sxsch_lammps_velocity_y_fields);
+var sxsch_lammps_velocity_z_fields = layout([field("lammps_velocity_z", "ascii_real", 0)]);
+var sxsch_lammps_velocity_z = sxLayout(0x6061004E, "chemistry_lammps_velocity_z", LE, sxsch_lammps_velocity_z_fields);
+var sxsch_dlp_velocity_x_fields = layout([field("dlp_velocity_x", "ascii_real", 0)]);
+var sxsch_dlp_velocity_x = sxLayout(0x6061004F, "chemistry_dlp_velocity_x", LE, sxsch_dlp_velocity_x_fields);
+var sxsch_dlp_velocity_y_fields = layout([field("dlp_velocity_y", "ascii_real", 0)]);
+var sxsch_dlp_velocity_y = sxLayout(0x60610050, "chemistry_dlp_velocity_y", LE, sxsch_dlp_velocity_y_fields);
+var sxsch_dlp_velocity_z_fields = layout([field("dlp_velocity_z", "ascii_real", 0)]);
+var sxsch_dlp_velocity_z = sxLayout(0x60610051, "chemistry_dlp_velocity_z", LE, sxsch_dlp_velocity_z_fields);
+var sxsch_dlp_force_x_fields = layout([field("dlp_force_x", "ascii_real", 0)]);
+var sxsch_dlp_force_x = sxLayout(0x60610052, "chemistry_dlp_force_x", LE, sxsch_dlp_force_x_fields);
+var sxsch_dlp_force_y_fields = layout([field("dlp_force_y", "ascii_real", 0)]);
+var sxsch_dlp_force_y = sxLayout(0x60610053, "chemistry_dlp_force_y", LE, sxsch_dlp_force_y_fields);
+var sxsch_dlp_force_z_fields = layout([field("dlp_force_z", "ascii_real", 0)]);
+var sxsch_dlp_force_z = sxLayout(0x60610054, "chemistry_dlp_force_z", LE, sxsch_dlp_force_z_fields);
+var sxsch_siesta_velocity_x_fields = layout([field("siesta_velocity_x", "ascii_real", 0)]);
+var sxsch_siesta_velocity_x = sxLayout(0x60610055, "chemistry_siesta_velocity_x", LE, sxsch_siesta_velocity_x_fields);
+var sxsch_siesta_velocity_y_fields = layout([field("siesta_velocity_y", "ascii_real", 0)]);
+var sxsch_siesta_velocity_y = sxLayout(0x60610056, "chemistry_siesta_velocity_y", LE, sxsch_siesta_velocity_y_fields);
+var sxsch_siesta_velocity_z_fields = layout([field("siesta_velocity_z", "ascii_real", 0)]);
+var sxsch_siesta_velocity_z = sxLayout(0x60610057, "chemistry_siesta_velocity_z", LE, sxsch_siesta_velocity_z_fields);
+var sxsch_siesta_cell_velocity_x_fields = layout([field("siesta_cell_velocity_x", "ascii_real", 0)]);
+var sxsch_siesta_cell_velocity_x = sxLayout(0x60610058, "chemistry_siesta_cell_velocity_x", LE, sxsch_siesta_cell_velocity_x_fields);
+var sxsch_siesta_cell_velocity_y_fields = layout([field("siesta_cell_velocity_y", "ascii_real", 0)]);
+var sxsch_siesta_cell_velocity_y = sxLayout(0x60610059, "chemistry_siesta_cell_velocity_y", LE, sxsch_siesta_cell_velocity_y_fields);
+var sxsch_siesta_cell_velocity_z_fields = layout([field("siesta_cell_velocity_z", "ascii_real", 0)]);
+var sxsch_siesta_cell_velocity_z = sxLayout(0x6061005A, "chemistry_siesta_cell_velocity_z", LE, sxsch_siesta_cell_velocity_z_fields);
+var sxsch_xsf_force_x_fields = layout([field("xsf_force_x", "ascii_real", 0)]);
+var sxsch_xsf_force_x = sxLayout(0x6061005B, "chemistry_xsf_force_x", LE, sxsch_xsf_force_x_fields);
+var sxsch_xsf_force_y_fields = layout([field("xsf_force_y", "ascii_real", 0)]);
+var sxsch_xsf_force_y = sxLayout(0x6061005C, "chemistry_xsf_force_y", LE, sxsch_xsf_force_y_fields);
+var sxsch_xsf_force_z_fields = layout([field("xsf_force_z", "ascii_real", 0)]);
+var sxsch_xsf_force_z = sxLayout(0x6061005D, "chemistry_xsf_force_z", LE, sxsch_xsf_force_z_fields);
+var sxsch_cell_a_fields = layout([field("cell_a", "ascii_real", 0)]);
+var sxsch_cell_a = sxLayout(0x60610068, "chemistry_cell_a", LE, sxsch_cell_a_fields);
+var sxsch_cell_b_fields = layout([field("cell_b", "ascii_real", 0)]);
+var sxsch_cell_b = sxLayout(0x60610069, "chemistry_cell_b", LE, sxsch_cell_b_fields);
+var sxsch_cell_c_fields = layout([field("cell_c", "ascii_real", 0)]);
+var sxsch_cell_c = sxLayout(0x6061006A, "chemistry_cell_c", LE, sxsch_cell_c_fields);
+var sxsch_box_lower_fields = layout([field("box_lower", "ascii_real", 0)]);
+var sxsch_box_lower = sxLayout(0x60610070, "chemistry_box_lower", LE, sxsch_box_lower_fields);
+var sxsch_box_upper_fields = layout([field("box_upper", "ascii_real", 0)]);
+var sxsch_box_upper = sxLayout(0x60610071, "chemistry_box_upper", LE, sxsch_box_upper_fields);
+var sxsch_box_tilt_fields = layout([field("box_tilt", "ascii_real", 0)]);
+var sxsch_box_tilt = sxLayout(0x60610072, "chemistry_box_tilt", LE, sxsch_box_tilt_fields);
+var sxsch_basis_name_fields = layout([field("basis_name", "char", 0, STRING)]);
+var sxsch_basis_name = sxLayout(0x606100B2, "chemistry_basis_name", LE, sxsch_basis_name_fields);
+var sxsch_method_name_fields = layout([field("method_name", "char", 0, STRING)]);
+var sxsch_method_name = sxLayout(0x606100B3, "chemistry_method_name", LE, sxsch_method_name_fields);
+var sxsch_calculation_kind_fields = layout([field("calculation_kind", "char", 0, STRING)]);
+var sxsch_calculation_kind = sxLayout(0x606100B4, "chemistry_calculation_kind", LE, sxsch_calculation_kind_fields);
+var sxsch_iteration_count_fields = layout([field("iteration_count", "ascii_signed", 0, COUNT)]);
+var sxsch_iteration_count = sxLayout(0x606100B5, "chemistry_iteration_count", LE, sxsch_iteration_count_fields);
+var sxsch_threshold_fields = layout([field("threshold", "ascii_real", 0)]);
+var sxsch_threshold = sxLayout(0x606100B6, "chemistry_threshold", LE, sxsch_threshold_fields);
+var sxsch_processor_count_fields = layout([field("processor_count", "ascii_signed", 0, COUNT)]);
+var sxsch_processor_count = sxLayout(0x606100B7, "chemistry_processor_count", LE, sxsch_processor_count_fields);
+var sxsch_cutoff_ry_fields = layout([field("cutoff_ry", "ascii_real", 0)]);
+var sxsch_cutoff_ry = sxLayout(0x606100BA, "chemistry_cutoff_ry", LE, sxsch_cutoff_ry_fields);
+function sx_sciencechem_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    if (id < 0x60610001 || id >= 0x606100C0) {
+        return true;
+    }
+    if (r.name === null || sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    switch (id) {
+    case 0x60610014:
+        return sxSetComment(r, "Number of entries.");
+    case 0x60610015:
+        return sxSetComment(r, "Number of entries.");
+    case 0x60610016:
+        return sxSetComment(r, "Number of entries.");
+    case 0x60610017:
+        return sxSetComment(r, "Number of entries.");
+    case 0x60610018:
+        return sxSetComment(r, "Number of entries.");
+    case 0x60610019:
+        return sxSetComment(r, "Physical decimal identifier or one-based species index, not a source-file offset.");
+    case 0x6061001A:
+        return sxSetComment(r, "Physical decimal identifier or one-based species index, not a source-file offset.");
+    case 0x6061001B:
+        return sxSetComment(r, "Physical decimal identifier or one-based species index, not a source-file offset.");
+    case 0x6061001C:
+        return sxSetComment(r, "Physical decimal identifier or one-based species index, not a source-file offset.");
+    case 0x6061001D:
+        return sxSetComment(r, "Total charge in elementary-charge units.");
+    case 0x6061001E:
+        return sxSetComment(r, "Spin multiplicity 2S+1.");
+    case 0x6061001F:
+        return sxSetComment(r, "Format-defined signed scalar; interpretation belongs to the preceding physical key.");
+    case 0x60610020:
+        return sxSetComment(r, "Format-defined real scalar; interpretation belongs to the preceding physical key.");
+    case 0x60610021:
+        return sxSetComment(r, "Atomic mass in unified atomic mass units.");
+    case 0x60610022:
+        return sxSetComment(r, "Site occupancy fraction.");
+    case 0x60610023:
+        return sxSetComment(r, "CHARMM per-atom weighting scalar.");
+    case 0x60610024:
+        return sxSetComment(r, "Gaussian Cartesian coordinate; default angstroms, but the preserved route section may override units.");
+    case 0x60610025:
+        return sxSetComment(r, "Gaussian Cartesian coordinate; default angstroms, but the preserved route section may override units.");
+    case 0x60610026:
+        return sxSetComment(r, "Gaussian Cartesian coordinate; default angstroms, but the preserved route section may override units.");
+    case 0x60610027:
+        return sxSetComment(r, "Gaussian Tv lattice-vector component; default angstroms, but the preserved route section may override units.");
+    case 0x60610028:
+        return sxSetComment(r, "Gaussian Tv lattice-vector component; default angstroms, but the preserved route section may override units.");
+    case 0x60610029:
+        return sxSetComment(r, "Gaussian Tv lattice-vector component; default angstroms, but the preserved route section may override units.");
+    case 0x6061002A:
+        return sxSetComment(r, "Dimensionless electron-density mixing factor.");
+    case 0x6061002B:
+        return sxSetComment(r, "Total charge in elementary-charge units.");
+    case 0x6061002C:
+        return sxSetComment(r, "Decimal convergence/threshold exponent, not an iteration count.");
+    case 0x6061002D:
+        return sxSetComment(r, "Cartesian coordinate in angstroms.");
+    case 0x6061002E:
+        return sxSetComment(r, "Cartesian coordinate in angstroms.");
+    case 0x6061002F:
+        return sxSetComment(r, "Cartesian coordinate in angstroms.");
+    case 0x60610030:
+        return sxSetComment(r, "Cartesian coordinate in bohr.");
+    case 0x60610031:
+        return sxSetComment(r, "Cartesian coordinate in bohr.");
+    case 0x60610032:
+        return sxSetComment(r, "Cartesian coordinate in bohr.");
+    case 0x60610033:
+        return sxSetComment(r, "Fractional coordinate in the declared lattice; dimensionless.");
+    case 0x60610034:
+        return sxSetComment(r, "Fractional coordinate in the declared lattice; dimensionless.");
+    case 0x60610035:
+        return sxSetComment(r, "Fractional coordinate in the declared lattice; dimensionless.");
+    case 0x60610036:
+        return sxSetComment(r, "Lattice-vector component in angstroms.");
+    case 0x60610037:
+        return sxSetComment(r, "Lattice-vector component in angstroms.");
+    case 0x60610038:
+        return sxSetComment(r, "Lattice-vector component in angstroms.");
+    case 0x60610039:
+        return sxSetComment(r, "Lattice-vector component in bohr.");
+    case 0x6061003A:
+        return sxSetComment(r, "Lattice-vector component in bohr.");
+    case 0x6061003B:
+        return sxSetComment(r, "Lattice-vector component in bohr.");
+    case 0x6061003C:
+        return sxSetComment(r, "LAMMPS mass in the externally selected unit system; no unit style is stored in this file.");
+    case 0x6061003D:
+        return sxSetComment(r, "ABINIT acell length in the following declared units; default bohr.");
+    case 0x6061003E:
+        return sxSetComment(r, "ABINIT acell length in the following declared units; default bohr.");
+    case 0x6061003F:
+        return sxSetComment(r, "ABINIT acell length in the following declared units; default bohr.");
+    case 0x60610040:
+        return sxSetComment(r, "ABINIT dimensionless primitive lattice vector; components are multiplied by acell.");
+    case 0x60610041:
+        return sxSetComment(r, "ABINIT dimensionless primitive lattice vector; components are multiplied by acell.");
+    case 0x60610042:
+        return sxSetComment(r, "ABINIT dimensionless primitive lattice vector; components are multiplied by acell.");
+    case 0x60610043:
+        return sxSetComment(r, "Lattice-vector component multiplied by the declared scale; not a source-file offset.");
+    case 0x60610044:
+        return sxSetComment(r, "Lattice-vector component multiplied by the declared scale; not a source-file offset.");
+    case 0x60610045:
+        return sxSetComment(r, "Lattice-vector component multiplied by the declared scale; not a source-file offset.");
+    case 0x60610046:
+        return sxSetComment(r, "Cartesian coordinate multiplied by the declared scale; not a source-file offset.");
+    case 0x60610047:
+        return sxSetComment(r, "Cartesian coordinate multiplied by the declared scale; not a source-file offset.");
+    case 0x60610048:
+        return sxSetComment(r, "Cartesian coordinate multiplied by the declared scale; not a source-file offset.");
+    case 0x60610049:
+        return sxSetComment(r, "LAMMPS coordinate in the externally selected unit system; no unit style is stored in this file.");
+    case 0x6061004A:
+        return sxSetComment(r, "LAMMPS coordinate in the externally selected unit system; no unit style is stored in this file.");
+    case 0x6061004B:
+        return sxSetComment(r, "LAMMPS coordinate in the externally selected unit system; no unit style is stored in this file.");
+    case 0x6061004C:
+        return sxSetComment(r, "LAMMPS velocity in the externally selected unit system.");
+    case 0x6061004D:
+        return sxSetComment(r, "LAMMPS velocity in the externally selected unit system.");
+    case 0x6061004E:
+        return sxSetComment(r, "LAMMPS velocity in the externally selected unit system.");
+    case 0x6061004F:
+        return sxSetComment(r, "DL_POLY velocity in angstroms per picosecond.");
+    case 0x60610050:
+        return sxSetComment(r, "DL_POLY velocity in angstroms per picosecond.");
+    case 0x60610051:
+        return sxSetComment(r, "DL_POLY velocity in angstroms per picosecond.");
+    case 0x60610052:
+        return sxSetComment(r, "DL_POLY force in internal mass-length-time units (amu angstrom per picosecond squared).");
+    case 0x60610053:
+        return sxSetComment(r, "DL_POLY force in internal mass-length-time units (amu angstrom per picosecond squared).");
+    case 0x60610054:
+        return sxSetComment(r, "DL_POLY force in internal mass-length-time units (amu angstrom per picosecond squared).");
+    case 0x60610055:
+        return sxSetComment(r, "SIESTA XV stored atomic velocity component; retained without unit conversion.");
+    case 0x60610056:
+        return sxSetComment(r, "SIESTA XV stored atomic velocity component; retained without unit conversion.");
+    case 0x60610057:
+        return sxSetComment(r, "SIESTA XV stored atomic velocity component; retained without unit conversion.");
+    case 0x60610058:
+        return sxSetComment(r, "SIESTA XV stored lattice-vector velocity component; retained without unit conversion.");
+    case 0x60610059:
+        return sxSetComment(r, "SIESTA XV stored lattice-vector velocity component; retained without unit conversion.");
+    case 0x6061005A:
+        return sxSetComment(r, "SIESTA XV stored lattice-vector velocity component; retained without unit conversion.");
+    case 0x6061005B:
+        return sxSetComment(r, "XSF force component in hartree per angstrom.");
+    case 0x6061005C:
+        return sxSetComment(r, "XSF force component in hartree per angstrom.");
+    case 0x6061005D:
+        return sxSetComment(r, "XSF force component in hartree per angstrom.");
+    case 0x6061005E:
+        return sxSetComment(r, "Positive POSCAR universal scale factor; lattice and Cartesian position values retain their original unscaled values.");
+    case 0x6061005F:
+        return sxSetComment(r, "0: positions; 1: positions and velocities; 2: positions, velocities and forces.");
+    case 0x60610060:
+        return sxSetComment(r, "DL_POLY periodic boundary code; native accepts0..3.");
+    case 0x60610061:
+        return sxSetComment(r, "Periodicity dimension0..3.");
+    case 0x60610062:
+        return sxSetComment(r, "CRYSTAL physical geometry header code; native accepts1.");
+    case 0x60610063:
+        return sxSetComment(r, "CRYSTAL physical geometry header code; native accepts1.");
+    case 0x60610064:
+        return sxSetComment(r, "CRYSTAL optional energy or energy-change value; units belong to the producing calculation.");
+    case 0x60610065:
+        return sxSetComment(r, "CRYSTAL optional energy or energy-change value; units belong to the producing calculation.");
+    case 0x60610066:
+        return sxSetComment(r, "Physical symmetry matrix or translation component; native supports identity symmetry only.");
+    case 0x60610067:
+        return sxSetComment(r, "X-ray wavelength in angstroms.");
+    case 0x60610068:
+        return sxSetComment(r, "Cell length in angstroms.");
+    case 0x60610069:
+        return sxSetComment(r, "Cell length in angstroms.");
+    case 0x6061006A:
+        return sxSetComment(r, "Cell length in angstroms.");
+    case 0x6061006B:
+        return sxSetComment(r, "Cell angle in degrees.");
+    case 0x6061006C:
+        return sxSetComment(r, "Cell angle in degrees.");
+    case 0x6061006D:
+        return sxSetComment(r, "Cell angle in degrees.");
+    case 0x6061006E:
+        return sxSetComment(r, "SHELX LATT code; native subset accepts -1 (primitive, non-centrosymmetric).");
+    case 0x6061006F:
+        return sxSetComment(r, "Simulation step number, not a wall-clock timestamp.");
+    case 0x60610070:
+        return sxSetComment(r, "LAMMPS box bound or tilt in the externally selected distance units.");
+    case 0x60610071:
+        return sxSetComment(r, "LAMMPS box bound or tilt in the externally selected distance units.");
+    case 0x60610072:
+        return sxSetComment(r, "LAMMPS box bound or tilt in the externally selected distance units.");
+    case 0x60610073:
+        return sxSetComment(r, "Two boundary flags: p periodic, f fixed, s shrink-wrap, m minimum shrink-wrap.");
+    case 0x60610075:
+        return sxSetComment(r, "0: frozen; 1: movable in the corresponding Cartesian component.");
+    case 0x60610076:
+        return sxSetComment(r, "Number of k-point grid subdivisions.");
+    case 0x60610077:
+        return sxSetComment(r, "0: unshifted; 1: half-grid shift.");
+    case 0x60610078:
+        return sxSetComment(r, "Original mmCIF token content; quoting delimiters remain raw.");
+    case 0x60610079:
+        return sxSetComment(r, "Original mmCIF token content; quoting delimiters remain raw.");
+    case 0x6061007A:
+        return sxSetComment(r, "Original mmCIF token content; quoting delimiters remain raw.");
+    case 0x6061007B:
+        return sxSetComment(r, "Original mmCIF token content; quoting delimiters remain raw.");
+    case 0x6061007C:
+        return sxSetComment(r, "Atom-site decimal ID, not a byte offset.");
+    case 0x60610080:
+        return sxSetComment(r, "One-based nonbonded atom-type index.");
+    case 0x60610081:
+        return sxSetComment(r, "Number of excluded atoms for this atom.");
+    case 0x60610082:
+        return sxSetComment(r, "One-based index of the first atom in the residue.");
+    case 0x60610083:
+        return sxSetComment(r, "AMBER stored charge; divide by18.2223 for elementary-charge units.");
+    case 0x60610084:
+        return sxSetComment(r, "Atomic mass in unified atomic mass units.");
+    case 0x60610085:
+        return sxSetComment(r, "Physical signed integer in a %FLAG section.");
+    case 0x60610086:
+        return sxSetComment(r, "Physical real in a %FLAG section; units depend on the named flag.");
+    case 0x60610088:
+        return sxSetComment(r, "AMBER POINTERS NATOM: physical count or control word, not a source-file pointer.");
+    case 0x60610089:
+        return sxSetComment(r, "AMBER POINTERS NTYPES: physical count or control word, not a source-file pointer.");
+    case 0x6061008A:
+        return sxSetComment(r, "AMBER POINTERS NBONH: physical count or control word, not a source-file pointer.");
+    case 0x6061008B:
+        return sxSetComment(r, "AMBER POINTERS MBONA: physical count or control word, not a source-file pointer.");
+    case 0x6061008C:
+        return sxSetComment(r, "AMBER POINTERS NTHETH: physical count or control word, not a source-file pointer.");
+    case 0x6061008D:
+        return sxSetComment(r, "AMBER POINTERS MTHETA: physical count or control word, not a source-file pointer.");
+    case 0x6061008E:
+        return sxSetComment(r, "AMBER POINTERS NPHIH: physical count or control word, not a source-file pointer.");
+    case 0x6061008F:
+        return sxSetComment(r, "AMBER POINTERS MPHIA: physical count or control word, not a source-file pointer.");
+    case 0x60610090:
+        return sxSetComment(r, "AMBER POINTERS NHPARM: physical count or control word, not a source-file pointer.");
+    case 0x60610091:
+        return sxSetComment(r, "AMBER POINTERS NPARM: physical count or control word, not a source-file pointer.");
+    case 0x60610092:
+        return sxSetComment(r, "AMBER POINTERS NEXT: physical count or control word, not a source-file pointer.");
+    case 0x60610093:
+        return sxSetComment(r, "AMBER POINTERS NRES: physical count or control word, not a source-file pointer.");
+    case 0x60610094:
+        return sxSetComment(r, "AMBER POINTERS NBONA: physical count or control word, not a source-file pointer.");
+    case 0x60610095:
+        return sxSetComment(r, "AMBER POINTERS NTHETA: physical count or control word, not a source-file pointer.");
+    case 0x60610096:
+        return sxSetComment(r, "AMBER POINTERS NPHIA: physical count or control word, not a source-file pointer.");
+    case 0x60610097:
+        return sxSetComment(r, "AMBER POINTERS NUMBND: physical count or control word, not a source-file pointer.");
+    case 0x60610098:
+        return sxSetComment(r, "AMBER POINTERS NUMANG: physical count or control word, not a source-file pointer.");
+    case 0x60610099:
+        return sxSetComment(r, "AMBER POINTERS NPTRA: physical count or control word, not a source-file pointer.");
+    case 0x6061009A:
+        return sxSetComment(r, "AMBER POINTERS NATYP: physical count or control word, not a source-file pointer.");
+    case 0x6061009B:
+        return sxSetComment(r, "AMBER POINTERS NPHB: physical count or control word, not a source-file pointer.");
+    case 0x6061009C:
+        return sxSetComment(r, "AMBER POINTERS IFPERT: physical count or control word, not a source-file pointer.");
+    case 0x6061009D:
+        return sxSetComment(r, "AMBER POINTERS NBPER: physical count or control word, not a source-file pointer.");
+    case 0x6061009E:
+        return sxSetComment(r, "AMBER POINTERS NGPER: physical count or control word, not a source-file pointer.");
+    case 0x6061009F:
+        return sxSetComment(r, "AMBER POINTERS NDPER: physical count or control word, not a source-file pointer.");
+    case 0x606100A0:
+        return sxSetComment(r, "AMBER POINTERS MBPER: physical count or control word, not a source-file pointer.");
+    case 0x606100A1:
+        return sxSetComment(r, "AMBER POINTERS MGPER: physical count or control word, not a source-file pointer.");
+    case 0x606100A2:
+        return sxSetComment(r, "AMBER POINTERS MDPER: physical count or control word, not a source-file pointer.");
+    case 0x606100A3:
+        return sxSetComment(r, "AMBER POINTERS IFBOX: physical count or control word, not a source-file pointer.");
+    case 0x606100A4:
+        return sxSetComment(r, "AMBER POINTERS NMXRS: physical count or control word, not a source-file pointer.");
+    case 0x606100A5:
+        return sxSetComment(r, "AMBER POINTERS IFCAP: physical count or control word, not a source-file pointer.");
+    case 0x606100A6:
+        return sxSetComment(r, "AMBER POINTERS NUMEXTRA: physical count or control word, not a source-file pointer.");
+    case 0x606100A7:
+        return sxSetComment(r, "AMBER POINTERS NCOPY: physical count or control word, not a source-file pointer.");
+    case 0x606100AD:
+        return sxSetComment(r, "Physical signed integer scalar or array member.");
+    case 0x606100AE:
+        return sxSetComment(r, "Physical real scalar or array member; units depend on the label.");
+    case 0x606100AF:
+        return sxSetComment(r, "Gaussian Cartesian coordinate in bohr.");
+    case 0x606100B0:
+        return sxSetComment(r, "FHI-aims constraint: .true. fixes all coordinates; x/y/z fixes the named Cartesian component.");
+    case 0x606100B1:
+        return sxSetComment(r, "NWChem number of unpaired electrons.");
+    case 0x606100B5:
+        return sxSetComment(r, "Maximum iterations or steps.");
+    case 0x606100B6:
+        return sxSetComment(r, "Convergence threshold; units depend on the option name.");
+    case 0x606100B7:
+        return sxSetComment(r, "Number of processors.");
+    case 0x606100B8:
+        return sxSetComment(r, "Requested memory amount in the following encoded units; not bytes unless explicitly selected.");
+    case 0x606100B9:
+        return sxSetComment(r, "ORCA per-process memory request in MB; not a byte size.");
+    case 0x606100BA:
+        return sxSetComment(r, "Plane-wave or integration-grid cutoff in rydberg.");
+    case 0x606100BB:
+        return sxSetComment(r, "Energy cutoff in explicit following units, default hartree.");
+    case 0x606100BC:
+        return sxSetComment(r, "Initial atomic charge in elementary-charge units.");
+    case 0x606100BD:
+        return sxSetComment(r, "Initial atomic spin moment, following FHI-aims convention.");
+    case 0x606100BE:
+        return sxSetComment(r, "Atomic nuclear charge.");
+    default:
+        return true;
+    }
+}
+function sxsch_space(c) {
+    return c === 32 || c === 9 || c === 13 || c === 10;
+}
+function sxsch_eq(q, t, s) {
+    var n = sxStrlen(s);
+    return t.a >= 0 && t.z === (n >= SX_I64_MAX ? n - SX_U64_MAX : n) && t.a <= q.n && t.z <= q.n - t.a && !sxMemcmpAt(q.b, t.a, s, 0, n);
+}
+function sxsch_ci(q, t, s) {
+    var n = sxStrlen(s);
+    if (t.a < 0 || t.z !== (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var ch = q.b[(t.a < 0 ? t.a + SX_U64_MAX : t.a) + i];
+        if (ch >= 65 /*A*/ && ch <= 90 /*Z*/) {
+            ch = (ch + 32) >>> 0;
+        }
+        if (ch !== (sxAt(s, i) & 0xFF)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsch_trim(q, t) {
+    while (t.z && sxsch_space(q.b[t.a])) {
+        t.a++;
+        t.z--;
+    }
+    while (t.z && sxsch_space(q.b[t.a + t.z - 1])) {
+        t.z--;
+    }
+    return sxCopy_sxsch_token(null, t);
+}
+function sxsch_line(q, t) {
+    if (q.p >= q.n || ++q.work > 2000000) {
+        return false;
+    }
+    t.a = q.p;
+    while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+        q.p++;
+    }
+    t.z = q.p - t.a;
+    if (q.p < q.n && q.b[q.p] === 13) {
+        q.p++;
+    }
+    if (q.p < q.n && q.b[q.p] === 10) {
+        q.p++;
+    }
+    return true;
+}
+function sxsch_split(q, line, t, cap, tabs) {
+    var n = 0;
+    var p = line.a;
+    var end = p + line.z;
+    while (p < end) {
+        if (tabs) {
+            var a = p;
+            while (p < end && q.b[p] !== 9) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxsch_token(null, { a: a, z: p - a });
+            if (p < end) {
+                p++;
+            }
+        } else {
+            while (p < end && sxsch_space(q.b[p])) {
+                p++;
+            }
+            if (p === end) {
+                break;
+            }
+            a = p;
+            while (p < end && !sxsch_space(q.b[p])) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxsch_token(null, { a: a, z: p - a });
+        }
+    }
+    return n;
+}
+function sxsch_emit(q, l, t) {
+    if (t.a < 0 || t.z < 0 || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    if (!t.z || q.c.count >= 24000) {
+        return true;
+    }
+    if (t.z > sxVariableLimit(l.fields[0].type)) {
+        return true;
+    }
+    return sx_add(q.c, l, t.a, t.z);
+}
+function sxsch_number(q, t, v) {
+    sxCopy_sxsch_token(t, sxsch_trim(q, sxCopy_sxsch_token(null, t)));
+    var n = 0;
+    var i = 0;
+    if (t.z && q.b[t.a] === 43 /*+*/) {
+        i++;
+    }
+    if (i === t.z) {
+        return false;
+    }
+    for (; i < t.z; i++) {
+        var d = (q.b[t.a + i] - 48 /*0*/) >>> 0;
+        if (d > 9 || n > Math.floor((SX_U64_MAX - d) / 10)) {
+            return false;
+        }
+        n = n * 10 + d;
+    }
+    v[0] = n;
+    return true;
+}
+function sxsch_fields(q, t, t_o, n, l, max) {
+    if (n > max) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (l[i] !== null && !sxsch_emit(q, l[i], sxCopy_sxsch_token(null, t[t_o + i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsch_column(q, l, line, at, width) {
+    if (at > (line.z < 0 ? line.z + SX_U64_MAX : line.z) || width > sxU64((line.z < 0 ? line.z + SX_U64_MAX : line.z) - at)) {
+        return false;
+    }
+    var t = { a: line.a + at, z: width };
+    if (!sxsch_trim(q, sxCopy_sxsch_token(null, t)).z) {
+        return true;
+    }
+    return sxsch_emit(q, l, sxCopy_sxsch_token(null, t));
+}
+function sxsch_next(q, line, t, cap, n, comments) {
+    while (sxsch_line(q, line)) {
+        var i = 0;
+        for (; i < line.z; i++) {
+            if (sxStrchr(comments, q.b[line.a + i])) {
+                {
+                    if (!sxsch_emit(q, sxsch_comment, sxCopy_sxsch_token(null, { a: line.a + i, z: line.z - i }))) {
+                        return false;
+                    }
+                }
+                line.z = i;
+                break;
+            }
+        }
+        sxCopy_sxsch_token(line, sxsch_trim(q, sxCopy_sxsch_token(null, line)));
+        if (line.z) {
+            n[0] = sxsch_split(q, sxCopy_sxsch_token(null, line), [t], cap, false);
+            return n[0] <= cap;
+        }
+    }
+    return false;
+}
+function sxsch_xyz(q, t, mode) {
+    var rows = [[sxsch_angstrom_x, sxsch_angstrom_y, sxsch_angstrom_z], [sxsch_bohr_x, sxsch_bohr_y, sxsch_bohr_z], [sxsch_fractional_x, sxsch_fractional_y, sxsch_fractional_z], [sxsch_lattice_angstrom_x, sxsch_lattice_angstrom_y, sxsch_lattice_angstrom_z], [sxsch_lattice_bohr_x, sxsch_lattice_bohr_y, sxsch_lattice_bohr_z], [sxsch_lattice_scaled_x, sxsch_lattice_scaled_y, sxsch_lattice_scaled_z], [sxsch_coordinate_scaled_x, sxsch_coordinate_scaled_y, sxsch_coordinate_scaled_z], [sxsch_lammps_coordinate_x, sxsch_lammps_coordinate_y, sxsch_lammps_coordinate_z], [sxsch_lammps_velocity_x, sxsch_lammps_velocity_y, sxsch_lammps_velocity_z], [sxsch_dlp_velocity_x, sxsch_dlp_velocity_y, sxsch_dlp_velocity_z], [sxsch_dlp_force_x, sxsch_dlp_force_y, sxsch_dlp_force_z], [sxsch_siesta_velocity_x, sxsch_siesta_velocity_y, sxsch_siesta_velocity_z], [sxsch_siesta_cell_velocity_x, sxsch_siesta_cell_velocity_y, sxsch_siesta_cell_velocity_z], [sxsch_xsf_force_x, sxsch_xsf_force_y, sxsch_xsf_force_z]];
+    return mode < 14 && sxsch_fields(q, [t], 3, rows[mode], 3);
+}
+function sxsch_each(q, t, t_o, n, l) {
+    for (var i = 0; i < n; i++) {
+        if (!sxsch_emit(q, l, sxCopy_sxsch_token(null, t[t_o + i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsch_assignment(q, row, key, value) {
+    var p = 0;
+    while (p < row.z && q.b[row.a + p] !== 61 /*=*/) {
+        p++;
+    }
+    if (!p || p === row.z) {
+        return false;
+    }
+    sxCopy_sxsch_token(key, sxsch_trim(q, sxCopy_sxsch_token(null, { a: row.a, z: p })));
+    sxCopy_sxsch_token(value, sxsch_trim(q, sxCopy_sxsch_token(null, { a: row.a + p + 1, z: row.z - p - 1 })));
+    if (value.z && q.b[value.a + value.z - 1] === 44 /*,*/) {
+        value.z--;
+        sxCopy_sxsch_token(value, sxsch_trim(q, sxCopy_sxsch_token(null, value)));
+    }
+    if (value.z >= 2 && (q.b[value.a] === 39 /*'*/ && q.b[value.a + value.z - 1] === 39 /*'*/ || q.b[value.a] === 34 /*"*/ && q.b[value.a + value.z - 1] === 34 /*"*/)) {
+        value.a++;
+        value.z -= 2;
+    }
+    return !!(key.z && value.z);
+}
+function sxsch_option(q, key, value, layout) {
+    {
+        if (!sxsch_emit(q, sxsch_option_name, sxCopy_sxsch_token(null, key))) {
+            return false;
+        }
+    }
+    return sxsch_emit(q, layout, sxCopy_sxsch_token(null, value));
+}
+function sxsch_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxsch_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxsch_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsch_order, true);
+    return !c.failed;
+}
+function sx_sciencechem_supports(type) {
+    switch (type) {
+    case "PROTEIN_MMCIF":
+    case "XCRYSDEN_XSF":
+    case "AMBER_PRMTOP":
+    case "GAUSSIAN_FCHK":
+    case "DL_POLY_CONFIG":
+    case "LAMMPS_DATA":
+    case "LAMMPS_DUMP":
+    case "SHELX_RES":
+    case "CHARMM_CRD":
+    case "CASTEP_CELL":
+    case "CRYSTAL_FORT34":
+    case "SIESTA_XV":
+    case "VASP_POSCAR":
+    case "QUANTUM_ESPRESSO_INPUT":
+    case "CP2K_INPUT":
+    case "NWCHEM_INPUT":
+    case "GAMESS_INPUT":
+    case "GAUSSIAN_INPUT":
+    case "ABINIT_INPUT":
+    case "AIMS_GEOMETRY":
+    case "ORCA_INPUT":
+    case "DEMON_INPUT":
+    case "QCHEM_INPUT":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_sciencechem_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 67108864) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: b, n: c.size, p: 0, work: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "PROTEIN_MMCIF":
+            ok = sx_protein_mmcif_build(q);
+            break;
+        case "XCRYSDEN_XSF":
+            ok = sx_xcrysden_xsf_build(q);
+            break;
+        case "AMBER_PRMTOP":
+            ok = sx_amber_prmtop_build(q);
+            break;
+        case "GAUSSIAN_FCHK":
+            ok = sx_gaussian_fchk_build(q);
+            break;
+        case "DL_POLY_CONFIG":
+            ok = sx_dl_poly_config_build(q);
+            break;
+        case "LAMMPS_DATA":
+            ok = sx_lammps_data_build(q);
+            break;
+        case "LAMMPS_DUMP":
+            ok = sx_lammps_dump_build(q);
+            break;
+        case "SHELX_RES":
+            ok = sx_shelx_res_build(q);
+            break;
+        case "CHARMM_CRD":
+            ok = sx_charmm_crd_build(q);
+            break;
+        case "CASTEP_CELL":
+            ok = sx_castep_cell_build(q);
+            break;
+        case "CRYSTAL_FORT34":
+            ok = sx_crystal_fort34_build(q);
+            break;
+        case "SIESTA_XV":
+            ok = sx_siesta_xv_build(q);
+            break;
+        case "VASP_POSCAR":
+            ok = sx_vasp_poscar_build(q);
+            break;
+        case "QUANTUM_ESPRESSO_INPUT":
+            ok = sx_quantum_espresso_input_build(q);
+            break;
+        case "CP2K_INPUT":
+            ok = sx_cp2k_input_build(q);
+            break;
+        case "NWCHEM_INPUT":
+            ok = sx_nwchem_input_build(q);
+            break;
+        case "GAMESS_INPUT":
+            ok = sx_gamess_input_build(q);
+            break;
+        case "GAUSSIAN_INPUT":
+            ok = sx_gaussian_input_build(q);
+            break;
+        case "ABINIT_INPUT":
+            ok = sx_abinit_input_build(q);
+            break;
+        case "AIMS_GEOMETRY":
+            ok = sx_aims_geometry_build(q);
+            break;
+        case "ORCA_INPUT":
+            ok = sx_orca_input_build(q);
+            break;
+        case "DEMON_INPUT":
+            ok = sx_demon_input_build(q);
+            break;
+        case "QCHEM_INPUT":
+            ok = sx_qchem_input_build(q);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxsch_finish(c);
+}

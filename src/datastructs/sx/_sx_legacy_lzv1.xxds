@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzv1/xx_lzv1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_lzv1_header_fields = layout([blob("signature", 4, SIGNATURE), blob("format_marker", 6, SIGNATURE),
+    u16("maximum_codes", COUNT)]);
+var sxl_lzv1_header = sxLayout(0x600A0008, "lzv1_header", BE, sxl_lzv1_header_fields);
+function sx_lzv1_build(c) {
+    var n;
+    return sxl_sig(c, 0, "LZV1]\x19\x01\xAD\x00\x00", 10) && (n = sx_u16(c, 10, true)) !== null && n > 256 && n < 16384 && sxl_span(c, 12, 1) && sx_add(c, sxl_lzv1_header, 0, 12);
+}

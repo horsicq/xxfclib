@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/pam_pak/xx_pam_pak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_pam_pak_header_fields = layout([chars("signature", 8, SIGNATURE), u16("entry_count", COUNT), u16("unknown1"),
+    u32("string_table_size", SIZE), bytes("unknown2", 20)]);
+var sxbx_pam_pak_header = sxLayout(0x603000ED, "pam_pak_header", LE, sxbx_pam_pak_header_fields);
+var sxbx_pam_pak_data_fields = layout([u32("data_size", SIZE), u32("data_offset", OFFSET)]);
+var sxbx_pam_pak_data = sxLayout(0x603000EE, "pam_pak_data", LE, sxbx_pam_pak_data_fields);
+var sxbx_pam_pak_directory_marker_fields = layout([u32("size_marker", FLAGS), u32("offset_marker", FLAGS)]);
+var sxbx_pam_pak_directory_marker = sxLayout(0x603000EF, "pam_pak_directory_marker", LE, sxbx_pam_pak_directory_marker_fields);
+var sxbx_pam_pak_index_fields = layout([u32("entry_id", ID), u16("data_index"), u16("unknown1"), u32("name_offset", OFFSET),
+    u32("unknown2"), u32("parent_id", ID), u32("unknown3")]);
+var sxbx_pam_pak_index = sxLayout(0x603000F0, "pam_pak_index", LE, sxbx_pam_pak_index_fields);
+function sxbx_pam(c) {
+    var n = [0];
+    if (!sxbx_add(c, sxbx_pam_pak_header, 0) || !sxbx_word(c, 8, 2, false, n) || n[0] > 20000 || !sxbx_span(c, 36, n[0] * 32)) {
+        return false;
+    }
+    for (var i = 0; i < n[0] && c.count < 20000; i++) {
+        var z = [0];
+        var off = [0];
+        if (!sxbx_word(c, 36 + i * 8, 4, false, z) || !sxbx_word(c, 40 + i * 8, 4, false, off) || !sxbx_add(c, z[0] === 0xC0000000 && off[0] === 4294967295 ? sxbx_pam_pak_directory_marker : sxbx_pam_pak_data, 36 + i * 8)) {
+            return false;
+        }
+    }
+    return sxbx_table(c, sxbx_pam_pak_index, 36 + n[0] * 8, n[0]);
+}
+function sx_pam_pak_build(c) {
+    return sxbx_pam(c);
+}

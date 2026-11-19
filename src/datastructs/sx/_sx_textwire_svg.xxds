@@ -1,0 +1,116 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/svg/xx_svg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_xml_element_fields = layout([field("xml_element", "utf8", 0, STRING)]);
+var sxtw_xml_element = sxLayout(0x60710018, "textwire_xml_element", LE, sxtw_xml_element_fields);
+var sxtw_xml_attribute_fields = layout([field("xml_attribute", "utf8", 0, STRING)]);
+var sxtw_xml_attribute = sxLayout(0x60710019, "textwire_xml_attribute", LE, sxtw_xml_attribute_fields);
+function sxtw_svg(q) {
+    var p = 0;
+    while (p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (false) {
+            return false;
+        }
+        if (q.b[p] !== 60 /*<*/) {
+            p++;
+            continue;
+        }
+        var start = p++;
+        if (p < q.n && (q.b[p] === 33 /*!*/ || q.b[p] === 63 /*?*/)) {
+            var quote = 0;
+            while (p < q.n) {
+                var c = q.b[p++];
+                if (quote) {
+                    if (c === quote) {
+                        quote = 0;
+                    }
+                } else if (c === 34 /*"*/ || c === 39 /*'*/) {
+                    quote = c;
+                } else if (c === 62 /*>*/) {
+                    break;
+                }
+            }
+            {
+                if (!sxtw_emit(q, sxtw_text, start, p - start)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (p < q.n && q.b[p] === 47) {
+            p++;
+        }
+        var a = p;
+        while (p < q.n && !sxtw_space(q.b[p]) && q.b[p] !== 47 && q.b[p] !== 62 /*>*/) {
+            p++;
+        }
+        if (p === a) {
+            continue;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_xml_element, a, p - a)) {
+                return false;
+            }
+        }
+        while (p < q.n && q.b[p] !== 62 /*>*/) {
+            while (p < q.n && (sxtw_space(q.b[p]) || q.b[p] === 47)) {
+                p++;
+            }
+            if (p === q.n || q.b[p] === 62 /*>*/) {
+                break;
+            }
+            a = p;
+            while (p < q.n && !sxtw_space(q.b[p]) && q.b[p] !== 61 /*=*/ && q.b[p] !== 62 /*>*/) {
+                p++;
+            }
+            var z = p - a;
+            while (p < q.n && sxtw_space(q.b[p])) {
+                p++;
+            }
+            if (!z || p === q.n || q.b[p++] !== 61 /*=*/) {
+                return true;
+            }
+            while (p < q.n && sxtw_space(q.b[p])) {
+                p++;
+            }
+            if (p === q.n || q.b[p] !== 34 /*"*/ && q.b[p] !== 39 /*'*/) {
+                return true;
+            }
+            quote = q.b[p++];
+            var v = p;
+            while (p < q.n && q.b[p] !== quote) {
+                p++;
+            }
+            if (p === q.n) {
+                return true;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_xml_attribute, a, z)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtw_emit(q, sxtw_field_value, v, p - v)) {
+                    return false;
+                }
+            }
+            p++;
+            if (q.c.count >= 32000) {
+                return true;
+            }
+        }
+        if (p < q.n) {
+            p++;
+        }
+    }
+    return true;
+}
+function sx_svg_build(q) {
+    return sxtw_svg(q);
+}

@@ -1,0 +1,97 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_executabletail.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexo_overlay_dos_header_fields = layout([u16("e_magic", SIGNATURE), u16("e_cblp"), u16("e_cp", COUNT),
+    u16("e_crlc", COUNT), u16("e_cparhdr", COUNT), u16("e_minalloc", COUNT), u16("e_maxalloc", COUNT), u16("e_ss", VA),
+    u16("e_sp", VA), u16("e_csum", CHECKSUM), u16("e_ip", VA), u16("e_cs", VA), u16("e_lfarlc", OFFSET), u16("e_ovno", ID)]);
+var sxexo_overlay_dos_header = sxLayout(0x60880006, "overlay_dos_header", LE, sxexo_overlay_dos_header_fields);
+var sxexo_overlay_ne_header_fields = layout([u16("ne_magic", ID), u8("ne_ver"), u8("ne_rev"), u16("ne_enttab", OFFSET),
+    u16("ne_cbenttab", SIZE), u32("ne_crc", CHECKSUM), u16("ne_flags", FLAGS), u16("ne_autodata", ID), u16("ne_heap", SIZE),
+    u16("ne_stack", SIZE), u32("ne_csip", VA), u32("ne_sssp", VA), u16("ne_cseg", COUNT), u16("ne_cmod", COUNT),
+    u16("ne_cbnrestab", SIZE), u16("ne_segtab", OFFSET), u16("ne_rsrctab", OFFSET), u16("ne_restab", OFFSET),
+    u16("ne_modtab", OFFSET), u16("ne_imptab", OFFSET), u32("ne_nrestab", OFFSET), u16("ne_cmovent", COUNT), u16("ne_align"),
+    u16("ne_cres", COUNT), u8("ne_exetyp", ID), u8("ne_flagsothers", FLAGS), u16("ne_pretthunks", OFFSET),
+    u16("ne_psegrefbytes", OFFSET), u16("ne_swaparea"), u16("ne_expver")]);
+var sxexo_overlay_ne_header = sxLayout(0x60880014, "overlay_ne_header", LE, sxexo_overlay_ne_header_fields);
+var sxexo_overlay_ne_segment_fields = layout([u16("FileOffset", OFFSET), u16("FileSize", SIZE), u16("Flags", FLAGS),
+    u16("MinimumAllocation", SIZE)]);
+var sxexo_overlay_ne_segment = sxLayout(0x60880015, "overlay_ne_segment", LE, sxexo_overlay_ne_segment_fields);
+function sx_executabletail_supports(type) {
+    return type === "MOLEBOX" || type === "EXECUTABLE_OVERLAY";
+}
+function sxexo_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxexo_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxexo_order, true);
+    for (var i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        var size = c.items[i].total_size;
+        if (off < end || size < 0 || off > c.size || size > c.size - off) {
+            return false;
+        }
+        if (off > end && !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        end = off + size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxexo_order, true);
+    return !c.failed;
+}
+function sx_executabletail_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = (c.f.file_type === "MOLEBOX" ? (sx_molebox_build(c) ? 1 : 0) : c.f.file_type === "EXECUTABLE_OVERLAY" ? (sx_executable_overlay_build(c) ? 1 : 0) : 0) !== 0;
+    return !!(ok && c.count && sxexo_finish(c));
+}
+function sx_executabletail_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60880001 || id > 0x6088FFFF) {
+        return true;
+    }
+    if (r.name === "ciphertext") {
+        return sxSetComment(r, "Encrypted physical metadata bytes; plaintext fields have no source-file offsets here. At most 4096 bytes are displayed; any remaining ciphertext stays raw.");
+    }
+    if (r.name === "encrypted_signature") {
+        return sxSetComment(r, "Blowfish-encrypted QUICKBOX signature, verified using the native package key.");
+    }
+    if (r.name === "stored_package_base") {
+        return sxSetComment(r, "Package base as stored by the original writer, relative to the input file start.");
+    }
+    if (id === sxexo_overlay_dos_header.id) {
+        if (r.name === "e_cblp") {
+            return sxSetComment(r, "Bytes in final 512-byte page; 0 means 512.");
+        }
+        if (r.name === "e_cp") {
+            return sxSetComment(r, "512-byte pages.");
+        }
+        if (r.name === "e_cparhdr" || r.name === "e_minalloc" || r.name === "e_maxalloc") {
+            return sxSetComment(r, "16-byte paragraphs.");
+        }
+    }
+    if (id === sxexo_overlay_ne_segment.id) {
+        if (r.name === "FileOffset") {
+            return sxSetComment(r, "Logical sectors; scale by 2^ne_align. Zero means no physical segment data.");
+        }
+        if (r.name === "FileSize" || r.name === "MinimumAllocation") {
+            return sxSetComment(r, "Size in bytes; encoded zero means 65536 bytes.");
+        }
+    }
+    if (id === sxexo_overlay_ne_header.id && r.name === "ne_align") {
+        return sxSetComment(r, "Logical-sector alignment shift count.");
+    }
+    if (r.property & 6) {
+        return sxSetComment(r, "Encoded address or offset within this executable image; source byte position is shown separately.");
+    }
+    return true;
+}

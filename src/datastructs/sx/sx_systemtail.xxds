@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_systemtail.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_systemtail");
+include("_sx_systemtail_adam");
+include("_sx_systemtail_apricot");
+include("_sx_systemtail_ciscopy");
+include("_sx_systemtail_compdisk");
+include("_sx_systemtail_copydisk");
+include("_sx_systemtail_copytape");
+include("_sx_systemtail_crunchdisk");
+include("_sx_systemtail_csidos");
+include("_sx_systemtail_dri_diskcopy");
+include("_sx_systemtail_fdx68_fdx");
+include("_sx_systemtail_heathkit_h17");
+include("_sx_systemtail_irixsa");
+include("_sx_systemtail_lhwarp");
+include("_sx_systemtail_lisa_blu");
+include("_sx_systemtail_maxi_disk");
+include("_sx_systemtail_pc_86f");
+include("_sx_systemtail_pc_magazine_flp");
+include("_sx_systemtail_ray_dim");
+include("_sx_systemtail_rs_ide");
+include("_sx_systemtail_sos");
+include("_sx_systemtail_t98_hdd");
+include("_sx_systemtail_trdos");
+include("_sx_systemtail_warp");
+include("_sx_systemtail_wc_disk_image");
+include("_sx_systemtail_zoom");
+
+function fileTypes() { return ["IRIXSA", "SOS", "ZOOM", "TRDOS", "CSIDOS", "COPYDISK", "APRICOT", "SABDU", "ADAM",
+    "PC_MAGAZINE_FLP", "SDU", "WARP", "LHWARP", "COMPDISK", "CRUNCHDISK", "LISA_BLU", "CISCOPY", "COPYTAPE", "WC_DISK_IMAGE",
+    "DRI_DISKCOPY", "MAXI_DISK", "RAY_DIM", "RS_IDE", "T98_HDD", "PC_86F", "FDX68_FDX", "HEATHKIT_H17"]; }
+
+var sx_systemtail_layouts = [sxst_irixsa_header, sxst_irixsa_directory_entry, sxst_sos_boot_prefix, sxst_sos_directory_entry,
+    sxst_zoom_header, sxst_zoom_note_checksum, sxst_zoom_chunk, sxst_trdos_entry, sxst_trdos_disk_descriptor,
+    sxst_csidos_root_block, sxst_csidos_catalogue_block, sxst_csidos_entry, sxst_copydisk_header, sxst_apricot_image_header,
+    sxst_apricot_chunk, sxst_apricot_run, sxst_sabdu_header, sxst_adam_volume, sxst_adam_entry, sxst_adam_entry_split_prefix,
+    sxst_adam_entry_split_tail, sxst_pcmag_flp_header, sxst_warp_track, sxst_lhwarp_header0, sxst_lhwarp_header3,
+    sxst_lhwarp_cylinder0, sxst_lhwarp_cylinder, sxst_compdisk_header, sxst_compdisk_cylinder, sxst_crunchdisk_header,
+    sxst_crunchdisk_cylinder, sxst_lisa_blu_header, sxst_ciscopy_header, sxst_ciscopy_track_state, sxst_ciscopy_compression,
+    sxst_copytape_block, sxst_copytape_mark, sxst_copytape_separator, sxst_wcdisk_header, sxst_wcdisk_sector, sxst_wcdisk_fill,
+    sxst_wcdisk_extra, sxst_dri_signature, sxst_dri_diskcopy_bpb, sxst_maxidisk_header, sxst_raydim_header_indices,
+    sxst_raydim_header_counts, sxst_raydim_sector_status, sxst_rside_header, sxst_rside_identify, sxst_t98_header,
+    sxst_pc86f_header, sxst_pc86f_track_offset, sxst_pc86f_track, sxst_pc86f_track_extra, sxst_fdx68_header, sxst_fdx68_track,
+    sxst_h17_header, sxst_h17_chunk, sxst_h17_disk_format2, sxst_h17_disk_format3, sxst_h17_parameters1, sxst_h17_parameters2,
+    sxst_h17_sector_metadata];
+
+function structs() {
+    return sxCatalog([sxst_irixsa_header, sxst_irixsa_directory_entry, sxst_sos_boot_prefix, sxst_sos_directory_entry,
+        sxst_zoom_header, sxst_zoom_note_checksum, sxst_zoom_chunk, sxst_trdos_entry, sxst_trdos_disk_descriptor,
+        sxst_csidos_root_block, sxst_csidos_catalogue_block, sxst_csidos_entry, sxst_copydisk_header, sxst_apricot_image_header,
+        sxst_apricot_chunk, sxst_apricot_run, sxst_sabdu_header, sxst_adam_volume, sxst_adam_entry,
+        sxst_adam_entry_split_prefix, sxst_adam_entry_split_tail, sxst_pcmag_flp_header, sxst_warp_track, sxst_lhwarp_header0,
+        sxst_lhwarp_header3, sxst_lhwarp_cylinder0, sxst_lhwarp_cylinder, sxst_compdisk_header, sxst_compdisk_cylinder,
+        sxst_crunchdisk_header, sxst_crunchdisk_cylinder, sxst_lisa_blu_header, sxst_ciscopy_header, sxst_ciscopy_track_state,
+        sxst_ciscopy_compression, sxst_copytape_block, sxst_copytape_mark, sxst_copytape_separator, sxst_wcdisk_header,
+        sxst_wcdisk_sector, sxst_wcdisk_fill, sxst_wcdisk_extra, sxst_dri_signature, sxst_dri_diskcopy_bpb,
+        sxst_maxidisk_header, sxst_raydim_header_indices, sxst_raydim_header_counts, sxst_raydim_sector_status,
+        sxst_rside_header, sxst_rside_identify, sxst_t98_header, sxst_pc86f_header, sxst_pc86f_track_offset, sxst_pc86f_track,
+        sxst_pc86f_track_extra, sxst_fdx68_header, sxst_fdx68_track, sxst_h17_header, sxst_h17_chunk, sxst_h17_disk_format2,
+        sxst_h17_disk_format3, sxst_h17_parameters1, sxst_h17_parameters2, sxst_h17_sector_metadata], sx_systemtail_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_systemtail_build, false);
+}

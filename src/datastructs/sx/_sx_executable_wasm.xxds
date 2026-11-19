@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/wasm/xx_wasm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_wasm_header_fields = layout([bytes("magic", 4, SIGNATURE), u32("version", ID)]);
+var sx_wasm_header = sxLayout(0x60030028, "wasm_header", LE, sx_wasm_header_fields);
+var sx_wasm_section_header_2_fields = layout([u8("id", ID), field("payload_len", "uleb128", 2, SIZE)]);
+var sx_wasm_section_header_2 = sxLayout(0x6003002A, "wasm_section_header_2", LE, sx_wasm_section_header_2_fields);
+var sx_wasm_section_header_3_fields = layout([u8("id", ID), field("payload_len", "uleb128", 3, SIZE)]);
+var sx_wasm_section_header_3 = sxLayout(0x6003002B, "wasm_section_header_3", LE, sx_wasm_section_header_3_fields);
+var sx_wasm_section_header_4_fields = layout([u8("id", ID), field("payload_len", "uleb128", 4, SIZE)]);
+var sx_wasm_section_header_4 = sxLayout(0x6003002C, "wasm_section_header_4", LE, sx_wasm_section_header_4_fields);
+var sx_wasm_build_layouts = [sx_wasm_section_header_1, sx_wasm_section_header_2, sx_wasm_section_header_3,
+    sx_wasm_section_header_4, sx_wasm_section_header_5];
+function sx_wasm_build(c) {
+    var h = [];
+    var at = 8;
+    if (!sx_read(c, 0, h, 8) || sxMemcmp(h, "\x00asm\x01\x00\x00\x00", 8) || !sx_add(c, sx_wasm_header, 0, 8)) {
+        return false;
+    }
+    while (at < c.size) {
+        var id = [0];
+        var b = [0];
+        var value = 0;
+        var w;
+        if (!sx_read(c, at, id, 1) || id[0] > 12) {
+            return false;
+        }
+        for (w = 0; w < 5; w++) {
+            if (!sx_read(c, at + 1 + w, b, 1) || w === 4 && b[0] & 0xF0) {
+                return false;
+            }
+            value = (value | ((b[0] & 127) << ((7 * w) >>> 0)) >>> 0) >>> 0;
+            if (!(b[0] & 128)) {
+                break;
+            }
+        }
+        if (w === 5 || !sx_add(c, sx_wasm_build_layouts[w], at, (2 + w) >>> 0)) {
+            return false;
+        }
+        at += (2 + w) >>> 0;
+        if (!sx_raw(c, at, value)) {
+            return false;
+        }
+        at += value;
+    }
+    return true;
+}
+function sx_wasm_schema_build(c) {
+    return sx_wasm_build(c);
+}

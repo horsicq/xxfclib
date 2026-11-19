@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/installshield_developer/xx_installshield_developer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_installshield_developer_header_fields = layout([chars("signature", 14, SIGNATURE), u32("file_count", COUNT),
+    field("reserved", "byte[28]", 28, RESERVED)]);
+var sxil_installshield_developer_header = sxLayout(0x60850029, "installshield_developer_header", LE, sxil_installshield_developer_header_fields);
+var sxil_installshield_developer_record_fields = layout([chars("name_storage", 268, NONE), u32("file_size", SIZE),
+    field("reserved", "byte[40]", 40, RESERVED)]);
+var sxil_installshield_developer_record = sxLayout(0x6085002A, "installshield_developer_record", LE, sxil_installshield_developer_record_fields);
+function sxil_isd(c) {
+    var p = [0];
+    var n = [0];
+    if (!sxil_pe(c, p) || !sxil_eq(c, p[0], "InstallShield\x00", 14) || !sxil_u32(c, p[0] + 14, n) || !n[0] || n[0] > 65535) {
+        return true;
+    }
+    if (!sxil_put(c, sxil_installshield_developer_header, p[0], 1)) {
+        return false;
+    }
+    p[0] += 46;
+    for (var i = 0; i < n[0]; i++) {
+        var z = [0];
+        if (!sxil_u32(c, p[0] + 268, z) || !sxil_span(c, p[0], 312) || !sxil_span(c, p[0] + 312, z[0])) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_installshield_developer_record, p[0], 1)) {
+            return false;
+        }
+        p[0] += 312 + z[0];
+    }
+    return true;
+}
+function sx_installshield_developer_build(c) {
+    return sxil_isd(c);
+}

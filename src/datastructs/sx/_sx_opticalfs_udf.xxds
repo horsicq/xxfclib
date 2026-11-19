@@ -1,0 +1,508 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/udf/xx_udf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxo_udf_volume_recognition_descriptor_fields = layout([u8("structure_type", ID), chars("standard_identifier", 5, SIGNATURE),
+    u8("structure_version", ID)]);
+var sxo_udf_volume_recognition_descriptor = sxLayout(0x6013000A, "udf_volume_recognition_descriptor", LE, sxo_udf_volume_recognition_descriptor_fields);
+var sxo_udf_descriptor_tag_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location")]);
+var sxo_udf_descriptor_tag = sxLayout(0x6013000B, "udf_descriptor_tag", LE, sxo_udf_descriptor_tag_fields);
+var sxo_udf_anchor_volume_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u32("main_extent_length", SIZE), u32("main_extent_location"),
+    u32("reserve_extent_length", SIZE), u32("reserve_extent_location"), blob("reserved", 480, RESERVED)]);
+var sxo_udf_anchor_volume_descriptor = sxLayout(0x6013000C, "udf_anchor_volume_descriptor", LE, sxo_udf_anchor_volume_descriptor_fields);
+var sxo_udf_primary_volume_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u32("sequence_number"), u32("descriptor_number"),
+    bytes("volume_identifier", 32), u16("volume_sequence"), u16("maximum_volume_sequence"), u16("interchange_level"),
+    u16("maximum_interchange_level"), u32("character_set_list", FLAGS), u32("maximum_character_set_list", FLAGS),
+    bytes("volume_set_identifier", 128), u8("descriptor_character_set_type", ID),
+    bytes("descriptor_character_set_information", 63), u8("explanatory_character_set_type", ID),
+    bytes("explanatory_character_set_information", 63), u32("volume_abstract_extent_length", SIZE),
+    u32("volume_abstract_extent_location"), u32("volume_copyright_extent_length", SIZE),
+    u32("volume_copyright_extent_location"), u8("application_flags", FLAGS), chars("application_identifier", 23, STRING),
+    bytes("application_suffix", 8), u16("recorded_type_timezone", FLAGS), u16("recorded_year"), u8("recorded_month"),
+    u8("recorded_day"), u8("recorded_hour"), u8("recorded_minute"), u8("recorded_second"), u8("recorded_centiseconds"),
+    u8("recorded_hundreds_microseconds"), u8("recorded_microseconds"), u8("implementation_flags", FLAGS),
+    chars("implementation_identifier", 23, STRING), bytes("implementation_suffix", 8), bytes("implementation_use", 64),
+    u32("predecessor_volume_sequence_location"), u16("flags", FLAGS), blob("reserved", 22, RESERVED)]);
+var sxo_udf_primary_volume_descriptor = sxLayout(0x6013000D, "udf_primary_volume_descriptor", LE, sxo_udf_primary_volume_descriptor_fields);
+var sxo_udf_partition_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u32("sequence_number"), u16("partition_flags", FLAGS),
+    u16("partition_number"), u8("contents_flags", FLAGS), chars("contents_identifier", 23, STRING), bytes("contents_suffix", 8),
+    bytes("contents_use", 128), u32("access_type", ID), u32("starting_location"), u32("length_blocks", COUNT),
+    u8("implementation_flags", FLAGS), chars("implementation_identifier", 23, STRING), bytes("implementation_suffix", 8),
+    bytes("implementation_use", 128), blob("reserved", 156, RESERVED)]);
+var sxo_udf_partition_descriptor = sxLayout(0x6013000E, "udf_partition_descriptor", LE, sxo_udf_partition_descriptor_fields);
+var sxo_udf_logical_volume_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u32("sequence_number"), u8("descriptor_character_set_type", ID),
+    bytes("descriptor_character_set_information", 63), bytes("logical_volume_identifier", 128), u32("logical_block_size", SIZE),
+    u8("domain_flags", FLAGS), chars("domain_identifier", 23, STRING), bytes("domain_suffix", 8),
+    u32("fileset_extent_length_flags", FLAGS), u32("fileset_logical_block"), u16("fileset_partition_reference"),
+    bytes("fileset_implementation_use", 6), u32("map_table_length", SIZE), u32("partition_map_count", COUNT),
+    u8("implementation_flags", FLAGS), chars("implementation_identifier", 23, STRING), bytes("implementation_suffix", 8),
+    bytes("implementation_use", 128), u32("integrity_sequence_extent_length", SIZE), u32("integrity_sequence_extent_location")]);
+var sxo_udf_logical_volume_descriptor = sxLayout(0x6013000F, "udf_logical_volume_descriptor", LE, sxo_udf_logical_volume_descriptor_fields);
+var sxo_udf_partition_map_type1_fields = layout([u8("map_type", ID), u8("map_length", SIZE), u16("volume_sequence"),
+    u16("partition_number")]);
+var sxo_udf_partition_map_type1 = sxLayout(0x60130010, "udf_partition_map_type1", LE, sxo_udf_partition_map_type1_fields);
+var sxo_udf_partition_map_header_fields = layout([u8("map_type", ID), u8("map_length", SIZE)]);
+var sxo_udf_partition_map_header = sxLayout(0x60130011, "udf_partition_map_header", LE, sxo_udf_partition_map_header_fields);
+var sxo_udf_terminating_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), blob("reserved", 496, RESERVED)]);
+var sxo_udf_terminating_descriptor = sxLayout(0x60130012, "udf_terminating_descriptor", LE, sxo_udf_terminating_descriptor_fields);
+var sxo_udf_file_set_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u16("recorded_type_timezone", FLAGS), u16("recorded_year"),
+    u8("recorded_month"), u8("recorded_day"), u8("recorded_hour"), u8("recorded_minute"), u8("recorded_second"),
+    u8("recorded_centiseconds"), u8("recorded_hundreds_microseconds"), u8("recorded_microseconds"), u16("interchange_level"),
+    u16("maximum_interchange_level"), u32("character_set_list", FLAGS), u32("maximum_character_set_list", FLAGS),
+    u32("file_set_number"), u32("descriptor_number"), u8("logical_volume_identifier_character_set_type", ID),
+    bytes("logical_volume_identifier_character_set_information", 63), bytes("logical_volume_identifier", 128),
+    u8("fileset_character_set_type", ID), bytes("fileset_character_set_information", 63), bytes("file_set_identifier", 32),
+    bytes("copyright_identifier", 32), bytes("abstract_identifier", 32), u32("root_directory_extent_length_flags", FLAGS),
+    u32("root_directory_logical_block"), u16("root_directory_partition_reference"),
+    bytes("root_directory_implementation_use", 6), u8("domain_flags", FLAGS), chars("domain_identifier", 23, STRING),
+    bytes("domain_suffix", 8), u32("next_extent_length_flags", FLAGS), u32("next_logical_block"),
+    u16("next_partition_reference"), bytes("next_implementation_use", 6),
+    u32("system_stream_directory_extent_length_flags", FLAGS), u32("system_stream_directory_logical_block"),
+    u16("system_stream_directory_partition_reference"), bytes("system_stream_directory_implementation_use", 6),
+    blob("reserved", 32, RESERVED)]);
+var sxo_udf_file_set_descriptor = sxLayout(0x60130013, "udf_file_set_descriptor", LE, sxo_udf_file_set_descriptor_fields);
+var sxo_udf_file_entry_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID), u8("tag_checksum", CHECKSUM),
+    u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM), u16("descriptor_crc_length", SIZE),
+    u32("tag_location"), u32("prior_recorded_direct_entries"), u16("strategy_type", ID), u16("strategy_parameter"),
+    u16("maximum_entries", COUNT), u8("reserved_icb", RESERVED), u8("file_type", ID), u32("parent_icb_block"),
+    u16("parent_icb_partition"), u16("icb_flags", FLAGS), u32("uid"), u32("gid"), u32("permissions", FLAGS),
+    u16("link_count", COUNT), u8("record_format", ID), u8("record_display_attributes", FLAGS), u32("record_length", SIZE),
+    u64("information_length", SIZE), u64("logical_blocks_recorded", COUNT), u16("access_type_timezone", FLAGS),
+    u16("access_year"), u8("access_month"), u8("access_day"), u8("access_hour"), u8("access_minute"), u8("access_second"),
+    u8("access_centiseconds"), u8("access_hundreds_microseconds"), u8("access_microseconds"),
+    u16("modification_type_timezone", FLAGS), u16("modification_year"), u8("modification_month"), u8("modification_day"),
+    u8("modification_hour"), u8("modification_minute"), u8("modification_second"), u8("modification_centiseconds"),
+    u8("modification_hundreds_microseconds"), u8("modification_microseconds"), u16("attribute_type_timezone", FLAGS),
+    u16("attribute_year"), u8("attribute_month"), u8("attribute_day"), u8("attribute_hour"), u8("attribute_minute"),
+    u8("attribute_second"), u8("attribute_centiseconds"), u8("attribute_hundreds_microseconds"), u8("attribute_microseconds"),
+    u32("checkpoint"), u32("extended_attributes_extent_length_flags", FLAGS), u32("extended_attributes_logical_block"),
+    u16("extended_attributes_partition_reference"), bytes("extended_attributes_implementation_use", 6),
+    u8("implementation_flags", FLAGS), chars("implementation_identifier", 23, STRING), bytes("implementation_suffix", 8),
+    u64("unique_id", ID), u32("extended_attributes_length", SIZE), u32("allocation_descriptors_length", SIZE)]);
+var sxo_udf_file_entry = sxLayout(0x60130014, "udf_file_entry", LE, sxo_udf_file_entry_fields);
+var sxo_udf_extended_file_entry_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u32("prior_recorded_direct_entries"), u16("strategy_type", ID),
+    u16("strategy_parameter"), u16("maximum_entries", COUNT), u8("reserved_icb", RESERVED), u8("file_type", ID),
+    u32("parent_icb_block"), u16("parent_icb_partition"), u16("icb_flags", FLAGS), u32("uid"), u32("gid"),
+    u32("permissions", FLAGS), u16("link_count", COUNT), u8("record_format", ID), u8("record_display_attributes", FLAGS),
+    u32("record_length", SIZE), u64("information_length", SIZE), u64("object_size", SIZE),
+    u64("logical_blocks_recorded", COUNT), u16("access_type_timezone", FLAGS), u16("access_year"), u8("access_month"),
+    u8("access_day"), u8("access_hour"), u8("access_minute"), u8("access_second"), u8("access_centiseconds"),
+    u8("access_hundreds_microseconds"), u8("access_microseconds"), u16("modification_type_timezone", FLAGS),
+    u16("modification_year"), u8("modification_month"), u8("modification_day"), u8("modification_hour"),
+    u8("modification_minute"), u8("modification_second"), u8("modification_centiseconds"),
+    u8("modification_hundreds_microseconds"), u8("modification_microseconds"), u16("creation_type_timezone", FLAGS),
+    u16("creation_year"), u8("creation_month"), u8("creation_day"), u8("creation_hour"), u8("creation_minute"),
+    u8("creation_second"), u8("creation_centiseconds"), u8("creation_hundreds_microseconds"), u8("creation_microseconds"),
+    u16("attribute_type_timezone", FLAGS), u16("attribute_year"), u8("attribute_month"), u8("attribute_day"),
+    u8("attribute_hour"), u8("attribute_minute"), u8("attribute_second"), u8("attribute_centiseconds"),
+    u8("attribute_hundreds_microseconds"), u8("attribute_microseconds"), u32("checkpoint"), u32("reserved", RESERVED),
+    u32("extended_attributes_extent_length_flags", FLAGS), u32("extended_attributes_logical_block"),
+    u16("extended_attributes_partition_reference"), bytes("extended_attributes_implementation_use", 6),
+    u32("stream_directory_extent_length_flags", FLAGS), u32("stream_directory_logical_block"),
+    u16("stream_directory_partition_reference"), bytes("stream_directory_implementation_use", 6),
+    u8("implementation_flags", FLAGS), chars("implementation_identifier", 23, STRING), bytes("implementation_suffix", 8),
+    u64("unique_id", ID), u32("extended_attributes_length", SIZE), u32("allocation_descriptors_length", SIZE)]);
+var sxo_udf_extended_file_entry = sxLayout(0x60130015, "udf_extended_file_entry", LE, sxo_udf_extended_file_entry_fields);
+var sxo_udf_file_identifier_descriptor_fields = layout([u16("tag_identifier", ID), u16("descriptor_version", ID),
+    u8("tag_checksum", CHECKSUM), u8("reserved_tag", RESERVED), u16("tag_serial"), u16("descriptor_crc", CHECKSUM),
+    u16("descriptor_crc_length", SIZE), u32("tag_location"), u16("file_version"), u8("file_characteristics", FLAGS),
+    u8("identifier_length", SIZE), u32("icb_extent_length_flags", FLAGS), u32("icb_logical_block"),
+    u16("icb_partition_reference"), bytes("icb_implementation_use", 6), u16("implementation_use_length", SIZE)]);
+var sxo_udf_file_identifier_descriptor = sxLayout(0x60130016, "udf_file_identifier_descriptor", LE, sxo_udf_file_identifier_descriptor_fields);
+var sxo_udf_short_allocation_descriptor_fields = layout([u32("extent_length_flags", FLAGS), u32("logical_block")]);
+var sxo_udf_short_allocation_descriptor = sxLayout(0x60130017, "udf_short_allocation_descriptor", LE, sxo_udf_short_allocation_descriptor_fields);
+var sxo_udf_long_allocation_descriptor_fields = layout([u32("extent_length_flags", FLAGS), u32("logical_block"),
+    u16("partition_reference"), bytes("implementation_use", 6)]);
+var sxo_udf_long_allocation_descriptor = sxLayout(0x60130018, "udf_long_allocation_descriptor", LE, sxo_udf_long_allocation_descriptor_fields);
+var sxo_udf_extended_allocation_descriptor_fields = layout([u32("extent_length_flags", FLAGS), u32("recorded_length", SIZE),
+    u32("information_length", SIZE), u32("logical_block"), u16("partition_reference"), u16("reserved", RESERVED)]);
+var sxo_udf_extended_allocation_descriptor = sxLayout(0x60130019, "udf_extended_allocation_descriptor", LE, sxo_udf_extended_allocation_descriptor_fields);
+function sxo_udf_tag(c, at, expected, out) {
+    if (!sxo_can(c, at, 16) || !sx_read(c, at, out, 16)) {
+        return false;
+    }
+    var id = sxo_u16(out, 0);
+    var version = sxo_u16(out, 2);
+    var n = sxo_u16(out, 10);
+    var crc = 0;
+    var sum = 0;
+    if (expected && id !== expected || version !== 2 && version !== 3 || out[5] || n > 2032 || !sxo_can(c, at, 16 + n)) {
+        return false;
+    }
+    for (var i = 0; i < 16; i++) {
+        if (i !== 4) {
+            sum = (sum + out[i]) >>> 0;
+        }
+    }
+    if ((sum & 0xFF) !== out[4]) {
+        return false;
+    }
+    if (n) {
+        if (!sx_read_at(c, at + 16, out, 16, n)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            crc ^= out[(16 + i) >>> 0] << 8;
+            for (var k = 0; k < 8; k++) {
+                crc = (crc << 1 ^ (crc & 0x8000 ? 0x1021 : 0)) & 0xFFFF;
+            }
+        }
+        if (crc !== sxo_u16(out, 8)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxo_udf_lba(c, u, ref, lba, at) {
+    var number;
+    if (!u.part_count) {
+        return false;
+    }
+    if (!u.map_count) {
+        if (u.part_count !== 1) {
+            return false;
+        }
+        number = u.part[0].number;
+    } else {
+        if (ref >= u.map_count || !u.map_valid[ref]) {
+            return false;
+        }
+        number = u.maps[ref];
+    }
+    for (var i = 0; i < u.part_count; i++) {
+        if (u.part[i].number === number && lba < u.part[i].length) {
+            var off = (u.part[i].start + lba) * 2048;
+            if (off > SX_I64_MAX || !sxo_can(c, (off >= SX_I64_MAX ? off - SX_U64_MAX : off), 2048)) {
+                return false;
+            }
+            at[0] = (off >= SX_I64_MAX ? off - SX_U64_MAX : off);
+            return true;
+        }
+    }
+    return false;
+}
+function sxo_udf_vds(c, start, size, u) {
+    var b = [];
+    var count = Math.floor(size / 2048);
+    if (count > 256) {
+        count = 256;
+    }
+    for (var i = 0; i < count; i++) {
+        var at = start + i * 2048;
+        var l = sxo_udf_descriptor_tag;
+        var n = 16;
+        if (!sxo_can(c, at, 2048) || !sxo_udf_tag(c, at, 0, b)) {
+            break;
+        }
+        if (!sx_read(c, at, b, 2048)) {
+            return false;
+        }
+        var id = sxo_u16(b, 0);
+        if (id === 1) {
+            l = sxo_udf_primary_volume_descriptor;
+            n = 512;
+        } else if (id === 5) {
+            l = sxo_udf_partition_descriptor;
+            n = 512;
+            if (u !== null && u.part_count < 16 && sxo_u32(b, 192)) {
+                var seen = false;
+                for (var j = 0; j < u.part_count; j++) {
+                    if (u.part[j].number === sxo_u16(b, 22)) {
+                        seen = true;
+                    }
+                }
+                if (!seen) {
+                    u.part[u.part_count++] = sxCopy_sxo_udf_partition(null, { number: sxo_u16(b, 22), start: sxo_u32(b, 188), length: sxo_u32(b, 192) });
+                }
+            }
+        } else if (id === 6) {
+            l = sxo_udf_logical_volume_descriptor;
+            n = 440;
+            var bytes = sxo_u32(b, 264);
+            var maps = sxo_u32(b, 268);
+            var pos = 440;
+            if (bytes > 1608) {
+                return false;
+            }
+            if (maps > 16) {
+                maps = 16;
+            }
+            for (j = 0; j < maps && (pos + 2) >>> 0 <= (440 + bytes) >>> 0; j++) {
+                var type = b[pos];
+                var len = b[(pos + 1) >>> 0];
+                if (len < 2 || len > (((440 + bytes) >>> 0) - pos) >>> 0) {
+                    break;
+                }
+                if (!sxo_add(c, type === 1 && len >= 6 ? sxo_udf_partition_map_type1 : sxo_udf_partition_map_header, at + pos, type === 1 && len >= 6 ? 6 : 2)) {
+                    return false;
+                }
+                if (u !== null && !u.lvd) {
+                    u.map_valid[j] = type === 1 && len >= 6;
+                    if (u.map_valid[j]) {
+                        u.maps[j] = sxo_u16(b, pos + 4);
+                    }
+                    u.map_count = (j + 1) >>> 0;
+                }
+                pos = (pos + len) >>> 0;
+            }
+            if (u !== null && !u.lvd && sxo_u32(b, 212) === 2048 && sxo_u32(b, 248)) {
+                u.fsd_block = sxo_u32(b, 252);
+                u.fsd_partition = sxo_u16(b, 256);
+                u.lvd = true;
+            }
+        } else if (id === 8) {
+            l = sxo_udf_terminating_descriptor;
+            n = 512;
+        }
+        if (!sxo_add(c, l, at, n)) {
+            return false;
+        }
+        if (id === 8) {
+            break;
+        }
+    }
+    return true;
+}
+function sxo_udf_files(c, u, root, home) {
+    done: {
+        var b = [];
+        var fid = [];
+        var work = sxAllocN(0x2000, sxNew_sxo_udf_work);
+        var count = 1;
+        var ok = false;
+        if (work === null) {
+            return false;
+        }
+        work[0] = sxCopy_sxo_udf_work(null, { offset: root, partition: home, depth: 0 });
+        for (var q = 0; q < count; q++) {
+            var at = work[q].offset;
+            var data = -1;
+            var expected = -1;
+            var available = 0;
+            var info;
+            var fixed;
+            var mode;
+            var ea;
+            var ad;
+            var id;
+            if (work[q].depth > 64) {
+                break done;
+            }
+            if (!sxo_can(c, at, 2048) || !sxo_udf_tag(c, at, 0, b)) {
+                continue;
+            }
+            id = sxo_u16(b, 0);
+            if (id !== 261 && id !== 266) {
+                continue;
+            }
+            if (!sx_read(c, at, b, 2048)) {
+                break done;
+            }
+            fixed = id === 261 ? 176 : 216;
+            ea = sxo_u32(b, fixed + -8);
+            ad = sxo_u32(b, fixed + -4);
+            if (ea + ad > (2048 - fixed) >>> 0) {
+                continue;
+            }
+            if (!sxo_add(c, id === 261 ? sxo_udf_file_entry : sxo_udf_extended_file_entry, at, fixed)) {
+                break done;
+            }
+            mode = sxo_u16(b, 34) & 7;
+            info = sxGetU64At(b, 56, 8, 0, false);
+            if (mode < 3) {
+                var width = mode === 0 ? 8 : mode === 1 ? 16 : 20;
+                var l = mode === 0 ? sxo_udf_short_allocation_descriptor : mode === 1 ? sxo_udf_long_allocation_descriptor : sxo_udf_extended_allocation_descriptor;
+                if (ad % width) {
+                    continue;
+                }
+                var resolved = mode !== 2;
+                for (var j = 0; j < ad; j = (j + width) >>> 0) {
+                    var p = b, p_o = fixed + ea + j;
+                    var length = sxo_u32(p, p_o);
+                    var pos = [0];
+                    if (!sxo_add(c, l, at + fixed + ea + j, width)) {
+                        break done;
+                    }
+                    if (mode === 2 || length >>> 30 || !sxo_udf_lba(c, u, mode === 0 ? work[q].partition : sxo_u16(p, p_o + 8), sxo_u32(p, p_o + 4), pos) || !sxo_can(c, pos[0], length & 0x3FFFFFFF)) {
+                        resolved = false;
+                    } else {
+                        if (data < 0) {
+                            data = pos[0];
+                        } else if (expected !== pos[0]) {
+                            resolved = false;
+                        }
+                        expected = pos[0] + (length & 0x3FFFFFFF);
+                        available += length & 0x3FFFFFFF;
+                    }
+                }
+                if (!resolved) {
+                    data = -1;
+                }
+            } else if (mode === 3) {
+                data = at + fixed + ea;
+                available = ad;
+            }
+            if (b[27] !== 4 || data < 0 || info > available || info > 67108864) {
+                continue;
+            }
+            pos = [data];
+            var end = data + (info >= SX_I64_MAX ? info - SX_U64_MAX : info);
+            while (end - pos[0] >= 38) {
+                if (!sxo_udf_tag(c, pos[0], 257, fid) || !sx_read(c, pos[0], fid, 38)) {
+                    break;
+                }
+                var n = 38 + sxo_u16(fid, 36) + fid[19];
+                var padded = ((n + 3) >>> 0 & 0xFFFFFFFC) >>> 0;
+                if (padded > (end - pos[0] < 0 ? end - pos[0] + SX_U64_MAX : end - pos[0])) {
+                    break;
+                }
+                if (!sxo_add(c, sxo_udf_file_identifier_descriptor, pos[0], 38)) {
+                    break done;
+                }
+                if (!(fid[18] & 12) && fid[19] && sxo_u32(fid, 20)) {
+                    var child = [0];
+                    var ref = sxo_u16(fid, 28);
+                    if (sxo_udf_lba(c, u, ref, sxo_u32(fid, 24), child)) {
+                        var seen = false;
+                        for (j = 0; j < count; j++) {
+                            if (work[j].offset === child[0]) {
+                                seen = true;
+                            }
+                        }
+                        if (!seen) {
+                            if (count >= 8192) {
+                                break done;
+                            }
+                            work[count++] = sxCopy_sxo_udf_work(null, { offset: child[0], partition: ref, depth: (work[q].depth + 1) >>> 0 });
+                        }
+                    }
+                }
+                pos[0] += padded;
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sxo_udf_build(c) {
+    var b = [];
+    var last = sxDiv(c.size, 2048) - 1;
+    var candidates = [256, last, last - 256, 512];
+    var selected = -1;
+    var vds_size = 0;
+    var vds_at = 0;
+    var vrs = false;
+    var extended_area = false;
+    var u = sxNew_sxo_udf_state();
+    sxCopy_sxo_udf_state(u, sxNew_sxo_udf_state());
+    for (var i = 0; i < 64; i++) {
+        var at = ((16 + i) >>> 0) * 2048;
+        if (!sxo_can(c, at, 2048) || !sx_read(c, at, b, 7)) {
+            break;
+        }
+        var bea = !sxMemcmpAt(b, 1, "BEA01", 0, 5);
+        var nsr = !sxMemcmpAt(b, 1, "NSR02", 0, 5) || !sxMemcmpAt(b, 1, "NSR03", 0, 5);
+        var tea = !sxMemcmpAt(b, 1, "TEA01", 0, 5);
+        var iso = !sxMemcmpAt(b, 1, "CD001", 0, 5);
+        var known = bea || nsr || tea || iso || !sxMemcmpAt(b, 1, "CDW02", 0, 5) || !sxMemcmpAt(b, 1, "BOOT2", 0, 5);
+        if (!known) {
+            break;
+        }
+        if (!sxo_add(c, iso ? sxo_iso_volume_descriptor_header : sxo_udf_volume_recognition_descriptor, at, 7)) {
+            return false;
+        }
+        if (bea) {
+            extended_area = true;
+        }
+        if (nsr && extended_area) {
+            vrs = true;
+        }
+        if (tea) {
+            break;
+        }
+    }
+    for (var pass = 0; pass < 2 && selected < 0; pass++) {
+        if (pass && !vrs) {
+            break;
+        }
+        for (i = 0; i < 4; i++) {
+            if (candidates[i] < 0) {
+                continue;
+            }
+            at = candidates[i] * 2048;
+            if (!sxo_can(c, at, 2048) || !sxo_udf_tag(c, at, 2, b) || !sx_read(c, at, b, 512)) {
+                continue;
+            }
+            var size = sxo_u32(b, 16);
+            var block = sxo_u32(b, 20);
+            if (!size || size % 2048 || !block || !sxo_can(c, block * 2048, 2048) || !pass && sxo_u32(b, 12) !== (candidates[i] < 0 ? candidates[i] + SX_U64_MAX : candidates[i])) {
+                continue;
+            }
+            selected = at;
+            vds_size = size;
+            vds_at = block * 2048;
+            break;
+        }
+    }
+    if (selected < 0) {
+        return false;
+    }
+    if (!sxo_udf_vds(c, vds_at, vds_size, u) || !u.lvd || !u.part_count) {
+        return false;
+    }
+    for (i = 0; i < 4; i++) {
+        if (candidates[i] < 0) {
+            continue;
+        }
+        at = candidates[i] * 2048;
+        if (!sxo_can(c, at, 2048) || !sxo_udf_tag(c, at, 2, b) || !sx_read(c, at, b, 512)) {
+            continue;
+        }
+        if (at !== selected && sxo_u32(b, 12) !== (candidates[i] < 0 ? candidates[i] + SX_U64_MAX : candidates[i])) {
+            continue;
+        }
+        if (!sxo_add(c, sxo_udf_anchor_volume_descriptor, at, 512)) {
+            return false;
+        }
+        for (var j = 0; j < 2; j++) {
+            size = sxo_u32(b, 16 + ((j * 8) >>> 0));
+            block = sxo_u32(b, 20 + ((j * 8) >>> 0));
+            if (size && !(size % 2048) && size <= 0x80000 && block && sxo_can(c, block * 2048, size)) {
+                var saved = c.count;
+                if (!sxo_udf_vds(c, block * 2048, size, null)) {
+                    if (c.failed) {
+                        return false;
+                    }
+                    c.count = saved;
+                }
+            }
+        }
+    }
+    var fsd = [0];
+    var root = [0];
+    if (!sxo_udf_lba(c, u, u.fsd_partition, u.fsd_block, fsd) || !sxo_udf_tag(c, fsd[0], 256, b) || !sx_read(c, fsd[0], b, 512) || !sxo_add(c, sxo_udf_file_set_descriptor, fsd[0], 512) || !sxo_u32(b, 400) || !sxo_udf_lba(c, u, sxo_u16(b, 408), sxo_u32(b, 404), root)) {
+        return false;
+    }
+    return sxo_udf_files(c, u, root[0], sxo_u16(b, 408));
+}
+function sx_udf_build(c) {
+    return sxo_udf_build(c);
+}

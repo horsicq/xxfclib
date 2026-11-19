@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/pixel_pxtone_ptvoice/xx_pixel_pxtone_ptvoice_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_pxt_voice_header_fields = layout([chars("magic", 8, SIGNATURE), i32("version", ID), i32("payload_bytes", SIZE)]);
+var sxmn_pxt_voice_header = sxLayout(0x60760022, "pxt_voice_header", LE, sxmn_pxt_voice_header_fields);
+function sxmn_ptvoice(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var z = [0];
+    return sxmn_row(v, sxmn_pxt_voice_header, 0, end) && sxmn_word(v, 12, 4, false, z, 0, end) && z[0] <= 2147483647 && sxmn_span(v, 16, z[0], end);
+}
+function sx_pixel_pxtone_ptvoice_build(v) {
+    return sxmn_ptvoice(v);
+}

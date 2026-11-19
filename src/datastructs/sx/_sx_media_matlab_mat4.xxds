@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/matlab_mat4/xx_matlab_mat4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_mat4_widths = [8, 4, 4, 2, 2, 1];
+function sxm_mat4(c) {
+    var at = 0;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var type;
+        var rows;
+        var cols;
+        var imag;
+        var names;
+        var be;
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 20)) {
+            return false;
+        }
+        type = sxGetU32(h, 20, 0, false);
+        be = type > 1999;
+        if (be) {
+            type = sxGetU32(h, 20, 0, true);
+        }
+        rows = sxGetU32(h, 20, 4, be);
+        cols = sxGetU32(h, 20, 8, be);
+        imag = sxGetU32(h, 20, 12, be);
+        names = sxGetU32(h, 20, 16, be);
+        if (type > 1999 || Math.floor(type / 1000) !== (be ? 1 : 0) || Math.floor(type / 100) % 10 || type % 10 > 1 || Math.floor(type / 10) % 10 >= 6 || imag > 1 || !rows || !cols || rows > 1000000 || cols > 1000000 || names < 2 || names > 256) {
+            return false;
+        }
+        n = rows * cols;
+        if (n > 1000000) {
+            return false;
+        }
+        n = n * sxm_mat4_widths[Math.floor(type / 10) % 10] * ((1 + imag) >>> 0);
+        if (!sx_add(c, be ? sxm_mat4_header_be : sxm_mat4_header_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 20) || !sxm_raw(c, at + 20, names) || !sxm_raw(c, at + 20 + names, n)) {
+            return false;
+        }
+        at += ((20 + names) >>> 0) + n;
+    }
+    return at !== 0;
+}
+function sx_matlab_mat4_build(c) {
+    return sxm_mat4(c);
+}

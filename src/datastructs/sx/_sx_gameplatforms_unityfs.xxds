@@ -1,0 +1,80 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/unityfs/xx_unityfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_unity_header_fields = layout([blob("signature", 8, SIGNATURE), u32("format_version", ID)]);
+var sxgp_unity_header = sxLayout(0x60360039, "unity_header", BE, sxgp_unity_header_fields);
+var sxgp_unity_sizes_fields = layout([i64("file_size", SIZE), u32("compressed_info_size", SIZE),
+    u32("uncompressed_info_size", SIZE), u32("flags", FLAGS)]);
+var sxgp_unity_sizes = sxLayout(0x6036003A, "unity_sizes", BE, sxgp_unity_sizes_fields);
+var sxgp_unity_info_fields = layout([blob("data_hash", 16, CHECKSUM), i32("block_count", COUNT)]);
+var sxgp_unity_info = sxLayout(0x6036003B, "unity_info", BE, sxgp_unity_info_fields);
+var sxgp_unity_block_fields = layout([u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u16("flags", FLAGS)]);
+var sxgp_unity_block = sxLayout(0x6036003C, "unity_block", BE, sxgp_unity_block_fields);
+var sxgp_unity_node_count_fields = layout([i32("node_count", COUNT)]);
+var sxgp_unity_node_count = sxLayout(0x6036003D, "unity_node_count", BE, sxgp_unity_node_count_fields);
+var sxgp_unity_node_fields = layout([i64("data_offset", OFFSET), i64("data_size", SIZE), u32("flags", FLAGS)]);
+var sxgp_unity_node = sxLayout(0x6036003E, "unity_node", BE, sxgp_unity_node_fields);
+function sxgp_cstring(v, p, end, max) {
+    var start = p[0];
+    var c = [0];
+    while (p[0] < end && sxU64(p[0] - start) < max) {
+        if (++v.work > 4000000 || !sxgp_word(v, p[0], 1, false, c, 0, end)) {
+            return false;
+        }
+        p[0]++;
+        if (!c[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxgp_unity(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [12];
+    var ver = [0];
+    var size = [0];
+    var packed = [0];
+    var flags = [0];
+    var info;
+    var blocks = [0];
+    var nodes = [0];
+    if (!sxgp_row(v, sxgp_unity_header, 0, end) || !sxgp_word(v, 8, 4, true, ver, 0, end) || !sxgp_cstring(v, p, end, 256) || !sxgp_cstring(v, p, end, 256) || !sxgp_row(v, sxgp_unity_sizes, p[0], end) || !sxgp_word(v, p[0], 8, true, size, 0, end) || size[0] > end || !sxgp_word(v, p[0] + 8, 4, true, packed, 0, end) || !sxgp_word(v, p[0] + 16, 4, true, flags, 0, end)) {
+        return false;
+    }
+    p[0] += 20;
+    if (ver[0] >= 7) {
+        p[0] = sxAnd64(p[0] + 15, sxK(0xFFFFFFFF, 0xFFFFFFF0));
+    }
+    if (packed[0] > size[0]) {
+        return false;
+    }
+    info = sxAnd64(flags[0], 128) ? sxU64(size[0] - packed[0]) : p[0];
+    if (!sxgp_span(v, info, packed[0], size[0])) {
+        return false;
+    }
+    end = info + packed[0];
+    if (!sxgp_row(v, sxgp_unity_info, info, end) || !sxgp_word(v, info + 16, 4, true, blocks, 0, end) || blocks[0] > 65536 || !sxgp_table(v, sxgp_unity_block, info + 20, blocks[0], end)) {
+        return false;
+    }
+    p[0] = info + 20 + 10 * blocks[0];
+    if (!sxgp_row(v, sxgp_unity_node_count, p[0], end) || !sxgp_word(v, p[0], 4, true, nodes, 0, end) || nodes[0] > 65536) {
+        return false;
+    }
+    p[0] += 4;
+    for (var i = 0; i < nodes[0]; i++) {
+        if (!sxgp_row(v, sxgp_unity_node, p[0], end)) {
+            return false;
+        }
+        p[0] += 20;
+        if (!sxgp_cstring(v, p, end, 4096)) {
+            return false;
+        }
+    }
+    return p[0] === end;
+}
+function sx_unityfs_build(v) {
+    return sxgp_unity(v);
+}

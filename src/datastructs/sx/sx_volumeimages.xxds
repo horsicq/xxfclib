@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_volumeimages.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_volumeimages");
+include("_sx_volumeimages_aaruformat");
+include("_sx_volumeimages_aff");
+include("_sx_volumeimages_bsd_disklabel");
+include("_sx_volumeimages_btrfs_stream");
+include("_sx_volumeimages_diskjuggler");
+include("_sx_volumeimages_gbi");
+include("_sx_volumeimages_hsf");
+include("_sx_volumeimages_lvm2");
+include("_sx_volumeimages_md_raid");
+include("_sx_volumeimages_mds");
+include("_sx_volumeimages_nextstep_diskimage");
+include("_sx_volumeimages_partimage");
+include("_sx_volumeimages_sunvtoc");
+include("_sx_volumeimages_uif");
+include("_sx_volumeimages_windows_ldm");
+include("_sx_volumeimages_zisofs");
+
+function fileTypes() { return ["DISKJUGGLER", "EWF", "BTRFS_STREAM", "EWF2_EX01", "EWF2_LX01", "EWF_L01", "GBI", "HSF",
+    "SUNVTOC", "UIF", "PARTIMAGE", "AARUFORMAT", "NEXTSTEP_DISKIMAGE", "MDS", "BSD_DISKLABEL", "LVM2", "AFF", "MD_RAID",
+    "WINDOWS_LDM", "ZISOFS"]; }
+
+var sx_volumeimages_layouts = [sxvi_lvm2_label_header, sxvi_lvm2_pv_header, sxvi_lvm2_disk_location, sxvi_lvm2_pv_extension,
+    sxvi_lvm2_mda_header, sxvi_lvm2_raw_location, sxvi_ewf1_file_header, sxvi_ewf1_section_descriptor, sxvi_ewf1_volume,
+    sxvi_ewf1_logical_volume, sxvi_ewf1_smart_volume, sxvi_ewf1_table_header, sxvi_ewf1_chunk_entry, sxvi_image_adler32,
+    sxvi_ewf1_hash, sxvi_ewf1_digest, sxvi_ewf1_ltree_header, sxvi_ewf2_file_header, sxvi_ewf2_section_descriptor,
+    sxvi_ewf2_table_header, sxvi_ewf2_chunk_entry, sxvi_ewf2_pattern_entry, sxvi_ewf2_md5, sxvi_ewf2_sha1, sxvi_uif_trailer,
+    sxvi_uif_table_header, sxvi_uif_block_entry, sxvi_uif_descriptor_header, sxvi_uif_output_format, sxvi_gbi_header100,
+    sxvi_gbi_header110, sxvi_gbi_descriptor, sxvi_gbi_part_count, sxvi_zisofs_header, sxvi_zisofs_block_pointer,
+    sxvi_btrfs_send_header, sxvi_btrfs_send_command, sxvi_btrfs_send_attribute, sxvi_btrfs_send_data_attribute_v2,
+    sxvi_btrfs_send_uuid, sxvi_btrfs_send_id64, sxvi_btrfs_send_size64, sxvi_btrfs_send_offset64, sxvi_btrfs_send_flags64,
+    sxvi_btrfs_send_flags32, sxvi_btrfs_send_codec32, sxvi_btrfs_send_timespec, sxvi_aaru2_header, sxvi_aaru2_ddt_header,
+    sxvi_aaru2_ddt_entry, sxvi_aaru_index3, sxvi_aaru_index_entry, sxvi_aaru_data_header, sxvi_aff_segment_header,
+    sxvi_aff_segment_footer, sxvi_aff_quadword, sxvi_bsd_disklabel_le, sxvi_bsd_disklabel_be, sxvi_bsd_partition_le,
+    sxvi_bsd_partition_be, sxvi_md1_superblock, sxvi_md1_superblock_ppl, sxvi_md1_device_role, sxvi_md090_header_le,
+    sxvi_md090_header_be, sxvi_md090_disk_le, sxvi_md090_disk_be, sxvi_sun_sparc_label, sxvi_sun_x86_label,
+    sxvi_nextstep_container_header, sxvi_mds_header, sxvi_mds_session, sxvi_mds_track, sxvi_mds_track_extra, sxvi_mds_footer,
+    sxvi_ldm_private_header, sxvi_ldm_tocblock, sxvi_ldm_vmdb_header, sxvi_ldm_vblk_fragment, sxvi_ldm_vblk_record_header,
+    sxvi_ldm_variable_length, sxvi_hsf_volume_prefix, sxvi_hsf_descriptor_header, sxvi_hsf_directory_record,
+    sxvi_hsf_volume_identifiers, sxvi_cdi_footer_v2, sxvi_cdi_footer_v35, sxvi_cdi_descriptor_header, sxvi_cdi_track_prefix,
+    sxvi_cdi_index_count, sxvi_cdi_index, sxvi_cdi_cdtext_count, sxvi_cdi_track_geometry, sxvi_partimage_volume_header,
+    sxvi_partimage_main_header, sxvi_partimage_local_header, sxvi_partimage_header_checksum, sxvi_partimage_extension_header,
+    sxvi_partimage_data_check, sxvi_partimage_tail];
+
+function structs() {
+    return sxCatalog([sxvi_lvm2_label_header, sxvi_lvm2_pv_header, sxvi_lvm2_disk_location, sxvi_lvm2_pv_extension,
+        sxvi_lvm2_mda_header, sxvi_lvm2_raw_location, sxvi_ewf1_file_header, sxvi_ewf1_section_descriptor, sxvi_ewf1_volume,
+        sxvi_ewf1_logical_volume, sxvi_ewf1_smart_volume, sxvi_ewf1_table_header, sxvi_ewf1_chunk_entry, sxvi_image_adler32,
+        sxvi_ewf1_hash, sxvi_ewf1_digest, sxvi_ewf1_ltree_header, sxvi_ewf2_file_header, sxvi_ewf2_section_descriptor,
+        sxvi_ewf2_table_header, sxvi_ewf2_chunk_entry, sxvi_ewf2_pattern_entry, sxvi_ewf2_md5, sxvi_ewf2_sha1, sxvi_uif_trailer,
+        sxvi_uif_table_header, sxvi_uif_block_entry, sxvi_uif_descriptor_header, sxvi_uif_output_format, sxvi_gbi_header100,
+        sxvi_gbi_header110, sxvi_gbi_descriptor, sxvi_gbi_part_count, sxvi_zisofs_header, sxvi_zisofs_block_pointer,
+        sxvi_btrfs_send_header, sxvi_btrfs_send_command, sxvi_btrfs_send_attribute, sxvi_btrfs_send_data_attribute_v2,
+        sxvi_btrfs_send_uuid, sxvi_btrfs_send_id64, sxvi_btrfs_send_size64, sxvi_btrfs_send_offset64, sxvi_btrfs_send_flags64,
+        sxvi_btrfs_send_flags32, sxvi_btrfs_send_codec32, sxvi_btrfs_send_timespec, sxvi_aaru2_header, sxvi_aaru2_ddt_header,
+        sxvi_aaru2_ddt_entry, sxvi_aaru_index3, sxvi_aaru_index_entry, sxvi_aaru_data_header, sxvi_aff_segment_header,
+        sxvi_aff_segment_footer, sxvi_aff_quadword, sxvi_bsd_disklabel_le, sxvi_bsd_disklabel_be, sxvi_bsd_partition_le,
+        sxvi_bsd_partition_be, sxvi_md1_superblock, sxvi_md1_superblock_ppl, sxvi_md1_device_role, sxvi_md090_header_le,
+        sxvi_md090_header_be, sxvi_md090_disk_le, sxvi_md090_disk_be, sxvi_sun_sparc_label, sxvi_sun_x86_label,
+        sxvi_nextstep_container_header, sxvi_mds_header, sxvi_mds_session, sxvi_mds_track, sxvi_mds_track_extra,
+        sxvi_mds_footer, sxvi_ldm_private_header, sxvi_ldm_tocblock, sxvi_ldm_vmdb_header, sxvi_ldm_vblk_fragment,
+        sxvi_ldm_vblk_record_header, sxvi_ldm_variable_length, sxvi_hsf_volume_prefix, sxvi_hsf_descriptor_header,
+        sxvi_hsf_directory_record, sxvi_hsf_volume_identifiers, sxvi_cdi_footer_v2, sxvi_cdi_footer_v35,
+        sxvi_cdi_descriptor_header, sxvi_cdi_track_prefix, sxvi_cdi_index_count, sxvi_cdi_index, sxvi_cdi_cdtext_count,
+        sxvi_cdi_track_geometry, sxvi_partimage_volume_header, sxvi_partimage_main_header, sxvi_partimage_local_header,
+        sxvi_partimage_header_checksum, sxvi_partimage_extension_header, sxvi_partimage_data_check, sxvi_partimage_tail], sx_volumeimages_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_volumeimages_build, false);
+}

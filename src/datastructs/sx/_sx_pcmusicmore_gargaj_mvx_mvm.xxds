@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/gargaj_mvx_mvm/xx_gargaj_mvx_mvm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcmore_mvx_header_fields = layout([chars("signature", 4, SIGNATURE), u8("tempo_bpm"), u8("ticks_per_beat"),
+    u32("song_row_count", COUNT), u8("machine_count", COUNT)]);
+var sxpcmore_mvx_header = sxLayout(0x60990019, "mvx_header", LE, sxpcmore_mvx_header_fields);
+var sxpcmore_mvx_machine_id_fields = layout([u8("machine_id", ID)]);
+var sxpcmore_mvx_machine_id = sxLayout(0x6099001A, "mvx_machine_id", LE, sxpcmore_mvx_machine_id_fields);
+var sxpcmore_mvx_machine_order_fields = layout([u8("machine_index")]);
+var sxpcmore_mvx_machine_order = sxLayout(0x6099001B, "mvx_machine_order", LE, sxpcmore_mvx_machine_order_fields);
+var sxpcmore_mvx_connection_count_fields = layout([u8("connection_count", COUNT)]);
+var sxpcmore_mvx_connection_count = sxLayout(0x6099001C, "mvx_connection_count", LE, sxpcmore_mvx_connection_count_fields);
+function sxpcmore_opt(c, l, p, count) {
+    var z = sxpcmore_width(l);
+    return (!count || !z || count > Math.floor(SX_U64_MAX / z) || !sxpcmore_span(c, p, count * z) ? 1 : (sxpcmore_put(c, l, p, count) ? 1 : 0)) !== 0;
+}
+function sxpcmore_mvx(c) {
+    var h = [];
+    if (!sxpcmore_read(c, 0, h, 11) || sxMemcmp(h, "MVM\x00", 4)) {
+        return false;
+    }
+    if (!sxpcmore_put(c, sxpcmore_mvx_header, 0, 1)) {
+        return false;
+    }
+    var p = 11;
+    var n = h[10];
+    if (!sxpcmore_span(c, p, 2 * n + 1)) {
+        return true;
+    }
+    if (!sxpcmore_put(c, sxpcmore_mvx_machine_id, p, n) || !sxpcmore_put(c, sxpcmore_mvx_machine_order, p + n, n) || !sxpcmore_put(c, sxpcmore_mvx_connection_count, p + 2 * n, 1)) {
+        return false;
+    }
+    var count = [0];
+    if (!sxpcmore_u8(c, p + 2 * n, count)) {
+        return false;
+    }
+    p += 2 * n + 1;
+    return sxpcmore_opt(c, sxpcmore_mvx_connection, p, count[0]);
+}
+function sx_gargaj_mvx_mvm_build(c) {
+    var ok = false;
+    ok = sxpcmore_mvx(c);
+    return !!(c.count && sxpcmore_finish(c));
+}

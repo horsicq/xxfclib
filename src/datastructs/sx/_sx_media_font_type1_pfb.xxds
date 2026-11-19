@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_type1_pfb/xx_font_type1_pfb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_pfb_segment_fields = layout([u8("marker", SIGNATURE), u8("type", ID), u32("length", SIZE)]);
+var sxm_pfb_segment = sxLayout(0x60060026, "pfb_segment", LE, sxm_pfb_segment_fields);
+var sxm_pfb_end_fields = layout([u8("marker", SIGNATURE), u8("type", ID)]);
+var sxm_pfb_end = sxLayout(0x60060027, "pfb_end", LE, sxm_pfb_end_fields);
+function sxm_pfb(c) {
+    var at = 0;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 2) || h[0] !== 128) {
+            return false;
+        }
+        if (h[1] === 3) {
+            return sx_add(c, sxm_pfb_end, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2) && sxm_tail(c, at + 2);
+        }
+        if (h[1] !== 1 && h[1] !== 2 || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 6)) {
+            return false;
+        }
+        n = sxGetU32(h, 6, 2, false);
+        if (!n || !sx_add(c, sxm_pfb_segment, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 6) || !sxm_raw(c, at + 6, n)) {
+            return false;
+        }
+        at += 6 + n;
+    }
+    return false;
+}
+function sx_font_type1_pfb_build(c) {
+    return sxm_pfb(c);
+}

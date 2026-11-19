@@ -1,0 +1,132 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/gimp_gih/xx_gimp_gih_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_placement_fields = layout([field("placement", "char", 0, STRING)]);
+var sxti_placement = sxLayout(0x60410009, "textimage_placement", LE, sxti_placement_fields);
+var sxti_selection_fields = layout([field("selection", "char", 0, STRING)]);
+var sxti_selection = sxLayout(0x6041000A, "textimage_selection", LE, sxti_selection_fields);
+var sxti_brush_name_fields = layout([field("brush_name", "utf8", 0, STRING)]);
+var sxti_brush_name = sxLayout(0x60410013, "textimage_brush_name", LE, sxti_brush_name_fields);
+var sxti_brush_count_fields = layout([field("brush_count", "ascii_signed", 0, COUNT)]);
+var sxti_brush_count = sxLayout(0x6041001C, "textimage_brush_count", LE, sxti_brush_count_fields);
+var sxti_ncells_fields = layout([field("ncells", "ascii_signed", 0, COUNT)]);
+var sxti_ncells = sxLayout(0x6041001D, "textimage_ncells", LE, sxti_ncells_fields);
+var sxti_cellwidth_fields = layout([field("cellwidth", "ascii_signed", 0)]);
+var sxti_cellwidth = sxLayout(0x6041001E, "textimage_cellwidth", LE, sxti_cellwidth_fields);
+var sxti_cellheight_fields = layout([field("cellheight", "ascii_signed", 0)]);
+var sxti_cellheight = sxLayout(0x6041001F, "textimage_cellheight", LE, sxti_cellheight_fields);
+var sxti_step_fields = layout([field("step", "ascii_signed", 0)]);
+var sxti_step = sxLayout(0x60410020, "textimage_step", LE, sxti_step_fields);
+var sxti_dim_fields = layout([field("dim", "ascii_signed", 0)]);
+var sxti_dim = sxLayout(0x60410021, "textimage_dim", LE, sxti_dim_fields);
+var sxti_cols_fields = layout([field("cols", "ascii_signed", 0)]);
+var sxti_cols = sxLayout(0x60410022, "textimage_cols", LE, sxti_cols_fields);
+var sxti_rows_fields = layout([field("rows", "ascii_signed", 0)]);
+var sxti_rows = sxLayout(0x60410023, "textimage_rows", LE, sxti_rows_fields);
+var sxti_rank0_fields = layout([field("rank0", "ascii_signed", 0)]);
+var sxti_rank0 = sxLayout(0x60410024, "textimage_rank0", LE, sxti_rank0_fields);
+var sxti_gih_brush_header_fields = layout([u32("header_size", SIZE), u32("version"), u32("width"), u32("height"),
+    u32("bytes_per_pixel"), chars("magic", 4, SIGNATURE), u32("spacing")]);
+var sxti_gih_brush_header = sxLayout(0x6041005F, "textimage_gih_brush_header", BE, sxti_gih_brush_header_fields);
+function sxti_gih(q) {
+    var a = [0];
+    var end = [0];
+    if (!sxti_line(q, a, end, false)) {
+        return false;
+    }
+    {
+        if (!sxti_emit(q, sxti_name, a[0], end[0] - a[0])) {
+            return false;
+        }
+    }
+    if (!sxti_line(q, a, end, false)) {
+        return false;
+    }
+    var next = q.p;
+    q.p = a[0];
+    var count = [0];
+    {
+        if (!sxti_value(q, sxti_brush_count, end[0], count)) {
+            return false;
+        }
+    }
+    if (!count[0] || count[0] > 4096) {
+        return false;
+    }
+    while (q.p < end[0]) {
+        var k = [0];
+        var z = [0];
+        if (!sxti_token(q, end[0], k, z, false)) {
+            break;
+        }
+        var colon = 0;
+        while (colon < z[0] && q.b[k[0] + colon] !== 58 /*:*/) {
+            colon++;
+        }
+        if (colon === z[0]) {
+            return false;
+        }
+        var l = null;
+        if (sxti_eq(q, k[0], colon, "ncells")) {
+            l = sxti_ncells;
+        } else if (sxti_eq(q, k[0], colon, "cellwidth")) {
+            l = sxti_cellwidth;
+        } else if (sxti_eq(q, k[0], colon, "cellheight")) {
+            l = sxti_cellheight;
+        } else if (sxti_eq(q, k[0], colon, "step")) {
+            l = sxti_step;
+        } else if (sxti_eq(q, k[0], colon, "dim")) {
+            l = sxti_dim;
+        } else if (sxti_eq(q, k[0], colon, "cols")) {
+            l = sxti_cols;
+        } else if (sxti_eq(q, k[0], colon, "rows")) {
+            l = sxti_rows;
+        } else if (sxti_eq(q, k[0], colon, "rank0")) {
+            l = sxti_rank0;
+        } else if (sxti_eq(q, k[0], colon, "placement")) {
+            l = sxti_placement;
+        } else if (sxti_eq(q, k[0], colon, "sel0")) {
+            l = sxti_selection;
+        }
+        if (l === null || !sxti_emit(q, l, k[0] + colon + 1, z[0] - colon - 1)) {
+            return false;
+        }
+    }
+    q.p = next;
+    for (var i = 0; i < count[0]; i++) {
+        if (q.n - q.p < 28) {
+            return false;
+        }
+        var b = q.b, b_o = q.p;
+        var hs = sxGetU32At(b, b_o, 28, 0, true);
+        var w = sxGetU32At(b, b_o, 28, 8, true);
+        var h = sxGetU32At(b, b_o, 28, 12, true);
+        var channels = sxGetU32At(b, b_o, 28, 16, true);
+        if (hs <= 28 || hs > 4124 || hs > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p) || !w || !h || w > 32768 || h > 32768 || channels !== 1 && channels !== 4 || w * h * channels > sxU64((q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p) - hs)) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_gih_brush_header, q.p, 28)) {
+                return false;
+            }
+        }
+        if (hs > 29) {
+            {
+                if (!sxti_emit(q, sxti_brush_name, q.p + 28, (hs >= SX_I64_MAX ? hs - SX_U64_MAX : hs) - 29)) {
+                    return false;
+                }
+            }
+        }
+        q.p += (hs + w * h * channels >= SX_I64_MAX ? hs + w * h * channels - SX_U64_MAX : hs + w * h * channels);
+        if (q.c.count >= 32000) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_gimp_gih_build(q) {
+    return sxti_gih(q);
+}

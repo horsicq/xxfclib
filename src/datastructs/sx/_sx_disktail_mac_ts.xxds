@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/mac_ts/xx_mac_ts_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_mac_ts_driver_descriptor_fields = layout([chars("signature", 2, SIGNATURE), u16("block_size", SIZE),
+    u32("block_count", COUNT), u16("device_type", ID), u16("device_id", ID), u32("driver_data"), u16("driver_count", COUNT),
+    u32("driver_start_block"), u16("driver_size_blocks", COUNT), u16("driver_os_type", ID)]);
+var sxdt_mac_ts_driver_descriptor = sxLayout(0x607A0002, "mac_ts_driver_descriptor", BE, sxdt_mac_ts_driver_descriptor_fields);
+var sxdt_mac_ts_map_header_fields = layout([chars("signature", 2, SIGNATURE)]);
+var sxdt_mac_ts_map_header = sxLayout(0x607A0003, "mac_ts_map_header", BE, sxdt_mac_ts_map_header_fields);
+var sxdt_mac_ts_partition_fields = layout([u32("start_block"), u32("block_count", COUNT), chars("filesystem_id", 4, ID)]);
+var sxdt_mac_ts_partition = sxLayout(0x607A0004, "mac_ts_partition", BE, sxdt_mac_ts_partition_fields);
+function sxdt_ts(c) {
+    var h = [];
+    if (!sxdt_read(c, 0, h, 0, 26) || sxdt16(h, 0, 1) !== 0x4552 || sxdt16(h, 2, 1) !== 512 || !sxdt_put(c, sxdt_mac_ts_driver_descriptor, 0, 1) || !sxdt_read(c, 512, h, 0, 2) || sxdt16(h, 0, 1) !== 0x5453 || !sxdt_put(c, sxdt_mac_ts_map_header, 512, 1)) {
+        return false;
+    }
+    for (var i = 0; i < 42; i++) {
+        var p = (514 + ((i * 12) >>> 0)) >>> 0;
+        if (!sxdt_read(c, p, h, 0, 12) || !sxdt_put(c, sxdt_mac_ts_partition, p, 1)) {
+            return false;
+        }
+        if (!sxdt32(h, 0, 1)) {
+            break;
+        }
+    }
+    return true;
+}
+function sxdt_ts_children(c) {
+    var h = [];
+    if (!sxdt_ts(c)) {
+        return false;
+    }
+    for (var i = 0; i < 42; i++) {
+        if (!sxdt_read(c, (514 + ((i * 12) >>> 0)) >>> 0, h, 0, 12)) {
+            return false;
+        }
+        var p = sxdt32(h, 0, 1) * 512;
+        var n = sxdt32(h, 4, 1) * 512;
+        if (!p) {
+            break;
+        }
+        if (n && sxdt_span(c, p, n) && !sxdt_child(c, p, n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_mac_ts_build(c) {
+    var ok = false;
+    ok = sxdt_ts_children(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

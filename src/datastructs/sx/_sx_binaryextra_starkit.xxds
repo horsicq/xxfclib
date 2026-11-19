@@ -1,0 +1,224 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/starkit/xx_starkit_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_starkit_header_fields = layout([bytes("magic", 4, SIGNATURE), u32("file_size", SIZE)]);
+var sxbx_starkit_header = sxLayout(0x603000B6, "starkit_header", BE, sxbx_starkit_header_fields);
+var sxbx_starkit_commit_fields = layout([u32("commit_tag", FLAGS), u32("footer_offset", OFFSET),
+    u32("root_size_and_tag", FLAGS), u32("root_offset", OFFSET)]);
+var sxbx_starkit_commit = sxLayout(0x603000B7, "starkit_commit", BE, sxbx_starkit_commit_fields);
+var sxbx_starkit_root_prefix_fields = layout([u8("root_tag", FLAGS), u8("schema_size_and_tag", FLAGS)]);
+var sxbx_starkit_root_prefix = sxLayout(0x603000B8, "starkit_root_prefix", LE, sxbx_starkit_root_prefix_fields);
+var sxbx_starkit_row_count1_fields = layout([field("row_count", "metakit_msb128[1]", 1, COUNT)]);
+var sxbx_starkit_row_count1 = sxLayout(0x603000B9, "starkit_row_count1", LE, sxbx_starkit_row_count1_fields);
+var sxbx_starkit_row_count2_fields = layout([field("row_count", "metakit_msb128[2]", 2, COUNT)]);
+var sxbx_starkit_row_count2 = sxLayout(0x603000BA, "starkit_row_count2", LE, sxbx_starkit_row_count2_fields);
+var sxbx_starkit_row_count3_fields = layout([field("row_count", "metakit_msb128[3]", 3, COUNT)]);
+var sxbx_starkit_row_count3 = sxLayout(0x603000BB, "starkit_row_count3", LE, sxbx_starkit_row_count3_fields);
+var sxbx_starkit_row_count4_fields = layout([field("row_count", "metakit_msb128[4]", 4, COUNT)]);
+var sxbx_starkit_row_count4 = sxLayout(0x603000BC, "starkit_row_count4", LE, sxbx_starkit_row_count4_fields);
+var sxbx_starkit_row_count5_fields = layout([field("row_count", "metakit_msb128[5]", 5, COUNT)]);
+var sxbx_starkit_row_count5 = sxLayout(0x603000BD, "starkit_row_count5", LE, sxbx_starkit_row_count5_fields);
+var sxbx_starkit_row_count6_fields = layout([field("row_count", "metakit_msb128[6]", 6, COUNT)]);
+var sxbx_starkit_row_count6 = sxLayout(0x603000BE, "starkit_row_count6", LE, sxbx_starkit_row_count6_fields);
+var sxbx_starkit_row_count7_fields = layout([field("row_count", "metakit_msb128[7]", 7, COUNT)]);
+var sxbx_starkit_row_count7 = sxLayout(0x603000BF, "starkit_row_count7", LE, sxbx_starkit_row_count7_fields);
+var sxbx_starkit_row_count8_fields = layout([field("row_count", "metakit_msb128[8]", 8, COUNT)]);
+var sxbx_starkit_row_count8 = sxLayout(0x603000C0, "starkit_row_count8", LE, sxbx_starkit_row_count8_fields);
+var sxbx_starkit_row_count9_fields = layout([field("row_count", "metakit_msb128[9]", 9, COUNT)]);
+var sxbx_starkit_row_count9 = sxLayout(0x603000C1, "starkit_row_count9", LE, sxbx_starkit_row_count9_fields);
+var sxbx_starkit_column_size1_fields = layout([field("column_size", "metakit_msb128[1]", 1, SIZE)]);
+var sxbx_starkit_column_size1 = sxLayout(0x603000C2, "starkit_column_size1", LE, sxbx_starkit_column_size1_fields);
+var sxbx_starkit_column_size2_fields = layout([field("column_size", "metakit_msb128[2]", 2, SIZE)]);
+var sxbx_starkit_column_size2 = sxLayout(0x603000C3, "starkit_column_size2", LE, sxbx_starkit_column_size2_fields);
+var sxbx_starkit_column_size3_fields = layout([field("column_size", "metakit_msb128[3]", 3, SIZE)]);
+var sxbx_starkit_column_size3 = sxLayout(0x603000C4, "starkit_column_size3", LE, sxbx_starkit_column_size3_fields);
+var sxbx_starkit_column_size4_fields = layout([field("column_size", "metakit_msb128[4]", 4, SIZE)]);
+var sxbx_starkit_column_size4 = sxLayout(0x603000C5, "starkit_column_size4", LE, sxbx_starkit_column_size4_fields);
+var sxbx_starkit_column_size5_fields = layout([field("column_size", "metakit_msb128[5]", 5, SIZE)]);
+var sxbx_starkit_column_size5 = sxLayout(0x603000C6, "starkit_column_size5", LE, sxbx_starkit_column_size5_fields);
+var sxbx_starkit_column_size6_fields = layout([field("column_size", "metakit_msb128[6]", 6, SIZE)]);
+var sxbx_starkit_column_size6 = sxLayout(0x603000C7, "starkit_column_size6", LE, sxbx_starkit_column_size6_fields);
+var sxbx_starkit_column_size7_fields = layout([field("column_size", "metakit_msb128[7]", 7, SIZE)]);
+var sxbx_starkit_column_size7 = sxLayout(0x603000C8, "starkit_column_size7", LE, sxbx_starkit_column_size7_fields);
+var sxbx_starkit_column_size8_fields = layout([field("column_size", "metakit_msb128[8]", 8, SIZE)]);
+var sxbx_starkit_column_size8 = sxLayout(0x603000C9, "starkit_column_size8", LE, sxbx_starkit_column_size8_fields);
+var sxbx_starkit_column_size9_fields = layout([field("column_size", "metakit_msb128[9]", 9, SIZE)]);
+var sxbx_starkit_column_size9 = sxLayout(0x603000CA, "starkit_column_size9", LE, sxbx_starkit_column_size9_fields);
+var sxbx_starkit_column_offset1_fields = layout([field("column_offset", "metakit_msb128[1]", 1, OFFSET)]);
+var sxbx_starkit_column_offset1 = sxLayout(0x603000CB, "starkit_column_offset1", LE, sxbx_starkit_column_offset1_fields);
+var sxbx_starkit_column_offset2_fields = layout([field("column_offset", "metakit_msb128[2]", 2, OFFSET)]);
+var sxbx_starkit_column_offset2 = sxLayout(0x603000CC, "starkit_column_offset2", LE, sxbx_starkit_column_offset2_fields);
+var sxbx_starkit_column_offset3_fields = layout([field("column_offset", "metakit_msb128[3]", 3, OFFSET)]);
+var sxbx_starkit_column_offset3 = sxLayout(0x603000CD, "starkit_column_offset3", LE, sxbx_starkit_column_offset3_fields);
+var sxbx_starkit_column_offset4_fields = layout([field("column_offset", "metakit_msb128[4]", 4, OFFSET)]);
+var sxbx_starkit_column_offset4 = sxLayout(0x603000CE, "starkit_column_offset4", LE, sxbx_starkit_column_offset4_fields);
+var sxbx_starkit_column_offset5_fields = layout([field("column_offset", "metakit_msb128[5]", 5, OFFSET)]);
+var sxbx_starkit_column_offset5 = sxLayout(0x603000CF, "starkit_column_offset5", LE, sxbx_starkit_column_offset5_fields);
+var sxbx_starkit_column_offset6_fields = layout([field("column_offset", "metakit_msb128[6]", 6, OFFSET)]);
+var sxbx_starkit_column_offset6 = sxLayout(0x603000D0, "starkit_column_offset6", LE, sxbx_starkit_column_offset6_fields);
+var sxbx_starkit_column_offset7_fields = layout([field("column_offset", "metakit_msb128[7]", 7, OFFSET)]);
+var sxbx_starkit_column_offset7 = sxLayout(0x603000D1, "starkit_column_offset7", LE, sxbx_starkit_column_offset7_fields);
+var sxbx_starkit_column_offset8_fields = layout([field("column_offset", "metakit_msb128[8]", 8, OFFSET)]);
+var sxbx_starkit_column_offset8 = sxLayout(0x603000D2, "starkit_column_offset8", LE, sxbx_starkit_column_offset8_fields);
+var sxbx_starkit_column_offset9_fields = layout([field("column_offset", "metakit_msb128[9]", 9, OFFSET)]);
+var sxbx_starkit_column_offset9 = sxLayout(0x603000D3, "starkit_column_offset9", LE, sxbx_starkit_column_offset9_fields);
+var sxbx_starkit_memo_row_delta1_fields = layout([field("memo_row_delta", "metakit_msb128[1]", 1)]);
+var sxbx_starkit_memo_row_delta1 = sxLayout(0x603000D4, "starkit_memo_row_delta1", LE, sxbx_starkit_memo_row_delta1_fields);
+var sxbx_starkit_memo_row_delta2_fields = layout([field("memo_row_delta", "metakit_msb128[2]", 2)]);
+var sxbx_starkit_memo_row_delta2 = sxLayout(0x603000D5, "starkit_memo_row_delta2", LE, sxbx_starkit_memo_row_delta2_fields);
+var sxbx_starkit_memo_row_delta3_fields = layout([field("memo_row_delta", "metakit_msb128[3]", 3)]);
+var sxbx_starkit_memo_row_delta3 = sxLayout(0x603000D6, "starkit_memo_row_delta3", LE, sxbx_starkit_memo_row_delta3_fields);
+var sxbx_starkit_memo_row_delta4_fields = layout([field("memo_row_delta", "metakit_msb128[4]", 4)]);
+var sxbx_starkit_memo_row_delta4 = sxLayout(0x603000D7, "starkit_memo_row_delta4", LE, sxbx_starkit_memo_row_delta4_fields);
+var sxbx_starkit_memo_row_delta5_fields = layout([field("memo_row_delta", "metakit_msb128[5]", 5)]);
+var sxbx_starkit_memo_row_delta5 = sxLayout(0x603000D8, "starkit_memo_row_delta5", LE, sxbx_starkit_memo_row_delta5_fields);
+var sxbx_starkit_memo_row_delta6_fields = layout([field("memo_row_delta", "metakit_msb128[6]", 6)]);
+var sxbx_starkit_memo_row_delta6 = sxLayout(0x603000D9, "starkit_memo_row_delta6", LE, sxbx_starkit_memo_row_delta6_fields);
+var sxbx_starkit_memo_row_delta7_fields = layout([field("memo_row_delta", "metakit_msb128[7]", 7)]);
+var sxbx_starkit_memo_row_delta7 = sxLayout(0x603000DA, "starkit_memo_row_delta7", LE, sxbx_starkit_memo_row_delta7_fields);
+var sxbx_starkit_memo_row_delta8_fields = layout([field("memo_row_delta", "metakit_msb128[8]", 8)]);
+var sxbx_starkit_memo_row_delta8 = sxLayout(0x603000DB, "starkit_memo_row_delta8", LE, sxbx_starkit_memo_row_delta8_fields);
+var sxbx_starkit_memo_row_delta9_fields = layout([field("memo_row_delta", "metakit_msb128[9]", 9)]);
+var sxbx_starkit_memo_row_delta9 = sxLayout(0x603000DC, "starkit_memo_row_delta9", LE, sxbx_starkit_memo_row_delta9_fields);
+var sxbx_starkit_view_tag1_fields = layout([field("view_tag", "metakit_msb128[1]", 1)]);
+var sxbx_starkit_view_tag1 = sxLayout(0x603000DD, "starkit_view_tag1", LE, sxbx_starkit_view_tag1_fields);
+var sxbx_starkit_view_tag2_fields = layout([field("view_tag", "metakit_msb128[2]", 2)]);
+var sxbx_starkit_view_tag2 = sxLayout(0x603000DE, "starkit_view_tag2", LE, sxbx_starkit_view_tag2_fields);
+var sxbx_starkit_view_tag3_fields = layout([field("view_tag", "metakit_msb128[3]", 3)]);
+var sxbx_starkit_view_tag3 = sxLayout(0x603000DF, "starkit_view_tag3", LE, sxbx_starkit_view_tag3_fields);
+var sxbx_starkit_view_tag4_fields = layout([field("view_tag", "metakit_msb128[4]", 4)]);
+var sxbx_starkit_view_tag4 = sxLayout(0x603000E0, "starkit_view_tag4", LE, sxbx_starkit_view_tag4_fields);
+var sxbx_starkit_view_tag5_fields = layout([field("view_tag", "metakit_msb128[5]", 5)]);
+var sxbx_starkit_view_tag5 = sxLayout(0x603000E1, "starkit_view_tag5", LE, sxbx_starkit_view_tag5_fields);
+var sxbx_starkit_view_tag6_fields = layout([field("view_tag", "metakit_msb128[6]", 6)]);
+var sxbx_starkit_view_tag6 = sxLayout(0x603000E2, "starkit_view_tag6", LE, sxbx_starkit_view_tag6_fields);
+var sxbx_starkit_view_tag7_fields = layout([field("view_tag", "metakit_msb128[7]", 7)]);
+var sxbx_starkit_view_tag7 = sxLayout(0x603000E3, "starkit_view_tag7", LE, sxbx_starkit_view_tag7_fields);
+var sxbx_starkit_view_tag8_fields = layout([field("view_tag", "metakit_msb128[8]", 8)]);
+var sxbx_starkit_view_tag8 = sxLayout(0x603000E4, "starkit_view_tag8", LE, sxbx_starkit_view_tag8_fields);
+var sxbx_starkit_view_tag9_fields = layout([field("view_tag", "metakit_msb128[9]", 9)]);
+var sxbx_starkit_view_tag9 = sxLayout(0x603000E5, "starkit_view_tag9", LE, sxbx_starkit_view_tag9_fields);
+var sxbx_starkit_row_count = [sxbx_starkit_row_count1, sxbx_starkit_row_count2, sxbx_starkit_row_count3,
+    sxbx_starkit_row_count4, sxbx_starkit_row_count5, sxbx_starkit_row_count6, sxbx_starkit_row_count7, sxbx_starkit_row_count8,
+    sxbx_starkit_row_count9];
+var sxbx_starkit_column_size = [sxbx_starkit_column_size1, sxbx_starkit_column_size2, sxbx_starkit_column_size3,
+    sxbx_starkit_column_size4, sxbx_starkit_column_size5, sxbx_starkit_column_size6, sxbx_starkit_column_size7,
+    sxbx_starkit_column_size8, sxbx_starkit_column_size9];
+var sxbx_starkit_column_offset = [sxbx_starkit_column_offset1, sxbx_starkit_column_offset2, sxbx_starkit_column_offset3,
+    sxbx_starkit_column_offset4, sxbx_starkit_column_offset5, sxbx_starkit_column_offset6, sxbx_starkit_column_offset7,
+    sxbx_starkit_column_offset8, sxbx_starkit_column_offset9];
+var sxbx_starkit_memo_row_delta = [sxbx_starkit_memo_row_delta1, sxbx_starkit_memo_row_delta2, sxbx_starkit_memo_row_delta3,
+    sxbx_starkit_memo_row_delta4, sxbx_starkit_memo_row_delta5, sxbx_starkit_memo_row_delta6, sxbx_starkit_memo_row_delta7,
+    sxbx_starkit_memo_row_delta8, sxbx_starkit_memo_row_delta9];
+var sxbx_starkit_view_tag = [sxbx_starkit_view_tag1, sxbx_starkit_view_tag2, sxbx_starkit_view_tag3, sxbx_starkit_view_tag4,
+    sxbx_starkit_view_tag5, sxbx_starkit_view_tag6, sxbx_starkit_view_tag7, sxbx_starkit_view_tag8, sxbx_starkit_view_tag9];
+function sxbx_mkvar(c, p, end, ls, v) {
+    var start = p[0];
+    v[0] = 0;
+    for (var i = 0; i < 9; i++) {
+        var b = [0];
+        if (p[0] >= end || !sxbx_word(c, p[0]++, 1, false, b)) {
+            return false;
+        }
+        v[0] = sxOr64(sxShl64(v[0], 7), sxAnd64(b[0], 127));
+        if (sxAnd64(b[0], 128)) {
+            return sxbx_add(c, ls[i], start);
+        }
+    }
+    return false;
+}
+function sxbx_mkcol(c, base, p, end, out) {
+    var sxb1, sxr2, sxb3, sxr4;
+    out.offset = 0;
+    if (!(sxr2 = sxbx_mkvar(c, p, end, sxbx_starkit_column_size, (sxb1 = [out.size])), out.size = sxb1[0], sxr2)) {
+        return false;
+    }
+    if (out.size && (!(sxr4 = sxbx_mkvar(c, p, end, sxbx_starkit_column_offset, (sxb3 = [out.offset])), out.offset = sxb3[0], sxr4) || out.offset > SX_U64_MAX - base || !sxbx_span(c, base + out.offset, out.size))) {
+        return false;
+    }
+    out.offset += base;
+    return true;
+}
+function sxbx_mkprop(c, base, p, end, out) {
+    sxFillN(out, 0, 3, sxNew_sxbx_col);
+    return sxbx_mkcol(c, base, p, end, out[0]) && (!out[0].size || sxbx_mkcol(c, base, p, end, out[1])) && sxbx_mkcol(c, base, p, end, out[2]);
+}
+function sxbx_starkit(c) {
+    var base = 0;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var size = [0];
+    var root = [0];
+    var footer = [0];
+    var b = [];
+    if (end < 24 || !sxbx_read(c, 0, b, 8)) {
+        return false;
+    }
+    if (sxMemcmp(b, "JL\x1A\x00", 4)) {
+        if (b[0] !== 77 /*M*/ || b[1] !== 90 /*Z*/ || !sxbx_word(c, sxU64(end - 12), 4, true, footer) || footer[0] + 16 > end) {
+            return false;
+        }
+        base = sxU64(sxU64(end - footer[0]) - 16);
+        if (!sxbx_read(c, base, b, 8) || sxMemcmp(b, "JL\x1A\x00", 4)) {
+            return false;
+        }
+    }
+    if (!sxbx_add(c, sxbx_starkit_header, base) || !sxbx_add(c, sxbx_starkit_commit, sxU64(end - 16)) || !sxbx_word(c, sxU64(end - 8), 4, true, size) || !sxbx_word(c, sxU64(end - 4), 4, true, root)) {
+        return false;
+    }
+    size[0] = sxAnd64(size[0], 0x7FFFFFFF);
+    root[0] += base;
+    if (size[0] < 3 || size[0] > 4096 || !sxbx_span(c, root[0], size[0]) || !sxbx_read(c, root[0], b, 2) || b[0] !== 128 || !(b[1] & 128) || !sxbx_add(c, sxbx_starkit_root_prefix, root[0])) {
+        return true;
+    }
+    var p = [root[0] + 2 + (b[1] & 127)];
+    var stop = root[0] + size[0];
+    var rows = [0];
+    var dirs = sxNew_sxbx_col();
+    if (!sxbx_mkvar(c, p, stop, sxbx_starkit_row_count, rows) || !sxbx_mkcol(c, base, p, stop, dirs) || !dirs.size) {
+        return true;
+    }
+    p[0] = dirs.offset;
+    stop = p[0] + dirs.size;
+    var name = sxAllocN(3, sxNew_sxbx_col);
+    var parents = sxNew_sxbx_col();
+    var views = sxNew_sxbx_col();
+    if (!sxbx_mkvar(c, p, stop, sxbx_starkit_view_tag, rows) || !sxbx_mkvar(c, p, stop, sxbx_starkit_row_count, rows) || !rows[0] || rows[0] > 20000 || !sxbx_mkprop(c, base, p, stop, name) || !sxbx_mkcol(c, base, p, stop, parents) || !sxbx_mkcol(c, base, p, stop, views)) {
+        return true;
+    }
+    p[0] = views.offset;
+    stop = p[0] + views.size;
+    for (var i = 0; i < rows[0] && c.count < 20000; i++) {
+        var n = [0];
+        var keep = c.count;
+        var filename = sxAllocN(3, sxNew_sxbx_col);
+        var bytes = sxNew_sxbx_col();
+        var date = sxNew_sxbx_col();
+        var contents = sxAllocN(3, sxNew_sxbx_col);
+        if (!sxbx_mkvar(c, p, stop, sxbx_starkit_view_tag, n) || !sxbx_mkvar(c, p, stop, sxbx_starkit_row_count, n)) {
+            c.count = keep;
+            break;
+        }
+        if (!n[0]) {
+            continue;
+        }
+        if (n[0] > 20000 || !sxbx_mkprop(c, base, p, stop, filename) || !sxbx_mkcol(c, base, p, stop, bytes) || !sxbx_mkcol(c, base, p, stop, date) || !sxbx_mkprop(c, base, p, stop, contents)) {
+            c.count = keep;
+            break;
+        }
+        var q = [contents[2].offset];
+        var mend = q[0] + contents[2].size;
+        for (var memo = 0; q[0] < mend && memo < 20000 && c.count < 20000; memo++) {
+            var v = [0];
+            if (!sxbx_mkvar(c, q, mend, sxbx_starkit_memo_row_delta, v) || !sxbx_mkvar(c, q, mend, sxbx_starkit_column_size, v) || !sxbx_mkvar(c, q, mend, sxbx_starkit_column_offset, v)) {
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sx_starkit_build(c) {
+    return sxbx_starkit(c);
+}

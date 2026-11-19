@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/ogg/xx_ogg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_ogg_lacing_value_fields = layout([u8("segment_size", SIZE)]);
+var sx_c_ogg_lacing_value = sxLayout(0x6002001D, "ogg_lacing_value", LE, sx_c_ogg_lacing_value_fields);
+function sx_c_ogg(c) {
+    var at = 0;
+    while (at < c.size) {
+        var h = [];
+        var lacing = [];
+        var n = 0;
+        if (!sx_read(c, at, h, 27) || sxMemcmp(h, "OggS", 4) || h[4] || h[5] & 0xFFFFFFF8 || !sx_read(c, at + 27, lacing, h[26])) {
+            return false;
+        }
+        for (var i = 0; i < h[26]; ++i) {
+            n = (n + lacing[i]) >>> 0;
+        }
+        if (!sx_c_bounds(c, at + 27 + h[26], n) || !sx_add(c, sx_c_ogg_page_header, at, 27) || !sx_table(c, sx_c_ogg_lacing_value, at + 27, 1, h[26]) || !sx_raw(c, at + 27 + h[26], n)) {
+            return false;
+        }
+        at += (27 + h[26] + n) >>> 0;
+    }
+    return at > 0;
+}
+function sx_ogg_build(c) {
+    return sx_c_ogg(c);
+}

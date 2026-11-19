@@ -1,0 +1,170 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/redis_rdb/xx_redis_rdb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_redis_header_fields = layout([chars("magic", 5, SIGNATURE), chars("version", 4, ID)]);
+var sxd_redis_header = sxLayout(0x601A0028, "redis_header", LE, sxd_redis_header_fields);
+var sxd_redis_expire_milliseconds_fields = layout([u8("opcode", ID), i64("expire_time_ms", TIMESTAMP)]);
+var sxd_redis_expire_milliseconds = sxLayout(0x601A002B, "redis_expire_milliseconds", LE, sxd_redis_expire_milliseconds_fields);
+var sxd_redis_expire_seconds_fields = layout([u8("opcode", ID), i32("expire_time_seconds", TIMESTAMP)]);
+var sxd_redis_expire_seconds = sxLayout(0x601A002C, "redis_expire_seconds", LE, sxd_redis_expire_seconds_fields);
+var sxd_redis_length_6_fields = layout([u8("encoding_and_length")]);
+var sxd_redis_length_6 = sxLayout(0x601A002E, "redis_length_6", LE, sxd_redis_length_6_fields);
+var sxd_redis_length_14_fields = layout([u8("encoding_and_length_high"), u8("length_low")]);
+var sxd_redis_length_14 = sxLayout(0x601A002F, "redis_length_14", LE, sxd_redis_length_14_fields);
+var sxd_redis_length_32_fields = layout([u8("encoding"), u32("encoded_length")]);
+var sxd_redis_length_32 = sxLayout(0x601A0030, "redis_length_32", BE, sxd_redis_length_32_fields);
+var sxd_redis_length_64_fields = layout([u8("encoding"), u64("encoded_length")]);
+var sxd_redis_length_64 = sxLayout(0x601A0031, "redis_length_64", BE, sxd_redis_length_64_fields);
+var sxd_redis_encoded_string_fields = layout([u8("encoding_and_integer_type", ID)]);
+var sxd_redis_encoded_string = sxLayout(0x601A0032, "redis_encoded_string", LE, sxd_redis_encoded_string_fields);
+var sxd_redis_integer_1_fields = layout([i8("signed_integer")]);
+var sxd_redis_integer_1 = sxLayout(0x601A0033, "redis_integer_1", LE, sxd_redis_integer_1_fields);
+var sxd_redis_integer_2_fields = layout([i16("signed_integer")]);
+var sxd_redis_integer_2 = sxLayout(0x601A0034, "redis_integer_2", LE, sxd_redis_integer_2_fields);
+var sxd_redis_integer_4_fields = layout([i32("signed_integer")]);
+var sxd_redis_integer_4 = sxLayout(0x601A0035, "redis_integer_4", LE, sxd_redis_integer_4_fields);
+var sxd_redis_score_length_fields = layout([u8("score_length_or_infinity")]);
+var sxd_redis_score_length = sxLayout(0x601A0036, "redis_score_length", LE, sxd_redis_score_length_fields);
+var sxd_redis_score_binary_fields = layout([u64("ieee754_binary64_bits")]);
+var sxd_redis_score_binary = sxLayout(0x601A0037, "redis_score_binary", LE, sxd_redis_score_binary_fields);
+function sxd_redis_len(c, b, at, v, encoded) {
+    if (!sxd_can(c, at[0], 1)) {
+        return false;
+    }
+    var start = at[0];
+    var x = b[at[0]++];
+    encoded[0] = x >= 192;
+    v[0] = x & 63;
+    if (encoded[0]) {
+        return v[0] <= 3 && sxd_add(c, sxd_redis_encoded_string, start, 1);
+    }
+    if (x < 64) {
+        return sxd_add(c, sxd_redis_length_6, start, 1);
+    }
+    if (x < 128) {
+        if (!sxd_can(c, at[0], 1)) {
+            return false;
+        }
+        v[0] = sxOr64(sxShl64(v[0], 8), b[at[0]++]);
+        return sxd_add(c, sxd_redis_length_14, start, 2);
+    }
+    var n = x === 128 ? 4 : x === 129 ? 8 : 0;
+    if (!n || !sxd_can(c, at[0], n)) {
+        return false;
+    }
+    v[0] = n === 4 ? sxd_be32(b, at[0]) : sxGetU64At(b, at[0], 8, 0, true);
+    at[0] += n;
+    return sxd_add(c, n === 4 ? sxd_redis_length_32 : sxd_redis_length_64, start, (n + 1) >>> 0);
+}
+function sxd_redis_plain(c, b, at, v) {
+    var encoded = [false];
+    return sxd_redis_len(c, b, at, v, encoded) && !encoded[0];
+}
+function sxd_redis_string(c, b, at) {
+    var n = [0];
+    var m = [0];
+    var enc = [false];
+    if (!sxd_redis_len(c, b, at, n, enc)) {
+        return false;
+    }
+    if (enc[0] && n[0] < 3) {
+        var width = (1 << (n[0] >>> 0)) >>> 0;
+        if (!sxd_add(c, n[0] === 0 ? sxd_redis_integer_1 : n[0] === 1 ? sxd_redis_integer_2 : sxd_redis_integer_4, at[0], width)) {
+            return false;
+        }
+        at[0] += width;
+        return true;
+    }
+    if (enc[0]) {
+        if (!sxd_redis_plain(c, b, at, n) || !sxd_redis_plain(c, b, at, m)) {
+            return false;
+        }
+    }
+    if (!sxd_can(c, at[0], n[0])) {
+        return false;
+    }
+    at[0] += n[0];
+    return true;
+}
+function sxd_redis(c, b) {
+    var at = [9];
+    if (!sxd_add(c, sxd_redis_header, 0, 9)) {
+        return false;
+    }
+    while (at[0] < sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8)) {
+        var start = at[0];
+        var n = [0];
+        var type = b[at[0]++];
+        if (type === 255) {
+            return sxd_add(c, sxd_redis_trailer, start, 9) && at[0] + 8 === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        }
+        if (type === 252 || type === 253 || type === 249) {
+            var width = type === 252 ? 8 : type === 253 ? 4 : 1;
+            if (!sxd_add(c, type === 252 ? sxd_redis_expire_milliseconds : type === 253 ? sxd_redis_expire_seconds : sxd_redis_frequency, start, (width + 1) >>> 0)) {
+                return false;
+            }
+            at[0] += width;
+            continue;
+        }
+        if (!sxd_add(c, sxd_redis_opcode, start, 1)) {
+            return false;
+        }
+        if (type === 250) {
+            if (!sxd_redis_string(c, b, at) || !sxd_redis_string(c, b, at)) {
+                return false;
+            }
+            continue;
+        }
+        if (type === 254 || type === 251 || type === 248) {
+            if (!sxd_redis_plain(c, b, at, n) || type === 251 && !sxd_redis_plain(c, b, at, n)) {
+                return false;
+            }
+            continue;
+        }
+        if (type > 5 || !sxd_redis_string(c, b, at)) {
+            return false;
+        }
+        if (!type) {
+            if (!sxd_redis_string(c, b, at)) {
+                return false;
+            }
+            continue;
+        }
+        if (!sxd_redis_plain(c, b, at, n) || n[0] > 65536) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxd_redis_string(c, b, at)) {
+                return false;
+            }
+            if (type === 4) {
+                if (!sxd_redis_string(c, b, at)) {
+                    return false;
+                }
+            } else if (type === 5) {
+                if (!sxd_add(c, sxd_redis_score_binary, at[0], 8)) {
+                    return false;
+                }
+                at[0] += 8;
+            } else if (type === 3) {
+                if (!sxd_can(c, at[0], 1) || !sxd_add(c, sxd_redis_score_length, at[0], 1)) {
+                    return false;
+                }
+                var len = b[at[0]++];
+                if (len < 253) {
+                    if (!sxd_can(c, at[0], len)) {
+                        return false;
+                    }
+                    at[0] += len;
+                }
+            }
+        }
+    }
+    return false;
+}
+function sx_redis_rdb_build(c, b) {
+    return sxd_redis(c, b);
+}

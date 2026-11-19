@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/arcadyan/xx_arcadyan_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiw_arcadyan_lzma_fragments_fields = layout([u8("encoded_dictionary_byte_0"), u8("encoded_properties"),
+    u8("encoded_dictionary_byte_2"), u8("encoded_dictionary_byte_1"), u8("encoded_size_byte_0"),
+    u8("encoded_dictionary_byte_3"), u8("encoded_size_byte_2"), u8("encoded_size_byte_1"), u8("encoded_size_byte_4"),
+    u8("encoded_size_byte_3"), u8("encoded_size_byte_6"), u8("encoded_size_byte_5"), u8("encoded_range_coder_zero"),
+    u8("encoded_size_byte_7")]);
+var sxiw_arcadyan_lzma_fragments = sxLayout(0x60790054, "arcadyan_lzma_fragments", LE, sxiw_arcadyan_lzma_fragments_fields);
+function sx_arcadyan_build(c) {
+    return sxiw_add(c, sxiw_arcadyan_lzma_fragments, 0x68);
+}

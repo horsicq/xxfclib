@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ea/xx_ea_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxga_ea(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 0;
+    var n = [0];
+    while (at < end) {
+        if (!sxga_row(v, sxga_ea_entry, at, end) || !sxga_word(v, at + 25, 4, false, n, 0, end) || !sxga_span(v, at + 48, n[0], end)) {
+            return false;
+        }
+        at += 48 + n[0];
+    }
+    return true;
+}
+function sx_ea_build(v) {
+    return sxga_ea(v);
+}

@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_synthtail.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_synthtail_supports(t) {
+    return t === "DIE_MUSIC_FARBRAUSCH_V2SYNTHESIZER" || t === "DIE_MUSIC_TWINTEAM_TWINTRACKPLAYER_DMO";
+}
+function sx_synthtail_build(c) {
+    if (c === null || c.f === null || !sx_synthtail_supports(c.f.file_type) || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "DIE_MUSIC_TWINTEAM_TWINTRACKPLAYER_DMO") {
+        return sx_twinteam_twintrackplayer_dmo_build(c);
+    }
+    return sx_farbrausch_v2synthesizer_build(c);
+}
+function sx_synthtail_comment(r, id) {
+    if (r === null || r.name === null || id < 0x608E0001 || id > 0x608E0018) {
+        return true;
+    }
+    var t = "Stored physical value; synthesizer execution and reconstructed MIDI state are not exposed as file members.";
+    if (r.name === "speech_offset") {
+        t = "Byte offset relative to the start of the speech block, whose first field is speech_count.";
+    } else if (r.name === "initial_seed") {
+        t = "Initial 32-bit seed for the TwinTeam header's pseudorandom validation sequence.";
+    } else if (r.name === "seed_iteration_limit") {
+        t = "Inclusive iteration limit; the seed-summing loop runs this value plus one times.";
+    } else if (r.name === "seed_xor") {
+        t = "Value XORed with the accumulated seed before the header check and byte decoding.";
+    } else if (r.name === "seed_check") {
+        t = "Validated 16-bit pseudorandom header check. This checks header identity only; the encrypted payload remains raw and is not authenticated.";
+    } else if (r.name === "microseconds_per_quarter") {
+        t = "Tempo in microseconds per quarter note; little-endian global event value.";
+    } else if (r.name === "timing_tpq") {
+        t = "Stored TPQ byte in the global timing event; its physical value is preserved without assuming an undocumented unit.";
+    } else if (r.name === "maximum_time") {
+        t = "Song end time in file ticks, using ticks_per_quarter.";
+    } else if (r.name === "time_delta_low" || r.name === "time_delta_middle" || r.name === "time_delta_high") {
+        t = "One byte plane of 24-bit unsigned event-time deltas: low, middle, and high planes are stored separately.";
+    } else if (r.name === "note_delta" || r.name === "velocity_delta" || r.name === "program_delta" || r.name === "pitch_lsb_delta" || r.name === "pitch_msb_delta" || r.name === "controller_delta") {
+        t = "Stored byte-difference plane. Playback accumulates these bytes; this field preserves the encoded differences.";
+    }
+    return sxSetComment(r, t);
+}

@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_krzip/xx_sfx_krzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_installer_encoded_bytes_fields = layout([field("encoded_bytes", "uint8", 0)]);
+var sxiex_installer_encoded_bytes = sxLayout(0x60820005, "installer_encoded_bytes", LE, sxiex_installer_encoded_bytes_fields);
+var sxiex_krzip_header_fields = layout([chars("signature", 24, SIGNATURE)]);
+var sxiex_krzip_header = sxLayout(0x6082000C, "krzip_header", LE, sxiex_krzip_header_fields);
+var sxiex_krzip_encoded_name_length_fields = layout([field("encrypted_name_length", "byte[2]", 2)]);
+var sxiex_krzip_encoded_name_length = sxLayout(0x6082000D, "krzip_encoded_name_length", LE, sxiex_krzip_encoded_name_length_fields);
+var sxiex_krzip_encoded_fields_fields = layout([field("encrypted_dos_time", "byte[2]", 2),
+    field("encrypted_dos_date", "byte[2]", 2), field("encrypted_unpacked_size", "byte[4]", 4),
+    field("encrypted_attributes", "byte[4]", 4), field("encrypted_packed_size", "byte[4]", 4),
+    field("encrypted_complemented_crc32", "byte[4]", 4)]);
+var sxiex_krzip_encoded_fields = sxLayout(0x6082000E, "krzip_encoded_fields", LE, sxiex_krzip_encoded_fields_fields);
+var sxiex_krzip_footer_fields = layout([u32("complemented_crc32", CHECKSUM)]);
+var sxiex_krzip_footer = sxLayout(0x6082000F, "krzip_footer", LE, sxiex_krzip_footer_fields);
+function sxiex_encoded(c, p, n) {
+    return sxiex_text(c, sxiex_installer_encoded_bytes, p, n);
+}
+function sxiex_krzip(c, r) {
+    var p = [0];
+    if (sxiex_pe(c, p) && sxiex_eq(c, p[0], "<KRZIP FILE BEGINS HERE>", 24) && !sxiex_put(c, sxiex_krzip_header, p[0], 1)) {
+        return false;
+    }
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size < 23 || m.header_size > 1046) {
+            continue;
+        }
+        var n = sxU64(m.header_size - 22);
+        if (!sxiex_put(c, sxiex_krzip_encoded_name_length, m.header, 1) || !sxiex_encoded(c, m.header + 2, n) || !sxiex_put(c, sxiex_krzip_encoded_fields, m.header + 2 + n, 1)) {
+            return false;
+        }
+    }
+    return c.size < 4 || sxiex_put(c, sxiex_krzip_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4), 1);
+}
+function sx_sfx_krzip_build(c, records) {
+    return sxiex_krzip(c, records);
+}

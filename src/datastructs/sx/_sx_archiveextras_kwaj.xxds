@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/kwaj/xx_kwaj_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_kwaj_header_fields = layout([chars("magic", 8, SIGNATURE), u16("method", ID), u16("data_offset", OFFSET),
+    u16("extension_flags", FLAGS)]);
+var sxae_kwaj_header = sxLayout(0x6017001E, "kwaj_header", LE, sxae_kwaj_header_fields);
+var sxae_kwaj_unpacked_size_fields = layout([u32("unpacked_size", SIZE)]);
+var sxae_kwaj_unpacked_size = sxLayout(0x6017001F, "kwaj_unpacked_size", LE, sxae_kwaj_unpacked_size_fields);
+var sxae_kwaj_unknown_fields = layout([u16("unknown")]);
+var sxae_kwaj_unknown = sxLayout(0x60170020, "kwaj_unknown", LE, sxae_kwaj_unknown_fields);
+var sxae_kwaj_extension_size_fields = layout([u16("payload_size", SIZE)]);
+var sxae_kwaj_extension_size = sxLayout(0x60170021, "kwaj_extension_size", LE, sxae_kwaj_extension_size_fields);
+var sxae_kwaj_mszip_block_fields = layout([u16("encoded_size"), chars("signature", 2, SIGNATURE)]);
+var sxae_kwaj_mszip_block = sxLayout(0x60170022, "kwaj_mszip_block", LE, sxae_kwaj_mszip_block_fields);
+var sxae_kwaj_mszip_end_fields = layout([u16("marker", SIGNATURE)]);
+var sxae_kwaj_mszip_end = sxLayout(0x60170023, "kwaj_mszip_end", LE, sxae_kwaj_mszip_end_fields);
+function sxae_kwaj(c) {
+    payload: {
+        var b = [];
+        if (!sx_read(c, 0, b, 14) || sxMemcmp(b, "KWAJ\x88\xF0'\xD1", 8) || !sxae_add(c, sxae_kwaj_header, 0)) {
+            return false;
+        }
+        var method = sxae16(b, 8);
+        var end = sxae16(b, 10);
+        var flags = sxae16(b, 12);
+        var p = 14;
+        if (end < 14 || !sxae_bound(c, 0, end)) {
+            return false;
+        }
+        if (flags & 1) {
+            if (p + 4 > end || !sxae_add(c, sxae_kwaj_unpacked_size, p)) {
+                return false;
+            }
+            p += 4;
+        }
+        if (flags & 2) {
+            if (p + 2 > end) {
+                break payload;
+            }
+            if (!sxae_add(c, sxae_kwaj_unknown, p)) {
+                return false;
+            }
+            p += 2;
+        }
+        if (flags & 4) {
+            var n;
+            if (p + 2 > end) {
+                break payload;
+            }
+            if ((n = sx_u16(c, p, false)) === null || !sxae_add(c, sxae_kwaj_extension_size, p)) {
+                return false;
+            }
+            p += 2;
+            if (n > end - p) {
+                break payload;
+            }
+            p += n;
+        }
+        for (var k = 0; k < 2; k++) {
+            if (flags & (8 << k) >>> 0) {
+                var max = k ? 3 : 8;
+                var j;
+                for (j = 0; j <= max; j++) {
+                    var ch = [0];
+                    if (p + j >= end) {
+                        break payload;
+                    }
+                    if (!sx_read(c, p + j, ch, 1)) {
+                        return false;
+                    }
+                    if (!ch[0]) {
+                        p += (j + 1) >>> 0;
+                        break;
+                    }
+                }
+                if (j > max) {
+                    break payload;
+                }
+            }
+        }
+    }
+    p = end;
+    if (method === 4) {
+        for (k = 0; p < c.size && k < 20000; k++) {
+            if ((n = sx_u16(c, p, false)) === null) {
+                return false;
+            }
+            if (!n) {
+                return sxae_add(c, sxae_kwaj_mszip_end, p);
+            }
+            var sig = [];
+            if (n <= 2 || !sxae_bound(c, p, 2 + n) || !sx_read(c, p + 2, sig, 2) || sxMemcmp(sig, "CK", 2) || !sxae_add(c, sxae_kwaj_mszip_block, p) || !sxae_data(c, p + 4, (n - 2 < 0 ? n - 2 + SX_U64_MAX : n - 2))) {
+                return false;
+            }
+            p += 2 + n;
+        }
+        return p === c.size;
+    }
+    return true;
+}
+function sx_kwaj_build(c) {
+    return sxae_kwaj(c);
+}

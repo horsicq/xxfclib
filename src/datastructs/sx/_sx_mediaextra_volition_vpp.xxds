@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/volition_vpp/xx_volition_vpp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_vpp3_header_le_fields = layout([u32("magic", SIGNATURE), u32("version", ID), chars("name", 65, STRING),
+    chars("path", 256, STRING), blob("alignment", 3), u32("flags", FLAGS), u32("unknown_150"), u32("entry_count", COUNT),
+    u32("package_size", SIZE), u32("directory_size", SIZE), u32("names_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u32("directory_pointer", POINTER), u32("names_pointer", POINTER), u32("data_pointer", POINTER)]);
+var sxmx_vpp3_header_le = sxLayout(0x602E0011, "vpp3_header_le", LE, sxmx_vpp3_header_le_fields);
+var sxmx_vpp3_entry_le_fields = layout([u32("name_offset", OFFSET), u32("runtime_offset", VA), u32("data_offset", OFFSET),
+    u32("name_hash", CHECKSUM), u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u32("package_pointer", POINTER)]);
+var sxmx_vpp3_entry_le = sxLayout(0x602E0012, "vpp3_entry_le", LE, sxmx_vpp3_entry_le_fields);
+var sxmx_vpp3_header_be_fields = layout([u32("magic", SIGNATURE), u32("version", ID), chars("name", 65, STRING),
+    chars("path", 256, STRING), blob("alignment", 3), u32("flags", FLAGS), u32("unknown_150"), u32("entry_count", COUNT),
+    u32("package_size", SIZE), u32("directory_size", SIZE), u32("names_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u32("directory_pointer", POINTER), u32("names_pointer", POINTER), u32("data_pointer", POINTER)]);
+var sxmx_vpp3_header_be = sxLayout(0x602E0013, "vpp3_header_be", BE, sxmx_vpp3_header_be_fields);
+var sxmx_vpp3_entry_be_fields = layout([u32("name_offset", OFFSET), u32("runtime_offset", VA), u32("data_offset", OFFSET),
+    u32("name_hash", CHECKSUM), u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u32("package_pointer", POINTER)]);
+var sxmx_vpp3_entry_be = sxLayout(0x602E0014, "vpp3_entry_be", BE, sxmx_vpp3_entry_be_fields);
+function sxmx_vpp(v) {
+    if (!sxmx_need(v, 0, 376, v.n)) {
+        return false;
+    }
+    var be = sxmx_u32(v.p, 0, true) === 0x51890ACE;
+    return sxmx_row(v, be ? sxmx_vpp3_header_be : sxmx_vpp3_header_le, 0, v.n) && sxmx_table(v, be ? sxmx_vpp3_entry_be : sxmx_vpp3_entry_le, 2048, sxmx_u32(v.p, 340, be), v.n);
+}
+function sx_volition_vpp_build(v) {
+    return sxmx_vpp(v);
+}

@@ -1,0 +1,87 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/autodesk_3ds/xx_autodesk_3ds_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_3ds_chunk_fields = layout([u16("chunk_type", ID), u32("chunk_size", SIZE)]);
+var sxmo_3ds_chunk = sxLayout(0x60210048, "3ds_chunk", LE, sxmo_3ds_chunk_fields);
+var sxmo_3ds_version_fields = layout([u32("version", ID)]);
+var sxmo_3ds_version = sxLayout(0x60210049, "3ds_version", LE, sxmo_3ds_version_fields);
+var sxmo_3ds_vertex_count_fields = layout([u16("vertex_count", COUNT)]);
+var sxmo_3ds_vertex_count = sxLayout(0x6021004A, "3ds_vertex_count", LE, sxmo_3ds_vertex_count_fields);
+var sxmo_3ds_face_count_fields = layout([u16("face_count", COUNT)]);
+var sxmo_3ds_face_count = sxLayout(0x6021004B, "3ds_face_count", LE, sxmo_3ds_face_count_fields);
+var sxmo_3ds_uv_count_fields = layout([u16("uv_count", COUNT)]);
+var sxmo_3ds_uv_count = sxLayout(0x6021004C, "3ds_uv_count", LE, sxmo_3ds_uv_count_fields);
+var sxmo_3ds_vertex_fields = layout([field("x", "float32", 4), field("y", "float32", 4), field("z", "float32", 4)]);
+var sxmo_3ds_vertex = sxLayout(0x6021004D, "3ds_vertex", LE, sxmo_3ds_vertex_fields);
+var sxmo_3ds_uv_fields = layout([field("x", "float32", 4), field("y", "float32", 4)]);
+var sxmo_3ds_uv = sxLayout(0x6021004E, "3ds_uv", LE, sxmo_3ds_uv_fields);
+var sxmo_3ds_face_fields = layout([u16("vertex0", ID), u16("vertex1", ID), u16("vertex2", ID), u16("flags", FLAGS)]);
+var sxmo_3ds_face = sxLayout(0x6021004F, "3ds_face", LE, sxmo_3ds_face_fields);
+var sxmo_3ds_local_matrix_fields = layout([field("x_axis", "float32[3]", 12), field("y_axis", "float32[3]", 12),
+    field("z_axis", "float32[3]", 12), field("origin", "float32[3]", 12)]);
+var sxmo_3ds_local_matrix = sxLayout(0x60210050, "3ds_local_matrix", LE, sxmo_3ds_local_matrix_fields);
+function sxmo_3ds_chunks(c, p, end, depth, budget) {
+    while (p < end && depth < 12 && budget[0] < 16000) {
+        budget[0]++;
+        var h = [];
+        if (sxU64(end - p) < 6 || !sxmo_read(c, p, h, 6)) {
+            break;
+        }
+        var id = sxmo16(h, 0, false);
+        var n = sxmo32(h, 2, false);
+        if (n < 6 || n > sxU64(end - p)) {
+            break;
+        }
+        if (!sxmo_add(c, sxmo_3ds_chunk, p)) {
+            return false;
+        }
+        var q = [p + 6];
+        var stop = p + n;
+        if (id === 0x4D4D || id === 0x3D3D || id === 0x4100) {
+            if (!sxmo_3ds_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (id === 0x4000) {
+            if (sxmo_string(c, q, stop, 0) && !sxmo_3ds_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if ((id === 2 || id === 0x3D3E) && sxU64(stop - q[0]) >= 4) {
+            if (!sxmo_add(c, sxmo_3ds_version, q[0])) {
+                return false;
+            }
+        } else if ((id === 0x4110 || id === 0x4120 || id === 0x4140) && sxU64(stop - q[0]) >= 2) {
+            if (!sxmo_read(c, q[0], h, 2)) {
+                return false;
+            }
+            var count = sxmo16(h, 0, false);
+            var z = id === 0x4110 ? 12 : 8;
+            if (count * z <= sxU64(sxU64(stop - q[0]) - 2)) {
+                var a = id === 0x4110 ? sxmo_3ds_vertex_count : id === 0x4120 ? sxmo_3ds_face_count : sxmo_3ds_uv_count;
+                var b = id === 0x4110 ? sxmo_3ds_vertex : id === 0x4120 ? sxmo_3ds_face : sxmo_3ds_uv;
+                if (!sxmo_add(c, a, q[0]) || !sxmo_table(c, b, q[0] + 2, count)) {
+                    return false;
+                }
+            }
+        } else if (id === 0x4160 && sxU64(stop - q[0]) >= 48 && !sxmo_add(c, sxmo_3ds_local_matrix, q[0])) {
+            return false;
+        }
+        p = stop;
+    }
+    return !c.failed;
+}
+function sxmo_3ds(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 2) || sxmo16(h, 0, false) !== 0x4D4D) {
+        return false;
+    }
+    var budget = [0];
+    return sxmo_3ds_chunks(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0, budget);
+}
+function sx_autodesk_3ds_build(c) {
+    var ok = false;
+    ok = sxmo_3ds(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

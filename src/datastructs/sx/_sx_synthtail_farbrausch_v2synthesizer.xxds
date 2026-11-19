@@ -1,0 +1,153 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/farbrausch_v2synthesizer/xx_farbrausch_v2synthesizer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsynt_v2m_header_fields = layout([u32("ticks_per_quarter"), u32("maximum_time"), u32("global_event_count", COUNT)]);
+var sxsynt_v2m_header = sxLayout(0x608E0001, "v2m_header", LE, sxsynt_v2m_header_fields);
+var sxsynt_v2m_time_delta_low_plane_fields = layout([field("time_delta_low", "uint8", 0)]);
+var sxsynt_v2m_time_delta_low_plane = sxLayout(0x608E0002, "v2m_time_delta_low_plane", LE, sxsynt_v2m_time_delta_low_plane_fields);
+var sxsynt_v2m_time_delta_middle_plane_fields = layout([field("time_delta_middle", "uint8", 0)]);
+var sxsynt_v2m_time_delta_middle_plane = sxLayout(0x608E0003, "v2m_time_delta_middle_plane", LE, sxsynt_v2m_time_delta_middle_plane_fields);
+var sxsynt_v2m_time_delta_high_plane_fields = layout([field("time_delta_high", "uint8", 0)]);
+var sxsynt_v2m_time_delta_high_plane = sxLayout(0x608E0004, "v2m_time_delta_high_plane", LE, sxsynt_v2m_time_delta_high_plane_fields);
+var sxsynt_v2m_time_signature_numerator_plane_fields = layout([field("time_signature_numerator", "uint8", 0)]);
+var sxsynt_v2m_time_signature_numerator_plane = sxLayout(0x608E0005, "v2m_time_signature_numerator_plane", LE, sxsynt_v2m_time_signature_numerator_plane_fields);
+var sxsynt_v2m_time_signature_denominator_plane_fields = layout([field("time_signature_denominator", "uint8", 0)]);
+var sxsynt_v2m_time_signature_denominator_plane = sxLayout(0x608E0006, "v2m_time_signature_denominator_plane", LE, sxsynt_v2m_time_signature_denominator_plane_fields);
+var sxsynt_v2m_timing_tpq_plane_fields = layout([field("timing_tpq", "uint8", 0)]);
+var sxsynt_v2m_timing_tpq_plane = sxLayout(0x608E0007, "v2m_timing_tpq_plane", LE, sxsynt_v2m_timing_tpq_plane_fields);
+var sxsynt_v2m_note_delta_plane_fields = layout([field("note_delta", "uint8", 0)]);
+var sxsynt_v2m_note_delta_plane = sxLayout(0x608E0008, "v2m_note_delta_plane", LE, sxsynt_v2m_note_delta_plane_fields);
+var sxsynt_v2m_velocity_delta_plane_fields = layout([field("velocity_delta", "uint8", 0)]);
+var sxsynt_v2m_velocity_delta_plane = sxLayout(0x608E0009, "v2m_velocity_delta_plane", LE, sxsynt_v2m_velocity_delta_plane_fields);
+var sxsynt_v2m_program_delta_plane_fields = layout([field("program_delta", "uint8", 0)]);
+var sxsynt_v2m_program_delta_plane = sxLayout(0x608E000A, "v2m_program_delta_plane", LE, sxsynt_v2m_program_delta_plane_fields);
+var sxsynt_v2m_pitch_lsb_delta_plane_fields = layout([field("pitch_lsb_delta", "uint8", 0)]);
+var sxsynt_v2m_pitch_lsb_delta_plane = sxLayout(0x608E000B, "v2m_pitch_lsb_delta_plane", LE, sxsynt_v2m_pitch_lsb_delta_plane_fields);
+var sxsynt_v2m_pitch_msb_delta_plane_fields = layout([field("pitch_msb_delta", "uint8", 0)]);
+var sxsynt_v2m_pitch_msb_delta_plane = sxLayout(0x608E000C, "v2m_pitch_msb_delta_plane", LE, sxsynt_v2m_pitch_msb_delta_plane_fields);
+var sxsynt_v2m_controller_delta_plane_fields = layout([field("controller_delta", "uint8", 0)]);
+var sxsynt_v2m_controller_delta_plane = sxLayout(0x608E000D, "v2m_controller_delta_plane", LE, sxsynt_v2m_controller_delta_plane_fields);
+var sxsynt_v2m_tempo_fields = layout([u32("microseconds_per_quarter")]);
+var sxsynt_v2m_tempo = sxLayout(0x608E000E, "v2m_tempo", LE, sxsynt_v2m_tempo_fields);
+var sxsynt_v2m_note_count_fields = layout([u32("note_event_count", COUNT)]);
+var sxsynt_v2m_note_count = sxLayout(0x608E000F, "v2m_note_count", LE, sxsynt_v2m_note_count_fields);
+var sxsynt_v2m_program_count_fields = layout([u32("program_event_count", COUNT)]);
+var sxsynt_v2m_program_count = sxLayout(0x608E0010, "v2m_program_count", LE, sxsynt_v2m_program_count_fields);
+var sxsynt_v2m_pitch_count_fields = layout([u32("pitch_event_count", COUNT)]);
+var sxsynt_v2m_pitch_count = sxLayout(0x608E0011, "v2m_pitch_count", LE, sxsynt_v2m_pitch_count_fields);
+var sxsynt_v2m_controller_count_fields = layout([u32("controller_event_count", COUNT)]);
+var sxsynt_v2m_controller_count = sxLayout(0x608E0012, "v2m_controller_count", LE, sxsynt_v2m_controller_count_fields);
+var sxsynt_v2m_globals_length_fields = layout([u32("globals_bytes", SIZE)]);
+var sxsynt_v2m_globals_length = sxLayout(0x608E0013, "v2m_globals_length", LE, sxsynt_v2m_globals_length_fields);
+var sxsynt_v2m_patchmap_length_fields = layout([u32("patchmap_bytes", SIZE)]);
+var sxsynt_v2m_patchmap_length = sxLayout(0x608E0014, "v2m_patchmap_length", LE, sxsynt_v2m_patchmap_length_fields);
+var sxsynt_v2m_speech_length_fields = layout([u32("speech_bytes", SIZE)]);
+var sxsynt_v2m_speech_length = sxLayout(0x608E0015, "v2m_speech_length", LE, sxsynt_v2m_speech_length_fields);
+var sxsynt_v2m_speech_count_fields = layout([u32("speech_count", COUNT)]);
+var sxsynt_v2m_speech_count = sxLayout(0x608E0016, "v2m_speech_count", LE, sxsynt_v2m_speech_count_fields);
+var sxsynt_v2m_speech_offset_fields = layout([u32("speech_offset", OFFSET)]);
+var sxsynt_v2m_speech_offset = sxLayout(0x608E0017, "v2m_speech_offset", LE, sxsynt_v2m_speech_offset_fields);
+function sxsynt_plane(c, l, at, count) {
+    if (count > (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0])) {
+        return false;
+    }
+    var shown = count > 4096 ? 4096 : count;
+    if (shown && !sx_add(c, l, at[0], shown)) {
+        return false;
+    }
+    if (!sx_raw(c, at[0] + shown, count - shown)) {
+        return false;
+    }
+    at[0] += count;
+    return true;
+}
+function sxsynt_time(c, at, n) {
+    return sxsynt_plane(c, sxsynt_v2m_time_delta_low_plane, at, n) && sxsynt_plane(c, sxsynt_v2m_time_delta_middle_plane, at, n) && sxsynt_plane(c, sxsynt_v2m_time_delta_high_plane, at, n);
+}
+function sxsynt_count(c, l, at, n) {
+    if ((n[0] = sx_u32(c, at[0], false)) === null || !sx_add(c, l, at[0], 4)) {
+        return false;
+    }
+    at[0] += 4;
+    return true;
+}
+function sxsynt_v2m(c) {
+    var n = [0];
+    var at = [12];
+    if ((n[0] = sx_u32(c, 8, false)) === null || n[0] > Math.floor((c.size - 12 < 0 ? c.size - 12 + SX_U64_MAX : c.size - 12) / 10) || !sx_add(c, sxsynt_v2m_header, 0, 12)) {
+        return false;
+    }
+    if (!sxsynt_time(c, at, n[0]) || !sx_table(c, sxsynt_v2m_tempo, at[0], 4, n[0])) {
+        return false;
+    }
+    at[0] += n[0] * 4;
+    if (!sxsynt_plane(c, sxsynt_v2m_time_signature_numerator_plane, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_time_signature_denominator_plane, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_timing_tpq_plane, at, n[0])) {
+        return false;
+    }
+    for (var channel = 0; channel < 16; channel++) {
+        if (!sxsynt_count(c, sxsynt_v2m_note_count, at, n)) {
+            return false;
+        }
+        if (!n[0]) {
+            continue;
+        }
+        if (n[0] > Math.floor((c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) / 5) || !sxsynt_time(c, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_note_delta_plane, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_velocity_delta_plane, at, n[0])) {
+            return false;
+        }
+        if (!sxsynt_count(c, sxsynt_v2m_program_count, at, n) || n[0] > Math.floor((c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) / 4) || !sxsynt_time(c, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_program_delta_plane, at, n[0])) {
+            return false;
+        }
+        if (!sxsynt_count(c, sxsynt_v2m_pitch_count, at, n) || n[0] > Math.floor((c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) / 5) || !sxsynt_time(c, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_pitch_lsb_delta_plane, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_pitch_msb_delta_plane, at, n[0])) {
+            return false;
+        }
+        for (var control = 0; control < 7; control++) {
+            if (!sxsynt_count(c, sxsynt_v2m_controller_count, at, n) || n[0] > Math.floor((c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) / 4) || !sxsynt_time(c, at, n[0]) || !sxsynt_plane(c, sxsynt_v2m_controller_delta_plane, at, n[0])) {
+                return false;
+            }
+        }
+    }
+    if (!sxsynt_count(c, sxsynt_v2m_globals_length, at, n) || n[0] > 16384 || n[0] > (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) || !sx_raw(c, at[0], n[0])) {
+        return false;
+    }
+    at[0] += n[0];
+    if (!sxsynt_count(c, sxsynt_v2m_patchmap_length, at, n) || n[0] > 1048576 || n[0] > (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) || !sx_raw(c, at[0], n[0])) {
+        return false;
+    }
+    at[0] += n[0];
+    if (c.size - at[0] < 4) {
+        return sx_raw(c, at[0], c.size - at[0]);
+    }
+    if (!sxsynt_count(c, sxsynt_v2m_speech_length, at, n)) {
+        return false;
+    }
+    if (n[0] < 4 || n[0] >= 8192 || n[0] > (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0])) {
+        return sx_raw(c, at[0], c.size - at[0]);
+    }
+    var count;
+    if ((count = sx_u32(c, at[0], false)) === null) {
+        return false;
+    }
+    if (count > 256 || count > Math.floor(((n[0] - 4) >>> 0) / 4)) {
+        return sx_raw(c, at[0], c.size - at[0]);
+    }
+    for (var i = 0; i < count; i++) {
+        var off;
+        if ((off = sx_u32(c, at[0] + 4 + i * 4, false)) === null) {
+            return false;
+        }
+        if (off < (4 + ((count * 4) >>> 0)) >>> 0 || off >= n[0]) {
+            return sx_raw(c, at[0], c.size - at[0]);
+        }
+    }
+    if (!sx_add(c, sxsynt_v2m_speech_count, at[0], 4) || !sx_table(c, sxsynt_v2m_speech_offset, at[0] + 4, 4, count)) {
+        return false;
+    }
+    at[0] += 4 + count * 4;
+    return sx_raw(c, at[0], c.size - at[0]);
+}
+function sx_farbrausch_v2synthesizer_build(c) {
+    return sxsynt_v2m(c);
+}

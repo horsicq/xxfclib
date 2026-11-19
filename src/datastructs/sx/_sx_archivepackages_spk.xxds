@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/spk/xx_spk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_spark_prefix_fields = layout([u8("signature", SIGNATURE), u8("method"), chars("name", 13, NONE),
+    u32("compressed_size", SIZE), u16("dos_date"), u16("dos_time"), u16("crc16", CHECKSUM)]);
+var sxap_spark_prefix = sxLayout(0x6072000F, "spark_prefix", LE, sxap_spark_prefix_fields);
+var sxap_spark_original_size_fields = layout([u32("uncompressed_size", SIZE)]);
+var sxap_spark_original_size = sxLayout(0x60720010, "spark_original_size", LE, sxap_spark_original_size_fields);
+var sxap_spark_riscos_fields = layout([u32("load_address", VA), u32("exec_address", VA), u32("attributes", FLAGS)]);
+var sxap_spark_riscos = sxLayout(0x60720011, "spark_riscos", LE, sxap_spark_riscos_fields);
+var sxap_spark_end_fields = layout([u8("signature", SIGNATURE), u8("method")]);
+var sxap_spark_end = sxLayout(0x60720012, "spark_end", LE, sxap_spark_end_fields);
+function sxap_spark(c, p, end, depth) {
+    if (depth > 32 || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    while (p < end) {
+        var h = [];
+        if (sxU64(end - p) < 2 || !sxap_read(c, p, h, 2) || h[0] !== 0x1A) {
+            return false;
+        }
+        var method = h[1] & 127;
+        if (!method) {
+            return sxap_add(c, sxap_spark_end, p);
+        }
+        if (sxU64(end - p) < 25 || !sxap_read(c, p, h, 25) || !sxap_add(c, sxap_spark_prefix, p)) {
+            return false;
+        }
+        var packed = sxap_uint(h, 15, 4, false);
+        var q = p + 25;
+        var load = [0];
+        if (sxU64(end - q) < 4 || !sxap_add(c, sxap_spark_original_size, q)) {
+            return false;
+        }
+        q += 4;
+        if (h[1] & 128) {
+            if (sxU64(end - q) < 12 || !sxap_word(c, q, 4, false, load) || !sxap_add(c, sxap_spark_riscos, q)) {
+                return false;
+            }
+            q += 12;
+        }
+        if (packed > sxU64(end - q)) {
+            return true;
+        }
+        if (method === 2 && sxAnd64(load[0], 0xFFFFFF00) === 0xFFFDDC00 && !sxap_spark(c, q, q + packed, (depth + 1) >>> 0)) {
+            return false;
+        }
+        p = q + packed;
+    }
+    return true;
+}
+function sx_spk_build(c) {
+    return sxap_spark(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0);
+}

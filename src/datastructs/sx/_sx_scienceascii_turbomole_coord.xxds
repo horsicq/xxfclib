@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/turbomole_coord/xx_turbomole_coord_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_turbomole_units_fields = layout([field("turbomole_units", "char", 0, STRING)]);
+var sxsa_turbomole_units = sxLayout(0x605100D7, "science_turbomole_units", LE, sxsa_turbomole_units_fields);
+var sxsa_turbomole_bohr_x_fields = layout([field("turbomole_bohr_x", "ascii_real", 0)]);
+var sxsa_turbomole_bohr_x = sxLayout(0x605100D8, "science_turbomole_bohr_x", LE, sxsa_turbomole_bohr_x_fields);
+var sxsa_turbomole_bohr_y_fields = layout([field("turbomole_bohr_y", "ascii_real", 0)]);
+var sxsa_turbomole_bohr_y = sxLayout(0x605100D9, "science_turbomole_bohr_y", LE, sxsa_turbomole_bohr_y_fields);
+var sxsa_turbomole_bohr_z_fields = layout([field("turbomole_bohr_z", "ascii_real", 0)]);
+var sxsa_turbomole_bohr_z = sxLayout(0x605100DA, "science_turbomole_bohr_z", LE, sxsa_turbomole_bohr_z_fields);
+var sxsa_turbomole_angstrom_x_fields = layout([field("turbomole_angstrom_x", "ascii_real", 0)]);
+var sxsa_turbomole_angstrom_x = sxLayout(0x605100DB, "science_turbomole_angstrom_x", LE, sxsa_turbomole_angstrom_x_fields);
+var sxsa_turbomole_angstrom_y_fields = layout([field("turbomole_angstrom_y", "ascii_real", 0)]);
+var sxsa_turbomole_angstrom_y = sxLayout(0x605100DC, "science_turbomole_angstrom_y", LE, sxsa_turbomole_angstrom_y_fields);
+var sxsa_turbomole_angstrom_z_fields = layout([field("turbomole_angstrom_z", "ascii_real", 0)]);
+var sxsa_turbomole_angstrom_z = sxLayout(0x605100DD, "science_turbomole_angstrom_z", LE, sxsa_turbomole_angstrom_z_fields);
+function sxsa_turbomole(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(4, sxNew_sxsa_token);
+    var ang = false;
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxsa_token(line, sxsa_trim(q, sxCopy_sxsa_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        var hash = 0;
+        while (hash < line.z && q.b[line.a + hash] !== 35 /*#*/) {
+            hash++;
+        }
+        if (hash < line.z) {
+            {
+                if (!sxsa_emit(q, sxsa_comment, sxCopy_sxsa_token(null, { a: line.a + hash, z: line.z - hash }))) {
+                    return false;
+                }
+            }
+            line.z = hash;
+            sxCopy_sxsa_token(line, sxsa_trim(q, sxCopy_sxsa_token(null, line)));
+            if (!line.z) {
+                continue;
+            }
+        }
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 4, false);
+        if (!n || n > 4) {
+            return false;
+        }
+        if (q.b[line.a] === 36 /*$*/) {
+            {
+                if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (n > 1) {
+                {
+                    if (!sxsa_emit(q, sxsa_turbomole_units, sxCopy_sxsa_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+                ang = sxsa_eq(q, sxCopy_sxsa_token(null, t[1]), "angs");
+            }
+            continue;
+        }
+        var atom = [ang ? sxsa_turbomole_angstrom_x : sxsa_turbomole_bohr_x, ang ? sxsa_turbomole_angstrom_y : sxsa_turbomole_bohr_y, ang ? sxsa_turbomole_angstrom_z : sxsa_turbomole_bohr_z, sxsa_element];
+        if (n !== 4 || !sxsa_fields(q, t, 0, 4, atom, 4)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_turbomole_coord_build(q) {
+    return sxsa_turbomole(q);
+}

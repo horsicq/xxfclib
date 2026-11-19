@@ -1,0 +1,100 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/pjl/xx_pjl_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdw_pjl_command_fields = layout([field("pjl_command", "utf8", 0, STRING)]);
+var sxdw_pjl_command = sxLayout(0x60740021, "documentwire_pjl_command", LE, sxdw_pjl_command_fields);
+var sxdw_pjl_parameter_fields = layout([field("pjl_parameter", "utf8", 0, STRING)]);
+var sxdw_pjl_parameter = sxLayout(0x60740022, "documentwire_pjl_parameter", LE, sxdw_pjl_parameter_fields);
+var sxdw_pjl_value_fields = layout([field("pjl_value", "utf8", 0, STRING)]);
+var sxdw_pjl_value = sxLayout(0x60740023, "documentwire_pjl_value", LE, sxdw_pjl_value_fields);
+var sxdw_pjl_text_fields = layout([field("pjl_text", "utf8", 0, STRING)]);
+var sxdw_pjl_text = sxLayout(0x60740024, "documentwire_pjl_text", LE, sxdw_pjl_text_fields);
+var sxdw_pjl_uel_fields = layout([bytes("universal_exit_language", 9, SIGNATURE)]);
+var sxdw_pjl_uel = sxLayout(0x6074002E, "documentwire_pjl_uel", LE, sxdw_pjl_uel_fields);
+function sxdw_pjl(q) {
+    var end = 9;
+    while (end < q.n && q.b[end]) {
+        end++;
+    }
+    var total = q.n;
+    q.n = end;
+    q.p = 0;
+    while (q.p < q.n && q.c.count < 32000) {
+        if (sxdw_prefix(q, q.p, q.n, "\x1B%-12345X")) {
+            if (!sxdw_emit(q, sxdw_pjl_uel, q.p, 9)) {
+                return false;
+            }
+            q.p += 9;
+            continue;
+        }
+        var a = [0];
+        var e = [0];
+        if (!sxdw_line(q, a, e)) {
+            break;
+        }
+        if (sxdw_prefix(q, a[0], e[0], "@PJL")) {
+            var p = a[0] + 4;
+            while (p < e[0] && (q.b[p] === 32 || q.b[p] === 9)) {
+                p++;
+            }
+            var b = p;
+            while (p < e[0] && q.b[p] !== 32 && q.b[p] !== 9) {
+                p++;
+            }
+            if (!sxdw_value(q, sxdw_pjl_command, b, p - b)) {
+                return false;
+            }
+            while (p < e[0]) {
+                while (p < e[0] && (q.b[p] === 32 || q.b[p] === 9)) {
+                    p++;
+                }
+                b = p;
+                while (p < e[0] && q.b[p] !== 61 /*=*/ && q.b[p] !== 32 && q.b[p] !== 9) {
+                    p++;
+                }
+                if (!sxdw_value(q, sxdw_pjl_parameter, b, p - b)) {
+                    return false;
+                }
+                while (p < e[0] && (q.b[p] === 32 || q.b[p] === 9)) {
+                    p++;
+                }
+                if (p < e[0] && q.b[p] === 61 /*=*/) {
+                    p++;
+                    while (p < e[0] && (q.b[p] === 32 || q.b[p] === 9)) {
+                        p++;
+                    }
+                    b = p;
+                    if (p < e[0] && q.b[p] === 34 /*"*/) {
+                        p++;
+                        while (p < e[0] && q.b[p] !== 34 /*"*/) {
+                            p++;
+                        }
+                        if (p < e[0]) {
+                            p++;
+                        }
+                    } else {
+                        while (p < e[0] && q.b[p] !== 32 && q.b[p] !== 9) {
+                            p++;
+                        }
+                    }
+                    if (!sxdw_value(q, sxdw_pjl_value, b, p - b)) {
+                        return false;
+                    }
+                }
+                if (p === b && p < e[0]) {
+                    p++;
+                }
+            }
+        } else if (!sxdw_value(q, sxdw_pjl_text, a[0], e[0] - a[0])) {
+            return false;
+        }
+    }
+    q.n = total;
+    return true;
+}
+function sx_pjl_build(q) {
+    return sxdw_pjl(q);
+}

@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/obi_soundtracker_stk/xx_obi_soundtracker_stk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmodv_soundtracker_title_fields = layout([chars("title", 20, NONE)]);
+var sxmodv_soundtracker_title = sxLayout(0x609B000C, "soundtracker_title", BE, sxmodv_soundtracker_title_fields);
+function sxmodv_soundtracker(v) {
+    var n = 0;
+    var x = [0];
+    if (!sxmodv_row(v, sxmodv_soundtracker_title, 0) || !sxmodv_span(v, 20, 580)) {
+        return false;
+    }
+    for (var i = 0; i < 15; i++) {
+        if (!sxmodv_row(v, sxmodv_soundtracker_sample, (20 + ((i * 30) >>> 0)) >>> 0)) {
+            return false;
+        }
+    }
+    if (!sxmodv_row(v, sxmodv_soundtracker_controls, 470)) {
+        return false;
+    }
+    for (i = 0; i < 128; i++) {
+        if (!sxmodv_word(v, (472 + i) >>> 0, 1, x, 0) || !sxmodv_row(v, sxmodv_mod_order, (472 + i) >>> 0)) {
+            return false;
+        }
+        if (n < x[0] + 1) {
+            n = x[0] + 1;
+        }
+    }
+    if (n > 64) {
+        return false;
+    }
+    for (i = 0; i < n; i++) {
+        for (var j = 0; j < 256; j++) {
+            if (!sxmodv_row(v, sxmodv_soundtracker_cell, 600 + i * 1024 + ((j * 4) >>> 0))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_obi_soundtracker_stk_build(v) {
+    return sxmodv_soundtracker(v);
+}

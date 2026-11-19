@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_rarc/xx_nintendo_rarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_rarc_header_le_fields = layout([chars("signature", 4, SIGNATURE), u32("file_size", SIZE), u32("header_size", SIZE),
+    u32("data_offset", OFFSET), u32("data_size", SIZE), u32("mram_data_size", SIZE), u32("aram_data_size", SIZE),
+    u32("reserved", RESERVED), u32("node_count", COUNT), u32("nodes_offset", OFFSET), u32("entry_count", COUNT),
+    u32("entries_offset", OFFSET), u32("strings_size", SIZE), u32("strings_offset", OFFSET), u16("next_file_id", ID),
+    u8("sync_file_ids", FLAGS), bytes("reserved59", 5, RESERVED)]);
+var sxgm_rarc_header_le = sxLayout(0x60270017, "rarc_header_le", LE, sxgm_rarc_header_le_fields);
+var sxgm_rarc_header_be_fields = layout([chars("signature", 4, SIGNATURE), u32("file_size", SIZE), u32("header_size", SIZE),
+    u32("data_offset", OFFSET), u32("data_size", SIZE), u32("mram_data_size", SIZE), u32("aram_data_size", SIZE),
+    u32("reserved", RESERVED), u32("node_count", COUNT), u32("nodes_offset", OFFSET), u32("entry_count", COUNT),
+    u32("entries_offset", OFFSET), u32("strings_size", SIZE), u32("strings_offset", OFFSET), u16("next_file_id", ID),
+    u8("sync_file_ids", FLAGS), bytes("reserved59", 5, RESERVED)]);
+var sxgm_rarc_header_be = sxLayout(0x60270018, "rarc_header_be", BE, sxgm_rarc_header_be_fields);
+var sxgm_rarc_node_le_fields = layout([chars("type", 4, ID), u32("name_offset", OFFSET), u16("name_hash", CHECKSUM),
+    u16("entry_count", COUNT), u32("first_entry_index", ID)]);
+var sxgm_rarc_node_le = sxLayout(0x60270019, "rarc_node_le", LE, sxgm_rarc_node_le_fields);
+var sxgm_rarc_node_be_fields = layout([chars("type", 4, ID), u32("name_offset", OFFSET), u16("name_hash", CHECKSUM),
+    u16("entry_count", COUNT), u32("first_entry_index", ID)]);
+var sxgm_rarc_node_be = sxLayout(0x6027001A, "rarc_node_be", BE, sxgm_rarc_node_be_fields);
+var sxgm_rarc_file_le_fields = layout([u16("file_id", ID), u16("name_hash", CHECKSUM),
+    field("name_offset", "uint24", 3, OFFSET), u8("attributes", FLAGS), u32("data_offset", OFFSET), u32("data_size", SIZE),
+    u32("reserved", RESERVED)]);
+var sxgm_rarc_file_le = sxLayout(0x6027001B, "rarc_file_le", LE, sxgm_rarc_file_le_fields);
+var sxgm_rarc_directory_le_fields = layout([u16("file_id", ID), u16("name_hash", CHECKSUM),
+    field("name_offset", "uint24", 3, OFFSET), u8("attributes", FLAGS), u32("node_index", ID), u32("data_size", SIZE),
+    u32("reserved", RESERVED)]);
+var sxgm_rarc_directory_le = sxLayout(0x6027001C, "rarc_directory_le", LE, sxgm_rarc_directory_le_fields);
+var sxgm_rarc_file_be_fields = layout([u16("file_id", ID), u16("name_hash", CHECKSUM), u8("attributes", FLAGS),
+    field("name_offset", "uint24", 3, OFFSET), u32("data_offset", OFFSET), u32("data_size", SIZE), u32("reserved", RESERVED)]);
+var sxgm_rarc_file_be = sxLayout(0x6027001D, "rarc_file_be", BE, sxgm_rarc_file_be_fields);
+var sxgm_rarc_directory_be_fields = layout([u16("file_id", ID), u16("name_hash", CHECKSUM), u8("attributes", FLAGS),
+    field("name_offset", "uint24", 3, OFFSET), u32("node_index", ID), u32("data_size", SIZE), u32("reserved", RESERVED)]);
+var sxgm_rarc_directory_be = sxLayout(0x6027001E, "rarc_directory_be", BE, sxgm_rarc_directory_be_fields);
+function sxgm_rarc(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 64)) {
+        return false;
+    }
+    var be = !sxMemcmp(b, "RARC", 4);
+    if (!be && sxMemcmp(b, "CRAR", 4)) {
+        return false;
+    }
+    if (!sxgm_add(c, be ? sxgm_rarc_header_be : sxgm_rarc_header_le, 0)) {
+        return false;
+    }
+    var n = sxgm32(b, 32, be);
+    var p = sxgm32(b, 36, be) + 32;
+    var k = sxgm32(b, 40, be);
+    var q = sxgm32(b, 44, be) + 32;
+    if (!sxgm_table(c, be ? sxgm_rarc_node_be : sxgm_rarc_node_le, p, n)) {
+        return false;
+    }
+    if (k > 20000 || !sxgm_span(c, q, k * 20)) {
+        return true;
+    }
+    for (var i = 0; i < k && c.count < 20000; i++) {
+        var e = [];
+        if (!sxgm_read(c, q + i * 20, e, 20)) {
+            break;
+        }
+        var dir = (sxgm32(e, 4, be) >>> 24 & 2) !== 0;
+        var l = dir ? be ? sxgm_rarc_directory_be : sxgm_rarc_directory_le : be ? sxgm_rarc_file_be : sxgm_rarc_file_le;
+        if (!sxgm_add(c, l, q + i * 20)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_nintendo_rarc_build(c) {
+    return sxgm_rarc(c);
+}

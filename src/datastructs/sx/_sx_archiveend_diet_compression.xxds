@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/diet_compression/xx_diet_compression_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_diet_data_v100_fields = layout([bytes("exit_instructions", 4), bytes("signature", 2, SIGNATURE),
+    u16("compressed_crc16", CHECKSUM)]);
+var sxaend_diet_data_v100 = sxLayout(0x6084000F, "diet_data_v100", LE, sxaend_diet_data_v100_fields);
+var sxaend_diet_data_v102_fields = layout([bytes("signature", 5, SIGNATURE)]);
+var sxaend_diet_data_v102 = sxLayout(0x60840010, "diet_data_v102", LE, sxaend_diet_data_v102_fields);
+var sxaend_diet_data_v144_fields = layout([bytes("exit_instructions", 4), bytes("signature", 5, SIGNATURE)]);
+var sxaend_diet_data_v144 = sxLayout(0x60840011, "diet_data_v144", LE, sxaend_diet_data_v144_fields);
+var sxaend_diet_data_lengths_fields = layout([u8("flags_and_packed_size_high"), u16("packed_size_low"),
+    u16("compressed_crc16", CHECKSUM), u8("uncompressed_size_high"), u16("uncompressed_size_low")]);
+var sxaend_diet_data_lengths = sxLayout(0x60840012, "diet_data_lengths", LE, sxaend_diet_data_lengths_fields);
+function sxaend_diet(c) {
+    var h = [];
+    if (!sxaend_read(c, 0, h, 8)) {
+        return false;
+    }
+    var p = 0;
+    if (!sxMemcmp(h, "\x9D\x89dlz", 5)) {
+        if (!sxaend_add(c, sxaend_diet_data_v102, 0)) {
+            return false;
+        }
+        p = 5;
+    } else if (!sxMemcmp(h, "\xB4L\xCD!\x9D\x89", 6)) {
+        if (sxaend_read(c, 6, h, 3) && !sxMemcmp(h, "dlz", 3)) {
+            if (!sxaend_add(c, sxaend_diet_data_v144, 0)) {
+                return false;
+            }
+            p = 9;
+        } else {
+            return sxaend_add(c, sxaend_diet_data_v100, 0);
+        }
+    } else {
+        return false;
+    }
+    return sxaend_add(c, sxaend_diet_data_lengths, p);
+}
+function sx_diet_compression_build(c) {
+    return sxaend_diet(c);
+}

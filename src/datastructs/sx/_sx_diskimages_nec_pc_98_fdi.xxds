@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/nec_pc_98_fdi/xx_nec_pc_98_fdi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_nec_pc98_fdi_header_fields = layout([u32("reserved", RESERVED), u32("floppy_type", ID), u32("header_size", SIZE),
+    u32("data_size", SIZE), u32("sector_size", SIZE), u32("sectors_per_track", COUNT), u32("head_count", COUNT),
+    u32("cylinder_count", COUNT)]);
+var sxdi_nec_pc98_fdi_header = sxLayout(0x60150012, "nec_pc98_fdi_header", LE, sxdi_nec_pc98_fdi_header_fields);
+function sxdi_necfdi(c) {
+    var h = [];
+    if (!sxdi_read(c, 0, h, 32) || sxdi_le32(h, 0) || sxdi_le32(h, 8) < 32) {
+        return false;
+    }
+    return sx_add(c, sxdi_nec_pc98_fdi_header, 0, 32);
+}
+function sx_nec_pc_98_fdi_build(c) {
+    return sxdi_necfdi(c);
+}

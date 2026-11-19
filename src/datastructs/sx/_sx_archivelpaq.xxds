@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivelpaq.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlpaq_header_fields = layout([bytes("magic", 2, SIGNATURE), u8("revision", ID),
+    field("memory_level", "ascii_decimal[1]", 1), u32("uncompressed_size", SIZE)]);
+var sxlpaq_header8_fields = layout([bytes("magic", 2, SIGNATURE), u8("revision", ID),
+    field("memory_level", "ascii_decimal[1]", 1), u32("uncompressed_size", SIZE), u8("data_mode", ID)]);
+var sxlpaq_header = sxLayout(0x60830001, "lpaq_header", BE, sxlpaq_header_fields);
+var sxlpaq_header8 = sxLayout(0x60830002, "lpaq8_header", BE, sxlpaq_header8_fields);
+function sx_archivelpaq_supports(type) {
+    switch (type) {
+    case "LPAQ1":
+    case "LPAQ5":
+    case "LPAQ8":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivelpaq_build(c) {
+    var h = [];
+    var revision;
+    var width;
+    if (c === null || c.f === null || !sx_archivelpaq_supports(c.f.file_type)) {
+        return false;
+    }
+    revision = c.f.file_type === "LPAQ1" ? 1 : c.f.file_type === "LPAQ5" ? 5 : 8;
+    width = revision === 8 ? 9 : 8;
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.size < width + 1 || !sx_read(c, 0, h, width) || h[0] !== 112 /*p*/ || h[1] !== 81 /*Q*/ || h[2] !== revision || h[3] < 48 /*0*/ || h[3] > 57 /*9*/ || revision === 8 && h[8] > 2) {
+        return false;
+    }
+    return sx_add(c, revision === 8 ? sxlpaq_header8 : sxlpaq_header, 0, width) && sx_raw(c, width, c.size - width);
+}
+function sx_archivelpaq_comment(r, id) {
+    var comment = null;
+    var value;
+    if (id !== sxlpaq_header.id && id !== sxlpaq_header8.id) {
+        return true;
+    }
+    if (r === null || r.name === null) {
+        return false;
+    }
+    if (r.value.t < 1 /*XX_VAR_TYPE_INT8*/ || r.value.t > 8 /*XX_VAR_TYPE_UINT64*/) {
+        return true;
+    }
+    if (r.name === "memory_level") {
+        if (r.value.t !== 8 /*XX_VAR_TYPE_UINT64*/) {
+            return true;
+        }
+        comment = "ASCII memory option 0..9; model memory scales as 2^level. This is an option, not a byte count.";
+    } else if (r.name === "revision") {
+        value = sxVarU64(r.value);
+        comment = value === 1 ? "LPAQ1" : value === 5 ? "LPAQ5" : value === 8 ? "LPAQ8" : "Unknown LPAQ revision";
+    } else if (r.name === "data_mode") {
+        value = sxVarU64(r.value);
+        comment = value === 0 ? "DEFAULT (binary model)" : value === 1 ? "TEXT (text model)" : value === 2 ? "EXE (executable transform)" : "Unknown data mode";
+    }
+    return comment === null || sxSetComment(r, comment);
+}

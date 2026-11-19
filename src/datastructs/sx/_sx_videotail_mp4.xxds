@@ -1,0 +1,250 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/mp4/xx_mp4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvt_mp4_box_fields = layout([u32("box_size", SIZE), chars("type", 4, ID)]);
+var sxvt_mp4_box = sxLayout(0x6039002A, "mp4_box", BE, sxvt_mp4_box_fields);
+var sxvt_mp4_box64_fields = layout([u32("box_size"), chars("type", 4, ID), u64("extended_size", SIZE)]);
+var sxvt_mp4_box64 = sxLayout(0x6039002B, "mp4_box64", BE, sxvt_mp4_box64_fields);
+var sxvt_mp4_uuid_fields = layout([bytes("user_type", 16, ID)]);
+var sxvt_mp4_uuid = sxLayout(0x6039002C, "mp4_uuid", BE, sxvt_mp4_uuid_fields);
+var sxvt_mp4_ftyp_fields = layout([chars("major_brand", 4, ID), u32("minor_version", ID)]);
+var sxvt_mp4_ftyp = sxLayout(0x6039002D, "mp4_ftyp", BE, sxvt_mp4_ftyp_fields);
+var sxvt_mp4_brand_fields = layout([chars("compatible_brand", 4, ID)]);
+var sxvt_mp4_brand = sxLayout(0x6039002E, "mp4_brand", BE, sxvt_mp4_brand_fields);
+var sxvt_mp4_mvhd_v0_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u32("creation_time"),
+    u32("modification_time"), u32("timescale"), u32("duration"), i32("rate_fixed16"), i16("volume_fixed8"),
+    u16("reserved0", RESERVED), field("reserved1", "uint32[2]", 8, RESERVED), field("matrix", "int32[9]", 36),
+    field("pre_defined", "uint32[6]", 24, RESERVED), u32("next_track_id", ID)]);
+var sxvt_mp4_mvhd_v0 = sxLayout(0x6039002F, "mp4_mvhd_v0", BE, sxvt_mp4_mvhd_v0_fields);
+var sxvt_mp4_tkhd_v0_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u32("creation_time"),
+    u32("modification_time"), u32("track_id", ID), u32("reserved0", RESERVED), u32("duration"),
+    field("reserved1", "uint32[2]", 8, RESERVED), i16("layer"), i16("alternate_group", ID), i16("volume_fixed8"),
+    u16("reserved2", RESERVED), field("matrix", "int32[9]", 36), u32("width_fixed16"), u32("height_fixed16")]);
+var sxvt_mp4_tkhd_v0 = sxLayout(0x60390030, "mp4_tkhd_v0", BE, sxvt_mp4_tkhd_v0_fields);
+var sxvt_mp4_mdhd_v0_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u32("creation_time"),
+    u32("modification_time"), u32("timescale"), u32("duration"), u16("language", FLAGS), u16("pre_defined", RESERVED)]);
+var sxvt_mp4_mdhd_v0 = sxLayout(0x60390031, "mp4_mdhd_v0", BE, sxvt_mp4_mdhd_v0_fields);
+var sxvt_mp4_elst_entry_v0_fields = layout([u32("segment_duration"), i32("media_time"), i16("media_rate_integer"),
+    i16("media_rate_fraction")]);
+var sxvt_mp4_elst_entry_v0 = sxLayout(0x60390032, "mp4_elst_entry_v0", BE, sxvt_mp4_elst_entry_v0_fields);
+var sxvt_mp4_mvhd_v1_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u64("creation_time"),
+    u64("modification_time"), u32("timescale"), u64("duration"), i32("rate_fixed16"), i16("volume_fixed8"),
+    u16("reserved0", RESERVED), field("reserved1", "uint32[2]", 8, RESERVED), field("matrix", "int32[9]", 36),
+    field("pre_defined", "uint32[6]", 24, RESERVED), u32("next_track_id", ID)]);
+var sxvt_mp4_mvhd_v1 = sxLayout(0x60390033, "mp4_mvhd_v1", BE, sxvt_mp4_mvhd_v1_fields);
+var sxvt_mp4_tkhd_v1_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u64("creation_time"),
+    u64("modification_time"), u32("track_id", ID), u32("reserved0", RESERVED), u64("duration"),
+    field("reserved1", "uint32[2]", 8, RESERVED), i16("layer"), i16("alternate_group", ID), i16("volume_fixed8"),
+    u16("reserved2", RESERVED), field("matrix", "int32[9]", 36), u32("width_fixed16"), u32("height_fixed16")]);
+var sxvt_mp4_tkhd_v1 = sxLayout(0x60390034, "mp4_tkhd_v1", BE, sxvt_mp4_tkhd_v1_fields);
+var sxvt_mp4_mdhd_v1_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u64("creation_time"),
+    u64("modification_time"), u32("timescale"), u64("duration"), u16("language", FLAGS), u16("pre_defined", RESERVED)]);
+var sxvt_mp4_mdhd_v1 = sxLayout(0x60390035, "mp4_mdhd_v1", BE, sxvt_mp4_mdhd_v1_fields);
+var sxvt_mp4_elst_entry_v1_fields = layout([u64("segment_duration"), i64("media_time"), i16("media_rate_integer"),
+    i16("media_rate_fraction")]);
+var sxvt_mp4_elst_entry_v1 = sxLayout(0x60390036, "mp4_elst_entry_v1", BE, sxvt_mp4_elst_entry_v1_fields);
+var sxvt_mp4_hdlr_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u32("pre_defined"),
+    chars("handler_type", 4, ID), field("reserved", "uint32[3]", 12, RESERVED)]);
+var sxvt_mp4_hdlr = sxLayout(0x60390037, "mp4_hdlr", BE, sxvt_mp4_hdlr_fields);
+var sxvt_mp4_table_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u32("entry_count", COUNT)]);
+var sxvt_mp4_table = sxLayout(0x60390038, "mp4_table", BE, sxvt_mp4_table_fields);
+var sxvt_mp4_stsz_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u32("sample_size", SIZE),
+    u32("sample_count", COUNT)]);
+var sxvt_mp4_stsz = sxLayout(0x60390039, "mp4_stsz", BE, sxvt_mp4_stsz_fields);
+var sxvt_mp4_stco_fields = layout([u32("chunk_offset", OFFSET)]);
+var sxvt_mp4_stco = sxLayout(0x6039003A, "mp4_stco", BE, sxvt_mp4_stco_fields);
+var sxvt_mp4_co64_fields = layout([u64("chunk_offset", OFFSET)]);
+var sxvt_mp4_co64 = sxLayout(0x6039003B, "mp4_co64", BE, sxvt_mp4_co64_fields);
+var sxvt_mp4_stts_fields = layout([u32("sample_count", COUNT), u32("sample_delta")]);
+var sxvt_mp4_stts = sxLayout(0x6039003C, "mp4_stts", BE, sxvt_mp4_stts_fields);
+var sxvt_mp4_ctts_v0_fields = layout([u32("sample_count", COUNT), u32("sample_offset")]);
+var sxvt_mp4_ctts_v0 = sxLayout(0x6039003D, "mp4_ctts_v0", BE, sxvt_mp4_ctts_v0_fields);
+var sxvt_mp4_ctts_v1_fields = layout([u32("sample_count", COUNT), i32("sample_offset")]);
+var sxvt_mp4_ctts_v1 = sxLayout(0x6039003E, "mp4_ctts_v1", BE, sxvt_mp4_ctts_v1_fields);
+var sxvt_mp4_stsc_fields = layout([u32("first_chunk", ID), u32("samples_per_chunk", COUNT), u32("sample_description_index", ID)]);
+var sxvt_mp4_stsc = sxLayout(0x6039003F, "mp4_stsc", BE, sxvt_mp4_stsc_fields);
+var sxvt_mp4_stss_fields = layout([u32("sample_number", ID)]);
+var sxvt_mp4_stss = sxLayout(0x60390040, "mp4_stss", BE, sxvt_mp4_stss_fields);
+var sxvt_mp4_sample_size_fields = layout([u32("sample_size", SIZE)]);
+var sxvt_mp4_sample_size = sxLayout(0x60390041, "mp4_sample_size", BE, sxvt_mp4_sample_size_fields);
+var sxvt_mp4_sample_entry_fields = layout([bytes("reserved", 6, RESERVED), u16("data_reference_index", ID)]);
+var sxvt_mp4_sample_entry = sxLayout(0x60390042, "mp4_sample_entry", BE, sxvt_mp4_sample_entry_fields);
+var sxvt_mp4_vmhd_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), u16("graphics_mode", ID),
+    field("opcolour", "uint16[3]", 6)]);
+var sxvt_mp4_vmhd = sxLayout(0x60390043, "mp4_vmhd", BE, sxvt_mp4_vmhd_fields);
+var sxvt_mp4_smhd_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS), i16("balance_fixed8"),
+    u16("reserved", RESERVED)]);
+var sxvt_mp4_smhd = sxLayout(0x60390044, "mp4_smhd", BE, sxvt_mp4_smhd_fields);
+var sxvt_mp4_fullbox_fields = layout([u8("version", ID), field("flags", "uint24", 3, FLAGS)]);
+var sxvt_mp4_fullbox = sxLayout(0x60390045, "mp4_fullbox", BE, sxvt_mp4_fullbox_fields);
+function sxvt_four(a, a_o, b) {
+    return !sxMemcmpAt(a, a_o, b, 0, 4);
+}
+function sxvt_mp4_container(t, t_o) {
+    var names = ["moov", "trak", "mdia", "minf", "stbl", "edts", "dinf", "mvex", "moof", "traf", "mfra", "udta"];
+    for (var i = 0; i < 12; i++) {
+        if (sxvt_four(t, t_o, names[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxvt_mp4(c, p, end, depth) {
+    if (depth > 24) {
+        return false;
+    }
+    while (p < end && c.count < 20000) {
+        var b = [];
+        var n;
+        var z = 8;
+        if (sxU64(end - p) < 8 || !sxvt_read(c, p, b, 0, 8)) {
+            return false;
+        }
+        n = sxvt_uint(b, 0, 4, true);
+        if (n === 1) {
+            if (sxU64(end - p) < 16 || !sxvt_read(c, p + 8, b, 8, 8)) {
+                return false;
+            }
+            n = sxvt_uint(b, 8, 8, true);
+            z = 16;
+        } else if (!n) {
+            n = sxU64(end - p);
+        }
+        if (n < z || n > sxU64(end - p)) {
+            return false;
+        }
+        if (!sxvt_add(c, z === 8 ? sxvt_mp4_box : sxvt_mp4_box64, p)) {
+            return false;
+        }
+        var q = p + z;
+        var stop = p + n;
+        if (sxvt_four(b, 4, "uuid")) {
+            if (sxU64(stop - q) < 16 || !sxvt_add(c, sxvt_mp4_uuid, q)) {
+                return false;
+            }
+            q += 16;
+        }
+        if (sxvt_mp4_container(b, 4)) {
+            sxvt_mp4(c, q, stop, (depth + 1) >>> 0);
+            p = stop;
+            continue;
+        }
+        var l = null;
+        var entry = null;
+        var es = 0;
+        var count = [0];
+        var v = [0];
+        if (q < stop && !sxvt_byte(c, q, v, 0)) {
+            return false;
+        }
+        if (sxvt_four(b, 4, "ftyp") && sxU64(stop - q) >= 8) {
+            l = sxvt_mp4_ftyp;
+            entry = sxvt_mp4_brand;
+            es = 4;
+            count[0] = Math.floor(sxU64(sxU64(stop - q) - 8) / 4);
+        } else if (sxvt_four(b, 4, "mvhd") && v[0] < 2) {
+            l = v[0] ? sxvt_mp4_mvhd_v1 : sxvt_mp4_mvhd_v0;
+        } else if (sxvt_four(b, 4, "tkhd") && v[0] < 2) {
+            l = v[0] ? sxvt_mp4_tkhd_v1 : sxvt_mp4_tkhd_v0;
+        } else if (sxvt_four(b, 4, "mdhd") && v[0] < 2) {
+            l = v[0] ? sxvt_mp4_mdhd_v1 : sxvt_mp4_mdhd_v0;
+        } else if (sxvt_four(b, 4, "hdlr")) {
+            l = sxvt_mp4_hdlr;
+        } else if (sxvt_four(b, 4, "vmhd")) {
+            l = sxvt_mp4_vmhd;
+        } else if (sxvt_four(b, 4, "smhd")) {
+            l = sxvt_mp4_smhd;
+        } else if (sxvt_four(b, 4, "nmhd")) {
+            l = sxvt_mp4_fullbox;
+        } else if (sxvt_four(b, 4, "stsz") && sxU64(stop - q) >= 12) {
+            var sz = [0];
+            if (!sxvt_word(c, q + 4, 4, true, sz) || !sxvt_word(c, q + 8, 4, true, count)) {
+                return false;
+            }
+            l = sxvt_mp4_stsz;
+            if (!sz[0]) {
+                es = 4;
+                entry = sxvt_mp4_sample_size;
+            }
+        } else if (sxvt_four(b, 4, "stco")) {
+            entry = sxvt_mp4_stco;
+            es = 4;
+        } else if (sxvt_four(b, 4, "co64")) {
+            entry = sxvt_mp4_co64;
+            es = 8;
+        } else if (sxvt_four(b, 4, "stts")) {
+            entry = sxvt_mp4_stts;
+            es = 8;
+        } else if (sxvt_four(b, 4, "ctts") && v[0] < 2) {
+            entry = v[0] ? sxvt_mp4_ctts_v1 : sxvt_mp4_ctts_v0;
+            es = 8;
+        } else if (sxvt_four(b, 4, "stsc")) {
+            entry = sxvt_mp4_stsc;
+            es = 12;
+        } else if (sxvt_four(b, 4, "stss")) {
+            entry = sxvt_mp4_stss;
+            es = 4;
+        } else if (sxvt_four(b, 4, "elst") && v[0] < 2) {
+            entry = v[0] ? sxvt_mp4_elst_entry_v1 : sxvt_mp4_elst_entry_v0;
+            es = v[0] ? 20 : 12;
+        } else if ((sxvt_four(b, 4, "stsd") || sxvt_four(b, 4, "dref")) && sxU64(stop - q) >= 8) {
+            if (!sxvt_word(c, q + 4, 4, true, count) || !sxvt_add(c, sxvt_mp4_table, q)) {
+                return false;
+            }
+            var cur = q + 8;
+            for (var i = 0; i < count[0] && c.count < 20000; i++) {
+                var eb = [];
+                if (cur > stop || sxU64(stop - cur) < 8 || !sxvt_read(c, cur, eb, 0, 8)) {
+                    break;
+                }
+                var en = sxvt_uint(eb, 0, 4, true);
+                if (en < 8 || en > sxU64(stop - cur)) {
+                    break;
+                }
+                if (!sxvt_add(c, sxvt_mp4_box, cur)) {
+                    return false;
+                }
+                if (sxvt_four(b, 4, "stsd") && en >= 16 && !sxvt_add(c, sxvt_mp4_sample_entry, cur + 8)) {
+                    return false;
+                }
+                if (sxvt_four(b, 4, "dref") && en >= 12 && !sxvt_add(c, sxvt_mp4_fullbox, cur + 8)) {
+                    return false;
+                }
+                cur += en;
+            }
+            p = stop;
+            continue;
+        }
+        if (entry !== null && l === null) {
+            l = sxvt_mp4_table;
+            if (sxU64(stop - q) < 8 || !sxvt_word(c, q + 4, 4, true, count)) {
+                p = stop;
+                continue;
+            }
+        }
+        if (l !== null) {
+            var f = l.fields[sxU64(l.field_count - 1)];
+            var hs = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+            if (hs <= sxU64(stop - q)) {
+                if (!sxvt_add(c, l, q)) {
+                    return false;
+                }
+                if (entry !== null && es && count[0] <= Math.floor(sxU64(sxU64(stop - q) - hs) / es)) {
+                    for (i = 0; i < count[0]; i++) {
+                        if (!sxvt_add(c, entry, q + hs + i * es)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        p = stop;
+    }
+    return p === end;
+}
+function sx_mp4_build(c) {
+    return sxvt_mp4(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0);
+}

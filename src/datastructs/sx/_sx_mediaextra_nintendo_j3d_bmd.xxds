@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_j3d_bmd/xx_nintendo_j3d_bmd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxmx_j3d(v) {
+    if (!sxmx_row(v, sxmx_j3d_header, 0, v.n)) {
+        return false;
+    }
+    var n = sxmx_u32(v.p, 12, true);
+    if (n > 4096) {
+        return false;
+    }
+    var at = 32;
+    for (var i = 0; i < n; i++) {
+        if (!sxmx_row(v, sxmx_section_be, at, v.n)) {
+            return false;
+        }
+        var size = sxmx_u32(v.p, at + 4, true);
+        if (size < 8 || !sxmx_need(v, at, size, v.n)) {
+            return false;
+        }
+        at += size;
+    }
+    return at === v.n;
+}
+function sx_nintendo_j3d_bmd_build(v) {
+    return sxmx_j3d(v);
+}

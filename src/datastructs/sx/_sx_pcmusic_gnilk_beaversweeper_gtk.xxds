@@ -1,0 +1,294 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/gnilk_beaversweeper_gtk/xx_gnilk_beaversweeper_gtk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_beaver_synth_marker_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxpcm_beaver_synth_marker = sxLayout(0x6094004A, "beaver_synth_marker", LE, sxpcm_beaver_synth_marker_fields);
+var sxpcm_beaver_sample_length_fields = layout([field("sample_count", "uint24", 3, COUNT)]);
+var sxpcm_beaver_sample_length = sxLayout(0x6094004C, "beaver_sample_length", LE, sxpcm_beaver_sample_length_fields);
+var sxpcm_beaver_sample_loop_fields = layout([field("loop_start_sample", "uint24", 3), field("loop_end_sample", "uint24", 3)]);
+var sxpcm_beaver_sample_loop = sxLayout(0x6094004D, "beaver_sample_loop", LE, sxpcm_beaver_sample_loop_fields);
+var sxpcm_beaver_voice_count_fields = layout([u8("voice_count", COUNT)]);
+var sxpcm_beaver_voice_count = sxLayout(0x6094004E, "beaver_voice_count", LE, sxpcm_beaver_voice_count_fields);
+var sxpcm_beaver_polyphony_fields = layout([u8("polyphony", COUNT)]);
+var sxpcm_beaver_polyphony = sxLayout(0x6094004F, "beaver_polyphony", LE, sxpcm_beaver_polyphony_fields);
+var sxpcm_beaver_voice_range_fields = layout([u8("first_note"), u8("last_note")]);
+var sxpcm_beaver_voice_range = sxLayout(0x60940050, "beaver_voice_range", LE, sxpcm_beaver_voice_range_fields);
+var sxpcm_beaver_modulator_count_fields = layout([u8("modulator_count", COUNT)]);
+var sxpcm_beaver_modulator_count = sxLayout(0x60940051, "beaver_modulator_count", LE, sxpcm_beaver_modulator_count_fields);
+var sxpcm_beaver_oscillator_count_fields = layout([u8("oscillator_count", COUNT)]);
+var sxpcm_beaver_oscillator_count = sxLayout(0x60940052, "beaver_oscillator_count", LE, sxpcm_beaver_oscillator_count_fields);
+var sxpcm_beaver_insert_count_fields = layout([u8("insert_count", COUNT)]);
+var sxpcm_beaver_insert_count = sxLayout(0x60940053, "beaver_insert_count", LE, sxpcm_beaver_insert_count_fields);
+var sxpcm_beaver_type_fields = layout([u8("component_type", ID)]);
+var sxpcm_beaver_type = sxLayout(0x60940054, "beaver_type", LE, sxpcm_beaver_type_fields);
+var sxpcm_beaver_envelope_fields = layout([u8("attack_ticks"), u8("decay_ticks"), u8("release_ticks"),
+    field("sustain_level", "float32", 4), field("velocity_sensitivity", "float32", 4), u8("use_sustain", FLAGS)]);
+var sxpcm_beaver_envelope = sxLayout(0x60940055, "beaver_envelope", LE, sxpcm_beaver_envelope_fields);
+var sxpcm_beaver_lfo_fields = layout([u8("waveform", ID), u8("invert", FLAGS), field("offset", "float32", 4),
+    u8("attack_ticks"), u8("retrigger", FLAGS), field("velocity_sensitivity", "float32", 4), u16("period_ticks")]);
+var sxpcm_beaver_lfo = sxLayout(0x60940056, "beaver_lfo", LE, sxpcm_beaver_lfo_fields);
+var sxpcm_beaver_controller_fields = layout([field("smoothing_cutoff", "float32", 4), u8("controller_number", ID)]);
+var sxpcm_beaver_controller = sxLayout(0x60940057, "beaver_controller", LE, sxpcm_beaver_controller_fields);
+var sxpcm_beaver_oscillator_fields = layout([field("detune", "float32", 4), field("dc_offset", "float32", 4), u8("multiplier"),
+    i8("transpose"), field("portamento", "float32", 4), u8("waveform", ID), u8("sync", FLAGS), u8("mode", ID),
+    field("mix", "float32", 4), field("fm_amount", "float32", 4), u8("modulator_0", ID), field("modulation_0", "float32", 4),
+    u8("modulator_1", ID), field("modulation_1", "float32", 4), u8("modulator_2", ID), field("modulation_2", "float32", 4),
+    u8("modulator_3", ID), field("modulation_3", "float32", 4), u8("modulator_4", ID), field("modulation_4", "float32", 4),
+    u8("modulator_5", ID), field("modulation_5", "float32", 4)]);
+var sxpcm_beaver_oscillator = sxLayout(0x60940058, "beaver_oscillator", LE, sxpcm_beaver_oscillator_fields);
+var sxpcm_beaver_filter_fields = layout([u8("mode", ID), u8("cascade", FLAGS), field("cutoff", "float32", 4),
+    field("resonance", "float32", 4), field("gain", "float32", 4), u8("modulator_0", ID), field("modulation_0", "float32", 4),
+    u8("modulator_1", ID), field("modulation_1", "float32", 4), u8("modulator_2", ID), field("modulation_2", "float32", 4)]);
+var sxpcm_beaver_filter = sxLayout(0x60940059, "beaver_filter", LE, sxpcm_beaver_filter_fields);
+var sxpcm_beaver_distortion_fields = layout([field("amount", "float32", 4), field("output_volume", "float32", 4), u8("mode", ID)]);
+var sxpcm_beaver_distortion = sxLayout(0x6094005A, "beaver_distortion", LE, sxpcm_beaver_distortion_fields);
+var sxpcm_beaver_delay_fields = layout([u8("left_delay_ticks"), u8("left_echo_ticks"), field("left_volume", "float32", 4),
+    field("left_feedback", "float32", 4), u8("right_delay_ticks"), u8("right_echo_ticks"), field("right_volume", "float32", 4),
+    field("right_feedback", "float32", 4), field("dry_mix", "float32", 4)]);
+var sxpcm_beaver_delay = sxLayout(0x6094005B, "beaver_delay", LE, sxpcm_beaver_delay_fields);
+var sxpcm_beaver_chorus_fields = layout([field("speed", "float32", 4), field("depth", "float32", 4),
+    field("spread", "float32", 4), field("feedback", "float32", 4), field("volume", "float32", 4),
+    field("dry_mix", "float32", 4), u8("high_fidelity", FLAGS)]);
+var sxpcm_beaver_chorus = sxLayout(0x6094005C, "beaver_chorus", LE, sxpcm_beaver_chorus_fields);
+var sxpcm_beaver_voice_modulation_fields = layout([u8("volume_modulator", ID), u8("panning_modulator", ID),
+    field("volume_amount", "float32", 4), field("panning_amount", "float32", 4)]);
+var sxpcm_beaver_voice_modulation = sxLayout(0x6094005D, "beaver_voice_modulation", LE, sxpcm_beaver_voice_modulation_fields);
+var sxpcm_beaver_distortion_enabled_fields = layout([u8("enabled", FLAGS)]);
+var sxpcm_beaver_distortion_enabled = sxLayout(0x6094005E, "beaver_distortion_enabled", LE, sxpcm_beaver_distortion_enabled_fields);
+var sxpcm_beaver_arpeggio_enabled_fields = layout([u8("enabled", FLAGS)]);
+var sxpcm_beaver_arpeggio_enabled = sxLayout(0x6094005F, "beaver_arpeggio_enabled", LE, sxpcm_beaver_arpeggio_enabled_fields);
+var sxpcm_beaver_arpeggio_timing_fields = layout([u8("ticks_per_row")]);
+var sxpcm_beaver_arpeggio_timing = sxLayout(0x60940061, "beaver_arpeggio_timing", LE, sxpcm_beaver_arpeggio_timing_fields);
+var sxpcm_beaver_mixer_fields = layout([field("volume", "float32", 4), field("panning", "float32", 4),
+    field("effect1_gain", "float32", 4), field("effect2_gain", "float32", 4), field("effect3_gain", "float32", 4)]);
+var sxpcm_beaver_mixer = sxLayout(0x60940062, "beaver_mixer", LE, sxpcm_beaver_mixer_fields);
+var sxpcm_beaver_chain_fields = layout([u8("enabled_effect_mask", FLAGS)]);
+var sxpcm_beaver_chain = sxLayout(0x60940063, "beaver_chain", LE, sxpcm_beaver_chain_fields);
+var sxpcm_beaver_channel_v102_fields = layout([u8("channel_id", ID), u8("position_count", COUNT)]);
+var sxpcm_beaver_channel_v102 = sxLayout(0x60940065, "beaver_channel_v102", LE, sxpcm_beaver_channel_v102_fields);
+var sxpcm_beaver_channel_fields = layout([u8("channel_id", ID), u16("position_count", COUNT)]);
+var sxpcm_beaver_channel = sxLayout(0x60940066, "beaver_channel", LE, sxpcm_beaver_channel_fields);
+var sxpcm_beaver_position_mask_fields = layout([u16("stored_field_mask", FLAGS)]);
+var sxpcm_beaver_position_mask = sxLayout(0x60940067, "beaver_position_mask", LE, sxpcm_beaver_position_mask_fields);
+var sxpcm_beaver_position_pattern_fields = layout([u8("pattern")]);
+var sxpcm_beaver_position_pattern = sxLayout(0x60940068, "beaver_position_pattern", LE, sxpcm_beaver_position_pattern_fields);
+var sxpcm_beaver_position_transpose_fields = layout([i8("transpose")]);
+var sxpcm_beaver_position_transpose = sxLayout(0x60940069, "beaver_position_transpose", LE, sxpcm_beaver_position_transpose_fields);
+var sxpcm_beaver_position_effect_fields = layout([u8("effect")]);
+var sxpcm_beaver_position_effect = sxLayout(0x6094006A, "beaver_position_effect", LE, sxpcm_beaver_position_effect_fields);
+var sxpcm_beaver_position_effect_parameter_1_fields = layout([u8("effect_parameter_1")]);
+var sxpcm_beaver_position_effect_parameter_1 = sxLayout(0x6094006B, "beaver_position_effect_parameter_1", LE, sxpcm_beaver_position_effect_parameter_1_fields);
+var sxpcm_beaver_position_effect_parameter_2_fields = layout([u8("effect_parameter_2")]);
+var sxpcm_beaver_position_effect_parameter_2 = sxLayout(0x6094006C, "beaver_position_effect_parameter_2", LE, sxpcm_beaver_position_effect_parameter_2_fields);
+var sxpcm_beaver_position_effect_parameter_3_fields = layout([u8("effect_parameter_3")]);
+var sxpcm_beaver_position_effect_parameter_3 = sxLayout(0x6094006D, "beaver_position_effect_parameter_3", LE, sxpcm_beaver_position_effect_parameter_3_fields);
+var sxpcm_beaver_position_effect_parameter_4_fields = layout([u8("effect_parameter_4")]);
+var sxpcm_beaver_position_effect_parameter_4 = sxLayout(0x6094006E, "beaver_position_effect_parameter_4", LE, sxpcm_beaver_position_effect_parameter_4_fields);
+var sxpcm_beaver_position_effect_parameter_5_fields = layout([u8("effect_parameter_5")]);
+var sxpcm_beaver_position_effect_parameter_5 = sxLayout(0x6094006F, "beaver_position_effect_parameter_5", LE, sxpcm_beaver_position_effect_parameter_5_fields);
+var sxpcm_beaver_position_effect_parameter_6_fields = layout([u8("effect_parameter_6")]);
+var sxpcm_beaver_position_effect_parameter_6 = sxLayout(0x60940070, "beaver_position_effect_parameter_6", LE, sxpcm_beaver_position_effect_parameter_6_fields);
+var sxpcm_beaver_pattern_v102_fields = layout([u8("pattern_id", ID), u8("row_count", COUNT)]);
+var sxpcm_beaver_pattern_v102 = sxLayout(0x60940071, "beaver_pattern_v102", LE, sxpcm_beaver_pattern_v102_fields);
+var sxpcm_beaver_pattern_fields = layout([u8("pattern_id", ID), u16("row_count", COUNT)]);
+var sxpcm_beaver_pattern = sxLayout(0x60940072, "beaver_pattern", LE, sxpcm_beaver_pattern_fields);
+var sxpcm_beaver_pattern_row_fields = layout([u32("active_channel_mask", FLAGS)]);
+var sxpcm_beaver_pattern_row = sxLayout(0x60940073, "beaver_pattern_row", LE, sxpcm_beaver_pattern_row_fields);
+var sxpcm_beaver_event_fields = layout([u8("note"), u8("velocity"), u8("effect", ID), u8("effect_parameter")]);
+var sxpcm_beaver_event = sxLayout(0x60940074, "beaver_event", LE, sxpcm_beaver_event_fields);
+function sxpcm_beaver_take(c, p, l) {
+    var z = sxpcm_width(l);
+    if (!sxpcm_put(c, l, p[0], 1)) {
+        return false;
+    }
+    p[0] += z;
+    return true;
+}
+var sxpcm_beaver_component_rows = [null, sxpcm_beaver_envelope, sxpcm_beaver_lfo, sxpcm_beaver_controller,
+    sxpcm_beaver_oscillator, sxpcm_beaver_filter, sxpcm_beaver_distortion, sxpcm_beaver_delay, sxpcm_beaver_chorus];
+function sxpcm_beaver_component(c, p) {
+    var t = [0];
+    if (!sxpcm_u8(c, p[0], t) || !sxpcm_beaver_take(c, p, sxpcm_beaver_type)) {
+        return false;
+    }
+    return t[0] > 0 && t[0] < 9 && sxpcm_beaver_take(c, p, sxpcm_beaver_component_rows[t[0]]);
+}
+function sxpcm_beaver_types(c, p, counter) {
+    var n = [0];
+    if (!sxpcm_u8(c, p[0], n) || !sxpcm_beaver_take(c, p, counter)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxpcm_beaver_component(c, p)) {
+            return false;
+        }
+    }
+    return true;
+}
+var sxpcm_beaver_fields = [sxpcm_beaver_position_pattern, sxpcm_beaver_position_transpose, sxpcm_beaver_position_effect,
+    sxpcm_beaver_position_effect_parameter_1, sxpcm_beaver_position_effect_parameter_2,
+    sxpcm_beaver_position_effect_parameter_3, sxpcm_beaver_position_effect_parameter_4,
+    sxpcm_beaver_position_effect_parameter_5, sxpcm_beaver_position_effect_parameter_6];
+function sxpcm_beaver(c) {
+    if (!sxpcm_eq(c, 0, "+SNT", 4) || !sxpcm_put(c, sxpcm_beaver_synth_marker, 0, 1)) {
+        return false;
+    }
+    var p = [4];
+    for (var i = 0; i < 32; i++) {
+        var flags = [0];
+        if (!sxpcm_u8(c, p[0], flags) || !sxpcm_beaver_take(c, p, sxpcm_beaver_sample_flags) || flags[0] > 7) {
+            return true;
+        }
+        if (flags[0] & 1) {
+            var b = [];
+            if (!sxpcm_read(c, p[0], b, 3) || !sxpcm_beaver_take(c, p, sxpcm_beaver_sample_length)) {
+                return true;
+            }
+            var n = [b[0] | b[1] * 256 | b[2] * 0x10000];
+            if (!sxpcm_span(c, p[0], n[0] * 2)) {
+                return true;
+            }
+            p[0] += n[0] * 2;
+            if (!sxpcm_beaver_take(c, p, sxpcm_beaver_sample_loop)) {
+                return true;
+            }
+        }
+    }
+    for (i = 0; i < 16; i++) {
+        n = [0];
+        if (!sxpcm_u8(c, p[0], n) || !sxpcm_beaver_take(c, p, sxpcm_beaver_voice_count) || !sxpcm_put(c, sxpcm_beaver_polyphony, p[0], n[0])) {
+            return true;
+        }
+        p[0] += n[0];
+        for (var j = 0; j < n[0]; j++) {
+            if (!sxpcm_beaver_take(c, p, sxpcm_beaver_voice_range)) {
+                return true;
+            }
+            var mods = [0];
+            var type = [0];
+            if (!sxpcm_u8(c, p[0], mods) || !sxpcm_beaver_take(c, p, sxpcm_beaver_modulator_count) || !mods[0] || !sxpcm_u8(c, p[0], type) || type[0] !== 1) {
+                return true;
+            }
+            for (var m = 0; m < mods[0]; m++) {
+                if (!sxpcm_beaver_component(c, p)) {
+                    return true;
+                }
+            }
+            var oscillators = [0];
+            if (!sxpcm_u8(c, p[0], oscillators) || !sxpcm_beaver_take(c, p, sxpcm_beaver_oscillator_count) || !sxpcm_put(c, sxpcm_beaver_oscillator, p[0], oscillators[0])) {
+                return true;
+            }
+            p[0] += oscillators[0] * 55;
+            if (!sxpcm_beaver_types(c, p, sxpcm_beaver_insert_count) || !sxpcm_beaver_take(c, p, sxpcm_beaver_voice_modulation)) {
+                return true;
+            }
+        }
+        var enabled = [0];
+        if (!sxpcm_u8(c, p[0], enabled) || !sxpcm_beaver_take(c, p, sxpcm_beaver_distortion_enabled) || enabled[0] > 1) {
+            return true;
+        }
+        if (enabled[0]) {
+            type = [0];
+            if (!sxpcm_u8(c, p[0], type) || type[0] !== 6 || !sxpcm_beaver_component(c, p)) {
+                return true;
+            }
+        }
+        if (!sxpcm_u8(c, p[0], enabled) || !sxpcm_beaver_take(c, p, sxpcm_beaver_arpeggio_enabled) || enabled[0] > 1) {
+            return true;
+        }
+        if (enabled[0]) {
+            if (!sxpcm_put(c, sxpcm_beaver_arpeggio_step, p[0], 32)) {
+                return true;
+            }
+            p[0] += 192;
+            if (!sxpcm_beaver_take(c, p, sxpcm_beaver_arpeggio_timing)) {
+                return true;
+            }
+        }
+    }
+    if (!sxpcm_put(c, sxpcm_beaver_mixer, p[0], 16)) {
+        return true;
+    }
+    p[0] += 320;
+    for (i = 0; i < 3; i++) {
+        flags = [0];
+        if (!sxpcm_u8(c, p[0], flags) || !sxpcm_beaver_take(c, p, sxpcm_beaver_chain)) {
+            return true;
+        }
+        for (j = 0; j < 3; j++) {
+            if (flags[0] & (1 << j) >>> 0 && !sxpcm_beaver_component(c, p)) {
+                return true;
+            }
+        }
+    }
+    if (!sxpcm_eq(c, p[0], "-SNT", 4) || !sxpcm_beaver_take(c, p, sxpcm_beaver_synth_marker) || !sxpcm_eq(c, p[0], "GOAT", 4)) {
+        return true;
+    }
+    var h = [];
+    if (!sxpcm_read(c, p[0], h, 12) || !sxpcm_beaver_take(c, p, sxpcm_beaver_song_header)) {
+        return true;
+    }
+    var version = sxpcm16(h, 4);
+    if (version !== 0x102 && version !== 0x103) {
+        return true;
+    }
+    for (i = 0; i < h[6]; i++) {
+        var count = [0];
+        if (version === 0x102) {
+            n = [0];
+            if (!sxpcm_u8(c, p[0] + 1, n)) {
+                return true;
+            }
+            count[0] = n[0];
+        } else if (!sxpcm_u16(c, p[0] + 1, count)) {
+            return true;
+        }
+        if (!sxpcm_beaver_take(c, p, version === 0x102 ? sxpcm_beaver_channel_v102 : sxpcm_beaver_channel)) {
+            return true;
+        }
+        for (j = 0; j < count[0]; j++) {
+            flags = [0];
+            if (!sxpcm_u16(c, p[0], flags) || !sxpcm_beaver_take(c, p, sxpcm_beaver_position_mask) || flags[0] & 0xFFFFFE00) {
+                return true;
+            }
+            for (var k = 0; k < 9; k++) {
+                if (flags[0] & (1 << k) >>> 0 && !sxpcm_beaver_take(c, p, sxpcm_beaver_fields[k])) {
+                    return true;
+                }
+            }
+        }
+    }
+    for (i = 0; i < h[7]; i++) {
+        count = [0];
+        if (version === 0x102) {
+            n = [0];
+            if (!sxpcm_u8(c, p[0] + 1, n)) {
+                return true;
+            }
+            count[0] = n[0];
+        } else if (!sxpcm_u16(c, p[0] + 1, count)) {
+            return true;
+        }
+        if (!sxpcm_beaver_take(c, p, version === 0x102 ? sxpcm_beaver_pattern_v102 : sxpcm_beaver_pattern)) {
+            return true;
+        }
+        for (j = 0; j < count[0]; j++) {
+            flags = [0];
+            if (!sxpcm_u32(c, p[0], flags) || !sxpcm_beaver_take(c, p, sxpcm_beaver_pattern_row) || (flags[0] & 0xFFFF0000) >>> 0) {
+                return true;
+            }
+            for (k = 0; k < 16; k++) {
+                if ((flags[0] & (1 << k) >>> 0) >>> 0 && !sxpcm_beaver_take(c, p, sxpcm_beaver_event)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gnilk_beaversweeper_gtk_build(c) {
+    return sxpcm_beaver(c);
+}

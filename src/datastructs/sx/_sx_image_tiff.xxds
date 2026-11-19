@@ -1,0 +1,217 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/tiff/xx_tiff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_tiff_header_be = sxLayout(0x60010033, "TIFF_HEADER_BE", BE, sxi_tiff_header_le_fields);
+var sxi_bigtiff_header_le_fields = layout([chars("byte_order", 2, ID), u16("version", ID), u16("offset_size", SIZE),
+    u16("reserved", RESERVED), u64("first_ifd_offset", OFFSET)]);
+var sxi_bigtiff_header_le = sxLayout(0x60010034, "BIGTIFF_HEADER_LE", LE, sxi_bigtiff_header_le_fields);
+var sxi_bigtiff_header_be = sxLayout(0x60010035, "BIGTIFF_HEADER_BE", BE, sxi_bigtiff_header_le_fields);
+var sxi_tiff_count_le_fields = layout([u16("entry_count", COUNT)]);
+var sxi_tiff_count_le = sxLayout(0x60010036, "TIFF_IFD_COUNT_LE", LE, sxi_tiff_count_le_fields);
+var sxi_tiff_count_be = sxLayout(0x60010037, "TIFF_IFD_COUNT_BE", BE, sxi_tiff_count_le_fields);
+var sxi_bigtiff_count_le_fields = layout([u64("entry_count", COUNT)]);
+var sxi_bigtiff_count_le = sxLayout(0x60010038, "BIGTIFF_IFD_COUNT_LE", LE, sxi_bigtiff_count_le_fields);
+var sxi_bigtiff_count_be = sxLayout(0x60010039, "BIGTIFF_IFD_COUNT_BE", BE, sxi_bigtiff_count_le_fields);
+var sxi_tiff_next_le_fields = layout([u32("next_ifd_offset", OFFSET)]);
+var sxi_tiff_next_le = sxLayout(0x6001003A, "TIFF_NEXT_IFD_LE", LE, sxi_tiff_next_le_fields);
+var sxi_tiff_next_be = sxLayout(0x6001003B, "TIFF_NEXT_IFD_BE", BE, sxi_tiff_next_le_fields);
+var sxi_bigtiff_next_le_fields = layout([u64("next_ifd_offset", OFFSET)]);
+var sxi_bigtiff_next_le = sxLayout(0x6001003C, "BIGTIFF_NEXT_IFD_LE", LE, sxi_bigtiff_next_le_fields);
+var sxi_bigtiff_next_be = sxLayout(0x6001003D, "BIGTIFF_NEXT_IFD_BE", BE, sxi_bigtiff_next_le_fields);
+var sxi_tiff_entry_inline_le_fields = layout([u16("tag", ID), u16("field_type", ID), u32("count", COUNT),
+    bytes("inline_value", 4)]);
+var sxi_tiff_entry_inline_le = sxLayout(0x6001003E, "TIFF_IFD_ENTRY_INLINE_LE", LE, sxi_tiff_entry_inline_le_fields);
+var sxi_tiff_entry_inline_be = sxLayout(0x6001003F, "TIFF_IFD_ENTRY_INLINE_BE", BE, sxi_tiff_entry_inline_le_fields);
+var sxi_tiff_entry_offset_le_fields = layout([u16("tag", ID), u16("field_type", ID), u32("count", COUNT),
+    u32("value_offset", OFFSET)]);
+var sxi_tiff_entry_offset_le = sxLayout(0x60010040, "TIFF_IFD_ENTRY_OFFSET_LE", LE, sxi_tiff_entry_offset_le_fields);
+var sxi_tiff_entry_offset_be = sxLayout(0x60010041, "TIFF_IFD_ENTRY_OFFSET_BE", BE, sxi_tiff_entry_offset_le_fields);
+var sxi_bigtiff_entry_inline_le_fields = layout([u16("tag", ID), u16("field_type", ID), u64("count", COUNT),
+    bytes("inline_value", 8)]);
+var sxi_bigtiff_entry_inline_le = sxLayout(0x60010042, "BIGTIFF_IFD_ENTRY_INLINE_LE", LE, sxi_bigtiff_entry_inline_le_fields);
+var sxi_bigtiff_entry_inline_be = sxLayout(0x60010043, "BIGTIFF_IFD_ENTRY_INLINE_BE", BE, sxi_bigtiff_entry_inline_le_fields);
+var sxi_bigtiff_entry_offset_le_fields = layout([u16("tag", ID), u16("field_type", ID), u64("count", COUNT),
+    u64("value_offset", OFFSET)]);
+var sxi_bigtiff_entry_offset_le = sxLayout(0x60010044, "BIGTIFF_IFD_ENTRY_OFFSET_LE", LE, sxi_bigtiff_entry_offset_le_fields);
+var sxi_bigtiff_entry_offset_be = sxLayout(0x60010045, "BIGTIFF_IFD_ENTRY_OFFSET_BE", BE, sxi_bigtiff_entry_offset_le_fields);
+var sx_image_tiff_width_widths = [0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8, 4, 0, 0, 8, 8, 8];
+function sx_image_tiff_width(type) {
+    return type < 19 ? sx_image_tiff_width_widths[type] : 0;
+}
+function sx_image_tiff_queue(queue, count, offset, c, big) {
+    var i;
+    if (!offset) {
+        return true;
+    }
+    if (count[0] >= 1024 || offset < (big ? 16 : 8) || offset >= (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    for (i = 0; i < count[0]; ++i) {
+        if (queue[i] === offset) {
+            return false;
+        }
+    }
+    queue[count[0]++] = offset;
+    return true;
+}
+function sx_image_tiff(c) {
+    var magic = [];
+    var version;
+    var value16;
+    var value32;
+    var queue = [];
+    var first;
+    var count = [0];
+    var index = 0;
+    var be;
+    var big;
+    var header;
+    var counter;
+    var next_layout;
+    var inline_entry;
+    var offset_entry;
+    if (!sx_read(c, 0, magic, 2) || (magic[0] !== 73 /*I*/ || magic[1] !== 73 /*I*/) && (magic[0] !== 77 /*M*/ || magic[1] !== 77 /*M*/)) {
+        return false;
+    }
+    be = magic[0] === 77 /*M*/;
+    if ((version = sx_u16(c, 2, be)) === null || version !== 42 && version !== 43) {
+        return false;
+    }
+    big = version === 43;
+    if (big) {
+        if ((value16 = sx_u16(c, 4, be)) === null || value16 !== 8 || (value16 = sx_u16(c, 6, be)) === null || value16 || (first = sx_u64(c, 8, be)) === null) {
+            return false;
+        }
+        header = be ? sxi_bigtiff_header_be : sxi_bigtiff_header_le;
+        counter = be ? sxi_bigtiff_count_be : sxi_bigtiff_count_le;
+        next_layout = be ? sxi_bigtiff_next_be : sxi_bigtiff_next_le;
+        inline_entry = be ? sxi_bigtiff_entry_inline_be : sxi_bigtiff_entry_inline_le;
+        offset_entry = be ? sxi_bigtiff_entry_offset_be : sxi_bigtiff_entry_offset_le;
+    } else {
+        if ((value32 = sx_u32(c, 4, be)) === null) {
+            return false;
+        }
+        first = value32;
+        header = be ? sxi_tiff_header_be : sxi_tiff_header_le;
+        counter = be ? sxi_tiff_count_be : sxi_tiff_count_le;
+        next_layout = be ? sxi_tiff_next_be : sxi_tiff_next_le;
+        inline_entry = be ? sxi_tiff_entry_inline_be : sxi_tiff_entry_inline_le;
+        offset_entry = be ? sxi_tiff_entry_offset_be : sxi_tiff_entry_offset_le;
+    }
+    if (!sx_add(c, header, 0, big ? 16 : 8) || !first || !sx_image_tiff_queue(queue, count, first, c, big)) {
+        return false;
+    }
+    while (index < count[0]) {
+        var n;
+        var i;
+        var next;
+        var count_size = big ? 8 : 2;
+        var entry_size = big ? 20 : 12;
+        var next_size = big ? 8 : 4;
+        var at = sxI64(queue[index++]);
+        var table;
+        if (big) {
+            if ((n = sx_u64(c, at, be)) === null) {
+                return false;
+            }
+        } else {
+            if ((value16 = sx_u16(c, at, be)) === null) {
+                return false;
+            }
+            n = value16;
+        }
+        if (n > 65536 || !sx_image_range(c, at, count_size + n * entry_size + next_size) || !sx_add(c, counter, at, count_size)) {
+            return false;
+        }
+        table = at + count_size;
+        for (i = 0; i < n; ++i) {
+            var p = table + (i >= SX_I64_MAX ? i - SX_U64_MAX : i) * entry_size;
+            var data;
+            var tag;
+            var type;
+            var elements;
+            var bytes;
+            var offset;
+            var width;
+            if ((tag = sx_u16(c, p, be)) === null || (type = sx_u16(c, p + 2, be)) === null || !(width = sx_image_tiff_width(type)) || !big && type >= 16) {
+                return false;
+            }
+            if (big) {
+                if ((elements = sx_u64(c, p + 4, be)) === null) {
+                    return false;
+                }
+            } else {
+                if ((value32 = sx_u32(c, p + 4, be)) === null) {
+                    return false;
+                }
+                elements = value32;
+            }
+            if (elements > Math.floor(SX_I64_MAX / width)) {
+                return false;
+            }
+            bytes = elements * width;
+            data = p + (big ? 12 : 8);
+            if (bytes > next_size) {
+                if (big) {
+                    if ((offset = sx_u64(c, data, be)) === null) {
+                        return false;
+                    }
+                } else {
+                    if ((value32 = sx_u32(c, data, be)) === null) {
+                        return false;
+                    }
+                    offset = value32;
+                }
+                if (offset > SX_I64_MAX || !sx_image_range(c, (offset >= SX_I64_MAX ? offset - SX_U64_MAX : offset), bytes) || !sx_add(c, offset_entry, p, entry_size) || !sx_raw(c, (offset >= SX_I64_MAX ? offset - SX_U64_MAX : offset), (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes))) {
+                    return false;
+                }
+                data = (offset >= SX_I64_MAX ? offset - SX_U64_MAX : offset);
+            } else if (!sx_add(c, inline_entry, p, entry_size)) {
+                return false;
+            }
+            if (tag === 330 || tag === 34665 || tag === 34853 || tag === 40965) {
+                var j;
+                if (elements > 1024 || type !== 4 && type !== 13 && type !== 16 && type !== 18) {
+                    return false;
+                }
+                for (j = 0; j < elements; ++j) {
+                    var pos = data + (j >= SX_I64_MAX ? j - SX_U64_MAX : j) * width;
+                    if (width === 8) {
+                        if ((offset = sx_u64(c, pos, be)) === null) {
+                            return false;
+                        }
+                    } else {
+                        if ((value32 = sx_u32(c, pos, be)) === null) {
+                            return false;
+                        }
+                        offset = value32;
+                    }
+                    if (!sx_image_tiff_queue(queue, count, offset, c, big)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        at = table + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) * entry_size;
+        if (big) {
+            if ((next = sx_u64(c, at, be)) === null) {
+                return false;
+            }
+        } else {
+            if ((value32 = sx_u32(c, at, be)) === null) {
+                return false;
+            }
+            next = value32;
+        }
+        if (!sx_add(c, next_layout, at, next_size) || !sx_image_tiff_queue(queue, count, next, c, big)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_tiff_build(c) {
+    return sx_image_tiff(c);
+}

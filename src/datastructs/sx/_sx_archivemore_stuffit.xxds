@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/stuffit/xx_stuffit_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_stuffit_header_fields = layout([chars("magic", 4, SIGNATURE), u16("top_level_count", COUNT), u32("archive_size", SIZE),
+    chars("signature", 4, SIGNATURE), u8("version", ID), bytes("reserved", 7, RESERVED)]);
+var sxar_stuffit_header = sxLayout(0x601C001A, "stuffit_header", BE, sxar_stuffit_header_fields);
+var sxar_stuffit_member_fields = layout([u8("resource_method", ID), u8("data_method", ID), u8("name_size", SIZE),
+    chars("name", 63, STRING), chars("file_type", 4, ID), chars("creator", 4, ID), u16("finder_flags", FLAGS), u32("created"),
+    u32("modified"), u32("resource_unpacked_size", SIZE), u32("data_unpacked_size", SIZE), u32("resource_packed_size", SIZE),
+    u32("data_packed_size", SIZE), u16("resource_crc16", CHECKSUM), u16("data_crc16", CHECKSUM), bytes("reserved", 6, RESERVED),
+    u16("header_crc16", CHECKSUM)]);
+var sxar_stuffit_member = sxLayout(0x601C001B, "stuffit_member", BE, sxar_stuffit_member_fields);
+function sxar_stuffit(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 22) || !sxar_add(c, sxar_stuffit_header, 0)) {
+        return false;
+    }
+    var p = 22;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxar_read(c, p, b, 0, 112)) {
+            break;
+        }
+        if (!sxar_add(c, sxar_stuffit_member, p)) {
+            return false;
+        }
+        var rm = b[0] & 0xFFFFFF6F;
+        var dm = b[1] & 0xFFFFFF6F;
+        var n = rm === 32 || rm === 33 || dm === 32 || dm === 33 ? 0 : sxar32(b, 92, true) + sxar32(b, 96, true);
+        if (!sxar_span(c, p + 112, n)) {
+            break;
+        }
+        p += 112 + n;
+    }
+    return true;
+}
+function sx_stuffit_build(c) {
+    return sxar_stuffit(c);
+}

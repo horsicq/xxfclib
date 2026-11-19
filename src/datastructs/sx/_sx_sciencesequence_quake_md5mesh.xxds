@@ -1,0 +1,9 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/quake_md5mesh/xx_quake_md5mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_quake_md5mesh_build(q) {
+    return sxseq_md5(q, false);
+}

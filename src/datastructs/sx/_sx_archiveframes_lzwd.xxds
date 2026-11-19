@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzwd/xx_lzwd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_lzwd_header_fields = layout([i32("uncompressed_size", SIZE), u32("signature", SIGNATURE), u16("version"),
+    u8("flags", FLAGS)]);
+var sxafr_lzwd_header = sxLayout(0x60540003, "lzwd_header", LE, sxafr_lzwd_header_fields);
+function sx_lzwd_build(c) {
+    return sxafr_add(c, sxafr_lzwd_header, 0);
+}

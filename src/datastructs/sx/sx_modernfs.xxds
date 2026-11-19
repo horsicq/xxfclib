@@ -1,0 +1,105 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modernfs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_modernfs");
+include("_sx_modernfs_amiga_sfs");
+include("_sx_modernfs_cdi_fs");
+include("_sx_modernfs_erofs");
+include("_sx_modernfs_f2fs");
+include("_sx_modernfs_fossil_fs");
+include("_sx_modernfs_gfs2");
+include("_sx_modernfs_hammer_fs");
+include("_sx_modernfs_hpfs");
+include("_sx_modernfs_jfs");
+include("_sx_modernfs_nilfs2");
+include("_sx_modernfs_opera_fs");
+include("_sx_modernfs_refs");
+include("_sx_modernfs_reiserfs");
+include("_sx_modernfs_vmfs");
+include("_sx_modernfs_vxfs");
+include("_sx_modernfs_xfs");
+include("_sx_modernfs_zfs");
+
+function fileTypes() { return ["SUFS", "UFS2", "UFS1", "EROFS", "OPERA_FS", "CDI_FS", "F2FS", "FOSSIL_FS", "HAMMER_FS", "JFS",
+    "HPFS", "REFS", "NILFS2", "REISERFS", "AMIGA_SFS", "VXFS", "VMFS", "XFS", "ZFS", "GFS2"]; }
+
+var sx_modernfs_layouts = [sxmf_refs_volume_header, sxmf_fossil_header, sxmf_fossil_superblock, sxmf_fossil_label,
+    sxmf_jfs_superblock, sxmf_nilfs2_superblock, sxmf_nilfs2_inode, sxmf_nilfs2_super_root_header, sxmf_nilfs2_segment_summary,
+    sxmf_nilfs2_file_info, sxmf_f2fs_superblock_prefix, sxmf_f2fs_device, sxmf_f2fs_superblock_tail,
+    sxmf_f2fs_checkpoint_header, sxmf_f2fs_nat_entry, sxmf_f2fs_node_footer, sxmf_reiser35_superblock, sxmf_reiser36_superblock,
+    sxmf_reiser_block_header, sxmf_reiser_item_header, sxmf_reiser_child, sxmf_sfs_root_block, sxmf_sfs_object_container,
+    sxmf_sfs_btree_header, sxmf_sfs_extent16, sxmf_sfs_extent32, sxmf_sfs_btree_index, sxmf_opera_disc_label,
+    sxmf_opera_directory_header, sxmf_opera_directory_record, sxmf_opera_avatar, sxmf_xfs4_superblock, sxmf_xfs5_superblock,
+    sxmf_xfs4_agf, sxmf_xfs5_agf, sxmf_xfs4_agi, sxmf_xfs5_agi, sxmf_xfs_inode_v2, sxmf_xfs_inode_v3, sxmf_gfs2_superblock,
+    sxmf_gfs2_inode, sxmf_gfs2_directory_entry, sxmf_gfs2_leaf, sxmf_hpfs_superblock, sxmf_hpfs_spareblock,
+    sxmf_hpfs_fnode_prefix, sxmf_hpfs_btree_header, sxmf_hpfs_extent, sxmf_hpfs_btree_child, sxmf_hpfs_fnode_tail,
+    sxmf_hpfs_anode_header, sxmf_hpfs_dnode_header, sxmf_hpfs_directory_entry, sxmf_hpfs_down_pointer,
+    sxmf_hammer_volume_header_le, sxmf_hammer_volume_header_be, sxmf_hammer_blockmap_le, sxmf_hammer_blockmap_be,
+    sxmf_hammer_undo_pointer_le, sxmf_hammer_undo_pointer_be, sxmf_zfs_embedded_checksum_le, sxmf_zfs_embedded_checksum_be,
+    sxmf_zfs_block_pointer_le, sxmf_zfs_block_pointer_be, sxmf_zfs_uberblock_prefix_le, sxmf_zfs_uberblock_prefix_be,
+    sxmf_zfs_uberblock_tail_le, sxmf_zfs_uberblock_tail_be, sxmf_erofs_superblock, sxmf_erofs_inode_compact,
+    sxmf_erofs_inode_extended, sxmf_erofs_directory_entry, sxmf_erofs_device_slot, sxmf_erofs_chunk_block,
+    sxmf_ufs1_legacy_superblock_le, sxmf_ufs1_legacy_superblock_be, sxmf_ufs_modern_superblock_le,
+    sxmf_ufs_modern_superblock_be, sxmf_sufs_superblock_le, sxmf_sufs_superblock_be, sxmf_ufs_cylinder_group_prefix_le,
+    sxmf_ufs_cylinder_group_prefix_be, sxmf_ufs_cylinder_group_tail_le, sxmf_ufs_cylinder_group_tail_be, sxmf_ufs1_inode_le,
+    sxmf_ufs1_inode_be, sxmf_ufs1_symlink_inode_le, sxmf_ufs1_symlink_inode_be, sxmf_ufs2_inode_le, sxmf_ufs2_inode_be,
+    sxmf_ufs2_symlink_inode_le, sxmf_ufs2_symlink_inode_be, sxmf_sufs_inode_le, sxmf_sufs_inode_be, sxmf_ufs_directory_entry_le,
+    sxmf_ufs_directory_entry_be, sxmf_sufs_directory_entry_le, sxmf_sufs_directory_entry_be, sxmf_ufs_fragment_pointer32_le,
+    sxmf_ufs_fragment_pointer32_be, sxmf_ufs_fragment_pointer64_le, sxmf_ufs_fragment_pointer64_be, sxmf_vxfs1_superblock_le,
+    sxmf_vxfs1_superblock_be, sxmf_vxfs2_superblock_le, sxmf_vxfs2_superblock_be, sxmf_vmfs_volume_header,
+    sxmf_vmfs35_lvm_header, sxmf_vmfs35_filesystem_header, sxmf_vmfs35_bitmap_header, sxmf_vmfs35_inode_data,
+    sxmf_vmfs35_directory_entry, sxmf_vmfs35_block_id, sxmf_reiser4_master, sxmf_reiser4_format40_superblock,
+    sxmf_reiser4_node40_header, sxmf_reiser4_item_header_large, sxmf_reiser4_child, sxmf_reiser4_extent,
+    sxmf_hammer_node_header_le, sxmf_hammer_node_header_be, sxmf_hammer_internal_record_le, sxmf_hammer_internal_record_be,
+    sxmf_hammer_leaf_record_le, sxmf_hammer_leaf_record_be, sxmf_hammer_inode_le, sxmf_hammer_inode_be,
+    sxmf_hammer_directory_entry_le, sxmf_hammer_directory_entry_be, sxmf_cdi_volume_descriptor, sxmf_cdi_terminator,
+    sxmf_cdi_path_entry, sxmf_cdi_directory_entry, sxmf_cdi_directory_attributes, sxmf_cdi_mode2_sector_header,
+    sxmf_cdi_form1_edc, sxmf_vmfs35_metadata_header, sxmf_sfs_file_object, sxmf_sfs_directory_object, sxmf_ufs1_legacy_inode_le,
+    sxmf_ufs1_legacy_inode_be, sxmf_ufs1_legacy_symlink_inode_le, sxmf_ufs1_legacy_symlink_inode_be];
+
+function structs() {
+    return sxCatalog([sxmf_refs_volume_header, sxmf_fossil_header, sxmf_fossil_superblock, sxmf_fossil_label,
+        sxmf_jfs_superblock, sxmf_nilfs2_superblock, sxmf_nilfs2_inode, sxmf_nilfs2_super_root_header,
+        sxmf_nilfs2_segment_summary, sxmf_nilfs2_file_info, sxmf_f2fs_superblock_prefix, sxmf_f2fs_device,
+        sxmf_f2fs_superblock_tail, sxmf_f2fs_checkpoint_header, sxmf_f2fs_nat_entry, sxmf_f2fs_node_footer,
+        sxmf_reiser35_superblock, sxmf_reiser36_superblock, sxmf_reiser_block_header, sxmf_reiser_item_header,
+        sxmf_reiser_child, sxmf_sfs_root_block, sxmf_sfs_object_container, sxmf_sfs_btree_header, sxmf_sfs_extent16,
+        sxmf_sfs_extent32, sxmf_sfs_btree_index, sxmf_opera_disc_label, sxmf_opera_directory_header,
+        sxmf_opera_directory_record, sxmf_opera_avatar, sxmf_xfs4_superblock, sxmf_xfs5_superblock, sxmf_xfs4_agf,
+        sxmf_xfs5_agf, sxmf_xfs4_agi, sxmf_xfs5_agi, sxmf_xfs_inode_v2, sxmf_xfs_inode_v3, sxmf_gfs2_superblock,
+        sxmf_gfs2_inode, sxmf_gfs2_directory_entry, sxmf_gfs2_leaf, sxmf_hpfs_superblock, sxmf_hpfs_spareblock,
+        sxmf_hpfs_fnode_prefix, sxmf_hpfs_btree_header, sxmf_hpfs_extent, sxmf_hpfs_btree_child, sxmf_hpfs_fnode_tail,
+        sxmf_hpfs_anode_header, sxmf_hpfs_dnode_header, sxmf_hpfs_directory_entry, sxmf_hpfs_down_pointer,
+        sxmf_hammer_volume_header_le, sxmf_hammer_volume_header_be, sxmf_hammer_blockmap_le, sxmf_hammer_blockmap_be,
+        sxmf_hammer_undo_pointer_le, sxmf_hammer_undo_pointer_be, sxmf_zfs_embedded_checksum_le, sxmf_zfs_embedded_checksum_be,
+        sxmf_zfs_block_pointer_le, sxmf_zfs_block_pointer_be, sxmf_zfs_uberblock_prefix_le, sxmf_zfs_uberblock_prefix_be,
+        sxmf_zfs_uberblock_tail_le, sxmf_zfs_uberblock_tail_be, sxmf_erofs_superblock, sxmf_erofs_inode_compact,
+        sxmf_erofs_inode_extended, sxmf_erofs_directory_entry, sxmf_erofs_device_slot, sxmf_erofs_chunk_block,
+        sxmf_ufs1_legacy_superblock_le, sxmf_ufs1_legacy_superblock_be, sxmf_ufs_modern_superblock_le,
+        sxmf_ufs_modern_superblock_be, sxmf_sufs_superblock_le, sxmf_sufs_superblock_be, sxmf_ufs_cylinder_group_prefix_le,
+        sxmf_ufs_cylinder_group_prefix_be, sxmf_ufs_cylinder_group_tail_le, sxmf_ufs_cylinder_group_tail_be, sxmf_ufs1_inode_le,
+        sxmf_ufs1_inode_be, sxmf_ufs1_symlink_inode_le, sxmf_ufs1_symlink_inode_be, sxmf_ufs2_inode_le, sxmf_ufs2_inode_be,
+        sxmf_ufs2_symlink_inode_le, sxmf_ufs2_symlink_inode_be, sxmf_sufs_inode_le, sxmf_sufs_inode_be,
+        sxmf_ufs_directory_entry_le, sxmf_ufs_directory_entry_be, sxmf_sufs_directory_entry_le, sxmf_sufs_directory_entry_be,
+        sxmf_ufs_fragment_pointer32_le, sxmf_ufs_fragment_pointer32_be, sxmf_ufs_fragment_pointer64_le,
+        sxmf_ufs_fragment_pointer64_be, sxmf_vxfs1_superblock_le, sxmf_vxfs1_superblock_be, sxmf_vxfs2_superblock_le,
+        sxmf_vxfs2_superblock_be, sxmf_vmfs_volume_header, sxmf_vmfs35_lvm_header, sxmf_vmfs35_filesystem_header,
+        sxmf_vmfs35_bitmap_header, sxmf_vmfs35_inode_data, sxmf_vmfs35_directory_entry, sxmf_vmfs35_block_id,
+        sxmf_reiser4_master, sxmf_reiser4_format40_superblock, sxmf_reiser4_node40_header, sxmf_reiser4_item_header_large,
+        sxmf_reiser4_child, sxmf_reiser4_extent, sxmf_hammer_node_header_le, sxmf_hammer_node_header_be,
+        sxmf_hammer_internal_record_le, sxmf_hammer_internal_record_be, sxmf_hammer_leaf_record_le, sxmf_hammer_leaf_record_be,
+        sxmf_hammer_inode_le, sxmf_hammer_inode_be, sxmf_hammer_directory_entry_le, sxmf_hammer_directory_entry_be,
+        sxmf_cdi_volume_descriptor, sxmf_cdi_terminator, sxmf_cdi_path_entry, sxmf_cdi_directory_entry,
+        sxmf_cdi_directory_attributes, sxmf_cdi_mode2_sector_header, sxmf_cdi_form1_edc, sxmf_vmfs35_metadata_header,
+        sxmf_sfs_file_object, sxmf_sfs_directory_object, sxmf_ufs1_legacy_inode_le, sxmf_ufs1_legacy_inode_be,
+        sxmf_ufs1_legacy_symlink_inode_le, sxmf_ufs1_legacy_symlink_inode_be], sx_modernfs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_modernfs_build, false);
+}

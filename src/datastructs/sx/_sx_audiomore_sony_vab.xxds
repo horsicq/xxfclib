@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/sony_vab/xx_sony_vab_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_vab_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("bank_id", ID),
+    u32("file_size", SIZE), u16("reserved", RESERVED), u16("program_count", COUNT), u16("tone_count", COUNT),
+    u16("sample_count", COUNT), u8("master_volume"), u8("master_pan"), u8("bank_attributes1", FLAGS),
+    u8("bank_attributes2", FLAGS), u32("reserved2", RESERVED)]);
+var sxau_vab_header = sxLayout(0x602C0049, "vab_header", LE, sxau_vab_header_fields);
+var sxau_vab_program_fields = layout([u8("tone_count", COUNT), u8("master_volume"), u8("priority"), u8("mode", FLAGS),
+    u8("pan"), blob("reserved", 11, RESERVED)]);
+var sxau_vab_program = sxLayout(0x602C004A, "vab_program", LE, sxau_vab_program_fields);
+var sxau_vab_tone_fields = layout([u8("priority"), u8("mode", FLAGS), u8("volume"), u8("pan"), u8("center_note"),
+    u8("pitch_shift"), u8("minimum_note"), u8("maximum_note"), u8("vibrato_width"), u8("vibrato_time"), u8("portamento_width"),
+    u8("portamento_time"), u8("pitch_bend_min"), u8("pitch_bend_max"), blob("reserved", 2, RESERVED), u16("adsr1", FLAGS),
+    u16("adsr2", FLAGS), u16("program_index", ID), u16("sample_index", ID), blob("reserved2", 8, RESERVED)]);
+var sxau_vab_tone = sxLayout(0x602C004B, "vab_tone", LE, sxau_vab_tone_fields);
+var sxau_vab_sample_size_fields = layout([u16("size_in_8byte_units", COUNT)]);
+var sxau_vab_sample_size = sxLayout(0x602C004C, "vab_sample_size", LE, sxau_vab_sample_size_fields);
+function sxau_vab(v) {
+    if (!sxau_row(v, sxau_vab_header, 0, v.n) || !sxau_table(v, sxau_vab_program, 32, 128, v.n)) {
+        return false;
+    }
+    var programs = sxau_u16(v.p, 18, false);
+    var at = 2080;
+    if (programs > 128 || !sxau_table(v, sxau_vab_tone, at, programs * 16, v.n)) {
+        return false;
+    }
+    at += programs * 512;
+    return sxau_table(v, sxau_vab_sample_size, at, 256, v.n);
+}
+function sx_sony_vab_build(v) {
+    return sxau_vab(v);
+}

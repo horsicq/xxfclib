@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/tetgen_mesh/xx_tetgen_mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_attribute_count_fields = layout([field("attribute_count", "ascii_signed", 0, COUNT)]);
+var sxsm_attribute_count = sxLayout(0x60630018, "mesh_attribute_count", LE, sxsm_attribute_count_fields);
+var sxsm_boundary_marker_fields = layout([field("boundary_marker", "ascii_signed", 0)]);
+var sxsm_boundary_marker = sxLayout(0x60630065, "mesh_boundary_marker", LE, sxsm_boundary_marker_fields);
+function sxsm_tetgen(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(128, sxNew_sxsm_token);
+    var n = [0];
+    var count = [0];
+    var dim = [0];
+    var attrs = [0];
+    var marker = [0];
+    if (!sxsm_next(q, line, t[0], 128, n, "#") || n[0] !== 3 && n[0] !== 4 || !sxsm_number(q, sxCopy_sxsm_token(null, t[0]), count) || !sxsm_number(q, sxCopy_sxsm_token(null, t[1]), dim) || !sxsm_number(q, sxCopy_sxsm_token(null, t[2]), attrs) || attrs[0] > 64 || dim[0] > 10) {
+        return false;
+    }
+    var node = n[0] === 4;
+    if (!sxsm_emit(q, node ? sxsm_node_count : sxsm_element_count, sxCopy_sxsm_token(null, t[0]))) {
+        return false;
+    }
+    if (node) {
+        {
+            if (!sxsm_emit(q, sxsm_dimension, sxCopy_sxsm_token(null, t[1]))) {
+                return false;
+            }
+        }
+    } else {
+        {
+            if (!sxsm_emit(q, sxsm_component_count, sxCopy_sxsm_token(null, t[1]))) {
+                return false;
+            }
+        }
+    }
+    {
+        if (!sxsm_emit(q, sxsm_attribute_count, sxCopy_sxsm_token(null, t[2]))) {
+            return false;
+        }
+    }
+    if (node) {
+        if (!sxsm_number(q, sxCopy_sxsm_token(null, t[3]), marker) || marker[0] > 1) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_boundary_marker, sxCopy_sxsm_token(null, t[3]))) {
+                return false;
+            }
+        }
+    }
+    for (var i = 0; i < count[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsm_next(q, line, t[0], 128, n, "#") || n[0] !== 1 + dim[0] + attrs[0] + marker[0]) {
+            return false;
+        }
+        if (node) {
+            {
+                if (!sxsm_emit(q, sxsm_node_id, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            for (var j = 0; j < dim[0]; j++) {
+                var l = j === 0 ? sxsm_coordinate_x : j === 1 ? sxsm_coordinate_y : sxsm_coordinate_z;
+                if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, t[(1 + j) >>> 0]))) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxsm_emit(q, sxsm_element_id, sxCopy_sxsm_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_each(q, t, 1, dim[0] >>> 0, sxsm_node_index)) {
+                return false;
+            }
+        }
+        if (!sxsm_each(q, t, 1 + dim[0], attrs[0] >>> 0, sxsm_attribute_value)) {
+            return false;
+        }
+        if (marker[0]) {
+            {
+                if (!sxsm_emit(q, sxsm_boundary_marker, sxCopy_sxsm_token(null, t[(n[0] - 1) >>> 0]))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_tetgen_mesh_build(q) {
+    return sxsm_tetgen(q);
+}

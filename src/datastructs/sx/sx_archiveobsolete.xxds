@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveobsolete.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archiveobsolete");
+include("_sx_archiveobsolete_aiaff");
+include("_sx_archiveobsolete_arcv");
+include("_sx_archiveobsolete_bcw");
+include("_sx_archiveobsolete_bnd");
+include("_sx_archiveobsolete_c64wraptor");
+include("_sx_archiveobsolete_corelltec");
+include("_sx_archiveobsolete_cpx");
+include("_sx_archiveobsolete_dsl2");
+include("_sx_archiveobsolete_jasc");
+include("_sx_archiveobsolete_quantum");
+include("_sx_archiveobsolete_recognita");
+include("_sx_archiveobsolete_red");
+include("_sx_archiveobsolete_rsvk");
+include("_sx_archiveobsolete_scf");
+include("_sx_archiveobsolete_smsipak");
+include("_sx_archiveobsolete_softpaq2");
+include("_sx_archiveobsolete_sw");
+include("_sx_archiveobsolete_topspeed");
+include("_sx_archiveobsolete_ulead");
+
+function fileTypes() { return ["SW", "DSL2", "TOPSPEED", "ULEAD", "QUANTUM", "C64WRAPTOR", "CORELLTEC", "RSVK", "ARCV", "BCW",
+    "SCF", "RECOGNITA", "JASC", "BND", "SMSIPAK", "CPX", "RED", "CPX4", "AIAFF", "SOFTPAQ2"]; }
+
+var sx_archiveobsolete_layouts = [sxao_sw_header, sxao_sw_path_length, sxao_archiveobsolete_name, sxao_archiveobsolete_path,
+    sxao_dsl2_header, sxao_dsl2_path_length, sxao_dsl2_member, sxao_dsl2_name_length, sxao_dsl2_name, sxao_topspeed_block,
+    sxao_ulead_prefix, sxao_ulead_name, sxao_ulead_block_counts, sxao_ulead_block_size, sxao_quantum_header,
+    sxao_quantum_length1, sxao_quantum_length2, sxao_quantum_member, sxao_quantum_crc16, sxao_wraptor_signature,
+    sxao_wraptor_flags, sxao_wraptor_checksum, sxao_wraptor_end, sxao_corelltec_header, sxao_corelltec_member,
+    sxao_rsvk_container, sxao_rsvk_block, sxao_rsvk_member, sxao_rsvk_trailer, sxao_arcv_header, sxao_arcv_member,
+    sxao_arcv_chunk, sxao_bcw_header, sxao_bcw_record, sxao_bcw_time, sxao_scf_header, sxao_scf_member, sxao_recognita_member,
+    sxao_jasc_member, sxao_jasc_end, sxao_bnd_header, sxao_bnd_record, sxao_bnd_prologue, sxao_bnd_member_tail,
+    sxao_bnd_trailer, sxao_smsipak_header, sxao_smsipak_member, sxao_smsipak_index, sxao_smsipak_index_entry, sxao_cpx_header,
+    sxao_cpx_member, sxao_cpx4_header, sxao_cpx4_member, sxao_red_member, sxao_red_header_crc, sxao_red_segment_crc,
+    sxao_aiaff_header, sxao_aiaff_member, sxao_aiaff_terminator, sxao_softpaq2_locator, sxao_softpaq2_stored,
+    sxao_softpaq2_compressed, sxao_archiveobsolete_dcl];
+
+function structs() {
+    return sxCatalog([sxao_sw_header, sxao_sw_path_length, sxao_archiveobsolete_name, sxao_archiveobsolete_path,
+        sxao_dsl2_header, sxao_dsl2_path_length, sxao_dsl2_member, sxao_dsl2_name_length, sxao_dsl2_name, sxao_topspeed_block,
+        sxao_ulead_prefix, sxao_ulead_name, sxao_ulead_block_counts, sxao_ulead_block_size, sxao_quantum_header,
+        sxao_quantum_length1, sxao_quantum_length2, sxao_quantum_member, sxao_quantum_crc16, sxao_wraptor_signature,
+        sxao_wraptor_flags, sxao_wraptor_checksum, sxao_wraptor_end, sxao_corelltec_header, sxao_corelltec_member,
+        sxao_rsvk_container, sxao_rsvk_block, sxao_rsvk_member, sxao_rsvk_trailer, sxao_arcv_header, sxao_arcv_member,
+        sxao_arcv_chunk, sxao_bcw_header, sxao_bcw_record, sxao_bcw_time, sxao_scf_header, sxao_scf_member,
+        sxao_recognita_member, sxao_jasc_member, sxao_jasc_end, sxao_bnd_header, sxao_bnd_record, sxao_bnd_prologue,
+        sxao_bnd_member_tail, sxao_bnd_trailer, sxao_smsipak_header, sxao_smsipak_member, sxao_smsipak_index,
+        sxao_smsipak_index_entry, sxao_cpx_header, sxao_cpx_member, sxao_cpx4_header, sxao_cpx4_member, sxao_red_member,
+        sxao_red_header_crc, sxao_red_segment_crc, sxao_aiaff_header, sxao_aiaff_member, sxao_aiaff_terminator,
+        sxao_softpaq2_locator, sxao_softpaq2_stored, sxao_softpaq2_compressed, sxao_archiveobsolete_dcl], sx_archiveobsolete_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archiveobsolete_build, false);
+}

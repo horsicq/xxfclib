@@ -1,0 +1,253 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/nintendo_sdat/xx_nintendo_sdat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxem_sdat_header_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", SIGNATURE), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT), u32("symbol_offset", OFFSET),
+    u32("symbol_block_size", SIZE), u32("info_offset", OFFSET), u32("info_block_size", SIZE), u32("fat_offset", OFFSET),
+    u32("fat_block_size", SIZE), u32("file_offset", OFFSET), u32("file_block_size", SIZE), bytes("reserved", 16, RESERVED)]);
+var sxem_sdat_header = sxLayout(0x600D013A, "sdat_header", LE, sxem_sdat_header_fields);
+var sxem_nitro_header_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", SIGNATURE), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT)]);
+var sxem_nitro_header = sxLayout(0x600D013B, "nitro_header", LE, sxem_nitro_header_fields);
+var sxem_sdat_directory_fields = layout([u32("sequence_table_offset", OFFSET), u32("sequence_archive_table_offset", OFFSET),
+    u32("bank_table_offset", OFFSET), u32("wave_archive_table_offset", OFFSET), u32("player_table_offset", OFFSET),
+    u32("group_table_offset", OFFSET), u32("stream_player_table_offset", OFFSET), u32("stream_table_offset", OFFSET)]);
+var sxem_sdat_directory = sxLayout(0x600D013C, "sdat_directory", LE, sxem_sdat_directory_fields);
+var sxem_sdat_count_fields = layout([u32("record_count", COUNT)]);
+var sxem_sdat_count = sxLayout(0x600D013D, "sdat_count", LE, sxem_sdat_count_fields);
+var sxem_sdat_offset_fields = layout([u32("offset", OFFSET)]);
+var sxem_sdat_offset = sxLayout(0x600D013E, "sdat_offset", LE, sxem_sdat_offset_fields);
+var sxem_sdat_archive_symbol_fields = layout([u32("name_offset", OFFSET), u32("subtable_offset", OFFSET)]);
+var sxem_sdat_archive_symbol = sxLayout(0x600D013F, "sdat_archive_symbol", LE, sxem_sdat_archive_symbol_fields);
+var sxem_sdat_sequence_fields = layout([u16("file_id", ID), u16("unknown_02"), u16("bank_id", ID), u8("volume"),
+    u8("channel_priority"), u8("player_priority"), u8("player_id", ID)]);
+var sxem_sdat_sequence = sxLayout(0x600D0140, "sdat_sequence", LE, sxem_sdat_sequence_fields);
+var sxem_sdat_file_reference_fields = layout([u16("file_id", ID), u16("unknown_02")]);
+var sxem_sdat_file_reference = sxLayout(0x600D0141, "sdat_file_reference", LE, sxem_sdat_file_reference_fields);
+var sxem_sdat_bank_fields = layout([u16("file_id", ID), u16("unknown_02"), i16("wave_archive_id[0]", ID),
+    i16("wave_archive_id[1]", ID), i16("wave_archive_id[2]", ID), i16("wave_archive_id[3]", ID)]);
+var sxem_sdat_bank = sxLayout(0x600D0142, "sdat_bank", LE, sxem_sdat_bank_fields);
+var sxem_sdat_player_fields = layout([u16("max_sequences", COUNT), u16("channel_mask", FLAGS), u32("heap_size", SIZE)]);
+var sxem_sdat_player = sxLayout(0x600D0143, "sdat_player", LE, sxem_sdat_player_fields);
+var sxem_sdat_stream_player_fields = layout([u8("channel_count", COUNT), bytes("channel_ids", 16)]);
+var sxem_sdat_stream_player = sxLayout(0x600D0145, "sdat_stream_player", LE, sxem_sdat_stream_player_fields);
+var sxem_sdat_stream_fields = layout([u16("file_id", ID), u16("unknown_02"), u8("volume"), u8("priority"), u8("player_id", ID),
+    u8("unknown_07")]);
+var sxem_sdat_stream = sxLayout(0x600D0146, "sdat_stream", LE, sxem_sdat_stream_fields);
+var sxem_sdat_fat_entry_fields = layout([u32("file_offset", OFFSET), u32("file_size", SIZE), bytes("reserved", 8, RESERVED)]);
+var sxem_sdat_fat_entry = sxLayout(0x600D0147, "sdat_fat_entry", LE, sxem_sdat_fat_entry_fields);
+var sxem_sdat_file_header_fields = layout([chars("magic", 4, ID), u32("block_size", SIZE), u32("file_count", COUNT),
+    bytes("reserved", 12, RESERVED)]);
+var sxem_sdat_file_header = sxLayout(0x600D0148, "sdat_file_header", LE, sxem_sdat_file_header_fields);
+function sxem_sdat_table(c, block, size, rel, archive, count) {
+    var n = [0];
+    var stride = archive ? 8 : 4;
+    {
+        if (!(rel >= 40 && rel <= size && 4 <= sxU64(size - rel) && sxem_u32(c, block + rel, false, n) && n[0] <= 1024 && n[0] <= Math.floor(sxU64(sxU64(size - rel) - 4) / stride))) {
+            return false;
+        }
+    }
+    {
+        if (!(sxem_add(c, sxem_sdat_count, block + rel, 4) && sxem_table(c, archive ? sxem_sdat_archive_symbol : sxem_sdat_offset, block + rel + 4, stride, n[0]))) {
+            return false;
+        }
+    }
+    count[0] = n[0];
+    return true;
+}
+var sxem_sdat_records = [sxem_sdat_sequence, sxem_sdat_file_reference, sxem_sdat_bank, sxem_sdat_file_reference,
+    sxem_sdat_player, sxem_sdat_count, sxem_sdat_stream_player, sxem_sdat_stream];
+var sxem_sdat_widths = [10, 4, 12, 4, 8, 4, 17, 8];
+function sxem_sdat(c) {
+    var h = [];
+    var at = [];
+    var len = [];
+    var files = [0];
+    var n = [0];
+    var off = [0];
+    var total;
+    var work = 0;
+    var names = ["SYMB", "INFO", "FAT ", "FILE"];
+    {
+        if (!(sxem_read(c, 0, h, 64) && !sxMemcmp(h, "SDAT", 4) && sxGetU16At(h, 4, 2, 0, false) === 0xFEFF && sxem_add(c, sxem_sdat_header, 0, 64))) {
+            return false;
+        }
+    }
+    total = sxGetU32At(h, 8, 4, 0, false);
+    {
+        if (!(total <= (c.size < 0 ? c.size + SX_U64_MAX : c.size))) {
+            return false;
+        }
+    }
+    for (var i = 0; i < 4; i++) {
+        at[i] = sxGetU32At(h, 16 + ((8 * i) >>> 0), 4, 0, false);
+        len[i] = sxGetU32At(h, 20 + ((8 * i) >>> 0), 4, 0, false);
+        if (!at[i]) {
+            {
+                if (!(i === 0 && !len[i])) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        {
+            if (!(at[i] >= 64 && at[i] <= total && len[i] >= 8 && len[i] <= sxU64(total - at[i]))) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < 4; i++) {
+        if (at[i]) {
+            if (i === 3) {
+                {
+                    if (!(len[i] >= 24 && sxem_read(c, at[i], h, 24) && !sxMemcmp(h, "FILE", 4) && sxGetU32At(h, 4, 4, 0, false) === len[i] && sxem_add(c, sxem_sdat_file_header, at[i], 24))) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxem_block(c, at[i], len[i], total, false, names[i])) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    {
+        if (!(len[1] >= 40 && len[2] >= 12 && sxem_u32(c, at[2] + 8, false, files) && files[0] && files[0] <= 1024 && files[0] <= Math.floor(((len[2] - 12) >>> 0) / 16) && sxem_add(c, sxem_sdat_count, at[2] + 8, 4) && sxem_table(c, sxem_sdat_fat_entry, at[2] + 12, 16, files[0]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxem_add(c, sxem_sdat_directory, at[1] + 8, 32)) {
+            return false;
+        }
+    }
+    for (var k = 0; k < 8; k++) {
+        {
+            if (!(sxem_u32(c, at[1] + 8 + ((4 * k) >>> 0), false, off) && sxem_sdat_table(c, at[1], len[1], off[0], false, n))) {
+                return false;
+            }
+        }
+        for (i = 0; i < n[0]; i++) {
+            var p = [0];
+            {
+                if (!(++work <= 65536 && sxem_u32(c, at[1] + off[0] + 4 + ((4 * i) >>> 0), false, p))) {
+                    return false;
+                }
+            }
+            if (!p[0]) {
+                continue;
+            }
+            {
+                if (!(p[0] >= 40 && p[0] <= len[1] && sxem_sdat_widths[k] <= (len[1] - p[0]) >>> 0 && sxem_add(c, sxem_sdat_records[k], at[1] + p[0], sxem_sdat_widths[k]))) {
+                    return false;
+                }
+            }
+            if (k === 5) {
+                var count = [0];
+                {
+                    if (!(sxem_u32(c, at[1] + p[0], false, count) && count[0] <= 1024 && count[0] <= Math.floor(((((len[1] - p[0]) >>> 0) - 4) >>> 0) / 8) && sxem_table(c, sxem_sdat_group_entry, at[1] + p[0] + 4, 8, count[0]))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    if (at[0]) {
+        {
+            if (!(len[0] >= 40 && sxem_add(c, sxem_sdat_directory, at[0] + 8, 32))) {
+                return false;
+            }
+        }
+        for (k = 0; k < 8; k++) {
+            {
+                if (!sxem_u32(c, at[0] + 8 + ((4 * k) >>> 0), false, off)) {
+                    return false;
+                }
+            }
+            if (!off[0]) {
+                continue;
+            }
+            {
+                if (!sxem_sdat_table(c, at[0], len[0], off[0], k === 1, n)) {
+                    return false;
+                }
+            }
+            if (k === 1) {
+                for (i = 0; i < n[0]; i++) {
+                    var sub = [0];
+                    var cnt = [0];
+                    {
+                        if (!(++work <= 65536 && sxem_u32(c, at[0] + off[0] + 8 + ((8 * i) >>> 0), false, sub))) {
+                            return false;
+                        }
+                    }
+                    if (sub[0]) {
+                        {
+                            if (!sxem_sdat_table(c, at[0], len[0], sub[0], false, cnt)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for (i = 0; i < files[0]; i++) {
+        p = [0];
+        var z;
+        var size;
+        var blocks;
+        var pos;
+        var end;
+        {
+            if (!(++work <= 65536 && sxem_read(c, at[2] + 12 + ((16 * i) >>> 0), h, 16))) {
+                return false;
+            }
+        }
+        p[0] = sxGetU32(h, 4, 0, false);
+        z = sxGetU32At(h, 4, 4, 0, false);
+        {
+            if (!(p[0] >= at[3] + 24 && p[0] <= at[3] + len[3] && z <= sxU64(at[3] + len[3] - p[0]) && z >= 16 && sxem_read(c, p[0], h, 16))) {
+                return false;
+            }
+        }
+        size = sxGetU32At(h, 8, 4, 0, false);
+        blocks = sxGetU16At(h, 14, 2, 0, false);
+        {
+            if (!(size >= 24 && size <= z && blocks && blocks <= 3 && sxem_add(c, sxem_nitro_header, p[0], 16))) {
+                return false;
+            }
+        }
+        pos = p[0] + 16;
+        end = p[0] + size;
+        for (var j = 0; j < blocks; j++) {
+            var width;
+            {
+                if (!(sxU64(end - pos) >= 8 && sxem_read(c, pos, h, 8))) {
+                    return false;
+                }
+            }
+            width = sxGetU32At(h, 4, 4, 0, false);
+            {
+                if (!(width >= 8 && width <= sxU64(end - pos) && sxem_add(c, sxem_nw_block_le, pos, 8))) {
+                    return false;
+                }
+            }
+            pos += width;
+        }
+        {
+            if (!(pos === end)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_nintendo_sdat_build(c) {
+    return sxem_sdat(c);
+}

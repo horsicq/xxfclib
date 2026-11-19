@@ -1,0 +1,283 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/panorama/xx_panorama_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpano_signature_fields = layout([bytes("encoded_rar4_signature", 7)]);
+var sxpano_signature = sxLayout(0x60970001, "panorama_rar4_signature", LE, sxpano_signature_fields);
+var sxpano_base_header_fields = layout([bytes("encoded_header_crc", 2), bytes("encoded_header_type", 1),
+    bytes("encoded_header_flags", 2), bytes("encoded_header_size", 2)]);
+var sxpano_base_header = sxLayout(0x60970002, "panorama_rar4_base_header", LE, sxpano_base_header_fields);
+var sxpano_main_header_fields = layout([bytes("encoded_header_crc", 2), bytes("encoded_header_type", 1),
+    bytes("encoded_header_flags", 2), bytes("encoded_header_size", 2), bytes("encoded_authenticity_offset_high", 2),
+    bytes("encoded_authenticity_offset_low", 4)]);
+var sxpano_main_header = sxLayout(0x60970003, "panorama_rar4_main_header", LE, sxpano_main_header_fields);
+var sxpano_file_header_fields = layout([bytes("encoded_header_crc", 2), bytes("encoded_header_type", 1),
+    bytes("encoded_header_flags", 2), bytes("encoded_header_size", 2), bytes("encoded_packed_size_low", 4),
+    bytes("encoded_unpacked_size_low", 4), bytes("encoded_host_os", 1), bytes("encoded_file_crc", 4),
+    bytes("encoded_dos_file_time", 4), bytes("encoded_unpack_version", 1), bytes("encoded_compression_method", 1),
+    bytes("encoded_name_size", 2), bytes("encoded_attributes", 4)]);
+var sxpano_file_header = sxLayout(0x60970004, "panorama_rar4_file_header", LE, sxpano_file_header_fields);
+var sxpano_large_sizes_fields = layout([bytes("encoded_packed_size_high", 4), bytes("encoded_unpacked_size_high", 4)]);
+var sxpano_large_sizes = sxLayout(0x60970005, "panorama_rar4_large_sizes", LE, sxpano_large_sizes_fields);
+var sxpano_file_name_fields = layout([field("encoded_file_name", "uint8", 0)]);
+var sxpano_file_name = sxLayout(0x60970006, "panorama_rar4_file_name", LE, sxpano_file_name_fields);
+var sxpano_salt_fields = layout([bytes("encoded_salt", 8)]);
+var sxpano_salt = sxLayout(0x60970007, "panorama_rar4_salt", LE, sxpano_salt_fields);
+var sxpano_long_block_size_fields = layout([bytes("encoded_data_size", 4)]);
+var sxpano_long_block_size = sxLayout(0x60970008, "panorama_rar4_long_block_size", LE, sxpano_long_block_size_fields);
+var sxpano_end_data_crc_fields = layout([bytes("encoded_archive_data_crc", 4)]);
+var sxpano_end_data_crc = sxLayout(0x60970009, "panorama_rar4_end_data_crc", LE, sxpano_end_data_crc_fields);
+var sxpano_end_volume_fields = layout([bytes("encoded_volume_number", 2)]);
+var sxpano_end_volume = sxLayout(0x6097000A, "panorama_rar4_end_volume", LE, sxpano_end_volume_fields);
+var sxpano_comment_header_fields = layout([bytes("encoded_header_crc", 2), bytes("encoded_header_type", 1),
+    bytes("encoded_header_flags", 2), bytes("encoded_header_size", 2), bytes("encoded_unpacked_size", 2),
+    bytes("encoded_unpack_version", 1), bytes("encoded_compression_method", 1), bytes("encoded_comment_crc", 2)]);
+var sxpano_comment_header = sxLayout(0x6097000B, "panorama_rar4_comment_header", LE, sxpano_comment_header_fields);
+var sxpano_old_service_header_fields = layout([bytes("encoded_header_crc", 2), bytes("encoded_header_type", 1),
+    bytes("encoded_header_flags", 2), bytes("encoded_header_size", 2), bytes("encoded_data_size", 4),
+    bytes("encoded_subtype", 2), bytes("encoded_level", 1)]);
+var sxpano_old_service_header = sxLayout(0x6097000C, "panorama_rar4_old_service_header", LE, sxpano_old_service_header_fields);
+var sxpano_recovery_header_fields = layout([bytes("encoded_header_crc", 2), bytes("encoded_header_type", 1),
+    bytes("encoded_header_flags", 2), bytes("encoded_header_size", 2), bytes("encoded_data_size", 4),
+    bytes("encoded_version", 1), bytes("encoded_recovery_sectors", 2), bytes("encoded_total_blocks", 4),
+    bytes("encoded_mark", 8)]);
+var sxpano_recovery_header = sxLayout(0x6097000D, "panorama_rar4_recovery_header", LE, sxpano_recovery_header_fields);
+function sxpano_read(v, p, out, n) {
+    if (v.work > 16777216 || n > sxU64(16777216 - v.work) || p > (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) || n > sxU64((v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) - p) || !sx_read(v.c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), out, n)) {
+        return false;
+    }
+    v.work += n;
+    var b = out;
+    for (var i = 0; i < n; i++) {
+        b[i] ^= v.pad[sxAnd64(p + i, 1023)];
+    }
+    return true;
+}
+function sxpano_u16(b, b_o) {
+    return b[b_o] | b[b_o + 1] << 8;
+}
+function sxpano_u32(b, b_o) {
+    return (b[b_o] | b[b_o + 1] << 8 | b[b_o + 2] << 16 | (b[b_o + 3] << 24) >>> 0) >>> 0;
+}
+function sxpano_crc(v, p, n, expected) {
+    var b = [];
+    var crc = 4294967295;
+    while (n) {
+        var z = n < 512 ? n : 512;
+        if (!sxpano_read(v, p, b, z)) {
+            return false;
+        }
+        for (var i = 0; i < z; i++) {
+            crc = (crc ^ b[i]) >>> 0;
+            for (var j = 0; j < 8; j++) {
+                crc = (crc >>> 1 ^ ((0 - (crc & 1)) >>> 0 & 0xEDB88320) >>> 0) >>> 0;
+            }
+        }
+        p += z;
+        n = sxU64(n - z);
+    }
+    return ((crc ^ 4294967295) >>> 0 & 0xFFFF) === expected;
+}
+function sxpano_file_prefix(v, p, h, type, flags, hs, salt, used) {
+    var q = 32 + (flags & 0x100 ? 8 : 0);
+    var name = sxpano_u16(h, 26);
+    salt[0] = 0;
+    if (q > hs || name > sxU64(hs - q)) {
+        return false;
+    }
+    q += name;
+    if (type === 0x7A) {
+        var extra = sxU64((hs - 32 < 0 ? hs - 32 + SX_U64_MAX : hs - 32) - name);
+        if (flags & 0x400) {
+            if (extra < 8) {
+                return false;
+            }
+            extra = sxU64(extra - 8);
+        }
+        if (extra > sxU64(hs - q)) {
+            return false;
+        }
+        q += extra;
+    }
+    if (flags & 0x400) {
+        if (8 > sxU64(hs - q)) {
+            return false;
+        }
+        salt[0] = q;
+        q += 8;
+    }
+    if (flags & 0x1000) {
+        var b = [];
+        if (2 > sxU64(hs - q) || !sxpano_read(v, p + q, b, 2)) {
+            return false;
+        }
+        q += 2;
+        var timeflags = sxpano_u16(b, 0);
+        for (var i = 0; i < 3; i++) {
+            var mode = timeflags >>> ((((3 - i) >>> 0) * 4) >>> 0);
+            if (mode & 8) {
+                var z = (i ? 4 : 0) + (mode & 3);
+                if (z > sxU64(hs - q)) {
+                    return false;
+                }
+                q += z;
+            }
+        }
+    }
+    used[0] = q;
+    return true;
+}
+function sxpano_put(v, l, p, n) {
+    return v.c.count < 20000 && p <= (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) && n <= sxU64((v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) - p) && sx_add(v.c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxpano_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    return a.offset < b.offset ? -1 : a.offset > b.offset ? 1 : 0;
+}
+function sxpano_finish(c) {
+    var n = c.count;
+    var end = 0;
+    if (!n) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxpano_order, true);
+    return !c.failed;
+}
+function sx_panorama_schema_build(c) {
+    var h = [];
+    if (!sx_read(c, 0, h, 8)) {
+        return false;
+    }
+    var seed = (sxpano_u32(h, 0) ^ 0x21726152) >>> 0;
+    if (!seed || ((sxpano_u32(h, 4) ^ sxMul32(seed, 0x08088405)) >>> 0 & 0xFFFFFF) !== 0x071A) {
+        return false;
+    }
+    var v = { c: null, pad: sxZeros(1024), work: 0 };
+    v.c = c;
+    var x = seed;
+    for (var i = 0; i < 256; i++) {
+        for (var j = 0; j < 4; j++) {
+            v.pad[(((i * 4) >>> 0) + j) >>> 0] = x >>> ((j * 8) >>> 0) & 0xFF;
+        }
+        x = sxMul32(x, 0x08088405);
+    }
+    var p = 7;
+    var first = true;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 20000) {
+        if (!sxpano_read(v, p, h, 7)) {
+            break;
+        }
+        var type = h[2];
+        var flags = sxpano_u16(h, 3);
+        var hs = sxpano_u16(h, 5);
+        var data = 0;
+        if (type < 0x73 || type > 0x7B || hs < 7 || hs > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) || first && (type !== 0x73 || hs < 13)) {
+            break;
+        }
+        var fixed = type === 0x73 ? 13 : type === 0x74 || type === 0x7A ? 32 : type === 0x75 ? 13 : type === 0x77 ? 14 : type === 0x78 ? 26 : 7;
+        if (hs < fixed || !sxpano_read(v, p, h, fixed)) {
+            break;
+        }
+        if (flags & 0x8000) {
+            var b = [];
+            if (hs < 11 || !sxpano_read(v, p + 7, b, 4)) {
+                break;
+            }
+            data = sxpano_u32(b, 0);
+        }
+        if ((type === 0x74 || type === 0x7A) && flags & 0x100) {
+            b = [];
+            if (hs < 40 || !sxpano_read(v, p + 32, b, 8)) {
+                break;
+            }
+            data = sxOr64(data, sxShl64(sxpano_u32(b, 0), 32));
+        }
+        if (data > sxU64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) - hs)) {
+            break;
+        }
+        var crc_size = type === 0x75 || type === 0x73 && flags & 2 ? 13 : hs;
+        var salt = [0];
+        var prefix = [0];
+        var fileprefix = (type === 0x74 || type === 0x7A) && sxpano_file_prefix(v, p, h, type, flags, hs, salt, prefix);
+        if ((type === 0x74 || type === 0x7A) && flags & 8) {
+            if (!fileprefix) {
+                break;
+            }
+            crc_size = prefix[0];
+        }
+        if (!sxpano_crc(v, p + 2, sxU64(crc_size - 2), sxpano_u16(h, 0))) {
+            break;
+        }
+        if (first) {
+            if (!sxpano_put(v, sxpano_signature, 0, 7)) {
+                break;
+            }
+            first = false;
+        }
+        var l = type === 0x73 ? sxpano_main_header : type === 0x74 || type === 0x7A ? sxpano_file_header : type === 0x75 ? sxpano_comment_header : type === 0x77 ? sxpano_old_service_header : type === 0x78 ? sxpano_recovery_header : sxpano_base_header;
+        if (!sxpano_put(v, l, p, fixed)) {
+            break;
+        }
+        if (type === 0x74 || type === 0x7A) {
+            var q = p + 32;
+            if (flags & 0x100) {
+                if (!sxpano_put(v, sxpano_large_sizes, q, 8)) {
+                    break;
+                }
+                q += 8;
+            }
+            var name = sxpano_u16(h, 26);
+            if (name <= sxU64(p + hs - q)) {
+                if (name && name <= 4096 && !sxpano_put(v, sxpano_file_name, q, name)) {
+                    break;
+                }
+                if (fileprefix && salt[0] && !sxpano_put(v, sxpano_salt, p + salt[0], 8)) {
+                    break;
+                }
+            }
+        } else if (type === 0x7B) {
+            q = p + 7;
+            if (flags & 2) {
+                if (4 > sxU64(p + hs - q)) {
+                    break;
+                }
+                if (!sxpano_put(v, sxpano_end_data_crc, q, 4)) {
+                    break;
+                }
+                q += 4;
+            }
+            if (flags & 8) {
+                if (2 > sxU64(p + hs - q)) {
+                    break;
+                }
+                if (!sxpano_put(v, sxpano_end_volume, q, 2)) {
+                    break;
+                }
+            }
+        } else if (fixed === 7 && flags & 0x8000 && !sxpano_put(v, sxpano_long_block_size, p + 7, 4)) {
+            break;
+        }
+        p += hs + data;
+        if (type === 0x7B || type === 0x73 && flags & 0x80) {
+            break;
+        }
+    }
+    return sxpano_finish(c);
+}

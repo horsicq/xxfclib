@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/jose_jws/xx_jose_jws_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_base64url_header_fields = layout([field("base64url_header", "utf8", 0, STRING)]);
+var sxtw_base64url_header = sxLayout(0x60710011, "textwire_base64url_header", LE, sxtw_base64url_header_fields);
+var sxtw_base64url_payload_fields = layout([field("base64url_payload", "utf8", 0, STRING)]);
+var sxtw_base64url_payload = sxLayout(0x60710012, "textwire_base64url_payload", LE, sxtw_base64url_payload_fields);
+var sxtw_base64url_signature_fields = layout([field("base64url_signature", "utf8", 0, STRING)]);
+var sxtw_base64url_signature = sxLayout(0x60710013, "textwire_base64url_signature", LE, sxtw_base64url_signature_fields);
+function sxtw_jws(q) {
+    var l = [sxtw_base64url_header, sxtw_base64url_payload, sxtw_base64url_signature];
+    for (var i = 0; i < 3; i++) {
+        var a = q.p;
+        while (q.p < q.n && q.b[q.p] !== 46 /*.*/) {
+            q.p++;
+        }
+        if (!sxtw_emit(q, l[i], a, q.p - a)) {
+            return false;
+        }
+        if (i < 2) {
+            if (q.p === q.n) {
+                return false;
+            }
+            q.p++;
+        }
+    }
+    return q.p === q.n;
+}
+function sx_jose_jws_build(q) {
+    return sxtw_jws(q);
+}

@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/spp_benitrackeradlib_pis/xx_spp_benitrackeradlib_pis_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_beni_header_fields = layout([u8("order_count", COUNT), u8("pattern_count", COUNT), u8("instrument_count", COUNT)]);
+var sxpcm_beni_header = sxLayout(0x6094000C, "beni_header", LE, sxpcm_beni_header_fields);
+var sxpcm_beni_pattern_map_fields = layout([u8("pattern_id", ID)]);
+var sxpcm_beni_pattern_map = sxLayout(0x6094000D, "beni_pattern_map", LE, sxpcm_beni_pattern_map_fields);
+var sxpcm_beni_instrument_map_fields = layout([u8("instrument_id", ID)]);
+var sxpcm_beni_instrument_map = sxLayout(0x6094000E, "beni_instrument_map", LE, sxpcm_beni_instrument_map_fields);
+var sxpcm_beni_event_fields = layout([field("packed_note_instrument_effect", "uint24be", 3, FLAGS)]);
+var sxpcm_beni_event = sxLayout(0x6094000F, "beni_event", BE, sxpcm_beni_event_fields);
+var sxpcm_beni_instrument_fields = layout([u8("modulator_characteristics", FLAGS), u8("carrier_characteristics", FLAGS),
+    u8("modulator_level", FLAGS), u8("carrier_level", FLAGS), u8("modulator_attack_decay", FLAGS),
+    u8("carrier_attack_decay", FLAGS), u8("modulator_sustain_release", FLAGS), u8("carrier_sustain_release", FLAGS),
+    u8("modulator_waveform", ID), u8("carrier_waveform", ID), u8("feedback_connection", FLAGS)]);
+var sxpcm_beni_instrument = sxLayout(0x60940010, "beni_instrument", LE, sxpcm_beni_instrument_fields);
+var sxpcm_beni_version_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxpcm_beni_version = sxLayout(0x60940011, "beni_version", LE, sxpcm_beni_version_fields);
+function sxpcm_beni(c) {
+    var h = [];
+    if (!sxpcm_read(c, 0, h, 3) || !h[1] || h[1] > 204 || h[2] > 31 || !sxpcm_put(c, sxpcm_beni_header, 0, 1)) {
+        return false;
+    }
+    var p = 3;
+    if (!sxpcm_put(c, sxpcm_beni_pattern_map, p, h[1])) {
+        return true;
+    }
+    p += h[1];
+    if (!sxpcm_put(c, sxpcm_beni_instrument_map, p, h[2])) {
+        return true;
+    }
+    p += h[2];
+    if (!sxpcm_put(c, sxpcm_pc_pattern_index, p, h[0] * 9)) {
+        return true;
+    }
+    p += h[0] * 9;
+    if (!sxpcm_put(c, sxpcm_beni_event, p, h[1] * 64)) {
+        return true;
+    }
+    p += h[1] * 192;
+    if (!sxpcm_put(c, sxpcm_beni_instrument, p, h[2])) {
+        return true;
+    }
+    p += h[2] * 11;
+    if (sxpcm_eq(c, p, "B.J.", 4)) {
+        return sxpcm_put(c, sxpcm_beni_version, p, 1);
+    }
+    return true;
+}
+function sx_spp_benitrackeradlib_pis_build(c) {
+    return sxpcm_beni(c);
+}

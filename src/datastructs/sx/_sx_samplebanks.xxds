@@ -1,0 +1,411 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_samplebanks.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_samplebanks_comment(r, id) {
+    if (r === null || r.name === null || id < 0x603A0000 || id >= 0x603B0000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    if (id === 0x603A0006 && r.name === "sample_rate_index" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "10000 Hz");
+        case 1:
+            return sxSetComment(r, "15625 Hz");
+        case 2:
+            return sxSetComment(r, "20000 Hz");
+        case 3:
+            return sxSetComment(r, "22050 Hz");
+        case 4:
+            return sxSetComment(r, "27778 Hz");
+        case 5:
+            return sxSetComment(r, "31250 Hz");
+        case 6:
+            return sxSetComment(r, "41667 Hz");
+        case 7:
+            return sxSetComment(r, "44100 Hz");
+        default:
+            break;
+        }
+    }
+    if (id === 0x603A0011 && r.name === "sounding_mode" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "NO SOUND");
+        case 471:
+            return sxSetComment(r, "NORMAL");
+        case 4125:
+            return sxSetComment(r, "REVERSE");
+        case 8212:
+            return sxSetComment(r, "CUE");
+        case 19:
+            return sxSetComment(r, "SYNTHESIZED");
+        default:
+            break;
+        }
+    }
+    if (id === 0x603A0011 && r.name === "sample_rate_code" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "36000 Hz");
+        case 1:
+            return sxSetComment(r, "18000 Hz");
+        case 2:
+            return sxSetComment(r, "9000 Hz");
+        default:
+            break;
+        }
+    }
+    if (id === 0x603A0013 && r.name === "dump_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "FULL DUMP");
+        case 2:
+            return sxSetComment(r, "BANK DUMP");
+        default:
+            break;
+        }
+    }
+    switch (id) {
+    case 0x603A0001:
+        if (r.name === "producer_marker") {
+            s = "Constant emaxutil producer marker; the date text is not a per-file modification time.";
+        }
+        break;
+    case 0x603A0002:
+        if (r.name === "preset_addresses") {
+            s = "Little-endian CPU addresses into parameter memory mapped at 0x8000. Unused slots may contain stale addresses; this is not a contiguous record table.";
+        } else if (r.name === "allocation_address") {
+            s = "First free byte in parameter memory, expressed as a CPU address.";
+        } else if (r.name === "selected_preset") {
+            s = "Selected preset slot, not a preset count; all 100 pointer slots are independent.";
+        } else if (r.name === "sequence_addresses") {
+            s = "Sample-memory addresses; 0x80000 denotes an unused Emax I sequence slot.";
+        } else if (r.name === "lowest_sample_entry_address") {
+            s = "CPU address of the lowest sample-directory entry. Entries grow downwards from 0xF000.";
+        } else if (r.name === "highest_sample_entry_address") {
+            s = "CPU address, normally 0xEFE0.";
+        }
+        break;
+    case 0x603A0003:
+        if (r.name === "opaque_preset_parameters") {
+            s = "Stored preset parameters; their individual semantics are not decoded.";
+        } else if (r.name === "key_area_map") {
+            s = "Key 0 is MIDI note 21. Entries index the key-area table; 0xFF is silent.";
+        }
+        break;
+    case 0x603A0004:
+        if (r.name === "flags") {
+            s = "Bit 4 enables the secondary voice.";
+        } else if (r.name === "velocity_crossfade_encoded") {
+            s = "Stored velocity crossfade/switch parameter; its encoding is not decoded.";
+        } else if (r.name === "primary_voice") {
+            s = "Zero-based index in this preset's voice records.";
+        } else if (r.name === "secondary_voice") {
+            s = "Zero-based voice index; 0xFF denotes no secondary voice.";
+        }
+        break;
+    case 0x603A0005:
+        if (r.name === "amplitude_envelope_and_lfo_rate") {
+            s = "Little-endian packed bits: attack 0..4, hold 5..9, decay 10..14, sustain 15..19, release 20..24, LFO rate 25..31.";
+        } else if (r.name === "lfo_tuning_and_velocity") {
+            s = "Local bits: LFO delay 0..5, variation 6..10, pitch depth 11..14, signed tuning 15..19, velocity cutoff 20..23, velocity filter attack 24..27; upper 4 bits undecoded.";
+        } else if (r.name === "level_velocity_and_chorus") {
+            s = "Local bits: LFO volume 0..3, velocity level 4..7, velocity amplitude attack 12..15, chorus amount 24..28; other bits undecoded.";
+        } else if (r.name === "original_key") {
+            s = "MIDI note 21 plus this value.";
+        } else if (r.name === "sample_index") {
+            s = "Zero-based sample number, counted downwards from the top of the sample directory.";
+        } else if (r.name === "filter_cutoff_encoded") {
+            s = "Low 7 bits encode filter cutoff; high bit is undecoded.";
+        } else if (r.name === "filter_q_encoded") {
+            s = "Low 7 bits encode filter Q; high bit is undecoded.";
+        } else if (r.name === "filter_envelope_amount_encoded") {
+            s = "Low 7 bits form a signed filter-envelope amount; high bit is undecoded.";
+        } else if (r.name === "filter_envelope_and_flags") {
+            s = "Local bits: attack 0..4, hold 5..9, decay 10..14, sustain 15..19, release 20..24, velocity Q 25..28, non-transpose 31; bits 29..30 undecoded.";
+        } else if (r.name === "keyboard_tracking_and_pan") {
+            s = "Low nibble is filter keyboard tracking; high nibble is pan (1 right, 8 centre, 15 left).";
+        } else if (r.name === "lfo_filter_encoded") {
+            s = "High nibble is LFO-to-filter depth; low nibble undecoded.";
+        } else if (r.name === "delay_attenuation_chorus") {
+            s = "Low 6 bits are voice delay; bits 6..10 attenuation, bit 11 chorus enabled; upper bits undecoded.";
+        }
+        break;
+    case 0x603A0006:
+        if (r.name === "unused_00") {
+            s = "Unused stored word, potentially stale memory.";
+        } else if (r.name === "sample_start") {
+            s = "Address in Emax I sample memory; one stored byte per sample frame.";
+        } else if (r.name === "sample_end") {
+            s = "Address in Emax I sample memory.";
+        } else if (r.name === "sustain_loop_start") {
+            s = "Sample-memory address; loop fields may be stale when looping is disabled.";
+        } else if (r.name === "flags") {
+            s = "Bit 0 enables looping; bit 1 uses the sustain loop in release. Other bits remain undecoded.";
+        }
+        break;
+    case 0x603A0007:
+        if (r.name === "selected_name") {
+            s = "Stored display-name workspace; may be blank.";
+        }
+        break;
+    case 0x603A0008:
+        if (r.name === "primary_voice_number") {
+            s = "Expanded selected-preset voice numbers, one per keyboard key.";
+        } else if (r.name === "primary_voice_identifier") {
+            s = "Voice memory-page identifiers; 0x9B identifies the first 256-byte voice slot.";
+        } else if (r.name === "primary_transpose") {
+            s = "Stored semitone transposition; 0x10 is recorded pitch.";
+        }
+        break;
+    case 0x603A0009:
+        if (r.name === "encoded_header") {
+            s = "Stored preset-header values; individual semantics are undecoded.";
+        } else if (r.name === "header_flags") {
+            s = "High bit identifies a preset record.";
+        } else if (r.name === "name") {
+            s = "Display name; some producers use Mac Roman bytes or control characters.";
+        }
+        break;
+    case 0x603A000A:
+        if (r.name === "voice_identifiers") {
+            s = "Voice-number lookup; 0 is unused, 0x9B is the first voice-slot identifier.";
+        }
+        break;
+    case 0x603A000B:
+        if (r.name === "record_size") {
+            s = "Byte size of the following preset, including its final next-record-size word; zero ends the chain.";
+        }
+        break;
+    case 0x603A000C:
+        if (r.name === "mode_and_key_count") {
+            s = "High 2 bits: 1 silent, 2 primary voice, 3 dual voice; low 6 bits are the number of keys.";
+        } else if (r.name === "voice_number") {
+            s = "One-based voice number; zero is silent.";
+        } else if (r.name === "transpose") {
+            s = "0x10 denotes recorded pitch.";
+        }
+        break;
+    case 0x603A000D:
+        if (r.name === "voice_number") {
+            s = "One-based secondary voice number; zero is silent.";
+        }
+        break;
+    case 0x603A000E:
+        if (r.name === "end_marker") {
+            s = "Stored key-range terminator, normally 00 3D 00 00.";
+        }
+        break;
+    case 0x603A000F:
+        if (r.name === "playback_start_minus_one") {
+            s = "Encoded playback counter, stored address minus one; may be stale when flag 0x10 is set.";
+        } else if (r.name === "preloop_negative_counter") {
+            s = "0x500000 minus the pre-loop frame count; this is not a byte size.";
+        } else if (r.name === "loop_start_minus_one") {
+            s = "Encoded loop-start address minus one; may be stale.";
+        } else if (r.name === "loop_negative_counter") {
+            s = "Counter base (0x500000 or 0x600000) minus loop frames.";
+        } else if (r.name === "fine_tune") {
+            s = "Signed units of 1/64 semitone.";
+        } else if (r.name === "velocity_attack") {
+            s = "High nibble controls velocity-to-VCA attack, low nibble velocity-to-VCF attack.";
+        } else if (r.name === "lfo_delay_encoded") {
+            s = "Delay is (stored value minus one) times 10 milliseconds.";
+        } else if (r.name === "lfo_rate_encoded") {
+            s = "Encoded LFO-rate value, not Hertz.";
+        } else if (r.name === "filter_keyboard_tracking") {
+            s = "High nibble controls keyboard tracking; 8 is one octave per octave.";
+        } else if (r.name === "self_pointer_22") {
+            s = "Sampler CPU address into this voice record, not a file offset.";
+        } else if (r.name === "lfo_pitch_table_address") {
+            s = "Pointer into the sampler operating system's LFO-depth tables.";
+        } else if (r.name === "filter_flags") {
+            s = "Bit 7 inverts the filter envelope; other bits remain undecoded.";
+        } else if (r.name === "cutoff_velocity_table") {
+            s = "Encoded cutoff per velocity zone; entry 0 is the highest velocity.";
+        } else if (r.name === "filter_attack_passes") {
+            s = "Stored envelope counter passes, not timestamps or byte sizes.";
+        } else if (r.name === "flags") {
+            s = "0x04 loop enabled; 0x10 counter block stale; 0x08 changes loop counter base to 0x600000. Other bits undecoded.";
+        } else if (r.name === "region_offset") {
+            s = "Bank-relative sample region; one encoded byte per frame.";
+        } else if (r.name === "slot_frames") {
+            s = "Sample frames including padding; one encoded byte per frame.";
+        } else if (r.name === "loop_offset") {
+            s = "Bank-relative sample-loop start.";
+        } else if (r.name === "playback_offset") {
+            s = "Bank-relative sample-playback start.";
+        }
+        break;
+    case 0x603A0010:
+        if (r.name === "area_count") {
+            s = "Number of keyboard/velocity split areas, at most 64.";
+        } else if (r.name === "midi_channel") {
+            s = "Zero-based MIDI channel per area.";
+        } else if (r.name === "generator_mask") {
+            s = "Bits 0..7 enable sound generators 1..8.";
+        } else if (r.name === "voice_number") {
+            s = "Stored zero-based voice numbers, not the internal-memory pointers used by the running sampler.";
+        }
+        break;
+    case 0x603A0011:
+        if (r.name === "wave_start") {
+            s = "PCM memory word address, two bytes per sample; not a file offset.";
+        } else if (r.name === "sounding_mode") {
+            s = "Packed generator mode; 0 is silent, 0x101D reverse, 0x2014 cue.";
+        } else if (r.name === "sustain_loop") {
+            s = "Loop index, 0..8; encoded end/sustain control.";
+        } else if (r.name === "loop_start_encoded") {
+            s = "Low address bits plus high-byte loop-fine encoding; these packed words are not plain file offsets.";
+        } else if (r.name === "loop_end_encoded") {
+            s = "Word address with jump-loop flag in bit 31.";
+        } else if (r.name === "loop_time_encoded") {
+            s = "Encoded duration or repeat count; units depend on loop mode.";
+        } else if (r.name === "pitch_detune") {
+            s = "Signed pitch in 1/256 semitone units.";
+        } else if (r.name === "amplitude_rate") {
+            s = "Sign-magnitude envelope rate: bit 7 is decreasing, low 7 bits are the absolute rate.";
+        } else if (r.name === "filter_rate") {
+            s = "Sign-magnitude envelope rate: bit 7 is decreasing, low 7 bits are the absolute rate.";
+        } else if (r.name === "lfo_delay_encoded") {
+            s = "Units of 2 milliseconds.";
+        } else if (r.name === "lfo_waveform") {
+            s = "Low 7 bits select waveform 0..5; bit 7 enables phase synchronization.";
+        }
+        break;
+    case 0x603A0012:
+        if (r.name === "pitch_bend_depth") {
+            s = "Units of 1/8 semitone.";
+        }
+        break;
+    case 0x603A0013:
+        if (r.name === "dump_type") {
+            s = "HxC bare-dump type: 0 full, 2 bank.";
+        } else if (r.name === "opaque_06") {
+            s = "The native reader requires zero here.";
+        } else if (r.name === "voice_count") {
+            s = "Stored little-endian counter; current native wrapper validation uses its low byte and permits at most 64 voices.";
+        } else if (r.name === "content_blocks") {
+            s = "Total content length in 1024-byte blocks in fzdump files; retained as stored.";
+        } else if (r.name === "waveform_blocks") {
+            s = "Number of 1024-byte waveform blocks; not a byte count.";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxsb_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxsb_read(c, p, b, n) {
+    return sxsb_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxsb16(b, b_o) {
+    return b[b_o] | b[b_o + 1] << 8;
+}
+function sxsb24(b, b_o) {
+    return (sxsb16(b, b_o) | b[b_o + 2] << 16) >>> 0;
+}
+function sxsb32(b, b_o) {
+    return (sxsb24(b, b_o) | (b[b_o + 3] << 24) >>> 0) >>> 0;
+}
+function sxsb_put(c, l, p, n) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var lo = 0;
+    var hi = c.count;
+    if (!n) {
+        return true;
+    }
+    if (n > 1048576 || n > Math.floor(SX_I64_MAX / z) || !sxsb_span(c, p, n * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        var at = (c.items[m].offset - c.f.base_address < 0 ? c.items[m].offset - c.f.base_address + SX_U64_MAX : c.items[m].offset - c.f.base_address);
+        if (at < p) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && c.items[sxU64(lo - 1)].offset - c.f.base_address + c.items[sxU64(lo - 1)].total_size > (p >= SX_I64_MAX ? p - SX_U64_MAX : p)) {
+        return true;
+    }
+    if (lo < c.count && (c.items[lo].offset - c.f.base_address < 0 ? c.items[lo].offset - c.f.base_address + SX_U64_MAX : c.items[lo].offset - c.f.base_address) < p + n * z) {
+        return true;
+    }
+    var prior = c.count;
+    if (!sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n)) {
+        return false;
+    }
+    if (lo < prior) {
+        var row = sxCopy_xx_data_struct(null, c.items[prior]);
+        sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(prior - lo) * 56) / 56), sxCopy_xx_data_struct);
+        c.items[lo] = sxCopy_xx_data_struct(null, row);
+    }
+    return true;
+}
+function sxsb_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxsb_finish(c) {
+    var n = c.count;
+    var end = 0;
+    if (!n) {
+        return false;
+    }
+    sxQsort(c.items, 0, n, sxsb_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsb_order, true);
+    return !c.failed;
+}
+function sx_samplebanks_supports(t) {
+    return t === "EMAX_DISK" || t === "EMULATORII_EII" || t === "CASIO_FZF";
+}
+function sx_samplebanks_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "EMAX_DISK":
+        ok = sx_emax_disk_build(c);
+        break;
+    case "EMULATORII_EII":
+        ok = sx_emulatorii_eii_build(c);
+        break;
+    case "CASIO_FZF":
+        ok = sx_casio_fzf_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxsb_finish(c);
+}

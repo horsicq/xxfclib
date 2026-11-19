@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/paintshop_psp/xx_paintshop_psp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_psp_header_fields = layout([blob("signature", 27, SIGNATURE), blob("reserved", 5, RESERVED), u16("major_version", ID),
+    u16("minor_version", ID)]);
+var sxnx_psp_header = sxLayout(0x60320035, "psp_header", LE, sxnx_psp_header_fields);
+var sxnx_psp_block_fields = layout([blob("signature", 4, SIGNATURE), u16("block_id", ID), u32("initial_size", SIZE),
+    u32("data_size", SIZE)]);
+var sxnx_psp_block = sxLayout(0x60320036, "psp_block", LE, sxnx_psp_block_fields);
+var sxnx_psp_image_fields = layout([u32("width", COUNT), u32("height", COUNT), field("resolution", "double", 8),
+    u8("resolution_unit", ID), u16("compression", ID), u16("bit_depth"), u16("plane_count", COUNT), u32("color_count", COUNT),
+    u8("grayscale", FLAGS), u32("total_image_size", SIZE), u32("active_layer", ID), u16("layer_count", COUNT)]);
+var sxnx_psp_image = sxLayout(0x60320037, "psp_image", LE, sxnx_psp_image_fields);
+var sxnx_psp_layer_fields = layout([chars("name", 256, STRING), u8("layer_type", ID), i32("image_left"), i32("image_top"),
+    i32("image_right"), i32("image_bottom"), i32("saved_image_left"), i32("saved_image_top"), i32("saved_image_right"),
+    i32("saved_image_bottom"), u8("opacity"), u8("blend_mode", ID), u8("visible", FLAGS), u8("transparency_protected", FLAGS),
+    u8("link_group", ID), i32("mask_left"), i32("mask_top"), i32("mask_right"), i32("mask_bottom"), i32("saved_mask_left"),
+    i32("saved_mask_top"), i32("saved_mask_right"), i32("saved_mask_bottom"), u8("mask_linked", FLAGS),
+    u8("mask_disabled", FLAGS), blob("opaque_blend_ranges", 43), u16("bitmap_count", COUNT), u16("channel_count", COUNT)]);
+var sxnx_psp_layer = sxLayout(0x60320038, "psp_layer", LE, sxnx_psp_layer_fields);
+var sxnx_psp_channel_fields = layout([u32("packed_size", SIZE), u32("unpacked_size", SIZE), u16("bitmap_type", ID),
+    u16("channel_type", ID)]);
+var sxnx_psp_channel = sxLayout(0x60320039, "psp_channel", LE, sxnx_psp_channel_fields);
+function sxnx_psp_blocks(v, p, end, depth) {
+    if (depth > 3) {
+        return false;
+    }
+    while (p < end) {
+        if (!sxnx_row(v, sxnx_psp_block, p, end)) {
+            return false;
+        }
+        var id = sxnx_u16(v.p, p + 4, false);
+        var init = sxnx_u32(v.p, p + 6, false);
+        var n = sxnx_u32(v.p, p + 10, false);
+        p += 14;
+        if (init > n || !sxnx_need(v, p, n, end)) {
+            return false;
+        }
+        var finish = p + n;
+        var l = id === 0 ? sxnx_psp_image : id === 4 ? sxnx_psp_layer : id === 5 ? sxnx_psp_channel : null;
+        if (l !== null && !sxnx_row(v, l, p, p + init)) {
+            return false;
+        }
+        if ((id === 3 || id === 4) && !sxnx_psp_blocks(v, p + init, finish, (depth + 1) >>> 0)) {
+            return false;
+        }
+        p = finish;
+    }
+    return p === end;
+}
+function sxnx_psp(v) {
+    return sxnx_row(v, sxnx_psp_header, 0, v.n) && sxnx_psp_blocks(v, 36, v.n, 0);
+}
+function sx_paintshop_psp_build(v) {
+    return sxnx_psp(v);
+}

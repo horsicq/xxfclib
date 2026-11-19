@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gromacs_gro/xx_gromacs_gro_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_gro_residue_name_fields = layout([field("gro_residue_name", "char", 0, STRING)]);
+var sxsa_gro_residue_name = sxLayout(0x6051006A, "science_gro_residue_name", LE, sxsa_gro_residue_name_fields);
+var sxsa_gro_atom_name_fields = layout([field("gro_atom_name", "char", 0, STRING)]);
+var sxsa_gro_atom_name = sxLayout(0x6051006B, "science_gro_atom_name", LE, sxsa_gro_atom_name_fields);
+var sxsa_gro_residue_number_fields = layout([field("gro_residue_number", "ascii_signed", 0)]);
+var sxsa_gro_residue_number = sxLayout(0x6051006C, "science_gro_residue_number", LE, sxsa_gro_residue_number_fields);
+var sxsa_gro_atom_number_fields = layout([field("gro_atom_number", "ascii_signed", 0)]);
+var sxsa_gro_atom_number = sxLayout(0x6051006D, "science_gro_atom_number", LE, sxsa_gro_atom_number_fields);
+var sxsa_gro_x_fields = layout([field("gro_x", "ascii_real", 0)]);
+var sxsa_gro_x = sxLayout(0x6051006E, "science_gro_x", LE, sxsa_gro_x_fields);
+var sxsa_gro_y_fields = layout([field("gro_y", "ascii_real", 0)]);
+var sxsa_gro_y = sxLayout(0x6051006F, "science_gro_y", LE, sxsa_gro_y_fields);
+var sxsa_gro_z_fields = layout([field("gro_z", "ascii_real", 0)]);
+var sxsa_gro_z = sxLayout(0x60510070, "science_gro_z", LE, sxsa_gro_z_fields);
+var sxsa_gro_vx_fields = layout([field("gro_vx", "ascii_real", 0)]);
+var sxsa_gro_vx = sxLayout(0x60510071, "science_gro_vx", LE, sxsa_gro_vx_fields);
+var sxsa_gro_vy_fields = layout([field("gro_vy", "ascii_real", 0)]);
+var sxsa_gro_vy = sxLayout(0x60510072, "science_gro_vy", LE, sxsa_gro_vy_fields);
+var sxsa_gro_vz_fields = layout([field("gro_vz", "ascii_real", 0)]);
+var sxsa_gro_vz = sxLayout(0x60510073, "science_gro_vz", LE, sxsa_gro_vz_fields);
+var sxsa_gro_box_xx_fields = layout([field("gro_box_xx", "ascii_real", 0)]);
+var sxsa_gro_box_xx = sxLayout(0x60510074, "science_gro_box_xx", LE, sxsa_gro_box_xx_fields);
+var sxsa_gro_box_yy_fields = layout([field("gro_box_yy", "ascii_real", 0)]);
+var sxsa_gro_box_yy = sxLayout(0x60510075, "science_gro_box_yy", LE, sxsa_gro_box_yy_fields);
+var sxsa_gro_box_zz_fields = layout([field("gro_box_zz", "ascii_real", 0)]);
+var sxsa_gro_box_zz = sxLayout(0x60510076, "science_gro_box_zz", LE, sxsa_gro_box_zz_fields);
+var sxsa_gro_box_xy_fields = layout([field("gro_box_xy", "ascii_real", 0)]);
+var sxsa_gro_box_xy = sxLayout(0x60510077, "science_gro_box_xy", LE, sxsa_gro_box_xy_fields);
+var sxsa_gro_box_xz_fields = layout([field("gro_box_xz", "ascii_real", 0)]);
+var sxsa_gro_box_xz = sxLayout(0x60510078, "science_gro_box_xz", LE, sxsa_gro_box_xz_fields);
+var sxsa_gro_box_yx_fields = layout([field("gro_box_yx", "ascii_real", 0)]);
+var sxsa_gro_box_yx = sxLayout(0x60510079, "science_gro_box_yx", LE, sxsa_gro_box_yx_fields);
+var sxsa_gro_box_yz_fields = layout([field("gro_box_yz", "ascii_real", 0)]);
+var sxsa_gro_box_yz = sxLayout(0x6051007A, "science_gro_box_yz", LE, sxsa_gro_box_yz_fields);
+var sxsa_gro_box_zx_fields = layout([field("gro_box_zx", "ascii_real", 0)]);
+var sxsa_gro_box_zx = sxLayout(0x6051007B, "science_gro_box_zx", LE, sxsa_gro_box_zx_fields);
+var sxsa_gro_box_zy_fields = layout([field("gro_box_zy", "ascii_real", 0)]);
+var sxsa_gro_box_zy = sxLayout(0x6051007C, "science_gro_box_zy", LE, sxsa_gro_box_zy_fields);
+function sxsa_gro(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(9, sxNew_sxsa_token);
+    var count = [0];
+    if (!sxsa_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxsa_emit(q, sxsa_title, sxCopy_sxsa_token(null, line))) {
+            return false;
+        }
+    }
+    if (!sxsa_line(q, line) || !sxsa_number(q, sxCopy_sxsa_token(null, line), count)) {
+        return false;
+    }
+    {
+        if (!sxsa_emit(q, sxsa_atom_count, sxCopy_sxsa_token(null, line))) {
+            return false;
+        }
+    }
+    var pos = [sxsa_gro_x, sxsa_gro_y, sxsa_gro_z, sxsa_gro_vx, sxsa_gro_vy, sxsa_gro_vz];
+    for (var i = 0; i < count[0]; i++) {
+        if (!sxsa_line(q, line) || line.z !== 44 && line.z !== 68) {
+            return false;
+        }
+        {
+            if (!sxsa_column(q, sxsa_gro_residue_number, sxCopy_sxsa_token(null, line), 0, 5)) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_column(q, sxsa_gro_residue_name, sxCopy_sxsa_token(null, line), 5, 5)) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_column(q, sxsa_gro_atom_name, sxCopy_sxsa_token(null, line), 10, 5)) {
+                return false;
+            }
+        }
+        {
+            if (!sxsa_column(q, sxsa_gro_atom_number, sxCopy_sxsa_token(null, line), 15, 5)) {
+                return false;
+            }
+        }
+        for (var j = 0; j < (line.z === 44 ? 3 : 6); j++) {
+            if (!sxsa_column(q, pos[j], sxCopy_sxsa_token(null, line), (20 + ((8 * j) >>> 0)) >>> 0, 8)) {
+                return false;
+            }
+        }
+        if (q.c.count >= 24000) {
+            return true;
+        }
+    }
+    if (!sxsa_line(q, line)) {
+        return false;
+    }
+    var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 9, false);
+    var box = [sxsa_gro_box_xx, sxsa_gro_box_yy, sxsa_gro_box_zz, sxsa_gro_box_xy, sxsa_gro_box_xz, sxsa_gro_box_yx, sxsa_gro_box_yz, sxsa_gro_box_zx, sxsa_gro_box_zy];
+    return (n === 3 || n === 9) && sxsa_fields(q, t, 0, n, box, 9);
+}
+function sx_gromacs_gro_build(q) {
+    return sxsa_gro(q);
+}

@@ -1,0 +1,1948 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Mach-O (thin, 32/64-bit, either byte order); ids and names are public API
+// (XX_MACHO_DATA_STRUCT_*).
+//
+// The reader has validated the header and the load-command walk before the
+// script runs (Format.size() < 0 means it did not). Structure layouts follow
+// mach-o/loader.h, fixup-chains.h and the code-signing blob formats; the
+// code signature is always big-endian, everything else uses the file order.
+//
+// Bit-field records (relocation_info, dylib_reference, chained imports and
+// chained pointers, ...) report the packed word as their raw bytes and the
+// field itself as their value; their fields carry a `logical` hook that
+// returns that value.
+
+// Field with an explicit offset (the tables below spell every offset out).
+function F(name, type, offset, size, role) { return { name: name, type: type, offset: offset, size: size, role: role }; }
+
+var M_header32 = [
+    F("magic", "uint32", 0, 4, ID), F("cputype", "uint32", 4, 4, ID), F("cpusubtype", "uint32", 8, 4, ID),
+    F("filetype", "uint32", 12, 4, ID), F("ncmds", "uint32", 16, 4, COUNT), F("sizeofcmds", "uint32", 20, 4, SIZE),
+    F("flags", "uint32", 24, 4, FLAGS)
+];
+
+var M_header64 = [
+    F("magic", "uint32", 0, 4, ID), F("cputype", "uint32", 4, 4, ID), F("cpusubtype", "uint32", 8, 4, ID),
+    F("filetype", "uint32", 12, 4, ID), F("ncmds", "uint32", 16, 4, COUNT), F("sizeofcmds", "uint32", 20, 4, SIZE),
+    F("flags", "uint32", 24, 4, FLAGS), F("reserved", "uint32", 28, 4, RESERVED)
+];
+
+var M_load = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE)
+];
+
+var M_segment32 = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("segname", "char[16]", 8, 16, STRING),
+    F("vmaddr", "uint32", 24, 4, VA), F("vmsize", "uint32", 28, 4, SIZE), F("fileoff", "uint32", 32, 4, OFFSET),
+    F("filesize", "uint32", 36, 4, SIZE), F("maxprot", "uint32", 40, 4, FLAGS),
+    F("initprot", "uint32", 44, 4, FLAGS), F("nsects", "uint32", 48, 4, COUNT), F("flags", "uint32", 52, 4, FLAGS)
+];
+
+var M_segment64 = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("segname", "char[16]", 8, 16, STRING),
+    F("vmaddr", "uint64", 24, 8, VA), F("vmsize", "uint64", 32, 8, SIZE), F("fileoff", "uint64", 40, 8, OFFSET),
+    F("filesize", "uint64", 48, 8, SIZE), F("maxprot", "uint32", 56, 4, FLAGS),
+    F("initprot", "uint32", 60, 4, FLAGS), F("nsects", "uint32", 64, 4, COUNT), F("flags", "uint32", 68, 4, FLAGS)
+];
+
+var M_section32 = [
+    F("sectname", "char[16]", 0, 16, STRING), F("segname", "char[16]", 16, 16, STRING),
+    F("addr", "uint32", 32, 4, VA), F("size", "uint32", 36, 4, SIZE), F("offset", "uint32", 40, 4, OFFSET),
+    F("align", "uint32", 44, 4, COUNT), F("reloff", "uint32", 48, 4, OFFSET), F("nreloc", "uint32", 52, 4, COUNT),
+    F("flags", "uint32", 56, 4, FLAGS), F("reserved1", "uint32", 60, 4, RESERVED),
+    F("reserved2", "uint32", 64, 4, RESERVED)
+];
+
+var M_section64 = [
+    F("sectname", "char[16]", 0, 16, STRING), F("segname", "char[16]", 16, 16, STRING),
+    F("addr", "uint64", 32, 8, VA), F("size", "uint64", 40, 8, SIZE), F("offset", "uint32", 48, 4, OFFSET),
+    F("align", "uint32", 52, 4, COUNT), F("reloff", "uint32", 56, 4, OFFSET), F("nreloc", "uint32", 60, 4, COUNT),
+    F("flags", "uint32", 64, 4, FLAGS), F("reserved1", "uint32", 68, 4, RESERVED),
+    F("reserved2", "uint32", 72, 4, RESERVED), F("reserved3", "uint32", 76, 4, RESERVED)
+];
+
+var M_dylib = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("dylib.name", "uint32", 8, 4, POINTER),
+    F("dylib.timestamp", "uint32", 12, 4, TIMESTAMP), F("dylib.current_version", "uint32", 16, 4, NONE),
+    F("dylib.compatibility_version", "uint32", 20, 4, NONE)
+];
+
+var M_dylinker = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("name", "uint32", 8, 4, POINTER)
+];
+
+var M_rpath = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("path", "uint32", 8, 4, POINTER)
+];
+
+var M_target_triple = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("triple", "uint32", 8, 4, POINTER)
+];
+
+var M_symtab = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("symoff", "uint32", 8, 4, OFFSET),
+    F("nsyms", "uint32", 12, 4, COUNT), F("stroff", "uint32", 16, 4, OFFSET), F("strsize", "uint32", 20, 4, SIZE)
+];
+
+var M_dysymtab = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("ilocalsym", "uint32", 8, 4, NONE),
+    F("nlocalsym", "uint32", 12, 4, COUNT), F("iextdefsym", "uint32", 16, 4, NONE),
+    F("nextdefsym", "uint32", 20, 4, COUNT), F("iundefsym", "uint32", 24, 4, NONE),
+    F("nundefsym", "uint32", 28, 4, COUNT), F("tocoff", "uint32", 32, 4, OFFSET), F("ntoc", "uint32", 36, 4, COUNT),
+    F("modtaboff", "uint32", 40, 4, OFFSET), F("nmodtab", "uint32", 44, 4, COUNT),
+    F("extrefsymoff", "uint32", 48, 4, OFFSET), F("nextrefsyms", "uint32", 52, 4, COUNT),
+    F("indirectsymoff", "uint32", 56, 4, OFFSET), F("nindirectsyms", "uint32", 60, 4, COUNT),
+    F("extreloff", "uint32", 64, 4, OFFSET), F("nextrel", "uint32", 68, 4, COUNT),
+    F("locreloff", "uint32", 72, 4, OFFSET), F("nlocrel", "uint32", 76, 4, COUNT)
+];
+
+var M_uuid = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("uuid", "uint8[16]", 8, 16, ID)
+];
+
+var M_version_min = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("version", "uint32", 8, 4, NONE),
+    F("sdk", "uint32", 12, 4, NONE)
+];
+
+var M_build_version = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("platform", "uint32", 8, 4, ID),
+    F("minos", "uint32", 12, 4, NONE), F("sdk", "uint32", 16, 4, NONE), F("ntools", "uint32", 20, 4, COUNT)
+];
+
+var M_source_version = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("version", "uint64", 8, 8, NONE)
+];
+
+var M_entry_point = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("entryoff", "uint64", 8, 8, OFFSET),
+    F("stacksize", "uint64", 16, 8, SIZE)
+];
+
+var M_encryption32 = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("cryptoff", "uint32", 8, 4, OFFSET),
+    F("cryptsize", "uint32", 12, 4, SIZE), F("cryptid", "uint32", 16, 4, ID)
+];
+
+var M_encryption64 = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("cryptoff", "uint32", 8, 4, OFFSET),
+    F("cryptsize", "uint32", 12, 4, SIZE), F("cryptid", "uint32", 16, 4, ID), F("pad", "uint32", 20, 4, RESERVED)
+];
+
+var M_linkedit = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("dataoff", "uint32", 8, 4, OFFSET),
+    F("datasize", "uint32", 12, 4, SIZE)
+];
+
+var M_dyld_info = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("rebase_off", "uint32", 8, 4, OFFSET),
+    F("rebase_size", "uint32", 12, 4, SIZE), F("bind_off", "uint32", 16, 4, OFFSET),
+    F("bind_size", "uint32", 20, 4, SIZE), F("weak_bind_off", "uint32", 24, 4, OFFSET),
+    F("weak_bind_size", "uint32", 28, 4, SIZE), F("lazy_bind_off", "uint32", 32, 4, OFFSET),
+    F("lazy_bind_size", "uint32", 36, 4, SIZE), F("export_off", "uint32", 40, 4, OFFSET),
+    F("export_size", "uint32", 44, 4, SIZE)
+];
+
+var M_nlist32 = [
+    F("n_strx", "uint32", 0, 4, POINTER), F("n_type", "uint8", 4, 1, FLAGS), F("n_sect", "uint8", 5, 1, NONE),
+    F("n_desc", "int16", 6, 2, FLAGS), F("n_value", "uint32", 8, 4, VA)
+];
+
+var M_nlist64 = [
+    F("n_strx", "uint32", 0, 4, POINTER), F("n_type", "uint8", 4, 1, FLAGS), F("n_sect", "uint8", 5, 1, NONE),
+    F("n_desc", "uint16", 6, 2, FLAGS), F("n_value", "uint64", 8, 8, VA)
+];
+
+var M_indirect_symbol = [
+    F("symbol_index", "uint32", 0, 4, NONE)
+];
+
+var M_data_in_code = [
+    F("offset", "uint32", 0, 4, OFFSET), F("length", "uint16", 4, 2, SIZE), F("kind", "uint16", 6, 2, ID)
+];
+
+var M_chained_header = [
+    F("fixups_version", "uint32", 0, 4, NONE), F("starts_offset", "uint32", 4, 4, POINTER),
+    F("imports_offset", "uint32", 8, 4, POINTER), F("symbols_offset", "uint32", 12, 4, POINTER),
+    F("imports_count", "uint32", 16, 4, COUNT), F("imports_format", "uint32", 20, 4, ID),
+    F("symbols_format", "uint32", 24, 4, ID)
+];
+
+var M_chained_import = [
+    F("import", "uint32", 0, 4, NONE), F("lib_ordinal", "uint8", 0, 4, ID), F("weak_import", "bool", 0, 4, FLAGS),
+    F("name_offset", "uint32", 0, 4, POINTER)
+];
+
+var M_chained_import_addend = [
+    F("import", "uint32", 0, 4, NONE), F("lib_ordinal", "uint8", 0, 4, ID), F("weak_import", "bool", 0, 4, FLAGS),
+    F("name_offset", "uint32", 0, 4, POINTER), F("addend", "int32", 4, 4, NONE)
+];
+
+var M_chained_import_addend64 = [
+    F("import", "uint64", 0, 8, NONE), F("lib_ordinal", "uint16", 0, 8, ID), F("weak_import", "bool", 0, 8, FLAGS),
+    F("reserved", "uint16", 0, 8, RESERVED), F("name_offset", "uint32", 0, 8, POINTER),
+    F("addend", "uint64", 8, 8, NONE)
+];
+
+var M_symseg = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("offset", "uint32", 8, 4, OFFSET),
+    F("size", "uint32", 12, 4, SIZE)
+];
+
+var M_thread = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE)
+];
+
+var M_thread_state_header = [
+    F("flavor", "uint32", 0, 4, ID), F("count", "uint32", 4, 4, COUNT)
+];
+
+var M_thread_state_word = [
+    F("word", "uint32", 0, 4, NONE)
+];
+
+var M_x86_thread_state32 = [
+    F("eax", "uint32", 0, 4, NONE), F("ebx", "uint32", 4, 4, NONE), F("ecx", "uint32", 8, 4, NONE),
+    F("edx", "uint32", 12, 4, NONE), F("edi", "uint32", 16, 4, NONE), F("esi", "uint32", 20, 4, NONE),
+    F("ebp", "uint32", 24, 4, NONE), F("esp", "uint32", 28, 4, NONE), F("ss", "uint32", 32, 4, NONE),
+    F("eflags", "uint32", 36, 4, FLAGS), F("eip", "uint32", 40, 4, VA), F("cs", "uint32", 44, 4, NONE),
+    F("ds", "uint32", 48, 4, NONE), F("es", "uint32", 52, 4, NONE), F("fs", "uint32", 56, 4, NONE),
+    F("gs", "uint32", 60, 4, NONE)
+];
+
+var M_x86_thread_state64 = [
+    F("rax", "uint64", 0, 8, NONE), F("rbx", "uint64", 8, 8, NONE), F("rcx", "uint64", 16, 8, NONE),
+    F("rdx", "uint64", 24, 8, NONE), F("rdi", "uint64", 32, 8, NONE), F("rsi", "uint64", 40, 8, NONE),
+    F("rbp", "uint64", 48, 8, NONE), F("rsp", "uint64", 56, 8, NONE), F("r8", "uint64", 64, 8, NONE),
+    F("r9", "uint64", 72, 8, NONE), F("r10", "uint64", 80, 8, NONE), F("r11", "uint64", 88, 8, NONE),
+    F("r12", "uint64", 96, 8, NONE), F("r13", "uint64", 104, 8, NONE), F("r14", "uint64", 112, 8, NONE),
+    F("r15", "uint64", 120, 8, NONE), F("rip", "uint64", 128, 8, VA), F("rflags", "uint64", 136, 8, FLAGS),
+    F("cs", "uint64", 144, 8, NONE), F("fs", "uint64", 152, 8, NONE), F("gs", "uint64", 160, 8, NONE)
+];
+
+var M_x86_float_state64 = [
+    F("fpu_reserved[0]", "int32", 0, 4, RESERVED), F("fpu_reserved[1]", "int32", 4, 4, RESERVED),
+    F("fpu_fcw", "uint16", 8, 2, FLAGS), F("fpu_fsw", "uint16", 10, 2, FLAGS), F("fpu_ftw", "uint8", 12, 1, FLAGS),
+    F("fpu_rsrv1", "uint8", 13, 1, RESERVED), F("fpu_fop", "uint16", 14, 2, NONE),
+    F("fpu_ip", "uint32", 16, 4, NONE), F("fpu_cs", "uint16", 20, 2, NONE),
+    F("fpu_rsrv2", "uint16", 22, 2, RESERVED), F("fpu_dp", "uint32", 24, 4, NONE),
+    F("fpu_ds", "uint16", 28, 2, NONE), F("fpu_rsrv3", "uint16", 30, 2, RESERVED),
+    F("fpu_mxcsr", "uint32", 32, 4, FLAGS), F("fpu_mxcsrmask", "uint32", 36, 4, FLAGS),
+    F("fpu_stmm0", "uint8[16]", 40, 16, NONE), F("fpu_stmm1", "uint8[16]", 56, 16, NONE),
+    F("fpu_stmm2", "uint8[16]", 72, 16, NONE), F("fpu_stmm3", "uint8[16]", 88, 16, NONE),
+    F("fpu_stmm4", "uint8[16]", 104, 16, NONE), F("fpu_stmm5", "uint8[16]", 120, 16, NONE),
+    F("fpu_stmm6", "uint8[16]", 136, 16, NONE), F("fpu_stmm7", "uint8[16]", 152, 16, NONE),
+    F("fpu_xmm0", "uint8[16]", 168, 16, NONE), F("fpu_xmm1", "uint8[16]", 184, 16, NONE),
+    F("fpu_xmm2", "uint8[16]", 200, 16, NONE), F("fpu_xmm3", "uint8[16]", 216, 16, NONE),
+    F("fpu_xmm4", "uint8[16]", 232, 16, NONE), F("fpu_xmm5", "uint8[16]", 248, 16, NONE),
+    F("fpu_xmm6", "uint8[16]", 264, 16, NONE), F("fpu_xmm7", "uint8[16]", 280, 16, NONE),
+    F("fpu_xmm8", "uint8[16]", 296, 16, NONE), F("fpu_xmm9", "uint8[16]", 312, 16, NONE),
+    F("fpu_xmm10", "uint8[16]", 328, 16, NONE), F("fpu_xmm11", "uint8[16]", 344, 16, NONE),
+    F("fpu_xmm12", "uint8[16]", 360, 16, NONE), F("fpu_xmm13", "uint8[16]", 376, 16, NONE),
+    F("fpu_xmm14", "uint8[16]", 392, 16, NONE), F("fpu_xmm15", "uint8[16]", 408, 16, NONE),
+    F("fpu_rsrv4", "uint8[96]", 424, 96, RESERVED), F("fpu_reserved1", "uint32", 520, 4, RESERVED)
+];
+
+var M_x86_exception_state64 = [
+    F("trapno", "uint16", 0, 2, ID), F("cpu", "uint16", 2, 2, ID), F("err", "uint32", 4, 4, NONE),
+    F("faultvaddr", "uint64", 8, 8, VA)
+];
+
+var M_arm_thread_state32 = [
+    F("r0", "uint32", 0, 4, NONE), F("r1", "uint32", 4, 4, NONE), F("r2", "uint32", 8, 4, NONE),
+    F("r3", "uint32", 12, 4, NONE), F("r4", "uint32", 16, 4, NONE), F("r5", "uint32", 20, 4, NONE),
+    F("r6", "uint32", 24, 4, NONE), F("r7", "uint32", 28, 4, NONE), F("r8", "uint32", 32, 4, NONE),
+    F("r9", "uint32", 36, 4, NONE), F("r10", "uint32", 40, 4, NONE), F("r11", "uint32", 44, 4, NONE),
+    F("r12", "uint32", 48, 4, NONE), F("sp", "uint32", 52, 4, NONE), F("lr", "uint32", 56, 4, VA),
+    F("pc", "uint32", 60, 4, VA), F("cpsr", "uint32", 64, 4, FLAGS)
+];
+
+var M_arm_thread_state64 = [
+    F("x0", "uint64", 0, 8, NONE), F("x1", "uint64", 8, 8, NONE), F("x2", "uint64", 16, 8, NONE),
+    F("x3", "uint64", 24, 8, NONE), F("x4", "uint64", 32, 8, NONE), F("x5", "uint64", 40, 8, NONE),
+    F("x6", "uint64", 48, 8, NONE), F("x7", "uint64", 56, 8, NONE), F("x8", "uint64", 64, 8, NONE),
+    F("x9", "uint64", 72, 8, NONE), F("x10", "uint64", 80, 8, NONE), F("x11", "uint64", 88, 8, NONE),
+    F("x12", "uint64", 96, 8, NONE), F("x13", "uint64", 104, 8, NONE), F("x14", "uint64", 112, 8, NONE),
+    F("x15", "uint64", 120, 8, NONE), F("x16", "uint64", 128, 8, NONE), F("x17", "uint64", 136, 8, NONE),
+    F("x18", "uint64", 144, 8, NONE), F("x19", "uint64", 152, 8, NONE), F("x20", "uint64", 160, 8, NONE),
+    F("x21", "uint64", 168, 8, NONE), F("x22", "uint64", 176, 8, NONE), F("x23", "uint64", 184, 8, NONE),
+    F("x24", "uint64", 192, 8, NONE), F("x25", "uint64", 200, 8, NONE), F("x26", "uint64", 208, 8, NONE),
+    F("x27", "uint64", 216, 8, NONE), F("x28", "uint64", 224, 8, NONE), F("fp", "uint64", 232, 8, NONE),
+    F("lr", "uint64", 240, 8, VA), F("sp", "uint64", 248, 8, NONE), F("pc", "uint64", 256, 8, VA),
+    F("cpsr", "uint32", 264, 4, FLAGS), F("flags", "uint32", 268, 4, FLAGS)
+];
+
+var M_ppc_thread_state32 = [
+    F("srr0", "uint32", 0, 4, VA), F("srr1", "uint32", 4, 4, FLAGS), F("r0", "uint32", 8, 4, NONE),
+    F("r1", "uint32", 12, 4, NONE), F("r2", "uint32", 16, 4, NONE), F("r3", "uint32", 20, 4, NONE),
+    F("r4", "uint32", 24, 4, NONE), F("r5", "uint32", 28, 4, NONE), F("r6", "uint32", 32, 4, NONE),
+    F("r7", "uint32", 36, 4, NONE), F("r8", "uint32", 40, 4, NONE), F("r9", "uint32", 44, 4, NONE),
+    F("r10", "uint32", 48, 4, NONE), F("r11", "uint32", 52, 4, NONE), F("r12", "uint32", 56, 4, NONE),
+    F("r13", "uint32", 60, 4, NONE), F("r14", "uint32", 64, 4, NONE), F("r15", "uint32", 68, 4, NONE),
+    F("r16", "uint32", 72, 4, NONE), F("r17", "uint32", 76, 4, NONE), F("r18", "uint32", 80, 4, NONE),
+    F("r19", "uint32", 84, 4, NONE), F("r20", "uint32", 88, 4, NONE), F("r21", "uint32", 92, 4, NONE),
+    F("r22", "uint32", 96, 4, NONE), F("r23", "uint32", 100, 4, NONE), F("r24", "uint32", 104, 4, NONE),
+    F("r25", "uint32", 108, 4, NONE), F("r26", "uint32", 112, 4, NONE), F("r27", "uint32", 116, 4, NONE),
+    F("r28", "uint32", 120, 4, NONE), F("r29", "uint32", 124, 4, NONE), F("r30", "uint32", 128, 4, NONE),
+    F("r31", "uint32", 132, 4, NONE), F("cr", "uint32", 136, 4, FLAGS), F("xer", "uint32", 140, 4, FLAGS),
+    F("lr", "uint32", 144, 4, VA), F("ctr", "uint32", 148, 4, NONE), F("mq", "uint32", 152, 4, NONE),
+    F("vrsave", "uint32", 156, 4, FLAGS)
+];
+
+var M_ppc_thread_state64 = [
+    F("srr0", "uint64", 0, 8, VA), F("srr1", "uint64", 8, 8, FLAGS), F("r0", "uint64", 16, 8, NONE),
+    F("r1", "uint64", 24, 8, NONE), F("r2", "uint64", 32, 8, NONE), F("r3", "uint64", 40, 8, NONE),
+    F("r4", "uint64", 48, 8, NONE), F("r5", "uint64", 56, 8, NONE), F("r6", "uint64", 64, 8, NONE),
+    F("r7", "uint64", 72, 8, NONE), F("r8", "uint64", 80, 8, NONE), F("r9", "uint64", 88, 8, NONE),
+    F("r10", "uint64", 96, 8, NONE), F("r11", "uint64", 104, 8, NONE), F("r12", "uint64", 112, 8, NONE),
+    F("r13", "uint64", 120, 8, NONE), F("r14", "uint64", 128, 8, NONE), F("r15", "uint64", 136, 8, NONE),
+    F("r16", "uint64", 144, 8, NONE), F("r17", "uint64", 152, 8, NONE), F("r18", "uint64", 160, 8, NONE),
+    F("r19", "uint64", 168, 8, NONE), F("r20", "uint64", 176, 8, NONE), F("r21", "uint64", 184, 8, NONE),
+    F("r22", "uint64", 192, 8, NONE), F("r23", "uint64", 200, 8, NONE), F("r24", "uint64", 208, 8, NONE),
+    F("r25", "uint64", 216, 8, NONE), F("r26", "uint64", 224, 8, NONE), F("r27", "uint64", 232, 8, NONE),
+    F("r28", "uint64", 240, 8, NONE), F("r29", "uint64", 248, 8, NONE), F("r30", "uint64", 256, 8, NONE),
+    F("r31", "uint64", 264, 8, NONE), F("cr", "uint32", 272, 4, FLAGS), F("xer", "uint64", 276, 8, FLAGS),
+    F("lr", "uint64", 284, 8, VA), F("ctr", "uint64", 292, 8, NONE), F("vrsave", "uint32", 300, 4, FLAGS)
+];
+
+var M_fvmlib = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("fvmlib.name", "uint32", 8, 4, POINTER),
+    F("fvmlib.minor_version", "uint32", 12, 4, NONE), F("fvmlib.header_addr", "uint32", 16, 4, VA)
+];
+
+var M_fvmfile = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("name", "uint32", 8, 4, POINTER),
+    F("header_addr", "uint32", 12, 4, VA)
+];
+
+var M_prebound_dylib = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("name", "uint32", 8, 4, POINTER),
+    F("nmodules", "uint32", 12, 4, COUNT), F("linked_modules", "uint32", 16, 4, POINTER)
+];
+
+var M_routines32 = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("init_address", "uint32", 8, 4, VA),
+    F("init_module", "uint32", 12, 4, NONE), F("reserved1", "uint32", 16, 4, RESERVED),
+    F("reserved2", "uint32", 20, 4, RESERVED), F("reserved3", "uint32", 24, 4, RESERVED),
+    F("reserved4", "uint32", 28, 4, RESERVED), F("reserved5", "uint32", 32, 4, RESERVED),
+    F("reserved6", "uint32", 36, 4, RESERVED)
+];
+
+var M_routines64 = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("init_address", "uint64", 8, 8, VA),
+    F("init_module", "uint64", 16, 8, NONE), F("reserved1", "uint64", 24, 8, RESERVED),
+    F("reserved2", "uint64", 32, 8, RESERVED), F("reserved3", "uint64", 40, 8, RESERVED),
+    F("reserved4", "uint64", 48, 8, RESERVED), F("reserved5", "uint64", 56, 8, RESERVED),
+    F("reserved6", "uint64", 64, 8, RESERVED)
+];
+
+var M_single_string_command = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("string_offset", "uint32", 8, 4, POINTER)
+];
+
+var M_twolevel_hints = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("offset", "uint32", 8, 4, OFFSET),
+    F("nhints", "uint32", 12, 4, COUNT)
+];
+
+var M_prebind_cksum = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("cksum", "uint32", 8, 4, NONE)
+];
+
+var M_linker_option = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("count", "uint32", 8, 4, COUNT)
+];
+
+var M_note = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("data_owner", "char[16]", 8, 16, STRING),
+    F("offset", "uint64", 24, 8, OFFSET), F("size", "uint64", 32, 8, SIZE)
+];
+
+var M_build_tool = [
+    F("tool", "uint32", 0, 4, ID), F("version", "uint32", 4, 4, NONE)
+];
+
+var M_fileset_entry = [
+    F("cmd", "uint32", 0, 4, ID), F("cmdsize", "uint32", 4, 4, SIZE), F("vmaddr", "uint64", 8, 8, VA),
+    F("fileoff", "uint64", 16, 8, OFFSET), F("entry_id", "uint32", 24, 4, POINTER),
+    F("reserved", "uint32", 28, 4, RESERVED)
+];
+
+var M_dylib_module32 = [
+    F("module_name", "uint32", 0, 4, POINTER), F("iextdefsym", "uint32", 4, 4, NONE),
+    F("nextdefsym", "uint32", 8, 4, COUNT), F("irefsym", "uint32", 12, 4, NONE),
+    F("nrefsym", "uint32", 16, 4, COUNT), F("ilocalsym", "uint32", 20, 4, NONE),
+    F("nlocalsym", "uint32", 24, 4, COUNT), F("iextrel", "uint32", 28, 4, NONE),
+    F("nextrel", "uint32", 32, 4, COUNT), F("iinit_iterm", "uint32", 36, 4, NONE), F("iinit", "uint16", 36, 4, ID),
+    F("iterm", "uint16", 36, 4, ID), F("ninit_nterm", "uint32", 40, 4, COUNT), F("ninit", "uint16", 40, 4, COUNT),
+    F("nterm", "uint16", 40, 4, COUNT), F("objc_module_info_addr", "uint32", 44, 4, VA),
+    F("objc_module_info_size", "uint32", 48, 4, SIZE)
+];
+
+var M_dylib_module64 = [
+    F("module_name", "uint32", 0, 4, POINTER), F("iextdefsym", "uint32", 4, 4, NONE),
+    F("nextdefsym", "uint32", 8, 4, COUNT), F("irefsym", "uint32", 12, 4, NONE),
+    F("nrefsym", "uint32", 16, 4, COUNT), F("ilocalsym", "uint32", 20, 4, NONE),
+    F("nlocalsym", "uint32", 24, 4, COUNT), F("iextrel", "uint32", 28, 4, NONE),
+    F("nextrel", "uint32", 32, 4, COUNT), F("iinit_iterm", "uint32", 36, 4, NONE), F("iinit", "uint16", 36, 4, ID),
+    F("iterm", "uint16", 36, 4, ID), F("ninit_nterm", "uint32", 40, 4, COUNT), F("ninit", "uint16", 40, 4, COUNT),
+    F("nterm", "uint16", 40, 4, COUNT), F("objc_module_info_size", "uint32", 44, 4, SIZE),
+    F("objc_module_info_addr", "uint64", 48, 8, VA)
+];
+
+var M_toc = [
+    F("symbol_index", "uint32", 0, 4, NONE), F("module_index", "uint32", 4, 4, NONE)
+];
+
+var M_reference = [
+    F("reference", "uint32", 0, 4, FLAGS), F("isym", "uint32", 0, 4, ID), F("flags", "uint8", 0, 4, FLAGS)
+];
+
+var M_relocation = [
+    F("r_address", "int32", 0, 4, OFFSET), F("r_info", "uint32", 4, 4, FLAGS), F("r_symbolnum", "uint32", 4, 4, ID),
+    F("r_pcrel", "bool", 4, 4, FLAGS), F("r_length", "uint8", 4, 4, SIZE), F("r_extern", "bool", 4, 4, FLAGS),
+    F("r_type", "uint8", 4, 4, ID)
+];
+
+var M_scattered_relocation = [
+    F("r_word0", "uint32", 0, 4, FLAGS), F("r_scattered", "bool", 0, 4, FLAGS), F("r_pcrel", "bool", 0, 4, FLAGS),
+    F("r_length", "uint8", 0, 4, SIZE), F("r_type", "uint8", 0, 4, ID), F("r_address", "uint32", 0, 4, OFFSET),
+    F("r_value", "int32", 4, 4, VA)
+];
+
+var M_twolevel_hint = [
+    F("hint", "uint32", 0, 4, NONE), F("isub_image", "uint8", 0, 4, ID), F("itoc", "uint32", 0, 4, ID)
+];
+
+var M_tlv32 = [
+    F("thunk", "uint32", 0, 4, VA), F("key", "uint32", 4, 4, ID), F("offset", "uint32", 8, 4, OFFSET)
+];
+
+var M_tlv64 = [
+    F("thunk", "uint64", 0, 8, VA), F("key", "uint64", 8, 8, ID), F("offset", "uint64", 16, 8, OFFSET)
+];
+
+var M_chained_starts_image = [
+    F("seg_count", "uint32", 0, 4, COUNT)
+];
+
+var M_chained_starts_segment = [
+    F("size", "uint32", 0, 4, SIZE), F("page_size", "uint16", 4, 2, SIZE), F("pointer_format", "uint16", 6, 2, ID),
+    F("segment_offset", "uint64", 8, 8, OFFSET), F("max_valid_pointer", "uint32", 16, 4, POINTER),
+    F("page_count", "uint16", 20, 2, COUNT)
+];
+
+var M_chained_seg_info_offset = [
+    F("seg_info_offset", "uint32", 0, 4, POINTER)
+];
+
+var M_chained_page_start = [
+    F("page_start", "uint16", 0, 2, OFFSET)
+];
+
+var M_chained_chain_start = [
+    F("chain_start", "uint16", 0, 2, OFFSET)
+];
+
+var M_ptr_arm64e_rebase = [
+    F("raw", "uint64", 0, 8, FLAGS), F("target", "uint64", 0, 8, POINTER), F("high8", "uint8", 0, 8, NONE),
+    F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_arm64e_bind = [
+    F("raw", "uint64", 0, 8, FLAGS), F("ordinal", "uint16", 0, 8, ID), F("zero", "uint16", 0, 8, RESERVED),
+    F("addend", "int32", 0, 8, NONE), F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS),
+    F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_arm64e_auth_rebase = [
+    F("raw", "uint64", 0, 8, FLAGS), F("target", "uint32", 0, 8, POINTER), F("diversity", "uint16", 0, 8, NONE),
+    F("addrDiv", "bool", 0, 8, FLAGS), F("key", "uint8", 0, 8, ID), F("next", "uint16", 0, 8, OFFSET),
+    F("bind", "bool", 0, 8, FLAGS), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_arm64e_auth_bind = [
+    F("raw", "uint64", 0, 8, FLAGS), F("ordinal", "uint16", 0, 8, ID), F("zero", "uint16", 0, 8, RESERVED),
+    F("diversity", "uint16", 0, 8, NONE), F("addrDiv", "bool", 0, 8, FLAGS), F("key", "uint8", 0, 8, ID),
+    F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_arm64e_bind24 = [
+    F("raw", "uint64", 0, 8, FLAGS), F("ordinal", "uint32", 0, 8, ID), F("zero", "uint8", 0, 8, RESERVED),
+    F("addend", "int32", 0, 8, NONE), F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS),
+    F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_arm64e_auth_bind24 = [
+    F("raw", "uint64", 0, 8, FLAGS), F("ordinal", "uint32", 0, 8, ID), F("zero", "uint8", 0, 8, RESERVED),
+    F("diversity", "uint16", 0, 8, NONE), F("addrDiv", "bool", 0, 8, FLAGS), F("key", "uint8", 0, 8, ID),
+    F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_64_rebase = [
+    F("raw", "uint64", 0, 8, FLAGS), F("target", "uint64", 0, 8, POINTER), F("high8", "uint8", 0, 8, NONE),
+    F("reserved", "uint8", 0, 8, RESERVED), F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_64_bind = [
+    F("raw", "uint64", 0, 8, FLAGS), F("ordinal", "uint32", 0, 8, ID), F("addend", "uint8", 0, 8, NONE),
+    F("reserved", "uint32", 0, 8, RESERVED), F("next", "uint16", 0, 8, OFFSET), F("bind", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_64_kernel = [
+    F("raw", "uint64", 0, 8, FLAGS), F("target", "uint32", 0, 8, POINTER), F("cacheLevel", "uint8", 0, 8, ID),
+    F("diversity", "uint16", 0, 8, NONE), F("addrDiv", "bool", 0, 8, FLAGS), F("key", "uint8", 0, 8, ID),
+    F("next", "uint16", 0, 8, OFFSET), F("isAuth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_32_rebase = [
+    F("raw", "uint32", 0, 4, FLAGS), F("target", "uint32", 0, 4, POINTER), F("next", "uint8", 0, 4, OFFSET),
+    F("bind", "bool", 0, 4, FLAGS)
+];
+
+var M_ptr_32_bind = [
+    F("raw", "uint32", 0, 4, FLAGS), F("ordinal", "uint32", 0, 4, ID), F("addend", "uint8", 0, 4, NONE),
+    F("next", "uint8", 0, 4, OFFSET), F("bind", "bool", 0, 4, FLAGS)
+];
+
+var M_ptr_32_cache = [
+    F("raw", "uint32", 0, 4, FLAGS), F("target", "uint32", 0, 4, POINTER), F("next", "uint8", 0, 4, OFFSET)
+];
+
+var M_ptr_32_firmware = [
+    F("raw", "uint32", 0, 4, FLAGS), F("target", "uint32", 0, 4, POINTER), F("next", "uint8", 0, 4, OFFSET)
+];
+
+var M_ptr_shared_rebase = [
+    F("raw", "uint64", 0, 8, FLAGS), F("runtimeOffset", "uint64", 0, 8, POINTER), F("high8", "uint8", 0, 8, NONE),
+    F("unused", "uint16", 0, 8, RESERVED), F("next", "uint16", 0, 8, OFFSET), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_shared_auth = [
+    F("raw", "uint64", 0, 8, FLAGS), F("runtimeOffset", "uint64", 0, 8, POINTER),
+    F("diversity", "uint16", 0, 8, NONE), F("addrDiv", "bool", 0, 8, FLAGS), F("keyIsData", "bool", 0, 8, FLAGS),
+    F("next", "uint16", 0, 8, OFFSET), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_segmented_rebase = [
+    F("raw", "uint64", 0, 8, FLAGS), F("targetSegOffset", "uint32", 0, 8, OFFSET),
+    F("targetSegIndex", "uint8", 0, 8, ID), F("padding", "uint32", 0, 8, RESERVED),
+    F("next", "uint16", 0, 8, OFFSET), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_ptr_segmented_auth = [
+    F("raw", "uint64", 0, 8, FLAGS), F("targetSegOffset", "uint32", 0, 8, OFFSET),
+    F("targetSegIndex", "uint8", 0, 8, ID), F("diversity", "uint16", 0, 8, NONE), F("addrDiv", "bool", 0, 8, FLAGS),
+    F("key", "uint8", 0, 8, ID), F("next", "uint16", 0, 8, OFFSET), F("auth", "bool", 0, 8, FLAGS)
+];
+
+var M_chained_starts_offsets = [
+    F("pointer_format", "uint32", 0, 4, ID), F("starts_count", "uint32", 4, 4, COUNT)
+];
+
+var M_chain_start_offset = [
+    F("chain_start", "uint32", 0, 4, OFFSET)
+];
+
+var M_cs_superblob = [
+    F("magic", "uint32", 0, 4, ID), F("length", "uint32", 4, 4, SIZE), F("count", "uint32", 8, 4, COUNT)
+];
+
+var M_cs_blob_index = [
+    F("type", "uint32", 0, 4, ID), F("offset", "uint32", 4, 4, POINTER)
+];
+
+var M_cs_blob = [
+    F("magic", "uint32", 0, 4, ID), F("length", "uint32", 4, 4, SIZE)
+];
+
+var M_cs_code_directory = [
+    F("magic", "uint32", 0, 4, ID), F("length", "uint32", 4, 4, SIZE), F("version", "uint32", 8, 4, NONE),
+    F("flags", "uint32", 12, 4, FLAGS), F("hashOffset", "uint32", 16, 4, OFFSET),
+    F("identOffset", "uint32", 20, 4, OFFSET), F("nSpecialSlots", "uint32", 24, 4, COUNT),
+    F("nCodeSlots", "uint32", 28, 4, COUNT), F("codeLimit", "uint32", 32, 4, SIZE),
+    F("hashSize", "uint8", 36, 1, SIZE), F("hashType", "uint8", 37, 1, ID), F("platform", "uint8", 38, 1, ID),
+    F("pageSize", "uint8", 39, 1, NONE), F("spare2", "uint32", 40, 4, RESERVED),
+    F("scatterOffset", "uint32", 44, 4, OFFSET), F("teamOffset", "uint32", 48, 4, OFFSET),
+    F("spare3", "uint32", 52, 4, RESERVED), F("codeLimit64", "uint64", 56, 8, SIZE),
+    F("execSegBase", "uint64", 64, 8, OFFSET), F("execSegLimit", "uint64", 72, 8, SIZE),
+    F("execSegFlags", "uint64", 80, 8, FLAGS), F("runtime", "uint32", 88, 4, NONE),
+    F("preEncryptOffset", "uint32", 92, 4, OFFSET), F("linkageHashType", "uint8", 96, 1, ID),
+    F("linkageApplicationType", "uint8", 97, 1, ID), F("linkageApplicationSubType", "uint16", 98, 2, ID),
+    F("linkageOffset", "uint32", 100, 4, OFFSET), F("linkageSize", "uint32", 104, 4, SIZE)
+];
+
+var M_cs_scatter = [
+    F("count", "uint32", 0, 4, COUNT), F("base", "uint32", 4, 4, NONE), F("targetOffset", "uint64", 8, 8, OFFSET),
+    F("spare", "uint64", 16, 8, RESERVED)
+];
+
+var M_cs_requirement = [
+    F("magic", "uint32", 0, 4, ID), F("length", "uint32", 4, 4, SIZE), F("kind", "uint32", 8, 4, ID)
+];
+
+
+// --- names
+var N_magic = [[0xFEEDFACE, "MH_MAGIC"], [0xCEFAEDFE, "MH_CIGAM"], [0xFEEDFACF, "MH_MAGIC_64"], [0xCFFAEDFE, "MH_CIGAM_64"]];
+var N_cpu_type = [[0xFFFFFFFF, "CPU_TYPE_ANY"], [0x1, "CPU_TYPE_VAX"], [0x6, "CPU_TYPE_MC680x0"], [0x7, "CPU_TYPE_I386"], [0x1000007, "CPU_TYPE_X86_64"], [0x8, "CPU_TYPE_MIPS"], [0xA, "CPU_TYPE_MC98000"], [0xB, "CPU_TYPE_HPPA"], [0xC, "CPU_TYPE_ARM"], [0x100000C, "CPU_TYPE_ARM64"], [0x200000C, "CPU_TYPE_ARM64_32"], [0xD, "CPU_TYPE_MC88000"], [0xE, "CPU_TYPE_SPARC"], [0xF, "CPU_TYPE_I860"], [0x12, "CPU_TYPE_POWERPC"], [0x1000012, "CPU_TYPE_POWERPC64"]];
+var N_file_type = [[0x1, "MH_OBJECT"], [0x2, "MH_EXECUTE"], [0x3, "MH_FVMLIB"], [0x4, "MH_CORE"], [0x5, "MH_PRELOAD"], [0x6, "MH_DYLIB"], [0x7, "MH_DYLINKER"], [0x8, "MH_BUNDLE"], [0x9, "MH_DYLIB_STUB"], [0xA, "MH_DSYM"], [0xB, "MH_KEXT_BUNDLE"], [0xC, "MH_FILESET"], [0xD, "MH_GPU_EXECUTE"], [0xE, "MH_GPU_DYLIB"]];
+var N_load_command = [[0x1, "LC_SEGMENT"], [0x2, "LC_SYMTAB"], [0x3, "LC_SYMSEG"], [0x4, "LC_THREAD"], [0x5, "LC_UNIXTHREAD"], [0x6, "LC_LOADFVMLIB"], [0x7, "LC_IDFVMLIB"], [0x8, "LC_IDENT"], [0x9, "LC_FVMFILE"], [0xA, "LC_PREPAGE"], [0xB, "LC_DYSYMTAB"], [0xC, "LC_LOAD_DYLIB"], [0xD, "LC_ID_DYLIB"], [0xE, "LC_LOAD_DYLINKER"], [0xF, "LC_ID_DYLINKER"], [0x10, "LC_PREBOUND_DYLIB"], [0x11, "LC_ROUTINES"], [0x12, "LC_SUB_FRAMEWORK"], [0x13, "LC_SUB_UMBRELLA"], [0x14, "LC_SUB_CLIENT"], [0x15, "LC_SUB_LIBRARY"], [0x16, "LC_TWOLEVEL_HINTS"], [0x17, "LC_PREBIND_CKSUM"], [0x80000018, "LC_LOAD_WEAK_DYLIB"], [0x19, "LC_SEGMENT_64"], [0x1A, "LC_ROUTINES_64"], [0x1B, "LC_UUID"], [0x8000001C, "LC_RPATH"], [0x1D, "LC_CODE_SIGNATURE"], [0x1E, "LC_SEGMENT_SPLIT_INFO"], [0x8000001F, "LC_REEXPORT_DYLIB"], [0x20, "LC_LAZY_LOAD_DYLIB"], [0x21, "LC_ENCRYPTION_INFO"], [0x22, "LC_DYLD_INFO"], [0x80000022, "LC_DYLD_INFO_ONLY"], [0x80000023, "LC_LOAD_UPWARD_DYLIB"], [0x24, "LC_VERSION_MIN_MACOSX"], [0x25, "LC_VERSION_MIN_IPHONEOS"], [0x26, "LC_FUNCTION_STARTS"], [0x27, "LC_DYLD_ENVIRONMENT"], [0x80000028, "LC_MAIN"], [0x29, "LC_DATA_IN_CODE"], [0x2A, "LC_SOURCE_VERSION"], [0x2B, "LC_DYLIB_CODE_SIGN_DRS"], [0x2C, "LC_ENCRYPTION_INFO_64"], [0x2D, "LC_LINKER_OPTION"], [0x2E, "LC_LINKER_OPTIMIZATION_HINT"], [0x2F, "LC_VERSION_MIN_TVOS"], [0x30, "LC_VERSION_MIN_WATCHOS"], [0x31, "LC_NOTE"], [0x32, "LC_BUILD_VERSION"], [0x80000033, "LC_DYLD_EXPORTS_TRIE"], [0x80000034, "LC_DYLD_CHAINED_FIXUPS"], [0x80000035, "LC_FILESET_ENTRY"], [0x36, "LC_ATOM_INFO"], [0x37, "LC_FUNCTION_VARIANTS"], [0x38, "LC_FUNCTION_VARIANT_FIXUPS"], [0x39, "LC_TARGET_TRIPLE"], [0x3A, "LC_LAZY_LOAD_DYLIB_INFO"]];
+var N_header_flag = [[0x1, "MH_NOUNDEFS"], [0x2, "MH_INCRLINK"], [0x4, "MH_DYLDLINK"], [0x8, "MH_BINDATLOAD"], [0x10, "MH_PREBOUND"], [0x20, "MH_SPLIT_SEGS"], [0x40, "MH_LAZY_INIT"], [0x80, "MH_TWOLEVEL"], [0x100, "MH_FORCE_FLAT"], [0x200, "MH_NOMULTIDEFS"], [0x400, "MH_NOFIXPREBINDING"], [0x800, "MH_PREBINDABLE"], [0x1000, "MH_ALLMODSBOUND"], [0x2000, "MH_SUBSECTIONS_VIA_SYMBOLS"], [0x4000, "MH_CANONICAL"], [0x8000, "MH_WEAK_DEFINES"], [0x10000, "MH_BINDS_TO_WEAK"], [0x20000, "MH_ALLOW_STACK_EXECUTION"], [0x40000, "MH_ROOT_SAFE"], [0x80000, "MH_SETUID_SAFE"], [0x100000, "MH_NO_REEXPORTED_DYLIBS"], [0x200000, "MH_PIE"], [0x400000, "MH_DEAD_STRIPPABLE_DYLIB"], [0x800000, "MH_HAS_TLV_DESCRIPTORS"], [0x1000000, "MH_NO_HEAP_EXECUTION"], [0x2000000, "MH_APP_EXTENSION_SAFE"], [0x4000000, "MH_NLIST_OUTOFSYNC_WITH_DYLDINFO"], [0x8000000, "MH_SIM_SUPPORT"], [0x80000000, "MH_DYLIB_IN_CACHE"]];
+var N_segment_protection = [[0x1, "VM_PROT_READ"], [0x2, "VM_PROT_WRITE"], [0x4, "VM_PROT_EXECUTE"]];
+var N_segment_flag = [[0x1, "SG_HIGHVM"], [0x2, "SG_FVMLIB"], [0x4, "SG_NORELOC"], [0x8, "SG_PROTECTED_VERSION_1"], [0x10, "SG_READ_ONLY"]];
+var N_chained_import_format = [[0x1, "DYLD_CHAINED_IMPORT"], [0x2, "DYLD_CHAINED_IMPORT_ADDEND"], [0x3, "DYLD_CHAINED_IMPORT_ADDEND64"]];
+var N_chained_symbols_format = [[0x0, "Uncompressed"], [0x1, "zlib compressed"]];
+var N_subtype = [[0x1, 0, "CPU_SUBTYPE_VAX_ALL"], [0x1, 1, "CPU_SUBTYPE_VAX780"], [0x1, 2, "CPU_SUBTYPE_VAX785"], [0x1, 3, "CPU_SUBTYPE_VAX750"], [0x1, 4, "CPU_SUBTYPE_VAX730"], [0x1, 5, "CPU_SUBTYPE_UVAXI"], [0x1, 6, "CPU_SUBTYPE_UVAXII"], [0x1, 7, "CPU_SUBTYPE_VAX8200"], [0x1, 8, "CPU_SUBTYPE_VAX8500"], [0x1, 9, "CPU_SUBTYPE_VAX8600"], [0x1, 10, "CPU_SUBTYPE_VAX8650"], [0x1, 11, "CPU_SUBTYPE_VAX8800"], [0x1, 12, "CPU_SUBTYPE_UVAXIII"], [0x6, 1, "CPU_SUBTYPE_MC680x0_ALL"], [0x6, 2, "CPU_SUBTYPE_MC68040"], [0x6, 3, "CPU_SUBTYPE_MC68030_ONLY"], [0x7, 3, "CPU_SUBTYPE_I386_ALL"], [0x7, 4, "CPU_SUBTYPE_486"], [0x7, 132, "CPU_SUBTYPE_486SX"], [0x7, 5, "CPU_SUBTYPE_586"], [0x7, 22, "CPU_SUBTYPE_PENTPRO"], [0x7, 54, "CPU_SUBTYPE_PENTII_M3"], [0x7, 86, "CPU_SUBTYPE_PENTII_M5"], [0x7, 103, "CPU_SUBTYPE_CELERON"], [0x7, 119, "CPU_SUBTYPE_CELERON_MOBILE"], [0x7, 8, "CPU_SUBTYPE_PENTIUM_3"], [0x7, 24, "CPU_SUBTYPE_PENTIUM_3_M"], [0x7, 40, "CPU_SUBTYPE_PENTIUM_3_XEON"], [0x7, 9, "CPU_SUBTYPE_PENTIUM_M"], [0x7, 10, "CPU_SUBTYPE_PENTIUM_4"], [0x7, 26, "CPU_SUBTYPE_PENTIUM_4_M"], [0x7, 11, "CPU_SUBTYPE_ITANIUM"], [0x7, 27, "CPU_SUBTYPE_ITANIUM_2"], [0x7, 12, "CPU_SUBTYPE_XEON"], [0x7, 28, "CPU_SUBTYPE_XEON_MP"], [0x1000007, 3, "CPU_SUBTYPE_X86_64_ALL"], [0x1000007, 4, "CPU_SUBTYPE_X86_ARCH1"], [0x1000007, 8, "CPU_SUBTYPE_X86_64_H"], [0x8, 0, "CPU_SUBTYPE_MIPS_ALL"], [0x8, 1, "CPU_SUBTYPE_MIPS_R2300"], [0x8, 2, "CPU_SUBTYPE_MIPS_R2600"], [0x8, 3, "CPU_SUBTYPE_MIPS_R2800"], [0x8, 4, "CPU_SUBTYPE_MIPS_R2000a"], [0x8, 5, "CPU_SUBTYPE_MIPS_R2000"], [0x8, 6, "CPU_SUBTYPE_MIPS_R3000a"], [0x8, 7, "CPU_SUBTYPE_MIPS_R3000"], [0xA, 0, "CPU_SUBTYPE_MC98000_ALL"], [0xA, 1, "CPU_SUBTYPE_MC98601"], [0xB, 0, "CPU_SUBTYPE_HPPA_ALL"], [0xB, 1, "CPU_SUBTYPE_HPPA_7100LC"], [0xC, 0, "CPU_SUBTYPE_ARM_ALL"], [0xC, 5, "CPU_SUBTYPE_ARM_V4T"], [0xC, 6, "CPU_SUBTYPE_ARM_V6"], [0xC, 7, "CPU_SUBTYPE_ARM_V5TEJ"], [0xC, 8, "CPU_SUBTYPE_ARM_XSCALE"], [0xC, 9, "CPU_SUBTYPE_ARM_V7"], [0xC, 10, "CPU_SUBTYPE_ARM_V7F"], [0xC, 11, "CPU_SUBTYPE_ARM_V7S"], [0xC, 12, "CPU_SUBTYPE_ARM_V7K"], [0xC, 13, "CPU_SUBTYPE_ARM_V8"], [0xC, 14, "CPU_SUBTYPE_ARM_V6M"], [0xC, 15, "CPU_SUBTYPE_ARM_V7M"], [0xC, 16, "CPU_SUBTYPE_ARM_V7EM"], [0xC, 17, "CPU_SUBTYPE_ARM_V8M"], [0x100000C, 0, "CPU_SUBTYPE_ARM64_ALL"], [0x100000C, 1, "CPU_SUBTYPE_ARM64_V8"], [0x100000C, 2, "CPU_SUBTYPE_ARM64E"], [0x200000C, 0, "CPU_SUBTYPE_ARM64_32_ALL"], [0x200000C, 1, "CPU_SUBTYPE_ARM64_32_V8"], [0xD, 0, "CPU_SUBTYPE_MC88000_ALL"], [0xD, 1, "CPU_SUBTYPE_MC88100"], [0xD, 2, "CPU_SUBTYPE_MC88110"], [0xE, 0, "CPU_SUBTYPE_SPARC_ALL"], [0xF, 0, "CPU_SUBTYPE_I860_ALL"], [0xF, 1, "CPU_SUBTYPE_I860_860"], [0x12, 0, "CPU_SUBTYPE_POWERPC_ALL"], [0x12, 1, "CPU_SUBTYPE_POWERPC_601"], [0x12, 2, "CPU_SUBTYPE_POWERPC_602"], [0x12, 3, "CPU_SUBTYPE_POWERPC_603"], [0x12, 4, "CPU_SUBTYPE_POWERPC_603e"], [0x12, 5, "CPU_SUBTYPE_POWERPC_603ev"], [0x12, 6, "CPU_SUBTYPE_POWERPC_604"], [0x12, 7, "CPU_SUBTYPE_POWERPC_604e"], [0x12, 8, "CPU_SUBTYPE_POWERPC_620"], [0x12, 9, "CPU_SUBTYPE_POWERPC_750"], [0x12, 10, "CPU_SUBTYPE_POWERPC_7400"], [0x12, 11, "CPU_SUBTYPE_POWERPC_7450"], [0x12, 100, "CPU_SUBTYPE_POWERPC_970"]];
+
+// --- catalog: [id, name, fields, byte order]
+var CATALOG = [
+        [1, "mach_header", M_header32, FILE],
+        [2, "mach_header_64", M_header64, FILE],
+        [3, "load_command", M_load, FILE],
+        [4, "segment_command", M_segment32, FILE],
+        [5, "segment_command_64", M_segment64, FILE],
+        [6, "section", M_section32, FILE],
+        [7, "section_64", M_section64, FILE],
+        [8, "dylib_command", M_dylib, FILE],
+        [9, "dylinker_command", M_dylinker, FILE],
+        [10, "rpath_command", M_rpath, FILE],
+        [11, "symtab_command", M_symtab, FILE],
+        [12, "dysymtab_command", M_dysymtab, FILE],
+        [13, "uuid_command", M_uuid, FILE],
+        [14, "version_min_command", M_version_min, FILE],
+        [15, "build_version_command", M_build_version, FILE],
+        [16, "source_version_command", M_source_version, FILE],
+        [17, "entry_point_command", M_entry_point, FILE],
+        [18, "encryption_info_command", M_encryption32, FILE],
+        [19, "encryption_info_command_64", M_encryption64, FILE],
+        [20, "linkedit_data_command", M_linkedit, FILE],
+        [21, "dyld_info_command", M_dyld_info, FILE],
+        [22, "nlist", M_nlist32, FILE],
+        [23, "nlist_64", M_nlist64, FILE],
+        [24, "string_table", null, FILE],
+        [25, "indirect_symbol", M_indirect_symbol, FILE],
+        [26, "function_starts", null, FILE],
+        [27, "data_in_code", M_data_in_code, FILE],
+        [28, "chained_fixups_header", M_chained_header, FILE],
+        [29, "chained_import", M_chained_import, FILE],
+        [30, "export", null, FILE],
+        [31, "symseg_command", M_symseg, FILE],
+        [32, "thread_command", M_thread, FILE],
+        [33, "thread_state_header", M_thread_state_header, FILE],
+        [34, "fvmlib_command", M_fvmlib, FILE],
+        [35, "fvmfile_command", M_fvmfile, FILE],
+        [36, "ident_command", M_load, FILE],
+        [37, "prebound_dylib_command", M_prebound_dylib, FILE],
+        [38, "routines_command", M_routines32, FILE],
+        [39, "routines_command_64", M_routines64, FILE],
+        [40, "sub_framework_command", M_single_string_command, FILE],
+        [41, "sub_umbrella_command", M_single_string_command, FILE],
+        [42, "sub_client_command", M_single_string_command, FILE],
+        [43, "sub_library_command", M_single_string_command, FILE],
+        [44, "twolevel_hints_command", M_twolevel_hints, FILE],
+        [45, "prebind_cksum_command", M_prebind_cksum, FILE],
+        [46, "linker_option_command", M_linker_option, FILE],
+        [47, "note_command", M_note, FILE],
+        [48, "build_tool_version", M_build_tool, FILE],
+        [49, "fileset_entry_command", M_fileset_entry, FILE],
+        [50, "dylib_module", M_dylib_module32, FILE],
+        [51, "dylib_module_64", M_dylib_module64, FILE],
+        [52, "dylib_table_of_contents", M_toc, FILE],
+        [53, "dylib_reference", M_reference, FILE],
+        [54, "relocation_info", M_relocation, FILE],
+        [55, "twolevel_hint", M_twolevel_hint, FILE],
+        [56, "chained_starts_in_image", M_chained_starts_image, FILE],
+        [57, "chained_starts_in_segment", M_chained_starts_segment, FILE],
+        [58, "chained_import_addend", M_chained_import_addend, FILE],
+        [59, "chained_import_addend64", M_chained_import_addend64, FILE],
+        [60, "code_signature_superblob", M_cs_superblob, BE],
+        [61, "code_signature_blob_index", M_cs_blob_index, BE],
+        [62, "code_signature_code_directory", M_cs_code_directory, BE],
+        [63, "target_triple_command", M_target_triple, FILE],
+        [64, "chained_seg_info_offset", M_chained_seg_info_offset, FILE],
+        [65, "chained_page_start", M_chained_page_start, FILE],
+        [66, "code_signature_blob", M_cs_blob, BE],
+        [67, "thread_state_word", M_thread_state_word, FILE],
+        [68, "x86_thread_state32", M_x86_thread_state32, FILE],
+        [69, "x86_thread_state64", M_x86_thread_state64, FILE],
+        [70, "arm_thread_state32", M_arm_thread_state32, FILE],
+        [71, "arm_thread_state64", M_arm_thread_state64, FILE],
+        [72, "ppc_thread_state32", M_ppc_thread_state32, FILE],
+        [73, "ppc_thread_state64", M_ppc_thread_state64, FILE],
+        [74, "dyld_chained_starts_offsets", M_chained_starts_offsets, FILE],
+        [75, "chain_start_offset", M_chain_start_offset, FILE],
+        [76, "chained_chain_start", M_chained_chain_start, FILE],
+        [77, "tlv_descriptor", M_tlv32, FILE],
+        [78, "tlv_descriptor_64", M_tlv64, FILE],
+        [79, "code_signature_scatter", M_cs_scatter, BE],
+        [80, "scattered_relocation_info", M_scattered_relocation, FILE],
+        [81, "code_signature_requirements", M_cs_superblob, BE],
+        [82, "code_signature_requirement", M_cs_requirement, BE],
+        [83, "dyld_chained_ptr_arm64e_rebase", M_ptr_arm64e_rebase, FILE],
+        [84, "dyld_chained_ptr_arm64e_bind", M_ptr_arm64e_bind, FILE],
+        [85, "dyld_chained_ptr_arm64e_auth_rebase", M_ptr_arm64e_auth_rebase, FILE],
+        [86, "dyld_chained_ptr_arm64e_auth_bind", M_ptr_arm64e_auth_bind, FILE],
+        [87, "dyld_chained_ptr_arm64e_bind24", M_ptr_arm64e_bind24, FILE],
+        [88, "dyld_chained_ptr_arm64e_auth_bind24", M_ptr_arm64e_auth_bind24, FILE],
+        [89, "dyld_chained_ptr_64_rebase", M_ptr_64_rebase, FILE],
+        [90, "dyld_chained_ptr_64_bind", M_ptr_64_bind, FILE],
+        [91, "dyld_chained_ptr_64_kernel_cache_rebase", M_ptr_64_kernel, FILE],
+        [92, "dyld_chained_ptr_32_rebase", M_ptr_32_rebase, FILE],
+        [93, "dyld_chained_ptr_32_bind", M_ptr_32_bind, FILE],
+        [94, "dyld_chained_ptr_32_cache_rebase", M_ptr_32_cache, FILE],
+        [95, "dyld_chained_ptr_32_firmware_rebase", M_ptr_32_firmware, FILE],
+        [96, "dyld_chained_ptr_arm64e_shared_cache_rebase", M_ptr_shared_rebase, FILE],
+        [97, "dyld_chained_ptr_arm64e_shared_cache_auth_rebase", M_ptr_shared_auth, FILE],
+        [98, "dyld_chained_ptr_arm64e_segmented_rebase", M_ptr_segmented_rebase, FILE],
+        [99, "dyld_chained_ptr_arm64e_auth_segmented_rebase", M_ptr_segmented_auth, FILE],
+        [100, "x86_float_state64", M_x86_float_state64, FILE],
+        [101, "x86_exception_state64", M_x86_exception_state64, FILE]
+];
+
+// ------------------------------------------------------------------ catalog
+
+var FAILED = { failed: true };
+var MAX_ITEMS = 262144;
+var MAX_SCAN = 1048576;
+var MAX_ROWS = 65536;
+var TWO32 = 4294967296;
+var TWO64 = 18446744073709551616;
+
+function fileTypes() { return ["MACHO32", "MACHO64"]; }
+
+function structs() {
+    var out = [], i, c;
+    for (i = 0; i < CATALOG.length; i++) {
+        c = CATALOG[i];
+        out.push({ id: c[0], name: c[1], endian: c[3], fields: machoFields });
+    }
+    return out;
+}
+
+function catalogRow(id) {
+    var i;
+    for (i = 0; i < CATALOG.length; i++) if (CATALOG[i][0] === id) return CATALOG[i];
+    return null;
+}
+
+// ------------------------------------------------------------------ helpers
+
+function fail() { throw FAILED; }
+
+function hex8(v) {
+    var s = (v >>> 0).toString(16).toUpperCase();
+    while (s.length < 8) s = "0" + s;
+    return "0x" + s;
+}
+
+function hexWidth(v, width) {
+    var s = v.toString(16).toUpperCase();
+    while (s.length < width) s = "0" + s;
+    return "0x" + s;
+}
+
+function findName(value, names) {
+    var i;
+    for (i = 0; i < names.length; i++) if (names[i][0] === value) return names[i][1];
+    return null;
+}
+
+// value: unsigned 32-bit. Mirrors xx_macho_format_named_flags.
+function namedFlags(value, names, zeroName) {
+    var remaining = value >>> 0, out = "", i, mask;
+    if (remaining === 0) return zeroName;
+    for (i = 0; i < names.length; i++) {
+        mask = names[i][0] >>> 0;
+        if (mask !== 0 && ((remaining & mask) >>> 0) === mask) {
+            if (out.length) out += "|";
+            out += names[i][1];
+            remaining = (remaining & ~mask) >>> 0;
+        }
+    }
+    if (remaining === 0) return out;
+    return out + (out.length ? "|" : "") + hex8(remaining);
+}
+
+function cpuSubtype(cpuType, value) {
+    var subtype = (value & 0x00ffffff) >>> 0, caps = (value & 0xff000000) >>> 0;
+    var arm64e = cpuType === 0x0100000c && subtype === 2, name = null, out, i;
+    if (value === 0xffffffff) return "CPU_SUBTYPE_MULTIPLE";
+    if (cpuType === 0x01000012) cpuType = 18;
+    for (i = 0; i < N_subtype.length; i++) {
+        if (N_subtype[i][0] === cpuType && N_subtype[i][1] === subtype) { name = N_subtype[i][2]; break; }
+    }
+    out = name !== null ? name : hex8(subtype);
+    if ((caps & 0x80000000) !== 0) {
+        out += arm64e ? "|CPU_SUBTYPE_PTRAUTH_ABI" : "|CPU_SUBTYPE_LIB64";
+        caps = (caps & 0x7fffffff) >>> 0;
+    }
+    if (arm64e && (value & 0x8f000000) !== 0) {
+        out += "|CPU_SUBTYPE_ARM64_PTR_AUTH_VERSION=" + ((value >>> 24) & 15);
+        caps = (caps & ~0x0f000000) >>> 0;
+    }
+    return caps === 0 ? out : out + "|" + hex8(caps);
+}
+
+// Header facts re-read from the file (the reader already validated them).
+function header() {
+    var magic = File.u32(0), be = Format.isBigEndian();
+    var is64 = magic === 0xfeedfacf || magic === 0xcffaedfe;
+    return { be: be, is64: is64, size: is64 ? 32 : 28, cpu: File.u32(4, be), ncmds: File.u32(16, be) };
+}
+
+function u64(o, be) { return File.u64hi(o, be) * TWO32 + File.u64lo(o, be); }
+
+// Segments as the reader parsed them: every LC_SEGMENT/LC_SEGMENT_64 of the file's width.
+function segments(h) {
+    var list = [], cursor = h.size, i, cmd, size, name;
+    for (i = 0; i < h.ncmds; i++) {
+        if (!File.valid(cursor, 8)) break;
+        cmd = File.u32(cursor, h.be);
+        size = File.u32(cursor + 4, h.be);
+        if (size < 8 || !File.valid(cursor, size)) break;
+        if (cmd === (h.is64 ? 0x19 : 0x1) && size >= (h.is64 ? 72 : 56)) {
+            name = File.cstr(cursor + 8, 16);
+            if (h.is64) {
+                list.push({ name: name, vmaddr: u64(cursor + 24, h.be), fileoff: u64(cursor + 40, h.be), filesize: u64(cursor + 48, h.be) });
+            } else {
+                list.push({ name: name, vmaddr: File.u32(cursor + 24, h.be), fileoff: File.u32(cursor + 32, h.be), filesize: File.u32(cursor + 36, h.be) });
+            }
+        }
+        cursor += size;
+    }
+    return list;
+}
+
+// ------------------------------------------------------------------ occurrence list
+
+function inFile(offset, size) { return offset >= 0 && size >= 0 && offset <= File.size() && size <= File.size() - offset; }
+
+function append(name, offset, entry, total, count, kind) {
+    if (Structs.count() >= MAX_ITEMS || !inFile(offset, total)) fail();
+    Structs.put(name, offset, entry, total, count, kind, -1);
+}
+
+function appendTable(name, offset, count, row) {
+    if (count === 0) return;
+    append(name, offset, row, count * row, count, ENTRY);
+}
+
+function appendRaw(offset, size) {
+    if (size === 0) return;
+    append("RAW_DATA", offset, size, size, 1, RAW);
+}
+
+// Complete strings only; -1 when the region is too large or holds too many strings.
+function countStrings(offset, size) {
+    var count = 0, cursor = 0, data, at, chunk;
+    if (size > MAX_SCAN || !inFile(offset, size)) return -1;
+    while (cursor < size) {
+        chunk = size - cursor > 65536 ? 65536 : size - cursor;
+        data = File.bytes(offset + cursor, chunk);
+        at = data.indexOf("\0");
+        while (at >= 0) {
+            if (++count > MAX_ROWS) return -1;
+            at = data.indexOf("\0", at + 1);
+        }
+        cursor += chunk;
+    }
+    return count;
+}
+
+function appendStrings(offset, size) {
+    var count = countStrings(offset, size);
+    if (count < 0) {
+        appendRaw(offset, size);
+        return;
+    }
+    append("string_table", offset, -1, size, count, ENTRY);
+}
+
+// ULEB128 from a byte string; null when malformed or truncated. state.cursor advances.
+function readUleb(data, limit, state) {
+    var result = 0, shift = 0, count, b;
+    for (count = 0; count < 10 && state.cursor < limit; ++count) {
+        b = data.charCodeAt(state.cursor);
+        ++state.cursor;
+        if (shift === 63 && (b & 0x7e) !== 0) return null;
+        result += (b & 0x7f) * Math.pow(2, shift);
+        if ((b & 0x80) === 0) return result;
+        shift += 7;
+    }
+    return null;
+}
+
+function countFunctionStarts(offset, size) {
+    var limit = size > MAX_SCAN ? MAX_SCAN : size, data = File.bytes(offset, limit);
+    var state = { cursor: 0 }, count = 0, address = 0, delta;
+    while (state.cursor < limit && count < MAX_ROWS) {
+        delta = readUleb(data, limit, state);
+        if (delta === null || delta === 0) break;
+        if (address > TWO64 - 1 - delta) break;
+        address += delta;
+        ++count;
+    }
+    return count;
+}
+
+function countExports(offset, size) {
+    var limit = size > MAX_SCAN ? MAX_SCAN : size, data, visited = {}, stack = [0], result = 0;
+    var node, state, terminal, children, child, i, terminated;
+    if (limit === 0 || !inFile(offset, size)) return 0;
+    data = File.bytes(offset, limit);
+    while (stack.length !== 0 && result < MAX_ROWS) {
+        node = stack.pop();
+        if (node >= limit || visited[node]) continue;
+        visited[node] = 1;
+        state = { cursor: node };
+        terminal = readUleb(data, limit, state);
+        if (terminal === null || terminal > limit - state.cursor) continue;
+        if (terminal !== 0) ++result;
+        state.cursor += terminal;
+        if (state.cursor >= limit) continue;
+        children = data.charCodeAt(state.cursor++);
+        for (i = 0; i < children; ++i) {
+            terminated = false;
+            while (state.cursor < limit) {
+                if (data.charCodeAt(state.cursor++) === 0) {
+                    terminated = true;
+                    break;
+                }
+            }
+            if (!terminated) break;
+            child = readUleb(data, limit, state);
+            if (child === null) break;
+            if (child < limit && stack.length < MAX_ROWS) stack.push(child);
+        }
+    }
+    return result;
+}
+
+// ------------------------------------------------------------------ load-command children
+
+function symtabChildren(h, cmd) {
+    var symoff = File.u32(cmd + 8, h.be), nsyms = File.u32(cmd + 12, h.be);
+    var stroff = File.u32(cmd + 16, h.be), strsize = File.u32(cmd + 20, h.be);
+    appendTable(h.is64 ? "nlist_64" : "nlist", symoff, nsyms, h.is64 ? 16 : 12);
+    if (strsize === 0) return;
+    if (!inFile(stroff, strsize)) fail();
+    appendStrings(stroff, strsize);
+}
+
+function relocationTable(h, offset, count) {
+    var total, runStart, runScattered, i, scattered;
+    if (count === 0) return;
+    total = count * 8;
+    if (!inFile(offset, total)) fail();
+    if (count > MAX_ROWS || total > MAX_SCAN) {
+        appendRaw(offset, total);
+        return;
+    }
+    runStart = 0;
+    runScattered = (File.u32(offset, h.be) & 0x80000000) !== 0;
+    for (i = 1; i < count; ++i) {
+        scattered = (File.u32(offset + i * 8, h.be) & 0x80000000) !== 0;
+        if (scattered === runScattered) continue;
+        appendTable(runScattered ? "scattered_relocation_info" : "relocation_info", offset + runStart * 8, i - runStart, 8);
+        runStart = i;
+        runScattered = scattered;
+    }
+    appendTable(runScattered ? "scattered_relocation_info" : "relocation_info", offset + runStart * 8, count - runStart, 8);
+}
+
+function dysymtabChildren(h, cmd) {
+    var pairs = [[32, 36, "dylib_table_of_contents", 8], [40, 44, h.is64 ? "dylib_module_64" : "dylib_module", h.is64 ? 56 : 52],
+                 [48, 52, "dylib_reference", 4], [56, 60, "indirect_symbol", 4],
+                 [64, 68, "relocation_info", 8], [72, 76, "relocation_info", 8]];
+    var i, offset, count;
+    for (i = 0; i < pairs.length; i++) {
+        offset = File.u32(cmd + pairs[i][0], h.be);
+        count = File.u32(cmd + pairs[i][1], h.be);
+        if (pairs[i][2] === "relocation_info") relocationTable(h, offset, count);
+        else appendTable(pairs[i][2], offset, count, pairs[i][3]);
+    }
+}
+
+function name16Equals(offset, name) {
+    var data = File.bytes(offset, 16), i;
+    for (i = 0; i < 16; i++) {
+        if (data.charCodeAt(i) !== (i < name.length ? name.charCodeAt(i) : 0)) return false;
+    }
+    return true;
+}
+
+function firmwareChainStarts(h, segs, offset, size, mode) {
+    var pointerFormat, startsCount, startsSize, parsed;
+    if (size === 0) return;
+    if (!inFile(offset, size)) fail();
+    if (size < 8) {
+        appendRaw(offset, size);
+        return;
+    }
+    pointerFormat = File.u32(offset, h.be);
+    startsCount = File.u32(offset + 4, h.be);
+    append("dyld_chained_starts_offsets", offset, 8, 8, 1, STRUCT);
+    startsSize = startsCount * 4;
+    if (startsSize > size - 8) {
+        appendRaw(offset + 8, size - 8);
+        return;
+    }
+    appendTable("chain_start_offset", offset + 8, startsCount, 4);
+    parsed = 8 + startsSize;
+    appendRaw(offset + parsed, size - parsed);
+    firmwarePointers(h, segs, offset + 8, pointerFormat, startsCount, mode);
+}
+
+function tlvDescriptors(h, offset, size) {
+    var row = h.is64 ? 24 : 12, count;
+    if (size === 0) return;
+    if (!inFile(offset, size)) fail();
+    count = Math.floor(size / row);
+    if (count !== 0) appendTable(h.is64 ? "tlv_descriptor_64" : "tlv_descriptor", offset, count, row);
+    appendRaw(offset + count * row, size - count * row);
+}
+
+function sectionChildren(h, segs, cmd, cmdSize) {
+    var segSize = h.is64 ? 72 : 56, secSize = h.is64 ? 80 : 68;
+    var nsects = File.u32(cmd + (h.is64 ? 64 : 48), h.be), i, so, flags, payloadSize, payloadOffset, reserved1;
+    if (segSize > cmdSize || nsects * secSize > cmdSize - segSize) fail();
+    if (nsects !== 0) appendTable(h.is64 ? "section_64" : "section", cmd + segSize, nsects, secSize);
+    for (i = 0; i < nsects && i < MAX_ROWS; ++i) {
+        so = cmd + segSize + i * secSize;
+        relocationTable(h, File.u32(so + (h.is64 ? 56 : 48), h.be), File.u32(so + (h.is64 ? 60 : 52), h.be));
+        flags = File.u32(so + (h.is64 ? 64 : 56), h.be);
+        payloadSize = h.is64 ? u64(so + 40, h.be) : File.u32(so + 36, h.be);
+        payloadOffset = File.u32(so + (h.is64 ? 48 : 40), h.be);
+        reserved1 = File.u32(so + (h.is64 ? 68 : 60), h.be);
+        if ((flags & 0xff) === 0x13) {
+            tlvDescriptors(h, payloadOffset, payloadSize);
+            continue;
+        }
+        if (!name16Equals(so, "__chain_starts") || !name16Equals(so + 16, "__TEXT")) continue;
+        firmwareChainStarts(h, segs, payloadOffset, payloadSize, reserved1);
+    }
+}
+
+function threadStateName(cpu, flavor, count) {
+    switch (cpu) {
+        case 7:
+            if (flavor === 1 && count === 16) return "x86_thread_state32";
+            break;
+        case 0x01000007:
+            if (flavor === 4 && count === 42) return "x86_thread_state64";
+            if (flavor === 5 && count === 131) return "x86_float_state64";
+            if (flavor === 6 && count === 4) return "x86_exception_state64";
+            break;
+        case 12:
+            if (flavor === 1 && count === 17) return "arm_thread_state32";
+            break;
+        case 0x0100000c:
+        case 0x0200000c:
+            if (flavor === 6 && count === 68) return "arm_thread_state64";
+            break;
+        case 18:
+            if (flavor === 1 && count === 40) return "ppc_thread_state32";
+            break;
+        case 0x01000012:
+            if (flavor === 5 && count === 76) return "ppc_thread_state64";
+            break;
+    }
+    return "thread_state_word";
+}
+
+// x86_THREAD_STATE / x86_FLOAT_STATE / x86_EXCEPTION_STATE wrappers. Returns true when handled.
+function x86UnifiedState(h, outerFlavor, outerCount, state, stateSize) {
+    var expectedFlavor = 0, expectedCount = 0, id = "thread_state_word", innerFlavor, innerCount, leaf;
+    if (h.cpu !== 7 && h.cpu !== 0x01000007) return false;
+    if (outerFlavor === 7 && outerCount === 44) {
+        if (h.cpu === 7) {
+            expectedFlavor = 1;
+            expectedCount = 16;
+            id = "x86_thread_state32";
+        } else {
+            expectedFlavor = 4;
+            expectedCount = 42;
+            id = "x86_thread_state64";
+        }
+    } else if (outerFlavor === 8 && outerCount === 133) {
+        if (h.cpu === 0x01000007) {
+            expectedFlavor = 5;
+            expectedCount = 131;
+            id = "x86_float_state64";
+        }
+    } else if (outerFlavor === 9 && outerCount === 6) {
+        if (h.cpu === 0x01000007) {
+            expectedFlavor = 6;
+            expectedCount = 4;
+            id = "x86_exception_state64";
+        }
+    } else {
+        return false;
+    }
+    if (stateSize < 8) fail();
+    append("thread_state_header", state, 8, 8, 1, STRUCT);
+    innerFlavor = File.u32(state, h.be);
+    innerCount = File.u32(state + 4, h.be);
+    if (id === "thread_state_word" || innerFlavor !== expectedFlavor || innerCount !== expectedCount) {
+        appendTable("thread_state_word", state + 8, Math.floor((stateSize - 8) / 4), 4);
+        return true;
+    }
+    leaf = expectedCount * 4;
+    if (leaf > stateSize - 8) fail();
+    append(id, state + 8, leaf, leaf, 1, STRUCT);
+    appendRaw(state + 8 + leaf, stateSize - 8 - leaf);
+    return true;
+}
+
+function threadChildren(h, cmd, cmdSize) {
+    var cursor = 8, rows = 0, flavor, count, stateSize, id;
+    while (cursor < cmdSize && rows < MAX_ROWS) {
+        if (cmdSize - cursor < 8) fail();
+        flavor = File.u32(cmd + cursor, h.be);
+        count = File.u32(cmd + cursor + 4, h.be);
+        stateSize = count * 4;
+        if (stateSize > cmdSize - cursor - 8) fail();
+        append("thread_state_header", cmd + cursor, 8, 8, 1, STRUCT);
+        if (!x86UnifiedState(h, flavor, count, cmd + cursor + 8, stateSize)) {
+            id = threadStateName(h.cpu, flavor, count);
+            if (id === "thread_state_word") appendTable(id, cmd + cursor + 8, count, 4);
+            else append(id, cmd + cursor + 8, stateSize, stateSize, 1, STRUCT);
+        }
+        cursor += 8 + stateSize;
+        ++rows;
+    }
+    if (cursor < cmdSize) appendRaw(cmd + cursor, cmdSize - cursor);
+}
+
+// ------------------------------------------------------------------ code signature (always big-endian)
+
+function genericBlob(offset, length) {
+    if (length < 8) fail();
+    append("code_signature_blob", offset, 8, 8, 1, STRUCT);
+    appendRaw(offset + 8, length - 8);
+}
+
+function codeDirectoryFixedSize(version) {
+    return version >= 0x20600 ? 108 : version >= 0x20500 ? 96 : version >= 0x20400 ? 88 : version >= 0x20300 ? 64 :
+           version >= 0x20200 ? 52 : version >= 0x20100 ? 48 : 44;
+}
+
+function codeDirectory(offset, length) {
+    var version, fixed, scatter, available, limit, rows = 0, terminated = false;
+    if (length < 44) {
+        genericBlob(offset, length);
+        return;
+    }
+    append("code_signature_code_directory", offset, length, length, 1, STRUCT);
+    version = File.u32(offset + 8, true);
+    fixed = codeDirectoryFixedSize(version);
+    if (version < 0x20100 || length < 48 || fixed > length) return;
+    scatter = File.u32(offset + 44, true);
+    if (scatter === 0 || scatter < fixed || scatter > length - 24) return;
+    available = Math.floor((length - scatter) / 24);
+    limit = Math.floor(MAX_SCAN / 24);
+    if (limit > MAX_ROWS) limit = MAX_ROWS;
+    if (available < limit) limit = available;
+    while (rows < limit) {
+        var count = File.u32(offset + scatter + rows * 24, true);
+        ++rows;
+        if (count === 0) {
+            terminated = true;
+            break;
+        }
+    }
+    if (!terminated) return;
+    appendTable("code_signature_scatter", offset + scatter, rows, 24);
+}
+
+function codeRequirement(offset, length) {
+    if (length < 12) {
+        genericBlob(offset, length);
+        return;
+    }
+    append("code_signature_requirement", offset, 12, 12, 1, STRUCT);
+    appendRaw(offset + 12, length - 12);
+}
+
+function codeRequirements(offset, length) {
+    var count, indexBytes, i, blobOffset, blobMagic, blobLength;
+    if (length < 12) {
+        genericBlob(offset, length);
+        return;
+    }
+    count = File.u32(offset + 8, true);
+    indexBytes = count * 8;
+    if (indexBytes > length - 12) {
+        genericBlob(offset, length);
+        return;
+    }
+    append("code_signature_requirements", offset, 12, 12, 1, STRUCT);
+    appendTable("code_signature_blob_index", offset + 12, count, 8);
+    for (i = 0; i < count && i < MAX_ROWS; ++i) {
+        blobOffset = File.u32(offset + 12 + i * 8 + 4, true);
+        if (blobOffset < 12 + indexBytes || blobOffset > length - 8) continue;
+        blobMagic = File.u32(offset + blobOffset, true);
+        blobLength = File.u32(offset + blobOffset + 4, true);
+        if (blobLength < 8 || blobLength > length - blobOffset) continue;
+        if (blobMagic === 0xfade0c00) codeRequirement(offset + blobOffset, blobLength);
+        else genericBlob(offset + blobOffset, blobLength);
+    }
+}
+
+function codeSignatureChild(offset, magic, length) {
+    if (magic === 0xfade0c02) codeDirectory(offset, length);
+    else if (magic === 0xfade0c01) codeRequirements(offset, length);
+    else if (magic === 0xfade0c00) codeRequirement(offset, length);
+    else genericBlob(offset, length);
+}
+
+function codeSignature(dataoff, datasize) {
+    var magic, length, count, indexBytes, i, blobOffset, blobMagic, blobLength;
+    if (datasize < 8 || !inFile(dataoff, datasize)) {
+        appendRaw(dataoff, datasize);
+        return;
+    }
+    magic = File.u32(dataoff, true);
+    length = File.u32(dataoff + 4, true);
+    if (length < 8 || length > datasize) {
+        appendRaw(dataoff, datasize);
+        return;
+    }
+    if (magic !== 0xfade0cc0 && magic !== 0xfade0b02 && magic !== 0xfade0cc1) {
+        codeSignatureChild(dataoff, magic, length);
+        if (length !== datasize) appendRaw(dataoff + length, datasize - length);
+        return;
+    }
+    if (length < 12) {
+        appendRaw(dataoff, datasize);
+        return;
+    }
+    count = File.u32(dataoff + 8, true);
+    indexBytes = count * 8;
+    if (indexBytes > length - 12) {
+        appendRaw(dataoff, datasize);
+        return;
+    }
+    append("code_signature_superblob", dataoff, 12, 12, 1, STRUCT);
+    appendTable("code_signature_blob_index", dataoff + 12, count, 8);
+    for (i = 0; i < count && i < MAX_ROWS; ++i) {
+        blobOffset = File.u32(dataoff + 12 + i * 8 + 4, true);
+        if (blobOffset < 12 + indexBytes || blobOffset > length - 8) continue;
+        blobMagic = File.u32(dataoff + blobOffset, true);
+        blobLength = File.u32(dataoff + blobOffset + 4, true);
+        if (blobLength < 8 || blobLength > length - blobOffset) continue;
+        codeSignatureChild(dataoff + blobOffset, blobMagic, blobLength);
+    }
+    if (length !== datasize) appendRaw(dataoff + length, datasize - length);
+}
+
+// ------------------------------------------------------------------ chained fixups
+
+// pointer_format -> [word size, stride, next shift, next bits, 64-bit, multi starts]
+var CHAIN_FORMATS = {
+    1: [8, 8, 51, 11, true, false], 2: [8, 4, 51, 12, true, false], 3: [4, 4, 26, 5, false, true],
+    4: [4, 4, 30, 2, false, true], 5: [4, 4, 26, 6, false, true], 6: [8, 4, 51, 12, true, false],
+    7: [8, 4, 51, 11, true, false], 8: [8, 4, 51, 12, true, false], 9: [8, 8, 51, 11, true, false],
+    10: [8, 4, 51, 11, true, false], 11: [8, 1, 51, 12, true, false], 12: [8, 8, 51, 11, true, false],
+    13: [8, 8, 52, 11, true, false], 14: [8, 4, 51, 12, true, false]
+};
+
+function chainFormat(pointerFormat) {
+    var f = CHAIN_FORMATS[pointerFormat];
+    return f ? { word: f[0], stride: f[1], shift: f[2], bits: f[3], is64: f[4], multi: f[5] } : null;
+}
+
+// raw = { hi, lo } little-endian pointer value
+function chainedPointerName(pointerFormat, raw) {
+    var auth = (raw.hi >>> 31) !== 0, bind = ((raw.hi >>> 30) & 1) !== 0;
+    switch (pointerFormat) {
+        case 1: case 7: case 9: case 10:
+            if (auth) return bind ? "dyld_chained_ptr_arm64e_auth_bind" : "dyld_chained_ptr_arm64e_auth_rebase";
+            return bind ? "dyld_chained_ptr_arm64e_bind" : "dyld_chained_ptr_arm64e_rebase";
+        case 12:
+            if (!bind) return auth ? "dyld_chained_ptr_arm64e_auth_rebase" : "dyld_chained_ptr_arm64e_rebase";
+            return auth ? "dyld_chained_ptr_arm64e_auth_bind24" : "dyld_chained_ptr_arm64e_bind24";
+        case 2: case 6: return auth ? "dyld_chained_ptr_64_bind" : "dyld_chained_ptr_64_rebase";
+        case 3: return (raw.lo >>> 31) !== 0 ? "dyld_chained_ptr_32_bind" : "dyld_chained_ptr_32_rebase";
+        case 4: return "dyld_chained_ptr_32_cache_rebase";
+        case 5: return "dyld_chained_ptr_32_firmware_rebase";
+        case 8: case 11: return "dyld_chained_ptr_64_kernel_cache_rebase";
+        case 13: return auth ? "dyld_chained_ptr_arm64e_shared_cache_auth_rebase" : "dyld_chained_ptr_arm64e_shared_cache_rebase";
+        case 14: return auth ? "dyld_chained_ptr_arm64e_auth_segmented_rebase" : "dyld_chained_ptr_arm64e_segmented_rebase";
+    }
+    return null;
+}
+
+function readPointer(offset, word) {
+    if (word === 4) return { hi: 0, lo: File.u32(offset) };
+    return { hi: File.u64hi(offset), lo: File.u64lo(offset) };
+}
+
+function chainNext(cf, raw) {
+    var mask = Math.pow(2, cf.bits) - 1;
+    if (cf.shift >= 32) return (raw.hi >>> (cf.shift - 32)) & mask;
+    return (raw.lo >>> cf.shift) & mask;
+}
+
+function chainedImageBase(segs) {
+    var result = -1, found = false, i;
+    for (i = 0; i < segs.length; i++) {
+        if (segs[i].filesize !== 0 && segs[i].fileoff === 0 && (!found || segs[i].vmaddr < result)) {
+            result = segs[i].vmaddr;
+            found = true;
+        }
+    }
+    if (!found) {
+        for (i = 0; i < segs.length; i++) {
+            if (segs[i].filesize !== 0 && (!found || segs[i].vmaddr < result)) {
+                result = segs[i].vmaddr;
+                found = true;
+            }
+        }
+    }
+    return found ? result : null;
+}
+
+function chainedSegment(segs, index, segmentOffset) {
+    var base = chainedImageBase(segs), i;
+    if (base === null || base > TWO64 - 1 - segmentOffset) return null;
+    if (index < segs.length && segs[index].filesize !== 0 && segs[index].vmaddr === base + segmentOffset) return segs[index];
+    for (i = 0; i < segs.length; i++) {
+        if (segs[i].filesize !== 0 && segs[i].vmaddr === base + segmentOffset) return segs[i];
+    }
+    return null;
+}
+
+function walkChain(segment, pageBase, pageSpan, start, pointerFormat, cf, visited, counter) {
+    var cursor = start, steps = 0, stepLimit, relative, raw, name, next;
+    if (start >= pageSpan) return;
+    stepLimit = Math.floor(pageSpan / cf.stride) + 1;
+    if (stepLimit > MAX_ROWS) stepLimit = MAX_ROWS;
+    while (steps++ < stepLimit && counter.count < MAX_ROWS) {
+        if (cursor > pageSpan || cf.word > pageSpan - cursor) return;
+        if (visited) {
+            if (visited[cursor]) return;
+            visited[cursor] = 1;
+        }
+        relative = segment.fileoff + pageBase + cursor;
+        if (!inFile(relative, cf.word)) return;
+        raw = readPointer(relative, cf.word);
+        name = chainedPointerName(pointerFormat, raw);
+        if (name === null) return;
+        append(name, relative, cf.word, cf.word, 1, ENTRY);
+        ++counter.count;
+        next = chainNext(cf, raw);
+        if (next === 0) return;
+        cursor += next * cf.stride;
+    }
+}
+
+function segmentForFileOffset(segs, offset, word) {
+    var i, inside;
+    for (i = 0; i < segs.length; i++) {
+        if (offset < segs[i].fileoff) continue;
+        inside = offset - segs[i].fileoff;
+        if (inside <= segs[i].filesize && word <= segs[i].filesize - inside) return { segment: segs[i], offset: inside };
+    }
+    return null;
+}
+
+function segmentForAddress(segs, address, word) {
+    var i, inside;
+    for (i = 0; i < segs.length; i++) {
+        if (address < segs[i].vmaddr) continue;
+        inside = address - segs[i].vmaddr;
+        if (inside <= segs[i].filesize && word <= segs[i].filesize - inside) return { segment: segs[i], offset: inside };
+    }
+    return null;
+}
+
+function walkFirmwareFileChain(segs, start, pointerFormat, cf, counter) {
+    var cursor = start, steps = 0, raw, name, next;
+    while (steps++ < MAX_ROWS && counter.count < MAX_ROWS) {
+        if (!segmentForFileOffset(segs, cursor, cf.word)) return;
+        if (!inFile(cursor, cf.word)) return;
+        raw = readPointer(cursor, cf.word);
+        name = chainedPointerName(pointerFormat, raw);
+        if (name === null) return;
+        append(name, cursor, cf.word, cf.word, 1, ENTRY);
+        ++counter.count;
+        next = chainNext(cf, raw);
+        if (next === 0) return;
+        cursor += next * cf.stride;
+    }
+}
+
+function firmwarePointers(h, segs, startsOffset, pointerFormat, startsCount, mode) {
+    var cf, text = null, counter = { count: 0 }, i, start, found;
+    if (h.be || (mode !== 1 && mode !== 2) || (pointerFormat !== 5 && pointerFormat !== 6 && pointerFormat !== 7 && pointerFormat !== 10)) return;
+    cf = chainFormat(pointerFormat);
+    if (!cf || cf.is64 !== h.is64) return;
+    for (i = 0; i < segs.length; i++) {
+        if (segs[i].name === "__TEXT") {
+            text = segs[i];
+            break;
+        }
+    }
+    if (!text) return;
+    for (i = 0; i < startsCount && i < MAX_ROWS && counter.count < MAX_ROWS; ++i) {
+        start = File.u32(startsOffset + i * 4, h.be);
+        if (mode === 1) {
+            if (text.fileoff > TWO64 - 1 - start) continue;
+            if (!segmentForFileOffset(segs, text.fileoff + start, cf.word)) continue;
+            walkFirmwareFileChain(segs, text.fileoff + start, pointerFormat, cf, counter);
+            continue;
+        }
+        if (text.vmaddr > TWO64 - 1 - start) continue;
+        found = segmentForAddress(segs, text.vmaddr + start, cf.word);
+        if (!found) continue;
+        walkChain(found.segment, 0, found.segment.filesize, found.offset, pointerFormat, cf, null, counter);
+    }
+}
+
+function chainedSegmentPointers(h, segs, segmentIndex, info, pageCount, pageWords, counter) {
+    var pageSize, pointerFormat, segmentOffset, cf, segment, pageIndex, pageBase, pageSpan, pageStart, visited;
+    var overflowIndex, scanIndex, overflowSteps, sawLast, overflowStart;
+    if (h.be) return;
+    pageSize = File.u16(info + 4);
+    pointerFormat = File.u16(info + 6);
+    segmentOffset = u64(info + 8, false);
+    cf = chainFormat(pointerFormat);
+    if ((pageSize !== 0x1000 && pageSize !== 0x4000) || !cf || cf.is64 !== h.is64) return;
+    segment = chainedSegment(segs, segmentIndex, segmentOffset);
+    if (!segment) return;
+    for (pageIndex = 0; pageIndex < pageCount && counter.count < MAX_ROWS; ++pageIndex) {
+        pageBase = pageIndex * pageSize;
+        if (pageBase >= segment.filesize) continue;
+        pageSpan = segment.filesize - pageBase;
+        if (pageSpan > pageSize) pageSpan = pageSize;
+        visited = {};
+        pageStart = File.u16(info + 22 + pageIndex * 2);
+        if (pageStart === 0xffff) continue;
+        if ((pageStart & 0x8000) !== 0) {
+            overflowSteps = 0;
+            sawLast = false;
+            if (!cf.multi) continue;
+            overflowIndex = pageStart & 0x7fff;
+            if (overflowIndex < pageCount) continue;
+            scanIndex = overflowIndex;
+            while (scanIndex < pageWords && scanIndex - overflowIndex < pageWords - pageCount) {
+                if ((File.u16(info + 22 + scanIndex * 2) & 0x8000) !== 0) {
+                    sawLast = true;
+                    break;
+                }
+                ++scanIndex;
+            }
+            if (!sawLast) continue;
+            sawLast = false;
+            while (overflowIndex < pageWords && overflowSteps++ < pageWords - pageCount) {
+                overflowStart = File.u16(info + 22 + overflowIndex * 2);
+                sawLast = (overflowStart & 0x8000) !== 0;
+                overflowStart &= 0x7fff;
+                walkChain(segment, pageBase, pageSpan, overflowStart, pointerFormat, cf, visited, counter);
+                if (sawLast) break;
+                ++overflowIndex;
+            }
+        } else {
+            walkChain(segment, pageBase, pageSpan, pageStart, pointerFormat, cf, visited, counter);
+        }
+    }
+}
+
+function chainedFixups(h, segs, dataoff, datasize) {
+    var version, startsOffset, importsOffset, symbolsOffset, importsCount, importsFormat, symbolsFormat;
+    var segCount, imageSize, i, segmentRelative, segmentAt, segmentSize, pageCount, pageWords, row, name;
+    var counter = { count: 0 };
+    if (datasize < 28 || !inFile(dataoff, datasize)) {
+        appendRaw(dataoff, datasize);
+        return;
+    }
+    version = File.u32(dataoff, h.be);
+    startsOffset = File.u32(dataoff + 4, h.be);
+    importsOffset = File.u32(dataoff + 8, h.be);
+    symbolsOffset = File.u32(dataoff + 12, h.be);
+    importsCount = File.u32(dataoff + 16, h.be);
+    importsFormat = File.u32(dataoff + 20, h.be);
+    symbolsFormat = File.u32(dataoff + 24, h.be);
+    append("chained_fixups_header", dataoff, 28, 28, 1, STRUCT);
+    if (startsOffset >= 28 && startsOffset <= datasize - 4) {
+        segCount = File.u32(dataoff + startsOffset, h.be);
+        imageSize = segCount * 4 + 4;
+        if (imageSize <= datasize - startsOffset) {
+            append("chained_starts_in_image", dataoff + startsOffset, 4, imageSize, 1, STRUCT);
+            appendTable("chained_seg_info_offset", dataoff + startsOffset + 4, segCount, 4);
+            for (i = 0; i < segCount && i < MAX_ROWS; ++i) {
+                segmentRelative = File.u32(dataoff + startsOffset + 4 + i * 4, h.be);
+                if (segmentRelative === 0 || segmentRelative < imageSize || segmentRelative > datasize - startsOffset - 4) continue;
+                segmentAt = startsOffset + segmentRelative;
+                segmentSize = File.u32(dataoff + segmentAt, h.be);
+                if (segmentSize < 22 || segmentSize > datasize - segmentAt || ((segmentSize - 22) & 1) !== 0) continue;
+                pageCount = File.u16(dataoff + segmentAt + 20, h.be);
+                pageWords = (segmentSize - 22) / 2;
+                if (pageCount > pageWords) continue;
+                append("chained_starts_in_segment", dataoff + segmentAt, 22, segmentSize, 1, STRUCT);
+                appendTable("chained_page_start", dataoff + segmentAt + 22, pageCount, 2);
+                appendTable("chained_chain_start", dataoff + segmentAt + 22 + pageCount * 2, pageWords - pageCount, 2);
+                if (version === 0) chainedSegmentPointers(h, segs, i, dataoff + segmentAt, pageCount, pageWords, counter);
+            }
+        }
+    }
+    if (importsFormat === 1) {
+        row = 4;
+        name = "chained_import";
+    } else if (importsFormat === 2) {
+        row = 8;
+        name = "chained_import_addend";
+    } else if (importsFormat === 3) {
+        row = 16;
+        name = "chained_import_addend64";
+    } else {
+        row = 0;
+    }
+    if (row !== 0 && importsCount !== 0 && importsOffset >= 28 && importsOffset <= datasize && importsCount * row <= datasize - importsOffset) {
+        appendTable(name, dataoff + importsOffset, importsCount, row);
+    }
+    if (symbolsOffset >= 28 && symbolsOffset < datasize) {
+        if (symbolsFormat === 0) appendStrings(dataoff + symbolsOffset, datasize - symbolsOffset);
+        else appendRaw(dataoff + symbolsOffset, datasize - symbolsOffset);
+    }
+}
+
+function linkeditChildren(h, segs, command, cmd) {
+    var dataoff = File.u32(cmd + 8, h.be), datasize = File.u32(cmd + 12, h.be);
+    if (datasize === 0) return;
+    if (!inFile(dataoff, datasize)) fail();
+    switch (command) {
+        case 0x1d: case 0x2b:
+            codeSignature(dataoff, datasize);
+            return;
+        case 0x26:
+            append("function_starts", dataoff, 0, datasize, countFunctionStarts(dataoff, datasize), RAW);
+            return;
+        case 0x29:
+            if (datasize % 8 !== 0) appendRaw(dataoff, datasize);
+            else appendTable("data_in_code", dataoff, datasize / 8, 8);
+            return;
+        case 0x80000034:
+            chainedFixups(h, segs, dataoff, datasize);
+            return;
+        case 0x80000033:
+            append("export", dataoff, 0, datasize, countExports(dataoff, datasize), RAW);
+            return;
+    }
+    appendRaw(dataoff, datasize);
+}
+
+function dyldInfoChildren(h, cmd) {
+    var field, offset, size;
+    for (field = 8; field <= 32; field += 8) {
+        offset = File.u32(cmd + field, h.be);
+        size = File.u32(cmd + field + 4, h.be);
+        if (size !== 0) appendRaw(offset, size);
+    }
+    offset = File.u32(cmd + 40, h.be);
+    size = File.u32(cmd + 44, h.be);
+    if (size === 0) return;
+    if (!inFile(offset, size)) fail();
+    append("export", offset, 0, size, countExports(offset, size), RAW);
+}
+
+// Typed command occurrence; false when the command is shorter than its fixed part.
+function typed(name, cmd, cmdSize, fixed, fixedOnly) {
+    var size;
+    if (cmdSize < fixed) return false;
+    size = fixedOnly ? fixed : cmdSize;
+    append(name, cmd, size, size, 1, STRUCT);
+    return true;
+}
+
+var SUB_COMMANDS = { 0x12: "sub_framework_command", 0x13: "sub_umbrella_command", 0x14: "sub_client_command", 0x15: "sub_library_command" };
+
+function build() {
+    var h = header(), segs = segments(h), cmd = h.size, i, command, size, recognized, tools, formatSize;
+    append(h.is64 ? "mach_header_64" : "mach_header", 0, h.size, h.size, 1, STRUCT);
+    for (i = 0; i < h.ncmds; ++i) {
+        if (!inFile(cmd, 8)) fail();
+        command = File.u32(cmd, h.be);
+        size = File.u32(cmd + 4, h.be);
+        if (size < 8 || !inFile(cmd, size)) fail();
+        append("load_command", cmd, 8, 8, 1, STRUCT);
+        recognized = true;
+        switch (command) {
+            case 0x1:
+                if (h.is64) fail();
+                if (typed("segment_command", cmd, size, 56, true)) sectionChildren(h, segs, cmd, size);
+                break;
+            case 0x19:
+                if (!h.is64) fail();
+                if (typed("segment_command_64", cmd, size, 72, true)) sectionChildren(h, segs, cmd, size);
+                break;
+            case 0x2:
+                if (typed("symtab_command", cmd, size, 24, true)) symtabChildren(h, cmd);
+                break;
+            case 0x3:
+                if (typed("symseg_command", cmd, size, 16, true)) appendRaw(File.u32(cmd + 8, h.be), File.u32(cmd + 12, h.be));
+                break;
+            case 0x4: case 0x5:
+                typed("thread_command", cmd, size, 8, true);
+                threadChildren(h, cmd, size);
+                break;
+            case 0x6: case 0x7:
+                typed("fvmlib_command", cmd, size, 20, false);
+                break;
+            case 0x8:
+                typed("ident_command", cmd, size, 8, false);
+                break;
+            case 0x9:
+                typed("fvmfile_command", cmd, size, 16, false);
+                break;
+            case 0xa:
+                recognized = false;
+                break;
+            case 0xb:
+                if (typed("dysymtab_command", cmd, size, 80, true)) dysymtabChildren(h, cmd);
+                break;
+            case 0xc: case 0xd: case 0x80000018: case 0x8000001f: case 0x20: case 0x80000023:
+                typed("dylib_command", cmd, size, 24, false);
+                break;
+            case 0xe: case 0xf: case 0x27:
+                typed("dylinker_command", cmd, size, 12, false);
+                break;
+            case 0x10:
+                typed("prebound_dylib_command", cmd, size, 20, false);
+                break;
+            case 0x11:
+                typed("routines_command", cmd, size, 40, true);
+                break;
+            case 0x12: case 0x13: case 0x14: case 0x15:
+                typed(SUB_COMMANDS[command], cmd, size, 12, false);
+                break;
+            case 0x16:
+                if (typed("twolevel_hints_command", cmd, size, 16, true)) {
+                    appendTable("twolevel_hint", File.u32(cmd + 8, h.be), File.u32(cmd + 12, h.be), 4);
+                }
+                break;
+            case 0x17:
+                typed("prebind_cksum_command", cmd, size, 12, true);
+                break;
+            case 0x1a:
+                typed("routines_command_64", cmd, size, 72, true);
+                break;
+            case 0x1b:
+                typed("uuid_command", cmd, size, 24, true);
+                break;
+            case 0x8000001c:
+                typed("rpath_command", cmd, size, 12, false);
+                break;
+            case 0x1d: case 0x1e: case 0x26: case 0x29: case 0x2b: case 0x2e: case 0x80000033: case 0x80000034: case 0x36:
+                if (typed("linkedit_data_command", cmd, size, 16, true)) linkeditChildren(h, segs, command, cmd);
+                break;
+            case 0x21:
+                typed("encryption_info_command", cmd, size, 20, true);
+                break;
+            case 0x22: case 0x80000022:
+                if (typed("dyld_info_command", cmd, size, 48, true)) dyldInfoChildren(h, cmd);
+                break;
+            case 0x24: case 0x25: case 0x2f: case 0x30:
+                typed("version_min_command", cmd, size, 16, true);
+                break;
+            case 0x80000028:
+                typed("entry_point_command", cmd, size, 24, true);
+                break;
+            case 0x2a:
+                typed("source_version_command", cmd, size, 16, true);
+                break;
+            case 0x2c:
+                typed("encryption_info_command_64", cmd, size, 24, true);
+                break;
+            case 0x2d:
+                typed("linker_option_command", cmd, size, 12, false);
+                break;
+            case 0x31:
+                if (typed("note_command", cmd, size, 40, true)) appendRaw(u64(cmd + 24, h.be), u64(cmd + 32, h.be));
+                break;
+            case 0x32:
+                if (typed("build_version_command", cmd, size, 24, true)) {
+                    tools = File.u32(cmd + 20, h.be);
+                    if (tools * 8 > size - 24) fail();
+                    appendTable("build_tool_version", cmd + 24, tools, 8);
+                }
+                break;
+            case 0x80000035:
+                typed("fileset_entry_command", cmd, size, 32, false);
+                break;
+            case 0x39:
+                typed("target_triple_command", cmd, size, 12, false);
+                break;
+            default:
+                recognized = false;
+                break;
+        }
+        if (!recognized && size > 8) appendRaw(cmd + 8, size - 8);
+        cmd += size;
+    }
+    formatSize = Format.size();
+    if (formatSize < File.size()) appendRaw(formatSize, File.size() - formatSize);
+}
+
+function scan() {
+    if (Format.size() < 0) return false;
+    try {
+        build();
+    } catch (e) {
+        if (e === FAILED) return false;
+        throw e;
+    }
+    return true;
+}
+
+// ------------------------------------------------------------------ records
+
+var CS_IDS = { 60: 1, 61: 1, 62: 1, 66: 1, 79: 1, 81: 1, 82: 1 };
+
+// Bit fields of the chained-pointer layouts: id -> name -> [shift, bits, signed]
+var CHAIN_BITS = {
+    83: { target: [0, 43], high8: [43, 8], next: [51, 11], bind: [62, 1], auth: [63, 1] },
+    84: { ordinal: [0, 16], zero: [16, 16], addend: [32, 19, true], next: [51, 11], bind: [62, 1], auth: [63, 1] },
+    85: { target: [0, 32], diversity: [32, 16], addrDiv: [48, 1], key: [49, 2], next: [51, 11], bind: [62, 1], auth: [63, 1] },
+    86: { ordinal: [0, 16], zero: [16, 16], diversity: [32, 16], addrDiv: [48, 1], key: [49, 2], next: [51, 11], bind: [62, 1], auth: [63, 1] },
+    87: { ordinal: [0, 24], zero: [24, 8], addend: [32, 19, true], next: [51, 11], bind: [62, 1], auth: [63, 1] },
+    88: { ordinal: [0, 24], zero: [24, 8], diversity: [32, 16], addrDiv: [48, 1], key: [49, 2], next: [51, 11], bind: [62, 1], auth: [63, 1] },
+    89: { target: [0, 36], high8: [36, 8], reserved: [44, 7], next: [51, 12], bind: [63, 1] },
+    90: { ordinal: [0, 24], addend: [24, 8], reserved: [32, 19], next: [51, 12], bind: [63, 1] },
+    91: { target: [0, 30], cacheLevel: [30, 2], diversity: [32, 16], addrDiv: [48, 1], key: [49, 2], next: [51, 12], isAuth: [63, 1] },
+    92: { target: [0, 26], next: [26, 5], bind: [31, 1] },
+    93: { ordinal: [0, 20], addend: [20, 6], next: [26, 5], bind: [31, 1] },
+    94: { target: [0, 30], next: [30, 2] },
+    95: { target: [0, 26], next: [26, 6] },
+    96: { runtimeOffset: [0, 34], high8: [34, 8], unused: [42, 10], next: [52, 11], auth: [63, 1] },
+    97: { runtimeOffset: [0, 34], diversity: [34, 16], addrDiv: [50, 1], keyIsData: [51, 1], next: [52, 11], auth: [63, 1] },
+    98: { targetSegOffset: [0, 28], targetSegIndex: [28, 4], padding: [32, 19], next: [51, 12], auth: [63, 1] },
+    99: { targetSegOffset: [0, 28], targetSegIndex: [28, 4], diversity: [32, 16], addrDiv: [48, 1], key: [49, 2], next: [51, 12], auth: [63, 1] }
+};
+
+function lowMask(bits) { return bits >= 32 ? 0xffffffff : Math.pow(2, bits) - 1; }
+
+// Unsigned bits [shift, shift+bits) of hi:lo; bits <= 53.
+function bitsOf(hi, lo, shift, bits) {
+    var lowBits, low, high;
+    if (shift >= 32) return ((hi >>> (shift - 32)) & lowMask(bits)) >>> 0;
+    lowBits = bits < 32 - shift ? bits : 32 - shift;
+    low = ((lo >>> shift) & lowMask(lowBits)) >>> 0;
+    high = bits > lowBits ? ((hi & lowMask(bits - lowBits)) >>> 0) : 0;
+    return high * Math.pow(2, lowBits) + low;
+}
+
+var PACKED_FIELDS = {
+    50: { iinit: 1, iterm: 1, ninit: 1, nterm: 1 }, 51: { iinit: 1, iterm: 1, ninit: 1, nterm: 1 },
+    53: { isym: 1, flags: 1 }, 55: { isub_image: 1, itoc: 1 },
+    54: { r_symbolnum: 1, r_pcrel: 1, r_length: 1, r_extern: 1, r_type: 1 },
+    80: { r_scattered: 1, r_pcrel: 1, r_length: 1, r_type: 1, r_address: 1 }
+};
+
+// Logical value of a bit-field record (number, or boolean for "bool" fields).
+function logicalValue(ds, f, be) {
+    var id = ds.id, n = f.name, packed, hi, lo, bits, value, is64;
+    if (id >= 83 && id <= 99) {
+        bits = CHAIN_BITS[id][n];
+        if (f.size === 4) {
+            hi = 0;
+            lo = File.u32(ds.offset, be);
+        } else {
+            hi = File.u64hi(ds.offset, be);
+            lo = File.u64lo(ds.offset, be);
+        }
+        value = bitsOf(hi, lo, bits[0], bits[1]);
+        if (bits[2] && value >= Math.pow(2, bits[1] - 1)) value -= Math.pow(2, bits[1]);
+    } else if (id === 29 || id === 58 || id === 59) {
+        is64 = id === 59;
+        hi = is64 ? File.u64hi(ds.offset, be) : 0;
+        lo = is64 ? File.u64lo(ds.offset, be) : File.u32(ds.offset, be);
+        if (n === "lib_ordinal") value = lo & (is64 ? 0xffff : 0xff);
+        else if (n === "weak_import") value = (lo >>> (is64 ? 16 : 8)) & 1;
+        else if (n === "reserved") value = (lo >>> 17) & 0x7fff;
+        else value = is64 ? hi : (lo >>> 9) & 0x7fffff;
+    } else if (id === 50 || id === 51) {
+        packed = File.u32(ds.offset + f.offset, be);
+        value = n === "iinit" || n === "ninit" ? packed & 0xffff : packed >>> 16;
+    } else if (id === 53) {
+        packed = File.u32(ds.offset, be);
+        if (n === "isym") value = be ? packed >>> 8 : packed & 0xffffff;
+        else value = be ? packed & 0xff : packed >>> 24;
+    } else if (id === 55) {
+        packed = File.u32(ds.offset, be);
+        if (n === "isub_image") value = be ? packed >>> 24 : packed & 0xff;
+        else value = be ? packed & 0xffffff : packed >>> 8;
+    } else if (id === 54) {
+        packed = File.u32(ds.offset + 4, be);
+        if (n === "r_symbolnum") value = be ? packed >>> 8 : packed & 0xffffff;
+        else if (n === "r_pcrel") value = (packed >>> (be ? 7 : 24)) & 1;
+        else if (n === "r_length") value = (packed >>> (be ? 5 : 25)) & 3;
+        else if (n === "r_extern") value = (packed >>> (be ? 4 : 27)) & 1;
+        else value = be ? packed & 0xf : packed >>> 28;
+    } else {
+        packed = File.u32(ds.offset, be);
+        if (n === "r_scattered") value = packed >>> 31;
+        else if (n === "r_pcrel") value = (packed >>> 30) & 1;
+        else if (n === "r_length") value = (packed >>> 28) & 3;
+        else if (n === "r_type") value = (packed >>> 24) & 0xf;
+        else value = packed & 0xffffff;
+    }
+    if (f.type === "bool") return value !== 0;
+    return value;
+}
+
+// Display of a logical record: decimal, "true"/"false", or the location form for VA/OFFSET/POINTER roles.
+function logicalDisplay(value, f) {
+    var width;
+    if (value === true || value === false) return value ? "true" : "false";
+    if ((f.role & (VA | OFFSET | POINTER)) !== 0) {
+        width = f.type === "uint8" ? 2 : f.type === "uint16" ? 4 : f.type === "uint32" ? 8 : f.type === "uint64" ? 16 : f.size * 2;
+        return (value < 0 ? "-" : "") + hexWidth(Math.abs(value), width);
+    }
+    return "" + value;
+}
+
+function isLogical(id, f) {
+    if (id >= 83 && id <= 99) return f.name !== "raw";
+    if ((f.role & STRING) !== 0) return false;
+    if (id === 29 || id === 58 || id === 59) return f.name !== "import" && f.name !== "addend";
+    return PACKED_FIELDS[id] !== undefined && PACKED_FIELDS[id][f.name] === 1;
+}
+
+// Comment of a plain record, mirroring xx_macho_set_record_comment. undefined keeps the standard one.
+function plainComment(ds, f, value, be) {
+    var comment = null;
+    if (f.offset === 0 && f.size === 4 && f.name === "cmd") {
+        comment = findName(value, N_load_command);
+        if (comment !== null) return comment;
+        return ((value & 0x80000000) !== 0 ? "LC_REQ_DYLD|" : "") + hex8(value & 0x7fffffff);
+    }
+    if ((ds.id === 4 || ds.id === 5) && f.size === 4) {
+        if (f.name === "maxprot" || f.name === "initprot") return namedFlags(value, N_segment_protection, "VM_PROT_NONE");
+        if (f.name === "flags") return namedFlags(value, N_segment_flag, "0");
+        return undefined;
+    }
+    if (ds.id === 28 && f.size === 4) {
+        if (f.offset === 20) comment = findName(value, N_chained_import_format);
+        else if (f.offset === 24) comment = findName(value, N_chained_symbols_format);
+        else return undefined;
+        return comment !== null ? comment : hex8(value);
+    }
+    if (ds.id === 62 && f.name === "pageSize") return "log2(page size in bytes); 0 means infinite";
+    if (ds.id !== 1 && ds.id !== 2) return undefined;
+    switch (f.offset) {
+        case 0: comment = findName(value, N_magic); break;
+        case 4: comment = findName(value, N_cpu_type); break;
+        case 8: return cpuSubtype(File.u32(ds.offset + 4, be), value);
+        case 12: comment = findName(value, N_file_type); break;
+        case 24: return namedFlags(value, N_header_flag, "0");
+        default: return undefined;
+    }
+    return comment !== null ? comment : hex8(value);
+}
+
+function recordField(ds, f, be) {
+    var out = { name: f.name, type: f.type, offset: f.offset, size: f.size, role: f.role };
+    if (isLogical(ds.id, f)) {
+        // Bit field: the value is the field, the raw bytes are the whole packed word.
+        out.logical = function (v, d) { return logicalValue(d, f, be); };
+        out.display = function (v, d) { return logicalDisplay(logicalValue(d, f, be), f); };
+        out.comment = null;
+        return out;
+    }
+    if ((f.role & STRING) !== 0 || f.size > 8) return out;
+    if (f.type === "int16" || f.type === "int32" || f.type === "int64") {
+        out.display = function (v) { return "" + v; };
+        return out;
+    }
+    out.comment = function (v, d) { return plainComment(d, f, v, be); };
+    return out;
+}
+
+// Embedded string of a command (or the whole string table): { offset, size } relative to ds, or null.
+function stringRegion(ds) {
+    var pointer = 8, minimum, at;
+    switch (ds.id) {
+        case 24:
+            return ds.totalSize > 0 ? { offset: 0, size: ds.totalSize } : null;
+        case 8: minimum = 24; break;
+        case 9: case 10: case 40: case 41: case 42: case 43: case 63: minimum = 12; break;
+        case 34: minimum = 20; break;
+        case 35: minimum = 16; break;
+        case 37: minimum = 20; break;
+        case 49: pointer = 24; minimum = 32; break;
+        case 36:
+            return ds.totalSize > 8 ? { offset: 8, size: ds.totalSize - 8 } : null;
+        case 46:
+            return ds.totalSize > 12 ? { offset: 12, size: ds.totalSize - 12 } : null;
+        default:
+            return null;
+    }
+    if (ds.totalSize < minimum || pointer > ds.totalSize - 4) return null;
+    at = File.u32(ds.offset + pointer, Format.isBigEndian());
+    if (at < minimum || at >= ds.totalSize) return null;
+    return { offset: at, size: ds.totalSize - at };
+}
+
+// String members of a region; null when the region has no readable records.
+function stringFields(ds, region) {
+    var counted = ds.id === 46, multi = ds.id === 24 || ds.id === 36 || ds.id === 46;
+    var requested = counted ? File.u32(ds.offset + 8, Format.isBigEndian()) : (ds.id === 24 || ds.id === 36 ? Infinity : 1);
+    var size = region.size, data, count = 0, cursor = 0, index, at, start, end, out = [], padding, f;
+    if (size < 0 || size > MAX_SCAN || region.offset < 0 || region.offset > ds.totalSize || size > ds.totalSize - region.offset) return null;
+    if (counted && (requested > MAX_ROWS || requested > size)) return null;
+    if (size === 0) return requested === 0 ? out : null;
+    data = File.bytes(ds.offset + region.offset, size);
+    at = data.indexOf("\0");
+    while (at >= 0 && count < requested) {
+        if (++count > MAX_ROWS) return null;
+        cursor = at + 1;
+        at = data.indexOf("\0", at + 1);
+    }
+    if (counted && count !== requested) return null;
+    start = 0;
+    for (index = 0; index < count; index++) {
+        end = data.indexOf("\0", start) + 1;
+        out.push({ name: multi ? (ds.id === 46 ? "options[" : "strings[") + index + "]" : "string", type: "char[]",
+                   offset: region.offset + start, size: end - start, role: STRING });
+        start = end;
+    }
+    if (cursor < size) {
+        padding = count !== 0 || ds.id === 46;
+        for (index = start; padding && index < size; index++) padding = data.charCodeAt(index) === 0;
+        f = { name: padding ? "padding" : (multi && ds.id !== 46 ? "unterminated_string" : "trailing_data"), type: "uint8[]",
+              offset: region.offset + start, size: size - start, role: padding ? RESERVED : NONE };
+        if (!padding && (ds.id === 24 || ds.id === 36 || count === 0)) f.comment = "Unterminated string: no NUL within the declared range";
+        out.push(f);
+    }
+    return out;
+}
+
+var SUB_FIELD_NAMES = { 40: "umbrella", 41: "sub_umbrella", 42: "client", 43: "sub_library" };
+
+function machoFields(ds) {
+    var row = catalogRow(ds.id), table = row ? row[2] : null, be = CS_IDS[ds.id] === 1 || Format.isBigEndian();
+    var region = stringRegion(ds), limit = ds.entrySize, fields = [], i, f, strings;
+    if (ds.totalSize < 0 || !File.valid(ds.offset, ds.totalSize)) return undefined;
+    if (limit <= 0 || limit > ds.totalSize) limit = ds.totalSize;
+    if (ds.id === 62 && limit >= 12) limit = Math.min(limit, codeDirectoryFixedSize(File.u32(ds.offset + 8, true)));
+    if (table) {
+        for (i = 0; i < table.length; i++) {
+            f = table[i];
+            if (f.offset <= limit && f.size > 0 && f.size <= limit - f.offset) fields.push(recordField(ds, f, be));
+        }
+    }
+    if (fields.length === 0 && !region) return undefined;
+    if (SUB_FIELD_NAMES[ds.id] && fields.length >= 3) fields[2].name = SUB_FIELD_NAMES[ds.id];
+    if (region) {
+        strings = stringFields(ds, region);
+        if (strings === null) return undefined;
+        fields = fields.concat(strings);
+    } else if (ds.id === 46 && ds.totalSize >= 12 && File.u32(ds.offset + 8, Format.isBigEndian()) !== 0) {
+        return undefined;
+    }
+    return fields;
+}

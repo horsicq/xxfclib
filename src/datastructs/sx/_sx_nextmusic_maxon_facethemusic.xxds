@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/maxon_facethemusic/xx_maxon_facethemusic_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_ftm_sample_fields = layout([chars("name", 30, NONE), u8("unknown"), u8("iff_octave")]);
+var sxnextm_ftm_sample = sxLayout(0x608B0025, "ftm_sample", LE, sxnextm_ftm_sample_fields);
+var sxnextm_ftm_script_header_fields = layout([u16("script_lines", COUNT), u16("effect_index", ID)]);
+var sxnextm_ftm_script_header = sxLayout(0x608B0026, "ftm_script_header", BE, sxnextm_ftm_script_header_fields);
+function sxnextm_ftm(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [82];
+    var n = [0];
+    var fx = [0];
+    var z = [0];
+    if (!sxnextm_eq(v, 0, "FTMN\x03", 5, e) || !sxnextm_row(v, sxnextm_ftm_header, 0, e) || !sxnextm_u(v, 5, 1, n, 0, e) || !sxnextm_u(v, 80, 1, fx, 0, e) || !sxnextm_take(v, sxnextm_ftm_sample, p, n[0], e)) {
+        return false;
+    }
+    for (var i = 0; i < fx[0]; i++) {
+        if (!sxnextm_be(v, p[0], 2, z, 0, e) || !sxnextm_take(v, sxnextm_ftm_script_header, p, 1, e) || !sxnextm_take(v, sxnextm_ftm_script_event, p, z[0], e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_maxon_facethemusic_build(v) {
+    return sxnextm_ftm(v);
+}

@@ -1,0 +1,392 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_databases.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_sequence_options_fields = layout([u8("compression", FLAGS), u8("block_compression", FLAGS),
+    i32("metadata_entries", COUNT)]);
+var sxd_sequence_options = sxLayout(0x601A0002, "sequence_options", BE, sxd_sequence_options_fields);
+var sxd_postgres_header_fields = layout([chars("magic", 5, SIGNATURE), u8("version_major", ID), u8("version_minor", ID),
+    u8("version_revision", ID), u8("integer_size", SIZE), u8("offset_size", SIZE), u8("format", ID)]);
+var sxd_postgres_header = sxLayout(0x601A000F, "postgres_header", LE, sxd_postgres_header_fields);
+var sxd_postgres_compression_v15_fields = layout([u8("compression_algorithm", ID)]);
+var sxd_postgres_compression_v15 = sxLayout(0x601A0010, "postgres_compression_v15", LE, sxd_postgres_compression_v15_fields);
+var sxd_postgres_time_fields = layout([u8("second_sign"), u32("second_magnitude"), u8("minute_sign"), u32("minute_magnitude"),
+    u8("hour_sign"), u32("hour_magnitude"), u8("day_sign"), u32("day_magnitude"), u8("month_sign"), u32("month_magnitude"),
+    u8("year_sign"), u32("year_magnitude"), u8("is_dst_sign"), u32("is_dst_magnitude")]);
+var sxd_postgres_time = sxLayout(0x601A0012, "postgres_time", LE, sxd_postgres_time_fields);
+var sxd_postgres_string_length_fields = layout([u8("length_sign"), u32("length_magnitude")]);
+var sxd_postgres_string_length = sxLayout(0x601A0013, "postgres_string_length", LE, sxd_postgres_string_length_fields);
+var sxd_postgres_section_fields = layout([u8("section_sign"), u32("section_magnitude", ID)]);
+var sxd_postgres_section = sxLayout(0x601A0016, "postgres_section", LE, sxd_postgres_section_fields);
+var sxd_postgres_data_offset_fields = layout([u8("offset_state", ID), u64("data_offset", OFFSET)]);
+var sxd_postgres_data_offset = sxLayout(0x601A0017, "postgres_data_offset", LE, sxd_postgres_data_offset_fields);
+var sxd_postgres_block_header_fields = layout([u8("block_type", ID), u8("dump_id_sign"), u32("dump_id_magnitude", ID)]);
+var sxd_postgres_block_header = sxLayout(0x601A0018, "postgres_block_header", LE, sxd_postgres_block_header_fields);
+var sxd_lmdb_meta_prefix_fields = layout([u64("page_number"), u16("page_pad", RESERVED), u16("page_flags", FLAGS),
+    u32("lower_upper_unused", RESERVED), u32("magic", SIGNATURE), u32("version", ID), u64("fixed_address", VA),
+    u64("map_size", SIZE)]);
+var sxd_lmdb_meta_prefix = sxLayout(0x601A001A, "lmdb_meta_prefix", LE, sxd_lmdb_meta_prefix_fields);
+var sxd_lmdb_database_fields = layout([u32("pad"), u16("flags", FLAGS), u16("depth", COUNT), u64("branch_pages", COUNT),
+    u64("leaf_pages", COUNT), u64("overflow_pages", COUNT), u64("entry_count", COUNT), u64("root_page")]);
+var sxd_lmdb_database = sxLayout(0x601A001B, "lmdb_database", LE, sxd_lmdb_database_fields);
+var sxd_lmdb_free_database_fields = layout([u32("page_size", SIZE), u16("flags", FLAGS), u16("depth", COUNT),
+    u64("branch_pages", COUNT), u64("leaf_pages", COUNT), u64("overflow_pages", COUNT), u64("entry_count", COUNT),
+    u64("root_page")]);
+var sxd_lmdb_free_database = sxLayout(0x601A001C, "lmdb_free_database", LE, sxd_lmdb_free_database_fields);
+var sxd_lmdb_page_header_fields = layout([u64("page_number"), u16("pad", RESERVED), u16("flags", FLAGS),
+    u16("lower_offset", OFFSET), u16("upper_offset", OFFSET)]);
+var sxd_lmdb_page_header = sxLayout(0x601A001E, "lmdb_page_header", LE, sxd_lmdb_page_header_fields);
+var sxd_lmdb_leaf_node_fields = layout([u32("data_size", SIZE), u16("flags", FLAGS), u16("key_size", SIZE)]);
+var sxd_lmdb_leaf_node = sxLayout(0x601A0020, "lmdb_leaf_node", LE, sxd_lmdb_leaf_node_fields);
+var sxd_lmdb_overflow_page_fields = layout([u64("page_number"), u16("pad", RESERVED), u16("flags", FLAGS),
+    u32("page_count", COUNT)]);
+var sxd_lmdb_overflow_page = sxLayout(0x601A0023, "lmdb_overflow_page", LE, sxd_lmdb_overflow_page_fields);
+var sxd_leveldb_block_trailer_fields = layout([u8("compression_type", ID), u32("masked_crc32c", CHECKSUM)]);
+var sxd_leveldb_block_trailer = sxLayout(0x601A0024, "leveldb_block_trailer", LE, sxd_leveldb_block_trailer_fields);
+var sxd_redis_opcode_fields = layout([u8("opcode", ID)]);
+var sxd_redis_opcode = sxLayout(0x601A0029, "redis_opcode", LE, sxd_redis_opcode_fields);
+var sxd_redis_trailer_fields = layout([u8("end_opcode", ID), u64("crc64", CHECKSUM)]);
+var sxd_redis_trailer = sxLayout(0x601A002A, "redis_trailer", LE, sxd_redis_trailer_fields);
+var sxd_redis_frequency_fields = layout([u8("opcode", ID), u8("frequency")]);
+var sxd_redis_frequency = sxLayout(0x601A002D, "redis_frequency", LE, sxd_redis_frequency_fields);
+var sxd_tps_entry_fields = layout([u8("entry_tag", ID), u8("name_length", SIZE), chars("name", 12, STRING),
+    i32("coded_length_plus_four"), u32("encoded_uncompressed_length")]);
+var sxd_tps_entry = sxLayout(0x601A0039, "tps_entry", LE, sxd_tps_entry_fields);
+var sxd_dbz_index_record_fields = layout([chars("name", 14, STRING),
+    field("decimal_payload_offset", "ascii_decimal[9]", 9, OFFSET), field("decimal_payload_size", "ascii_decimal[9]", 9, SIZE)]);
+var sxd_dbz_index_record = sxLayout(0x601A003C, "dbz_index_record", LE, sxd_dbz_index_record_fields);
+var sxd_database_varuint_offset_1_fields = layout([field("data_offset", "uleb128_64", 1, OFFSET)]);
+var sxd_database_varuint_offset_1 = sxLayout(0x601A004B, "database_varuint_offset_1", LE, sxd_database_varuint_offset_1_fields);
+var sxd_database_varuint_offset_2_fields = layout([field("data_offset", "uleb128_64", 2, OFFSET)]);
+var sxd_database_varuint_offset_2 = sxLayout(0x601A004C, "database_varuint_offset_2", LE, sxd_database_varuint_offset_2_fields);
+var sxd_database_varuint_offset_3_fields = layout([field("data_offset", "uleb128_64", 3, OFFSET)]);
+var sxd_database_varuint_offset_3 = sxLayout(0x601A004D, "database_varuint_offset_3", LE, sxd_database_varuint_offset_3_fields);
+var sxd_database_varuint_offset_4_fields = layout([field("data_offset", "uleb128_64", 4, OFFSET)]);
+var sxd_database_varuint_offset_4 = sxLayout(0x601A004E, "database_varuint_offset_4", LE, sxd_database_varuint_offset_4_fields);
+var sxd_database_varuint_offset_5_fields = layout([field("data_offset", "uleb128_64", 5, OFFSET)]);
+var sxd_database_varuint_offset_5 = sxLayout(0x601A004F, "database_varuint_offset_5", LE, sxd_database_varuint_offset_5_fields);
+var sxd_database_varuint_offset_6_fields = layout([field("data_offset", "uleb128_64", 6, OFFSET)]);
+var sxd_database_varuint_offset_6 = sxLayout(0x601A0050, "database_varuint_offset_6", LE, sxd_database_varuint_offset_6_fields);
+var sxd_database_varuint_offset_7_fields = layout([field("data_offset", "uleb128_64", 7, OFFSET)]);
+var sxd_database_varuint_offset_7 = sxLayout(0x601A0051, "database_varuint_offset_7", LE, sxd_database_varuint_offset_7_fields);
+var sxd_database_varuint_offset_8_fields = layout([field("data_offset", "uleb128_64", 8, OFFSET)]);
+var sxd_database_varuint_offset_8 = sxLayout(0x601A0052, "database_varuint_offset_8", LE, sxd_database_varuint_offset_8_fields);
+var sxd_database_varuint_offset_9_fields = layout([field("data_offset", "uleb128_64", 9, OFFSET)]);
+var sxd_database_varuint_offset_9 = sxLayout(0x601A0053, "database_varuint_offset_9", LE, sxd_database_varuint_offset_9_fields);
+var sxd_database_varuint_offset_10_fields = layout([field("data_offset", "uleb128_64", 10, OFFSET)]);
+var sxd_database_varuint_offset_10 = sxLayout(0x601A0054, "database_varuint_offset_10", LE, sxd_database_varuint_offset_10_fields);
+var sxd_database_varuint_size_1_fields = layout([field("data_size", "uleb128_64", 1, SIZE)]);
+var sxd_database_varuint_size_1 = sxLayout(0x601A0055, "database_varuint_size_1", LE, sxd_database_varuint_size_1_fields);
+var sxd_database_varuint_size_2_fields = layout([field("data_size", "uleb128_64", 2, SIZE)]);
+var sxd_database_varuint_size_2 = sxLayout(0x601A0056, "database_varuint_size_2", LE, sxd_database_varuint_size_2_fields);
+var sxd_database_varuint_size_3_fields = layout([field("data_size", "uleb128_64", 3, SIZE)]);
+var sxd_database_varuint_size_3 = sxLayout(0x601A0057, "database_varuint_size_3", LE, sxd_database_varuint_size_3_fields);
+var sxd_database_varuint_size_4_fields = layout([field("data_size", "uleb128_64", 4, SIZE)]);
+var sxd_database_varuint_size_4 = sxLayout(0x601A0058, "database_varuint_size_4", LE, sxd_database_varuint_size_4_fields);
+var sxd_database_varuint_size_5_fields = layout([field("data_size", "uleb128_64", 5, SIZE)]);
+var sxd_database_varuint_size_5 = sxLayout(0x601A0059, "database_varuint_size_5", LE, sxd_database_varuint_size_5_fields);
+var sxd_database_varuint_size_6_fields = layout([field("data_size", "uleb128_64", 6, SIZE)]);
+var sxd_database_varuint_size_6 = sxLayout(0x601A005A, "database_varuint_size_6", LE, sxd_database_varuint_size_6_fields);
+var sxd_database_varuint_size_7_fields = layout([field("data_size", "uleb128_64", 7, SIZE)]);
+var sxd_database_varuint_size_7 = sxLayout(0x601A005B, "database_varuint_size_7", LE, sxd_database_varuint_size_7_fields);
+var sxd_database_varuint_size_8_fields = layout([field("data_size", "uleb128_64", 8, SIZE)]);
+var sxd_database_varuint_size_8 = sxLayout(0x601A005C, "database_varuint_size_8", LE, sxd_database_varuint_size_8_fields);
+var sxd_database_varuint_size_9_fields = layout([field("data_size", "uleb128_64", 9, SIZE)]);
+var sxd_database_varuint_size_9 = sxLayout(0x601A005D, "database_varuint_size_9", LE, sxd_database_varuint_size_9_fields);
+var sxd_database_varuint_size_10_fields = layout([field("data_size", "uleb128_64", 10, SIZE)]);
+var sxd_database_varuint_size_10 = sxLayout(0x601A005E, "database_varuint_size_10", LE, sxd_database_varuint_size_10_fields);
+var sxd_database_varuint_offset_rows = [sxd_database_varuint_offset_1, sxd_database_varuint_offset_2,
+    sxd_database_varuint_offset_3, sxd_database_varuint_offset_4, sxd_database_varuint_offset_5, sxd_database_varuint_offset_6,
+    sxd_database_varuint_offset_7, sxd_database_varuint_offset_8, sxd_database_varuint_offset_9, sxd_database_varuint_offset_10];
+var sxd_database_varuint_size_rows = [sxd_database_varuint_size_1, sxd_database_varuint_size_2, sxd_database_varuint_size_3,
+    sxd_database_varuint_size_4, sxd_database_varuint_size_5, sxd_database_varuint_size_6, sxd_database_varuint_size_7,
+    sxd_database_varuint_size_8, sxd_database_varuint_size_9, sxd_database_varuint_size_10];
+function sx_databases_supports(t) {
+    switch (t) {
+    case "HADOOP_SEQUENCEFILE":
+    case "POSTGRES_CUSTOM":
+    case "LMDB_DATA":
+    case "LEVELDB_SSTABLE":
+    case "REDIS_RDB":
+    case "TPS":
+    case "DBZ":
+    case "APACHE_ORC":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxd_u32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, false);
+}
+function sxd_be32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, true);
+}
+function sxd_can(c, at, n) {
+    return at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sxd_add(c, l, at, n) {
+    return sxd_can(c, at, n) && n <= SX_I64_MAX && sx_add(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxd_table(c, l, at, width, count) {
+    return !!(width && count <= Math.floor(SX_I64_MAX / width) && sxd_can(c, at, count * width) && sx_table(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), width, count));
+}
+function sxd_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxd_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxd_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + bytes;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxd_order, true);
+    return !c.failed;
+}
+function sxd_var(c, b, at, end, v, v_o, rows) {
+    var start = at[0];
+    v[v_o] = 0;
+    for (var i = 0; i < 10; i++) {
+        if (at[0] >= end || !sxd_can(c, at[0], 1)) {
+            return false;
+        }
+        var x = b[at[0]++];
+        if (i === 9 && x & 254) {
+            return false;
+        }
+        v[v_o] = sxOr64(v[v_o], sxShl64(x & 127, (7 * i) >>> 0));
+        if (!(x & 128)) {
+            return rows === null || sxd_add(c, rows[i], start, (i + 1) >>> 0);
+        }
+    }
+    return false;
+}
+function sx_databases_build(c) {
+    done: {
+        if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0 || c.size > 67108864) {
+            return false;
+        }
+        var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+        if (b === null) {
+            return false;
+        }
+        var ok = false;
+        for (var at = 0; at < c.size; ) {
+            var n = c.size - at > 65536 ? 65536 : (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+            if (!sx_read_at(c, at, b, at, n)) {
+                break done;
+            }
+            at += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+        }
+        switch (c.f.file_type) {
+        case "HADOOP_SEQUENCEFILE":
+            ok = sx_hadoop_sequencefile_build(c, b);
+            break;
+        case "POSTGRES_CUSTOM":
+            ok = sx_postgres_custom_build(c, b);
+            break;
+        case "LMDB_DATA":
+            ok = sx_lmdb_data_build(c, b);
+            break;
+        case "LEVELDB_SSTABLE":
+            ok = sx_leveldb_sstable_build(c, b);
+            break;
+        case "REDIS_RDB":
+            ok = sx_redis_rdb_build(c, b);
+            break;
+        case "TPS":
+            ok = sx_tps_build(c, b);
+            break;
+        case "DBZ":
+            ok = sx_dbz_build(c, b);
+            break;
+        case "APACHE_ORC":
+            ok = sx_apache_orc_build(c, b);
+            break;
+        default:
+            break;
+        }
+        if (ok) {
+            ok = sxd_finish(c);
+        }
+    }
+    return ok;
+}
+function sx_databases_comment(r, id) {
+    if (id < 0x601A0000 || id >= 0x601B0000 || r === null || r.name === null || r.type === null) {
+        return true;
+    }
+    var comment = null;
+    var v = 0;
+    if (id === sxd_dbz_index_record.id && sxVarType(r.value) === 8 /*XX_VAR_TYPE_UINT64*/ && (r.name === "decimal_payload_offset" || r.name === "decimal_payload_size")) {
+        comment = "Right-aligned decimal ASCII on disk; raw bytes retained";
+    }
+    if (r.type === "uleb128_64") {
+        if (r.name === "field_number_and_wire_type") {
+            v = sxVarU64(r.value);
+            var a = [];
+            var w = [];
+            var n = sxSnprintf(a, 0, 96, "Protobuf field %llu; wire type %u", [sxShr64(v, 3), sxAnd64(v, 7)]);
+            if (n < 0 || n >= 96) {
+                return false;
+            }
+            for (var i = 0; i <= n; i++) {
+                w[i] = a[i] & 0xFF;
+            }
+            return sxSetComment(r, w);
+        }
+        if (!(r.property & 0x00000008)) {
+            comment = "Unsigned LEB128; physical encoding retained";
+        }
+    }
+    if (r.name === "page_number" || r.name === "root_page" || r.name === "last_page" || r.name === "overflow_page") {
+        comment = "Page index; multiply by the LMDB page size for a byte offset; UINT64_MAX denotes no root";
+    }
+    if (r.name === "branch_pages" || r.name === "leaf_pages" || r.name === "overflow_pages" || r.name === "page_count") {
+        comment = "Count of LMDB allocation pages, not bytes";
+    }
+    if (r.name === "node_offset" || r.name === "lower_offset" || r.name === "upper_offset") {
+        comment = "Byte offset relative to this LMDB page";
+    }
+    if (r.name === "child_page_low" || r.name === "child_page_high") {
+        comment = "Child page = low32 | (high16 << 32); page index, not byte offset";
+    }
+    if (r.name === "restart_offset") {
+        comment = "Byte offset relative to the uncompressed LevelDB block";
+    }
+    if (id === sxd_leveldb_block_trailer.id && r.name === "compression_type") {
+        comment = "0 = no compression; native reader supported scope";
+    }
+    if (r.name === "masked_crc32c") {
+        comment = "Masked CRC32C of block bytes and compression byte";
+    }
+    if (id === sxd_tps_entry.id && r.name === "coded_length_plus_four") {
+        comment = "Coded payload bytes = abs(stored signed value) - 4; framing bytes are separate";
+    }
+    if (id === sxd_tps_entry.id && r.name === "encoded_uncompressed_length") {
+        comment = "Uncompressed bytes = stored value XOR 0x80808080";
+    }
+    if (r.name === "marker" || r.name === "encoded_magnitude") {
+        comment = "Hadoop VInt: prefix encodes byte count/sign; big-endian magnitude is complemented for negative encoding";
+    }
+    if (r.name === "compression_sign" || r.name === "length_sign" || r.name === "dump_id_sign" || r.name === "section_sign") {
+        comment = "PostgreSQL signed magnitude: 0 = nonnegative, 1 = negative";
+    }
+    if (id === sxd_postgres_string_length.id && r.name === "length_magnitude") {
+        comment = "Signed-magnitude string length; sign 1 and magnitude 1 denotes NULL";
+    }
+    if (id === sxd_postgres_time.id) {
+        comment = "PostgreSQL signed-magnitude struct tm component; month is zero-based and year is since 1900";
+    }
+    if (id === sxd_postgres_data_offset.id && r.name === "offset_state") {
+        comment = "1 = offset not set; 2 = offset set; 3 = no data";
+    }
+    if (r.name === "encoding_and_length") {
+        comment = "Redis 6-bit literal length or count";
+    }
+    if (r.name === "encoding_and_length_high" || r.name === "length_low") {
+        comment = "Redis 14-bit length/count = ((first byte & 0x3F) << 8) | second byte";
+    }
+    if (r.name === "encoded_length") {
+        comment = "Redis literal length or count, in big-endian order";
+    }
+    if (r.name === "encoding_and_integer_type") {
+        comment = "0xC0 = int8; 0xC1 = int16; 0xC2 = int32; 0xC3 = LZF string";
+    }
+    if (id === sxd_redis_opcode.id || id === sxd_redis_trailer.id) {
+        if (r.name === "opcode" || r.name === "end_opcode") {
+            v = sxVarU64(r.value);
+            switch (v) {
+            case 0:
+                comment = "RDB_TYPE_STRING";
+                break;
+            case 1:
+                comment = "RDB_TYPE_LIST";
+                break;
+            case 2:
+                comment = "RDB_TYPE_SET";
+                break;
+            case 3:
+                comment = "RDB_TYPE_ZSET";
+                break;
+            case 4:
+                comment = "RDB_TYPE_HASH";
+                break;
+            case 5:
+                comment = "RDB_TYPE_ZSET_2";
+                break;
+            case 248:
+                comment = "RDB_OPCODE_IDLE";
+                break;
+            case 250:
+                comment = "RDB_OPCODE_AUX";
+                break;
+            case 251:
+                comment = "RDB_OPCODE_RESIZEDB";
+                break;
+            case 254:
+                comment = "RDB_OPCODE_SELECTDB";
+                break;
+            case 255:
+                comment = "RDB_OPCODE_EOF";
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    if (id === sxd_lmdb_meta_prefix.id && r.name === "page_flags" || (id === sxd_lmdb_page_header.id || id === sxd_lmdb_overflow_page.id) && r.name === "flags") {
+        v = sxVarU64(r.value);
+        comment = v === 1 ? "P_BRANCH" : v === 2 ? "P_LEAF" : v === 4 ? "P_OVERFLOW" : v === 8 ? "P_META" : "LMDB page flags";
+    }
+    if ((id === sxd_lmdb_database.id || id === sxd_lmdb_free_database.id) && r.name === "flags") {
+        v = sxVarU64(r.value);
+        comment = v === 8 ? "MDB_INTEGERKEY" : v === 0 ? "No persistent database flags" : "LMDB persistent database flags";
+    }
+    if (id === sxd_lmdb_leaf_node.id && r.name === "flags") {
+        v = sxVarU64(r.value);
+        comment = v === 1 ? "F_BIGDATA: value is an overflow-page reference" : "Inline leaf value";
+    }
+    if (id === sxd_postgres_header.id && r.name === "format") {
+        comment = "archCustom = 1";
+    }
+    if (id === sxd_postgres_compression_v15.id) {
+        comment = "PG_COMPRESSION_NONE = 0; native uncompressed scope";
+    }
+    if (id === sxd_postgres_section.id && r.name === "section_magnitude") {
+        v = sxVarU64(r.value);
+        comment = v === 0 ? "SECTION_NONE" : v === 1 ? "SECTION_PRE_DATA" : v === 2 ? "SECTION_DATA" : v === 3 ? "SECTION_POST_DATA" : null;
+    }
+    if (id === sxd_postgres_block_header.id && r.name === "block_type") {
+        comment = "BLK_DATA = 1";
+    }
+    if (id === sxd_sequence_options.id && (r.name === "compression" || r.name === "block_compression")) {
+        comment = "0 = false; native uncompressed SequenceFile scope";
+    }
+    if (id === sxd_redis_frequency.id && r.name === "frequency") {
+        comment = "Encoded logarithmic LFU frequency counter; not a literal access count";
+    }
+    if (r.name === "crc64") {
+        comment = "Redis CRC64; zero disables checksum verification";
+    }
+    if (r.name === "ieee754_binary64_bits") {
+        comment = "Little-endian IEEE-754 binary64 score bits";
+    }
+    return comment === null || sxSetComment(r, comment);
+}

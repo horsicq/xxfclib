@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/sinner/xx_sinner_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_sinner_header_fields = layout([chars("magic", 10, SIGNATURE), blob("unknown", 10), u32("entries", COUNT)]);
+var sxgco_sinner_header = sxLayout(0x60400016, "sinner_header", LE, sxgco_sinner_header_fields);
+function sxgco_sinner(v) {
+    var n = [0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgco_row(v, sxgco_sinner_header, 0, e) && sxgco_word(v, 20, 4, false, n, e) && sxgco_table(v, sxgco_sinner_entry, 24, n[0], e);
+}
+function sx_sinner_build(v) {
+    return sxgco_sinner(v);
+}

@@ -1,0 +1,103 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivetransport.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivetransport");
+include("_sx_archivetransport_binhex");
+include("_sx_archivetransport_dgca");
+include("_sx_archivetransport_powerarc");
+include("_sx_archivetransport_quoted_printable_encoded_fil");
+include("_sx_archivetransport_shar");
+include("_sx_archivetransport_stuffitx");
+
+function fileTypes() { return ["POWERARC", "SHAR", "BINHEX", "QUOTED_PRINTABLE_ENCODED_FIL", "STUFFITX", "DGCA"]; }
+
+var sx_archivetransport_layouts = [sxatp_dgca_chunk, sxatp_dgca_iarc_prefix, sxatp_dgca_iarc_clear_tail, sxatp_dgca_stored_unit,
+    sxatp_dgca_compressed_unit, sxatp_dgca_plane_unit, sxatp_stuffitx_signature, sxatp_stuffitx_element_flag,
+    sxatp_stuffitx_element_type_bit1, sxatp_stuffitx_attribute_key_bit0, sxatp_stuffitx_attribute_key_bit1,
+    sxatp_stuffitx_attribute_key_bit2, sxatp_stuffitx_attribute_key_bit3, sxatp_stuffitx_attribute_key_bit4,
+    sxatp_stuffitx_attribute_key_bit5, sxatp_stuffitx_attribute_key_bit6, sxatp_stuffitx_attribute_key_bit7,
+    sxatp_stuffitx_object_id_bit0, sxatp_stuffitx_object_id_bit1, sxatp_stuffitx_object_id_bit2, sxatp_stuffitx_object_id_bit3,
+    sxatp_stuffitx_object_id_bit4, sxatp_stuffitx_object_id_bit5, sxatp_stuffitx_object_id_bit6, sxatp_stuffitx_object_id_bit7,
+    sxatp_stuffitx_parent_id_bit0, sxatp_stuffitx_parent_id_bit1, sxatp_stuffitx_parent_id_bit2, sxatp_stuffitx_parent_id_bit3,
+    sxatp_stuffitx_parent_id_bit4, sxatp_stuffitx_parent_id_bit5, sxatp_stuffitx_parent_id_bit6, sxatp_stuffitx_parent_id_bit7,
+    sxatp_stuffitx_stream_id_bit0, sxatp_stuffitx_stream_id_bit1, sxatp_stuffitx_stream_id_bit2, sxatp_stuffitx_stream_id_bit3,
+    sxatp_stuffitx_stream_id_bit4, sxatp_stuffitx_stream_id_bit5, sxatp_stuffitx_stream_id_bit6, sxatp_stuffitx_stream_id_bit7,
+    sxatp_stuffitx_fork_index_bit0, sxatp_stuffitx_fork_index_bit1, sxatp_stuffitx_fork_index_bit2,
+    sxatp_stuffitx_fork_index_bit3, sxatp_stuffitx_fork_index_bit4, sxatp_stuffitx_fork_index_bit5,
+    sxatp_stuffitx_fork_index_bit6, sxatp_stuffitx_fork_index_bit7, sxatp_stuffitx_declared_size_bit0,
+    sxatp_stuffitx_declared_size_bit1, sxatp_stuffitx_declared_size_bit2, sxatp_stuffitx_declared_size_bit3,
+    sxatp_stuffitx_declared_size_bit4, sxatp_stuffitx_declared_size_bit5, sxatp_stuffitx_declared_size_bit6,
+    sxatp_stuffitx_declared_size_bit7, sxatp_stuffitx_attribute_value_bit0, sxatp_stuffitx_attribute_value_bit1,
+    sxatp_stuffitx_attribute_value_bit2, sxatp_stuffitx_attribute_value_bit3, sxatp_stuffitx_attribute_value_bit4,
+    sxatp_stuffitx_attribute_value_bit5, sxatp_stuffitx_attribute_value_bit6, sxatp_stuffitx_attribute_value_bit7,
+    sxatp_stuffitx_algorithm_key_bit0, sxatp_stuffitx_algorithm_key_bit1, sxatp_stuffitx_algorithm_key_bit2,
+    sxatp_stuffitx_algorithm_key_bit3, sxatp_stuffitx_algorithm_key_bit4, sxatp_stuffitx_algorithm_key_bit5,
+    sxatp_stuffitx_algorithm_key_bit6, sxatp_stuffitx_algorithm_key_bit7, sxatp_stuffitx_algorithm_value_bit0,
+    sxatp_stuffitx_algorithm_value_bit1, sxatp_stuffitx_algorithm_value_bit2, sxatp_stuffitx_algorithm_value_bit3,
+    sxatp_stuffitx_algorithm_value_bit4, sxatp_stuffitx_algorithm_value_bit5, sxatp_stuffitx_algorithm_value_bit6,
+    sxatp_stuffitx_algorithm_value_bit7, sxatp_stuffitx_cipher_extra_bit0, sxatp_stuffitx_cipher_extra_bit1,
+    sxatp_stuffitx_cipher_extra_bit2, sxatp_stuffitx_cipher_extra_bit3, sxatp_stuffitx_cipher_extra_bit4,
+    sxatp_stuffitx_cipher_extra_bit5, sxatp_stuffitx_cipher_extra_bit6, sxatp_stuffitx_cipher_extra_bit7,
+    sxatp_stuffitx_fork_type_bit0, sxatp_stuffitx_fork_type_bit1, sxatp_stuffitx_fork_type_bit2, sxatp_stuffitx_fork_type_bit3,
+    sxatp_stuffitx_fork_type_bit4, sxatp_stuffitx_fork_type_bit5, sxatp_stuffitx_fork_type_bit6, sxatp_stuffitx_fork_type_bit7,
+    sxatp_stuffitx_root_value_bit0, sxatp_stuffitx_root_value_bit1, sxatp_stuffitx_root_value_bit2,
+    sxatp_stuffitx_root_value_bit3, sxatp_stuffitx_root_value_bit4, sxatp_stuffitx_root_value_bit5,
+    sxatp_stuffitx_root_value_bit6, sxatp_stuffitx_root_value_bit7, sxatp_stuffitx_block_size_bit0,
+    sxatp_stuffitx_trailer_size_bit0, sxatp_stuffitx_crc32, sxatp_powerarc_header, sxatp_powerarc_bzip2_stream,
+    sxatp_powerarc_bzip2_first_block, sxatp_powerarc_bzip2_empty_end, sxatp_binhex_banner, sxatp_binhex_delimiter,
+    sxatp_binhex_encoded_run, sxatp_transport_line_end, sxatp_transport_whitespace, sxatp_qp_literal_run, sxatp_qp_hex_escape,
+    sxatp_qp_soft_break, sxatp_qp_padding, sxatp_shar_command, sxatp_shar_redirection, sxatp_shar_heredoc_operator,
+    sxatp_shar_delimiter, sxatp_shar_name, sxatp_shar_quoted_marker, sxatp_shar_terminator, sxatp_shar_prefix_expression,
+    sxatp_shar_uu_begin];
+
+function structs() {
+    return sxCatalog([sxatp_dgca_chunk, sxatp_dgca_iarc_prefix, sxatp_dgca_iarc_clear_tail, sxatp_dgca_stored_unit,
+        sxatp_dgca_compressed_unit, sxatp_dgca_plane_unit, sxatp_stuffitx_signature, sxatp_stuffitx_element_flag,
+        sxatp_stuffitx_element_type_bit1, sxatp_stuffitx_attribute_key_bit0, sxatp_stuffitx_attribute_key_bit1,
+        sxatp_stuffitx_attribute_key_bit2, sxatp_stuffitx_attribute_key_bit3, sxatp_stuffitx_attribute_key_bit4,
+        sxatp_stuffitx_attribute_key_bit5, sxatp_stuffitx_attribute_key_bit6, sxatp_stuffitx_attribute_key_bit7,
+        sxatp_stuffitx_object_id_bit0, sxatp_stuffitx_object_id_bit1, sxatp_stuffitx_object_id_bit2,
+        sxatp_stuffitx_object_id_bit3, sxatp_stuffitx_object_id_bit4, sxatp_stuffitx_object_id_bit5,
+        sxatp_stuffitx_object_id_bit6, sxatp_stuffitx_object_id_bit7, sxatp_stuffitx_parent_id_bit0,
+        sxatp_stuffitx_parent_id_bit1, sxatp_stuffitx_parent_id_bit2, sxatp_stuffitx_parent_id_bit3,
+        sxatp_stuffitx_parent_id_bit4, sxatp_stuffitx_parent_id_bit5, sxatp_stuffitx_parent_id_bit6,
+        sxatp_stuffitx_parent_id_bit7, sxatp_stuffitx_stream_id_bit0, sxatp_stuffitx_stream_id_bit1,
+        sxatp_stuffitx_stream_id_bit2, sxatp_stuffitx_stream_id_bit3, sxatp_stuffitx_stream_id_bit4,
+        sxatp_stuffitx_stream_id_bit5, sxatp_stuffitx_stream_id_bit6, sxatp_stuffitx_stream_id_bit7,
+        sxatp_stuffitx_fork_index_bit0, sxatp_stuffitx_fork_index_bit1, sxatp_stuffitx_fork_index_bit2,
+        sxatp_stuffitx_fork_index_bit3, sxatp_stuffitx_fork_index_bit4, sxatp_stuffitx_fork_index_bit5,
+        sxatp_stuffitx_fork_index_bit6, sxatp_stuffitx_fork_index_bit7, sxatp_stuffitx_declared_size_bit0,
+        sxatp_stuffitx_declared_size_bit1, sxatp_stuffitx_declared_size_bit2, sxatp_stuffitx_declared_size_bit3,
+        sxatp_stuffitx_declared_size_bit4, sxatp_stuffitx_declared_size_bit5, sxatp_stuffitx_declared_size_bit6,
+        sxatp_stuffitx_declared_size_bit7, sxatp_stuffitx_attribute_value_bit0, sxatp_stuffitx_attribute_value_bit1,
+        sxatp_stuffitx_attribute_value_bit2, sxatp_stuffitx_attribute_value_bit3, sxatp_stuffitx_attribute_value_bit4,
+        sxatp_stuffitx_attribute_value_bit5, sxatp_stuffitx_attribute_value_bit6, sxatp_stuffitx_attribute_value_bit7,
+        sxatp_stuffitx_algorithm_key_bit0, sxatp_stuffitx_algorithm_key_bit1, sxatp_stuffitx_algorithm_key_bit2,
+        sxatp_stuffitx_algorithm_key_bit3, sxatp_stuffitx_algorithm_key_bit4, sxatp_stuffitx_algorithm_key_bit5,
+        sxatp_stuffitx_algorithm_key_bit6, sxatp_stuffitx_algorithm_key_bit7, sxatp_stuffitx_algorithm_value_bit0,
+        sxatp_stuffitx_algorithm_value_bit1, sxatp_stuffitx_algorithm_value_bit2, sxatp_stuffitx_algorithm_value_bit3,
+        sxatp_stuffitx_algorithm_value_bit4, sxatp_stuffitx_algorithm_value_bit5, sxatp_stuffitx_algorithm_value_bit6,
+        sxatp_stuffitx_algorithm_value_bit7, sxatp_stuffitx_cipher_extra_bit0, sxatp_stuffitx_cipher_extra_bit1,
+        sxatp_stuffitx_cipher_extra_bit2, sxatp_stuffitx_cipher_extra_bit3, sxatp_stuffitx_cipher_extra_bit4,
+        sxatp_stuffitx_cipher_extra_bit5, sxatp_stuffitx_cipher_extra_bit6, sxatp_stuffitx_cipher_extra_bit7,
+        sxatp_stuffitx_fork_type_bit0, sxatp_stuffitx_fork_type_bit1, sxatp_stuffitx_fork_type_bit2,
+        sxatp_stuffitx_fork_type_bit3, sxatp_stuffitx_fork_type_bit4, sxatp_stuffitx_fork_type_bit5,
+        sxatp_stuffitx_fork_type_bit6, sxatp_stuffitx_fork_type_bit7, sxatp_stuffitx_root_value_bit0,
+        sxatp_stuffitx_root_value_bit1, sxatp_stuffitx_root_value_bit2, sxatp_stuffitx_root_value_bit3,
+        sxatp_stuffitx_root_value_bit4, sxatp_stuffitx_root_value_bit5, sxatp_stuffitx_root_value_bit6,
+        sxatp_stuffitx_root_value_bit7, sxatp_stuffitx_block_size_bit0, sxatp_stuffitx_trailer_size_bit0, sxatp_stuffitx_crc32,
+        sxatp_powerarc_header, sxatp_powerarc_bzip2_stream, sxatp_powerarc_bzip2_first_block, sxatp_powerarc_bzip2_empty_end,
+        sxatp_binhex_banner, sxatp_binhex_delimiter, sxatp_binhex_encoded_run, sxatp_transport_line_end,
+        sxatp_transport_whitespace, sxatp_qp_literal_run, sxatp_qp_hex_escape, sxatp_qp_soft_break, sxatp_qp_padding,
+        sxatp_shar_command, sxatp_shar_redirection, sxatp_shar_heredoc_operator, sxatp_shar_delimiter, sxatp_shar_name,
+        sxatp_shar_quoted_marker, sxatp_shar_terminator, sxatp_shar_prefix_expression, sxatp_shar_uu_begin], sx_archivetransport_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivetransport_build, false);
+}

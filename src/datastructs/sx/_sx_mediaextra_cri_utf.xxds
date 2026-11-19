@@ -1,0 +1,93 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/cri_utf/xx_cri_utf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_utf_header_fields = layout([chars("magic", 4, SIGNATURE), u32("table_size_after_prefix", SIZE), u16("version", ID),
+    u16("rows_relative", OFFSET), u32("strings_relative", OFFSET), u32("data_relative", OFFSET),
+    u32("table_name_offset", OFFSET), u16("column_count", COUNT), u16("row_size", SIZE), u32("row_count", COUNT)]);
+var sxmx_utf_header = sxLayout(0x602E007C, "utf_header", BE, sxmx_utf_header_fields);
+var sxmx_utf_column_fields = layout([u8("storage_and_type", FLAGS), u32("name_offset", OFFSET)]);
+var sxmx_utf_column = sxLayout(0x602E007D, "utf_column", BE, sxmx_utf_column_fields);
+var sxmx_utf_u8_fields = layout([u8("value")]);
+var sxmx_utf_u8 = sxLayout(0x602E007E, "utf_u8", BE, sxmx_utf_u8_fields);
+var sxmx_utf_i8_fields = layout([i8("value")]);
+var sxmx_utf_i8 = sxLayout(0x602E007F, "utf_i8", BE, sxmx_utf_i8_fields);
+var sxmx_utf_u16_fields = layout([u16("value")]);
+var sxmx_utf_u16 = sxLayout(0x602E0080, "utf_u16", BE, sxmx_utf_u16_fields);
+var sxmx_utf_i16_fields = layout([i16("value")]);
+var sxmx_utf_i16 = sxLayout(0x602E0081, "utf_i16", BE, sxmx_utf_i16_fields);
+var sxmx_utf_u32_fields = layout([u32("value")]);
+var sxmx_utf_u32 = sxLayout(0x602E0082, "utf_u32", BE, sxmx_utf_u32_fields);
+var sxmx_utf_i32_fields = layout([i32("value")]);
+var sxmx_utf_i32 = sxLayout(0x602E0083, "utf_i32", BE, sxmx_utf_i32_fields);
+var sxmx_utf_u64_fields = layout([u64("value")]);
+var sxmx_utf_u64 = sxLayout(0x602E0084, "utf_u64", BE, sxmx_utf_u64_fields);
+var sxmx_utf_i64_fields = layout([i64("value")]);
+var sxmx_utf_i64 = sxLayout(0x602E0085, "utf_i64", BE, sxmx_utf_i64_fields);
+var sxmx_utf_float_fields = layout([field("value", "float", 4)]);
+var sxmx_utf_float = sxLayout(0x602E0086, "utf_float", BE, sxmx_utf_float_fields);
+var sxmx_utf_double_fields = layout([field("value", "double", 8)]);
+var sxmx_utf_double = sxLayout(0x602E0087, "utf_double", BE, sxmx_utf_double_fields);
+var sxmx_utf_string_fields = layout([u32("string_offset", OFFSET)]);
+var sxmx_utf_string = sxLayout(0x602E0088, "utf_string", BE, sxmx_utf_string_fields);
+var sxmx_utf_binary_fields = layout([u32("data_relative", OFFSET), u32("data_size", SIZE)]);
+var sxmx_utf_binary = sxLayout(0x602E0089, "utf_binary", BE, sxmx_utf_binary_fields);
+var sxmx_utf_guid_fields = layout([blob("guid", 16, ID)]);
+var sxmx_utf_guid = sxLayout(0x602E008A, "utf_guid", BE, sxmx_utf_guid_fields);
+function sxmx_utf(v) {
+    if (!sxmx_row(v, sxmx_utf_header, 0, v.n)) {
+        return false;
+    }
+    var ls = [sxmx_utf_u8, sxmx_utf_i8, sxmx_utf_u16, sxmx_utf_i16, sxmx_utf_u32, sxmx_utf_i32, sxmx_utf_u64, sxmx_utf_i64, sxmx_utf_float, sxmx_utf_double, sxmx_utf_string, sxmx_utf_binary, sxmx_utf_guid];
+    var sizes = [1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 4, 8, 16];
+    var kinds = [];
+    var flags = [];
+    var positions = [];
+    var width = 0;
+    var at = 32;
+    var row = 8 + sxmx_u16(v.p, 10, true);
+    var strings = 8 + sxmx_u32(v.p, 12, true);
+    var n = sxmx_u16(v.p, 24, true);
+    var rows = sxmx_u32(v.p, 28, true);
+    var stride = sxmx_u16(v.p, 26, true);
+    if (n > 128 || rows > 1024 || row > strings || strings > v.n) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxmx_row(v, sxmx_utf_column, at, row)) {
+            return false;
+        }
+        kinds[i] = v.p[at] & 15;
+        flags[i] = v.p[at] & 0xF0;
+        positions[i] = width;
+        at += 5;
+        if (kinds[i] > 12) {
+            return false;
+        }
+        if (flags[i] & 0x20) {
+            if (!sxmx_row(v, ls[kinds[i]], at, row)) {
+                return false;
+            }
+            at += sizes[kinds[i]];
+        }
+        if (flags[i] & 0x40) {
+            width += sizes[kinds[i]];
+        }
+    }
+    if (width !== stride || !sxmx_need(v, row, rows * stride, strings)) {
+        return false;
+    }
+    for (var j = 0; j < rows; j++) {
+        for (i = 0; i < n; i++) {
+            if (flags[i] & 0x40 && !sxmx_row(v, ls[kinds[i]], row + j * stride + positions[i], strings)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_cri_utf_build(v) {
+    return sxmx_utf(v);
+}

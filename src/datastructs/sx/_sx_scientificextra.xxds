@@ -1,0 +1,527 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_scientificextra.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_iplab_header_le_fields = layout([chars("byte_order", 4, SIGNATURE), u32("version_size", SIZE),
+    chars("version", 4, ID), chars("data_tag", 4, SIGNATURE), u32("data_size", SIZE), u32("width", COUNT), u32("height", COUNT),
+    u32("channels", COUNT), u32("z_planes", COUNT), u32("time_points", COUNT), u32("sample_type", ID)]);
+var sxscx_iplab_header_le = sxLayout(0x60310004, "iplab_header_le", LE, sxscx_iplab_header_le_fields);
+var sxscx_iplab_header_be_fields = layout([chars("byte_order", 4, SIGNATURE), u32("version_size", SIZE),
+    chars("version", 4, ID), chars("data_tag", 4, SIGNATURE), u32("data_size", SIZE), u32("width", COUNT), u32("height", COUNT),
+    u32("channels", COUNT), u32("z_planes", COUNT), u32("time_points", COUNT), u32("sample_type", ID)]);
+var sxscx_iplab_header_be = sxLayout(0x60310007, "iplab_header_be", BE, sxscx_iplab_header_be_fields);
+var sxscx_fgb_header_geometry_type_fields = layout([u8("geometry_type", ID)]);
+var sxscx_fgb_header_geometry_type = sxLayout(0x60310028, "fgb_header_geometry_type", LE, sxscx_fgb_header_geometry_type_fields);
+var sxscx_fgb_column_type_fields = layout([u8("type", ID)]);
+var sxscx_fgb_column_type = sxLayout(0x60310035, "fgb_column_type", LE, sxscx_fgb_column_type_fields);
+var sxscx_fgb_geometry_type_fields = layout([u8("type", ID)]);
+var sxscx_fgb_geometry_type = sxLayout(0x6031004B, "fgb_geometry_type", LE, sxscx_fgb_geometry_type_fields);
+function sx_scientificextra_static_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60310000 || id >= 0x60320000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60310001:
+        if (r.name === "event_address") {
+            text = "Signed packed sensor address; its bits depend on the AEChip. This is not a memory address.";
+        }
+        if (r.name === "timestamp") {
+            text = "Microseconds; native reader supports nonnegative monotonic timestamps.";
+        }
+        break;
+    case 0x60310002:
+        if (r.name === "timestamp") {
+            text = "Signed sample-clock count; divide by the text header timebase to obtain seconds.";
+        }
+        break;
+    case 0x60310004:
+        if (r.name === "data_size") {
+            text = "Size of the data block after its tag, including its size word and the six dimension/type words.";
+        }
+        break;
+    case 0x60310006:
+        if (r.name === "origin_x") {
+            text = "Spatial grid coordinate, not a file offset.";
+        }
+        if (r.name === "origin_y") {
+            text = "Spatial grid coordinate, not a file offset.";
+        }
+        if (r.name === "origin_z") {
+            text = "Spatial grid coordinate, not a file offset.";
+        }
+        if (r.name === "cell_a") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_b") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_c") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_alpha") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_beta") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_gamma") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "density_multiplier") {
+            text = "Stored density scale multiplied by100.";
+        }
+        break;
+    case 0x60310007:
+        if (r.name === "data_size") {
+            text = "Size of the data block after its tag, including its size word and the six dimension/type words.";
+        }
+        break;
+    case 0x60310009:
+        if (r.name === "origin_x") {
+            text = "Spatial grid coordinate, not a file offset.";
+        }
+        if (r.name === "origin_y") {
+            text = "Spatial grid coordinate, not a file offset.";
+        }
+        if (r.name === "origin_z") {
+            text = "Spatial grid coordinate, not a file offset.";
+        }
+        if (r.name === "cell_a") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_b") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_c") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_alpha") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_beta") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "cell_gamma") {
+            text = "Divide this stored value by cell_multiplier to obtain the cell parameter.";
+        }
+        if (r.name === "density_multiplier") {
+            text = "Stored density scale multiplied by100.";
+        }
+        break;
+    case 0x6031000A:
+        if (r.name === "descriptor_text") {
+            text = "BRIX ASCII descriptor: origin, extent, grid, cell, prod, plus and sigma. Numeric text is preserved as stored.";
+        }
+        break;
+    case 0x6031000B:
+        if (r.name === "header_word_index") {
+            text = "One-based four-byte word index; byte position is four times(value-1).";
+        }
+        break;
+    case 0x6031000C:
+        if (r.name === "record_text") {
+            text = "Fixed80-byte metadata record. Space-delimited numeric/text fields are preserved verbatim.";
+        }
+        break;
+    case 0x60310010:
+        if (r.name === "identifier") {
+            text = "Stored node or element identifier; not a file offset.";
+        }
+        break;
+    case 0x60310011:
+        if (r.name === "coordinate") {
+            text = "Cartesian coordinate; not a file offset.";
+        }
+        break;
+    case 0x60310012:
+        if (r.name === "local_node_index") {
+            text = "One-based local node index, independent of given node IDs.";
+        }
+        break;
+    case 0x60310013:
+        if (r.name === "longitude_interval") {
+            text = "Tenths of arc-seconds.";
+        }
+        if (r.name === "latitude_interval") {
+            text = "Tenths of arc-seconds.";
+        }
+        if (r.name === "absolute_vertical_accuracy") {
+            text = "Metres or NA.";
+        }
+        break;
+    case 0x60310017:
+        if (r.name === "checksum") {
+            text = "Unsigned sum of all bytes in this elevation column, excluding this four-byte checksum.";
+        }
+        break;
+    case 0x60310019:
+        if (r.name === "root_offset") {
+            text = "Forward displacement from this four-byte word to the root table.";
+        }
+        break;
+    case 0x6031001B:
+        if (r.name === "vtable_displacement") {
+            text = "Subtract this signed displacement from the table address to locate its vtable.";
+        }
+        break;
+    case 0x6031001D:
+        if (r.name === "member_offset") {
+            text = "Displacement from the containing table; zero means absent.";
+        }
+        break;
+    case 0x60310020:
+        if (r.name === "relative_offset") {
+            text = "Forward displacement from this word to a table.";
+        }
+        break;
+    case 0x60310021:
+        if (r.name === "point_end_index") {
+            text = "End index in the coordinate array, not a byte offset.";
+        }
+        break;
+    case 0x60310022:
+        if (r.name === "coordinate") {
+            text = "Geometry/envelope floating point value, not a memory address.";
+        }
+        break;
+    case 0x60310024:
+        if (r.name === "child_node_index") {
+            text = "Index of first child node; not a file byte offset.";
+        }
+        break;
+    case 0x60310025:
+        if (r.name === "feature_offset") {
+            text = "Byte displacement from the start of the feature section.";
+        }
+        break;
+    case 0x60310026:
+        if (r.name === "name_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310027:
+        if (r.name === "envelope_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031002D:
+        if (r.name === "columns_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310030:
+        if (r.name === "crs_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310031:
+        if (r.name === "title_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310032:
+        if (r.name === "description_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310033:
+        if (r.name === "metadata_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310034:
+        if (r.name === "name_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310036:
+        if (r.name === "title_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310037:
+        if (r.name === "description_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031003E:
+        if (r.name === "metadata_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031003F:
+        if (r.name === "org_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310041:
+        if (r.name === "name_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310042:
+        if (r.name === "description_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310043:
+        if (r.name === "wkt_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310044:
+        if (r.name === "code_string_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310045:
+        if (r.name === "ends_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310046:
+        if (r.name === "xy_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310047:
+        if (r.name === "z_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310048:
+        if (r.name === "m_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x60310049:
+        if (r.name === "t_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031004A:
+        if (r.name === "tm_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031004C:
+        if (r.name === "parts_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031004D:
+        if (r.name === "geometry_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    case 0x6031004E:
+        if (r.name === "properties_offset") {
+            text = "Forward displacement from this physical word.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+var sx_scientificextra_comment_names = ["Unknown", "Point", "LineString", "Polygon", "MultiPoint", "MultiLineString",
+    "MultiPolygon", "GeometryCollection", "CircularString", "CompoundCurve", "CurvePolygon", "MultiCurve", "MultiSurface",
+    "Curve", "Surface", "PolyhedralSurface", "TIN", "Triangle"];
+var sx_scientificextra_comment_names_2 = ["Byte", "UByte", "Bool", "Short", "UShort", "Int", "UInt", "Long", "ULong", "Float",
+    "Double", "String", "Json", "DateTime", "Binary"];
+function sx_scientificextra_comment(r, id) {
+    if (!sx_scientificextra_static_comment(r, id)) {
+        return false;
+    }
+    if (r === null || r.name === null || id < 0x60310000 || id >= 0x60320000) {
+        return true;
+    }
+    var type = sxVarType(r.value);
+    if (type === 9 /*XX_VAR_TYPE_FLOAT*/ || type === 10 /*XX_VAR_TYPE_DOUBLE*/ || type === 12 /*XX_VAR_TYPE_STRING*/ || type === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var text = null;
+    if ((id === sxscx_iplab_header_le.id || id === sxscx_iplab_header_be.id) && r.name === "sample_type") {
+        switch (v) {
+        case 0:
+            text = "Unsigned8-bit intensity";
+            break;
+        case 1:
+            text = "Signed16-bit intensity";
+            break;
+        case 2:
+            text = "Unsigned16-bit intensity";
+            break;
+        case 3:
+            text = "Signed32-bit intensity";
+            break;
+        case 4:
+            text = "IEEE754 float32";
+            break;
+        case 5:
+            text = "Unsigned8-bit data";
+            break;
+        case 6:
+            text = "Unsigned16-bit data";
+            break;
+        case 10:
+            text = "IEEE754 float64";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === sxscx_fgb_header_geometry_type.id || id === sxscx_fgb_geometry_type.id) {
+        if (v < 18) {
+            text = sx_scientificextra_comment_names[v];
+        }
+    }
+    if (id === sxscx_fgb_column_type.id) {
+        if (v < 15) {
+            text = sx_scientificextra_comment_names_2[v];
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxscx_span(c, at, n) {
+    return c !== null && c.size >= 0 && at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sxscx16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxscx32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxscx_extent(l) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    return (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+}
+function sxscx_add(c, l, at) {
+    var n = sxscx_extent(l);
+    return sxscx_span(c, at, n) && (c.count >= 32000 || sx_add(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n)));
+}
+function sxscx_table(c, l, at, count) {
+    var n = sxscx_extent(l);
+    return !count || count <= Math.floor(SX_I64_MAX / n) && sxscx_span(c, at, n * count) && (c.count >= 32000 || sx_table(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n), count));
+}
+function sxscx_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxscx_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxscx_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxscx_order, true);
+    return !c.failed;
+}
+function sxscx_decimal(p, p_o, n, value) {
+    var v = 0;
+    var i = 0;
+    while (i < n && (p[p_o + i] === 32 || p[p_o + i] === 9)) {
+        i++;
+    }
+    var digit = false;
+    for (; i < n && p[p_o + i] >= 48 /*0*/ && p[p_o + i] <= 57 /*9*/; i++) {
+        if (v > Math.floor((SX_U64_MAX - (p[p_o + i] - 48 /*0*/ < 0 ? p[p_o + i] - 48 /*0*/ + SX_U64_MAX : p[p_o + i] - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        v = sxU64(v * 10 + p[p_o + i] - 48 /*0*/);
+        digit = true;
+    }
+    while (i < n && (p[p_o + i] === 32 || p[p_o + i] === 9 || p[p_o + i] === 13)) {
+        i++;
+    }
+    value[0] = v;
+    return digit && i === n;
+}
+function sx_scientificextra_supports(t) {
+    switch (t) {
+    case "FLATGEOBUF":
+    case "AXONA_TETRODE":
+    case "INIVATION_AEDAT":
+    case "ENSIGHT_GOLD_GEOMETRY":
+    case "DTED_ELEVATION":
+    case "SCANALYTICS_IPLAB":
+    case "DSN6_DENSITY":
+    case "CRYSTALLOGRAPHY_MTZ":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_scientificextra_build(c) {
+    if (c === null || c.size <= 0 || c.size > 134217728 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (ok) {
+        switch (c.f.file_type) {
+        case "FLATGEOBUF":
+            ok = sx_flatgeobuf_build(c, b);
+            break;
+        case "AXONA_TETRODE":
+            ok = sx_axona_tetrode_build(c, b);
+            break;
+        case "INIVATION_AEDAT":
+            ok = sx_inivation_aedat_build(c, b);
+            break;
+        case "ENSIGHT_GOLD_GEOMETRY":
+            ok = sx_ensight_gold_geometry_build(c, b);
+            break;
+        case "DTED_ELEVATION":
+            ok = sx_dted_elevation_build(c, b);
+            break;
+        case "SCANALYTICS_IPLAB":
+            ok = sx_scanalytics_iplab_build(c, b);
+            break;
+        case "DSN6_DENSITY":
+            ok = sx_dsn6_density_build(c, b);
+            break;
+        case "CRYSTALLOGRAPHY_MTZ":
+            ok = sx_crystallography_mtz_build(c, b);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxscx_finish(c);
+}

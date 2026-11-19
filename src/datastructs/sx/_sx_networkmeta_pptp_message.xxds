@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/pptp_message/xx_pptp_message_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_pptp_start_control_connection_fields = layout([u16("protocol_version", ID), u16("reserved", RESERVED),
+    u32("framing_capabilities", FLAGS), u32("bearer_capabilities", FLAGS), u16("maximum_channels", COUNT),
+    u16("firmware_revision", ID), chars("host_name", 64, STRING), chars("vendor_string", 64, STRING)]);
+var sxnm_pptp_start_control_connection = sxLayout(0x6026003E, "pptp_start_control_connection", BE, sxnm_pptp_start_control_connection_fields);
+function sx_pptp_message_build(v) {
+    return sxnm_row(v, sxnm_pptp_control_header, 0, v.n) && sxnm_row(v, sxnm_pptp_start_control_connection, 12, v.n);
+}

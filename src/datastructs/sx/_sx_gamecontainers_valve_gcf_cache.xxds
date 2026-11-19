@@ -1,0 +1,161 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/valve_gcf_cache/xx_valve_gcf_cache_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_gcf_header_fields = layout([u32("marker", SIGNATURE), u32("major_version", ID), u32("minor_version", ID),
+    u32("cache_id", ID), u32("last_version_played", ID), u32("unknown14"), u32("unknown18"), u32("file_bytes", SIZE),
+    u32("block_bytes", SIZE), u32("blocks", COUNT), u32("unknown28")]);
+var sxgco_gcf_header = sxLayout(0x6040004E, "gcf_header", LE, sxgco_gcf_header_fields);
+var sxgco_gcf_block_header_fields = layout([u32("entries", COUNT), u32("used_entries", COUNT), blob("unknown08", 20),
+    u32("checksum", CHECKSUM)]);
+var sxgco_gcf_block_header = sxLayout(0x6040004F, "gcf_block_header", LE, sxgco_gcf_block_header_fields);
+var sxgco_gcf_block_link_fields = layout([u32("next_block", ID)]);
+var sxgco_gcf_block_link = sxLayout(0x60400052, "gcf_block_link", LE, sxgco_gcf_block_link_fields);
+var sxgco_gcf_map_header_fields = layout([u32("entries", COUNT), u32("first_entry", ID), u32("last_entry", ID),
+    u32("unknown0c"), u32("checksum", CHECKSUM)]);
+var sxgco_gcf_map_header = sxLayout(0x60400053, "gcf_map_header", LE, sxgco_gcf_map_header_fields);
+var sxgco_gcf_map_entry_fields = layout([u32("previous_entry", ID), u32("next_entry", ID)]);
+var sxgco_gcf_map_entry = sxLayout(0x60400054, "gcf_map_entry", LE, sxgco_gcf_map_entry_fields);
+var sxgco_gcf_directory_map_fields = layout([u32("unknown00"), u32("unknown04")]);
+var sxgco_gcf_directory_map = sxLayout(0x60400058, "gcf_directory_map", LE, sxgco_gcf_directory_map_fields);
+var sxgco_gcf_directory_link_fields = layout([u32("first_block_entry", ID)]);
+var sxgco_gcf_directory_link = sxLayout(0x60400059, "gcf_directory_link", LE, sxgco_gcf_directory_link_fields);
+var sxgco_gcf_checksum_header_fields = layout([u32("version", ID), u32("checksum_bytes", SIZE)]);
+var sxgco_gcf_checksum_header = sxLayout(0x6040005A, "gcf_checksum_header", LE, sxgco_gcf_checksum_header_fields);
+var sxgco_gcf_info_word_fields = layout([u32("unknown")]);
+var sxgco_gcf_info_word = sxLayout(0x60400060, "gcf_info_word", LE, sxgco_gcf_info_word_fields);
+var sxgco_gcf_directory_index_fields = layout([u32("directory_item", ID)]);
+var sxgco_gcf_directory_index = sxLayout(0x60400061, "gcf_directory_index", LE, sxgco_gcf_directory_index_fields);
+var sxgco_gcf_checksum_map_header_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("items", COUNT),
+    u32("checksums", COUNT)]);
+var sxgco_gcf_checksum_map_header = sxLayout(0x60400062, "gcf_checksum_map_header", LE, sxgco_gcf_checksum_map_header_fields);
+var sxgco_gcf_checksum_map_entry_fields = layout([u32("checksums", COUNT), u32("first_checksum", ID)]);
+var sxgco_gcf_checksum_map_entry = sxLayout(0x60400063, "gcf_checksum_map_entry", LE, sxgco_gcf_checksum_map_entry_fields);
+var sxgco_gcf_checksum_fields = layout([u32("checksum", CHECKSUM)]);
+var sxgco_gcf_checksum = sxLayout(0x60400064, "gcf_checksum", LE, sxgco_gcf_checksum_fields);
+function sxgco_gcf(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var minor = [0];
+    var blocks = [0];
+    var blocksize = [0];
+    var p = 44;
+    var n = [0];
+    var names = [0];
+    var info = [0];
+    var copies = [0];
+    var locals = [0];
+    var dirsize = [0];
+    var dir;
+    var needed;
+    var map = 0;
+    var check = 0;
+    var datahead = 0;
+    var dhsize;
+    if (!sxgco_row(v, sxgco_gcf_header, 0, e) || !sxgco_word(v, 8, 4, false, minor, e) || !sxgco_word(v, 32, 4, false, blocksize, e) || !sxgco_word(v, 36, 4, false, blocks, e) || blocks[0] > 0x1000000 || !sxgco_row(v, sxgco_gcf_block_header, p, e)) {
+        return false;
+    }
+    p += 32;
+    if (!sxgco_table(v, sxgco_gcf_block_entry, p, blocks[0], e)) {
+        return false;
+    }
+    p += 28 * blocks[0];
+    if (!sxgco_row(v, sxgco_gcf_fragment_header, p, e)) {
+        return false;
+    }
+    p += 16;
+    if (!sxgco_table(v, sxgco_gcf_block_link, p, blocks[0], e)) {
+        return false;
+    }
+    p += 4 * blocks[0];
+    if (minor[0] < 6) {
+        if (!sxgco_row(v, sxgco_gcf_map_header, p, e)) {
+            return false;
+        }
+        p += 20;
+        if (!sxgco_table(v, sxgco_gcf_map_entry, p, blocks[0], e)) {
+            return false;
+        }
+        p += 8 * blocks[0];
+    }
+    dir = p;
+    if (!sxgco_row(v, sxgco_gcf_directory_header, p, e) || !sxgco_word(v, p + 12, 4, false, n, e) || !sxgco_word(v, p + 24, 4, false, dirsize, e) || !sxgco_word(v, p + 28, 4, false, names, e) || !sxgco_word(v, p + 32, 4, false, info, e) || !sxgco_word(v, p + 36, 4, false, copies, e) || !sxgco_word(v, p + 40, 4, false, locals, e) || !n[0] || n[0] > 0x100000) {
+        return false;
+    }
+    needed = 56 + n[0] * 28 + names[0] + 4 * (info[0] + n[0] + copies[0] + locals[0]);
+    if (!sxgco_span(v, dir, needed, e) || !sxgco_table(v, sxgco_filename_byte, dir + 56 + n[0] * 28, names[0], e)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var flags = [0];
+        if (!sxgco_word(v, dir + 56 + i * 28 + 12, 4, false, flags, e) || !sxgco_row(v, sxAnd64(flags[0], 0x4000) ? sxgco_gcf_directory_file : sxgco_gcf_directory_folder, dir + 56 + i * 28, e)) {
+            return false;
+        }
+    }
+    p = dir + 56 + n[0] * 28 + names[0];
+    if (!sxgco_table(v, sxgco_gcf_info_word, p, info[0] + n[0], e) || !sxgco_table(v, sxgco_gcf_directory_index, p + 4 * (info[0] + n[0]), copies[0] + locals[0], e)) {
+        return false;
+    }
+    var ends = [dir + needed, dir + dirsize[0], dir + 56 + dirsize[0]];
+    var found = false;
+    var with_ = false;
+    dhsize = minor[0] >= 5 ? 24 : 20;
+    for (i = 0; i < 3 && !found; i++) {
+        for (var j = 0; j < 2 && !found; j++) {
+            var m;
+            var c;
+            var d;
+            var z = [0];
+            var b = [0];
+            var s = [0];
+            var first = [0];
+            var used = [0];
+            var header = minor[0] >= 5 === (j === 0);
+            if (ends[i] < dir + needed || ends[i] > e || !sxgco_span(v, ends[i], (header ? 8 : 0) + n[0] * 4 + 8, e)) {
+                continue;
+            }
+            m = ends[i] + (header ? 8 : 0);
+            c = m + n[0] * 4;
+            if (!sxgco_word(v, c + 4, 4, false, z, e) || z[0] > sxU64(sxU64(e - c) - 8)) {
+                continue;
+            }
+            d = c + 8 + z[0];
+            if (!sxgco_span(v, d, dhsize, e)) {
+                continue;
+            }
+            var q = d + (minor[0] >= 5 ? 4 : 0);
+            if (!sxgco_word(v, q, 4, false, b, e) || !sxgco_word(v, q + 4, 4, false, s, e) || !sxgco_word(v, q + 8, 4, false, first, e) || !sxgco_word(v, q + 12, 4, false, used, e) || b[0] !== blocks[0] || s[0] !== blocksize[0] || used[0] > blocks[0] || first[0] < d + dhsize || first[0] > e) {
+                continue;
+            }
+            map = m;
+            check = c;
+            datahead = d;
+            with_ = header;
+            found = true;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    if (with_ && !sxgco_row(v, sxgco_gcf_directory_map, sxU64(map - 8), e)) {
+        return false;
+    }
+    var sumsize = [0];
+    var magic = [0];
+    var itemcount = [0];
+    var sumcount = [0];
+    if (!sxgco_word(v, check + 4, 4, false, sumsize, e)) {
+        return false;
+    }
+    p = check + 8;
+    if (sumsize[0] >= 16 && sxgco_word(v, p, 4, false, magic, e) && magic[0] === 0x14893721 && sxgco_word(v, p + 8, 4, false, itemcount, e) && sxgco_word(v, p + 12, 4, false, sumcount, e) && itemcount[0] <= Math.floor(sxU64(sumsize[0] - 16) / 8) && sumcount[0] <= Math.floor(sxU64(sxU64(sumsize[0] - 16) - itemcount[0] * 8) / 4)) {
+        if (!sxgco_row(v, sxgco_gcf_checksum_map_header, p, e) || !sxgco_table(v, sxgco_gcf_checksum_map_entry, p + 16, itemcount[0], e) || !sxgco_table(v, sxgco_gcf_checksum, p + 16 + itemcount[0] * 8, sumcount[0], e)) {
+            return false;
+        }
+    }
+    return sxgco_table(v, sxgco_gcf_directory_link, map, n[0], e) && sxgco_row(v, sxgco_gcf_checksum_header, check, e) && sxgco_row(v, minor[0] >= 5 ? sxgco_gcf_data_header5 : sxgco_gcf_data_header3, datahead, e);
+}
+function sx_valve_gcf_cache_build(v) {
+    return sxgco_gcf(v);
+}

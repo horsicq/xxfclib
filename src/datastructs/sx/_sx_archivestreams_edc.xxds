@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/edc/xx_edc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_edc_header_fields = layout([chars("signature", 12, SIGNATURE), chars("name", 12, NONE), u8("eof_marker", SIGNATURE),
+    u8("version"), u8("method"), u32("uncompressed_size", SIZE), u32("member_size", SIZE), u16("reserved"), u16("dos_time"),
+    u16("dos_date")]);
+var sxas_edc_header = sxLayout(0x60430026, "edc_header", LE, sxas_edc_header_fields);
+function sxas_edc(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var n = [0];
+        if (!sxas_word(c, p + 31, 4, false, n) || n[0] < 41 || !sxas_span(c, p, n[0]) || !sxas_add(c, sxas_edc_header, p)) {
+            return false;
+        }
+        p += n[0];
+    }
+    return true;
+}
+function sx_edc_build(c) {
+    return sxas_edc(c);
+}

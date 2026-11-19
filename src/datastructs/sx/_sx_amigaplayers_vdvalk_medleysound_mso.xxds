@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/vdvalk_medleysound_mso/xx_vdvalk_medleysound_mso_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxamip_relative_target32(v, at, out, end) {
+    var x = [0];
+    if (!sxamip_be(v, at, 4, x, 0, end)) {
+        return false;
+    }
+    var d = sxAnd64(x[0], 0x80000000) ? (x[0] >= SX_I64_MAX ? x[0] - SX_U64_MAX : x[0]) - 4294967296 : (x[0] >= SX_I64_MAX ? x[0] - SX_U64_MAX : x[0]);
+    if (d < 0) {
+        if (at < sxU64((-d >= SX_I64_MAX ? -d - SX_U64_MAX : -d))) {
+            return false;
+        }
+        out[0] = sxU64(at - sxU64((-d >= SX_I64_MAX ? -d - SX_U64_MAX : -d)));
+    } else {
+        if ((d < 0 ? d + SX_U64_MAX : d) > sxU64(end - at)) {
+            return false;
+        }
+        out[0] = at + (d < 0 ? d + SX_U64_MAX : d);
+    }
+    return out[0] <= end;
+}
+function sxamip_mso(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var table = [0];
+    var n = [0];
+    var target = [0];
+    if (!sxamip_eq(v, 0, "MSOB", 4, e) || !sxamip_row(v, sxamip_mso_header, 0, e)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxamip_relative_target32(v, (4 + ((4 * i) >>> 0)) >>> 0, target, e)) {
+            return false;
+        }
+    }
+    if (!sxamip_relative_target32(v, 4, table, e)) {
+        return false;
+    }
+    if (table[0] < 2 || !sxamip_be(v, sxU64(table[0] - 2), 2, n, 0, e) || !sxamip_row(v, sxamip_count16, sxU64(table[0] - 2), e) || n[0] > 255 || !sxamip_span(v, table[0], 4 * (n[0] + 1), e)) {
+        return false;
+    }
+    for (i = 1; i <= n[0]; i++) {
+        var at = table[0] + i * 4;
+        if (!sxamip_relative_target32(v, at, target, e) || !sxamip_row(v, sxamip_relative32, at, e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_vdvalk_medleysound_mso_build(v) {
+    return sxamip_mso(v);
+}

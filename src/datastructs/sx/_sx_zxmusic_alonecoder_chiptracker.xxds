@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/alonecoder_chiptracker/xx_alonecoder_chiptracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_chiptracker_note_fields = layout([u8("note_command", FLAGS)]);
+var sxzxm_chiptracker_note = sxLayout(0x608A0052, "chiptracker_note", LE, sxzxm_chiptracker_note_fields);
+var sxzxm_chiptracker_parameter_fields = layout([u8("sample_parameter", FLAGS)]);
+var sxzxm_chiptracker_parameter = sxLayout(0x608A0053, "chiptracker_parameter", LE, sxzxm_chiptracker_parameter_fields);
+function sxzxm_chip(c) {
+    var n = [0];
+    var v = [0];
+    if (!sxzxm_put(c, sxzxm_chiptracker_header, 0, 1)) {
+        return false;
+    }
+    if (!sxzxm_opt(c, sxzxm_chiptracker_sample, 43, 16) || !sxzxm_opt(c, sxzxm_chiptracker_sample_name, 128, 16) || !sxzxm_opt(c, sxzxm_zx_position, 256, 256)) {
+        return false;
+    }
+    var patterns = 0;
+    if (sxzxm_u8(c, 41, n)) {
+        for (var i = 0; i <= n[0]; i++) {
+            if (!sxzxm_u8(c, (256 + i) >>> 0, v) || v[0] >= 31) {
+                break;
+            }
+            if (v[0] + 1 > patterns) {
+                patterns = v[0] + 1;
+            }
+        }
+    }
+    for (i = 0; i < patterns; i++) {
+        var p = (512 + ((512 * i) >>> 0)) >>> 0;
+        if (!sxzxm_opt(c, sxzxm_chiptracker_note, p, 256) || !sxzxm_opt(c, sxzxm_chiptracker_parameter, p + 256, 256)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_alonecoder_chiptracker_build(c) {
+    return sxzxm_chip(c);
+}

@@ -1,0 +1,138 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/emax_disk/xx_emax_disk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsb_emaxutil_marker_fields = layout([chars("producer_marker", 39, SIGNATURE)]);
+var sxsb_emaxutil_marker = sxLayout(0x603A0001, "emaxutil_marker", LE, sxsb_emaxutil_marker_fields);
+var sxsb_emax_bank_header_fields = layout([field("preset_addresses", "uint16[100]", 200, VA), u16("allocation_address", VA),
+    u16("unknown_0ca"), u32("unknown_0cc"), u32("selected_preset"), field("sequence_addresses", "uint32[51]", 204, VA),
+    u32("lowest_sample_entry_address", VA), u32("highest_sample_entry_address", VA), u32("sample_memory_bytes_used", SIZE)]);
+var sxsb_emax_bank_header = sxLayout(0x603A0002, "emax_bank_header", LE, sxsb_emax_bank_header_fields);
+var sxsb_emax_preset_header_fields = layout([chars("name", 12, NONE), field("opaque_preset_parameters", "byte[23]", 23),
+    u8("key_area_count", COUNT), bytes("key_area_map", 88)]);
+var sxsb_emax_preset_header = sxLayout(0x603A0003, "emax_preset_header", LE, sxsb_emax_preset_header_fields);
+var sxsb_emax_key_area_fields = layout([u8("flags", FLAGS), u8("velocity_crossfade_encoded"), u8("primary_voice"),
+    u8("secondary_voice")]);
+var sxsb_emax_key_area = sxLayout(0x603A0004, "emax_key_area", LE, sxsb_emax_key_area_fields);
+var sxsb_emax_voice_fields = layout([u32("amplitude_envelope_and_lfo_rate", FLAGS), u32("lfo_tuning_and_velocity", FLAGS),
+    u32("level_velocity_and_chorus", FLAGS), u8("original_key"), u8("sample_index"), field("opaque_0e", "byte[2]", 2),
+    u8("filter_cutoff_encoded", FLAGS), u8("filter_q_encoded", FLAGS), u8("filter_envelope_amount_encoded", FLAGS),
+    u8("opaque_13"), u32("filter_envelope_and_flags", FLAGS), u8("keyboard_tracking_and_pan", FLAGS),
+    u8("lfo_filter_encoded", FLAGS), u16("delay_attenuation_chorus", FLAGS), field("opaque_1c", "byte[4]", 4)]);
+var sxsb_emax_voice = sxLayout(0x603A0005, "emax_voice", LE, sxsb_emax_voice_fields);
+var sxsb_emax_sample_entry_fields = layout([u32("unused_00"), u32("sample_start", VA), u32("sample_end", VA),
+    u32("sustain_loop_start", VA), u32("sustain_loop_end", VA), u32("release_loop_start", VA), u32("release_loop_end", VA),
+    u8("flags", FLAGS), u8("sample_rate_index", ID), u16("unused_1e")]);
+var sxsb_emax_sample_entry = sxLayout(0x603A0006, "emax_sample_entry", LE, sxsb_emax_sample_entry_fields);
+function sxsb_emax(c) {
+    var h = [];
+    var p = [];
+    var a = [];
+    var v = [];
+    var origin = 39;
+    if (c.size !== 552999 || !sxsb_read(c, origin, h, 428) || !sxsb_put(c, sxsb_emaxutil_marker, 0, 1) || !sxsb_put(c, sxsb_emax_bank_header, origin, 1)) {
+        return false;
+    }
+    var low = sxsb32(h, 416);
+    var high = sxsb32(h, 420);
+    if (low < 0x81AC || low > 0xF000 || high !== 0xEFE0 || ((0xF000 - low) >>> 0) % 32) {
+        return true;
+    }
+    var directory = (low - 0x8000) >>> 0;
+    var samples = Math.floor(((0xF000 - low) >>> 0) / 32);
+    if (samples && !sxsb_put(c, sxsb_emax_sample_entry, origin + directory, samples)) {
+        return false;
+    }
+    for (var slot = 0; slot < 100; slot++) {
+        var at = sxsb16(h, (slot * 2) >>> 0);
+        if (at < 0x81AC || at >= low) {
+            continue;
+        }
+        var off = (at - 0x8000) >>> 0;
+        if (sxU64(directory - off) < 124 || !sxsb_read(c, origin + off, p, 124)) {
+            continue;
+        }
+        var valid = true;
+        var nonblank = false;
+        for (var i = 0; i < 12; i++) {
+            if (p[i] < 32 || p[i] > 126) {
+                valid = false;
+            }
+            if (p[i] !== 32) {
+                nonblank = true;
+            }
+        }
+        var areas = p[35];
+        var voices = 0;
+        if (!valid || !nonblank || !areas || areas > 88 || sxU64(directory - off) < 124 + areas * 4) {
+            continue;
+        }
+        for (i = 0; i < 88; i++) {
+            if (p[(36 + i) >>> 0] !== 255 && p[(36 + i) >>> 0] >= areas) {
+                valid = false;
+            }
+        }
+        if (!valid) {
+            continue;
+        }
+        for (i = 0; i < areas; i++) {
+            if (!sxsb_read(c, origin + off + 124 + ((4 * i) >>> 0), a, 4)) {
+                return false;
+            }
+            if (a[2] === 255) {
+                valid = false;
+                break;
+            }
+            if (a[2] + 1 > voices) {
+                voices = a[2] + 1;
+            }
+            if (a[0] & 16) {
+                if (a[3] === 255) {
+                    valid = false;
+                    break;
+                }
+                if (a[3] + 1 > voices) {
+                    voices = a[3] + 1;
+                }
+            }
+        }
+        var vo = off + 124 + ((4 * areas) >>> 0);
+        var end = vo + voices * 32;
+        if (!valid || end > directory) {
+            continue;
+        }
+        for (i = 0; i < voices; i++) {
+            if (!sxsb_read(c, origin + vo + ((i * 32) >>> 0), v, 32)) {
+                return false;
+            }
+            if (v[12] >= 88 || v[13] >= samples) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid) {
+            continue;
+        }
+        var overlap = false;
+        for (i = 0; i < c.count; i++) {
+            var x = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+            var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+            if (x < origin + end && origin + off < x + z) {
+                overlap = true;
+                break;
+            }
+        }
+        if (overlap) {
+            continue;
+        }
+        if (!sxsb_put(c, sxsb_emax_preset_header, origin + off, 1) || !sxsb_put(c, sxsb_emax_key_area, origin + off + 124, areas) || !sxsb_put(c, sxsb_emax_voice, origin + vo, voices)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_emax_disk_build(c) {
+    return sxsb_emax(c);
+}

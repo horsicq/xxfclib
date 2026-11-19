@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/adlibvisualcomposer_standardbnk/xx_adlibvisualcomposer_standardbnk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_bnk_header_fields = layout([u8("major", ID), u8("minor", ID), blob("magic", 6, SIGNATURE), u16("used_entries", COUNT),
+    u16("total_entries", COUNT), u32("names_offset", OFFSET), u32("data_offset", OFFSET), blob("reserved", 8, RESERVED)]);
+var sxmw_bnk_header = sxLayout(0x60870010, "bnk_header", LE, sxmw_bnk_header_fields);
+var sxmw_bnk_name_fields = layout([u16("data_index", ID), u8("used", FLAGS), chars("name", 9, NONE)]);
+var sxmw_bnk_name = sxLayout(0x60870011, "bnk_name", LE, sxmw_bnk_name_fields);
+var sxmw_bnk_operator_fields = layout([u8("key_scale_level"), u8("multiplier"), u8("feedback"), u8("attack"),
+    u8("sustain_level"), u8("sustained", FLAGS), u8("decay"), u8("release"), u8("output_level"), u8("tremolo", FLAGS),
+    u8("vibrato", FLAGS), u8("key_scale_rate", FLAGS), u8("connection", FLAGS)]);
+var sxmw_bnk_operator = sxLayout(0x60870013, "bnk_operator", LE, sxmw_bnk_operator_fields);
+var sxmw_bnk_waveforms_fields = layout([u8("modulator_waveform", ID), u8("carrier_waveform", ID)]);
+var sxmw_bnk_waveforms = sxLayout(0x60870014, "bnk_waveforms", LE, sxmw_bnk_waveforms_fields);
+function sxmw_bnk(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var used = [0];
+    var total = [0];
+    var names = [0];
+    var data = [0];
+    var p = [0];
+    if (!sxmw_eq(v, 2, "ADLIB-", 6, end) || !sxmw_u(v, 8, 2, used, 0, end) || !sxmw_u(v, 10, 2, total, 0, end) || used[0] > total[0] || !sxmw_u(v, 12, 4, names, 0, end) || !sxmw_u(v, 16, 4, data, 0, end) || names[0] < 28 || data[0] < names[0] + total[0] * 12 || !sxmw_row(v, sxmw_bnk_header, 0, end) || !sxmw_table(v, sxmw_bnk_name, names[0], total[0], end) || !sxmw_span(v, data[0], total[0] * 30, end)) {
+        return false;
+    }
+    p[0] = data[0];
+    for (var i = 0; i < total[0]; i++) {
+        if (!sxmw_take(v, sxmw_bnk_instrument, p, 1, end) || !sxmw_take(v, sxmw_bnk_operator, p, 2, end) || !sxmw_take(v, sxmw_bnk_waveforms, p, 1, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_adlibvisualcomposer_standardbnk_build(v) {
+    return sxmw_bnk(v);
+}

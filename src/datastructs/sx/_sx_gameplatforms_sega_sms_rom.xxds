@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/sega_sms_rom/xx_sega_sms_rom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_sms_header_fields = layout([blob("signature", 8, SIGNATURE), blob("reserved", 2, RESERVED), u16("checksum", CHECKSUM),
+    u16("product_code_low", ID), u8("product_high_version", FLAGS), u8("region_size", FLAGS)]);
+var sxgp_sms_header = sxLayout(0x60360003, "sms_header", LE, sxgp_sms_header_fields);
+function sxgp_sms(v) {
+    var offsets = [0x1FF0, 0x3FF0, 0x7FF0, 0x8FF0];
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var tag = [];
+    for (var i = 0; i < 4; i++) {
+        if (sxgp_span(v, offsets[i], 16, end) && sxgp_read(v, offsets[i], tag, 8, end) && !sxMemcmp(tag, "TMR SEGA", 8)) {
+            return sxgp_row(v, sxgp_sms_header, offsets[i], end);
+        }
+    }
+    return false;
+}
+function sx_sega_sms_rom_build(v) {
+    return sxgp_sms(v);
+}

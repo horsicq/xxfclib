@@ -1,0 +1,9 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_woz/xx_apple_woz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_apple_woz_build(c) {
+    return sxse_chunks(c, true, false);
+}

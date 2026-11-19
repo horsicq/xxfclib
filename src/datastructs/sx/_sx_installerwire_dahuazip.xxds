@@ -1,0 +1,112 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/dahuazip/xx_dahuazip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiw_installer_zip_local_fields = layout([bytes("signature", 4, SIGNATURE), field("version_needed", "uint16le", 2),
+    field("flags", "uint16le", 2, FLAGS), field("method", "uint16le", 2, ID), field("dos_time", "uint16le", 2),
+    field("dos_date", "uint16le", 2), field("crc32", "uint32le", 4, CHECKSUM), field("compressed_size", "uint32le", 4, SIZE),
+    field("uncompressed_size", "uint32le", 4, SIZE), field("name_length", "uint16le", 2, SIZE),
+    field("extra_length", "uint16le", 2, SIZE)]);
+var sxiw_installer_zip_local = sxLayout(0x60790055, "installer_zip_local", LE, sxiw_installer_zip_local_fields);
+var sxiw_installer_zip_central_fields = layout([field("signature", "uint32le", 4, SIGNATURE),
+    field("version_made_by", "uint16le", 2), field("version_needed", "uint16le", 2), field("flags", "uint16le", 2, FLAGS),
+    field("method", "uint16le", 2, ID), field("dos_time", "uint16le", 2), field("dos_date", "uint16le", 2),
+    field("crc32", "uint32le", 4, CHECKSUM), field("compressed_size", "uint32le", 4, SIZE),
+    field("uncompressed_size", "uint32le", 4, SIZE), field("name_length", "uint16le", 2, SIZE),
+    field("extra_length", "uint16le", 2, SIZE), field("comment_length", "uint16le", 2, SIZE),
+    field("disk_start", "uint16le", 2), field("internal_attributes", "uint16le", 2, FLAGS),
+    field("external_attributes", "uint32le", 4, FLAGS), field("local_header_offset", "uint32le", 4, OFFSET)]);
+var sxiw_installer_zip_central = sxLayout(0x60790056, "installer_zip_central", LE, sxiw_installer_zip_central_fields);
+var sxiw_installer_zip_eocd_fields = layout([field("signature", "uint32le", 4, SIGNATURE), field("disk_number", "uint16le", 2),
+    field("directory_disk", "uint16le", 2), field("disk_entries", "uint16le", 2, COUNT),
+    field("total_entries", "uint16le", 2, COUNT), field("directory_size", "uint32le", 4, SIZE),
+    field("directory_offset", "uint32le", 4, OFFSET), field("comment_length", "uint16le", 2, SIZE)]);
+var sxiw_installer_zip_eocd = sxLayout(0x60790057, "installer_zip_eocd", LE, sxiw_installer_zip_eocd_fields);
+var sxiw_installer_zip_extra_fields = layout([field("tag", "uint16le", 2, ID), field("data_size", "uint16le", 2, SIZE)]);
+var sxiw_installer_zip_extra = sxLayout(0x60790058, "installer_zip_extra", LE, sxiw_installer_zip_extra_fields);
+var sxiw_installer_zip_name_fields = layout([field("installer_zip_name", "uint8", 0)]);
+var sxiw_installer_zip_name = sxLayout(0x60790059, "installer_zip_name", LE, sxiw_installer_zip_name_fields);
+var sxiw_installer_zip_comment_fields = layout([field("installer_zip_comment", "uint8", 0)]);
+var sxiw_installer_zip_comment = sxLayout(0x6079005A, "installer_zip_comment", LE, sxiw_installer_zip_comment_fields);
+function sxiw_zip_extras(c, p, end) {
+    for (var i = 0; p < end && i < 20000; i++) {
+        var z = [0];
+        if (sxU64(end - p) < 4 || !sxiw_word(c, p + 2, 2, false, z) || z[0] > sxU64(sxU64(end - p) - 4)) {
+            return true;
+        }
+        if (!sxiw_add(c, sxiw_installer_zip_extra, p)) {
+            return false;
+        }
+        p += 4 + z[0];
+    }
+    return true;
+}
+function sxiw_dahua(c) {
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var eo = 0;
+    var n = [0];
+    var dir = [0];
+    var ds = [0];
+    var b = [];
+    if (end < 22) {
+        return false;
+    }
+    var begin = end > 65557 ? sxU64(end - 65557) : 0;
+    for (var p = sxU64(end - 22); ; p--) {
+        var z = [0];
+        if (sxiw_read(c, p, b, 4) && !sxMemcmp(b, "PK\x05\x06", 4) && sxiw_word(c, p + 20, 2, false, z) && z[0] <= sxU64(sxU64(end - p) - 22)) {
+            eo = p;
+            break;
+        }
+        if (p === begin) {
+            break;
+        }
+    }
+    if (!eo) {
+        return sxiw_add(c, sxiw_installer_zip_local, 0);
+    }
+    if (!sxiw_add(c, sxiw_installer_zip_eocd, eo) || !sxiw_word(c, eo + 10, 2, false, n) || !sxiw_word(c, eo + 12, 4, false, ds) || !sxiw_word(c, eo + 16, 4, false, dir)) {
+        return false;
+    }
+    var comment = [0];
+    if (sxiw_word(c, eo + 20, 2, false, comment) && !sxiw_text(c, sxiw_installer_zip_comment, eo + 22, comment[0], false)) {
+        return false;
+    }
+    if (!sxiw_span(c, dir[0], ds[0]) || dir[0] + ds[0] > eo || n[0] > Math.floor(ds[0] / 46)) {
+        return true;
+    }
+    p = dir[0];
+    for (var i = 0; i < n[0] && c.count < 20000; i++) {
+        var h = [];
+        if (sxU64(dir[0] + ds[0] - p) < 46 || !sxiw_read(c, p, h, 46) || sxMemcmp(h, "PK\x01\x02", 4)) {
+            break;
+        }
+        var a = sxiw_uint(h, 28, 2, false);
+        var b_2 = sxiw_uint(h, 30, 2, false);
+        z = [sxiw_uint(h, 32, 2, false)];
+        var lo = sxiw_uint(h, 42, 4, false);
+        if (a + b_2 + z[0] > sxU64(sxU64(dir[0] + ds[0] - p) - 46)) {
+            break;
+        }
+        if (!sxiw_add(c, sxiw_installer_zip_central, p) || !sxiw_text(c, sxiw_installer_zip_name, p + 46, a, false) || !sxiw_zip_extras(c, p + 46 + a, p + 46 + a + b_2) || !sxiw_text(c, sxiw_installer_zip_comment, p + 46 + a + b_2, z[0], false)) {
+            return false;
+        }
+        var l = [];
+        if (sxiw_read(c, lo, l, 30) && (!lo && !sxMemcmp(l, "DH\x03\x04", 4) || !sxMemcmp(l, "PK\x03\x04", 4))) {
+            var ln = sxiw_uint(l, 26, 2, false);
+            var ex = sxiw_uint(l, 28, 2, false);
+            if (sxiw_span(c, lo, 30 + ln + ex)) {
+                if (!sxiw_add(c, sxiw_installer_zip_local, lo) || !sxiw_text(c, sxiw_installer_zip_name, lo + 30, ln, false) || !sxiw_zip_extras(c, lo + 30 + ln, lo + 30 + ln + ex)) {
+                    return false;
+                }
+            }
+        }
+        p += 46 + a + b_2 + z[0];
+    }
+    return true;
+}
+function sx_dahuazip_build(c) {
+    return sxiw_dahua(c);
+}

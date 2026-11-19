@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/stos_memory_bank/xx_stos_memory_bank_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_stos_palette_header_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxgco_stos_palette_header = sxLayout(0x60400034, "stos_palette_header", LE, sxgco_stos_palette_header_fields);
+var sxgco_stos_icon_header_fields = layout([u32("bank_id", ID), u16("icons", COUNT)]);
+var sxgco_stos_icon_header = sxLayout(0x60400036, "stos_icon_header", BE, sxgco_stos_icon_header_fields);
+function sxgco_stos(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 0;
+    var id = [0];
+    var n = [0];
+    var total = 0;
+    var off = [0];
+    var magic = [];
+    if (!sxgco_read(v, 0, magic, 10, e)) {
+        return false;
+    }
+    if (!sxMemcmp(magic, "Lionpoubnk", 10)) {
+        if (!sxgco_row(v, sxgco_stos_header, 0, e)) {
+            return false;
+        }
+        p = 18;
+        var type = [0];
+        if (!sxgco_word(v, 14, 1, false, type, e)) {
+            return false;
+        }
+        if (type[0] !== 0x81) {
+            return true;
+        }
+    }
+    if (!sxgco_word(v, p, 4, true, id, e)) {
+        return false;
+    }
+    if (id[0] === 0x19861987) {
+        if (!sxgco_row(v, sxgco_stos_sprite, p, e)) {
+            return false;
+        }
+        for (var i = 0; i < 3; i++) {
+            if (!sxgco_word(v, p + 16 + ((2 * i) >>> 0), 2, true, n, e) || !sxgco_word(v, p + 4 + ((4 * i) >>> 0), 4, true, off, e)) {
+                return false;
+            }
+            total += n[0];
+            off[0] += p + 4;
+            if (sxgco_span(v, off[0], n[0] * 8, e) && !sxgco_table(v, sxgco_stos_sprite_param, off[0], n[0], e)) {
+                return false;
+            }
+        }
+        var pal = p + 22 + total * 8;
+        if (sxgco_word(v, pal, 4, true, id, e) && id[0] === 0x50414C54) {
+            return sxgco_row(v, sxgco_stos_palette_header, pal, e) && sxgco_table(v, sxgco_stos_color, pal + 4, 16, e);
+        }
+        return true;
+    }
+    if (id[0] === 0x28091960) {
+        if (!sxgco_row(v, sxgco_stos_icon_header, p, e) || !sxgco_word(v, p + 4, 2, true, n, e) || !sxgco_span(v, p + 6, n[0] * 84, e)) {
+            return false;
+        }
+        for (i = 0; i < n[0]; i++) {
+            if (!sxgco_row(v, sxgco_stos_icon, p + 6 + i * 84, e)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_stos_memory_bank_build(v) {
+    return sxgco_stos(v);
+}

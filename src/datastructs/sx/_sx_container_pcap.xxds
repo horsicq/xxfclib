@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/pcap/xx_pcap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_pcap_file_header_fields = layout([u32("magic", SIGNATURE), u16("major_version"), u16("minor_version"),
+    i32("reserved1", RESERVED), u32("reserved2", RESERVED), u32("snapshot_length", SIZE), u32("linktype_and_information", FLAGS)]);
+var sx_c_pcap_file_header_le = sxLayout(0x6002001E, "pcap_file_header_le", LE, sx_c_pcap_file_header_fields);
+var sx_c_pcap_file_header_be = sxLayout(0x6002001F, "pcap_file_header_be", BE, sx_c_pcap_file_header_fields);
+var sx_c_pcap_packet_header_fields = layout([u32("timestamp_seconds", TIMESTAMP), u32("timestamp_fraction"),
+    u32("captured_length", SIZE), u32("original_length", SIZE)]);
+var sx_c_pcap_packet_header_le = sxLayout(0x60020020, "pcap_packet_header_le", LE, sx_c_pcap_packet_header_fields);
+var sx_c_pcap_packet_header_be = sxLayout(0x60020021, "pcap_packet_header_be", BE, sx_c_pcap_packet_header_fields);
+function sx_c_pcap(c) {
+    var h = [];
+    var magic;
+    var snap;
+    var be;
+    var nano;
+    var at = 24;
+    if (!sx_read(c, 0, h, 24)) {
+        return false;
+    }
+    magic = sxGetU32(h, 4, 0, true);
+    be = magic === 0xA1B2C3D4 || magic === 0xA1B23C4D;
+    nano = magic === 0xA1B23C4D || magic === 0x4D3CB2A1;
+    if (!be && magic !== 0xD4C3B2A1 && magic !== 0x4D3CB2A1) {
+        return false;
+    }
+    snap = sxGetU32At(h, 16, 4, 0, be);
+    if (sxGetU16At(h, 4, 2, 0, be) !== 2 || sxGetU16At(h, 6, 2, 0, be) !== 4 || !snap || !sx_add(c, be ? sx_c_pcap_file_header_be : sx_c_pcap_file_header_le, 0, 24)) {
+        return false;
+    }
+    while (at < c.size) {
+        var fraction;
+        var cap;
+        var original;
+        if ((fraction = sx_u32(c, at + 4, be)) === null || (cap = sx_u32(c, at + 8, be)) === null || (original = sx_u32(c, at + 12, be)) === null || fraction >= (nano ? 1000000000 : 1000000) || cap > snap || cap > original || !sx_c_bounds(c, at + 16, cap) || !sx_add(c, be ? sx_c_pcap_packet_header_be : sx_c_pcap_packet_header_le, at, 16) || !sx_raw(c, at + 16, cap)) {
+            return false;
+        }
+        at += 16 + cap;
+    }
+    return true;
+}
+function sx_pcap_build(c) {
+    return sx_c_pcap(c);
+}

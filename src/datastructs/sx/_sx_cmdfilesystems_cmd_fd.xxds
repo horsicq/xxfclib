@@ -1,0 +1,118 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/cmd_fd/xx_cmd_fd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcmdfs_cmd_fd_system_header_fields = layout([bytes("opaque_system_state", 224), bytes("unknown_e0", 2),
+    u8("default_partition"), u8("default_partition_copy"), bytes("unknown_e4", 12), chars("signature", 16, SIGNATURE)]);
+var sxcmdfs_cmd_fd_system_header = sxLayout(0x609A0001, "cmd_fd_system_header", BE, sxcmdfs_cmd_fd_system_header_fields);
+var sxcmdfs_cmd_fd_partition_sector_link_fields = layout([u8("next_track"), u8("next_sector")]);
+var sxcmdfs_cmd_fd_partition_sector_link = sxLayout(0x609A0002, "cmd_fd_partition_sector_link", BE, sxcmdfs_cmd_fd_partition_sector_link_fields);
+var sxcmdfs_cmd_fd_first_partition_fields = layout([u8("partition_type"), bytes("unknown_03", 2), bytes("name_petscii", 16),
+    field("starting_lba", "uint24", 3, OFFSET), bytes("unknown_18", 5), field("length_lba", "uint24", 3, SIZE)]);
+var sxcmdfs_cmd_fd_first_partition = sxLayout(0x609A0003, "cmd_fd_first_partition", BE, sxcmdfs_cmd_fd_first_partition_fields);
+var sxcmdfs_cmd_fd_partition_fields = layout([bytes("unused_prefix", 2), u8("partition_type"), bytes("unknown_03", 2),
+    bytes("name_petscii", 16), field("starting_lba", "uint24", 3, OFFSET), bytes("unknown_18", 5),
+    field("length_lba", "uint24", 3, SIZE)]);
+var sxcmdfs_cmd_fd_partition = sxLayout(0x609A0004, "cmd_fd_partition", BE, sxcmdfs_cmd_fd_partition_fields);
+var sxcmdfs_cmd_native_header_fields = layout([u8("directory_track"), u8("directory_sector"), chars("dos_version", 1, NONE),
+    u8("reserved_03"), bytes("name_petscii", 16), bytes("padding_14", 2), bytes("disk_id", 2), u8("padding_18"),
+    chars("dos_type", 2, NONE), bytes("padding_1b", 2), bytes("reserved_1d", 3), u8("bam_track"), u8("bam_sector")]);
+var sxcmdfs_cmd_native_header = sxLayout(0x609A0005, "cmd_native_header", BE, sxcmdfs_cmd_native_header_fields);
+var sxcmdfs_cmd_native_bam_header_fields = layout([bytes("unused_link", 2), chars("dos_version", 1, NONE),
+    u8("dos_version_complement"), bytes("disk_id", 2), u8("flags", FLAGS), u8("reserved_07"), u8("track_count", COUNT)]);
+var sxcmdfs_cmd_native_bam_header = sxLayout(0x609A0006, "cmd_native_bam_header", BE, sxcmdfs_cmd_native_bam_header_fields);
+function sxcmdfs_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxcmdfs_compare(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxcmdfs_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxcmdfs_compare, true);
+    for (var i = 0; i < n; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), sxI64(sxU64(at - end)))) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && !sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), c.size - (end >= SX_I64_MAX ? end - SX_U64_MAX : end))) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxcmdfs_compare, true);
+    return !c.failed;
+}
+function sx_cmd_fd_build(c) {
+    var density;
+    var system;
+    var table;
+    var starts = [];
+    var lengths = [];
+    var np = 0;
+    var h = [];
+    density = c.f.file_type === "CMD_D1M" ? 1 : c.f.file_type === "CMD_D2M" ? 2 : 4;
+    if (c.size !== (density * 829440 >= SX_I64_MAX ? density * 829440 - SX_U64_MAX : density * 829440)) {
+        return false;
+    }
+    system = density * 819200;
+    table = system + 2048;
+    if (!sxcmdfs_span(c, system + 1280, 256) || !sx_read(c, (system + 1280 >= SX_I64_MAX ? system + 1280 - SX_U64_MAX : system + 1280), h, 256) || sxMemcmpAt(h, 240, "CMD FD SERIES   ", 0, 16)) {
+        return false;
+    }
+    if (!sx_add(c, sxcmdfs_cmd_fd_system_header, (system + 1280 >= SX_I64_MAX ? system + 1280 - SX_U64_MAX : system + 1280), 256)) {
+        return false;
+    }
+    for (var sector = 0; sector < 4; sector++) {
+        var at = table + ((sector * 256) >>> 0);
+        if (!sxcmdfs_span(c, at, 256) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 256)) {
+            return false;
+        }
+        if (!sx_add(c, sxcmdfs_cmd_fd_partition_sector_link, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2) || !sx_add(c, sxcmdfs_cmd_fd_first_partition, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 2, 30) || !sx_table(c, sxcmdfs_cmd_fd_partition, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 32, 32, 7)) {
+            return false;
+        }
+        for (var j = 0; j < 8; j++) {
+            var q = h, q_o = (j * 32) >>> 0;
+            var start = q[q_o + 21] * 0x10000 | q[q_o + 22] * 256 | q[q_o + 23];
+            var len = q[q_o + 29] * 0x10000 | q[q_o + 30] * 256 | q[q_o + 31];
+            if ((sector || j) && q[q_o + 2] === 1 && len && start < density * 1600 && len <= sxU64(density * 1600 - start)) {
+                starts[np] = start * 512;
+                lengths[np++] = len * 512;
+            }
+        }
+    }
+    for (var i = 0; i < np; i++) {
+        start = starts[i];
+        len = lengths[i];
+        var overlap = false;
+        for (j = 0; j < i; j++) {
+            if (start < starts[j] + lengths[j] && starts[j] < start + len) {
+                overlap = true;
+            }
+        }
+        if (overlap || len < 521 || !sxcmdfs_span(c, start + 256, 265)) {
+            continue;
+        }
+        var hd = [];
+        var bam = [];
+        if (!sx_read(c, (start + 256 >= SX_I64_MAX ? start + 256 - SX_U64_MAX : start + 256), hd, 34) || !sx_read(c, (start + 512 >= SX_I64_MAX ? start + 512 - SX_U64_MAX : start + 512), bam, 9)) {
+            return false;
+        }
+        if (hd[2] !== 72 /*H*/ || hd[25] !== 49 /*1*/ || hd[26] !== 72 /*H*/ || bam[2] !== 72 /*H*/ || bam[3] !== 183 || sxMemcmpAt(hd, 22, bam, 4, 2)) {
+            continue;
+        }
+        if (!sx_add(c, sxcmdfs_cmd_native_header, (start >= SX_I64_MAX ? start - SX_U64_MAX : start) + 256, 34) || !sx_add(c, sxcmdfs_cmd_native_bam_header, (start >= SX_I64_MAX ? start - SX_U64_MAX : start) + 512, 9)) {
+            return false;
+        }
+    }
+    return sxcmdfs_finish(c);
+}

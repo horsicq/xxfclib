@@ -1,0 +1,96 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_nullsoft_pimp/xx_sfx_nullsoft_pimp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_pimp_header_fields = layout([chars("signature", 8, SIGNATURE), u8("install_directory_present", FLAGS)]);
+var sxiex_pimp_header = sxLayout(0x60820025, "pimp_header", LE, sxiex_pimp_header_fields);
+var sxiex_pimp_directory_fields = layout([chars("default_directory", 260, NONE)]);
+var sxiex_pimp_directory = sxLayout(0x60820026, "pimp_directory", LE, sxiex_pimp_directory_fields);
+var sxiex_pimp_text_fields = layout([chars("title", 128, NONE), chars("description", 128, NONE)]);
+var sxiex_pimp_text = sxLayout(0x60820027, "pimp_text", LE, sxiex_pimp_text_fields);
+var sxiex_pimp_v1_count_fields = layout([u32("file_count", COUNT)]);
+var sxiex_pimp_v1_count = sxLayout(0x60820028, "pimp_v1_count", LE, sxiex_pimp_v1_count_fields);
+var sxiex_pimp_v2_count_fields = layout([u32("unknown"), u32("file_count", COUNT)]);
+var sxiex_pimp_v2_count = sxLayout(0x60820029, "pimp_v2_count", LE, sxiex_pimp_v2_count_fields);
+var sxiex_pimp_name_length_fields = layout([u32("name_length", SIZE)]);
+var sxiex_pimp_name_length = sxLayout(0x6082002A, "pimp_name_length", LE, sxiex_pimp_name_length_fields);
+var sxiex_pimp_v1_sizes_fields = layout([u32("packed_size", SIZE)]);
+var sxiex_pimp_v1_sizes = sxLayout(0x6082002B, "pimp_v1_sizes", LE, sxiex_pimp_v1_sizes_fields);
+var sxiex_pimp_v2_sizes_fields = layout([u32("packed_size", SIZE), u32("unpacked_size", SIZE)]);
+var sxiex_pimp_v2_sizes = sxLayout(0x6082002C, "pimp_v2_sizes", LE, sxiex_pimp_v2_sizes_fields);
+var sxiex_pimp_command_length_fields = layout([u32("command_length", SIZE)]);
+var sxiex_pimp_command_length = sxLayout(0x6082002D, "pimp_command_length", LE, sxiex_pimp_command_length_fields);
+function sxiex_pimp(c, r) {
+    var p = [0];
+    var at;
+    var dir = [0];
+    if (!sxiex_pe(c, p) || !sxiex_eq(c, p[0], "PIMPFILE", 8) || !sxiex_read(c, p[0] + 8, dir, 1)) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_pimp_header, p[0], 1)) {
+        return false;
+    }
+    at = p[0] + 9;
+    if (dir[0]) {
+        if (!sxiex_span(c, at, 260)) {
+            return true;
+        }
+        if (!sxiex_put(c, sxiex_pimp_directory, at, 1)) {
+            return false;
+        }
+        at += 260;
+    }
+    if (!sxiex_span(c, at, 256)) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_pimp_text, at, 1)) {
+        return false;
+    }
+    at += 256;
+    var known = false;
+    var v2 = false;
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header === at + 8) {
+            known = true;
+            v2 = true;
+            break;
+        }
+        if (m.header === at + 4) {
+            known = true;
+            break;
+        }
+    }
+    if (!known) {
+        return true;
+    }
+    if (!sxiex_put(c, v2 ? sxiex_pimp_v2_count : sxiex_pimp_v1_count, at, 1)) {
+        return false;
+    }
+    var end = 0;
+    for (i = 0; i < r.count; i++) {
+        m = r.items[i];
+        var n = [0];
+        if (!sxiex_u32(c, m.header, n) || m.header_size !== n[0] + (v2 ? 12 : 8) || n[0] > 1024) {
+            continue;
+        }
+        if (!sxiex_put(c, sxiex_pimp_name_length, m.header, 1) || !sxiex_name(c, m.header + 4, n[0]) || !sxiex_put(c, v2 ? sxiex_pimp_v2_sizes : sxiex_pimp_v1_sizes, m.header + 4 + n[0], 1)) {
+            return false;
+        }
+        if (m.data + m.packed > end) {
+            end = m.data + m.packed;
+        }
+    }
+    n = [0];
+    if (end && sxiex_u32(c, end, n) && n[0] <= 65536 && sxiex_span(c, end + 4, n[0])) {
+        if (!sxiex_put(c, sxiex_pimp_command_length, end, 1) || !sxiex_name(c, end + 4, n[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sfx_nullsoft_pimp_build(c, records) {
+    return sxiex_pimp(c, records);
+}

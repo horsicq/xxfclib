@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/xuiz/xx_xuiz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_xuiz_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version"), u32("archive_size", SIZE),
+    u32("unknown"), u32("directory_size", SIZE), u16("member_count", COUNT)]);
+var sxan_xuiz_header = sxLayout(0x6077003B, "xuiz_header", BE, sxan_xuiz_header_fields);
+var sxan_xuiz_member_0_fields = layout([u32("payload_size", SIZE), u32("data_offset", OFFSET), u8("name_units", COUNT)]);
+var sxan_xuiz_member_0 = sxLayout(0x6077003C, "xuiz_member_0", BE, sxan_xuiz_member_0_fields);
+var sxan_xuiz_member_10_fields = layout([bytes("unknown", 10), u32("payload_size", SIZE), u32("data_offset", OFFSET),
+    u8("name_units", COUNT)]);
+var sxan_xuiz_member_10 = sxLayout(0x6077003D, "xuiz_member_10", BE, sxan_xuiz_member_10_fields);
+var sxan_archivenext_utf16be_fields = layout([field("name_units", "uint16", 0)]);
+var sxan_archivenext_utf16be = sxLayout(0x60770045, "archivenext_utf16be", BE, sxan_archivenext_utf16be_fields);
+function sxan_xuiz_walk(c, n, end, extra, emit) {
+    var p = 22;
+    var len = [0];
+    for (var i = 0; i < n; i++) {
+        if (p > end || sxU64(end - p) < (9 + extra) >>> 0 || !sxan_word(c, p + 8 + extra, 1, false, len) || !len[0] || 2 * len[0] > sxU64(sxU64(sxU64(end - p) - 9) - extra)) {
+            return false;
+        }
+        if (emit && (!sxan_add(c, extra ? sxan_xuiz_member_10 : sxan_xuiz_member_0, p) || !sxan_text(c, sxan_archivenext_utf16be, p + 9 + extra, len[0] * 2, false))) {
+            return false;
+        }
+        p += ((9 + extra) >>> 0) + len[0] * 2;
+    }
+    return p === end;
+}
+function sxan_xuiz(c) {
+    var n = [0];
+    var z = [0];
+    if (!sxan_add(c, sxan_xuiz_header, 0) || !sxan_word(c, 16, 4, true, z) || !sxan_word(c, 20, 2, true, n) || !sxan_span(c, 22, z[0])) {
+        return false;
+    }
+    var short_ok = sxan_xuiz_walk(c, n[0], 22 + z[0], 0, false);
+    var long_ok = sxan_xuiz_walk(c, n[0], 22 + z[0], 10, false);
+    if (short_ok === long_ok) {
+        return true;
+    }
+    return sxan_xuiz_walk(c, n[0], 22 + z[0], long_ok ? 10 : 0, true);
+}
+function sx_xuiz_build(c) {
+    var ok = false;
+    ok = sxan_xuiz(c);
+    return !!(c.count && sxan_finish(c));
+}

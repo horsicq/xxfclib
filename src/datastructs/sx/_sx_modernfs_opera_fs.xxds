@@ -1,0 +1,107 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/opera_fs/xx_opera_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_opera_disc_label_fields = layout([u8("record_type", ID), chars("sync", 5, SIGNATURE), u8("record_version", ID),
+    u8("volume_flags", FLAGS), chars("comment", 32, STRING), chars("label", 32, STRING), u32("volume_id", ID),
+    u32("block_size", SIZE), u32("block_count", COUNT), u32("root_id", ID), u32("root_blocks", COUNT),
+    u32("root_block_size", SIZE), u32("last_root_avatar_index"), field("root_avatars", "uint32[8]", 32)]);
+var sxmf_opera_disc_label = sxLayout(0x6042001C, "opera_disc_label", BE, sxmf_opera_disc_label_fields);
+var sxmf_opera_directory_header_fields = layout([i32("next_block"), i32("previous_block"), u32("flags", FLAGS),
+    u32("first_free", OFFSET), u32("first_used", OFFSET)]);
+var sxmf_opera_directory_header = sxLayout(0x6042001D, "opera_directory_header", BE, sxmf_opera_directory_header_fields);
+var sxmf_opera_directory_record_fields = layout([u32("flags", FLAGS), u32("id", ID), chars("type", 4, ID),
+    u32("block_size", SIZE), u32("byte_count", SIZE), u32("block_count", COUNT), u32("burst_blocks", COUNT),
+    u32("gap_blocks", COUNT), chars("name", 32, STRING), u32("last_avatar_index")]);
+var sxmf_opera_directory_record = sxLayout(0x6042001E, "opera_directory_record", BE, sxmf_opera_directory_record_fields);
+var sxmf_opera_avatar_fields = layout([u32("block")]);
+var sxmf_opera_avatar = sxLayout(0x6042001F, "opera_avatar", BE, sxmf_opera_avatar_fields);
+function sxmf_opera(c) {
+    var h = [];
+    if (!sxmf_read(c, 0, h, 0, 132) || h[0] !== 1 || sxMemcmpAt(h, 1, "ZZZZZ", 0, 5) || !sxmf_put(c, sxmf_opera_disc_label, 0, 1)) {
+        return false;
+    }
+    var volbs = sxmf32(h, 76, 1);
+    if (!sxmf_pow(volbs) || volbs < 512 || volbs > 65536) {
+        return true;
+    }
+    var q = sxAllocN(0x1000, sxNew_sxmf_op_task);
+    var b = sxAlloc(0x10000);
+    if (q === null || b === null) {
+        return false;
+    }
+    var count = 1;
+    var index = 0;
+    var ok = true;
+    q[0] = sxCopy_sxmf_op_task(null, { avatar: sxmf32(h, 100, 1), block: sxmf32(h, 92, 1), blocks: sxmf32(h, 88, 1), burst: 0, gap: 0, depth: 0 });
+    while (ok && index < count && c.count < 24000) {
+        var t = sxCopy_sxmf_op_task(null, q[index++]);
+        if (t.depth > 32 || !t.blocks || !sxmf_pow(t.block) || t.block < volbs || t.block > 65536 || !t.burst && t.gap) {
+            continue;
+        }
+        var logical = 0;
+        for (var visit = 0; visit < t.blocks && visit < 4096 && c.count < 24000; visit++) {
+            if (logical >= t.blocks) {
+                break;
+            }
+            var physical = logical;
+            if (t.burst) {
+                physical += Math.floor(logical / t.burst) * t.gap;
+            }
+            if (physical > Math.floor(SX_U64_MAX / t.block) || t.avatar > Math.floor(SX_U64_MAX / volbs) || physical * t.block > SX_U64_MAX - t.avatar * volbs) {
+                break;
+            }
+            var p = t.avatar * volbs + physical * t.block;
+            if (!sxmf_read(c, p, b, 0, t.block)) {
+                break;
+            }
+            var first = sxmf32(b, 16, 1);
+            var free = sxmf32(b, 12, 1);
+            var next = sxmf32(b, 0, 1);
+            if (first < 20 || first > free || free > t.block) {
+                break;
+            }
+            if (!sxmf_put(c, sxmf_opera_directory_header, p, 1)) {
+                ok = false;
+                break;
+            }
+            for (var at = first; at + 68 <= free; ) {
+                var last = sxmf32(b, at + 64, 1);
+                var flags = sxmf32(b, at, 1);
+                if (last > 255 || last + 1 > Math.floor(sxU64(sxU64(free - at) - 68) / 4)) {
+                    break;
+                }
+                if (!sxmf_put(c, sxmf_opera_directory_record, p + at, 1) || !sxmf_put(c, sxmf_opera_avatar, p + at + 68, last + 1)) {
+                    ok = false;
+                    break;
+                }
+                if (sxAnd64(flags, 1) && count < 4096) {
+                    var child = { avatar: sxmf32(b, at + 68, 1), block: sxmf32(b, at + 12, 1), blocks: sxmf32(b, at + 20, 1), burst: sxmf32(b, at + 24, 1), gap: sxmf32(b, at + 28, 1), depth: (t.depth + 1) >>> 0 };
+                    var seen = false;
+                    for (var j = 0; j < count; j++) {
+                        if (q[j].avatar === child.avatar) {
+                            seen = true;
+                        }
+                    }
+                    if (!seen) {
+                        q[count++] = sxCopy_sxmf_op_task(null, child);
+                    }
+                }
+                at += 68 + 4 * (last + 1);
+                if (sxAnd64(flags, 0xC0000000)) {
+                    break;
+                }
+            }
+            if (!ok || next === 4294967295) {
+                break;
+            }
+            logical = next;
+        }
+    }
+    return ok;
+}
+function sx_opera_fs_build(c) {
+    return sxmf_opera(c);
+}

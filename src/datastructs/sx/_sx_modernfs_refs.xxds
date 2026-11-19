@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/refs/xx_refs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_refs_volume_header_fields = layout([field("jump", "byte[3]", 3), chars("signature", 8, SIGNATURE),
+    field("zero", "byte[5]", 5, RESERVED), u32("identifier", SIGNATURE), u16("header_length", SIZE), u16("checksum"),
+    u64("sector_count", COUNT), u32("bytes_per_sector", SIZE), u32("sectors_per_cluster", COUNT), u8("major_version", ID),
+    u8("minor_version", ID), u16("unknown_flags"), u32("unknown1"), u64("unknown2"), u64("volume_serial", ID),
+    u64("container_size"), field("unknown3", "byte[440]", 440)]);
+var sxmf_refs_volume_header = sxLayout(0x60420001, "refs_volume_header", LE, sxmf_refs_volume_header_fields);
+function sxmf_refs(c) {
+    var h = [];
+    if (!sxmf_read(c, 0, h, 0, 64) || sxMemcmpAt(h, 3, "ReFS\x00\x00\x00\x00", 0, 8) || sxMemcmpAt(h, 16, "FSRS", 0, 4) || !sxmf_put(c, sxmf_refs_volume_header, 0, 1)) {
+        return false;
+    }
+    var bs = sxmf32(h, 32, 0);
+    var n = sxmf64(h, 24, 0);
+    if (bs >= 512 && bs <= 65536 && sxmf_pow(bs) && n && n <= Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
+        var p = sxU64(n - 1) * bs;
+        if (p && sxmf_read(c, p, h, 0, 64) && !sxMemcmpAt(h, 3, "ReFS\x00\x00\x00\x00", 0, 8) && !sxMemcmpAt(h, 16, "FSRS", 0, 4) && !sxmf_put(c, sxmf_refs_volume_header, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_refs_build(c) {
+    return sxmf_refs(c);
+}

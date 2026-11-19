@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/edilzss/xx_edilzss_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_edi_header_fields = layout([chars("signature", 7, SIGNATURE), chars("version", 1, NONE)]);
+var sxat_edi_header = sxLayout(0x60640015, "edi_header", LE, sxat_edi_header_fields);
+var sxat_edi_name_fields = layout([chars("name", 13, NONE)]);
+var sxat_edi_name = sxLayout(0x60640016, "edi_name", LE, sxat_edi_name_fields);
+var sxat_edi_size_fields = layout([u32("uncompressed_size", SIZE)]);
+var sxat_edi_size = sxLayout(0x60640017, "edi_size", LE, sxat_edi_size_fields);
+function sxat_edi(c) {
+    var h = [];
+    if (!sxat_add(c, sxat_edi_header, 0)) {
+        return false;
+    }
+    var named = false;
+    if (sxat_read(c, 0, h, 21)) {
+        for (var i = 8; i < 21; i++) {
+            if (!h[i]) {
+                named = i !== 8;
+                break;
+            }
+            if (h[i] < 32 || h[i] >= 127) {
+                break;
+            }
+        }
+    }
+    if (named && !sxat_add(c, sxat_edi_name, 8)) {
+        return false;
+    }
+    var version = [0];
+    if (!sxat_word(c, 7, 1, false, version)) {
+        return false;
+    }
+    return version[0] !== 50 /*2*/ || named && sxat_add(c, sxat_edi_size, 21);
+}
+function sx_edilzss_build(c) {
+    return sxat_edi(c);
+}

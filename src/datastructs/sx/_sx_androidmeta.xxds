@@ -1,0 +1,400 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_androidmeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_am_android_string_pool_header_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u32("string_count", COUNT), u32("style_count", COUNT), u32("flags", FLAGS), u32("strings_start", OFFSET),
+    u32("styles_start", OFFSET)]);
+var sx_am_android_string_pool_header = sxLayout(0x601B0002, "android_string_pool_header", LE, sx_am_android_string_pool_header_fields);
+var sx_am_android_string_offset_fields = layout([u32("string_offset", OFFSET)]);
+var sx_am_android_string_offset = sxLayout(0x601B0003, "android_string_offset", LE, sx_am_android_string_offset_fields);
+var sx_am_android_type_header_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u8("type_id", ID), u8("flags", FLAGS), u16("reserved", RESERVED), u32("entry_count", COUNT), u32("entries_start", OFFSET)]);
+var sx_am_android_type_header = sxLayout(0x601B0010, "android_type_header", LE, sx_am_android_type_header_fields);
+var sx_am_android_table_entry_fields = layout([u16("entry_size", SIZE), u16("flags", FLAGS), u32("key_index", ID)]);
+var sx_am_android_table_entry = sxLayout(0x601B0018, "android_table_entry", LE, sx_am_android_table_entry_fields);
+var sx_am_android_table_map_entry_fields = layout([u16("entry_size", SIZE), u16("flags", FLAGS), u32("key_index", ID),
+    u32("parent_resource_id", ID), u32("value_count", COUNT)]);
+var sx_am_android_table_map_entry = sxLayout(0x601B0019, "android_table_map_entry", LE, sx_am_android_table_map_entry_fields);
+function sx_androidmeta_supports(t) {
+    return t === "ANDROID_BINARY_XML" || t === "ANDROID_RESOURCES_ARSC";
+}
+function sx_am_chunk(c, at, end, q) {
+    var b = [];
+    if (at > end || sxU64(end - at) < 8 || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, 8)) {
+        return false;
+    }
+    var n = sxGetU32(b, 8, 4, false);
+    q.at = at;
+    q.type = sxGetU16(b, 8, 0, false);
+    q.header = sxGetU16(b, 8, 2, false);
+    if (q.header < 8 || n < q.header || n > sxU64(end - at)) {
+        return false;
+    }
+    q.end = at + n;
+    return true;
+}
+function sx_am_pool(c, q) {
+    var n;
+    if (q.header < 28 || (n = sx_u32(c, (q.at >= SX_I64_MAX ? q.at - SX_U64_MAX : q.at) + 8, false)) === null || n > 4096 || n * 4 > sxU64(sxU64(q.end - q.at) - q.header)) {
+        return false;
+    }
+    return sx_add(c, sx_am_android_string_pool_header, (q.at >= SX_I64_MAX ? q.at - SX_U64_MAX : q.at), 28) && sx_table(c, sx_am_android_string_offset, (q.at + q.header >= SX_I64_MAX ? q.at + q.header - SX_U64_MAX : q.at + q.header), 4, n);
+}
+function sx_am_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var d = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > d.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, d);
+        }
+    }
+}
+function sx_am_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sx_am_sort(c);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end || at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sx_am_sort(c);
+    return !c.failed;
+}
+function sx_androidmeta_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var root = sxNew_sx_am_chunk_info();
+    if (!sx_am_chunk(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), root) || root.end !== (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    var ok = (c.f.file_type === "ANDROID_BINARY_XML" ? (sx_android_binary_xml_build(c, sxCopy_sx_am_chunk_info(null, root)) ? 1 : 0) : c.f.file_type === "ANDROID_RESOURCES_ARSC" ? (sx_android_resources_arsc_build(c, sxCopy_sx_am_chunk_info(null, root)) ? 1 : 0) : 0) !== 0;
+    return ok && sx_am_finish(c);
+}
+function sx_am_flags(r, flags, count) {
+    var out = [];
+    var used = 0;
+    var value = sxVarU64(r.value);
+    var known = 0;
+    for (var i = 0; i < count; i++) {
+        known = sxOr64(known, flags[i].mask);
+        if (!sxAnd64(value, flags[i].mask)) {
+            continue;
+        }
+        if (used + 32 >= 1024) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        var p = flags[i].name, p_o = 0;
+        while (sxAt(p, p_o) && used + 24 < 1024) {
+            out[used++] = sxAt(p, p_o++);
+        }
+        if (sxAt(p, p_o)) {
+            return false;
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var started = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var digit = sxAnd64(sxShr64(unknown, shift), 15);
+            if (digit || started || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", digit);
+                started = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_androidmeta_comment_a = [{ mask: 1, name: "SORTED_FLAG" }, { mask: 256, name: "UTF8_FLAG" }];
+var sx_androidmeta_comment_a_2 = [{ mask: 1, name: "FLAG_SPARSE" }, { mask: 2, name: "FLAG_OFFSET16" }];
+var sx_androidmeta_comment_a_3 = [{ mask: 1, name: "FLAG_COMPLEX" }, { mask: 2, name: "FLAG_PUBLIC" },
+    { mask: 4, name: "FLAG_WEAK" }, { mask: 8, name: "FLAG_COMPACT" }];
+var sx_androidmeta_comment_k = ["", "KEYSHIDDEN_NO", "KEYSHIDDEN_YES", "KEYSHIDDEN_SOFT"];
+var sx_androidmeta_comment_nav = ["", "NAVHIDDEN_NO", "NAVHIDDEN_YES"];
+var sx_androidmeta_comment_size = ["", "SCREENSIZE_SMALL", "SCREENSIZE_NORMAL", "SCREENSIZE_LARGE", "SCREENSIZE_XLARGE"];
+var sx_androidmeta_comment_lng = ["", "SCREENLONG_NO", "SCREENLONG_YES"];
+var sx_androidmeta_comment_dir = ["", "LAYOUTDIR_LTR", "LAYOUTDIR_RTL"];
+var sx_androidmeta_comment_mode = ["", "UI_MODE_TYPE_NORMAL", "UI_MODE_TYPE_DESK", "UI_MODE_TYPE_CAR",
+    "UI_MODE_TYPE_TELEVISION", "UI_MODE_TYPE_APPLIANCE", "UI_MODE_TYPE_WATCH", "UI_MODE_TYPE_VR_HEADSET"];
+var sx_androidmeta_comment_night = ["", "UI_MODE_NIGHT_NO", "UI_MODE_NIGHT_YES"];
+var sx_androidmeta_comment_round = ["", "SCREENROUND_NO", "SCREENROUND_YES"];
+var sx_androidmeta_comment_wide = ["", "WIDE_COLOR_GAMUT_NO", "WIDE_COLOR_GAMUT_YES"];
+var sx_androidmeta_comment_hdr = ["", "HDR_NO", "HDR_YES"];
+var sx_androidmeta_comment_a_4 = [{ mask: 1, name: "CONFIG_MCC" }, { mask: 2, name: "CONFIG_MNC" },
+    { mask: 4, name: "CONFIG_LOCALE" }, { mask: 8, name: "CONFIG_TOUCHSCREEN" }, { mask: 16, name: "CONFIG_KEYBOARD" },
+    { mask: 32, name: "CONFIG_KEYBOARD_HIDDEN" }, { mask: 64, name: "CONFIG_NAVIGATION" },
+    { mask: 128, name: "CONFIG_ORIENTATION" }, { mask: 256, name: "CONFIG_DENSITY" }, { mask: 512, name: "CONFIG_SCREEN_SIZE" },
+    { mask: 1024, name: "CONFIG_VERSION" }, { mask: 2048, name: "CONFIG_SCREEN_LAYOUT" },
+    { mask: 4096, name: "CONFIG_UI_MODE" }, { mask: 8192, name: "CONFIG_SMALLEST_SCREEN_SIZE" },
+    { mask: 16384, name: "CONFIG_LAYOUTDIR" }, { mask: 32768, name: "CONFIG_SCREEN_ROUND" },
+    { mask: 65536, name: "CONFIG_COLOR_MODE" }, { mask: 131072, name: "CONFIG_GRAMMATICAL_GENDER" },
+    { mask: 0x20000000, name: "SPEC_STAGED_API" }, { mask: 0x40000000, name: "SPEC_PUBLIC" }];
+var sx_androidmeta_comment_names = ["ORIENTATION_ANY", "ORIENTATION_PORT", "ORIENTATION_LAND", "ORIENTATION_SQUARE"];
+var sx_androidmeta_comment_names_2 = ["TOUCHSCREEN_ANY", "TOUCHSCREEN_NOTOUCH", "TOUCHSCREEN_STYLUS", "TOUCHSCREEN_FINGER"];
+var sx_androidmeta_comment_names_3 = ["KEYBOARD_ANY", "KEYBOARD_NOKEYS", "KEYBOARD_QWERTY", "KEYBOARD_12KEY"];
+var sx_androidmeta_comment_names_4 = ["NAVIGATION_ANY", "NAVIGATION_NONAV", "NAVIGATION_DPAD", "NAVIGATION_TRACKBALL", "NAVIGATION_WHEEL"];
+function sx_androidmeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x601B0000 || id >= 0x601C0000) {
+        return true;
+    }
+    var text = null;
+    if (r.name === "type") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            text = "RES_STRING_POOL_TYPE";
+            break;
+        case 2:
+            text = "RES_TABLE_TYPE";
+            break;
+        case 3:
+            text = "RES_XML_TYPE";
+            break;
+        case 256:
+            text = "RES_XML_START_NAMESPACE_TYPE";
+            break;
+        case 257:
+            text = "RES_XML_END_NAMESPACE_TYPE";
+            break;
+        case 258:
+            text = "RES_XML_START_ELEMENT_TYPE";
+            break;
+        case 259:
+            text = "RES_XML_END_ELEMENT_TYPE";
+            break;
+        case 260:
+            text = "RES_XML_CDATA_TYPE";
+            break;
+        case 384:
+            text = "RES_XML_RESOURCE_MAP_TYPE";
+            break;
+        case 512:
+            text = "RES_TABLE_PACKAGE_TYPE";
+            break;
+        case 513:
+            text = "RES_TABLE_TYPE_TYPE";
+            break;
+        case 514:
+            text = "RES_TABLE_TYPE_SPEC_TYPE";
+            break;
+        default:
+            break;
+        }
+    } else if (r.name === "data_type") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            text = "TYPE_NULL";
+            break;
+        case 1:
+            text = "TYPE_REFERENCE";
+            break;
+        case 2:
+            text = "TYPE_ATTRIBUTE";
+            break;
+        case 3:
+            text = "TYPE_STRING";
+            break;
+        case 4:
+            text = "TYPE_FLOAT";
+            break;
+        case 5:
+            text = "TYPE_DIMENSION";
+            break;
+        case 6:
+            text = "TYPE_FRACTION";
+            break;
+        case 7:
+            text = "TYPE_DYNAMIC_REFERENCE";
+            break;
+        case 8:
+            text = "TYPE_DYNAMIC_ATTRIBUTE";
+            break;
+        case 16:
+            text = "TYPE_INT_DEC";
+            break;
+        case 17:
+            text = "TYPE_INT_HEX";
+            break;
+        case 18:
+            text = "TYPE_INT_BOOLEAN";
+            break;
+        case 28:
+            text = "TYPE_INT_COLOR_ARGB8";
+            break;
+        case 29:
+            text = "TYPE_INT_COLOR_RGB8";
+            break;
+        case 30:
+            text = "TYPE_INT_COLOR_ARGB4";
+            break;
+        case 31:
+            text = "TYPE_INT_COLOR_RGB4";
+            break;
+        default:
+            break;
+        }
+    } else if (r.name === "flags") {
+        if (id === sx_am_android_string_pool_header.id) {
+            return sx_am_flags(r, sx_androidmeta_comment_a, 2);
+        }
+        if (id === sx_am_android_type_header.id) {
+            return sx_am_flags(r, sx_androidmeta_comment_a_2, 2);
+        }
+        if (id === sx_am_android_table_entry.id || id === sx_am_android_table_map_entry.id) {
+            return sx_am_flags(r, sx_androidmeta_comment_a_3, 4);
+        }
+    } else if (r.name === "input_flags" || r.name === "screen_layout" || r.name === "ui_mode" || r.name === "screen_layout2" || r.name === "color_mode") {
+        var v = sxVarU64(r.value);
+        var a = sxAllocN(3, sxNew_sx_am_flag);
+        var n = 0;
+        if (r.name === "input_flags") {
+            {
+                var sel = sxAnd64(v, 3);
+                if (sel && sel < 4) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 3, name: sx_androidmeta_comment_k[sel] });
+                }
+            }
+            {
+                sel = Math.floor(sxAnd64(v, 12) / 4);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 12, name: sx_androidmeta_comment_nav[sel] });
+                }
+            }
+        } else if (r.name === "screen_layout") {
+            {
+                sel = sxAnd64(v, 15);
+                if (sel && sel < 5) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 15, name: sx_androidmeta_comment_size[sel] });
+                }
+            }
+            {
+                sel = Math.floor(sxAnd64(v, 48) / 16);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 48, name: sx_androidmeta_comment_lng[sel] });
+                }
+            }
+            {
+                sel = Math.floor(sxAnd64(v, 192) / 64);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 192, name: sx_androidmeta_comment_dir[sel] });
+                }
+            }
+        } else if (r.name === "ui_mode") {
+            {
+                sel = sxAnd64(v, 15);
+                if (sel && sel < 8) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 15, name: sx_androidmeta_comment_mode[sel] });
+                }
+            }
+            {
+                sel = Math.floor(sxAnd64(v, 48) / 16);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 48, name: sx_androidmeta_comment_night[sel] });
+                }
+            }
+        } else if (r.name === "screen_layout2") {
+            {
+                sel = sxAnd64(v, 3);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 3, name: sx_androidmeta_comment_round[sel] });
+                }
+            }
+        } else {
+            {
+                sel = sxAnd64(v, 3);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 3, name: sx_androidmeta_comment_wide[sel] });
+                }
+            }
+            {
+                sel = Math.floor(sxAnd64(v, 12) / 4);
+                if (sel && sel < 3) {
+                    a[n++] = sxCopy_sx_am_flag(null, { mask: 12, name: sx_androidmeta_comment_hdr[sel] });
+                }
+            }
+        }
+        return sx_am_flags(r, a, n);
+    } else if (r.name === "configuration_flags") {
+        return sx_am_flags(r, sx_androidmeta_comment_a_4, 20);
+    } else if (r.name === "strings_start") {
+        text = "Byte offset from the start of this string-pool chunk";
+    } else if (r.name === "styles_start") {
+        text = "Byte offset from the start of this string-pool chunk; zero means no style data";
+    } else if (r.name === "string_offset") {
+        text = "Byte offset from the string-data area at strings_start";
+    } else if (r.name === "type_strings" || r.name === "key_strings") {
+        text = "Byte offset from the start of this package chunk";
+    } else if (r.name === "type_id_offset") {
+        text = "Type-identifier adjustment, not a byte offset";
+    } else if (r.name === "entries_start") {
+        text = "Byte offset from the start of this resource-type chunk";
+    } else if (r.name === "entry_offset") {
+        text = sxVarU64(r.value) === 4294967295 ? "NO_ENTRY" : "Byte offset from the entry-data area at entries_start";
+    } else if (r.name === "attribute_start") {
+        text = "Byte offset from the start-element extension, after the XML node header";
+    } else if (r.name === "id_index" || r.name === "class_index" || r.name === "style_index") {
+        text = "One-based attribute index; zero means absent";
+    } else if (r.name === "comment_index" || r.name === "namespace_index" || r.name === "raw_value_index" || r.name === "prefix_index") {
+        text = sxVarU64(r.value) === 4294967295 ? "No string reference (0xFFFFFFFF)" : "String-pool index";
+    } else if (r.name === "orientation") {
+        v = sxVarU64(r.value);
+        if (v < 4) {
+            text = sx_androidmeta_comment_names[v];
+        }
+    } else if (r.name === "touchscreen") {
+        v = sxVarU64(r.value);
+        if (v < 4) {
+            text = sx_androidmeta_comment_names_2[v];
+        }
+    } else if (r.name === "keyboard") {
+        v = sxVarU64(r.value);
+        if (v < 4) {
+            text = sx_androidmeta_comment_names_3[v];
+        }
+    } else if (r.name === "navigation") {
+        v = sxVarU64(r.value);
+        if (v < 5) {
+            text = sx_androidmeta_comment_names_4[v];
+        }
+    } else if (r.name === "density") {
+        v = sxVarU64(r.value);
+        text = v === 0 ? "DENSITY_DEFAULT" : v === 65534 ? "DENSITY_ANY" : v === 65535 ? "DENSITY_NONE" : "Dots per inch";
+    } else if (r.name === "grammatical_inflection") {
+        text = "Grammatical-gender qualifier in newer Android resources; reserved padding in older versions";
+    } else if (r.name === "screen_width" || r.name === "screen_height") {
+        text = "Pixels; zero selects any size";
+    } else if (r.name === "screen_width_dp" || r.name === "screen_height_dp" || r.name === "smallest_screen_width_dp") {
+        text = "Density-independent pixels; zero selects any size";
+    } else if (r.name === "language" || r.name === "country") {
+        text = "Two stored locale bytes; may use the packed three-character encoding";
+    } else if (r.name === "data") {
+        text = "Encoded value interpreted according to data_type; references are resource IDs, not byte addresses";
+    } else if (r.name === "reserved" || r.name === "minor_version") {
+        text = "Reserved; expected zero";
+    }
+    return text === null || sxSetComment(r, text);
+}

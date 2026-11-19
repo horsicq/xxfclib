@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apricot_partitions/xx_apricot_partitions_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_v_apricot_parameter_block_fields = layout([u16("bytes_per_sector", SIZE), u8("sectors_per_cluster", COUNT),
+    u16("reserved_sectors", COUNT), u8("fat_count", COUNT), u16("root_entries", COUNT), u16("sector_count", COUNT),
+    u8("media", ID), u16("sectors_per_fat", COUNT), u8("disk_type", ID), u16("start_sector", OFFSET)]);
+var sx_v_apricot_parameter_block = sxLayout(0x6005001B, "apricot_parameter_block", LE, sx_v_apricot_parameter_block_fields);
+var sx_v_apricot_configuration_fields = layout([chars("font_name", 16, STRING), chars("keyboard_name", 16, STRING),
+    u8("bios_minor_version"), u8("bios_major_version"), u8("diagnostics_flag", FLAGS), u8("printer_device"), u8("bell_volume"),
+    u8("enable_cache", FLAGS), u8("enable_graphics", FLAGS), u8("dos_length"), u8("font_length"), u8("keyboard_length"),
+    u16("dos_start", OFFSET), u16("font_start", OFFSET), u16("keyboard_start", OFFSET), u8("keyboard_volume"), u8("autorepeat"),
+    u8("autorepeat_lead_in"), u8("autorepeat_interval"), u8("microscreen_mode"),
+    field("spare_keyboard", "byte[11]", 11, RESERVED), u8("line_mode"), u8("line_width"), u8("image_off", FLAGS),
+    field("spare_screen", "byte[13]", 13, RESERVED), u8("tx_baud_rate"), u8("rx_baud_rate"), u8("tx_bits"), u8("rx_bits"),
+    u8("stop_bits"), u8("parity_check"), u8("parity_type"), u8("tx_xon_xoff"), u8("rx_xon_xoff"), u8("xon_character"),
+    u8("xoff_character"), u16("rx_xon_xoff_buffer", SIZE), u8("dtr_dsr"), u8("cts_rts"), u8("nulls_after_cr"),
+    u8("nulls_after_ff"), u8("lf_after_cr_serial"), u8("bios_error_report_serial"),
+    field("spare_serial", "byte[13]", 13, RESERVED), u8("lf_after_cr_parallel"), u8("select_line"), u8("paper_empty"),
+    u8("fault_line"), u8("bios_error_report_parallel"), field("spare_parallel", "byte[11]", 11, RESERVED),
+    field("spare_winchester", "byte[14]", 14, RESERVED), u8("parking_enabled", FLAGS), u8("format_protection", FLAGS),
+    field("spare_ram_disk", "byte[16]", 16, RESERVED)]);
+var sx_v_apricot_configuration = sxLayout(0x6005001C, "apricot_configuration", LE, sx_v_apricot_configuration_fields);
+var sx_v_apricot_bad_block_entry_fields = layout([u16("block", OFFSET)]);
+var sx_v_apricot_bad_block_entry = sxLayout(0x6005001D, "apricot_bad_block_entry", LE, sx_v_apricot_bad_block_entry_fields);
+var sx_v_apricot_label_footer_fields = layout([field("spare", "byte[63]", 63, RESERVED), u8("cpm_double_sided", FLAGS)]);
+var sx_v_apricot_label_footer = sxLayout(0x6005001E, "apricot_label_footer", LE, sx_v_apricot_label_footer_fields);
+function sx_apricot_partitions_build(c) {
+    if (!sx_add(c, sx_v_apricot_label_header, 0, 80) || !sx_add(c, sx_v_apricot_parameter_block, 80, 16) || !sx_add(c, sx_v_apricot_configuration, 96, 160) || !sx_table(c, sx_v_apricot_bad_block_entry, 256, 2, 32) || !sx_table(c, sx_v_apricot_parameter_block, 320, 16, 8) || !sx_add(c, sx_v_apricot_label_footer, 448, 64)) {
+        return false;
+    }
+    return true;
+}

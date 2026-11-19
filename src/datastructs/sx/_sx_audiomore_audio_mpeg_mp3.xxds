@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_mpeg_mp3/xx_audio_mpeg_mp3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_mp3_frame_header_fields = layout([u16("sync_version_layer_protection", FLAGS),
+    u8("bitrate_rate_padding_private", FLAGS), u8("channel_mode_extension_flags", FLAGS)]);
+var sxau_mp3_frame_header = sxLayout(0x602C002F, "mp3_frame_header", BE, sxau_mp3_frame_header_fields);
+var sxau_id3_header_fields = layout([chars("magic", 3, SIGNATURE), u8("major_version", ID), u8("revision", ID),
+    u8("flags", FLAGS), blob("synchsafe_size", 4)]);
+var sxau_id3_header = sxLayout(0x602C0030, "id3_header", BE, sxau_id3_header_fields);
+var sxau_id3v23_frame_fields = layout([chars("frame_id", 4, ID), u32("payload_size", SIZE), u16("flags", FLAGS)]);
+var sxau_id3v23_frame = sxLayout(0x602C0031, "id3v23_frame", BE, sxau_id3v23_frame_fields);
+var sxau_id3v24_frame_fields = layout([chars("frame_id", 4, ID), blob("synchsafe_size", 4), u16("flags", FLAGS)]);
+var sxau_id3v24_frame = sxLayout(0x602C0032, "id3v24_frame", BE, sxau_id3v24_frame_fields);
+function sxau_syncsafe(p, p_o) {
+    return p[p_o] << 21 | p[p_o + 1] << 14 | p[p_o + 2] << 7 | p[p_o + 3];
+}
+var sxau_mp3_br = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
+var sxau_mp3_rates = [44100, 48000, 32000];
+function sxau_mp3(v) {
+    var at = 0;
+    if (v.n >= 3 && !sxMemcmp(v.p, "ID3", 3)) {
+        if (!sxau_row(v, sxau_id3_header, 0, v.n)) {
+            return false;
+        }
+        var end = 10 + sxau_syncsafe(v.p, 6);
+        if (end > v.n) {
+            return false;
+        }
+        at = 10;
+        while (at < end && v.p[at]) {
+            var v4 = v.p[3] === 4;
+            if (!sxau_row(v, v4 ? sxau_id3v24_frame : sxau_id3v23_frame, at, end)) {
+                return false;
+            }
+            var z = v4 ? sxau_syncsafe(v.p, at + 4) : sxau_u32(v.p, at + 4, true);
+            at += 10;
+            if (!sxau_need(v, at, z, end)) {
+                return false;
+            }
+            at += z;
+        }
+        at = end;
+    }
+    while (at < v.n) {
+        if (!sxau_row(v, sxau_mp3_frame_header, at, v.n)) {
+            return false;
+        }
+        var bi = v.p[at + 2] >> 4;
+        var ri = v.p[at + 2] >> 2 & 3;
+        if (!bi || bi >= 15 || ri >= 3) {
+            return false;
+        }
+        z = (Math.floor(((144000 * sxau_mp3_br[bi]) >>> 0) / sxau_mp3_rates[ri]) + (v.p[at + 2] >> 1 & 1)) >>> 0;
+        if (!sxau_need(v, at, z, v.n)) {
+            return false;
+        }
+        at += z;
+    }
+    return true;
+}
+function sx_audio_mpeg_mp3_build(v) {
+    return sxau_mp3(v);
+}

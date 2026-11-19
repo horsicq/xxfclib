@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lspack10/xx_lspack10_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_lspack10_member_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("flags"), u16("method"),
+    u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), i32("compressed_size", SIZE), i32("uncompressed_size", SIZE),
+    u16("reserved0"), u16("reserved1"), u16("reserved2"), u32("reserved3"), u16("name_size", SIZE), u16("path_size", SIZE)]);
+var sxaf_lspack10_member = sxLayout(0x603C0011, "lspack10_member", LE, sxaf_lspack10_member_fields);
+function sxaf_lspack(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var b = [];
+        if (!sxaf_read(c, p, b, 40) || sxMemcmp(b, "FL\x03\x04", 4) || !sxaf_add(c, sxaf_lspack10_member, p)) {
+            return false;
+        }
+        var n = sxaf_uint(b, 18, 4, false);
+        var names = sxaf_uint(b, 36, 2, false) + sxaf_uint(b, 38, 2, false);
+        p += 40;
+        if (!sxaf_span(c, p, names) || !sxaf_span(c, p + names, n)) {
+            return false;
+        }
+        p += names + n;
+    }
+    return true;
+}
+function sx_lspack10_build(c) {
+    return sxaf_lspack(c);
+}

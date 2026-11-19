@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_abbyy_fine_objects/xx_sfx_abbyy_fine_objects_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_abbyy_count_fields = layout([u32("string_count", COUNT)]);
+var sxiex_abbyy_count = sxLayout(0x6082001C, "abbyy_count", LE, sxiex_abbyy_count_fields);
+var sxiex_abbyy_string_fields = layout([u8("length", SIZE)]);
+var sxiex_abbyy_string = sxLayout(0x6082001D, "abbyy_string", LE, sxiex_abbyy_string_fields);
+var sxiex_abbyy_stream_size_fields = layout([u32("stream_size", SIZE)]);
+var sxiex_abbyy_stream_size = sxLayout(0x6082001E, "abbyy_stream_size", LE, sxiex_abbyy_stream_size_fields);
+var sxiex_abbyy_dates_fields = layout([u32("first_date", TIMESTAMP), u32("second_date", TIMESTAMP), u32("reserved", RESERVED)]);
+var sxiex_abbyy_dates = sxLayout(0x6082001F, "abbyy_dates", LE, sxiex_abbyy_dates_fields);
+var sxiex_abbyy_finear_fields = layout([chars("signature", 6, SIGNATURE), field("marker", "byte[3]", 3, SIGNATURE),
+    u32("crc16_arc", CHECKSUM), u32("unpacked_size", SIZE)]);
+var sxiex_abbyy_finear = sxLayout(0x60820020, "abbyy_finear", LE, sxiex_abbyy_finear_fields);
+var sxiex_abbyy_trailer_fields = layout([u32("overlay_offset", OFFSET), chars("signature", 15, SIGNATURE)]);
+var sxiex_abbyy_trailer = sxLayout(0x60820021, "abbyy_trailer", LE, sxiex_abbyy_trailer_fields);
+function sxiex_abbyy(c, r) {
+    var p = [0];
+    var at;
+    var n = [0];
+    var z = [0];
+    var q = [0];
+    if (c.size >= 19 && sxiex_eq(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 15), "ArcUpdateABBYY\x00", 15) && sxiex_u32(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 19), z)) {
+        p[0] = z[0];
+        if (!sxiex_put(c, sxiex_abbyy_trailer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 19), 1)) {
+            return false;
+        }
+    } else if (!sxiex_pe(c, p)) {
+        return true;
+    }
+    at = p[0];
+    if (!sxiex_u32(c, at, n) || n[0] > 65535) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_abbyy_count, at, 1)) {
+        return false;
+    }
+    at += 4;
+    for (var group = 0; group < 3; group++) {
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxiex_read(c, at, q, 1) || !sxiex_span(c, at + 1, q[0])) {
+                return true;
+            }
+            if (!sxiex_put(c, sxiex_abbyy_string, at, 1) || !sxiex_name(c, at + 1, q[0])) {
+                return false;
+            }
+            at += 1 + q[0];
+        }
+        if (group === 0) {
+            var count = [0];
+            if (!sxiex_u32(c, at, count) || count[0] !== n[0]) {
+                return true;
+            }
+            if (!sxiex_put(c, sxiex_abbyy_count, at, 1)) {
+                return false;
+            }
+            at += 4;
+            if (!sxiex_span(c, at, n[0] * 4)) {
+                return true;
+            }
+            if (!sxiex_put(c, sxiex_abbyy_stream_size, at, n[0])) {
+                return false;
+            }
+            at += n[0] * 4;
+            if (!sxiex_u32(c, at, n) || n[0] > 65535) {
+                return true;
+            }
+            if (!sxiex_put(c, sxiex_abbyy_count, at, 1)) {
+                return false;
+            }
+            at += 4;
+        } else if (group === 1) {
+            n[0] = 3;
+        }
+    }
+    if (sxiex_span(c, at, 12) && !sxiex_put(c, sxiex_abbyy_dates, at, 1)) {
+        return false;
+    }
+    for (i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size === 17 && sxiex_eq(c, m.header, "FINEAR", 6) && !sxiex_put(c, sxiex_abbyy_finear, m.header, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sfx_abbyy_fine_objects_build(c, records) {
+    return sxiex_abbyy(c, records);
+}

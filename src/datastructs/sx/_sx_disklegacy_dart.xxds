@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/dart/xx_dart_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_dart_header_fields = layout([u8("compression", ID), u8("disk_type", ID), u16("disk_size_kib")]);
+var sxdleg_dart_header = sxLayout(0x60750005, "dart_header", BE, sxdleg_dart_header_fields);
+var sxdleg_dart_block_length_fields = layout([u16("encoded_length")]);
+var sxdleg_dart_block_length = sxLayout(0x60750006, "dart_block_length", BE, sxdleg_dart_block_length_fields);
+function sxdleg_dart(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 4) || h[0] > 2) {
+        return false;
+    }
+    var kib = sxdleg16(h, 2, 1);
+    var n = kib <= 800 ? 40 : 72;
+    if (!kib || !sxdleg_span(c, 4, (n * 2) >>> 0)) {
+        return false;
+    }
+    return sxdleg_put(c, sxdleg_dart_header, 0, 1) && sxdleg_put(c, sxdleg_dart_block_length, 4, n);
+}
+function sx_dart_build(c) {
+    return sxdleg_dart(c);
+}

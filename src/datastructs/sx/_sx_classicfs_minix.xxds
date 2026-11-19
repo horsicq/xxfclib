@@ -1,0 +1,131 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/minix/xx_minix_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_minix1_superblock_le_fields = layout([u16("inode_count", COUNT), u16("zone_count_16", COUNT),
+    u16("inode_bitmap_blocks", COUNT), u16("zone_bitmap_blocks", COUNT), u16("first_data_zone"), u16("log_zone_size"),
+    u32("max_file_size", SIZE), u16("magic", SIGNATURE), u16("state", FLAGS)]);
+var sxcf_minix1_superblock_le = sxLayout(0x603D0001, "minix1_superblock_le", LE, sxcf_minix1_superblock_le_fields);
+var sxcf_minix1_superblock_be_fields = layout([u16("inode_count", COUNT), u16("zone_count_16", COUNT),
+    u16("inode_bitmap_blocks", COUNT), u16("zone_bitmap_blocks", COUNT), u16("first_data_zone"), u16("log_zone_size"),
+    u32("max_file_size", SIZE), u16("magic", SIGNATURE), u16("state", FLAGS)]);
+var sxcf_minix1_superblock_be = sxLayout(0x603D0002, "minix1_superblock_be", BE, sxcf_minix1_superblock_be_fields);
+var sxcf_minix2_superblock_le_fields = layout([u16("inode_count", COUNT), u16("zone_count_16", COUNT),
+    u16("inode_bitmap_blocks", COUNT), u16("zone_bitmap_blocks", COUNT), u16("first_data_zone"), u16("log_zone_size"),
+    u32("max_file_size", SIZE), u16("magic", SIGNATURE), u16("state", FLAGS), u32("zone_count", COUNT)]);
+var sxcf_minix2_superblock_le = sxLayout(0x603D0003, "minix2_superblock_le", LE, sxcf_minix2_superblock_le_fields);
+var sxcf_minix2_superblock_be_fields = layout([u16("inode_count", COUNT), u16("zone_count_16", COUNT),
+    u16("inode_bitmap_blocks", COUNT), u16("zone_bitmap_blocks", COUNT), u16("first_data_zone"), u16("log_zone_size"),
+    u32("max_file_size", SIZE), u16("magic", SIGNATURE), u16("state", FLAGS), u32("zone_count", COUNT)]);
+var sxcf_minix2_superblock_be = sxLayout(0x603D0004, "minix2_superblock_be", BE, sxcf_minix2_superblock_be_fields);
+var sxcf_minix3_superblock_le_fields = layout([u32("inode_count", COUNT), u16("padding0", RESERVED),
+    u16("inode_bitmap_blocks", COUNT), u16("zone_bitmap_blocks", COUNT), u16("first_data_zone"), u16("log_zone_size"),
+    u16("padding1", RESERVED), u32("max_file_size", SIZE), u32("zone_count", COUNT), u16("magic", SIGNATURE),
+    u16("padding2", RESERVED), u16("block_size", SIZE), u8("disk_version", ID)]);
+var sxcf_minix3_superblock_le = sxLayout(0x603D0005, "minix3_superblock_le", LE, sxcf_minix3_superblock_le_fields);
+var sxcf_minix3_superblock_be_fields = layout([u32("inode_count", COUNT), u16("padding0", RESERVED),
+    u16("inode_bitmap_blocks", COUNT), u16("zone_bitmap_blocks", COUNT), u16("first_data_zone"), u16("log_zone_size"),
+    u16("padding1", RESERVED), u32("max_file_size", SIZE), u32("zone_count", COUNT), u16("magic", SIGNATURE),
+    u16("padding2", RESERVED), u16("block_size", SIZE), u8("disk_version", ID)]);
+var sxcf_minix3_superblock_be = sxLayout(0x603D0006, "minix3_superblock_be", BE, sxcf_minix3_superblock_be_fields);
+var sxcf_minix1_inode_le_fields = layout([u16("mode", FLAGS), u16("user_id", ID), u32("file_size", SIZE),
+    u32("modification_time", TIMESTAMP), u8("group_id", ID), u8("link_count", COUNT), field("zone_numbers", "uint16[9]", 18)]);
+var sxcf_minix1_inode_le = sxLayout(0x603D0007, "minix1_inode_le", LE, sxcf_minix1_inode_le_fields);
+var sxcf_minix1_inode_be_fields = layout([u16("mode", FLAGS), u16("user_id", ID), u32("file_size", SIZE),
+    u32("modification_time", TIMESTAMP), u8("group_id", ID), u8("link_count", COUNT), field("zone_numbers", "uint16[9]", 18)]);
+var sxcf_minix1_inode_be = sxLayout(0x603D0008, "minix1_inode_be", BE, sxcf_minix1_inode_be_fields);
+var sxcf_minix23_inode_le_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u16("user_id", ID),
+    u16("group_id", ID), u32("file_size", SIZE), u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP),
+    u32("inode_change_time", TIMESTAMP), field("zone_numbers", "uint32[10]", 40)]);
+var sxcf_minix23_inode_le = sxLayout(0x603D0009, "minix23_inode_le", LE, sxcf_minix23_inode_le_fields);
+var sxcf_minix23_inode_be_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u16("user_id", ID),
+    u16("group_id", ID), u32("file_size", SIZE), u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP),
+    u32("inode_change_time", TIMESTAMP), field("zone_numbers", "uint32[10]", 40)]);
+var sxcf_minix23_inode_be = sxLayout(0x603D000A, "minix23_inode_be", BE, sxcf_minix23_inode_be_fields);
+function sxcf_minix(c) {
+    var h = [];
+    var b = [];
+    if (!sxcf_read(c, 1024, h, 32)) {
+        return false;
+    }
+    var o = 0;
+    var v = 0;
+    var names = 0;
+    var imap;
+    var zmap;
+    var first;
+    var shift;
+    var bs = 1024;
+    var ninodes;
+    var zones;
+    for (o = 0; o < 2; o++) {
+        var m = sxcf16(h, 16, o);
+        if (m === 0x137F || m === 0x138F || m === 0x2468 || m === 0x2478) {
+            v = m === 0x137F || m === 0x138F ? 1 : 2;
+            names = m === 0x137F || m === 0x2468 ? 14 : 30;
+            break;
+        }
+        if (sxcf16(h, 24, o) === 0x4D5A) {
+            v = 3;
+            names = 60;
+            break;
+        }
+    }
+    if (!v) {
+        return false;
+    }
+    if (v < 3) {
+        ninodes = sxcf16(h, 0, o);
+        imap = sxcf16(h, 4, o);
+        zmap = sxcf16(h, 6, o);
+        first = sxcf16(h, 8, o);
+        shift = sxcf16(h, 10, o);
+        zones = v === 1 ? sxcf16(h, 2, o) : sxcf32(h, 20, o);
+        if (sxcf16(h, 18, o) > 3) {
+            return false;
+        }
+    } else {
+        ninodes = sxcf32(h, 0, o);
+        imap = sxcf16(h, 6, o);
+        zmap = sxcf16(h, 8, o);
+        first = sxcf16(h, 10, o);
+        shift = sxcf16(h, 12, o);
+        zones = sxcf32(h, 20, o);
+        bs = sxcf16(h, 28, o);
+        if (bs < 1024 || bs > 32768 || !sxcf_pow(bs)) {
+            return false;
+        }
+    }
+    var isize = v === 1 ? 32 : 64;
+    var table = (2 + imap + zmap) * bs;
+    var blocks = Math.floor(sxU64(ninodes * isize + bs - 1) / bs);
+    if (!ninodes || !imap || !zmap || !zones || shift > 4 || first >= zones || first !== sxShr64(2 + imap + zmap + blocks + sxU64(sxShl64(1, shift) - 1), shift) || !sxcf_span(c, 0, zones * ((bs << shift) >>> 0)) || !sxcf_span(c, table, ninodes * isize)) {
+        return false;
+    }
+    if (!sxcf_put(c, v === 1 ? o === 1 ? sxcf_minix1_superblock_be : sxcf_minix1_superblock_le : v === 2 ? o === 1 ? sxcf_minix2_superblock_be : sxcf_minix2_superblock_le : o === 1 ? sxcf_minix3_superblock_be : sxcf_minix3_superblock_le, 1024, 1) || !sxcf_put(c, v === 1 ? o === 1 ? sxcf_minix1_inode_be : sxcf_minix1_inode_le : o === 1 ? sxcf_minix23_inode_be : sxcf_minix23_inode_le, table, ninodes < 262144 ? ninodes : 262144)) {
+        return false;
+    }
+    for (var i = 0; i < ninodes && i < 262144 && c.count < 24000; i++) {
+        if (!sxcf_read(c, table + i * isize, b, isize)) {
+            return false;
+        }
+        if ((sxcf16(b, 0, o) & 0xF000) !== 0x4000) {
+            continue;
+        }
+        var g = { c: c, blocks: zones, unit: sxShl64(bs, shift), pointer_unit: bs, left: sxcf32(b, v === 1 ? 4 : 8, o), order: o, pointer: v === 1 ? 2 : 4, kind: 1, width: (names + (v === 3 ? 4 : 2)) >>> 0, visits: 0, ancestors: [0, 0, 0, 0] };
+        var off = v === 1 ? 14 : 24;
+        var ptrs = v === 1 ? 9 : 10;
+        for (var k = 0; k < ptrs && g.left; k++) {
+            var ptr = v === 1 ? sxcf16(b, off + ((k * 2) >>> 0), o) : sxcf32(b, off + ((k * 4) >>> 0), o);
+            if (!sxcf_pointer(g, ptr, k < 7 ? 0 : (k - 6) >>> 0)) {
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sx_minix_build(c) {
+    return sxcf_minix(c);
+}

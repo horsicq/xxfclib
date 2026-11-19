@@ -1,0 +1,431 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_classicdata.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcd_infogrames_subsong_offset_fields = layout([u16("subsong_offset", OFFSET)]);
+var sxcd_infogrames_subsong_offset = sxLayout(0x60A50001, "infogrames_subsong_offset", BE, sxcd_infogrames_subsong_offset_fields);
+var sxcd_infogrames_song_header_fields = layout([u16("speed"), u16("volume_envelope_offset", OFFSET),
+    u16("period_envelope_offset", OFFSET), u16("channel_0_order_offset", OFFSET), u16("channel_1_order_offset", OFFSET),
+    u16("channel_2_order_offset", OFFSET), u16("channel_3_order_offset", OFFSET), u16("unused_word")]);
+var sxcd_infogrames_song_header = sxLayout(0x60A50002, "infogrames_song_header", BE, sxcd_infogrames_song_header_fields);
+var sxcd_infogrames_command_offset_fields = layout([u16("command_offset", OFFSET)]);
+var sxcd_infogrames_command_offset = sxLayout(0x60A50003, "infogrames_command_offset", BE, sxcd_infogrames_command_offset_fields);
+var sxcd_infogrames_order_fields = layout([u8("command_block_index")]);
+var sxcd_infogrames_order = sxLayout(0x60A50004, "infogrames_order", BE, sxcd_infogrames_order_fields);
+var sxcd_infogrames_order_end_fields = layout([u8("end_marker", ID)]);
+var sxcd_infogrames_order_end = sxLayout(0x60A50005, "infogrames_order_end", BE, sxcd_infogrames_order_end_fields);
+var sxcd_infogrames_volume_envelope_fields = layout([u8("control", FLAGS), u8("phase_0_repeat"), i8("phase_0_delta"),
+    u8("phase_0_delay"), u8("phase_1_repeat"), i8("phase_1_delta"), u8("phase_1_delay"), u8("phase_2_repeat"),
+    i8("phase_2_delta"), u8("phase_2_delay"), u8("phase_3_repeat"), i8("phase_3_delta"), u8("phase_3_delay")]);
+var sxcd_infogrames_volume_envelope = sxLayout(0x60A50006, "infogrames_volume_envelope", BE, sxcd_infogrames_volume_envelope_fields);
+var sxcd_infogrames_period_envelope_fields = layout([u8("unused_byte"), u8("phase_0_repeat"), i8("phase_0_delta"),
+    u8("phase_0_delay"), u8("phase_1_repeat"), i8("phase_1_delta"), u8("phase_1_delay"), u8("phase_2_repeat"),
+    i8("phase_2_delta"), u8("phase_2_delay"), u8("phase_3_repeat"), i8("phase_3_delta"), u8("phase_3_delay")]);
+var sxcd_infogrames_period_envelope = sxLayout(0x60A50007, "infogrames_period_envelope", BE, sxcd_infogrames_period_envelope_fields);
+var sxcd_tme_file_header_fields = layout([u32("song_byte_length", SIZE)]);
+var sxcd_tme_file_header = sxLayout(0x60A50008, "tme_file_header", BE, sxcd_tme_file_header_fields);
+var sxcd_tme_subsong_fields = layout([u8("start_entry"), u8("end_entry"), u8("speed"), u8("channel_mask", FLAGS)]);
+var sxcd_tme_subsong = sxLayout(0x60A50009, "tme_subsong", BE, sxcd_tme_subsong_fields);
+var sxcd_tme_instrument_fields = layout([u32("stored_sample_address", VA), u32("sample_byte_length", SIZE),
+    u32("initial_length_words"), u32("repeat_offset_words", OFFSET), u32("repeat_length_words"), u16("offset_length_encoded"),
+    u16("sample_flags", FLAGS), chars("name", 32, NONE), u8("volume"), u8("unused_byte"), u8("attack_rate"), u8("decay_rate"),
+    u8("release_rate"), u8("attack_level"), u8("decay_level"), u8("release_level")]);
+var sxcd_tme_instrument = sxLayout(0x60A5000A, "tme_instrument", BE, sxcd_tme_instrument_fields);
+var sxcd_tme_instruction_fields = layout([u8("opcode", FLAGS), u8("value"), u16("time")]);
+var sxcd_tme_instruction = sxLayout(0x60A5000B, "tme_instruction", BE, sxcd_tme_instruction_fields);
+var sxcd_tme_arpeggio_fields = layout([u8("length_speed", FLAGS), field("note_steps", "int8[8]", 8)]);
+var sxcd_tme_arpeggio = sxLayout(0x60A5000C, "tme_arpeggio", BE, sxcd_tme_arpeggio_fields);
+var sxcd_tme_lfo_fields = layout([field("waveform", "int8[128]", 128)]);
+var sxcd_tme_lfo = sxLayout(0x60A5000D, "tme_lfo", BE, sxcd_tme_lfo_fields);
+var sxcd_tme_counts_fields = layout([u16("entry_count", COUNT), u16("event_count", COUNT), u16("instructions_word"),
+    chars("name", 32, NONE)]);
+var sxcd_tme_counts = sxLayout(0x60A5000E, "tme_counts", BE, sxcd_tme_counts_fields);
+var sxcd_tme_entry_fields = layout([u8("channel_0_track"), i8("channel_0_instrument_add"), i8("channel_0_note_add"),
+    u8("channel_1_track"), i8("channel_1_instrument_add"), i8("channel_1_note_add"), u8("channel_2_track"),
+    i8("channel_2_instrument_add"), i8("channel_2_note_add"), u8("channel_3_track"), i8("channel_3_instrument_add"),
+    i8("channel_3_note_add")]);
+var sxcd_tme_entry = sxLayout(0x60A5000F, "tme_entry", BE, sxcd_tme_entry_fields);
+var sxcd_tme_event_fields = layout([u8("note", FLAGS), u8("sample"), u8("effect_list"), i8("volume_add"), u8("flags", FLAGS),
+    u8("parameter")]);
+var sxcd_tme_event = sxLayout(0x60A50010, "tme_event", BE, sxcd_tme_event_fields);
+function sx_classicdata_supports(type) {
+    return type === "DIE_MUSIC_INFOGRAMES_RH2_DUM" || type === "DIE_MUSIC_LUURING_THEMUSICALENLIGHTENMENT";
+}
+function sxcd_fits(c, off, n) {
+    return off >= 0 && off <= c.size && n <= (c.size - off < 0 ? c.size - off + SX_U64_MAX : c.size - off);
+}
+function sxcd_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxcd_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxcd_order, true);
+    for (var i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (off < end || z <= 0 || !sxcd_fits(c, off, (z < 0 ? z + SX_U64_MAX : z))) {
+            return false;
+        }
+        if (off > end && !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        end = off + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxcd_order, true);
+    return !c.failed;
+}
+function sxcd_limit(off, points, n, end) {
+    for (var i = 0; i < n; i++) {
+        if (points[i] > off && points[i] < end) {
+            end = points[i];
+        }
+    }
+    return end;
+}
+function sxcd_infogrames(c) {
+    var song;
+    var h = [];
+    var points = [];
+    var np = 0;
+    if (c.size < 18 || (song = sx_u16(c, 0, true)) === null || song !== 2) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        if ((h[i] = sx_u16(c, (2 + ((2 * i) >>> 0)) >>> 0, true)) === null) {
+            return false;
+        }
+    }
+    var first = c.size;
+    for (i = 1; i < 7; i++) {
+        if (h[i] < 16 || h[i] >= 0x8000 || !sxcd_fits(c, 2 + h[i], 1)) {
+            return false;
+        }
+        points[np++] = 2 + h[i];
+        if (2 + h[i] < first) {
+            first = 2 + h[i];
+        }
+    }
+    if (first < 18 || sxI64(sxAnd64(first - 18, 1)) || sxDiv(first - 18, 2) > 256) {
+        return false;
+    }
+    var count = Math.floor((first - 18 < 0 ? first - 18 + SX_U64_MAX : first - 18) / 2);
+    for (i = 0; i < count; i++) {
+        var off;
+        if ((off = sx_u16(c, 18 + (i >= SX_I64_MAX ? i - SX_U64_MAX : i) * 2, true)) === null) {
+            return false;
+        }
+        if (off >= 0x8000 || 2 + off < first || !sxcd_fits(c, 2 + off, 1)) {
+            return false;
+        }
+        points[np++] = 2 + off;
+    }
+    if (!sx_add(c, sxcd_infogrames_subsong_offset, 0, 2) || !sx_add(c, sxcd_infogrames_song_header, 2, 16) || !sx_table(c, sxcd_infogrames_command_offset, 18, 2, count)) {
+        return false;
+    }
+    for (var channel = 0; channel < 4; channel++) {
+        var at = 2 + h[(channel + 3) >>> 0];
+        var end = sxcd_limit(at, points, np, c.size);
+        var shared = false;
+        for (var j = 0; j < channel; j++) {
+            if (h[(j + 3) >>> 0] === h[(channel + 3) >>> 0]) {
+                shared = true;
+            }
+        }
+        if (shared || at === 2 + h[1] || at === 2 + h[2]) {
+            continue;
+        }
+        for (j = 0; j < count; j++) {
+            if (points[6 + j] === at) {
+                shared = true;
+            }
+        }
+        if (shared) {
+            continue;
+        }
+        var p = at;
+        var v = [0];
+        while (p < end && p - at < 4096) {
+            if (!sx_read(c, p, v, 1)) {
+                return false;
+            }
+            if (v[0] === 255) {
+                break;
+            }
+            if (v[0] >= count) {
+                break;
+            }
+            p++;
+        }
+        if (p < end && v[0] === 255) {
+            if (!sx_table(c, sxcd_infogrames_order, at, 1, (p - at < 0 ? p - at + SX_U64_MAX : p - at)) || !sx_add(c, sxcd_infogrames_order_end, p, 1)) {
+                return false;
+            }
+        }
+    }
+    for (i = 1; i <= 2; i++) {
+        at = 2 + h[i];
+        end = sxcd_limit(at, points, np, c.size);
+        var alias = false;
+        for (j = 0; j < np; j++) {
+            if (j !== (i - 1) >>> 0 && points[j] === at) {
+                alias = true;
+            }
+        }
+        if (!alias && end - at >= 13 && !sx_add(c, i === 1 ? sxcd_infogrames_volume_envelope : sxcd_infogrames_period_envelope, at, 13)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxcd_tme(c) {
+    var total;
+    var entries;
+    var events;
+    var at;
+    var budget = 24000;
+    var work = 0;
+    if (c.size < 6826 || (total = sx_u32(c, 0, true)) === null || total < 6826 || total > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    if ((entries = sx_u16(c, 6788, true)) === null || (events = sx_u16(c, 6790, true)) === null) {
+        return false;
+    }
+    var dynamic = entries * 12 + events * 6;
+    if (dynamic > (total - 6826) >>> 0) {
+        return false;
+    }
+    if (!sx_add(c, sxcd_tme_file_header, 0, 4) || !sx_table(c, sxcd_tme_subsong, 4, 4, 16)) {
+        return false;
+    }
+    for (var i = 0; i < 32; i++) {
+        if (!sx_add(c, sxcd_tme_instrument, (68 + ((128 * i) >>> 0)) >>> 0, 64) || !sx_table(c, sxcd_tme_instruction, (132 + ((128 * i) >>> 0)) >>> 0, 4, 16)) {
+            return false;
+        }
+    }
+    if (!sx_table(c, sxcd_tme_arpeggio, 4164, 9, 64) || !sx_table(c, sxcd_tme_lfo, 4740, 128, 16) || !sx_add(c, sxcd_tme_counts, 6788, 38)) {
+        return false;
+    }
+    var shown = entries < budget ? entries : budget;
+    if (!sx_table(c, sxcd_tme_entry, 6826, 12, shown)) {
+        return false;
+    }
+    budget = sxU64(budget - shown);
+    at = 6826 + entries * 12;
+    if (!budget) {
+        return true;
+    }
+    shown = events < budget ? events : budget;
+    if (!sx_table(c, sxcd_tme_event, at, 6, shown)) {
+        return false;
+    }
+    budget = sxU64(budget - shown);
+    at += events * 6;
+    if (!budget) {
+        return true;
+    }
+    for (i = 0; i < 256; i++) {
+        var p = at;
+        var op = [1];
+        while (p <= total && total - p >= 4 && p - at < 16384) {
+            if (work++ >= budget) {
+                return true;
+            }
+            if (!sx_read(c, p, op, 1)) {
+                return false;
+            }
+            p += 4;
+            if (!op[0]) {
+                break;
+            }
+        }
+        if (op[0] || p - at > 16384) {
+            return true;
+        }
+        if (!sx_table(c, sxcd_tme_instruction, at, 4, Math.floor((p - at < 0 ? p - at + SX_U64_MAX : p - at) / 4))) {
+            return false;
+        }
+        at = p;
+    }
+    return true;
+}
+function sx_classicdata_build(c) {
+    if (c === null || c.f === null || !sx_classicdata_supports(c.f.file_type) || c.size <= 0 || c.size > 0x4000000 || c.failed) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var probe = [0];
+    if (!sx_read(c, 0, probe, 1)) {
+        return false;
+    }
+    var ok = c.f.file_type === "DIE_MUSIC_INFOGRAMES_RH2_DUM" ? sxcd_infogrames(c) : sxcd_tme(c);
+    if (!ok) {
+        if (c.failed || c.count) {
+            return false;
+        }
+        return sx_raw(c, 0, c.size);
+    }
+    return sxcd_finish(c);
+}
+var sx_classicdata_comment_names = ["STOP", "VIBRATO_LEVEL", "VIBRATO_SPEED", "TREMOLO_LEVEL", "TREMOLO_SPEED", "SPECIAL_LEVEL",
+    "SPECIAL_SPEED", "DELAY", "GOTO"];
+function sx_classicdata_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60A50001 || id >= 0x60A60000 || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var n = r.name;
+    var v = sxVarU64(r.value);
+    if (id === sxcd_infogrames_subsong_offset.id) {
+        return sxSetComment(r, "Absolute file offset of the subsong header. Current native identity recognizes the single-subsong layout with this word equal to2.");
+    }
+    if (id === sxcd_infogrames_song_header.id) {
+        if (!sxStrcmp(n, "speed")) {
+            return sxSetComment(r, "Stored playback speed word. The original player uses its low byte; the physical16-bit value is retained.");
+        }
+        if (!sxStrcmp(n, "unused_word")) {
+            return sxSetComment(r, "Stored word skipped by the original player; no address or size meaning is inferred from the detector heuristic.");
+        }
+        return sxSetComment(r, "Stored byte displacement relative to this16-byte subsong header. Original ADDA.W and maintained unsigned loaders differ for bit15; those targets are not followed.");
+    }
+    if (id === sxcd_infogrames_command_offset.id) {
+        return sxSetComment(r, "Stored byte displacement from the subsong header to command bytecode. The pointer table ends at the first explicit region; bytecode remains raw.");
+    }
+    if (id === sxcd_infogrames_order.id) {
+        return sxSetComment(r, "Zero-based index into the subsong command-offset table.0xFF is a separate end marker.");
+    }
+    if (id === sxcd_infogrames_order_end.id) {
+        return sxSetComment(r, "ORDER_END (0xFF). The player restarts from the channel order list.");
+    }
+    if (id === sxcd_infogrames_volume_envelope.id || id === sxcd_infogrames_period_envelope.id) {
+        if (!sxStrcmp(n, "control")) {
+            return sxSetComment(r, sxAnd64(v, 128) ? "CONTINUOUS (bit7); low7 bits are the amount subtracted on each envelope cycle." : "ONE_SHOT (bit7 clear); low7 bits are the envelope cycle adjustment amount.");
+        }
+        if (!sxStrcmp(n, "unused_byte")) {
+            return sxSetComment(r, "Stored leading period-envelope byte skipped by the player. One-shot/continuous mode comes from command bytecode.");
+        }
+        if (sxStrstr(n, "_delta")) {
+            return sxSetComment(r, "Signed8-bit increment applied to the accumulated slide value.");
+        }
+        if (sxStrstr(n, "_repeat")) {
+            return sxSetComment(r, "Number of delay intervals before advancing to the next envelope phase; encoded byte is retained.");
+        }
+        return sxSetComment(r, "Number of ticks per interval before incrementing the phase repeat counter; encoded byte is retained.");
+    }
+    if (id === sxcd_tme_file_header.id) {
+        return sxSetComment(r, "Stored total song byte length, including the physical header, tables, instruction lists and sample payloads.");
+    }
+    if (id === sxcd_tme_subsong.id) {
+        if (!sxStrcmp(n, "speed")) {
+            return sxSetComment(r, "Stored countdown reload; the playback interval is this byte plus one.");
+        }
+        if (!sxStrcmp(n, "channel_mask")) {
+            return sxSetComment(r, "CHANNEL_0=0x01|CHANNEL_1=0x02|CHANNEL_2=0x04|CHANNEL_3=0x08|LED_FILTER=0x10. Higher bits remain unknown.");
+        }
+        if (!sxStrcmp(n, "end_entry")) {
+            return sxSetComment(r, "Stored exclusive end sequence-entry index; NewTrack compares the advanced entry pointer to this boundary.");
+        }
+        return sxSetComment(r, "Stored first sequence-entry index; this is an index, not a file offset.");
+    }
+    if (id === sxcd_tme_instrument.id) {
+        if (!sxStrcmp(n, "stored_sample_address")) {
+            return sxSetComment(r, "Serialized32-bit runtime address slot, overwritten by InitData. Never followed as a file offset or synthesized pointer.");
+        }
+        if (!sxStrcmp(n, "sample_byte_length")) {
+            return sxSetComment(r, "Stored sample payload byte count. Sample data follows the256 instruction lists and remains raw.");
+        }
+        if (!sxStrcmp(n, "initial_length_words") || !sxStrcmp(n, "repeat_length_words")) {
+            return sxSetComment(r, "Stored length in two-byte hardware words. The original playback path uses the low16 bits; the complete32-bit field is retained.");
+        }
+        if (!sxStrcmp(n, "repeat_offset_words")) {
+            return sxSetComment(r, "Stored sample-relative displacement in two-byte words; the player shifts it left once. This is not a byte offset or an absolute address.");
+        }
+        if (!sxStrcmp(n, "offset_length_encoded")) {
+            return sxSetComment(r, "Declared samp_offlen word. Its unit is not established by the preserved player; value remains unconverted.");
+        }
+        if (!sxStrcmp(n, "sample_flags")) {
+            return sxSetComment(r, "Declared samp_flags word; no named bit meanings are established by the preserved player.");
+        }
+        if (!sxStrcmp(n, "name")) {
+            return sxSetComment(r, "Fixed32-byte instrument name; a nonzero first byte indicates a stored sample payload to InitData.");
+        }
+        if (!sxStrcmp(n, "volume")) {
+            return sxSetComment(r, "Stored instrument base-volume byte; event volume_add is added before signed extension.");
+        }
+        if (!sxStrcmp(n, "unused_byte")) {
+            return sxSetComment(r, "Second byte of the two-byte inst_volume allocation; the player reads only the first byte.");
+        }
+        if (sxStrstr(n, "_rate")) {
+            return sxSetComment(r, "Stored envelope countdown; the player uses this rate plus one.");
+        }
+        return sxSetComment(r, "Stored envelope target level byte for the corresponding attack, decay or release phase.");
+    }
+    if (id === sxcd_tme_instruction.id) {
+        if (!sxStrcmp(n, "opcode")) {
+            var text = [];
+            var name = sxShr64(v, 4) < 9 ? sx_classicdata_comment_names[sxShr64(v, 4)] : "UNKNOWN";
+            text[0] = 0;
+            sxWappend(text, 192, name);
+            sxWappend(text, 192, " (high nibble). Low nibble selects LFO for level commands. Exactly0x00 terminates a serialized list.");
+            return sxSetComment(r, text);
+        }
+        if (!sxStrcmp(n, "value")) {
+            return sxSetComment(r, "Opcode-dependent level, speed or target instruction-list index. It is not a file offset.");
+        }
+        return sxSetComment(r, "Stored instruction duration word; level/speed slides use this duration word plus one, while DELAY uses this word directly.");
+    }
+    if (id === sxcd_tme_arpeggio.id) {
+        if (!sxStrcmp(n, "length_speed")) {
+            return sxSetComment(r, "High nibble is arpeggio length (zero means8); low nibble is speed with countdown interval value+1.");
+        }
+        return sxSetComment(r, "Eight stored pitch-step bytes; added with8-bit arithmetic to the base note, without interpreting runtime pitch.");
+    }
+    if (id === sxcd_tme_lfo.id) {
+        return sxSetComment(r, "128 stored signed8-bit waveform samples; the player indexes them modulo128.");
+    }
+    if (id === sxcd_tme_counts.id) {
+        if (!sxStrcmp(n, "entry_count")) {
+            return sxSetComment(r, "Number of12-byte sequence entries immediately following this fixed header.");
+        }
+        if (!sxStrcmp(n, "event_count")) {
+            return sxSetComment(r, "Number of6-byte events after the sequence entries; this is not the number of32-row tracks.");
+        }
+        if (!sxStrcmp(n, "instructions_word")) {
+            return sxSetComment(r, "Stored song_instructions word. InitData nevertheless walks256 zero-terminated lists; this word is not used as their count.");
+        }
+        return sxSetComment(r, "Fixed32-byte song name.");
+    }
+    if (id === sxcd_tme_entry.id) {
+        if (sxStrstr(n, "_track")) {
+            return sxSetComment(r, "Zero-based32-row track index into the event table; not a byte offset.");
+        }
+        return sxSetComment(r, "Stored8-bit transposition/addition applied modulo256 by the player. Signed display preserves negative adjustments.");
+    }
+    if (id === sxcd_tme_event.id) {
+        if (!sxStrcmp(n, "note")) {
+            return sxSetComment(r, "Low7 bits:0=no note,126=RELEASE,127=VOICE_OFF; bit7 suppresses retriggering the envelope/sample.");
+        }
+        if (!sxStrcmp(n, "sample")) {
+            return sxSetComment(r, "Stored one-based instrument selector; zero keeps the current instrument.");
+        }
+        if (!sxStrcmp(n, "effect_list")) {
+            return sxSetComment(r, "Stored instruction-list index; zero selects the instrument's16 embedded instructions.");
+        }
+        if (!sxStrcmp(n, "volume_add")) {
+            return sxSetComment(r, "Signed8-bit volume adjustment; addition to instrument volume is modulo256 before signed extension.");
+        }
+        if (!sxStrcmp(n, "flags")) {
+            return sxSetComment(r, "ARPEGGIO=0x01|SIMPLEGLIDE=0x02|NONOTEADD=0x04|NOINSTADD=0x08|SUPERGLIDE=0x10|ARPONCE=0x20|ARPBLOW=0x40; bit7 is unknown.");
+        }
+        return sxSetComment(r, "Opcode/flag-dependent parameter: signed8-bit increment for SIMPLEGLIDE, unsigned arpeggio index or glide duration otherwise.");
+    }
+    return true;
+}

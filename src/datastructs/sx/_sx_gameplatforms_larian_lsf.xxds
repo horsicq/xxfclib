@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/larian_lsf/xx_larian_lsf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_lsf_header_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), i32("engine_version", ID),
+    u32("strings_uncompressed_size", SIZE), u32("strings_stored_size", SIZE), u32("nodes_uncompressed_size", SIZE),
+    u32("nodes_stored_size", SIZE), u32("attributes_uncompressed_size", SIZE), u32("attributes_stored_size", SIZE),
+    u32("values_uncompressed_size", SIZE), u32("values_stored_size", SIZE), u8("compression_flags", FLAGS), u8("unknown2"),
+    u16("unknown3"), u32("metadata_format", ID)]);
+var sxgp_lsf_header = sxLayout(0x60360065, "lsf_header", LE, sxgp_lsf_header_fields);
+var sxgp_lsf_string_table_fields = layout([u32("bucket_count", COUNT)]);
+var sxgp_lsf_string_table = sxLayout(0x60360066, "lsf_string_table", LE, sxgp_lsf_string_table_fields);
+var sxgp_lsf_bucket_fields = layout([u16("string_count", COUNT)]);
+var sxgp_lsf_bucket = sxLayout(0x60360067, "lsf_bucket", LE, sxgp_lsf_bucket_fields);
+var sxgp_lsf_string_fields = layout([u16("byte_size", SIZE)]);
+var sxgp_lsf_string = sxLayout(0x60360068, "lsf_string", LE, sxgp_lsf_string_fields);
+var sxgp_lsf_node_fields = layout([u32("name_reference", ID), i32("first_attribute_index", ID), i32("parent_index", ID)]);
+var sxgp_lsf_node = sxLayout(0x60360069, "lsf_node", LE, sxgp_lsf_node_fields);
+var sxgp_lsf_attribute_fields = layout([u32("name_reference", ID), u32("type_length", FLAGS), i32("node_index", ID)]);
+var sxgp_lsf_attribute = sxLayout(0x6036006A, "lsf_attribute", LE, sxgp_lsf_attribute_fields);
+function sxgp_lsf(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 52;
+    var z = [];
+    var buckets = [0];
+    if (!sxgp_row(v, sxgp_lsf_header, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxgp_word(v, (12 + ((i * 8) >>> 0)) >>> 0, 4, false, z, i, end)) {
+            return false;
+        }
+    }
+    if (!sxgp_span(v, p, z[0], end) || !sxgp_row(v, sxgp_lsf_string_table, p, p + z[0]) || !sxgp_word(v, p, 4, false, buckets, 0, p + z[0]) || buckets[0] > 4096) {
+        return false;
+    }
+    var stop = p + z[0];
+    p += 4;
+    for (i = 0; i < buckets[0]; i++) {
+        var n = [0];
+        var len = [0];
+        if (!sxgp_row(v, sxgp_lsf_bucket, p, stop) || !sxgp_word(v, p, 2, false, n, 0, stop)) {
+            return false;
+        }
+        p += 2;
+        for (var j = 0; j < n[0]; j++) {
+            if (!sxgp_row(v, sxgp_lsf_string, p, stop) || !sxgp_word(v, p, 2, false, len, 0, stop) || !sxgp_span(v, p + 2, len[0], stop)) {
+                return false;
+            }
+            p += 2 + len[0];
+        }
+    }
+    if (p !== stop || z[1] % 12 || z[2] % 12 || !sxgp_table(v, sxgp_lsf_node, p, Math.floor(z[1] / 12), end)) {
+        return false;
+    }
+    p += z[1];
+    return sxgp_table(v, sxgp_lsf_attribute, p, Math.floor(z[2] / 12), end) && sxgp_span(v, p + z[2], z[3], end);
+}
+function sx_larian_lsf_build(v) {
+    return sxgp_lsf(v);
+}

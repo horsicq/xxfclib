@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/shrs/xx_shrs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_shrs_header_prefix_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("unknown"),
+    u32("encrypted_size", SIZE), field("iv", "byte[16]", 16)]);
+var sx_fm_shrs_header_prefix = sxLayout(0x60220004, "shrs_header_prefix", BE, sx_fm_shrs_header_prefix_fields);
+function sx_shrs_build(c) {
+    return sx_fm_add(c, sx_fm_shrs_header_prefix, 0, 28);
+}

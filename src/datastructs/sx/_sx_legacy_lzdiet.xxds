@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzdiet/xx_lzdiet_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_lzdiet_header_fields = layout([blob("signature", 6, SIGNATURE), u32("original_size", SIZE)]);
+var sxl_lzdiet_header = sxLayout(0x600A0016, "lzdiet_header", LE, sxl_lzdiet_header_fields);
+var sxl_lzdiet_chunk_fields = layout([u32("data_offset", OFFSET), u16("packed_size", SIZE)]);
+var sxl_lzdiet_chunk = sxLayout(0x600A0017, "lzdiet_chunk", LE, sxl_lzdiet_chunk_fields);
+var sxl_lzdiet_table_end_fields = layout([u32("end_marker", SIGNATURE)]);
+var sxl_lzdiet_table_end = sxLayout(0x600A0018, "lzdiet_table_end", LE, sxl_lzdiet_table_end_fields);
+function sxl_diet(c) {
+    var n;
+    var previous = 0x5FC;
+    var any = false;
+    if (!sxl_sig(c, 0, "lZdIeT", 6) || !sxl_span(c, 0, 0x5FC) || (n = sx_u32(c, 6, false)) === null || !n || n > 0x40000000 || !sx_add(c, sxl_lzdiet_header, 0, 10)) {
+        return false;
+    }
+    for (var i = 0; i < 250; i++) {
+        var off;
+        var size;
+        var at = 32 + i * 6;
+        if ((off = sx_u32(c, at, false)) === null || (size = sx_u16(c, at + 4, false)) === null) {
+            return false;
+        }
+        if (off === 4294967295) {
+            return any && sx_add(c, sxl_lzdiet_table_end, at, 4);
+        }
+        if (off < previous || size < 6 || !sxl_span(c, off, size) || !sx_add(c, sxl_lzdiet_chunk, at, 6)) {
+            return false;
+        }
+        previous = off + size;
+        any = true;
+    }
+    return any;
+}
+function sx_lzdiet_build(c) {
+    return sxl_diet(c);
+}

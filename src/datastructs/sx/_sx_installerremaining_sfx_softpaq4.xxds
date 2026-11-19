@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_softpaq4/xx_sfx_softpaq4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_softpaq4_descriptor_0_fields = layout([chars("signature", 4, SIGNATURE), field("flags", "uint32le", 4, FLAGS),
+    field("record_0_size", "uint32le", 4, SIZE), field("record_0_offset", "uint32le", 4, OFFSET),
+    field("record_1_size", "uint32le", 4, SIZE), field("record_1_offset", "uint32le", 4, OFFSET),
+    field("record_2_size", "uint32le", 4, SIZE), field("record_2_offset", "uint32le", 4, OFFSET),
+    field("record_3_size", "uint32le", 4, SIZE), field("record_3_offset", "uint32le", 4, OFFSET), bytes("unknown_tail", 24)]);
+var sxir_softpaq4_descriptor_0 = sxLayout(0x60800036, "softpaq4_descriptor_0", LE, sxir_softpaq4_descriptor_0_fields);
+var sxir_softpaq4_descriptor_8_fields = layout([chars("signature", 4, SIGNATURE), field("flags", "uint32le", 4, FLAGS),
+    bytes("unknown_08", 4), field("record_0_size", "uint32le", 4, SIZE), field("record_0_offset", "uint32le", 4, OFFSET),
+    field("record_1_size", "uint32le", 4, SIZE), field("record_1_offset", "uint32le", 4, OFFSET),
+    field("record_2_size", "uint32le", 4, SIZE), field("record_2_offset", "uint32le", 4, OFFSET),
+    field("record_3_size", "uint32le", 4, SIZE), field("record_3_offset", "uint32le", 4, OFFSET),
+    field("record_4_size", "uint32le", 4, SIZE), field("record_4_offset", "uint32le", 4, OFFSET), bytes("unknown_tail", 12)]);
+var sxir_softpaq4_descriptor_8 = sxLayout(0x60800037, "softpaq4_descriptor_8", LE, sxir_softpaq4_descriptor_8_fields);
+var sxir_softpaq4_name_length_fields = layout([u8("name_size", SIZE)]);
+var sxir_softpaq4_name_length = sxLayout(0x60800038, "softpaq4_name_length", LE, sxir_softpaq4_name_length_fields);
+var sxir_softpaq4_footer_fields = layout([bytes("unknown_00", 4), field("signature", "uint32le", 4, SIGNATURE)]);
+var sxir_softpaq4_footer = sxLayout(0x60800039, "softpaq4_footer", LE, sxir_softpaq4_footer_fields);
+function sxir_softpaq4(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var pages = [0];
+    var last = [0];
+    var image;
+    var at = [0];
+    var flags = [0];
+    if (!sxir_eq(v, 0, "MZ", 2, end) || !sxir_u(v, 4, 2, false, pages, end) || !pages[0] || !sxir_u(v, 2, 2, false, last, end) || last[0] > 511) {
+        return false;
+    }
+    image = sxU64(pages[0] - 1) * 512 + (last[0] ? last[0] : 512);
+    if (image >= end || !sxir_find(v, image, end < 16777216 ? end : 16777216, "!3PS", 4, false, at) || !sxir_u(v, at[0] + 4, 4, false, flags, end) || flags[0] !== 0 && flags[0] !== 8 || !sxir_row(v, flags[0] ? sxir_softpaq4_descriptor_8 : sxir_softpaq4_descriptor_0, at[0], end)) {
+        return false;
+    }
+    var first = flags[0] ? 12 : 8;
+    var count = flags[0] ? 5 : 4;
+    var previous = at[0] + 64;
+    for (var i = 0; i < count; i++) {
+        var z = [0];
+        var off = [0];
+        if (!sxir_u(v, at[0] + first + 8 * i, 4, false, z, end) || !sxir_u(v, at[0] + first + 8 * i + 4, 4, false, off, end) || off[0] !== previous || !sxir_span(v, off[0], z[0], end)) {
+            return false;
+        }
+        previous = off[0] + z[0];
+        if (i === 0 || i >= sxU64(count - 2)) {
+            var n = [0];
+            if (!z[0] || !sxir_u(v, off[0], 1, false, n, end) || !n[0] || n[0] + 1 >= z[0] || !sxir_row(v, sxir_softpaq4_name_length, off[0], previous) || !sxir_emit(v, sxir_installer_name, off[0] + 1, n[0], previous)) {
+                return false;
+            }
+        } else if (z[0] && !sxir_emit(v, sxir_installer_name, off[0], z[0], previous)) {
+            return false;
+        }
+    }
+    if (previous === end) {
+        return true;
+    }
+    return sxU64(end - previous) === 8 && sxir_eq(v, previous + 4, "\x12\xEF\xCD\xAB", 4, end) && sxir_row(v, sxir_softpaq4_footer, previous, end);
+}
+function sx_sfx_softpaq4_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_softpaq4(v);
+}

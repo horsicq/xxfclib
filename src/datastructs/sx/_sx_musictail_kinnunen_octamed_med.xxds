@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kinnunen_octamed_med/xx_kinnunen_octamed_med_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_med2_header_fields = layout([blob("magic", 4, SIGNATURE)]);
+var sxmta_med2_header = sxLayout(0x60810079, "med2_header", LE, sxmta_med2_header_fields);
+var sxmta_med2_name_fields = layout([chars("name", 40, NONE)]);
+var sxmta_med2_name = sxLayout(0x6081007A, "med2_name", LE, sxmta_med2_name_fields);
+var sxmta_med2_loop_bytes_fields = layout([u16("loop_bytes", SIZE)]);
+var sxmta_med2_loop_bytes = sxLayout(0x6081007C, "med2_loop_bytes", BE, sxmta_med2_loop_bytes_fields);
+var sxmta_med2_song_fields = layout([u16("orders", COUNT), u16("tempo"), u16("flags", FLAGS), u16("sliding"),
+    u32("jump_mask", FLAGS), blob("rgb", 16)]);
+var sxmta_med2_song = sxLayout(0x6081007D, "med2_song", BE, sxmta_med2_song_fields);
+var sxmta_med2_pattern_header_fields = layout([u32("pattern_address", VA)]);
+var sxmta_med2_pattern_header = sxLayout(0x6081007E, "med2_pattern_header", BE, sxmta_med2_pattern_header_fields);
+var sxmta_med2_event_fields = layout([u16("period"), u8("instrument_effect", FLAGS), u8("parameter")]);
+var sxmta_med2_event = sxLayout(0x6081007F, "med2_event", BE, sxmta_med2_event_fields);
+function sxmta_med2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [4];
+    var n = [0];
+    if (!sxmta_eq(v, 0, "MED\x02", 4, end) || !sxmta_row(v, sxmta_med2_header, 0, end) || !sxmta_take(v, sxmta_med2_name, p, 32, end) || !sxmta_take(v, sxmta_volume8, p, 32, end) || !sxmta_take(v, sxmta_med2_loop_start, p, 32, end) || !sxmta_take(v, sxmta_med2_loop_bytes, p, 32, end) || !sxmta_be(v, p[0], 2, n, 0, end) || n[0] > 256 || !sxmta_take(v, sxmta_count16be, p, 1, end) || !sxmta_take(v, sxmta_order8, p, 100, end) || !sxmta_take(v, sxmta_med2_song, p, 1, end)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxmta_take(v, sxmta_med2_pattern_header, p, 1, end) || !sxmta_take(v, sxmta_med2_event, p, 256, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_kinnunen_octamed_med_build(v) {
+    return sxmta_med2(v);
+}

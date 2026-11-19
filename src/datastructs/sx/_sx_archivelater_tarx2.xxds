@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/tarx2/xx_tarx2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_tarx2_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxal_tarx2_signature = sxLayout(0x60200051, "tarx2_signature", BE, sxal_tarx2_signature_fields);
+var sxal_tarx2_marker_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxal_tarx2_marker = sxLayout(0x60200052, "tarx2_marker", BE, sxal_tarx2_marker_fields);
+var sx_tarx2_build_a = [0x78, 0x76, 0x95, 0x7D];
+var sx_tarx2_build_z = [0x9C, 0x3B, 0xAD, 0x45];
+function sx_tarx2_build(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 16) || sxMemcmp(b, sx_tarx2_build_a, 4) || sxMemcmpAt(b, 8, sx_tarx2_build_z, 0, 4)) {
+        return false;
+    }
+    return sxal_add(c, sxal_tarx2_signature, 0) && sxal_add(c, sxal_tarx2_marker, 8);
+}

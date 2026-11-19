@@ -1,0 +1,100 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/genomics_bgen/xx_genomics_bgen_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_bgen_header_fields = layout([u32("first_variant_offset", OFFSET), u32("header_size", SIZE),
+    u32("variant_count", COUNT), u32("sample_count", COUNT), chars("signature", 4, SIGNATURE)]);
+var sxsw_bgen_header = sxLayout(0x602D0018, "bgen_header", LE, sxsw_bgen_header_fields);
+var sxsw_bgen_flags_fields = layout([u32("flags", FLAGS)]);
+var sxsw_bgen_flags = sxLayout(0x602D0019, "bgen_flags", LE, sxsw_bgen_flags_fields);
+var sxsw_bgen_sample_header_fields = layout([u32("block_size", SIZE), u32("sample_count", COUNT)]);
+var sxsw_bgen_sample_header = sxLayout(0x602D001A, "bgen_sample_header", LE, sxsw_bgen_sample_header_fields);
+var sxsw_bgen_string16_fields = layout([u16("string_size", SIZE)]);
+var sxsw_bgen_string16 = sxLayout(0x602D001B, "bgen_string16", LE, sxsw_bgen_string16_fields);
+var sxsw_bgen_string32_fields = layout([u32("string_size", SIZE)]);
+var sxsw_bgen_string32 = sxLayout(0x602D001C, "bgen_string32", LE, sxsw_bgen_string32_fields);
+var sxsw_bgen_variant_sample_count_fields = layout([u32("sample_count", COUNT)]);
+var sxsw_bgen_variant_sample_count = sxLayout(0x602D001D, "bgen_variant_sample_count", LE, sxsw_bgen_variant_sample_count_fields);
+var sxsw_bgen_variant_position_fields = layout([u32("position")]);
+var sxsw_bgen_variant_position = sxLayout(0x602D001E, "bgen_variant_position", LE, sxsw_bgen_variant_position_fields);
+function sxsw_bgen_string(c, at, wide) {
+    var n;
+    if (wide) {
+        if ((n = sx_u32(c, at[0], false)) === null) {
+            return false;
+        }
+    } else {
+        var x;
+        if ((x = sx_u16(c, at[0], false)) === null) {
+            return false;
+        }
+        n = x;
+    }
+    var width = wide ? 4 : 2;
+    if (!sxsw_add(c, wide ? sxsw_bgen_string32 : sxsw_bgen_string16, at[0], width) || !sxsw_span(c, at[0] + width, n)) {
+        return false;
+    }
+    at[0] += (width + n) >>> 0;
+    return true;
+}
+function sxsw_bgen(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 20)) {
+        return false;
+    }
+    var offset = sxsw32(b, 0, false);
+    var header = sxsw32(b, 4, false);
+    var variants = sxsw32(b, 8, false);
+    var samples = sxsw32(b, 12, false);
+    var flags;
+    var at = [header + 4];
+    if (!sxsw_add(c, sxsw_bgen_header, 0, 20) || (flags = sx_u32(c, header, false)) === null || !sxsw_add(c, sxsw_bgen_flags, header, 4)) {
+        return false;
+    }
+    if ((flags & 0x80000000) >>> 0) {
+        var count;
+        if ((count = sx_u32(c, at[0] + 4, false)) === null || count !== samples || !sxsw_add(c, sxsw_bgen_sample_header, at[0], 8)) {
+            return false;
+        }
+        at[0] += 8;
+        for (var i = 0; i < count; i++) {
+            if (!sxsw_bgen_string(c, at, false)) {
+                return false;
+            }
+        }
+    }
+    at[0] = offset + 4;
+    if (variants > 1024 || samples > 1000000) {
+        return false;
+    }
+    for (i = 0; i < variants; i++) {
+        if (!sxsw_add(c, sxsw_bgen_variant_sample_count, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+        for (var j = 0; j < 3; j++) {
+            if (!sxsw_bgen_string(c, at, false)) {
+                return false;
+            }
+        }
+        if (!sxsw_add(c, sxsw_bgen_variant_position, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+        for (j = 0; j < 2; j++) {
+            if (!sxsw_bgen_string(c, at, true)) {
+                return false;
+            }
+        }
+        if (!sxsw_span(c, at[0], samples * 6)) {
+            return false;
+        }
+        at[0] += samples * 6;
+    }
+    return at[0] === c.size;
+}
+function sx_genomics_bgen_build(c) {
+    return sxsw_bgen(c);
+}

@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/spack/xx_spack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_spack_magic_fields = layout([u32("signature", SIGNATURE)]);
+var sxaf_spack_magic = sxLayout(0x603C0021, "spack_magic", BE, sxaf_spack_magic_fields);
+var sxaf_spack_stored_member_fields = layout([chars("tag", 2, SIGNATURE), u16("id_and_flags"), u32("uncompressed_size", SIZE)]);
+var sxaf_spack_stored_member = sxLayout(0x603C0022, "spack_stored_member", BE, sxaf_spack_stored_member_fields);
+var sxaf_spack_compressed_member_fields = layout([chars("tag", 2, SIGNATURE), u16("id_and_flags"),
+    u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), u16("crc16", CHECKSUM)]);
+var sxaf_spack_compressed_member = sxLayout(0x603C0023, "spack_compressed_member", BE, sxaf_spack_compressed_member_fields);
+var sxaf_spack_footer_fields = layout([chars("tag", 4, SIGNATURE), u32("index_record_size", SIZE)]);
+var sxaf_spack_footer = sxLayout(0x603C0024, "spack_footer", BE, sxaf_spack_footer_fields);
+function sxaf_spack(c) {
+    var start = 0;
+    var footer;
+    var n = [0];
+    var index;
+    var b = [];
+    if (!sxaf_read(c, 0, b, 4)) {
+        return false;
+    }
+    if (sxaf_uint(b, 0, 4, true) === 0x3F3) {
+        var x = [0];
+        if (!sxaf_read(c, 47, x, 1)) {
+            return false;
+        }
+        start = x[0] === 0xF4 ? 6624 : 6616;
+    }
+    if (c.size < 12 || !sxaf_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 12), b, 4)) {
+        return false;
+    }
+    footer = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 12);
+    if (sxMemcmp(b, "INDX", 4)) {
+        footer = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8);
+        if (!sxaf_read(c, footer, b, 4) || sxMemcmp(b, "INDX", 4)) {
+            return false;
+        }
+    }
+    if (!sxaf_word(c, footer + 4, 4, true, n) || n[0] < 14 || n[0] > footer || sxU64(footer - n[0]) < start + 4 || !sxaf_add(c, sxaf_spack_magic, start) || !sxaf_add(c, sxaf_spack_footer, footer)) {
+        return false;
+    }
+    index = sxU64(footer - n[0]);
+    if (!sxaf_add(c, sxaf_spack_compressed_member, index)) {
+        return false;
+    }
+    for (var p = start + 4; p < index; ) {
+        if (sxU64(index - p) < 8 || !sxaf_read(c, p, b, 8)) {
+            return false;
+        }
+        var flag = sxaf_uint(b, 2, 2, true);
+        var size = [sxaf_uint(b, 4, 4, true)];
+        var hs = 8;
+        var l = sxaf_spack_stored_member;
+        if (!sxAnd64(flag, 0x8000)) {
+            hs = 14;
+            l = sxaf_spack_compressed_member;
+            if (sxU64(index - p) < 14 || !sxaf_word(c, p + 8, 4, true, size)) {
+                return false;
+            }
+        }
+        if (size[0] > sxU64(sxU64(index - p) - hs) || !sxaf_add(c, l, p)) {
+            return false;
+        }
+        p += hs + size[0];
+    }
+    return true;
+}
+function sx_spack_build(c) {
+    return sxaf_spack(c);
+}

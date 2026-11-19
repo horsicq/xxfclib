@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/konami_musicdataextended_mdx/xx_konami_musicdataextended_mdx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_mdx_title_byte_fields = layout([chars("title_byte", 1, STRING)]);
+var sxmn_mdx_title_byte = sxLayout(0x6076002E, "mdx_title_byte", LE, sxmn_mdx_title_byte_fields);
+var sxmn_mdx_title_end_fields = layout([blob("terminator", 3, SIGNATURE)]);
+var sxmn_mdx_title_end = sxLayout(0x6076002F, "mdx_title_end", LE, sxmn_mdx_title_end_fields);
+var sxmn_mdx_pdx_byte_fields = layout([chars("bank_name_byte", 1, STRING)]);
+var sxmn_mdx_pdx_byte = sxLayout(0x60760030, "mdx_pdx_byte", LE, sxmn_mdx_pdx_byte_fields);
+var sxmn_mdx_voice_offset_fields = layout([u16("voice_offset", OFFSET)]);
+var sxmn_mdx_voice_offset = sxLayout(0x60760031, "mdx_voice_offset", BE, sxmn_mdx_voice_offset_fields);
+var sxmn_mdx_track_offset_fields = layout([u16("track_offset", OFFSET)]);
+var sxmn_mdx_track_offset = sxLayout(0x60760032, "mdx_track_offset", BE, sxmn_mdx_track_offset_fields);
+function sxmn_mdx(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var start;
+    var b = [0];
+    var base;
+    var first = [0];
+    while (at[0] < end && !sxmn_magic(v, at[0], "\r\n\x1A", 3, end)) {
+        if (at[0] > 65536 || ++v.work > 4000000) {
+            return false;
+        }
+        at[0]++;
+    }
+    if (!sxmn_table(v, sxmn_mdx_title_byte, 0, at[0], end) || !sxmn_row(v, sxmn_mdx_title_end, at[0], end)) {
+        return false;
+    }
+    at[0] += 3;
+    start = at[0];
+    if (!sxmn_cstring(v, at, end, 65536) || !sxmn_table(v, sxmn_mdx_pdx_byte, start, sxU64(at[0] - start), end)) {
+        return false;
+    }
+    base = at[0];
+    if (!sxmn_row(v, sxmn_mdx_voice_offset, base, end) || !sxmn_word(v, base + 2, 2, true, first, 0, end) || !sxmn_word(v, base + first[0], 1, false, b, 0, end)) {
+        return false;
+    }
+    var tracks = b[0] === 0xE8 ? 16 : 9;
+    var voice = [0];
+    if (!sxmn_word(v, base, 2, true, voice, 0, end) || !sxmn_span(v, base, voice[0], end) || !sxmn_table(v, sxmn_mdx_track_offset, base + 2, tracks, end)) {
+        return false;
+    }
+    for (var i = 0; i < tracks; i++) {
+        var rel = [0];
+        if (!sxmn_word(v, base + 2 + ((2 * i) >>> 0), 2, true, rel, 0, end) || rel[0] < (2 + ((2 * tracks) >>> 0)) >>> 0 || !sxmn_span(v, base + rel[0], 1, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_konami_musicdataextended_mdx_build(v) {
+    return sxmn_mdx(v);
+}

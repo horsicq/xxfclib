@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_documentwire.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_documentwire");
+include("_sx_documentwire_elm");
+include("_sx_documentwire_frontpagetheme");
+include("_sx_documentwire_hp3000_wrq");
+include("_sx_documentwire_ldap_message");
+include("_sx_documentwire_mathcad");
+include("_sx_documentwire_notetab");
+include("_sx_documentwire_pjl");
+include("_sx_documentwire_rprj");
+include("_sx_documentwire_snmp_message");
+include("_sx_documentwire_ssh_transport");
+include("_sx_documentwire_text");
+include("_sx_documentwire_ue2_documents_mime");
+
+function fileTypes() { return ["FRONTPAGETHEME", "MATHCAD", "NOTETAB", "PJL", "HP3000_WRQ", "SNMP_MESSAGE", "LDAP_MESSAGE",
+    "SSH_TRANSPORT", "ELM", "PDF", "MIME_MESSAGE", "TEXT", "RPRJ"]; }
+
+var sx_documentwire_layouts = [sxdw_mathcad_header, sxdw_mathcad_literal_bit0, sxdw_mathcad_match_bit0, sxdw_mathcad_end_bit0,
+    sxdw_mathcad_literal_bit1, sxdw_mathcad_match_bit1, sxdw_mathcad_end_bit1, sxdw_mathcad_literal_bit2,
+    sxdw_mathcad_match_bit2, sxdw_mathcad_end_bit2, sxdw_mathcad_literal_bit3, sxdw_mathcad_match_bit3, sxdw_mathcad_end_bit3,
+    sxdw_mathcad_literal_bit4, sxdw_mathcad_match_bit4, sxdw_mathcad_end_bit4, sxdw_mathcad_literal_bit5,
+    sxdw_mathcad_match_bit5, sxdw_mathcad_end_bit5, sxdw_mathcad_literal_bit6, sxdw_mathcad_match_bit6, sxdw_mathcad_end_bit6,
+    sxdw_mathcad_literal_bit7, sxdw_mathcad_match_bit7, sxdw_mathcad_end_bit7, sxdw_rprj_header, sxdw_theme_version,
+    sxdw_theme_name, sxdw_theme_css, sxdw_notetab_option, sxdw_notetab_heading, sxdw_notetab_body_line, sxdw_pjl_command,
+    sxdw_pjl_parameter, sxdw_pjl_value, sxdw_pjl_text, sxdw_theme_member_count, sxdw_theme_member_size, sxdw_wrq_record_size,
+    sxdw_wrq_block_factor, sxdw_wrq_file_code, sxdw_wrq_extents, sxdw_wrq_record_count, sxdw_theme_payload_marker,
+    sxdw_notetab_declaration, sxdw_pjl_uel, sxdw_wrq_format, sxdw_ber_short_header, sxdw_ber_long_header1,
+    sxdw_ber_long_header2, sxdw_ber_long_header3, sxdw_ber_long_header4, sxdw_ber_signed1, sxdw_ber_signed2, sxdw_ber_signed3,
+    sxdw_ber_signed4, sxdw_ber_unsigned1, sxdw_ber_unsigned2, sxdw_ber_unsigned3, sxdw_ber_unsigned4, sxdw_ber_unsigned5,
+    sxdw_ber_unsigned6, sxdw_ber_unsigned7, sxdw_ber_unsigned8, sxdw_ber_unsigned9, sxdw_ber_oid_octet, sxdw_ber_ipv4,
+    sxdw_ber_octet_text, sxdw_ssh_identification, sxdw_ssh_packet_header, sxdw_ssh_cookie, sxdw_ssh_string_length,
+    sxdw_ssh_kex_algorithms, sxdw_ssh_server_host_key_algorithms, sxdw_ssh_encryption_client_to_server,
+    sxdw_ssh_encryption_server_to_client, sxdw_ssh_mac_client_to_server, sxdw_ssh_mac_server_to_client,
+    sxdw_ssh_compression_client_to_server, sxdw_ssh_compression_server_to_client, sxdw_ssh_languages_client_to_server,
+    sxdw_ssh_languages_server_to_client, sxdw_ssh_kex_tail, sxdw_text_bom2, sxdw_text_bom3, sxdw_text_bom4, sxdw_text_utf16le,
+    sxdw_text_utf16be, sxdw_text_utf32le, sxdw_text_utf32be, sxdw_text_line, sxdw_mime_field_name, sxdw_mime_field_value,
+    sxdw_mime_continuation, sxdw_mime_boundary, sxdw_pdf_header, sxdw_pdf_name, sxdw_pdf_literal_string, sxdw_pdf_hex_string,
+    sxdw_pdf_keyword, sxdw_pdf_integer, sxdw_pdf_object_id, sxdw_pdf_generation, sxdw_pdf_xref_first_object,
+    sxdw_pdf_xref_count, sxdw_pdf_stream_length, sxdw_pdf_offset, sxdw_pdf_real, sxdw_pdf_xref_in_use, sxdw_pdf_xref_free];
+
+function structs() {
+    return sxCatalog([sxdw_mathcad_header, sxdw_mathcad_literal_bit0, sxdw_mathcad_match_bit0, sxdw_mathcad_end_bit0,
+        sxdw_mathcad_literal_bit1, sxdw_mathcad_match_bit1, sxdw_mathcad_end_bit1, sxdw_mathcad_literal_bit2,
+        sxdw_mathcad_match_bit2, sxdw_mathcad_end_bit2, sxdw_mathcad_literal_bit3, sxdw_mathcad_match_bit3,
+        sxdw_mathcad_end_bit3, sxdw_mathcad_literal_bit4, sxdw_mathcad_match_bit4, sxdw_mathcad_end_bit4,
+        sxdw_mathcad_literal_bit5, sxdw_mathcad_match_bit5, sxdw_mathcad_end_bit5, sxdw_mathcad_literal_bit6,
+        sxdw_mathcad_match_bit6, sxdw_mathcad_end_bit6, sxdw_mathcad_literal_bit7, sxdw_mathcad_match_bit7,
+        sxdw_mathcad_end_bit7, sxdw_rprj_header, sxdw_theme_version, sxdw_theme_name, sxdw_theme_css, sxdw_notetab_option,
+        sxdw_notetab_heading, sxdw_notetab_body_line, sxdw_pjl_command, sxdw_pjl_parameter, sxdw_pjl_value, sxdw_pjl_text,
+        sxdw_theme_member_count, sxdw_theme_member_size, sxdw_wrq_record_size, sxdw_wrq_block_factor, sxdw_wrq_file_code,
+        sxdw_wrq_extents, sxdw_wrq_record_count, sxdw_theme_payload_marker, sxdw_notetab_declaration, sxdw_pjl_uel,
+        sxdw_wrq_format, sxdw_ber_short_header, sxdw_ber_long_header1, sxdw_ber_long_header2, sxdw_ber_long_header3,
+        sxdw_ber_long_header4, sxdw_ber_signed1, sxdw_ber_signed2, sxdw_ber_signed3, sxdw_ber_signed4, sxdw_ber_unsigned1,
+        sxdw_ber_unsigned2, sxdw_ber_unsigned3, sxdw_ber_unsigned4, sxdw_ber_unsigned5, sxdw_ber_unsigned6, sxdw_ber_unsigned7,
+        sxdw_ber_unsigned8, sxdw_ber_unsigned9, sxdw_ber_oid_octet, sxdw_ber_ipv4, sxdw_ber_octet_text, sxdw_ssh_identification,
+        sxdw_ssh_packet_header, sxdw_ssh_cookie, sxdw_ssh_string_length, sxdw_ssh_kex_algorithms,
+        sxdw_ssh_server_host_key_algorithms, sxdw_ssh_encryption_client_to_server, sxdw_ssh_encryption_server_to_client,
+        sxdw_ssh_mac_client_to_server, sxdw_ssh_mac_server_to_client, sxdw_ssh_compression_client_to_server,
+        sxdw_ssh_compression_server_to_client, sxdw_ssh_languages_client_to_server, sxdw_ssh_languages_server_to_client,
+        sxdw_ssh_kex_tail, sxdw_text_bom2, sxdw_text_bom3, sxdw_text_bom4, sxdw_text_utf16le, sxdw_text_utf16be,
+        sxdw_text_utf32le, sxdw_text_utf32be, sxdw_text_line, sxdw_mime_field_name, sxdw_mime_field_value,
+        sxdw_mime_continuation, sxdw_mime_boundary, sxdw_pdf_header, sxdw_pdf_name, sxdw_pdf_literal_string,
+        sxdw_pdf_hex_string, sxdw_pdf_keyword, sxdw_pdf_integer, sxdw_pdf_object_id, sxdw_pdf_generation,
+        sxdw_pdf_xref_first_object, sxdw_pdf_xref_count, sxdw_pdf_stream_length, sxdw_pdf_offset, sxdw_pdf_real,
+        sxdw_pdf_xref_in_use, sxdw_pdf_xref_free], sx_documentwire_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_documentwire_build, false);
+}

@@ -1,0 +1,163 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/jedec_fuse/xx_jedec_fuse_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvtx_fuse_count_fields = layout([field("fuse_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_fuse_count = sxLayout(0x6062002F, "vectortext_fuse_count", LE, sxvtx_fuse_count_fields);
+var sxvtx_pin_count_fields = layout([field("pin_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_pin_count = sxLayout(0x60620030, "vectortext_pin_count", LE, sxvtx_pin_count_fields);
+var sxvtx_fuse_index_fields = layout([field("fuse_index", "ascii_signed", 0)]);
+var sxvtx_fuse_index = sxLayout(0x60620031, "vectortext_fuse_index", LE, sxvtx_fuse_index_fields);
+var sxvtx_default_fuse_fields = layout([field("default_fuse", "ascii_signed", 0)]);
+var sxvtx_default_fuse = sxLayout(0x60620032, "vectortext_default_fuse", LE, sxvtx_default_fuse_fields);
+var sxvtx_security_fuse_fields = layout([field("security_fuse", "ascii_signed", 0)]);
+var sxvtx_security_fuse = sxLayout(0x60620033, "vectortext_security_fuse", LE, sxvtx_security_fuse_fields);
+var sxvtx_checksum_fields = layout([field("checksum", "ascii_hex", 0, CHECKSUM)]);
+var sxvtx_checksum = sxLayout(0x6062009E, "vectortext_checksum", LE, sxvtx_checksum_fields);
+var sxvtx_transmission_checksum_fields = layout([field("transmission_checksum", "ascii_hex", 0, CHECKSUM)]);
+var sxvtx_transmission_checksum = sxLayout(0x6062009F, "vectortext_transmission_checksum", LE, sxvtx_transmission_checksum_fields);
+var sxvtx_fuse_bits_fields = layout([field("fuse_bits", "char", 0, STRING)]);
+var sxvtx_fuse_bits = sxLayout(0x606200A2, "vectortext_fuse_bits", LE, sxvtx_fuse_bits_fields);
+var sxvtx_jedec_stx_fields = layout([u8("start_of_text", SIGNATURE)]);
+var sxvtx_jedec_stx = sxLayout(0x606200A3, "vectortext_jedec_stx", LE, sxvtx_jedec_stx_fields);
+var sxvtx_jedec_etx_fields = layout([u8("end_of_text", SIGNATURE)]);
+var sxvtx_jedec_etx = sxLayout(0x606200A4, "vectortext_jedec_etx", LE, sxvtx_jedec_etx_fields);
+function sxvtx_jedec(q) {
+    if (q.n < 2 || q.b[0] !== 2) {
+        return false;
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_jedec_stx, 0, 1)) {
+            return false;
+        }
+    }
+    var p = 1;
+    while (p < q.n && q.b[p] !== 42) {
+        p++;
+    }
+    if (p === q.n) {
+        return false;
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_string_value, 1, p - 1)) {
+            return false;
+        }
+    }
+    while (p < q.n && q.b[p] === 42) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var a = ++p;
+        var end = p;
+        while (end < q.n && q.b[end] !== 42 && q.b[end] !== 3) {
+            end++;
+        }
+        while (a < end && sxvtx_space(q.b[a])) {
+            a++;
+        }
+        var stop = end;
+        while (stop > a && sxvtx_space(q.b[stop - 1])) {
+            stop--;
+        }
+        if (a < stop) {
+            var width = q.b[a] === 81 /*Q*/ ? 2 : 1;
+            if (stop - a < width) {
+                return false;
+            }
+            {
+                if (!sxvtx_emit(q, sxvtx_keyword, a, width)) {
+                    return false;
+                }
+            }
+            var kind = q.b[a];
+            var pins = width === 2 && q.b[a + 1] === 80 /*P*/;
+            a += width;
+            while (a < stop && sxvtx_space(q.b[a])) {
+                a++;
+            }
+            if (kind === 76 /*L*/) {
+                var first = a;
+                while (a < stop && !sxvtx_space(q.b[a])) {
+                    a++;
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_fuse_index, first, a - first)) {
+                        return false;
+                    }
+                }
+                while (a < stop) {
+                    while (a < stop && sxvtx_space(q.b[a])) {
+                        a++;
+                    }
+                    first = a;
+                    while (a < stop && !sxvtx_space(q.b[a]) && a - first < 4096) {
+                        a++;
+                    }
+                    {
+                        if (!sxvtx_emit(q, sxvtx_fuse_bits, first, a - first)) {
+                            return false;
+                        }
+                    }
+                }
+            } else if (kind === 78 /*N*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_string_value, a, stop - a)) {
+                        return false;
+                    }
+                }
+            } else if (kind === 81 /*Q*/) {
+                if (!sxvtx_emit(q, pins ? sxvtx_pin_count : sxvtx_fuse_count, a, stop - a)) {
+                    return false;
+                }
+            } else if (kind === 70 /*F*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_default_fuse, a, stop - a)) {
+                        return false;
+                    }
+                }
+            } else if (kind === 71 /*G*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_security_fuse, a, stop - a)) {
+                        return false;
+                    }
+                }
+            } else if (kind === 67 /*C*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_checksum, a, stop - a)) {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+        p = end;
+    }
+    if (p >= q.n || q.b[p] !== 3) {
+        return false;
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_jedec_etx, p, 1)) {
+            return false;
+        }
+    }
+    p++;
+    a = p;
+    while (p < q.n && !sxvtx_space(q.b[p])) {
+        p++;
+    }
+    if (p - a !== 4) {
+        return false;
+    }
+    {
+        if (!sxvtx_emit(q, sxvtx_transmission_checksum, a, 4)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_jedec_fuse_build(q) {
+    return sxvtx_jedec(q);
+}

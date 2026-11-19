@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/quantum/xx_quantum_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_quantum_header_fields = layout([chars("signature", 2, SIGNATURE), u8("zero"), u8("version"),
+    u16("member_count", COUNT), u8("window_bits"), u8("level")]);
+var sxao_quantum_header = sxLayout(0x6070000F, "quantum_header", LE, sxao_quantum_header_fields);
+var sxao_quantum_length1_fields = layout([u8("string_size", SIZE)]);
+var sxao_quantum_length1 = sxLayout(0x60700010, "quantum_length1", LE, sxao_quantum_length1_fields);
+var sxao_quantum_length2_fields = layout([u8("length_high"), u8("length_low")]);
+var sxao_quantum_length2 = sxLayout(0x60700011, "quantum_length2", BE, sxao_quantum_length2_fields);
+var sxao_quantum_member_fields = layout([u32("uncompressed_size", SIZE), u16("dos_time"), u16("dos_date")]);
+var sxao_quantum_member = sxLayout(0x60700012, "quantum_member", LE, sxao_quantum_member_fields);
+var sxao_quantum_crc16_fields = layout([u16("crc16", CHECKSUM)]);
+var sxao_quantum_crc16 = sxLayout(0x60700013, "quantum_crc16", LE, sxao_quantum_crc16_fields);
+function sxao_qlength(c, p, z) {
+    var b = [];
+    if (!sxao_read(c, p[0], b, 0, 1)) {
+        return false;
+    }
+    if (b[0] & 128) {
+        if (!sxao_read(c, p[0], b, 0, 2) || !sxao_add(c, sxao_quantum_length2, p[0])) {
+            return false;
+        }
+        z[0] = (b[0] & 127) << 8 | b[1];
+        p[0] += 2;
+    } else {
+        if (!sxao_add(c, sxao_quantum_length1, p[0])) {
+            return false;
+        }
+        z[0] = b[0];
+        p[0]++;
+    }
+    return sxao_span(c, p[0], z[0]);
+}
+function sxao_quantum(c) {
+    var p = [8];
+    var n = [0];
+    var ver = [0];
+    if (!sxao_word(c, 4, 2, false, n) || !sxao_word(c, 3, 1, false, ver) || !sxao_add(c, sxao_quantum_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var z = [0];
+        if (!sxao_qlength(c, p, z) || !sxao_text(c, sxao_archiveobsolete_name, p[0], z[0], false)) {
+            return false;
+        }
+        p[0] += z[0];
+        if (!sxao_qlength(c, p, z)) {
+            return false;
+        }
+        p[0] += z[0];
+        if (!sxao_add(c, sxao_quantum_member, p[0])) {
+            return false;
+        }
+        p[0] += 8;
+        if (ver[0] < 0x17) {
+            if (!sxao_add(c, sxao_quantum_crc16, p[0])) {
+                return false;
+            }
+            p[0] += 2;
+        }
+    }
+    return true;
+}
+function sx_quantum_build(c) {
+    return sxao_quantum(c);
+}

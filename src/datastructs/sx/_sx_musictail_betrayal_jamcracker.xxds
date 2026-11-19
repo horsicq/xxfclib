@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/betrayal_jamcracker/xx_betrayal_jamcracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_jam_header_fields = layout([blob("magic", 4, SIGNATURE), u16("samples", COUNT)]);
+var sxmta_jam_header = sxLayout(0x60810062, "jam_header", BE, sxmta_jam_header_fields);
+var sxmta_jam_sample_fields = layout([chars("name", 31, NONE), u8("flags", FLAGS), u32("sample_bytes", SIZE),
+    u32("sample_address", VA)]);
+var sxmta_jam_sample = sxLayout(0x60810063, "jam_sample", BE, sxmta_jam_sample_fields);
+var sxmta_jam_pattern_fields = layout([u16("rows", COUNT), u32("pattern_address", VA)]);
+var sxmta_jam_pattern = sxLayout(0x60810064, "jam_pattern", BE, sxmta_jam_pattern_fields);
+var sxmta_jam_event_fields = layout([u8("period"), i8("instrument"), u8("speed"), u8("arpeggio"), u8("vibrato"), u8("phase"),
+    u8("volume"), u8("portamento")]);
+var sxmta_jam_event = sxLayout(0x60810065, "jam_event", LE, sxmta_jam_event_fields);
+function sxmta_jam(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [6];
+    var ns = [0];
+    var np = [0];
+    var no = [0];
+    var x = [0];
+    var events = 0;
+    var total = 0;
+    if (!sxmta_eq(v, 0, "BeEp", 4, end) || !sxmta_be(v, 4, 2, ns, 0, end) || ns[0] > 256 || !sxmta_row(v, sxmta_jam_header, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < ns[0]; i++) {
+        if (!sxmta_be(v, p[0] + 32, 4, x, 0, end) || !sxmta_take(v, sxmta_jam_sample, p, 1, end)) {
+            return false;
+        }
+        total += x[0];
+    }
+    if (!sxmta_be(v, p[0], 2, np, 0, end) || !sxmta_take(v, sxmta_count16be, p, 1, end)) {
+        return false;
+    }
+    for (i = 0; i < np[0]; i++) {
+        if (!sxmta_be(v, p[0], 2, x, 0, end) || !sxmta_take(v, sxmta_jam_pattern, p, 1, end)) {
+            return false;
+        }
+        events += x[0] * 4;
+    }
+    if (!sxmta_be(v, p[0], 2, no, 0, end) || !sxmta_take(v, sxmta_count16be, p, 1, end) || !sxmta_take(v, sxmta_order16be, p, no[0], end) || !sxmta_take(v, sxmta_jam_event, p, events, end)) {
+        return false;
+    }
+    return sxmta_span(v, p[0], total, end);
+}
+function sx_betrayal_jamcracker_build(v) {
+    return sxmta_jam(v);
+}

@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/leveldb_sstable/xx_leveldb_sstable_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_leveldb_restart_offset_fields = layout([u32("restart_offset", OFFSET)]);
+var sxd_leveldb_restart_offset = sxLayout(0x601A0025, "leveldb_restart_offset", LE, sxd_leveldb_restart_offset_fields);
+var sxd_leveldb_restart_count_fields = layout([u32("restart_count", COUNT)]);
+var sxd_leveldb_restart_count = sxLayout(0x601A0026, "leveldb_restart_count", LE, sxd_leveldb_restart_count_fields);
+var sxd_leveldb_footer_magic_fields = layout([u64("magic", SIGNATURE)]);
+var sxd_leveldb_footer_magic = sxLayout(0x601A0027, "leveldb_footer_magic", LE, sxd_leveldb_footer_magic_fields);
+function sxd_level_block(c, b, h, mode, handles, count) {
+    if (h.size < 8 || h.size > (0x7FFFFFFF * 4294967296 + 0xFFFFFFFA) || !sxd_can(c, h.at, h.size + 5)) {
+        return false;
+    }
+    var n = sxd_u32(b, h.at + h.size + -4);
+    if (!n || n > 4096 || n * 4 > sxU64(h.size - 4)) {
+        return false;
+    }
+    var end = sxU64(sxU64(h.at + h.size - 4) - n * 4);
+    var at = [h.at];
+    while (at[0] < end) {
+        var shared = [0];
+        var key = [0];
+        var value = [0];
+        if (!sxd_var(c, b, at, end, shared, 0, sxd_database_varuint_size_rows) || !sxd_var(c, b, at, end, key, 0, sxd_database_varuint_size_rows) || !sxd_var(c, b, at, end, value, 0, sxd_database_varuint_size_rows) || key[0] > sxU64(end - at[0]) || value[0] > sxU64(sxU64(end - at[0]) - key[0])) {
+            return false;
+        }
+        at[0] += key[0];
+        if (mode === 1) {
+            var ve = at[0] + value[0];
+            var x = [0];
+            var y = [0];
+            if (!sxd_var(c, b, at, ve, x, 0, sxd_database_varuint_offset_rows) || !sxd_var(c, b, at, ve, y, 0, sxd_database_varuint_size_rows) || at[0] !== ve || count[0] >= 1024) {
+                return false;
+            }
+            handles[count[0]++] = sxCopy_sxd_handle(null, { at: x[0], size: y[0] });
+        } else {
+            at[0] += value[0];
+        }
+    }
+    return sxd_table(c, sxd_leveldb_restart_offset, end, 4, n) && sxd_add(c, sxd_leveldb_restart_count, sxU64(h.at + h.size - 4), 4) && sxd_add(c, sxd_leveldb_block_trailer, h.at + h.size, 5);
+}
+function sxd_leveldb(c, b) {
+    if (c.size < 48) {
+        return false;
+    }
+    var footer = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 48);
+    var at = [footer];
+    var v = [];
+    for (var i = 0; i < 4; i++) {
+        if (!sxd_var(c, b, at, footer + 40, v, i, i % 2 ? sxd_database_varuint_size_rows : sxd_database_varuint_offset_rows)) {
+            return false;
+        }
+    }
+    if (!sxd_add(c, sxd_leveldb_footer_magic, footer + 40, 8)) {
+        return false;
+    }
+    var handles = sxAllocN(1024, sxNew_sxd_handle);
+    var count = [0];
+    if (!sxd_level_block(c, b, sxCopy_sxd_handle(null, { at: v[0], size: v[1] }), 2, null, null) || !sxd_level_block(c, b, sxCopy_sxd_handle(null, { at: v[2], size: v[3] }), 1, handles, count)) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        if (!sxd_level_block(c, b, sxCopy_sxd_handle(null, handles[i]), 0, null, null)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_leveldb_sstable_build(c, b) {
+    return sxd_leveldb(c, b);
+}

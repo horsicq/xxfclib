@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/idtech_md3/xx_idtech_md3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_md3_header_fields = layout([chars("signature", 4, SIGNATURE), i32("version", ID), chars("name", 64, STRING),
+    i32("flags", FLAGS), i32("frame_count", COUNT), i32("tag_count", COUNT), i32("surface_count", COUNT),
+    i32("skin_count", COUNT), i32("frames_offset", OFFSET), i32("tags_offset", OFFSET), i32("surfaces_offset", OFFSET),
+    i32("end_offset", OFFSET)]);
+var sxgm_md3_header = sxLayout(0x60270051, "md3_header", LE, sxgm_md3_header_fields);
+var sxgm_md3_frame_fields = layout([field("bounds_min_0", "float32", 4), field("bounds_min_1", "float32", 4),
+    field("bounds_min_2", "float32", 4), field("bounds_max_0", "float32", 4), field("bounds_max_1", "float32", 4),
+    field("bounds_max_2", "float32", 4), field("origin_0", "float32", 4), field("origin_1", "float32", 4),
+    field("origin_2", "float32", 4), field("radius", "float32", 4), chars("name", 16, STRING)]);
+var sxgm_md3_frame = sxLayout(0x60270052, "md3_frame", LE, sxgm_md3_frame_fields);
+var sxgm_md3_tag_fields = layout([chars("name", 64, STRING), field("origin_0", "float32", 4), field("origin_1", "float32", 4),
+    field("origin_2", "float32", 4), field("axis_0", "float32", 4), field("axis_1", "float32", 4),
+    field("axis_2", "float32", 4), field("axis_3", "float32", 4), field("axis_4", "float32", 4), field("axis_5", "float32", 4),
+    field("axis_6", "float32", 4), field("axis_7", "float32", 4), field("axis_8", "float32", 4)]);
+var sxgm_md3_tag = sxLayout(0x60270053, "md3_tag", LE, sxgm_md3_tag_fields);
+var sxgm_md3_surface_fields = layout([chars("signature", 4, SIGNATURE), chars("name", 64, STRING), i32("flags", FLAGS),
+    i32("frame_count", COUNT), i32("shader_count", COUNT), i32("vertex_count", COUNT), i32("triangle_count", COUNT),
+    i32("triangles_offset", OFFSET), i32("shaders_offset", OFFSET), i32("texcoords_offset", OFFSET),
+    i32("vertices_offset", OFFSET), i32("end_offset", OFFSET)]);
+var sxgm_md3_surface = sxLayout(0x60270054, "md3_surface", LE, sxgm_md3_surface_fields);
+var sxgm_md3_triangle_fields = layout([i32("vertex0", ID), i32("vertex1", ID), i32("vertex2", ID)]);
+var sxgm_md3_triangle = sxLayout(0x60270055, "md3_triangle", LE, sxgm_md3_triangle_fields);
+var sxgm_md3_shader_fields = layout([chars("name", 64, STRING), i32("shader_index", ID)]);
+var sxgm_md3_shader = sxLayout(0x60270056, "md3_shader", LE, sxgm_md3_shader_fields);
+var sxgm_md3_texcoord_fields = layout([field("s", "float32", 4), field("t", "float32", 4)]);
+var sxgm_md3_texcoord = sxLayout(0x60270057, "md3_texcoord", LE, sxgm_md3_texcoord_fields);
+var sxgm_md3_vertex_fields = layout([i16("x"), i16("y"), i16("z"), i16("normal")]);
+var sxgm_md3_vertex = sxLayout(0x60270058, "md3_vertex", LE, sxgm_md3_vertex_fields);
+function sxgm_md3(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 108) || !sxgm_add(c, sxgm_md3_header, 0)) {
+        return false;
+    }
+    var frames = sxgm32(b, 76, false);
+    var tags = sxgm32(b, 80, false);
+    var surfaces = sxgm32(b, 84, false);
+    var p = sxgm32(b, 100, false);
+    if (frames > 1024 || tags > 16 || surfaces > 32) {
+        return true;
+    }
+    if (!sxgm_table(c, sxgm_md3_frame, sxgm32(b, 92, false), frames) || !sxgm_table(c, sxgm_md3_tag, sxgm32(b, 96, false), frames * tags)) {
+        return false;
+    }
+    for (var i = 0; i < surfaces && c.count < 20000; i++) {
+        if (!sxgm_read(c, p, b, 108) || sxMemcmp(b, "IDP3", 4)) {
+            break;
+        }
+        var sf = sxgm32(b, 72, false);
+        var sh = sxgm32(b, 76, false);
+        var v = sxgm32(b, 80, false);
+        var t = sxgm32(b, 84, false);
+        var z = sxgm32(b, 104, false);
+        if (z < 108 || !sxgm_span(c, p, z)) {
+            break;
+        }
+        if (!sxgm_add(c, sxgm_md3_surface, p)) {
+            return false;
+        }
+        var ls = [sxgm_md3_triangle, sxgm_md3_shader, sxgm_md3_texcoord, sxgm_md3_vertex];
+        var counts = [t, sh, v, sf <= 1024 && v <= 4096 ? sf * v : SX_U64_MAX];
+        var widths = [12, 68, 8, 8];
+        for (var j = 0; j < 4; j++) {
+            var at = sxgm32(b, 88 + ((j * 4) >>> 0), false);
+            var n = counts[j];
+            if (n <= 20000 && at <= z && n <= Math.floor(sxU64(z - at) / widths[j]) && !sxgm_table(c, ls[j], p + at, n)) {
+                return false;
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_idtech_md3_build(c) {
+    return sxgm_md3(c);
+}

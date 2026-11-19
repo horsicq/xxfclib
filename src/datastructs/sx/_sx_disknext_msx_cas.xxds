@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/msx_cas/xx_msx_cas_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_msx_cas_binary_header_fields = layout([field("marker", "byte[8]", 8, SIGNATURE),
+    field("binary_file_marker", "byte[10]", 10, SIGNATURE), chars("filename", 6, NONE),
+    field("data_marker", "byte[8]", 8, SIGNATURE), u16("load_address", VA), u16("inclusive_end_address", VA),
+    u16("execution_address", VA)]);
+var sxdn_msx_cas_binary_header = sxLayout(0x60780002, "msx_cas_binary_header", LE, sxdn_msx_cas_binary_header_fields);
+function sxdn_msx(c) {
+    var p = 0;
+    for (var i = 0; i < 1024 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; i++) {
+        var h = [];
+        if (!sxdn_read(c, p, h, 38)) {
+            break;
+        }
+        var start = sxdn16(h, 32, 0);
+        var end = sxdn16(h, 34, 0);
+        if (end < start || !sxdn_put(c, sxdn_msx_cas_binary_header, p, 1) || !sxdn_span(c, p + 38, sxU64(end - start) + 1)) {
+            break;
+        }
+        p += sxU64(38 + end - start) + 1;
+        var b = [0];
+        while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxdn_read(c, p, b, 1) && b[0] === 0) {
+            p++;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_msx_cas_build(c) {
+    return sxdn_msx(c);
+}

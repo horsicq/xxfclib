@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/vsoft_vortexproject/xx_vsoft_vortexproject_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxmr_vtx(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var mode = [0];
+    var x = [0];
+    var clock = [0];
+    var old = sxmr_eq(v, 0, "AY", 2, end) || sxmr_eq(v, 0, "YM", 2, end);
+    if (!old && !sxmr_eq(v, 0, "ay", 2, end) && !sxmr_eq(v, 0, "ym", 2, end)) {
+        return false;
+    }
+    if (!sxmr_u(v, 2, 1, mode, end) || mode[0] > 6 || !sxmr_u(v, 5, 4, clock, end) || clock[0] < 800000 || clock[0] > 4000000) {
+        return false;
+    }
+    if (old) {
+        p[0] = 14;
+        if (!sxmr_row(v, sxmr_vtx_legacy_header, 0, end)) {
+            return false;
+        }
+    } else {
+        p[0] = 16;
+        if (!sxmr_row(v, sxmr_vtx_header, 0, end)) {
+            return false;
+        }
+    }
+    if (!sxmr_u(v, sxU64(p[0] - 4), 4, x, end) || x[0] < 2 || x[0] > 0xA00000) {
+        return false;
+    }
+    for (var i = 0; i < (old ? 2 : 5); i++) {
+        if (!sxmr_string(v, p, end)) {
+            return false;
+        }
+    }
+    return p[0] < end;
+}
+function sx_vsoft_vortexproject_build(v) {
+    return sxmr_vtx(v);
+}

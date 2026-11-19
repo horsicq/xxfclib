@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/dmg/xx_dmg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_udif_trailer_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u32("version"), u32("header_size", SIZE),
+    u32("flags", FLAGS), u64("running_data_fork_offset", OFFSET), u64("data_fork_offset", OFFSET),
+    u64("data_fork_length", SIZE), u64("resource_fork_offset", OFFSET), u64("resource_fork_length", SIZE),
+    u32("segment_number"), u32("segment_count", COUNT), field("segment_id", "byte[16]", 16, ID), u32("data_checksum_type", ID),
+    u32("data_checksum_bits"), field("data_checksum", "uint32[32]", 128, CHECKSUM), u64("xml_offset", OFFSET),
+    u64("xml_length", SIZE), field("reserved1", "byte[64]", 64, RESERVED), u64("code_signature_offset", OFFSET),
+    u64("code_signature_length", SIZE), field("reserved2", "byte[40]", 40, RESERVED), u32("master_checksum_type", ID),
+    u32("master_checksum_bits"), field("master_checksum", "uint32[32]", 128, CHECKSUM), u32("image_variant", ID),
+    u64("sector_count", COUNT), field("reserved3", "byte[12]", 12, RESERVED)]);
+var sx_dm_udif_trailer = sxLayout(0x6029002C, "udif_trailer", BE, sx_dm_udif_trailer_fields);
+function sx_dmg_build(c) {
+    return c.size >= 512 && sx_dm_add(c, sx_dm_udif_trailer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 512), 512);
+}

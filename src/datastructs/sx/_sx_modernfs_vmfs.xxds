@@ -1,0 +1,105 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vmfs/xx_vmfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_vmfs_volume_header_fields = layout([u32("magic", SIGNATURE), u32("version", ID), field("unknown0", "byte[6]", 6),
+    u8("lun", ID), field("unknown1", "byte[3]", 3), chars("name", 28, STRING), field("lun_identity", "byte[49]", 49),
+    u32("size_units"), field("unknown2", "byte[31]", 31), field("uuid", "byte[16]", 16, ID), u64("creation_time"),
+    u64("modification_time")]);
+var sxmf_vmfs_volume_header = sxLayout(0x6042006B, "vmfs_volume_header", LE, sxmf_vmfs_volume_header_fields);
+var sxmf_vmfs35_lvm_header_fields = layout([u64("size", SIZE), u64("blocks"), u32("unknown0"), chars("uuid_string", 35, STRING),
+    field("unknown1", "byte[29]", 29), field("uuid", "byte[16]", 16, ID), u32("unknown2"), u64("creation_time"),
+    u32("unknown3"), u32("segment_count", COUNT), u32("first_segment"), u32("unknown4"), u32("last_segment"), u32("unknown5"),
+    u64("modification_time"), u32("extent_count", COUNT)]);
+var sxmf_vmfs35_lvm_header = sxLayout(0x6042006C, "vmfs35_lvm_header", LE, sxmf_vmfs35_lvm_header_fields);
+var sxmf_vmfs35_filesystem_header_fields = layout([u32("magic", SIGNATURE), u32("volume_version", ID), u8("version", ID),
+    field("uuid", "byte[16]", 16, ID), u32("mode", FLAGS), chars("label", 128, STRING), u32("device_block_size", SIZE),
+    u64("block_size", SIZE), u32("creation_time", TIMESTAMP), u32("unknown3"), field("lvm_uuid", "byte[16]", 16, ID),
+    field("unknown4", "byte[16]", 16), u32("fdc_header_size", SIZE), u32("fdc_bitmap_count", COUNT), u32("subblock_size", SIZE)]);
+var sxmf_vmfs35_filesystem_header = sxLayout(0x6042006D, "vmfs35_filesystem_header", LE, sxmf_vmfs35_filesystem_header_fields);
+var sxmf_vmfs35_bitmap_header_fields = layout([u32("items_per_entry", COUNT), u32("entries_per_area", COUNT),
+    u32("header_size", SIZE), u32("data_size", SIZE), u32("area_size", SIZE), u32("total_items", COUNT),
+    u32("area_count", COUNT)]);
+var sxmf_vmfs35_bitmap_header = sxLayout(0x6042006E, "vmfs35_bitmap_header", LE, sxmf_vmfs35_bitmap_header_fields);
+var sxmf_vmfs35_inode_data_fields = layout([u32("id", ID), u32("id2", ID), u32("link_count", COUNT), u32("type", ID),
+    u32("flags", FLAGS), u64("file_size", SIZE), u64("block_size", SIZE), u64("block_count", COUNT),
+    u32("modification_time", TIMESTAMP), u32("change_time", TIMESTAMP), u32("access_time", TIMESTAMP), u32("uid", ID),
+    u32("gid", ID), u32("mode", FLAGS), u32("allocation_format", ID), u32("tbz"), u32("copy_on_write", FLAGS),
+    field("unknown", "byte[432]", 432)]);
+var sxmf_vmfs35_inode_data = sxLayout(0x6042006F, "vmfs35_inode_data", LE, sxmf_vmfs35_inode_data_fields);
+var sxmf_vmfs35_directory_entry_fields = layout([u32("type", ID), u32("block_id", ID), u32("record_id", ID),
+    chars("name", 128, STRING)]);
+var sxmf_vmfs35_directory_entry = sxLayout(0x60420070, "vmfs35_directory_entry", LE, sxmf_vmfs35_directory_entry_fields);
+var sxmf_vmfs35_block_id_fields = layout([u32("block_id", FLAGS)]);
+var sxmf_vmfs35_block_id = sxLayout(0x60420071, "vmfs35_block_id", LE, sxmf_vmfs35_block_id_fields);
+var sxmf_vmfs35_metadata_header_fields = layout([u32("magic", SIGNATURE), u64("position", OFFSET),
+    u64("heartbeat_position", OFFSET), u64("heartbeat_sequence"), u64("object_sequence"), u32("heartbeat_lock", FLAGS),
+    field("heartbeat_uuid", "byte[16]", 16, ID), u64("modification_time"), field("padding", "byte[448]", 448)]);
+var sxmf_vmfs35_metadata_header = sxLayout(0x60420089, "vmfs35_metadata_header", LE, sxmf_vmfs35_metadata_header_fields);
+function sxmf_vmfs(c) {
+    var h = [];
+    var b = [];
+    if (!sxmf_read(c, 1048576, h, 0, 1024) || sxmf32(h, 0, 0) !== 0xC001D00D || !sxmf_put(c, sxmf_vmfs_volume_header, 1048576, 1) || !sxmf_put(c, sxmf_vmfs35_lvm_header, 1049088, 1)) {
+        return false;
+    }
+    var base = 0x1100000;
+    var super_ = 0x1300000;
+    if (!sxmf_read(c, super_, h, 0, 512) || sxmf32(h, 0, 0) !== 0x2FABF15E || h[8] !== 3 && h[8] !== 5) {
+        return true;
+    }
+    if (!sxmf_put(c, sxmf_vmfs35_filesystem_header, super_, 1)) {
+        return false;
+    }
+    var bs = sxmf64(h, 161, 0);
+    if (!sxmf_pow(bs) || bs < 1048576 || bs > 8388608) {
+        return true;
+    }
+    var fdc = base + Math.floor(0x400000 / bs) * bs;
+    if (fdc === base) {
+        fdc += bs;
+    }
+    if (!sxmf_read(c, fdc, h, 0, 28)) {
+        return true;
+    }
+    var items = sxmf32(h, 0, 0);
+    var entries = sxmf32(h, 4, 0);
+    var hdr = sxmf32(h, 8, 0);
+    var data = sxmf32(h, 12, 0);
+    var area = sxmf32(h, 16, 0);
+    var total = sxmf32(h, 20, 0);
+    if (!items || items > 1024 || !entries || entries > 4096 || data !== 2048 || hdr < 28 || area < entries * 1024 + items * entries * data || !total || total > 65536) {
+        return true;
+    }
+    if (!sxmf_put(c, sxmf_vmfs35_bitmap_header, fdc, 1)) {
+        return false;
+    }
+    var per = items * entries;
+    for (var i = 0; i < total && i < 4096 && c.count < 24000; i++) {
+        var p = fdc + hdr + Math.floor(i / per) * area + entries * 1024 + i % per * data;
+        if (!sxmf_read(c, p, b, 0, 2048) || sxmf32(b, 0, 0) !== 0x10C00001) {
+            continue;
+        }
+        if (!sxmf_put(c, sxmf_vmfs35_metadata_header, p, 1) || !sxmf_put(c, sxmf_vmfs35_inode_data, p + 512, 1)) {
+            return false;
+        }
+        var n = sxmf64(b, 532, 0);
+        var format = sxmf32(b, 580, 0);
+        var type = sxmf32(b, 524, 0);
+        if (format === 4305) {
+            if (n > 1024) {
+                continue;
+            }
+            if (type === 2 && n % 140 === 0 && !sxmf_put(c, sxmf_vmfs35_directory_entry, p + 1024, Math.floor(n / 140))) {
+                return false;
+            }
+        } else if (format === 1 && !sxmf_put(c, sxmf_vmfs35_block_id, p + 1024, 256)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_vmfs_build(c) {
+    return sxmf_vmfs(c);
+}

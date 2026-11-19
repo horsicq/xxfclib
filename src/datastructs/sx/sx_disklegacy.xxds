@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_disklegacy.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_disklegacy");
+include("_sx_disklegacy_atari_dim");
+include("_sx_disklegacy_atari_stt");
+include("_sx_disklegacy_atari_stw");
+include("_sx_disklegacy_daemon_tools_mdx");
+include("_sx_disklegacy_dart");
+include("_sx_disklegacy_discferret_dfi");
+include("_sx_disklegacy_ensoniq_ede");
+include("_sx_disklegacy_ensoniq_gkh");
+include("_sx_disklegacy_fatx");
+include("_sx_disklegacy_focusdrive");
+include("_sx_disklegacy_hxc_afi");
+include("_sx_disklegacy_hxc_qd");
+include("_sx_disklegacy_hxc_stream");
+include("_sx_disklegacy_ldbs");
+include("_sx_disklegacy_microdrive");
+include("_sx_disklegacy_oric_dsk");
+include("_sx_disklegacy_samcoupe_sad");
+include("_sx_disklegacy_shrinkwrap");
+include("_sx_disklegacy_trackstar");
+include("_sx_disklegacy_trs_80_jv3");
+include("_sx_disklegacy_x68000_dim");
+include("_sx_disklegacy_xbox_xdvdfs");
+
+function fileTypes() { return ["SHRINKWRAP", "XBOX_XDVDFS", "TRS_80_JV3", "X68000_DIM", "DAEMON_TOOLS_MDX", "DART", "LDBS",
+    "FATX", "ATARI_DIM", "ATARI_STT", "ATARI_STW", "DISCFERRET_DFI", "HXC_AFI", "HXC_QD", "HXC_STREAM", "ORIC_DSK",
+    "ENSONIQ_GKH", "ENSONIQ_EDE", "SAMCOUPE_SAD", "TRACKSTAR", "FOCUSDRIVE", "MICRODRIVE"]; }
+
+var sx_disklegacy_layouts = [sxdleg_shrinkwrap_header, sxdleg_jv3_sector_descriptor, sxdleg_jv3_write_protection,
+    sxdleg_x68000_dim_header, sxdleg_dart_header, sxdleg_dart_block_length, sxdleg_mds2_header, sxdleg_mdx_header,
+    sxdleg_mdx_key_salt, sxdleg_ldbs_header, sxdleg_ldbs_block_header, sxdleg_ldbs_directory_header,
+    sxdleg_ldbs_directory_entry, sxdleg_ldbs_track_header, sxdleg_ldbs_sector16, sxdleg_ldbs_sector18, sxdleg_ldbs_geometry,
+    sxdleg_atari_dim_header, sxdleg_stt_header, sxdleg_stt_track_entry, sxdleg_stt_track_header, sxdleg_stt_sector_section,
+    sxdleg_stt_sector_descriptor, sxdleg_stt_raw_section, sxdleg_stt_unknown_section, sxdleg_stw_header,
+    sxdleg_stw_track_header, sxdleg_discferret_header, sxdleg_discferret_capture, sxdleg_afi_header, sxdleg_afi_info,
+    sxdleg_afi_string_offset, sxdleg_afi_track_offset, sxdleg_afi_data_offset, sxdleg_afi_crc, sxdleg_afi_string,
+    sxdleg_afi_track_list, sxdleg_afi_track, sxdleg_afi_data, sxdleg_hxc_qd_header, sxdleg_hxc_qd_track,
+    sxdleg_hxc_stream_chunk, sxdleg_hxc_stream_metadata, sxdleg_hxc_stream_io, sxdleg_hxc_stream_flux, sxdleg_hxc_stream_crc,
+    sxdleg_oric_sector_header, sxdleg_oric_mfm_header, sxdleg_gkh_header, sxdleg_gkh_format_tag, sxdleg_gkh_geometry_tag,
+    sxdleg_gkh_location_tag, sxdleg_ede_text_header, sxdleg_ede_bitmap_marker, sxdleg_ede_bitmap_byte, sxdleg_ede_format,
+    sxdleg_sad_header, sxdleg_trackstar_track_header, sxdleg_trackstar_track_size, sxdleg_fatx_superblock,
+    sxdleg_fatx_fat16_entry, sxdleg_fatx_fat32_entry, sxdleg_fatx_directory_entry, sxdleg_xdvdfs_volume_descriptor,
+    sxdleg_xdvdfs_directory_entry, sxdleg_focusdrive_header, sxdleg_focusdrive_partition, sxdleg_focusdrive_name_header,
+    sxdleg_focusdrive_partition_name, sxdleg_microdrive_header, sxdleg_microdrive_start, sxdleg_microdrive_size,
+    sxdleg_ldbs_track_directory_entry, sxdleg_ldbs_track_block_header, sxdleg_ldbs_sector_block_header];
+
+function structs() {
+    return sxCatalog([sxdleg_shrinkwrap_header, sxdleg_jv3_sector_descriptor, sxdleg_jv3_write_protection,
+        sxdleg_x68000_dim_header, sxdleg_dart_header, sxdleg_dart_block_length, sxdleg_mds2_header, sxdleg_mdx_header,
+        sxdleg_mdx_key_salt, sxdleg_ldbs_header, sxdleg_ldbs_block_header, sxdleg_ldbs_directory_header,
+        sxdleg_ldbs_directory_entry, sxdleg_ldbs_track_header, sxdleg_ldbs_sector16, sxdleg_ldbs_sector18, sxdleg_ldbs_geometry,
+        sxdleg_atari_dim_header, sxdleg_stt_header, sxdleg_stt_track_entry, sxdleg_stt_track_header, sxdleg_stt_sector_section,
+        sxdleg_stt_sector_descriptor, sxdleg_stt_raw_section, sxdleg_stt_unknown_section, sxdleg_stw_header,
+        sxdleg_stw_track_header, sxdleg_discferret_header, sxdleg_discferret_capture, sxdleg_afi_header, sxdleg_afi_info,
+        sxdleg_afi_string_offset, sxdleg_afi_track_offset, sxdleg_afi_data_offset, sxdleg_afi_crc, sxdleg_afi_string,
+        sxdleg_afi_track_list, sxdleg_afi_track, sxdleg_afi_data, sxdleg_hxc_qd_header, sxdleg_hxc_qd_track,
+        sxdleg_hxc_stream_chunk, sxdleg_hxc_stream_metadata, sxdleg_hxc_stream_io, sxdleg_hxc_stream_flux,
+        sxdleg_hxc_stream_crc, sxdleg_oric_sector_header, sxdleg_oric_mfm_header, sxdleg_gkh_header, sxdleg_gkh_format_tag,
+        sxdleg_gkh_geometry_tag, sxdleg_gkh_location_tag, sxdleg_ede_text_header, sxdleg_ede_bitmap_marker,
+        sxdleg_ede_bitmap_byte, sxdleg_ede_format, sxdleg_sad_header, sxdleg_trackstar_track_header,
+        sxdleg_trackstar_track_size, sxdleg_fatx_superblock, sxdleg_fatx_fat16_entry, sxdleg_fatx_fat32_entry,
+        sxdleg_fatx_directory_entry, sxdleg_xdvdfs_volume_descriptor, sxdleg_xdvdfs_directory_entry, sxdleg_focusdrive_header,
+        sxdleg_focusdrive_partition, sxdleg_focusdrive_name_header, sxdleg_focusdrive_partition_name, sxdleg_microdrive_header,
+        sxdleg_microdrive_start, sxdleg_microdrive_size, sxdleg_ldbs_track_directory_entry, sxdleg_ldbs_track_block_header,
+        sxdleg_ldbs_sector_block_header], sx_disklegacy_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_disklegacy_build, false);
+}

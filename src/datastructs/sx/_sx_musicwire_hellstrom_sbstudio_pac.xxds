@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/hellstrom_sbstudio_pac/xx_hellstrom_sbstudio_pac_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_order16_fields = layout([u16("pattern", ID)]);
+var sxmw_order16 = sxLayout(0x60870006, "order16", LE, sxmw_order16_fields);
+var sxmw_pac_header_fields = layout([blob("magic", 4, SIGNATURE), u32("payload_bytes", SIZE)]);
+var sxmw_pac_header = sxLayout(0x6087001D, "pac_header", LE, sxmw_pac_header_fields);
+var sxmw_pac_info_fields = layout([u16("package_version", ID), u16("writer_version", ID), u16("sounds", COUNT)]);
+var sxmw_pac_info = sxLayout(0x6087001E, "pac_info", LE, sxmw_pac_info_fields);
+var sxmw_pac_song_fields = layout([u8("speed"), u8("tempo"), u16("sheets", COUNT), u8("channels", COUNT),
+    u8("lines_per_sheet", COUNT), u8("bytes_per_cell", SIZE), u8("packing", FLAGS)]);
+var sxmw_pac_song = sxLayout(0x6087001F, "pac_song", LE, sxmw_pac_song_fields);
+var sxmw_pac_pan_fields = layout([u8("pan")]);
+var sxmw_pac_pan = sxLayout(0x60870020, "pac_pan", LE, sxmw_pac_pan_fields);
+var sxmw_pac_event_fields = layout([u8("note"), u8("sound", ID), u8("volume"), u8("effect", ID), u8("argument")]);
+var sxmw_pac_event = sxLayout(0x60870022, "pac_event", LE, sxmw_pac_event_fields);
+function sxmw_pac(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [8];
+    var n = [0];
+    var ce;
+    var ch = [0];
+    var packing = [1];
+    var lines = [0];
+    var cell = [0];
+    var tag = [];
+    if (!sxmw_eq(v, 0, "PACG", 4, end) || !sxmw_u(v, 4, 4, n, 0, end) || n[0] > sxU64(end - 8) || !sxmw_row(v, sxmw_pac_header, 0, end)) {
+        return false;
+    }
+    end = n[0] + 8;
+    while (p[0] < end) {
+        if (!sxmw_read(v, p[0], tag, 4, end) || !sxmw_u(v, p[0] + 4, 4, n, 0, end) || !sxmw_span(v, p[0] + 8, n[0], end) || !sxmw_take(v, sxmw_chunk_le, p, 1, end)) {
+            return false;
+        }
+        ce = p[0] + n[0];
+        if (!sxMemcmp(tag, "PAIN", 4)) {
+            if (!sxmw_row(v, sxmw_pac_info, p[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SOIN", 4)) {
+            if (!sxmw_u(v, p[0] + 4, 1, ch, 0, ce) || !sxmw_u(v, p[0] + 5, 1, lines, 0, ce) || !sxmw_u(v, p[0] + 6, 1, cell, 0, ce) || !sxmw_u(v, p[0] + 7, 1, packing, 0, ce) || !sxmw_take(v, sxmw_pac_song, p, 1, ce) || !sxmw_take(v, sxmw_pac_pan, p, ch[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SNIN", 4)) {
+            if (!sxmw_row(v, sxmw_pac_sound, p[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SOOR", 4)) {
+            if (n[0] % 2 || !sxmw_take(v, sxmw_order16, p, Math.floor(n[0] / 2), ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SONA", 4) || !sxMemcmp(tag, "SNNA", 4) || !sxMemcmp(tag, "PAOR", 4)) {
+            if (!sxmw_text_emit(v, p[0], n[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SOSH", 4) && ch[0] && lines[0] === 64 && cell[0] === 5 && !packing[0]) {
+            if (n[0] !== ch[0] * lines[0] * cell[0] || !sxmw_take(v, sxmw_pac_event, p, ch[0] * lines[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "END ", 4)) {
+            return n[0] === 0;
+        }
+        p[0] = ce;
+    }
+    return true;
+}
+function sx_hellstrom_sbstudio_pac_build(v) {
+    return sxmw_pac(v);
+}

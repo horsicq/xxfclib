@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/paq8/xx_paq8_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarfinal_paq8l_stored_header_fields = layout([chars("revision", 5, SIGNATURE), u8("space"), u8("option_prefix"),
+    field("compression_level", "ascii_decimal[1]", 1), bytes("line_ending", 2)]);
+var sxarfinal_paq8l_stored_header = sxLayout(0x6092020D, "paq8l_stored_header", LE, sxarfinal_paq8l_stored_header_fields);
+var sxarfinal_paq8_member_size_fields = layout([field("uncompressed_size", "ascii_decimal", 0, SIZE)]);
+var sxarfinal_paq8_member_size = sxLayout(0x6092020E, "paq8_member_size", LE, sxarfinal_paq8_member_size_fields);
+var sxarfinal_paq8_member_name_fields = layout([field("name", "char", 0)]);
+var sxarfinal_paq8_member_name = sxLayout(0x6092020F, "paq8_member_name", LE, sxarfinal_paq8_member_name_fields);
+var sxarfinal_paq8_tab_fields = layout([u8("tab")]);
+var sxarfinal_paq8_tab = sxLayout(0x60920210, "paq8_tab", LE, sxarfinal_paq8_tab_fields);
+var sxarfinal_paq8_line_ending_fields = layout([bytes("line_ending", 2)]);
+var sxarfinal_paq8_line_ending = sxLayout(0x60920211, "paq8_line_ending", LE, sxarfinal_paq8_line_ending_fields);
+var sxarfinal_paq8_directory_end_fields = layout([u8("directory_terminator")]);
+var sxarfinal_paq8_directory_end = sxLayout(0x60920212, "paq8_directory_end", LE, sxarfinal_paq8_directory_end_fields);
+var sxarfinal_paq8l_stored_frame_fields = layout([u8("preprocessor_type", ID), i32("uncompressed_bytes", SIZE)]);
+var sxarfinal_paq8l_stored_frame = sxLayout(0x60920213, "paq8l_stored_frame", BE, sxarfinal_paq8l_stored_frame_fields);
+function sxarfinal_variable(c, l, p, n) {
+    return !!(n && n <= 4096 && c.count < 20000 && sxarfinal_span(c, p, n) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n)));
+}
+function sxarfinal_paq8(c) {
+    var h = [];
+    var p = 10;
+    var total = 0;
+    var members = 0;
+    if (!sxarfinal_read(c, 0, h, 10) || sxMemcmp(h, "paq8l -0\r\n", 10) || !sxarfinal_put(c, sxarfinal_paq8l_stored_header, 0)) {
+        return false;
+    }
+    for (; members < 65536; members++) {
+        var v = [0];
+        if (!sxarfinal_read(c, p, v, 1)) {
+            return false;
+        }
+        if (v[0] === 26) {
+            break;
+        }
+        var start = p;
+        var z = 0;
+        while (v[0] >= 48 /*0*/ && v[0] <= 57 /*9*/) {
+            if (z > Math.floor((SX_U64_MAX - (v[0] - 48 /*0*/ < 0 ? v[0] - 48 /*0*/ + SX_U64_MAX : v[0] - 48 /*0*/)) / 10) || sxU64(p - start) >= 24) {
+                return false;
+            }
+            z = z * 10 + (v[0] - 48 /*0*/ < 0 ? v[0] - 48 /*0*/ + SX_U64_MAX : v[0] - 48 /*0*/);
+            p++;
+            if (!sxarfinal_read(c, p, v, 1)) {
+                return false;
+            }
+        }
+        if (p === start || v[0] !== 9 || z > SX_U64_MAX - total || !sxarfinal_variable(c, sxarfinal_paq8_member_size, start, sxU64(p - start)) || !sxarfinal_put(c, sxarfinal_paq8_tab, p)) {
+            return false;
+        }
+        total += z;
+        start = ++p;
+        while (sxarfinal_read(c, p, v, 1) && v[0] !== 13) {
+            if (v[0] < 32 || v[0] === 127 || sxU64(p - start) >= 4096) {
+                return false;
+            }
+            p++;
+        }
+        if (p === start || !sxarfinal_variable(c, sxarfinal_paq8_member_name, start, sxU64(p - start)) || !sxarfinal_read(c, p, h, 2) || h[0] !== 13 || h[1] !== 10 || !sxarfinal_put(c, sxarfinal_paq8_line_ending, p)) {
+            return false;
+        }
+        p += 2;
+    }
+    if (!members || members === 65536 || !sxarfinal_put(c, sxarfinal_paq8_directory_end, p++)) {
+        return false;
+    }
+    var output = 0;
+    for (var block = 0; output < total && block < 20000; block++) {
+        if (!sxarfinal_read(c, p, h, 5) || h[0]) {
+            return false;
+        }
+        z = sxarfinal_num(h, 1, 4, true);
+        if (!z || z > 2147483647 || z > sxU64(total - output) || !sxarfinal_span(c, p + 5, z) || !sxarfinal_put(c, sxarfinal_paq8l_stored_frame, p)) {
+            return false;
+        }
+        output += z;
+        p += 5 + z;
+    }
+    return output === total;
+}
+function sx_paq8_build(c) {
+    var ok = false;
+    ok = sxarfinal_paq8(c);
+    return !!(c.count && sxarfinal_finish(c));
+}

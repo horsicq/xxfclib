@@ -1,0 +1,186 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/walker_activisionpro/xx_walker_activisionpro_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcodeplayers_avp_instrument1_fields = layout([u8("sample_number", ID), u8("envelope_number", ID),
+    u8("effect_flags", FLAGS), blob("opaque3", 1), u8("portamento_add"), blob("opaque5", 2), u8("stop_reset_delay"),
+    u8("second_sample", ID), i8("arpeggio0"), i8("arpeggio1"), i8("arpeggio2"), i8("arpeggio3"), u8("fixed_or_transposed_note"),
+    u8("vibrato_number", ID), u8("vibrato_delay")]);
+var sxcodeplayers_avp_instrument1 = sxLayout(0x60A1000D, "avp_instrument1", BE, sxcodeplayers_avp_instrument1_fields);
+var sxcodeplayers_avp_instrument2_fields = layout([u8("sample_number", ID), u8("volume"), u8("effect_flags", FLAGS),
+    blob("opaque3", 1), u8("portamento_add"), blob("opaque5", 2), u8("stop_reset_delay"), u8("second_sample", ID),
+    i8("arpeggio0"), i8("arpeggio1"), i8("arpeggio2"), i8("arpeggio3"), u8("fixed_or_transposed_note"),
+    u8("vibrato_number", ID), u8("vibrato_delay")]);
+var sxcodeplayers_avp_instrument2 = sxLayout(0x60A1000E, "avp_instrument2", BE, sxcodeplayers_avp_instrument2_fields);
+var sxcodeplayers_avp_instrument3_fields = layout([u8("sample_number", ID), u8("volume"), u8("effect_flags", FLAGS),
+    i8("transpose"), i16("finetune"), u16("sample_start_offset", OFFSET), u8("stop_reset_delay"), i8("arpeggio0"),
+    i8("arpeggio1"), i8("arpeggio2"), i8("arpeggio3"), u8("fixed_or_transposed_note"), u8("vibrato_number", ID),
+    u8("vibrato_delay")]);
+var sxcodeplayers_avp_instrument3 = sxLayout(0x60A1000F, "avp_instrument3", BE, sxcodeplayers_avp_instrument3_fields);
+var sxcodeplayers_avp_version_a = [
+    [0x13, 0xB5, 0x50, 2, 0, 0, 0x13, 0xB5, 0x50, 7, 0, 0, 0x13, 0xB5, 0x50, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0x11, 0xB5, 0x50, 1, 0, 0, 0x13, 0xB5, 0x50, 2, 0, 0, 0x13, 0xB5, 0x50, 7, 0, 0, 0x13, 0xB5, 0x50, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0x11, 0xB5, 0x50, 1, 0, 0, 0x13, 0xB5, 0x50, 2, 0, 0, 0x13, 0xB5, 0x50, 3, 0, 0, 0x31, 0xB5, 0x50, 4, 0, 0, 0x33, 0x75, 0x50, 6, 0, 0, 0x13, 0xB5, 0x50, 8, 0, 0, 0x13, 0xB5, 0x50, 15]];
+function sxcodeplayers_avp_version(v, at) {
+    var sizes = [16, 22, 40];
+    for (var k = 0; k < 3; k++) {
+        if (at > v.code_size || sizes[k] > sxU64(v.code_size - at)) {
+            continue;
+        }
+        var ok = true;
+        for (var n = 0; n < sizes[k]; n++) {
+            if (n % 6 < 4 && v.code[at + n] !== sxcodeplayers_avp_version_a[k][n]) {
+                ok = false;
+            }
+        }
+        if (ok) {
+            return (k + 1) >>> 0;
+        }
+    }
+    return 0;
+}
+function sxcodeplayers_avp(v) {
+    var start = SX_U64_MAX;
+    var p = SX_U64_MAX;
+    var q;
+    var play;
+    var sub = [0];
+    var positions = [0];
+    var tracks = [0];
+    var offsets = [0];
+    var inst = [0];
+    var global = [0];
+    var data = [0];
+    var samples = [0];
+    var info = [0];
+    var env = [0];
+    var call = [0];
+    for (var i = 0; i < 1024 && i + 4 <= v.code_size; i++) {
+        if (sxcodeplayers_eq(v, i, "H\xE7\xFC\xFE", 4)) {
+            start = i;
+            break;
+        }
+    }
+    if (start === SX_U64_MAX) {
+        return false;
+    }
+    p = sxcodeplayers_find(v, start, v.code_size, "\xE9Ap\x00A\xFA", 6);
+    if (p === SX_U64_MAX || !sxcodeplayers_ref(v, p + 6, sub)) {
+        return false;
+    }
+    q = p;
+    for (; q + 4 <= v.code_size; q += 2) {
+        if (sxcodeplayers_eq(v, q, "Nu", 2)) {
+            return false;
+        }
+        if (sxcodeplayers_eq(v, q, "a\x00", 2)) {
+            break;
+        }
+    }
+    if (!sxcodeplayers_ref(v, q + 2, call) || !sxcodeplayers_eq(v, call[0], "z\x00", 2) || !sxcodeplayers_eq(v, call[0] + 6, "I\xFA", 2) || !sxcodeplayers_ref(v, call[0] + 8, positions) || positions[0] < sub[0] || sxU64(positions[0] - sub[0]) % 16 || Math.floor(sxU64(positions[0] - sub[0]) / 16) > 256) {
+        return false;
+    }
+    play = SX_U64_MAX;
+    for (i = start; i + 8 <= v.code_size; i += 2) {
+        if (sxcodeplayers_eq(v, i, ",|", 2) && sxcodeplayers_eq(v, i + 6, "J)", 2)) {
+            play = i;
+            break;
+        }
+    }
+    if (play === SX_U64_MAX || play < 4) {
+        return false;
+    }
+    for (i = sxU64(play - 4); ; ) {
+        if (sxcodeplayers_eq(v, i, "K\xFA", 2)) {
+            if (!sxcodeplayers_ref(v, i + 2, inst)) {
+                return false;
+            }
+        } else if (sxcodeplayers_eq(v, i, "C\xFA", 2)) {
+            if (!sxcodeplayers_ref(v, i + 2, global)) {
+                return false;
+            }
+        }
+        if (inst[0] && global[0]) {
+            break;
+        }
+        if (i < 2) {
+            return false;
+        }
+        i = sxU64(i - 2);
+    }
+    p = SX_U64_MAX;
+    for (i = play; i + 20 <= v.code_size; i += 2) {
+        if (sxcodeplayers_eq(v, i, "z\x00\x1A1", 4) && sxcodeplayers_eq(v, i + 6, "\xDAEI\xFA", 4)) {
+            p = i;
+            break;
+        }
+    }
+    if (p === SX_U64_MAX || !sxcodeplayers_ref(v, p + 10, offsets) || !sxcodeplayers_eq(v, p + 12, ":4", 2) || !sxcodeplayers_eq(v, p + 16, "I\xFA", 2) || !sxcodeplayers_ref(v, p + 18, tracks) || offsets[0] < inst[0] || sxU64(offsets[0] - inst[0]) % 16 || Math.floor(sxU64(offsets[0] - inst[0]) / 16) > 256 || tracks[0] < offsets[0] || sxU64(tracks[0] - offsets[0]) % 2 || Math.floor(sxU64(tracks[0] - offsets[0]) / 2) > 4096) {
+        return false;
+    }
+    var version = 0;
+    for (q = p + 20; q + 20 <= v.code_size; q += 2) {
+        if (sxcodeplayers_eq(v, q, "1\x85", 2) && (version = sxcodeplayers_avp_version(v, q + 4))) {
+            break;
+        }
+    }
+    if (!version) {
+        return false;
+    }
+    p = SX_U64_MAX;
+    for (i = q + 4; i + 14 <= v.code_size; i += 2) {
+        if (sxcodeplayers_eq(v, i, "\xE5EE\xFA", 4) && sxcodeplayers_eq(v, i + 10, "E\xFA", 2)) {
+            p = i;
+            break;
+        }
+    }
+    if (p === SX_U64_MAX || !sxcodeplayers_ref(v, p + 4, samples) || !sxcodeplayers_ref(v, p + 12, data)) {
+        return false;
+    }
+    if (sxcodeplayers_eq(v, p + 26, "\xCA\xFC", 2) && sxcodeplayers_eq(v, p + 30, "E\xFA", 2) && !sxcodeplayers_ref(v, p + 32, info)) {
+        return false;
+    }
+    for (i = p + 14; i + 10 <= v.code_size; i += 2) {
+        if (sxcodeplayers_eq(v, i, "\xE9D", 2) && (v.code[i + 2] === 0x31 || v.code[i + 2] === 0x11) && v.code[i + 3] === 0x84 && sxcodeplayers_eq(v, i + 6, "E\xFA", 2)) {
+            if (!sxcodeplayers_ref(v, i + 8, env)) {
+                return false;
+            }
+            break;
+        }
+    }
+    if (!sxcodeplayers_put(v, sxcodeplayers_avp_subsong, sub[0], Math.floor(sxU64(positions[0] - sub[0]) / 16))) {
+        return false;
+    }
+    if (env[0] && env[0] <= inst[0] && sxU64(inst[0] - env[0]) % 16 === 0 && Math.floor(sxU64(inst[0] - env[0]) / 16) <= 256 && !sxcodeplayers_put(v, sxcodeplayers_avp_envelope, env[0], Math.floor(sxU64(inst[0] - env[0]) / 16))) {
+        return false;
+    }
+    var l = version === 1 ? sxcodeplayers_avp_instrument1 : version === 2 ? sxcodeplayers_avp_instrument2 : sxcodeplayers_avp_instrument3;
+    if (!sxcodeplayers_put(v, l, inst[0], Math.floor(sxU64(offsets[0] - inst[0]) / 16)) || !sxcodeplayers_put(v, sxcodeplayers_avp_track_offset, offsets[0], Math.floor(sxU64(tracks[0] - offsets[0]) / 2)) || !sxcodeplayers_put(v, sxcodeplayers_avp_sample_offset, samples[0], 28)) {
+        return false;
+    }
+    if (info[0]) {
+        if (!sxcodeplayers_put(v, sxcodeplayers_avp_sample, info[0], 27)) {
+            return false;
+        }
+    } else {
+        for (i = 0; i < 27; i++) {
+            var a = [0];
+            var b = [0];
+            if (!sxcodeplayers_u(v, samples[0] + ((4 * i) >>> 0), 4, a) || !sxcodeplayers_u(v, samples[0] + ((4 * ((i + 1) >>> 0)) >>> 0), 4, b)) {
+                return false;
+            }
+            if (b[0] < a[0] || b[0] > sxU64(v.end - data[0])) {
+                continue;
+            }
+            if (sxU64(b[0] - a[0]) >= 6 && !sxcodeplayers_put(v, sxcodeplayers_avp_sample, data[0] + a[0], 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_walker_activisionpro_build(v) {
+    return sxcodeplayers_avp(v);
+}

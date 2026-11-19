@@ -1,0 +1,276 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gerber_rs274x/xx_gerber_rs274x_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvtx_aperture_number_fields = layout([field("aperture_number", "ascii_signed", 0)]);
+var sxvtx_aperture_number = sxLayout(0x60620049, "vectortext_aperture_number", LE, sxvtx_aperture_number_fields);
+var sxvtx_x_integer_digits_fields = layout([field("x_integer_digits", "ascii_signed", 0)]);
+var sxvtx_x_integer_digits = sxLayout(0x6062007A, "vectortext_x_integer_digits", LE, sxvtx_x_integer_digits_fields);
+var sxvtx_x_fraction_digits_fields = layout([field("x_fraction_digits", "ascii_signed", 0)]);
+var sxvtx_x_fraction_digits = sxLayout(0x6062007B, "vectortext_x_fraction_digits", LE, sxvtx_x_fraction_digits_fields);
+var sxvtx_y_integer_digits_fields = layout([field("y_integer_digits", "ascii_signed", 0)]);
+var sxvtx_y_integer_digits = sxLayout(0x6062007C, "vectortext_y_integer_digits", LE, sxvtx_y_integer_digits_fields);
+var sxvtx_y_fraction_digits_fields = layout([field("y_fraction_digits", "ascii_signed", 0)]);
+var sxvtx_y_fraction_digits = sxLayout(0x6062007D, "vectortext_y_fraction_digits", LE, sxvtx_y_fraction_digits_fields);
+var sxvtx_vertex_count_fields = layout([field("vertex_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_vertex_count = sxLayout(0x6062007E, "vectortext_vertex_count", LE, sxvtx_vertex_count_fields);
+var sxvtx_d_code_fields = layout([field("d_code", "ascii_signed", 0)]);
+var sxvtx_d_code = sxLayout(0x6062007F, "vectortext_d_code", LE, sxvtx_d_code_fields);
+var sxvtx_aperture_width_fields = layout([field("aperture_width", "ascii_real", 0)]);
+var sxvtx_aperture_width = sxLayout(0x60620080, "vectortext_aperture_width", LE, sxvtx_aperture_width_fields);
+var sxvtx_aperture_height_fields = layout([field("aperture_height", "ascii_real", 0)]);
+var sxvtx_aperture_height = sxLayout(0x60620081, "vectortext_aperture_height", LE, sxvtx_aperture_height_fields);
+var sxvtx_hole_diameter_fields = layout([field("hole_diameter", "ascii_real", 0)]);
+var sxvtx_hole_diameter = sxLayout(0x60620082, "vectortext_hole_diameter", LE, sxvtx_hole_diameter_fields);
+var sxvtx_coordinate_notation_fields = layout([field("coordinate_notation", "char", 0, STRING)]);
+var sxvtx_coordinate_notation = sxLayout(0x60620083, "vectortext_coordinate_notation", LE, sxvtx_coordinate_notation_fields);
+var sxvtx_polarity_fields = layout([field("polarity", "char", 0, STRING)]);
+var sxvtx_polarity = sxLayout(0x60620084, "vectortext_polarity", LE, sxvtx_polarity_fields);
+var sxvtx_aperture_shape_fields = layout([field("aperture_shape", "char", 0, STRING)]);
+var sxvtx_aperture_shape = sxLayout(0x60620085, "vectortext_aperture_shape", LE, sxvtx_aperture_shape_fields);
+function sxvtx_gerber(q) {
+    var p = 0;
+    while (p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        while (p < q.n && sxvtx_space(q.b[p])) {
+            p++;
+        }
+        if (p === q.n) {
+            break;
+        }
+        var extended = q.b[p] === 37 /*%*/;
+        if (extended) {
+            p++;
+        }
+        var a = p;
+        while (p < q.n && q.b[p] !== 42) {
+            p++;
+        }
+        if (p === q.n) {
+            return false;
+        }
+        var end = p++;
+        if (extended && (p === q.n || q.b[p++] !== 37 /*%*/)) {
+            return false;
+        }
+        if (extended) {
+            while (a < end && sxvtx_space(q.b[a])) {
+                a++;
+            }
+            while (end > a && sxvtx_space(q.b[end - 1])) {
+                end--;
+            }
+            if (end - a === 10 && q.b[a] === 70 /*F*/ && q.b[a + 1] === 83 /*S*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a, 2)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_zero_suppression, a + 2, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_coordinate_notation, a + 3, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a + 4, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_x_integer_digits, a + 5, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_x_fraction_digits, a + 6, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a + 7, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_y_integer_digits, a + 8, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_y_fraction_digits, a + 9, 1)) {
+                        return false;
+                    }
+                }
+            } else if (end - a === 4 && q.b[a] === 77 /*M*/ && q.b[a + 1] === 79 /*O*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a, 2)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_units, a + 2, 2)) {
+                        return false;
+                    }
+                }
+            } else if (end - a === 3 && q.b[a] === 76 /*L*/ && q.b[a + 1] === 80 /*P*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a, 2)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_polarity, a + 2, 1)) {
+                        return false;
+                    }
+                }
+            } else if (end - a >= 3 && q.b[a] === 65 /*A*/) {
+                for (var k = 0; k < 3; k++) {
+                    while (a < end && sxvtx_space(q.b[a])) {
+                        a++;
+                    }
+                    if (a === end) {
+                        return false;
+                    }
+                    {
+                        if (!sxvtx_emit(q, sxvtx_keyword, a, 1)) {
+                            return false;
+                        }
+                    }
+                    a++;
+                }
+                while (a < end && sxvtx_space(q.b[a])) {
+                    a++;
+                }
+                var start = a;
+                if (a < end && (q.b[a] === 43 /*+*/ || q.b[a] === 45 /*-*/)) {
+                    a++;
+                }
+                while (a < end && q.b[a] >= 48 /*0*/ && q.b[a] <= 57 /*9*/) {
+                    a++;
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_aperture_number, start, a - start)) {
+                        return false;
+                    }
+                }
+                if (a === end) {
+                    return false;
+                }
+                var shape = q.b[a];
+                {
+                    if (!sxvtx_emit(q, sxvtx_aperture_shape, a, 1)) {
+                        return false;
+                    }
+                }
+                a++;
+                while (a < end && sxvtx_space(q.b[a])) {
+                    a++;
+                }
+                if (a === end || q.b[a++] !== 44 /*,*/) {
+                    return false;
+                }
+                var item = 0;
+                while (a < end) {
+                    while (a < end && sxvtx_space(q.b[a])) {
+                        a++;
+                    }
+                    start = a;
+                    while (a < end && q.b[a] !== 88 /*X*/) {
+                        a++;
+                    }
+                    var stop = a;
+                    while (stop > start && sxvtx_space(q.b[stop - 1])) {
+                        stop--;
+                    }
+                    var l = sxvtx_hole_diameter;
+                    if (shape === 67 /*C*/) {
+                        l = item ? sxvtx_hole_diameter : sxvtx_diameter;
+                    } else if (shape === 82 /*R*/ || shape === 79 /*O*/) {
+                        l = item === 0 ? sxvtx_aperture_width : item === 1 ? sxvtx_aperture_height : sxvtx_hole_diameter;
+                    } else if (shape === 80 /*P*/) {
+                        l = item === 0 ? sxvtx_diameter : item === 1 ? sxvtx_vertex_count : item === 2 ? sxvtx_rotation : sxvtx_hole_diameter;
+                    }
+                    if (!sxvtx_emit(q, l, start, stop - start)) {
+                        return false;
+                    }
+                    item++;
+                    if (a < end) {
+                        a++;
+                    }
+                }
+            } else if (end - a >= 2 && q.b[a] === 84 /*T*/) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a, 2)) {
+                        return false;
+                    }
+                }
+                if (end - a > 2) {
+                    {
+                        if (!sxvtx_emit(q, sxvtx_record_text, a + 2, end - a - 2)) {
+                            return false;
+                        }
+                    }
+                }
+            } else {
+                return false;
+            }
+        } else if (end - a >= 3 && !sxMemcmpAt(q.b, a, "G04", 0, 3)) {
+            {
+                if (!sxvtx_emit(q, sxvtx_keyword, a, 3)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxvtx_emit(q, sxvtx_string_value, a + 3, end - a - 3)) {
+                    return false;
+                }
+            }
+        } else {
+            while (a < end) {
+                while (a < end && sxvtx_space(q.b[a])) {
+                    a++;
+                }
+                if (a === end) {
+                    break;
+                }
+                var key = q.b[a];
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, a, 1)) {
+                        return false;
+                    }
+                }
+                start = ++a;
+                while (start < end && sxvtx_space(q.b[start])) {
+                    start++;
+                }
+                a = start;
+                if (a < end && (q.b[a] === 43 /*+*/ || q.b[a] === 45 /*-*/)) {
+                    a++;
+                }
+                while (a < end && q.b[a] >= 48 /*0*/ && q.b[a] <= 57 /*9*/) {
+                    a++;
+                }
+                if (a === start) {
+                    return false;
+                }
+                l = key === 88 /*X*/ ? sxvtx_encoded_x : key === 89 /*Y*/ ? sxvtx_encoded_y : key === 68 /*D*/ ? sxvtx_d_code : sxvtx_command_code;
+                if (!sxvtx_emit(q, l, start, a - start)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gerber_rs274x_build(q) {
+    return sxvtx_gerber(q);
+}

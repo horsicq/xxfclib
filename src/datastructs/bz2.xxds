@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// BZIP2 stream: the 4-byte "BZh<level>" header and the compressed rest of the
+// format (its extent comes from the reader, Format.size()).
+
+function fileTypes() { return ["BZ2"]; }
+
+function structs() {
+    return [
+        { id: 1, name: "STREAM_HEADER", fields: headerFields },
+        { id: 2, name: "COMPRESSED_DATA" }
+    ];
+}
+
+// The block size digit must be '1'..'9'; otherwise only the magic decodes.
+function headerFields(ds) {
+    var fields = [ chars("magic", 3, ID) ], digit;
+    if (ds.totalSize < 4) return undefined;
+    digit = File.u8(ds.offset + 3);
+    if (digit >= 0x31 && digit <= 0x39) {
+        fields.push({ name: "block_size_100k", type: "ascii_digit", size: 1, role: COUNT,
+            display: function (value) { return "" + (value - 0x30); },
+            comment: function (value) {
+                var level = value - 0x30;
+                return (level * 100000) + " Bytes maximum block size (" + level + " x 100000)";
+            } });
+    }
+    return layout(fields);
+}
+
+function scan() {
+    var size = Format.size();
+    if (size < 4) return false;
+    Structs.add("STREAM_HEADER", 0, 4);
+    Structs.add("COMPRESSED_DATA", 4, size - 4, RAW);
+}

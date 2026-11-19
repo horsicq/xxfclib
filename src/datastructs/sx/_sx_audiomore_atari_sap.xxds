@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/atari_sap/xx_atari_sap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_sap_binary_marker_fields = layout([u16("marker", SIGNATURE)]);
+var sxau_sap_binary_marker = sxLayout(0x602C003D, "sap_binary_marker", LE, sxau_sap_binary_marker_fields);
+var sxau_sap_load_segment_fields = layout([u16("start_address", VA), u16("end_address_inclusive", VA)]);
+var sxau_sap_load_segment = sxLayout(0x602C003E, "sap_load_segment", LE, sxau_sap_load_segment_fields);
+function sxau_sap(v) {
+    var at = 0;
+    while (at + 1 < v.n && at < 65536 && !(v.p[at] === 255 && v.p[at + 1] === 255)) {
+        at++;
+    }
+    if (!sxau_row(v, sxau_sap_binary_marker, at, v.n)) {
+        return false;
+    }
+    at += 2;
+    while (at < v.n) {
+        if (!sxau_need(v, at, 2, v.n)) {
+            return false;
+        }
+        if (sxau_u16(v.p, at, false) === 65535) {
+            if (!sxau_row(v, sxau_sap_binary_marker, at, v.n)) {
+                return false;
+            }
+            at += 2;
+        }
+        if (!sxau_row(v, sxau_sap_load_segment, at, v.n)) {
+            return false;
+        }
+        var a = sxau_u16(v.p, at, false);
+        var b = sxau_u16(v.p, at + 2, false);
+        at += 4;
+        if (b < a || !sxau_need(v, at, (((b - a) >>> 0) + 1) >>> 0, v.n)) {
+            return false;
+        }
+        at += (((b - a) >>> 0) + 1) >>> 0;
+    }
+    return true;
+}
+function sx_atari_sap_build(v) {
+    return sxau_sap(v);
+}

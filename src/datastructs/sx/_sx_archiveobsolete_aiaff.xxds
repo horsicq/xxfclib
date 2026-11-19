@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/aiaff/xx_aiaff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_aiaff_header_fields = layout([chars("signature", 8, SIGNATURE),
+    field("member_table_offset", "ascii_decimal[12]", 12, OFFSET),
+    field("symbol_table_offset", "ascii_decimal[12]", 12, OFFSET),
+    field("first_member_offset", "ascii_decimal[12]", 12, OFFSET), field("last_member_offset", "ascii_decimal[12]", 12, OFFSET),
+    field("free_list_offset", "ascii_decimal[12]", 12, OFFSET)]);
+var sxao_aiaff_header = sxLayout(0x60700039, "aiaff_header", LE, sxao_aiaff_header_fields);
+var sxao_aiaff_member_fields = layout([field("payload_size", "ascii_decimal[12]", 12, SIZE),
+    field("next_member_offset", "ascii_decimal[12]", 12, OFFSET),
+    field("previous_member_offset", "ascii_decimal[12]", 12, OFFSET),
+    field("modification_time", "ascii_decimal[12]", 12, TIMESTAMP), field("user_id", "ascii_decimal[12]", 12),
+    field("group_id", "ascii_decimal[12]", 12), field("mode", "ascii_octal_padded[12]", 12, FLAGS),
+    field("name_size", "ascii_decimal[4]", 4, SIZE)]);
+var sxao_aiaff_member = sxLayout(0x6070003A, "aiaff_member", LE, sxao_aiaff_member_fields);
+var sxao_aiaff_terminator_fields = layout([chars("terminator", 2, SIGNATURE)]);
+var sxao_aiaff_terminator = sxLayout(0x6070003B, "aiaff_terminator", LE, sxao_aiaff_terminator_fields);
+function sxao_decimal(c, p, n, v) {
+    var b = [];
+    if (!n || n > 24 || !sxao_read(c, p, b, 0, n)) {
+        return false;
+    }
+    v[0] = 0;
+    var first = 0;
+    var last = n;
+    while (first < last && (b[first] === 32 || b[first] === 9)) {
+        first++;
+    }
+    while (last > first && (b[(last - 1) >>> 0] === 32 || b[(last - 1) >>> 0] === 9 || b[(last - 1) >>> 0] === 13 || b[(last - 1) >>> 0] === 10)) {
+        last--;
+    }
+    for (var i = first; i < last; i++) {
+        if (b[i] < 48 /*0*/ || b[i] > 57 /*9*/ || v[0] > Math.floor((SX_U64_MAX - (b[i] - 48 /*0*/ < 0 ? b[i] - 48 /*0*/ + SX_U64_MAX : b[i] - 48 /*0*/)) / 10)) {
+            return false;
+        }
+        v[0] = v[0] * 10 + (b[i] - 48 /*0*/ < 0 ? b[i] - 48 /*0*/ + SX_U64_MAX : b[i] - 48 /*0*/);
+    }
+    return true;
+}
+function sxao_aiaff(c) {
+    var p = [0];
+    var last = [0];
+    if (!sxao_decimal(c, 32, 12, p) || !sxao_decimal(c, 44, 12, last) || !sxao_add(c, sxao_aiaff_header, 0)) {
+        return false;
+    }
+    var anchor = p[0];
+    var power = 1;
+    var length = 0;
+    for (var work = 0; p[0] && work < 20000; work++) {
+        var n = [0];
+        var next = [0];
+        if (!sxao_decimal(c, p[0] + 84, 4, n) || !sxao_decimal(c, p[0] + 12, 12, next) || !sxao_add(c, sxao_aiaff_member, p[0]) || !sxao_span(c, p[0] + 88, n[0] + sxAnd64(n[0], 1) + 2) || !sxao_text(c, sxao_archiveobsolete_name, p[0] + 88, n[0], false) || !sxao_add(c, sxao_aiaff_terminator, p[0] + 88 + n[0] + sxAnd64(n[0], 1))) {
+            return false;
+        }
+        if (p[0] === last[0] || !next[0]) {
+            break;
+        }
+        if (next[0] === anchor) {
+            return false;
+        }
+        if (++length === power) {
+            anchor = next[0];
+            length = 0;
+            if (power <= 10000) {
+                power *= 2;
+            }
+        }
+        p[0] = next[0];
+    }
+    return true;
+}
+function sx_aiaff_build(c) {
+    return sxao_aiaff(c);
+}

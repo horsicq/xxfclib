@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/mlb_ft/xx_mlb_ft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_mlbft_header_fields = layout([u16("member_count", COUNT), u16("version")]);
+var sxap_mlbft_header = sxLayout(0x60720028, "mlbft_header", LE, sxap_mlbft_header_fields);
+var sxap_mlbft_member_fields = layout([u32("payload_offset", OFFSET), u32("payload_size", SIZE), chars("name", 13, NONE)]);
+var sxap_mlbft_member = sxLayout(0x60720029, "mlbft_member", LE, sxap_mlbft_member_fields);
+function sxap_mlb(c) {
+    var n = [0];
+    return sxap_word(c, 0, 2, false, n) && sxap_add(c, sxap_mlbft_header, 0) && sxap_table(c, sxap_mlbft_member, 4, 21, n[0]);
+}
+function sx_mlb_ft_build(c) {
+    return sxap_mlb(c);
+}

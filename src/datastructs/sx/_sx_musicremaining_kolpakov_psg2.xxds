@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kolpakov_psg2/xx_kolpakov_psg2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_psg2_magic_fields = layout([blob("magic", 4, SIGNATURE)]);
+var sxmr_psg2_magic = sxLayout(0x607D0053, "psg2_magic", LE, sxmr_psg2_magic_fields);
+var sxmr_psg2_value_fields = layout([u8("register_value")]);
+var sxmr_psg2_value = sxLayout(0x607D0056, "psg2_value", LE, sxmr_psg2_value_fields);
+function sxmr_psg2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 4;
+    var n = [0];
+    var b = [];
+    if (!sxmr_eq(v, 0, "PSG2", 4, end) || !sxmr_row(v, sxmr_psg2_magic, 0, end)) {
+        return false;
+    }
+    while (p < end) {
+        if (!sxmr_read(v, p, b, 2, end) || !sxmr_row(v, sxmr_psg2_map, p, end)) {
+            return false;
+        }
+        p += 2;
+        if (b[0] === 255 && b[1] === 255) {
+            return true;
+        }
+        if (!sxmr_u(v, p, 1, n, end) || !sxmr_row(v, sxmr_psg2_reuse, p, end)) {
+            return false;
+        }
+        p++;
+        if (!n[0]) {
+            return true;
+        }
+        var bits = 0;
+        for (var j = 0; j < 2; j++) {
+            for (var k = 0; k < 8; k++) {
+                bits = (bits + (b[j] >> k & 1)) >>> 0;
+            }
+        }
+        if (!sxmr_table(v, sxmr_psg2_value, p, n[0] * bits, end)) {
+            return false;
+        }
+        p += n[0] * bits;
+    }
+    return true;
+}
+function sx_kolpakov_psg2_build(v) {
+    return sxmr_psg2(v);
+}

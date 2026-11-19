@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzop/xx_lzop_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_checksum_be_fields = layout([u32("checksum", CHECKSUM)]);
+var sx_a_checksum_be = sxLayout(0x60040015, "checksum_be", BE, sx_a_checksum_be_fields);
+var sx_a_lzop_block_sizes_fields = layout([u32("uncompressed_size", SIZE), u32("compressed_size", SIZE)]);
+var sx_a_lzop_block_sizes = sxLayout(0x6004003E, "lzop_block_sizes", BE, sx_a_lzop_block_sizes_fields);
+var sx_a_lzop_end_fields = layout([u32("uncompressed_size", SIZE)]);
+var sx_a_lzop_end = sxLayout(0x6004003F, "lzop_end", BE, sx_a_lzop_end_fields);
+var sx_a_lzop_extra_size_fields = layout([u32("extra_field_size", SIZE)]);
+var sx_a_lzop_extra_size = sxLayout(0x60040040, "lzop_extra_size", BE, sx_a_lzop_extra_size_fields);
+var sx_a_lzop_magic = [0x89, 76 /*L*/, 90 /*Z*/, 79 /*O*/, 0, 13, 10, 26, 10];
+function sx_a_lzop(c) {
+    var at = [0];
+    while (at[0] < c.size) {
+        var h = [];
+        var namelen = [0];
+        var version;
+        var flags;
+        var l;
+        if (!sx_read(c, at[0], h, 13) || sxMemcmp(h, sx_a_lzop_magic, 9)) {
+            return false;
+        }
+        version = sxGetU16(h, 13, 9, true);
+        var longheader = version >= 0x0940;
+        var flag_at = at[0] + (longheader ? 17 : 14);
+        if (version < 0x0900 || (flags = sx_u32(c, flag_at, true)) === null || flags & 0xFC000) {
+            return false;
+        }
+        var filter = (flags & 0x800) !== 0;
+        l = longheader ? filter ? sx_a_lzop_header_11 : sx_a_lzop_header_10 : filter ? sx_a_lzop_header_01 : sx_a_lzop_header_00;
+        var header_size = (longheader ? 34 : 27) + (filter ? 4 : 0);
+        if (!sx_add(c, l, at[0], header_size) || !sx_read(c, at[0] + header_size - 1, namelen, 1)) {
+            return false;
+        }
+        at[0] += header_size;
+        if (!sx_a_raw_advance(c, at, namelen[0]) || !sx_add(c, sx_a_checksum_be, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+        if (flags & 0x40) {
+            var extra;
+            if ((extra = sx_u32(c, at[0], true)) === null || !sx_add(c, sx_a_lzop_extra_size, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+            if (!sx_a_raw_advance(c, at, extra) || !sx_add(c, sx_a_checksum_be, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+        }
+        for (; ; ) {
+            var plain;
+            var packed;
+            if ((plain = sx_u32(c, at[0], true)) === null) {
+                return false;
+            }
+            if (!plain) {
+                if (!sx_add(c, sx_a_lzop_end, at[0], 4)) {
+                    return false;
+                }
+                at[0] += 4;
+                break;
+            }
+            if ((packed = sx_u32(c, at[0] + 4, true)) === null || !packed || packed > plain || !sx_add(c, sx_a_lzop_block_sizes, at[0], 8)) {
+                return false;
+            }
+            at[0] += 8;
+            var sums = ((flags & 1) !== 0 ? 1 : 0) + ((flags & 0x100) !== 0 ? 1 : 0) + (packed < plain ? ((flags & 2) !== 0 ? 1 : 0) + ((flags & 0x200) !== 0 ? 1 : 0) : 0);
+            for (var i = 0; i < sums; i++) {
+                if (!sx_add(c, sx_a_checksum_be, at[0], 4)) {
+                    return false;
+                }
+                at[0] += 4;
+            }
+            if (!sx_a_raw_advance(c, at, packed)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_lzop_build(c) {
+    return sx_a_lzop(c);
+}

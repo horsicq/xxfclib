@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_brlan/xx_nintendo_brlan_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_brlan_pai1_fields = layout([chars("tag", 4, ID), u32("section_size", SIZE), u16("frame_count", COUNT),
+    u8("loop", FLAGS), u8("padding"), u16("texture_count", COUNT), u16("binding_count", COUNT),
+    u32("binding_table_offset", OFFSET)]);
+var sxmx_brlan_pai1 = sxLayout(0x602E0043, "brlan_pai1", BE, sxmx_brlan_pai1_fields);
+var sxmx_brlan_binding_fields = layout([chars("name", 20, STRING), u8("group_count", COUNT), blob("padding", 3),
+    u32("group_relative", OFFSET)]);
+var sxmx_brlan_binding = sxLayout(0x602E0044, "brlan_binding", BE, sxmx_brlan_binding_fields);
+var sxmx_brlan_group_fields = layout([chars("tag", 4, ID), u8("track_count", COUNT), blob("padding", 3)]);
+var sxmx_brlan_group = sxLayout(0x602E0045, "brlan_group", BE, sxmx_brlan_group_fields);
+var sxmx_brlan_track_fields = layout([u8("index", ID), u8("channel", ID), u8("curve_type", ID), u8("padding"),
+    u16("key_count", COUNT), u16("reserved", RESERVED), u32("keys_relative", OFFSET)]);
+var sxmx_brlan_track = sxLayout(0x602E0046, "brlan_track", BE, sxmx_brlan_track_fields);
+var sxmx_brlan_key_fields = layout([field("frame", "float", 4), field("value", "float", 4), field("tangent", "float", 4)]);
+var sxmx_brlan_key = sxLayout(0x602E0047, "brlan_key", BE, sxmx_brlan_key_fields);
+var sxmx_relative_offset_be_fields = layout([u32("relative_offset", OFFSET)]);
+var sxmx_relative_offset_be = sxLayout(0x602E0048, "relative_offset_be", BE, sxmx_relative_offset_be_fields);
+function sxmx_brlan(v) {
+    if (!sxmx_row(v, sxmx_nw_header, 0, v.n) || !sxmx_row(v, sxmx_brlan_pai1, 16, v.n)) {
+        return false;
+    }
+    var n = sxmx_u16(v.p, 30, true);
+    var table = 16 + sxmx_u32(v.p, 32, true);
+    if (n > 32 || !sxmx_table(v, sxmx_relative_offset_be, table, n, v.n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var at = 16 + sxmx_u32(v.p, table + i * 4, true);
+        if (!sxmx_row(v, sxmx_brlan_binding, at, v.n)) {
+            return false;
+        }
+        var group = at + sxmx_u32(v.p, at + 24, true);
+        if (!sxmx_row(v, sxmx_brlan_group, group, v.n)) {
+            return false;
+        }
+        var tracks = v.p[group + 4];
+        if (tracks > 10 || !sxmx_table(v, sxmx_relative_offset_be, group + 8, tracks, v.n)) {
+            return false;
+        }
+        for (var j = 0; j < tracks; j++) {
+            var track = group + sxmx_u32(v.p, group + 8 + j * 4, true);
+            if (!sxmx_row(v, sxmx_brlan_track, track, v.n)) {
+                return false;
+            }
+            var key = track + sxmx_u32(v.p, track + 8, true);
+            if (!sxmx_table(v, sxmx_brlan_key, key, sxmx_u16(v.p, track + 4, true), v.n)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_nintendo_brlan_build(v) {
+    return sxmx_brlan(v);
+}

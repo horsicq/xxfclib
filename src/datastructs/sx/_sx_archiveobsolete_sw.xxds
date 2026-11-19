@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sw/xx_sw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_sw_header_fields = layout([chars("signature", 6, SIGNATURE), field("image_revision", "ascii_decimal[3]", 3),
+    chars("product_marker", 1, SIGNATURE), field("product_revision", "ascii_decimal[2]", 2), u8("terminator")]);
+var sxao_sw_header = sxLayout(0x60700001, "sw_header", LE, sxao_sw_header_fields);
+function sx_sw_build(c) {
+    return sxao_add(c, sxao_sw_header, 0) && sxao_native_members(c);
+}

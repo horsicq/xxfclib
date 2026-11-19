@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/photoshop_pat/xx_photoshop_pat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_pat_header_fields = layout([blob("signature", 4, SIGNATURE), u16("version", ID), u32("pattern_count", COUNT)]);
+var sxnx_pat_header = sxLayout(0x6032003A, "pat_header", BE, sxnx_pat_header_fields);
+var sxnx_pat_pattern_fields = layout([u32("version", ID), u32("image_mode", ID), u16("height", COUNT), u16("width", COUNT),
+    u32("name_utf16_units", COUNT)]);
+var sxnx_pat_pattern = sxLayout(0x6032003B, "pat_pattern", BE, sxnx_pat_pattern_fields);
+var sxnx_pat_id_length_fields = layout([u8("id_bytes", SIZE)]);
+var sxnx_pat_id_length = sxLayout(0x6032003C, "pat_id_length", LE, sxnx_pat_id_length_fields);
+var sxnx_pat_vma_fields = layout([u32("version", ID), u32("data_size", SIZE), i32("top"), i32("left"), i32("bottom"),
+    i32("right"), u32("channel_count", COUNT)]);
+var sxnx_pat_vma = sxLayout(0x6032003D, "pat_vma", BE, sxnx_pat_vma_fields);
+var sxnx_pat_slot_fields = layout([u32("present", FLAGS)]);
+var sxnx_pat_slot = sxLayout(0x6032003E, "pat_slot", BE, sxnx_pat_slot_fields);
+var sxnx_pat_channel_fields = layout([u32("data_size", SIZE), u32("depth"), i32("top"), i32("left"), i32("bottom"),
+    i32("right"), u16("pixel_depth"), u8("compression", ID)]);
+var sxnx_pat_channel = sxLayout(0x6032003F, "pat_channel", BE, sxnx_pat_channel_fields);
+var sxnx_pat_row_size_fields = layout([u16("packed_size", SIZE)]);
+var sxnx_pat_row_size = sxLayout(0x60320040, "pat_row_size", BE, sxnx_pat_row_size_fields);
+var sxnx_pat_hierarchy_fields = layout([blob("signature", 4, SIGNATURE), blob("key", 4, ID), u32("data_size", SIZE)]);
+var sxnx_pat_hierarchy = sxLayout(0x60320041, "pat_hierarchy", BE, sxnx_pat_hierarchy_fields);
+var sxnx_pat_empty_descriptor_fields = layout([u32("version", ID), u32("name_utf16_units", COUNT), blob("name_utf16", 2),
+    u32("class_id_length", SIZE), blob("class_id", 4, ID), u32("item_count", COUNT), u32("key_length", SIZE),
+    chars("key", 9, STRING), blob("value_type", 4, ID), u32("list_count", COUNT)]);
+var sxnx_pat_empty_descriptor = sxLayout(0x60320042, "pat_empty_descriptor", BE, sxnx_pat_empty_descriptor_fields);
+function sxnx_pat(v) {
+    if (!sxnx_row(v, sxnx_pat_header, 0, v.n)) {
+        return false;
+    }
+    var count = sxnx_u32(v.p, 6, true);
+    if (count > 4094) {
+        return false;
+    }
+    var p = 10;
+    for (var i = 0; i < count; i++) {
+        if (!sxnx_row(v, sxnx_pat_pattern, p, v.n)) {
+            return false;
+        }
+        var h = sxnx_u16(v.p, p + 8, true);
+        var units = sxnx_u32(v.p, p + 12, true);
+        p += 16;
+        if (!sxnx_need(v, p, units * 2, v.n)) {
+            return false;
+        }
+        p += (units * 2) >>> 0;
+        if (!sxnx_row(v, sxnx_pat_id_length, p, v.n)) {
+            return false;
+        }
+        var id = v.p[p++];
+        if (!sxnx_need(v, p, id, v.n)) {
+            return false;
+        }
+        p += id;
+        if (!sxnx_row(v, sxnx_pat_vma, p, v.n)) {
+            return false;
+        }
+        var n = sxnx_u32(v.p, p + 4, true);
+        var channels = sxnx_u32(v.p, p + 24, true);
+        if (n < 20 || channels > 64 || !sxnx_need(v, p + 8, n, v.n)) {
+            return false;
+        }
+        var end = p + 8 + n;
+        p += 28;
+        for (var j = 0; j < (channels + 2) >>> 0; j++) {
+            if (!sxnx_row(v, sxnx_pat_slot, p, end)) {
+                return false;
+            }
+            var yes = sxnx_u32(v.p, p, true);
+            p += 4;
+            if (yes) {
+                if (!sxnx_row(v, sxnx_pat_channel, p, end)) {
+                    return false;
+                }
+                var z = sxnx_u32(v.p, p, true);
+                if (z < 23 || !sxnx_need(v, p + 4, z, end)) {
+                    return false;
+                }
+                if (v.p[p + 26] === 1 && !sxnx_table(v, sxnx_pat_row_size, p + 27, h, p + 4 + z)) {
+                    return false;
+                }
+                p += (4 + z) >>> 0;
+            }
+        }
+        if (p !== end) {
+            return false;
+        }
+    }
+    if (p < v.n) {
+        if (!sxnx_row(v, sxnx_pat_hierarchy, p, v.n) || !sxnx_row(v, sxnx_pat_empty_descriptor, p + 12, v.n)) {
+            return false;
+        }
+        p += 55;
+    }
+    return p === v.n;
+}
+function sx_photoshop_pat_build(v) {
+    return sxnx_pat(v);
+}

@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/rzip/xx_rzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_rzip_header_fields = layout([chars("signature", 4, SIGNATURE), u8("major", ID), u8("minor", ID),
+    u32("unpacked_size_low"), u32("unpacked_size_high"), bytes("reserved", 10, RESERVED)]);
+var sxal_rzip_header = sxLayout(0x60200046, "rzip_header", BE, sxal_rzip_header_fields);
+var sxal_rzip_block_fields = layout([u8("codec", ID), u32("packed_size", SIZE), u32("unpacked_size", SIZE),
+    u32("next_block_offset", OFFSET)]);
+var sxal_rzip_block = sxLayout(0x60200047, "rzip_block", LE, sxal_rzip_block_fields);
+function sxal_rzip(c) {
+    var b = [];
+    if (!sxal_add(c, sxal_rzip_header, 0)) {
+        return false;
+    }
+    var p = 24;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, 13) || b[0] !== 3 && b[0] !== 4) {
+            break;
+        }
+        var n = sxal32(b, 1, false);
+        if (!sxal_span(c, p + 13, n)) {
+            break;
+        }
+        if (!sxal_add(c, sxal_rzip_block, p)) {
+            return false;
+        }
+        p += 13 + n;
+    }
+    return true;
+}
+function sx_rzip_build(c) {
+    return sxal_rzip(c);
+}

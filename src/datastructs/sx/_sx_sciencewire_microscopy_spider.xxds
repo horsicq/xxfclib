@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/microscopy_spider/xx_microscopy_spider_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_spider_header_le_fields = layout([field("slices", "float32", 4, COUNT), field("rows", "float32", 4, COUNT),
+    field("records", "float32", 4, COUNT), field("unused3", "float32", 4, RESERVED), field("iform", "float32", 4, ID),
+    field("statistics_valid", "float32", 4), field("maximum", "float32", 4), field("minimum", "float32", 4),
+    field("average", "float32", 4), field("standard_deviation", "float32", 4), field("unused10", "float32", 4, RESERVED),
+    field("columns", "float32", 4, COUNT), field("header_records", "float32", 4, COUNT), field("angle_valid", "float32", 4),
+    field("phi", "float32", 4), field("theta", "float32", 4), field("gamma", "float32", 4), field("x_offset", "float32", 4),
+    field("y_offset", "float32", 4), field("z_offset", "float32", 4), field("scale", "float32", 4),
+    field("header_size", "float32", 4, SIZE), field("record_size", "float32", 4, SIZE), field("stack", "float32", 4),
+    field("unused24", "float32", 4, RESERVED), field("highest_image_number", "float32", 4), field("image_number", "float32", 4),
+    field("last_index", "float32", 4), bytes("opaque_70", 8), field("additional_angle_sets", "float32", 4),
+    field("phi1", "float32", 4), field("theta1", "float32", 4), field("psi1", "float32", 4), field("phi2", "float32", 4),
+    field("theta2", "float32", 4), field("psi2", "float32", 4), field("pixel_size", "float32", 4),
+    field("electron_voltage", "float32", 4), field("project_number", "float32", 4), field("micrograph_number", "float32", 4),
+    field("window_number", "float32", 4), field("global_image_number", "float32", 4), bytes("opaque_ac", 228),
+    field("psi3", "float32", 4), field("theta3", "float32", 4), field("phi3", "float32", 4),
+    field("projection_angles_present", "float32", 4), bytes("opaque_1a0", 428), chars("creation_date", 11, STRING),
+    u8("date_padding"), chars("creation_time", 8, STRING), chars("title", 160, STRING)]);
+var sxsw_spider_header_le = sxLayout(0x602D0023, "spider_header_le", LE, sxsw_spider_header_le_fields);
+var sxsw_spider_header_be_fields = layout([field("slices", "float32", 4, COUNT), field("rows", "float32", 4, COUNT),
+    field("records", "float32", 4, COUNT), field("unused3", "float32", 4, RESERVED), field("iform", "float32", 4, ID),
+    field("statistics_valid", "float32", 4), field("maximum", "float32", 4), field("minimum", "float32", 4),
+    field("average", "float32", 4), field("standard_deviation", "float32", 4), field("unused10", "float32", 4, RESERVED),
+    field("columns", "float32", 4, COUNT), field("header_records", "float32", 4, COUNT), field("angle_valid", "float32", 4),
+    field("phi", "float32", 4), field("theta", "float32", 4), field("gamma", "float32", 4), field("x_offset", "float32", 4),
+    field("y_offset", "float32", 4), field("z_offset", "float32", 4), field("scale", "float32", 4),
+    field("header_size", "float32", 4, SIZE), field("record_size", "float32", 4, SIZE), field("stack", "float32", 4),
+    field("unused24", "float32", 4, RESERVED), field("highest_image_number", "float32", 4), field("image_number", "float32", 4),
+    field("last_index", "float32", 4), bytes("opaque_70", 8), field("additional_angle_sets", "float32", 4),
+    field("phi1", "float32", 4), field("theta1", "float32", 4), field("psi1", "float32", 4), field("phi2", "float32", 4),
+    field("theta2", "float32", 4), field("psi2", "float32", 4), field("pixel_size", "float32", 4),
+    field("electron_voltage", "float32", 4), field("project_number", "float32", 4), field("micrograph_number", "float32", 4),
+    field("window_number", "float32", 4), field("global_image_number", "float32", 4), bytes("opaque_ac", 228),
+    field("psi3", "float32", 4), field("theta3", "float32", 4), field("phi3", "float32", 4),
+    field("projection_angles_present", "float32", 4), bytes("opaque_1a0", 428), chars("creation_date", 11, STRING),
+    u8("date_padding"), chars("creation_time", 8, STRING), chars("title", 160, STRING)]);
+var sxsw_spider_header_be = sxLayout(0x602D0027, "spider_header_be", BE, sxsw_spider_header_be_fields);
+function sxsw_spider(c) {
+    var form;
+    if ((form = sx_u32(c, 16, false)) === null) {
+        return false;
+    }
+    var be = form !== 0x3F800000 && form !== 0x40400000;
+    return sxsw_add(c, be ? sxsw_spider_header_be : sxsw_spider_header_le, 0, 1024);
+}
+function sx_microscopy_spider_build(c) {
+    return sxsw_spider(c);
+}

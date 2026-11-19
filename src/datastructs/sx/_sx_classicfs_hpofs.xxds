@@ -1,0 +1,126 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hpofs/xx_hpofs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_hpofs_boot_sector_fields = layout([field("jump", "byte[3]", 3), chars("oem_name", 8, NONE),
+    u16("bytes_per_sector", SIZE), u8("sectors_per_allocation_unit", COUNT), u16("reserved_sectors", COUNT),
+    u8("fat_count", COUNT), u16("root_entry_compatibility"), u16("sector_count_16", COUNT), u8("media_descriptor", ID),
+    u16("sectors_per_fat", COUNT), u16("sectors_per_track", COUNT), u16("heads", COUNT), u32("hidden_sectors", COUNT),
+    u32("sector_count_32", COUNT), u8("drive_number", ID), u8("reserved0", RESERVED), u8("extended_signature", SIGNATURE),
+    u32("serial_number", ID), chars("volume_label", 11, NONE), chars("filesystem_identifier", 8, SIGNATURE),
+    field("boot_code", "byte[442]", 442), u16("marker", SIGNATURE), u16("reserved1", RESERVED), u16("version", ID),
+    u16("boot_signature", SIGNATURE)]);
+var sxcf_hpofs_boot_sector = sxLayout(0x603D0050, "hpofs_boot_sector", LE, sxcf_hpofs_boot_sector_fields);
+var sxcf_hpofs_media_information_fields = layout([chars("identifier", 8, SIGNATURE), chars("volume_label", 32, NONE),
+    field("comment_codepage_data", "byte[160]", 160), u32("serial_number", ID), u16("format_major", ID),
+    u16("format_minor", ID), u16("codepage_type", ID), u16("codepage", ID), u32("sector_count", COUNT),
+    u16("bytes_per_sector", SIZE), u16("bytes_per_sector_copy", SIZE), u32("reserved0", RESERVED),
+    u32("sectors_per_band", COUNT), u32("bytes_per_sector_32", SIZE), field("opaque_e8", "byte[8]", 8), u16("revision_high"),
+    u16("revision_low"), field("opaque_f4", "byte[8]", 8)]);
+var sxcf_hpofs_media_information = sxLayout(0x603D0051, "hpofs_media_information", BE, sxcf_hpofs_media_information_fields);
+var sxcf_hpofs_subfile_header_fields = layout([chars("identifier", 4, SIGNATURE), field("opaque_04", "byte[12]", 12),
+    u16("extent_count", COUNT), field("opaque_12", "byte[14]", 14)]);
+var sxcf_hpofs_subfile_header = sxLayout(0x603D0052, "hpofs_subfile_header", BE, sxcf_hpofs_subfile_header_fields);
+var sxcf_hpofs_extent_fields = layout([u16("sector_count", COUNT), u16("opaque_02"), u32("first_sector")]);
+var sxcf_hpofs_extent = sxLayout(0x603D0053, "hpofs_extent", BE, sxcf_hpofs_extent_fields);
+var sxcf_hpofs_directory_node_fields = layout([chars("identifier", 4, SIGNATURE), field("opaque_04", "byte[16]", 16),
+    u16("level"), u16("codepage_type", ID), u16("separator"), u16("reserved0", RESERVED), field("opaque_1c", "byte[8]", 8)]);
+var sxcf_hpofs_directory_node = sxLayout(0x603D0054, "hpofs_directory_node", BE, sxcf_hpofs_directory_node_fields);
+var sxcf_hpofs_directory_record_prefix_fields = layout([u16("key_size", SIZE), u16("record_size", SIZE)]);
+var sxcf_hpofs_directory_record_prefix = sxLayout(0x603D0055, "hpofs_directory_record_prefix", BE, sxcf_hpofs_directory_record_prefix_fields);
+var sxcf_hpofs_directory_record_fields = layout([u32("record_identifier", ID), u32("record_identifier_copy", ID),
+    field("opaque_08", "byte[4]", 4), u8("record_type", ID), u8("opaque_0d"), u8("attributes", FLAGS),
+    field("opaque_0f", "byte[49]", 49), u16("inline_extent_sectors", COUNT), u16("opaque_42"),
+    u32("inline_extent_first_sector"), field("opaque_48", "byte[4]", 4), u32("extent_list_sector"),
+    field("opaque_50", "byte[8]", 8), u32("file_size", SIZE)]);
+var sxcf_hpofs_directory_record = sxLayout(0x603D0056, "hpofs_directory_record", BE, sxcf_hpofs_directory_record_fields);
+var sxcf_hpofs_volume_information_fields = layout([chars("identifier", 8, SIGNATURE), u32("record_version1", ID),
+    u32("record_version2", ID), u32("directory_intent_counter"), u32("directory_update_counter")]);
+var sxcf_hpofs_volume_information = sxLayout(0x603D007F, "hpofs_volume_information", BE, sxcf_hpofs_volume_information_fields);
+function sxcf_hpofs_node(c, p, n) {
+    var h = [];
+    if (n < 36 || !sxcf_read(c, p, h, 36) || sxMemcmp(h, "INDX", 4) && sxMemcmp(h, "DATA", 4)) {
+        return true;
+    }
+    if (!sxcf_put(c, sxcf_hpofs_directory_node, p, 1)) {
+        return false;
+    }
+    if (sxcf16(h, 20, 1)) {
+        return true;
+    }
+    for (var q = 36; q + 4 <= n && c.count < 24000; ) {
+        if (!sxcf_read(c, p + q, h, 4)) {
+            return false;
+        }
+        var key = sxcf16(h, 0, 1);
+        var rec = sxcf16(h, 2, 1);
+        if (!key) {
+            break;
+        }
+        if (key < 5 || key > 1028 || rec < 92 || key + rec + 4 > sxU64(n - q)) {
+            break;
+        }
+        if (!sxcf_put(c, sxcf_hpofs_directory_record_prefix, p + q, 1) || !sxcf_put(c, sxcf_hpofs_directory_record, p + q + 4 + key, 1)) {
+            return false;
+        }
+        q += (((4 + key) >>> 0) + rec) >>> 0;
+    }
+    return true;
+}
+function sxcf_hpofs(c) {
+    var b = [];
+    var r = [];
+    if (!sxcf_read(c, 0, b, 512) || sxMemcmpAt(b, 54, "HPOFS\x00\x00\x00", 0, 8) && sxMemcmpAt(b, 54, "HPOFS   ", 0, 8)) {
+        return false;
+    }
+    var bs = sxcf16(b, 11, 0);
+    var blocks = sxcf32(b, 32, 0);
+    if (!blocks) {
+        blocks = sxcf16(b, 19, 0);
+    }
+    if (bs < 512 || bs > 4096 || !sxcf_pow(bs) || !sxcf_span(c, 0, blocks * bs) || !sxcf_put(c, sxcf_hpofs_boot_sector, 0, 1)) {
+        return false;
+    }
+    if (sxcf_read(c, 13 * bs, b, 252) && !sxMemcmp(b, "MEDINFO ", 8) && !sxcf_put(c, sxcf_hpofs_media_information, 13 * bs, 1)) {
+        return false;
+    }
+    if (sxcf_read(c, 14 * bs, b, 24) && !sxMemcmp(b, "VOLINFO ", 8) && !sxcf_put(c, sxcf_hpofs_volume_information, 14 * bs, 1)) {
+        return false;
+    }
+    if (!sxcf_read(c, 6 * bs, b, 92) || sxcf32(b, 0, 1) !== 3) {
+        return true;
+    }
+    var nr = sxcf32(b, 76, 1);
+    if (!nr || nr >= blocks || !sxcf_read(c, nr * bs, b, bs) || sxMemcmp(b, "SUBF", 4)) {
+        return true;
+    }
+    var count = sxcf16(b, 16, 1);
+    if (count > Math.floor(sxU64(bs - 32) / 8)) {
+        return true;
+    }
+    if (!sxcf_put(c, sxcf_hpofs_subfile_header, nr * bs, 1) || !sxcf_put(c, sxcf_hpofs_extent, nr * bs + 32, count)) {
+        return false;
+    }
+    for (var i = 0; i < count && c.count < 24000; i++) {
+        sxMemcpy(r, 0, b, 32 + ((8 * i) >>> 0), 8);
+        var first = sxcf32(r, 4, 1);
+        var n = sxcf16(r, 0, 1);
+        if (first === 4294967295) {
+            break;
+        }
+        if (!n || first >= blocks || n > sxU64(blocks - first) || n > 262144) {
+            continue;
+        }
+        for (var j = 0; j + 4 <= n && c.count < 24000; j += 4) {
+            if (!sxcf_hpofs_node(c, (first + j) * bs, bs * 4)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_hpofs_build(c) {
+    return sxcf_hpofs(c);
+}

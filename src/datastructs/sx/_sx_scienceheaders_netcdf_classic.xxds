@@ -1,0 +1,95 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/netcdf_classic/xx_netcdf_classic_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_netcdf_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version", ID), u32("record_count", COUNT)]);
+var sxsh_netcdf_header = sxLayout(0x602A001B, "netcdf_header", BE, sxsh_netcdf_header_fields);
+var sxsh_netcdf_list_fields = layout([u32("tag", ID), u32("count", COUNT)]);
+var sxsh_netcdf_list = sxLayout(0x602A001C, "netcdf_list", BE, sxsh_netcdf_list_fields);
+var sxsh_netcdf_name_size_fields = layout([u32("name_size", SIZE)]);
+var sxsh_netcdf_name_size = sxLayout(0x602A001D, "netcdf_name_size", BE, sxsh_netcdf_name_size_fields);
+var sxsh_netcdf_dimension_fields = layout([u32("dimension_length", COUNT)]);
+var sxsh_netcdf_dimension = sxLayout(0x602A001E, "netcdf_dimension", BE, sxsh_netcdf_dimension_fields);
+var sxsh_netcdf_rank_fields = layout([u32("dimension_count", COUNT)]);
+var sxsh_netcdf_rank = sxLayout(0x602A001F, "netcdf_rank", BE, sxsh_netcdf_rank_fields);
+var sxsh_netcdf_dimension_id_fields = layout([u32("dimension_id", ID)]);
+var sxsh_netcdf_dimension_id = sxLayout(0x602A0020, "netcdf_dimension_id", BE, sxsh_netcdf_dimension_id_fields);
+function sxsh_nc_name(c, at) {
+    var n;
+    if ((n = sx_u32(c, at[0], true)) === null || !n || n > 255 || !sxsh_span(c, at[0], (4 + (((n + 3) >>> 0 & 0xFFFFFFFC) >>> 0)) >>> 0) || !sxsh_add(c, sxsh_netcdf_name_size, at[0], 4)) {
+        return false;
+    }
+    at[0] += (4 + (((n + 3) >>> 0 & 0xFFFFFFFC) >>> 0)) >>> 0;
+    return true;
+}
+function sxsh_nc_list(c, at, wanted, limit, n) {
+    var tag;
+    if ((tag = sx_u32(c, at[0], true)) === null || (n[0] = sx_u32(c, at[0] + 4, true)) === null || n[0] > limit || !(tag === 0 && !n[0] || tag === wanted) || !sxsh_add(c, sxsh_netcdf_list, at[0], 8)) {
+        return false;
+    }
+    at[0] += 8;
+    return true;
+}
+function sxsh_nc_attrs(c, at) {
+    var count = [0];
+    if (!sxsh_nc_list(c, at, 12, 1024, count)) {
+        return false;
+    }
+    for (var i = 0; i < count[0]; i++) {
+        var type;
+        var n;
+        if (!sxsh_nc_name(c, at) || (type = sx_u32(c, at[0], true)) === null || (n = sx_u32(c, at[0] + 4, true)) === null || !type || type > 6 || !sxsh_add(c, sxsh_netcdf_attribute, at[0], 8)) {
+            return false;
+        }
+        var width = type <= 2 ? 1 : type === 3 ? 2 : type === 6 ? 8 : 4;
+        var bytes = sxAnd64(n * width + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        if (!sxsh_span(c, at[0] + 8, bytes)) {
+            return false;
+        }
+        at[0] += 8 + (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes);
+    }
+    return true;
+}
+function sxsh_nc(c) {
+    var b = [];
+    var at = [8];
+    var dims = [0];
+    var vars = [0];
+    if (!sx_read(c, 0, b, 8) || sxMemcmp(b, "CDF", 3) || b[3] !== 1 && b[3] !== 2 || !sxsh_add(c, sxsh_netcdf_header, 0, 8) || !sxsh_nc_list(c, at, 10, 128, dims)) {
+        return false;
+    }
+    for (var i = 0; i < dims[0]; i++) {
+        if (!sxsh_nc_name(c, at) || !sxsh_add(c, sxsh_netcdf_dimension, at[0], 4)) {
+            return false;
+        }
+        at[0] += 4;
+    }
+    if (!sxsh_nc_attrs(c, at) || !sxsh_nc_list(c, at, 11, 256, vars) || !vars[0]) {
+        return false;
+    }
+    for (i = 0; i < vars[0]; i++) {
+        var n;
+        if (!sxsh_nc_name(c, at) || (n = sx_u32(c, at[0], true)) === null || n > 128 || !sxsh_add(c, sxsh_netcdf_rank, at[0], 4) || !sxsh_table(c, sxsh_netcdf_dimension_id, at[0] + 4, 4, n)) {
+            return false;
+        }
+        for (var j = 0; j < n; j++) {
+            var id;
+            if ((id = sx_u32(c, at[0] + 4 + ((j * 4) >>> 0), true)) === null || id >= dims[0]) {
+                return false;
+            }
+        }
+        at[0] += 4 + n * 4;
+        if (!sxsh_nc_attrs(c, at) || !sxsh_add(c, b[3] === 1 ? sxsh_netcdf_variable32 : sxsh_netcdf_variable64, at[0], b[3] === 1 ? 12 : 16)) {
+            return false;
+        }
+        at[0] += b[3] === 1 ? 12 : 16;
+    }
+    return true;
+}
+function sx_netcdf_classic_build(c) {
+    var ok = false;
+    ok = sxsh_nc(c);
+    return ok && sxsh_finish(c);
+}

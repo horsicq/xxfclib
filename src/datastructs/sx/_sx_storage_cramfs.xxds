@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/cramfs/xx_cramfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_cramfs_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("size", SIZE), u32("flags", FLAGS),
+    u32("future", RESERVED), field("signature", "byte[16]", 16, SIGNATURE), u32("crc32", CHECKSUM), u32("edition"),
+    u32("block_count", COUNT), u32("file_count", COUNT), chars("name", 16, STRING)]);
+var sx_st_cramfs_superblock_le = sxLayout(0x6008005B, "cramfs_superblock_le", LE, sx_st_cramfs_superblock_le_fields);
+var sx_st_cramfs_inode_le_fields = layout([u32("mode_uid", FLAGS), u32("size_gid"), u32("name_length_and_offset", OFFSET)]);
+var sx_st_cramfs_inode_le = sxLayout(0x6008005C, "cramfs_inode_le", LE, sx_st_cramfs_inode_le_fields);
+var sx_st_cramfs_block_pointer_le_fields = layout([u32("end_offset_and_flags", OFFSET)]);
+var sx_st_cramfs_block_pointer_le = sxLayout(0x6008005D, "cramfs_block_pointer_le", LE, sx_st_cramfs_block_pointer_le_fields);
+var sx_st_cramfs_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("size", SIZE), u32("flags", FLAGS),
+    u32("future", RESERVED), field("signature", "byte[16]", 16, SIGNATURE), u32("crc32", CHECKSUM), u32("edition"),
+    u32("block_count", COUNT), u32("file_count", COUNT), chars("name", 16, STRING)]);
+var sx_st_cramfs_superblock_be = sxLayout(0x6008005E, "cramfs_superblock_be", BE, sx_st_cramfs_superblock_be_fields);
+var sx_st_cramfs_block_pointer_be_fields = layout([u32("end_offset_and_flags", OFFSET)]);
+var sx_st_cramfs_block_pointer_be = sxLayout(0x60080060, "cramfs_block_pointer_be", BE, sx_st_cramfs_block_pointer_be_fields);
+function sx_st_cramfs_inode_walk(c, at, be, depth, root) {
+    var h = [];
+    var w0;
+    var w1;
+    var w2;
+    var mode;
+    var size;
+    var off;
+    if (depth >= 64 || !sx_st_free(c, at, 12)) {
+        return true;
+    }
+    if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 12) || !sx_add(c, be ? sx_st_cramfs_inode_be : sx_st_cramfs_inode_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 12)) {
+        return false;
+    }
+    w0 = sxGetU32(h, 12, 0, be);
+    w1 = sxGetU32(h, 12, 4, be);
+    w2 = sxGetU32(h, 12, 8, be);
+    mode = be ? w0 >>> 16 : w0 & 65535;
+    size = be ? w1 >>> 8 : w1 & 0xFFFFFF;
+    off = (be ? w2 & 0x3FFFFFF : w2 >>> 6) * 4;
+    if ((mode & 0xF000) === 0x4000 && off && sx_st_fits(c, off, size)) {
+        var p = off;
+        var end = p + size;
+        while (sxU64(end - p) >= 12 && c.count < 20000) {
+            var word;
+            var name;
+            if ((word = sx_u32(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + 8, be)) === null) {
+                return false;
+            }
+            name = (be ? word >>> 26 : word & 63) * 4;
+            if (name + 12 > sxU64(end - p)) {
+                break;
+            }
+            if (!sx_st_cramfs_inode_walk(c, p, be, (depth + 1) >>> 0, false)) {
+                return false;
+            }
+            p += (12 + name) >>> 0;
+        }
+    } else if ((mode & 0xF000) === 0x8000 && off && size) {
+        var count = Math.floor((size + 4095) / 4096);
+        if (sx_st_free(c, off, count * 4) && !sx_table(c, be ? sx_st_cramfs_block_pointer_be : sx_st_cramfs_block_pointer_le, off, 4, count)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_cramfs_build(c) {
+    var ok = false;
+    var magic;
+    ok = (magic = sx_u32(c, 0, false)) !== null;
+    if (ok) {
+        var be = magic !== 0x28CD3D45;
+        ok = sx_add(c, be ? sx_st_cramfs_superblock_be : sx_st_cramfs_superblock_le, 0, 64) && sx_st_cramfs_inode_walk(c, 64, be, 0, true);
+    }
+    return ok && sx_st_finish(c);
+}

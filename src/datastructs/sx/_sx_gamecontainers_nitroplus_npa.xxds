@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nitroplus_npa/xx_nitroplus_npa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_npa_header_fields = layout([chars("magic", 7, SIGNATURE), u32("key1"), u32("key2"), u8("compressed", FLAGS),
+    u8("encrypted", FLAGS), i32("entries", COUNT), i32("directories", COUNT), i32("files", COUNT), blob("unknown1d", 8),
+    u32("index_bytes", SIZE)]);
+var sxgco_npa_header = sxLayout(0x60400044, "npa_header", LE, sxgco_npa_header_fields);
+var sxgco_npa_name_size_fields = layout([i32("name_bytes", SIZE)]);
+var sxgco_npa_name_size = sxLayout(0x60400045, "npa_name_size", LE, sxgco_npa_name_size_fields);
+function sxgco_npa(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var z = [0];
+    var end = [0];
+    var p = 41;
+    if (!sxgco_row(v, sxgco_npa_header, 0, e) || !sxgco_word(v, 17, 4, false, n, e) || !sxgco_word(v, 37, 4, false, end, e) || !sxgco_span(v, 41, end[0], e) || n[0] > 0xFFFFF) {
+        return false;
+    }
+    end[0] += 41;
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxgco_row(v, sxgco_npa_name_size, p, end[0]) || !sxgco_word(v, p, 4, false, z, end[0]) || !z[0] || z[0] > 4096 || !sxgco_table(v, sxgco_encoded_byte, p + 4, z[0], end[0]) || !sxgco_row(v, sxgco_npa_fields, p + 4 + z[0], end[0])) {
+            return false;
+        }
+        p += 21 + z[0];
+    }
+    return p === end[0];
+}
+function sx_nitroplus_npa_build(v) {
+    return sxgco_npa(v);
+}

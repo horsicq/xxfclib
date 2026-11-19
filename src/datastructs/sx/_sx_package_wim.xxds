@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/wim/xx_wim_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_wim_header_fields = layout([chars("signature", 8, SIGNATURE), u32("header_size", SIZE), u32("version"),
+    u32("flags", FLAGS), u32("chunk_size", SIZE), blob("guid", 16, ID), u16("part_number"), u16("total_parts", COUNT),
+    u32("image_count", COUNT)]);
+var sx_p_wim_header = sxLayout(0x60070038, "wim_header", LE, sx_p_wim_header_fields);
+var sx_p_wim_boot_fields = layout([u32("boot_index", ID)]);
+var sx_p_wim_boot = sxLayout(0x6007003A, "wim_boot", LE, sx_p_wim_boot_fields);
+function sx_p_wim(c) {
+    var size;
+    if (!sx_p_sig(c, 0, "MSWIM\x00\x00\x00", 8) || (size = sx_u32(c, 8, false)) === null || size < 116 || size > 208 || !sx_p_span(c, 0, size) || !sx_add(c, sx_p_wim_header, 0, 48)) {
+        return false;
+    }
+    var offs = [48, 72, 96, 124];
+    for (var i = 0; i < 4; i++) {
+        if (size >= ((offs[i] >>> 0) + 24) >>> 0) {
+            var sf;
+            var off;
+            if (!sx_add(c, sx_p_wim_resource, offs[i], 24) || (sf = sx_u64(c, offs[i], false)) === null || (off = sx_u64(c, offs[i] + 8, false)) === null) {
+                return false;
+            }
+            var packed = sxAnd64(sf, sxK(0xFFFFFF, 0xFFFFFFFF));
+            if (i < 2 && !sx_p_span(c, off, packed)) {
+                return false;
+            }
+            if (i === 0 && packed && !(sxShr64(sf, 56) & 4)) {
+                if (packed % 50 || !sx_table(c, sx_p_wim_blob, (off >= SX_I64_MAX ? off - SX_U64_MAX : off), 50, Math.floor(packed / 50))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return size < 124 || sx_add(c, sx_p_wim_boot, 120, 4);
+}
+function sx_wim_build(c) {
+    return sx_p_wim(c);
+}

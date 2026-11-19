@@ -1,0 +1,343 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apfs/xx_apfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxc_apfs_object_header_fields = layout([u64("checksum", CHECKSUM), u64("object_id", ID), u64("transaction_id", ID),
+    u32("object_type", FLAGS), u32("object_subtype", ID)]);
+var sxc_apfs_object_header = sxLayout(0x60180001, "apfs_object_header", LE, sxc_apfs_object_header_fields);
+var sxc_apfs_container_header_fields = layout([u64("checksum", CHECKSUM), u64("object_id", ID), u64("transaction_id", ID),
+    u32("object_type", FLAGS), u32("object_subtype", ID), chars("magic", 4, SIGNATURE), u32("block_size", SIZE),
+    u64("block_count", COUNT), u64("features", FLAGS), u64("readonly_compatible_features", FLAGS),
+    u64("incompatible_features", FLAGS), bytes("uuid", 16), u64("next_object_id", ID), u64("next_transaction_id", ID),
+    u32("checkpoint_descriptor_blocks_flags", FLAGS), u32("checkpoint_data_blocks_flags", FLAGS),
+    i64("checkpoint_descriptor_base"), i64("checkpoint_data_base"), u32("checkpoint_descriptor_next"),
+    u32("checkpoint_data_next"), u32("checkpoint_descriptor_index"), u32("checkpoint_descriptor_length_blocks", COUNT),
+    u32("checkpoint_data_index"), u32("checkpoint_data_length_blocks", COUNT), u64("spaceman_oid", ID), u64("omap_oid", ID),
+    u64("reaper_oid", ID), u32("test_type", ID), u32("maximum_file_systems", COUNT)]);
+var sxc_apfs_container_header = sxLayout(0x60180002, "apfs_container_header", LE, sxc_apfs_container_header_fields);
+var sxc_apfs_file_system_oid_fields = layout([u64("file_system_oid", ID)]);
+var sxc_apfs_file_system_oid = sxLayout(0x60180003, "apfs_file_system_oid", LE, sxc_apfs_file_system_oid_fields);
+var sxc_apfs_container_counter_fields = layout([u64("counter", COUNT)]);
+var sxc_apfs_container_counter = sxLayout(0x60180004, "apfs_container_counter", LE, sxc_apfs_container_counter_fields);
+var sxc_apfs_container_tail_fields = layout([i64("blocked_out_start_block"), u64("blocked_out_block_count", COUNT),
+    u64("evict_mapping_tree_oid", ID), u64("flags", FLAGS), i64("efi_jumpstart_block"), bytes("fusion_uuid", 16),
+    i64("keylocker_start_block"), u64("keylocker_block_count", COUNT), u64("ephemeral_info0"), u64("ephemeral_info1"),
+    u64("ephemeral_info2"), u64("ephemeral_info3"), u64("test_oid", ID), u64("fusion_middle_tree_oid", ID),
+    u64("fusion_writeback_cache_oid", ID), i64("fusion_writeback_start_block"), u64("fusion_writeback_block_count", COUNT),
+    u64("newest_mounted_version", ID), i64("media_keybag_start_block"), u64("media_keybag_block_count", COUNT)]);
+var sxc_apfs_container_tail = sxLayout(0x60180005, "apfs_container_tail", LE, sxc_apfs_container_tail_fields);
+var sxc_apfs_checkpoint_map_fields = layout([u64("checksum", CHECKSUM), u64("object_id", ID), u64("transaction_id", ID),
+    u32("object_type", FLAGS), u32("object_subtype", ID), u32("flags", FLAGS), u32("mapping_count", COUNT)]);
+var sxc_apfs_checkpoint_map = sxLayout(0x60180006, "apfs_checkpoint_map", LE, sxc_apfs_checkpoint_map_fields);
+var sxc_apfs_checkpoint_mapping_fields = layout([u32("object_type", FLAGS), u32("object_subtype", ID), u32("object_size", SIZE),
+    u32("padding", RESERVED), u64("file_system_oid", ID), u64("object_id", ID), u64("physical_block")]);
+var sxc_apfs_checkpoint_mapping = sxLayout(0x60180007, "apfs_checkpoint_mapping", LE, sxc_apfs_checkpoint_mapping_fields);
+var sxc_apfs_object_map_fields = layout([u64("checksum", CHECKSUM), u64("object_id", ID), u64("transaction_id", ID),
+    u32("object_type", FLAGS), u32("object_subtype", ID), u32("flags", FLAGS), u32("snapshot_count", COUNT),
+    u32("tree_type", FLAGS), u32("snapshot_tree_type", FLAGS), u64("tree_oid", ID), u64("snapshot_tree_oid", ID),
+    u64("most_recent_snapshot_xid", ID), u64("pending_revert_min_xid", ID), u64("pending_revert_max_xid", ID)]);
+var sxc_apfs_object_map = sxLayout(0x60180008, "apfs_object_map", LE, sxc_apfs_object_map_fields);
+var sxc_apfs_btree_info_fields = layout([u32("flags", FLAGS), u32("node_size", SIZE), u32("key_size", SIZE),
+    u32("value_size", SIZE), u32("longest_key", SIZE), u32("longest_value", SIZE), u64("key_count", COUNT),
+    u64("node_count", COUNT)]);
+var sxc_apfs_btree_info = sxLayout(0x6018000A, "apfs_btree_info", LE, sxc_apfs_btree_info_fields);
+var sxc_apfs_btree_kvoff_fields = layout([u16("key_offset", OFFSET), u16("value_offset", OFFSET)]);
+var sxc_apfs_btree_kvoff = sxLayout(0x6018000B, "apfs_btree_kvoff", LE, sxc_apfs_btree_kvoff_fields);
+var sxc_apfs_btree_kvloc_fields = layout([u16("key_offset", OFFSET), u16("key_length", SIZE), u16("value_offset", OFFSET),
+    u16("value_length", SIZE)]);
+var sxc_apfs_btree_kvloc = sxLayout(0x6018000C, "apfs_btree_kvloc", LE, sxc_apfs_btree_kvloc_fields);
+var sxc_apfs_omap_key_fields = layout([u64("object_id", ID), u64("transaction_id", ID)]);
+var sxc_apfs_omap_key = sxLayout(0x6018000D, "apfs_omap_key", LE, sxc_apfs_omap_key_fields);
+var sxc_apfs_btree_child_fields = layout([u64("child_oid", ID)]);
+var sxc_apfs_btree_child = sxLayout(0x6018000F, "apfs_btree_child", LE, sxc_apfs_btree_child_fields);
+var sxc_apfs_volume_header_fields = layout([u64("checksum", CHECKSUM), u64("object_id", ID), u64("transaction_id", ID),
+    u32("object_type", FLAGS), u32("object_subtype", ID), chars("magic", 4, SIGNATURE), u32("filesystem_index"),
+    u64("features", FLAGS), u64("readonly_compatible_features", FLAGS), u64("incompatible_features", FLAGS),
+    u64("unmount_time", TIMESTAMP), u64("reserve_block_count", COUNT), u64("quota_block_count", COUNT),
+    u64("allocated_block_count", COUNT), u16("crypto_major_version", ID), u16("crypto_minor_version", ID),
+    u32("crypto_flags", FLAGS), u32("crypto_protection_class", ID), u32("crypto_key_os_version", ID),
+    u16("crypto_key_revision", ID), u16("crypto_unused", RESERVED), u32("root_tree_type", FLAGS),
+    u32("extentref_tree_type", FLAGS), u32("snapshot_metadata_tree_type", FLAGS), u64("omap_oid", ID), u64("root_tree_oid", ID),
+    u64("extentref_tree_oid", ID), u64("snapshot_metadata_tree_oid", ID), u64("revert_to_xid", ID),
+    u64("revert_to_superblock_oid", ID), u64("next_object_id", ID), u64("file_count", COUNT), u64("directory_count", COUNT),
+    u64("symlink_count", COUNT), u64("other_object_count", COUNT), u64("snapshot_count", COUNT),
+    u64("total_blocks_allocated", COUNT), u64("total_blocks_freed", COUNT), bytes("volume_uuid", 16),
+    u64("last_modified_time", TIMESTAMP), u64("filesystem_flags", FLAGS)]);
+var sxc_apfs_volume_header = sxLayout(0x60180010, "apfs_volume_header", LE, sxc_apfs_volume_header_fields);
+var sxc_apfs_modified_by_fields = layout([chars("identifier", 32, STRING), u64("timestamp", TIMESTAMP),
+    u64("last_transaction_id", ID)]);
+var sxc_apfs_modified_by = sxLayout(0x60180011, "apfs_modified_by", LE, sxc_apfs_modified_by_fields);
+var sxc_apfs_volume_name_fields = layout([chars("volume_name", 256, STRING)]);
+var sxc_apfs_volume_name = sxLayout(0x60180012, "apfs_volume_name", LE, sxc_apfs_volume_name_fields);
+var sxc_apfs_volume_tail_fields = layout([u32("next_document_id", ID), u16("role", FLAGS), u16("reserved", RESERVED),
+    u64("root_to_xid", ID), u64("er_state_oid", ID), u64("cloneinfo_id_epoch"), u64("cloneinfo_xid", ID),
+    u64("snapshot_metadata_extended_oid", ID), bytes("volume_group_id", 16), u64("integrity_metadata_oid", ID),
+    u64("file_extent_tree_oid", ID), u32("file_extent_tree_type", FLAGS), u32("reserved_type", RESERVED),
+    u64("reserved_oid", RESERVED)]);
+var sxc_apfs_volume_tail = sxLayout(0x60180013, "apfs_volume_tail", LE, sxc_apfs_volume_tail_fields);
+function sxc_fletcher(p, n) {
+    var mod = 0xFFFFFFFF;
+    var a = 0;
+    var b = 0;
+    for (var i = 8; i < n; i = (i + 4) >>> 0) {
+        a = (a + sxc_u32(p, i)) % mod;
+        b = (b + a) % mod;
+    }
+    var lo = sxU64(mod - (a + b) % mod);
+    var hi = sxU64(mod - (a + lo) % mod);
+    return sxOr64(lo, sxShl64(hi, 32));
+}
+function sxc_apfs_object(c, block, unit, b, at) {
+    if (!unit || block > Math.floor(SX_I64_MAX / unit)) {
+        return false;
+    }
+    at[0] = (block * unit >= SX_I64_MAX ? block * unit - SX_U64_MAX : block * unit);
+    return sxc_can(c, at[0], unit) && sx_read(c, at[0], b, unit) && sxc_u64(b, 0) === sxc_fletcher(b, unit);
+}
+function sxc_apfs_container(c, at, b, unit) {
+    if (unit < 184 || sxMemcmpAt(b, 32, "NXSB", 0, 4) || (sxc_u32(b, 24) & 65535) !== 1 || sxc_u32(b, 36) !== unit || !sxc_u64(b, 40) || !sxc_u32(b, 180) || sxc_u32(b, 180) > 100) {
+        return false;
+    }
+    if (!sxc_add(c, sxc_apfs_container_header, at, 184)) {
+        return false;
+    }
+    var slots = Math.floor(((unit - 184) >>> 0) / 8);
+    if (slots > 100) {
+        slots = 100;
+    }
+    if (slots && !sxc_table(c, sxc_apfs_file_system_oid, at + 184, 8, slots)) {
+        return false;
+    }
+    if (unit >= 984) {
+        var counters = Math.floor(((unit - 984) >>> 0) / 8);
+        if (counters > 32) {
+            counters = 32;
+        }
+        if (counters && !sxc_table(c, sxc_apfs_container_counter, at + 984, 8, counters)) {
+            return false;
+        }
+    }
+    if (unit >= 1408 && !sxc_add(c, sxc_apfs_container_tail, at + 1240, 168)) {
+        return false;
+    }
+    return true;
+}
+function sxc_apfs_tree(c, root, unit) {
+    done: {
+        var b = sxAlloc(unit);
+        var queue = sxAllocN(0x1000, sxNew_sxc_apfs_work);
+        var count = 1;
+        var ok = false;
+        if (b === null || queue === null) {
+            break done;
+        }
+        queue[0] = sxCopy_sxc_apfs_work(null, { block: root, key_size: 0, value_size: 0, depth: 0 });
+        for (var q = 0; q < count; q++) {
+            if (false) {
+                break done;
+            }
+            if (queue[q].depth > 64) {
+                break done;
+            }
+            var at = [0];
+            if (!sxc_apfs_object(c, queue[q].block, unit, b, at)) {
+                continue;
+            }
+            var type = sxc_u32(b, 24) & 65535;
+            if (type !== 2 && type !== 3 || sxc_u32(b, 28) !== 11) {
+                continue;
+            }
+            var flags = sxc_u16(b, 32);
+            var n = sxc_u32(b, 36);
+            var toc = 56 + sxc_u16(b, 40);
+            var len = sxc_u16(b, 42);
+            var end = (unit - (flags & 1 ? 40 : 0)) >>> 0;
+            var entry = flags & 4 ? 4 : 8;
+            var key_size = queue[q].key_size;
+            var value_size = queue[q].value_size;
+            if (flags & 1) {
+                key_size = sxc_u32(b, end + 8);
+                value_size = sxc_u32(b, end + 12);
+            }
+            if (toc > end || len > (end - toc) >>> 0 || n > Math.floor(len / entry) || flags & 4 && (!key_size || key_size > unit)) {
+                continue;
+            }
+            var key_base = (toc + len) >>> 0;
+            var good = true;
+            for (var i = 0; i < n; i++) {
+                var p = b, p_o = toc + sxMul32(i, entry);
+                var ko = sxc_u16(p, p_o);
+                var kl = flags & 4 ? key_size : sxc_u16(p, p_o + 2);
+                var vo = sxc_u16(p, p_o + (flags & 4 ? 2 : 4));
+                var vl = flags & 4 ? flags & 2 ? value_size : 8 : sxc_u16(p, p_o + 6);
+                if (ko > (end - key_base) >>> 0 || kl > (((end - key_base) >>> 0) - ko) >>> 0 || vo > end || vl > vo || (end - vo) >>> 0 < (((key_base + ko) >>> 0) + kl) >>> 0) {
+                    good = false;
+                    break;
+                }
+            }
+            if (!good) {
+                continue;
+            }
+            if (!sxc_add(c, sxc_apfs_btree_node, at[0], 56)) {
+                break done;
+            }
+            if (n && !sxc_table(c, flags & 4 ? sxc_apfs_btree_kvoff : sxc_apfs_btree_kvloc, at[0] + toc, entry, n)) {
+                break done;
+            }
+            if (flags & 1 && !sxc_add(c, sxc_apfs_btree_info, at[0] + end, 40)) {
+                break done;
+            }
+            for (i = 0; i < n; i++) {
+                p = b;
+                p_o = toc + sxMul32(i, entry);
+                ko = sxc_u16(p, p_o);
+                kl = flags & 4 ? key_size : sxc_u16(p, p_o + 2);
+                vo = sxc_u16(p, p_o + (flags & 4 ? 2 : 4));
+                vl = flags & 4 ? flags & 2 ? value_size : 8 : sxc_u16(p, p_o + 6);
+                var value = (end - vo) >>> 0;
+                if (kl === 16 && !sxc_add(c, sxc_apfs_omap_key, at[0] + key_base + ko, 16)) {
+                    break done;
+                }
+                if (flags & 2) {
+                    if (vl === 16 && !sxc_add(c, sxc_apfs_omap_value, at[0] + value, 16)) {
+                        break done;
+                    }
+                } else if (vl >= 8) {
+                    if (!sxc_add(c, sxc_apfs_btree_child, at[0] + value, 8)) {
+                        break done;
+                    }
+                    var child = sxc_u64(b, value);
+                    var seen = false;
+                    for (var j = 0; j < count; j++) {
+                        if (queue[j].block === child) {
+                            seen = true;
+                        }
+                    }
+                    if (!seen) {
+                        if (count >= 4096) {
+                            break done;
+                        }
+                        queue[count++] = sxCopy_sxc_apfs_work(null, { block: child, key_size: key_size, value_size: value_size, depth: (queue[q].depth + 1) >>> 0 });
+                    }
+                }
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sxc_apfs_omap(c, block, unit) {
+    if (!block) {
+        return true;
+    }
+    var b = [];
+    var at = [0];
+    if (block > Math.floor(SX_I64_MAX / unit)) {
+        return true;
+    }
+    at[0] = (block * unit >= SX_I64_MAX ? block * unit - SX_U64_MAX : block * unit);
+    var full = sxAlloc(unit);
+    if (full === null) {
+        return false;
+    }
+    var valid = sxc_apfs_object(c, block, unit, full, at) && (sxc_u32(full, 24) & 65535) === 11;
+    if (valid) {
+        sxMemcpy(b, 0, full, 0, 88);
+    }
+    if (!valid) {
+        return !c.failed;
+    }
+    return sxc_add(c, sxc_apfs_object_map, at[0], 88) && sxc_apfs_tree(c, sxc_u64(b, 48), unit);
+}
+function sxc_apfs_build(c) {
+    done: {
+        var f = sxReader(c.f);
+        var unit = f.block_size;
+        var b = sxAlloc(unit);
+        var ok = false;
+        var at = [0];
+        var base;
+        var count;
+        if (b === null || unit < 512 || unit > 65536 || (unit & (unit - 1) >>> 0) >>> 0) {
+            break done;
+        }
+        if (!sxc_apfs_object(c, 0, unit, b, at) || !sxc_apfs_container(c, at[0], b, unit)) {
+            break done;
+        }
+        base = sxc_u64(b, 112);
+        count = sxc_u32(b, 104);
+        if (!((count & 0x80000000) >>> 0) && count <= 8192 && base && base <= SX_I64_MAX) {
+            for (var i = 0; i < count; i++) {
+                if (false) {
+                    break done;
+                }
+                if (base > SX_U64_MAX - i) {
+                    break;
+                }
+                if (!sxc_apfs_object(c, base + i, unit, b, at)) {
+                    continue;
+                }
+                var type = sxc_u32(b, 24) & 65535;
+                if (type === 1) {
+                    var saved = c.count;
+                    if (!sxc_apfs_container(c, at[0], b, unit)) {
+                        if (c.failed) {
+                            break done;
+                        }
+                        c.count = saved;
+                    }
+                } else if (type === 12) {
+                    var n = sxc_u32(b, 36);
+                    if (n > Math.floor(((unit - 40) >>> 0) / 40)) {
+                        continue;
+                    }
+                    if (!sxc_add(c, sxc_apfs_checkpoint_map, at[0], 40) || n && !sxc_table(c, sxc_apfs_checkpoint_mapping, at[0] + 40, 40, n)) {
+                        break done;
+                    }
+                } else if (type !== 2 && type !== 3 && type !== 11 && type !== 13) {
+                    if (!sxc_add(c, sxc_apfs_object_header, at[0], 32)) {
+                        break done;
+                    }
+                }
+            }
+        }
+        if (!sxc_apfs_omap(c, f.omap_oid, unit)) {
+            break done;
+        }
+        for (i = 0; i < f.volume_count && i < 100; i++) {
+            var v = sxReaderRows(f, "volumes")[i];
+            if (!v.superblock_valid || v.block < 0) {
+                continue;
+            }
+            if (!sxc_apfs_object(c, (v.block < 0 ? v.block + SX_U64_MAX : v.block), unit, b, at) || (sxc_u32(b, 24) & 65535) !== 13 || sxMemcmpAt(b, 32, "APSB", 0, 4)) {
+                continue;
+            }
+            if (!sxc_add(c, sxc_apfs_volume_header, at[0], 272)) {
+                break done;
+            }
+            var records = Math.floor(((unit - 272) >>> 0) / 48);
+            if (records > 9) {
+                records = 9;
+            }
+            if (records && !sxc_table(c, sxc_apfs_modified_by, at[0] + 272, 48, records)) {
+                break done;
+            }
+            if (unit >= 960 && !sxc_add(c, sxc_apfs_volume_name, at[0] + 704, 256)) {
+                break done;
+            }
+            if (unit >= 1056 && !sxc_add(c, sxc_apfs_volume_tail, at[0] + 960, 96)) {
+                break done;
+            }
+            if (!sxc_apfs_omap(c, v.omap_oid, unit)) {
+                break done;
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_apfs_build(c) {
+    return sxc_apfs_build(c);
+}

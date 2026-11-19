@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/applelink_pe/xx_applelink_pe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_applelink_header_fields = layout([u16("entry_count", COUNT), u16("source_filesystem", ID),
+    chars("signature", 5, SIGNATURE), u8("version", ID), u16("member_header_size", SIZE), bytes("reserved", 7, RESERVED),
+    u8("producer")]);
+var sxag_applelink_header = sxLayout(0x6025000A, "applelink_header", LE, sxag_applelink_header_fields);
+var sxag_applelink_member_fields = layout([u8("resource_method", ID), u8("data_method", ID), u16("resource_crc16", CHECKSUM),
+    u16("data_crc16", CHECKSUM), u32("resource_storage_blocks", COUNT), u32("data_storage_blocks", COUNT),
+    u32("resource_packed_size", SIZE), u32("data_packed_size", SIZE), u16("access", FLAGS), u16("file_type", ID),
+    u32("aux_type", ID), u16("reserved", RESERVED), u16("storage_type", ID), u32("resource_unpacked_size", SIZE),
+    u32("data_unpacked_size", SIZE), u16("created_date"), u16("created_time"), u16("modified_date"), u16("modified_time"),
+    u16("name_size", SIZE), u16("header_crc16", CHECKSUM)]);
+var sxag_applelink_member = sxLayout(0x6025000B, "applelink_member", LE, sxag_applelink_member_fields);
+function sxag_applelink(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 20) || !sxag_add(c, sxag_applelink_header, 0)) {
+        return false;
+    }
+    var count = sxag16(b, 0, false);
+    var p = 20;
+    for (var i = 0; i < count && i < 20000; i++) {
+        if (!sxag_read(c, p, b, 54)) {
+            break;
+        }
+        var name = sxag16(b, 50, false);
+        var data = sxag32(b, 14, false) + sxag32(b, 18, false);
+        if (!sxag_span(c, p + 54, name)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_applelink_member, p)) {
+            return false;
+        }
+        p += 54 + name;
+        if (!sxag_span(c, p, data)) {
+            break;
+        }
+        p += data;
+    }
+    return true;
+}
+function sx_applelink_pe_build(c) {
+    return sxag_applelink(c);
+}

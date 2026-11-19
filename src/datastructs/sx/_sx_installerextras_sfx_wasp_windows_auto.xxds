@@ -1,0 +1,139 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_wasp_windows_auto/xx_sfx_wasp_windows_auto_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_wasp_resource_shift_fields = layout([u16("alignment_shift")]);
+var sxiex_wasp_resource_shift = sxLayout(0x60820030, "wasp_resource_shift", LE, sxiex_wasp_resource_shift_fields);
+var sxiex_wasp_resource_type_fields = layout([u16("type_identifier", ID), u16("resource_count", COUNT),
+    u32("reserved", RESERVED)]);
+var sxiex_wasp_resource_type = sxLayout(0x60820031, "wasp_resource_type", LE, sxiex_wasp_resource_type_fields);
+var sxiex_wasp_resource_entry_fields = layout([u16("offset_units"), u16("length_units"), u16("flags", FLAGS),
+    u16("resource_identifier", ID), u32("reserved", RESERVED)]);
+var sxiex_wasp_resource_entry = sxLayout(0x60820032, "wasp_resource_entry", LE, sxiex_wasp_resource_entry_fields);
+var sxiex_wasp_string_length_fields = layout([u8("length", SIZE)]);
+var sxiex_wasp_string_length = sxLayout(0x60820033, "wasp_string_length", LE, sxiex_wasp_string_length_fields);
+var sxiex_wasp_payload_size_fields = layout([field("payload_size", "ascii_decimal", 0, SIZE)]);
+var sxiex_wasp_payload_size = sxLayout(0x60820034, "wasp_payload_size", LE, sxiex_wasp_payload_size_fields);
+var sxiex_wasp_name_separator_fields = layout([chars("separator", 1, NONE)]);
+var sxiex_wasp_name_separator = sxLayout(0x60820061, "wasp_name_separator", LE, sxiex_wasp_name_separator_fields);
+var sxiex_wasp_run_marker_fields = layout([chars("run_after_extract", 1, NONE)]);
+var sxiex_wasp_run_marker = sxLayout(0x60820062, "wasp_run_marker", LE, sxiex_wasp_run_marker_fields);
+var sxiex_wasp_resource_end_fields = layout([u16("type_terminator", SIGNATURE)]);
+var sxiex_wasp_resource_end = sxLayout(0x60820063, "wasp_resource_end", LE, sxiex_wasp_resource_end_fields);
+function sxiex_wasp(c, r) {
+    var dos = [];
+    var ne = [];
+    var b = [];
+    if (!sxiex_read(c, 0, dos, 64) || dos[0] !== 77 /*M*/ || dos[1] !== 90 /*Z*/) {
+        return true;
+    }
+    var np = sxiex32(dos, 60, false);
+    if (!sxiex_read(c, np, ne, 40) || ne[0] !== 78 /*N*/ || ne[1] !== 69 /*E*/) {
+        return true;
+    }
+    var start = np + sxiex16(ne, 36, false);
+    var end = np + sxiex16(ne, 38, false);
+    var p = start;
+    var shift = [0];
+    if (end < start || !sxiex_span(c, start, sxU64(end - start)) || !sxiex_u16(c, p, shift) || shift[0] > 16) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_wasp_resource_shift, p, 1)) {
+        return false;
+    }
+    p += 2;
+    for (var row = 0; row < 4096 && sxU64(end - p) >= 2; row++) {
+        var type = [0];
+        if (!sxiex_u16(c, p, type)) {
+            break;
+        }
+        if (!type[0]) {
+            if (!sxiex_put(c, sxiex_wasp_resource_end, p, 1)) {
+                return false;
+            }
+            break;
+        }
+        if (sxU64(end - p) < 8 || !sxiex_read(c, p, b, 8)) {
+            break;
+        }
+        var n = sxiex16(b, 2, false);
+        if (n * 12 > sxU64(sxU64(end - p) - 8)) {
+            break;
+        }
+        if (!sxiex_put(c, sxiex_wasp_resource_type, p, 1)) {
+            return false;
+        }
+        if (!(type[0] & 0x8000) && type[0] < sxU64(end - start)) {
+            var np_2 = start + type[0];
+            var len = [0];
+            if (sxiex_read(c, np_2, len, 1) && len[0] <= sxU64(sxU64(end - np_2) - 1)) {
+                if (!sxiex_put(c, sxiex_wasp_string_length, np_2, 1) || !sxiex_name(c, np_2 + 1, len[0])) {
+                    return false;
+                }
+            }
+        }
+        p += 8;
+        for (var i = 0; i < n; i++, p += 12) {
+            if (!sxiex_read(c, p, b, 12)) {
+                return false;
+            }
+            if (!sxiex_put(c, sxiex_wasp_resource_entry, p, 1)) {
+                return false;
+            }
+            if (type[0] === 0x8006) {
+                var q = sxShl64(sxiex16(b, 0, false), shift[0]);
+                var z = sxShl64(sxiex16(b, 2, false), shift[0]);
+                if (!sxiex_span(c, q, z)) {
+                    continue;
+                }
+                var e = q + z;
+                for (var j = 0; j < 16 && q < e; j++) {
+                    len = [0];
+                    var text = [];
+                    if (!sxiex_read(c, q, len, 1) || len[0] > sxU64(sxU64(e - q) - 1)) {
+                        break;
+                    }
+                    var s = q + 1;
+                    q = s + len[0];
+                    if (!len[0]) {
+                        continue;
+                    }
+                    if (!sxiex_read(c, s, text, len[0])) {
+                        return false;
+                    }
+                    var comma = len[0];
+                    for (var k = 0; k < len[0]; k++) {
+                        if (text[k] === 44 /*,*/) {
+                            comma = k;
+                        }
+                    }
+                    var last = len[0];
+                    if (last && text[(last - 1) >>> 0] === 42) {
+                        last--;
+                    }
+                    if (!comma || (comma + 1) >>> 0 >= last) {
+                        continue;
+                    }
+                    var number = true;
+                    for (k = (comma + 1) >>> 0; k < last; k++) {
+                        if (text[k] < 48 /*0*/ || text[k] > 57 /*9*/) {
+                            number = false;
+                        }
+                    }
+                    if (!number || (((last - comma) >>> 0) - 1) >>> 0 > 24) {
+                        continue;
+                    }
+                    if (!sxiex_put(c, sxiex_wasp_string_length, sxU64(s - 1), 1) || !sxiex_name(c, s, comma) || !sxiex_put(c, sxiex_wasp_name_separator, s + comma, 1) || !sxiex_text(c, sxiex_wasp_payload_size, s + comma + 1, (((last - comma) >>> 0) - 1) >>> 0) || last < len[0] && !sxiex_put(c, sxiex_wasp_run_marker, s + last, 1)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_sfx_wasp_windows_auto_build(c, records) {
+    return sxiex_wasp(c, records);
+}

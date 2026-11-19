@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/tacacs_packet/xx_tacacs_packet_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxnm_tacacs(v) {
+    if (!sxnm_row(v, sxnm_tacacs_header, 0, v.n) || !sxnm_row(v, sxnm_tacacs_authentication_start, 12, v.n) || sxnm_u32(v.p, 8) !== sxU64(v.n - 12)) {
+        return false;
+    }
+    return v.p[16] + v.p[17] + v.p[18] + v.p[19] === sxU64(v.n - 20);
+}
+function sx_tacacs_packet_build(v) {
+    return sxnm_tacacs(v);
+}

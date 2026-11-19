@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/twrx/xx_twrx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_twrx_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("reserved"), u16("method"),
+    u32("stamp_low"), u32("packed_crc32", CHECKSUM), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("name_size", SIZE)]);
+var sxap_twrx_header = sxLayout(0x6072001B, "twrx_header", LE, sxap_twrx_header_fields);
+var sxap_twrx_deflate_fields = layout([u16("method"), u32("stream_size", SIZE)]);
+var sxap_twrx_deflate = sxLayout(0x6072001C, "twrx_deflate", LE, sxap_twrx_deflate_fields);
+function sxap_twrx(c) {
+    var p = 0;
+    while (sxap_span(c, p, 30)) {
+        var method = [0];
+        var z = [0];
+        var n = [0];
+        if (!sxap_word(c, p + 8, 2, false, method) || !sxap_word(c, p + 18, 4, false, z) || !sxap_word(c, p + 26, 4, false, n) || !sxap_add(c, sxap_twrx_header, p) || !sxap_span(c, p + 30, n[0]) || !sxap_text(c, sxap_archivepackages_name, p + 30, n[0], false)) {
+            return false;
+        }
+        p += 30 + n[0];
+        if (!sxap_span(c, p, z[0])) {
+            return true;
+        }
+        if (method[0] === 6 && !sxap_dcl(c, p, z[0])) {
+            return false;
+        }
+        if (method[0] === 8 && z[0] >= 6 && !sxap_add(c, sxap_twrx_deflate, p)) {
+            return false;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_twrx_build(c) {
+    return sxap_twrx(c);
+}

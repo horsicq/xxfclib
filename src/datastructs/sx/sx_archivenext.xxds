@@ -1,0 +1,129 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivenext.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivenext");
+include("_sx_archivenext_audials");
+include("_sx_archivenext_birdies");
+include("_sx_archivenext_bytekiller");
+include("_sx_archivenext_cgjp");
+include("_sx_archivenext_ckp");
+include("_sx_archivenext_dcs");
+include("_sx_archivenext_edp");
+include("_sx_archivenext_eschalon_setup_epsf");
+include("_sx_archivenext_finstall");
+include("_sx_archivenext_freearc");
+include("_sx_archivenext_gksetup");
+include("_sx_archivenext_ifah_installer");
+include("_sx_archivenext_installshield_issetupstream");
+include("_sx_archivenext_is11");
+include("_sx_archivenext_is3");
+include("_sx_archivenext_is5");
+include("_sx_archivenext_microfox_put");
+include("_sx_archivenext_o_setup");
+include("_sx_archivenext_osl2000");
+include("_sx_archivenext_parsec_archive");
+include("_sx_archivenext_parsec_rib");
+include("_sx_archivenext_pc_install_setup");
+include("_sx_archivenext_pcinstall");
+include("_sx_archivenext_pirs");
+include("_sx_archivenext_ptero_bigf");
+include("_sx_archivenext_rtpatch_setup_data");
+include("_sx_archivenext_sar");
+include("_sx_archivenext_sbpak");
+include("_sx_archivenext_setup_factory");
+include("_sx_archivenext_spoon_installer");
+include("_sx_archivenext_titan_quest");
+include("_sx_archivenext_westwood_pak");
+include("_sx_archivenext_wii_wad");
+include("_sx_archivenext_xuiz");
+include("_sx_archivenext_zpaq");
+
+function fileTypes() { return ["ZPAQ", "FREEARC", "IS3", "IS5", "IS11", "GKSETUP", "PCINSTALL", "ESCHALON_SETUP_EPSF",
+    "FINSTALL", "IFAH_INSTALLER", "INSTALLSHIELD_ISSETUPSTREAM", "MICROFOX_PUT", "O_SETUP", "PC_INSTALL_SETUP",
+    "RTPATCH_SETUP_DATA", "SETUP_FACTORY", "SPOON_INSTALLER", "BYTEKILLER", "WESTWOOD_PAK", "CKP", "EDP", "PARSEC_RIB",
+    "PARSEC_ARCHIVE", "PTERO_BIGF", "DCS", "PIRS", "SBPAK", "TITAN_QUEST", "CGJP", "BIRDIES", "XUIZ", "AUDIALS", "OSL2000",
+    "SAR", "WII_WAD"]; }
+
+var sx_archivenext_layouts = [sxan_is3_header, sxan_is3_directory, sxan_is3_member, sxan_is3_payload_header,
+    sxan_is3_payload_member, sxan_is3_second_name, sxan_is5_header, sxan_is5_descriptor, sxan_is5_member_v5, sxan_is5_member_v6,
+    sxan_is5_table_offset, sxan_is11_header, sxan_is11_member_v1, sxan_is11_member_v3, sxan_gksetup_banner,
+    sxan_gksetup_signature, sxan_gksetup_data_offset, sxan_gksetup_member, sxan_pcinstall_header, sxan_pcinstall_member,
+    sxan_finstall_header, sxan_finstall_member, sxan_ifah_header, sxan_ifah_member, sxan_osetup_member, sxan_osetup_trailer_6,
+    sxan_osetup_trailer_8, sxan_pc_install_member, sxan_pc_install_trailer, sxan_pc_install_group, sxan_pc_install_group_member,
+    sxan_rtpatch_setup_member, sxan_spoon_footer, sxan_spoon_member, sxan_issetup_header, sxan_issetup_member, sxan_epsf_header,
+    sxan_setup_factory_header, sxan_setup_factory_engine_16, sxan_setup_factory_engine_260, sxan_westwood_offset,
+    sxan_ckpedp_header, sxan_ckpedp_name_size, sxan_ckpedp_member_tail, sxan_ckpedp_encoded_name, sxan_parsec_rib_header,
+    sxan_parsec_member_offset, sxan_parsec_member_size, sxan_ptero_header, sxan_ptero_member, sxan_ptero_block,
+    sxan_titan_header, sxan_titan_block, sxan_titan_member, sxan_cgjp_signature, sxan_cgjp_block, sxan_birdies_header,
+    sxan_birdies_member, sxan_xuiz_header, sxan_xuiz_member_0, sxan_xuiz_member_10, sxan_dcs_header, sxan_dcs_block,
+    sxan_audials_count, sxan_audials_offset, sxan_audials_size, sxan_archivenext_name, sxan_archivenext_utf16le,
+    sxan_archivenext_utf16be, sxan_is5_volume_prefix, sxan_archivenext_padding32, sxan_archivenext_separator,
+    sxan_pc_install_tag, sxan_wad_header, sxan_wad_rsa2048, sxan_wad_ticket, sxan_wad_limit, sxan_wad_tmd, sxan_wad_content,
+    sxan_stfs_signature, sxan_stfs_metadata_digest, sxan_stfs_volume_le, sxan_stfs_volume_be, sxan_stfs_data_file_count,
+    sxan_stfs_hash_entry, sxan_stfs_file_le, sxan_stfs_file_be, sxan_lha_dialect_header, sxan_lha_dialect_crc,
+    sxan_lha_dialect_os, sxan_lha_dialect_next, sxan_lha_dialect_type, sxan_lha_dialect_end, sxan_bytekiller_header,
+    sxan_bytekiller_ace_header, sxan_bytekiller_anc_header, sxan_bytekiller_grac_header, sxan_bytekiller_md11_header,
+    sxan_bytekiller_signature, sxan_bytekiller_footer, sxan_osl_encoded_record, sxan_osl_payload_checksum, sxan_osl_signature,
+    sxan_sbpak_header, sxan_sbpak_encoded_header, sxan_sbpak_member, sxan_sbpak_encoded_member, sxan_freearc_header,
+    sxan_freearc_magic, sxan_freearc_crc, sxan_freearc_time, sxan_freearc_folder, sxan_freearc_method, sxan_freearc_type1,
+    sxan_freearc_count1, sxan_freearc_offset1, sxan_freearc_size1, sxan_freearc_packed1, sxan_freearc_index1,
+    sxan_freearc_type2, sxan_freearc_count2, sxan_freearc_offset2, sxan_freearc_size2, sxan_freearc_packed2,
+    sxan_freearc_index2, sxan_freearc_type3, sxan_freearc_count3, sxan_freearc_offset3, sxan_freearc_size3,
+    sxan_freearc_packed3, sxan_freearc_index3, sxan_freearc_type4, sxan_freearc_count4, sxan_freearc_offset4,
+    sxan_freearc_size4, sxan_freearc_packed4, sxan_freearc_index4, sxan_freearc_type5, sxan_freearc_count5,
+    sxan_freearc_offset5, sxan_freearc_size5, sxan_freearc_packed5, sxan_freearc_index5, sxan_freearc_type6,
+    sxan_freearc_count6, sxan_freearc_offset6, sxan_freearc_size6, sxan_freearc_packed6, sxan_freearc_index6,
+    sxan_freearc_type7, sxan_freearc_count7, sxan_freearc_offset7, sxan_freearc_size7, sxan_freearc_packed7,
+    sxan_freearc_index7, sxan_freearc_type8, sxan_freearc_count8, sxan_freearc_offset8, sxan_freearc_size8,
+    sxan_freearc_packed8, sxan_freearc_index8, sxan_freearc_type9, sxan_freearc_count9, sxan_freearc_offset9,
+    sxan_freearc_size9, sxan_freearc_packed9, sxan_freearc_index9, sxan_zpaq_block, sxan_zpaq_model, sxan_zpaq_locator,
+    sxan_zpaq_marker, sxan_zpaq_stored_run, sxan_zpaq_sha1, sxan_zpaq_comment, sxan_zpaq_cons, sxan_zpaq_cm, sxan_zpaq_icm,
+    sxan_zpaq_match, sxan_zpaq_avg, sxan_zpaq_mix2, sxan_zpaq_mix, sxan_zpaq_isse, sxan_zpaq_sse];
+
+function structs() {
+    return sxCatalog([sxan_is3_header, sxan_is3_directory, sxan_is3_member, sxan_is3_payload_header, sxan_is3_payload_member,
+        sxan_is3_second_name, sxan_is5_header, sxan_is5_descriptor, sxan_is5_member_v5, sxan_is5_member_v6,
+        sxan_is5_table_offset, sxan_is11_header, sxan_is11_member_v1, sxan_is11_member_v3, sxan_gksetup_banner,
+        sxan_gksetup_signature, sxan_gksetup_data_offset, sxan_gksetup_member, sxan_pcinstall_header, sxan_pcinstall_member,
+        sxan_finstall_header, sxan_finstall_member, sxan_ifah_header, sxan_ifah_member, sxan_osetup_member,
+        sxan_osetup_trailer_6, sxan_osetup_trailer_8, sxan_pc_install_member, sxan_pc_install_trailer, sxan_pc_install_group,
+        sxan_pc_install_group_member, sxan_rtpatch_setup_member, sxan_spoon_footer, sxan_spoon_member, sxan_issetup_header,
+        sxan_issetup_member, sxan_epsf_header, sxan_setup_factory_header, sxan_setup_factory_engine_16,
+        sxan_setup_factory_engine_260, sxan_westwood_offset, sxan_ckpedp_header, sxan_ckpedp_name_size, sxan_ckpedp_member_tail,
+        sxan_ckpedp_encoded_name, sxan_parsec_rib_header, sxan_parsec_member_offset, sxan_parsec_member_size, sxan_ptero_header,
+        sxan_ptero_member, sxan_ptero_block, sxan_titan_header, sxan_titan_block, sxan_titan_member, sxan_cgjp_signature,
+        sxan_cgjp_block, sxan_birdies_header, sxan_birdies_member, sxan_xuiz_header, sxan_xuiz_member_0, sxan_xuiz_member_10,
+        sxan_dcs_header, sxan_dcs_block, sxan_audials_count, sxan_audials_offset, sxan_audials_size, sxan_archivenext_name,
+        sxan_archivenext_utf16le, sxan_archivenext_utf16be, sxan_is5_volume_prefix, sxan_archivenext_padding32,
+        sxan_archivenext_separator, sxan_pc_install_tag, sxan_wad_header, sxan_wad_rsa2048, sxan_wad_ticket, sxan_wad_limit,
+        sxan_wad_tmd, sxan_wad_content, sxan_stfs_signature, sxan_stfs_metadata_digest, sxan_stfs_volume_le,
+        sxan_stfs_volume_be, sxan_stfs_data_file_count, sxan_stfs_hash_entry, sxan_stfs_file_le, sxan_stfs_file_be,
+        sxan_lha_dialect_header, sxan_lha_dialect_crc, sxan_lha_dialect_os, sxan_lha_dialect_next, sxan_lha_dialect_type,
+        sxan_lha_dialect_end, sxan_bytekiller_header, sxan_bytekiller_ace_header, sxan_bytekiller_anc_header,
+        sxan_bytekiller_grac_header, sxan_bytekiller_md11_header, sxan_bytekiller_signature, sxan_bytekiller_footer,
+        sxan_osl_encoded_record, sxan_osl_payload_checksum, sxan_osl_signature, sxan_sbpak_header, sxan_sbpak_encoded_header,
+        sxan_sbpak_member, sxan_sbpak_encoded_member, sxan_freearc_header, sxan_freearc_magic, sxan_freearc_crc,
+        sxan_freearc_time, sxan_freearc_folder, sxan_freearc_method, sxan_freearc_type1, sxan_freearc_count1,
+        sxan_freearc_offset1, sxan_freearc_size1, sxan_freearc_packed1, sxan_freearc_index1, sxan_freearc_type2,
+        sxan_freearc_count2, sxan_freearc_offset2, sxan_freearc_size2, sxan_freearc_packed2, sxan_freearc_index2,
+        sxan_freearc_type3, sxan_freearc_count3, sxan_freearc_offset3, sxan_freearc_size3, sxan_freearc_packed3,
+        sxan_freearc_index3, sxan_freearc_type4, sxan_freearc_count4, sxan_freearc_offset4, sxan_freearc_size4,
+        sxan_freearc_packed4, sxan_freearc_index4, sxan_freearc_type5, sxan_freearc_count5, sxan_freearc_offset5,
+        sxan_freearc_size5, sxan_freearc_packed5, sxan_freearc_index5, sxan_freearc_type6, sxan_freearc_count6,
+        sxan_freearc_offset6, sxan_freearc_size6, sxan_freearc_packed6, sxan_freearc_index6, sxan_freearc_type7,
+        sxan_freearc_count7, sxan_freearc_offset7, sxan_freearc_size7, sxan_freearc_packed7, sxan_freearc_index7,
+        sxan_freearc_type8, sxan_freearc_count8, sxan_freearc_offset8, sxan_freearc_size8, sxan_freearc_packed8,
+        sxan_freearc_index8, sxan_freearc_type9, sxan_freearc_count9, sxan_freearc_offset9, sxan_freearc_size9,
+        sxan_freearc_packed9, sxan_freearc_index9, sxan_zpaq_block, sxan_zpaq_model, sxan_zpaq_locator, sxan_zpaq_marker,
+        sxan_zpaq_stored_run, sxan_zpaq_sha1, sxan_zpaq_comment, sxan_zpaq_cons, sxan_zpaq_cm, sxan_zpaq_icm, sxan_zpaq_match,
+        sxan_zpaq_avg, sxan_zpaq_mix2, sxan_zpaq_mix, sxan_zpaq_isse, sxan_zpaq_sse], sx_archivenext_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivenext_build, false);
+}

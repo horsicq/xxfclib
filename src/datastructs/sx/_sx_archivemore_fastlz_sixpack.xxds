@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/fastlz_sixpack/xx_fastlz_sixpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_sixpack_header_fields = layout([bytes("magic", 8, SIGNATURE)]);
+var sxar_sixpack_header = sxLayout(0x601C002E, "sixpack_header", LE, sxar_sixpack_header_fields);
+var sxar_sixpack_chunk_fields = layout([u16("kind", ID), u16("method", ID), u32("packed_size", SIZE), u32("adler32", CHECKSUM),
+    u32("unpacked_size", SIZE)]);
+var sxar_sixpack_chunk = sxLayout(0x601C002F, "sixpack_chunk", LE, sxar_sixpack_chunk_fields);
+var sxar_sixpack_file_fields = layout([u64("file_size", SIZE), u16("name_size", SIZE)]);
+var sxar_sixpack_file = sxLayout(0x601C0030, "sixpack_file", LE, sxar_sixpack_file_fields);
+function sxar_sixpack(c) {
+    var b = [];
+    if (!sxar_span(c, 0, 8) || !sxar_add(c, sxar_sixpack_header, 0)) {
+        return false;
+    }
+    var p = 8;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxar_read(c, p, b, 0, 16)) {
+            break;
+        }
+        var n = sxar32(b, 4, false);
+        if (!sxar_span(c, p + 16, n)) {
+            break;
+        }
+        if (!sxar_add(c, sxar_sixpack_chunk, p)) {
+            return false;
+        }
+        if (sxar16(b, 0, false) === 1 && n >= 10 && !sxar_add(c, sxar_sixpack_file, p + 16)) {
+            return false;
+        }
+        p += 16 + n;
+    }
+    return true;
+}
+function sx_fastlz_sixpack_build(c) {
+    return sxar_sixpack(c);
+}

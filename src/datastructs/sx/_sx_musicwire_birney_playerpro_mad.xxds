@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/birney_playerpro_mad/xx_birney_playerpro_mad_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_madg_header_fields = layout([blob("magic", 4, SIGNATURE), chars("song_name", 32, NONE)]);
+var sxmw_madg_header = sxLayout(0x60870018, "madg_header", BE, sxmw_madg_header_fields);
+var sxmw_madg_orders_fields = layout([u8("pattern_count", COUNT), u8("order_count", COUNT), blob("orders", 128),
+    u8("tracks", COUNT), u8("padding", RESERVED)]);
+var sxmw_madg_orders = sxLayout(0x6087001A, "madg_orders", LE, sxmw_madg_orders_fields);
+var sxmw_madg_pattern_fields = layout([i32("rows", COUNT), blob("encoding", 4, ID), chars("name", 20, NONE),
+    i32("packed_bytes", SIZE), i32("unused", RESERVED)]);
+var sxmw_madg_pattern = sxLayout(0x6087001B, "madg_pattern", BE, sxmw_madg_pattern_fields);
+var sxmw_madg_event_fields = layout([u8("instrument", ID), u8("note"), u8("effect", ID), u8("argument")]);
+var sxmw_madg_event = sxLayout(0x6087001C, "madg_event", LE, sxmw_madg_event_fields);
+function sxmw_madg(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [36];
+    var total = 0;
+    var x = [0];
+    var patterns = [0];
+    var tracks = [0];
+    if (!sxmw_eq(v, 0, "MADG", 4, end) || !sxmw_row(v, sxmw_madg_header, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < 64; i++) {
+        if (!sxmw_be(v, p[0] + 32, 4, x, end) || x[0] > 2147483647 || !sxmw_take(v, sxmw_madg_instrument, p, 1, end)) {
+            return false;
+        }
+        total += x[0];
+    }
+    if (!sxmw_u(v, p[0], 1, patterns, 0, end) || !sxmw_u(v, p[0] + 130, 1, tracks, 0, end) || !tracks[0] || tracks[0] > 64 || !sxmw_take(v, sxmw_madg_orders, p, 1, end)) {
+        return false;
+    }
+    for (i = 0; i < patterns[0]; i++) {
+        var rows = [0];
+        var packed = [0];
+        var coded = sxmw_eq(v, p[0] + 4, "MAD1", 4, end);
+        if (!sxmw_be(v, p[0], 4, rows, end) || !rows[0] || rows[0] > 2147483647 || !sxmw_be(v, p[0] + 28, 4, packed, end) || packed[0] > 2147483647 || !sxmw_take(v, sxmw_madg_pattern, p, 1, end)) {
+            return false;
+        }
+        if (coded) {
+            if (!sxmw_skip(v, p, packed[0], end)) {
+                return false;
+            }
+        } else if (!sxmw_take(v, sxmw_madg_event, p, rows[0] * tracks[0], end)) {
+            return false;
+        }
+    }
+    return sxmw_span(v, p[0], total, end);
+}
+function sx_birney_playerpro_mad_build(v) {
+    return sxmw_madg(v);
+}

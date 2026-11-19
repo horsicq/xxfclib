@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pce_tc/xx_pce_tc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_transcopy_header_fields = layout([u16("signature", SIGNATURE), chars("comment1", 32, STRING),
+    chars("comment2", 32, STRING)]);
+var sxdi_transcopy_header = sxLayout(0x60150002, "transcopy_header", BE, sxdi_transcopy_header_fields);
+var sxdi_transcopy_geometry_fields = layout([u8("last_cylinder", ID), u8("head_count", COUNT)]);
+var sxdi_transcopy_geometry = sxLayout(0x60150003, "transcopy_geometry", LE, sxdi_transcopy_geometry_fields);
+var sxdi_transcopy_track_offset_fields = layout([u16("offset_in_256_byte_units")]);
+var sxdi_transcopy_track_offset = sxLayout(0x60150004, "transcopy_track_offset", BE, sxdi_transcopy_track_offset_fields);
+var sxdi_transcopy_track_length_fields = layout([u16("byte_length", SIZE)]);
+var sxdi_transcopy_track_length = sxLayout(0x60150005, "transcopy_track_length", LE, sxdi_transcopy_track_length_fields);
+function sxdi_tc(c) {
+    var h = [];
+    if (c.size < 16384 || !sxdi_read(c, 0, h, 2) || h[0] !== 0x5A || h[1] !== 0xA5 || !sxdi_read(c, 258, h, 2) || h[0] >= 99 || !h[1] || h[1] > 2) {
+        return false;
+    }
+    return sx_add(c, sxdi_transcopy_header, 0, 66) && sx_add(c, sxdi_transcopy_geometry, 258, 2) && sx_table(c, sxdi_transcopy_track_offset, 0x305, 2, 256) && sx_table(c, sxdi_transcopy_track_length, 0x505, 2, 256);
+}
+function sx_pce_tc_build(c) {
+    return sxdi_tc(c);
+}

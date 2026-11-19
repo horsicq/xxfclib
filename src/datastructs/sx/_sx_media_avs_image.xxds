@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/avs_image/xx_avs_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_avs_header_fields = layout([u32("width"), u32("height")]);
+var sxm_avs_header = sxLayout(0x60060010, "avs_header", BE, sxm_avs_header_fields);
+function sx_avs_image_build(c, h, n) {
+    return !!(n >= 8 && sxGetU32(h, n, 0, true) && sxGetU32(h, n, 4, true) && sxm_fixed(c, sxm_avs_header, 8));
+}

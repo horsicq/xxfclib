@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/lbrcobol/xx_lbrcobol_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_lbrcobol_title_fields = layout([chars("title", 34, SIGNATURE), chars("creation_stamp", 21, NONE)]);
+var sxbx_lbrcobol_title = sxLayout(0x603000A2, "lbrcobol_title", LE, sxbx_lbrcobol_title_fields);
+var sxbx_lbrcobol_directory_header_fields = layout([u16("block_size"), u16("record_count", COUNT)]);
+var sxbx_lbrcobol_directory_header = sxLayout(0x603000A3, "lbrcobol_directory_header", BE, sxbx_lbrcobol_directory_header_fields);
+var sxbx_lbrcobol_header_constants_fields = layout([u32("constant1"), u32("constant2")]);
+var sxbx_lbrcobol_header_constants = sxLayout(0x603000A4, "lbrcobol_header_constants", LE, sxbx_lbrcobol_header_constants_fields);
+var sxbx_lbrcobol_member_fields = layout([u32("next_record_offset", OFFSET), u32("payload_block"), u32("payload_size", SIZE),
+    u16("dos_time"), u16("dos_date")]);
+var sxbx_lbrcobol_member = sxLayout(0x603000A5, "lbrcobol_member", BE, sxbx_lbrcobol_member_fields);
+var sxbx_lbrcobol_member_tail_fields = layout([u16("flags", FLAGS), u8("name_size", SIZE)]);
+var sxbx_lbrcobol_member_tail = sxLayout(0x603000A6, "lbrcobol_member_tail", LE, sxbx_lbrcobol_member_tail_fields);
+function sxbx_lbr(c) {
+    var n = [0];
+    var p = 256;
+    if (!sxbx_add(c, sxbx_lbrcobol_title, 0) || !sxbx_add(c, sxbx_lbrcobol_directory_header, 144) || !sxbx_add(c, sxbx_lbrcobol_header_constants, 148) || !sxbx_word(c, 146, 2, true, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0] && c.count < 20000; i++) {
+        var b = [];
+        if (!sxbx_read(c, p, b, 19) || !sxbx_span(c, p + 19, b[18]) || !sxbx_free(c, p, 19)) {
+            break;
+        }
+        if (!sxbx_add(c, sxbx_lbrcobol_member, p) || !sxbx_add(c, sxbx_lbrcobol_member_tail, p + 16)) {
+            return false;
+        }
+        p = sxbx32(b, 0, true);
+    }
+    return true;
+}
+function sx_lbrcobol_build(c) {
+    return sxbx_lbr(c);
+}

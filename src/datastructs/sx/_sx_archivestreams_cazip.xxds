@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cazip/xx_cazip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_cazip_header_fields = layout([bytes("lead_in", 3, SIGNATURE), chars("signature", 5, SIGNATURE),
+    chars("version", 2, NONE), u16("fixed_word"), u16("volume_flag"), u32("crc32", CHECKSUM), bytes("reserved", 2)]);
+var sxas_cazip_header = sxLayout(0x60430022, "cazip_header", LE, sxas_cazip_header_fields);
+var sxas_cazip_dcl_prefix_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxas_cazip_dcl_prefix = sxLayout(0x60430023, "cazip_dcl_prefix", LE, sxas_cazip_dcl_prefix_fields);
+function sx_cazip_build(c) {
+    var ok = false;
+    var b = [];
+    if (sxas_read(c, 0, b, 8) && !sxMemcmp(b, "\r\n\x1ACAZIP", 8)) {
+        ok = sxas_add(c, sxas_cazip_header, 0) && sxas_add(c, sxas_cazip_dcl_prefix, 20);
+    }
+    return ok;
+}

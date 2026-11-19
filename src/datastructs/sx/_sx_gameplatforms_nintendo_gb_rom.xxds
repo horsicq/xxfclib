@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_gb_rom/xx_nintendo_gb_rom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_gb_common_fields = layout([blob("entry_instructions", 4), blob("logo", 48, SIGNATURE)]);
+var sxgp_gb_common = sxLayout(0x60360005, "gb_common", LE, sxgp_gb_common_fields);
+var sxgp_gb_title_fields = layout([chars("title", 16, STRING)]);
+var sxgp_gb_title = sxLayout(0x60360006, "gb_title", LE, sxgp_gb_title_fields);
+var sxgp_cgb_title_fields = layout([chars("title", 11, STRING), chars("manufacturer_or_title_tail", 4, STRING),
+    u8("cgb_flag", FLAGS)]);
+var sxgp_cgb_title = sxLayout(0x60360007, "cgb_title", LE, sxgp_cgb_title_fields);
+var sxgp_gb_cartridge_fields = layout([chars("new_licensee", 2, ID), u8("sgb_flag", FLAGS), u8("cartridge_type", ID),
+    u8("rom_size_code", ID), u8("ram_size_code", ID), u8("destination_code", ID), u8("old_licensee", ID), u8("version", ID),
+    u8("header_checksum", CHECKSUM), field("global_checksum", "uint16be", 2, CHECKSUM)]);
+var sxgp_gb_cartridge = sxLayout(0x60360008, "gb_cartridge", LE, sxgp_gb_cartridge_fields);
+function sxgp_gb(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var flag = [0];
+    if (!sxgp_row(v, sxgp_gb_common, 0x100, end) || !sxgp_word(v, 0x143, 1, false, flag, 0, end)) {
+        return false;
+    }
+    return sxgp_row(v, sxAnd64(flag[0], 128) ? sxgp_cgb_title : sxgp_gb_title, 0x134, end) && sxgp_row(v, sxgp_gb_cartridge, 0x144, end);
+}
+function sx_nintendo_gb_rom_build(v) {
+    return sxgp_gb(v);
+}

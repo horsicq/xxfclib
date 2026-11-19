@@ -1,0 +1,82 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/wmo_bufr/xx_wmo_bufr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_bufr4_indicator_fields = layout([chars("signature", 4, SIGNATURE), field("total_size", "uint24", 3, SIZE),
+    u8("edition", ID)]);
+var sxsw_bufr4_indicator = sxLayout(0x602D0033, "bufr4_indicator", BE, sxsw_bufr4_indicator_fields);
+var sxsw_bufr4_identification_fields = layout([field("section_size", "uint24", 3, SIZE), u8("master_table", ID),
+    u16("centre", ID), u16("subcentre", ID), u8("update_sequence", ID), u8("optional_section", FLAGS), u8("data_category", ID),
+    u8("international_subcategory", ID), u8("local_subcategory", ID), u8("master_table_version", ID),
+    u8("local_table_version", ID), u16("year"), u8("month"), u8("day"), u8("hour"), u8("minute"), u8("second")]);
+var sxsw_bufr4_identification = sxLayout(0x602D0034, "bufr4_identification", BE, sxsw_bufr4_identification_fields);
+var sxsw_bufr4_section_fields = layout([field("section_size", "uint24", 3, SIZE), u8("reserved", RESERVED)]);
+var sxsw_bufr4_section = sxLayout(0x602D0035, "bufr4_section", BE, sxsw_bufr4_section_fields);
+var sxsw_bufr4_data_description_fields = layout([field("section_size", "uint24", 3, SIZE), u8("reserved", RESERVED),
+    u16("subset_count", COUNT), u8("flags", FLAGS)]);
+var sxsw_bufr4_data_description = sxLayout(0x602D0036, "bufr4_data_description", BE, sxsw_bufr4_data_description_fields);
+var sxsw_bufr_descriptor_fields = layout([u16("descriptor", ID)]);
+var sxsw_bufr_descriptor = sxLayout(0x602D0037, "bufr_descriptor", BE, sxsw_bufr_descriptor_fields);
+function sxsw24(b, b_o) {
+    return b[b_o] << 16 | b[b_o + 1] << 8 | b[b_o + 2];
+}
+function sxsw_bufr(c) {
+    var at = 0;
+    for (var msg = 0; at < c.size && msg < 600; msg++) {
+        var b = [];
+        if (!sx_read(c, at, b, 8)) {
+            return false;
+        }
+        var size = sxsw24(b, 4);
+        if (size < 12 || !sxsw_span(c, at, size) || !sxsw_add(c, sxsw_bufr4_indicator, at, 8)) {
+            return false;
+        }
+        var end = at + size - 4;
+        at += 8;
+        if (!sx_read(c, at, b, 22)) {
+            return false;
+        }
+        var n = sxsw24(b, 0);
+        var optional = (b[9] & 128) !== 0;
+        if (n < 22 || n > (end - at < 0 ? end - at + SX_U64_MAX : end - at) || !sxsw_add(c, sxsw_bufr4_identification, at, 22)) {
+            return false;
+        }
+        at += n;
+        if (optional) {
+            if (!sx_read(c, at, b, 4)) {
+                return false;
+            }
+            n = sxsw24(b, 0);
+            if (n < 4 || n > (end - at < 0 ? end - at + SX_U64_MAX : end - at) || !sxsw_add(c, sxsw_bufr4_section, at, 4)) {
+                return false;
+            }
+            at += n;
+        }
+        if (!sx_read(c, at, b, 7)) {
+            return false;
+        }
+        n = sxsw24(b, 0);
+        if (n < 7 || ((n - 7) >>> 0) % 2 || n > (end - at < 0 ? end - at + SX_U64_MAX : end - at) || !sxsw_add(c, sxsw_bufr4_data_description, at, 7) || !sxsw_table(c, sxsw_bufr_descriptor, at + 7, 2, Math.floor(((n - 7) >>> 0) / 2))) {
+            return false;
+        }
+        at += n;
+        if (!sx_read(c, at, b, 4)) {
+            return false;
+        }
+        n = sxsw24(b, 0);
+        if (n < 4 || n > (end - at < 0 ? end - at + SX_U64_MAX : end - at) || !sxsw_add(c, sxsw_bufr4_section, at, 4)) {
+            return false;
+        }
+        at += n;
+        if (at !== end || !sxsw_add(c, sxsw_wmo_end, at, 4)) {
+            return false;
+        }
+        at += 4;
+    }
+    return at === c.size;
+}
+function sx_wmo_bufr_build(c) {
+    return sxsw_bufr(c);
+}

@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/chromium_pak/xx_chromium_pak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_pak_header4_fields = layout([u32("version"), u32("resource_count", COUNT), u8("encoding", ID)]);
+var sx_p_pak_header4 = sxLayout(0x60070044, "pak_header4", LE, sx_p_pak_header4_fields);
+var sx_p_pak_header5_fields = layout([u32("version"), u8("encoding", ID), blob("reserved", 3, RESERVED),
+    u16("resource_count", COUNT), u16("alias_count", COUNT)]);
+var sx_p_pak_header5 = sxLayout(0x60070045, "pak_header5", LE, sx_p_pak_header5_fields);
+var sx_p_pak_resource_fields = layout([u16("resource_id", ID), u32("data_offset", OFFSET)]);
+var sx_p_pak_resource = sxLayout(0x60070046, "pak_resource", LE, sx_p_pak_resource_fields);
+var sx_p_pak_alias_fields = layout([u16("resource_id", ID), u16("resource_index", ID)]);
+var sx_p_pak_alias = sxLayout(0x60070047, "pak_alias", LE, sx_p_pak_alias_fields);
+function sx_p_pak(c) {
+    var v;
+    var count;
+    var previous = 0;
+    var n;
+    var aliases = 0;
+    var enc = [0];
+    var header;
+    if ((v = sx_u32(c, 0, false)) === null) {
+        return false;
+    }
+    if (v === 4) {
+        header = 9;
+        if ((count = sx_u32(c, 4, false)) === null || !sx_p_byte(c, 8, enc) || !sx_add(c, sx_p_pak_header4, 0, 9)) {
+            return false;
+        }
+    } else if (v === 5) {
+        header = 12;
+        if ((n = sx_u16(c, 8, false)) === null || (aliases = sx_u16(c, 10, false)) === null || !sx_p_byte(c, 4, enc) || !sx_add(c, sx_p_pak_header5, 0, 12)) {
+            return false;
+        }
+        count = n;
+    } else {
+        return false;
+    }
+    if (count > 65535 || enc[0] > 2 || !sx_table(c, sx_p_pak_resource, header, 6, count + 1) || !sx_table(c, sx_p_pak_alias, header + 6 * (count + 1), 4, aliases)) {
+        return false;
+    }
+    var payload = (header < 0 ? header + SX_U64_MAX : header) + 6 * (count + 1) + 4 * aliases;
+    for (var i = 0; i <= count; i++) {
+        var off;
+        if ((off = sx_u32(c, header + ((6 * i) >>> 0) + 2, false)) === null || off < payload || off < previous || off > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return false;
+        }
+        previous = off;
+    }
+    if (previous !== (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    for (i = 0; i < aliases; i++) {
+        var which;
+        if ((which = sx_u16(c, header + 6 * (count + 1) + ((4 * i) >>> 0) + 2, false)) === null || which >= count) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_chromium_pak_build(c) {
+    return sx_p_pak(c);
+}

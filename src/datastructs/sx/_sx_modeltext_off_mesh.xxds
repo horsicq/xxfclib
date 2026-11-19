@@ -1,0 +1,113 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/off_mesh/xx_off_mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_list_count_fields = layout([field("list_count", "ascii_signed", 0, COUNT)]);
+var sxmt_list_count = sxLayout(0x60520016, "modeltext_list_count", LE, sxmt_list_count_fields);
+var sxmt_alpha_fields = layout([field("alpha", "ascii_real", 0)]);
+var sxmt_alpha = sxLayout(0x60520045, "modeltext_alpha", LE, sxmt_alpha_fields);
+function sxmt_values(q, a, end, layouts, count) {
+    var save = q.p;
+    q.p = a;
+    var ok = true;
+    for (var i = 0; i < count; i++) {
+        if (!sxmt_value(q, layouts[i], end, null)) {
+            ok = false;
+            break;
+        }
+    }
+    q.p = save;
+    return ok;
+}
+function sxmt_off(q) {
+    var a = [0];
+    var e = [0];
+    if (!sxmt_line(q, a, e, true)) {
+        return false;
+    }
+    {
+        if (!sxmt_emit(q, sxmt_signature, a[0], e[0] - a[0])) {
+            return false;
+        }
+    }
+    if (!sxmt_line(q, a, e, true)) {
+        return false;
+    }
+    var next = q.p;
+    q.p = a[0];
+    var nv = [0];
+    var nf = [0];
+    var ne = [0];
+    {
+        if (!sxmt_value(q, sxmt_vertex_count, e[0], nv)) {
+            return false;
+        }
+    }
+    {
+        if (!sxmt_value(q, sxmt_face_count, e[0], nf)) {
+            return false;
+        }
+    }
+    {
+        if (!sxmt_value(q, sxmt_edge_count, e[0], ne)) {
+            return false;
+        }
+    }
+    q.p = next;
+    if (nv[0] > 1000000 || nf[0] > 1000000) {
+        return false;
+    }
+    var xyz = [sxmt_x, sxmt_y, sxmt_z];
+    for (var i = 0; i < nv[0]; i++) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (!sxmt_line(q, a, e, true) || !sxmt_values(q, a[0], e[0], xyz, 3)) {
+            return false;
+        }
+    }
+    for (i = 0; i < nf[0]; i++) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (!sxmt_line(q, a, e, true)) {
+            return false;
+        }
+        next = q.p;
+        q.p = a[0];
+        var n = [0];
+        {
+            if (!sxmt_value(q, sxmt_list_count, e[0], n)) {
+                return false;
+            }
+        }
+        if (n[0] > 1000000) {
+            return false;
+        }
+        for (var j = 0; j < n[0]; j++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            {
+                if (!sxmt_value(q, sxmt_vertex_index, e[0], null)) {
+                    return false;
+                }
+            }
+        }
+        var colors = [sxmt_red, sxmt_green, sxmt_blue, sxmt_alpha];
+        j = 0;
+        var z = [0];
+        while (sxmt_token(q, e[0], a, z, true)) {
+            if (j >= 4 || !sxmt_emit(q, colors[j++], a[0], z[0])) {
+                return false;
+            }
+        }
+        q.p = next;
+    }
+    return true;
+}
+function sx_off_mesh_build(q) {
+    return sxmt_off(q);
+}

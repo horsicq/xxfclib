@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_utagemedia.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_utagemedia");
+include("_sx_utagemedia_utage_media");
+
+function fileTypes() { return ["UTAGE_MEDIA"]; }
+
+var sx_utagemedia_layouts = [sxutg_png_signature, sxutg_png_chunk, sxutg_png_ihdr, sxutg_png_crc, sxutg_bmp_file,
+    sxutg_bmp_core, sxutg_bmp_info, sxutg_jpeg_marker, sxutg_jpeg_segment, sxutg_jpeg_frame, sxutg_jpeg_frame_component,
+    sxutg_jpeg_scan, sxutg_jpeg_scan_component, sxutg_jpeg_scan_parameters, sxutg_riff_webp, sxutg_riff_chunk, sxutg_webp_vp8x,
+    sxutg_webp_vp8l, sxutg_webp_vp8, sxutg_ogg_page, sxutg_ogg_lacing, sxutg_isobmff_box, sxutg_isobmff_large_box,
+    sxutg_isobmff_ftyp, sxutg_isobmff_brand, sxutg_isobmff_uuid];
+
+function structs() {
+    return sxCatalog([sxutg_png_signature, sxutg_png_chunk, sxutg_png_ihdr, sxutg_png_crc, sxutg_bmp_file, sxutg_bmp_core,
+        sxutg_bmp_info, sxutg_jpeg_marker, sxutg_jpeg_segment, sxutg_jpeg_frame, sxutg_jpeg_frame_component, sxutg_jpeg_scan,
+        sxutg_jpeg_scan_component, sxutg_jpeg_scan_parameters, sxutg_riff_webp, sxutg_riff_chunk, sxutg_webp_vp8x,
+        sxutg_webp_vp8l, sxutg_webp_vp8, sxutg_ogg_page, sxutg_ogg_lacing, sxutg_isobmff_box, sxutg_isobmff_large_box,
+        sxutg_isobmff_ftyp, sxutg_isobmff_brand, sxutg_isobmff_uuid], sx_utagemedia_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_utagemedia_build, false);
+}

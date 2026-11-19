@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/irixsa/xx_irixsa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_irixsa_header_fields = layout([u32("magic", SIGNATURE), u32("checksum", CHECKSUM),
+    field("reserved", "byte[24]", 24, RESERVED)]);
+var sxst_irixsa_header = sxLayout(0x60370001, "irixsa_header", BE, sxst_irixsa_header_fields);
+var sxst_irixsa_directory_entry_fields = layout([chars("name", 16, NONE), u32("first_block"), u32("byte_size", SIZE)]);
+var sxst_irixsa_directory_entry = sxLayout(0x60370002, "irixsa_directory_entry", BE, sxst_irixsa_directory_entry_fields);
+function sx_irixsa_build(c) {
+    return sxst_put(c, sxst_irixsa_header, 0, 1) && sxst_put(c, sxst_irixsa_directory_entry, 32, 20);
+}

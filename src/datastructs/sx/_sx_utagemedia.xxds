@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_utagemedia.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_utagemedia_supports(t) {
+    switch (t) {
+    case "UTAGE_MEDIA":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_utagemedia_build(c) {
+    if (c === null || c.f === null || c.f.file_type !== "UTAGE_MEDIA" || c.size < 32 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    return sx_utage_media_build(c);
+}
+function sx_utagemedia_comment(r, id) {
+    if ((id & 0xFFFF0000) >>> 0 !== 0x609C0000) {
+        return true;
+    }
+    if (r === null) {
+        return false;
+    }
+    return sxSetComment(r, "Physical Utage modified-XOR ciphertext bytes for the named media field. These are encoded bytes, not the decoded numeric/string value. The byte-preserving transform identifies this original-file span; compressed media payload remains raw.");
+}

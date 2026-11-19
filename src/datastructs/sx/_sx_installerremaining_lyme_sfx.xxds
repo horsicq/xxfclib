@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/lyme_sfx/xx_lyme_sfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_lyme_footer_fields = layout([field("member_count", "uint32le", 4, COUNT), chars("signature", 14, SIGNATURE)]);
+var sxir_lyme_footer = sxLayout(0x60800031, "lyme_footer", LE, sxir_lyme_footer_fields);
+var sxir_lyme_member_fields = layout([field("file_offset", "uint32le", 4, OFFSET),
+    field("uncompressed_size", "uint32le", 4, SIZE), field("stored_size", "uint32le", 4, SIZE)]);
+var sxir_lyme_member = sxLayout(0x60800032, "lyme_member", LE, sxir_lyme_member_fields);
+var sxir_lyme_name_length_fields = layout([field("name_size", "uint32le", 4, SIZE)]);
+var sxir_lyme_name_length = sxLayout(0x60800033, "lyme_name_length", LE, sxir_lyme_name_length_fields);
+var sxir_lyme_zero_sentinel_fields = layout([field("zero", "uint32le", 4, RESERVED)]);
+var sxir_lyme_zero_sentinel = sxLayout(0x6080003D, "lyme_zero_sentinel", LE, sxir_lyme_zero_sentinel_fields);
+function sxir_lyme(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (end < 18) {
+        return false;
+    }
+    var at = sxU64(end - 18);
+    var count = [0];
+    if (!sxir_eq(v, at + 4, "1.10!LYME_SFX!", 14, end) || !sxir_u(v, at, 4, false, count, end) || !count[0] || count[0] > 65536 || !sxir_row(v, sxir_lyme_footer, at, end)) {
+        return false;
+    }
+    if (at >= 12) {
+        var n = [0];
+        var kind = [0];
+        var zero = [0];
+        if (!sxir_u(v, sxU64(at - 8), 4, false, n, end) || !sxir_u(v, sxU64(at - 4), 4, false, kind, end)) {
+            return false;
+        }
+        if ((kind[0] === 1 || kind[0] === 3) && n[0] <= 4096 && n[0] <= sxU64(at - 12) && sxir_u(v, sxU64(sxU64(at - 12) - n[0]), 4, false, zero, end) && !zero[0]) {
+            if (!sxir_row(v, sxir_lyme_zero_sentinel, sxU64(sxU64(at - 12) - n[0]), end) || !sxir_emit(v, sxir_installer_name, sxU64(sxU64(at - 8) - n[0]), n[0], end) || !sxir_row(v, sxir_lyme_label, sxU64(at - 8), end)) {
+                return false;
+            }
+            at = sxU64(at - (12 + n[0]));
+        }
+    }
+    for (var i = 0; i < count[0]; i++) {
+        n = [0];
+        var offset = [0];
+        var size = [0];
+        if (at < 4 || !sxir_u(v, sxU64(at - 4), 4, false, n, end) || !n[0] || n[0] > 4096 || n[0] > sxU64(at - 4) || sxU64(sxU64(at - 4) - n[0]) < 12 || !sxir_row(v, sxir_lyme_name_length, sxU64(at - 4), end)) {
+            return false;
+        }
+        at = sxU64(at - (4 + n[0]));
+        if (!sxir_emit(v, sxir_installer_name, at, n[0], end)) {
+            return false;
+        }
+        at = sxU64(at - 12);
+        if (!sxir_row(v, sxir_lyme_member, at, end) || !sxir_u(v, at, 4, false, offset, end) || !sxir_u(v, at + 8, 4, false, size, end) || !sxir_span(v, offset[0], size[0], at)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_lyme_sfx_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_lyme(v);
+}

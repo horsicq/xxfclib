@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/larc_pfx/xx_larc_pfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_pfx_gemdos_header_fields = layout([u16("branch", SIGNATURE), u32("text_size", SIZE), u32("data_size", SIZE),
+    u32("bss_size", SIZE), u32("symbol_size", SIZE), u32("reserved", RESERVED), u32("flags", FLAGS), u16("absolute_flag", FLAGS)]);
+var sxaend_pfx_gemdos_header = sxLayout(0x6084003F, "pfx_gemdos_header", BE, sxaend_pfx_gemdos_header_fields);
+function sx_larc_pfx_build(c) {
+    return sxaend_add(c, sxaend_pfx_gemdos_header, 0) && sxaend_carrier_records(c);
+}

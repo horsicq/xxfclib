@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_warpin_package/xx_sfx_warpin_package_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_warpin_header_fields = layout([u32("signature", SIGNATURE), u16("format_revision", ID),
+    chars("description", 512, NONE), u16("application_revision", ID), u16("operating_system", ID), u16("package_count", COUNT),
+    u16("script_unpacked_size_low"), u16("script_packed_size", SIZE), i32("optional_blob_size", SIZE)]);
+var sxiex_warpin_header = sxLayout(0x60820010, "warpin_header", LE, sxiex_warpin_header_fields);
+var sxiex_warpin_extension_fields = layout([i32("extension_size", SIZE)]);
+var sxiex_warpin_extension = sxLayout(0x60820011, "warpin_extension", LE, sxiex_warpin_extension_fields);
+var sxiex_warpin_package_fields = layout([u16("package_id", ID), u16("file_count", COUNT), i32("data_offset", OFFSET),
+    i32("unpacked_size", SIZE), i32("packed_size", SIZE), chars("description", 32, NONE)]);
+var sxiex_warpin_package = sxLayout(0x60820012, "warpin_package", LE, sxiex_warpin_package_fields);
+var sxiex_warpin_member_fields = layout([u16("signature", SIGNATURE), u16("unknown"), u16("method", ID), u16("package_id", ID),
+    i32("unpacked_size", SIZE), i32("packed_size", SIZE), u32("checksum", CHECKSUM), chars("name", 256, NONE),
+    u32("modification_time", TIMESTAMP), u32("creation_time", TIMESTAMP), u8("extension", ID)]);
+var sxiex_warpin_member = sxLayout(0x60820013, "warpin_member", LE, sxiex_warpin_member_fields);
+function sxiex_warpin(c, r) {
+    var h = [];
+    if (!sxiex_read(c, 0, h, 532) || sxiex32(h, 0, false) !== 0xBE020477) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_warpin_header, 0, 1)) {
+        return false;
+    }
+    var at = 532;
+    var rev = sxiex16(h, 4, false);
+    var count = sxiex16(h, 522, false);
+    var packed = sxiex16(h, 526, false);
+    var optional = sxiex32(h, 528, false);
+    if (rev === 4) {
+        var n = [0];
+        if (!sxiex_u32(c, at, n) || n[0] < 40 || !sxiex_span(c, at, n[0])) {
+            return true;
+        }
+        if (!sxiex_put(c, sxiex_warpin_extension, at, 1)) {
+            return false;
+        }
+        at += n[0];
+    }
+    if (!sxiex_span(c, at, packed + optional)) {
+        return true;
+    }
+    at += (packed + optional) >>> 0;
+    if (sxiex_span(c, at, count * 48) && !sxiex_put(c, sxiex_warpin_package, at, count)) {
+        return false;
+    }
+    for (var i = 0; i < r.count; i++) {
+        if (r.items[i].header_size === 285 && sxiex_eq(c, r.items[i].header, "\x12\xF0", 2) && !sxiex_put(c, sxiex_warpin_member, r.items[i].header, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sfx_warpin_package_build(c, records) {
+    return sxiex_warpin(c, records);
+}

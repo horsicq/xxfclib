@@ -1,0 +1,376 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivestreams.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_ibmpack_prefix_fields = layout([u16("signature", SIGNATURE), u16("dialect"), u16("dos_date"), u16("dos_time"),
+    u8("attributes", FLAGS)]);
+var sxas_ibmpack_prefix = sxLayout(0x60430020, "ibmpack_prefix", LE, sxas_ibmpack_prefix_fields);
+var sxas_ibmpack_chain_fields = layout([bytes("opaque_padding", 3), u32("extended_attributes_offset", OFFSET),
+    u32("uncompressed_size", SIZE), u32("next_header_offset", OFFSET), u16("name_field_size", SIZE)]);
+var sxas_ibmpack_chain = sxLayout(0x60430021, "ibmpack_chain", LE, sxas_ibmpack_chain_fields);
+var sxas_ftcomp_header_fields = layout([u16("signature", SIGNATURE), u16("dialect"), u16("dos_date"), u16("dos_time"),
+    u8("attributes", FLAGS), bytes("opaque_padding", 3), u32("extended_attributes_offset", OFFSET),
+    u32("uncompressed_size", SIZE), u32("next_header_offset", OFFSET), chars("signature2", 7, SIGNATURE), u16("opaque_word"),
+    u16("selector"), u32("opaque_dword"), u16("name_field_size", SIZE)]);
+var sxas_ftcomp_header = sxLayout(0x60430028, "ftcomp_header", LE, sxas_ftcomp_header_fields);
+var sxas_ibmpack_fixed_name_fields = layout([chars("name", 13, NONE)]);
+var sxas_ibmpack_fixed_name = sxLayout(0x6043002B, "ibmpack_fixed_name", LE, sxas_ibmpack_fixed_name_fields);
+function sx_archivestreams_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60430000 || id >= 0x60440000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60430003:
+        if (r.name === "method") {
+            text = "0 stored, 1 LZSS; both payload forms have a position-dependent byte XOR.";
+        }
+        break;
+    case 0x60430004:
+        if (r.name === "directory_size") {
+            text = "Complete directory bytes after 12-byte header.";
+        }
+        if (r.name === "version") {
+            text = "0x272e,0x2738 or0x2739.";
+        }
+        break;
+    case 0x60430005:
+        if (r.name === "payload_offset") {
+            text = "Physical file position is directory_size+this value+11.";
+        }
+        if (r.name === "status") {
+            text = "0xfffe marks an unused entry.";
+        }
+        if (r.name === "class_word") {
+            text = "Native skips values>=20 in versions 0x2738/0x2739.";
+        }
+        break;
+    case 0x60430006:
+        if (r.name === "payload_offset") {
+            text = "Physical file position is directory_size+this value+11.";
+        }
+        if (r.name === "status") {
+            text = "0xfffe marks an unused entry.";
+        }
+        if (r.name === "class_word") {
+            text = "Native skips values>=20 in versions 0x2738/0x2739.";
+        }
+        break;
+    case 0x60430007:
+        if (r.name === "packed_index_size") {
+            text = "Includes 4 bytes beyond the zlib stream occupied by the member count.";
+        }
+        break;
+    case 0x60430009:
+        if (r.name === "method") {
+            text = "0 stored; 1 four-byte uncompressed size then zlib.";
+        }
+        break;
+    case 0x6043000E:
+        if (r.name === "method") {
+            text = "1 LZSS or 4 DCL when payload is compressed.";
+        }
+        break;
+    case 0x6043000F:
+        if (r.name === "tag") {
+            text = "0x00eb file;0x00fe terminator.";
+        }
+        break;
+    case 0x60430010:
+        if (r.name === "tag") {
+            text = "0x00fe; remaining 21 bytes of end record have no established member semantics.";
+        }
+        break;
+    case 0x60430016:
+        if (r.name === "local_header_offset") {
+            text = "Stored ZIP-relative offset; not rewritten for the carrier.";
+        }
+        break;
+    case 0x60430017:
+        if (r.name === "directory_offset") {
+            text = "Stored ZIP-relative offset.";
+        }
+        break;
+    case 0x60430018:
+        if (r.name === "header_payload_size") {
+            text = "Complete header byte size minus 2.";
+        }
+        if (r.name === "method") {
+            text = "-pm0- stored,-pm1- and-pm2- compressed.";
+        }
+        break;
+    case 0x6043001B:
+        if (r.name === "uncompressed_size") {
+            text = "0 means stored;0xffffffff directory-only sentinel.";
+        }
+        break;
+    case 0x6043001F:
+        if (r.name === "method") {
+            text = "4 ChiefLZ adaptive Huffman/LZ.";
+        }
+        break;
+    case 0x60430020:
+        if (r.name === "dialect") {
+            text = "0x0a14/0x1400 PACK1;0xffff plain;0xfffe chained.";
+        }
+        break;
+    case 0x60430021:
+        if (r.name === "extended_attributes_offset") {
+            text = "File-relative only when it falls inside the member; small values can be unknown metadata.";
+        }
+        if (r.name === "uncompressed_size") {
+            text = "0 or 1 means length not recorded.";
+        }
+        if (r.name === "next_header_offset") {
+            text = "File-relative;0 means last member.";
+        }
+        break;
+    case 0x60430022:
+        if (r.name === "volume_flag") {
+            text = "1 complete stream;2 may require following volumes.";
+        }
+        break;
+    case 0x60430023:
+        if (r.name === "literal_mode") {
+            text = "0 uncoded literals;1 coded literals.";
+        }
+        if (r.name === "dictionary_bits") {
+            text = "Dictionary exponent 4, 5 or 6.";
+        }
+        break;
+    case 0x60430025:
+        if (r.name === "xor_prefix_size") {
+            text = "Only this many payload bytes are XORed with0xae; no compression by this layer.";
+        }
+        break;
+    case 0x60430026:
+        if (r.name === "member_size") {
+            text = "Includes 41-byte header.";
+        }
+        break;
+    case 0x6043002A:
+        if (r.name === "decoder_version") {
+            text = "High nibble 1 selects older coding, 2 newer.";
+        }
+        if (r.name === "checksum_flag") {
+            text = "0 has additive 16-bit checksum; 1 omits it.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxas_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxas_read(c, p, b, n) {
+    return sxas_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxas_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxas_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxas_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxas_uint(b, 0, n, be);
+    return true;
+}
+function sxas_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (c.count >= 20000 || !sxas_span(c, p, n)) {
+        return false;
+    }
+    var absolute = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < absolute) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo < c.count && c.items[lo].offset < absolute + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > absolute) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxas_ibm(c, ft) {
+    var p = 0;
+    for (var i = 0; i < 20000; i++) {
+        var variant = [0];
+        var next = [0];
+        var n = [0];
+        if (!sxas_word(c, p + 2, 2, false, variant)) {
+            return false;
+        }
+        if (ft) {
+            if (variant[0] !== 0xFFFD || !sxas_word(c, p + 20, 4, false, next) || !sxas_word(c, p + 39, 2, false, n) || !sxas_span(c, p + 41, n[0]) || !sxas_add(c, sxas_ftcomp_header, p)) {
+                return false;
+            }
+        } else {
+            if (!sxas_add(c, sxas_ibmpack_prefix, p)) {
+                return false;
+            }
+            if (variant[0] === 0xFFFE) {
+                if (!sxas_word(c, p + 20, 4, false, next) || !sxas_word(c, p + 24, 2, false, n) || !sxas_span(c, p + 26, n[0]) || !sxas_add(c, sxas_ibmpack_chain, p + 9)) {
+                    return false;
+                }
+            } else if (variant[0] === 0x0A14 || variant[0] === 0x1400) {
+                if (!sxas_add(c, sxas_ibmpack_fixed_name, p + 10)) {
+                    return false;
+                }
+            } else if (variant[0] !== 0xFFFF) {
+                return false;
+            }
+        }
+        if (!next[0]) {
+            return true;
+        }
+        if (next[0] <= p || next[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return false;
+        }
+        p = next[0];
+    }
+    return false;
+}
+function sxas_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxas_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxas_order, true);
+    return !c.failed;
+}
+function sx_archivestreams_supports(type) {
+    switch (type) {
+    case "SQZE":
+    case "CSQ":
+    case "ZOOT1":
+    case "RDFZ":
+    case "ASD":
+    case "FOX_SQZ":
+    case "LDS":
+    case "WEBEXE":
+    case "PMA":
+    case "LHF":
+    case "ECMPACKED":
+    case "CHIEFLZ":
+    case "IBMPACK":
+    case "CAZIP":
+    case "TPWM":
+    case "MRNZ":
+    case "EDC":
+    case "WINLINK":
+    case "FTCOMP":
+    case "CPM_CRUNCH":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivestreams_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "SQZE":
+        ok = sx_sqze_build(c);
+        break;
+    case "CSQ":
+        ok = sx_csq_build(c);
+        break;
+    case "ZOOT1":
+        ok = sx_zoot1_build(c);
+        break;
+    case "RDFZ":
+        ok = sx_rdfz_build(c);
+        break;
+    case "ASD":
+        ok = sx_asd_build(c);
+        break;
+    case "FOX_SQZ":
+        ok = sx_fox_sqz_build(c);
+        break;
+    case "LDS":
+        ok = sx_lds_build(c);
+        break;
+    case "WEBEXE":
+        ok = sx_webexe_build(c);
+        break;
+    case "PMA":
+        ok = sx_pma_build(c);
+        break;
+    case "LHF":
+        ok = sx_lhf_build(c);
+        break;
+    case "ECMPACKED":
+        ok = sx_ecmpacked_build(c);
+        break;
+    case "CHIEFLZ":
+        ok = sx_chieflz_build(c);
+        break;
+    case "IBMPACK":
+        ok = sx_ibmpack_build(c);
+        break;
+    case "CAZIP":
+        ok = sx_cazip_build(c);
+        break;
+    case "TPWM":
+        ok = sx_tpwm_build(c);
+        break;
+    case "MRNZ":
+        ok = sx_mrnz_build(c);
+        break;
+    case "EDC":
+        ok = sx_edc_build(c);
+        break;
+    case "WINLINK":
+        ok = sx_winlink_build(c);
+        break;
+    case "FTCOMP":
+        ok = sx_ftcomp_build(c);
+        break;
+    case "CPM_CRUNCH":
+        ok = sx_cpm_crunch_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxas_finish(c));
+}

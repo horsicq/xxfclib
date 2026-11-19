@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/aodos/xx_aodos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_aodos_directory_entry_fields = layout([u16("status_and_folder_ids", FLAGS), field("name_koi8r", "byte[14]", 14),
+    u16("first_block"), u16("block_count", COUNT), u16("load_address", VA), u16("byte_size", SIZE)]);
+var sxrfs_aodos_directory_entry = sxLayout(0x60650001, "aodos_directory_entry", LE, sxrfs_aodos_directory_entry_fields);
+function sxrfs_aodos(c) {
+    var e = [];
+    if (c.size < 10752) {
+        return false;
+    }
+    for (var i = 0; i < 413 && c.count < 24000; i++) {
+        var p = 320 + i * 24;
+        if (!sxrfs_read(c, p, e, 0, 24)) {
+            break;
+        }
+        var empty = true;
+        for (var j = 2; j < 16; j++) {
+            if (e[j] && e[j] !== 0xF6) {
+                empty = false;
+            }
+        }
+        if (empty) {
+            break;
+        }
+        if (!sxrfs_put(c, sxrfs_aodos_directory_entry, p, 1)) {
+            return false;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_aodos_build(c) {
+    return sxrfs_aodos(c);
+}

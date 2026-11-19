@@ -1,0 +1,129 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/tls_records/xx_tls_records_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_tls_hello_prefix_fields = layout([u16("legacy_version", ID), blob("random", 32)]);
+var sxnm_tls_hello_prefix = sxLayout(0x60260026, "tls_hello_prefix", BE, sxnm_tls_hello_prefix_fields);
+var sxnm_tls_session_id_length_fields = layout([u8("session_id_length", SIZE)]);
+var sxnm_tls_session_id_length = sxLayout(0x60260027, "tls_session_id_length", BE, sxnm_tls_session_id_length_fields);
+var sxnm_tls_cipher_suites_length_fields = layout([u16("cipher_suites_length", SIZE)]);
+var sxnm_tls_cipher_suites_length = sxLayout(0x60260028, "tls_cipher_suites_length", BE, sxnm_tls_cipher_suites_length_fields);
+var sxnm_tls_compression_methods_length_fields = layout([u8("compression_methods_length", SIZE)]);
+var sxnm_tls_compression_methods_length = sxLayout(0x6026002A, "tls_compression_methods_length", BE, sxnm_tls_compression_methods_length_fields);
+var sxnm_tls_extensions_length_fields = layout([u16("extensions_length", SIZE)]);
+var sxnm_tls_extensions_length = sxLayout(0x6026002C, "tls_extensions_length", BE, sxnm_tls_extensions_length_fields);
+var sxnm_tls_change_cipher_spec_fields = layout([u8("compatibility_value", ID)]);
+var sxnm_tls_change_cipher_spec = sxLayout(0x6026002E, "tls_change_cipher_spec", BE, sxnm_tls_change_cipher_spec_fields);
+function sxnm_tls_hello(v, at, end, type) {
+    if (!sxnm_row(v, sxnm_tls_hello_prefix, at, end)) {
+        return false;
+    }
+    at += 34;
+    if (!sxnm_row(v, sxnm_tls_session_id_length, at, end)) {
+        return false;
+    }
+    var n = v.p[at++];
+    if (!sxnm_need(v, at, n, end)) {
+        return false;
+    }
+    at += n;
+    if (type === 1) {
+        if (!sxnm_row(v, sxnm_tls_cipher_suites_length, at, end)) {
+            return false;
+        }
+        n = sxnm_u16(v.p, at);
+        at += 2;
+        if (n % 2 || !sxnm_need(v, at, n, end)) {
+            return false;
+        }
+        var ce = at + n;
+        for (; at < ce; at += 2) {
+            if (!sxnm_row(v, sxnm_tls_cipher_suite, at, ce)) {
+                return false;
+            }
+        }
+        if (!sxnm_row(v, sxnm_tls_compression_methods_length, at, end)) {
+            return false;
+        }
+        n = v.p[at++];
+        if (!sxnm_need(v, at, n, end)) {
+            return false;
+        }
+        var ce2 = at + n;
+        for (; at < ce2; at++) {
+            if (!sxnm_row(v, sxnm_tls_compression_method, at, ce2)) {
+                return false;
+            }
+        }
+    } else if (type === 2) {
+        if (!sxnm_row(v, sxnm_tls_cipher_suite, at, end) || !sxnm_row(v, sxnm_tls_compression_method, at + 2, end)) {
+            return false;
+        }
+        at += 3;
+    } else {
+        return false;
+    }
+    if (!sxnm_row(v, sxnm_tls_extensions_length, at, end)) {
+        return false;
+    }
+    n = sxnm_u16(v.p, at);
+    at += 2;
+    if (n !== sxU64(end - at)) {
+        return false;
+    }
+    while (at < end) {
+        if (!sxnm_row(v, sxnm_tls_extension_header, at, end)) {
+            return false;
+        }
+        n = sxnm_u16(v.p, at + 2);
+        at += 4;
+        if (!sxnm_need(v, at, n, end)) {
+            return false;
+        }
+        at += n;
+    }
+    return true;
+}
+function sxnm_tls(v) {
+    var at = 0;
+    while (at < v.n) {
+        if (!sxnm_row(v, sxnm_tls_record_header, at, v.n)) {
+            return false;
+        }
+        var type = v.p[at];
+        var n = sxnm_u16(v.p, at + 3);
+        at += 5;
+        if (!sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        var end = at + n;
+        if (type === 22) {
+            var p = at;
+            while (p < end) {
+                if (!sxnm_row(v, sxnm_tls_handshake_header, p, end)) {
+                    return false;
+                }
+                var ht = v.p[p];
+                var hn = sxnm_u24(v.p, p + 1);
+                p += 4;
+                if (!sxnm_need(v, p, hn, end) || !sxnm_tls_hello(v, p, p + hn, ht)) {
+                    return false;
+                }
+                p += hn;
+            }
+        } else if (type === 20) {
+            if (n !== 1 || !sxnm_row(v, sxnm_tls_change_cipher_spec, at, end)) {
+                return false;
+            }
+        } else if (type !== 23) {
+            return false;
+        }
+        at = end;
+    }
+    return true;
+}
+function sx_tls_records_build(v) {
+    return sxnm_tls(v);
+}

@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivestreams.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivestreams");
+include("_sx_archivestreams_asd");
+include("_sx_archivestreams_cazip");
+include("_sx_archivestreams_chieflz");
+include("_sx_archivestreams_cpm_crunch");
+include("_sx_archivestreams_csq");
+include("_sx_archivestreams_ecmpacked");
+include("_sx_archivestreams_edc");
+include("_sx_archivestreams_fox_sqz");
+include("_sx_archivestreams_ftcomp");
+include("_sx_archivestreams_ibmpack");
+include("_sx_archivestreams_lds");
+include("_sx_archivestreams_lhf");
+include("_sx_archivestreams_mrnz");
+include("_sx_archivestreams_pma");
+include("_sx_archivestreams_rdfz");
+include("_sx_archivestreams_sqze");
+include("_sx_archivestreams_tpwm");
+include("_sx_archivestreams_webexe");
+include("_sx_archivestreams_winlink");
+include("_sx_archivestreams_zoot1");
+
+function fileTypes() { return ["ECMPACKED", "CHIEFLZ", "IBMPACK", "CAZIP", "TPWM", "MRNZ", "EDC", "WINLINK", "FTCOMP", "PMA",
+    "CPM_CRUNCH", "LHF", "SQZE", "CSQ", "ZOOT1", "RDFZ", "ASD", "FOX_SQZ", "LDS", "WEBEXE"]; }
+
+var sx_archivestreams_layouts = [sxas_sqze_header, sxas_csq_header, sxas_csq_entry, sxas_zoot1_header, sxas_zoot1_entry137,
+    sxas_zoot1_entry235, sxas_rdfz_header, sxas_rdfz_count, sxas_rdfz_entry, sxas_rdfz_member_size, sxas_asd_header,
+    sxas_asd_name_length, sxas_asd_entry, sxas_fox_sqz_header, sxas_fox_sqz_member, sxas_fox_sqz_end, sxas_lds_header,
+    sxas_lds_count, sxas_lds_entry, sxas_webexe_header, sxas_webexe_zip_local, sxas_webexe_zip_central, sxas_webexe_zip_end,
+    sxas_pma_header, sxas_pma_crc16, sxas_lhf_header, sxas_lhf_entry, sxas_ecmpacked_header, sxas_chieflz_prefix,
+    sxas_chieflz_name_size, sxas_chieflz_method, sxas_ibmpack_prefix, sxas_ibmpack_chain, sxas_cazip_header,
+    sxas_cazip_dcl_prefix, sxas_tpwm_header, sxas_mrnz_header, sxas_edc_header, sxas_winlink_header, sxas_ftcomp_header,
+    sxas_crunch_magic, sxas_crunch_parameters, sxas_ibmpack_fixed_name];
+
+function structs() {
+    return sxCatalog([sxas_sqze_header, sxas_csq_header, sxas_csq_entry, sxas_zoot1_header, sxas_zoot1_entry137,
+        sxas_zoot1_entry235, sxas_rdfz_header, sxas_rdfz_count, sxas_rdfz_entry, sxas_rdfz_member_size, sxas_asd_header,
+        sxas_asd_name_length, sxas_asd_entry, sxas_fox_sqz_header, sxas_fox_sqz_member, sxas_fox_sqz_end, sxas_lds_header,
+        sxas_lds_count, sxas_lds_entry, sxas_webexe_header, sxas_webexe_zip_local, sxas_webexe_zip_central, sxas_webexe_zip_end,
+        sxas_pma_header, sxas_pma_crc16, sxas_lhf_header, sxas_lhf_entry, sxas_ecmpacked_header, sxas_chieflz_prefix,
+        sxas_chieflz_name_size, sxas_chieflz_method, sxas_ibmpack_prefix, sxas_ibmpack_chain, sxas_cazip_header,
+        sxas_cazip_dcl_prefix, sxas_tpwm_header, sxas_mrnz_header, sxas_edc_header, sxas_winlink_header, sxas_ftcomp_header,
+        sxas_crunch_magic, sxas_crunch_parameters, sxas_ibmpack_fixed_name], sx_archivestreams_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivestreams_build, false);
+}

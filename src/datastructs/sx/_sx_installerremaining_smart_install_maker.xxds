@@ -1,0 +1,122 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/smart_install_maker/xx_smart_install_maker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_sim_stored_file_fields = layout([bytes("unknown_00", 4), field("size", "uint32le", 4, SIZE), bytes("unknown_08", 16)]);
+var sxir_sim_stored_file = sxLayout(0x60800016, "sim_stored_file", LE, sxir_sim_stored_file_fields);
+function sxir_sim(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (end < 4132) {
+        return false;
+    }
+    var footer = sxU64(end - 36);
+    var so = [0];
+    var ro = [0];
+    var rl = [0];
+    var co = [0];
+    var n = [0];
+    var compressed = [0];
+    var runtime = [0];
+    if (!sxir_u(v, footer, 8, false, so, end) || !sxir_u(v, footer + 8, 8, false, rl, end) || !sxir_u(v, footer + 16, 8, false, ro, end) || !sxir_u(v, footer + 24, 8, false, co, end) || !sxir_u(v, footer + 32, 1, false, compressed, end) || !sxir_u(v, footer + 33, 1, false, runtime, end) || !sxir_u(v, footer + 34, 1, false, n, end) || n[0] < 119 || compressed[0] > 1 || !sxir_eq(v, footer + 35, "\xF1", 1, end) || so[0] < 4096 || so[0] >= ro[0] || ro[0] > co[0] || co[0] > footer || rl[0] !== sxU64(co[0] - ro[0]) || !sxir_row(v, sxir_sim_footer, footer, end)) {
+        return false;
+    }
+    if (!sxir_eq(v, so[0], "Smart Install Maker v.", 21, ro[0])) {
+        var found = [0];
+        if (!sxir_find(v, 4096, footer, "Smart Install Maker v.", 21, true, found)) {
+            return false;
+        }
+        if (found[0] >= so[0]) {
+            var delta = sxU64(found[0] - so[0]);
+            if (delta > sxU64(footer - co[0])) {
+                return false;
+            }
+            ro[0] += delta;
+            co[0] += delta;
+        } else {
+            delta = sxU64(so[0] - found[0]);
+            if (delta > ro[0] || delta > co[0]) {
+                return false;
+            }
+            ro[0] = sxU64(ro[0] - delta);
+            co[0] = sxU64(co[0] - delta);
+        }
+        so[0] = found[0];
+        if (so[0] >= ro[0] || ro[0] > co[0] || co[0] > footer || rl[0] !== sxU64(co[0] - ro[0])) {
+            return false;
+        }
+    }
+    var at = [so[0]];
+    var chunks = 0;
+    var rest = 0;
+    for (var i = 0; at[0] < ro[0]; i++) {
+        var start = at[0];
+        var len = [0];
+        if (!sxir_zstr(v, at, ro[0], len)) {
+            return false;
+        }
+        if (i === 117 || i === 118) {
+            var value = 0;
+            if (!len[0] || len[0] > 10) {
+                return false;
+            }
+            for (var k = 0; k < len[0]; k++) {
+                var b = [0];
+                if (!sxir_u(v, start + k, 1, false, b, ro[0]) || b[0] < 48 /*0*/ || b[0] > 57 /*9*/ || value > Math.floor(sxU64(4294967295 - sxU64(b[0] - 48 /*0*/)) / 10)) {
+                    return false;
+                }
+                value = sxU64(value * 10 + b[0] - 48 /*0*/);
+            }
+            if (i === 117) {
+                chunks = value;
+            } else {
+                rest = value;
+            }
+        }
+    }
+    if (!compressed[0]) {
+        at[0] = ro[0];
+        for (i = 0; i < runtime[0]; i++) {
+            len = [0];
+            var size = [0];
+            if (!sxir_zstr(v, at, co[0], len)) {
+                return false;
+            }
+            start = at[0];
+            if (!sxir_zstr(v, at, co[0], len) || !len[0] || len[0] > 10) {
+                return false;
+            }
+            for (k = 0; k < len[0]; k++) {
+                b = [0];
+                if (!sxir_u(v, start + k, 1, false, b, co[0]) || b[0] < 48 /*0*/ || b[0] > 57 /*9*/ || size[0] > Math.floor(sxU64(4294967295 - sxU64(b[0] - 48 /*0*/)) / 10)) {
+                    return false;
+                }
+                size[0] = sxU64(size[0] * 10 + b[0] - 48 /*0*/);
+            }
+            if (!sxir_span(v, at[0], size[0], co[0])) {
+                return false;
+            }
+            at[0] += size[0];
+        }
+        if (at[0] !== co[0]) {
+            return false;
+        }
+    }
+    if (!chunks && !rest) {
+        at[0] = co[0];
+        while (at[0] < footer) {
+            size = [0];
+            if (!sxir_u(v, at[0] + 4, 4, false, size, footer) || !sxir_row(v, sxir_sim_stored_file, at[0], footer) || !sxir_span(v, at[0] + 24, size[0], footer)) {
+                return false;
+            }
+            at[0] += 24 + size[0];
+        }
+    }
+    return true;
+}
+function sx_smart_install_maker_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_sim(v);
+}

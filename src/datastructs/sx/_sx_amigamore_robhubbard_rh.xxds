@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/robhubbard_rh/xx_robhubbard_rh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamore_end_word_fields = layout([u16("end_marker", ID)]);
+var sxamore_end_word = sxLayout(0x60950005, "end_word", BE, sxamore_end_word_fields);
+function sxamore_skip(v, p, n, end) {
+    if (!sxamore_span(v, p[0], n, end)) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxamore_rh(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [64];
+    var n = [0];
+    var operand = [54];
+    var samples = [0];
+    var sub = [130];
+    var x = [0];
+    for (var i = 0; i < 5; i++) {
+        if (!sxamore_be(v, (i * 4) >>> 0, 2, x, 0, e) || x[0] !== 0x6000) {
+            return false;
+        }
+    }
+    if (!sxamore_eq(v, 20, "A\xFA", 2, e) || !sxamore_eq(v, 28, "NuA\xFA", 4, e) || !sxamore_find(v, p, e < 80 ? e : 80, 0x2418, 2, 2) || !sxamore_be(v, sxU64(p[0] - 1), 1, n, 0, e) || !sxamore_find(v, operand, e < 64 ? e : 64, 0x41FA, 2, 2)) {
+        return false;
+    }
+    operand[0] += 2;
+    if (!sxamore_signed16(v, operand[0], operand[0], samples, e) || !sxamore_be(v, operand[0] + 2, 2, x, 0, e)) {
+        return false;
+    }
+    if (x[0] === 0xD1FC) {
+        if (!sxamore_span(v, samples[0], 64, e)) {
+            return false;
+        }
+        samples[0] += 64;
+    }
+    if (!sxamore_find(v, sub, e < 150 ? e : 150, 0x41EB, 2, 2)) {
+        return false;
+    }
+    sub[0] += 2;
+    var song = [0];
+    if (!sxamore_signed16(v, sub[0], 0, song, e) || !sxamore_span(v, song[0], 18, e) || !sxamore_row(v, sxamore_rh_sample_count, sxU64(p[0] - 1), e) || !sxamore_row(v, sxamore_signed_displacement, operand[0], e) || !sxamore_row(v, sxamore_signed_displacement, sub[0], e)) {
+        return false;
+    }
+    p[0] = samples[0];
+    for (i = 0; i <= n[0]; i++) {
+        var bytes = [0];
+        if (!sxamore_be(v, p[0], 4, bytes, 0, e) || bytes[0] > 65536 || !sxamore_take(v, sxamore_rh_sample, p, 1, e) || !sxamore_skip(v, p, bytes[0], e)) {
+            return false;
+        }
+    }
+    if (!sxamore_be(v, p[0], 2, x, 0, e) || x[0] !== 0x4E71 || !sxamore_row(v, sxamore_end_word, p[0], e)) {
+        return false;
+    }
+    for (i = 0; i < 4096; i++, song[0] += 18) {
+        if (!sxamore_row(v, sxamore_rh_subsong, song[0], e) || !sxamore_be(v, song[0] + 18, 2, x, 0, e)) {
+            return false;
+        }
+        if (!x[0]) {
+            return sxamore_row(v, sxamore_end_word, song[0] + 18, e);
+        }
+    }
+    return false;
+}
+function sx_robhubbard_rh_build(v) {
+    return sxamore_rh(v);
+}

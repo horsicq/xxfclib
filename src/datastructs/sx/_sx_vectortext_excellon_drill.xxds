@@ -1,0 +1,119 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/excellon_drill/xx_excellon_drill_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvtx_tool_number_fields = layout([field("tool_number", "ascii_signed", 0)]);
+var sxvtx_tool_number = sxLayout(0x60620048, "vectortext_tool_number", LE, sxvtx_tool_number_fields);
+function sxvtx_line(q, a, end, comments) {
+    while (q.p < q.n) {
+        var start = q.p;
+        var stop;
+        while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+            q.p++;
+        }
+        stop = q.p;
+        if (q.p < q.n && q.b[q.p] === 13) {
+            q.p++;
+        }
+        if (q.p < q.n && q.b[q.p] === 10) {
+            q.p++;
+        }
+        if (comments) {
+            var quoted = false;
+            for (var i = start; i < stop; i++) {
+                if (q.b[i] === 92 && quoted && i + 1 < stop) {
+                    i++;
+                    continue;
+                }
+                if (q.b[i] === 34 /*"*/) {
+                    quoted = !quoted;
+                }
+                if (q.b[i] === 35 /*#*/ && !quoted) {
+                    stop = i;
+                    break;
+                }
+            }
+        }
+        while (start < stop && sxvtx_space(q.b[start])) {
+            start++;
+        }
+        while (stop > start && sxvtx_space(q.b[stop - 1])) {
+            stop--;
+        }
+        if (start < stop) {
+            a[0] = start;
+            end[0] = stop;
+            return true;
+        }
+    }
+    return false;
+}
+function sxvtx_drill(q) {
+    var a = [0];
+    var end = [0];
+    while (sxvtx_line(q, a, end, false)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (q.b[a[0]] === 59 /*;*/) {
+            continue;
+        }
+        if (sxvtx_eq(q, a[0], end[0] - a[0], "INCH,LZ") || sxvtx_eq(q, a[0], end[0] - a[0], "INCH,TZ") || sxvtx_eq(q, a[0], end[0] - a[0], "METRIC,LZ") || sxvtx_eq(q, a[0], end[0] - a[0], "METRIC,TZ")) {
+            var n = q.b[a[0]] === 73 /*I*/ ? 4 : 6;
+            {
+                if (!sxvtx_emit(q, sxvtx_units, a[0], n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxvtx_emit(q, sxvtx_zero_suppression, a[0] + n + 1, 2)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (q.b[a[0]] === 37 /*%*/) {
+            {
+                if (!sxvtx_emit(q, sxvtx_keyword, a[0], 1)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        while (a[0] < end[0]) {
+            while (a[0] < end[0] && sxvtx_space(q.b[a[0]])) {
+                a[0]++;
+            }
+            if (a[0] === end[0]) {
+                break;
+            }
+            var key = q.b[a[0]];
+            {
+                if (!sxvtx_emit(q, sxvtx_keyword, a[0], 1)) {
+                    return false;
+                }
+            }
+            var value = ++a[0];
+            while (value < end[0] && sxvtx_space(q.b[value])) {
+                value++;
+            }
+            a[0] = value;
+            if (a[0] < end[0] && (q.b[a[0]] === 43 /*+*/ || q.b[a[0]] === 45 /*-*/)) {
+                a[0]++;
+            }
+            while (a[0] < end[0] && (q.b[a[0]] >= 48 /*0*/ && q.b[a[0]] <= 57 /*9*/ || q.b[a[0]] === 46 /*.*/ || q.b[a[0]] === 101 /*e*/ || q.b[a[0]] === 69 /*E*/ || (q.b[a[0]] === 43 /*+*/ || q.b[a[0]] === 45 /*-*/) && a[0] > value && (q.b[a[0] - 1] === 101 /*e*/ || q.b[a[0] - 1] === 69 /*E*/))) {
+                a[0]++;
+            }
+            var l = key === 84 /*T*/ ? sxvtx_tool_number : key === 67 /*C*/ ? sxvtx_diameter : key === 88 /*X*/ ? sxvtx_encoded_x : key === 89 /*Y*/ ? sxvtx_encoded_y : sxvtx_command_code;
+            if (!sxvtx_emit(q, l, value, a[0] - value)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_excellon_drill_build(q) {
+    return sxvtx_drill(q);
+}

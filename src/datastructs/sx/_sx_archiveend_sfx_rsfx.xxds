@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sfx_rsfx/xx_sfx_rsfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_rsfx_rar_signature_fields = layout([bytes("signature", 7, SIGNATURE)]);
+var sxaend_rsfx_rar_signature = sxLayout(0x60840046, "rsfx_rar_signature", LE, sxaend_rsfx_rar_signature_fields);
+var sxaend_rsfx_rar_block_fields = layout([u16("header_crc16", CHECKSUM), u8("block_type", ID), u16("flags", FLAGS),
+    u16("header_size", SIZE)]);
+var sxaend_rsfx_rar_block = sxLayout(0x60840047, "rsfx_rar_block", LE, sxaend_rsfx_rar_block_fields);
+var sxaend_rsfx_rar_main_fields = layout([u16("reserved_low", RESERVED), u32("reserved_high", RESERVED)]);
+var sxaend_rsfx_rar_main = sxLayout(0x60840048, "rsfx_rar_main", LE, sxaend_rsfx_rar_main_fields);
+var sxaend_rsfx_rar_file_fields = layout([u32("packed_size", SIZE), u32("uncompressed_size", SIZE), u8("host_os", ID),
+    u32("file_crc32", CHECKSUM), u32("dos_timestamp"), u8("unpack_version"), u8("method", ID), u16("name_size", SIZE),
+    u32("attributes", FLAGS)]);
+var sxaend_rsfx_rar_file = sxLayout(0x60840049, "rsfx_rar_file", LE, sxaend_rsfx_rar_file_fields);
+var sxaend_rsfx_rar_service_size_fields = layout([u32("packed_size", SIZE)]);
+var sxaend_rsfx_rar_service_size = sxLayout(0x6084004A, "rsfx_rar_service_size", LE, sxaend_rsfx_rar_service_size_fields);
+function sxaend_rsfx(c) {
+    var lx = [0];
+    var p;
+    var cap = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 1048576 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 1048576;
+    var h = [];
+    if (!sxaend_word(c, 60, 4, false, lx) || lx[0] < 64 || lx[0] + 2 > cap || !sxaend_read(c, lx[0], h, 2) || sxMemcmp(h, "LX", 2)) {
+        return false;
+    }
+    for (p = lx[0] + 2; p + 7 <= cap; p++) {
+        if (sxAnd64(p, 4095) === 0 && false) {
+            return false;
+        }
+        if (!sxaend_read(c, p, h, 7)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "Rar!\x1A\x07\x00", 7)) {
+            break;
+        }
+    }
+    if (p + 7 > cap || !sxaend_add(c, sxaend_rsfx_rar_signature, p)) {
+        return false;
+    }
+    p += 7;
+    for (var i = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && i < 20000; i++) {
+        if (!sxaend_read(c, p, h, 7)) {
+            return false;
+        }
+        var flags = sxaend_uint(h, 3, 2, false);
+        var z = sxaend_uint(h, 5, 2, false);
+        var packed = [0];
+        if (z < 7 || !sxaend_span(c, p, z) || !sxaend_add(c, sxaend_rsfx_rar_block, p)) {
+            return false;
+        }
+        if (sxAnd64(flags, 0x8000)) {
+            if (z < 11 || !sxaend_word(c, p + 7, 4, false, packed)) {
+                return false;
+            }
+        }
+        if (h[2] === 0x73) {
+            if (z < 13 || !sxaend_add(c, sxaend_rsfx_rar_main, p + 7)) {
+                return false;
+            }
+        } else if (h[2] === 0x74) {
+            var names = [0];
+            if (z < 32 || !sxaend_word(c, p + 26, 2, false, names) || names[0] > sxU64(z - 32) || !sxaend_add(c, sxaend_rsfx_rar_file, p + 7) || !sxaend_name(c, p + 32, names[0])) {
+                return false;
+            }
+        } else if (sxAnd64(flags, 0x8000) && !sxaend_add(c, sxaend_rsfx_rar_service_size, p + 7)) {
+            return false;
+        }
+        if (!sxaend_span(c, p + z, packed[0])) {
+            return false;
+        }
+        p += z + packed[0];
+    }
+    return true;
+}
+function sx_sfx_rsfx_build(c) {
+    return sxaend_rsfx(c);
+}

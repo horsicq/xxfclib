@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/bigaf/xx_bigaf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_bigaf_header_fields = layout([chars("magic", 8, SIGNATURE),
+    field("member_table_offset", "ascii_decimal[20]", 20, OFFSET),
+    field("symbol_table_offset", "ascii_decimal[20]", 20, OFFSET),
+    field("symbol_table64_offset", "ascii_decimal[20]", 20, OFFSET),
+    field("first_member_offset", "ascii_decimal[20]", 20, OFFSET), field("last_member_offset", "ascii_decimal[20]", 20, OFFSET),
+    field("free_list_offset", "ascii_decimal[20]", 20, OFFSET)]);
+var sxar_bigaf_header = sxLayout(0x601C0034, "bigaf_header", LE, sxar_bigaf_header_fields);
+var sxar_bigaf_member_fields = layout([field("data_size", "ascii_decimal[20]", 20, SIZE),
+    field("next_member_offset", "ascii_decimal[20]", 20, OFFSET),
+    field("previous_member_offset", "ascii_decimal[20]", 20, OFFSET), field("modified", "ascii_decimal[12]", 12, TIMESTAMP),
+    field("uid", "ascii_decimal[12]", 12, ID), field("gid", "ascii_decimal[12]", 12, ID),
+    field("mode", "ascii_octal_padded[12]", 12, FLAGS), field("name_size", "ascii_decimal[4]", 4, SIZE)]);
+var sxar_bigaf_member = sxLayout(0x601C0035, "bigaf_member", LE, sxar_bigaf_member_fields);
+var sxar_bigaf_name_end_fields = layout([chars("terminator", 2, SIGNATURE)]);
+var sxar_bigaf_name_end = sxLayout(0x601C0036, "bigaf_name_end", LE, sxar_bigaf_name_end_fields);
+function sxar_decimal(b, b_o, n, v) {
+    var a = 0;
+    v[0] = 0;
+    while (a < n && (b[b_o + a] === 32 || b[b_o + a] === 9)) {
+        a++;
+    }
+    while (n > a && (b[b_o + sxU64(n - 1)] === 32 || b[b_o + sxU64(n - 1)] === 9 || b[b_o + sxU64(n - 1)] === 10 || b[b_o + sxU64(n - 1)] === 13)) {
+        n--;
+    }
+    for (; a < n; a++) {
+        var d = (b[b_o + a] - 48 /*0*/) >>> 0;
+        if (d > 9 || v[0] > Math.floor((SX_U64_MAX - d) / 10)) {
+            return false;
+        }
+        v[0] = v[0] * 10 + d;
+    }
+    return true;
+}
+function sxar_bigaf(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 128) || !sxar_add(c, sxar_bigaf_header, 0)) {
+        return false;
+    }
+    var p = [0];
+    var last = [0];
+    if (!sxar_decimal(b, 68, 20, p) || !sxar_decimal(b, 88, 20, last)) {
+        return true;
+    }
+    for (var i = 0; i < 20000 && p[0] >= 128; i++) {
+        var next = [0];
+        var n = [0];
+        var name = [0];
+        if (!sxar_read(c, p[0], b, 0, 112) || !sxar_decimal(b, 0, 20, n) || !sxar_decimal(b, 20, 20, next) || !sxar_decimal(b, 108, 4, name) || !name[0] || name[0] > 4096 || !sxar_span(c, p[0] + 112, name[0])) {
+            break;
+        }
+        var term = sxAnd64(p[0] + 112 + name[0] + 1, sxK(0xFFFFFFFF, 0xFFFFFFFE));
+        if (!sxar_span(c, term, 2) || !sxar_span(c, term + 2, n[0])) {
+            break;
+        }
+        if (!sxar_add(c, sxar_bigaf_member, p[0]) || !sxar_add(c, sxar_bigaf_name_end, term)) {
+            return false;
+        }
+        if (p[0] === last[0] || next[0] <= p[0] || next[0] < term + 2 + n[0]) {
+            break;
+        }
+        p[0] = next[0];
+    }
+    return true;
+}
+function sx_bigaf_build(c) {
+    return sxar_bigaf(c);
+}

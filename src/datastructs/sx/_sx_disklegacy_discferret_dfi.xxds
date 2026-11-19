@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/discferret_dfi/xx_discferret_dfi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_discferret_header_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxdleg_discferret_header = sxLayout(0x6075001C, "discferret_header", BE, sxdleg_discferret_header_fields);
+var sxdleg_discferret_capture_fields = layout([u16("cylinder"), u16("head"), u16("sector"), u32("stored_size", SIZE)]);
+var sxdleg_discferret_capture = sxLayout(0x6075001D, "discferret_capture", BE, sxdleg_discferret_capture_fields);
+function sxdleg_dfi(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 4) || sxMemcmp(h, "DFER", 4) && sxMemcmp(h, "DFE2", 4) || !sxdleg_put(c, sxdleg_discferret_header, 0, 1)) {
+        return false;
+    }
+    var p = 4;
+    for (var i = 0; i < 1024 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxdleg_read(c, p, h, 0, 10)) {
+            break;
+        }
+        var n = sxdleg32(h, 6, 1);
+        if (!sxdleg_span(c, p + 10, n)) {
+            break;
+        }
+        if (!sxdleg_put(c, sxdleg_discferret_capture, p, 1)) {
+            return false;
+        }
+        p += 10 + n;
+    }
+    return true;
+}
+function sx_discferret_dfi_build(c) {
+    return sxdleg_dfi(c);
+}

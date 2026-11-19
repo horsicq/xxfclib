@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/sony_psarc/xx_sony_psarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_psarc_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), chars("compression", 4, ID),
+    u32("toc_size", SIZE), u32("entry_size", SIZE), u32("entry_count", COUNT), u32("block_size", SIZE), u32("flags", FLAGS)]);
+var sxgm_psarc_header = sxLayout(0x6027002E, "psarc_header", BE, sxgm_psarc_header_fields);
+var sxgm_psarc_entry_fields = layout([bytes("name_md5", 16, CHECKSUM), u32("first_block_index", ID),
+    field("unpacked_size", "uint40", 5, SIZE), field("data_offset", "uint40", 5, OFFSET)]);
+var sxgm_psarc_entry = sxLayout(0x6027002F, "psarc_entry", BE, sxgm_psarc_entry_fields);
+var sxgm_psarc_block_length_fields = layout([u16("stored_length")]);
+var sxgm_psarc_block_length = sxLayout(0x60270030, "psarc_block_length", BE, sxgm_psarc_block_length_fields);
+function sxgm_psarc(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 32) || !sxgm_add(c, sxgm_psarc_header, 0)) {
+        return false;
+    }
+    var toc = sxgm32(b, 12, true);
+    var stride = sxgm32(b, 16, true);
+    var n = sxgm32(b, 20, true);
+    if (stride !== 30 || n > 20000 || toc < 32 + n * 30 || !sxgm_span(c, 0, toc)) {
+        return true;
+    }
+    return sxgm_table(c, sxgm_psarc_entry, 32, n) && sxgm_table(c, sxgm_psarc_block_length, 32 + n * 30, Math.floor(sxU64(sxU64(toc - 32) - n * 30) / 2));
+}
+function sx_sony_psarc_build(c) {
+    return sxgm_psarc(c);
+}

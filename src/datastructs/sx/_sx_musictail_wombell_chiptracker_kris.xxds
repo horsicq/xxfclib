@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/wombell_chiptracker_kris/xx_wombell_chiptracker_kris_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_kris_title_fields = layout([chars("title", 22, NONE)]);
+var sxmta_kris_title = sxLayout(0x6081002B, "kris_title", LE, sxmta_kris_title_fields);
+var sxmta_kris_sample_fields = layout([chars("name", 22, NONE), u16("sample_words", COUNT), u8("finetune"), u8("volume"),
+    u16("loop_start_words"), u16("loop_words", COUNT)]);
+var sxmta_kris_sample = sxLayout(0x6081002C, "kris_sample", BE, sxmta_kris_sample_fields);
+var sxmta_kris_synth_fields = layout([blob("synth_parameters", 30)]);
+var sxmta_kris_synth = sxLayout(0x6081002D, "kris_synth", LE, sxmta_kris_synth_fields);
+var sxmta_kris_header_fields = layout([blob("magic", 4, SIGNATURE), u8("orders", COUNT), u8("restart_order")]);
+var sxmta_kris_header = sxLayout(0x6081002E, "kris_header", LE, sxmta_kris_header_fields);
+var sxmta_kris_event_fields = layout([u8("note"), u8("instrument", ID), u8("effect", ID), u8("parameter")]);
+var sxmta_kris_event = sxLayout(0x60810030, "kris_event", LE, sxmta_kris_event_fields);
+function sxmta_kris(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [22];
+    var x = [0];
+    var y;
+    var total = 0;
+    var waves = 0;
+    var orders = [0];
+    var np = 1;
+    if (!sxmta_row(v, sxmta_kris_title, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < 31; i++) {
+        if (!sxmta_u(v, p[0], 1, x, 0, end)) {
+            return false;
+        }
+        if (x[0]) {
+            if (!sxmta_be(v, p[0] + 22, 2, x, 0, end) || !sxmta_take(v, sxmta_kris_sample, p, 1, end)) {
+                return false;
+            }
+            total += 2 * x[0];
+        } else {
+            var a = [1, 5, 10, 19];
+            for (var j = 0; j < 4; j++) {
+                if (!sxmta_u(v, p[0] + a[j], 1, x, 0, end)) {
+                    return false;
+                }
+                if (x[0] && x[0] >= waves) {
+                    waves = x[0] + 1;
+                }
+            }
+            if (!sxmta_take(v, sxmta_kris_synth, p, 1, end)) {
+                return false;
+            }
+        }
+    }
+    if (!sxmta_eq(v, p[0], "KRIS", 4, end) || !sxmta_u(v, p[0] + 4, 1, orders, 0, end) || orders[0] > 128 || !sxmta_take(v, sxmta_kris_header, p, 1, end)) {
+        return false;
+    }
+    for (i = 0; i < orders[0] * 4; i++) {
+        if (!sxmta_u(v, p[0] + 2 * i, 1, x, 0, end)) {
+            return false;
+        }
+        if (x[0] >= np) {
+            np = x[0] + 1;
+        }
+    }
+    if (!sxmta_take(v, sxmta_kris_track_ref, p, 512, end) || !sxmta_skip(v, p, 2 + waves * 64, end) || !sxmta_take(v, sxmta_kris_event, p, np * 64, end)) {
+        return false;
+    }
+    y = total;
+    return sxmta_span(v, p[0], y, end);
+}
+function sx_wombell_chiptracker_kris_build(v) {
+    return sxmta_kris(v);
+}

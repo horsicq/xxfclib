@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/rainbowarts_palladixss_plx/xx_rainbowarts_palladixss_plx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamip_plx_volume_fields = layout([u8("volume")]);
+var sxamip_plx_volume = sxLayout(0x60900017, "plx_volume", LE, sxamip_plx_volume_fields);
+var sxamip_plx_speed_fields = layout([u16("speed")]);
+var sxamip_plx_speed = sxLayout(0x6090001A, "plx_speed", LE, sxamip_plx_speed_fields);
+var sxamip_plx_delay_fields = layout([u8("delay")]);
+var sxamip_plx_delay = sxLayout(0x6090001B, "plx_delay", LE, sxamip_plx_delay_fields);
+var sxamip_plx_instrument_fields = layout([u8("unknown"), u8("feedback_algorithm", FLAGS), u8("modulator_20", FLAGS),
+    u8("modulator_40", FLAGS), u8("modulator_60", FLAGS), u8("modulator_80", FLAGS), u8("modulator_e0", FLAGS),
+    u8("carrier_23", FLAGS), u8("carrier_43", FLAGS), u8("carrier_63", FLAGS), u8("carrier_83", FLAGS), u8("carrier_e3", FLAGS)]);
+var sxamip_plx_instrument = sxLayout(0x6090001C, "plx_instrument", LE, sxamip_plx_instrument_fields);
+function sxamip_plx(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var type = [0];
+    var scale = [0];
+    var p = [0];
+    var flags = [0];
+    var off = [0];
+    if (!sxamip_eq(v, 0, "PLX", 3, e) || !sxamip_u(v, 3, 1, type, e) || type[0] || !sxamip_u(v, 4, 1, scale, e) || !sxamip_row(v, sxamip_plx_header, 0, e)) {
+        return false;
+    }
+    for (var i = 0; i < 9; i++) {
+        if (!sxamip_u(v, (7 + ((2 * i) >>> 0)) >>> 0, 2, p, e)) {
+            return false;
+        }
+        if (!p[0]) {
+            continue;
+        }
+        for (var step = 0; step < 65536; step++) {
+            if (!sxamip_u(v, p[0], 1, flags, e) || !sxamip_take(v, sxamip_plx_control, p, 1, e)) {
+                return false;
+            }
+            if (!flags[0]) {
+                break;
+            }
+            if (flags[0] !== 128) {
+                if (sxAnd64(flags[0], 1)) {
+                    if (!sxamip_u(v, p[0], 2, off, e) || !sxamip_take(v, sxamip_plx_instrument_offset, p, 1, e) || !sxamip_row(v, sxamip_plx_instrument, off[0], e)) {
+                        return false;
+                    }
+                }
+                if (sxAnd64(flags[0], 2) && !sxamip_take(v, sxamip_plx_volume, p, 1, e)) {
+                    return false;
+                }
+                if (sxAnd64(flags[0], 8) && !sxamip_take(v, sxamip_plx_note, p, 1, e)) {
+                    return false;
+                }
+                if (sxAnd64(flags[0], 16) && !sxamip_take(v, sxamip_plx_frequency, p, 1, e)) {
+                    return false;
+                }
+                if (sxAnd64(flags[0], 64) && !sxamip_take(v, sxamip_plx_speed, p, 1, e)) {
+                    return false;
+                }
+            }
+            if (!sxamip_take(v, sxamip_plx_delay, p, 1, e)) {
+                return false;
+            }
+            if (step === 65535) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_rainbowarts_palladixss_plx_build(v) {
+    return sxamip_plx(v);
+}

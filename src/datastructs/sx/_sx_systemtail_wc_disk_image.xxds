@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/wc_disk_image/xx_wc_disk_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_wcdisk_header_fields = layout([chars("signature", 16, SIGNATURE), u8("version", ID), u8("heads", COUNT),
+    u8("sectors_per_track", COUNT), u8("cylinders", COUNT), bytes("extra_tracks", 4, FLAGS), u8("extra_flags", FLAGS),
+    field("reserved", "byte[7]", 7, RESERVED)]);
+var sxst_wcdisk_header = sxLayout(0x60370027, "wcdisk_header", LE, sxst_wcdisk_header_fields);
+var sxst_wcdisk_sector_fields = layout([u8("type", ID), u8("head"), u8("sector"), u8("cylinder"), u16("data_crc", CHECKSUM)]);
+var sxst_wcdisk_sector = sxLayout(0x60370028, "wcdisk_sector", LE, sxst_wcdisk_sector_fields);
+var sxst_wcdisk_fill_fields = layout([u8("type", ID), u8("head"), u8("sector"), u8("cylinder"), u8("fill_value", ID),
+    u8("unused")]);
+var sxst_wcdisk_fill = sxLayout(0x60370029, "wcdisk_fill", LE, sxst_wcdisk_fill_fields);
+var sxst_wcdisk_extra_fields = layout([u8("type", ID), u8("head"), u8("sector"), u8("cylinder"), u16("text_size", SIZE)]);
+var sxst_wcdisk_extra = sxLayout(0x6037002A, "wcdisk_extra", LE, sxst_wcdisk_extra_fields);
+function sxst_wcdisk(c) {
+    var h = [];
+    var b = [];
+    if (!sxst_read(c, 0, h, 32) || !sxst_put(c, sxst_wcdisk_header, 0, 1)) {
+        return false;
+    }
+    if (!h[17] || h[17] > 2 || !h[18] || h[18] > 18 || !h[19] || h[19] > 80) {
+        return true;
+    }
+    var tracks = h[17] * h[19];
+    var p = 32;
+    for (var i = 20; i < 24; i++) {
+        tracks += (h[i] !== 0 ? 1 : 0);
+    }
+    for (i = 0; i < tracks * h[18]; i++) {
+        if (!sxst_read(c, p, b, 6) || b[0] > 2) {
+            return true;
+        }
+        var z = b[0] === 0 ? 512 : 0;
+        if (!sxst_span(c, p + 6, z) || !sxst_put(c, b[0] === 2 ? sxst_wcdisk_fill : sxst_wcdisk_sector, p, 1)) {
+            return true;
+        }
+        p += 6 + z;
+    }
+    for (i = 0; i < 2; i++) {
+        if (h[24] & (1 << i) >>> 0) {
+            if (!sxst_read(c, p, b, 6) || b[0] !== (3 + i) >>> 0) {
+                return true;
+            }
+            z = sxst16(b, 4);
+            if (!sxst_span(c, p + 6, z) || !sxst_put(c, sxst_wcdisk_extra, p, 1)) {
+                return true;
+            }
+            p += 6 + z;
+        }
+    }
+    return true;
+}
+function sx_wc_disk_image_build(c) {
+    return sxst_wcdisk(c);
+}

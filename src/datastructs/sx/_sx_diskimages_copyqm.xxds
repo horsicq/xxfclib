@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/copyqm/xx_copyqm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_copyqm_header_fields = layout([chars("signature", 2, SIGNATURE), u8("format_marker", ID), u16("sector_size", SIZE),
+    u8("sectors_per_cluster", COUNT), u16("reserved_sectors", COUNT), u8("fat_count", COUNT), u16("root_entries", COUNT),
+    u16("total_sectors16", COUNT), u8("media_type", ID), u16("sectors_per_fat", COUNT), u16("sectors_per_track", COUNT),
+    u16("head_count", COUNT), u32("hidden_sector_count", COUNT), u32("total_sectors32", COUNT),
+    chars("description", 60, STRING), u8("blind_mode", ID), u8("density", ID), u8("used_cylinders", COUNT),
+    u8("total_cylinders", COUNT), u32("decoded_data_crc", CHECKSUM), chars("volume_label", 11, STRING), u16("dos_time"),
+    u16("dos_date"), u16("comment_size", SIZE), u8("first_sector_minus_one"), bytes("unknown_72", 2), u8("interleave"),
+    i8("skew"), u8("source_drive_type", ID), bytes("unknown_77", 13), u8("header_checksum", CHECKSUM)]);
+var sxdi_copyqm_header = sxLayout(0x60150006, "copyqm_header", LE, sxdi_copyqm_header_fields);
+var sxdi_copyqm_rle_token_fields = layout([i16("signed_run_length")]);
+var sxdi_copyqm_rle_token = sxLayout(0x60150007, "copyqm_rle_token", LE, sxdi_copyqm_rle_token_fields);
+function sxdi_cqm(c) {
+    var h = [];
+    if (!sxdi_read(c, 0, h, 133) || sxMemcmp(h, "CQ\x14", 3) || !sx_add(c, sxdi_copyqm_header, 0, 133)) {
+        return false;
+    }
+    var at = 133 + sxdi_le16(h, 111);
+    if (at > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return true;
+    }
+    for (var i = 0; i < 8192 && at < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var b = [];
+        if (!sxdi_read(c, at, b, 2)) {
+            break;
+        }
+        var n = sxdi_le16(b, 0) << 16 >> 16;
+        if (!sx_add(c, sxdi_copyqm_rle_token, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2)) {
+            return false;
+        }
+        at += 2;
+        if (!n) {
+            break;
+        }
+        if (n < 0) {
+            if (!sxdi_span(c, at, 1)) {
+                break;
+            }
+            if (!sx_add(c, sxdi_disk_fill_byte, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1)) {
+                return false;
+            }
+            at++;
+        } else {
+            if (!sxdi_span(c, at, n >>> 0)) {
+                break;
+            }
+            at += n >>> 0;
+        }
+    }
+    return true;
+}
+function sx_copyqm_build(c) {
+    return sxdi_cqm(c);
+}

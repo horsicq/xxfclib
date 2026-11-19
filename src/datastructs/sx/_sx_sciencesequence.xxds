@@ -1,0 +1,1081 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencesequence.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_signature_fields = layout([field("signature", "char", 0, STRING)]);
+var sxseq_signature = sxLayout(0x60730001, "sequence_signature", LE, sxseq_signature_fields);
+var sxseq_keyword_fields = layout([field("keyword", "char", 0, STRING)]);
+var sxseq_keyword = sxLayout(0x60730002, "sequence_keyword", LE, sxseq_keyword_fields);
+var sxseq_field_key_fields = layout([field("field_key", "char", 0, STRING)]);
+var sxseq_field_key = sxLayout(0x60730003, "sequence_field_key", LE, sxseq_field_key_fields);
+var sxseq_field_text_fields = layout([field("field_text", "char", 0, STRING)]);
+var sxseq_field_text = sxLayout(0x60730004, "sequence_field_text", LE, sxseq_field_text_fields);
+var sxseq_identifier_fields = layout([field("identifier", "char", 0, STRING)]);
+var sxseq_identifier = sxLayout(0x60730005, "sequence_identifier", LE, sxseq_identifier_fields);
+var sxseq_locus_options_fields = layout([field("locus_options", "char", 0, STRING)]);
+var sxseq_locus_options = sxLayout(0x60730007, "sequence_locus_options", LE, sxseq_locus_options_fields);
+var sxseq_unit_fields = layout([field("unit", "char", 0, STRING)]);
+var sxseq_unit = sxLayout(0x60730008, "sequence_unit", LE, sxseq_unit_fields);
+var sxseq_accession_fields = layout([field("accession", "char", 0, STRING)]);
+var sxseq_accession = sxLayout(0x60730009, "sequence_accession", LE, sxseq_accession_fields);
+var sxseq_feature_key_fields = layout([field("feature_key", "char", 0, STRING)]);
+var sxseq_feature_key = sxLayout(0x6073000A, "sequence_feature_key", LE, sxseq_feature_key_fields);
+var sxseq_feature_location_fields = layout([field("feature_location", "char", 0, STRING)]);
+var sxseq_feature_location = sxLayout(0x6073000B, "sequence_feature_location", LE, sxseq_feature_location_fields);
+var sxseq_feature_qualifier_fields = layout([field("feature_qualifier", "char", 0, STRING)]);
+var sxseq_feature_qualifier = sxLayout(0x6073000C, "sequence_feature_qualifier", LE, sxseq_feature_qualifier_fields);
+var sxseq_comment_fields = layout([field("comment", "char", 0, STRING)]);
+var sxseq_comment = sxLayout(0x6073000D, "sequence_comment", LE, sxseq_comment_fields);
+var sxseq_terminator_fields = layout([field("terminator", "char", 0, STRING)]);
+var sxseq_terminator = sxLayout(0x6073000E, "sequence_terminator", LE, sxseq_terminator_fields);
+var sxseq_entry_status_fields = layout([field("entry_status", "char", 0, STRING)]);
+var sxseq_entry_status = sxLayout(0x6073000F, "sequence_entry_status", LE, sxseq_entry_status_fields);
+var sxseq_date_text_fields = layout([field("date_text", "char", 0, STRING)]);
+var sxseq_date_text = sxLayout(0x60730010, "sequence_date_text", LE, sxseq_date_text_fields);
+var sxseq_sequence_length_fields = layout([field("sequence_length", "ascii_signed", 0, COUNT)]);
+var sxseq_sequence_length = sxLayout(0x60730011, "sequence_sequence_length", LE, sxseq_sequence_length_fields);
+var sxseq_adenine_count_fields = layout([field("adenine_count", "ascii_signed", 0, COUNT)]);
+var sxseq_adenine_count = sxLayout(0x60730014, "sequence_adenine_count", LE, sxseq_adenine_count_fields);
+var sxseq_cytosine_count_fields = layout([field("cytosine_count", "ascii_signed", 0, COUNT)]);
+var sxseq_cytosine_count = sxLayout(0x60730015, "sequence_cytosine_count", LE, sxseq_cytosine_count_fields);
+var sxseq_guanine_count_fields = layout([field("guanine_count", "ascii_signed", 0, COUNT)]);
+var sxseq_guanine_count = sxLayout(0x60730016, "sequence_guanine_count", LE, sxseq_guanine_count_fields);
+var sxseq_thymine_count_fields = layout([field("thymine_count", "ascii_signed", 0, COUNT)]);
+var sxseq_thymine_count = sxLayout(0x60730017, "sequence_thymine_count", LE, sxseq_thymine_count_fields);
+var sxseq_other_base_count_fields = layout([field("other_base_count", "ascii_signed", 0, COUNT)]);
+var sxseq_other_base_count = sxLayout(0x60730018, "sequence_other_base_count", LE, sxseq_other_base_count_fields);
+var sxseq_residue_total_fields = layout([field("residue_total", "ascii_signed", 0, COUNT)]);
+var sxseq_residue_total = sxLayout(0x6073001A, "sequence_residue_total", LE, sxseq_residue_total_fields);
+var sxseq_sequence_text_fields = layout([field("sequence_text", "char", 0, STRING)]);
+var sxseq_sequence_text = sxLayout(0x6073001B, "sequence_sequence_text", LE, sxseq_sequence_text_fields);
+var sxseq_molecular_weight_fields = layout([field("molecular_weight", "ascii_signed", 0)]);
+var sxseq_molecular_weight = sxLayout(0x6073001F, "sequence_molecular_weight", LE, sxseq_molecular_weight_fields);
+var sxseq_crc64_fields = layout([field("crc64", "ascii_hex", 0, CHECKSUM)]);
+var sxseq_crc64 = sxLayout(0x60730020, "sequence_crc64", LE, sxseq_crc64_fields);
+var sxseq_strand_fields = layout([field("strand", "char", 0, STRING)]);
+var sxseq_strand = sxLayout(0x60730026, "sequence_strand", LE, sxseq_strand_fields);
+var sxseq_commandline_fields = layout([field("commandline", "char", 0, STRING)]);
+var sxseq_commandline = sxLayout(0x6073003B, "sequence_commandline", LE, sxseq_commandline_fields);
+var sxseq_joint_name_fields = layout([field("joint_name", "char", 0, STRING)]);
+var sxseq_joint_name = sxLayout(0x6073003C, "sequence_joint_name", LE, sxseq_joint_name_fields);
+var sxseq_shader_name_fields = layout([field("shader_name", "char", 0, STRING)]);
+var sxseq_shader_name = sxLayout(0x6073003D, "sequence_shader_name", LE, sxseq_shader_name_fields);
+var sxseq_md5_version_fields = layout([field("md5_version", "ascii_signed", 0)]);
+var sxseq_md5_version = sxLayout(0x6073003E, "sequence_md5_version", LE, sxseq_md5_version_fields);
+var sxseq_joint_count_fields = layout([field("joint_count", "ascii_signed", 0, COUNT)]);
+var sxseq_joint_count = sxLayout(0x6073003F, "sequence_joint_count", LE, sxseq_joint_count_fields);
+var sxseq_mesh_count_fields = layout([field("mesh_count", "ascii_signed", 0, COUNT)]);
+var sxseq_mesh_count = sxLayout(0x60730040, "sequence_mesh_count", LE, sxseq_mesh_count_fields);
+var sxseq_vertex_count_fields = layout([field("vertex_count", "ascii_signed", 0, COUNT)]);
+var sxseq_vertex_count = sxLayout(0x60730041, "sequence_vertex_count", LE, sxseq_vertex_count_fields);
+var sxseq_triangle_count_fields = layout([field("triangle_count", "ascii_signed", 0, COUNT)]);
+var sxseq_triangle_count = sxLayout(0x60730042, "sequence_triangle_count", LE, sxseq_triangle_count_fields);
+var sxseq_weight_count_fields = layout([field("weight_count", "ascii_signed", 0, COUNT)]);
+var sxseq_weight_count = sxLayout(0x60730043, "sequence_weight_count", LE, sxseq_weight_count_fields);
+var sxseq_frame_count_fields = layout([field("frame_count", "ascii_signed", 0, COUNT)]);
+var sxseq_frame_count = sxLayout(0x60730044, "sequence_frame_count", LE, sxseq_frame_count_fields);
+var sxseq_animated_component_count_fields = layout([field("animated_component_count", "ascii_signed", 0, COUNT)]);
+var sxseq_animated_component_count = sxLayout(0x60730045, "sequence_animated_component_count", LE, sxseq_animated_component_count_fields);
+var sxseq_frame_rate_fields = layout([field("frame_rate", "ascii_signed", 0)]);
+var sxseq_frame_rate = sxLayout(0x60730046, "sequence_frame_rate", LE, sxseq_frame_rate_fields);
+var sxseq_parent_joint_fields = layout([field("parent_joint", "ascii_signed", 0)]);
+var sxseq_parent_joint = sxLayout(0x60730047, "sequence_parent_joint", LE, sxseq_parent_joint_fields);
+var sxseq_vertex_index_fields = layout([field("vertex_index", "ascii_signed", 0, ID)]);
+var sxseq_vertex_index = sxLayout(0x60730048, "sequence_vertex_index", LE, sxseq_vertex_index_fields);
+var sxseq_triangle_index_fields = layout([field("triangle_index", "ascii_signed", 0, ID)]);
+var sxseq_triangle_index = sxLayout(0x60730049, "sequence_triangle_index", LE, sxseq_triangle_index_fields);
+var sxseq_weight_index_fields = layout([field("weight_index", "ascii_signed", 0, ID)]);
+var sxseq_weight_index = sxLayout(0x6073004A, "sequence_weight_index", LE, sxseq_weight_index_fields);
+var sxseq_joint_index_fields = layout([field("joint_index", "ascii_signed", 0, ID)]);
+var sxseq_joint_index = sxLayout(0x6073004B, "sequence_joint_index", LE, sxseq_joint_index_fields);
+var sxseq_frame_index_fields = layout([field("frame_index", "ascii_signed", 0, ID)]);
+var sxseq_frame_index = sxLayout(0x6073004C, "sequence_frame_index", LE, sxseq_frame_index_fields);
+var sxseq_first_weight_fields = layout([field("first_weight", "ascii_signed", 0)]);
+var sxseq_first_weight = sxLayout(0x6073004D, "sequence_first_weight", LE, sxseq_first_weight_fields);
+var sxseq_component_start_fields = layout([field("component_start", "ascii_signed", 0)]);
+var sxseq_component_start = sxLayout(0x6073004E, "sequence_component_start", LE, sxseq_component_start_fields);
+var sxseq_vertex_weight_count_fields = layout([field("vertex_weight_count", "ascii_signed", 0, COUNT)]);
+var sxseq_vertex_weight_count = sxLayout(0x6073004F, "sequence_vertex_weight_count", LE, sxseq_vertex_weight_count_fields);
+var sxseq_animation_flags_fields = layout([field("animation_flags", "ascii_signed", 0, FLAGS)]);
+var sxseq_animation_flags = sxLayout(0x60730050, "sequence_animation_flags", LE, sxseq_animation_flags_fields);
+var sxseq_texture_u_fields = layout([field("texture_u", "ascii_real", 0)]);
+var sxseq_texture_u = sxLayout(0x60730051, "sequence_texture_u", LE, sxseq_texture_u_fields);
+var sxseq_texture_v_fields = layout([field("texture_v", "ascii_real", 0)]);
+var sxseq_texture_v = sxLayout(0x60730052, "sequence_texture_v", LE, sxseq_texture_v_fields);
+var sxseq_weight_bias_fields = layout([field("weight_bias", "ascii_real", 0)]);
+var sxseq_weight_bias = sxLayout(0x60730053, "sequence_weight_bias", LE, sxseq_weight_bias_fields);
+var sxseq_position_x_fields = layout([field("position_x", "ascii_real", 0)]);
+var sxseq_position_x = sxLayout(0x60730054, "sequence_position_x", LE, sxseq_position_x_fields);
+var sxseq_position_y_fields = layout([field("position_y", "ascii_real", 0)]);
+var sxseq_position_y = sxLayout(0x60730055, "sequence_position_y", LE, sxseq_position_y_fields);
+var sxseq_position_z_fields = layout([field("position_z", "ascii_real", 0)]);
+var sxseq_position_z = sxLayout(0x60730056, "sequence_position_z", LE, sxseq_position_z_fields);
+var sxseq_bounds_min_x_fields = layout([field("bounds_min_x", "ascii_real", 0)]);
+var sxseq_bounds_min_x = sxLayout(0x60730057, "sequence_bounds_min_x", LE, sxseq_bounds_min_x_fields);
+var sxseq_bounds_min_y_fields = layout([field("bounds_min_y", "ascii_real", 0)]);
+var sxseq_bounds_min_y = sxLayout(0x60730058, "sequence_bounds_min_y", LE, sxseq_bounds_min_y_fields);
+var sxseq_bounds_min_z_fields = layout([field("bounds_min_z", "ascii_real", 0)]);
+var sxseq_bounds_min_z = sxLayout(0x60730059, "sequence_bounds_min_z", LE, sxseq_bounds_min_z_fields);
+var sxseq_bounds_max_x_fields = layout([field("bounds_max_x", "ascii_real", 0)]);
+var sxseq_bounds_max_x = sxLayout(0x6073005A, "sequence_bounds_max_x", LE, sxseq_bounds_max_x_fields);
+var sxseq_bounds_max_y_fields = layout([field("bounds_max_y", "ascii_real", 0)]);
+var sxseq_bounds_max_y = sxLayout(0x6073005B, "sequence_bounds_max_y", LE, sxseq_bounds_max_y_fields);
+var sxseq_bounds_max_z_fields = layout([field("bounds_max_z", "ascii_real", 0)]);
+var sxseq_bounds_max_z = sxLayout(0x6073005C, "sequence_bounds_max_z", LE, sxseq_bounds_max_z_fields);
+var sxseq_weight_position_x_fields = layout([field("weight_position_x", "ascii_real", 0)]);
+var sxseq_weight_position_x = sxLayout(0x6073005D, "sequence_weight_position_x", LE, sxseq_weight_position_x_fields);
+var sxseq_weight_position_y_fields = layout([field("weight_position_y", "ascii_real", 0)]);
+var sxseq_weight_position_y = sxLayout(0x6073005E, "sequence_weight_position_y", LE, sxseq_weight_position_y_fields);
+var sxseq_weight_position_z_fields = layout([field("weight_position_z", "ascii_real", 0)]);
+var sxseq_weight_position_z = sxLayout(0x6073005F, "sequence_weight_position_z", LE, sxseq_weight_position_z_fields);
+var sxseq_local_position_x_fields = layout([field("local_position_x", "ascii_real", 0)]);
+var sxseq_local_position_x = sxLayout(0x60730060, "sequence_local_position_x", LE, sxseq_local_position_x_fields);
+var sxseq_local_position_y_fields = layout([field("local_position_y", "ascii_real", 0)]);
+var sxseq_local_position_y = sxLayout(0x60730061, "sequence_local_position_y", LE, sxseq_local_position_y_fields);
+var sxseq_local_position_z_fields = layout([field("local_position_z", "ascii_real", 0)]);
+var sxseq_local_position_z = sxLayout(0x60730062, "sequence_local_position_z", LE, sxseq_local_position_z_fields);
+var sxseq_orientation_x_fields = layout([field("orientation_x", "ascii_real", 0)]);
+var sxseq_orientation_x = sxLayout(0x60730063, "sequence_orientation_x", LE, sxseq_orientation_x_fields);
+var sxseq_orientation_y_fields = layout([field("orientation_y", "ascii_real", 0)]);
+var sxseq_orientation_y = sxLayout(0x60730064, "sequence_orientation_y", LE, sxseq_orientation_y_fields);
+var sxseq_orientation_z_fields = layout([field("orientation_z", "ascii_real", 0)]);
+var sxseq_orientation_z = sxLayout(0x60730065, "sequence_orientation_z", LE, sxseq_orientation_z_fields);
+function sx_sciencesequence_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    if (id < 0x60730001 || id >= 0x60730066) {
+        return true;
+    }
+    if (r.name === null || sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    switch (id) {
+    case 0x60730001:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730002:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730003:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730004:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730005:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730006:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730007:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730008:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730009:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x6073000A:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x6073000B:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x6073000C:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x6073000D:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x6073000E:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x6073000F:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730010:
+        return sxSetComment(r, "Original source text; no normalization or decoded reconstruction.");
+    case 0x60730011:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730012:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730013:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730014:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730015:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730016:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730017:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730018:
+        return sxSetComment(r, "Count of biological residues, alignment columns or records, not a byte length.");
+    case 0x60730019:
+        return sxSetComment(r, "One-based position of the first residue on this physical GenBank line; not a byte offset.");
+    case 0x6073001A:
+        return sxSetComment(r, "Cumulative ungapped residue count through this physical sequence line.");
+    case 0x6073001B:
+        return sxSetComment(r, "Original biological sequence/alignment characters including source case and gaps; not normalized or decoded.");
+    case 0x6073001C:
+        return sxSetComment(r, "Physical Clustal conservation symbols: *=identical, colon=strong group, dot=weak group; spaces retained.");
+    case 0x6073001D:
+        return sxSetComment(r, "Original Stockholm annotation key/value; annotation symbols retain their stored alignment positions.");
+    case 0x6073001E:
+        return sxSetComment(r, "Original Stockholm annotation key/value; annotation symbols retain their stored alignment positions.");
+    case 0x6073001F:
+        return sxSetComment(r, "Stored relative molecular mass in daltons, not a byte size.");
+    case 0x60730020:
+        return sxSetComment(r, "Physical Swiss-Prot CRC64 hexadecimal checksum, validated by the native reader.");
+    case 0x60730021:
+        return sxSetComment(r, "Name of the alignment scoring scheme; score units depend on this scheme.");
+    case 0x60730022:
+        return sxSetComment(r, "Stored MAF alignment score in scoring-scheme units.");
+    case 0x60730023:
+        return sxSetComment(r, "Zero-based source start on the indicated strand; reverse-strand coordinates count from the reverse complement, not the forward sequence.");
+    case 0x60730024:
+        return sxSetComment(r, "Ungapped residue count or complete source-sequence length, not a byte size.");
+    case 0x60730025:
+        return sxSetComment(r, "Ungapped residue count or complete source-sequence length, not a byte size.");
+    case 0x60730026:
+        return sxSetComment(r, "Source orientation: plus=forward, minus=reverse complement; stored sequence is not reoriented.");
+    case 0x60730027:
+        return sxSetComment(r, "One-based source sequence number in the XMFA alignment.");
+    case 0x60730028:
+        return sxSetComment(r, "One-based inclusive source coordinates; the native 0-0 sentinel denotes missing/unspecified coordinates, not a file offset.");
+    case 0x60730029:
+        return sxSetComment(r, "One-based inclusive source coordinates; the native 0-0 sentinel denotes missing/unspecified coordinates, not a file offset.");
+    case 0x6073002A:
+        return sxSetComment(r, "Original source filename from the alignment; no file is opened.");
+    case 0x6073002B:
+        return sxSetComment(r, "GFA1 record code: H=header, S=segment, L=link, P=path.");
+    case 0x6073002C:
+        return sxSetComment(r, "Original graph identifier or reference, not a physical file address.");
+    case 0x6073002D:
+        return sxSetComment(r, "Original graph identifier or reference, not a physical file address.");
+    case 0x6073002E:
+        return sxSetComment(r, "Stored segment orientation, plus or minus.");
+    case 0x6073002F:
+        return sxSetComment(r, "Count of matched residues in the native-supported M-only CIGAR.");
+    case 0x60730030:
+        return sxSetComment(r, "Native-supported M operation: alignment match/mismatch; no generalized CIGAR interpretation.");
+    case 0x60730031:
+        return sxSetComment(r, "Asterisk preserves an unspecified path-overlap list.");
+    case 0x60730032:
+        return sxSetComment(r, "Two-character GFA tag identifier, case retained.");
+    case 0x60730033:
+        return sxSetComment(r, "GFA native-supported value type: A=character, i=signed integer, f=single-precision-compatible real, Z=string, H=hexadecimal bytes.");
+    case 0x60730034:
+        return sxSetComment(r, "Stored signed32-compatible GFA integer; semantic meaning depends on the tag.");
+    case 0x60730035:
+        return sxSetComment(r, "Original GFA decimal real token validated as finite single-precision-compatible by the native reader; source value is not rounded.");
+    case 0x60730036:
+        return sxSetComment(r, "Original GFA textual tag value.");
+    case 0x60730037:
+        return sxSetComment(r, "Original GFA textual tag value.");
+    case 0x60730038:
+        return sxSetComment(r, "Original hexadecimal byte-array spelling, not a numeric address or decoded payload.");
+    case 0x60730039:
+        return sxSetComment(r, "LN tag: declared segment residue count.");
+    case 0x6073003A:
+        return sxSetComment(r, "Original format version token.");
+    case 0x6073003B:
+        return sxSetComment(r, "Original MD5 directive/name token. Quoted content retains source spelling; no command or shader is executed.");
+    case 0x6073003C:
+        return sxSetComment(r, "Original MD5 directive/name token. Quoted content retains source spelling; no command or shader is executed.");
+    case 0x6073003D:
+        return sxSetComment(r, "Original MD5 directive/name token. Quoted content retains source spelling; no command or shader is executed.");
+    case 0x6073003E:
+        return sxSetComment(r, "MD5 text format version; native subset supports10.");
+    case 0x6073003F:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730040:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730041:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730042:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730043:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730044:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730045:
+        return sxSetComment(r, "Number of MD5 records/components.");
+    case 0x60730046:
+        return sxSetComment(r, "Animation frames per second; not a timestamp.");
+    case 0x60730047:
+        return sxSetComment(r, "Zero-based parent joint index; -1 is a root, not an address.");
+    case 0x60730048:
+        return sxSetComment(r, "Zero-based MD5 record/reference index, not a byte offset.");
+    case 0x60730049:
+        return sxSetComment(r, "Zero-based MD5 record/reference index, not a byte offset.");
+    case 0x6073004A:
+        return sxSetComment(r, "Zero-based MD5 record/reference index, not a byte offset.");
+    case 0x6073004B:
+        return sxSetComment(r, "Zero-based MD5 record/reference index, not a byte offset.");
+    case 0x6073004C:
+        return sxSetComment(r, "Zero-based MD5 record/reference index, not a byte offset.");
+    case 0x6073004D:
+        return sxSetComment(r, "Zero-based index into weight or frame-component array, not a byte offset.");
+    case 0x6073004E:
+        return sxSetComment(r, "Zero-based index into weight or frame-component array, not a byte offset.");
+    case 0x6073004F:
+        return sxSetComment(r, "Number of influences assigned to this vertex.");
+    case 0x60730050:
+        return sxSetComment(r, "Bits0..5 select animated translation X/Y/Z and quaternion X/Y/Z components.");
+    case 0x60730051:
+        return sxSetComment(r, "Stored texture coordinates; shader-specific mapping, no unit conversion.");
+    case 0x60730052:
+        return sxSetComment(r, "Stored texture coordinates; shader-specific mapping, no unit conversion.");
+    case 0x60730053:
+        return sxSetComment(r, "Dimensionless skinning influence; native weights for each vertex sum approximately to1.");
+    case 0x60730054:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x60730055:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x60730056:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x60730057:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x60730058:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x60730059:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x6073005A:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x6073005B:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x6073005C:
+        return sxSetComment(r, "Stored model-space coordinate in engine/model units; no world transform or byte address.");
+    case 0x6073005D:
+        return sxSetComment(r, "Stored joint-local weight position, transformed by its referenced joint; engine/model units, not a file address.");
+    case 0x6073005E:
+        return sxSetComment(r, "Stored joint-local weight position, transformed by its referenced joint; engine/model units, not a file address.");
+    case 0x6073005F:
+        return sxSetComment(r, "Stored joint-local weight position, transformed by its referenced joint; engine/model units, not a file address.");
+    case 0x60730060:
+        return sxSetComment(r, "Stored animation translation relative to the parent joint; root translation is model-local, not a world transform or file address.");
+    case 0x60730061:
+        return sxSetComment(r, "Stored animation translation relative to the parent joint; root translation is model-local, not a world transform or file address.");
+    case 0x60730062:
+        return sxSetComment(r, "Stored animation translation relative to the parent joint; root translation is model-local, not a world transform or file address.");
+    case 0x60730063:
+        return sxSetComment(r, "Stored dimensionless quaternion XYZ; W is reconstructed by the engine and has no physical field.");
+    case 0x60730064:
+        return sxSetComment(r, "Stored dimensionless quaternion XYZ; W is reconstructed by the engine and has no physical field.");
+    case 0x60730065:
+        return sxSetComment(r, "Stored dimensionless quaternion XYZ; W is reconstructed by the engine and has no physical field.");
+    default:
+        return true;
+    }
+}
+function sxseq_space(c) {
+    return c === 32 || c === 9 || c === 13 || c === 10;
+}
+function sxseq_eq(q, t, s) {
+    var n = sxStrlen(s);
+    return t.a >= 0 && t.z === (n >= SX_I64_MAX ? n - SX_U64_MAX : n) && t.a <= q.n && t.z <= q.n - t.a && !sxMemcmpAt(q.b, t.a, s, 0, n);
+}
+function sxseq_trim(q, t) {
+    while (t.z && sxseq_space(q.b[t.a])) {
+        t.a++;
+        t.z--;
+    }
+    while (t.z && sxseq_space(q.b[t.a + t.z - 1])) {
+        t.z--;
+    }
+    return sxCopy_sxseq_token(null, t);
+}
+function sxseq_line(q, t) {
+    if (q.p >= q.n || ++q.work > 2000000) {
+        return false;
+    }
+    t.a = q.p;
+    while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+        q.p++;
+    }
+    t.z = q.p - t.a;
+    if (q.p < q.n && q.b[q.p] === 13) {
+        q.p++;
+    }
+    if (q.p < q.n && q.b[q.p] === 10) {
+        q.p++;
+    }
+    return true;
+}
+function sxseq_split(q, line, t, cap, tabs) {
+    var n = 0;
+    var p = line.a;
+    var end = p + line.z;
+    while (p < end) {
+        if (tabs) {
+            var a = p;
+            while (p < end && q.b[p] !== 9) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxseq_token(null, { a: a, z: p - a });
+            if (p < end) {
+                p++;
+            }
+        } else {
+            while (p < end && sxseq_space(q.b[p])) {
+                p++;
+            }
+            if (p === end) {
+                break;
+            }
+            a = p;
+            while (p < end && !sxseq_space(q.b[p])) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxseq_token(null, { a: a, z: p - a });
+        }
+    }
+    return n;
+}
+function sxseq_emit(q, l, t) {
+    if (t.a < 0 || t.z < 0 || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    if (!t.z || q.c.count >= 24000) {
+        return true;
+    }
+    if (!l.fields[0].size && t.z > sxVariableLimit(l.fields[0].type)) {
+        return true;
+    }
+    return sx_add(q.c, l, t.a, t.z);
+}
+function sxseq_number(q, t, v) {
+    sxCopy_sxseq_token(t, sxseq_trim(q, sxCopy_sxseq_token(null, t)));
+    var n = 0;
+    var i = 0;
+    if (t.z && q.b[t.a] === 43 /*+*/) {
+        i++;
+    }
+    if (i === t.z) {
+        return false;
+    }
+    for (; i < t.z; i++) {
+        var d = (q.b[t.a + i] - 48 /*0*/) >>> 0;
+        if (d > 9 || n > Math.floor((SX_U64_MAX - d) / 10)) {
+            return false;
+        }
+        n = n * 10 + d;
+    }
+    v[0] = n;
+    return true;
+}
+function sxseq_chunks(q, l, t) {
+    while (t.z) {
+        var n = t.z > 4096 ? 4096 : t.z;
+        if (!sxseq_emit(q, l, sxCopy_sxseq_token(null, { a: t.a, z: n }))) {
+            return false;
+        }
+        t.a += n;
+        t.z -= n;
+        if (q.c.count >= 24000) {
+            return true;
+        }
+    }
+    return true;
+}
+function sxseq_embl_swiss(q, swiss) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(64, sxNew_sxseq_token);
+    var sequence = false;
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        var trim = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, line)));
+        if (!trim.z) {
+            continue;
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, trim), "//")) {
+            {
+                if (!sxseq_emit(q, sxseq_terminator, sxCopy_sxseq_token(null, trim))) {
+                    return false;
+                }
+            }
+            sequence = false;
+            continue;
+        }
+        var n = 0;
+        if (sequence || line.z >= 2 && (sxseq_eq(q, sxCopy_sxseq_token(null, { a: line.a, z: 2 }), "ID") || sxseq_eq(q, sxCopy_sxseq_token(null, { a: line.a, z: 2 }), "SQ"))) {
+            n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 64, false);
+            if (!n || n > 64) {
+                return false;
+            }
+        }
+        if (sequence) {
+            var count = swiss ? n : (n - 1) >>> 0;
+            for (var i = 0; i < count; i++) {
+                {
+                    if (!sxseq_emit(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[i]))) {
+                        return false;
+                    }
+                }
+            }
+            if (!swiss) {
+                {
+                    if (!sxseq_emit(q, sxseq_residue_total, sxCopy_sxseq_token(null, t[(n - 1) >>> 0]))) {
+                        return false;
+                    }
+                }
+            }
+            continue;
+        }
+        if (n && sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "ID")) {
+            if (n < 4) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            var id = sxCopy_sxseq_token(null, t[1]);
+            if (!swiss && id.z && q.b[id.a + id.z - 1] === 59 /*;*/) {
+                id.z--;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_identifier, sxCopy_sxseq_token(null, id))) {
+                    return false;
+                }
+            }
+            if (swiss) {
+                if (n !== 5) {
+                    return false;
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_entry_status, sxCopy_sxseq_token(null, t[2]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_sequence_length, sxCopy_sxseq_token(null, t[3]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[4]))) {
+                        return false;
+                    }
+                }
+            } else {
+                if (n > 4) {
+                    {
+                        if (!sxseq_emit(q, sxseq_locus_options, sxCopy_sxseq_token(null, { a: t[2].a, z: t[(n - 2) >>> 0].a - t[2].a }))) {
+                            return false;
+                        }
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_sequence_length, sxCopy_sxseq_token(null, t[(n - 2) >>> 0]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[(n - 1) >>> 0]))) {
+                        return false;
+                    }
+                }
+            }
+            continue;
+        }
+        if (n && sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "SQ")) {
+            if (n !== (swiss ? 8 : 14)) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_sequence_length, sxCopy_sxseq_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[3]))) {
+                    return false;
+                }
+            }
+            if (swiss) {
+                {
+                    if (!sxseq_emit(q, sxseq_molecular_weight, sxCopy_sxseq_token(null, t[4]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[5]))) {
+                        return false;
+                    }
+                }
+                if (t[6].z === 16) {
+                    var valid = true;
+                    for (var k = 0; k < t[6].z; k++) {
+                        var ch = q.b[t[6].a + k];
+                        if (!(ch >= 48 /*0*/ && ch <= 57 /*9*/ || ch >= 97 /*a*/ && ch <= 102 /*f*/ || ch >= 65 /*A*/ && ch <= 70 /*F*/)) {
+                            valid = false;
+                        }
+                    }
+                    if (valid) {
+                        {
+                            if (!sxseq_emit(q, sxseq_crc64, sxCopy_sxseq_token(null, t[6]))) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[7]))) {
+                        return false;
+                    }
+                }
+            } else {
+                var counts = [sxseq_adenine_count, sxseq_cytosine_count, sxseq_guanine_count, sxseq_thymine_count, sxseq_other_base_count];
+                for (i = 0; i < 5; i++) {
+                    if (!sxseq_emit(q, counts[i], sxCopy_sxseq_token(null, t[(4 + ((i * 2) >>> 0)) >>> 0]))) {
+                        return false;
+                    }
+                    {
+                        if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[(5 + ((i * 2) >>> 0)) >>> 0]))) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            sequence = true;
+            continue;
+        }
+        if (line.z < 2) {
+            return false;
+        }
+        var key = { a: line.a, z: 2 };
+        {
+            if (!sxseq_emit(q, sxseq_field_key, sxCopy_sxseq_token(null, key))) {
+                return false;
+            }
+        }
+        if (line.z <= 5) {
+            continue;
+        }
+        var value = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a + 5, z: line.z - 5 })));
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, key), "FT") && line.z > 21) {
+            var feature = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a + 5, z: 16 })));
+            var data = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a + 21, z: line.z - 21 })));
+            var named = true;
+            for (i = 0; i < feature.z; i++) {
+                ch = q.b[feature.a + i];
+                if (!(ch >= 65 /*A*/ && ch <= 90 /*Z*/ || ch >= 97 /*a*/ && ch <= 122 /*z*/ || ch === 95 /*_*/)) {
+                    named = false;
+                }
+            }
+            if (feature.z && named) {
+                {
+                    if (!sxseq_emit(q, sxseq_feature_key, sxCopy_sxseq_token(null, feature))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_feature_location, sxCopy_sxseq_token(null, data))) {
+                        return false;
+                    }
+                }
+            } else if (!feature.z) {
+                {
+                    if (!sxseq_emit(q, sxseq_feature_qualifier, sxCopy_sxseq_token(null, data))) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxseq_emit(q, sxseq_field_text, sxCopy_sxseq_token(null, value))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxseq_eq(q, sxCopy_sxseq_token(null, key), "AC")) {
+            {
+                if (!sxseq_emit(q, sxseq_accession, sxCopy_sxseq_token(null, value))) {
+                    return false;
+                }
+            }
+        } else if (sxseq_eq(q, sxCopy_sxseq_token(null, key), "DT")) {
+            {
+                if (!sxseq_emit(q, sxseq_date_text, sxCopy_sxseq_token(null, value))) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxseq_emit(q, sxseq_field_text, sxCopy_sxseq_token(null, value))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sxseq_lex(q, t, quoted) {
+    while (q.p < q.n) {
+        if (++q.work > 2000000) {
+            return false;
+        }
+        if (sxseq_space(q.b[q.p])) {
+            q.p++;
+            continue;
+        }
+        if (q.n - q.p >= 2 && q.b[q.p] === 47 && q.b[q.p + 1] === 47) {
+            var start = q.p;
+            while (q.p < q.n && q.b[q.p] !== 10) {
+                q.p++;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_comment, sxCopy_sxseq_token(null, { a: start, z: q.p - start }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        break;
+    }
+    if (q.p === q.n) {
+        return false;
+    }
+    start = q.p;
+    var ch = q.b[q.p++];
+    quoted[0] = ch === 34 /*"*/;
+    if (quoted[0]) {
+        start = q.p;
+        while (q.p < q.n && q.b[q.p] !== 34 /*"*/) {
+            ch = q.b[q.p];
+            if (ch < 32 || ch > 126 || ch === 92 || q.p - start >= 255) {
+                return false;
+            }
+            q.p++;
+        }
+        if (q.p === q.n) {
+            return false;
+        }
+        sxCopy_sxseq_token(t, { a: start, z: q.p - start });
+        q.p++;
+        return true;
+    }
+    if (!sxStrchr("{}()", ch)) {
+        while (q.p < q.n && !sxseq_space(q.b[q.p]) && !sxStrchr("{}()", q.b[q.p])) {
+            if (q.p - start >= 255 || q.b[q.p] < 33 || q.b[q.p] > 126) {
+                return false;
+            }
+            q.p++;
+        }
+    }
+    sxCopy_sxseq_token(t, { a: start, z: q.p - start });
+    return true;
+}
+function sxseq_word(q, word, emit) {
+    var t = sxNew_sxseq_token();
+    var quoted = [false];
+    if (!sxseq_lex(q, t, quoted) || quoted[0] || !sxseq_eq(q, sxCopy_sxseq_token(null, t), word)) {
+        return false;
+    }
+    if (emit) {
+        {
+            if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sxseq_md5_value(q, l, name) {
+    var t = sxNew_sxseq_token();
+    var quoted = [false];
+    return sxseq_lex(q, t, quoted) && quoted[0] === name && sxseq_emit(q, l, sxCopy_sxseq_token(null, t));
+}
+function sxseq_md5_count(q, word, l, count, max) {
+    var t = sxNew_sxseq_token();
+    var quoted = [false];
+    return (word === null || sxseq_word(q, word, true)) && sxseq_lex(q, t, quoted) && !quoted[0] && sxseq_number(q, sxCopy_sxseq_token(null, t), count) && count[0] <= max && sxseq_emit(q, l, sxCopy_sxseq_token(null, t));
+}
+function sxseq_vector(q, kind) {
+    var l = [[sxseq_position_x, sxseq_position_y, sxseq_position_z], [sxseq_orientation_x, sxseq_orientation_y, sxseq_orientation_z], [sxseq_weight_position_x, sxseq_weight_position_y, sxseq_weight_position_z], [sxseq_bounds_min_x, sxseq_bounds_min_y, sxseq_bounds_min_z], [sxseq_bounds_max_x, sxseq_bounds_max_y, sxseq_bounds_max_z], [sxseq_local_position_x, sxseq_local_position_y, sxseq_local_position_z]];
+    if (kind >= 6 || !sxseq_word(q, "(", false)) {
+        return false;
+    }
+    for (var i = 0; i < 3; i++) {
+        if (!sxseq_md5_value(q, l[kind][i], false)) {
+            return false;
+        }
+    }
+    return sxseq_word(q, ")", false);
+}
+function sxseq_md5_mesh(q, joints) {
+    var n = [0];
+    var index = [0];
+    if (!sxseq_word(q, "{", false) || !sxseq_word(q, "shader", true) || !sxseq_md5_value(q, sxseq_shader_name, true) || !sxseq_md5_count(q, "numverts", sxseq_vertex_count, n, 65536)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_md5_count(q, "vert", sxseq_vertex_index, index, 65535) || !sxseq_word(q, "(", false) || !sxseq_md5_value(q, sxseq_texture_u, false) || !sxseq_md5_value(q, sxseq_texture_v, false) || !sxseq_word(q, ")", false) || !sxseq_md5_value(q, sxseq_first_weight, false) || !sxseq_md5_value(q, sxseq_vertex_weight_count, false)) {
+            return false;
+        }
+    }
+    if (!sxseq_md5_count(q, "numtris", sxseq_triangle_count, n, 65536)) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_md5_count(q, "tri", sxseq_triangle_index, index, 65535)) {
+            return false;
+        }
+        for (var j = 0; j < 3; j++) {
+            if (!sxseq_md5_value(q, sxseq_vertex_index, false)) {
+                return false;
+            }
+        }
+    }
+    if (!sxseq_md5_count(q, "numweights", sxseq_weight_count, n, 65536)) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_md5_count(q, "weight", sxseq_weight_index, index, 65535) || !sxseq_md5_value(q, sxseq_joint_index, false) || !sxseq_md5_value(q, sxseq_weight_bias, false) || !sxseq_vector(q, 2)) {
+            return false;
+        }
+    }
+    return sxseq_word(q, "}", false);
+}
+function sxseq_md5(q, animation) {
+    var joints = [0];
+    var meshes = [0];
+    var frames = [0];
+    var components = [0];
+    var unused = [0];
+    var animated = sxFill([null], 1, 1535, null);
+    if (!sxseq_md5_count(q, "MD5Version", sxseq_md5_version, unused, 10) || !sxseq_word(q, "commandline", true) || !sxseq_md5_value(q, sxseq_commandline, true)) {
+        return false;
+    }
+    if (animation && !sxseq_md5_count(q, "numFrames", sxseq_frame_count, frames, 1024)) {
+        return false;
+    }
+    if (!sxseq_md5_count(q, "numJoints", sxseq_joint_count, joints, 256)) {
+        return false;
+    }
+    if (!animation) {
+        if (!sxseq_md5_count(q, "numMeshes", sxseq_mesh_count, meshes, 256) || !sxseq_word(q, "joints", true) || !sxseq_word(q, "{", false)) {
+            return false;
+        }
+        for (var i = 0; i < joints[0]; i++) {
+            if (!sxseq_md5_value(q, sxseq_joint_name, true) || !sxseq_md5_value(q, sxseq_parent_joint, false) || !sxseq_vector(q, 0) || !sxseq_vector(q, 1)) {
+                return false;
+            }
+        }
+        if (!sxseq_word(q, "}", false)) {
+            return false;
+        }
+        for (i = 0; i < meshes[0]; i++) {
+            if (q.c.count >= 24000) {
+                return true;
+            }
+            if (!sxseq_word(q, "mesh", true) || !sxseq_md5_mesh(q, joints[0])) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (!sxseq_md5_count(q, "frameRate", sxseq_frame_rate, unused, 1000) || !sxseq_md5_count(q, "numAnimatedComponents", sxseq_animated_component_count, components, 1536) || !sxseq_word(q, "hierarchy", true) || !sxseq_word(q, "{", false)) {
+        return false;
+    }
+    var fields = [sxseq_local_position_x, sxseq_local_position_y, sxseq_local_position_z, sxseq_orientation_x, sxseq_orientation_y, sxseq_orientation_z];
+    for (i = 0; i < joints[0]; i++) {
+        var flags = [0];
+        var start = [0];
+        if (!sxseq_md5_value(q, sxseq_joint_name, true) || !sxseq_md5_value(q, sxseq_parent_joint, false) || !sxseq_md5_count(q, null, sxseq_animation_flags, flags, 63) || !sxseq_md5_count(q, null, sxseq_component_start, start, components[0])) {
+            return false;
+        }
+        for (var bit = 0; bit < 6; bit++) {
+            if (sxAnd64(flags[0], (1 << bit) >>> 0)) {
+                if (start[0] >= components[0] || animated[start[0]] !== null) {
+                    return false;
+                }
+                animated[start[0]++] = fields[bit];
+            }
+        }
+    }
+    for (i = 0; i < components[0]; i++) {
+        if (animated[i] === null) {
+            return false;
+        }
+    }
+    if (!sxseq_word(q, "}", false) || !sxseq_word(q, "bounds", true) || !sxseq_word(q, "{", false)) {
+        return false;
+    }
+    for (i = 0; i < frames[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_vector(q, 3) || !sxseq_vector(q, 4)) {
+            return false;
+        }
+    }
+    if (!sxseq_word(q, "}", false) || !sxseq_word(q, "baseframe", true) || !sxseq_word(q, "{", false)) {
+        return false;
+    }
+    for (i = 0; i < joints[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_vector(q, 5) || !sxseq_vector(q, 1)) {
+            return false;
+        }
+    }
+    if (!sxseq_word(q, "}", false)) {
+        return false;
+    }
+    for (i = 0; i < frames[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_md5_count(q, "frame", sxseq_frame_index, unused, 1023) || !sxseq_word(q, "{", false)) {
+            return false;
+        }
+        for (var j = 0; j < components[0]; j++) {
+            if (q.c.count >= 24000) {
+                return true;
+            }
+            if (!sxseq_md5_value(q, animated[j], false)) {
+                return false;
+            }
+        }
+        if (!sxseq_word(q, "}", false)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxseq_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxseq_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxseq_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxseq_order, true);
+    return !c.failed;
+}
+function sx_sciencesequence_supports(type) {
+    switch (type) {
+    case "GENOMICS_GENBANK":
+    case "GENOMICS_EMBL":
+    case "GENOMICS_SWISSPROT":
+    case "ALIGNMENT_CLUSTAL":
+    case "ALIGNMENT_STOCKHOLM":
+    case "ALIGNMENT_PHYLIP":
+    case "ALIGNMENT_MAF":
+    case "ALIGNMENT_MAUVE":
+    case "ASSEMBLY_GFA":
+    case "QUAKE_MD5MESH":
+    case "IDTECH_MD5ANIM":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_sciencesequence_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 67108864) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: b, n: c.size, p: 0, work: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "GENOMICS_GENBANK":
+            ok = sx_genomics_genbank_build(q);
+            break;
+        case "GENOMICS_EMBL":
+            ok = sx_genomics_embl_build(q);
+            break;
+        case "GENOMICS_SWISSPROT":
+            ok = sx_genomics_swissprot_build(q);
+            break;
+        case "ALIGNMENT_CLUSTAL":
+            ok = sx_alignment_clustal_build(q);
+            break;
+        case "ALIGNMENT_STOCKHOLM":
+            ok = sx_alignment_stockholm_build(q);
+            break;
+        case "ALIGNMENT_PHYLIP":
+            ok = sx_alignment_phylip_build(q);
+            break;
+        case "ALIGNMENT_MAF":
+            ok = sx_alignment_maf_build(q);
+            break;
+        case "ALIGNMENT_MAUVE":
+            ok = sx_alignment_mauve_build(q);
+            break;
+        case "ASSEMBLY_GFA":
+            ok = sx_assembly_gfa_build(q);
+            break;
+        case "QUAKE_MD5MESH":
+            ok = sx_quake_md5mesh_build(q);
+            break;
+        case "IDTECH_MD5ANIM":
+            ok = sx_idtech_md5anim_build(q);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxseq_finish(c);
+}

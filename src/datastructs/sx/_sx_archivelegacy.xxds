@@ -1,0 +1,490 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivelegacy.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_archivelegacy_dcl_fields = layout([u8("literal_mode", ID), u8("dictionary_bits")]);
+var sxag_archivelegacy_dcl = sxLayout(0x60250020, "archivelegacy_dcl", LE, sxag_archivelegacy_dcl_fields);
+function sx_archivelegacy_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60250000 || id >= 0x60260000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60250001:
+        if (r.name === "form_size") {
+            text = "Byte count following this field, including the APUP form type.";
+        }
+        break;
+    case 0x60250003:
+        if (r.name === "compression") {
+            text = "PACK: 0=AMPK codec, other values denote unsupported XPK variants. DATA is stored.";
+        }
+        if (r.name === "checksum") {
+            text = "Sum of decoded bytes packed into big-endian 32-bit words, with zero tail padding.";
+        }
+        break;
+    case 0x60250004:
+        if (r.name === "body_size") {
+            text = "FILE chunk body byte count includes its nested NAME chunk.";
+        }
+        if (r.name === "days") {
+            text = "Amiga DateStamp days since 1978-01-01.";
+        }
+        if (r.name === "minutes") {
+            text = "Amiga DateStamp minutes since midnight.";
+        }
+        if (r.name === "ticks") {
+            text = "Amiga DateStamp ticks within the minute, 50 ticks per second.";
+        }
+        if (r.name === "protection") {
+            text = "Complete Amiga protection flag bit word.";
+        }
+        break;
+    case 0x60250006:
+        if (r.name === "flags") {
+            text = "Bit 4 marks a directory.";
+        }
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "accessed") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "checksum") {
+            text = "Sum of the first 106 entry bytes.";
+        }
+        break;
+    case 0x60250008:
+        if (r.name === "flags") {
+            text = "Bit 5=Huffman, low 5 bits=old LZ, bit 6=new LZ; zero means stored. Equal consecutive offsets reset history.";
+        }
+        if (r.name === "padding_size") {
+            text = "Padding after the block and its four-byte opaque trailer.";
+        }
+        break;
+    case 0x60250009:
+        if (r.name === "checksum") {
+            text = "Sum of the stream-table bytes preceding this checksum.";
+        }
+        break;
+    case 0x6025000B:
+        if (r.name === "resource_method") {
+            text = "0=stored, 3=Squeeze.";
+        }
+        if (r.name === "data_method") {
+            text = "0=stored, 3=Squeeze.";
+        }
+        if (r.name === "resource_storage_blocks") {
+            text = "ProDOS storage allocation in 512-byte blocks; not a byte length.";
+        }
+        if (r.name === "data_storage_blocks") {
+            text = "ProDOS storage allocation in 512-byte blocks; not a byte length.";
+        }
+        if (r.name === "storage_type") {
+            text = "13=directory.";
+        }
+        if (r.name === "created_date") {
+            text = "Packed ProDOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "created_time") {
+            text = "Packed ProDOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "modified_date") {
+            text = "Packed ProDOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "modified_time") {
+            text = "Packed ProDOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "header_crc16") {
+            text = "CRC16/XMODEM over the first 52 fixed-header bytes and the variable name.";
+        }
+        break;
+    case 0x6025000C:
+        if (r.name === "checksum") {
+            text = "Version 1: byte sum. Version 2: sum of each byte XOR its one-based byte index modulo 256.";
+        }
+        if (r.name === "block_count") {
+            text = "Physical member span in 254-byte Commodore blocks.";
+        }
+        break;
+    case 0x6025000D:
+        if (r.name === "record_length") {
+            text = "Record byte length for Commodore relative files.";
+        }
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x6025000E:
+        if (r.name === "name_ebcdic") {
+            text = "Blank-padded EBCDIC CP037 filename; original encoded bytes are retained.";
+        }
+        if (r.name === "type_ebcdic") {
+            text = "Blank-padded EBCDIC CP037 CMS file type.";
+        }
+        if (r.name === "record_format") {
+            text = "EBCDIC F (0xC6)=fixed, V (0xE5)=variable.";
+        }
+        if (r.name === "flags") {
+            text = "Bit 0=12-byte extension; bit 6=stored; bit 7=other codec when not stored.";
+        }
+        break;
+    case 0x6025000F:
+        if (r.name === "record_size") {
+            text = "Stored-record byte count; zero terminates the member.";
+        }
+        break;
+    case 0x60250010:
+        if (r.name === "sector_count") {
+            text = "Number of 256-byte sectors.";
+        }
+        if (r.name === "flags") {
+            text = "Native ARK wrapper: bit 1 selects LZW-compressed archive data.";
+        }
+        if (r.name === "final_sector_bytes") {
+            text = "Bytes used in the final sector; zero denotes a full sector.";
+        }
+        break;
+    case 0x60250011:
+        if (r.name === "flags") {
+            text = "Native ARK wrapper: bit 1 selects LZW-compressed archive data.";
+        }
+        if (r.name === "sector_count") {
+            text = "Number of 256-byte sectors.";
+        }
+        if (r.name === "final_sector_bytes") {
+            text = "Bytes used in the final sector; zero denotes a full sector.";
+        }
+        break;
+    case 0x60250013:
+        if (r.name === "created") {
+            text = "Encoded TI file date/time, retained in physical byte order.";
+        }
+        if (r.name === "modified") {
+            text = "Encoded TI file date/time, retained in physical byte order.";
+        }
+        break;
+    case 0x60250014:
+        if (r.name === "sector_count") {
+            text = "Number of 256-byte payload sectors.";
+        }
+        if (r.name === "final_sector_bytes") {
+            text = "Bytes used in the final sector; zero denotes a full sector.";
+        }
+        break;
+    case 0x60250015:
+        if (r.name === "marker") {
+            text = "END! marks the last catalog sector; zero continues the catalog.";
+        }
+        break;
+    case 0x6025001C:
+        if (r.name === "kind") {
+            text = "0=directory; other values use file_parent.";
+        }
+        if (r.name === "directory_parent") {
+            text = "One-based parent entry index for directories, zero denotes root.";
+        }
+        if (r.name === "file_parent") {
+            text = "One-based parent entry index for files, zero denotes root.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "complemented_crc32") {
+            text = "Bitwise complement of the uncompressed-data CRC32.";
+        }
+        if (r.name === "name_size") {
+            text = "Encoded name bytes in the following name pool: byte i is stored as character+i+4.";
+        }
+        if (r.name === "method") {
+            text = "2=stored, 3=unsupported method, 4=ChiefLZ.";
+        }
+        break;
+    case 0x6025001E:
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60250020:
+        if (r.name === "literal_mode") {
+            text = "0=literal bytes, 1=Huffman-coded literals.";
+        }
+        if (r.name === "dictionary_bits") {
+            text = "Extra distance bits: 4, 5, or 6; dictionary size is 1 << (6+this value) bytes.";
+        }
+        break;
+    case 0x60250023:
+        if (r.name === "method") {
+            text = "0=stored directory, 1=zlib directory without Adler32 trailer.";
+        }
+        break;
+    case 0x60250025:
+        if (r.name === "method") {
+            text = "0=stored, 1=zlib stream in a physical member block.";
+        }
+        break;
+    case 0x60250026:
+        if (r.name === "block_size") {
+            text = "Byte count following this field, including the uncompressed-size word.";
+        }
+        break;
+    case 0x60250028:
+        if (r.name === "record_size") {
+            text = "Complete directory record size, including variable NUL-padded name.";
+        }
+        break;
+    case 0x6025002A:
+        if (r.name === "entry_index") {
+            text = "One-based member ordinal.";
+        }
+        if (r.name === "date") {
+            text = "ASCII MM-DD-YY.";
+        }
+        if (r.name === "time") {
+            text = "ASCII HH:MM.";
+        }
+        if (r.name === "block_count") {
+            text = "Total 128-byte member blocks, including this header block.";
+        }
+        break;
+    case 0x60250035:
+        if (r.name === "entry_count_minus1") {
+            text = "Member count is this encoded value plus one.";
+        }
+        break;
+    case 0x60250036:
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60250037:
+        if (r.name === "method") {
+            text = "0=stored, 1=LH5.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60250039:
+        if (r.name === "method") {
+            text = "0 or 3=stored, 1=LZSS, 4=PKWARE DCL; the last directory entry is the end sentinel.";
+        }
+        if (r.name === "data_offset") {
+            text = "Byte offset relative to this EALIB container; the sentinel bounds its payload.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxag_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxag_read(c, p, b, n) {
+    return sxag_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxag_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxag16(b, b_o, be) {
+    return sxag_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxag32(b, b_o, be) {
+    return sxag_uint(b, b_o, 4, be) >>> 0;
+}
+function sxag_free(c, p, n) {
+    for (var i = 0; i < c.count; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < at + z && at < p + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxag_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!sxag_span(c, p, n)) {
+        return false;
+    }
+    if (!sxag_free(c, p, n)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxag_table(c, l, p, n) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!n || n > 20000 || !sxag_span(c, p, n * z)) {
+        return false;
+    }
+    if (!sxag_free(c, p, n * z)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxag_fixed(c, header, entry, h, field, width, be, p, extra) {
+    var b = [];
+    if (h > 32 || !sxag_read(c, 0, b, h) || !sxag_add(c, header, 0)) {
+        return false;
+    }
+    var n = sxag_uint(b, field, width, be);
+    if (n > 2147483647 || n > 20000) {
+        return true;
+    }
+    n += extra >>> 0;
+    if (!n || n > 20000) {
+        return true;
+    }
+    var z = sxU64(entry.fields[sxU64(entry.field_count - 1)].offset + entry.fields[sxU64(entry.field_count - 1)].size);
+    if (!sxag_span(c, p, n * z)) {
+        return true;
+    }
+    return sxag_table(c, entry, p, n);
+}
+function sxag_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxag_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxag_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxag_order, true);
+    return !c.failed;
+}
+function sx_archivelegacy_supports(type) {
+    switch (type) {
+    case "AMPLUS":
+    case "NOWCOMPRESS":
+    case "APPLELINK_PE":
+    case "ARC_CBM":
+    case "VMARC":
+    case "TI99ARC":
+    case "ZFSF":
+    case "TRCPAK":
+    case "CHIEFLZMULTI":
+    case "IBMZPAK":
+    case "ASCEND":
+    case "CFL":
+    case "DPK":
+    case "SWAGPACKET":
+    case "MARC":
+    case "HLB":
+    case "JAM":
+    case "TWS":
+    case "FIZ":
+    case "EALIB":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivelegacy_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "AMPLUS":
+        ok = sx_amplus_build(c);
+        break;
+    case "NOWCOMPRESS":
+        ok = sx_nowcompress_build(c);
+        break;
+    case "APPLELINK_PE":
+        ok = sx_applelink_pe_build(c);
+        break;
+    case "ARC_CBM":
+        ok = sx_arc_cbm_build(c);
+        break;
+    case "VMARC":
+        ok = sx_vmarc_build(c);
+        break;
+    case "TI99ARC":
+        ok = sx_ti99arc_build(c);
+        break;
+    case "ZFSF":
+        ok = sx_zfsf_build(c);
+        break;
+    case "TRCPAK":
+        ok = sx_trcpak_build(c);
+        break;
+    case "CHIEFLZMULTI":
+        ok = sx_chieflzmulti_build(c);
+        break;
+    case "IBMZPAK":
+        ok = sx_ibmzpak_build(c);
+        break;
+    case "ASCEND":
+        ok = sx_ascend_build(c);
+        break;
+    case "CFL":
+        ok = sx_cfl_build(c);
+        break;
+    case "DPK":
+        ok = sx_dpk_build(c);
+        break;
+    case "SWAGPACKET":
+        ok = sx_swagpacket_build(c);
+        break;
+    case "MARC":
+        ok = sx_marc_build(c);
+        break;
+    case "HLB":
+        ok = sx_hlb_build(c);
+        break;
+    case "JAM":
+        ok = sx_jam_build(c);
+        break;
+    case "TWS":
+        ok = sx_tws_build(c);
+        break;
+    case "FIZ":
+        ok = sx_fiz_build(c);
+        break;
+    case "EALIB":
+        ok = sx_ealib_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxag_finish(c);
+}

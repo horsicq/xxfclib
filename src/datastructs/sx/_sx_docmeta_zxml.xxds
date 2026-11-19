@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/zxml/xx_zxml_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_zxml_header_fields = layout([chars("magic", 4, SIGNATURE), u32("packed_size", SIZE), u32("unpacked_size", SIZE)]);
+var sxdm_zxml_header = sxLayout(0x60230004, "zxml_header", LE, sxdm_zxml_header_fields);
+function sx_zxml_build(c) {
+    return sxdm_add(c, sxdm_zxml_header, 0, 12);
+}

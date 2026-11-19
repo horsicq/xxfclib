@@ -1,0 +1,116 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/xna_xnb/xx_xna_xnb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_xnb_header_fields = layout([blob("signature", 3, SIGNATURE), u8("target_platform", ID), u8("version", ID),
+    u8("flags", FLAGS), u32("file_size", SIZE)]);
+var sxgp_xnb_header = sxLayout(0x60360019, "xnb_header", LE, sxgp_xnb_header_fields);
+var sxgp_xnb_count_fields = layout([field("count", "uleb128_64", 1, COUNT)]);
+var sxgp_xnb_count = sxLayout(0x6036001A, "xnb_count", LE, sxgp_xnb_count_fields);
+var sxgp_xnb_reader_id_fields = layout([field("reader_id", "uleb128_64", 1, ID)]);
+var sxgp_xnb_reader_id = sxLayout(0x6036001B, "xnb_reader_id", LE, sxgp_xnb_reader_id_fields);
+var sxgp_xnb_length_1_fields = layout([field("byte_size", "uleb128_64", 1, SIZE)]);
+var sxgp_xnb_length_1 = sxLayout(0x6036001C, "xnb_length_1", LE, sxgp_xnb_length_1_fields);
+var sxgp_xnb_length_2_fields = layout([field("byte_size", "uleb128_64", 2, SIZE)]);
+var sxgp_xnb_length_2 = sxLayout(0x6036001D, "xnb_length_2", LE, sxgp_xnb_length_2_fields);
+var sxgp_xnb_length_3_fields = layout([field("byte_size", "uleb128_64", 3, SIZE)]);
+var sxgp_xnb_length_3 = sxLayout(0x6036001E, "xnb_length_3", LE, sxgp_xnb_length_3_fields);
+var sxgp_xnb_length_4_fields = layout([field("byte_size", "uleb128_64", 4, SIZE)]);
+var sxgp_xnb_length_4 = sxLayout(0x6036001F, "xnb_length_4", LE, sxgp_xnb_length_4_fields);
+var sxgp_xnb_reader_version_fields = layout([i32("reader_version", ID)]);
+var sxgp_xnb_reader_version = sxLayout(0x60360020, "xnb_reader_version", LE, sxgp_xnb_reader_version_fields);
+var sxgp_xnb_texture_fields = layout([i32("surface_format", ID), i32("width", COUNT), i32("height", COUNT),
+    i32("mip_count", COUNT)]);
+var sxgp_xnb_texture = sxLayout(0x60360021, "xnb_texture", LE, sxgp_xnb_texture_fields);
+var sxgp_xnb_mip_fields = layout([i32("data_size", SIZE)]);
+var sxgp_xnb_mip = sxLayout(0x60360022, "xnb_mip", LE, sxgp_xnb_mip_fields);
+var sxgp_xnb_int32_fields = layout([i32("value")]);
+var sxgp_xnb_int32 = sxLayout(0x60360023, "xnb_int32", LE, sxgp_xnb_int32_fields);
+var sxgp_xnb_float32_fields = layout([field("value", "float", 4)]);
+var sxgp_xnb_float32 = sxLayout(0x60360024, "xnb_float32", LE, sxgp_xnb_float32_fields);
+var sxgp_xnb_byte_fields = layout([u8("value")]);
+var sxgp_xnb_byte = sxLayout(0x60360025, "xnb_byte", LE, sxgp_xnb_byte_fields);
+function sxgp_xnb_var(v, p, end, kind, out) {
+    var a = p[0];
+    var x = 0;
+    var ch = [0];
+    var n = 0;
+    do {
+        if (n === 5 || !sxgp_word(v, p[0], 1, false, ch, 0, end)) {
+            return false;
+        }
+        p[0]++;
+        if (n === 4 && sxAnd64(ch[0], 248)) {
+            return false;
+        }
+        x = sxOr64(x, sxShl64(sxAnd64(ch[0], 127), (7 * n++) >>> 0));
+    } while (sxAnd64(ch[0], 128));
+    if (n > 1 && !ch[0]) {
+        return false;
+    }
+    var ls = [sxgp_xnb_length_1, sxgp_xnb_length_2, sxgp_xnb_length_3, sxgp_xnb_length_4];
+    if (kind && n !== 1 || !kind && n > 4 || !sxgp_row(v, kind === 1 ? sxgp_xnb_count : kind === 2 ? sxgp_xnb_reader_id : ls[(n - 1) >>> 0], a, end)) {
+        return false;
+    }
+    out[0] = x;
+    return true;
+}
+function sxgp_xnb(v) {
+    var end = [(v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size)];
+    var p = [10];
+    var z = [0];
+    var mips = [0];
+    var name = [];
+    if (!sxgp_row(v, sxgp_xnb_header, 0, end[0]) || !sxgp_word(v, 6, 4, false, end, 0, end[0]) || !sxgp_xnb_var(v, p, end[0], 1, z) || z[0] !== 1 || !sxgp_xnb_var(v, p, end[0], 0, z) || z[0] > 1024 || !sxgp_read(v, p[0], name, z[0], end[0])) {
+        return false;
+    }
+    name[z[0]] = 0;
+    p[0] += z[0];
+    if (!sxgp_row(v, sxgp_xnb_reader_version, p[0], end[0])) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxgp_xnb_var(v, p, end[0], 1, z) || z[0] || !sxgp_xnb_var(v, p, end[0], 2, z) || z[0] !== 1) {
+        return false;
+    }
+    if (!sxStrncmp(name, "Microsoft.Xna.Framework.Content.Texture2DReader", 46)) {
+        if (!sxgp_row(v, sxgp_xnb_texture, p[0], end[0]) || !sxgp_word(v, p[0] + 12, 4, false, mips, 0, end[0]) || mips[0] > 16) {
+            return false;
+        }
+        p[0] += 16;
+        for (var i = 0; i < mips[0]; i++) {
+            if (!sxgp_row(v, sxgp_xnb_mip, p[0], end[0]) || !sxgp_word(v, p[0], 4, false, z, 0, end[0]) || !sxgp_span(v, p[0] + 4, z[0], end[0])) {
+                return false;
+            }
+            p[0] += 4 + z[0];
+        }
+    } else if (!sxStrncmp(name, "Microsoft.Xna.Framework.Content.StringReader", 43)) {
+        if (!sxgp_xnb_var(v, p, end[0], 0, z) || !sxgp_span(v, p[0], z[0], end[0])) {
+            return false;
+        }
+        p[0] += z[0];
+    } else if (!sxStrncmp(name, "Microsoft.Xna.Framework.Content.ByteReader", 41)) {
+        if (!sxgp_row(v, sxgp_xnb_byte, p[0], end[0])) {
+            return false;
+        }
+        p[0]++;
+    } else if (!sxStrncmp(name, "Microsoft.Xna.Framework.Content.Int32Reader", 42)) {
+        if (!sxgp_row(v, sxgp_xnb_int32, p[0], end[0])) {
+            return false;
+        }
+        p[0] += 4;
+    } else if (!sxStrncmp(name, "Microsoft.Xna.Framework.Content.SingleReader", 43)) {
+        if (!sxgp_row(v, sxgp_xnb_float32, p[0], end[0])) {
+            return false;
+        }
+        p[0] += 4;
+    } else {
+        return false;
+    }
+    return p[0] === end[0];
+}
+function sx_xna_xnb_build(v) {
+    return sxgp_xnb(v);
+}

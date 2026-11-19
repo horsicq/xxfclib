@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/basis_texture/xx_basis_texture_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_basis_header_fields = layout([u16("signature", SIGNATURE), u16("version", ID), u16("header_size", SIZE),
+    u16("header_crc16", CHECKSUM), u32("data_size", SIZE), u16("data_crc16", CHECKSUM),
+    field("slice_count", "uint24", 3, COUNT), field("image_count", "uint24", 3, COUNT), u8("texture_format", ID),
+    u16("flags", FLAGS), u8("texture_type", ID), field("microseconds_per_frame", "uint24", 3), u32("reserved", RESERVED),
+    u32("user_data0"), u32("user_data1"), u16("endpoint_count", COUNT), u32("endpoint_offset", OFFSET),
+    field("endpoint_size", "uint24", 3, SIZE), u16("selector_count", COUNT), u32("selector_offset", OFFSET),
+    field("selector_size", "uint24", 3, SIZE), u32("tables_offset", OFFSET), u32("tables_size", SIZE),
+    u32("slice_descriptors_offset", OFFSET), u32("extended_offset", OFFSET), u32("extended_size", SIZE)]);
+var sxrm_basis_header = sxLayout(0x601D0078, "basis_header", LE, sxrm_basis_header_fields);
+var sxrm_basis_slice_fields = layout([field("image_index", "uint24", 3, ID), u8("level_index", ID), u8("flags", FLAGS),
+    u16("width", COUNT), u16("height", COUNT), u16("blocks_x", COUNT), u16("blocks_y", COUNT), u32("data_offset", OFFSET),
+    u32("data_size", SIZE), u16("slice_crc16", CHECKSUM)]);
+var sxrm_basis_slice = sxLayout(0x601D0079, "basis_slice", LE, sxrm_basis_slice_fields);
+function sxrm_basis(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 77) || sxMemcmp(h, "sB", 2) || !sxrm_add(c, sxrm_basis_header, 0)) {
+        return false;
+    }
+    var p = sxrm32(h, 65, false);
+    var n = sxrm_uint(h, 14, 3, false);
+    if (p >= 77 && n <= 4087 && sxrm_span(c, p, n * 23) && !sxrm_table(c, sxrm_basis_slice, p, n)) {
+        return false;
+    }
+    return !c.failed;
+}
+function sx_basis_texture_build(c) {
+    return sxrm_basis(c);
+}

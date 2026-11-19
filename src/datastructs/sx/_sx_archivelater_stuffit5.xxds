@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/stuffit5/xx_stuffit5_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_sit5_header_fields = layout([chars("banner", 80, SIGNATURE), u16("marker", SIGNATURE), u8("version", ID),
+    u8("flags", FLAGS), u32("archive_size", SIZE), u32("entry_offset", OFFSET), u16("root_entry_count", COUNT),
+    u32("first_entry_offset", OFFSET), u16("header_crc16", CHECKSUM)]);
+var sxal_sit5_header = sxLayout(0x6020001F, "sit5_header", BE, sxal_sit5_header_fields);
+var sxal_sit5_file_fields = layout([u32("magic", SIGNATURE), u8("version", ID), u8("unknown5"), u16("header_size", SIZE),
+    u8("unknown8"), u8("flags", FLAGS), u32("created"), u32("modified"), u32("previous_entry_offset", OFFSET),
+    u32("next_entry_offset", OFFSET), u32("parent_entry_offset", OFFSET), u16("name_size", SIZE), u16("header_crc16", CHECKSUM),
+    u32("data_unpacked_size", SIZE), u32("data_packed_size", SIZE), u16("data_crc16", CHECKSUM), u16("unknown44"),
+    u8("method", ID), u8("password_size", SIZE)]);
+var sxal_sit5_file = sxLayout(0x60200020, "sit5_file", BE, sxal_sit5_file_fields);
+var sxal_sit5_folder_fields = layout([u32("magic", SIGNATURE), u8("version", ID), u8("unknown5"), u16("header_size", SIZE),
+    u8("unknown8"), u8("flags", FLAGS), u32("created"), u32("modified"), u32("previous_entry_offset", OFFSET),
+    u32("next_entry_offset", OFFSET), u32("parent_entry_offset", OFFSET), u16("name_size", SIZE), u16("header_crc16", CHECKSUM),
+    u32("first_child_offset", OFFSET), u32("folder_size", SIZE), bytes("unknown42", 4), u16("child_count", COUNT)]);
+var sxal_sit5_folder = sxLayout(0x60200021, "sit5_folder", BE, sxal_sit5_folder_fields);
+var sxal_sit5_second_v1_fields = layout([u16("flags", FLAGS), u16("unknown2"), chars("file_type", 4, ID),
+    chars("creator", 4, ID), u16("finder_flags", FLAGS), bytes("finder_metadata", 22)]);
+var sxal_sit5_second_v1 = sxLayout(0x60200022, "sit5_second_v1", BE, sxal_sit5_second_v1_fields);
+var sxal_sit5_second_v3_fields = layout([u16("flags", FLAGS), u16("unknown2"), chars("file_type", 4, ID),
+    chars("creator", 4, ID), u16("finder_flags", FLAGS), bytes("finder_metadata", 18)]);
+var sxal_sit5_second_v3 = sxLayout(0x60200023, "sit5_second_v3", BE, sxal_sit5_second_v3_fields);
+var sxal_sit5_resource_fields = layout([u32("unpacked_size", SIZE), u32("packed_size", SIZE), u16("crc16", CHECKSUM),
+    u16("unknown10"), u8("method", ID), u8("password_size", SIZE)]);
+var sxal_sit5_resource = sxLayout(0x60200024, "sit5_resource", BE, sxal_sit5_resource_fields);
+function sxal_sit5(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 100) || !sxal_add(c, sxal_sit5_header, 0)) {
+        return false;
+    }
+    var p = sxal32(b, 94, true);
+    if (p < 100) {
+        return true;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, 48) || sxal32(b, 0, true) !== 0xA5A5A5A5) {
+            break;
+        }
+        var head = sxal16(b, 6, true);
+        var v = b[4];
+        var folder = (b[9] & 64) !== 0;
+        var packed = folder ? 0 : sxal32(b, 38, true);
+        var last = folder && sxal32(b, 34, true) === 4294967295;
+        if (head < 48 || !sxal_span(c, p, head)) {
+            break;
+        }
+        if (!sxal_add(c, folder ? sxal_sit5_folder : sxal_sit5_file, p)) {
+            return false;
+        }
+        p += head;
+        if (last) {
+            continue;
+        }
+        var second = v === 1 ? 36 : 32;
+        if (!sxal_read(c, p, b, second)) {
+            break;
+        }
+        var resource = (sxal16(b, 0, true) & 1) !== 0;
+        if (!sxal_add(c, v === 1 ? sxal_sit5_second_v1 : sxal_sit5_second_v3, p)) {
+            return false;
+        }
+        p += second;
+        if (!folder && resource) {
+            if (!sxal_read(c, p, b, 14)) {
+                break;
+            }
+            packed += sxal32(b, 4, true);
+            if (!sxal_add(c, sxal_sit5_resource, p)) {
+                return false;
+            }
+            p += 14;
+            if (!sxal_span(c, p, b[13])) {
+                break;
+            }
+            p += b[13];
+        }
+        if (!sxal_span(c, p, packed)) {
+            break;
+        }
+        p += packed;
+    }
+    return true;
+}
+function sx_stuffit5_build(c) {
+    return sxal_sit5(c);
+}

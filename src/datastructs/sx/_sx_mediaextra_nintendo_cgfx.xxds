@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_cgfx/xx_nintendo_cgfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_cgfx_slot_fields = layout([u32("entry_count", COUNT), i32("dictionary_relative", OFFSET)]);
+var sxmx_cgfx_slot = sxLayout(0x602E004D, "cgfx_slot", LE, sxmx_cgfx_slot_fields);
+var sxmx_cgfx_dictionary_fields = layout([chars("magic", 4, SIGNATURE), u32("dictionary_size", SIZE), u32("entry_count", COUNT)]);
+var sxmx_cgfx_dictionary = sxLayout(0x602E004E, "cgfx_dictionary", LE, sxmx_cgfx_dictionary_fields);
+var sxmx_cgfx_node_fields = layout([u32("reference_bit"), u16("left_index", ID), u16("right_index", ID),
+    i32("name_relative", OFFSET), i32("data_relative", OFFSET)]);
+var sxmx_cgfx_node = sxLayout(0x602E004F, "cgfx_node", LE, sxmx_cgfx_node_fields);
+function sxmx_cgfx(v) {
+    if (!sxmx_row(v, sxmx_cflyt_header_le, 0, v.n) || !sxmx_row(v, sxmx_section_le, 20, v.n) || !sxmx_table(v, sxmx_cgfx_slot, 28, 16, v.n)) {
+        return false;
+    }
+    var end = 20 + sxmx_u32(v.p, 24, false);
+    if (end > v.n) {
+        return false;
+    }
+    for (var i = 0; i < 16; i++) {
+        var word = 32 + i * 8;
+        if (sxmx_u32(v.p, word + -4, false)) {
+            var at = [0];
+            if (!sxmx_relative(v, word, false, at) || !sxmx_row(v, sxmx_cgfx_dictionary, at[0], end)) {
+                return false;
+            }
+            var n = sxmx_u32(v.p, at[0] + 8, false);
+            if (n > 1024 || !sxmx_table(v, sxmx_cgfx_node, at[0] + 12, n + 1, end)) {
+                return false;
+            }
+        }
+    }
+    return sxmx_u32(v.p, 16, false) !== 2 || sxmx_row(v, sxmx_section_le, end, v.n);
+}
+function sx_nintendo_cgfx_build(v) {
+    return sxmx_cgfx(v);
+}

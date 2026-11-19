@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/arcv/xx_arcv_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_arcv_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("header_size", SIZE),
+    bytes("unknown", 4), u8("name_size", SIZE)]);
+var sxao_arcv_header = sxLayout(0x6070001E, "arcv_header", LE, sxao_arcv_header_fields);
+var sxao_arcv_member_fields = layout([u32("uncompressed_size", SIZE), u32("compressed_size", SIZE), bytes("unknown1", 16),
+    u32("jamcrc", CHECKSUM), bytes("unknown2", 6)]);
+var sxao_arcv_member = sxLayout(0x6070001F, "arcv_member", LE, sxao_arcv_member_fields);
+var sxao_arcv_chunk_fields = layout([chars("signature", 4, SIGNATURE), u16("unknown1"), u16("header_size", SIZE),
+    u32("unknown2"), u32("compressed_size", SIZE)]);
+var sxao_arcv_chunk = sxLayout(0x60700020, "arcv_chunk", LE, sxao_arcv_chunk_fields);
+function sxao_arcv(c) {
+    var b = [];
+    if (!sxao_read(c, 0, b, 0, 13) || !sxao_add(c, sxao_arcv_header, 0)) {
+        return false;
+    }
+    var hs = sxao_uint(b, 6, 2, false);
+    var name = b[12];
+    return sxao_text(c, sxao_archiveobsolete_name, 13, name, false) && sxao_add(c, sxao_arcv_member, 13 + name) && sxao_add(c, sxao_arcv_chunk, hs);
+}
+function sx_arcv_build(c) {
+    return sxao_arcv(c);
+}

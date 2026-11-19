@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apm/xx_apm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_apm_driver_descriptor_header_fields = layout([u16("signature", SIGNATURE), u16("block_size", SIZE),
+    u32("block_count", COUNT), u16("device_type", ID), u16("device_id", ID), u32("reserved_data", RESERVED),
+    u16("driver_count", COUNT)]);
+var sx_dm_apm_driver_descriptor_header = sxLayout(0x60290051, "apm_driver_descriptor_header", BE, sx_dm_apm_driver_descriptor_header_fields);
+var sx_dm_apm_driver_descriptor_fields = layout([u32("driver_block", ID), u16("driver_size_sectors", COUNT),
+    u16("driver_type", ID)]);
+var sx_dm_apm_driver_descriptor = sxLayout(0x60290052, "apm_driver_descriptor", BE, sx_dm_apm_driver_descriptor_fields);
+var sx_dm_apm_partition_entry_fields = layout([u16("signature", SIGNATURE), u16("signature_padding", RESERVED),
+    u32("map_block_count", COUNT), u32("physical_partition_start_block", ID), u32("partition_block_count", COUNT),
+    chars("partition_name", 32, NONE), chars("partition_type", 32, NONE), u32("logical_data_start_block", ID),
+    u32("data_block_count", COUNT), u32("partition_status", FLAGS), u32("logical_boot_start_block", ID), u32("boot_size", SIZE),
+    u32("boot_load_address", VA), u32("boot_load_address2", VA), u32("boot_entry_address", VA), u32("boot_entry_address2", VA),
+    u32("boot_checksum", CHECKSUM), chars("processor", 16, NONE), field("padding", "byte[376]", 376, RESERVED)]);
+var sx_dm_apm_partition_entry = sxLayout(0x60290053, "apm_partition_entry", BE, sx_dm_apm_partition_entry_fields);
+function sx_dm_apm(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 18) || sx_dm_u16(h, 0, true) !== 0x4552 || !sx_dm_add(c, sx_dm_apm_driver_descriptor_header, 0, 18)) {
+        return false;
+    }
+    var step = sx_dm_u16(h, 2, true);
+    var n = sx_dm_u16(h, 16, true);
+    if (n <= 61 && !sx_dm_table(c, sx_dm_apm_driver_descriptor, 18, 8, n)) {
+        return false;
+    }
+    if (step !== 512 && step !== 1024 && step !== 2048 && step !== 4096) {
+        return true;
+    }
+    if (step > 512 && sx_dm_read(c, 512, h, 512) && sx_dm_u16(h, 0, true) === 0x504D && sx_dm_u32(h, 8, true) === 1) {
+        step = 512;
+    }
+    if (!sx_dm_read(c, step, h, 512) || sx_dm_u16(h, 0, true) !== 0x504D) {
+        return true;
+    }
+    n = sx_dm_u32(h, 4, true);
+    if (n > 256) {
+        n = 256;
+    }
+    for (var i = 1; i <= n; i++) {
+        var p = i * step;
+        if (!sx_dm_read(c, p, h, 512) || sx_dm_u16(h, 0, true) !== 0x504D) {
+            break;
+        }
+        if (!sx_dm_add(c, sx_dm_apm_partition_entry, p, 512)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_apm_build(c) {
+    return sx_dm_apm(c);
+}

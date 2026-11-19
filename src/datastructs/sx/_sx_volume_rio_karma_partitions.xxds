@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/rio_karma_partitions/xx_rio_karma_partitions_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_v_rio_karma_partition_entry_fields = layout([u32("reserved", RESERVED), u8("type", ID),
+    field("reserved2", "byte[3]", 3, RESERVED), u32("start_sector", OFFSET), u32("sector_count", COUNT)]);
+var sx_v_rio_karma_partition_entry = sxLayout(0x6005000C, "rio_karma_partition_entry", LE, sx_v_rio_karma_partition_entry_fields);
+var sx_v_rio_karma_partition_footer_fields = layout([u16("magic", SIGNATURE)]);
+var sx_v_rio_karma_partition_footer = sxLayout(0x6005000D, "rio_karma_partition_footer", LE, sx_v_rio_karma_partition_footer_fields);
+function sx_rio_karma_partitions_build(c) {
+    if (!sx_table(c, sx_v_rio_karma_partition_entry, 270, 16, 2) || !sx_add(c, sx_v_rio_karma_partition_footer, 510, 2)) {
+        return false;
+    }
+    return true;
+}

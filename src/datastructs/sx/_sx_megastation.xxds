@@ -1,0 +1,454 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_megastation.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmega_envelope_fields = layout([bytes("signature", 4, SIGNATURE), chars("file_version", 4, STRING),
+    chars("storage_mode", 4, STRING)]);
+var sxmega_envelope = sxLayout(0x60A20001, "megastation_envelope", LE, sxmega_envelope_fields);
+var sxmega_ms_info_fields = layout([u16("tempo"), u8("ticks_per_beat", COUNT), u8("new_note_action", ID), u8("song_volume")]);
+var sxmega_ms_info = sxLayout(0x60A20002, "megastation_ms_info", LE, sxmega_ms_info_fields);
+var sxmega_midi_info_fields = layout([u16("tempo"), u8("ticks_per_beat", COUNT), u8("new_note_action", ID)]);
+var sxmega_midi_info = sxLayout(0x60A20003, "megastation_midi_info", LE, sxmega_midi_info_fields);
+var sxmega_string_length_fields = layout([i32("byte_length", SIZE)]);
+var sxmega_string_length = sxLayout(0x60A20004, "megastation_string_length", LE, sxmega_string_length_fields);
+var sxmega_title_fields = layout([field("title", "char", 0, STRING)]);
+var sxmega_title = sxLayout(0x60A20005, "megastation_title", LE, sxmega_title_fields);
+var sxmega_author_fields = layout([field("author", "char", 0, STRING)]);
+var sxmega_author = sxLayout(0x60A20006, "megastation_author", LE, sxmega_author_fields);
+var sxmega_info_fields = layout([field("info", "char", 0, STRING)]);
+var sxmega_info = sxLayout(0x60A20007, "megastation_info", LE, sxmega_info_fields);
+var sxmega_sample_name_fields = layout([field("sample_name", "char", 0, STRING)]);
+var sxmega_sample_name = sxLayout(0x60A20008, "megastation_sample_name", LE, sxmega_sample_name_fields);
+var sxmega_instrument_name_fields = layout([field("instrument_name", "char", 0, STRING)]);
+var sxmega_instrument_name = sxLayout(0x60A20009, "megastation_instrument_name", LE, sxmega_instrument_name_fields);
+var sxmega_pattern_name_fields = layout([field("pattern_name", "char", 0, STRING)]);
+var sxmega_pattern_name = sxLayout(0x60A2000A, "megastation_pattern_name", LE, sxmega_pattern_name_fields);
+var sxmega_soundfont_name_fields = layout([field("soundfont_name", "char", 0, STRING)]);
+var sxmega_soundfont_name = sxLayout(0x60A2000B, "megastation_soundfont_name", LE, sxmega_soundfont_name_fields);
+var sxmega_sample_count_fields = layout([i32("sample_count", COUNT)]);
+var sxmega_sample_count = sxLayout(0x60A2000C, "megastation_sample_count", LE, sxmega_sample_count_fields);
+var sxmega_instrument_count_fields = layout([i32("instrument_count", COUNT)]);
+var sxmega_instrument_count = sxLayout(0x60A2000D, "megastation_instrument_count", LE, sxmega_instrument_count_fields);
+var sxmega_pattern_count_fields = layout([i32("pattern_count", COUNT)]);
+var sxmega_pattern_count = sxLayout(0x60A2000E, "megastation_pattern_count", LE, sxmega_pattern_count_fields);
+var sxmega_sequence_track_count_fields = layout([i32("sequence_track_count", COUNT)]);
+var sxmega_sequence_track_count = sxLayout(0x60A2000F, "megastation_sequence_track_count", LE, sxmega_sequence_track_count_fields);
+var sxmega_track_entry_count_fields = layout([i32("track_entry_count", COUNT)]);
+var sxmega_track_entry_count = sxLayout(0x60A20010, "megastation_track_entry_count", LE, sxmega_track_entry_count_fields);
+var sxmega_soundfont_count_fields = layout([i32("soundfont_count", COUNT)]);
+var sxmega_soundfont_count = sxLayout(0x60A20011, "megastation_soundfont_count", LE, sxmega_soundfont_count_fields);
+var sxmega_sample_format_fields = layout([u8("bits_per_sample"), u8("channel_count", COUNT), i32("sample_rate"),
+    i32("frame_count", COUNT)]);
+var sxmega_sample_format = sxLayout(0x60A20012, "megastation_sample_format", LE, sxmega_sample_format_fields);
+var sxmega_sample_loop_fields = layout([u8("loop_type", ID), i32("loop_start_frame"), i32("loop_end_frame"),
+    u8("default_volume"), i8("default_pan")]);
+var sxmega_sample_loop = sxLayout(0x60A20013, "megastation_sample_loop", LE, sxmega_sample_loop_fields);
+var sxmega_midi_instrument_fields = layout([u8("channel"), u8("bank"), u8("patch"), u8("default_velocity")]);
+var sxmega_midi_instrument = sxLayout(0x60A20014, "megastation_midi_instrument", LE, sxmega_midi_instrument_fields);
+var sxmega_pattern_dimensions_fields = layout([i32("channel_count", COUNT), i32("row_count", COUNT)]);
+var sxmega_pattern_dimensions = sxLayout(0x60A20015, "megastation_pattern_dimensions", LE, sxmega_pattern_dimensions_fields);
+var sxmega_ms_cell_fields = layout([u8("note", ID), i32("instrument", ID), u8("volume"), i8("pan")]);
+var sxmega_ms_cell = sxLayout(0x60A20016, "megastation_ms_cell", LE, sxmega_ms_cell_fields);
+var sxmega_midi_cell_fields = layout([u8("note", ID), i32("instrument", ID), u8("velocity")]);
+var sxmega_midi_cell = sxLayout(0x60A20017, "megastation_midi_cell", LE, sxmega_midi_cell_fields);
+var sxmega_sequence_entry_fields = layout([i32("pattern_index", ID)]);
+var sxmega_sequence_entry = sxLayout(0x60A20018, "megastation_sequence_entry", LE, sxmega_sequence_entry_fields);
+function sx_megastation_comment(r, id) {
+    if (r === null || r.name === null) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60A20001:
+        if (r.name === "signature") {
+            text = "Original producer signature: SONG or SNGM.";
+        }
+        if (r.name === "file_version") {
+            text = "Exact supported original serialization version: MS 0.12 or MSM 0.10; application release versions differ.";
+        }
+        if (r.name === "storage_mode") {
+            text = "NORM stores following records directly; COMP stores one zlib stream. Compressed body is raw and no decoded coordinates are exposed.";
+        }
+        break;
+    case 0x60A20002:
+        if (r.name === "tempo") {
+            text = "Beats per minute, stored Word.";
+        }
+        if (r.name === "ticks_per_beat") {
+            text = "Ticks per beat, stored Byte.";
+        }
+        if (r.name === "new_note_action") {
+            text = "Original TNNA enum stored as one byte (compiler Z=1): 0 none; 1 channel cut; 2 channel off.";
+        }
+        if (r.name === "song_volume") {
+            text = "Stored song volume. Original setter accepts 0..100; byte preserved without clamping.";
+        }
+        break;
+    case 0x60A20003:
+        if (r.name === "tempo") {
+            text = "Beats per minute, stored Word.";
+        }
+        if (r.name === "ticks_per_beat") {
+            text = "Ticks per beat, stored Byte.";
+        }
+        if (r.name === "new_note_action") {
+            text = "Original TNNA enum stored as one byte (compiler Z=1): 0 none; 1 channel off.";
+        }
+        break;
+    case 0x60A20004:
+        if (r.name === "byte_length") {
+            text = "Signed Delphi Integer byte length of the following ANSI string; no terminator is serialized. Negative or unbounded strings end the bounded metadata prefix.";
+        }
+        break;
+    case 0x60A20005:
+        if (r.name === "title") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A20006:
+        if (r.name === "author") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A20007:
+        if (r.name === "info") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A20008:
+        if (r.name === "sample_name") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A20009:
+        if (r.name === "instrument_name") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A2000A:
+        if (r.name === "pattern_name") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A2000B:
+        if (r.name === "soundfont_name") {
+            text = "Original ANSI string bytes; no encoding conversion. Display ends at embedded NUL but raw value preserves the full physical span. Strings exceeding 4096 bytes stay raw.";
+        }
+        break;
+    case 0x60A2000C:
+        if (r.name === "sample_count") {
+            text = "Signed Delphi Integer count of sample records. Negative counts retain this word and leave the following tail raw.";
+        }
+        break;
+    case 0x60A2000D:
+        if (r.name === "instrument_count") {
+            text = "Signed Delphi Integer count of MIDI instrument records. Negative counts retain this word and leave the following tail raw.";
+        }
+        break;
+    case 0x60A2000E:
+        if (r.name === "pattern_count") {
+            text = "Signed Delphi Integer count of patterns. Negative counts retain this word and leave the following tail raw.";
+        }
+        break;
+    case 0x60A2000F:
+        if (r.name === "sequence_track_count") {
+            text = "Signed Delphi Integer count of sequence tracks. Negative counts retain this word and leave the following tail raw.";
+        }
+        break;
+    case 0x60A20010:
+        if (r.name === "track_entry_count") {
+            text = "Signed Delphi Integer count of signed pattern indices in this track. Negative counts retain this word and leave the following tail raw.";
+        }
+        break;
+    case 0x60A20011:
+        if (r.name === "soundfont_count") {
+            text = "Signed Delphi Integer count of soundfont filename strings. Negative counts retain this word and leave the following tail raw.";
+        }
+        break;
+    case 0x60A20012:
+        if (r.name === "bits_per_sample") {
+            text = "Stored sample precision: original reader accepts 8 or 16 bits.";
+        }
+        if (r.name === "channel_count") {
+            text = "Stored PCM channels: original reader accepts 1 or 2.";
+        }
+        if (r.name === "sample_rate") {
+            text = "Signed Delphi Integer sample rate in Hz.";
+        }
+        if (r.name === "frame_count") {
+            text = "Sample frames; physical PCM byte count is frame_count * channels * (bits / 8). PCM payload remains raw.";
+        }
+        break;
+    case 0x60A20013:
+        if (r.name === "loop_type") {
+            text = "0 none; 1 normal; 2 bidirectional. Stored enum byte.";
+        }
+        if (r.name === "loop_start_frame") {
+            text = "One-based sample-frame position used by the original player; not a byte offset.";
+        }
+        if (r.name === "loop_end_frame") {
+            text = "Sample-frame loop endpoint used by the original player; not a byte offset.";
+        }
+        if (r.name === "default_volume") {
+            text = "Stored default sample volume.";
+        }
+        if (r.name === "default_pan") {
+            text = "Signed default pan; original setter clamps -100..100, stored byte is preserved.";
+        }
+        break;
+    case 0x60A20014:
+        if (r.name === "channel") {
+            text = "Original MIDI channel selection, 1..16.";
+        }
+        if (r.name === "bank") {
+            text = "Stored MIDI bank number.";
+        }
+        if (r.name === "patch") {
+            text = "Stored MIDI patch number.";
+        }
+        if (r.name === "default_velocity") {
+            text = "Default note velocity.";
+        }
+        break;
+    case 0x60A20015:
+        if (r.name === "channel_count") {
+            text = "Signed number of pattern channels.";
+        }
+        if (r.name === "row_count") {
+            text = "Signed rows in each channel. Cells are serialized channel-major, then row-major within that channel.";
+        }
+        break;
+    case 0x60A20016:
+        if (r.name === "note") {
+            text = "Stored note code; 255 means no note.";
+        }
+        if (r.name === "instrument") {
+            text = "Signed one-based instrument/sample number; invalid selections remain their original stored value.";
+        }
+        if (r.name === "volume") {
+            text = "Stored volume; 255 uses the sample default.";
+        }
+        if (r.name === "pan") {
+            text = "Signed pan; 127 uses the sample default.";
+        }
+        break;
+    case 0x60A20017:
+        if (r.name === "note") {
+            text = "Stored note code; 255 means no note.";
+        }
+        if (r.name === "instrument") {
+            text = "Signed one-based instrument/sample number; invalid selections remain their original stored value.";
+        }
+        if (r.name === "velocity") {
+            text = "Stored note velocity; 255 uses default.";
+        }
+        break;
+    case 0x60A20018:
+        if (r.name === "pattern_index") {
+            text = "Signed one-based pattern selection; original player skips values outside 1..pattern_count.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxmega_span(v, n) {
+    return v.at <= v.end && n <= sxU64(v.end - v.at);
+}
+function sxmega_get(v, n, x) {
+    var b = [];
+    if (++v.work > 100000 || n > 4 || !n || !sxmega_span(v, n) || !sx_read(v.c, (v.at >= SX_I64_MAX ? v.at - SX_U64_MAX : v.at), b, n)) {
+        return false;
+    }
+    x[0] = 0;
+    for (var i = 0; i < n; i++) {
+        x[0] = sxOr64(x[0], sxShl64(b[i], (8 * i) >>> 0));
+    }
+    return true;
+}
+function sxmega_row(v, l, n) {
+    if (v.entries >= 24000 || !n || !sxmega_span(v, n)) {
+        return false;
+    }
+    if (!sx_add(v.c, l, (v.at >= SX_I64_MAX ? v.at - SX_U64_MAX : v.at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    v.entries++;
+    v.at += n;
+    return true;
+}
+function sxmega_word(v, l, x) {
+    return sxmega_get(v, 4, x) && sxmega_row(v, l, 4) && x[0] <= 2147483647;
+}
+function sxmega_string(v, l) {
+    var n = [0];
+    if (!sxmega_word(v, sxmega_string_length, n) || !sxmega_span(v, n[0])) {
+        return false;
+    }
+    if (!n[0]) {
+        return true;
+    }
+    if (n[0] <= 4096) {
+        return sxmega_row(v, l, n[0]);
+    }
+    v.at += n[0];
+    return true;
+}
+function sxmega_table(v, l, width, count) {
+    if (!width || count > Math.floor(sxU64(v.end - v.at) / width)) {
+        return false;
+    }
+    if (!count) {
+        return true;
+    }
+    var shown = count;
+    if (shown > sxU64(24000 - v.entries)) {
+        shown = sxU64(24000 - v.entries);
+    }
+    if (!shown) {
+        return false;
+    }
+    if (!sx_table(v.c, l, (v.at >= SX_I64_MAX ? v.at - SX_U64_MAX : v.at), width, shown)) {
+        return false;
+    }
+    v.at += shown * width;
+    v.entries += shown;
+    return shown === count;
+}
+function sxmega_body(v, midi) {
+    var n = [0];
+    var x = [0];
+    var y;
+    var z;
+    if (!sxmega_row(v, midi ? sxmega_midi_info : sxmega_ms_info, midi ? 4 : 5) || !sxmega_string(v, sxmega_title) || !sxmega_string(v, sxmega_author) || !sxmega_string(v, sxmega_info)) {
+        return;
+    }
+    if (!sxmega_word(v, midi ? sxmega_instrument_count : sxmega_sample_count, n)) {
+        return;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxmega_string(v, midi ? sxmega_instrument_name : sxmega_sample_name)) {
+            return;
+        }
+        if (midi) {
+            if (!sxmega_row(v, sxmega_midi_instrument, 4)) {
+                return;
+            }
+        } else {
+            var b = [];
+            if (!sxmega_span(v, 10) || !sx_read(v.c, (v.at >= SX_I64_MAX ? v.at - SX_U64_MAX : v.at), b, 10) || !sxmega_row(v, sxmega_sample_format, 10)) {
+                return;
+            }
+            x[0] = sxGetU32(b, 10, 6, false);
+            y = sxGetU32(b, 10, 2, false);
+            if (b[0] !== 8 && b[0] !== 16 || b[1] !== 1 && b[1] !== 2 || x[0] > 2147483647 || !y || y > 2147483647) {
+                return;
+            }
+            z = x[0] * Math.floor(b[0] / 8) * b[1];
+            if (!sxmega_span(v, z)) {
+                return;
+            }
+            v.at += z;
+            if (!sxmega_row(v, sxmega_sample_loop, 11)) {
+                return;
+            }
+        }
+    }
+    if (!sxmega_word(v, sxmega_pattern_count, n)) {
+        return;
+    }
+    for (i = 0; i < n[0]; i++) {
+        b = [];
+        if (!sxmega_string(v, sxmega_pattern_name) || !sxmega_span(v, 8) || !sx_read(v.c, (v.at >= SX_I64_MAX ? v.at - SX_U64_MAX : v.at), b, 8) || !sxmega_row(v, sxmega_pattern_dimensions, 8)) {
+            return;
+        }
+        x[0] = sxGetU32(b, 8, 0, false);
+        y = sxGetU32(b, 8, 4, false);
+        if (!x[0] || x[0] > 2147483647 || y > 2147483647) {
+            return;
+        }
+        if (!sxmega_table(v, midi ? sxmega_midi_cell : sxmega_ms_cell, midi ? 6 : 7, x[0] * y)) {
+            return;
+        }
+    }
+    if (!sxmega_word(v, sxmega_sequence_track_count, n)) {
+        return;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (!sxmega_word(v, sxmega_track_entry_count, x) || !sxmega_table(v, sxmega_sequence_entry, 4, x[0])) {
+            return;
+        }
+    }
+    if (midi) {
+        if (!sxmega_word(v, sxmega_soundfont_count, n)) {
+            return;
+        }
+        for (i = 0; i < n[0]; i++) {
+            if (!sxmega_string(v, sxmega_soundfont_name)) {
+                return;
+            }
+        }
+    }
+}
+function sxmega_compare(aa, bb) {
+    var a = aa;
+    var b = bb;
+    return a.offset < b.offset ? -1 : a.offset > b.offset ? 1 : 0;
+}
+function sxmega_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxmega_compare, true);
+    return !c.failed;
+}
+function sx_megastation_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_MEGASTATION_MS":
+    case "DIE_MUSIC_MEGASTATION_MIDI":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_megastation_build(c) {
+    if (c === null || c.f === null || c.size <= 0 || c.f.base_address < 0 || c.f.base_address > SX_I64_MAX - c.size || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = [];
+    var midi = c.f.file_type === "DIE_MUSIC_MEGASTATION_MIDI";
+    var v = { c: c, at: 0, end: (c.size < 0 ? c.size + SX_U64_MAX : c.size), entries: 0, work: 0 };
+    if (c.size >= 12) {
+        if (!sx_read(c, 0, b, 12)) {
+            return false;
+        }
+        if (!sxMemcmp(b, midi ? "SNGM0.10" : "SONG0.12", 8) && (!sxMemcmpAt(b, 8, "NORM", 0, 4) || !sxMemcmpAt(b, 8, "COMP", 0, 4))) {
+            if (!sxmega_row(v, sxmega_envelope, 12)) {
+                return false;
+            }
+            if (!sxMemcmpAt(b, 8, "NORM", 0, 4)) {
+                sxmega_body(v, midi);
+            }
+        }
+    }
+    if (c.failed) {
+        return false;
+    }
+    return c.count ? sxmega_finish(c) : sx_raw(c, 0, c.size);
+}

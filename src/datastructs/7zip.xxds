@@ -1,0 +1,1070 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// 7-Zip: the 32-byte signature header, the pack streams, and the stored next
+// header with every property block it physically contains (7zFormat.txt of
+// the LZMA SDK). The pack streams are located from the reader's parsed header
+// (pack position and pack sizes, possibly inside an encoded header):
+//
+//   Format.table("archive") - one row, offsets from the format start
+//     nextHeader, nextHeaderSize   the stored next header (size 0 when absent)
+//
+//   Format.table("packs") - one row per pack stream, in pack order
+//     offset, size
+//
+// The next header is a tree of properties without a directory, so one walker
+// (szWalk) reads it from its first byte. scan() lists the blocks the walker
+// found, nested blocks after the block that contains them:
+//
+//   NEXT_HEADER                       kHeader or kEncodedHeader, kEnd
+//     ARCHIVE_PROPERTIES
+//     ADDITIONAL_STREAMS_INFO, MAIN_STREAMS_INFO   (kHeader only)
+//       PACK_INFO
+//       UNPACK_INFO
+//         FOLDER                      one per folder
+//           CODER                     one per coder of the folder
+//       SUBSTREAMS_INFO
+//     FILES_INFO
+//       EMPTY_STREAM, EMPTY_FILE, ANTI, NAMES, CTIME, ATIME, MTIME,
+//       WIN_ATTRIBUTES, COMMENT, START_POS, DUMMY, FILE_PROPERTY (any other)
+//
+// An encoded header (kEncodedHeader) holds only the StreamsInfo of the packed
+// real header: its PACK_INFO, UNPACK_INFO and SUBSTREAMS_INFO follow
+// NEXT_HEADER directly, and after them PACKED_HEADER, the pack stream they
+// describe. The real header stays packed: scripts decode no codec.
+//
+// A header that stops making sense is reported up to that point: the blocks
+// end there and NEXT_HEADER shows the rest as "undecoded". Limits:
+//   SZ_MAX_HEADER          a larger next header is not decoded at all
+//   SZ_MAX_FOLDERS         more folders than this stop the decoding
+//   SZ_MAX_FOLDER_STRUCTS  folders reported as FOLDER/CODER structures
+//   SZ_MAX_BLOCKS          structures reported for one next header
+//   SZ_MAX_ITEMS           listed items of one list (sizes, CRCs, names,
+//                          times, ...); the rest is one "<list>_more" field
+//   SZ_MAX_CODERS, SZ_MAX_STREAMS   coders and streams of one folder (as 7-Zip)
+
+function fileTypes() { return ["7ZIP"]; }
+
+var SZ_MAX_HEADER = 4 * 1024 * 1024;
+var SZ_MAX_FOLDERS = 262144;
+var SZ_MAX_FOLDER_STRUCTS = 4096;
+var SZ_MAX_BLOCKS = 65536;
+var SZ_MAX_ITEMS = 4096;
+var SZ_MAX_CODERS = 64;
+var SZ_MAX_STREAMS = 64;
+var SZ_MAX_NAME = 1024;        // characters of one displayed name
+var SZ_MAX_HEX = 64;           // bytes of one hexadecimal display
+var SZ_SIGNATURE_SIZE = 32;
+
+var SZ_HEX_DIGITS = "0123456789ABCDEF";
+
+var SZ_PROPERTY_NAMES = {
+    0: "kEnd", 1: "kHeader", 2: "kArchiveProperties", 3: "kAdditionalStreamsInfo", 4: "kMainStreamsInfo",
+    5: "kFilesInfo", 6: "kPackInfo", 7: "kUnPackInfo", 8: "kSubStreamsInfo", 9: "kSize", 10: "kCRC",
+    11: "kFolder", 12: "kCodersUnPackSize", 13: "kNumUnPackStream", 14: "kEmptyStream", 15: "kEmptyFile",
+    16: "kAnti", 17: "kNames", 18: "kCTime", 19: "kATime", 20: "kMTime", 21: "kWinAttributes", 22: "kComment",
+    23: "kEncodedHeader", 24: "kStartPos", 25: "kDummy" };
+
+// Structure of a FilesInfo property, by property id.
+var SZ_FILE_BLOCKS = {
+    14: "EMPTY_STREAM", 15: "EMPTY_FILE", 16: "ANTI", 17: "NAMES", 18: "CTIME", 19: "ATIME", 20: "MTIME",
+    21: "WIN_ATTRIBUTES", 22: "COMMENT", 24: "START_POS", 25: "DUMMY" };
+
+// Method names by codec id (hexadecimal, as 7-Zip's Methods.txt writes them).
+var SZ_METHODS = {
+    "00": "Copy", "03": "Delta", "04": "BCJ (x86)", "05": "PPC", "06": "IA64", "07": "ARM", "08": "ARMT",
+    "09": "SPARC", "0A": "ARM64", "0B": "RISCV", "21": "LZMA2",
+    "030101": "LZMA", "03030103": "BCJ (x86)", "0303011B": "BCJ2", "03030205": "PPC", "03030401": "IA64",
+    "03030501": "ARM", "03030701": "ARMT", "03030805": "SPARC", "030401": "PPMd",
+    "040108": "Deflate", "040109": "Deflate64", "040202": "BZip2",
+    "04F71101": "ZSTD", "04F71102": "BROTLI", "04F71104": "LZ4", "04F71105": "LZ5", "04F71106": "LIZARD",
+    "06F10701": "AES (7zAES: AES-256 + SHA-256)" };
+
+var SZ_ATTRIBUTES = [
+    [0x0001, "READONLY"], [0x0002, "HIDDEN"], [0x0004, "SYSTEM"], [0x0010, "DIRECTORY"], [0x0020, "ARCHIVE"],
+    [0x0040, "DEVICE"], [0x0080, "NORMAL"], [0x0100, "TEMPORARY"], [0x0200, "SPARSE_FILE"],
+    [0x0400, "REPARSE_POINT"], [0x0800, "COMPRESSED"], [0x1000, "OFFLINE"], [0x2000, "NOT_CONTENT_INDEXED"],
+    [0x4000, "ENCRYPTED"], [0x8000, "UNIX_EXTENSION"] ];
+
+function szExternalComment(value) { return value ? "The values are stored in an additional stream, not here" : "The values follow"; }
+
+// ------------------------------------------------------------------ catalog
+
+// What a structure is (catalog `description`), by structure name.
+var SZ_DESCRIPTIONS = {
+    SIGNATURE_HEADER: "The first 32 bytes of every 7z archive: the signature, the format version, and the start header that says where the next header is.",
+    PACKED_DATA: "One pack stream: the compressed (and possibly encrypted) bytes of a folder, or of the packed header.",
+    NEXT_HEADER: "The header at the end of the archive, located by the start header. It is either the header itself (kHeader) or the description of a pack stream that holds the packed header (kEncodedHeader).",
+    ARCHIVE_PROPERTIES: "Archive-wide properties: a list of typed, sized values. Rarely present.",
+    ADDITIONAL_STREAMS_INFO: "Streams that hold parts of the header itself (data referred to by an External flag) instead of file data.",
+    MAIN_STREAMS_INFO: "The streams with the file data: where the pack streams are, how folders decode them, and how the decoded folders split into files.",
+    PACK_INFO: "The pack streams: where the first one starts, how many there are, their sizes and optional CRCs.",
+    UNPACK_INFO: "The folders (coder chains), the sizes of their decoded streams and optional CRCs of the decoded folders.",
+    FOLDER: "One folder: a chain of coders that turns one or more pack streams into one decoded stream, which holds one or more files.",
+    CODER: "One coder of a folder: the codec id, its stream counts when it is not a plain one-in one-out coder, and its properties.",
+    SUBSTREAMS_INFO: "How each decoded folder splits into files: the number of files per folder, their sizes and CRCs.",
+    FILES_INFO: "The file list: the number of files followed by one property block per kind of metadata.",
+    EMPTY_STREAM: "A bit per file: set when the file has no data stream (a directory, an empty file or an anti-item).",
+    EMPTY_FILE: "A bit per file without a stream: set when it is an empty file and not a directory.",
+    ANTI: "A bit per file without a stream: set when it is an anti-item, which deletes a file on extraction of an update archive.",
+    NAMES: "The file names: zero-terminated UTF-16LE strings, one per file.",
+    CTIME: "Creation times of the files as Windows FILETIME values (100 ns units since 1601-01-01 UTC).",
+    ATIME: "Last access times of the files as Windows FILETIME values (100 ns units since 1601-01-01 UTC).",
+    MTIME: "Last modification times of the files as Windows FILETIME values (100 ns units since 1601-01-01 UTC).",
+    WIN_ATTRIBUTES: "Windows file attributes of the files; the high 16 bits hold a Unix mode when UNIX_EXTENSION is set.",
+    COMMENT: "An archive comment property. Not written by 7-Zip.",
+    START_POS: "Start positions of the files, used by archives that store parts of files.",
+    DUMMY: "Zero bytes that align the property after it.",
+    FILE_PROPERTY: "A FilesInfo property of an unknown type; its size field lets a reader skip it.",
+    PACKED_HEADER: "The pack stream that holds the packed header of an archive with an encoded header (kEncodedHeader)."
+};
+
+// What a field means (field `description`), by description key: the field
+// name without its indices unless a caller names another key.
+var SZ_FIELD_DESCRIPTIONS = {
+    signature: "kSignature: the six bytes '7', 'z', 0xBC, 0xAF, 0x27, 0x1C",
+    major_version: "ArchiveVersion.Major: format version, 0 so far",
+    minor_version: "ArchiveVersion.Minor: format version written by the archiver (2 to 4)",
+    start_header_crc: "StartHeaderCRC: CRC-32 of the 20 bytes of the start header that follow",
+    next_header_offset: "NextHeaderOffset: where the next header starts, counted from the end of this 32-byte header",
+    next_header_size: "NextHeaderSize: size of the next header in bytes",
+    next_header_crc: "NextHeaderCRC: CRC-32 of the next header",
+    property_id: "Property id that starts this block",
+    end: "kEnd: closes the block",
+    undecoded: "Bytes this description could not decode",
+    more: "The remaining items of the list, not listed one by one",
+    pack_pos: "PackPos: start of the first pack stream, counted from the end of the signature header",
+    num_pack_streams: "NumPackStreams: number of pack streams",
+    sizes_id: "kSize: the sizes follow",
+    crcs_id: "kCRC: the digests follow",
+    pack_size: "Size of the pack stream in bytes",
+    all_defined: "AllAreDefined: nonzero when every item has a value, 0 when a bit vector says which do",
+    defined: "Bit vector, most significant bit first: which items have a value",
+    crc: "CRC-32 of the stream",
+    folders_id: "kFolder: the folders follow",
+    num_folders: "NumFolders: number of folders",
+    external_folders: "External: 0 when the folders follow, otherwise they are in an additional stream",
+    data_stream_index: "DataStreamIndex: the additional stream that holds the values",
+    unpack_sizes_id: "kCodersUnPackSize: the unpack sizes of every coder output follow",
+    unpack_size: "Size in bytes of a decoded output stream of the folder",
+    num_coders: "NumCoders: number of coders in the folder",
+    bind_in: "InIndex: the coder input stream that this bind pair feeds",
+    bind_out: "OutIndex: the coder output stream that feeds it",
+    packed_stream: "Index of a coder input stream that reads a pack stream",
+    coder_flags: "Bits 0-3: size of the codec id; 0x10: complex coder (stream counts follow); 0x20: properties follow",
+    codec_id: "Codec (method) id",
+    num_in_streams: "NumInStreams: input streams of a complex coder",
+    num_out_streams: "NumOutStreams: output streams of a complex coder",
+    properties_size: "PropertiesSize: size of the coder properties in bytes",
+    properties: "Coder properties, as the codec defines them",
+    num_unpack_streams_id: "kNumUnPackStream: the number of files of every folder follows",
+    num_unpack_streams: "NumUnPackStreams: number of files in the folder (1 when the block is absent)",
+    substream_size: "Size in bytes of a file of the folder; the last file's size is what remains of the folder",
+    substream_crc: "CRC-32 of a file; files whose folder holds one file and has a CRC are not repeated here",
+    num_files: "NumFiles: number of files, directories and anti-items",
+    property_size: "Size: bytes of the property data that follow",
+    is_empty_stream: "Bit vector, most significant bit first: files without a data stream",
+    is_empty_file: "Bit vector over the files without a stream: empty files (the others are directories)",
+    is_anti: "Bit vector over the files without a stream: anti-items",
+    external: "External: 0 when the values follow, otherwise they are in an additional stream",
+    data_index: "DataIndex: the additional stream that holds the values",
+    name: "File name (UTF-16LE, zero-terminated); path parts are separated by '/'",
+    filetime: "FILETIME: 100 ns units since 1601-01-01 UTC",
+    attributes: "Windows file attributes; the high 16 bits are the Unix mode when UNIX_EXTENSION is set",
+    start_pos: "Start position of the file",
+    padding: "Zero bytes",
+    data: "Property data",
+    archive_property_type: "PropertyType of an archive property",
+    archive_property_size: "PropertySize of an archive property",
+    archive_property_data: "PropertyData of an archive property"
+};
+
+function szSignatureFields() {
+    var fields = [
+        bytes("signature", 6, SIGNATURE), u8("major_version"), u8("minor_version"),
+        u32("start_header_crc", CHECKSUM, szStartHeaderCrcComment),
+        u64("next_header_offset", POINTER, function (value) { return "File offset " + Util.hex(value + SZ_SIGNATURE_SIZE); }),
+        u64("next_header_size", SIZE), u32("next_header_crc", CHECKSUM, szNextHeaderCrcComment) ], i;
+    fields[0].display = szDisplayBytes;
+    fields[0].comment = szSignatureComment;
+    for (i = 0; i < fields.length; i++) fields[i].description = SZ_FIELD_DESCRIPTIONS[fields[i].name];
+    return fields;
+}
+
+function structs() {
+    var names = [ "ARCHIVE_PROPERTIES", "ADDITIONAL_STREAMS_INFO", "MAIN_STREAMS_INFO", "PACK_INFO", "UNPACK_INFO",
+                  "FOLDER", "CODER", "SUBSTREAMS_INFO", "FILES_INFO", "EMPTY_STREAM", "EMPTY_FILE", "ANTI", "NAMES",
+                  "CTIME", "ATIME", "MTIME", "WIN_ATTRIBUTES", "COMMENT", "START_POS", "DUMMY", "FILE_PROPERTY",
+                  "PACKED_HEADER" ],
+        list = [
+            { id: 1, name: "SIGNATURE_HEADER", fields: szSignatureFields() },
+            { id: 2, name: "PACKED_DATA" },
+            { id: 3, name: "NEXT_HEADER", fields: szBlockFields } ], i;
+    // Ids 4..25 in the order of `names`, as in xx_7zip.h: FOLDER is 9, CODER 10.
+    for (i = 0; i < names.length; i++) {
+        list.push({ id: 4 + i, name: names[i] });
+        if (names[i] !== "PACKED_HEADER") list[3 + i].fields = names[i] === "FOLDER" ? szFolderFields : names[i] === "CODER" ? szCoderFields : szBlockFields;
+    }
+    for (i = 0; i < list.length; i++) list[i].description = SZ_DESCRIPTIONS[list[i].name];
+    return list;
+}
+
+// ------------------------------------------------------------ text helpers
+
+// A byte count as xx_str_bytes_count_to_string (base 1024) writes it.
+function szBytesText(value) {
+    var divisor = 1024, unit = "KiB";
+    if (value < 1024) return value + " Bytes";
+    if (value >= 1048576) { divisor = 1048576; unit = "MiB"; }
+    if (value >= 1073741824) { divisor = 1073741824; unit = "GiB"; }
+    if (value >= 1099511627776) { divisor = 1099511627776; unit = "TiB"; }
+    return (value / divisor).toFixed(2) + " " + unit;
+}
+
+function szHex2(b) { return SZ_HEX_DIGITS.charAt(b >> 4) + SZ_HEX_DIGITS.charAt(b & 15); }
+
+// Display hook of a byte array: "37 7A BC ...".
+function szDisplayBytes(value) {
+    var text = "" + value, out = "", i, n = text.length < SZ_MAX_HEX ? text.length : SZ_MAX_HEX;
+    for (i = 0; i < n; i++) out += (i ? " " : "") + szHex2(text.charCodeAt(i) & 0xFF);
+    if (text.length > SZ_MAX_HEX) out += " ...";
+    return out;
+}
+
+// The signature with its letters and digits as text: "7z BC AF 27 1C".
+function szSignatureComment(value) {
+    var text = "" + value, out = "", i, b, wasText = false, isText;
+    for (i = 0; i < text.length; i++) {
+        b = text.charCodeAt(i) & 0xFF;
+        isText = (b >= 0x30 && b <= 0x39) || (b >= 0x41 && b <= 0x5A) || (b >= 0x61 && b <= 0x7A);
+        if (i && !(isText && wasText)) out += " ";
+        out += isText ? String.fromCharCode(b) : szHex2(b);
+        wasText = isText;
+    }
+    return out;
+}
+
+function szStartHeaderCrcComment(value, ds) {
+    var crc;
+    if (!File.valid(ds.offset + 12, 20)) return undefined;
+    crc = File.crc32(ds.offset + 12, 20);
+    return crc === value ? "Matches the start header (20 bytes)" : "Mismatch: the start header (20 bytes) has CRC-32 " + Util.hex(crc, 8);
+}
+
+function szNextHeaderCrcComment(value, ds) {
+    var offset, size, crc;
+    if (!File.valid(ds.offset, SZ_SIGNATURE_SIZE)) return undefined;
+    offset = File.u64(ds.offset + 12);
+    size = File.u64(ds.offset + 20);
+    if (size === 0) return value === 0 ? "No next header" : "Mismatch: there is no next header";
+    if (offset > 9007199254740992 || size > 9007199254740992 || !File.valid(ds.offset + SZ_SIGNATURE_SIZE + offset, size)) return "The next header is outside the file";
+    crc = File.crc32(ds.offset + SZ_SIGNATURE_SIZE + offset, size);
+    return crc === value ? "Matches the next header (" + szBytesText(size) + ")" : "Mismatch: the next header (" + szBytesText(size) + ") has CRC-32 " + Util.hex(crc, 8);
+}
+
+function szAttributesComment(value) {
+    var out = "", i, low = value % 65536, high = Math.floor(value / 65536), rest = low;
+    for (i = 0; i < SZ_ATTRIBUTES.length; i++) {
+        if (low & SZ_ATTRIBUTES[i][0]) {
+            out += (out ? "|" : "") + SZ_ATTRIBUTES[i][1];
+            rest &= ~SZ_ATTRIBUTES[i][0];
+        }
+    }
+    if (rest) out += (out ? "|" : "") + Util.hex(rest, 4);
+    if (high) out += (out ? "|" : "") + ((low & 0x8000) ? "UnixMode=0" + high.toString(8) : Util.hex(high * 65536, 8));
+    return out ? out : "0";
+}
+
+// --------------------------------------------------------------- the cursor
+//
+// One cursor walks the header. `pos` and `limit` are offsets from the format
+// start; `end` is the end of the walked range and never moves. Every read
+// checks `limit`; a failed read sets `failed`, after which nothing is read.
+// Blocks are opened and closed around what they contain. Without `want` the
+// walk records the blocks (scan); with `want` = { name, offset } it collects
+// the fields of that one block and stops when the block closes.
+
+function szCursor(start, size, want) {
+    return { pos: start, limit: start + size, end: start + size, failed: false, done: false, want: want,
+             wantSize: -1, quiet: 0, mute: false, moreStart: 0, blocks: [], stack: [], top: null, fields: null,
+             encoded: null, threw: false, buf: "", bufStart: 0 };
+}
+
+function szFail(c) { c.failed = true; return -1; }
+
+function szCollecting(c) { return c.top !== null && c.top.collect && !c.mute; }
+
+// The byte at `o`, which the caller has checked to lie below c.end.
+function szAt(c, o) {
+    var n;
+    if (o < c.bufStart || o >= c.bufStart + c.buf.length) {
+        n = c.end - o;
+        if (n > 65536) n = 65536;
+        c.buf = File.bytes(o, n);
+        c.bufStart = o;
+    }
+    return c.buf.charCodeAt(o - c.bufStart) & 0xFF;
+}
+
+function szU32(c, o) { return szAt(c, o) + szAt(c, o + 1) * 256 + szAt(c, o + 2) * 65536 + szAt(c, o + 3) * 16777216; }
+
+// The next byte without reading it; -1 at the limit or after a failure.
+function szPeek(c) { return c.failed || c.pos >= c.limit ? -1 : szAt(c, c.pos); }
+
+function szByte(c) {
+    if (c.failed || c.pos >= c.limit) return szFail(c);
+    return szAt(c, c.pos++);
+}
+
+// A 7z NUMBER: the leading 1-bits of the first byte count the extra bytes
+// (little-endian), its remaining bits are the high part. -1 on failure; the
+// position then stays before the number. Values from 2^63 are rejected.
+function szNumber(c) {
+    var start = c.pos, first, mask = 0x80, value = 0, scale = 1, i;
+    if (c.failed || c.pos >= c.limit) return szFail(c);
+    first = szAt(c, c.pos++);
+    for (i = 0; i < 8; i++) {
+        if ((first & mask) === 0) {
+            value += (first & (mask - 1)) * scale;
+            break;
+        }
+        if (c.pos >= c.limit) { c.pos = start; return szFail(c); }
+        value += szAt(c, c.pos++) * scale;
+        scale *= 256;
+        mask >>= 1;
+    }
+    if (value >= 9223372036854775808) { c.pos = start; return szFail(c); }
+    return value;
+}
+
+function szOpen(c, name) {
+    var block = { name: name, start: c.pos, size: 0, collect: false };
+    if (c.quiet === 0) {
+        if (c.want === null) {
+            if (c.blocks.length < SZ_MAX_BLOCKS) c.blocks.push(block);
+        } else if (c.fields === null && c.want.name === name && c.want.offset === c.pos) {
+            block.collect = true;
+            c.fields = [];
+        }
+    }
+    c.stack.push(block);
+    c.top = block;
+}
+
+function szClose(c) {
+    var block = c.stack.pop();
+    block.size = c.pos - block.start;
+    c.top = c.stack.length ? c.stack[c.stack.length - 1] : null;
+    c.mute = false;
+    if (block.collect) {
+        c.wantSize = block.size;
+        c.done = true;
+        c.failed = true;        // nothing after the wanted block is needed
+    }
+}
+
+// Adds a field of the open block when its fields are collected. Returns the
+// field (to attach hooks to) or null.
+function szField(c, name, type, start, size, role, key) {
+    var f, description;
+    if (!szCollecting(c)) return null;
+    f = { name: name, type: type, offset: start - c.top.start, size: size, role: role };
+    description = SZ_FIELD_DESCRIPTIONS[key === undefined ? name : key];
+    if (description !== undefined) f.description = description;
+    c.fields.push(f);
+    return f;
+}
+
+// Reads one byte as a field. `comment` is a string, a value map or a hook.
+function szByteField(c, name, role, key, comment) {
+    var start = c.pos, value = szByte(c), f;
+    if (value < 0) return -1;
+    f = szField(c, name, "uint8", start, 1, role, key);
+    if (f && comment !== undefined) f.comment = comment;
+    return value;
+}
+
+// Reads a property id as a field commented with the property name.
+function szIdField(c, name, key) {
+    return szByteField(c, name === undefined ? "property_id" : name, ID, key, SZ_PROPERTY_NAMES);
+}
+
+// A `logical` hook that answers `value`. It is made here, and not where the
+// field is built, so that the closure holds nothing but the value.
+function szConstant(value) { return function () { return value; }; }
+
+// Reads a NUMBER as a field whose value is the decoded integer. `comment`
+// is a string or a function of the value.
+function szNumField(c, name, role, key, comment) {
+    var start = c.pos, value, f;
+    if (c.top === null || !c.top.collect || c.mute) return szNumber(c);
+    value = szNumber(c);
+    if (value < 0) return -1;
+    f = szField(c, name, "NUMBER", start, c.pos - start, role, key);
+    if (f) {
+        f.endian = BE;          // the raw value shows the bytes in file order
+        f.logical = szConstant(value);
+        f.display = "" + value;
+        if (comment !== undefined) f.comment = typeof comment === "function" ? comment(value) : comment;
+        else if (role & SIZE) f.comment = szBytesText(value);
+    }
+    return value;
+}
+
+// The kEnd byte that closes a block; anything else stops the decoding.
+function szEnd(c) {
+    var start = c.pos, f;
+    if (szPeek(c) !== 0) { szFail(c); return; }
+    c.pos++;
+    f = szField(c, "end", "uint8", start, 1, ID);
+    if (f) f.comment = "kEnd";
+}
+
+function szHexAt(c, start, size, separator) {
+    var out = "", i, n = size < SZ_MAX_HEX ? size : SZ_MAX_HEX;
+    for (i = 0; i < n; i++) out += (i ? separator : "") + szHex2(szAt(c, start + i));
+    if (size > SZ_MAX_HEX) out += " ...";
+    return out;
+}
+
+// A run of bytes as one field: displayed as its first bytes, so that a large
+// run does not become a large text.
+function szBlob(c, name, start, size, key, comment) {
+    var f = szField(c, name, "bytes", start, size, NONE, key);
+    if (f) {
+        f.display = szHexAt(c, start, size, " ");
+        if (comment !== undefined) f.comment = comment;
+    }
+}
+
+// Item `index` of a list is about to be read. True when it gets a field of
+// its own; from SZ_MAX_ITEMS on the items are read without one.
+function szItem(c, index) {
+    if (c.top === null || !c.top.collect) return false;
+    if (index < SZ_MAX_ITEMS) return true;
+    if (!c.mute) {
+        c.mute = true;
+        c.moreStart = c.pos;
+    }
+    return false;
+}
+
+// The list is over: one field stands for the items that were not listed.
+function szItemsEnd(c, name, count) {
+    if (!c.mute) return;
+    c.mute = false;
+    if (c.pos <= c.moreStart) return;
+    szBlob(c, name + "_more", c.moreStart, c.pos - c.moreStart, "more", "Items " + SZ_MAX_ITEMS + " to " + (count - 1) + " are not listed one by one");
+}
+
+// Bit `index` of the bit vector at `start` (most significant bit first).
+function szBit(c, start, index) {
+    return (szAt(c, start + Math.floor(index / 8)) & (0x80 >> (index % 8))) !== 0;
+}
+
+// Reads a bit vector of `count` bits as one field. Returns the number of set
+// bits, -1 on failure.
+function szBits(c, name, count, key) {
+    var size = Math.floor((count + 7) / 8), start = c.pos, i, b, set = 0, f, list = "", listed = 0;
+    if (c.failed || size > c.limit - c.pos) return szFail(c);
+    if (size === 0) return 0;
+    for (i = 0; i < size; i++) {
+        b = szAt(c, start + i);
+        if (i === size - 1 && (count % 8)) b &= (0xFF << (8 - (count % 8))) & 0xFF;
+        while (b) { set += b & 1; b >>= 1; }
+    }
+    c.pos = start + size;
+    f = szField(c, name, "uint8[" + size + "]", start, size, FLAGS, key);
+    if (f) {
+        for (i = 0; i < count && listed < 16; i++) {
+            if ((i % 8) === 0 && szAt(c, start + i / 8) === 0) { i += 7; continue; }
+            if (szBit(c, start, i)) { list += (listed ? ", " : "") + i; listed++; }
+        }
+        f.display = szHexAt(c, start, size, " ");
+        f.comment = set + " of " + count + " set" + (set ? ": " + list + (set > listed ? ", ..." : "") : "");
+    }
+    return set;
+}
+
+// The next index after `index` whose bit is set in the vector at `bits`
+// (every index when bits < 0); `count` when there is none.
+function szNextDefined(c, count, bits, index) {
+    var i;
+    for (i = index + 1; i < count; i++) {
+        if (bits < 0) return i;
+        if ((i % 8) === 0 && szAt(c, bits + i / 8) === 0) { i += 7; continue; }
+        if (szBit(c, bits, i)) return i;
+    }
+    return count;
+}
+
+// `defined` values of `size` bytes each, one per index below `count` whose
+// bit is set at `bits`. The caller has checked that they fit below the limit.
+// decorate(c, field, offset) may attach hooks to a field.
+function szValues(c, count, bits, defined, name, type, size, role, key, decorate) {
+    var end = c.pos + defined * size, i, k = 0, f;
+    if (szCollecting(c)) {
+        for (i = szNextDefined(c, count, bits, -1); i < count && k < SZ_MAX_ITEMS; i = szNextDefined(c, count, bits, i)) {
+            f = szField(c, name + "[" + i + "]", type, c.pos, size, role, key);
+            if (decorate) decorate(c, f, c.pos);
+            c.pos += size;
+            k++;
+        }
+        if (c.pos < end) szBlob(c, name + "_more", c.pos, end - c.pos, "more", "Items " + k + " to " + (defined - 1) + " are not listed one by one");
+    }
+    c.pos = end;
+}
+
+// Digests of `count` streams: AllAreDefined, the bit vector when it is 0,
+// then one CRC-32 per defined stream. Returns { all, bits } or null.
+function szDigests(c, count, name, key) {
+    var all = szByteField(c, name + "_all_defined", NONE, "all_defined"), bits = -1, defined = count;
+    if (all < 0) return null;
+    if (all === 0) {
+        bits = c.pos;
+        defined = szBits(c, name + "_defined", count, "defined");
+        if (defined < 0) return null;
+    }
+    if (defined * 4 > c.limit - c.pos) { szFail(c); return null; }
+    szValues(c, count, bits, defined, name, "uint32", 4, CHECKSUM, key === undefined ? "crc" : key, null);
+    return { all: all !== 0, bits: bits };
+}
+
+// ------------------------------------------------------------- StreamsInfo
+
+function szCoderPropertiesComment(c, id, start, size) {
+    var b = szAt(c, start), salt, iv;
+    if (id === "030101" && size >= 5) {
+        return "lc=" + (b % 9) + " lp=" + (Math.floor(b / 9) % 5) + " pb=" + Math.floor(b / 45) + " dictionary=" + szBytesText(szU32(c, start + 1));
+    }
+    if (id === "21") {
+        if (b > 40) return undefined;
+        return "dictionary=" + szBytesText(b === 40 ? 4294967295 : (2 + (b & 1)) * Math.pow(2, Math.floor(b / 2) + 11));
+    }
+    if (id === "030401" && size >= 5) return "order=" + b + " memory=" + szBytesText(szU32(c, start + 1));
+    if (id === "03") return "distance=" + (b + 1);
+    if (id === "06F10701") {
+        salt = (b >> 7) & 1;
+        iv = (b >> 6) & 1;
+        if ((b & 0xC0) && size >= 2) {
+            salt += szAt(c, start + 1) >> 4;
+            iv += szAt(c, start + 1) & 15;
+        }
+        return "NumCyclesPower=" + (b & 0x3F) + " SaltSize=" + salt + " IVSize=" + iv;
+    }
+    return undefined;
+}
+
+// One coder. Returns { ins, outs, method } or null.
+function szCoder(c) {
+    var start, flags, idSize, ins = 1, outs = 1, f, id = "", i, size, method;
+    if (c.failed || c.pos >= c.limit) { szFail(c); return null; }
+    szOpen(c, "CODER");
+    start = c.pos;
+    flags = szByte(c);
+    idSize = flags & 15;
+    f = szField(c, "flags", "uint8", start, 1, FLAGS, "coder_flags");
+    if (f) f.comment = "IdSize=" + idSize + (flags & 0x10 ? "|Complex" : "") + (flags & 0x20 ? "|HasProperties" : "") + (flags & 0xC0 ? "|" + Util.hex(flags & 0xC0, 2) + " (not supported)" : "");
+    if ((flags & 0xC0) || idSize > 8 || idSize > c.limit - c.pos) szFail(c);
+    if (!c.failed) {
+        for (i = 0; i < idSize; i++) id += szHex2(szAt(c, c.pos + i));
+        if (idSize === 0) id = "00";
+        method = SZ_METHODS[id];
+        if (idSize) {
+            f = szField(c, "codec_id", "uint8[" + idSize + "]", c.pos, idSize, ID);
+            if (f) {
+                f.display = id;
+                if (method !== undefined) f.comment = method;
+            }
+            c.pos += idSize;
+        }
+        if (flags & 0x10) {
+            ins = szNumField(c, "num_in_streams", COUNT);
+            outs = szNumField(c, "num_out_streams", COUNT);
+            if (ins > SZ_MAX_STREAMS || outs > SZ_MAX_STREAMS) szFail(c);
+        }
+    }
+    if (!c.failed && (flags & 0x20)) {
+        size = szNumField(c, "properties_size", SIZE);
+        if (size < 0 || size > c.limit - c.pos) szFail(c);
+        else if (size > 0) {
+            f = szField(c, "properties", "uint8[" + size + "]", c.pos, size, NONE);
+            if (f) {
+                f.display = szHexAt(c, c.pos, size, " ");
+                method = szCoderPropertiesComment(c, id, c.pos, size);
+                if (method !== undefined) f.comment = method;
+            }
+            c.pos += size;
+        }
+    }
+    f = c.failed ? null : { ins: ins, outs: outs, method: SZ_METHODS[id] === undefined ? id : SZ_METHODS[id] };
+    szClose(c);
+    return f;
+}
+
+// One folder. Returns { outs, main, methods } or null: the number of coder
+// output streams, the index of the one that is the folder's decoded stream,
+// and the method names in coder order.
+function szFolder(c) {
+    var count, i, ins = 0, outs = 0, coder, pairs, packed, bound = [], main = 0, methods = "", value, result;
+    if (c.failed || c.pos >= c.limit) { szFail(c); return null; }
+    szOpen(c, "FOLDER");
+    count = szNumField(c, "num_coders", COUNT);
+    if (count < 1 || count > SZ_MAX_CODERS) szFail(c);
+    for (i = 0; i < count && !c.failed; i++) {
+        coder = szCoder(c);
+        if (!coder) break;
+        ins += coder.ins;
+        outs += coder.outs;
+        methods += (i ? " + " : "") + coder.method;
+        if (ins > SZ_MAX_STREAMS || outs > SZ_MAX_STREAMS) szFail(c);
+    }
+    pairs = outs - 1;
+    if (!c.failed && (outs < 1 || ins < pairs)) szFail(c);
+    for (i = 0; i < pairs && !c.failed; i++) {
+        szNumField(c, "bind_pairs[" + i + "].in_index", NONE, "bind_in");
+        value = szNumField(c, "bind_pairs[" + i + "].out_index", NONE, "bind_out");
+        bound.push(value);
+    }
+    packed = ins - pairs;
+    if (packed > 1) for (i = 0; i < packed && !c.failed; i++) szNumField(c, "packed_streams[" + i + "]", NONE, "packed_stream");
+    for (i = 0; i < bound.length; i++) if (bound[i] === main) { main++; i = -1; }
+    result = c.failed ? null : { outs: outs, main: main, methods: methods };
+    szClose(c);
+    return result;
+}
+
+// Steps over a folder of one plain coder (one input, one output, properties
+// shorter than 128 bytes), which is what nearly every folder is. It accepts
+// exactly what szFolder accepts for such a folder; false leaves the folder
+// to szFolder. Used where the folder is neither reported nor described,
+// so that an archive with many folders is walked quickly.
+function szSkipPlainFolder(c) {
+    var p = c.pos, flags, size;
+    if (p + 2 > c.limit || szAt(c, p) !== 1) return false;
+    flags = szAt(c, p + 1);
+    if ((flags & 0xD0) || (flags & 15) > 8) return false;
+    p += 2 + (flags & 15);
+    if (flags & 0x20) {
+        if (p >= c.limit) return false;
+        size = szAt(c, p);
+        if (size >= 0x80) return false;
+        p += 1 + size;
+    }
+    if (p > c.limit) return false;
+    c.pos = p;
+    return true;
+}
+
+function szPackInfo(c, info) {
+    var count, i, value;
+    szOpen(c, "PACK_INFO");
+    szIdField(c);
+    info.packPos = szNumField(c, "pack_pos", NONE, undefined, function (value) { return "File offset " + Util.hex(value + SZ_SIGNATURE_SIZE); });
+    count = szNumField(c, "num_pack_streams", COUNT);
+    if (count < 0 || count > c.limit - c.pos) szFail(c);
+    if (szPeek(c) === 0x09) {
+        szIdField(c, "sizes_id");
+        for (i = 0; i < count && !c.failed; i++) {
+            value = szItem(c, i) ? szNumField(c, "pack_sizes[" + i + "]", SIZE, "pack_size") : szNumber(c);
+            if (i < 16) info.packSizes.push(value);
+        }
+        szItemsEnd(c, "pack_sizes", count);
+    }
+    if (szPeek(c) === 0x0A) {
+        szIdField(c, "crcs_id");
+        szDigests(c, count, "pack_crcs");
+    }
+    szEnd(c);
+    szClose(c);
+}
+
+function szUnpackInfo(c, info) {
+    var count = 0, external, i, o, k = 0, folder, outs = [], total = 0, value, quiet = false;
+    szOpen(c, "UNPACK_INFO");
+    szIdField(c);
+    if (szPeek(c) !== 0x0B) szFail(c);
+    else {
+        szIdField(c, "folders_id");
+        count = szNumField(c, "num_folders", COUNT);
+        if (count < 0 || count > SZ_MAX_FOLDERS || count > c.limit - c.pos) szFail(c);
+        external = szByteField(c, "external", NONE, "external_folders", function (value) { return value ? "The folders are stored in an additional stream, not here" : "The folders follow"; });
+        if (external > 0) {
+            szNumField(c, "data_stream_index", NONE);
+            szFail(c);          // the folder shapes are unknown, so nothing after them can be read
+        }
+        for (i = 0; i < count && !c.failed; i++) {
+            if (i === SZ_MAX_FOLDER_STRUCTS) { c.quiet++; quiet = true; }
+            if (i > 0 && (c.want !== null || c.quiet > 0) && szSkipPlainFolder(c)) {
+                outs.push(1);
+                total++;
+                continue;
+            }
+            folder = szFolder(c);
+            if (!folder) break;
+            outs.push(folder.outs);
+            total += folder.outs;
+            if (i === 0) info.first = folder;
+        }
+        if (quiet) c.quiet--;
+        if (!c.failed) {
+            info.numFolders = count;
+            if (szPeek(c) === 0x0C) {
+                szIdField(c, "unpack_sizes_id");
+                for (i = 0; i < count && !c.failed; i++) {
+                    for (o = 0; o < outs[i] && !c.failed; o++) {
+                        value = szItem(c, k++) ? szNumField(c, "folders[" + i + "]." + (outs[i] === 1 ? "unpack_size" : "unpack_sizes[" + o + "]"), SIZE, "unpack_size") : szNumber(c);
+                        if (i === 0) info.firstSizes.push(value);
+                    }
+                }
+                szItemsEnd(c, "unpack_sizes", total);
+            }
+            if (szPeek(c) === 0x0A) {
+                szIdField(c, "crcs_id");
+                info.folderCrcs = szDigests(c, count, "folder_crcs");
+            }
+            szEnd(c);
+        }
+    }
+    szClose(c);
+}
+
+function szSubStreamsInfo(c, info) {
+    var folders = info.numFolders, counts = null, i, j, k = 0, value, unknown = 0, crcs = info.folderCrcs;
+    szOpen(c, "SUBSTREAMS_INFO");
+    szIdField(c);
+    if (szPeek(c) === 0x0D) {
+        szIdField(c, "num_unpack_streams_id");
+        counts = [];
+        for (i = 0; i < folders && !c.failed; i++) {
+            counts.push(szItem(c, i) ? szNumField(c, "num_unpack_streams[" + i + "]", COUNT, "num_unpack_streams") : szNumber(c));
+        }
+        szItemsEnd(c, "num_unpack_streams", folders);
+    }
+    if (szPeek(c) === 0x09) {
+        szIdField(c, "sizes_id");
+        for (i = 0; i < folders && !c.failed; i++) {
+            value = counts ? counts[i] : 1;
+            if (value - 1 > c.limit - c.pos) { szFail(c); break; }
+            for (j = 0; j + 1 < value && !c.failed; j++) {
+                if (szItem(c, k++)) szNumField(c, "folders[" + i + "].unpack_sizes[" + j + "]", SIZE, "substream_size");
+                else szNumber(c);
+            }
+        }
+        szItemsEnd(c, "unpack_sizes", k);
+    }
+    if (szPeek(c) === 0x0A) {
+        szIdField(c, "crcs_id");
+        // A folder with one file and a folder CRC needs no CRC here.
+        for (i = 0; i < folders; i++) {
+            value = counts ? counts[i] : 1;
+            if (!(value === 1 && crcs && (crcs.all || szBit(c, crcs.bits, i)))) unknown += value;
+        }
+        szDigests(c, unknown, "crcs", "substream_crc");
+    }
+    szEnd(c);
+    szClose(c);
+}
+
+// PackInfo, UnPackInfo, SubStreamsInfo and kEnd. Returns what a comment on
+// the pack stream of an encoded header needs.
+function szStreamsBody(c) {
+    var info = { packPos: -1, packSizes: [], numFolders: 0, folderCrcs: null, first: null, firstSizes: [] };
+    if (szPeek(c) === 0x06) szPackInfo(c, info);
+    if (szPeek(c) === 0x07) szUnpackInfo(c, info);
+    if (szPeek(c) === 0x08) szSubStreamsInfo(c, info);
+    szEnd(c);
+    return info;
+}
+
+function szStreamsInfo(c, name) {
+    szOpen(c, name);
+    szIdField(c);
+    szStreamsBody(c);
+    szClose(c);
+}
+
+// ----------------------------------------------------------------- the rest
+
+function szArchiveProperties(c) {
+    var i, size;
+    szOpen(c, "ARCHIVE_PROPERTIES");
+    szIdField(c);
+    for (i = 0; szPeek(c) > 0; i++) {       // every round reads at least one byte
+        szItem(c, i);
+        szByteField(c, "properties[" + i + "].type", ID, "archive_property_type");
+        size = szNumField(c, "properties[" + i + "].size", SIZE, "archive_property_size");
+        if (size < 0 || size > c.limit - c.pos) { szFail(c); break; }
+        if (size) {
+            szBlob(c, "properties[" + i + "].data", c.pos, size, "archive_property_data");
+            c.pos += size;
+        }
+    }
+    szItemsEnd(c, "properties", i);
+    szEnd(c);
+    szClose(c);
+}
+
+// AllAreDefined (with its bit vector) and External of a per-file property.
+// Returns { count, bits } when the values follow, else null.
+function szDefined(c, files) {
+    var all = szByteField(c, "all_defined", NONE), bits = -1, count = files, external;
+    if (all < 0) return null;
+    if (all === 0) {
+        bits = c.pos;
+        count = szBits(c, "defined", files);
+        if (count < 0) return null;
+    }
+    external = szByteField(c, "external", NONE, undefined, szExternalComment);
+    if (external < 0) return null;
+    if (external !== 0) {
+        szNumField(c, "data_index", NONE);
+        return null;
+    }
+    return { count: count, bits: bits };
+}
+
+// A FILETIME at `o` as "yyyy-MM-dd HH:mm:ss[.fffffff]" (UTC). The division
+// by 10^7 runs over 16-bit digits, so it is exact.
+function szFileTime(c, o) {
+    var i, current, remainder = 0, seconds = 0, text, fraction;
+    for (i = 3; i >= 0; i--) {
+        current = remainder * 65536 + szAt(c, o + 2 * i) + szAt(c, o + 2 * i + 1) * 256;
+        seconds = seconds * 65536 + Math.floor(current / 10000000);
+        remainder = current % 10000000;
+    }
+    text = Util.utc(seconds - 11644473600);
+    if (text === undefined || remainder === 0) return text;
+    fraction = "" + remainder;
+    while (fraction.length < 7) fraction = "0" + fraction;
+    return text + "." + fraction;
+}
+
+// A per-file property of fixed-size values: times, attributes, positions.
+function szFileValues(c, files, name, type, size, role, key, decorate) {
+    var d = szDefined(c, files);
+    if (!d) return;
+    if (d.count * size > c.limit - c.pos) { szFail(c); return; }
+    szValues(c, files, d.bits, d.count, name, type, size, role, key, decorate);
+}
+
+function szDecorateTime(c, f, o) {
+    var text = szFileTime(c, o);
+    if (text !== undefined) f.display = text;
+}
+
+function szDecorateAttributes(c, f, o) { f.comment = szAttributesComment(szU32(c, o)); }
+
+// The names: UTF-16LE up to a zero unit, displayed as UTF-8 text.
+function szNames(c, files) {
+    var external = szByteField(c, "external", NONE, undefined, szExternalComment),
+        i, j, o, start, code, low, text, raw, size, length, f, zero = String.fromCharCode(0, 0);
+    if (external < 0) return;
+    if (external !== 0) { szNumField(c, "data_index", NONE); return; }
+    if (!szCollecting(c)) { c.pos = c.limit; return; }      // a walk for another block skips the names
+    for (i = 0; i < files && !c.failed; i++) {              // every name takes at least two bytes
+        if (!szItem(c, i)) { c.pos = c.limit; break; }      // the names after the listed ones are not walked
+        start = c.pos;
+        // The terminator: the first zero unit at an even distance from the start.
+        for (o = start, size = 256; ; ) {                   // every round moves `o` on or widens the search
+            if (o + 2 > c.limit) { szFail(c); break; }
+            if (size > c.limit - o) size = c.limit - o;
+            j = File.find(o, size, zero);
+            if (j < 0) {
+                if (size === c.limit - o) { szFail(c); break; }
+                o += size - 1;
+                size *= 8;
+            } else if ((j - start) % 2 === 0) { o = j; break; }
+            else o = j + 1;
+        }
+        if (c.failed) break;
+        c.pos = o + 2;
+        f = szField(c, "names[" + i + "]", "wchar16[" + ((c.pos - start) / 2) + "]", start, c.pos - start, STRING, "name");
+        raw = o > start ? File.bytes(start, o - start) : "";
+        size = raw.length;
+        if (size > 2 * SZ_MAX_NAME) size = 2 * SZ_MAX_NAME;
+        for (j = 0; j < size; j += 2) if (raw.charCodeAt(j + 1) !== 0 || (raw.charCodeAt(j) & 0x80)) break;
+        if (j >= size) text = raw.substr(0, size).split(zero.charAt(0)).join("");      // ASCII: drop the high bytes
+        else {
+            text = "";
+            for (j = 0; j < size; j += 2) {
+                code = (raw.charCodeAt(j) & 0xFF) + (raw.charCodeAt(j + 1) & 0xFF) * 256;
+                if (code >= 0xD800 && code < 0xDC00 && j + 4 <= size) {
+                    low = (raw.charCodeAt(j + 2) & 0xFF) + (raw.charCodeAt(j + 3) & 0xFF) * 256;
+                    if (low >= 0xDC00 && low < 0xE000) {
+                        code = 0x10000 + (code - 0xD800) * 1024 + (low - 0xDC00);
+                        j += 2;
+                        text += String.fromCharCode(0xF0 | (code >> 18), 0x80 | ((code >> 12) & 0x3F), 0x80 | ((code >> 6) & 0x3F), 0x80 | (code & 0x3F));
+                        continue;
+                    }
+                }
+                if (code >= 0xD800 && code < 0xE000) code = 0xFFFD;     // a lone surrogate
+                if (code < 0x80) text += String.fromCharCode(code);
+                else if (code < 0x800) text += String.fromCharCode(0xC0 | (code >> 6), 0x80 | (code & 0x3F));
+                else text += String.fromCharCode(0xE0 | (code >> 12), 0x80 | ((code >> 6) & 0x3F), 0x80 | (code & 0x3F));
+            }
+        }
+        f.display = text;
+        f.utf8 = true;
+    }
+    szItemsEnd(c, "names", files);
+}
+
+// One property of FilesInfo: id, size, data. The size frames the data, so
+// data that does not decode is shown as "undecoded" and the walk goes on.
+function szFileProperty(c, type, state) {
+    var size, end, saved, files = state.files, value;
+    szOpen(c, SZ_FILE_BLOCKS[type] === undefined ? "FILE_PROPERTY" : SZ_FILE_BLOCKS[type]);
+    szIdField(c);
+    size = szNumField(c, "size", SIZE, "property_size");
+    if (size < 0 || size > c.limit - c.pos) szFail(c);
+    else {
+        end = c.pos + size;
+        saved = c.limit;
+        c.limit = end;
+        switch (type) {
+            case 0x0E:
+                value = szBits(c, "is_empty_stream", files);
+                state.empty = value > 0 ? value : 0;
+                break;
+            case 0x0F: szBits(c, "is_empty_file", state.empty); break;
+            case 0x10: szBits(c, "is_anti", state.empty); break;
+            case 0x11: szNames(c, files); break;
+            case 0x12: szFileValues(c, files, "ctime", "uint64", 8, TIMESTAMP, "filetime", szDecorateTime); break;
+            case 0x13: szFileValues(c, files, "atime", "uint64", 8, TIMESTAMP, "filetime", szDecorateTime); break;
+            case 0x14: szFileValues(c, files, "mtime", "uint64", 8, TIMESTAMP, "filetime", szDecorateTime); break;
+            case 0x15: szFileValues(c, files, "attributes", "uint32", 4, FLAGS, "attributes", szDecorateAttributes); break;
+            case 0x18: szFileValues(c, files, "start_pos", "uint64", 8, NONE, "start_pos", null); break;
+            case 0x19:
+                if (size) szField(c, "padding", "uint8[" + size + "]", c.pos, size, RESERVED);
+                c.pos = end;
+                break;
+            default:
+                if (size) szBlob(c, "data", c.pos, size);
+                c.pos = end;
+                break;
+        }
+        c.mute = false;
+        c.failed = false;
+        if (c.pos < end) szBlob(c, "undecoded", c.pos, end - c.pos, undefined, "Not decoded: these bytes do not fit the property");
+        c.pos = end;
+        c.limit = saved;
+    }
+    szClose(c);
+}
+
+function szFilesInfo(c) {
+    var state = { files: 0, empty: 0 }, type;
+    szOpen(c, "FILES_INFO");
+    szIdField(c);
+    state.files = szNumField(c, "num_files", COUNT);
+    while (!c.failed) {                     // every round reads at least one byte
+        type = szPeek(c);
+        if (type <= 0) break;
+        szFileProperty(c, type, state);
+    }
+    szEnd(c);
+    szClose(c);
+}
+
+function szEncodedComment(info) {
+    var text = "kEncodedHeader: the real header is packed", size;
+    if (info.first) text += " (" + info.first.methods + ")";
+    if (info.packPos >= 0 && info.packSizes.length) {
+        text += " in the pack stream at file offset " + Util.hex(info.packPos + SZ_SIGNATURE_SIZE) + ", " + szBytesText(info.packSizes[0]);
+        size = info.first ? info.firstSizes[info.first.main] : undefined;
+        if (size !== undefined && size >= 0) text += ", " + szBytesText(size) + " unpacked";
+    } else text += " in a pack stream";
+    return text + "; the blocks after this one describe that stream, the header itself is not unpacked here";
+}
+
+function szNextHeader(c) {
+    var start = c.pos, id, f, info;
+    szOpen(c, "NEXT_HEADER");
+    id = szByte(c);
+    f = szField(c, "property_id", "uint8", start, 1, ID);
+    if (f) f.comment = SZ_PROPERTY_NAMES[id] === undefined ? "Not a header property" : SZ_PROPERTY_NAMES[id];
+    if (c.end - start > SZ_MAX_HEADER) szFail(c);
+    else if (id === 0x17) {
+        info = szStreamsBody(c);
+        if (!c.failed) c.encoded = info;
+        if (f) f.comment = szEncodedComment(info);
+    } else if (id === 0x01) {
+        if (szPeek(c) === 0x02) szArchiveProperties(c);
+        if (szPeek(c) === 0x03) szStreamsInfo(c, "ADDITIONAL_STREAMS_INFO");
+        if (szPeek(c) === 0x04) szStreamsInfo(c, "MAIN_STREAMS_INFO");
+        if (szPeek(c) === 0x05) szFilesInfo(c);
+        szEnd(c);
+    } else szFail(c);
+    if (!c.done && c.pos < c.end) {
+        szBlob(c, "undecoded", c.pos, c.end - c.pos, undefined,
+            c.end - start > SZ_MAX_HEADER ? "Not decoded: the header is larger than " + szBytesText(SZ_MAX_HEADER)
+            : c.failed ? "Not decoded: the header is inconsistent, or uses something unknown, from here on"
+            : "Bytes after the end of the header");
+        c.pos = c.end;
+    }
+    szClose(c);
+}
+
+// Walks the stored next header. Returns the cursor, or null without a header.
+function szWalk(want) {
+    var archive = Format.table("archive")[0], c;
+    if (!archive || !(archive.nextHeaderSize > 0) || !File.valid(archive.nextHeader, archive.nextHeaderSize)) return null;
+    c = szCursor(archive.nextHeader, archive.nextHeaderSize, want);
+    try {
+        szNextHeader(c);
+    } catch (e) {
+        c.failed = true;        // scan() keeps the blocks found up to here
+        c.threw = true;
+    }
+    while (c.stack.length) szClose(c);
+    return c;
+}
+
+// ------------------------------------------------------------------ fields
+
+// The fields of a block found by the walker.
+function szBlockFields(ds) {
+    var c = szWalk({ name: ds.name, offset: ds.offset });
+    return c && !c.threw && c.fields && c.fields.length && c.wantSize === ds.totalSize ? c.fields : undefined;
+}
+
+// A folder and a coder describe themselves, so they are read in place.
+function szSelfFields(ds, read) {
+    var c;
+    if (ds.totalSize < 1 || ds.totalSize > SZ_MAX_HEADER || !File.valid(ds.offset, ds.totalSize)) return undefined;
+    c = szCursor(ds.offset, ds.totalSize, { name: ds.name, offset: ds.offset });
+    read(c);
+    return c.fields && c.fields.length && c.wantSize === ds.totalSize ? c.fields : undefined;
+}
+
+function szFolderFields(ds) { return szSelfFields(ds, szFolder); }
+
+function szCoderFields(ds) { return szSelfFields(ds, szCoder); }
+
+// -------------------------------------------------------------------- scan
+
+function scan() {
+    var archive = Format.table("archive")[0], packs = Format.table("packs"), i, j, c, block, offset, size;
+    Structs.add("SIGNATURE_HEADER", 0, SZ_SIGNATURE_SIZE);
+    for (i = 0; i < packs.length; i++) Structs.add("PACKED_DATA", packs[i].offset, packs[i].size, RAW);
+    if (archive.nextHeaderSize !== 0) {
+        Structs.add("NEXT_HEADER", archive.nextHeader, archive.nextHeaderSize, FOOTER);
+        c = szWalk(null);
+        // Block 0 is NEXT_HEADER itself; a block that read nothing is not reported.
+        for (i = 1; c && i < c.blocks.length && Structs.count() < 262144; i++) {
+            block = c.blocks[i];
+            if (block.size > 0) Structs.add(block.name, block.start, block.size);
+        }
+        // The pack streams of a packed header, unless the reader listed them already.
+        if (c && c.encoded && c.encoded.packPos >= 0) {
+            offset = SZ_SIGNATURE_SIZE + c.encoded.packPos;
+            for (i = 0; i < c.encoded.packSizes.length && Structs.count() < 262144; i++) {
+                size = c.encoded.packSizes[i];
+                for (j = 0; j < packs.length && packs[j].offset !== offset; j++) ;
+                if (size > 0 && j === packs.length && File.valid(offset, size)) Structs.add("PACKED_HEADER", offset, size, RAW);
+                offset += size;
+            }
+        }
+    }
+}

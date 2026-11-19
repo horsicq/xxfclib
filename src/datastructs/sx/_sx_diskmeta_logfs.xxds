@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/logfs/xx_logfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_logfs_superblock_fields = layout([u32("segment_crc", CHECKSUM), u16("segment_padding", RESERVED),
+    u8("segment_type", ID), u8("level"), u32("segment_number", ID), u32("erase_count", COUNT), u64("global_erase_count", COUNT),
+    u64("magic", SIGNATURE), u32("superblock_crc", CHECKSUM), u8("inode_file_levels"), u8("inode_block_levels"),
+    u8("data_levels"), u8("segment_shift"), u8("block_shift"), u8("write_shift"), field("padding0", "byte[6]", 6, RESERVED),
+    u64("filesystem_size", SIZE), u32("segment_size", SIZE), u32("bad_segment_reserve", COUNT),
+    u64("incompatible_features", FLAGS), u64("ro_compatible_features", FLAGS), u64("compatible_features", FLAGS),
+    u64("feature_flags", FLAGS), u64("root_reserve", SIZE), u64("speed_reserve", SIZE),
+    field("journal_segments", "uint32[16]", 64, ID), field("superblock_offsets", "uint64[2]", 16, OFFSET),
+    field("padding3", "byte[64]", 64, RESERVED)]);
+var sx_dm_logfs_superblock = sxLayout(0x60290050, "logfs_superblock", BE, sx_dm_logfs_superblock_fields);
+function sx_dm_logfs(c) {
+    var pos = [0, sxAnd64((c.size < 0 ? c.size + SX_U64_MAX : c.size), sxK(0xFFFFFFFF, 0xFFFFF000))];
+    if (pos[1] >= 4096) {
+        pos[1] = sxU64(pos[1] - 4096);
+    }
+    for (var i = 0; i < 2; i++) {
+        var h = [];
+        if (i && pos[i] === 0) {
+            continue;
+        }
+        if (sx_dm_read(c, pos[i], h, 256) && sx_dm_u64(h, 24, true) === (0x7A3A8E5C * 4294967296 + 0xB9D5BF67) && sx_dm_u32(h, 0, true) === ~sxCrc32At(0, h, 4, 20) >>> 0 && sx_dm_u32(h, 32, true) === ~sxCrc32At(0, h, 36, 220) >>> 0 && !sx_dm_add(c, sx_dm_logfs_superblock, pos[i], 256)) {
+            return false;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_logfs_build(c) {
+    return sx_dm_logfs(c);
+}

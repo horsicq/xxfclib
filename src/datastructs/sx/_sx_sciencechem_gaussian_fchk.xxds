@@ -1,0 +1,126 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gaussian_fchk/xx_gaussian_fchk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_value_type_fields = layout([field("value_type", "char", 0, STRING)]);
+var sxsch_value_type = sxLayout(0x60610013, "chemistry_value_type", LE, sxsch_value_type_fields);
+var sxsch_value_count_fields = layout([field("value_count", "ascii_signed", 0, COUNT)]);
+var sxsch_value_count = sxLayout(0x60610016, "chemistry_value_count", LE, sxsch_value_count_fields);
+var sxsch_fchk_label_fields = layout([field("fchk_label", "char", 0, STRING)]);
+var sxsch_fchk_label = sxLayout(0x606100A8, "chemistry_fchk_label", LE, sxsch_fchk_label_fields);
+var sxsch_fchk_job_fields = layout([field("fchk_job", "char", 0, STRING)]);
+var sxsch_fchk_job = sxLayout(0x606100A9, "chemistry_fchk_job", LE, sxsch_fchk_job_fields);
+var sxsch_fchk_method_fields = layout([field("fchk_method", "char", 0, STRING)]);
+var sxsch_fchk_method = sxLayout(0x606100AA, "chemistry_fchk_method", LE, sxsch_fchk_method_fields);
+var sxsch_fchk_basis_fields = layout([field("fchk_basis", "char", 0, STRING)]);
+var sxsch_fchk_basis = sxLayout(0x606100AB, "chemistry_fchk_basis", LE, sxsch_fchk_basis_fields);
+var sxsch_fchk_array_marker_fields = layout([field("fchk_array_marker", "char", 0, STRING)]);
+var sxsch_fchk_array_marker = sxLayout(0x606100AC, "chemistry_fchk_array_marker", LE, sxsch_fchk_array_marker_fields);
+var sxsch_fchk_integer_fields = layout([field("fchk_integer", "ascii_signed", 0)]);
+var sxsch_fchk_integer = sxLayout(0x606100AD, "chemistry_fchk_integer", LE, sxsch_fchk_integer_fields);
+var sxsch_fchk_real_fields = layout([field("fchk_real", "ascii_real", 0)]);
+var sxsch_fchk_real = sxLayout(0x606100AE, "chemistry_fchk_real", LE, sxsch_fchk_real_fields);
+var sxsch_fchk_coordinate_fields = layout([field("fchk_coordinate", "ascii_real", 0)]);
+var sxsch_fchk_coordinate = sxLayout(0x606100AF, "chemistry_fchk_coordinate", LE, sxsch_fchk_coordinate_fields);
+function sxsch_fchk(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(4, sxNew_sxsch_token);
+    var n = [0];
+    if (!sxsch_line(q, l)) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_title, sxCopy_sxsch_token(null, l))) {
+            return false;
+        }
+    }
+    if (!sxsch_next(q, l, t[0], 4, n, "") || n[0] !== 3) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_fchk_job, sxCopy_sxsch_token(null, t[0]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsch_emit(q, sxsch_fchk_method, sxCopy_sxsch_token(null, t[1]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsch_emit(q, sxsch_fchk_basis, sxCopy_sxsch_token(null, t[2]))) {
+            return false;
+        }
+    }
+    while (sxsch_line(q, l)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (l.z < 47) {
+            return false;
+        }
+        var key = sxCopy_sxsch_token(null, sxsch_trim(q, sxCopy_sxsch_token(null, { a: l.a, z: 40 })));
+        {
+            if (!sxsch_emit(q, sxsch_fchk_label, sxCopy_sxsch_token(null, { a: l.a, z: 40 }))) {
+                return false;
+            }
+        }
+        {
+            if (!sxsch_emit(q, sxsch_value_type, sxCopy_sxsch_token(null, { a: l.a + 43, z: 1 }))) {
+                return false;
+            }
+        }
+        var real = q.b[l.a + 43] === 82 /*R*/;
+        n[0] = sxsch_split(q, sxCopy_sxsch_token(null, { a: l.a + 45, z: l.z - 45 }), t, 4, false);
+        if (n[0] !== 1 && n[0] !== 2) {
+            return false;
+        }
+        var coordinates = sxsch_eq(q, sxCopy_sxsch_token(null, key), "Current cartesian coordinates");
+        var layout = coordinates ? sxsch_fchk_coordinate : real ? sxsch_fchk_real : sxsch_eq(q, sxCopy_sxsch_token(null, key), "Number of atoms") ? sxsch_atom_count : sxsch_eq(q, sxCopy_sxsch_token(null, key), "Atomic numbers") ? sxsch_atomic_number : sxsch_fchk_integer;
+        if (n[0] === 1) {
+            if (!sxsch_emit(q, layout, sxCopy_sxsch_token(null, t[0]))) {
+                return false;
+            }
+        } else {
+            var remaining = [0];
+            if (!sxsch_number(q, sxCopy_sxsch_token(null, t[1]), remaining)) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_fchk_array_marker, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsch_emit(q, sxsch_value_count, sxCopy_sxsch_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            var width = real ? 16 : 12;
+            while (remaining[0]) {
+                if (!sxsch_line(q, l) || l.z % width) {
+                    return false;
+                }
+                var got = Math.floor((l.z < 0 ? l.z + SX_U64_MAX : l.z) / width);
+                if (!got || got > remaining[0]) {
+                    return false;
+                }
+                for (var j = 0; j < got; j++) {
+                    if (!sxsch_column(q, layout, sxCopy_sxsch_token(null, l), sxMul32(j, width), width)) {
+                        return false;
+                    }
+                }
+                remaining[0] = sxU64(remaining[0] - got);
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gaussian_fchk_build(q) {
+    return sxsch_fchk(q);
+}

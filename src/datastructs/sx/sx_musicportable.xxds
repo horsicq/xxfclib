@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musicportable.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_musicportable");
+include("_sx_musicportable_ascii_musica_bgm");
+include("_sx_musicportable_atarist_sndh");
+include("_sx_musicportable_braincontrol_tunefish_tf4");
+include("_sx_musicportable_gigamix_mgsdrv");
+include("_sx_musicportable_kometbomb_prototracker_song");
+include("_sx_musicportable_segura_psyclemmcs");
+
+function fileTypes() { return ["DIE_MUSIC_ARGURU_NOISETREKKER", "DIE_MUSIC_ARGURU_PROTREKKR_SNG6_PROTREK",
+    "DIE_MUSIC_SEGURA_PSYCLEMMCS", "DIE_MUSIC_KOMETBOMB_PROTOTRACKER_SONG", "DIE_MUSIC_BRAINCONTROL_TUNEFISH_TF4",
+    "DIE_MUSIC_GIGAMIX_MGSDRV", "DIE_MUSIC_ASCII_MUSICA_BGM", "DIE_MUSIC_ATARIST_SNDH"]; }
+
+var sx_musicportable_layouts = [sxportable_proto_section, sxportable_proto_version0, sxportable_proto_version1,
+    sxportable_proto_version17, sxportable_proto_text, sxportable_proto_dimensions, sxportable_proto_sequence_row_count,
+    sxportable_proto_pattern_count, sxportable_proto_macro_count, sxportable_proto_pattern_rows,
+    sxportable_proto_sequence_pattern_index_plane, sxportable_proto_note_effect_plane, sxportable_proto_note_parameter_plane,
+    sxportable_proto_effect_plane, sxportable_proto_effect_parameter_plane, sxportable_tf4_song_header,
+    sxportable_tf4_event_count, sxportable_tf4_tag, sxportable_tf4_instrument, sxportable_tf4_row_delta,
+    sxportable_tf4_note_plane, sxportable_tf4_velocity_plane, sxportable_ice_music_header, sxportable_mgs_identity,
+    sxportable_mgs_identity_single_newline, sxportable_mgs_description, sxportable_mgs_text_end, sxportable_bgm_bsave_header,
+    sxportable_bgm_channel_header, sxportable_bgm_bto_header, sxportable_bgm_encoded_text, sxportable_ntk_identity,
+    sxportable_ntk_song_info, sxportable_ntk_sequence, sxportable_ntk_pattern_lines, sxportable_ptk_packed_header,
+    sxportable_psy2_header, sxportable_psy2_pattern_header, sxportable_psy2_event, sxportable_psy3_header,
+    sxportable_psy3_chunk, sxportable_psy3_title, sxportable_psy3_author, sxportable_psy3_comment,
+    sxportable_psy3_sequence_name, sxportable_psy3_pattern_name, sxportable_psy3_song_info, sxportable_psy3_track_state,
+    sxportable_psy3_sequence, sxportable_psy3_pattern_index, sxportable_psy3_pattern, sxportable_psy3_compressed_bytes];
+
+function structs() {
+    return sxCatalog([sxportable_proto_section, sxportable_proto_version0, sxportable_proto_version1,
+        sxportable_proto_version17, sxportable_proto_text, sxportable_proto_dimensions, sxportable_proto_sequence_row_count,
+        sxportable_proto_pattern_count, sxportable_proto_macro_count, sxportable_proto_pattern_rows,
+        sxportable_proto_sequence_pattern_index_plane, sxportable_proto_note_effect_plane,
+        sxportable_proto_note_parameter_plane, sxportable_proto_effect_plane, sxportable_proto_effect_parameter_plane,
+        sxportable_tf4_song_header, sxportable_tf4_event_count, sxportable_tf4_tag, sxportable_tf4_instrument,
+        sxportable_tf4_row_delta, sxportable_tf4_note_plane, sxportable_tf4_velocity_plane, sxportable_ice_music_header,
+        sxportable_mgs_identity, sxportable_mgs_identity_single_newline, sxportable_mgs_description, sxportable_mgs_text_end,
+        sxportable_bgm_bsave_header, sxportable_bgm_channel_header, sxportable_bgm_bto_header, sxportable_bgm_encoded_text,
+        sxportable_ntk_identity, sxportable_ntk_song_info, sxportable_ntk_sequence, sxportable_ntk_pattern_lines,
+        sxportable_ptk_packed_header, sxportable_psy2_header, sxportable_psy2_pattern_header, sxportable_psy2_event,
+        sxportable_psy3_header, sxportable_psy3_chunk, sxportable_psy3_title, sxportable_psy3_author, sxportable_psy3_comment,
+        sxportable_psy3_sequence_name, sxportable_psy3_pattern_name, sxportable_psy3_song_info, sxportable_psy3_track_state,
+        sxportable_psy3_sequence, sxportable_psy3_pattern_index, sxportable_psy3_pattern, sxportable_psy3_compressed_bytes], sx_musicportable_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_musicportable_build, false);
+}

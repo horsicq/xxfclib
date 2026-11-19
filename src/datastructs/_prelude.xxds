@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Loaded into every script context before the format script. Defines the
+// constants and the field builders described in RULES.md.
+
+// Roles (xx_data_struct_record_property_t).
+var NONE = 0x000;
+var ID = 0x001;
+var VA = 0x002;
+var OFFSET = 0x004;
+var SIZE = 0x008;
+var COUNT = 0x010;
+var POINTER = 0x020;
+var FLAGS = 0x040;
+var TIMESTAMP = 0x080;
+var STRING = 0x100;
+var RESERVED = 0x200;
+var SIGNATURE = 0x400;
+var CHECKSUM = 0x800;
+
+// Kinds (xx_data_struct_type_t).
+var STRUCT = 1;
+var ENTRY = 2;
+var FOOTER = 3;
+var LOCATOR = 4;
+var RAW = 5;
+
+// Address argument of Structs.add/table/put: the host computes the mapped
+// address of the offset (exact for 64-bit addresses).
+var MAPPED = -2;
+
+// Byte order of a structure or field.
+var LE = 0;
+var BE = 1;
+var FILE = 2;
+
+function field(name, type, size, role, comment) {
+    var f = { name: name, type: type, size: size, role: role === undefined ? NONE : role };
+    if (comment !== undefined) f.comment = comment;
+    return f;
+}
+
+function u8(name, role, comment) { return field(name, "uint8", 1, role, comment); }
+function u16(name, role, comment) { return field(name, "uint16", 2, role, comment); }
+function u32(name, role, comment) { return field(name, "uint32", 4, role, comment); }
+function u64(name, role, comment) { return field(name, "uint64", 8, role, comment); }
+function i8(name, role, comment) { return field(name, "int8", 1, role, comment); }
+function i16(name, role, comment) { return field(name, "int16", 2, role, comment); }
+function i32(name, role, comment) { return field(name, "int32", 4, role, comment); }
+function i64(name, role, comment) { return field(name, "int64", 8, role, comment); }
+
+function chars(name, n, role) { return field(name, "char[" + n + "]", n, role === undefined ? STRING : role); }
+function bytes(name, n, role) { return field(name, "uint8[" + n + "]", n, role); }
+function blob(name, n, role) { return field(name, "bytes", n, role); }
+
+// A gap inside a layout: advances the running offset, produces no field.
+function pad(n) { return { pad: n }; }
+
+// Places a field at an explicit offset; the fields after it continue from there.
+function at(offset, f) { f.offset = offset; return f; }
+
+// Assigns offsets to the fields that have none and drops the pad() entries.
+function layout(fields) {
+    var out = [], offset = 0, i, f;
+    for (i = 0; i < fields.length; i++) {
+        f = fields[i];
+        if (f.pad !== undefined) { offset += f.pad; continue; }
+        if (f.offset === undefined) f.offset = offset;
+        offset = f.offset + f.size;
+        out.push(f);
+    }
+    return out;
+}

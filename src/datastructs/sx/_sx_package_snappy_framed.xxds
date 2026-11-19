@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/snappy_framed/xx_snappy_framed_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_snappy_crc_fields = layout([u32("masked_crc32c", CHECKSUM)]);
+var sx_p_snappy_crc = sxLayout(0x60070040, "snappy_crc", LE, sx_p_snappy_crc_fields);
+function sx_p_snappy(c) {
+    var off = 0;
+    var first = true;
+    while (off < c.size) {
+        var type = [0];
+        var b = [];
+        if (!sx_p_byte(c, off, type) || !sx_read(c, off + 1, b, 3)) {
+            return false;
+        }
+        var n = b[0] | b[1] << 8 | b[2] << 16;
+        if (!sx_add(c, sx_p_snappy_chunk, off, 4) || !sx_p_span(c, (off + 4 < 0 ? off + 4 + SX_U64_MAX : off + 4), n) || first && type[0] !== 255) {
+            return false;
+        }
+        off += 4;
+        if (type[0] === 255) {
+            if (n !== 6 || !sx_p_sig(c, off, "sNaPpY", 6)) {
+                return false;
+            }
+        } else if (type[0] <= 1) {
+            if (n < 4 || !sx_add(c, sx_p_snappy_crc, off, 4)) {
+                return false;
+            }
+        } else if (type[0] < 128) {
+            return false;
+        }
+        off += n;
+        first = false;
+    }
+    return !first;
+}
+function sx_snappy_framed_build(c) {
+    return sx_p_snappy(c);
+}

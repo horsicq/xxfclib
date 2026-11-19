@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/qoi/xx_qoi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_qoi_end_fields = layout([bytes("end_marker", 8, SIGNATURE)]);
+var sxi_qoi_end = sxLayout(0x60010025, "QOI_END_MARKER", BE, sxi_qoi_end_fields);
+function sx_image_qoi(c) {
+    var h = [];
+    var marker = [];
+    var width;
+    var height;
+    var remaining;
+    var at = 14;
+    var cursor = { context: c, start: -1, valid: 0, bytes: sxZeros(4096) };
+    if (!sx_read(c, 0, h, 14) || sxMemcmp(h, "qoif", 4) || h[12] !== 3 && h[12] !== 4 || h[13] > 1 || (width = sx_u32(c, 4, true)) === null || (height = sx_u32(c, 8, true)) === null || !width || !height || !sx_add(c, sxi_qoi_header, 0, 14)) {
+        return false;
+    }
+    remaining = width * height;
+    while (remaining) {
+        var op = [0];
+        var bytes = 1;
+        var pixels = 1;
+        if (!sxi_byte(cursor, at, op, 0)) {
+            return false;
+        }
+        if (op[0] === 0xFE) {
+            bytes = 4;
+        } else if (op[0] === 0xFF) {
+            bytes = 5;
+        } else if ((op[0] & 0xC0) === 0x80) {
+            bytes = 2;
+        } else if ((op[0] & 0xC0) === 0xC0) {
+            pixels = (op[0] & 0x3F) + 1;
+        }
+        if (pixels > remaining || !sx_image_range(c, at, bytes)) {
+            return false;
+        }
+        at += bytes;
+        remaining = sxU64(remaining - pixels);
+    }
+    if (!sx_read(c, at, marker, 8) || sxMemcmp(marker, "\x00\x00\x00\x00\x00\x00\x00\x01", 8)) {
+        return false;
+    }
+    return sx_raw(c, 14, at - 14) && sx_add(c, sxi_qoi_end, at, 8);
+}
+function sx_qoi_build(c) {
+    return sx_image_qoi(c);
+}

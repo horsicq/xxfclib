@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// GZIP (RFC 1952). The end of a member's deflate stream is only known after
+// decoding, so the member layout comes from the reader:
+//
+//   Format.table("members") - one row per member, offsets from the format start
+//     header                 member header (10 bytes)
+//     extra, extraSize       FEXTRA field including its 2-byte XLEN, extra = -1 when absent
+//     name, nameSize         FNAME including the NUL, name = -1 when absent
+//     comment, commentSize   FCOMMENT including the NUL, comment = -1 when absent
+//     headerCrc              FHCRC (2 bytes), -1 when absent
+//     data, dataSize         the deflate stream
+//     trailer                CRC32 + ISIZE (8 bytes)
+
+function fileTypes() { return ["GZ"]; }
+
+function structs() {
+    return [
+        { id: 1, name: "MEMBER_HEADER", fields: [
+            u8("id1", ID), u8("id2", ID), u8("compression_method"), u8("flags", FLAGS),
+            u32("modification_time", TIMESTAMP), u8("extra_flags", FLAGS), u8("operating_system") ] },
+        { id: 2, name: "EXTRA_FIELD", fields: extraFields },
+        { id: 3, name: "ORIGINAL_NAME", fields: textFields },
+        { id: 4, name: "COMMENT", fields: textFields },
+        { id: 5, name: "HEADER_CRC16", fields: [ u16("header_crc16", CHECKSUM) ] },
+        { id: 6, name: "COMPRESSED_DATA" },
+        { id: 7, name: "TRAILER", fields: [ u32("crc32", CHECKSUM), u32("input_size", SIZE) ] },
+        { id: 8, name: "EXTRA_SUBFIELD", fields: extraFields }
+    ];
+}
+
+// EXTRA_FIELD is XLEN + data; EXTRA_SUBFIELD is SI1 SI2 LEN + data.
+function extraFields(ds) {
+    var sub = ds.name === "EXTRA_SUBFIELD", head = sub ? 4 : 2, fields = [], size;
+    if (ds.totalSize < head) return undefined;
+    size = File.u16(ds.offset + head - 2);
+    if (size !== ds.totalSize - head) return undefined;
+    if (sub) fields.push(u8("si1", ID), u8("si2", ID));
+    fields.push(u16(sub ? "len" : "xlen", SIZE));
+    if (size) fields.push(blob("data", size));
+    return layout(fields);
+}
+
+// A NUL-terminated string; anything else has no decodable field.
+function textFields(ds) {
+    if (!ds.totalSize || File.u8(ds.offset + ds.totalSize - 1) !== 0) return undefined;
+    return [ at(0, field(ds.name === "ORIGINAL_NAME" ? "original_name" : "comment", "char[]", ds.totalSize, STRING)) ];
+}
+
+function scan() {
+    var members = Format.table("members"), i, m, cursor, end, size;
+    for (i = 0; i < members.length; i++) {
+        m = members[i];
+        Structs.add("MEMBER_HEADER", m.header, 10);
+        if (m.extra >= 0) {
+            Structs.add("EXTRA_FIELD", m.extra, m.extraSize);
+            cursor = m.extra + 2;
+            end = m.extra + m.extraSize;
+            while (cursor < end) {
+                size = end - cursor >= 4 ? 4 + File.u16(cursor + 2) : 0;
+                if (size < 4 || size > end - cursor) {
+                    Structs.raw(cursor, end - cursor);
+                    break;
+                }
+                Structs.add("EXTRA_SUBFIELD", cursor, size);
+                cursor += size;
+            }
+        }
+        if (m.name >= 0) Structs.add("ORIGINAL_NAME", m.name, m.nameSize);
+        if (m.comment >= 0) Structs.add("COMMENT", m.comment, m.commentSize);
+        if (m.headerCrc >= 0) Structs.add("HEADER_CRC16", m.headerCrc, 2);
+        Structs.add("COMPRESSED_DATA", m.data, m.dataSize, RAW);
+        Structs.add("TRAILER", m.trailer, 8, FOOTER);
+    }
+}

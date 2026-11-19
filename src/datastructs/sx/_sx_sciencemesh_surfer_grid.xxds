@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/surfer_grid/xx_surfer_grid_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_scalar_min_fields = layout([field("scalar_min", "ascii_real", 0)]);
+var sxsm_scalar_min = sxLayout(0x60630034, "mesh_scalar_min", LE, sxsm_scalar_min_fields);
+var sxsm_scalar_max_fields = layout([field("scalar_max", "ascii_real", 0)]);
+var sxsm_scalar_max = sxLayout(0x60630035, "mesh_scalar_max", LE, sxsm_scalar_max_fields);
+function sxsm_surfer(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(512, sxNew_sxsm_token);
+    var n = [0];
+    if (!sxsm_next(q, line, t[0], 512, n, "#") || n[0] !== 1) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, t[0]))) {
+            return false;
+        }
+    }
+    if (!sxsm_next(q, line, t[0], 512, n, "#") || n[0] !== 2 || !sxsm_each(q, t, 0, 2, sxsm_axis_count)) {
+        return false;
+    }
+    var lo = [sxsm_box_min_x, sxsm_box_min_y, sxsm_scalar_min];
+    var hi = [sxsm_box_max_x, sxsm_box_max_y, sxsm_scalar_max];
+    for (var i = 0; i < 3; i++) {
+        if (!sxsm_next(q, line, t[0], 512, n, "#") || n[0] !== 2 || !sxsm_emit(q, lo[i], sxCopy_sxsm_token(null, t[0])) || !sxsm_emit(q, hi[i], sxCopy_sxsm_token(null, t[1]))) {
+            return false;
+        }
+    }
+    while (sxsm_next(q, line, t[0], 512, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsm_each(q, t, 0, n[0], sxsm_scalar_value)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_surfer_grid_build(q) {
+    return sxsm_surfer(q);
+}

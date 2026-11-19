@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/microsoft_xsb/xx_microsoft_xsb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_xsb_header_fields = layout([chars("magic", 4, SIGNATURE), u16("content_version", ID), u16("tool_version", ID),
+    u16("crc", CHECKSUM), u64("last_modified", TIMESTAMP), u8("platform", ID), u16("simple_cues", COUNT),
+    u16("complex_cues", COUNT), blob("unknown_17", 4), u8("wave_banks", COUNT), u16("sounds", COUNT),
+    u16("cue_name_bytes", SIZE), blob("unknown_20", 2), u32("simple_cues_offset", OFFSET), u32("complex_cues_offset", OFFSET),
+    u32("cue_names_offset", OFFSET), u32("unknown_offset", OFFSET), u32("variation_tables_offset", OFFSET),
+    u32("transition_tables_offset", OFFSET), u32("wave_bank_names_offset", OFFSET), u32("cue_name_hash_offset", OFFSET),
+    u32("cue_name_index_offset", OFFSET), u32("sounds_offset", OFFSET), chars("bank_name", 64, STRING)]);
+var sxau_xsb_header = sxLayout(0x602C000B, "xsb_header", LE, sxau_xsb_header_fields);
+var sxau_xsb_cue_fields = layout([u8("flags", FLAGS), u32("sound_offset", OFFSET)]);
+var sxau_xsb_cue = sxLayout(0x602C000C, "xsb_cue", LE, sxau_xsb_cue_fields);
+var sxau_xsb_simple_sound_fields = layout([u8("flags", FLAGS), u16("category", ID), u8("volume"), i16("pitch_cents"),
+    u8("priority"), u16("sound_length", SIZE), u16("wave_index", ID), u8("wave_bank_index", ID)]);
+var sxau_xsb_simple_sound = sxLayout(0x602C000D, "xsb_simple_sound", LE, sxau_xsb_simple_sound_fields);
+function sxau_xsb(v) {
+    if (!sxau_row(v, sxau_xsb_header, 0, v.n)) {
+        return false;
+    }
+    return sxau_table(v, sxau_xsb_cue, sxau_u32(v.p, 34, false), sxau_u16(v.p, 19, false), v.n) && sxau_table(v, sxau_xsb_simple_sound, sxau_u32(v.p, 70, false), sxau_u16(v.p, 28, false), v.n) && sxau_table(v, sxau_xact_name, sxau_u32(v.p, 58, false), v.p[27], v.n);
+}
+function sx_microsoft_xsb_build(v) {
+    return sxau_xsb(v);
+}

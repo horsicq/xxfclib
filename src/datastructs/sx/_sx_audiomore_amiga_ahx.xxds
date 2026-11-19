@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/amiga_ahx/xx_amiga_ahx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_amiga_ahx_header_fields = layout([chars("magic", 3, SIGNATURE), u8("version", ID), u16("names_offset_low16", OFFSET),
+    u16("flags_and_position_count", FLAGS), u16("restart_position", ID), u8("rows_per_track", COUNT), u8("maximum_track", ID),
+    u8("instrument_count", COUNT), u8("subsong_count", COUNT)]);
+var sxau_amiga_ahx_header = sxLayout(0x602C0044, "amiga_ahx_header", BE, sxau_amiga_ahx_header_fields);
+var sxau_amiga_ahx_subsong_fields = layout([u16("start_position", ID)]);
+var sxau_amiga_ahx_subsong = sxLayout(0x602C0045, "amiga_ahx_subsong", BE, sxau_amiga_ahx_subsong_fields);
+var sxau_amiga_ahx_channel_order_fields = layout([u8("track_index", ID), i8("transpose")]);
+var sxau_amiga_ahx_channel_order = sxLayout(0x602C0046, "amiga_ahx_channel_order", BE, sxau_amiga_ahx_channel_order_fields);
+var sxau_amiga_ahx_instrument_fields = layout([u8("volume"), u8("filter_speed_and_wave_length", FLAGS),
+    u8("attack_frames", COUNT), u8("attack_volume"), u8("decay_frames", COUNT), u8("decay_volume"), u8("sustain_frames", COUNT),
+    u8("release_frames", COUNT), u8("release_volume"), blob("unknown_a", 12), u8("playlist_length", COUNT)]);
+var sxau_amiga_ahx_instrument = sxLayout(0x602C0047, "amiga_ahx_instrument", BE, sxau_amiga_ahx_instrument_fields);
+var sxau_amiga_ahx_playlist_fields = layout([u8("effects_and_waveform", FLAGS), u8("note_and_fixed", FLAGS),
+    u8("effect_parameter1"), u8("effect_parameter2")]);
+var sxau_amiga_ahx_playlist = sxLayout(0x602C0048, "amiga_ahx_playlist", BE, sxau_amiga_ahx_playlist_fields);
+function sxau_amiga(v) {
+    if (!sxau_row(v, sxau_amiga_ahx_header, 0, v.n)) {
+        return false;
+    }
+    var at = 14;
+    var subs = v.p[13];
+    var pos = sxau_u16(v.p, 6, true) & 4095;
+    var tracks = v.p[11] + (v.p[6] & 128 ? 0 : 1);
+    var rows = v.p[10];
+    var ins = v.p[12];
+    if (!sxau_table(v, sxau_amiga_ahx_subsong, at, subs, v.n)) {
+        return false;
+    }
+    at += subs * 2;
+    if (!sxau_table(v, sxau_amiga_ahx_channel_order, at, pos * 4, v.n)) {
+        return false;
+    }
+    at += pos * 8;
+    if (!sxau_need(v, at, tracks * rows * 3, v.n)) {
+        return false;
+    }
+    at += tracks * rows * 3;
+    for (var i = 0; i < ins; i++) {
+        if (!sxau_row(v, sxau_amiga_ahx_instrument, at, v.n)) {
+            return false;
+        }
+        var count = v.p[at + 21];
+        at += 22;
+        if (!sxau_table(v, sxau_amiga_ahx_playlist, at, count, v.n)) {
+            return false;
+        }
+        at += (count * 4) >>> 0;
+    }
+    return at <= v.n;
+}
+function sx_amiga_ahx_build(v) {
+    return sxau_amiga(v);
+}

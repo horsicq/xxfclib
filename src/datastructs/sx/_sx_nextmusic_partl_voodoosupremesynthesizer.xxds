@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/partl_voodoosupremesynthesizer/xx_partl_voodoosupremesynthesizer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_vss_footer_fields = layout([blob("signature", 4, SIGNATURE), i32("subsongs", COUNT)]);
+var sxnextm_vss_footer = sxLayout(0x608B0052, "vss_footer", BE, sxnextm_vss_footer_fields);
+function sxnextm_vss(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var b;
+    var n = [0];
+    if (e < 64) {
+        return false;
+    }
+    for (b = sxAnd64(sxU64(e - 64) + 1, sxK(0xFFFFFFFF, 0xFFFFFFFE)); b + 8 <= e; b += 2) {
+        if (sxnextm_eq(v, b, "VSS0", 4, e)) {
+            break;
+        }
+    }
+    if (b + 8 > e || !sxnextm_be(v, b + 4, 4, n, 0, e) || n[0] >= 256 || !sxnextm_row(v, sxnextm_vss_footer, b, e) || !sxnextm_table(v, sxnextm_vss_song_offset, b + 8, n[0], e)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var song = [0];
+        var p = [0];
+        var min = b;
+        var x = [0];
+        if (!sxnextm_rel32(v, b + 8 + i * 4, b, song, 0, e) || song[0] >= b) {
+            return false;
+        }
+        p[0] = song[0];
+        var count = 0;
+        while (p[0] < min) {
+            if (count++ >= 65536 || !sxnextm_rel32(v, p[0], song[0], x, 0, e) || !sxnextm_take(v, sxnextm_vss_data_offset, p, 1, min)) {
+                return false;
+            }
+            if (x[0] >= song[0] && x[0] < min) {
+                min = x[0];
+            }
+        }
+        if (p[0] !== min || count < 4) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_partl_voodoosupremesynthesizer_build(v) {
+    return sxnextm_vss(v);
+}

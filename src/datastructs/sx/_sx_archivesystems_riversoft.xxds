@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/riversoft/xx_riversoft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_riversoft_header_fields = layout([chars("signature", 23, SIGNATURE), u8("major_version"), u8("opaque"),
+    u8("minor_version"), u16("member_count", COUNT), u32("total_uncompressed_size", SIZE)]);
+var sxasy_riversoft_header = sxLayout(0x6044002A, "riversoft_header", LE, sxasy_riversoft_header_fields);
+var sxasy_riversoft_entry_fields = layout([u8("name_size", SIZE), chars("name", 12, NONE), u32("payload_offset", OFFSET),
+    u16("compressed_size", SIZE), u16("uncompressed_size", SIZE)]);
+var sxasy_riversoft_entry = sxLayout(0x6044002B, "riversoft_entry", LE, sxasy_riversoft_entry_fields);
+function sxasy_river(c) {
+    var n = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxasy_word(c, 26, 2, false, n) || end < 32 || n[0] > Math.floor(sxU64(end - 32) / 21) || !sxasy_add(c, sxasy_riversoft_header, 0)) {
+        return false;
+    }
+    var p = sxU64(end - n[0] * 21);
+    for (var i = 0; i < n[0]; i++) {
+        var h = [];
+        if (!sxasy_read(c, p + i * 21, h, 21) || !sxasy_add(c, sxasy_riversoft_entry, p + i * 21)) {
+            return false;
+        }
+        var off = sxasy_uint(h, 13, 4, false);
+        var z = sxasy_uint(h, 17, 2, false);
+        if (off >= 32 && off <= p && z <= sxU64(p - off) && !sxasy_dcl(c, off, z)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_riversoft_build(c) {
+    return sxasy_river(c);
+}

@@ -1,0 +1,184 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_cowfs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxc_apfs_btree_node_fields = layout([u64("checksum", CHECKSUM), u64("object_id", ID), u64("transaction_id", ID),
+    u32("object_type", FLAGS), u32("object_subtype", ID), u16("flags", FLAGS), u16("level"), u32("key_count", COUNT),
+    u16("table_space_offset", OFFSET), u16("table_space_length", SIZE), u16("free_space_offset", OFFSET),
+    u16("free_space_length", SIZE), u16("key_free_list_offset", OFFSET), u16("key_free_list_length", SIZE),
+    u16("value_free_list_offset", OFFSET), u16("value_free_list_length", SIZE)]);
+var sxc_apfs_btree_node = sxLayout(0x60180009, "apfs_btree_node", LE, sxc_apfs_btree_node_fields);
+var sxc_apfs_omap_value_fields = layout([u32("flags", FLAGS), u32("size", SIZE), i64("physical_block")]);
+var sxc_apfs_omap_value = sxLayout(0x6018000E, "apfs_omap_value", LE, sxc_apfs_omap_value_fields);
+var sxc_btrfs_superblock_header_fields = layout([bytes("checksum", 32, CHECKSUM), bytes("fsid", 16),
+    u64("physical_offset", OFFSET), u64("flags", FLAGS), chars("magic", 8, SIGNATURE), u64("generation"),
+    u64("root_logical_address", VA), u64("chunk_root_logical_address", VA), u64("log_root_logical_address", VA),
+    u64("unused_log_root_transid", RESERVED), u64("total_bytes", SIZE), u64("bytes_used", SIZE),
+    u64("root_directory_object_id", ID), u64("device_count", COUNT), u32("sector_size", SIZE), u32("node_size", SIZE),
+    u32("unused_leaf_size", RESERVED), u32("stripe_size", SIZE), u32("system_chunk_array_size", SIZE),
+    u64("chunk_root_generation"), u64("compatible_flags", FLAGS), u64("readonly_compatible_flags", FLAGS),
+    u64("incompatible_flags", FLAGS), u16("checksum_type", ID), u8("root_level"), u8("chunk_root_level"), u8("log_root_level")]);
+var sxc_btrfs_superblock_header = sxLayout(0x60180014, "btrfs_superblock_header", LE, sxc_btrfs_superblock_header_fields);
+var sxc_btrfs_disk_key_fields = layout([u64("object_id", ID), u8("type", ID), u64("offset")]);
+var sxc_btrfs_disk_key = sxLayout(0x60180019, "btrfs_disk_key", LE, sxc_btrfs_disk_key_fields);
+var sxc_btrfs_chunk_fields = layout([u64("length", SIZE), u64("owner_object_id", ID), u64("stripe_length", SIZE),
+    u64("type", FLAGS), u32("io_alignment", SIZE), u32("io_width", SIZE), u32("sector_size", SIZE), u16("stripe_count", COUNT),
+    u16("sub_stripe_count", COUNT)]);
+var sxc_btrfs_chunk = sxLayout(0x6018001A, "btrfs_chunk", LE, sxc_btrfs_chunk_fields);
+var sxc_btrfs_leaf_item_fields = layout([u64("key_object_id", ID), u8("key_type", ID), u64("key_offset"),
+    u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxc_btrfs_leaf_item = sxLayout(0x6018001D, "btrfs_leaf_item", LE, sxc_btrfs_leaf_item_fields);
+var sxc_btrfs_key_pointer_fields = layout([u64("key_object_id", ID), u8("key_type", ID), u64("key_offset"),
+    u64("child_logical_address", VA), u64("generation")]);
+var sxc_btrfs_key_pointer = sxLayout(0x6018001E, "btrfs_key_pointer", LE, sxc_btrfs_key_pointer_fields);
+function sx_cowfs_supports(t) {
+    return t === "APFS" || t === "BTRFS";
+}
+function sxc_u16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, false);
+}
+function sxc_u32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, false);
+}
+function sxc_u64(p, p_o) {
+    return sxGetU64At(p, p_o, 8, 0, false);
+}
+function sxc_can(c, at, n) {
+    return at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxc_add(c, l, at, n) {
+    if (n <= 0 || !sxc_can(c, at, (n < 0 ? n + SX_U64_MAX : n)) || at > SX_I64_MAX - c.f.base_address) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        if (c.items[i].offset === c.f.base_address + at && c.items[i].id === l.id && c.items[i].total_size === n) {
+            return true;
+        }
+    }
+    return sx_add(c, l, at, n);
+}
+function sxc_table(c, l, at, entry, count) {
+    if (!count) {
+        return true;
+    }
+    if (entry <= 0 || count > Math.floor(SX_I64_MAX / (entry < 0 ? entry + SX_U64_MAX : entry))) {
+        return false;
+    }
+    var size = (count >= SX_I64_MAX ? count - SX_U64_MAX : count) * entry;
+    if (!sxc_can(c, at, (size < 0 ? size + SX_U64_MAX : size)) || at > SX_I64_MAX - c.f.base_address) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        if (c.items[i].offset === c.f.base_address + at && c.items[i].id === l.id && c.items[i].total_size === size && c.items[i].entry_size === entry && c.items[i].count === count) {
+            return true;
+        }
+    }
+    return sx_table(c, l, at, entry, count);
+}
+function sxc_order(left, right) {
+    var a = left;
+    var b = right;
+    return a.offset < b.offset ? -1 : a.offset > b.offset ? 1 : 0;
+}
+function sxc_finish(c) {
+    var count = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, count, sxc_order, true);
+    for (var i = 0; i < count; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var n = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + n;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxc_order, true);
+    return !c.failed;
+}
+function sx_cowfs_build(c) {
+    if (c.f.handle_base_info === null || !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = (c.f.file_type === "APFS" ? (sx_apfs_build(c) ? 1 : 0) : c.f.file_type === "BTRFS" ? (sx_btrfs_build(c) ? 1 : 0) : 0) !== 0;
+    return !!(ok && c.count && sxc_finish(c));
+}
+function sxc_has(s, s_o, p) {
+    var n = sxStrlen(p);
+    for (; sxAt(s, s_o); s_o++) {
+        if (!sxStrncmpAt(s, s_o, p, 0, n)) {
+            return true;
+        }
+    }
+    return false;
+}
+function sx_cowfs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60180000 || id >= 0x60190000) {
+        return true;
+    }
+    var n = r.name;
+    var text = null;
+    var v = sxVarU64(r.value);
+    if (id < sxc_btrfs_superblock_header.id) {
+        if (!sxStrcmp(n, "checksum")) {
+            text = "Fletcher-64 over the remaining bytes of this physical APFS block";
+        }
+        if (sxc_has(n, 0, "_block") || sxc_has(n, 0, "_blocks") || sxc_has(n, 0, "_base") || !sxStrcmp(n, "block_count")) {
+            text = "Container block units; byte position or length = value * container block size";
+        }
+        if (sxc_has(n, 0, "blocks_flags")) {
+            text = "Low 31 bits: block count; high bit: descriptor/data area is represented by a tree";
+        }
+        if (sxc_has(n, 0, "_time") || !sxStrcmp(n, "timestamp")) {
+            text = "Nanoseconds since 1970-01-01 UTC";
+        }
+        if (!sxStrcmp(n, "object_type")) {
+            text = sxAnd64(v, 65535) === 1 ? "OBJECT_TYPE_NX_SUPERBLOCK (low 16 bits); upper bits are object flags" : sxAnd64(v, 65535) === 2 ? "OBJECT_TYPE_BTREE" : sxAnd64(v, 65535) === 3 ? "OBJECT_TYPE_BTREE_NODE" : sxAnd64(v, 65535) === 5 ? "OBJECT_TYPE_SPACEMAN" : sxAnd64(v, 65535) === 11 ? "OBJECT_TYPE_OMAP" : sxAnd64(v, 65535) === 12 ? "OBJECT_TYPE_CHECKPOINT_MAP" : sxAnd64(v, 65535) === 13 ? "OBJECT_TYPE_FS" : null;
+        }
+        if (!sxStrcmp(n, "omap_oid") || !sxStrcmp(n, "tree_oid")) {
+            text = "Physical object identifier: container block number";
+        }
+        if (!sxStrcmp(n, "key_offset")) {
+            text = "Byte offset from the start of the B-tree key area";
+        }
+        if (!sxStrcmp(n, "value_offset")) {
+            text = "Positive byte distance backwards from the end of the B-tree value area";
+        }
+        if (id === sxc_apfs_btree_node.id && !sxStrcmp(n, "flags")) {
+            text = "Bits: 0 root, 1 leaf, 2 fixed key/value size, 3 hashed, 4 noheader";
+        }
+        if (id === sxc_apfs_omap_value.id && !sxStrcmp(n, "flags")) {
+            text = "Bits: 0 deleted, 1 saved, 2 encrypted, 3 noheader, 4 crypto generation";
+        }
+    } else {
+        if (!sxStrcmp(n, "checksum")) {
+            text = "Checksum of bytes after this 32-byte field; algorithm selected by the superblock checksum_type";
+        }
+        if (sxc_has(n, 0, "logical_address")) {
+            text = "Btrfs logical byte address; translate through the chunk map before seeking on a device";
+        }
+        if (!sxStrcmp(n, "checksum_type")) {
+            text = v === 0 ? "BTRFS_CSUM_TYPE_CRC32 (CRC32C)" : v === 1 ? "BTRFS_CSUM_TYPE_XXHASH" : v === 2 ? "BTRFS_CSUM_TYPE_SHA256" : v === 3 ? "BTRFS_CSUM_TYPE_BLAKE2" : null;
+        }
+        if (!sxStrcmp(n, "data_offset")) {
+            text = "Byte offset from the end of the 101-byte tree header";
+        }
+        if (!sxStrcmp(n, "offset") || !sxStrcmp(n, "key_offset")) {
+            text = "Key-dependent value: object-specific offset, logical address, hash or identifier";
+        }
+        if ((id === sxc_btrfs_disk_key.id || id === sxc_btrfs_leaf_item.id || id === sxc_btrfs_key_pointer.id) && sxc_has(n, 0, "type")) {
+            text = v === 228 ? "BTRFS_CHUNK_ITEM_KEY" : v === 132 ? "BTRFS_ROOT_ITEM_KEY" : v === 1 ? "BTRFS_INODE_ITEM_KEY" : v === 84 ? "BTRFS_DIR_ITEM_KEY" : v === 108 ? "BTRFS_EXTENT_DATA_KEY" : null;
+        }
+        if (id === sxc_btrfs_chunk.id && !sxStrcmp(n, "type")) {
+            text = "Bits: 0 DATA, 1 SYSTEM, 2 METADATA, 3 RAID0, 4 RAID1, 5 DUP, 6 RAID10, 7 RAID5, 8 RAID6, 9 RAID1C3, 10 RAID1C4";
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}

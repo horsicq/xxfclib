@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/rsvk/xx_rsvk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_rsvk_container_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxao_rsvk_container = sxLayout(0x6070001A, "rsvk_container", LE, sxao_rsvk_container_fields);
+var sxao_rsvk_block_fields = layout([chars("signature", 4, SIGNATURE), u32("crc32", CHECKSUM), u32("compressed_size", SIZE),
+    i32("primary_index"), i32("hole_index")]);
+var sxao_rsvk_block = sxLayout(0x6070001B, "rsvk_block", LE, sxao_rsvk_block_fields);
+var sxao_rsvk_member_fields = layout([chars("signature", 4, SIGNATURE), i32("compressed_size_hint", SIZE),
+    i32("uncompressed_size", SIZE), i32("block_count", COUNT), i32("first_block_offset", OFFSET), u16("dos_time"),
+    u16("dos_date"), u32("attributes", FLAGS)]);
+var sxao_rsvk_member = sxLayout(0x6070001C, "rsvk_member", LE, sxao_rsvk_member_fields);
+var sxao_rsvk_trailer_fields = layout([chars("signature", 4, SIGNATURE), u32("unused"), u32("directory_offset", OFFSET)]);
+var sxao_rsvk_trailer = sxLayout(0x6070001D, "rsvk_trailer", LE, sxao_rsvk_trailer_fields);
+function sxao_rsvk(c) {
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var dir = [0];
+    if (n < 16 || !sxao_add(c, sxao_rsvk_container, 0) || !sxao_add(c, sxao_rsvk_trailer, sxU64(n - 12)) || !sxao_word(c, sxU64(n - 4), 4, false, dir) || dir[0] < 24 || dir[0] > sxU64(n - 12)) {
+        return false;
+    }
+    var p = dir[0];
+    for (var work = 0; p < sxU64(n - 12) && work < 20000; work++) {
+        var h = [];
+        var name = [0];
+        if (sxU64(sxU64(n - 12) - p) < 28 || !sxao_read(c, p, h, 0, 28) || !sxao_zlen(c, p + 28, sxU64(n - 12), name) || !sxao_add(c, sxao_rsvk_member, p) || !sxao_text(c, sxao_archiveobsolete_name, p + 28, name[0], false)) {
+            return false;
+        }
+        var count = sxao_uint(h, 12, 4, false);
+        var q = sxao_uint(h, 16, 4, false);
+        if (count > 2147483647 || q > 2147483647) {
+            return false;
+        }
+        for (var j = 0; j < count && c.count < 20000; j++) {
+            var z = [0];
+            if (q > dir[0] || sxU64(dir[0] - q) < 20 || !sxao_word(c, q + 8, 4, false, z) || z[0] > sxU64(sxU64(dir[0] - q) - 20) || !sxao_add(c, sxao_rsvk_block, q)) {
+                break;
+            }
+            q += 20 + z[0];
+        }
+        p += 28 + name[0];
+    }
+    return true;
+}
+function sx_rsvk_build(c) {
+    return sxao_rsvk(c);
+}

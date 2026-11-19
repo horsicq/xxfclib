@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencemesh.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_sciencemesh");
+include("_sx_sciencemesh_abaqus_input");
+include("_sx_sciencemesh_amira_mesh");
+include("_sx_sciencemesh_gmsh_msh");
+include("_sx_sciencemesh_gmv_mesh");
+include("_sx_sciencemesh_gocad_model");
+include("_sx_sciencemesh_harwell_boeing");
+include("_sx_sciencemesh_jcamp_dx");
+include("_sx_sciencemesh_medit_mesh");
+include("_sx_sciencemesh_metaimage");
+include("_sx_sciencemesh_microscopy_ics");
+include("_sx_sciencemesh_nastran_bulk");
+include("_sx_sciencemesh_netgen_vol");
+include("_sx_sciencemesh_nrrd");
+include("_sx_sciencemesh_opendx_field");
+include("_sx_sciencemesh_openfoam_points");
+include("_sx_sciencemesh_phylo_newick");
+include("_sx_sciencemesh_phylo_nexus");
+include("_sx_sciencemesh_surfer_grid");
+include("_sx_sciencemesh_tektronix_isf");
+include("_sx_sciencemesh_tetgen_mesh");
+include("_sx_sciencemesh_vtk_legacy");
+
+function fileTypes() { return ["NRRD", "METAIMAGE", "VTK_LEGACY", "MICROSCOPY_ICS", "TEKTRONIX_ISF", "PHYLO_NEXUS",
+    "PHYLO_NEWICK", "OPENDX_FIELD", "GMSH_MSH", "NETGEN_VOL", "JCAMP_DX", "SURFER_GRID", "HARWELL_BOEING", "OPENFOAM_POINTS",
+    "MEDIT_MESH", "GOCAD_MODEL", "NASTRAN_BULK", "ABAQUS_INPUT", "GMV_MESH", "AMIRA_MESH", "TETGEN_MESH"]; }
+
+var sx_sciencemesh_layouts = [sxsm_signature, sxsm_keyword, sxsm_section, sxsm_key, sxsm_option_value, sxsm_title, sxsm_comment,
+    sxsm_name, sxsm_text_value, sxsm_type_name, sxsm_encoding, sxsm_endian, sxsm_units, sxsm_filename, sxsm_format_string,
+    sxsm_boolean_text, sxsm_dimension, sxsm_axis_count, sxsm_node_count, sxsm_element_count, sxsm_value_count,
+    sxsm_component_count, sxsm_tag_count, sxsm_attribute_count, sxsm_node_id, sxsm_element_id, sxsm_node_index,
+    sxsm_property_id, sxsm_region_id, sxsm_entity_id, sxsm_label_id, sxsm_integer_value, sxsm_real_value, sxsm_coordinate_x,
+    sxsm_coordinate_y, sxsm_coordinate_z, sxsm_origin_x, sxsm_origin_y, sxsm_origin_z, sxsm_spacing_x, sxsm_spacing_y,
+    sxsm_spacing_z, sxsm_delta_x, sxsm_delta_y, sxsm_delta_z, sxsm_box_min_x, sxsm_box_min_y, sxsm_box_min_z, sxsm_box_max_x,
+    sxsm_box_max_y, sxsm_box_max_z, sxsm_scalar_min, sxsm_scalar_max, sxsm_scalar_value, sxsm_attribute_value,
+    sxsm_sample_bytes, sxsm_header_bytes, sxsm_sample_bits, sxsm_significant_bits, sxsm_ics_parameter_count,
+    sxsm_byte_order_index, sxsm_parameter_origin, sxsm_parameter_scale, sxsm_x_increment, sxsm_x_zero, sxsm_point_offset,
+    sxsm_y_multiplier, sxsm_y_zero, sxsm_y_offset, sxsm_length_digits, sxsm_payload_bytes, sxsm_node_label, sxsm_tree_name,
+    sxsm_taxon_count, sxsm_branch_length, sxsm_jcamp_version, sxsm_first_x, sxsm_last_x, sxsm_x_factor, sxsm_y_factor,
+    sxsm_spectral_x, sxsm_spectral_y, sxsm_hb_total_lines, sxsm_hb_pointer_lines, sxsm_hb_index_lines, sxsm_hb_value_lines,
+    sxsm_hb_rhs_lines, sxsm_matrix_rows, sxsm_matrix_columns, sxsm_nonzero_count, sxsm_elemental_values, sxsm_column_pointer,
+    sxsm_row_index, sxsm_matrix_key, sxsm_matrix_type, sxsm_mesh_version, sxsm_element_type, sxsm_tag_value, sxsm_step_index,
+    sxsm_simulation_time, sxsm_boundary_marker, sxsm_surface_id, sxsm_boundary_id, sxsm_inside_domain, sxsm_outside_domain,
+    sxsm_edge_region, sxsm_edge_triangle, sxsm_edge_surface, sxsm_edge_id, sxsm_edge_distance, sxsm_geometry_type, sxsm_red,
+    sxsm_green, sxsm_blue, sxsm_alpha, sxsm_axis_name, sxsm_axis_unit, sxsm_z_direction, sxsm_topology_name, sxsm_variable_name,
+    sxsm_material_name, sxsm_surface_face, sxsm_material_id, sxsm_coordinate_system, sxsm_displacement_coordinate_system,
+    sxsm_permanent_constraints, sxsm_superelement_id, sxsm_nastran_x, sxsm_nastran_y, sxsm_nastran_z, sxsm_bar_orientation_x,
+    sxsm_bar_orientation_y, sxsm_bar_orientation_z, sxsm_binary_count, sxsm_binary_arity, sxsm_binary_node_index,
+    sxsm_binary_material_id, sxsm_binary_flag_value, sxsm_binary_cycle, sxsm_binary_location, sxsm_binary_scalar,
+    sxsm_binary_coordinate, sxsm_binary_velocity, sxsm_binary_time, sxsm_binary_name];
+
+function structs() {
+    return sxCatalog([sxsm_signature, sxsm_keyword, sxsm_section, sxsm_key, sxsm_option_value, sxsm_title, sxsm_comment,
+        sxsm_name, sxsm_text_value, sxsm_type_name, sxsm_encoding, sxsm_endian, sxsm_units, sxsm_filename, sxsm_format_string,
+        sxsm_boolean_text, sxsm_dimension, sxsm_axis_count, sxsm_node_count, sxsm_element_count, sxsm_value_count,
+        sxsm_component_count, sxsm_tag_count, sxsm_attribute_count, sxsm_node_id, sxsm_element_id, sxsm_node_index,
+        sxsm_property_id, sxsm_region_id, sxsm_entity_id, sxsm_label_id, sxsm_integer_value, sxsm_real_value, sxsm_coordinate_x,
+        sxsm_coordinate_y, sxsm_coordinate_z, sxsm_origin_x, sxsm_origin_y, sxsm_origin_z, sxsm_spacing_x, sxsm_spacing_y,
+        sxsm_spacing_z, sxsm_delta_x, sxsm_delta_y, sxsm_delta_z, sxsm_box_min_x, sxsm_box_min_y, sxsm_box_min_z,
+        sxsm_box_max_x, sxsm_box_max_y, sxsm_box_max_z, sxsm_scalar_min, sxsm_scalar_max, sxsm_scalar_value,
+        sxsm_attribute_value, sxsm_sample_bytes, sxsm_header_bytes, sxsm_sample_bits, sxsm_significant_bits,
+        sxsm_ics_parameter_count, sxsm_byte_order_index, sxsm_parameter_origin, sxsm_parameter_scale, sxsm_x_increment,
+        sxsm_x_zero, sxsm_point_offset, sxsm_y_multiplier, sxsm_y_zero, sxsm_y_offset, sxsm_length_digits, sxsm_payload_bytes,
+        sxsm_node_label, sxsm_tree_name, sxsm_taxon_count, sxsm_branch_length, sxsm_jcamp_version, sxsm_first_x, sxsm_last_x,
+        sxsm_x_factor, sxsm_y_factor, sxsm_spectral_x, sxsm_spectral_y, sxsm_hb_total_lines, sxsm_hb_pointer_lines,
+        sxsm_hb_index_lines, sxsm_hb_value_lines, sxsm_hb_rhs_lines, sxsm_matrix_rows, sxsm_matrix_columns, sxsm_nonzero_count,
+        sxsm_elemental_values, sxsm_column_pointer, sxsm_row_index, sxsm_matrix_key, sxsm_matrix_type, sxsm_mesh_version,
+        sxsm_element_type, sxsm_tag_value, sxsm_step_index, sxsm_simulation_time, sxsm_boundary_marker, sxsm_surface_id,
+        sxsm_boundary_id, sxsm_inside_domain, sxsm_outside_domain, sxsm_edge_region, sxsm_edge_triangle, sxsm_edge_surface,
+        sxsm_edge_id, sxsm_edge_distance, sxsm_geometry_type, sxsm_red, sxsm_green, sxsm_blue, sxsm_alpha, sxsm_axis_name,
+        sxsm_axis_unit, sxsm_z_direction, sxsm_topology_name, sxsm_variable_name, sxsm_material_name, sxsm_surface_face,
+        sxsm_material_id, sxsm_coordinate_system, sxsm_displacement_coordinate_system, sxsm_permanent_constraints,
+        sxsm_superelement_id, sxsm_nastran_x, sxsm_nastran_y, sxsm_nastran_z, sxsm_bar_orientation_x, sxsm_bar_orientation_y,
+        sxsm_bar_orientation_z, sxsm_binary_count, sxsm_binary_arity, sxsm_binary_node_index, sxsm_binary_material_id,
+        sxsm_binary_flag_value, sxsm_binary_cycle, sxsm_binary_location, sxsm_binary_scalar, sxsm_binary_coordinate,
+        sxsm_binary_velocity, sxsm_binary_time, sxsm_binary_name], sx_sciencemesh_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_sciencemesh_build, false);
+}

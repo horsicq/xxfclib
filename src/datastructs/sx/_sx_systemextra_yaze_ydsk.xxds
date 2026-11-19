@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/yaze_ydsk/xx_yaze_ydsk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_ydsk_header_fields = layout([chars("signature", 10, SIGNATURE), field("reserved1", "byte[6]", 6, RESERVED),
+    u8("flags", FLAGS), field("reserved2", "byte[15]", 15, RESERVED), u16("logical_sectors_per_track", COUNT),
+    u8("block_shift"), u8("block_mask"), u8("extent_mask"), u16("maximum_block_number"), u16("maximum_directory_entry"),
+    u8("allocation_bitmap_high", FLAGS), u8("allocation_bitmap_low", FLAGS), u16("check_vector_size"),
+    u16("reserved_track_count", COUNT), u8("sector_shift"), u8("sector_mask"), field("reserved3", "byte[79]", 79, RESERVED)]);
+var sxse_ydsk_header = sxLayout(0x602F0056, "ydsk_header", LE, sxse_ydsk_header_fields);
+function sx_yaze_ydsk_build(c) {
+    return sxse_put(c, sxse_ydsk_header, 0, 128, 1);
+}

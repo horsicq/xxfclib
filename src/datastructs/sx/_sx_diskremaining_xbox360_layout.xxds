@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/xbox360_layout/xx_xbox360_layout_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_xbox_fatx_header_le_fields = layout([chars("magic", 4, SIGNATURE), u32("volume_id", ID),
+    u32("sectors_per_cluster", COUNT), u32("root_cluster")]);
+var sxdr_xbox_fatx_header_le = sxLayout(0x607F001D, "xbox_fatx_header_le", LE, sxdr_xbox_fatx_header_le_fields);
+var sxdr_xbox_fatx_header_be_fields = layout([chars("magic", 4, SIGNATURE), u32("volume_id", ID),
+    u32("sectors_per_cluster", COUNT), u32("root_cluster")]);
+var sxdr_xbox_fatx_header_be = sxLayout(0x607F001E, "xbox_fatx_header_be", BE, sxdr_xbox_fatx_header_be_fields);
+var sxdr_xbox_fatx_name_le_fields = layout([field("partition_name_utf16", "uint16[32]", 64)]);
+var sxdr_xbox_fatx_name_le = sxLayout(0x607F0034, "xbox_fatx_name_le", LE, sxdr_xbox_fatx_name_le_fields);
+function sxdr_xbox(c) {
+    var p = 0x130EB0000;
+    var h = [];
+    if (!sxdr_read(c, p, h, 16)) {
+        return false;
+    }
+    var be = !sxMemcmp(h, "XTAF", 4);
+    if (!be && sxMemcmp(h, "FATX", 4)) {
+        return false;
+    }
+    if (!sxdr_put(c, be ? sxdr_xbox_fatx_header_be : sxdr_xbox_fatx_header_le, p, 1)) {
+        return false;
+    }
+    return be || !sxdr_span(c, p + 16, 64) || sxdr_put(c, sxdr_xbox_fatx_name_le, p + 16, 1);
+}
+function sx_xbox360_layout_build(c) {
+    return sxdr_xbox(c);
+}

@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/excelsior/xx_excelsior_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_excelsior_header_fields = layout([chars("signature", 12, SIGNATURE), bytes("unknown_0c", 4),
+    field("index_offset", "uint64le", 8, OFFSET), field("decoded_index_size", "uint32le", 4, SIZE),
+    field("decoded_prefix_size", "uint32le", 4, SIZE), field("data_stream_offset", "uint64le", 8, OFFSET)]);
+var sxir_excelsior_header = sxLayout(0x60800017, "excelsior_header", LE, sxir_excelsior_header_fields);
+var sxir_excelsior_lzma_stream_fields = layout([field("decoded_size", "uint64le", 8, SIZE), u8("lzma_properties"),
+    field("dictionary_size", "uint32le", 4, SIZE)]);
+var sxir_excelsior_lzma_stream = sxLayout(0x60800018, "excelsior_lzma_stream", LE, sxir_excelsior_lzma_stream_fields);
+function sxir_excelsior(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var cert = [0];
+    var index = [0];
+    var data = [0];
+    if (!sxir_pe(v, 0, end, at, cert) || !sxir_eq(v, at[0], "ExcelsiorII1", 12, end) || !sxir_row(v, sxir_excelsior_header, at[0], end) || !sxir_u(v, at[0] + 16, 8, false, index, end) || !sxir_u(v, at[0] + 32, 8, false, data, end) || data[0] < at[0] + 40 || index[0] <= data[0] || !sxir_row(v, sxir_excelsior_lzma_stream, data[0], index[0]) || !sxir_row(v, sxir_excelsior_lzma_stream, index[0], end)) {
+        return false;
+    }
+    return true;
+}
+function sx_excelsior_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_excelsior(v);
+}

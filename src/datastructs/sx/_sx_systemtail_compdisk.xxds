@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/compdisk/xx_compdisk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_compdisk_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("reserved1", RESERVED),
+    u32("reserved2", RESERVED)]);
+var sxst_compdisk_header = sxLayout(0x6037001C, "compdisk_header", BE, sxst_compdisk_header_fields);
+var sxst_compdisk_cylinder_fields = layout([u32("packed_size", SIZE), u16("olaf_checksum", CHECKSUM)]);
+var sxst_compdisk_cylinder = sxLayout(0x6037001D, "compdisk_cylinder", BE, sxst_compdisk_cylinder_fields);
+function sxst_compdisk(c) {
+    if (!sxst_put(c, sxst_compdisk_header, 0, 1)) {
+        return false;
+    }
+    var p = 16;
+    var z = [0];
+    for (var i = 0; i < 80; i++) {
+        if (!sxst_word(c, p, 4, true, z)) {
+            break;
+        }
+        if (!z[0]) {
+            z[0] = 11264;
+        }
+        if (!sxst_span(c, p + 6, z[0]) || !sxst_put(c, sxst_compdisk_cylinder, p, 1)) {
+            break;
+        }
+        p += 6 + z[0];
+    }
+    return true;
+}
+function sx_compdisk_build(c) {
+    return sxst_compdisk(c);
+}

@@ -1,0 +1,154 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/outlook_express_dbx_mailbox/xx_outlook_express_dbx_mailbox_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_dbx_header_fields = layout([blob("magic", 4, SIGNATURE), blob("class_guid", 16, ID), blob("unknown1", 176),
+    u32("message_count", COUNT), blob("unknown2", 28), u32("root_offset", OFFSET), blob("unknown3", 9172)]);
+var sxdm_dbx_header = sxLayout(0x60230041, "dbx_header", LE, sxdm_dbx_header_fields);
+var sxdm_dbx_node_header_fields = layout([u32("self_offset", OFFSET), u32("unknown1"), u32("left_child_offset", OFFSET),
+    u32("parent_offset", OFFSET), u8("unknown2"), u8("entry_count", COUNT), blob("unknown3", 2),
+    u32("left_subtree_count", COUNT)]);
+var sxdm_dbx_node_header = sxLayout(0x60230042, "dbx_node_header", LE, sxdm_dbx_node_header_fields);
+var sxdm_dbx_node_entry_fields = layout([u32("info_offset", OFFSET), u32("right_child_offset", OFFSET),
+    u32("right_subtree_count", COUNT)]);
+var sxdm_dbx_node_entry = sxLayout(0x60230043, "dbx_node_entry", LE, sxdm_dbx_node_entry_fields);
+var sxdm_dbx_info_header_fields = layout([u32("self_offset", OFFSET), u32("body_size", SIZE), u16("unknown1"),
+    u8("attribute_count", COUNT), u8("unknown2")]);
+var sxdm_dbx_info_header = sxLayout(0x60230044, "dbx_info_header", LE, sxdm_dbx_info_header_fields);
+var sxdm_dbx_attribute_fields = layout([u8("id_and_direct_flag", FLAGS), field("direct_value", "uint24", 3)]);
+var sxdm_dbx_attribute = sxLayout(0x60230045, "dbx_attribute", LE, sxdm_dbx_attribute_fields);
+var sxdm_dbx_attribute_indirect_fields = layout([u8("id_and_direct_flag", FLAGS), field("data_offset", "uint24", 3, OFFSET)]);
+var sxdm_dbx_attribute_indirect = sxLayout(0x60230046, "dbx_attribute_indirect", LE, sxdm_dbx_attribute_indirect_fields);
+var sxdm_dbx_attribute_message_fields = layout([u8("id_and_direct_flag", FLAGS),
+    field("first_block_offset", "uint24", 3, OFFSET)]);
+var sxdm_dbx_attribute_message = sxLayout(0x60230047, "dbx_attribute_message", LE, sxdm_dbx_attribute_message_fields);
+var sxdm_dbx_message_pointer_fields = layout([u32("first_block_offset", OFFSET)]);
+var sxdm_dbx_message_pointer = sxLayout(0x60230048, "dbx_message_pointer", LE, sxdm_dbx_message_pointer_fields);
+var sxdm_dbx_block_header_fields = layout([u32("self_offset", OFFSET), u32("allocated_body_size", SIZE),
+    u32("used_body_size", SIZE), u32("next_block_offset", OFFSET)]);
+var sxdm_dbx_block_header = sxLayout(0x60230049, "dbx_block_header", LE, sxdm_dbx_block_header_fields);
+function sxdm_dbx_push(q, seen, n, at, parent, kind, depth) {
+    if (!at || depth > 64) {
+        return true;
+    }
+    var slot = sxMul32(at, 2654435761) & 131071;
+    while (seen[slot]) {
+        if (seen[slot] === at) {
+            return true;
+        }
+        slot = sxAnd64(slot + 1, 131071);
+    }
+    if (n[0] >= 65536) {
+        return false;
+    }
+    seen[slot] = at;
+    q[n[0]++] = sxCopy_sxdm_dbx_job(null, { at: at, parent: parent, kind: kind, depth: depth });
+    return true;
+}
+function sxdm_dbx(c) {
+    done: {
+        var b = [];
+        var root;
+        var count = [0];
+        var ok = false;
+        var queue = null;
+        var seen = null;
+        if (!sxdm_add(c, sxdm_dbx_header, 0, 9404) || (root = sx_u32(c, 228, false)) === null) {
+            return false;
+        }
+        queue = sxAllocN(0x10000, sxNew_sxdm_dbx_job);
+        seen = sxZeros(0x20000);
+        if (queue === null || seen === null) {
+            break done;
+        }
+        if (!sxdm_dbx_push(queue, seen, count, root, 0, 0, 0)) {
+            break done;
+        }
+        for (var i = 0; i < count[0]; i++) {
+            var j = sxCopy_sxdm_dbx_job(null, queue[i]);
+            var at = j.at;
+            if (false) {
+                break done;
+            }
+            if (at < 9404) {
+                continue;
+            }
+            if (j.kind === 0) {
+                if (!sxdm_span(c, at, 24) || !sx_read(c, at, b, 24) || sxdm_u32(b, 0) !== at || j.parent && sxdm_u32(b, 12) !== j.parent || b[17] > 51 || !sxdm_span(c, at + 24, b[17] * 12)) {
+                    continue;
+                }
+                var n = b[17];
+                var left = sxdm_u32(b, 8);
+                if (!sxdm_add(c, sxdm_dbx_node_header, at, 24) || !sxdm_dbx_push(queue, seen, count, left, at, 0, (j.depth + 1) >>> 0)) {
+                    break done;
+                }
+                for (var k = 0; k < n; k++) {
+                    var pos = at + 24 + ((k * 12) >>> 0);
+                    if (!sx_read(c, pos, b, 12) || !sxdm_add(c, sxdm_dbx_node_entry, pos, 12) || !sxdm_dbx_push(queue, seen, count, sxdm_u32(b, 0), 0, 1, 0) || !sxdm_dbx_push(queue, seen, count, sxdm_u32(b, 4), at, 0, (j.depth + 1) >>> 0)) {
+                        break done;
+                    }
+                }
+            } else if (j.kind === 1) {
+                if (!sxdm_span(c, at, 12) || !sx_read(c, at, b, 12) || sxdm_u32(b, 0) !== at) {
+                    continue;
+                }
+                var body = sxdm_u32(b, 4);
+                n = b[10];
+                if ((n * 4) >>> 0 > body || !sxdm_span(c, at + 12, body)) {
+                    continue;
+                }
+                if (!sxdm_add(c, sxdm_dbx_info_header, at, 12)) {
+                    break done;
+                }
+                var found = false;
+                for (k = 0; k < n; k++) {
+                    pos = at + 12 + ((k * 4) >>> 0);
+                    if (!sx_read(c, pos, b, 4)) {
+                        break done;
+                    }
+                    var al = !(b[0] & 128) ? sxdm_dbx_attribute_indirect : (b[0] & 127) === 4 ? sxdm_dbx_attribute_message : sxdm_dbx_attribute;
+                    if (!sxdm_add(c, al, pos, 4)) {
+                        break done;
+                    }
+                    var v = sxdm_u32(b, 0) >>> 8;
+                    if ((b[0] & 127) !== 4 || found) {
+                        continue;
+                    }
+                    found = true;
+                    if (!(b[0] & 128)) {
+                        var rel = n * 4 + v;
+                        if (rel + 4 > body) {
+                            continue;
+                        }
+                        pos = at + 12 + (rel >= SX_I64_MAX ? rel - SX_U64_MAX : rel);
+                        if ((v = sx_u32(c, pos, false)) === null || !sxdm_add(c, sxdm_dbx_message_pointer, pos, 4)) {
+                            break done;
+                        }
+                    }
+                    if (!sxdm_dbx_push(queue, seen, count, v, 0, 2, 0)) {
+                        break done;
+                    }
+                }
+            } else {
+                if (!sxdm_span(c, at, 16) || !sx_read(c, at, b, 16) || sxdm_u32(b, 0) !== at) {
+                    continue;
+                }
+                var allocated = sxdm_u32(b, 4);
+                var used = sxdm_u32(b, 8);
+                if (!allocated || allocated > 1048576 || used > allocated || !sxdm_span(c, at + 16, used)) {
+                    continue;
+                }
+                if (!sxdm_add(c, sxdm_dbx_block_header, at, 16) || !sxdm_dbx_push(queue, seen, count, sxdm_u32(b, 12), 0, 2, 0)) {
+                    break done;
+                }
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_outlook_express_dbx_mailbox_build(c) {
+    return sxdm_dbx(c);
+}

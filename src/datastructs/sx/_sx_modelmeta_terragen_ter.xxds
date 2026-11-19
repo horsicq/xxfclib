@@ -1,0 +1,101 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/terragen_ter/xx_terragen_ter_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_ter_header_fields = layout([chars("signature", 16, SIGNATURE)]);
+var sxmo_ter_header = sxLayout(0x60210070, "ter_header", LE, sxmo_ter_header_fields);
+var sxmo_ter_end_fields = layout([chars("chunk_type", 4, ID)]);
+var sxmo_ter_end = sxLayout(0x60210071, "ter_end", LE, sxmo_ter_end_fields);
+var sxmo_ter_size_fields = layout([chars("chunk_type", 4, ID), u16("size_minus_one"), u16("padding", RESERVED)]);
+var sxmo_ter_size = sxLayout(0x60210072, "ter_size", LE, sxmo_ter_size_fields);
+var sxmo_ter_point_count_fields = layout([chars("chunk_type", 4, ID), u16("point_count", COUNT), u16("padding", RESERVED)]);
+var sxmo_ter_point_count = sxLayout(0x60210073, "ter_point_count", LE, sxmo_ter_point_count_fields);
+var sxmo_ter_scale_fields = layout([chars("chunk_type", 4, ID), field("x", "float32", 4), field("y", "float32", 4),
+    field("z", "float32", 4)]);
+var sxmo_ter_scale = sxLayout(0x60210074, "ter_scale", LE, sxmo_ter_scale_fields);
+var sxmo_ter_radius_fields = layout([chars("chunk_type", 4, ID), field("radius", "float32", 4)]);
+var sxmo_ter_radius = sxLayout(0x60210075, "ter_radius", LE, sxmo_ter_radius_fields);
+var sxmo_ter_curvature_fields = layout([chars("chunk_type", 4, ID), u32("mode", ID)]);
+var sxmo_ter_curvature = sxLayout(0x60210076, "ter_curvature", LE, sxmo_ter_curvature_fields);
+var sxmo_ter_altitude_fields = layout([chars("chunk_type", 4, ID), i16("height_scale"), i16("base_height")]);
+var sxmo_ter_altitude = sxLayout(0x60210077, "ter_altitude", LE, sxmo_ter_altitude_fields);
+var sxmo_ter_height_fields = layout([i16("height_sample")]);
+var sxmo_ter_height = sxLayout(0x60210078, "ter_height", LE, sxmo_ter_height_fields);
+function sxmo_ter(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 16) || sxMemcmp(h, "TERRAGENTERRAIN ", 16) || !sxmo_add(c, sxmo_ter_header, 0)) {
+        return false;
+    }
+    var p = 16;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var width = 0;
+    var height = 0;
+    for (var i = 0; p < end && i < 4096; i++) {
+        if (sxU64(end - p) < 4 || !sxmo_read(c, p, h, 4)) {
+            break;
+        }
+        var l = null;
+        var z = 0;
+        if (!sxMemcmp(h, "SIZE", 4)) {
+            l = sxmo_ter_size;
+            z = 8;
+        } else if (!sxMemcmp(h, "XPTS", 4) || !sxMemcmp(h, "YPTS", 4)) {
+            l = sxmo_ter_point_count;
+            z = 8;
+        } else if (!sxMemcmp(h, "SCAL", 4)) {
+            l = sxmo_ter_scale;
+            z = 16;
+        } else if (!sxMemcmp(h, "CRAD", 4)) {
+            l = sxmo_ter_radius;
+            z = 8;
+        } else if (!sxMemcmp(h, "CRVM", 4)) {
+            l = sxmo_ter_curvature;
+            z = 8;
+        } else if (!sxMemcmp(h, "ALTW", 4)) {
+            l = sxmo_ter_altitude;
+            z = 8;
+        } else if (!sxMemcmp(h, "EOF ", 4)) {
+            l = sxmo_ter_end;
+            z = 4;
+        } else {
+            break;
+        }
+        if (z > sxU64(end - p) || !sxmo_read(c, p, h, z)) {
+            break;
+        }
+        if (!sxmo_add(c, l, p)) {
+            return false;
+        }
+        p += z;
+        if (l === sxmo_ter_size) {
+            width = height = sxmo16(h, 4, false) + 1;
+        } else if (l === sxmo_ter_point_count) {
+            if (h[0] === 88 /*X*/) {
+                width = sxmo16(h, 4, false);
+            } else {
+                height = sxmo16(h, 4, false);
+            }
+        } else if (l === sxmo_ter_altitude) {
+            if (!width || !height || height > Math.floor(1000000 / width) || width * height * 2 > sxU64(end - p)) {
+                break;
+            }
+            if (!sxmo_table(c, sxmo_ter_height, p, width * height)) {
+                return false;
+            }
+            p = sxAnd64(p + width * height * 2 + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+            if (p > end) {
+                break;
+            }
+        } else if (l === sxmo_ter_end) {
+            break;
+        }
+    }
+    return !c.failed;
+}
+function sx_terragen_ter_build(c) {
+    var ok = false;
+    ok = sxmo_ter(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

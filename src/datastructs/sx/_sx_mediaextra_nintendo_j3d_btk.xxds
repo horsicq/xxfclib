@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_j3d_btk/xx_nintendo_j3d_btk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_btk_ttk1_fields = layout([chars("tag", 4, ID), u32("section_size", SIZE), u8("loop_mode", ID), u8("angle_scale"),
+    u16("duration_frames", COUNT), u16("animation_count", COUNT), u16("scale_count", COUNT), u16("rotation_count", COUNT),
+    u16("translation_count", COUNT), u32("animation_offset", OFFSET), u32("remap_offset", OFFSET),
+    u32("name_table_offset", OFFSET), u32("texture_matrix_index_offset", OFFSET), u32("center_offset", OFFSET),
+    u32("scale_offset", OFFSET), u32("rotation_offset", OFFSET), u32("translation_offset", OFFSET)]);
+var sxmx_btk_ttk1 = sxLayout(0x602E003B, "btk_ttk1", BE, sxmx_btk_ttk1_fields);
+var sxmx_btk_selection_fields = layout([u16("scale_count", COUNT), u16("scale_first", ID), u16("scale_tangent_type", ID),
+    u16("rotation_count", COUNT), u16("rotation_first", ID), u16("rotation_tangent_type", ID), u16("translation_count", COUNT),
+    u16("translation_first", ID), u16("translation_tangent_type", ID)]);
+var sxmx_btk_selection = sxLayout(0x602E003C, "btk_selection", BE, sxmx_btk_selection_fields);
+var sxmx_btk_remap_fields = layout([u16("animation_index", ID)]);
+var sxmx_btk_remap = sxLayout(0x602E003D, "btk_remap", BE, sxmx_btk_remap_fields);
+var sxmx_btk_texture_matrix_index_fields = layout([u8("texture_matrix_index", ID)]);
+var sxmx_btk_texture_matrix_index = sxLayout(0x602E003E, "btk_texture_matrix_index", BE, sxmx_btk_texture_matrix_index_fields);
+var sxmx_btk_float_fields = layout([field("value", "float", 4)]);
+var sxmx_btk_float = sxLayout(0x602E003F, "btk_float", BE, sxmx_btk_float_fields);
+var sxmx_btk_rotation_fields = layout([i16("angle_units")]);
+var sxmx_btk_rotation = sxLayout(0x602E0040, "btk_rotation", BE, sxmx_btk_rotation_fields);
+var sxmx_j3d_name_table_fields = layout([u16("entry_count", COUNT), blob("padding", 2)]);
+var sxmx_j3d_name_table = sxLayout(0x602E0041, "j3d_name_table", BE, sxmx_j3d_name_table_fields);
+var sxmx_j3d_name_fields = layout([u16("hash", CHECKSUM), u16("name_relative", OFFSET)]);
+var sxmx_j3d_name = sxLayout(0x602E0042, "j3d_name", BE, sxmx_j3d_name_fields);
+function sxmx_btk(v) {
+    if (!sxmx_row(v, sxmx_j3d_header, 0, v.n) || !sxmx_row(v, sxmx_btk_ttk1, 32, v.n)) {
+        return false;
+    }
+    var p = v.p, p_o = 32;
+    var end = 32 + sxmx_u32(p, p_o + 4, true);
+    if (end > v.n) {
+        return false;
+    }
+    var n = sxmx_u16(p, p_o + 12, true);
+    var count = [n, Math.floor(n / 3), Math.floor(n / 3), Math.floor(n / 3), n, sxmx_u16(p, p_o + 14, true), sxmx_u16(p, p_o + 16, true), sxmx_u16(p, p_o + 18, true)];
+    var ls = [sxmx_btk_selection, sxmx_btk_remap, null, sxmx_btk_texture_matrix_index, sxmx_btk_float, sxmx_btk_float, sxmx_btk_rotation, sxmx_btk_float];
+    for (var i = 0; i < 8; i++) {
+        var at = 32 + sxmx_u32(p, p_o + 20 + ((i * 4) >>> 0), true);
+        if (i === 2) {
+            if (!sxmx_row(v, sxmx_j3d_name_table, at, end) || !sxmx_table(v, sxmx_j3d_name, at + 4, count[i], end)) {
+                return false;
+            }
+        } else if (!sxmx_table(v, ls[i], at, count[i], end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_nintendo_j3d_btk_build(v) {
+    return sxmx_btk(v);
+}

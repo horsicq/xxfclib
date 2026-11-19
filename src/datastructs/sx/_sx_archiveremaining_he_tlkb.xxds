@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/he_tlkb/xx_he_tlkb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_he_tlkb_chunk_fields = layout([bytes("encoded_tag", 4), bytes("encoded_total_size", 4)]);
+var sxarm_he_tlkb_chunk = sxLayout(0x607C001D, "he_tlkb_chunk", LE, sxarm_he_tlkb_chunk_fields);
+function sxarm_he(c) {
+    var h = [];
+    if (!sxarm_read(c, 0, h, 8) || h[0] !== 61 || h[1] !== 37 || h[2] !== 34 || h[3] !== 43) {
+        return false;
+    }
+    var p = 0;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    for (var i = 0; p < end && i < 20000; i++) {
+        if (!sxarm_read(c, p, h, 8) || !sxarm_add(c, sxarm_he_tlkb_chunk, p)) {
+            return false;
+        }
+        for (var j = 0; j < 8; j++) {
+            h[j] ^= 0x69;
+        }
+        var z = sxarm_uint(h, 4, 4, true);
+        if (z < 8 || z > sxU64(end - p)) {
+            return false;
+        }
+        if (!p) {
+            end = z;
+            p = 8;
+        } else {
+            p += z;
+        }
+    }
+    return true;
+}
+function sx_he_tlkb_build(c) {
+    return sxarm_he(c);
+}

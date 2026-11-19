@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/egg/xx_egg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_egg_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID), u32("header_id", ID),
+    u32("reserved", RESERVED), u32("terminator", SIGNATURE)]);
+var sxar_egg_header = sxLayout(0x601C0021, "egg_header", LE, sxar_egg_header_fields);
+var sxar_egg_file_fields = layout([u32("magic", SIGNATURE), u32("file_id", ID), u64("unpacked_size", SIZE)]);
+var sxar_egg_file = sxLayout(0x601C0022, "egg_file", LE, sxar_egg_file_fields);
+var sxar_egg_extra_fields = layout([u32("tag", ID), u8("flags", FLAGS), u16("data_size", SIZE)]);
+var sxar_egg_extra = sxLayout(0x601C0023, "egg_extra", LE, sxar_egg_extra_fields);
+var sxar_egg_block_fields = layout([u32("magic", SIGNATURE), u8("method", ID), u8("encryption", ID), u32("unpacked_size", SIZE),
+    u32("packed_size", SIZE), u32("crc32", CHECKSUM), u32("terminator", SIGNATURE)]);
+var sxar_egg_block = sxLayout(0x601C0024, "egg_block", LE, sxar_egg_block_fields);
+var sxar_egg_end_fields = layout([u32("terminator", SIGNATURE)]);
+var sxar_egg_end = sxLayout(0x601C0025, "egg_end", LE, sxar_egg_end_fields);
+function sxar_egg(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 18) || !sxar_add(c, sxar_egg_header, 0)) {
+        return false;
+    }
+    var p = 18;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxar_read(c, p, b, 0, 4)) {
+            break;
+        }
+        var tag = sxar32(b, 0, false);
+        var n = 0;
+        var l = null;
+        if (tag === 0x08E28222) {
+            l = sxar_egg_end;
+            n = 4;
+        } else if (tag === 0x0A8590E3) {
+            l = sxar_egg_file;
+            n = 16;
+        } else if (tag === 0x0A8591AC || tag === 0x04C63672) {
+            if (!sxar_read(c, p, b, 0, 7)) {
+                break;
+            }
+            l = sxar_egg_extra;
+            n = 7 + sxar16(b, 5, false);
+        } else if (tag === 0x02B50C13) {
+            if (!sxar_read(c, p, b, 0, 22)) {
+                break;
+            }
+            l = sxar_egg_block;
+            n = 22 + sxar32(b, 10, false);
+        } else {
+            break;
+        }
+        if (!sxar_span(c, p, n)) {
+            break;
+        }
+        if (!sxar_add(c, l, p)) {
+            return false;
+        }
+        p += n;
+    }
+    return true;
+}
+function sx_egg_build(c) {
+    return sxar_egg(c);
+}

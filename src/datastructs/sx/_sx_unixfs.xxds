@@ -1,0 +1,579 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_unixfs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_unixfs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60110000 || id >= 0x60120000) {
+        return true;
+    }
+    var comment = null;
+    switch (id) {
+    case 0x60110001:
+        if (r.name === "blocks_count_lo") {
+            comment = "Physical low/high 32-bit part of a block count; combine the paired words when the 64BIT feature is enabled.";
+        }
+        if (r.name === "r_blocks_count_lo") {
+            comment = "Physical low/high 32-bit part of a block count; combine the paired words when the 64BIT feature is enabled.";
+        }
+        if (r.name === "free_blocks_count_lo") {
+            comment = "Physical low/high 32-bit part of a block count; combine the paired words when the 64BIT feature is enabled.";
+        }
+        if (r.name === "first_data_block") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "log_block_size") {
+            comment = "Block size in bytes is 1024 shifted left by this exponent.";
+        }
+        if (r.name === "log_cluster_or_fragment_size") {
+            comment = "Signed exponent relative to 1024 bytes: allocation clusters with BIGALLOC, legacy fragments otherwise; not a byte count.";
+        }
+        if (r.name === "clusters_or_fragments_per_group") {
+            comment = "Allocation clusters per group with BIGALLOC, legacy fragments otherwise.";
+        }
+        if (r.name === "mtime") {
+            comment = "Low 32 bits of Unix seconds; combine with the corresponding high 8-bit field.";
+        }
+        if (r.name === "wtime") {
+            comment = "Low 32 bits of Unix seconds; combine with the corresponding high 8-bit field.";
+        }
+        if (r.name === "max_mnt_count") {
+            comment = "Signed mount-count limit; -1 disables mount-count checks.";
+        }
+        if (r.name === "lastcheck") {
+            comment = "Low 32 bits of Unix seconds; combine with the corresponding high 8-bit field.";
+        }
+        if (r.name === "checkinterval") {
+            comment = "Duration in seconds, not a timestamp.";
+        }
+        if (r.name === "mkfs_time") {
+            comment = "Low 32 bits of Unix seconds; combine with the corresponding high 8-bit field.";
+        }
+        if (r.name === "blocks_count_hi") {
+            comment = "Physical low/high 32-bit part of a block count; combine the paired words when the 64BIT feature is enabled.";
+        }
+        if (r.name === "r_blocks_count_hi") {
+            comment = "Physical low/high 32-bit part of a block count; combine the paired words when the 64BIT feature is enabled.";
+        }
+        if (r.name === "free_blocks_count_hi") {
+            comment = "Physical low/high 32-bit part of a block count; combine the paired words when the 64BIT feature is enabled.";
+        }
+        if (r.name === "raid_stride") {
+            comment = "Filesystem block units, not bytes.";
+        }
+        if (r.name === "mmp_update_interval") {
+            comment = "Duration in seconds, not a timestamp.";
+        }
+        if (r.name === "mmp_block") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "raid_stripe_width") {
+            comment = "Filesystem block units, not bytes.";
+        }
+        if (r.name === "log_groups_per_flex") {
+            comment = "Encoded logarithm/shift; not a byte count.";
+        }
+        if (r.name === "kbytes_written") {
+            comment = "Lifetime written quantity in KiB, not bytes.";
+        }
+        if (r.name === "first_error_time") {
+            comment = "Low 32 bits of Unix seconds; combine with the corresponding high 8-bit field.";
+        }
+        if (r.name === "first_error_block") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "last_error_time") {
+            comment = "Low 32 bits of Unix seconds; combine with the corresponding high 8-bit field.";
+        }
+        if (r.name === "last_error_block") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "wtime_hi") {
+            comment = "High 8 bits of a 40-bit Unix timestamp; this byte is not a complete timestamp.";
+        }
+        if (r.name === "mtime_hi") {
+            comment = "High 8 bits of a 40-bit Unix timestamp; this byte is not a complete timestamp.";
+        }
+        if (r.name === "mkfs_time_hi") {
+            comment = "High 8 bits of a 40-bit Unix timestamp; this byte is not a complete timestamp.";
+        }
+        if (r.name === "lastcheck_hi") {
+            comment = "High 8 bits of a 40-bit Unix timestamp; this byte is not a complete timestamp.";
+        }
+        if (r.name === "first_error_time_hi") {
+            comment = "High 8 bits of a 40-bit Unix timestamp; this byte is not a complete timestamp.";
+        }
+        if (r.name === "last_error_time_hi") {
+            comment = "High 8 bits of a 40-bit Unix timestamp; this byte is not a complete timestamp.";
+        }
+        break;
+    case 0x60110002:
+        if (r.name === "first_data_block") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "log_block_size") {
+            comment = "Block size in bytes is 1024 shifted left by this exponent.";
+        }
+        if (r.name === "log_fragment_size") {
+            comment = "Signed fragment-size exponent relative to 1024 bytes; not a byte count.";
+        }
+        if (r.name === "fragments_per_group") {
+            comment = "Fragments per block group.";
+        }
+        if (r.name === "mtime") {
+            comment = "Unix timestamp in seconds.";
+        }
+        if (r.name === "wtime") {
+            comment = "Unix timestamp in seconds.";
+        }
+        if (r.name === "max_mnt_count") {
+            comment = "Signed mount-count limit; -1 disables mount-count checks.";
+        }
+        if (r.name === "lastcheck") {
+            comment = "Unix timestamp in seconds.";
+        }
+        if (r.name === "checkinterval") {
+            comment = "Duration in seconds, not a timestamp.";
+        }
+        break;
+    case 0x60110003:
+        if (r.name === "block_bitmap_lo") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "inode_bitmap_lo") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "inode_table_lo") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "free_blocks_count_lo") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "free_inodes_count_lo") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "used_dirs_count_lo") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "flags") {
+            comment = "EXT 4 group descriptor flags; this word is padding in older EXT 2 layouts.";
+        }
+        if (r.name === "exclude_bitmap_lo") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "block_bitmap_csum_lo") {
+            comment = "Physical checksum part when METADATA_CSUM is enabled; reserved in older layouts.";
+        }
+        if (r.name === "inode_bitmap_csum_lo") {
+            comment = "Physical checksum part when METADATA_CSUM is enabled; reserved in older layouts.";
+        }
+        if (r.name === "itable_unused_lo") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "checksum") {
+            comment = "Group descriptor checksum when GDT_CSUM or METADATA_CSUM is enabled; reserved otherwise.";
+        }
+        if (r.name === "block_bitmap_hi") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "inode_bitmap_hi") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "inode_table_hi") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "free_blocks_count_hi") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "free_inodes_count_hi") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "used_dirs_count_hi") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "itable_unused_hi") {
+            comment = "Low/high 16-bit half of a count; combine the paired halves.";
+        }
+        if (r.name === "exclude_bitmap_hi") {
+            comment = "Low/high 32-bit half of a filesystem block number, not a byte offset.";
+        }
+        if (r.name === "block_bitmap_csum_hi") {
+            comment = "Physical checksum part when METADATA_CSUM is enabled; reserved in older layouts.";
+        }
+        if (r.name === "inode_bitmap_csum_hi") {
+            comment = "Physical checksum part when METADATA_CSUM is enabled; reserved in older layouts.";
+        }
+        break;
+    case 0x60110004:
+        if (r.name === "block_bitmap") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "inode_bitmap") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "inode_table") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "flags") {
+            comment = "EXT 4 group descriptor flags; this word is padding in older EXT 2 layouts.";
+        }
+        if (r.name === "exclude_bitmap") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "block_bitmap_csum") {
+            comment = "Physical checksum part when METADATA_CSUM is enabled; reserved in older layouts.";
+        }
+        if (r.name === "inode_bitmap_csum") {
+            comment = "Physical checksum part when METADATA_CSUM is enabled; reserved in older layouts.";
+        }
+        if (r.name === "checksum") {
+            comment = "Group descriptor checksum when GDT_CSUM or METADATA_CSUM is enabled; reserved otherwise.";
+        }
+        break;
+    case 0x60110005:
+        if (r.name === "block_bitmap") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "inode_bitmap") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        if (r.name === "inode_table") {
+            comment = "Filesystem block number; multiply by block size for a byte offset.";
+        }
+        break;
+    case 0x60110006:
+        if (r.name === "size_low") {
+            comment = "Low 32 bits of file size in bytes; combine size_high for regular files.";
+        }
+        if (r.name === "atime_low") {
+            comment = "Signed low 32-bit Unix seconds; extended inode epoch bits may extend this value.";
+        }
+        if (r.name === "ctime_low") {
+            comment = "Signed low 32-bit Unix seconds; extended inode epoch bits may extend this value.";
+        }
+        if (r.name === "mtime_low") {
+            comment = "Signed low 32-bit Unix seconds; extended inode epoch bits may extend this value.";
+        }
+        if (r.name === "deletion_time_or_next_orphan") {
+            comment = "Unix deletion time for a deleted inode; next orphan inode number while linked in the legacy orphan chain.";
+        }
+        if (r.name === "blocks_low") {
+            comment = "Low 32 bits of allocated block count; units are 512-byte sectors unless HUGE_FILE flags select filesystem blocks.";
+        }
+        if (r.name === "version_low_or_reserved") {
+            comment = "Low 32-bit inode version in EXT 4; reserved OS-dependent word in legacy Linux EXT 2/3.";
+        }
+        if (r.name === "block_map_or_inline_data") {
+            comment = "Union of block-number map, extent-tree root, inline data or fast symlink bytes; interpretation depends on mode/features/flags.";
+        }
+        if (r.name === "file_acl_block_low") {
+            comment = "Low 32 bits of the extended-attribute block number.";
+        }
+        if (r.name === "size_high_or_dir_acl") {
+            comment = "High file-size word for regular files; legacy directory ACL field for other inode kinds.";
+        }
+        if (r.name === "blocks_high_or_fragment_bytes") {
+            comment = "High 16-bit block count with HUGE_FILE; legacy EXT 2 Linux fragment number and size bytes otherwise.";
+        }
+        if (r.name === "file_acl_block_high_or_reserved") {
+            comment = "High 16-bit extended-attribute block number with 64BIT; reserved otherwise.";
+        }
+        if (r.name === "uid_high") {
+            comment = "High 16 bits of the Linux owner UID.";
+        }
+        if (r.name === "gid_high") {
+            comment = "High 16 bits of the Linux group ID.";
+        }
+        if (r.name === "checksum_low_or_reserved") {
+            comment = "Low 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        break;
+    case 0x60110007:
+        if (r.name === "size_low") {
+            comment = "Low 32 bits of file size in bytes; combine size_high for regular files.";
+        }
+        if (r.name === "atime_low") {
+            comment = "Signed low 32-bit Unix seconds; extended inode epoch bits may extend this value.";
+        }
+        if (r.name === "ctime_low") {
+            comment = "Signed low 32-bit Unix seconds; extended inode epoch bits may extend this value.";
+        }
+        if (r.name === "mtime_low") {
+            comment = "Signed low 32-bit Unix seconds; extended inode epoch bits may extend this value.";
+        }
+        if (r.name === "deletion_time_or_next_orphan") {
+            comment = "Unix deletion time for a deleted inode; next orphan inode number while linked in the legacy orphan chain.";
+        }
+        if (r.name === "blocks_low") {
+            comment = "Low 32 bits of allocated block count; units are 512-byte sectors unless HUGE_FILE flags select filesystem blocks.";
+        }
+        if (r.name === "block_map_or_inline_data") {
+            comment = "Union of block-number map, extent-tree root, inline data or fast symlink bytes; interpretation depends on mode/features/flags.";
+        }
+        if (r.name === "file_acl_block_low") {
+            comment = "Low 32 bits of the extended-attribute block number.";
+        }
+        if (r.name === "size_high_or_dir_acl") {
+            comment = "High file-size word for regular files; legacy directory ACL field for other inode kinds.";
+        }
+        break;
+    case 0x60110009:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        break;
+    case 0x6011000A:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        break;
+    case 0x6011000B:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "mtime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        break;
+    case 0x6011000C:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "mtime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "atime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        break;
+    case 0x6011000D:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "mtime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "atime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "creation_time_low") {
+            comment = "Signed low 32-bit Unix seconds; combine epoch bits from creation_time_extra.";
+        }
+        break;
+    case 0x6011000E:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "mtime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "atime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "creation_time_low") {
+            comment = "Signed low 32-bit Unix seconds; combine epoch bits from creation_time_extra.";
+        }
+        if (r.name === "creation_time_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        break;
+    case 0x6011000F:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "mtime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "atime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "creation_time_low") {
+            comment = "Signed low 32-bit Unix seconds; combine epoch bits from creation_time_extra.";
+        }
+        if (r.name === "creation_time_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        break;
+    case 0x60110010:
+        if (r.name === "checksum_high") {
+            comment = "High 16 bits of inode checksum with METADATA_CSUM; reserved otherwise.";
+        }
+        if (r.name === "ctime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "mtime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "atime_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        if (r.name === "creation_time_low") {
+            comment = "Signed low 32-bit Unix seconds; combine epoch bits from creation_time_extra.";
+        }
+        if (r.name === "creation_time_extra") {
+            comment = "Bits 0..1 extend the signed seconds field; bits 2..31 encode nanoseconds.";
+        }
+        break;
+    case 0x60110011:
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110012:
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110013:
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110014:
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110015:
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110016:
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110017:
+        if (r.name === "compression") {
+            comment = "1=ZLIB,2=LZMA,3=LZO,4=XZ,5=LZ 4,6=ZSTD.";
+        }
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110018:
+        if (r.name === "compression") {
+            comment = "1=ZLIB,2=LZMA,3=LZO,4=XZ,5=LZ 4,6=ZSTD.";
+        }
+        if (r.name === "block_log") {
+            comment = "Base 2 block-size exponent, not a byte count.";
+        }
+        if (r.name === "root_inode_reference") {
+            comment = "High 48 bits: byte offset of metadata block within inode table; low 16 bits: decoded offset within that block.";
+        }
+        break;
+    case 0x60110019:
+        if (r.name === "size_and_stored_flag") {
+            comment = "Low 15 bits: encoded payload byte length; bit 15: uncompressed payload. Not a plain size field.";
+        }
+        break;
+    case 0x6011001A:
+        if (r.name === "metadata_offset") {
+            comment = "Absolute byte offset of a metadata block from the filesystem image start.";
+        }
+        break;
+    case 0x6011001E:
+        if (r.name === "size_and_stored_flag") {
+            comment = "Low 15 bits: encoded payload byte length; bit 15: uncompressed payload. Not a plain size field.";
+        }
+        break;
+    case 0x6011001F:
+        if (r.name === "metadata_offset") {
+            comment = "Absolute byte offset of a metadata block from the filesystem image start.";
+        }
+        break;
+    default:
+        break;
+    }
+    return comment === null || sxSetComment(r, comment);
+}
+function sxuf_span(c, at, n) {
+    return c.size >= 0 && at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sxuf_read(c, at, b, n) {
+    return sxuf_span(c, at, n) && sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, n);
+}
+function sxuf_16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxuf_32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxuf_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxuf_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxuf_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxuf_order, true);
+    return !c.failed;
+}
+function sx_unixfs_supports(t) {
+    return t === "EXT" || t === "SQUASHFS";
+}
+function sx_unixfs_build(c) {
+    if (c.f.file_type === "EXT") {
+        return sx_ext_build(c);
+    }
+    if (c.f.file_type === "SQUASHFS") {
+        return sx_squashfs_build(c);
+    }
+    return false;
+}

@@ -1,0 +1,149 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hammer_fs/xx_hammer_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_hammer_volume_header_le_fields = layout([u64("signature", SIGNATURE), i64("boot_begin", OFFSET),
+    i64("memory_log_begin", OFFSET), i64("buffer_begin", OFFSET), i64("buffer_end", OFFSET), i64("reserved0", RESERVED),
+    field("filesystem_uuid", "byte[16]", 16, ID), field("filesystem_type_uuid", "byte[16]", 16, ID), chars("label", 64, STRING),
+    i32("volume_number"), i32("volume_count", COUNT), u32("version", ID), u32("crc", CHECKSUM), u32("flags", FLAGS),
+    u32("root_volume_number"), field("reserved1", "uint32[8]", 32, RESERVED), i64("bigblock_count", COUNT),
+    i64("free_bigblocks", COUNT), i64("reserved2", RESERVED), i64("inode_count", COUNT), i64("reserved3", RESERVED),
+    u64("btree_root", POINTER), u64("next_transaction_id"), u64("reserved4", RESERVED)]);
+var sxmf_hammer_volume_header_le = sxLayout(0x60420037, "hammer_volume_header_le", LE, sxmf_hammer_volume_header_le_fields);
+var sxmf_hammer_volume_header_be_fields = layout([u64("signature", SIGNATURE), i64("boot_begin", OFFSET),
+    i64("memory_log_begin", OFFSET), i64("buffer_begin", OFFSET), i64("buffer_end", OFFSET), i64("reserved0", RESERVED),
+    field("filesystem_uuid", "byte[16]", 16, ID), field("filesystem_type_uuid", "byte[16]", 16, ID), chars("label", 64, STRING),
+    i32("volume_number"), i32("volume_count", COUNT), u32("version", ID), u32("crc", CHECKSUM), u32("flags", FLAGS),
+    u32("root_volume_number"), field("reserved1", "uint32[8]", 32, RESERVED), i64("bigblock_count", COUNT),
+    i64("free_bigblocks", COUNT), i64("reserved2", RESERVED), i64("inode_count", COUNT), i64("reserved3", RESERVED),
+    u64("btree_root", POINTER), u64("next_transaction_id"), u64("reserved4", RESERVED)]);
+var sxmf_hammer_volume_header_be = sxLayout(0x60420038, "hammer_volume_header_be", BE, sxmf_hammer_volume_header_be_fields);
+var sxmf_hammer_blockmap_le_fields = layout([u64("physical_offset", POINTER), u64("first_offset", POINTER),
+    u64("next_offset", POINTER), u64("allocation_offset", POINTER), u32("reserved", RESERVED), u32("crc", CHECKSUM)]);
+var sxmf_hammer_blockmap_le = sxLayout(0x60420039, "hammer_blockmap_le", LE, sxmf_hammer_blockmap_le_fields);
+var sxmf_hammer_blockmap_be_fields = layout([u64("physical_offset", POINTER), u64("first_offset", POINTER),
+    u64("next_offset", POINTER), u64("allocation_offset", POINTER), u32("reserved", RESERVED), u32("crc", CHECKSUM)]);
+var sxmf_hammer_blockmap_be = sxLayout(0x6042003A, "hammer_blockmap_be", BE, sxmf_hammer_blockmap_be_fields);
+var sxmf_hammer_undo_pointer_le_fields = layout([u64("address", POINTER)]);
+var sxmf_hammer_undo_pointer_le = sxLayout(0x6042003B, "hammer_undo_pointer_le", LE, sxmf_hammer_undo_pointer_le_fields);
+var sxmf_hammer_undo_pointer_be_fields = layout([u64("address", POINTER)]);
+var sxmf_hammer_undo_pointer_be = sxLayout(0x6042003C, "hammer_undo_pointer_be", BE, sxmf_hammer_undo_pointer_be_fields);
+var sxmf_hammer_node_header_le_fields = layout([u32("crc", CHECKSUM), u32("reserved0", RESERVED), u64("parent", POINTER),
+    i32("count", COUNT), u8("type", ID), u8("reserved1", RESERVED), u16("reserved2", RESERVED),
+    field("reserved3", "uint64[4]", 32, RESERVED), u64("mirror_transaction")]);
+var sxmf_hammer_node_header_le = sxLayout(0x60420078, "hammer_node_header_le", LE, sxmf_hammer_node_header_le_fields);
+var sxmf_hammer_node_header_be_fields = layout([u32("crc", CHECKSUM), u32("reserved0", RESERVED), u64("parent", POINTER),
+    i32("count", COUNT), u8("type", ID), u8("reserved1", RESERVED), u16("reserved2", RESERVED),
+    field("reserved3", "uint64[4]", 32, RESERVED), u64("mirror_transaction")]);
+var sxmf_hammer_node_header_be = sxLayout(0x60420079, "hammer_node_header_be", BE, sxmf_hammer_node_header_be_fields);
+var sxmf_hammer_internal_record_le_fields = layout([i64("object_id", ID), i64("key"), u64("create_transaction"),
+    u64("delete_transaction"), u16("record_type", ID), u8("object_type", ID), u8("btree_type", ID), u32("localization", FLAGS),
+    u64("mirror_transaction"), u64("subtree", POINTER), field("reserved", "int32[2]", 8, RESERVED)]);
+var sxmf_hammer_internal_record_le = sxLayout(0x6042007A, "hammer_internal_record_le", LE, sxmf_hammer_internal_record_le_fields);
+var sxmf_hammer_internal_record_be_fields = layout([i64("object_id", ID), i64("key"), u64("create_transaction"),
+    u64("delete_transaction"), u16("record_type", ID), u8("object_type", ID), u8("btree_type", ID), u32("localization", FLAGS),
+    u64("mirror_transaction"), u64("subtree", POINTER), field("reserved", "int32[2]", 8, RESERVED)]);
+var sxmf_hammer_internal_record_be = sxLayout(0x6042007B, "hammer_internal_record_be", BE, sxmf_hammer_internal_record_be_fields);
+var sxmf_hammer_leaf_record_le_fields = layout([i64("object_id", ID), i64("key"), u64("create_transaction"),
+    u64("delete_transaction"), u16("record_type", ID), u8("object_type", ID), u8("btree_type", ID), u32("localization", FLAGS),
+    u32("creation_time", TIMESTAMP), u32("deletion_time", TIMESTAMP), u64("data_address", POINTER), i32("data_length", SIZE),
+    u32("data_crc", CHECKSUM)]);
+var sxmf_hammer_leaf_record_le = sxLayout(0x6042007C, "hammer_leaf_record_le", LE, sxmf_hammer_leaf_record_le_fields);
+var sxmf_hammer_leaf_record_be_fields = layout([i64("object_id", ID), i64("key"), u64("create_transaction"),
+    u64("delete_transaction"), u16("record_type", ID), u8("object_type", ID), u8("btree_type", ID), u32("localization", FLAGS),
+    u32("creation_time", TIMESTAMP), u32("deletion_time", TIMESTAMP), u64("data_address", POINTER), i32("data_length", SIZE),
+    u32("data_crc", CHECKSUM)]);
+var sxmf_hammer_leaf_record_be = sxLayout(0x6042007D, "hammer_leaf_record_be", BE, sxmf_hammer_leaf_record_be_fields);
+var sxmf_hammer_inode_le_fields = layout([u16("version", ID), u16("mode", FLAGS), u32("user_flags", FLAGS),
+    u32("device_major", ID), u32("device_minor", ID), u64("change_time", TIMESTAMP), i64("parent_object", ID),
+    field("uid", "byte[16]", 16, ID), field("gid", "byte[16]", 16, ID), u8("type", ID), u8("capabilities", FLAGS),
+    u16("reserved0", RESERVED), u32("reserved1", RESERVED), u64("link_count", COUNT), u64("file_size", SIZE),
+    field("inline_extension", "byte[24]", 24), u64("modification_time", TIMESTAMP), u64("access_time", TIMESTAMP)]);
+var sxmf_hammer_inode_le = sxLayout(0x6042007E, "hammer_inode_le", LE, sxmf_hammer_inode_le_fields);
+var sxmf_hammer_inode_be_fields = layout([u16("version", ID), u16("mode", FLAGS), u32("user_flags", FLAGS),
+    u32("device_major", ID), u32("device_minor", ID), u64("change_time", TIMESTAMP), i64("parent_object", ID),
+    field("uid", "byte[16]", 16, ID), field("gid", "byte[16]", 16, ID), u8("type", ID), u8("capabilities", FLAGS),
+    u16("reserved0", RESERVED), u32("reserved1", RESERVED), u64("link_count", COUNT), u64("file_size", SIZE),
+    field("inline_extension", "byte[24]", 24), u64("modification_time", TIMESTAMP), u64("access_time", TIMESTAMP)]);
+var sxmf_hammer_inode_be = sxLayout(0x6042007F, "hammer_inode_be", BE, sxmf_hammer_inode_be_fields);
+var sxmf_hammer_directory_entry_le_fields = layout([i64("object_id", ID), u32("localization", FLAGS), u32("reserved", RESERVED)]);
+var sxmf_hammer_directory_entry_le = sxLayout(0x60420080, "hammer_directory_entry_le", LE, sxmf_hammer_directory_entry_le_fields);
+var sxmf_hammer_directory_entry_be_fields = layout([i64("object_id", ID), u32("localization", FLAGS), u32("reserved", RESERVED)]);
+var sxmf_hammer_directory_entry_be = sxLayout(0x60420081, "hammer_directory_entry_be", BE, sxmf_hammer_directory_entry_be_fields);
+function sxmf_ha_address(begin, end, encoded, bytes, out) {
+    var zone = sxShr64(encoded, 60);
+    var off = sxAnd64(encoded, 0xFFFFFFFFFFFFF);
+    if (begin > end || sxShr64(encoded, 52) & 255 || zone !== 2 && zone !== 8 && zone !== 9 && zone !== 10 && zone !== 11 || off > sxU64(end - begin) || bytes > sxU64(sxU64(end - begin) - off)) {
+        return false;
+    }
+    out[0] = begin + off;
+    return true;
+}
+function sxmf_hammer(c) {
+    var h = [];
+    var b = [];
+    if (!sxmf_read(c, 0, h, 0, 264)) {
+        return false;
+    }
+    var o = sxmf64(h, 0, 0) === (0xC8414D4D * 4294967296 + 0xC5523031) ? 0 : sxmf64(h, 0, 1) === (0xC8414D4D * 4294967296 + 0xC5523031) ? 1 : 2;
+    if (o === 2 || !sxmf_put(c, o === 1 ? sxmf_hammer_volume_header_be : sxmf_hammer_volume_header_le, 0, 1) || !sxmf_put(c, o === 1 ? sxmf_hammer_blockmap_be : sxmf_hammer_blockmap_le, 264, 16) || !sxmf_put(c, o === 1 ? sxmf_hammer_undo_pointer_be : sxmf_hammer_undo_pointer_le, 904, 128)) {
+        return false;
+    }
+    var begin = sxmf64(h, 24, o);
+    var end = sxmf64(h, 32, o);
+    var root = [0];
+    if (begin < 8192 || begin >= end || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || !sxmf_ha_address(begin, end, sxmf64(h, 240, o), 4096, root)) {
+        return true;
+    }
+    var q = sxNew_sxmf_queue();
+    if (q === null) {
+        return false;
+    }
+    var ok = true;
+    sxmf_queue_add(q, root[0], 0, 0);
+    while (ok && q.index < q.count && c.count < 24000) {
+        var t = sxCopy_sxmf_task(null, q.items[q.index++]);
+        if (!sxmf_read(c, t.p, b, 0, 4096)) {
+            continue;
+        }
+        var n = sxmf32(b, 16, o);
+        var kind = b[20];
+        if (kind !== 73 /*I*/ && kind !== 76 /*L*/ || n > (kind === 73 /*I*/ ? 62 : 63)) {
+            continue;
+        }
+        if (!sxmf_put(c, o === 1 ? sxmf_hammer_node_header_be : sxmf_hammer_node_header_le, t.p, 1) || !sxmf_put(c, kind === 73 /*I*/ ? o === 1 ? sxmf_hammer_internal_record_be : sxmf_hammer_internal_record_le : o === 1 ? sxmf_hammer_leaf_record_be : sxmf_hammer_leaf_record_le, t.p + 64, n)) {
+            ok = false;
+            break;
+        }
+        for (var j = 0; j < n; j++) {
+            var r = b, r_o = 64 + ((j * 64) >>> 0);
+            var at = [0];
+            if (kind === 73 /*I*/) {
+                if (sxmf_ha_address(begin, end, sxmf64(r, r_o + 48, o), 4096, at)) {
+                    sxmf_queue_add(q, at[0], 0, (t.depth + 1) >>> 0);
+                }
+            } else {
+                var nbytes = sxmf32(r, r_o + 56, o);
+                var type = sxmf16(r, r_o + 32, o);
+                if (!sxmf_ha_address(begin, end, sxmf64(r, r_o + 48, o), nbytes, at)) {
+                    continue;
+                }
+                if (type === 1 && nbytes === 128) {
+                    if (!sxmf_put(c, o === 1 ? sxmf_hammer_inode_be : sxmf_hammer_inode_le, at[0], 1)) {
+                        ok = false;
+                        break;
+                    }
+                } else if (type === 0x11 && nbytes >= 16 && !sxmf_put(c, o === 1 ? sxmf_hammer_directory_entry_be : sxmf_hammer_directory_entry_le, at[0], 1)) {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_hammer_fs_build(c) {
+    return sxmf_hammer(c);
+}

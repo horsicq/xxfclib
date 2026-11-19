@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/sequencing_abif/xx_sequencing_abif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_abif_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID)]);
+var sxm_abif_header = sxLayout(0x60060035, "abif_header", BE, sxm_abif_header_fields);
+var sxm_abif_directory_fields = layout([chars("tag_name", 4, ID), u32("tag_number", ID), u16("element_type", ID),
+    u16("element_size", SIZE), u32("element_count", COUNT), u32("data_size", SIZE), u32("data_offset", OFFSET),
+    u32("data_handle", RESERVED)]);
+var sxm_abif_directory = sxLayout(0x60060036, "abif_directory", BE, sxm_abif_directory_fields);
+var sxm_abif_inline_directory_fields = layout([chars("tag_name", 4, ID), u32("tag_number", ID), u16("element_type", ID),
+    u16("element_size", SIZE), u32("element_count", COUNT), u32("data_size", SIZE), bytes("inline_data", 4),
+    u32("data_handle", RESERVED)]);
+var sxm_abif_inline_directory = sxLayout(0x60060037, "abif_inline_directory", BE, sxm_abif_inline_directory_fields);
+function sxm_abif(c, h) {
+    var count = sxGetU32(h, 34, 18, true);
+    var bytes = sxGetU32(h, 34, 22, true);
+    var off = sxGetU32(h, 34, 26, true);
+    var end;
+    if (sxMemcmp(h, "ABIF", 4) || sxMemcmpAt(h, 6, "tdir", 0, 4) || !count || count > 4096 || bytes < count * 28 || off < 34 || !sxm_span(c, off, bytes) || !sx_add(c, sxm_abif_header, 0, 6) || !sx_add(c, sxm_abif_directory, 6, 28) || !sxm_raw(c, 34, (off - 34) >>> 0)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        var at = off + i * 28;
+        var n;
+        var pos;
+        if ((n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 16, true)) === null || (pos = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 20, true)) === null || !sx_add(c, n <= 4 ? sxm_abif_inline_directory : sxm_abif_directory, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 28)) {
+            return false;
+        }
+        if (n > 4 && !sxm_span(c, pos, n)) {
+            return false;
+        }
+    }
+    end = off + count * 28;
+    return sxm_tail(c, end);
+}
+function sx_sequencing_abif_build(c, h, n) {
+    return n >= 34 && sxm_abif(c, h);
+}

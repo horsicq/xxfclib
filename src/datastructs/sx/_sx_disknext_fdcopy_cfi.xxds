@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/fdcopy_cfi/xx_fdcopy_cfi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_fdcopy_track_fields = layout([u16("compressed_size", SIZE)]);
+var sxdn_fdcopy_track = sxLayout(0x60780018, "fdcopy_track", LE, sxdn_fdcopy_track_fields);
+var sxdn_fdcopy_token_fields = layout([u16("count_and_repeat")]);
+var sxdn_fdcopy_token = sxLayout(0x60780019, "fdcopy_token", LE, sxdn_fdcopy_token_fields);
+var sxdn_fdcopy_repeat_fields = layout([u8("repeated_byte")]);
+var sxdn_fdcopy_repeat = sxLayout(0x6078001A, "fdcopy_repeat", LE, sxdn_fdcopy_repeat_fields);
+function sxdn_cfi(c) {
+    var h = [];
+    var p = 0;
+    for (var track = 0; track < 256 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; track++) {
+        if (!sxdn_read(c, p, h, 2) || !sxdn_put(c, sxdn_fdcopy_track, p, 1)) {
+            break;
+        }
+        var z = sxdn16(h, 0, 0);
+        var q = p + 2;
+        if (!sxdn_span(c, q, z)) {
+            break;
+        }
+        var end = q + z;
+        while (q < end && c.count < 24000) {
+            if (sxU64(end - q) < 2 || !sxdn_read(c, q, h, 2)) {
+                break;
+            }
+            var v = sxdn16(h, 0, 0);
+            var n = sxAnd64(v, 0x7FFF);
+            if (!n || !sxdn_put(c, sxdn_fdcopy_token, q, 1)) {
+                return true;
+            }
+            q += 2;
+            if (sxAnd64(v, 0x8000)) {
+                if (q >= end || !sxdn_put(c, sxdn_fdcopy_repeat, q, 1)) {
+                    return true;
+                }
+                q++;
+            } else {
+                if (n > sxU64(end - q)) {
+                    return true;
+                }
+                q += n;
+            }
+        }
+        p = end;
+    }
+    return c.count !== 0;
+}
+function sx_fdcopy_cfi_build(c) {
+    return sxdn_cfi(c);
+}

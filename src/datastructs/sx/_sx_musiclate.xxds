@@ -1,0 +1,227 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musiclate.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlate_buzz2_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version_major"), u16("version_minor"),
+    field("master_volume", "float", 4), i32("tempo_bpm"), i32("start_sequence"), i32("end_sequence"), u8("looping"),
+    bytes("unused", 128), bytes("alignment_padding", 3)]);
+var sxlate_buzz2_header = sxLayout(0x60930001, "buzz2_header", LE, sxlate_buzz2_header_fields);
+var sxlate_buzz2_instrument_fields = layout([chars("name", 128, NONE), u8("muted"), i8("note"), i8("note_length"), i8("volume"),
+    field("operation_pointer_snapshot", "uint32le[64]", 256, VA), i32("operation_count", COUNT)]);
+var sxlate_buzz2_instrument = sxLayout(0x60930008, "buzz2_instrument", LE, sxlate_buzz2_instrument_fields);
+var sxlate_buzz2_operation_fields = layout([u32("vtable_snapshot", VA), i32("type"), chars("name", 128, NONE), i32("width"),
+    i32("height"), i32("x"), i32("y"), i32("opcode"), i32("input_count", COUNT), i32("parameter_count", COUNT),
+    field("parameter_0", "float", 4), field("parameter_1", "float", 4), field("parameter_2", "float", 4),
+    field("parameter_3", "float", 4), field("parameter_4", "float", 4), field("parameter_5", "float", 4),
+    field("parameter_6", "float", 4), field("parameter_7", "float", 4), field("parameter_8", "float", 4),
+    field("parameter_9", "float", 4), field("parameter_10", "float", 4), field("parameter_11", "float", 4),
+    field("parameter_12", "float", 4), field("parameter_13", "float", 4), field("parameter_14", "float", 4),
+    field("parameter_15", "float", 4), field("parameter_type", "int32le[16]", 64), chars("parameter_name_0", 16, NONE),
+    chars("parameter_name_1", 16, NONE), chars("parameter_name_2", 16, NONE), chars("parameter_name_3", 16, NONE),
+    chars("parameter_name_4", 16, NONE), chars("parameter_name_5", 16, NONE), chars("parameter_name_6", 16, NONE),
+    chars("parameter_name_7", 16, NONE), chars("parameter_name_8", 16, NONE), chars("parameter_name_9", 16, NONE),
+    chars("parameter_name_10", 16, NONE), chars("parameter_name_11", 16, NONE), chars("parameter_name_12", 16, NONE),
+    chars("parameter_name_13", 16, NONE), chars("parameter_name_14", 16, NONE), chars("parameter_name_15", 16, NONE),
+    u32("background_color")]);
+var sxlate_buzz2_operation = sxLayout(0x6093000B, "buzz2_operation", LE, sxlate_buzz2_operation_fields);
+var sxlate_jxs_subsong_fields = layout([bytes("reserved_0", 64), bytes("channel_muted", 16), i32("step_delay"), i32("groove"),
+    i32("start_position"), i32("start_step"), i32("end_position"), i32("end_step"), i32("loop_position"), i32("loop_step"),
+    i16("loop_enabled"), chars("name", 32, NONE), i16("channel_count", COUNT), u16("echo_delay"),
+    bytes("channel_echo_amount", 16), i16("amplification"), bytes("reserved_1", 12)]);
+var sxlate_jxs_subsong = sxLayout(0x6093000D, "jxs_subsong", LE, sxlate_jxs_subsong_fields);
+var sxlate_jxs_sample_info_fields = layout([chars("sample_path", 192, NONE), bytes("reserved", 50), i16("sharing"),
+    i16("loop_enabled"), i16("bidirectional_loop"), i32("start_point"), i32("loop_point"), i32("end_point"),
+    i32("sample_pointer_snapshot", VA), i32("sample_bytes", SIZE)]);
+var sxlate_jxs_sample_info = sxLayout(0x60930014, "jxs_sample_info", LE, sxlate_jxs_sample_info_fields);
+var sxlate_ixs_instrument_fields = layout([u16("fadeout"), u8("global_volume"), u8("default_pan"), u8("first_note"),
+    u8("first_sample_and_map_flag", FLAGS)]);
+var sxlate_ixs_instrument = sxLayout(0x6093001A, "ixs_instrument", LE, sxlate_ixs_instrument_fields);
+var sxlate_ixs_pattern_fields = layout([u16("packed_bytes", SIZE), u16("row_count", COUNT)]);
+var sxlate_ixs_pattern = sxLayout(0x60930020, "ixs_pattern", LE, sxlate_ixs_pattern_fields);
+var sxlate_opx_text_header_fields = layout([bytes("title", 53), bytes("title_ending", 2), bytes("memo", 53),
+    bytes("memo_ending", 2), bytes("code", 13), bytes("code_ending", 2), u8("text_eof"), bytes("unknown_tail", 2)]);
+var sxlate_opx_text_header = sxLayout(0x60930021, "opx_text_header", LE, sxlate_opx_text_header_fields);
+var sxlate_opx_info_fields = layout([bytes("unknown_80", 2), u8("fm_voice_count", COUNT), u8("unknown_83"),
+    u8("envelope_count", COUNT), u8("mode_flags", FLAGS), u8("version"), u16("track_0_offset", OFFSET),
+    u16("track_1_offset", OFFSET), u16("track_2_offset", OFFSET), u16("track_3_offset", OFFSET), u16("track_4_offset", OFFSET),
+    u16("track_5_offset", OFFSET), u16("track_6_offset", OFFSET), u16("track_7_offset", OFFSET), u16("track_8_offset", OFFSET),
+    u16("track_9_offset", OFFSET), u16("track_10_offset", OFFSET), u16("track_11_offset", OFFSET)]);
+var sxlate_opx_info = sxLayout(0x60930022, "opx_info", LE, sxlate_opx_info_fields);
+var sxlate_c670_header_fields = layout([u8("speed"), u8("order_count", COUNT), u8("pattern_count", COUNT),
+    u8("sample_count", COUNT), u8("fm_instrument_count", COUNT), u8("loop_order"), u32("sample_offset", OFFSET)]);
+var sxlate_c670_header = sxLayout(0x60930023, "c670_header", LE, sxlate_c670_header_fields);
+var sxlate_c670_pattern_offset_fields = layout([u32("relative_offset", OFFSET)]);
+var sxlate_c670_pattern_offset = sxLayout(0x60930027, "c670_pattern_offset", LE, sxlate_c670_pattern_offset_fields);
+var sxlate_c670_delay_fields = layout([u8("command"), u8("row_delay")]);
+var sxlate_c670_delay = sxLayout(0x6093002A, "c670_delay", LE, sxlate_c670_delay_fields);
+var sxlate_c670_end_fields = layout([u8("command")]);
+var sxlate_c670_end = sxLayout(0x6093002B, "c670_end", LE, sxlate_c670_end_fields);
+var sxlate_quartet_header_fields = layout([u16("sampling_rate_khz"), u16("measure"), u16("tempo"),
+    u8("time_signature_numerator"), u8("time_signature_denominator"), bytes("reserved", 4), chars("timer_tag", 2, NONE),
+    u16("timer_rate")]);
+var sxlate_quartet_header = sxLayout(0x6093002C, "quartet_header", BE, sxlate_quartet_header_fields);
+var sxlate_quartet_sequence_fields = layout([u16("command"), u16("length"), u32("step"), u32("parameter")]);
+var sxlate_quartet_sequence = sxLayout(0x6093002D, "quartet_sequence", BE, sxlate_quartet_sequence_fields);
+var sxlate_ultima6_header_fields = layout([u32("unpacked_bytes", SIZE)]);
+var sxlate_ultima6_header = sxLayout(0x6093002E, "ultima6_header", LE, sxlate_ultima6_header_fields);
+function sxlate_span(c, p, n, end) {
+    return c !== null && c.size >= 0 && end <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && p <= end && n <= sxU64(end - p);
+}
+function sxlate_read(c, p, b, n, end) {
+    return sxlate_span(c, p, n, end) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxlate_byte(c, p, b, end) {
+    return sxlate_read(c, p, b, 1, end);
+}
+function sxlate_row(c, l, p, n, end) {
+    return sxlate_span(c, p, n, end) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxlate_plane(c, l, p, n, end) {
+    if (!sxlate_span(c, p[0], n, end)) {
+        return false;
+    }
+    var shown = n > 4096 ? 4096 : n;
+    if (shown && !sx_add(c, l, (p[0] >= SX_I64_MAX ? p[0] - SX_U64_MAX : p[0]), (shown >= SX_I64_MAX ? shown - SX_U64_MAX : shown))) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxlate_string(c, l, p, end) {
+    var start = p[0];
+    var b = [0];
+    while (p[0] < end && sxU64(p[0] - start) < 4096) {
+        if (!sxlate_byte(c, p[0]++, b, end)) {
+            return false;
+        }
+        if (!b[0]) {
+            return sxlate_row(c, l, start, sxU64(p[0] - start), end);
+        }
+    }
+    return false;
+}
+function sxlate_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxlate_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxlate_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), sxI64(sxU64(at - end)))) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && !sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), c.size - (end >= SX_I64_MAX ? end - SX_U64_MAX : end))) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxlate_order, true);
+    return !c.failed;
+}
+function sxlate_table(c, l, p, stride, count, end) {
+    if (!stride || count > Math.floor(SX_U64_MAX / stride) || !sxlate_span(c, p[0], count * stride, end)) {
+        return false;
+    }
+    if (count && !sx_table(c, l, (p[0] >= SX_I64_MAX ? p[0] - SX_U64_MAX : p[0]), (stride >= SX_I64_MAX ? stride - SX_U64_MAX : stride), count)) {
+        return false;
+    }
+    p[0] += count * stride;
+    return true;
+}
+function sxlate_u32(c, p, v, v_o, end) {
+    return sxlate_span(c, p, 4, end) && (v[v_o] = sx_u32(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), false)) !== null;
+}
+function sx_musiclate_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_STEPANOV_BUZZIC2":
+    case "DIE_MUSIC_RHINO_JAYTRAXSYNTRAX_JXS":
+    case "DIE_MUSIC_SAHARASURFERS_IXALANCE_IXS_UNP":
+    case "DIE_MUSIC_MSXPERFORMER_OPX":
+    case "DIE_MUSIC_TRAN_CDFM_COMPOSER670_CO":
+    case "DIE_MUSIC_MICRODEAL_QUARTET_SMP":
+    case "DIE_MUSIC_ORIGINSYSTEMS_ULTIMA6":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_musiclate_build(c) {
+    if (c === null || c.f === null || !sx_musiclate_supports(c.f.file_type) || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size < 0) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_STEPANOV_BUZZIC2":
+        ok = sx_stepanov_buzzic2_build(c);
+        break;
+    case "DIE_MUSIC_RHINO_JAYTRAXSYNTRAX_JXS":
+        ok = sx_rhino_jaytraxsyntrax_jxs_build(c);
+        break;
+    case "DIE_MUSIC_SAHARASURFERS_IXALANCE_IXS_UNP":
+        ok = sx_saharasurfers_ixalance_ixs_unp_build(c);
+        break;
+    case "DIE_MUSIC_MSXPERFORMER_OPX":
+        ok = sx_msxperformer_opx_build(c);
+        break;
+    case "DIE_MUSIC_TRAN_CDFM_COMPOSER670_CO":
+        ok = sx_tran_cdfm_composer670_co_build(c);
+        break;
+    case "DIE_MUSIC_MICRODEAL_QUARTET_SMP":
+        ok = sx_microdeal_quartet_smp_build(c);
+        break;
+    case "DIE_MUSIC_ORIGINSYSTEMS_ULTIMA6":
+        ok = sx_originsystems_ultima6_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxlate_finish(c);
+}
+function sx_musiclate_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60930001 || id > sxlate_ultima6_header.id) {
+        return true;
+    }
+    var s = "Physical stored member; music playback and decoded or generated payload values are not represented here.";
+    if (id === sxlate_buzz2_header.id) {
+        s = "Original Buzzic2 Win32 file header, including its three stored alignment bytes. Version halves are little-endian; master volume is IEEE754 binary32.";
+    } else if (id === sxlate_buzz2_operation.id || id === sxlate_buzz2_instrument.id) {
+        s = "Original Win32 object snapshot. Pointer and vtable values are stored 32-bit snapshots, never dereferenced. Operator parameters preserve IEEE754 binary32 values.";
+    } else if (id === sxlate_jxs_sample_info.id) {
+        s = "Stored Jaytrax sample metadata. A nonzero saved sample pointer means sample_bytes follow the sixteen waveform tables. No virtual pointer is used.";
+    } else if (id === sxlate_jxs_subsong.id) {
+        s = "Packed Jaytrax subsong metadata followed by sixteen channels of 256 order records. Stored signed integers are preserved.";
+    } else if (id === sxlate_ixs_instrument.id) {
+        s = "High bit of first_sample_and_map_flag suppresses the remaining 119 keyboard mappings; they are synthesized by the player and are not physical file members.";
+    } else if (id === sxlate_ixs_pattern.id) {
+        s = "The packed pattern byte count excludes this four-byte header. Event decompression and external sample caches are outside this physical view.";
+    } else if (id === sxlate_opx_text_header.id) {
+        s = "Original MSX OPLLdriver2 title, memo and code byte ranges. Encoded text bytes are preserved without a lossy character conversion.";
+    } else if (id === sxlate_opx_info.id) {
+        s = "Track offsets are relative to the music-data block and are bounded by the original driver's 16 KiB storage. Unproven information bytes remain explicitly unknown.";
+    } else if (id === sxlate_c670_pattern_offset.id) {
+        s = "Little-endian byte offset relative to the beginning of compact .670 pattern data, immediately after the instrument records.";
+    } else if (id === sxlate_c670_delay.id) {
+        s = "DELAY: command class 010xxxxx; the low five command bits are ignored by the original player. row_delay advances the pattern. The following command starts after two bytes.";
+    } else if (id === sxlate_c670_end.id) {
+        s = "END_PATTERN: command class 011xxxxx; the low five command bits are ignored by the original player.";
+    } else if (id === sxlate_c670_header.id) {
+        s = "Compact Composer670 header from the author's converter source. sample_offset is an absolute file offset; playback speed is not beats per minute.";
+    } else if (id === sxlate_quartet_header.id) {
+        s = "Quartet score header, stored big-endian. A WT timer tag enables the trailing timer rate; without WT those bytes are reserved.";
+    } else if (id === sxlate_quartet_sequence.id) {
+        s = "Stored 12-byte Quartet score command. F ends a channel, P plays, S slides, R rests, L/l control loops, V selects a voice. Parameter interpretation depends on the command.";
+    } else if (id === sxlate_ultima6_header.id) {
+        s = "Ultima 6 LZW container header. unpacked_bytes is the stored output length; the compressed music stream stays raw.";
+    }
+    return sxSetComment(r, s);
+}

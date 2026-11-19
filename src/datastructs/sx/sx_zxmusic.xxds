@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_zxmusic.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_zxmusic");
+include("_sx_zxmusic_alonecoder_chiptracker");
+include("_sx_zxmusic_asc_advancedsoundmaster_v0");
+include("_sx_zxmusic_asc_advancedsoundmaster_v1");
+include("_sx_zxmusic_bzyk_soundtracker_ayst11");
+include("_sx_zxmusic_bzyk_soundtracker_stc_zxs");
+include("_sx_zxmusic_dexus_prosoundmaker");
+include("_sx_zxmusic_doctormax_globaltracker_gtr");
+include("_sx_zxmusic_goldendisk_protracker_pt1_co");
+include("_sx_zxmusic_goldendisk_protracker_pt2");
+include("_sx_zxmusic_goldendisk_protracker_pt3");
+include("_sx_zxmusic_ksa_soundtrackerpro_stp");
+include("_sx_zxmusic_kva_prosoundcreator");
+include("_sx_zxmusic_lave_digitalmusicmaker");
+include("_sx_zxmusic_orionsand_fasttracker_ftc");
+include("_sx_zxmusic_raster_musictracker");
+include("_sx_zxmusic_redlimited_extremetracker");
+include("_sx_zxmusic_sqdigitaltracker");
+include("_sx_zxmusic_stmusicstcrecompv2_st3");
+include("_sx_zxmusic_undergroundsystems_digitalstudio");
+include("_sx_zxmusic_woloszyk_etracker");
+
+function fileTypes() { return ["DIE_MUSIC_ALONECODER_CHIPTRACKER", "DIE_MUSIC_WOLOSZYK_ETRACKER",
+    "DIE_MUSIC_BZYK_SOUNDTRACKER_AYST11", "DIE_MUSIC_DEXUS_PROSOUNDMAKER", "DIE_MUSIC_ASC_ADVANCEDSOUNDMASTER_V1",
+    "DIE_MUSIC_ASC_ADVANCEDSOUNDMASTER_V0", "DIE_MUSIC_DOCTORMAX_GLOBALTRACKER_GTR", "DIE_MUSIC_GOLDENDISK_PROTRACKER_PT1_CO",
+    "DIE_MUSIC_GOLDENDISK_PROTRACKER_PT2", "DIE_MUSIC_GOLDENDISK_PROTRACKER_PT3", "DIE_MUSIC_KVA_PROSOUNDCREATOR",
+    "DIE_MUSIC_ORIONSAND_FASTTRACKER_FTC", "DIE_MUSIC_KSA_SOUNDTRACKERPRO_STP", "DIE_MUSIC_BZYK_SOUNDTRACKER_STC_ZXS",
+    "DIE_MUSIC_STMUSICSTCRECOMPV2_ST3", "DIE_MUSIC_LAVE_DIGITALMUSICMAKER", "DIE_MUSIC_RASTER_MUSICTRACKER",
+    "DIE_MUSIC_SQDIGITALTRACKER", "DIE_MUSIC_UNDERGROUNDSYSTEMS_DIGITALSTUDIO", "DIE_MUSIC_REDLIMITED_EXTREMETRACKER"]; }
+
+var sx_zxmusic_layouts = [sxzxm_zx_position, sxzxm_zx_ornament_step, sxzxm_zx_sample_offset, sxzxm_zx_ornament_offset,
+    sxzxm_zx_sample_address, sxzxm_zx_ornament_address, sxzxm_zx_pattern_channels, sxzxm_zx_pattern_addresses,
+    sxzxm_zx_positions_count, sxzxm_zx_object_size_loop, sxzxm_zx_object_loop_size, sxzxm_zx_marker, sxzxm_zx_text,
+    sxzxm_pt1_header, sxzxm_pt2_header, sxzxm_pt1_sample_line, sxzxm_pt2_sample_line, sxzxm_pt3_header, sxzxm_pt3_position,
+    sxzxm_pt3_sample_line, sxzxm_asc0_header, sxzxm_asc1_header, sxzxm_asc_identity, sxzxm_asc_pattern_channels,
+    sxzxm_asc_sample_offset, sxzxm_asc_ornament_offset, sxzxm_asc_sample_line, sxzxm_asc_ornament_line,
+    sxzxm_globaltracker_header, sxzxm_globaltracker_positions, sxzxm_globaltracker_position, sxzxm_globaltracker_sample,
+    sxzxm_globaltracker_sample_line, sxzxm_fasttracker_header, sxzxm_fasttracker_position, sxzxm_fasttracker_object,
+    sxzxm_fasttracker_sample_line, sxzxm_fasttracker_ornament_line, sxzxm_fasttracker_pattern_end, sxzxm_prosoundcreator_header,
+    sxzxm_prosoundcreator_sample_ref, sxzxm_prosoundcreator_ornament_ref, sxzxm_prosoundcreator_position,
+    sxzxm_prosoundcreator_end, sxzxm_prosoundcreator_loop, sxzxm_prosoundcreator_sample_line,
+    sxzxm_prosoundcreator_ornament_line, sxzxm_prosoundmaker_header, sxzxm_prosoundmaker_position, sxzxm_prosoundmaker_pattern,
+    sxzxm_prosoundmaker_sample, sxzxm_prosoundmaker_sample_line, sxzxm_prosoundmaker_ornament, sxzxm_stc_header,
+    sxzxm_stc_positions, sxzxm_stc_position, sxzxm_stc_pattern, sxzxm_stc_sample_prefix, sxzxm_stc_sample_line,
+    sxzxm_stc_sample_loop, sxzxm_stc_ornament_prefix, sxzxm_st3_header, sxzxm_st3_identity, sxzxm_st3_position,
+    sxzxm_st3_object_table, sxzxm_st3_sample, sxzxm_st3_sample_line, sxzxm_stp_header, sxzxm_stp_identity, sxzxm_stp_positions,
+    sxzxm_stp_position, sxzxm_stp_object, sxzxm_stp_sample_line, sxzxm_etracker_header, sxzxm_etracker_pattern,
+    sxzxm_etracker_sample_offset, sxzxm_etracker_ornament_offset, sxzxm_etracker_position, sxzxm_chiptracker_header,
+    sxzxm_chiptracker_sample, sxzxm_chiptracker_sample_name, sxzxm_chiptracker_note, sxzxm_chiptracker_parameter,
+    sxzxm_dmm_header, sxzxm_dmm_playback, sxzxm_dmm_mixing, sxzxm_dmm_sample, sxzxm_dmm_event, sxzxm_sqd_layout,
+    sxzxm_sqd_sample, sxzxm_sqd_title, sxzxm_sqd_positions_limit, sxzxm_sqd_playback, sxzxm_sqd_event, sxzxm_ayst11_header,
+    sxzxm_ayst11_song, sxzxm_ayst11_song_data, sxzxm_st1_sample, sxzxm_st1_position, sxzxm_st1_song_length,
+    sxzxm_st1_ornament_step, sxzxm_st1_playback, sxzxm_rmt_binary_header, sxzxm_rmt_binary_segment, sxzxm_rmt_header,
+    sxzxm_rmt_instrument_address, sxzxm_rmt_track_low, sxzxm_rmt_track_high, sxzxm_rmt_instrument, sxzxm_digitalstudio_order,
+    sxzxm_digitalstudio_header, sxzxm_digitalstudio_sample, sxzxm_digitalstudio_event, sxzxm_extremetracker_header,
+    sxzxm_extremetracker_pattern_size, sxzxm_extremetracker_memory, sxzxm_extremetracker_sample, sxzxm_extremetracker_event];
+
+function structs() {
+    return sxCatalog([sxzxm_zx_position, sxzxm_zx_ornament_step, sxzxm_zx_sample_offset, sxzxm_zx_ornament_offset,
+        sxzxm_zx_sample_address, sxzxm_zx_ornament_address, sxzxm_zx_pattern_channels, sxzxm_zx_pattern_addresses,
+        sxzxm_zx_positions_count, sxzxm_zx_object_size_loop, sxzxm_zx_object_loop_size, sxzxm_zx_marker, sxzxm_zx_text,
+        sxzxm_pt1_header, sxzxm_pt2_header, sxzxm_pt1_sample_line, sxzxm_pt2_sample_line, sxzxm_pt3_header, sxzxm_pt3_position,
+        sxzxm_pt3_sample_line, sxzxm_asc0_header, sxzxm_asc1_header, sxzxm_asc_identity, sxzxm_asc_pattern_channels,
+        sxzxm_asc_sample_offset, sxzxm_asc_ornament_offset, sxzxm_asc_sample_line, sxzxm_asc_ornament_line,
+        sxzxm_globaltracker_header, sxzxm_globaltracker_positions, sxzxm_globaltracker_position, sxzxm_globaltracker_sample,
+        sxzxm_globaltracker_sample_line, sxzxm_fasttracker_header, sxzxm_fasttracker_position, sxzxm_fasttracker_object,
+        sxzxm_fasttracker_sample_line, sxzxm_fasttracker_ornament_line, sxzxm_fasttracker_pattern_end,
+        sxzxm_prosoundcreator_header, sxzxm_prosoundcreator_sample_ref, sxzxm_prosoundcreator_ornament_ref,
+        sxzxm_prosoundcreator_position, sxzxm_prosoundcreator_end, sxzxm_prosoundcreator_loop,
+        sxzxm_prosoundcreator_sample_line, sxzxm_prosoundcreator_ornament_line, sxzxm_prosoundmaker_header,
+        sxzxm_prosoundmaker_position, sxzxm_prosoundmaker_pattern, sxzxm_prosoundmaker_sample, sxzxm_prosoundmaker_sample_line,
+        sxzxm_prosoundmaker_ornament, sxzxm_stc_header, sxzxm_stc_positions, sxzxm_stc_position, sxzxm_stc_pattern,
+        sxzxm_stc_sample_prefix, sxzxm_stc_sample_line, sxzxm_stc_sample_loop, sxzxm_stc_ornament_prefix, sxzxm_st3_header,
+        sxzxm_st3_identity, sxzxm_st3_position, sxzxm_st3_object_table, sxzxm_st3_sample, sxzxm_st3_sample_line,
+        sxzxm_stp_header, sxzxm_stp_identity, sxzxm_stp_positions, sxzxm_stp_position, sxzxm_stp_object, sxzxm_stp_sample_line,
+        sxzxm_etracker_header, sxzxm_etracker_pattern, sxzxm_etracker_sample_offset, sxzxm_etracker_ornament_offset,
+        sxzxm_etracker_position, sxzxm_chiptracker_header, sxzxm_chiptracker_sample, sxzxm_chiptracker_sample_name,
+        sxzxm_chiptracker_note, sxzxm_chiptracker_parameter, sxzxm_dmm_header, sxzxm_dmm_playback, sxzxm_dmm_mixing,
+        sxzxm_dmm_sample, sxzxm_dmm_event, sxzxm_sqd_layout, sxzxm_sqd_sample, sxzxm_sqd_title, sxzxm_sqd_positions_limit,
+        sxzxm_sqd_playback, sxzxm_sqd_event, sxzxm_ayst11_header, sxzxm_ayst11_song, sxzxm_ayst11_song_data, sxzxm_st1_sample,
+        sxzxm_st1_position, sxzxm_st1_song_length, sxzxm_st1_ornament_step, sxzxm_st1_playback, sxzxm_rmt_binary_header,
+        sxzxm_rmt_binary_segment, sxzxm_rmt_header, sxzxm_rmt_instrument_address, sxzxm_rmt_track_low, sxzxm_rmt_track_high,
+        sxzxm_rmt_instrument, sxzxm_digitalstudio_order, sxzxm_digitalstudio_header, sxzxm_digitalstudio_sample,
+        sxzxm_digitalstudio_event, sxzxm_extremetracker_header, sxzxm_extremetracker_pattern_size, sxzxm_extremetracker_memory,
+        sxzxm_extremetracker_sample, sxzxm_extremetracker_event], sx_zxmusic_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_zxmusic_build, false);
+}

@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/packit/xx_packit_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_dos_packit_header_fields = layout([chars("signature", 16, SIGNATURE)]);
+var sxal_dos_packit_header = sxLayout(0x6020000A, "dos_packit_header", LE, sxal_dos_packit_header_fields);
+var sxal_dos_packit_member_fields = layout([u16("tag", ID), i32("data_size", SIZE), i32("repeated_data_size", SIZE),
+    u16("date"), u16("time"), u32("crc32", CHECKSUM), u8("name_size", SIZE)]);
+var sxal_dos_packit_member = sxLayout(0x6020000B, "dos_packit_member", LE, sxal_dos_packit_member_fields);
+var sxal_dos_packit_end_fields = layout([u16("tag", SIGNATURE)]);
+var sxal_dos_packit_end = sxLayout(0x6020000C, "dos_packit_end", LE, sxal_dos_packit_end_fields);
+function sxal_packit(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 16) || !sxal_add(c, sxal_dos_packit_header, 0)) {
+        return false;
+    }
+    var p = 16;
+    for (var i = 0; i < 20000; i++) {
+        if (!sxal_read(c, p, b, 2)) {
+            break;
+        }
+        var tag = sxal16(b, 0, false);
+        if (tag === 65535) {
+            return sxal_add(c, sxal_dos_packit_end, p);
+        }
+        if (tag !== 255 || !sxal_read(c, p, b, 19)) {
+            break;
+        }
+        var n = sxal32(b, 2, false);
+        var head = 20 + b[18];
+        if (n > 2147483647 || !sxal_span(c, p, head) || !sxal_add(c, sxal_dos_packit_member, p)) {
+            break;
+        }
+        if (!sxal_span(c, p + head, n)) {
+            break;
+        }
+        p += head + n;
+    }
+    return !c.failed;
+}
+function sx_packit_build(c) {
+    return sxal_packit(c);
+}

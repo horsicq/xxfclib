@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/osl2000/xx_osl2000_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_osl_encoded_record_fields = layout([bytes("encoded_header", 16)]);
+var sxan_osl_encoded_record = sxLayout(0x60770065, "osl_encoded_record", LE, sxan_osl_encoded_record_fields);
+var sxan_osl_payload_checksum_fields = layout([u16("rolling_checksum", CHECKSUM)]);
+var sxan_osl_payload_checksum = sxLayout(0x60770066, "osl_payload_checksum", LE, sxan_osl_payload_checksum_fields);
+var sxan_osl_signature_fields = layout([chars("signature", 3, SIGNATURE)]);
+var sxan_osl_signature = sxLayout(0x60770067, "osl_signature", LE, sxan_osl_signature_fields);
+function sxan_rol8(b) {
+    return (b << 1 | b >> 7) & 0xFF;
+}
+function sxan_ror8(b) {
+    return (b >> 1 | b << 7) & 0xFF;
+}
+function sxan_osl(c) {
+    var p = 3;
+    if (!sxan_add(c, sxan_osl_signature, 0)) {
+        return false;
+    }
+    while (sxan_span(c, p, 16)) {
+        var b = [];
+        if (!sxan_read(c, p, b, 16)) {
+            return false;
+        }
+        for (var i = 16; i--; ) {
+            var v = b[i];
+            if (i) {
+                v = b[(i - 1) >>> 0] ^ (sxan_rol8(v) + i) >>> 0 & 0xFF;
+            }
+            b[i] = (sxan_ror8(v) - i) >>> 0 & 0xFF ^ 90;
+        }
+        if (sxan_uint(b, 0, 2, false) !== 0x4948) {
+            return true;
+        }
+        var z = sxan_uint(b, 2, 4, false);
+        if (!sxan_add(c, sxan_osl_encoded_record, p)) {
+            return false;
+        }
+        p += 16;
+        if (!sxan_span(c, p, z + 2)) {
+            return true;
+        }
+        if (!sxan_add(c, sxan_osl_payload_checksum, p + z)) {
+            return false;
+        }
+        p += z + 2;
+    }
+    return true;
+}
+function sx_osl2000_build(c) {
+    var ok = false;
+    ok = sxan_osl(c);
+    return !!(c.count && sxan_finish(c));
+}

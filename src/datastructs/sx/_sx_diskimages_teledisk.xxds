@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/teledisk/xx_teledisk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_teledisk_header_fields = layout([chars("signature", 2, SIGNATURE), u8("volume_sequence", ID), u8("volume_id", ID),
+    u8("version"), u8("rate_and_fm", FLAGS), u8("drive_type", ID), u8("stepping_and_comment", FLAGS),
+    u8("dos_allocation_mode", FLAGS), u8("head_count", COUNT), u16("header_crc", CHECKSUM)]);
+var sxdi_teledisk_header = sxLayout(0x60150013, "teledisk_header", LE, sxdi_teledisk_header_fields);
+var sxdi_teledisk_comment_fields = layout([u16("crc", CHECKSUM), u16("text_size", SIZE), u8("year_since_1900"),
+    u8("month_zero_based"), u8("day"), u8("hour"), u8("minute"), u8("second")]);
+var sxdi_teledisk_comment = sxLayout(0x60150014, "teledisk_comment", LE, sxdi_teledisk_comment_fields);
+var sxdi_teledisk_track_fields = layout([u8("sector_count", COUNT), u8("cylinder", ID), u8("head_and_fm", FLAGS),
+    u8("header_crc_low", CHECKSUM)]);
+var sxdi_teledisk_track = sxLayout(0x60150015, "teledisk_track", LE, sxdi_teledisk_track_fields);
+var sxdi_teledisk_end_fields = layout([u8("end_marker", SIGNATURE)]);
+var sxdi_teledisk_end = sxLayout(0x60150016, "teledisk_end", LE, sxdi_teledisk_end_fields);
+var sxdi_teledisk_sector_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u8("flags", FLAGS), u8("crc_low", CHECKSUM)]);
+var sxdi_teledisk_sector = sxLayout(0x60150017, "teledisk_sector", LE, sxdi_teledisk_sector_fields);
+var sxdi_teledisk_data_block_fields = layout([u16("encoded_size", SIZE), u8("method", ID)]);
+var sxdi_teledisk_data_block = sxLayout(0x60150018, "teledisk_data_block", LE, sxdi_teledisk_data_block_fields);
+function sxdi_td(c) {
+    var h = [];
+    if (!sxdi_read(c, 0, h, 12) || sxMemcmp(h, "TD", 2) && sxMemcmp(h, "td", 2) || !sx_add(c, sxdi_teledisk_header, 0, 12)) {
+        return false;
+    }
+    if (h[0] === 116 /*t*/) {
+        return true;
+    }
+    var at = 12;
+    var sectors = 0;
+    if (h[7] & 128) {
+        var m = [];
+        if (!sxdi_read(c, at, m, 10)) {
+            return true;
+        }
+        if (!sx_add(c, sxdi_teledisk_comment, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 10)) {
+            return false;
+        }
+        at += 10 + sxdi_le16(m, 2);
+        if (at > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return true;
+        }
+    }
+    for (var i = 0; i < 4096 && sectors < 32768 && at < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var t = [];
+        if (!sxdi_read(c, at, t, 4)) {
+            break;
+        }
+        if (t[0] === 255) {
+            return sx_add(c, sxdi_teledisk_end, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1);
+        }
+        if (!sx_add(c, sxdi_teledisk_track, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+            return false;
+        }
+        at += 4;
+        for (var j = 0; j < t[0] && sectors < 32768; j++) {
+            var s = [];
+            if (!sxdi_read(c, at, s, 6) || s[3] > 7) {
+                return true;
+            }
+            if (!sx_add(c, sxdi_teledisk_sector, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 6)) {
+                return false;
+            }
+            at += 6;
+            sectors++;
+            if (!(s[4] & 0x30)) {
+                var d = [];
+                if (!sxdi_read(c, at, d, 3)) {
+                    return true;
+                }
+                var n = sxdi_le16(d, 0);
+                if (!n || !sxdi_span(c, at, (2 + n) >>> 0)) {
+                    return true;
+                }
+                if (!sx_add(c, sxdi_teledisk_data_block, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 3)) {
+                    return false;
+                }
+                at += (2 + n) >>> 0;
+            }
+        }
+    }
+    return true;
+}
+function sx_teledisk_build(c) {
+    return sxdi_td(c);
+}

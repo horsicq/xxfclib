@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/interplay_mve/xx_interplay_mve_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_mve_header_fields = layout([blob("signature", 20, SIGNATURE), u16("magic1", SIGNATURE), u16("magic2", SIGNATURE),
+    u16("magic3", SIGNATURE)]);
+var sxnx_mve_header = sxLayout(0x603200B6, "mve_header", LE, sxnx_mve_header_fields);
+var sxnx_mve_chunk_fields = layout([u16("data_size", SIZE), u16("chunk_type", ID)]);
+var sxnx_mve_chunk = sxLayout(0x603200B7, "mve_chunk", LE, sxnx_mve_chunk_fields);
+var sxnx_mve_opcode_fields = layout([u16("data_size", SIZE), u8("opcode", ID), u8("version", ID)]);
+var sxnx_mve_opcode = sxLayout(0x603200B8, "mve_opcode", LE, sxnx_mve_opcode_fields);
+var sxnx_mve_timer_fields = layout([u32("microsecond_rate"), u16("rate_divisor")]);
+var sxnx_mve_timer = sxLayout(0x603200B9, "mve_timer", LE, sxnx_mve_timer_fields);
+var sxnx_mve_audio_init_fields = layout([u16("unknown"), u16("flags", FLAGS), u16("sample_rate")]);
+var sxnx_mve_audio_init = sxLayout(0x603200BA, "mve_audio_init", LE, sxnx_mve_audio_init_fields);
+var sxnx_mve_video_init_0_fields = layout([u16("width_8pixels"), u16("height_8pixels")]);
+var sxnx_mve_video_init_0 = sxLayout(0x603200BB, "mve_video_init_0", LE, sxnx_mve_video_init_0_fields);
+var sxnx_mve_video_init_1_fields = layout([u16("width_8pixels"), u16("height_8pixels"), u16("buffer_count", COUNT)]);
+var sxnx_mve_video_init_1 = sxLayout(0x603200BC, "mve_video_init_1", LE, sxnx_mve_video_init_1_fields);
+var sxnx_mve_video_init_2_fields = layout([u16("width_8pixels"), u16("height_8pixels"), u16("buffer_count", COUNT),
+    u16("true_color", FLAGS)]);
+var sxnx_mve_video_init_2 = sxLayout(0x603200BD, "mve_video_init_2", LE, sxnx_mve_video_init_2_fields);
+var sxnx_mve_send_buffer_fields = layout([u16("palette_start", ID), u16("palette_count", COUNT), u16("unknown")]);
+var sxnx_mve_send_buffer = sxLayout(0x603200BE, "mve_send_buffer", LE, sxnx_mve_send_buffer_fields);
+var sxnx_mve_audio_frame_fields = layout([u16("sequence_index", ID), u16("stream_mask", FLAGS), u16("unpacked_bytes", SIZE)]);
+var sxnx_mve_audio_frame = sxLayout(0x603200BF, "mve_audio_frame", LE, sxnx_mve_audio_frame_fields);
+var sxnx_mve_video_mode_fields = layout([u16("width"), u16("height"), u16("flags", FLAGS)]);
+var sxnx_mve_video_mode = sxLayout(0x603200C0, "mve_video_mode", LE, sxnx_mve_video_mode_fields);
+var sxnx_mve_palette_fields = layout([u16("first_index", ID), u16("color_count", COUNT)]);
+var sxnx_mve_palette = sxLayout(0x603200C1, "mve_palette", LE, sxnx_mve_palette_fields);
+function sxnx_mve(v) {
+    if (!sxnx_row(v, sxnx_mve_header, 0, v.n)) {
+        return false;
+    }
+    var p = 26;
+    while (p < v.n) {
+        if (!sxnx_row(v, sxnx_mve_chunk, p, v.n)) {
+            return false;
+        }
+        var z = sxnx_u16(v.p, p, false);
+        p += 4;
+        if (!sxnx_need(v, p, z, v.n)) {
+            return false;
+        }
+        var end = p + z;
+        while (p < end) {
+            if (!sxnx_row(v, sxnx_mve_opcode, p, end)) {
+                return false;
+            }
+            var n = sxnx_u16(v.p, p, false);
+            var op = v.p[p + 2];
+            var version = v.p[p + 3];
+            p += 4;
+            if (!sxnx_need(v, p, n, end)) {
+                return false;
+            }
+            var l = null;
+            if (op === 2) {
+                l = sxnx_mve_timer;
+            } else if (op === 3) {
+                l = sxnx_mve_audio_init;
+            } else if (op === 5) {
+                if (version > 2) {
+                    return false;
+                }
+                l = version === 0 ? sxnx_mve_video_init_0 : version === 1 ? sxnx_mve_video_init_1 : sxnx_mve_video_init_2;
+            } else if (op === 7) {
+                l = sxnx_mve_send_buffer;
+            } else if (op === 8 || op === 9) {
+                l = sxnx_mve_audio_frame;
+            } else if (op === 10) {
+                l = sxnx_mve_video_mode;
+            } else if (op === 12) {
+                if (!sxnx_row(v, sxnx_mve_palette, p, p + n) || !sxnx_table(v, sxnx_rgb_palette_entry, p + 4, sxnx_u16(v.p, p + 2, false), p + n)) {
+                    return false;
+                }
+            }
+            if (l !== null && !sxnx_row(v, l, p, p + n)) {
+                return false;
+            }
+            p += n;
+        }
+    }
+    return true;
+}
+function sx_interplay_mve_build(v) {
+    return sxnx_mve(v);
+}

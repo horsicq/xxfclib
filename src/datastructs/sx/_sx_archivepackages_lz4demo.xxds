@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lz4demo/xx_lz4demo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_legacy_lz4_magic_fields = layout([u32("magic", SIGNATURE)]);
+var sxap_legacy_lz4_magic = sxLayout(0x6072000B, "legacy_lz4_magic", LE, sxap_legacy_lz4_magic_fields);
+var sxap_legacy_lz4_block_fields = layout([u32("compressed_size", SIZE)]);
+var sxap_legacy_lz4_block = sxLayout(0x6072000C, "legacy_lz4_block", LE, sxap_legacy_lz4_block_fields);
+var sxap_legacy_lz4_skip_fields = layout([u32("skip_size", SIZE)]);
+var sxap_legacy_lz4_skip = sxLayout(0x6072000D, "legacy_lz4_skip", LE, sxap_legacy_lz4_skip_fields);
+function sxap_lz4(c) {
+    var p = 0;
+    while (sxap_span(c, p, 4)) {
+        var n = [0];
+        if (!sxap_word(c, p, 4, false, n)) {
+            return false;
+        }
+        if (n[0] === 0x184C2102 || sxAnd64(n[0], 0xFFFFFFF0) === 0x184D2A50) {
+            if (!sxap_add(c, sxap_legacy_lz4_magic, p)) {
+                return false;
+            }
+            p += 4;
+            if (n[0] === 0x184C2102) {
+                continue;
+            }
+            if (!sxap_word(c, p, 4, false, n) || !sxap_add(c, sxap_legacy_lz4_skip, p)) {
+                return false;
+            }
+        } else if (!sxap_add(c, sxap_legacy_lz4_block, p)) {
+            return false;
+        }
+        p += 4;
+        if (!sxap_span(c, p, n[0])) {
+            return true;
+        }
+        p += n[0];
+    }
+    return true;
+}
+function sx_lz4demo_build(c) {
+    return sxap_lz4(c);
+}

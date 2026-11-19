@@ -1,0 +1,1394 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_mediaextra.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_cflyt_header_le_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("header_size", SIZE),
+    u32("version", ID), u32("file_size", SIZE), u32("section_count", COUNT)]);
+var sxmx_cflyt_header_le = sxLayout(0x602E0024, "cflyt_header_le", LE, sxmx_cflyt_header_le_fields);
+var sxmx_bflyt_header_le_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("header_size", SIZE),
+    u32("version", ID), u32("file_size", SIZE), u16("section_count", COUNT), blob("padding", 2)]);
+var sxmx_bflyt_header_le = sxLayout(0x602E0025, "bflyt_header_le", LE, sxmx_bflyt_header_le_fields);
+var sxmx_section_le_fields = layout([chars("tag", 4, ID), u32("section_size", SIZE)]);
+var sxmx_section_le = sxLayout(0x602E0026, "section_le", LE, sxmx_section_le_fields);
+var sxmx_nw_layout_le_fields = layout([u8("draw_from_center", FLAGS), blob("padding", 3), field("width", "float", 4),
+    field("height", "float", 4)]);
+var sxmx_nw_layout_le = sxLayout(0x602E0027, "nw_layout_le", LE, sxmx_nw_layout_le_fields);
+var sxmx_clyt_layout_le_fields = layout([u32("screen_origin", ID), field("width", "float", 4), field("height", "float", 4)]);
+var sxmx_clyt_layout_le = sxLayout(0x602E0028, "clyt_layout_le", LE, sxmx_clyt_layout_le_fields);
+var sxmx_nw_names_le_fields = layout([u32("entry_count", COUNT)]);
+var sxmx_nw_names_le = sxLayout(0x602E0029, "nw_names_le", LE, sxmx_nw_names_le_fields);
+var sxmx_nw_name_offset_le_fields = layout([u32("name_relative", OFFSET)]);
+var sxmx_nw_name_offset_le = sxLayout(0x602E002A, "nw_name_offset_le", LE, sxmx_nw_name_offset_le_fields);
+var sxmx_cflyt_header_be_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("header_size", SIZE),
+    u32("version", ID), u32("file_size", SIZE), u32("section_count", COUNT)]);
+var sxmx_cflyt_header_be = sxLayout(0x602E002B, "cflyt_header_be", BE, sxmx_cflyt_header_be_fields);
+var sxmx_bflyt_header_be_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("header_size", SIZE),
+    u32("version", ID), u32("file_size", SIZE), u16("section_count", COUNT), blob("padding", 2)]);
+var sxmx_bflyt_header_be = sxLayout(0x602E002C, "bflyt_header_be", BE, sxmx_bflyt_header_be_fields);
+var sxmx_section_be_fields = layout([chars("tag", 4, ID), u32("section_size", SIZE)]);
+var sxmx_section_be = sxLayout(0x602E002D, "section_be", BE, sxmx_section_be_fields);
+var sxmx_nw_layout_be_fields = layout([u8("draw_from_center", FLAGS), blob("padding", 3), field("width", "float", 4),
+    field("height", "float", 4)]);
+var sxmx_nw_layout_be = sxLayout(0x602E002E, "nw_layout_be", BE, sxmx_nw_layout_be_fields);
+var sxmx_clyt_layout_be_fields = layout([u32("screen_origin", ID), field("width", "float", 4), field("height", "float", 4)]);
+var sxmx_clyt_layout_be = sxLayout(0x602E002F, "clyt_layout_be", BE, sxmx_clyt_layout_be_fields);
+var sxmx_nw_names_be_fields = layout([u32("entry_count", COUNT)]);
+var sxmx_nw_names_be = sxLayout(0x602E0030, "nw_names_be", BE, sxmx_nw_names_be_fields);
+var sxmx_nw_name_offset_be_fields = layout([u32("name_relative", OFFSET)]);
+var sxmx_nw_name_offset_be = sxLayout(0x602E0031, "nw_name_offset_be", BE, sxmx_nw_name_offset_be_fields);
+var sxmx_nw_header_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("section_count", COUNT)]);
+var sxmx_nw_header = sxLayout(0x602E0032, "nw_header", BE, sxmx_nw_header_fields);
+var sxmx_nw_pane_fields = layout([u8("flags", FLAGS), u8("origin", ID), u8("alpha"), u8("user_flags", FLAGS),
+    chars("name", 16, STRING), chars("user_data", 8, STRING), field("translation_x", "float", 4),
+    field("translation_y", "float", 4), field("translation_z", "float", 4), field("rotation_x", "float", 4),
+    field("rotation_y", "float", 4), field("rotation_z", "float", 4), field("scale_x", "float", 4),
+    field("scale_y", "float", 4), field("width", "float", 4), field("height", "float", 4)]);
+var sxmx_nw_pane = sxLayout(0x602E0033, "nw_pane", BE, sxmx_nw_pane_fields);
+var sxmx_nw_legacy_names_fields = layout([u16("entry_count", COUNT), blob("padding", 2)]);
+var sxmx_nw_legacy_names = sxLayout(0x602E0034, "nw_legacy_names", BE, sxmx_nw_legacy_names_fields);
+var sxmx_nw_legacy_name_fields = layout([u32("name_relative", OFFSET), u8("type", ID), blob("padding", 3)]);
+var sxmx_nw_legacy_name = sxLayout(0x602E0035, "nw_legacy_name", BE, sxmx_nw_legacy_name_fields);
+var sxmx_nw_group_fields = layout([chars("name", 16, STRING), u16("pane_count", COUNT), blob("padding", 2)]);
+var sxmx_nw_group = sxLayout(0x602E0036, "nw_group", BE, sxmx_nw_group_fields);
+var sxmx_nw_pane_reference_fields = layout([chars("pane_name", 16, STRING)]);
+var sxmx_nw_pane_reference = sxLayout(0x602E0037, "nw_pane_reference", BE, sxmx_nw_pane_reference_fields);
+var sxmx_j3d_header_fields = layout([chars("magic", 8, SIGNATURE), u32("file_size", SIZE), u32("section_count", COUNT),
+    blob("opaque_creator", 16)]);
+var sxmx_j3d_header = sxLayout(0x602E003A, "j3d_header", BE, sxmx_j3d_header_fields);
+var sxmx_bfres_dictionary_fields = layout([u32("dictionary_size", SIZE), u32("entry_count", COUNT)]);
+var sxmx_bfres_dictionary = sxLayout(0x602E004A, "bfres_dictionary", BE, sxmx_bfres_dictionary_fields);
+var sxmx_bfres_node_fields = layout([u32("reference_bit"), u16("left_index", ID), u16("right_index", ID),
+    i32("name_relative", OFFSET), i32("data_relative", OFFSET)]);
+var sxmx_bfres_node = sxLayout(0x602E004B, "bfres_node", BE, sxmx_bfres_node_fields);
+var sxmx_psx_chunk_fields = layout([chars("name", 20, ID), i32("type_flags", FLAGS), i32("entry_size", SIZE),
+    i32("entry_count", COUNT)]);
+var sxmx_psx_chunk = sxLayout(0x602E0092, "psx_chunk", LE, sxmx_psx_chunk_fields);
+var sxmx_psx_bone_fields = layout([chars("name", 64, STRING), i32("flags", FLAGS), i32("child_count", COUNT),
+    i32("parent_index", ID), field("rotation_x", "float", 4), field("rotation_y", "float", 4), field("rotation_z", "float", 4),
+    field("rotation_w", "float", 4), field("location_x", "float", 4), field("location_y", "float", 4),
+    field("location_z", "float", 4), field("length", "float", 4), field("size_x", "float", 4), field("size_y", "float", 4),
+    field("size_z", "float", 4)]);
+var sxmx_psx_bone = sxLayout(0x602E0093, "psx_bone", LE, sxmx_psx_bone_fields);
+var sxmx_psk_point_fields = layout([field("x", "float", 4), field("y", "float", 4), field("z", "float", 4)]);
+var sxmx_psk_point = sxLayout(0x602E0094, "psk_point", LE, sxmx_psk_point_fields);
+var sxmx_psk_wedge_fields = layout([u32("point_index", ID), field("u", "float", 4), field("v", "float", 4),
+    u8("material_index", ID), i8("reserved", RESERVED), i16("padding")]);
+var sxmx_psk_wedge = sxLayout(0x602E0095, "psk_wedge", LE, sxmx_psk_wedge_fields);
+var sxmx_psk_face_fields = layout([u16("wedge0", ID), u16("wedge1", ID), u16("wedge2", ID), u8("material_index", ID),
+    u8("auxiliary_material", ID), i32("smoothing_groups", FLAGS)]);
+var sxmx_psk_face = sxLayout(0x602E0096, "psk_face", LE, sxmx_psk_face_fields);
+var sxmx_psk_material_fields = layout([chars("name", 64, STRING), i32("texture_index", ID), i32("polygon_flags", FLAGS),
+    i32("auxiliary_material", ID), i32("auxiliary_flags", FLAGS), i32("lod_bias"), i32("lod_style", ID)]);
+var sxmx_psk_material = sxLayout(0x602E0097, "psk_material", LE, sxmx_psk_material_fields);
+var sxmx_psk_weight_fields = layout([field("weight", "float", 4), i32("point_index", ID), i32("bone_index", ID)]);
+var sxmx_psk_weight = sxLayout(0x602E0098, "psk_weight", LE, sxmx_psk_weight_fields);
+var sxmx_psa_sequence_fields = layout([chars("name", 64, STRING), chars("group", 64, STRING), i32("bone_count", COUNT),
+    i32("root_include", FLAGS), i32("compression_style", ID), i32("key_quotum", COUNT), field("key_reduction", "float", 4),
+    field("track_time", "float", 4), field("frames_per_second", "float", 4), i32("start_bone", ID), i32("first_frame", ID),
+    i32("frame_count", COUNT)]);
+var sxmx_psa_sequence = sxLayout(0x602E0099, "psa_sequence", LE, sxmx_psa_sequence_fields);
+var sxmx_psa_key_fields = layout([field("location_x", "float", 4), field("location_y", "float", 4),
+    field("location_z", "float", 4), field("rotation_x", "float", 4), field("rotation_y", "float", 4),
+    field("rotation_z", "float", 4), field("rotation_w", "float", 4), field("time", "float", 4)]);
+var sxmx_psa_key = sxLayout(0x602E009A, "psa_key", LE, sxmx_psa_key_fields);
+function sxmx_need(v, at, n, end) {
+    return end <= v.n && at <= end && n <= sxU64(end - at);
+}
+function sxmx_u16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxmx_u32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxmx_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (++v.work > 4000000 || !sxmx_need(v, at, n, end)) {
+        return false;
+    }
+    return v.c.count >= 24000 || sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxmx_table(v, l, at, count, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (count > 4000000 || !sxmx_need(v, at, count * z, end)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++, at += z) {
+        if (!sxmx_row(v, l, at, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxmx_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    return a.total_size < b.total_size ? -1 : a.total_size > b.total_size ? 1 : 0;
+}
+function sxmx_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxmx_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (at < end) {
+            continue;
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = at + z;
+    }
+    c.count = keep;
+    n = keep;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        at = c.items[i].offset - c.f.base_address;
+        z = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxmx_order, true);
+    return !c.failed;
+}
+function sxmx_cstr(v, at, end) {
+    var n = 0;
+    while (at[0] < end && n < 4096 && sxmx_need(v, at[0], 1, end)) {
+        if (!v.p[at[0]++]) {
+            return true;
+        }
+        n++;
+    }
+    return false;
+}
+function sxmx_nw(v) {
+    var t = v.c.f.file_type;
+    var legacy = t === "NINTENDO_BRLYT";
+    var fly = t === "NINTENDO_BFLYT";
+    var be = legacy || v.n >= 6 && v.p[4] === 0xFE;
+    var head = legacy ? sxmx_nw_header : fly ? be ? sxmx_bflyt_header_be : sxmx_bflyt_header_le : be ? sxmx_cflyt_header_be : sxmx_cflyt_header_le;
+    if (!sxmx_row(v, head, 0, v.n)) {
+        return false;
+    }
+    var at = legacy ? 16 : 20;
+    var n = legacy ? sxmx_u16(v.p, 14, true) : fly ? sxmx_u16(v.p, 16, be) : sxmx_u32(v.p, 16, be);
+    if (n > 4096) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxmx_need(v, at, 8, v.n)) {
+            return false;
+        }
+        var size = sxmx_u32(v.p, at + 4, be);
+        if (size < 8 || !sxmx_need(v, at, size, v.n) || !sxmx_row(v, be ? sxmx_section_be : sxmx_section_le, at, at + size)) {
+            return false;
+        }
+        var end = at + size;
+        var p = v.p, p_o = at;
+        if (!sxMemcmpAt(p, p_o, "lyt1", 0, 4)) {
+            var l = legacy || fly ? be ? sxmx_nw_layout_be : sxmx_nw_layout_le : be ? sxmx_clyt_layout_be : sxmx_clyt_layout_le;
+            if (!sxmx_row(v, l, at + 8, end)) {
+                return false;
+            }
+        } else if (legacy && !sxMemcmpAt(p, p_o, "pan1", 0, 4)) {
+            if (!sxmx_row(v, sxmx_nw_pane, at + 8, end)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(p, p_o, "txl1", 0, 4) || !sxMemcmpAt(p, p_o, "fnl1", 0, 4)) {
+            l = legacy ? sxmx_nw_legacy_names : be ? sxmx_nw_names_be : sxmx_nw_names_le;
+            if (!sxmx_row(v, l, at + 8, end)) {
+                return false;
+            }
+            var num = legacy ? sxmx_u16(p, p_o + 8, true) : sxmx_u32(p, p_o + 8, be);
+            if (!sxmx_table(v, legacy ? sxmx_nw_legacy_name : be ? sxmx_nw_name_offset_be : sxmx_nw_name_offset_le, at + 12, num, end)) {
+                return false;
+            }
+        } else if (legacy && !sxMemcmpAt(p, p_o, "grp1", 0, 4)) {
+            if (!sxmx_row(v, sxmx_nw_group, at + 8, end) || !sxmx_table(v, sxmx_nw_pane_reference, at + 28, sxmx_u16(p, p_o + 24, true), end)) {
+                return false;
+            }
+        }
+        at = end;
+    }
+    return at === v.n;
+}
+function sxmx_relative(v, word, be, target) {
+    if (!sxmx_need(v, word, 4, v.n)) {
+        return false;
+    }
+    var at = (word >= SX_I64_MAX ? word - SX_U64_MAX : word) + (sxmx_u32(v.p, word, be) | 0);
+    if (at < 0 || (at < 0 ? at + SX_U64_MAX : at) > v.n) {
+        return false;
+    }
+    target[0] = (at < 0 ? at + SX_U64_MAX : at);
+    return true;
+}
+function sxmx_psx(v) {
+    var at = 0;
+    while (at < v.n) {
+        if (!sxmx_row(v, sxmx_psx_chunk, at, v.n)) {
+            return false;
+        }
+        var p = v.p, p_o = at;
+        var size = sxmx_u32(p, p_o + 24, false);
+        var n = sxmx_u32(p, p_o + 28, false);
+        var l = null;
+        if (!sxMemcmpAt(p, p_o, "PNTS0000", 0, 8)) {
+            l = sxmx_psk_point;
+        } else if (!sxMemcmpAt(p, p_o, "VTXW0000", 0, 8)) {
+            l = sxmx_psk_wedge;
+        } else if (!sxMemcmpAt(p, p_o, "FACE0000", 0, 8)) {
+            l = sxmx_psk_face;
+        } else if (!sxMemcmpAt(p, p_o, "MATT0000", 0, 8)) {
+            l = sxmx_psk_material;
+        } else if (!sxMemcmpAt(p, p_o, "REFSKELT", 0, 8) || !sxMemcmpAt(p, p_o, "BONENAMES", 0, 9)) {
+            l = sxmx_psx_bone;
+        } else if (!sxMemcmpAt(p, p_o, "RAWWEIGHTS", 0, 10)) {
+            l = sxmx_psk_weight;
+        } else if (!sxMemcmpAt(p, p_o, "ANIMINFO", 0, 8)) {
+            l = sxmx_psa_sequence;
+        } else if (!sxMemcmpAt(p, p_o, "ANIMKEYS", 0, 8)) {
+            l = sxmx_psa_key;
+        }
+        at += 32;
+        if (!sxmx_need(v, at, n * size, v.n)) {
+            return false;
+        }
+        if (l !== null) {
+            var f = l.fields[l.field_count + -1];
+            if ((f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size) !== size || !sxmx_table(v, l, at, n, v.n)) {
+                return false;
+            }
+        }
+        at += n * size;
+    }
+    return true;
+}
+function sx_mediaextra_supports(t) {
+    switch (t) {
+    case "LUCAS_LAB":
+    case "LUCAS_BUN":
+    case "MOHAWK_MHK":
+    case "NINTENDO_BRRES":
+    case "TERMINALREALITY_POD":
+    case "VOLITION_VPP":
+    case "MYTHIC_MYP":
+    case "LITHTECH_REZ":
+    case "VALVE_HPAK":
+    case "UNREAL_PACKAGE":
+    case "NINTENDO_BFRES":
+    case "NINTENDO_BFLYT":
+    case "NINTENDO_BCLYT":
+    case "RELIC_SGA":
+    case "UNITY_SERIALIZED":
+    case "NINTENDO_CGFX":
+    case "NINTENDO_BYAML":
+    case "RELIC_CHUNKY":
+    case "NINTENDO_J3D_BMD":
+    case "NINTENDO_J3D_BTK":
+    case "NINTENDO_BRLYT":
+    case "NINTENDO_BRLAN":
+    case "NINTENDO_BFSHA":
+    case "CRI_UTF":
+    case "IDTECH_IQM":
+    case "UNREAL_PSK":
+    case "UNREAL_PSA":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_mediaextra_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0 || c.size > 134217728) {
+        return false;
+    }
+    var view = { c: c, p: null, n: (c.size < 0 ? c.size + SX_U64_MAX : c.size), work: 0 };
+    var v = view;
+    v.p = sxAlloc(v.n);
+    if (v.p === null || !sx_read(c, 0, v.p, v.n)) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "LUCAS_LAB":
+        ok = sx_lucas_lab_build(v);
+        break;
+    case "LUCAS_BUN":
+        ok = sx_lucas_bun_build(v);
+        break;
+    case "MOHAWK_MHK":
+        ok = sx_mohawk_mhk_build(v);
+        break;
+    case "NINTENDO_BRRES":
+        ok = sx_nintendo_brres_build(v);
+        break;
+    case "TERMINALREALITY_POD":
+        ok = sx_terminalreality_pod_build(v);
+        break;
+    case "VOLITION_VPP":
+        ok = sx_volition_vpp_build(v);
+        break;
+    case "MYTHIC_MYP":
+        ok = sx_mythic_myp_build(v);
+        break;
+    case "LITHTECH_REZ":
+        ok = sx_lithtech_rez_build(v);
+        break;
+    case "VALVE_HPAK":
+        ok = sx_valve_hpak_build(v);
+        break;
+    case "UNREAL_PACKAGE":
+        ok = sx_unreal_package_build(v);
+        break;
+    case "NINTENDO_BFRES":
+        ok = sx_nintendo_bfres_build(v);
+        break;
+    case "NINTENDO_BFLYT":
+        ok = sx_nintendo_bflyt_build(v);
+        break;
+    case "NINTENDO_BCLYT":
+        ok = sx_nintendo_bclyt_build(v);
+        break;
+    case "RELIC_SGA":
+        ok = sx_relic_sga_build(v);
+        break;
+    case "UNITY_SERIALIZED":
+        ok = sx_unity_serialized_build(v);
+        break;
+    case "NINTENDO_CGFX":
+        ok = sx_nintendo_cgfx_build(v);
+        break;
+    case "NINTENDO_BYAML":
+        ok = sx_nintendo_byaml_build(v);
+        break;
+    case "RELIC_CHUNKY":
+        ok = sx_relic_chunky_build(v);
+        break;
+    case "NINTENDO_J3D_BMD":
+        ok = sx_nintendo_j3d_bmd_build(v);
+        break;
+    case "NINTENDO_J3D_BTK":
+        ok = sx_nintendo_j3d_btk_build(v);
+        break;
+    case "NINTENDO_BRLYT":
+        ok = sx_nintendo_brlyt_build(v);
+        break;
+    case "NINTENDO_BRLAN":
+        ok = sx_nintendo_brlan_build(v);
+        break;
+    case "NINTENDO_BFSHA":
+        ok = sx_nintendo_bfsha_build(v);
+        break;
+    case "CRI_UTF":
+        ok = sx_cri_utf_build(v);
+        break;
+    case "IDTECH_IQM":
+        ok = sx_idtech_iqm_build(v);
+        break;
+    case "UNREAL_PSK":
+        ok = sx_unreal_psk_build(v);
+        break;
+    case "UNREAL_PSA":
+        ok = sx_unreal_psa_build(v);
+        break;
+    default:
+        break;
+    }
+    return ok && sxmx_finish(c);
+}
+function sx_mediaextra_comment(r, id) {
+    if (r === null || r.name === null || id < 0x602E0000 || id >= 0x602F0000) {
+        return true;
+    }
+    if (id === 1613627408 && r.name === "action" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "ADD");
+        case 1:
+            return sxSetComment(r, "REMOVE");
+        case 2:
+            return sxSetComment(r, "CHANGE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627415 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "STORED");
+        case 1:
+            return sxSetComment(r, "ZLIB");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627417 && r.name === "kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "DIRECTORY");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627418 && r.name === "kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "RESOURCE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627422 && r.name === "resource_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "SOUND");
+        case 1:
+            return sxSetComment(r, "SKIN");
+        case 2:
+            return sxSetComment(r, "MODEL");
+        case 3:
+            return sxSetComment(r, "DECAL");
+        case 4:
+            return sxSetComment(r, "GENERIC");
+        case 5:
+            return sxSetComment(r, "EVENTSCRIPT");
+        case 6:
+            return sxSetComment(r, "WORLD");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627472 && r.name === "byte_order" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "LITTLE_ENDIAN");
+        case 1:
+            return sxSetComment(r, "BIG_ENDIAN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627462 && r.name === "curve_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 2:
+            return sxSetComment(r, "HERMITE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627462 && r.name === "channel" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "TRANSLATION_X");
+        case 1:
+            return sxSetComment(r, "TRANSLATION_Y");
+        case 2:
+            return sxSetComment(r, "TRANSLATION_Z");
+        case 3:
+            return sxSetComment(r, "ROTATION_X");
+        case 4:
+            return sxSetComment(r, "ROTATION_Y");
+        case 5:
+            return sxSetComment(r, "ROTATION_Z");
+        case 6:
+            return sxSetComment(r, "SCALE_X");
+        case 7:
+            return sxSetComment(r, "SCALE_Y");
+        case 8:
+            return sxSetComment(r, "WIDTH");
+        case 9:
+            return sxSetComment(r, "HEIGHT");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627487 && r.name === "kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 192:
+            return sxSetComment(r, "ARRAY");
+        case 193:
+            return sxSetComment(r, "MAP");
+        case 194:
+            return sxSetComment(r, "STRING_TABLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627489 && r.name === "value_kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 160:
+            return sxSetComment(r, "STRING_INDEX");
+        case 192:
+            return sxSetComment(r, "ARRAY_OFFSET");
+        case 193:
+            return sxSetComment(r, "MAP_OFFSET");
+        case 208:
+            return sxSetComment(r, "BOOLEAN");
+        case 209:
+            return sxSetComment(r, "INT32");
+        case 210:
+            return sxSetComment(r, "FLOAT32");
+        case 211:
+            return sxSetComment(r, "UINT32");
+        case 255:
+            return sxSetComment(r, "NULL");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627490 && r.name === "value_kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 160:
+            return sxSetComment(r, "STRING_INDEX");
+        case 192:
+            return sxSetComment(r, "ARRAY_OFFSET");
+        case 193:
+            return sxSetComment(r, "MAP_OFFSET");
+        case 208:
+            return sxSetComment(r, "BOOLEAN");
+        case 209:
+            return sxSetComment(r, "INT32");
+        case 210:
+            return sxSetComment(r, "FLOAT32");
+        case 211:
+            return sxSetComment(r, "UINT32");
+        case 255:
+            return sxSetComment(r, "NULL");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627492 && r.name === "value" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "FALSE");
+        case 1:
+            return sxSetComment(r, "TRUE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627499 && r.name === "kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 192:
+            return sxSetComment(r, "ARRAY");
+        case 193:
+            return sxSetComment(r, "MAP");
+        case 194:
+            return sxSetComment(r, "STRING_TABLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627501 && r.name === "value_kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 160:
+            return sxSetComment(r, "STRING_INDEX");
+        case 192:
+            return sxSetComment(r, "ARRAY_OFFSET");
+        case 193:
+            return sxSetComment(r, "MAP_OFFSET");
+        case 208:
+            return sxSetComment(r, "BOOLEAN");
+        case 209:
+            return sxSetComment(r, "INT32");
+        case 210:
+            return sxSetComment(r, "FLOAT32");
+        case 211:
+            return sxSetComment(r, "UINT32");
+        case 255:
+            return sxSetComment(r, "NULL");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627502 && r.name === "value_kind" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 160:
+            return sxSetComment(r, "STRING_INDEX");
+        case 192:
+            return sxSetComment(r, "ARRAY_OFFSET");
+        case 193:
+            return sxSetComment(r, "MAP_OFFSET");
+        case 208:
+            return sxSetComment(r, "BOOLEAN");
+        case 209:
+            return sxSetComment(r, "INT32");
+        case 210:
+            return sxSetComment(r, "FLOAT32");
+        case 211:
+            return sxSetComment(r, "UINT32");
+        case 255:
+            return sxSetComment(r, "NULL");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627504 && r.name === "value" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "FALSE");
+        case 1:
+            return sxSetComment(r, "TRUE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627452 && r.name === "scale_tangent_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "SINGLE_TANGENT");
+        case 1:
+            return sxSetComment(r, "IN_OUT_TANGENTS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627452 && r.name === "rotation_tangent_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "SINGLE_TANGENT");
+        case 1:
+            return sxSetComment(r, "IN_OUT_TANGENTS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627452 && r.name === "translation_tangent_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "SINGLE_TANGENT");
+        case 1:
+            return sxSetComment(r, "IN_OUT_TANGENTS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627451 && r.name === "loop_mode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "ONCE");
+        case 1:
+            return sxSetComment(r, "ONCE_RESET");
+        case 2:
+            return sxSetComment(r, "REPEAT");
+        case 3:
+            return sxSetComment(r, "MIRRORED_ONCE");
+        case 4:
+            return sxSetComment(r, "MIRRORED_REPEAT");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627533 && r.name === "type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "POSITION");
+        case 1:
+            return sxSetComment(r, "TEXCOORD");
+        case 2:
+            return sxSetComment(r, "NORMAL");
+        case 3:
+            return sxSetComment(r, "TANGENT");
+        case 4:
+            return sxSetComment(r, "BLEND_INDICES");
+        case 5:
+            return sxSetComment(r, "BLEND_WEIGHTS");
+        case 6:
+            return sxSetComment(r, "COLOR");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627533 && r.name === "format" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "BYTE");
+        case 1:
+            return sxSetComment(r, "UBYTE");
+        case 2:
+            return sxSetComment(r, "SHORT");
+        case 3:
+            return sxSetComment(r, "USHORT");
+        case 4:
+            return sxSetComment(r, "INT");
+        case 5:
+            return sxSetComment(r, "UINT");
+        case 6:
+            return sxSetComment(r, "HALF");
+        case 7:
+            return sxSetComment(r, "FLOAT");
+        case 8:
+            return sxSetComment(r, "DOUBLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613627394 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the name table after all directory entries.");
+    }
+    if (id === 1613627394 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627394 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627395 && r.name === "table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627396 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627397 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627398 && r.name === "directory_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627398 && r.name === "file_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the resource directory indicated by directory_offset.");
+    }
+    if (id === 1613627399 && r.name === "string_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the resource directory indicated by directory_offset.");
+    }
+    if (id === 1613627400 && r.name === "resource_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the resource directory indicated by directory_offset.");
+    }
+    if (id === 1613627400 && r.name === "name_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the resource directory indicated by directory_offset.");
+    }
+    if (id === 1613627403 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627403 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627405 && r.name === "string_offset") {
+        return sxSetComment(r, "Byte offset relative to the resource string table, itself relative to the resource directory.");
+    }
+    if (id === 1613627407 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the name table immediately following the fixed file-entry array.");
+    }
+    if (id === 1613627407 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627407 && r.name === "timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627408 && r.name === "timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627408 && r.name === "old_timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627408 && r.name === "new_timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627409 && r.name === "unknown_150") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627409 && r.name === "directory_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627409 && r.name === "names_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627409 && r.name === "data_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627410 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the aligned name table.");
+    }
+    if (id === 1613627410 && r.name === "runtime_offset") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627410 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the aligned data region after directory and names.");
+    }
+    if (id === 1613627410 && r.name === "package_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627411 && r.name === "unknown_150") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627411 && r.name === "directory_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627411 && r.name === "names_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627411 && r.name === "data_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627412 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the aligned name table.");
+    }
+    if (id === 1613627412 && r.name === "runtime_offset") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627412 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the aligned data region after directory and names.");
+    }
+    if (id === 1613627412 && r.name === "package_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627413 && r.name === "first_block_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627414 && r.name === "next_block_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627415 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627416 && r.name === "root_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627416 && r.name === "root_time") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627416 && r.name === "directory_boundary") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627416 && r.name === "unknown_limits") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627417 && r.name === "directory_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627417 && r.name === "timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627418 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627418 && r.name === "timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627420 && r.name === "directory_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627422 && r.name === "next_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627422 && r.name === "previous_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627422 && r.name === "file_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627423 && r.name === "root_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627426 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627426 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the containing resource dictionary, not the pointer word.");
+    }
+    if (id === 1613627426 && r.name === "data_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the containing resource dictionary, not the pointer word.");
+    }
+    if (id === 1613627427 && r.name === "archive_relative") {
+        return sxSetComment(r, "Signed displacement relative to this resource-section beginning; points back to BRRES header.");
+    }
+    if (id === 1613627434 && r.name === "name_relative") {
+        return sxSetComment(r, "Byte displacement from the beginning of the name-offset table (section byte 12).");
+    }
+    if (id === 1613627441 && r.name === "name_relative") {
+        return sxSetComment(r, "Byte displacement from the beginning of the name-offset table (section byte 12).");
+    }
+    if (id === 1613627445 && r.name === "name_relative") {
+        return sxSetComment(r, "Byte displacement from the beginning of the name-entry table (section byte 12).");
+    }
+    if (id === 1613627448 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627449 && r.name === "unknown1") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627449 && r.name === "unknown2") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627450 && r.name === "opaque_creator") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627451 && r.name === "animation_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "remap_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "name_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "texture_matrix_index_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "center_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "scale_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "rotation_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627451 && r.name === "translation_offset") {
+        return sxSetComment(r, "Byte offset relative to the TTK1 section beginning.");
+    }
+    if (id === 1613627458 && r.name === "name_relative") {
+        return sxSetComment(r, "Byte offset relative to the string-table header, not this entry.");
+    }
+    if (id === 1613627459 && r.name === "binding_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the pai1 section beginning.");
+    }
+    if (id === 1613627460 && r.name === "group_relative") {
+        return sxSetComment(r, "Byte displacement relative to this binding record beginning.");
+    }
+    if (id === 1613627462 && r.name === "keys_relative") {
+        return sxSetComment(r, "Byte displacement relative to this track record beginning.");
+    }
+    if (id === 1613627464 && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte displacement relative to the owning pai1 section or animation group, according to the enclosing table.");
+    }
+    if (id === 1613627465 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "string_pool_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "model_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "texture_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "skeletal_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "shader_parameter_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "color_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "texture_srt_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "texture_pattern_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "bone_visibility_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "material_visibility_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "shape_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "scene_animation_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "external_file_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627465 && r.name === "user_pointer") {
+        return sxSetComment(r, "Stored runtime pointer/address value; not a file offset.");
+    }
+    if (id === 1613627467 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627467 && r.name === "data_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627468 && r.name === "data_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627469 && r.name === "dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627471 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627471 && r.name === "data_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627472 && r.name === "legacy_data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627472 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627472 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627476 && r.name === "data_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to data_offset in the file header.");
+    }
+    if (id === 1613627478 && r.name === "name_offset") {
+        return sxSetComment(r, "Absolute byte offset to null-terminated name strings followed by 32-bit flags.");
+    }
+    if (id === 1613627478 && r.name === "export_offset") {
+        return sxSetComment(r, "Absolute byte offset to variable CompactIndex export records; record bodies remain raw.");
+    }
+    if (id === 1613627478 && r.name === "import_offset") {
+        return sxSetComment(r, "Absolute byte offset to variable CompactIndex import records; record bodies remain raw.");
+    }
+    if (id === 1613627478 && r.name === "heritage_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627481 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627482 && r.name === "table_relative") {
+        return sxSetComment(r, "Byte offset relative to the table region at file byte 152.");
+    }
+    if (id === 1613627483 && r.name === "first_folder") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627483 && r.name === "end_folder") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627483 && r.name === "first_file") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627483 && r.name === "end_file") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627484 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the name table identified by the fourth table slot.");
+    }
+    if (id === 1613627484 && r.name === "first_folder") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627484 && r.name === "end_folder") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627484 && r.name === "first_file") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627484 && r.name === "end_file") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627485 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the name table identified by the fourth table slot.");
+    }
+    if (id === 1613627485 && r.name === "data_relative") {
+        return sxSetComment(r, "Byte displacement relative to the data region selected in the archive header.");
+    }
+    if (id === 1613627485 && r.name === "timestamp") {
+        return sxSetComment(r, "Unix timestamp in seconds; original signedness and stored value retained.");
+    }
+    if (id === 1613627486 && r.name === "key_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627486 && r.name === "string_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627486 && r.name === "root_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627488 && r.name === "string_relative") {
+        return sxSetComment(r, "Byte offset relative to this string/key table beginning; final entry is the end offset.");
+    }
+    if (id === 1613627496 && r.name === "value") {
+        return sxSetComment(r, "Absolute byte offset to a nested map or array.");
+    }
+    if (id === 1613627498 && r.name === "key_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627498 && r.name === "string_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627498 && r.name === "root_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627500 && r.name === "string_relative") {
+        return sxSetComment(r, "Byte offset relative to this string/key table beginning; final entry is the end offset.");
+    }
+    if (id === 1613627508 && r.name === "value") {
+        return sxSetComment(r, "Absolute byte offset to a nested map or array.");
+    }
+    if (id === 1613627510 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627510 && r.name === "string_pool_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627510 && r.name === "path_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627510 && r.name === "unknown_26") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627510 && r.name === "unknown_28") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627510 && r.name === "model_dictionary_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627510 && r.name === "unknown_30") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627510 && r.name === "unknown_34") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627512 && r.name === "opaque_0") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627512 && r.name === "opaque_8") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627512 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627512 && r.name === "opaque_24") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627512 && r.name === "programs_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627512 && r.name === "unknown_5c") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627512 && r.name === "archive_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627512 && r.name === "unknown_64") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627513 && r.name === "opaque_0") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627513 && r.name === "vertex_shader_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627513 && r.name === "geometry_shader_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627513 && r.name === "pixel_shader_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627513 && r.name === "model_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627514 && r.name === "code_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627514 && r.name === "unused_native_metadata") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627515 && r.name === "code_relative") {
+        return sxSetComment(r, "Signed byte displacement relative to the beginning of this pointer word; zero can denote no target.");
+    }
+    if (id === 1613627515 && r.name === "unused_native_metadata") {
+        return sxSetComment(r, "Uninterpreted physical bytes; additional semantics are not inferred.");
+    }
+    if (id === 1613627516 && r.name === "rows_relative") {
+        return sxSetComment(r, "Byte displacement relative to file byte 8, immediately after the @UTF prefix.");
+    }
+    if (id === 1613627516 && r.name === "strings_relative") {
+        return sxSetComment(r, "Byte displacement relative to file byte 8, immediately after the @UTF prefix.");
+    }
+    if (id === 1613627516 && r.name === "data_relative") {
+        return sxSetComment(r, "Byte displacement relative to file byte 8, immediately after the @UTF prefix.");
+    }
+    if (id === 1613627516 && r.name === "table_name_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF string pool.");
+    }
+    if (id === 1613627517 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF string pool.");
+    }
+    if (id === 1613627528 && r.name === "string_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF string pool.");
+    }
+    if (id === 1613627529 && r.name === "data_relative") {
+        return sxSetComment(r, "Byte offset relative to the UTF binary-data region.");
+    }
+    if (id === 1613627531 && r.name === "text_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "mesh_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "vertex_array_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "triangle_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "adjacency_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "joint_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "pose_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "animation_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "frame_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "bounds_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "comment_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627531 && r.name === "extension_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627532 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the IQM text table.");
+    }
+    if (id === 1613627532 && r.name === "material_offset") {
+        return sxSetComment(r, "Byte offset relative to the IQM text table.");
+    }
+    if (id === 1613627532 && r.name === "first_vertex") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627532 && r.name === "first_triangle") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627533 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of the source file.");
+    }
+    if (id === 1613627545 && r.name === "first_frame") {
+        return sxSetComment(r, "Table element index; not a byte offset. End indexes are exclusive.");
+    }
+    if (id === 1613627403 && r.name === "size_low16") {
+        return sxSetComment(r, "Bits 0..15 of the encoded 27-bit file byte length.");
+    }
+    if (id === 1613627403 && r.name === "size_high8") {
+        return sxSetComment(r, "Bits 16..23 of the encoded file byte length.");
+    }
+    if (id === 1613627403 && r.name === "size_high3_and_flags") {
+        return sxSetComment(r, "Low 3 bits provide byte-length bits 24..26; high 5 bits are flags.");
+    }
+    if (id === 1613627404 && r.name === "file_index") {
+        return sxSetComment(r, "One-based index in the file table.");
+    }
+    if (id === 1613627405 && r.name === "file_index") {
+        return sxSetComment(r, "One-based index in the file table.");
+    }
+    if (id === 1613627406 && r.name === "checksum") {
+        return sxSetComment(r, "CRC-32/MPEG-2 of source bytes after the first 8 bytes. Native validation checks it.");
+    }
+    if (id === 1613627407 && r.name === "checksum") {
+        return sxSetComment(r, "CRC-32/MPEG-2 of this member payload. Native validation checks it.");
+    }
+    if (id === 1613627409 && r.name === "compressed_size") {
+        return sxSetComment(r, "Stored compressed byte count; 0xFFFFFFFF is the uncompressed sentinel.");
+    }
+    if (id === 1613627410 && r.name === "compressed_size") {
+        return sxSetComment(r, "Stored compressed byte count; 0xFFFFFFFF is the uncompressed sentinel.");
+    }
+    if (id === 1613627411 && r.name === "compressed_size") {
+        return sxSetComment(r, "Stored compressed byte count; 0xFFFFFFFF is the uncompressed sentinel.");
+    }
+    if (id === 1613627412 && r.name === "compressed_size") {
+        return sxSetComment(r, "Stored compressed byte count; 0xFFFFFFFF is the uncompressed sentinel.");
+    }
+    if (id === 1613627430 && r.name === "section_size") {
+        return sxSetComment(r, "Total section bytes including its 8-byte prefix.");
+    }
+    if (id === 1613627437 && r.name === "section_size") {
+        return sxSetComment(r, "Total section bytes including its 8-byte prefix.");
+    }
+    if (id === 1613627431 && r.name === "width") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627431 && r.name === "height") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627432 && r.name === "width") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627432 && r.name === "height") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627438 && r.name === "width") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627438 && r.name === "height") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627439 && r.name === "width") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627439 && r.name === "height") {
+        return sxSetComment(r, "Layout coordinate units, not byte count.");
+    }
+    if (id === 1613627449 && r.name === "data_size") {
+        return sxSetComment(r, "Payload bytes following the variable-length chunk name; excludes fixed header and name.");
+    }
+    if (id === 1613627451 && r.name === "animation_count") {
+        return sxSetComment(r, "Number of axis animation records; three axis records form one texture-matrix animation.");
+    }
+    if (id === 1613627451 && r.name === "angle_scale") {
+        return sxSetComment(r, "Rotation-angle conversion uses this power-of-two scale; not a byte count.");
+    }
+    if (id === 1613627456 && r.name === "angle_units") {
+        return sxSetComment(r, "Signed encoded rotation value; angle scale is in the containing TTK1 header.");
+    }
+    if (id === 1613627463 && r.name === "frame") {
+        return sxSetComment(r, "Animation-frame position; not a wall-clock timestamp.");
+    }
+    if (id === 1613627472 && r.name === "byte_order") {
+        return sxSetComment(r, "Metadata byte order: 0 little endian, 1 big endian. Extended header fields remain big endian.");
+    }
+    if (id === 1613627474 && r.name === "script_type_index") {
+        return sxSetComment(r, "Signed script-type index; -1 means no script type.");
+    }
+    if (id === 1613627481 && r.name === "archive_name_utf16le") {
+        return sxSetComment(r, "64 UTF-16LE code units; kept as source bytes without a guessed locale.");
+    }
+    if (id === 1613627491 && r.name === "value") {
+        return sxSetComment(r, "Zero-based index in the string-value table.");
+    }
+    if (id === 1613627503 && r.name === "value") {
+        return sxSetComment(r, "Zero-based index in the string-value table.");
+    }
+    if (id === 1613627516 && r.name === "table_size_after_prefix") {
+        return sxSetComment(r, "Total table length minus the first 8 bytes.");
+    }
+    if (id === 1613627517 && r.name === "storage_and_type") {
+        return sxSetComment(r, "Low nibble: scalar type (0..12); 0x10 name present, 0x20 default value stored, 0x40 value stored in every row.");
+    }
+    if (id === 1613627533 && r.name === "components") {
+        return sxSetComment(r, "Number of components per vertex; multiply by element width to obtain the byte stride.");
+    }
+    if (id === 1613627536 && r.name === "component") {
+        return sxSetComment(r, "IEEE754 vertex-array component. Array type determines position, UV, normal or tangent units.");
+    }
+    if (id === 1613627546 && r.name === "time") {
+        return sxSetComment(r, "Animation time/duration scalar in ActorX units; not a Unix timestamp.");
+    }
+    if (id === 1613627545 && r.name === "track_time") {
+        return sxSetComment(r, "Animation-track duration scalar; not a wall-clock timestamp.");
+    }
+    if (id === 1613627545 && r.name === "frames_per_second") {
+        return sxSetComment(r, "Animation frame rate in frames per second.");
+    }
+    if (id === 1613627539 && r.name === "parent_index") {
+        return sxSetComment(r, "Signed parent-bone index; native root permits 0 or -1.");
+    }
+    return true;
+}

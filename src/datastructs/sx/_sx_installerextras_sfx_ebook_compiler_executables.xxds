@@ -1,0 +1,140 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/sfx_ebook_compiler_executables/xx_sfx_ebook_compiler_executables_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_ebook_creator_header_fields = layout([u16("reserved", RESERVED), u16("list_count", COUNT),
+    u16("new_class_marker", SIGNATURE), u16("directory_schema", ID), u16("directory_class_name_length", SIZE),
+    chars("directory_class_name", 10, NONE), u16("list_identifier", ID), u16("file_count", COUNT),
+    u16("new_element_marker", SIGNATURE), u16("element_schema", ID), u16("element_class_name_length", SIZE),
+    chars("element_class_name", 11, NONE), u16("element_identifier", ID)]);
+var sxiex_ebook_creator_header = sxLayout(0x60820043, "ebook_creator_header", LE, sxiex_ebook_creator_header_fields);
+var sxiex_ebook_creator_member_fields = layout([i32("block_size", SIZE), i32("unpacked_size", SIZE)]);
+var sxiex_ebook_creator_member = sxLayout(0x60820044, "ebook_creator_member", LE, sxiex_ebook_creator_member_fields);
+var sxiex_ebook_creator_ref_fields = layout([u16("class_reference", ID), u16("element_identifier", ID)]);
+var sxiex_ebook_creator_ref = sxLayout(0x60820045, "ebook_creator_ref", LE, sxiex_ebook_creator_ref_fields);
+var sxiex_ebook_creator_list_fields = layout([u16("class_reference", ID), u16("list_identifier", ID),
+    u16("element_count", COUNT)]);
+var sxiex_ebook_creator_list = sxLayout(0x60820046, "ebook_creator_list", LE, sxiex_ebook_creator_list_fields);
+var sxiex_ebook_creator_element_fields = layout([u16("class_reference", ID), u16("element_type", ID), u32("data_size", SIZE)]);
+var sxiex_ebook_creator_element = sxLayout(0x60820047, "ebook_creator_element", LE, sxiex_ebook_creator_element_fields);
+var sxiex_ebook_creator_name_fields = layout([u32("file_index"), u32("flags1", FLAGS), u32("flags2", FLAGS),
+    u32("flags3", FLAGS)]);
+var sxiex_ebook_creator_name = sxLayout(0x60820048, "ebook_creator_name", LE, sxiex_ebook_creator_name_fields);
+var sxiex_ebook_creator_footer_fields = layout([u32("overlay_offset", OFFSET), chars("signature", 2, SIGNATURE)]);
+var sxiex_ebook_creator_footer = sxLayout(0x60820049, "ebook_creator_footer", LE, sxiex_ebook_creator_footer_fields);
+var sxiex_sbook_header_fields = layout([u32("version", ID), chars("signature", 5, SIGNATURE), u32("unknown")]);
+var sxiex_sbook_header = sxLayout(0x6082004A, "sbook_header", LE, sxiex_sbook_header_fields);
+var sxiex_sbook_count_fields = layout([u32("count_or_zero")]);
+var sxiex_sbook_count = sxLayout(0x6082004B, "sbook_count", LE, sxiex_sbook_count_fields);
+var sxiex_sbook_name_length_fields = layout([u32("name_length", SIZE)]);
+var sxiex_sbook_name_length = sxLayout(0x6082004C, "sbook_name_length", LE, sxiex_sbook_name_length_fields);
+var sxiex_sbook_member_fields = layout([u32("dos_datetime"), chars("signature", 4, SIGNATURE)]);
+var sxiex_sbook_member = sxLayout(0x6082004D, "sbook_member", LE, sxiex_sbook_member_fields);
+var sxiex_sbook_chunk_fields = layout([u32("packed_size", SIZE)]);
+var sxiex_sbook_chunk = sxLayout(0x6082004E, "sbook_chunk", LE, sxiex_sbook_chunk_fields);
+var sxiex_sbook_footer_fields = layout([u32("zero1", RESERVED), u32("zero2", RESERVED), u32("overlay_offset", OFFSET)]);
+var sxiex_sbook_footer = sxLayout(0x6082004F, "sbook_footer", LE, sxiex_sbook_footer_fields);
+function sxiex_ebook(c, r) {
+    var p = [0];
+    var v = [0];
+    if (!sxiex_pe(c, p)) {
+        return true;
+    }
+    if (sxiex_eq(c, p[0], "\x00\x00\x02\x00\xFF\xFF", 6)) {
+        if (!sxiex_span(c, p[0], 43) || !sxiex_put(c, sxiex_ebook_creator_header, p[0], 1)) {
+            return false;
+        }
+        var end = 0;
+        for (var i = 0; i < r.count; i++) {
+            var m = r.items[i];
+            if (m.header_size !== 27 && m.header_size !== 12) {
+                continue;
+            }
+            if (m.header_size === 12 && !sxiex_put(c, sxiex_ebook_creator_ref, m.header, 1)) {
+                return false;
+            }
+            if (!sxiex_put(c, sxiex_ebook_creator_member, sxU64(m.data - 8), 1)) {
+                return false;
+            }
+            if (m.data + m.packed > end) {
+                end = m.data + m.packed;
+            }
+        }
+        var h = [];
+        if (end && sxiex_read(c, end, h, 6) && sxiex16(h, 0, false) === 0x8001) {
+            var n = [sxiex16(h, 4, false)];
+            if (!sxiex_put(c, sxiex_ebook_creator_list, end, 1)) {
+                return false;
+            }
+            var at = end + 6;
+            for (i = 0; i < n[0] && i < 24000; i++) {
+                if (!sxiex_read(c, at, h, 8)) {
+                    break;
+                }
+                var z = [sxiex32(h, 4, false)];
+                if (sxiex16(h, 0, false) !== 0x8003 || !sxiex_span(c, at + 8, z[0])) {
+                    break;
+                }
+                if (!sxiex_put(c, sxiex_ebook_creator_element, at, 1)) {
+                    return false;
+                }
+                if (sxiex16(h, 2, false) === 2) {
+                    var q = [at + 8];
+                    var e = q[0] + z[0];
+                    while (q[0] < e) {
+                        if (!sxiex_zstr(c, q, e) || sxU64(e - q[0]) < 16) {
+                            break;
+                        }
+                        if (!sxiex_put(c, sxiex_ebook_creator_name, q[0], 1)) {
+                            return false;
+                        }
+                        q[0] += 16;
+                    }
+                }
+                at += 8 + z[0];
+            }
+        }
+        if (c.size >= 6 && sxiex_u32(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 6), v) && v[0] === p[0] && !sxiex_put(c, sxiex_ebook_creator_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 6), 1)) {
+            return false;
+        }
+    } else if (sxiex_u32(c, p[0], v) && v[0] === 5 && (sxiex_eq(c, p[0] + 4, "Sbook", 5) || sxiex_eq(c, p[0] + 4, "Ebook", 5))) {
+        if (!sxiex_put(c, sxiex_sbook_header, p[0], 1)) {
+            return false;
+        }
+        end = 0;
+        for (i = 0; i < r.count; i++) {
+            m = r.items[i];
+            n = [0];
+            if (!sxiex_u32(c, m.header + 4, n) || m.header_size !== 16 + n[0]) {
+                continue;
+            }
+            if (!sxiex_put(c, sxiex_sbook_count, m.header, 1) || !sxiex_put(c, sxiex_sbook_name_length, m.header + 4, 1) || !sxiex_name(c, m.header + 8, n[0]) || !sxiex_put(c, sxiex_sbook_member, m.header + 8 + n[0], 1)) {
+                return false;
+            }
+            q = [m.data];
+            e = q[0] + m.packed;
+            while (sxU64(e - q[0]) >= 4) {
+                z = [0];
+                if (!sxiex_u32(c, q[0], z) || z[0] > sxU64(sxU64(e - q[0]) - 4)) {
+                    break;
+                }
+                if (!sxiex_put(c, sxiex_sbook_chunk, q[0], 1)) {
+                    return false;
+                }
+                q[0] += (4 + z[0]) >>> 0;
+            }
+            if (e > end) {
+                end = e;
+            }
+        }
+        if (end && sxiex_span(c, end, 12) && !sxiex_put(c, sxiex_sbook_footer, end, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sfx_ebook_compiler_executables_build(c, records) {
+    return sxiex_ebook(c, records);
+}

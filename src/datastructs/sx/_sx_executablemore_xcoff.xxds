@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/xcoff/xx_xcoff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_xcoff32_file_header_fields = layout([u16("magic", SIGNATURE), u16("section_count", COUNT),
+    i32("timestamp", TIMESTAMP), u32("symbol_table_offset", OFFSET), i32("symbol_count", COUNT),
+    u16("optional_header_size", SIZE), u16("flags", FLAGS)]);
+var sxexm_xcoff32_file_header = sxLayout(0x602B0059, "xcoff32_file_header", BE, sxexm_xcoff32_file_header_fields);
+var sxexm_xcoff32_optional_header_fields = layout([u16("magic", SIGNATURE), u16("version_stamp", ID), u32("text_size", SIZE),
+    u32("data_size", SIZE), u32("bss_size", SIZE), u32("entry_descriptor", VA), u32("text_start", VA), u32("data_start", VA),
+    u32("toc", VA), u16("entry_section", ID), u16("text_section", ID), u16("data_section", ID), u16("toc_section", ID),
+    u16("loader_section", ID), u16("bss_section", ID), u16("text_alignment_shift"), u16("data_alignment_shift"),
+    u16("module_type", ID), u8("cpu_flags", FLAGS), u8("cpu_type", ID), u32("max_stack_size", SIZE), u32("max_data_size", SIZE),
+    u32("debugger"), u8("text_page_size"), u8("data_page_size"), u8("stack_page_size"), u8("flags", FLAGS),
+    u16("tls_data_section", ID), u16("tls_bss_section", ID)]);
+var sxexm_xcoff32_optional_header = sxLayout(0x602B005A, "xcoff32_optional_header", BE, sxexm_xcoff32_optional_header_fields);
+var sxexm_xcoff32_section_fields = layout([chars("name", 8, STRING), u32("physical_address", VA), u32("virtual_address", VA),
+    u32("size", SIZE), u32("file_offset", OFFSET), u32("relocation_offset", OFFSET), u32("line_number_offset", OFFSET),
+    u16("relocation_count", COUNT), u16("line_number_count", COUNT), i32("flags", FLAGS)]);
+var sxexm_xcoff32_section = sxLayout(0x602B005B, "xcoff32_section", BE, sxexm_xcoff32_section_fields);
+var sxexm_xcoff32_loader_fields = layout([u32("version", ID), u32("symbol_count", COUNT), u32("relocation_count", COUNT),
+    u32("import_strings_size", SIZE), u32("import_file_count", COUNT), i32("import_files_offset", OFFSET),
+    u32("strings_size", SIZE), i32("strings_offset", OFFSET)]);
+var sxexm_xcoff32_loader = sxLayout(0x602B005C, "xcoff32_loader", BE, sxexm_xcoff32_loader_fields);
+var sxexm_xcoff32_loader_symbol_inline_fields = layout([chars("name", 8, STRING), u32("value", VA), i16("section_number", ID),
+    u8("type_flags", FLAGS), u8("storage_class", ID), u32("import_file_index", ID), u32("parameter_type_offset", OFFSET)]);
+var sxexm_xcoff32_loader_symbol_inline = sxLayout(0x602B005D, "xcoff32_loader_symbol_inline", BE, sxexm_xcoff32_loader_symbol_inline_fields);
+var sxexm_xcoff32_loader_symbol_external_fields = layout([u32("zero", RESERVED), u32("name_offset", OFFSET), u32("value", VA),
+    i16("section_number", ID), u8("type_flags", FLAGS), u8("storage_class", ID), u32("import_file_index", ID),
+    u32("parameter_type_offset", OFFSET)]);
+var sxexm_xcoff32_loader_symbol_external = sxLayout(0x602B005E, "xcoff32_loader_symbol_external", BE, sxexm_xcoff32_loader_symbol_external_fields);
+function sxexm_xcoff(c) {
+    var h = [];
+    var s = [];
+    var b = [];
+    if (!sxexm_read(c, 0, h, 92) || !sxexm_add(c, sxexm_xcoff32_file_header, 0) || !sxexm_add(c, sxexm_xcoff32_optional_header, 20)) {
+        return false;
+    }
+    var n = sxexm16(h, 2, true);
+    var loader = sxexm16(h, 60, true);
+    if (!sxexm_table(c, sxexm_xcoff32_section, 92, n)) {
+        return false;
+    }
+    if (!loader || loader > n || !sxexm_read(c, 92 + sxU64(loader - 1) * 40, s, 40)) {
+        return true;
+    }
+    var p = sxexm32(s, 20, true);
+    var z = sxexm32(s, 16, true);
+    if (z < 32 || !sxexm_span(c, p, z) || !sxexm_read(c, p, b, 32) || !sxexm_add(c, sxexm_xcoff32_loader, p)) {
+        return true;
+    }
+    var count = sxexm32(b, 4, true);
+    if (count > 20000 || count > Math.floor(sxU64(z - 32) / 24)) {
+        return true;
+    }
+    for (var i = 0; i < count && c.count < 20000; i++) {
+        var name = [0];
+        if (!sxexm_word(c, p + 32 + i * 24, 4, true, name)) {
+            break;
+        }
+        if (!sxexm_add(c, name[0] ? sxexm_xcoff32_loader_symbol_inline : sxexm_xcoff32_loader_symbol_external, p + 32 + i * 24)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_xcoff_build(c) {
+    var ok = false;
+    ok = sxexm_xcoff(c);
+    return ok && sxexm_finish(c);
+}

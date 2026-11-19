@@ -1,0 +1,198 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/amigahunk/xx_amigahunk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_amiga_hunk_tag_fields = layout([u32("type_and_memory_flags", FLAGS)]);
+var sxexm_amiga_hunk_tag = sxLayout(0x602B0046, "amiga_hunk_tag", BE, sxexm_amiga_hunk_tag_fields);
+var sxexm_amiga_hunk_length_fields = layout([u32("longword_count", COUNT)]);
+var sxexm_amiga_hunk_length = sxLayout(0x602B0047, "amiga_hunk_length", BE, sxexm_amiga_hunk_length_fields);
+var sxexm_amiga_hunk_table_fields = layout([u32("table_size", COUNT), u32("first_hunk", ID), u32("last_hunk", ID)]);
+var sxexm_amiga_hunk_table = sxLayout(0x602B0048, "amiga_hunk_table", BE, sxexm_amiga_hunk_table_fields);
+var sxexm_amiga_hunk_allocation_fields = layout([u32("size_and_memory_flags", FLAGS)]);
+var sxexm_amiga_hunk_allocation = sxLayout(0x602B0049, "amiga_hunk_allocation", BE, sxexm_amiga_hunk_allocation_fields);
+var sxexm_amiga_memory_flags_fields = layout([u32("memory_flags", FLAGS)]);
+var sxexm_amiga_memory_flags = sxLayout(0x602B004A, "amiga_memory_flags", BE, sxexm_amiga_memory_flags_fields);
+var sxexm_amiga_relocation_count16_fields = layout([u16("count", COUNT)]);
+var sxexm_amiga_relocation_count16 = sxLayout(0x602B004B, "amiga_relocation_count16", BE, sxexm_amiga_relocation_count16_fields);
+var sxexm_amiga_relocation_target16_fields = layout([u16("hunk_index", ID)]);
+var sxexm_amiga_relocation_target16 = sxLayout(0x602B004C, "amiga_relocation_target16", BE, sxexm_amiga_relocation_target16_fields);
+var sxexm_amiga_relocation_offset16_fields = layout([u16("offset", OFFSET)]);
+var sxexm_amiga_relocation_offset16 = sxLayout(0x602B004D, "amiga_relocation_offset16", BE, sxexm_amiga_relocation_offset16_fields);
+var sxexm_amiga_relocation_count32_fields = layout([u32("count", COUNT)]);
+var sxexm_amiga_relocation_count32 = sxLayout(0x602B004E, "amiga_relocation_count32", BE, sxexm_amiga_relocation_count32_fields);
+var sxexm_amiga_relocation_target32_fields = layout([u32("hunk_index", ID)]);
+var sxexm_amiga_relocation_target32 = sxLayout(0x602B004F, "amiga_relocation_target32", BE, sxexm_amiga_relocation_target32_fields);
+var sxexm_amiga_relocation_offset32_fields = layout([u32("offset", OFFSET)]);
+var sxexm_amiga_relocation_offset32 = sxLayout(0x602B0050, "amiga_relocation_offset32", BE, sxexm_amiga_relocation_offset32_fields);
+var sxexm_amiga_symbol_value_fields = layout([u32("value")]);
+var sxexm_amiga_symbol_value = sxLayout(0x602B0051, "amiga_symbol_value", BE, sxexm_amiga_symbol_value_fields);
+var sxexm_amiga_ext_name_fields = layout([u8("type", ID), field("name_longwords", "uint24", 3, COUNT)]);
+var sxexm_amiga_ext_name = sxLayout(0x602B0052, "amiga_ext_name", BE, sxexm_amiga_ext_name_fields);
+var sxexm_amiga_common_size_fields = layout([u32("common_size", SIZE)]);
+var sxexm_amiga_common_size = sxLayout(0x602B0053, "amiga_common_size", BE, sxexm_amiga_common_size_fields);
+function sxexm_hunk_counted(c, p, l, skip) {
+    var n = [0];
+    if (!sxexm_word(c, p[0], 4, true, n) || !sxexm_add(c, l, p[0])) {
+        return false;
+    }
+    p[0] += 4;
+    if (skip) {
+        if (n[0] > 0x3FFFFFFF || !sxexm_span(c, p[0], n[0] * 4)) {
+            return false;
+        }
+        p[0] += n[0] * 4;
+    }
+    return true;
+}
+function sxexm_hunk(c) {
+    var p = [0];
+    var budget = 0;
+    while (sxexm_span(c, p[0], 4) && budget++ < 20000 && c.count < 20000) {
+        var start = p[0];
+        var v = [0];
+        if (!sxexm_word(c, p[0], 4, true, v)) {
+            break;
+        }
+        var id = v[0] >>> 0 & 0x3FFFFFFF;
+        var old = c.count;
+        if (!sxexm_add(c, sxexm_amiga_hunk_tag, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+        var ok = true;
+        if (id === 0x3F3) {
+            for (; ; ) {
+                var n = [0];
+                if (++budget > 20000 || !sxexm_word(c, p[0], 4, true, n)) {
+                    ok = false;
+                    break;
+                }
+                if (!sxexm_hunk_counted(c, p, sxexm_amiga_hunk_length, true)) {
+                    ok = false;
+                    break;
+                }
+                if (!n[0]) {
+                    break;
+                }
+            }
+            var b = [];
+            if (!ok || !sxexm_read(c, p[0], b, 12)) {
+                ok = false;
+            } else {
+                var first = sxexm32(b, 4, true);
+                var last = sxexm32(b, 8, true);
+                if (last < first || sxU64(last - first) >= 20000) {
+                    ok = false;
+                } else {
+                    ok = sxexm_add(c, sxexm_amiga_hunk_table, p[0]);
+                    p[0] += 12;
+                    for (var i = first; ok && i <= last; i++) {
+                        if (++budget >= 20000) {
+                            ok = false;
+                            break;
+                        }
+                        n = [0];
+                        if (!sxexm_word(c, p[0], 4, true, n) || !sxexm_add(c, sxexm_amiga_hunk_allocation, p[0])) {
+                            ok = false;
+                            break;
+                        }
+                        p[0] += 4;
+                        if (sxShr64(n[0], 30) === 3) {
+                            ok = sxexm_add(c, sxexm_amiga_memory_flags, p[0]);
+                            p[0] += 4;
+                        }
+                    }
+                }
+            }
+        } else if (id === 0x3E7 || id === 0x3E8 || id === 0x3E9 || id === 0x3EA || id === 0x3F1 || id === 0x4E9) {
+            ok = sxexm_hunk_counted(c, p, sxexm_amiga_hunk_length, true);
+        } else if (id === 0x3EB) {
+            ok = sxexm_hunk_counted(c, p, sxexm_amiga_hunk_length, false);
+        } else if (id === 0x3EC || id === 0x3ED || id === 0x3EE || id === 0x3F7 || id === 0x3F8 || id === 0x3F9 || id === 0x3FC || id === 0x3FF) {
+            var width = id === 0x3FC || id === 0x3FF ? 2 : 4;
+            var count = width === 2 ? sxexm_amiga_relocation_count16 : sxexm_amiga_relocation_count32;
+            var target = width === 2 ? sxexm_amiga_relocation_target16 : sxexm_amiga_relocation_target32;
+            var offset = width === 2 ? sxexm_amiga_relocation_offset16 : sxexm_amiga_relocation_offset32;
+            for (; ; ) {
+                n = [0];
+                if (++budget > 20000 || !sxexm_word(c, p[0], width, true, n) || !sxexm_add(c, count, p[0])) {
+                    ok = false;
+                    break;
+                }
+                p[0] += width;
+                if (!n[0]) {
+                    if (width === 2) {
+                        p[0] = start + sxAnd64(sxU64(p[0] - start) + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+                    }
+                    break;
+                }
+                if (n[0] > 20000 || !sxexm_span(c, p[0], (n[0] + 1) * width) || !sxexm_add(c, target, p[0]) || !sxexm_table(c, offset, p[0] + width, n[0])) {
+                    ok = false;
+                    break;
+                }
+                p[0] += (n[0] + 1) * width;
+            }
+        } else if (id === 0x3F0 || id === 0x3EF) {
+            for (; ; ) {
+                n = [0];
+                if (++budget > 20000 || !sxexm_word(c, p[0], 4, true, n)) {
+                    ok = false;
+                    break;
+                }
+                if (!sxexm_add(c, id === 0x3EF ? sxexm_amiga_ext_name : sxexm_amiga_hunk_length, p[0])) {
+                    ok = false;
+                    break;
+                }
+                p[0] += 4;
+                if (!n[0]) {
+                    break;
+                }
+                var type = id === 0x3EF ? sxShr64(n[0], 24) >>> 0 : 0;
+                n[0] = id === 0x3EF ? sxAnd64(n[0], 0xFFFFFF) : n[0];
+                if (n[0] > 0x3FFFFFFF || !sxexm_span(c, p[0], n[0] * 4)) {
+                    ok = false;
+                    break;
+                }
+                p[0] += n[0] * 4;
+                if (type <= 3) {
+                    ok = sxexm_add(c, sxexm_amiga_symbol_value, p[0]);
+                    p[0] += 4;
+                } else if (type >= 128) {
+                    if (type === 130) {
+                        ok = sxexm_add(c, sxexm_amiga_common_size, p[0]);
+                        p[0] += 4;
+                    }
+                    var refs = [0];
+                    if (!ok || !sxexm_word(c, p[0], 4, true, refs) || refs[0] > 20000 || !sxexm_span(c, p[0] + 4, refs[0] * 4)) {
+                        ok = false;
+                        break;
+                    }
+                    ok = sxexm_add(c, sxexm_amiga_relocation_count32, p[0]) && sxexm_table(c, sxexm_amiga_relocation_offset32, p[0] + 4, refs[0]);
+                    p[0] += 4 + refs[0] * 4;
+                } else {
+                    ok = false;
+                }
+                if (!ok) {
+                    break;
+                }
+            }
+        } else if (id !== 0x3F2) {
+            ok = false;
+        }
+        if (!ok || p[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            c.count = old;
+            break;
+        }
+        if (p[0] <= start) {
+            break;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_amigahunk_build(c) {
+    var ok = false;
+    ok = sxexm_hunk(c);
+    return ok && sxexm_finish(c);
+}

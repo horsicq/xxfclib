@@ -1,0 +1,141 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/xfs/xx_xfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_xfs4_superblock_fields = layout([u32("magic", SIGNATURE), u32("block_size", SIZE), u64("data_blocks", COUNT),
+    u64("realtime_blocks", COUNT), u64("realtime_extents", COUNT), field("uuid", "byte[16]", 16, ID), u64("log_start_block"),
+    u64("root_inode", ID), u64("realtime_bitmap_inode", ID), u64("realtime_summary_inode", ID),
+    u32("realtime_extent_blocks", COUNT), u32("allocation_group_blocks", COUNT), u32("allocation_group_count", COUNT),
+    u32("realtime_bitmap_blocks", COUNT), u32("log_blocks", COUNT), u16("version_flags", FLAGS), u16("sector_size", SIZE),
+    u16("inode_size", SIZE), u16("inodes_per_block", COUNT), chars("label", 12, STRING), u8("log2_block_size"),
+    u8("log2_sector_size"), u8("log2_inode_size"), u8("log2_inodes_per_block"), u8("log2_ag_blocks"),
+    u8("log2_realtime_extents"), u8("in_progress", FLAGS), u8("max_inode_percent"), u64("inode_count", COUNT),
+    u64("free_inodes", COUNT), u64("free_data_blocks", COUNT), u64("free_realtime_extents", COUNT), u64("user_quota_inode", ID),
+    u64("group_quota_inode", ID), u16("quota_flags", FLAGS), u8("flags", FLAGS), u8("shared_version", ID),
+    u32("inode_alignment_blocks", COUNT), u32("stripe_unit_blocks", COUNT), u32("stripe_width_blocks", COUNT),
+    u8("log2_directory_blocks"), u8("log2_log_sector_size"), u16("log_sector_size", SIZE), u32("log_stripe_unit", SIZE),
+    u32("features2", FLAGS), u32("bad_features2", FLAGS)]);
+var sxmf_xfs4_superblock = sxLayout(0x60420020, "xfs4_superblock", BE, sxmf_xfs4_superblock_fields);
+var sxmf_xfs5_superblock_fields = layout([u32("magic", SIGNATURE), u32("block_size", SIZE), u64("data_blocks", COUNT),
+    u64("realtime_blocks", COUNT), u64("realtime_extents", COUNT), field("uuid", "byte[16]", 16, ID), u64("log_start_block"),
+    u64("root_inode", ID), u64("realtime_bitmap_inode", ID), u64("realtime_summary_inode", ID),
+    u32("realtime_extent_blocks", COUNT), u32("allocation_group_blocks", COUNT), u32("allocation_group_count", COUNT),
+    u32("realtime_bitmap_blocks", COUNT), u32("log_blocks", COUNT), u16("version_flags", FLAGS), u16("sector_size", SIZE),
+    u16("inode_size", SIZE), u16("inodes_per_block", COUNT), chars("label", 12, STRING), u8("log2_block_size"),
+    u8("log2_sector_size"), u8("log2_inode_size"), u8("log2_inodes_per_block"), u8("log2_ag_blocks"),
+    u8("log2_realtime_extents"), u8("in_progress", FLAGS), u8("max_inode_percent"), u64("inode_count", COUNT),
+    u64("free_inodes", COUNT), u64("free_data_blocks", COUNT), u64("free_realtime_extents", COUNT), u64("user_quota_inode", ID),
+    u64("group_quota_inode", ID), u16("quota_flags", FLAGS), u8("flags", FLAGS), u8("shared_version", ID),
+    u32("inode_alignment_blocks", COUNT), u32("stripe_unit_blocks", COUNT), u32("stripe_width_blocks", COUNT),
+    u8("log2_directory_blocks"), u8("log2_log_sector_size"), u16("log_sector_size", SIZE), u32("log_stripe_unit", SIZE),
+    u32("features2", FLAGS), u32("bad_features2", FLAGS), u32("features_compat", FLAGS), u32("features_ro_compat", FLAGS),
+    u32("features_incompat", FLAGS), u32("features_log_incompat", FLAGS), field("crc", "uint32le", 4, CHECKSUM),
+    u32("sparse_inode_alignment_blocks", COUNT), u64("project_quota_inode", ID), u64("log_sequence"),
+    field("metadata_uuid", "byte[16]", 16, ID), u64("metadata_directory_inode", ID), u32("realtime_group_count", COUNT),
+    u32("realtime_group_extents", COUNT), u8("realtime_group_block_log"), field("padding", "byte[7]", 7, RESERVED),
+    u64("internal_realtime_start_block"), u64("reserved_realtime_blocks", COUNT)]);
+var sxmf_xfs5_superblock = sxLayout(0x60420021, "xfs5_superblock", BE, sxmf_xfs5_superblock_fields);
+var sxmf_xfs4_agf_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("sequence"), u32("group_blocks", COUNT),
+    u32("block_tree_root"), u32("count_tree_root"), u32("reverse_map_root"), u32("block_tree_levels", COUNT),
+    u32("count_tree_levels", COUNT), u32("reverse_map_levels", COUNT), u32("free_list_first"), u32("free_list_last"),
+    u32("free_list_count", COUNT), u32("free_blocks", COUNT), u32("longest_free_blocks", COUNT), u32("tree_blocks", COUNT)]);
+var sxmf_xfs4_agf = sxLayout(0x60420022, "xfs4_agf", BE, sxmf_xfs4_agf_fields);
+var sxmf_xfs5_agf_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("sequence"), u32("group_blocks", COUNT),
+    u32("block_tree_root"), u32("count_tree_root"), u32("reverse_map_root"), u32("block_tree_levels", COUNT),
+    u32("count_tree_levels", COUNT), u32("reverse_map_levels", COUNT), u32("free_list_first"), u32("free_list_last"),
+    u32("free_list_count", COUNT), u32("free_blocks", COUNT), u32("longest_free_blocks", COUNT), u32("tree_blocks", COUNT),
+    field("uuid", "byte[16]", 16, ID), u32("reverse_map_blocks", COUNT), u32("refcount_blocks", COUNT), u32("refcount_root"),
+    u32("refcount_levels", COUNT), field("spare", "uint64[14]", 112, RESERVED), u64("log_sequence"),
+    field("crc", "uint32le", 4, CHECKSUM), u32("padding", RESERVED)]);
+var sxmf_xfs5_agf = sxLayout(0x60420023, "xfs5_agf", BE, sxmf_xfs5_agf_fields);
+var sxmf_xfs4_agi_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("sequence"), u32("group_blocks", COUNT),
+    u32("inode_count", COUNT), u32("inode_tree_root"), u32("inode_tree_levels", COUNT), u32("free_inodes", COUNT),
+    u32("new_inode", ID), u32("last_directory_inode", ID), field("unlinked_inode_buckets", "uint32[64]", 256, ID)]);
+var sxmf_xfs4_agi = sxLayout(0x60420024, "xfs4_agi", BE, sxmf_xfs4_agi_fields);
+var sxmf_xfs5_agi_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("sequence"), u32("group_blocks", COUNT),
+    u32("inode_count", COUNT), u32("inode_tree_root"), u32("inode_tree_levels", COUNT), u32("free_inodes", COUNT),
+    u32("new_inode", ID), u32("last_directory_inode", ID), field("unlinked_inode_buckets", "uint32[64]", 256, ID),
+    field("uuid", "byte[16]", 16, ID), field("crc", "uint32le", 4, CHECKSUM), u32("padding", RESERVED), u64("log_sequence"),
+    u32("free_inode_root"), u32("free_inode_levels", COUNT), u32("inode_tree_blocks", COUNT),
+    u32("free_inode_tree_blocks", COUNT)]);
+var sxmf_xfs5_agi = sxLayout(0x60420025, "xfs5_agi", BE, sxmf_xfs5_agi_fields);
+var sxmf_xfs_inode_v2_fields = layout([u16("magic", SIGNATURE), u16("mode", FLAGS), u8("version", ID), u8("data_format", ID),
+    u16("metatype_or_old_link_count"), u32("uid", ID), u32("gid", ID), u32("link_count", COUNT), u16("project_id_low"),
+    u16("project_id_high"), field("extent_count_or_padding", "byte[8]", 8), field("access_timestamp", "byte[8]", 8),
+    field("modification_timestamp", "byte[8]", 8), field("change_timestamp", "byte[8]", 8), u64("file_size", SIZE),
+    u64("allocated_blocks", COUNT), u32("extent_size_blocks", COUNT), u32("data_or_attribute_extents", COUNT),
+    u16("attribute_extents_or_padding"), u8("attribute_fork_offset_units"), i8("attribute_format", ID),
+    u32("dm_event_mask", FLAGS), u16("dm_state", FLAGS), u16("flags", FLAGS), u32("generation"), u32("next_unlinked_inode", ID)]);
+var sxmf_xfs_inode_v2 = sxLayout(0x60420026, "xfs_inode_v2", BE, sxmf_xfs_inode_v2_fields);
+var sxmf_xfs_inode_v3_fields = layout([u16("magic", SIGNATURE), u16("mode", FLAGS), u8("version", ID), u8("data_format", ID),
+    u16("metatype_or_old_link_count"), u32("uid", ID), u32("gid", ID), u32("link_count", COUNT), u16("project_id_low"),
+    u16("project_id_high"), field("extent_count_or_padding", "byte[8]", 8), field("access_timestamp", "byte[8]", 8),
+    field("modification_timestamp", "byte[8]", 8), field("change_timestamp", "byte[8]", 8), u64("file_size", SIZE),
+    u64("allocated_blocks", COUNT), u32("extent_size_blocks", COUNT), u32("data_or_attribute_extents", COUNT),
+    u16("attribute_extents_or_padding"), u8("attribute_fork_offset_units"), i8("attribute_format", ID),
+    u32("dm_event_mask", FLAGS), u16("dm_state", FLAGS), u16("flags", FLAGS), u32("generation"), u32("next_unlinked_inode", ID),
+    field("crc", "uint32le", 4, CHECKSUM), u64("change_count", COUNT), u64("log_sequence"), u64("flags2", FLAGS),
+    u32("cow_extent_or_used_blocks", COUNT), field("padding", "byte[12]", 12, RESERVED),
+    field("creation_timestamp", "byte[8]", 8), u64("inode", ID), field("uuid", "byte[16]", 16, ID)]);
+var sxmf_xfs_inode_v3 = sxLayout(0x60420027, "xfs_inode_v3", BE, sxmf_xfs_inode_v3_fields);
+function sxmf_xfs(c) {
+    var sb = [];
+    var b = [];
+    if (!sxmf_read(c, 0, sb, 0, 512) || sxMemcmp(sb, "XFSB", 4)) {
+        return false;
+    }
+    var version = sxmf16(sb, 100, 1) & 15;
+    if (version !== 4 && version !== 5) {
+        return false;
+    }
+    if (!sxmf_put(c, version === 5 ? sxmf_xfs5_superblock : sxmf_xfs4_superblock, 0, 1)) {
+        return false;
+    }
+    var bs = sxmf32(sb, 4, 1);
+    var blocks = sxmf64(sb, 8, 1);
+    var agblocks = sxmf32(sb, 84, 1);
+    var ags = sxmf32(sb, 88, 1);
+    var sector = sxmf16(sb, 102, 1);
+    var isize = sxmf16(sb, 104, 1);
+    if (!sxmf_pow(bs) || bs < 512 || bs > 65536 || !blocks || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs) || !agblocks || !ags || ags > 4096 || !sxmf_pow(sector) || sector < 512 || sector > bs) {
+        return true;
+    }
+    for (var i = 0; i < ags; i++) {
+        var ab = i * agblocks;
+        if (ab >= blocks) {
+            break;
+        }
+        var p = ab * bs;
+        if (i && sxmf_read(c, p, b, 0, 304) && !sxMemcmp(b, "XFSB", 4) && !sxmf_put(c, version === 5 ? sxmf_xfs5_superblock : sxmf_xfs4_superblock, p, 1)) {
+            return false;
+        }
+        if (sxmf_read(c, p + sector, b, 0, 224) && !sxMemcmp(b, "XAGF", 4) && !sxmf_put(c, version === 5 ? sxmf_xfs5_agf : sxmf_xfs4_agf, p + sector, 1)) {
+            return false;
+        }
+        if (sxmf_read(c, p + 2 * sector, b, 0, 344) && !sxMemcmp(b, "XAGI", 4) && !sxmf_put(c, version === 5 ? sxmf_xfs5_agi : sxmf_xfs4_agi, p + 2 * sector, 1)) {
+            return false;
+        }
+    }
+    var ilog = sb[123];
+    var alog = sb[124];
+    var ino = sxmf64(sb, 56, 1);
+    if (!sxmf_pow(isize) || isize < 256 || isize > bs || ilog > 8 || alog > 32 || (ilog + alog) >>> 0 >= 63 || sxShl64(1, ilog) !== Math.floor(bs / isize)) {
+        return true;
+    }
+    var ag = sxShr64(ino, (ilog + alog) >>> 0);
+    var block = sxAnd64(sxShr64(ino, ilog), sxU64(sxShl64(1, alog) - 1));
+    var slot = sxAnd64(ino, sxU64(sxShl64(1, ilog) - 1));
+    if (ag >= ags || block >= agblocks || ag * agblocks + block >= blocks) {
+        return true;
+    }
+    var at = (ag * agblocks + block) * bs + slot * isize;
+    if (sxmf_read(c, at, b, 0, 176) && sxmf16(b, 0, 1) === 0x494E && (b[4] === 2 || b[4] === 3)) {
+        return sxmf_put(c, b[4] === 3 ? sxmf_xfs_inode_v3 : sxmf_xfs_inode_v2, at, 1);
+    }
+    return true;
+}
+function sx_xfs_build(c) {
+    return sxmf_xfs(c);
+}

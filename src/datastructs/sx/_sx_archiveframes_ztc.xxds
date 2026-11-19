@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ztc/xx_ztc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_ztc_header_fields = layout([u32("signature", SIGNATURE), bytes("opaque", 4), u16("volume_number")]);
+var sxafr_ztc_header = sxLayout(0x6054000A, "ztc_header", LE, sxafr_ztc_header_fields);
+var sxafr_ztc_member_fields = layout([i32("uncompressed_size", SIZE), i32("stamp"), i32("total_size", SIZE), u32("timestamp"),
+    u16("name_size", SIZE)]);
+var sxafr_ztc_member = sxLayout(0x6054000B, "ztc_member", LE, sxafr_ztc_member_fields);
+var sxafr_ztc_check_fields = layout([u32("header_check", SIGNATURE)]);
+var sxafr_ztc_check = sxLayout(0x6054000C, "ztc_check", LE, sxafr_ztc_check_fields);
+var sxafr_ztc_page_sum_fields = layout([u32("page_sum", CHECKSUM)]);
+var sxafr_ztc_page_sum = sxLayout(0x6054000D, "ztc_page_sum", LE, sxafr_ztc_page_sum_fields);
+function sxafr_ztc(c) {
+    var p = 10;
+    if (!sxafr_add(c, sxafr_ztc_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) === 2) {
+            return true;
+        }
+        var h = [];
+        if (!sxafr_read(c, p, h, 18)) {
+            return false;
+        }
+        var total = sxafr_uint(h, 8, 4, false);
+        var names = sxafr_uint(h, 16, 2, false);
+        if (total > 2147483647 || !names || total < 22 + names || !sxafr_span(c, p + 18, names + 4) || !sxafr_add(c, sxafr_ztc_member, p) || !sxafr_add(c, sxafr_ztc_check, p + 18 + names)) {
+            return false;
+        }
+        var q = p + 22 + names;
+        var z = sxU64(sxU64(total - 22) - names);
+        while (z >= 4) {
+            var page = sxU64(z - 4);
+            if (page > 4096) {
+                page = 4096;
+            }
+            if (!sxafr_span(c, q, page + 4)) {
+                return true;
+            }
+            if (!sxafr_add(c, sxafr_ztc_page_sum, q + page)) {
+                return false;
+            }
+            q += page + 4;
+            z = sxU64(z - (page + 4));
+        }
+        if (total > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p)) {
+            return true;
+        }
+        p += total;
+    }
+    return true;
+}
+function sx_ztc_build(c) {
+    return sxafr_ztc(c);
+}

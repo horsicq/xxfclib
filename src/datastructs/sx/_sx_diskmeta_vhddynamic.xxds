@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vhddynamic/xx_vhddynamic_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_vhd_dynamic_header_fields = layout([field("cookie", "byte[8]", 8, SIGNATURE), u64("data_offset", OFFSET),
+    u64("table_offset", OFFSET), u32("header_version"), u32("max_table_entries", COUNT), u32("block_size", SIZE),
+    u32("checksum", CHECKSUM), field("parent_unique_id", "byte[16]", 16, ID), u32("parent_timestamp", TIMESTAMP),
+    u32("reserved", RESERVED), field("parent_unicode_name", "uint16[256]", 512)]);
+var sx_dm_vhd_dynamic_header = sxLayout(0x60290011, "vhd_dynamic_header", BE, sx_dm_vhd_dynamic_header_fields);
+function sx_dm_vhd(c) {
+    var h = [];
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var fs = n % 512 === 511 ? 511 : 512;
+    if (n < fs || !sx_dm_read(c, sxU64(n - fs), h, 85) || sxMemcmp(h, "conectix", 8)) {
+        return false;
+    }
+    var l = fs === 511 ? sx_dm_vhd_footer_511 : sx_dm_vhd_footer_512;
+    if (!sx_dm_add(c, l, sxU64(n - fs), fs)) {
+        return false;
+    }
+    var type = sx_dm_u32(h, 60, true);
+    var p = sx_dm_u64(h, 16, true);
+    if (type === 3 || type === 4) {
+        if (!sx_dm_add(c, sx_dm_vhd_footer_512, 0, 512)) {
+            return false;
+        }
+        if (sx_dm_read(c, p, h, 576) && !sxMemcmp(h, "cxsparse", 8) && sx_dm_span(c, p, 1024)) {
+            if (!sx_dm_add(c, sx_dm_vhd_dynamic_header, p, 576) || !sx_dm_table(c, sx_dm_vhd_parent_locator, p + 576, 24, 8)) {
+                return false;
+            }
+            var bat = sx_dm_u64(h, 16, true);
+            var count = sx_dm_u32(h, 28, true);
+            if (sx_dm_span(c, bat, count * 4) && !sx_dm_table(c, sx_dm_vhd_bat_entry, bat, 4, count)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_vhddynamic_build(c) {
+    return sx_dm_vhd(c);
+}

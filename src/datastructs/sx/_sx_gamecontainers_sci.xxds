@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/sci/xx_sci_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_sci_entry_fields = layout([u8("kind", ID), chars("name", 50, STRING), i32("data_bytes", SIZE)]);
+var sxgco_sci_entry = sxLayout(0x6040000A, "sci_entry", LE, sxgco_sci_entry_fields);
+function sxgco_sci(v) {
+    var p = 46;
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var ok = sxgco_row(v, sxgco_sci_header, 0, e);
+    while (ok && p < e) {
+        if (!sxgco_span(v, p, 55, e)) {
+            break;
+        }
+        if (!sxgco_row(v, sxgco_sci_entry, p, e) || !sxgco_word(v, p + 51, 4, false, n, e)) {
+            return false;
+        }
+        p += 55;
+        if (n[0] > 2147483647 || n[0] > sxU64(e - p)) {
+            break;
+        }
+        p += n[0];
+    }
+    return ok;
+}
+function sx_sci_build(v) {
+    return sxgco_sci(v);
+}

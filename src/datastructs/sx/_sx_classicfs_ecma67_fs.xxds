@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ecma67_fs/xx_ecma67_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_ecma67_volume_label_fields = layout([chars("identifier", 3, SIGNATURE), u8("label_number", ID),
+    chars("volume_identifier", 6, NONE), u8("accessibility", ID), field("reserved0", "byte[26]", 26, RESERVED),
+    chars("owner", 14, NONE), field("reserved1", "byte[20]", 20, RESERVED), u8("surface", ID),
+    field("reserved2", "byte[3]", 3, RESERVED), u8("record_length_code", ID), field("reserved3", "byte[2]", 2, RESERVED),
+    u8("file_label_allocation", ID), u8("standard_version", ID), field("reserved4", "byte[48]", 48, RESERVED)]);
+var sxcf_ecma67_volume_label = sxLayout(0x603D003C, "ecma67_volume_label", LE, sxcf_ecma67_volume_label_fields);
+var sxcf_ecma67_error_map_label_fields = layout([chars("identifier", 5, SIGNATURE), u8("reserved0", RESERVED),
+    chars("defective_cylinder_1", 3, NONE), u8("reserved1", RESERVED), chars("defective_cylinder_2", 3, NONE),
+    field("reserved2", "byte[115]", 115, RESERVED)]);
+var sxcf_ecma67_error_map_label = sxLayout(0x603D003D, "ecma67_error_map_label", LE, sxcf_ecma67_error_map_label_fields);
+var sxcf_ecma67_file_label_fields = layout([chars("identifier", 3, SIGNATURE), u8("label_number", ID),
+    u8("reserved0", RESERVED), chars("filename", 17, NONE), chars("block_length_decimal", 5, NONE), u8("reserved1", RESERVED),
+    chars("first_extent_chs", 5, NONE), u8("reserved2", RESERVED), chars("last_extent_chs", 5, NONE), u8("record_format", ID),
+    u8("bypass_indicator", ID), u8("accessibility", ID), u8("write_protect", ID), u8("interchange_type", ID),
+    u8("multi_volume", ID), chars("section_number_decimal", 2, NONE), chars("creation_date", 6, NONE),
+    chars("record_length_decimal", 4, NONE), chars("unused_tail_decimal", 5, NONE), u8("record_attribute", ID),
+    u8("file_organization", ID), field("reserved3", "byte[2]", 2, RESERVED), chars("expiration_date", 6, NONE),
+    u8("verify_copy", ID), u8("reserved4", RESERVED), chars("end_of_data_chs", 5, NONE),
+    field("reserved5", "byte[49]", 49, RESERVED)]);
+var sxcf_ecma67_file_label = sxLayout(0x603D003E, "ecma67_file_label", LE, sxcf_ecma67_file_label_fields);
+function sxcf_ecma(c) {
+    var h = [];
+    var b = [];
+    if (!sxcf_read(c, 768, h, 128) || sxMemcmp(h, "VOL", 3) || h[75] !== 49 /*1*/ || !sxcf_put(c, sxcf_ecma67_volume_label, 768, 1)) {
+        return false;
+    }
+    if (sxcf_read(c, 512, b, 128) && !sxMemcmp(b, "ERMAP", 5) && !sxcf_put(c, sxcf_ecma67_error_map_label, 512, 1)) {
+        return false;
+    }
+    var end = h[71] === 77 /*M*/ && h[78] === 49 /*1*/ ? 32 : 16;
+    for (var n = 7; n < end; n++) {
+        var p = n < 16 ? n * 128 : 2048 + ((n - 16) >>> 0) * 256;
+        if (!sxcf_read(c, p, b, 128)) {
+            break;
+        }
+        if (!sxMemcmp(b, "HDR", 3) && (b[3] === 1 || b[3] === 49 /*1*/) && !sxcf_put(c, sxcf_ecma67_file_label, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ecma67_fs_build(c) {
+    return sxcf_ecma(c);
+}

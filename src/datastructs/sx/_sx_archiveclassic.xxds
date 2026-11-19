@@ -1,0 +1,397 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveclassic.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_zzz_member_fields = layout([chars("signature", 3, SIGNATURE), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), chars("name", 12, NONE), u8("reserved")]);
+var sxacl_zzz_member = sxLayout(0x60500005, "zzz_member", LE, sxacl_zzz_member_fields);
+var sxacl_bwf_member_fields = layout([u8("tag", SIGNATURE), chars("name", 13, NONE), u32("dos_timestamp"),
+    i32("compressed_size", SIZE)]);
+var sxacl_bwf_member = sxLayout(0x60500018, "bwf_member", LE, sxacl_bwf_member_fields);
+var sxacl_zap_member_fields = layout([u8("name_size", SIZE), chars("name", 12, NONE), u16("dos_time"), u16("dos_date"),
+    i32("compressed_size", SIZE)]);
+var sxacl_zap_member = sxLayout(0x60500019, "zap_member", LE, sxacl_zap_member_fields);
+var sxacl_stork_member_fields = layout([u8("name_size", SIZE), chars("name", 12, NONE), i32("compressed_size", SIZE),
+    chars("terminator", 1, SIGNATURE)]);
+var sxacl_stork_member = sxLayout(0x6050001A, "stork_member", LE, sxacl_stork_member_fields);
+var sxacl_archiveclassic_dcl_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxacl_archiveclassic_dcl = sxLayout(0x60500034, "archiveclassic_dcl", LE, sxacl_archiveclassic_dcl_fields);
+function sx_archiveclassic_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60500000 || id >= 0x60510000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60500001:
+        if (r.name === "uninitialized1") {
+            text = "Uninitialized writer memory, not a filename or checksum";
+        }
+        if (r.name === "uninitialized2") {
+            text = "Uninitialized writer memory";
+        }
+        break;
+    case 0x60500003:
+        if (r.name === "record_size") {
+            text = "Decoded record width, 272 or 552";
+        }
+        break;
+    case 0x6050000B:
+        if (r.name === "method") {
+            text = "Archive-wide method";
+        }
+        if (r.name === "version") {
+            text = "100 denotes version 1.00";
+        }
+        break;
+    case 0x6050000C:
+        if (r.name === "checksum") {
+            text = "Unidentified checksum algorithm";
+        }
+        break;
+    case 0x6050000E:
+        if (r.name === "flags") {
+            text = "Unix compress flags: 0x80 block mode, low five bits maximum code width; the 1F9D magic is not stored";
+        }
+        break;
+    case 0x6050000F:
+        if (r.name === "header_payload_size") {
+            text = "Excludes size and checksum bytes";
+        }
+        if (r.name === "method") {
+            text = "-mg0- stored, -mg4- lh4, -mg5- lh5";
+        }
+        if (r.name === "compressed_size") {
+            text = "Level 1 includes extended-header bytes";
+        }
+        break;
+    case 0x60500012:
+        if (r.name === "next_header_size") {
+            text = "Zero ends the extension chain; nonzero counts the physical extension bytes following the current length word";
+        }
+        break;
+    case 0x60500013:
+        if (r.name === "type") {
+            text = "0 header CRC, 1 replacement filename, 2 directory, 0x42 64-bit size copies";
+        }
+        break;
+    case 0x60500015:
+        if (r.name === "directory_size") {
+            text = "Excludes the 14-byte archive header";
+        }
+        break;
+    case 0x60500016:
+        if (r.name === "block_size") {
+            text = "Includes the four-byte checksum preceding DCL data";
+        }
+        if (r.name === "disk_number") {
+            text = "1 means current volume";
+        }
+        if (r.name === "method") {
+            text = "Observed 0 and 1 both carry DCL; not a codec selector";
+        }
+        break;
+    case 0x60500018:
+        if (r.name === "name") {
+            text = "Native name stops before the last slot, which may contain stale memory";
+        }
+        break;
+    case 0x6050001F:
+        if (r.name === "method_tag") {
+            text = "NON, RLE, LZH, CUS or LH5";
+        }
+        if (r.name === "uncompressed_size") {
+            text = "Total plaintext size of this segment";
+        }
+        if (r.name === "archive_type") {
+            text = "0 single stream, 1 named members";
+        }
+        if (r.name === "checksum") {
+            text = "Byte sum, used only by type 0";
+        }
+        if (r.name === "flags") {
+            text = "0..2; 2 means XOR-masked data";
+        }
+        break;
+    case 0x60500020:
+        if (r.name === "method") {
+            text = "0 NON, 1 RLE, 2 LZH, 3 CUS, 4 LH5";
+        }
+        if (r.name === "checksum") {
+            text = "Sum of uncompressed bytes";
+        }
+        if (r.name === "flags") {
+            text = "0..2; 2 means XOR-masked data";
+        }
+        break;
+    case 0x60500025:
+        if (r.name === "block_size") {
+            text = "Includes the four-byte repeated plain length";
+        }
+        if (r.name === "method") {
+            text = "1 LZHUF, 3 stored";
+        }
+        break;
+    case 0x60500027:
+        if (r.name === "method") {
+            text = "1 framed LZW/stored; 2 LZSS or DCL selected by payload preamble";
+        }
+        if (r.name === "variant") {
+            text = "9 old, 11 newer";
+        }
+        if (r.name === "block_size") {
+            text = "LZW framing width, 0x1000 bytes";
+        }
+        break;
+    case 0x60500028:
+        if (r.name === "record_count") {
+            text = "Includes the leading header record; member count is one less";
+        }
+        break;
+    case 0x6050002A:
+        if (r.name === "compressed") {
+            text = "0 stored, 1 FLS-LZ";
+        }
+        if (r.name === "name_reference") {
+            text = "Relative to the start of the name block";
+        }
+        if (r.name === "tail_size") {
+            text = "Padding following this member payload";
+        }
+        break;
+    case 0x6050002C:
+        if (r.name === "component_offset") {
+            text = "Relative to the start of the name block";
+        }
+        break;
+    case 0x6050002E:
+        if (r.name === "uninitialized") {
+            text = "Uninitialized writer memory, not a version";
+        }
+        break;
+    case 0x6050002F:
+        if (r.name === "write_time") {
+            text = "Stored timestamp; epoch unspecified";
+        }
+        if (r.name === "method") {
+            text = "0 stored, 1 separately framed DCL blocks";
+        }
+        if (r.name === "name_size") {
+            text = "Includes the stored NUL";
+        }
+        break;
+    case 0x60500031:
+        if (r.name === "crc32") {
+            text = "Unfinalized reflected EDB88320 accumulator seeded with 0xFFFFFFFF, equivalent to CRC-32/JAMCRC";
+        }
+        break;
+    case 0x60500034:
+        if (r.name === "literal_mode") {
+            text = "0 binary or 1 coded literals";
+        }
+        if (r.name === "dictionary_bits") {
+            text = "4, 5 or 6; PKWARE DCL dictionary parameter";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxacl_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxacl_read(c, p, b, n) {
+    return sxacl_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxacl_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxacl_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxacl_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxacl_uint(b, 0, n, be);
+    return true;
+}
+function sxacl_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (c.count >= 20000 || !sxacl_span(c, p, n)) {
+        return false;
+    }
+    var absolute = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < absolute) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo < c.count && c.items[lo].offset < absolute + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > absolute) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxacl_dcl(c, p, n) {
+    var h = [];
+    return (n < 2 || !sxacl_read(c, p, h, 2) || h[0] > 1 || h[1] < 4 || h[1] > 6 ? 1 : (sxacl_add(c, sxacl_archiveclassic_dcl, p) ? 1 : 0)) !== 0;
+}
+function sxacl_chain(c, l, p, hs, sizeoff, sign, dcl) {
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (hs > 24 || sizeoff > hs || (hs - sizeoff) >>> 0 < 4 || !sxacl_read(c, p, h, hs)) {
+            return false;
+        }
+        if (l === sxacl_zzz_member && sxMemcmp(h, "ZZZ", 3) || l === sxacl_bwf_member && h[0] !== 1 || (l === sxacl_zap_member || l === sxacl_stork_member) && (!h[0] || h[0] > 12) || l === sxacl_stork_member && h[17] !== 36 /*$*/) {
+            return false;
+        }
+        var z = sxacl_uint(h, sizeoff, 4, false);
+        if (sign && z > 2147483647 || !sxacl_span(c, p + hs, z) || !sxacl_add(c, l, p)) {
+            return false;
+        }
+        if (dcl && !sxacl_dcl(c, p + hs, z)) {
+            return false;
+        }
+        p += hs + z;
+    }
+    return true;
+}
+function sxacl_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxacl_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxacl_order, true);
+    return !c.failed;
+}
+function sx_archiveclassic_supports(type) {
+    switch (type) {
+    case "DTPACKED":
+    case "ZLWB":
+    case "ZZ":
+    case "ZZZ":
+    case "JGPAK":
+    case "BORLANDPACK":
+    case "JETBBS":
+    case "QUALITAS":
+    case "BWF":
+    case "ZAP":
+    case "STORK":
+    case "ASCENDBACKUP":
+    case "FMC1":
+    case "SPIS":
+    case "BWCF":
+    case "CMP":
+    case "FLS":
+    case "GENIUS":
+    case "HZL":
+    case "KBOOM":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archiveclassic_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DTPACKED":
+        ok = sx_dtpacked_build(c);
+        break;
+    case "ZLWB":
+        ok = sx_zlwb_build(c);
+        break;
+    case "ZZ":
+        ok = sx_zz_build(c);
+        break;
+    case "ZZZ":
+        ok = sx_zzz_build(c);
+        break;
+    case "JGPAK":
+        ok = sx_jgpak_build(c);
+        break;
+    case "BORLANDPACK":
+        ok = sx_borlandpack_build(c);
+        break;
+    case "JETBBS":
+        ok = sx_jetbbs_build(c);
+        break;
+    case "QUALITAS":
+        ok = sx_qualitas_build(c);
+        break;
+    case "BWF":
+        ok = sx_bwf_build(c);
+        break;
+    case "ZAP":
+        ok = sx_zap_build(c);
+        break;
+    case "STORK":
+        ok = sx_stork_build(c);
+        break;
+    case "ASCENDBACKUP":
+        ok = sx_ascendbackup_build(c);
+        break;
+    case "FMC1":
+        ok = sx_fmc1_build(c);
+        break;
+    case "SPIS":
+        ok = sx_spis_build(c);
+        break;
+    case "BWCF":
+        ok = sx_bwcf_build(c);
+        break;
+    case "CMP":
+        ok = sx_cmp_build(c);
+        break;
+    case "FLS":
+        ok = sx_fls_build(c);
+        break;
+    case "GENIUS":
+        ok = sx_genius_build(c);
+        break;
+    case "HZL":
+        ok = sx_hzl_build(c);
+        break;
+    case "KBOOM":
+        ok = sx_kboom_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxacl_finish(c));
+}

@@ -1,0 +1,208 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/java_class/xx_java_class_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_vm_java_class_header_fields = layout([u32("magic", SIGNATURE), u16("minor_version", ID), u16("major_version", ID),
+    u16("constant_pool_count", COUNT)]);
+var sx_vm_java_class_header = sxLayout(0x60160001, "java_class_header", BE, sx_vm_java_class_header_fields);
+var sx_vm_java_constant_utf8_fields = layout([u8("tag", ID), u16("byte_length", SIZE)]);
+var sx_vm_java_constant_utf8 = sxLayout(0x60160002, "java_constant_utf8", BE, sx_vm_java_constant_utf8_fields);
+var sx_vm_java_constant_integer_fields = layout([u8("tag", ID), i32("value")]);
+var sx_vm_java_constant_integer = sxLayout(0x60160003, "java_constant_integer", BE, sx_vm_java_constant_integer_fields);
+var sx_vm_java_constant_float_fields = layout([u8("tag", ID), u32("ieee754_bits")]);
+var sx_vm_java_constant_float = sxLayout(0x60160004, "java_constant_float", BE, sx_vm_java_constant_float_fields);
+var sx_vm_java_constant_long_fields = layout([u8("tag", ID), u32("high_bytes"), u32("low_bytes")]);
+var sx_vm_java_constant_long = sxLayout(0x60160005, "java_constant_long", BE, sx_vm_java_constant_long_fields);
+var sx_vm_java_constant_double_fields = layout([u8("tag", ID), u32("high_bytes"), u32("low_bytes")]);
+var sx_vm_java_constant_double = sxLayout(0x60160006, "java_constant_double", BE, sx_vm_java_constant_double_fields);
+var sx_vm_java_constant_class_fields = layout([u8("tag", ID), u16("name_index", ID)]);
+var sx_vm_java_constant_class = sxLayout(0x60160007, "java_constant_class", BE, sx_vm_java_constant_class_fields);
+var sx_vm_java_constant_string_fields = layout([u8("tag", ID), u16("string_index", ID)]);
+var sx_vm_java_constant_string = sxLayout(0x60160008, "java_constant_string", BE, sx_vm_java_constant_string_fields);
+var sx_vm_java_constant_method_type_fields = layout([u8("tag", ID), u16("descriptor_index", ID)]);
+var sx_vm_java_constant_method_type = sxLayout(0x60160009, "java_constant_method_type", BE, sx_vm_java_constant_method_type_fields);
+var sx_vm_java_constant_module_fields = layout([u8("tag", ID), u16("name_index", ID)]);
+var sx_vm_java_constant_module = sxLayout(0x6016000A, "java_constant_module", BE, sx_vm_java_constant_module_fields);
+var sx_vm_java_constant_package_fields = layout([u8("tag", ID), u16("name_index", ID)]);
+var sx_vm_java_constant_package = sxLayout(0x6016000B, "java_constant_package", BE, sx_vm_java_constant_package_fields);
+var sx_vm_java_constant_fieldref_fields = layout([u8("tag", ID), u16("class_index", ID), u16("name_and_type_index", ID)]);
+var sx_vm_java_constant_fieldref = sxLayout(0x6016000C, "java_constant_fieldref", BE, sx_vm_java_constant_fieldref_fields);
+var sx_vm_java_constant_methodref_fields = layout([u8("tag", ID), u16("class_index", ID), u16("name_and_type_index", ID)]);
+var sx_vm_java_constant_methodref = sxLayout(0x6016000D, "java_constant_methodref", BE, sx_vm_java_constant_methodref_fields);
+var sx_vm_java_constant_interface_methodref_fields = layout([u8("tag", ID), u16("class_index", ID),
+    u16("name_and_type_index", ID)]);
+var sx_vm_java_constant_interface_methodref = sxLayout(0x6016000E, "java_constant_interface_methodref", BE, sx_vm_java_constant_interface_methodref_fields);
+var sx_vm_java_constant_name_and_type_fields = layout([u8("tag", ID), u16("name_index", ID), u16("descriptor_index", ID)]);
+var sx_vm_java_constant_name_and_type = sxLayout(0x6016000F, "java_constant_name_and_type", BE, sx_vm_java_constant_name_and_type_fields);
+var sx_vm_java_constant_dynamic_fields = layout([u8("tag", ID), u16("bootstrap_method_attr_index", ID),
+    u16("name_and_type_index", ID)]);
+var sx_vm_java_constant_dynamic = sxLayout(0x60160010, "java_constant_dynamic", BE, sx_vm_java_constant_dynamic_fields);
+var sx_vm_java_constant_invoke_dynamic_fields = layout([u8("tag", ID), u16("bootstrap_method_attr_index", ID),
+    u16("name_and_type_index", ID)]);
+var sx_vm_java_constant_invoke_dynamic = sxLayout(0x60160011, "java_constant_invoke_dynamic", BE, sx_vm_java_constant_invoke_dynamic_fields);
+var sx_vm_java_constant_method_handle_fields = layout([u8("tag", ID), u8("reference_kind", ID), u16("reference_index", ID)]);
+var sx_vm_java_constant_method_handle = sxLayout(0x60160012, "java_constant_method_handle", BE, sx_vm_java_constant_method_handle_fields);
+var sx_vm_java_interface_fields = layout([u16("class_index", ID)]);
+var sx_vm_java_interface = sxLayout(0x60160014, "java_interface", BE, sx_vm_java_interface_fields);
+var sx_vm_java_fields_count_fields = layout([u16("fields_count", COUNT)]);
+var sx_vm_java_fields_count = sxLayout(0x60160015, "java_fields_count", BE, sx_vm_java_fields_count_fields);
+var sx_vm_java_methods_count_fields = layout([u16("methods_count", COUNT)]);
+var sx_vm_java_methods_count = sxLayout(0x60160016, "java_methods_count", BE, sx_vm_java_methods_count_fields);
+var sx_vm_java_attributes_count_fields = layout([u16("attributes_count", COUNT)]);
+var sx_vm_java_attributes_count = sxLayout(0x60160017, "java_attributes_count", BE, sx_vm_java_attributes_count_fields);
+var sx_vm_java_attribute_info_fields = layout([u16("attribute_name_index", ID), u32("attribute_length", SIZE)]);
+var sx_vm_java_attribute_info = sxLayout(0x6016001A, "java_attribute_info", BE, sx_vm_java_attribute_info_fields);
+function sx_vm_get16(c, at, v) {
+    if (!sx_vm_span(c, at[0], 2) || (v[0] = sx_u16(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), true)) === null) {
+        return false;
+    }
+    at[0] += 2;
+    return true;
+}
+function sx_vm_java_attributes(c, at, count) {
+    for (var i = 0; i < count; i = i + 1 & 0xFFFF) {
+        var b = [];
+        if (!sx_vm_span(c, at[0], 6) || !sx_read(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), b, 6)) {
+            return false;
+        }
+        var n = sxGetU32(b, 6, 2, true);
+        if (!sx_vm_span(c, at[0] + 6, n) || !sx_add(c, sx_vm_java_attribute_info, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 6)) {
+            return false;
+        }
+        at[0] += 6 + n;
+    }
+    return true;
+}
+function sx_vm_java(c) {
+    var total = [0];
+    var at = [8];
+    if (!sx_vm_get16(c, at, total) || total[0] < 2 || !sx_add(c, sx_vm_java_class_header, 0, 10)) {
+        return false;
+    }
+    for (var i = 1; i < total[0]; i++) {
+        var tag = [0];
+        var n = 0;
+        var l = null;
+        if (!sx_vm_span(c, at[0], 1) || !sx_read(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), tag, 1)) {
+            return false;
+        }
+        switch (tag[0]) {
+        case 1:
+            var len;
+            if (!sx_vm_span(c, at[0], 3) || (len = sx_u16(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]) + 1, true)) === null || !sx_vm_span(c, at[0] + 3, len) || !sx_add(c, sx_vm_java_constant_utf8, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 3)) {
+                return false;
+            }
+            at[0] += 3 + len;
+            continue;
+        case 3:
+            l = sx_vm_java_constant_integer;
+            n = 5;
+            break;
+        case 4:
+            l = sx_vm_java_constant_float;
+            n = 5;
+            break;
+        case 5:
+            l = sx_vm_java_constant_long;
+            n = 9;
+            if (++i >= total[0]) {
+                return false;
+            }
+            break;
+        case 6:
+            l = sx_vm_java_constant_double;
+            n = 9;
+            if (++i >= total[0]) {
+                return false;
+            }
+            break;
+        case 7:
+            l = sx_vm_java_constant_class;
+            n = 3;
+            break;
+        case 8:
+            l = sx_vm_java_constant_string;
+            n = 3;
+            break;
+        case 9:
+            l = sx_vm_java_constant_fieldref;
+            n = 5;
+            break;
+        case 10:
+            l = sx_vm_java_constant_methodref;
+            n = 5;
+            break;
+        case 11:
+            l = sx_vm_java_constant_interface_methodref;
+            n = 5;
+            break;
+        case 12:
+            l = sx_vm_java_constant_name_and_type;
+            n = 5;
+            break;
+        case 15:
+            l = sx_vm_java_constant_method_handle;
+            n = 4;
+            break;
+        case 16:
+            l = sx_vm_java_constant_method_type;
+            n = 3;
+            break;
+        case 17:
+            l = sx_vm_java_constant_dynamic;
+            n = 5;
+            break;
+        case 18:
+            l = sx_vm_java_constant_invoke_dynamic;
+            n = 5;
+            break;
+        case 19:
+            l = sx_vm_java_constant_module;
+            n = 3;
+            break;
+        case 20:
+            l = sx_vm_java_constant_package;
+            n = 3;
+            break;
+        default:
+            return false;
+        }
+        if (!sx_add(c, l, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), n)) {
+            return false;
+        }
+        at[0] += n;
+    }
+    var count = [0];
+    if (!sx_vm_span(c, at[0], 8) || (count[0] = sx_u16(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]) + 6, true)) === null || !sx_add(c, sx_vm_java_class_identity, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 8)) {
+        return false;
+    }
+    at[0] += 8;
+    if (!sx_vm_span(c, at[0], count[0] * 2) || !sx_table(c, sx_vm_java_interface, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 2, count[0])) {
+        return false;
+    }
+    at[0] += count[0] * 2;
+    for (var k = 0; k < 2; k++) {
+        if (!sx_add(c, k ? sx_vm_java_methods_count : sx_vm_java_fields_count, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 2) || !sx_vm_get16(c, at, count)) {
+            return false;
+        }
+        for (var j = 0; j < count[0]; j = j + 1 & 0xFFFF) {
+            var attrs;
+            if (!sx_vm_span(c, at[0], 8) || (attrs = sx_u16(c, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]) + 6, true)) === null || !sx_add(c, k ? sx_vm_java_method_info : sx_vm_java_field_info, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 8)) {
+                return false;
+            }
+            at[0] += 8;
+            if (!sx_vm_java_attributes(c, at, attrs)) {
+                return false;
+            }
+        }
+    }
+    if (!sx_add(c, sx_vm_java_attributes_count, (at[0] >= SX_I64_MAX ? at[0] - SX_U64_MAX : at[0]), 2) || !sx_vm_get16(c, at, count) || !sx_vm_java_attributes(c, at, count[0])) {
+        return false;
+    }
+    return at[0] <= (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_java_class_build(c) {
+    return sx_vm_java(c);
+}

@@ -1,0 +1,128 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/mng_animation/xx_mng_animation_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_mng_signature_fields = layout([blob("signature", 8, SIGNATURE)]);
+var sxnx_mng_signature = sxLayout(0x603200C7, "mng_signature", LE, sxnx_mng_signature_fields);
+var sxnx_mng_chunk_fields = layout([u32("data_size", SIZE), blob("chunk_type", 4, ID)]);
+var sxnx_mng_chunk = sxLayout(0x603200C8, "mng_chunk", BE, sxnx_mng_chunk_fields);
+var sxnx_mng_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxnx_mng_crc = sxLayout(0x603200C9, "mng_crc", BE, sxnx_mng_crc_fields);
+var sxnx_mng_header_fields = layout([u32("width"), u32("height"), u32("ticks_per_second"), u32("nominal_layer_count", COUNT),
+    u32("nominal_frame_count", COUNT), u32("nominal_play_time_ticks"), u32("simplicity_profile", FLAGS)]);
+var sxnx_mng_header = sxLayout(0x603200CA, "mng_header", BE, sxnx_mng_header_fields);
+var sxnx_mng_png_header_fields = layout([u32("width"), u32("height"), u8("depth"), u8("color_type", ID), u8("compression", ID),
+    u8("filter", ID), u8("interlace", ID)]);
+var sxnx_mng_png_header = sxLayout(0x603200CB, "mng_png_header", BE, sxnx_mng_png_header_fields);
+var sxnx_mng_gray_fields = layout([u16("gray")]);
+var sxnx_mng_gray = sxLayout(0x603200CC, "mng_gray", BE, sxnx_mng_gray_fields);
+var sxnx_mng_rgb_fields = layout([u16("red"), u16("green"), u16("blue")]);
+var sxnx_mng_rgb = sxLayout(0x603200CD, "mng_rgb", BE, sxnx_mng_rgb_fields);
+var sxnx_mng_palette_index_fields = layout([u8("index", ID)]);
+var sxnx_mng_palette_index = sxLayout(0x603200CE, "mng_palette_index", LE, sxnx_mng_palette_index_fields);
+var sxnx_mng_alpha_fields = layout([u8("alpha")]);
+var sxnx_mng_alpha = sxLayout(0x603200CF, "mng_alpha", LE, sxnx_mng_alpha_fields);
+var sxnx_mng_gamma_fields = layout([u32("gamma_100000")]);
+var sxnx_mng_gamma = sxLayout(0x603200D0, "mng_gamma", BE, sxnx_mng_gamma_fields);
+var sxnx_mng_chromaticity_fields = layout([u32("white_x_100000"), u32("white_y_100000"), u32("red_x_100000"),
+    u32("red_y_100000"), u32("green_x_100000"), u32("green_y_100000"), u32("blue_x_100000"), u32("blue_y_100000")]);
+var sxnx_mng_chromaticity = sxLayout(0x603200D1, "mng_chromaticity", BE, sxnx_mng_chromaticity_fields);
+var sxnx_mng_srgb_fields = layout([u8("rendering_intent", ID)]);
+var sxnx_mng_srgb = sxLayout(0x603200D2, "mng_srgb", LE, sxnx_mng_srgb_fields);
+var sxnx_mng_physical_fields = layout([u32("horizontal_pixels"), u32("vertical_pixels"), u8("unit", ID)]);
+var sxnx_mng_physical = sxLayout(0x603200D3, "mng_physical", BE, sxnx_mng_physical_fields);
+var sxnx_mng_term_fields = layout([u8("termination_action", ID)]);
+var sxnx_mng_term = sxLayout(0x603200D4, "mng_term", LE, sxnx_mng_term_fields);
+var sxnx_mng_fram_fields = layout([u8("framing_mode", ID)]);
+var sxnx_mng_fram = sxLayout(0x603200D5, "mng_fram", LE, sxnx_mng_fram_fields);
+var sxnx_mng_defi_fields = layout([u16("object_id", ID)]);
+var sxnx_mng_defi = sxLayout(0x603200D6, "mng_defi", BE, sxnx_mng_defi_fields);
+var sxnx_mng_back_flag_fields = layout([u8("mandatory", FLAGS)]);
+var sxnx_mng_back_flag = sxLayout(0x603200D7, "mng_back_flag", LE, sxnx_mng_back_flag_fields);
+function sxnx_mng(v) {
+    if (!sxnx_row(v, sxnx_mng_signature, 0, v.n)) {
+        return false;
+    }
+    var p = 8;
+    var color = 0;
+    while (p < v.n) {
+        if (!sxnx_row(v, sxnx_mng_chunk, p, v.n)) {
+            return false;
+        }
+        var z = sxnx_u32(v.p, p, true);
+        var id = sxnx_u32(v.p, p + 4, true);
+        p += 8;
+        if (!sxnx_need(v, p, z + 4, v.n) || !sxnx_row(v, sxnx_mng_crc, p + z, v.n)) {
+            return false;
+        }
+        var l = null;
+        switch (id) {
+        case 0x4D484452:
+            l = sxnx_mng_header;
+            break;
+        case 0x49484452:
+            l = sxnx_mng_png_header;
+            if (!sxnx_need(v, p, 13, p + z)) {
+                return false;
+            }
+            color = v.p[p + 9];
+            break;
+        case 0x504C5445:
+            if (z % 3 || !sxnx_table(v, sxnx_rgb_palette_entry, p, Math.floor(z / 3), p + z)) {
+                return false;
+            }
+            break;
+        case 0x74524E53:
+            if (color === 3) {
+                if (!sxnx_table(v, sxnx_mng_alpha, p, z, p + z)) {
+                    return false;
+                }
+            } else {
+                l = color === 0 ? sxnx_mng_gray : sxnx_mng_rgb;
+            }
+            break;
+        case 0x624B4744:
+            l = color === 3 ? sxnx_mng_palette_index : color === 0 || color === 4 ? sxnx_mng_gray : sxnx_mng_rgb;
+            break;
+        case 0x67414D41:
+            l = sxnx_mng_gamma;
+            break;
+        case 0x6348524D:
+            l = sxnx_mng_chromaticity;
+            break;
+        case 0x73524742:
+            l = sxnx_mng_srgb;
+            break;
+        case 0x70485973:
+            l = sxnx_mng_physical;
+            break;
+        case 0x5445524D:
+            l = sxnx_mng_term;
+            break;
+        case 0x4652414D:
+            l = sxnx_mng_fram;
+            break;
+        case 0x44454649:
+            l = sxnx_mng_defi;
+            break;
+        case 0x4241434B:
+            l = sxnx_mng_rgb;
+            if (z === 7 && !sxnx_row(v, sxnx_mng_back_flag, p + 6, p + z)) {
+                return false;
+            }
+            break;
+        default:
+            break;
+        }
+        if (l !== null && !sxnx_row(v, l, p, p + z)) {
+            return false;
+        }
+        p += (z + 4) >>> 0;
+    }
+    return true;
+}
+function sx_mng_animation_build(v) {
+    return sxnx_mng(v);
+}

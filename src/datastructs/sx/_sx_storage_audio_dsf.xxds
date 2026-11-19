@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_dsf/xx_audio_dsf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_dsf_header_fields = layout([chars("chunk_id", 4, STRING), u64("chunk_size", SIZE), u64("file_size", SIZE),
+    u64("metadata_offset", OFFSET)]);
+var sx_st_dsf_header = sxLayout(0x60080013, "dsf_header", LE, sx_st_dsf_header_fields);
+var sx_st_dsf_format_fields = layout([chars("chunk_id", 4, STRING), u64("chunk_size", SIZE), u32("format_version"),
+    u32("format_id", ID), u32("channel_type", ID), u32("channel_count", COUNT), u32("sample_rate"), u32("bits_per_sample"),
+    u64("sample_count", COUNT), u32("block_size_per_channel", SIZE), u32("reserved", RESERVED)]);
+var sx_st_dsf_format = sxLayout(0x60080014, "dsf_format", LE, sx_st_dsf_format_fields);
+var sx_st_dsf_data_fields = layout([chars("chunk_id", 4, STRING), u64("chunk_size", SIZE)]);
+var sx_st_dsf_data = sxLayout(0x60080015, "dsf_data", LE, sx_st_dsf_data_fields);
+function sx_audio_dsf_build(c) {
+    var ok = false;
+    ok = sx_add(c, sx_st_dsf_header, 0, 28) && sx_add(c, sx_st_dsf_format, 28, 52) && sx_add(c, sx_st_dsf_data, 80, 12);
+    return ok && sx_st_finish(c);
+}

@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/igf2/xx_igf2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_igf2_header_fields = layout([u16("signature", SIGNATURE), bytes("opaque1", 6), i32("container_size", SIZE),
+    i32("positive_count_word"), bytes("opaque2", 16), u32("first_record_offset", OFFSET),
+    field("complemented_record_offset", "uint32_ones_le", 4, OFFSET)]);
+var sxasy_igf2_header = sxLayout(0x60440012, "igf2_header", LE, sxasy_igf2_header_fields);
+var sxasy_igf2_member56_fields = layout([u16("signature", SIGNATURE), u16("tag"), bytes("opaque1", 16), u32("file_time"),
+    bytes("opaque2", 4), i32("uncompressed_size", SIZE), bytes("opaque3", 4), i32("compressed_size", SIZE), bytes("opaque4", 16)]);
+var sxasy_igf2_member56 = sxLayout(0x60440013, "igf2_member56", LE, sxasy_igf2_member56_fields);
+var sxasy_igf2_member44_fields = layout([u16("signature", SIGNATURE), u16("tag"), bytes("opaque1", 12), u32("file_time"),
+    bytes("opaque2", 4), i32("uncompressed_size", SIZE), bytes("opaque3", 4), i32("compressed_size", SIZE), bytes("opaque4", 8)]);
+var sxasy_igf2_member44 = sxLayout(0x60440014, "igf2_member44", LE, sxasy_igf2_member44_fields);
+var sxasy_igf2_end_fields = layout([u16("signature", SIGNATURE), u16("end_tag", SIGNATURE)]);
+var sxasy_igf2_end = sxLayout(0x60440015, "igf2_end", LE, sxasy_igf2_end_fields);
+function sxasy_igf2_scan(c, start, hs, emit, count, ended) {
+    var p = start;
+    count[0] = 0;
+    ended[0] = false;
+    for (var i = 0; i < 65537; i++) {
+        var b = [];
+        if (!sxasy_read(c, p, b, 4)) {
+            return false;
+        }
+        if (sxasy_uint(b, 2, 2, false) === 65535) {
+            ended[0] = true;
+            return !emit || sxasy_add(c, sxasy_igf2_end, p);
+        }
+        if (!sxasy_read(c, p, b, 56) || sxasy_uint(b, 0, 2, false) !== 0xECDB) {
+            return false;
+        }
+        var packedoff = hs === 56 ? 36 : 32;
+        var plainoff = hs === 56 ? 28 : 24;
+        var z = sxasy_uint(b, packedoff, 4, false);
+        var plain = sxasy_uint(b, plainoff, 4, false);
+        var q = [p + hs];
+        if (z > 2147483647 || plain > 2147483647 || !sxasy_zstr(c, q, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 1024) || q[0] === p + hs + 1) {
+            return false;
+        }
+        var relative = sxAnd64(sxU64(q[0] - p) + 4, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        if (!sxasy_span(c, p, relative) || !sxasy_span(c, p + relative, z)) {
+            return false;
+        }
+        if (emit && !sxasy_add(c, hs === 56 ? sxasy_igf2_member56 : sxasy_igf2_member44, p)) {
+            return false;
+        }
+        count[0]++;
+        p += relative + z;
+    }
+    return false;
+}
+function sxasy_igf2(c) {
+    var p = [0];
+    var a = [0];
+    var b = [0];
+    var ae = [false];
+    var be = [false];
+    if (!sxasy_word(c, 32, 4, false, p) || p[0] < 40 || !sxasy_add(c, sxasy_igf2_header, 0)) {
+        return false;
+    }
+    sxasy_igf2_scan(c, p[0], 56, false, a, ae);
+    var hs = 56;
+    if (!ae[0]) {
+        sxasy_igf2_scan(c, p[0], 44, false, b, be);
+        if (be[0] || b[0] > a[0]) {
+            hs = 44;
+        }
+    }
+    return sxasy_igf2_scan(c, p[0], hs, true, a, ae);
+}
+function sx_igf2_build(c) {
+    return sxasy_igf2(c);
+}

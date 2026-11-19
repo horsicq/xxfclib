@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/idtech_bsp/xx_idtech_bsp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_idtech_bsp_lump_fields = layout([i32("file_offset", OFFSET), i32("file_size", SIZE)]);
+var sxgm_idtech_bsp_lump = sxLayout(0x60270046, "idtech_bsp_lump", LE, sxgm_idtech_bsp_lump_fields);
+function sx_idtech_bsp_build(c, b) {
+    return sxgm_read(c, 0, b, 8) && sxgm_add(c, sxgm_idtech_bsp_header, 0) && sxgm_table(c, sxgm_idtech_bsp_lump, 8, sxgm32(b, 4, false) === 38 ? 19 : 17);
+}

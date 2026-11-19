@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/inivation_aedat/xx_inivation_aedat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_aedat2_event_fields = layout([i32("event_address", FLAGS), i32("timestamp")]);
+var sxscx_aedat2_event = sxLayout(0x60310001, "aedat2_event", BE, sxscx_aedat2_event_fields);
+function sxscx_aedat(c, b, n) {
+    var at = 0;
+    while (at < n && b[at] === 35 /*#*/) {
+        while (at < n && b[at] !== 10) {
+            at++;
+        }
+        if (at === n) {
+            return false;
+        }
+        at++;
+    }
+    return at >= 13 && at < n && sxU64(n - at) % 8 === 0 && sxscx_table(c, sxscx_aedat2_event, at, Math.floor(sxU64(n - at) / 8));
+}
+function sx_inivation_aedat_build(c, b) {
+    return sxscx_aedat(c, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

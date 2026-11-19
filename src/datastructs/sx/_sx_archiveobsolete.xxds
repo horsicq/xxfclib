@@ -1,0 +1,520 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveobsolete.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_sw_path_length_fields = layout([u16("name_size", SIZE)]);
+var sxao_sw_path_length = sxLayout(0x60700002, "sw_path_length", BE, sxao_sw_path_length_fields);
+var sxao_archiveobsolete_name_fields = layout([field("name", "char", 0)]);
+var sxao_archiveobsolete_name = sxLayout(0x60700003, "archiveobsolete_name", LE, sxao_archiveobsolete_name_fields);
+var sxao_archiveobsolete_path_fields = layout([field("path", "char", 0)]);
+var sxao_archiveobsolete_path = sxLayout(0x60700004, "archiveobsolete_path", LE, sxao_archiveobsolete_path_fields);
+var sxao_wraptor_signature_fields = layout([u32("signature", SIGNATURE)]);
+var sxao_wraptor_signature = sxLayout(0x60700014, "wraptor_signature", LE, sxao_wraptor_signature_fields);
+var sxao_wraptor_flags_fields = layout([u8("flags", FLAGS)]);
+var sxao_wraptor_flags = sxLayout(0x60700015, "wraptor_flags", LE, sxao_wraptor_flags_fields);
+var sxao_wraptor_checksum_fields = layout([u16("checksum", CHECKSUM)]);
+var sxao_wraptor_checksum = sxLayout(0x60700016, "wraptor_checksum", LE, sxao_wraptor_checksum_fields);
+var sxao_wraptor_end_fields = layout([u32("signature", SIGNATURE)]);
+var sxao_wraptor_end = sxLayout(0x60700017, "wraptor_end", LE, sxao_wraptor_end_fields);
+var sxao_corelltec_member_fields = layout([u16("record_size", SIZE), u32("block_offset", OFFSET),
+    u32("decoded_member_offset", OFFSET), u32("uncompressed_size", SIZE)]);
+var sxao_corelltec_member = sxLayout(0x60700019, "corelltec_member", LE, sxao_corelltec_member_fields);
+var sxao_archiveobsolete_dcl_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxao_archiveobsolete_dcl = sxLayout(0x6070003F, "archiveobsolete_dcl", LE, sxao_archiveobsolete_dcl_fields);
+function sx_archiveobsolete_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60700000 || id >= 0x60710000) {
+        return true;
+    }
+    if (r.type !== null && (!sxStrncmp(r.type, "ascii_decimal[", 14) || !sxStrncmp(r.type, "ascii_octal_padded[", 19)) && r.value.t !== 8 /*XX_VAR_TYPE_UINT64*/ && r.value.t !== 4 /*XX_VAR_TYPE_INT64*/) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60700007:
+        if (r.name === "flags") {
+            text = "Per-byte+0x33 storage bias; decoded bit0x10 selects DCL";
+        }
+        break;
+    case 0x60700008:
+        if (r.name === "name_size") {
+            text = "Decoded length includes the NUL; native name extent is directory-bounded, not record-bounded";
+        }
+        break;
+    case 0x6070000A:
+        if (r.name === "checksum") {
+            text = "Additive sum of stored payload bytes";
+        }
+        if (r.name === "compressed_size") {
+            text = "Physical payload uses min(compressed_size,uncompressed_size); compressed_size>=uncompressed_size means stored";
+        }
+        break;
+    case 0x6070000D:
+        if (r.name === "last_block_size") {
+            text = "Earlier blocks decode to16384 bytes each";
+        }
+        break;
+    case 0x6070000E:
+        if (r.name === "compressed_size") {
+            text = "Stored if equal to this block plain size; otherwise independent12-bit LZW";
+        }
+        break;
+    case 0x6070000F:
+        if (r.name === "version") {
+            text = "Below0x17 uses directory CRC and old solid coder";
+        }
+        if (r.name === "window_bits") {
+            text = "Encoded power of two,10..21";
+        }
+        break;
+    case 0x60700011:
+        if (r.name === "length_high") {
+            text = "Bit7 is set; low7 bits are upper length bits";
+        }
+        if (r.name === "length_low") {
+            text = "Full byte length=((length_high&0x7f)<<8)|length_low";
+        }
+        break;
+    case 0x60700013:
+        if (r.name === "crc16") {
+            text = "Old stream variant plaintext checksum";
+        }
+        break;
+    case 0x60700016:
+        if (r.name === "checksum") {
+            text = "Stored word; algorithm not verified by native reader";
+        }
+        break;
+    case 0x60700018:
+        if (r.name === "unknown") {
+            text = "Meaning not established";
+        }
+        break;
+    case 0x60700019:
+        if (r.name === "block_offset") {
+            text = "Relative to physical payload area after directory";
+        }
+        if (r.name === "decoded_member_offset") {
+            text = "Offset in decompressed block, not a physical file coordinate";
+        }
+        break;
+    case 0x6070001B:
+        if (r.name === "crc32") {
+            text = "Plaintext checksum";
+        }
+        if (r.name === "primary_index") {
+            text = "Inverse BWT primary row";
+        }
+        if (r.name === "hole_index") {
+            text = "Inverse BWT sentinel row";
+        }
+        break;
+    case 0x6070001C:
+        if (r.name === "compressed_size_hint") {
+            text = "Stored hint; actual block chain can have a different length";
+        }
+        break;
+    case 0x6070001E:
+        if (r.name === "version") {
+            text = "0x0100 LH1 or0x0110 stop-symbol LZHUF";
+        }
+        break;
+    case 0x6070001F:
+        if (r.name === "jamcrc") {
+            text = "v1.00 plaintext; v1.10 matching packed checksum selects compact coder, otherwise plaintext wide coder";
+        }
+        break;
+    case 0x60700022:
+        if (r.name === "kind") {
+            text = "0 terminator,1 file,2 enter directory,3 leave directory";
+        }
+        break;
+    case 0x60700027:
+        if (r.name === "header_size_minus2") {
+            text = "Encoded header length equals name_size+15; actual header is stored value+2";
+        }
+        if (r.name === "header_check") {
+            text = "Algorithm not established";
+        }
+        if (r.name === "modification_time") {
+            text = "Unix seconds since1970-01-01";
+        }
+        if (r.name === "crc16") {
+            text = "CRC16/ARC of plaintext";
+        }
+        break;
+    case 0x60700029:
+        if (r.name === "volume_prefix") {
+            text = "All-zero standalone prefix, or repeated [20/20] tag in executable-overlay variant";
+        }
+        break;
+    case 0x6070002A:
+        if (r.name === "stored_member_size") {
+            text = "Includes the member prologue/header";
+        }
+        break;
+    case 0x6070002B:
+        if (r.name === "record_type") {
+            text = "0x74 full member,0x75 continuation";
+        }
+        break;
+    case 0x6070002C:
+        if (r.name === "attributes") {
+            text = "DOS attributes word at member+0xba";
+        }
+        if (r.name === "compressed_size") {
+            text = "Declared whole member stream, possibly continued in next volume";
+        }
+        if (r.name === "dos_date_word") {
+            text = "Low16 bits contain DOS date";
+        }
+        if (r.name === "dos_time_word") {
+            text = "Low16 bits contain DOS time";
+        }
+        break;
+    case 0x6070002F:
+        if (r.name === "crc32") {
+            text = "Plaintext checksum";
+        }
+        if (r.name === "method") {
+            text = "1 DCL,2 stored";
+        }
+        break;
+    case 0x60700033:
+        if (r.name === "group") {
+            text = "Path or volume identifier";
+        }
+        if (r.name === "size_and_stored_flag") {
+            text = "Bit31 means stored, low31 bits are unreliable for stored members";
+        }
+        break;
+    case 0x60700035:
+        if (r.name === "name_offset") {
+            text = "Relative to name table";
+        }
+        if (r.name === "timestamp") {
+            text = "Stored timestamp; epoch not established";
+        }
+        break;
+    case 0x60700036:
+        if (r.name === "crc1") {
+            text = "Opaque stored checksum word";
+        }
+        if (r.name === "crc2") {
+            text = "CRC16/IBM-3740 of plaintext";
+        }
+        if (r.name === "method") {
+            text = "1 stored,11 LH5 with per-segment CRC words";
+        }
+        break;
+    case 0x60700037:
+        if (r.name === "crc16") {
+            text = "CRC16/IBM-3740 over header bytes2 through header_size-3";
+        }
+        break;
+    case 0x60700038:
+        if (r.name === "crc16") {
+            text = "CRC16/IBM-3740 of up to4094 coded bytes; whole declared segment must be physically present";
+        }
+        break;
+    case 0x6070003A:
+        if (r.name === "modification_time") {
+            text = "Unix seconds since epoch";
+        }
+        if (r.name === "mode") {
+            text = "Octal ASCII file type and permissions";
+        }
+        break;
+    case 0x6070003D:
+        if (r.name === "published") {
+            text = "0 extractor resource,nonzero public archive member";
+        }
+        break;
+    case 0x6070003E:
+        if (r.name === "method") {
+            text = "0 stored,6 DCL";
+        }
+        if (r.name === "crc32") {
+            text = "Packed stream checksum";
+        }
+        break;
+    case 0x6070003F:
+        if (r.name === "literal_mode") {
+            text = "0 direct or1 Huffman literals";
+        }
+        if (r.name === "dictionary_bits") {
+            text = "4=1KiB,5=2KiB,6=4KiB; encoded power,not byte count";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxao_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxao_read(c, p, b, b_o, n) {
+    return sxao_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxao_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxao_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxao_read(c, p, b, 0, n)) {
+        return false;
+    }
+    v[0] = sxao_uint(b, 0, n, be);
+    return true;
+}
+function sxao_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxao_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxao_add(c, l, p) {
+    return sxao_put(c, l, p, 0, false);
+}
+function sxao_text(c, l, p, n, aliases) {
+    return (!n || n > 4096 ? 1 : (sxao_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxao_zlen(c, p, end, n) {
+    var b = [0];
+    n[0] = 0;
+    while (p < end && n[0] < 4096) {
+        if (!sxao_read(c, p++, b, 0, 1)) {
+            return false;
+        }
+        n[0]++;
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxao_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxao_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxao_order, true);
+    return !c.failed;
+}
+function sxao_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxao_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxao_dcl(c, p, n) {
+    var b = [];
+    return (n < 2 || !sxao_read(c, p, b, 0, 2) || b[0] > 1 || b[1] < 4 || b[1] > 6 ? 1 : (sxao_add(c, sxao_archiveobsolete_dcl, p) ? 1 : 0)) !== 0;
+}
+function sxao_native_members(c) {
+    var s = sxArcCreate(c.f);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    var end = 0;
+    for (var work = 0; work < 20000; work++) {
+        var r = sxArcCurrent(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset < c.f.base_address || r.header_size < 0 || r.data_offset < c.f.base_address || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+        var n = (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size);
+        var d = (r.data_offset - c.f.base_address < 0 ? r.data_offset - c.f.base_address + SX_U64_MAX : r.data_offset - c.f.base_address);
+        var z = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        if (!sxao_span(c, p, n) || !sxao_span(c, d, z)) {
+            ok = false;
+            break;
+        }
+        if (c.f.file_type === "SW") {
+            if (n < 2 || !sxao_add(c, sxao_sw_path_length, p) || !sxao_text(c, sxao_archiveobsolete_path, p + 2, sxU64(n - 2), false)) {
+                ok = false;
+                break;
+            }
+        } else if (c.f.file_type === "C64WRAPTOR") {
+            if (n < 6 || d !== p + n || !sxao_add(c, sxao_wraptor_signature, p) || !sxao_text(c, sxao_archiveobsolete_name, p + 4, sxU64(n - 5), false) || !sxao_add(c, sxao_wraptor_flags, sxU64(d - 1)) || !sxao_add(c, sxao_wraptor_checksum, d + z)) {
+                ok = false;
+                break;
+            }
+            end = d + z + 2;
+        } else if (c.f.file_type === "CORELLTEC") {
+            if (n < 15 || !sxao_add(c, sxao_corelltec_member, p) || !sxao_text(c, sxao_archiveobsolete_name, p + 14, sxU64(n - 14), false)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!sxArcNext(c.f, s)) {
+            break;
+        }
+    }
+    sxArcFree(c.f, s);
+    if (ok && c.f.file_type === "C64WRAPTOR") {
+        var tag = [0];
+        if (sxao_word(c, end, 4, false, tag) && tag[0] === 0x1A1A1A1A) {
+            ok = sxao_add(c, sxao_wraptor_end, end);
+        }
+    }
+    return ok;
+}
+function sx_archiveobsolete_supports(type) {
+    switch (type) {
+    case "SW":
+    case "DSL2":
+    case "TOPSPEED":
+    case "ULEAD":
+    case "QUANTUM":
+    case "C64WRAPTOR":
+    case "CORELLTEC":
+    case "RSVK":
+    case "ARCV":
+    case "BCW":
+    case "SCF":
+    case "RECOGNITA":
+    case "JASC":
+    case "BND":
+    case "SMSIPAK":
+    case "CPX":
+    case "CPX4":
+    case "RED":
+    case "AIAFF":
+    case "SOFTPAQ2":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archiveobsolete_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "SW":
+        ok = sx_sw_build(c);
+        break;
+    case "DSL2":
+        ok = sx_dsl2_build(c);
+        break;
+    case "TOPSPEED":
+        ok = sx_topspeed_build(c);
+        break;
+    case "ULEAD":
+        ok = sx_ulead_build(c);
+        break;
+    case "QUANTUM":
+        ok = sx_quantum_build(c);
+        break;
+    case "C64WRAPTOR":
+        ok = sx_c64wraptor_build(c);
+        break;
+    case "CORELLTEC":
+        ok = sx_corelltec_build(c);
+        break;
+    case "RSVK":
+        ok = sx_rsvk_build(c);
+        break;
+    case "ARCV":
+        ok = sx_arcv_build(c);
+        break;
+    case "BCW":
+        ok = sx_bcw_build(c);
+        break;
+    case "SCF":
+        ok = sx_scf_build(c);
+        break;
+    case "RECOGNITA":
+        ok = sx_recognita_build(c);
+        break;
+    case "JASC":
+        ok = sx_jasc_build(c);
+        break;
+    case "BND":
+        ok = sx_bnd_build(c);
+        break;
+    case "SMSIPAK":
+        ok = sx_smsipak_build(c);
+        break;
+    case "CPX":
+    case "CPX4":
+        ok = sx_cpx_build(c);
+        break;
+    case "RED":
+        ok = sx_red_build(c);
+        break;
+    case "AIAFF":
+        ok = sx_aiaff_build(c);
+        break;
+    case "SOFTPAQ2":
+        ok = sx_softpaq2_build(c);
+        break;
+    default:
+        break;
+    }
+    return !!(c.count && sxao_finish(c));
+}

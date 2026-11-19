@@ -1,0 +1,103 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/supercard_scp/xx_supercard_scp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_scp_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version_bcd"), u8("disk_type", ID),
+    u8("revolution_count", COUNT), u8("first_track", ID), u8("last_track", ID), u8("flags", FLAGS), u8("bitcell_width"),
+    u8("heads", ID), u8("resolution_multiplier"), u32("checksum", CHECKSUM)]);
+var sxse_scp_header = sxLayout(0x602F0023, "scp_header", LE, sxse_scp_header_fields);
+var sxse_scp_track_offset_fields = layout([u32("track_offset", OFFSET)]);
+var sxse_scp_track_offset = sxLayout(0x602F0024, "scp_track_offset", LE, sxse_scp_track_offset_fields);
+var sxse_scp_track_header_fields = layout([chars("signature", 3, SIGNATURE), u8("track_number", ID)]);
+var sxse_scp_track_header = sxLayout(0x602F0025, "scp_track_header", LE, sxse_scp_track_header_fields);
+var sxse_scp_revolution_fields = layout([u32("index_duration"), u32("sample_count", COUNT), u32("data_offset", OFFSET)]);
+var sxse_scp_revolution = sxLayout(0x602F0026, "scp_revolution", LE, sxse_scp_revolution_fields);
+var sxse_scp_extension_header_fields = layout([chars("signature", 4, SIGNATURE), u32("data_size", SIZE)]);
+var sxse_scp_extension_header = sxLayout(0x602F0027, "scp_extension_header", LE, sxse_scp_extension_header_fields);
+var sxse_scp_write_splices_header_fields = layout([chars("signature", 4, SIGNATURE), u32("data_size", SIZE),
+    u32("reserved", RESERVED)]);
+var sxse_scp_write_splices_header = sxLayout(0x602F0028, "scp_write_splices_header", LE, sxse_scp_write_splices_header_fields);
+var sxse_scp_write_splice_fields = layout([u32("write_splice")]);
+var sxse_scp_write_splice = sxLayout(0x602F0029, "scp_write_splice", LE, sxse_scp_write_splice_fields);
+var sxse_scp_footer_fields = layout([u32("drive_manufacturer_offset", OFFSET), u32("drive_model_offset", OFFSET),
+    u32("drive_serial_offset", OFFSET), u32("creator_offset", OFFSET), u32("application_offset", OFFSET),
+    u32("comments_offset", OFFSET), i64("creation_time", TIMESTAMP), i64("modification_time", TIMESTAMP),
+    u8("application_version_bcd"), u8("hardware_version_bcd"), u8("firmware_version_bcd"), u8("footer_version_bcd"),
+    chars("signature", 4, SIGNATURE)]);
+var sxse_scp_footer = sxLayout(0x602F002A, "scp_footer", LE, sxse_scp_footer_fields);
+var sxse_scp_string_header_fields = layout([u16("string_size", SIZE)]);
+var sxse_scp_string_header = sxLayout(0x602F002B, "scp_string_header", LE, sxse_scp_string_header_fields);
+function sxse_scp(c) {
+    var h = [];
+    var b = [];
+    var first = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxse_read(c, 0, h, 16) || sxMemcmp(h, "SCP", 3) || h[5] < 1 || h[5] > 5 || !sxse_put(c, sxse_scp_header, 0, 16, 1) || !sxse_put(c, sxse_scp_track_offset, 16, 4, 168)) {
+        return false;
+    }
+    for (var i = 0; i < 168; i++) {
+        var p;
+        if ((p = sx_u32(c, (16 + ((4 * i) >>> 0)) >>> 0, false)) === null) {
+            return false;
+        }
+        if (!p) {
+            continue;
+        }
+        if (p < 688 || !sxse_read(c, p, b, 4) || sxMemcmp(b, "TRK", 3) || !sxse_put(c, sxse_scp_track_header, p, 4, 1) || !sxse_put(c, sxse_scp_revolution, p + 4, 12, h[5])) {
+            return false;
+        }
+        if (p < first) {
+            first = p;
+        }
+    }
+    if (first > 688 && sxse_read(c, 688, b, 8) && !sxMemcmp(b, "EXTS", 4)) {
+        var z = sxse_u32(b, 4, false);
+        var end = 696 + z;
+        if (end > first || !sxse_span(c, 696, z) || !sxse_put(c, sxse_scp_extension_header, 688, 8, 1)) {
+            return false;
+        }
+        p = 696;
+        for (i = 0; p < end && i < 4096; i++) {
+            if (sxU64(end - p) < 8 || !sxse_read(c, p, b, 8)) {
+                return false;
+            }
+            z = sxse_u32(b, 4, false);
+            if (z > sxU64(sxU64(end - p) - 8)) {
+                return false;
+            }
+            if (!sxMemcmp(b, "WRSP", 4) && z === 676) {
+                if (!sxse_put(c, sxse_scp_write_splices_header, p, 12, 1) || !sxse_put(c, sxse_scp_write_splice, p + 12, 4, 168)) {
+                    return false;
+                }
+            } else if (!sxse_put(c, sxse_scp_extension_header, p, 8, 1)) {
+                return false;
+            }
+            p += 8 + z;
+        }
+        if (p !== end) {
+            return false;
+        }
+    }
+    if (h[8] & 32) {
+        if (c.size < 48) {
+            return false;
+        }
+        p = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 48);
+        if (!sxse_read(c, p, b, 48) || sxMemcmpAt(b, 44, "FPCS", 0, 4) || !sxse_put(c, sxse_scp_footer, p, 48, 1)) {
+            return false;
+        }
+        for (i = 0; i < 6; i++) {
+            var q = sxse_u32(b, (4 * i) >>> 0, false);
+            if (q) {
+                if (q >= p || (z = sx_u16(c, q, false)) === null || z > sxU64(sxU64(p - q) - 2) || !sxse_span(c, q, 3 + z) || !sxse_put(c, sxse_scp_string_header, q, 2, 1)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_supercard_scp_build(c) {
+    return sxse_scp(c);
+}

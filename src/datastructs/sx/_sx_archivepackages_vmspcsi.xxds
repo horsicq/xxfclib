@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/vmspcsi/xx_vmspcsi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_vmspcsi_header_fields = layout([chars("banner", 32, SIGNATURE), bytes("unknown1", 24), u32("table_size", SIZE),
+    bytes("unknown2", 4), u32("record_count", COUNT), bytes("unknown3", 12)]);
+var sxap_vmspcsi_header = sxLayout(0x60720043, "vmspcsi_header", LE, sxap_vmspcsi_header_fields);
+var sxap_vmspcsi_table_fields = layout([u32("table_size", SIZE), u32("reserved1"), u32("magic", SIGNATURE), u32("reserved2"),
+    u16("context_count", COUNT), u16("header_size", SIZE)]);
+var sxap_vmspcsi_table = sxLayout(0x60720044, "vmspcsi_table", LE, sxap_vmspcsi_table_fields);
+var sxap_vmspcsi_context_fields = layout([u16("block_size", SIZE), u8("first_symbol"), u8("last_symbol"), u16("reserved"),
+    u16("header_size", SIZE), u16("node_offset", OFFSET), u16("map_offset", OFFSET)]);
+var sxap_vmspcsi_context = sxLayout(0x60720045, "vmspcsi_context", LE, sxap_vmspcsi_context_fields);
+var sxap_vmspcsi_bitmap_fields = layout([u8("leaf_flags", FLAGS)]);
+var sxap_vmspcsi_bitmap = sxLayout(0x60720046, "vmspcsi_bitmap", LE, sxap_vmspcsi_bitmap_fields);
+var sxap_vmspcsi_node_fields = layout([u8("symbol_or_child")]);
+var sxap_vmspcsi_node = sxLayout(0x60720047, "vmspcsi_node", LE, sxap_vmspcsi_node_fields);
+var sxap_vmspcsi_context_map_fields = layout([u16("next_context")]);
+var sxap_vmspcsi_context_map = sxLayout(0x60720048, "vmspcsi_context_map", LE, sxap_vmspcsi_context_map_fields);
+var sxap_vmspcsi_record_fields = layout([u16("unknown_record_word")]);
+var sxap_vmspcsi_record = sxLayout(0x60720049, "vmspcsi_record", LE, sxap_vmspcsi_record_fields);
+function sxap_pcsi(c) {
+    var n = [0];
+    var p = 532;
+    if (!sxap_add(c, sxap_vmspcsi_header, 0) || !sxap_add(c, sxap_vmspcsi_table, 512) || !sxap_word(c, 528, 2, false, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var h = [];
+        if (!sxap_read(c, p, h, 12) || !sxap_add(c, sxap_vmspcsi_context, p)) {
+            return false;
+        }
+        var z = sxap_uint(h, 0, 2, false);
+        var nodes = sxap_uint(h, 8, 2, false);
+        var map = sxap_uint(h, 10, 2, false);
+        var node_end = map ? map : z;
+        if (z < 12 || nodes <= 12 || node_end < nodes || node_end > z || !sxap_span(c, p, z)) {
+            return true;
+        }
+        if (!sxap_table(c, sxap_vmspcsi_bitmap, p + 12, 1, sxU64(nodes - 12)) || !sxap_table(c, sxap_vmspcsi_node, p + nodes, 1, sxU64(node_end - nodes))) {
+            return false;
+        }
+        if (map && sxU64(z - map) % 2 === 0 && !sxap_table(c, sxap_vmspcsi_context_map, p + map, 2, Math.floor(sxU64(z - map) / 2))) {
+            return false;
+        }
+        p += z;
+    }
+    p = sxAnd64(p + 511, sxK(0xFFFFFFFF, 0xFFFFFE00));
+    return !sxap_span(c, p, 2) || sxap_add(c, sxap_vmspcsi_record, p);
+}
+function sx_vmspcsi_build(c) {
+    return sxap_pcsi(c);
+}

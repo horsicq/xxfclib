@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/lsz/xx_lsz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_lsz_header_fields = layout([u32("magic", SIGNATURE), u16("version", ID)]);
+var sxdm_lsz_header = sxLayout(0x60230005, "lsz_header", LE, sxdm_lsz_header_fields);
+var sxdm_lsz_member_header_fields = layout([u32("tag", SIGNATURE), chars("filename", 13, STRING), u16("reserved", RESERVED),
+    i32("unpacked_size", SIZE), i32("packed_size", SIZE), u32("checksum", CHECKSUM), u16("dos_time", TIMESTAMP),
+    u16("dos_date", TIMESTAMP), u16("attributes", FLAGS), u16("method", ID), blob("reserved_tail", 12, RESERVED)]);
+var sxdm_lsz_member_header = sxLayout(0x60230006, "lsz_member_header", LE, sxdm_lsz_member_header_fields);
+function sxdm_lsz(c) {
+    var b = [];
+    var at = 6;
+    if (!sxdm_add(c, sxdm_lsz_header, 0, 6)) {
+        return false;
+    }
+    for (var i = 0; at < c.size; i++) {
+        if (i >= 65536 || !sx_read(c, at, b, 51)) {
+            return false;
+        }
+        var n = sxdm_u32(b, 23) | 0;
+        if (n < 0 || !sxdm_span(c, at + 51, n >>> 0) || !sxdm_add(c, sxdm_lsz_member_header, at, 51)) {
+            return false;
+        }
+        at += 51 + n;
+    }
+    return true;
+}
+function sx_lsz_build(c) {
+    return sxdm_lsz(c);
+}

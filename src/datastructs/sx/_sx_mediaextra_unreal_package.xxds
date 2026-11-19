@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/unreal_package/xx_unreal_package_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_ue1_header_fields = layout([u32("magic", SIGNATURE), u16("version", ID), u16("licensee_version", ID),
+    u32("package_flags", FLAGS), i32("name_count", COUNT), i32("name_offset", OFFSET), i32("export_count", COUNT),
+    i32("export_offset", OFFSET), i32("import_count", COUNT), i32("import_offset", OFFSET), i32("heritage_count", COUNT),
+    i32("heritage_offset", OFFSET)]);
+var sxmx_ue1_header = sxLayout(0x602E0056, "ue1_header", LE, sxmx_ue1_header_fields);
+var sxmx_ue1_name_flags_fields = layout([u32("object_flags", FLAGS)]);
+var sxmx_ue1_name_flags = sxLayout(0x602E0057, "ue1_name_flags", LE, sxmx_ue1_name_flags_fields);
+var sxmx_ue1_heritage_fields = layout([blob("guid", 16, ID)]);
+var sxmx_ue1_heritage = sxLayout(0x602E0058, "ue1_heritage", LE, sxmx_ue1_heritage_fields);
+function sxmx_ue1(v) {
+    if (!sxmx_row(v, sxmx_ue1_header, 0, v.n)) {
+        return false;
+    }
+    var at = [sxmx_u32(v.p, 16, false)];
+    var n = sxmx_u32(v.p, 12, false);
+    if (n > 4096) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxmx_cstr(v, at, v.n) || !sxmx_row(v, sxmx_ue1_name_flags, at[0], v.n)) {
+            return false;
+        }
+        at[0] += 4;
+    }
+    return sxmx_table(v, sxmx_ue1_heritage, sxmx_u32(v.p, 40, false), sxmx_u32(v.p, 36, false), v.n);
+}
+function sx_unreal_package_build(v) {
+    return sxmx_ue1(v);
+}

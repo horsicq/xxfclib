@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzip/xx_lzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_lzip_header_fields = layout([chars("magic", 4, SIGNATURE), u8("version"), u8("dictionary_size_code", ID)]);
+var sx_a_lzip_header = sxLayout(0x60040038, "lzip_header", LE, sx_a_lzip_header_fields);
+var sx_a_lzip_trailer_fields = layout([u32("crc32", CHECKSUM), u64("data_size", SIZE), u64("member_size", SIZE)]);
+var sx_a_lzip_trailer = sxLayout(0x60040039, "lzip_trailer", LE, sx_a_lzip_trailer_fields);
+function sx_a_lzip(c) {
+    var h = [];
+    var end = c.size;
+    if (!sx_read(c, 0, h, 6) || sxMemcmp(h, "LZIP", 4) || h[4] > 1) {
+        return false;
+    }
+    if (h[4] === 0) {
+        return sx_add(c, sx_a_lzip_header, 0, 6) && sx_raw(c, 6, c.size - 6);
+    }
+    if (c.f.format_size > 0 && c.f.format_size < c.size) {
+        end = c.f.format_size;
+    }
+    if (!sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    while (end > 0) {
+        var member;
+        if (end < 26 || (member = sx_u64(c, end - 8, false)) === null || member < 26 || member > (end < 0 ? end + SX_U64_MAX : end)) {
+            return false;
+        }
+        var start = end - (member >= SX_I64_MAX ? member - SX_U64_MAX : member);
+        if (!sx_read(c, start, h, 6) || sxMemcmp(h, "LZIP", 4) || h[4] !== 1 || !sx_add(c, sx_a_lzip_header, start, 6) || !sx_raw(c, start + 6, end - 20 - start - 6) || !sx_add(c, sx_a_lzip_trailer, end - 20, 20)) {
+            return false;
+        }
+        end = start;
+    }
+    return true;
+}
+function sx_lzip_build(c) {
+    return sx_a_lzip(c);
+}

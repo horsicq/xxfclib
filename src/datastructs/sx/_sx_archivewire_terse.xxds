@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/terse/xx_terse_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarwire_terse_spack_signature_fields = layout([bytes("signature", 4, SIGNATURE)]);
+var sxarwire_terse_spack_signature = sxLayout(0x608D0004, "terse_spack_signature", LE, sxarwire_terse_spack_signature_fields);
+var sxarwire_terse_profile_fields = layout([u8("profile_selector", ID), u8("profile_variant"), bytes("opaque_profile", 10)]);
+var sxarwire_terse_profile = sxLayout(0x608D0005, "terse_profile", LE, sxarwire_terse_profile_fields);
+var sxarwire_terse_code_bit0_fields = layout([field("pair_code", "msb_bits[0,12]", 2, ID)]);
+var sxarwire_terse_code_bit0 = sxLayout(0x608D007E, "terse_code_bit0", LE, sxarwire_terse_code_bit0_fields);
+var sxarwire_terse_code_bit4_fields = layout([field("pair_code", "msb_bits[4,12]", 2, ID)]);
+var sxarwire_terse_code_bit4 = sxLayout(0x608D007F, "terse_code_bit4", LE, sxarwire_terse_code_bit4_fields);
+var sxarwire_set_terse_code = [sxarwire_terse_code_bit0, sxarwire_terse_code_bit4];
+function sxarwire_terse(c) {
+    var h = [];
+    if (!sxarwire_read(c, 0, h, 4)) {
+        return false;
+    }
+    var prefix;
+    if (h[0] === 1 && h[1] === 0x89 && h[2] === 0x69 && h[3] === 0xA5) {
+        prefix = 4;
+        if (!sxarwire_put(c, sxarwire_terse_spack_signature, 0)) {
+            return false;
+        }
+    } else {
+        if (!sxarwire_read(c, 0, h, 12) || h[0] !== 2 && h[0] !== 5 && h[0] !== 9 || h[1] > 1) {
+            return false;
+        }
+        prefix = 12;
+        if (!sxarwire_put(c, sxarwire_terse_profile, 0)) {
+            return false;
+        }
+    }
+    var b = { c: c, bit: prefix * 8, lsb: false, cached_at: 0, cached: 0, have: false };
+    while (c.count < 20000) {
+        var p = b.bit;
+        var v = [0];
+        if (!sxarwire_take(b, 12, v) || !sxarwire_put(c, sxarwire_set_terse_code[Math.floor(sxAnd64(p, 7) / 4)], Math.floor(p / 8))) {
+            return false;
+        }
+        if (!v[0]) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_terse_build(c) {
+    return sxarwire_terse(c);
+}

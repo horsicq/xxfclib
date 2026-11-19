@@ -1,0 +1,2119 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_classicfs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_minix_directory_14_le_fields = layout([u16("inode_number"), chars("name", 14, NONE)]);
+var sxcf_minix_directory_14_le = sxLayout(0x603D000B, "minix_directory_14_le", LE, sxcf_minix_directory_14_le_fields);
+var sxcf_minix_directory_14_be_fields = layout([u16("inode_number"), chars("name", 14, NONE)]);
+var sxcf_minix_directory_14_be = sxLayout(0x603D000C, "minix_directory_14_be", BE, sxcf_minix_directory_14_be_fields);
+var sxcf_minix_directory_30_le_fields = layout([u16("inode_number"), chars("name", 30, NONE)]);
+var sxcf_minix_directory_30_le = sxLayout(0x603D000D, "minix_directory_30_le", LE, sxcf_minix_directory_30_le_fields);
+var sxcf_minix_directory_30_be_fields = layout([u16("inode_number"), chars("name", 30, NONE)]);
+var sxcf_minix_directory_30_be = sxLayout(0x603D000E, "minix_directory_30_be", BE, sxcf_minix_directory_30_be_fields);
+var sxcf_minix3_directory_le_fields = layout([u32("inode_number"), chars("name", 60, NONE)]);
+var sxcf_minix3_directory_le = sxLayout(0x603D000F, "minix3_directory_le", LE, sxcf_minix3_directory_le_fields);
+var sxcf_minix3_directory_be_fields = layout([u32("inode_number"), chars("name", 60, NONE)]);
+var sxcf_minix3_directory_be = sxLayout(0x603D0010, "minix3_directory_be", BE, sxcf_minix3_directory_be_fields);
+var sxcf_classic_block_number16_le_fields = layout([u16("block_number")]);
+var sxcf_classic_block_number16_le = sxLayout(0x603D0011, "classic_block_number16_le", LE, sxcf_classic_block_number16_le_fields);
+var sxcf_classic_block_number16_be_fields = layout([u16("block_number")]);
+var sxcf_classic_block_number16_be = sxLayout(0x603D0012, "classic_block_number16_be", BE, sxcf_classic_block_number16_be_fields);
+var sxcf_classic_block_number32_le_fields = layout([u32("block_number")]);
+var sxcf_classic_block_number32_le = sxLayout(0x603D0013, "classic_block_number32_le", LE, sxcf_classic_block_number32_le_fields);
+var sxcf_classic_block_number32_be_fields = layout([u32("block_number")]);
+var sxcf_classic_block_number32_be = sxLayout(0x603D0014, "classic_block_number32_be", BE, sxcf_classic_block_number32_be_fields);
+var sxcf_classic_block_number_pdp_fields = layout([field("block_number", "uint32_pdp", 4)]);
+var sxcf_classic_block_number_pdp = sxLayout(0x603D0015, "classic_block_number_pdp", LE, sxcf_classic_block_number_pdp_fields);
+var sxcf_v7_superblock_le_fields = layout([u16("first_data_block"), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_cache", "uint32[50]", 200), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), u32("last_update", TIMESTAMP), u32("free_block_count", COUNT),
+    u16("free_inode_count", COUNT), u16("interleave_m"), u16("interleave_n"), chars("volume_name", 6, NONE),
+    chars("pack_name", 6, NONE)]);
+var sxcf_v7_superblock_le = sxLayout(0x603D0016, "v7_superblock_le", LE, sxcf_v7_superblock_le_fields);
+var sxcf_v7_superblock_be_fields = layout([u16("first_data_block"), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_cache", "uint32[50]", 200), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), u32("last_update", TIMESTAMP), u32("free_block_count", COUNT),
+    u16("free_inode_count", COUNT), u16("interleave_m"), u16("interleave_n"), chars("volume_name", 6, NONE),
+    chars("pack_name", 6, NONE)]);
+var sxcf_v7_superblock_be = sxLayout(0x603D0017, "v7_superblock_be", BE, sxcf_v7_superblock_be_fields);
+var sxcf_v7_superblock_pdp_fields = layout([u16("first_data_block"), field("block_count", "uint32_pdp", 4, COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_00", "uint32_pdp", 4), field("free_block_01", "uint32_pdp", 4),
+    field("free_block_02", "uint32_pdp", 4), field("free_block_03", "uint32_pdp", 4), field("free_block_04", "uint32_pdp", 4),
+    field("free_block_05", "uint32_pdp", 4), field("free_block_06", "uint32_pdp", 4), field("free_block_07", "uint32_pdp", 4),
+    field("free_block_08", "uint32_pdp", 4), field("free_block_09", "uint32_pdp", 4), field("free_block_10", "uint32_pdp", 4),
+    field("free_block_11", "uint32_pdp", 4), field("free_block_12", "uint32_pdp", 4), field("free_block_13", "uint32_pdp", 4),
+    field("free_block_14", "uint32_pdp", 4), field("free_block_15", "uint32_pdp", 4), field("free_block_16", "uint32_pdp", 4),
+    field("free_block_17", "uint32_pdp", 4), field("free_block_18", "uint32_pdp", 4), field("free_block_19", "uint32_pdp", 4),
+    field("free_block_20", "uint32_pdp", 4), field("free_block_21", "uint32_pdp", 4), field("free_block_22", "uint32_pdp", 4),
+    field("free_block_23", "uint32_pdp", 4), field("free_block_24", "uint32_pdp", 4), field("free_block_25", "uint32_pdp", 4),
+    field("free_block_26", "uint32_pdp", 4), field("free_block_27", "uint32_pdp", 4), field("free_block_28", "uint32_pdp", 4),
+    field("free_block_29", "uint32_pdp", 4), field("free_block_30", "uint32_pdp", 4), field("free_block_31", "uint32_pdp", 4),
+    field("free_block_32", "uint32_pdp", 4), field("free_block_33", "uint32_pdp", 4), field("free_block_34", "uint32_pdp", 4),
+    field("free_block_35", "uint32_pdp", 4), field("free_block_36", "uint32_pdp", 4), field("free_block_37", "uint32_pdp", 4),
+    field("free_block_38", "uint32_pdp", 4), field("free_block_39", "uint32_pdp", 4), field("free_block_40", "uint32_pdp", 4),
+    field("free_block_41", "uint32_pdp", 4), field("free_block_42", "uint32_pdp", 4), field("free_block_43", "uint32_pdp", 4),
+    field("free_block_44", "uint32_pdp", 4), field("free_block_45", "uint32_pdp", 4), field("free_block_46", "uint32_pdp", 4),
+    field("free_block_47", "uint32_pdp", 4), field("free_block_48", "uint32_pdp", 4), field("free_block_49", "uint32_pdp", 4),
+    u16("free_inode_cache_count", COUNT), field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS),
+    u8("inode_cache_lock", FLAGS), u8("modified", FLAGS), u8("read_only", FLAGS),
+    field("last_update", "uint32_pdp", 4, TIMESTAMP), field("free_block_count", "uint32_pdp", 4, COUNT),
+    u16("free_inode_count", COUNT), u16("interleave_m"), u16("interleave_n"), chars("volume_name", 6, NONE),
+    chars("pack_name", 6, NONE)]);
+var sxcf_v7_superblock_pdp = sxLayout(0x603D0018, "v7_superblock_pdp", LE, sxcf_v7_superblock_pdp_fields);
+var sxcf_coherent_superblock_pdp_fields = layout([u16("first_data_block"), field("block_count", "uint32_pdp", 4, COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_00", "uint32_pdp", 4), field("free_block_01", "uint32_pdp", 4),
+    field("free_block_02", "uint32_pdp", 4), field("free_block_03", "uint32_pdp", 4), field("free_block_04", "uint32_pdp", 4),
+    field("free_block_05", "uint32_pdp", 4), field("free_block_06", "uint32_pdp", 4), field("free_block_07", "uint32_pdp", 4),
+    field("free_block_08", "uint32_pdp", 4), field("free_block_09", "uint32_pdp", 4), field("free_block_10", "uint32_pdp", 4),
+    field("free_block_11", "uint32_pdp", 4), field("free_block_12", "uint32_pdp", 4), field("free_block_13", "uint32_pdp", 4),
+    field("free_block_14", "uint32_pdp", 4), field("free_block_15", "uint32_pdp", 4), field("free_block_16", "uint32_pdp", 4),
+    field("free_block_17", "uint32_pdp", 4), field("free_block_18", "uint32_pdp", 4), field("free_block_19", "uint32_pdp", 4),
+    field("free_block_20", "uint32_pdp", 4), field("free_block_21", "uint32_pdp", 4), field("free_block_22", "uint32_pdp", 4),
+    field("free_block_23", "uint32_pdp", 4), field("free_block_24", "uint32_pdp", 4), field("free_block_25", "uint32_pdp", 4),
+    field("free_block_26", "uint32_pdp", 4), field("free_block_27", "uint32_pdp", 4), field("free_block_28", "uint32_pdp", 4),
+    field("free_block_29", "uint32_pdp", 4), field("free_block_30", "uint32_pdp", 4), field("free_block_31", "uint32_pdp", 4),
+    field("free_block_32", "uint32_pdp", 4), field("free_block_33", "uint32_pdp", 4), field("free_block_34", "uint32_pdp", 4),
+    field("free_block_35", "uint32_pdp", 4), field("free_block_36", "uint32_pdp", 4), field("free_block_37", "uint32_pdp", 4),
+    field("free_block_38", "uint32_pdp", 4), field("free_block_39", "uint32_pdp", 4), field("free_block_40", "uint32_pdp", 4),
+    field("free_block_41", "uint32_pdp", 4), field("free_block_42", "uint32_pdp", 4), field("free_block_43", "uint32_pdp", 4),
+    field("free_block_44", "uint32_pdp", 4), field("free_block_45", "uint32_pdp", 4), field("free_block_46", "uint32_pdp", 4),
+    field("free_block_47", "uint32_pdp", 4), field("free_block_48", "uint32_pdp", 4), field("free_block_49", "uint32_pdp", 4),
+    field("free_block_50", "uint32_pdp", 4), field("free_block_51", "uint32_pdp", 4), field("free_block_52", "uint32_pdp", 4),
+    field("free_block_53", "uint32_pdp", 4), field("free_block_54", "uint32_pdp", 4), field("free_block_55", "uint32_pdp", 4),
+    field("free_block_56", "uint32_pdp", 4), field("free_block_57", "uint32_pdp", 4), field("free_block_58", "uint32_pdp", 4),
+    field("free_block_59", "uint32_pdp", 4), field("free_block_60", "uint32_pdp", 4), field("free_block_61", "uint32_pdp", 4),
+    field("free_block_62", "uint32_pdp", 4), field("free_block_63", "uint32_pdp", 4), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), field("last_update", "uint32_pdp", 4, TIMESTAMP),
+    field("free_block_count", "uint32_pdp", 4, COUNT), u16("free_inode_count", COUNT), u16("interleave_m"), u16("interleave_n"),
+    chars("volume_name", 6, NONE), chars("pack_name", 6, NONE), field("unique_unused", "uint32_pdp", 4, RESERVED)]);
+var sxcf_coherent_superblock_pdp = sxLayout(0x603D0019, "coherent_superblock_pdp", LE, sxcf_coherent_superblock_pdp_fields);
+var sxcf_sysv2_superblock_le_fields = layout([u16("first_data_block"), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_cache", "uint32[50]", 200), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), u32("last_update", TIMESTAMP), field("device_information", "uint16[4]", 8),
+    u32("free_block_count", COUNT), u16("free_inode_count", COUNT), chars("volume_name", 6, NONE), chars("pack_name", 6, NONE),
+    field("reserved", "byte[56]", 56, RESERVED), u32("state", FLAGS), u32("magic", SIGNATURE), u32("block_size_type", ID)]);
+var sxcf_sysv2_superblock_le = sxLayout(0x603D001A, "sysv2_superblock_le", LE, sxcf_sysv2_superblock_le_fields);
+var sxcf_sysv2_superblock_be_fields = layout([u16("first_data_block"), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_cache", "uint32[50]", 200), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), u32("last_update", TIMESTAMP), field("device_information", "uint16[4]", 8),
+    u32("free_block_count", COUNT), u16("free_inode_count", COUNT), chars("volume_name", 6, NONE), chars("pack_name", 6, NONE),
+    field("reserved", "byte[56]", 56, RESERVED), u32("state", FLAGS), u32("magic", SIGNATURE), u32("block_size_type", ID)]);
+var sxcf_sysv2_superblock_be = sxLayout(0x603D001B, "sysv2_superblock_be", BE, sxcf_sysv2_superblock_be_fields);
+var sxcf_sysv4_superblock_le_fields = layout([u16("first_data_block"), u16("padding0", RESERVED), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), u16("padding1", RESERVED), field("free_block_cache", "uint32[50]", 200),
+    u16("free_inode_cache_count", COUNT), u16("padding2", RESERVED), field("free_inode_cache", "uint16[100]", 200),
+    u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS), u8("modified", FLAGS), u8("read_only", FLAGS),
+    u32("last_update", TIMESTAMP), field("device_information", "uint16[4]", 8), u32("free_block_count", COUNT),
+    u16("free_inode_count", COUNT), u16("padding3", RESERVED), chars("volume_name", 6, NONE), chars("pack_name", 6, NONE),
+    field("reserved", "byte[48]", 48, RESERVED), u32("state", FLAGS), u32("magic", SIGNATURE), u32("block_size_type", ID)]);
+var sxcf_sysv4_superblock_le = sxLayout(0x603D001C, "sysv4_superblock_le", LE, sxcf_sysv4_superblock_le_fields);
+var sxcf_sysv4_superblock_be_fields = layout([u16("first_data_block"), u16("padding0", RESERVED), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), u16("padding1", RESERVED), field("free_block_cache", "uint32[50]", 200),
+    u16("free_inode_cache_count", COUNT), u16("padding2", RESERVED), field("free_inode_cache", "uint16[100]", 200),
+    u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS), u8("modified", FLAGS), u8("read_only", FLAGS),
+    u32("last_update", TIMESTAMP), field("device_information", "uint16[4]", 8), u32("free_block_count", COUNT),
+    u16("free_inode_count", COUNT), u16("padding3", RESERVED), chars("volume_name", 6, NONE), chars("pack_name", 6, NONE),
+    field("reserved", "byte[48]", 48, RESERVED), u32("state", FLAGS), u32("magic", SIGNATURE), u32("block_size_type", ID)]);
+var sxcf_sysv4_superblock_be = sxLayout(0x603D001D, "sysv4_superblock_be", BE, sxcf_sysv4_superblock_be_fields);
+var sxcf_xenix_superblock_le_fields = layout([u16("first_data_block"), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_cache", "uint32[100]", 400), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), u32("last_update", TIMESTAMP), u32("free_block_count", COUNT),
+    u16("free_inode_count", COUNT), field("device_information", "uint16[4]", 8), chars("volume_name", 6, NONE),
+    chars("pack_name", 6, NONE), u8("clean", FLAGS), field("reserved", "byte[371]", 371, RESERVED), u32("magic", SIGNATURE),
+    u32("block_size_type", ID)]);
+var sxcf_xenix_superblock_le = sxLayout(0x603D001E, "xenix_superblock_le", LE, sxcf_xenix_superblock_le_fields);
+var sxcf_xenix_superblock_be_fields = layout([u16("first_data_block"), u32("block_count", COUNT),
+    u16("free_block_cache_count", COUNT), field("free_block_cache", "uint32[100]", 400), u16("free_inode_cache_count", COUNT),
+    field("free_inode_cache", "uint16[100]", 200), u8("free_block_lock", FLAGS), u8("inode_cache_lock", FLAGS),
+    u8("modified", FLAGS), u8("read_only", FLAGS), u32("last_update", TIMESTAMP), u32("free_block_count", COUNT),
+    u16("free_inode_count", COUNT), field("device_information", "uint16[4]", 8), chars("volume_name", 6, NONE),
+    chars("pack_name", 6, NONE), u8("clean", FLAGS), field("reserved", "byte[371]", 371, RESERVED), u32("magic", SIGNATURE),
+    u32("block_size_type", ID)]);
+var sxcf_xenix_superblock_be = sxLayout(0x603D001F, "xenix_superblock_be", BE, sxcf_xenix_superblock_be_fields);
+var sxcf_unix_inode_le_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u16("user_id", ID), u16("group_id", ID),
+    u32("file_size", SIZE), field("block_numbers", "uint24[13]", 39), u8("generation"), u32("access_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), u32("inode_change_time", TIMESTAMP)]);
+var sxcf_unix_inode_le = sxLayout(0x603D0020, "unix_inode_le", LE, sxcf_unix_inode_le_fields);
+var sxcf_unix_inode_be_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u16("user_id", ID), u16("group_id", ID),
+    u32("file_size", SIZE), field("block_numbers", "uint24[13]", 39), u8("generation"), u32("access_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), u32("inode_change_time", TIMESTAMP)]);
+var sxcf_unix_inode_be = sxLayout(0x603D0021, "unix_inode_be", BE, sxcf_unix_inode_be_fields);
+var sxcf_unix_inode_pdp_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u16("user_id", ID), u16("group_id", ID),
+    field("file_size", "uint32_pdp", 4, SIZE), u8("block_00_high"), u16("block_00_low"), u8("block_01_high"),
+    u16("block_01_low"), u8("block_02_high"), u16("block_02_low"), u8("block_03_high"), u16("block_03_low"),
+    u8("block_04_high"), u16("block_04_low"), u8("block_05_high"), u16("block_05_low"), u8("block_06_high"),
+    u16("block_06_low"), u8("block_07_high"), u16("block_07_low"), u8("block_08_high"), u16("block_08_low"),
+    u8("block_09_high"), u16("block_09_low"), u8("block_10_high"), u16("block_10_low"), u8("block_11_high"),
+    u16("block_11_low"), u8("block_12_high"), u16("block_12_low"), u8("generation"),
+    field("access_time", "uint32_pdp", 4, TIMESTAMP), field("modification_time", "uint32_pdp", 4, TIMESTAMP),
+    field("inode_change_time", "uint32_pdp", 4, TIMESTAMP)]);
+var sxcf_unix_inode_pdp = sxLayout(0x603D0022, "unix_inode_pdp", LE, sxcf_unix_inode_pdp_fields);
+var sxcf_unix_directory_le_fields = layout([u16("inode_number"), chars("name", 14, NONE)]);
+var sxcf_unix_directory_le = sxLayout(0x603D0023, "unix_directory_le", LE, sxcf_unix_directory_le_fields);
+var sxcf_unix_directory_be_fields = layout([u16("inode_number"), chars("name", 14, NONE)]);
+var sxcf_unix_directory_be = sxLayout(0x603D0024, "unix_directory_be", BE, sxcf_unix_directory_be_fields);
+var sxcf_linux_ext_superblock_fields = layout([u32("inode_count", COUNT), u32("block_count", COUNT), u32("first_free_block"),
+    u32("free_block_count", COUNT), u32("first_free_inode"), u32("free_inode_count", COUNT), u32("first_data_block"),
+    u32("log_zone_size"), u32("max_file_size", SIZE), field("reserved", "uint32[5]", 20, RESERVED), u16("magic", SIGNATURE),
+    u16("padding", RESERVED)]);
+var sxcf_linux_ext_superblock = sxLayout(0x603D0025, "linux_ext_superblock", LE, sxcf_linux_ext_superblock_fields);
+var sxcf_linux_ext_inode_fields = layout([u16("mode", FLAGS), u16("user_id", ID), u32("file_size", SIZE),
+    u32("modification_time", TIMESTAMP), u8("group_id", ID), u8("link_count", COUNT), u16("reserved", RESERVED),
+    field("block_numbers", "uint32[12]", 48)]);
+var sxcf_linux_ext_inode = sxLayout(0x603D0026, "linux_ext_inode", LE, sxcf_linux_ext_inode_fields);
+var sxcf_linux_ext_directory_header_fields = layout([u32("inode_number"), u16("record_size", SIZE), u16("name_size", SIZE)]);
+var sxcf_linux_ext_directory_header = sxLayout(0x603D0027, "linux_ext_directory_header", LE, sxcf_linux_ext_directory_header_fields);
+var sxcf_xia_superblock_fields = layout([u32("zone_size", SIZE), u32("zone_count", COUNT), u32("inode_count", COUNT),
+    u32("data_zone_count", COUNT), u32("inode_bitmap_zones", COUNT), u32("zone_bitmap_zones", COUNT), u32("first_data_zone"),
+    u32("zone_shift"), u32("max_file_size", SIZE), field("reserved", "uint32[4]", 16, RESERVED), u32("first_kernel_zone"),
+    u32("kernel_zone_count", COUNT), u32("magic", SIGNATURE)]);
+var sxcf_xia_superblock = sxLayout(0x603D0028, "xia_superblock", LE, sxcf_xia_superblock_fields);
+var sxcf_xia_inode_fields = layout([u16("mode", FLAGS), u16("link_count", COUNT), u16("user_id", ID), u16("group_id", ID),
+    u32("file_size", SIZE), u32("inode_change_time", TIMESTAMP), u32("access_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), field("encoded_zone_numbers", "uint32[10]", 40, FLAGS)]);
+var sxcf_xia_inode = sxLayout(0x603D0029, "xia_inode", LE, sxcf_xia_inode_fields);
+var sxcf_xia_directory_header_fields = layout([u32("inode_number"), u16("record_size", SIZE), u8("name_size", SIZE)]);
+var sxcf_xia_directory_header = sxLayout(0x603D002A, "xia_directory_header", LE, sxcf_xia_directory_header_fields);
+var sxcf_unix_bfs_superblock_fields = layout([u32("magic", SIGNATURE), u32("data_start", OFFSET), u32("data_end", OFFSET),
+    u32("compaction_from"), u32("compaction_to"), i32("backup_from"), i32("backup_to"), chars("filesystem_name", 6, NONE),
+    chars("volume_name", 6, NONE), field("padding", "byte[472]", 472, RESERVED)]);
+var sxcf_unix_bfs_superblock = sxLayout(0x603D002B, "unix_bfs_superblock", LE, sxcf_unix_bfs_superblock_fields);
+var sxcf_unix_bfs_inode_fields = layout([u16("inode_number"), u16("unused", RESERVED), u32("start_block"), u32("end_block"),
+    u32("end_offset", OFFSET), u32("vnode_type", ID), u32("mode", FLAGS), u32("user_id", ID), u32("group_id", ID),
+    u32("link_count", COUNT), u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP),
+    u32("inode_change_time", TIMESTAMP), field("padding", "byte[16]", 16, RESERVED)]);
+var sxcf_unix_bfs_inode = sxLayout(0x603D002C, "unix_bfs_inode", LE, sxcf_unix_bfs_inode_fields);
+var sxcf_qnx4_inode_fields = layout([chars("name", 16, NONE), u32("file_size", SIZE), u32("first_extent_block"),
+    u32("first_extent_blocks", COUNT), u32("extent_block"), u32("creation_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), u32("access_time", TIMESTAMP), u32("inode_change_time", TIMESTAMP),
+    u16("extent_count", COUNT), u16("mode", FLAGS), u16("user_id", ID), u16("group_id", ID), u16("link_count", COUNT),
+    field("reserved", "byte[4]", 4, RESERVED), u8("type", ID), u8("status", FLAGS)]);
+var sxcf_qnx4_inode = sxLayout(0x603D002D, "qnx4_inode", LE, sxcf_qnx4_inode_fields);
+var sxcf_qnx4_link_fields = layout([chars("name", 48, NONE), u32("inode_block"), u8("inode_index"),
+    field("reserved", "byte[10]", 10, RESERVED), u8("status", FLAGS)]);
+var sxcf_qnx4_link = sxLayout(0x603D002E, "qnx4_link", LE, sxcf_qnx4_link_fields);
+var sxcf_efs_directory_header_fields = layout([u16("magic", SIGNATURE), u8("first_free_word"), u8("slot_count", COUNT)]);
+var sxcf_efs_directory_header = sxLayout(0x603D0035, "efs_directory_header", BE, sxcf_efs_directory_header_fields);
+var sxcf_efs_directory_entry_fields = layout([u32("inode_number"), u8("name_size", SIZE)]);
+var sxcf_efs_directory_entry = sxLayout(0x603D0036, "efs_directory_entry", BE, sxcf_efs_directory_entry_fields);
+var sxcf_beos_superblock_le_fields = layout([chars("name", 32, NONE), u32("magic1", SIGNATURE), u32("byte_order", ID),
+    u32("block_size", SIZE), u32("block_shift"), i64("block_count", COUNT), i64("used_blocks", COUNT), i32("inode_size", SIZE),
+    u32("magic2", SIGNATURE), i32("blocks_per_allocation_group", COUNT), i32("allocation_group_shift"),
+    i32("allocation_groups", COUNT), u32("flags", FLAGS), i32("log_group"), u16("log_start_block"),
+    u16("log_block_count", COUNT), i64("log_start"), i64("log_end"), u32("magic3", SIGNATURE), i32("root_group"),
+    u16("root_start_block"), u16("root_block_count", COUNT), i32("indices_group"), u16("indices_start_block"),
+    u16("indices_block_count", COUNT), field("reserved", "byte[32]", 32, RESERVED), field("boot_padding", "byte[348]", 348)]);
+var sxcf_beos_superblock_le = sxLayout(0x603D0067, "beos_superblock_le", LE, sxcf_beos_superblock_le_fields);
+var sxcf_beos_superblock_be_fields = layout([chars("name", 32, NONE), u32("magic1", SIGNATURE), u32("byte_order", ID),
+    u32("block_size", SIZE), u32("block_shift"), i64("block_count", COUNT), i64("used_blocks", COUNT), i32("inode_size", SIZE),
+    u32("magic2", SIGNATURE), i32("blocks_per_allocation_group", COUNT), i32("allocation_group_shift"),
+    i32("allocation_groups", COUNT), u32("flags", FLAGS), i32("log_group"), u16("log_start_block"),
+    u16("log_block_count", COUNT), i64("log_start"), i64("log_end"), u32("magic3", SIGNATURE), i32("root_group"),
+    u16("root_start_block"), u16("root_block_count", COUNT), i32("indices_group"), u16("indices_start_block"),
+    u16("indices_block_count", COUNT), field("reserved", "byte[32]", 32, RESERVED), field("boot_padding", "byte[348]", 348)]);
+var sxcf_beos_superblock_be = sxLayout(0x603D0068, "beos_superblock_be", BE, sxcf_beos_superblock_be_fields);
+var sxcf_beos_inode_header_le_fields = layout([u32("magic", SIGNATURE), i32("self_group"), u16("self_start_block"),
+    u16("self_blocks", COUNT), i32("user_id", ID), i32("group_id", ID), i32("mode", FLAGS), i32("flags", FLAGS),
+    i64("creation_time_encoded"), i64("modification_time_encoded"), i32("parent_group"), u16("parent_start_block"),
+    u16("parent_blocks", COUNT), i32("attributes_group"), u16("attributes_start_block"), u16("attributes_blocks", COUNT),
+    u32("attribute_type", ID), i32("inode_size", SIZE), u32("etc")]);
+var sxcf_beos_inode_header_le = sxLayout(0x603D0069, "beos_inode_header_le", LE, sxcf_beos_inode_header_le_fields);
+var sxcf_beos_inode_header_be_fields = layout([u32("magic", SIGNATURE), i32("self_group"), u16("self_start_block"),
+    u16("self_blocks", COUNT), i32("user_id", ID), i32("group_id", ID), i32("mode", FLAGS), i32("flags", FLAGS),
+    i64("creation_time_encoded"), i64("modification_time_encoded"), i32("parent_group"), u16("parent_start_block"),
+    u16("parent_blocks", COUNT), i32("attributes_group"), u16("attributes_start_block"), u16("attributes_blocks", COUNT),
+    u32("attribute_type", ID), i32("inode_size", SIZE), u32("etc")]);
+var sxcf_beos_inode_header_be = sxLayout(0x603D006A, "beos_inode_header_be", BE, sxcf_beos_inode_header_be_fields);
+var sxcf_atheos_superblock_le_fields = layout([chars("name", 32, NONE), u32("magic1", SIGNATURE), u32("byte_order", ID),
+    u32("block_size", SIZE), u32("block_shift"), i64("block_count", COUNT), i64("used_blocks", COUNT), i32("inode_size", SIZE),
+    u32("magic2", SIGNATURE), i32("blocks_per_allocation_group", COUNT), i32("allocation_group_shift"),
+    i32("allocation_groups", COUNT), u32("flags", FLAGS), i32("log_group"), u16("log_start_block"),
+    u16("log_block_count", COUNT), i64("log_start"), i32("valid_log_blocks", COUNT), i32("log_size", COUNT),
+    u32("magic3", SIGNATURE), i32("root_group"), u16("root_start_block"), u16("root_block_count", COUNT), i32("deleted_group"),
+    u16("deleted_start_block"), u16("deleted_block_count", COUNT), i32("indices_group"), u16("indices_start_block"),
+    u16("indices_block_count", COUNT), i32("boot_size", SIZE)]);
+var sxcf_atheos_superblock_le = sxLayout(0x603D006B, "atheos_superblock_le", LE, sxcf_atheos_superblock_le_fields);
+var sxcf_atheos_superblock_be_fields = layout([chars("name", 32, NONE), u32("magic1", SIGNATURE), u32("byte_order", ID),
+    u32("block_size", SIZE), u32("block_shift"), i64("block_count", COUNT), i64("used_blocks", COUNT), i32("inode_size", SIZE),
+    u32("magic2", SIGNATURE), i32("blocks_per_allocation_group", COUNT), i32("allocation_group_shift"),
+    i32("allocation_groups", COUNT), u32("flags", FLAGS), i32("log_group"), u16("log_start_block"),
+    u16("log_block_count", COUNT), i64("log_start"), i32("valid_log_blocks", COUNT), i32("log_size", COUNT),
+    u32("magic3", SIGNATURE), i32("root_group"), u16("root_start_block"), u16("root_block_count", COUNT), i32("deleted_group"),
+    u16("deleted_start_block"), u16("deleted_block_count", COUNT), i32("indices_group"), u16("indices_start_block"),
+    u16("indices_block_count", COUNT), i32("boot_size", SIZE)]);
+var sxcf_atheos_superblock_be = sxLayout(0x603D006C, "atheos_superblock_be", BE, sxcf_atheos_superblock_be_fields);
+var sxcf_atheos_inode_header_le_fields = layout([u32("magic", SIGNATURE), i32("self_group"), u16("self_start_block"),
+    u16("self_blocks", COUNT), i32("user_id", ID), i32("group_id", ID), i32("mode", FLAGS), i32("flags", FLAGS),
+    i32("link_count", COUNT), i64("creation_time_encoded"), i64("modification_time_encoded"), i32("parent_group"),
+    u16("parent_start_block"), u16("parent_blocks", COUNT), i32("attributes_group"), u16("attributes_start_block"),
+    u16("attributes_blocks", COUNT), u32("attribute_type", ID), i32("inode_size", SIZE), i64("stored_vnode_pointer", POINTER)]);
+var sxcf_atheos_inode_header_le = sxLayout(0x603D006D, "atheos_inode_header_le", LE, sxcf_atheos_inode_header_le_fields);
+var sxcf_atheos_inode_header_be_fields = layout([u32("magic", SIGNATURE), i32("self_group"), u16("self_start_block"),
+    u16("self_blocks", COUNT), i32("user_id", ID), i32("group_id", ID), i32("mode", FLAGS), i32("flags", FLAGS),
+    i32("link_count", COUNT), i64("creation_time_encoded"), i64("modification_time_encoded"), i32("parent_group"),
+    u16("parent_start_block"), u16("parent_blocks", COUNT), i32("attributes_group"), u16("attributes_start_block"),
+    u16("attributes_blocks", COUNT), u32("attribute_type", ID), i32("inode_size", SIZE), i64("stored_vnode_pointer", POINTER)]);
+var sxcf_atheos_inode_header_be = sxLayout(0x603D006E, "atheos_inode_header_be", BE, sxcf_atheos_inode_header_be_fields);
+var sxcf_bfs_block_run_le_fields = layout([i32("allocation_group"), u16("first_block"), u16("block_count", COUNT)]);
+var sxcf_bfs_block_run_le = sxLayout(0x603D006F, "bfs_block_run_le", LE, sxcf_bfs_block_run_le_fields);
+var sxcf_bfs_block_run_be_fields = layout([i32("allocation_group"), u16("first_block"), u16("block_count", COUNT)]);
+var sxcf_bfs_block_run_be = sxLayout(0x603D0070, "bfs_block_run_be", BE, sxcf_bfs_block_run_be_fields);
+var sxcf_bfs_stream_tail_le_fields = layout([i64("maximum_direct_range", SIZE), i32("indirect_group"), u16("indirect_start"),
+    u16("indirect_blocks", COUNT), i64("maximum_indirect_range", SIZE), i32("double_indirect_group"),
+    u16("double_indirect_start"), u16("double_indirect_blocks", COUNT), i64("maximum_double_indirect_range", SIZE),
+    i64("file_size", SIZE)]);
+var sxcf_bfs_stream_tail_le = sxLayout(0x603D0071, "bfs_stream_tail_le", LE, sxcf_bfs_stream_tail_le_fields);
+var sxcf_bfs_stream_tail_be_fields = layout([i64("maximum_direct_range", SIZE), i32("indirect_group"), u16("indirect_start"),
+    u16("indirect_blocks", COUNT), i64("maximum_indirect_range", SIZE), i32("double_indirect_group"),
+    u16("double_indirect_start"), u16("double_indirect_blocks", COUNT), i64("maximum_double_indirect_range", SIZE),
+    i64("file_size", SIZE)]);
+var sxcf_bfs_stream_tail_be = sxLayout(0x603D0072, "bfs_stream_tail_be", BE, sxcf_bfs_stream_tail_be_fields);
+var sxcf_beos_inode_tail_le_fields = layout([i64("status_change_or_reserved"), field("padding", "byte[8]", 8, RESERVED)]);
+var sxcf_beos_inode_tail_le = sxLayout(0x603D0073, "beos_inode_tail_le", LE, sxcf_beos_inode_tail_le_fields);
+var sxcf_beos_inode_tail_be_fields = layout([i64("status_change_or_reserved"), field("padding", "byte[8]", 8, RESERVED)]);
+var sxcf_beos_inode_tail_be = sxLayout(0x603D0074, "beos_inode_tail_be", BE, sxcf_beos_inode_tail_be_fields);
+var sxcf_bfs_small_data_header_le_fields = layout([u32("type", ID), u16("name_size", SIZE), u16("data_size", SIZE)]);
+var sxcf_bfs_small_data_header_le = sxLayout(0x603D0075, "bfs_small_data_header_le", LE, sxcf_bfs_small_data_header_le_fields);
+var sxcf_bfs_small_data_header_be_fields = layout([u32("type", ID), u16("name_size", SIZE), u16("data_size", SIZE)]);
+var sxcf_bfs_small_data_header_be = sxLayout(0x603D0076, "bfs_small_data_header_be", BE, sxcf_bfs_small_data_header_be_fields);
+var sxcf_beos_btree_header_le_fields = layout([u32("magic", SIGNATURE), u32("node_size", SIZE), u32("maximum_depth", COUNT),
+    u32("data_type", ID), i64("root_node", OFFSET), i64("free_node", OFFSET), i64("maximum_size", SIZE)]);
+var sxcf_beos_btree_header_le = sxLayout(0x603D0077, "beos_btree_header_le", LE, sxcf_beos_btree_header_le_fields);
+var sxcf_beos_btree_header_be_fields = layout([u32("magic", SIGNATURE), u32("node_size", SIZE), u32("maximum_depth", COUNT),
+    u32("data_type", ID), i64("root_node", OFFSET), i64("free_node", OFFSET), i64("maximum_size", SIZE)]);
+var sxcf_beos_btree_header_be = sxLayout(0x603D0078, "beos_btree_header_be", BE, sxcf_beos_btree_header_be_fields);
+var sxcf_atheos_btree_header_le_fields = layout([u32("magic", SIGNATURE), i64("root_node", OFFSET), u32("depth", COUNT),
+    i64("last_node", OFFSET), i64("first_free_node", OFFSET)]);
+var sxcf_atheos_btree_header_le = sxLayout(0x603D0079, "atheos_btree_header_le", LE, sxcf_atheos_btree_header_le_fields);
+var sxcf_atheos_btree_header_be_fields = layout([u32("magic", SIGNATURE), i64("root_node", OFFSET), u32("depth", COUNT),
+    i64("last_node", OFFSET), i64("first_free_node", OFFSET)]);
+var sxcf_atheos_btree_header_be = sxLayout(0x603D007A, "atheos_btree_header_be", BE, sxcf_atheos_btree_header_be_fields);
+var sxcf_beos_btree_node_le_fields = layout([i64("left_node", OFFSET), i64("right_node", OFFSET), i64("overflow_node", OFFSET),
+    u16("key_count", COUNT), u16("key_data_size", SIZE)]);
+var sxcf_beos_btree_node_le = sxLayout(0x603D007B, "beos_btree_node_le", LE, sxcf_beos_btree_node_le_fields);
+var sxcf_beos_btree_node_be_fields = layout([i64("left_node", OFFSET), i64("right_node", OFFSET), i64("overflow_node", OFFSET),
+    u16("key_count", COUNT), u16("key_data_size", SIZE)]);
+var sxcf_beos_btree_node_be = sxLayout(0x603D007C, "beos_btree_node_be", BE, sxcf_beos_btree_node_be_fields);
+var sxcf_atheos_btree_node_le_fields = layout([i64("left_node", OFFSET), i64("right_node", OFFSET),
+    i64("overflow_node", OFFSET), u32("key_count", COUNT), u32("key_data_size", SIZE)]);
+var sxcf_atheos_btree_node_le = sxLayout(0x603D007D, "atheos_btree_node_le", LE, sxcf_atheos_btree_node_le_fields);
+var sxcf_atheos_btree_node_be_fields = layout([i64("left_node", OFFSET), i64("right_node", OFFSET),
+    i64("overflow_node", OFFSET), u32("key_count", COUNT), u32("key_data_size", SIZE)]);
+var sxcf_atheos_btree_node_be = sxLayout(0x603D007E, "atheos_btree_node_be", BE, sxcf_atheos_btree_node_be_fields);
+var sxcf_bfs_btree_key_end_le_fields = layout([u16("end_offset", OFFSET)]);
+var sxcf_bfs_btree_key_end_le = sxLayout(0x603D0080, "bfs_btree_key_end_le", LE, sxcf_bfs_btree_key_end_le_fields);
+var sxcf_bfs_btree_key_end_be_fields = layout([u16("end_offset", OFFSET)]);
+var sxcf_bfs_btree_key_end_be = sxLayout(0x603D0081, "bfs_btree_key_end_be", BE, sxcf_bfs_btree_key_end_be_fields);
+var sxcf_bfs_btree_value_le_fields = layout([u64("inode_or_node")]);
+var sxcf_bfs_btree_value_le = sxLayout(0x603D0082, "bfs_btree_value_le", LE, sxcf_bfs_btree_value_le_fields);
+var sxcf_bfs_btree_value_be_fields = layout([u64("inode_or_node")]);
+var sxcf_bfs_btree_value_be = sxLayout(0x603D0083, "bfs_btree_value_be", BE, sxcf_bfs_btree_value_be_fields);
+function sx_classicfs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x603D0000 || id >= 0x603E0000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    switch (id) {
+    case 0x603D0001:
+        if (r.name === "zone_count_16") {
+            s = "MINIX v1 zone count; superseded by the 32-bit count in v2.";
+        } else if (r.name === "first_data_zone") {
+            s = "Zone number; multiply by the zone byte size to obtain a volume offset.";
+        } else if (r.name === "log_zone_size") {
+            s = "Zone size is block_size shifted left by this value.";
+        } else if (r.name === "state") {
+            s = "1: clean filesystem; 2: filesystem has errors.";
+        }
+        break;
+    case 0x603D0002:
+        if (r.name === "zone_count_16") {
+            s = "MINIX v1 zone count; superseded by the 32-bit count in v2.";
+        } else if (r.name === "first_data_zone") {
+            s = "Zone number; multiply by the zone byte size to obtain a volume offset.";
+        } else if (r.name === "log_zone_size") {
+            s = "Zone size is block_size shifted left by this value.";
+        } else if (r.name === "state") {
+            s = "1: clean filesystem; 2: filesystem has errors.";
+        }
+        break;
+    case 0x603D0003:
+        if (r.name === "zone_count_16") {
+            s = "MINIX v1 zone count; superseded by the 32-bit count in v2.";
+        } else if (r.name === "first_data_zone") {
+            s = "Zone number; multiply by the zone byte size to obtain a volume offset.";
+        } else if (r.name === "log_zone_size") {
+            s = "Zone size is block_size shifted left by this value.";
+        } else if (r.name === "state") {
+            s = "1: clean filesystem; 2: filesystem has errors.";
+        }
+        break;
+    case 0x603D0004:
+        if (r.name === "zone_count_16") {
+            s = "MINIX v1 zone count; superseded by the 32-bit count in v2.";
+        } else if (r.name === "first_data_zone") {
+            s = "Zone number; multiply by the zone byte size to obtain a volume offset.";
+        } else if (r.name === "log_zone_size") {
+            s = "Zone size is block_size shifted left by this value.";
+        } else if (r.name === "state") {
+            s = "1: clean filesystem; 2: filesystem has errors.";
+        }
+        break;
+    case 0x603D0005:
+        if (r.name === "first_data_zone") {
+            s = "Zone number, not a byte offset.";
+        } else if (r.name === "log_zone_size") {
+            s = "Zone size is block_size shifted left by this value.";
+        }
+        break;
+    case 0x603D0006:
+        if (r.name === "first_data_zone") {
+            s = "Zone number, not a byte offset.";
+        } else if (r.name === "log_zone_size") {
+            s = "Zone size is block_size shifted left by this value.";
+        }
+        break;
+    case 0x603D0007:
+        if (r.name === "mode") {
+            s = "Unix file type and permissions.";
+        } else if (r.name === "modification_time") {
+            s = "Seconds since the Unix epoch.";
+        } else if (r.name === "zone_numbers") {
+            s = "Seven direct zones, then single and double indirect zones; zero represents a sparse hole.";
+        }
+        break;
+    case 0x603D0008:
+        if (r.name === "mode") {
+            s = "Unix file type and permissions.";
+        } else if (r.name === "modification_time") {
+            s = "Seconds since the Unix epoch.";
+        } else if (r.name === "zone_numbers") {
+            s = "Seven direct zones, then single and double indirect zones; zero represents a sparse hole.";
+        }
+        break;
+    case 0x603D0009:
+        if (r.name === "zone_numbers") {
+            s = "Seven direct zones, then single, double and triple indirect zones.";
+        }
+        break;
+    case 0x603D000A:
+        if (r.name === "zone_numbers") {
+            s = "Seven direct zones, then single, double and triple indirect zones.";
+        }
+        break;
+    case 0x603D0011:
+        if (r.name === "block_number") {
+            s = "Filesystem block/zone number; not a byte offset.";
+        }
+        break;
+    case 0x603D0012:
+        if (r.name === "block_number") {
+            s = "Filesystem block/zone number; not a byte offset.";
+        }
+        break;
+    case 0x603D0013:
+        if (r.name === "block_number") {
+            s = "Filesystem block/zone number; not a byte offset.";
+        }
+        break;
+    case 0x603D0014:
+        if (r.name === "block_number") {
+            s = "Filesystem block/zone number; not a byte offset.";
+        }
+        break;
+    case 0x603D0015:
+        if (r.name === "block_number") {
+            s = "PDP-endian filesystem block number; high little-endian halfword precedes low little-endian halfword.";
+        }
+        break;
+    case 0x603D0016:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        }
+        break;
+    case 0x603D0017:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        }
+        break;
+    case 0x603D0018:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_00") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_01") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_02") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_03") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_04") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_05") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_06") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_07") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_08") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_09") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_10") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_11") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_12") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_13") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_14") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_15") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_16") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_17") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_18") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_19") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_20") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_21") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_22") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_23") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_24") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_25") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_26") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_27") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_28") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_29") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_30") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_31") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_32") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_33") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_34") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_35") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_36") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_37") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_38") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_39") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_40") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_41") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_42") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_43") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_44") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_45") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_46") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_47") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_48") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_49") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        }
+        break;
+    case 0x603D0019:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_00") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_01") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_02") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_03") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_04") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_05") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_06") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_07") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_08") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_09") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_10") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_11") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_12") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_13") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_14") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_15") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_16") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_17") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_18") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_19") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_20") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_21") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_22") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_23") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_24") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_25") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_26") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_27") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_28") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_29") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_30") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_31") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_32") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_33") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_34") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_35") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_36") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_37") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_38") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_39") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_40") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_41") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_42") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_43") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_44") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_45") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_46") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_47") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_48") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_49") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_50") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_51") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_52") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_53") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_54") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_55") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_56") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_57") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_58") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_59") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_60") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_61") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_62") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "free_block_63") {
+            s = "Cached free block number in PDP byte order.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        }
+        break;
+    case 0x603D001A:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        } else if (r.name === "state") {
+            s = "Clean-state encoding depends on System V release.";
+        } else if (r.name === "block_size_type") {
+            s = "1: 512 bytes; 2: 1024 bytes; 3: 2048 bytes.";
+        }
+        break;
+    case 0x603D001B:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        } else if (r.name === "state") {
+            s = "Clean-state encoding depends on System V release.";
+        } else if (r.name === "block_size_type") {
+            s = "1: 512 bytes; 2: 1024 bytes; 3: 2048 bytes.";
+        }
+        break;
+    case 0x603D001C:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        } else if (r.name === "state") {
+            s = "Clean-state encoding depends on System V release.";
+        } else if (r.name === "block_size_type") {
+            s = "1: 512 bytes; 2: 1024 bytes; 3: 2048 bytes.";
+        }
+        break;
+    case 0x603D001D:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        } else if (r.name === "state") {
+            s = "Clean-state encoding depends on System V release.";
+        } else if (r.name === "block_size_type") {
+            s = "1: 512 bytes; 2: 1024 bytes; 3: 2048 bytes.";
+        }
+        break;
+    case 0x603D001E:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        } else if (r.name === "clean") {
+            s = "0x46 indicates a cleanly unmounted filesystem.";
+        } else if (r.name === "block_size_type") {
+            s = "Block size is 256 shifted left by this value (1..3).";
+        }
+        break;
+    case 0x603D001F:
+        if (r.name === "first_data_block") {
+            s = "First data block number; earlier blocks contain the inode table.";
+        } else if (r.name === "free_block_cache") {
+            s = "Cached free block numbers, not byte offsets.";
+        } else if (r.name === "last_update") {
+            s = "Unix epoch seconds; PDP variants store the high little-endian halfword first.";
+        } else if (r.name === "clean") {
+            s = "0x46 indicates a cleanly unmounted filesystem.";
+        } else if (r.name === "block_size_type") {
+            s = "Block size is 256 shifted left by this value (1..3).";
+        }
+        break;
+    case 0x603D0020:
+        if (r.name === "mode") {
+            s = "Unix file type and permissions.";
+        } else if (r.name === "block_numbers") {
+            s = "Ten direct blocks, followed by single, double and triple indirect blocks.";
+        } else if (r.name === "access_time") {
+            s = "Unix epoch seconds.";
+        } else if (r.name === "modification_time") {
+            s = "Unix epoch seconds.";
+        } else if (r.name === "inode_change_time") {
+            s = "Unix epoch seconds.";
+        }
+        break;
+    case 0x603D0021:
+        if (r.name === "mode") {
+            s = "Unix file type and permissions.";
+        } else if (r.name === "block_numbers") {
+            s = "Ten direct blocks, followed by single, double and triple indirect blocks.";
+        } else if (r.name === "access_time") {
+            s = "Unix epoch seconds.";
+        } else if (r.name === "modification_time") {
+            s = "Unix epoch seconds.";
+        } else if (r.name === "inode_change_time") {
+            s = "Unix epoch seconds.";
+        }
+        break;
+    case 0x603D0022:
+        if (r.name === "mode") {
+            s = "Unix file type and permissions.";
+        } else if (r.name === "block_00_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_00_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_01_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_01_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_02_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_02_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_03_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_03_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_04_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_04_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_05_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_05_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_06_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_06_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_07_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_07_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_08_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_08_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_09_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_09_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_10_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_10_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_11_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_11_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "block_12_high") {
+            s = "High 8 bits of a packed 24-bit PDP block number.";
+        } else if (r.name === "block_12_low") {
+            s = "Low 16 bits, stored little-endian; not a complete block number alone.";
+        } else if (r.name === "access_time") {
+            s = "Unix epoch seconds.";
+        } else if (r.name === "modification_time") {
+            s = "Unix epoch seconds.";
+        } else if (r.name === "inode_change_time") {
+            s = "Unix epoch seconds.";
+        }
+        break;
+    case 0x603D0025:
+        if (r.name === "first_free_block") {
+            s = "Head of the free-block chain, in filesystem blocks.";
+        } else if (r.name === "log_zone_size") {
+            s = "Native reader supports zero, i.e. 1024-byte zones.";
+        }
+        break;
+    case 0x603D0026:
+        if (r.name === "block_numbers") {
+            s = "Nine direct blocks, then single, double and triple indirect block numbers.";
+        }
+        break;
+    case 0x603D0028:
+        if (r.name === "zone_shift") {
+            s = "Zone byte size is 1024 shifted left by this value.";
+        }
+        break;
+    case 0x603D0029:
+        if (r.name === "encoded_zone_numbers") {
+            s = "Low 24 bits of each word hold a zone number. Upper bytes encode allocated-block accounting; these are not plain offsets.";
+        }
+        break;
+    case 0x603D002B:
+        if (r.name === "data_start") {
+            s = "Volume-relative byte offset of the first data block.";
+        } else if (r.name === "data_end") {
+            s = "Inclusive volume-relative byte offset of the last data byte.";
+        } else if (r.name === "compaction_from") {
+            s = "Block-number recovery state; 0xFFFFFFFF means inactive.";
+        }
+        break;
+    case 0x603D002C:
+        if (r.name === "end_offset") {
+            s = "Inclusive volume-relative byte offset of the file's last byte.";
+        } else if (r.name === "vnode_type") {
+            s = "1: regular file; 2: directory.";
+        }
+        break;
+    case 0x603D002D:
+        if (r.name === "first_extent_block") {
+            s = "One-based 512-byte block number.";
+        } else if (r.name === "extent_block") {
+            s = "One-based block number of the first extended-extent block.";
+        } else if (r.name === "status") {
+            s = "0x01 used; 0x02 modified; 0x04 busy; 0x08 link; 0x10 inode; 0x20 clean.";
+        }
+        break;
+    case 0x603D002E:
+        if (r.name === "inode_block") {
+            s = "One-based physical block number containing the target inode.";
+        } else if (r.name === "inode_index") {
+            s = "Zero-based slot within an eight-inode block.";
+        }
+        break;
+    case 0x603D0030:
+        if (r.name === "first_block") {
+            s = "One-based 512-byte block number.";
+        }
+        break;
+    case 0x603D0032:
+        if (r.name === "block_count") {
+            s = "Number of 512-byte basic blocks.";
+        } else if (r.name === "first_cylinder_group") {
+            s = "Basic-block number.";
+        }
+        break;
+    case 0x603D0034:
+        if (r.name === "first_block") {
+            s = "512-byte basic-block number.";
+        } else if (r.name === "logical_block") {
+            s = "Logical block position within the file, not a byte offset.";
+        }
+        break;
+    case 0x603D0035:
+        if (r.name === "first_free_word") {
+            s = "Word position, two bytes per word.";
+        }
+        break;
+    case 0x603D0037:
+        if (r.name === "first_directory_segment") {
+            s = "512-byte block number.";
+        } else if (r.name === "system_version_rad50") {
+            s = "RAD50-encoded version text, not an integer version.";
+        }
+        break;
+    case 0x603D0038:
+        if (r.name === "next_segment") {
+            s = "One-based segment index; zero ends the chain.";
+        } else if (r.name === "first_data_block") {
+            s = "512-byte block number.";
+        }
+        break;
+    case 0x603D0039:
+        if (r.name === "status") {
+            s = "0x0100 tentative; 0x0200 empty; 0x0400 permanent; 0x0800 end; 0x0010 prefix block.";
+        } else if (r.name === "filename_rad50_1") {
+            s = "Three characters encoded in RAD50.";
+        } else if (r.name === "length_blocks") {
+            s = "Number of 512-byte blocks.";
+        } else if (r.name === "job_channel") {
+            s = "Low byte job number; high byte channel number.";
+        } else if (r.name === "creation_date_encoded") {
+            s = "Packed RT-11 date; not a Unix timestamp.";
+        }
+        break;
+    case 0x603D003A:
+        if (r.name === "directory_block") {
+            s = "Directory location in 256-byte sectors.";
+        } else if (r.name === "creation_date_bcd") {
+            s = "Six BCD calendar components, not a scalar timestamp.";
+        }
+        break;
+    case 0x603D003B:
+        if (r.name === "type") {
+            s = "0xFFFF ends the directory; other values identify LIF file types.";
+        } else if (r.name === "first_block") {
+            s = "256-byte sector number.";
+        } else if (r.name === "volume_number") {
+            s = "Volume number and last-volume flag.";
+        } else if (r.name === "implementation_defined") {
+            s = "Type-dependent implementation field.";
+        }
+        break;
+    case 0x603D003C:
+        if (r.name === "surface") {
+            s = "Space or '1': one surface; 'M': two surfaces.";
+        } else if (r.name === "record_length_code") {
+            s = "'1' selects the supported 128/256-byte sector geometry.";
+        } else if (r.name === "file_label_allocation") {
+            s = "'1' permits the extended label area on a two-sided medium.";
+        }
+        break;
+    case 0x603D003D:
+        if (r.name === "defective_cylinder_1") {
+            s = "Decimal encoded cylinder/side address; blank means absent.";
+        }
+        break;
+    case 0x603D003E:
+        if (r.name === "block_length_decimal") {
+            s = "Five decimal characters; blank encodes 256 bytes.";
+        } else if (r.name === "first_extent_chs") {
+            s = "Two decimal cylinder digits, side digit, two sector digits.";
+        } else if (r.name === "creation_date") {
+            s = "Encoded calendar date, not a scalar timestamp.";
+        } else if (r.name === "unused_tail_decimal") {
+            s = "Decimal count of unused bytes in the final block.";
+        }
+        break;
+    case 0x603D003F:
+        if (r.name === "version") {
+            s = "1: 4096-byte blocks and 512-byte inode slots; 2: 1024-byte blocks and 128-byte inode slots.";
+        }
+        break;
+    case 0x603D0040:
+        if (r.name === "version") {
+            s = "1: 4096-byte blocks and 512-byte inode slots; 2: 1024-byte blocks and 128-byte inode slots.";
+        }
+        break;
+    case 0x603D0041:
+        if (r.name === "flags") {
+            s = "0x02 data-valid; 0x10 inode-valid; 0x40 variable-length directory records; 0x80 symbolic link.";
+        } else if (r.name === "block_numbers") {
+            s = "Ten direct blocks, followed by single, double and triple indirect blocks.";
+        }
+        break;
+    case 0x603D0042:
+        if (r.name === "flags") {
+            s = "0x02 data-valid; 0x10 inode-valid; 0x40 variable-length directory records; 0x80 symbolic link.";
+        } else if (r.name === "block_numbers") {
+            s = "Ten direct blocks, followed by single, double and triple indirect blocks.";
+        }
+        break;
+    case 0x603D0043:
+        if (r.name === "flags") {
+            s = "0x02 data-valid; 0x10 inode-valid; 0x40 variable-length directory records; 0x80 symbolic link.";
+        } else if (r.name === "small_block_flags") {
+            s = "Bit 0 selects inline data at inode byte 128.";
+        } else if (r.name === "block_numbers") {
+            s = "Ten direct blocks, followed by single, double and triple indirect blocks.";
+        }
+        break;
+    case 0x603D0044:
+        if (r.name === "flags") {
+            s = "0x02 data-valid; 0x10 inode-valid; 0x40 variable-length directory records; 0x80 symbolic link.";
+        } else if (r.name === "small_block_flags") {
+            s = "Bit 0 selects inline data at inode byte 128.";
+        } else if (r.name === "block_numbers") {
+            s = "Ten direct blocks, followed by single, double and triple indirect blocks.";
+        }
+        break;
+    case 0x603D0047:
+        if (r.name === "datestamp") {
+            s = "Filesystem change sequence, not a Unix timestamp.";
+        } else if (r.name === "creation_day") {
+            s = "Days since 1978-01-01; one component of the Amiga date.";
+        } else if (r.name === "creation_minute") {
+            s = "Minutes since midnight.";
+        } else if (r.name === "creation_tick") {
+            s = "Ticks since the minute began, 50 ticks per second.";
+        } else if (r.name === "allocation_word") {
+            s = "Bitmap word index used as the allocation cursor.";
+        }
+        break;
+    case 0x603D004A:
+        if (r.name === "datestamp") {
+            s = "Filesystem change sequence.";
+        }
+        break;
+    case 0x603D004E:
+        if (r.name === "type") {
+            s = "2 directory, -3 regular file, 3 rolled file, -4 hard link.";
+        } else if (r.name === "file_size_low") {
+            s = "Low 32 bits; optional extended fields may supply the high 16 bits.";
+        }
+        break;
+    case 0x603D004F:
+        if (r.name === "root_date_components") {
+            s = "Days since 1978-01-01, minutes, 1/50-second ticks.";
+        }
+        break;
+    case 0x603D0051:
+        if (r.name === "revision_high") {
+            s = "High word of the stored format revision.";
+        }
+        break;
+    case 0x603D0054:
+        if (r.name === "level") {
+            s = "Zero for a DATA leaf; positive for an INDX node.";
+        }
+        break;
+    case 0x603D0056:
+        if (r.name === "record_type") {
+            s = "0x20 live, 0x60 deleted.";
+        } else if (r.name === "attributes") {
+            s = "Bit 4 identifies a directory.";
+        }
+        break;
+    case 0x603D0057:
+        if (r.name === "home_lbn") {
+            s = "Logical block numbers use 512-byte blocks.";
+        } else if (r.name === "structure_level") {
+            s = "High byte 2 or 5 is the filesystem level; low byte is revision.";
+        } else if (r.name === "home_vbn") {
+            s = "Virtual block number within the file.";
+        } else if (r.name === "creation_time") {
+            s = "VMS 100-nanosecond ticks since 1858-11-17.";
+        } else if (r.name === "minimum_retention") {
+            s = "VMS interval-time encoding; not an absolute timestamp.";
+        } else if (r.name === "revision_time") {
+            s = "VMS 100-nanosecond ticks since 1858-11-17.";
+        } else if (r.name === "copy_time") {
+            s = "VMS 100-nanosecond ticks since 1858-11-17.";
+        }
+        break;
+    case 0x603D0058:
+        if (r.name === "identification_word_offset") {
+            s = "Offset in 16-bit words from the file header, not a byte offset.";
+        } else if (r.name === "record_type_organization") {
+            s = "Low nibble record type, high nibble file organization.";
+        } else if (r.name === "allocated_block_high") {
+            s = "High 16 bits of allocated virtual block count; not a complete count alone.";
+        } else if (r.name === "eof_block_high") {
+            s = "High 16 bits of one-based EOF virtual block number.";
+        } else if (r.name === "first_free_byte") {
+            s = "Byte position within the EOF block, not a volume offset.";
+        } else if (r.name === "mapping_words") {
+            s = "Count of 16-bit words, not bytes.";
+        }
+        break;
+    case 0x603D005A:
+        if (r.name === "placement_word") {
+            s = "Top two bits 0; remaining bits are placement-control data.";
+        }
+        break;
+    case 0x603D005B:
+        if (r.name === "blocks_minus_one") {
+            s = "Encoded extent block count minus one.";
+        } else if (r.name === "format_and_lbn_high") {
+            s = "Top two bits 1; lower six bits are high LBN bits.";
+        }
+        break;
+    case 0x603D005C:
+        if (r.name === "format_and_blocks_minus_one") {
+            s = "Top two bits 2; low 14 bits are extent count minus one.";
+        }
+        break;
+    case 0x603D005D:
+        if (r.name === "format_and_count_high") {
+            s = "Top two bits 3; low 14 bits are high bits of extent count minus one.";
+        }
+        break;
+    case 0x603D005E:
+        if (r.name === "following_record_size") {
+            s = "Byte length after this size word.";
+        } else if (r.name === "flags_and_name_encoding") {
+            s = "Bits 3..5 name encoding; low bits flags.";
+        }
+        break;
+    case 0x603D0060:
+        if (r.name === "block_count") {
+            s = "Filesystem blocks contain 4096 bytes (512 Cray words).";
+        } else if (r.name === "root_inode") {
+            s = "Packed partition, region and relative inode number.";
+        }
+        break;
+    case 0x603D0061:
+        if (r.name === "device_name") {
+            s = "Packed device name.";
+        }
+        break;
+    case 0x603D0062:
+        if (r.name === "io_unit") {
+            s = "Physical I/O unit encoding; preserve stored units.";
+        } else if (r.name === "inode_reservation_blocks_minus_one") {
+            s = "Number of inode reservation allocation units minus one.";
+        } else if (r.name === "primary_block_words_minus_one") {
+            s = "Primary allocation unit is (value + 1) times 512 Cray words.";
+        } else if (r.name === "secondary_block_words_minus_one") {
+            s = "Secondary allocation unit is (value + 1) times 512 Cray words.";
+        }
+        break;
+    case 0x603D0063:
+        if (r.name === "mode_encoded") {
+            s = "Low 24 bits contain Unix mode; high byte is retained encoded.";
+        } else if (r.name === "links_encoded") {
+            s = "Low 17 bits contain link count; remaining bits retained encoded.";
+        } else if (r.name === "allocation_device_flags") {
+            s = "Native reader supports low five bits zero (local-device allocation).";
+        } else if (r.name === "allocation_type_flags") {
+            s = "Low nibble 1 selects direct extents supported by the native reader.";
+        }
+        break;
+    case 0x603D0064:
+        if (r.name === "blocks_encoded") {
+            s = "Low 31 bits are a block count; high bit marks an unsupported allocation variant.";
+        }
+        break;
+    case 0x603D0065:
+        if (r.name === "external_device") {
+            s = "Native reader requires zero.";
+        }
+        break;
+    case 0x603D0066:
+        if (r.name === "record_and_name_lengths") {
+            s = "Bits 10..31: record byte size; bits 0..9: name byte length; upper bits retained encoded.";
+        }
+        break;
+    case 0x603D0067:
+        if (r.name === "block_shift") {
+            s = "Base-two logarithm of block byte size.";
+        } else if (r.name === "allocation_group_shift") {
+            s = "Base-two logarithm of allocation-group block count.";
+        } else if (r.name === "log_start_block") {
+            s = "Start block within allocation group.";
+        } else if (r.name === "log_start") {
+            s = "Journal block position; not a byte offset.";
+        } else if (r.name === "log_end") {
+            s = "Journal block position.";
+        } else if (r.name === "root_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "indices_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "boot_padding") {
+            s = "Remaining superblock/boot-block bytes.";
+        }
+        break;
+    case 0x603D0068:
+        if (r.name === "block_shift") {
+            s = "Base-two logarithm of block byte size.";
+        } else if (r.name === "allocation_group_shift") {
+            s = "Base-two logarithm of allocation-group block count.";
+        } else if (r.name === "log_start_block") {
+            s = "Start block within allocation group.";
+        } else if (r.name === "log_start") {
+            s = "Journal block position; not a byte offset.";
+        } else if (r.name === "log_end") {
+            s = "Journal block position.";
+        } else if (r.name === "root_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "indices_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "boot_padding") {
+            s = "Remaining superblock/boot-block bytes.";
+        }
+        break;
+    case 0x603D0069:
+        if (r.name === "creation_time_encoded") {
+            s = "High 48 bits hold Unix seconds; low 16 bits contain subsecond/unique bits.";
+        } else if (r.name === "modification_time_encoded") {
+            s = "High 48 bits hold Unix seconds; low 16 bits contain subsecond/unique bits.";
+        } else if (r.name === "etc") {
+            s = "Implementation-dependent stored word.";
+        }
+        break;
+    case 0x603D006A:
+        if (r.name === "creation_time_encoded") {
+            s = "High 48 bits hold Unix seconds; low 16 bits contain subsecond/unique bits.";
+        } else if (r.name === "modification_time_encoded") {
+            s = "High 48 bits hold Unix seconds; low 16 bits contain subsecond/unique bits.";
+        } else if (r.name === "etc") {
+            s = "Implementation-dependent stored word.";
+        }
+        break;
+    case 0x603D006B:
+        if (r.name === "block_shift") {
+            s = "Base-two logarithm of block byte size.";
+        } else if (r.name === "allocation_group_shift") {
+            s = "Base-two logarithm of allocation-group block count.";
+        } else if (r.name === "log_start_block") {
+            s = "Start block within allocation group.";
+        } else if (r.name === "log_start") {
+            s = "Journal block position; not a byte offset.";
+        } else if (r.name === "log_size") {
+            s = "Log blocks.";
+        } else if (r.name === "root_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "deleted_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "indices_start_block") {
+            s = "Block index within its allocation group.";
+        }
+        break;
+    case 0x603D006C:
+        if (r.name === "block_shift") {
+            s = "Base-two logarithm of block byte size.";
+        } else if (r.name === "allocation_group_shift") {
+            s = "Base-two logarithm of allocation-group block count.";
+        } else if (r.name === "log_start_block") {
+            s = "Start block within allocation group.";
+        } else if (r.name === "log_start") {
+            s = "Journal block position; not a byte offset.";
+        } else if (r.name === "log_size") {
+            s = "Log blocks.";
+        } else if (r.name === "root_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "deleted_start_block") {
+            s = "Block index within its allocation group.";
+        } else if (r.name === "indices_start_block") {
+            s = "Block index within its allocation group.";
+        }
+        break;
+    case 0x603D006D:
+        if (r.name === "creation_time_encoded") {
+            s = "Microseconds since Unix epoch.";
+        } else if (r.name === "modification_time_encoded") {
+            s = "Microseconds since Unix epoch.";
+        } else if (r.name === "stored_vnode_pointer") {
+            s = "Stored in-memory pointer slot; has no portable on-disk meaning.";
+        }
+        break;
+    case 0x603D006E:
+        if (r.name === "creation_time_encoded") {
+            s = "Microseconds since Unix epoch.";
+        } else if (r.name === "modification_time_encoded") {
+            s = "Microseconds since Unix epoch.";
+        } else if (r.name === "stored_vnode_pointer") {
+            s = "Stored in-memory pointer slot; has no portable on-disk meaning.";
+        }
+        break;
+    case 0x603D006F:
+        if (r.name === "first_block") {
+            s = "Start block within the allocation group.";
+        }
+        break;
+    case 0x603D0070:
+        if (r.name === "first_block") {
+            s = "Start block within the allocation group.";
+        }
+        break;
+    case 0x603D0071:
+        if (r.name === "maximum_direct_range") {
+            s = "Logical byte range covered by direct block runs.";
+        }
+        break;
+    case 0x603D0072:
+        if (r.name === "maximum_direct_range") {
+            s = "Logical byte range covered by direct block runs.";
+        }
+        break;
+    case 0x603D0073:
+        if (r.name === "status_change_or_reserved") {
+            s = "Haiku status-change time encoding; this word was reserved in older BeOS inodes. Not decoded as Unix seconds.";
+        }
+        break;
+    case 0x603D0074:
+        if (r.name === "status_change_or_reserved") {
+            s = "Haiku status-change time encoding; this word was reserved in older BeOS inodes. Not decoded as Unix seconds.";
+        }
+        break;
+    case 0x603D0077:
+        if (r.name === "root_node") {
+            s = "Logical byte offset within the directory data stream.";
+        } else if (r.name === "free_node") {
+            s = "Logical byte offset; -1 denotes no free node.";
+        }
+        break;
+    case 0x603D0078:
+        if (r.name === "root_node") {
+            s = "Logical byte offset within the directory data stream.";
+        } else if (r.name === "free_node") {
+            s = "Logical byte offset; -1 denotes no free node.";
+        }
+        break;
+    case 0x603D0079:
+        if (r.name === "root_node") {
+            s = "Logical byte offset within the directory data stream.";
+        } else if (r.name === "last_node") {
+            s = "Logical byte offset within the directory stream.";
+        } else if (r.name === "first_free_node") {
+            s = "Logical byte offset; -1 denotes none.";
+        }
+        break;
+    case 0x603D007A:
+        if (r.name === "root_node") {
+            s = "Logical byte offset within the directory data stream.";
+        } else if (r.name === "last_node") {
+            s = "Logical byte offset within the directory stream.";
+        } else if (r.name === "first_free_node") {
+            s = "Logical byte offset; -1 denotes none.";
+        }
+        break;
+    case 0x603D007B:
+        if (r.name === "left_node") {
+            s = "Logical byte offset within the directory stream; -1 means none.";
+        }
+        break;
+    case 0x603D007C:
+        if (r.name === "left_node") {
+            s = "Logical byte offset within the directory stream; -1 means none.";
+        }
+        break;
+    case 0x603D007D:
+        if (r.name === "left_node") {
+            s = "Logical byte offset within the directory stream; -1 means none.";
+        }
+        break;
+    case 0x603D007E:
+        if (r.name === "left_node") {
+            s = "Logical byte offset within the directory stream; -1 means none.";
+        }
+        break;
+    case 0x603D0080:
+        if (r.name === "end_offset") {
+            s = "Cumulative byte position in the node key-data area.";
+        }
+        break;
+    case 0x603D0081:
+        if (r.name === "end_offset") {
+            s = "Cumulative byte position in the node key-data area.";
+        }
+        break;
+    case 0x603D0082:
+        if (r.name === "inode_or_node") {
+            s = "Leaf: inode block number; internal node: logical byte offset in the directory stream.";
+        }
+        break;
+    case 0x603D0083:
+        if (r.name === "inode_or_node") {
+            s = "Leaf: inode block number; internal node: logical byte offset in the directory stream.";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxcf_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxcf_read(c, p, b, n) {
+    return sxcf_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxcf16(b, b_o, o) {
+    return o === 1 ? b[b_o] << 8 | b[b_o + 1] : b[b_o + 1] << 8 | b[b_o];
+}
+function sxcf32(b, b_o, o) {
+    if (o === 2) {
+        return ((sxcf16(b, b_o, 0) << 16) >>> 0 | sxcf16(b, b_o + 2, 0)) >>> 0;
+    }
+    return o === 1 ? ((sxcf16(b, b_o, 1) << 16) >>> 0 | sxcf16(b, b_o + 2, 1)) >>> 0 : ((sxcf16(b, b_o + 2, 0) << 16) >>> 0 | sxcf16(b, b_o, 0)) >>> 0;
+}
+function sxcf64(b, b_o, o) {
+    return o === 1 ? sxOr64(sxShl64(sxcf32(b, b_o, 1), 32), sxcf32(b, b_o + 4, 1)) : sxOr64(sxShl64(sxcf32(b, b_o + 4, 0), 32), sxcf32(b, b_o, 0));
+}
+function sxcf24(b, b_o, o) {
+    return o === 2 ? b[b_o] << 16 | sxcf16(b, b_o + 1, 0) : o === 1 ? b[b_o] << 16 | b[b_o + 1] << 8 | b[b_o + 2] : b[b_o + 2] << 16 | b[b_o + 1] << 8 | b[b_o];
+}
+function sxcf_pow(v) {
+    return !!(v && !sxAnd64(v, sxU64(v - 1)));
+}
+function sxcf_put(c, l, p, n) {
+    if (!n) {
+        return true;
+    }
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var lo = 0;
+    var hi = c.count;
+    if (n > 1048576 || n > Math.floor(SX_U64_MAX / z) || !sxcf_span(c, p, n * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        var at = (c.items[m].offset - c.f.base_address < 0 ? c.items[m].offset - c.f.base_address + SX_U64_MAX : c.items[m].offset - c.f.base_address);
+        if (at < p) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && sxU64(c.items[sxU64(lo - 1)].offset - c.f.base_address) + sxU64(c.items[sxU64(lo - 1)].total_size) > p) {
+        return true;
+    }
+    if (lo < c.count && (c.items[lo].offset - c.f.base_address < 0 ? c.items[lo].offset - c.f.base_address + SX_U64_MAX : c.items[lo].offset - c.f.base_address) < p + n * z) {
+        return true;
+    }
+    var prior = c.count;
+    if (!sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n)) {
+        return false;
+    }
+    if (lo < prior) {
+        var row = sxCopy_xx_data_struct(null, c.items[prior]);
+        sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(prior - lo) * 56) / 56), sxCopy_xx_data_struct);
+        c.items[lo] = sxCopy_xx_data_struct(null, row);
+    }
+    return true;
+}
+function sxcf_dir(c, p, n, kind, o, width) {
+    var b = [];
+    if (!sxcf_span(c, p, n)) {
+        return false;
+    }
+    if (kind === 0) {
+        return sxcf_put(c, o === 1 ? sxcf_unix_directory_be : sxcf_unix_directory_le, p, Math.floor(n / 16));
+    }
+    if (kind === 1) {
+        return sxcf_put(c, width === 64 ? o === 1 ? sxcf_minix3_directory_be : sxcf_minix3_directory_le : width === 16 ? o === 1 ? sxcf_minix_directory_14_be : sxcf_minix_directory_14_le : o === 1 ? sxcf_minix_directory_30_be : sxcf_minix_directory_30_le, p, Math.floor(n / width));
+    }
+    if (kind === 2 || kind === 3) {
+        var q = 0;
+        var head = kind === 2 ? 8 : 7;
+        while (q + head <= n && c.count < 24000) {
+            if (!sxcf_read(c, p + q, b, head)) {
+                return false;
+            }
+            var z = sxcf16(b, 4, 0);
+            var len = kind === 2 ? sxcf16(b, 6, 0) : b[6];
+            if (z < head || z > sxU64(n - q) || len > (z - head) >>> 0) {
+                break;
+            }
+            if (!sxcf_put(c, kind === 2 ? sxcf_linux_ext_directory_header : sxcf_xia_directory_header, p + q, 1)) {
+                return false;
+            }
+            q += z;
+        }
+        return true;
+    }
+    if (kind === 4) {
+        for (q = 0; q + 64 <= n && c.count < 24000; q += 64) {
+            if (!sxcf_read(c, p + q, b, 64)) {
+                return false;
+            }
+            if (!(b[63] & 9)) {
+                continue;
+            }
+            if (!sxcf_put(c, b[63] & 8 ? sxcf_qnx4_link : sxcf_qnx4_inode, p + q, 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (kind === 5) {
+        for (q = 0; q + 512 <= n && c.count < 24000; q += 512) {
+            if (!sxcf_read(c, p + q, b, 512)) {
+                return false;
+            }
+            if (sxcf16(b, 0, 1) !== 0xBEEF || b[3] > 255) {
+                break;
+            }
+            if (!sxcf_put(c, sxcf_efs_directory_header, p + q, 1)) {
+                return false;
+            }
+            for (var i = 0; i < b[3] && (4 + i) >>> 0 < 512; i++) {
+                var at = b[(4 + i) >>> 0] * 2;
+                if (at < 4 + b[3] || at > 507 || b[(at + 4) >>> 0] > (((512 - at) >>> 0) - 5) >>> 0) {
+                    continue;
+                }
+                if (!sxcf_put(c, sxcf_efs_directory_entry, p + q + at, 1)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    return true;
+}
+function sxcf_pointer(g, nr, depth) {
+    if (!g.left) {
+        return true;
+    }
+    if (++g.visits > 4096 || g.c.count >= 24000) {
+        g.left = 0;
+        return true;
+    }
+    if (!nr) {
+        var capacity = g.unit;
+        for (var i = 0; i < depth; i++) {
+            var slots = Math.floor(g.pointer_unit / g.pointer);
+            if (capacity > Math.floor(SX_U64_MAX / slots)) {
+                capacity = SX_U64_MAX;
+                break;
+            }
+            capacity *= slots;
+        }
+        g.left = sxU64(g.left - (g.left < capacity ? g.left : capacity));
+        return true;
+    }
+    if (nr >= g.blocks || depth > 3) {
+        return false;
+    }
+    var p = nr * g.unit;
+    if (!sxcf_span(g.c, p, depth ? g.pointer_unit : g.unit)) {
+        return false;
+    }
+    if (!depth) {
+        var n = g.left < g.unit ? g.left : g.unit;
+        if (!sxcf_dir(g.c, p, n, g.kind, g.order, g.width)) {
+            return false;
+        }
+        g.left = sxU64(g.left - n);
+        return true;
+    }
+    for (i = depth; i < 4; i++) {
+        if (g.ancestors[i] === nr) {
+            return false;
+        }
+    }
+    g.ancestors[depth] = nr;
+    var l = g.pointer === 2 ? g.order === 1 ? sxcf_classic_block_number16_be : sxcf_classic_block_number16_le : g.order === 2 ? sxcf_classic_block_number_pdp : g.order === 1 ? sxcf_classic_block_number32_be : sxcf_classic_block_number32_le;
+    if (!sxcf_put(g.c, l, p, Math.floor(g.pointer_unit / g.pointer))) {
+        return false;
+    }
+    for (i = 0; i < Math.floor(g.pointer_unit / g.pointer) && g.left; i++) {
+        var b = [];
+        if (!sxcf_read(g.c, p + i * g.pointer, b, g.pointer)) {
+            return false;
+        }
+        var ptr = g.pointer === 2 ? sxcf16(b, 0, g.order) : sxcf32(b, 0, g.order);
+        if (g.kind === 3) {
+            ptr &= 0xFFFFFF;
+        }
+        if (!sxcf_pointer(g, ptr, (depth - 1) >>> 0)) {
+            return false;
+        }
+    }
+    g.ancestors[depth] = 0;
+    return true;
+}
+function sxcf_classic(c) {
+    var h = [];
+    var b = [];
+    var o = 0;
+    var kind = 0;
+    var sb = 0;
+    var bs = 512;
+    var blocks = 0;
+    var table = 1024;
+    var nodes = 0;
+    var first = 0;
+    var super_ = null;
+    var type = c.f.file_type;
+    if (type === "LINUX_EXT") {
+        sb = 1024;
+        if (!sxcf_read(c, sb, h, 60) || sxcf16(h, 56, 0) !== 0x137D) {
+            return false;
+        }
+        bs = 1024;
+        blocks = sxcf32(h, 4, 0);
+        nodes = sxcf32(h, 0, 0);
+        first = sxcf32(h, 24, 0);
+        table = 2048;
+        kind = 2;
+        super_ = sxcf_linux_ext_superblock;
+        if (sxcf32(h, 28, 0)) {
+            return false;
+        }
+    } else if (type === "XIA_FS") {
+        if (!sxcf_read(c, 512, h, 64) || sxcf32(h, 60, 0) !== 0x012FD16D) {
+            return false;
+        }
+        sb = 512;
+        bs = sxcf32(h, 0, 0);
+        blocks = sxcf32(h, 4, 0);
+        nodes = sxcf32(h, 8, 0);
+        first = sxcf32(h, 24, 0);
+        if (bs < 1024 || bs > 4096 || !sxcf_pow(bs) || sxcf32(h, 28, 0) > 2 || bs !== (1024 << sxcf32(h, 28, 0)) >>> 0) {
+            return false;
+        }
+        table = (1 + sxcf32(h, 16, 0) + sxcf32(h, 20, 0)) * bs;
+        kind = 3;
+        super_ = sxcf_xia_superblock;
+    } else if (type === "UNIX_BFS") {
+        if (!sxcf_read(c, 0, h, 512) || sxcf32(h, 0, 0) !== 0x1BADFACE) {
+            return false;
+        }
+        var start = sxcf32(h, 4, 0);
+        var end = sxcf32(h, 8, 0);
+        if (start < 512 || sxAnd64(start, 511) || sxAnd64(end, 511) !== 511 || end < start) {
+            return false;
+        }
+        first = Math.floor(start / 512);
+        blocks = Math.floor((end + 1) / 512);
+        table = 512;
+        nodes = Math.floor(sxU64(start - 512) / 64);
+        kind = 6;
+        super_ = sxcf_unix_bfs_superblock;
+    } else {
+        var found = false;
+        for (sb = 0; sb <= 7680; sb += 512) {
+            if (!sxcf_read(c, sb, h, 1024)) {
+                continue;
+            }
+            if (type === "COHERENT_FS") {
+                if (!sxMemcmpAt(h, 484, "noname", 0, 6) && !sxMemcmpAt(h, 490, "nopack", 0, 6) || !sxMemcmpAt(h, 484, "xxxxx", 0, 5) && !sxMemcmpAt(h, 490, "xxxxx", 0, 5)) {
+                    o = 2;
+                    super_ = sxcf_coherent_superblock_pdp;
+                    found = true;
+                    break;
+                }
+            } else if (type === "UNIX_V7") {
+                if (!sxcf_read(c, 1088, b, 64)) {
+                    continue;
+                }
+                for (o = 0; o < 3; o++) {
+                    blocks = sxcf32(h, 2, o);
+                    first = sxcf16(h, 0, o);
+                    var n = sxcf32(b, 8, o);
+                    if (blocks && blocks <= 0xFFFFFF && first >= 3 && first < blocks && blocks <= Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512) && sxcf16(h, 6, o) <= 50 && sxcf16(h, 208, o) <= 100 && (sxcf16(b, 0, o) & 0xF000) === 0x4000 && sxcf16(b, 2, o) && n >= 32 && n <= 16384 && !(n & 15)) {
+                        super_ = o === 2 ? sxcf_v7_superblock_pdp : o === 1 ? sxcf_v7_superblock_be : sxcf_v7_superblock_le;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    break;
+                }
+            } else {
+                var m = type === "XENIX_FS" ? 1016 : 504;
+                var magic = type === "XENIX_FS" ? 0x002B5544 : 0xFD187E20;
+                if (type === "SYSV_FS" && sxcf32(h, m, 0) !== magic && sxcf32(h, m, 1) !== magic) {
+                    m = 1016;
+                }
+                for (o = 0; o < 2; o++) {
+                    if (sxcf32(h, m, o) === magic) {
+                        break;
+                    }
+                }
+                if (o === 2) {
+                    continue;
+                }
+                if (type === "SYSV_FS" && m === 1016) {
+                    sb += 512;
+                    sxMemcpy(h, 0, h, 512, 512);
+                    m = 504;
+                }
+                var t = sxcf32(h, m + 4, o);
+                if (t < 1 || t > 3) {
+                    return false;
+                }
+                bs = (256 << t) >>> 0;
+                first = sxcf16(h, 0, o);
+                blocks = sxcf32(h, 2, o);
+                if (type === "SYSV_FS") {
+                    var aligned = sxcf32(h, 4, o);
+                    var a = first >= 2 && first < aligned;
+                    var p = first >= 2 && first < blocks;
+                    var use_a = a && (!p || sxcf32(h, 420, o) >= 315532800);
+                    if (use_a) {
+                        blocks = aligned;
+                    }
+                    super_ = use_a ? o === 1 ? sxcf_sysv4_superblock_be : sxcf_sysv4_superblock_le : o === 1 ? sxcf_sysv2_superblock_be : sxcf_sysv2_superblock_le;
+                } else {
+                    super_ = o === 1 ? sxcf_xenix_superblock_be : sxcf_xenix_superblock_le;
+                }
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return false;
+        }
+        if (type === "COHERENT_FS" || type === "UNIX_V7") {
+            blocks = sxcf32(h, 2, o);
+            first = sxcf16(h, 0, o);
+        }
+        table = 2 * bs;
+        if (first < 2) {
+            return false;
+        }
+        nodes = sxU64(first - 2) * Math.floor(bs / 64);
+    }
+    if (!sxcf_put(c, super_, sb, 1)) {
+        return false;
+    }
+    if (!blocks || !nodes || first < 2 || first >= blocks || !sxcf_span(c, table, nodes * 64) || table + nodes * 64 > first * bs) {
+        return true;
+    }
+    var il = kind === 2 ? sxcf_linux_ext_inode : kind === 3 ? sxcf_xia_inode : kind === 6 ? sxcf_unix_bfs_inode : o === 2 ? sxcf_unix_inode_pdp : o === 1 ? sxcf_unix_inode_be : sxcf_unix_inode_le;
+    if (!sxcf_put(c, il, table, nodes < 262144 ? nodes : 262144)) {
+        return false;
+    }
+    for (var i = 0; i < nodes && i < 262144 && c.count < 24000; i++) {
+        if (!sxcf_read(c, table + i * 64, b, 64)) {
+            return false;
+        }
+        if (kind === 6) {
+            if (sxcf32(b, 16, 0) !== 2) {
+                continue;
+            }
+            start = sxcf32(b, 4, 0);
+            end = sxcf32(b, 12, 0);
+            if (start && start < blocks && end >= start * 512 && end < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && !sxcf_dir(c, start * 512, sxU64(end + 1 - start * 512), 0, 0, 16)) {
+                return false;
+            }
+            continue;
+        }
+        if ((sxcf16(b, 0, o) & 0xF000) !== 0x4000) {
+            continue;
+        }
+        var g = { c: c, blocks: blocks, unit: bs, pointer_unit: bs, left: sxcf32(b, kind === 2 ? 4 : 8, o), order: o, pointer: 4, kind: kind, width: 16, visits: 0, ancestors: [0, 0, 0, 0] };
+        var direct = kind === 2 ? 9 : kind === 3 ? 8 : 10;
+        var total = kind === 3 ? 10 : kind === 2 ? 12 : 13;
+        for (var k = 0; k < total && g.left; k++) {
+            var nr = kind === 2 ? sxcf32(b, 16 + ((4 * k) >>> 0), 0) : kind === 3 ? sxcf32(b, 24 + ((4 * k) >>> 0), 0) & 0xFFFFFF : sxcf24(b, 12 + ((3 * k) >>> 0), o);
+            if (!sxcf_pointer(g, nr, k < direct ? 0 : (((k - direct) >>> 0) + 1) >>> 0)) {
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sxcf_bfs_run(g, b, b_o, p, n) {
+    var group = sxcf32(b, b_o, g.order);
+    var start = sxcf16(b, b_o + 4, g.order);
+    var count = sxcf16(b, b_o + 6, g.order);
+    if (group > 2147483647 || g.shift > 31 || group > sxShr64(SX_U64_MAX, g.shift)) {
+        return false;
+    }
+    var block = sxShl64(group, g.shift) + start;
+    if (block >= g.blocks || count > sxU64(g.blocks - block)) {
+        return false;
+    }
+    p[0] = block * g.bs;
+    n[0] = count * g.bs;
+    return true;
+}
+function sxcf_mapped(m, count, logical, bytes, p) {
+    for (var i = 0; i < count; i++) {
+        if (logical >= m[i].logical && sxU64(logical - m[i].logical) <= m[i].bytes && bytes <= sxU64(m[i].bytes - sxU64(logical - m[i].logical))) {
+            p[0] = sxU64(m[i].physical + logical - m[i].logical);
+            return true;
+        }
+    }
+    return false;
+}
+function sxcf_bfs_inode(g, p, depth) {
+    var c = g.c;
+    var b = [];
+    var h = [];
+    var node = [];
+    var value = [];
+    if (depth > 24 || ++g.visits > 4096 || c.count >= 24000) {
+        return true;
+    }
+    var head = g.afs ? 80 : 72;
+    if (!sxcf_read(c, p, b, (head + 144) >>> 0)) {
+        return false;
+    }
+    var magic = sxcf32(b, 0, g.order);
+    if (magic !== (g.afs ? 0x64358428 : 0x3BBE0AD9)) {
+        return true;
+    }
+    if (!sxcf_put(c, g.afs ? g.order === 1 ? sxcf_atheos_inode_header_be : sxcf_atheos_inode_header_le : g.order === 1 ? sxcf_beos_inode_header_be : sxcf_beos_inode_header_le, p, 1)) {
+        return false;
+    }
+    var mode = sxcf32(b, 20, g.order) & 0xF000;
+    var flags = sxcf32(b, 24, g.order);
+    if (mode === 0xA000 && !(flags & 0x40)) {
+        return true;
+    }
+    if (!sxcf_put(c, g.order === 1 ? sxcf_bfs_block_run_be : sxcf_bfs_block_run_le, p + head, 12) || !sxcf_put(c, g.order === 1 ? sxcf_bfs_stream_tail_be : sxcf_bfs_stream_tail_le, p + head + 96, 1)) {
+        return false;
+    }
+    if (!g.afs && sxcf_span(c, p + 216, 16) && !sxcf_put(c, g.order === 1 ? sxcf_beos_inode_tail_be : sxcf_beos_inode_tail_le, p + 216, 1)) {
+        return false;
+    }
+    if (!g.afs) {
+        var inode_size = sxcf32(b, 64, g.order);
+        if (inode_size >= 232 && inode_size <= g.bs && sxcf_span(c, p, inode_size)) {
+            for (var q = 232; q + 8 <= inode_size && c.count < 24000; ) {
+                var attr = [];
+                if (!sxcf_read(c, p + q, attr, 8)) {
+                    break;
+                }
+                var names = sxcf16(attr, 4, g.order);
+                var bytes = sxcf16(attr, 6, g.order);
+                var step = 12 + names + bytes;
+                if (!names || step > sxU64(inode_size - q)) {
+                    break;
+                }
+                if (!sxcf_put(c, g.order === 1 ? sxcf_bfs_small_data_header_be : sxcf_bfs_small_data_header_le, p + q, 1)) {
+                    return false;
+                }
+                q += step;
+            }
+        }
+    }
+    if (mode !== 0x4000) {
+        return true;
+    }
+    var m = sxAllocN(12, sxNew_sxcf_extent_map);
+    var count = 0;
+    var logical = 0;
+    var size = sxcf64(b, head + 136, g.order);
+    for (var i = 0; i < 12; i++) {
+        var at = [0];
+        var n = [0];
+        if (!sxcf_bfs_run(g, b, head + ((8 * i) >>> 0), at, n)) {
+            break;
+        }
+        if (n[0]) {
+            m[count++] = sxCopy_sxcf_extent_map(null, { logical: logical, physical: at[0], bytes: n[0] });
+            logical += n[0];
+        }
+    }
+    var hs = g.afs ? 32 : 40;
+    var nh = g.afs ? 32 : 28;
+    at = [0];
+    if (size < hs || !sxcf_mapped(m, count, 0, hs, at) || !sxcf_read(c, at[0], h, hs)) {
+        return true;
+    }
+    if (!sxcf_put(c, g.afs ? g.order === 1 ? sxcf_atheos_btree_header_be : sxcf_atheos_btree_header_le : g.order === 1 ? sxcf_beos_btree_header_be : sxcf_beos_btree_header_le, at[0], 1)) {
+        return false;
+    }
+    var root = sxcf64(h, g.afs ? 4 : 16, g.order);
+    var levels = sxcf32(h, g.afs ? 12 : 8, g.order);
+    if (!levels || levels > 32) {
+        return true;
+    }
+    var pending = sxAllocN(256, sxNew_anon13);
+    var seen = [];
+    var top = 1;
+    var used = 0;
+    pending[0].offset = root;
+    pending[0].level = levels;
+    while (top && used < 512 && c.count < 24000) {
+        top--;
+        var off = pending[top].offset;
+        var level = pending[top].level;
+        var duplicate = false;
+        for (i = 0; i < used; i++) {
+            if (seen[i] === off) {
+                duplicate = true;
+            }
+        }
+        if (duplicate || off > size || nh > sxU64(size - off) || !sxcf_mapped(m, count, off, nh, at) || !sxcf_read(c, at[0], node, nh)) {
+            continue;
+        }
+        seen[used++] = off;
+        var keys = g.afs ? sxcf32(node, 24, g.order) : sxcf16(node, 24, g.order);
+        names = g.afs ? sxcf32(node, 28, g.order) : sxcf16(node, 26, g.order);
+        var align = g.afs ? 4 : 8;
+        var idx = sxAnd64(sxU64(nh + names + align - 1), sxNot64(sxU64(align - 1)));
+        bytes = idx + keys * 10;
+        if (keys > 8192 || names > 65535 || bytes > sxU64(size - off) || !sxcf_mapped(m, count, off, bytes, at)) {
+            continue;
+        }
+        if (!sxcf_put(c, g.afs ? g.order === 1 ? sxcf_atheos_btree_node_be : sxcf_atheos_btree_node_le : g.order === 1 ? sxcf_beos_btree_node_be : sxcf_beos_btree_node_le, at[0], 1) || !sxcf_put(c, g.order === 1 ? sxcf_bfs_btree_key_end_be : sxcf_bfs_btree_key_end_le, at[0] + idx, keys) || !sxcf_put(c, g.order === 1 ? sxcf_bfs_btree_value_be : sxcf_bfs_btree_value_le, at[0] + idx + keys * 2, keys)) {
+            return false;
+        }
+        for (i = 0; i < keys && c.count < 24000; i++) {
+            if (!sxcf_read(c, at[0] + idx + keys * 2 + i * 8, value, 8)) {
+                return false;
+            }
+            var nr = sxcf64(value, 0, g.order);
+            if (level > 1) {
+                if (top < 256) {
+                    pending[top].offset = nr;
+                    pending[top++].level = (level - 1) >>> 0;
+                }
+            } else if (nr < g.blocks && !sxcf_bfs_inode(g, nr * g.bs, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        var link = sxcf64(node, level > 1 ? 16 : 8, g.order);
+        if (link !== SX_U64_MAX && top < 256) {
+            pending[top].offset = link;
+            pending[top++].level = level > 1 ? (level - 1) >>> 0 : 1;
+        }
+    }
+    return true;
+}
+function sxcf_bfs(c) {
+    var b = [];
+    var afs = c.f.file_type === "ATHEOS_FS";
+    var found = false;
+    var o = 0;
+    var p = 0;
+    for (var i = 0; i < (afs ? 1 : 3); i++) {
+        p = afs ? 1024 : i * 512;
+        if (!sxcf_read(c, p, b, 512)) {
+            continue;
+        }
+        for (o = 0; o < 2; o++) {
+            if (sxcf32(b, 32, o) === (afs ? 0x41465331 : 0x42465331) && sxcf32(b, 68, o) === 0xDD121031 && sxcf32(b, 112, o) === 0x15B6830E) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            break;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    var bs = sxcf32(b, 40, o);
+    var blocks = sxcf64(b, 48, o);
+    var shift = sxcf32(b, 76, o);
+    if (bs < 512 || bs > 65536 || !sxcf_pow(bs) || !blocks || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs) || shift > 31) {
+        return false;
+    }
+    if (!sxcf_put(c, afs ? o === 1 ? sxcf_atheos_superblock_be : sxcf_atheos_superblock_le : o === 1 ? sxcf_beos_superblock_be : sxcf_beos_superblock_le, p, 1)) {
+        return false;
+    }
+    var g = { c: c, blocks: blocks, bs: bs, order: o, shift: shift, visits: 0, afs: afs };
+    var at = [0];
+    var n = [0];
+    if (!sxcf_bfs_run(g, b, 116, at, n) || n[0] < bs) {
+        return true;
+    }
+    return sxcf_bfs_inode(g, at[0], 0);
+}
+function sxcf_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxcf_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxcf_order, true);
+    return !c.failed;
+}
+function sx_classicfs_supports(type) {
+    switch (type) {
+    case "MINIX":
+    case "LINUX_EXT":
+    case "XIA_FS":
+    case "QNX4":
+    case "SGI_EFS":
+    case "UNIX_BFS":
+    case "COHERENT_FS":
+    case "UNIX_V7":
+    case "SYSV_FS":
+    case "XENIX_FS":
+    case "RT11_FS":
+    case "ECMA67_FS":
+    case "HP_LIF":
+    case "LOCUS_FS":
+    case "UNICOS_FS":
+    case "ODS2_FS":
+    case "HPOFS":
+    case "AMIGA_PFS":
+    case "BEOS_FS":
+    case "ATHEOS_FS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_classicfs_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "MINIX":
+        ok = sx_minix_build(c);
+        break;
+    case "LINUX_EXT":
+    case "XIA_FS":
+    case "UNIX_BFS":
+    case "COHERENT_FS":
+    case "UNIX_V7":
+    case "SYSV_FS":
+    case "XENIX_FS":
+        ok = sxcf_classic(c);
+        break;
+    case "QNX4":
+        ok = sx_qnx4_build(c);
+        break;
+    case "SGI_EFS":
+        ok = sx_sgi_efs_build(c);
+        break;
+    case "RT11_FS":
+        ok = sx_rt11_fs_build(c);
+        break;
+    case "HP_LIF":
+        ok = sx_hp_lif_build(c);
+        break;
+    case "ECMA67_FS":
+        ok = sx_ecma67_fs_build(c);
+        break;
+    case "LOCUS_FS":
+        ok = sx_locus_fs_build(c);
+        break;
+    case "AMIGA_PFS":
+        ok = sx_amiga_pfs_build(c);
+        break;
+    case "HPOFS":
+        ok = sx_hpofs_build(c);
+        break;
+    case "ODS2_FS":
+        ok = sx_ods2_fs_build(c);
+        break;
+    case "UNICOS_FS":
+        ok = sx_unicos_fs_build(c);
+        break;
+    case "BEOS_FS":
+    case "ATHEOS_FS":
+        ok = sxcf_bfs(c);
+        break;
+    default:
+        break;
+    }
+    return !!(ok && c.count && sxcf_finish(c));
+}

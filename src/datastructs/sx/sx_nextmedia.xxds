@@ -1,0 +1,140 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_nextmedia.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_nextmedia");
+include("_sx_nextmedia_amiga_diskobject");
+include("_sx_nextmedia_apple_pict");
+include("_sx_nextmedia_bpg_image");
+include("_sx_nextmedia_cri_usm");
+include("_sx_nextmedia_emf");
+include("_sx_nextmedia_gimp_xcf");
+include("_sx_nextmedia_interplay_mve");
+include("_sx_nextmedia_khoros_viff");
+include("_sx_nextmedia_mng_animation");
+include("_sx_nextmedia_mpeg_program_stream");
+include("_sx_nextmedia_mpeg_transport_stream");
+include("_sx_nextmedia_paintshop_psp");
+include("_sx_nextmedia_palm_bitmap");
+include("_sx_nextmedia_photoshop_abr");
+include("_sx_nextmedia_photoshop_pat");
+include("_sx_nextmedia_qt_qpicture");
+include("_sx_nextmedia_realmedia_rm");
+include("_sx_nextmedia_risc_os_sprite");
+include("_sx_nextmedia_scummvm_dxa");
+include("_sx_nextmedia_sony_pamf");
+include("_sx_nextmedia_wbmp_image");
+include("_sx_nextmedia_westwood_vqa");
+include("_sx_nextmedia_windows_ani");
+include("_sx_nextmedia_windows_thumbnail_cache");
+include("_sx_nextmedia_wmf");
+include("_sx_nextmedia_wordperfect_wpg");
+
+function fileTypes() { return ["SONY_PAMF", "EMF", "WMF", "CRI_USM", "MPEG_TRANSPORT_STREAM", "MPEG_PROGRAM_STREAM",
+    "REALMEDIA_RM", "INTERPLAY_MVE", "WESTWOOD_VQA", "GIMP_XCF", "PHOTOSHOP_ABR", "QT_QPICTURE", "BPG_IMAGE", "MNG_ANIMATION",
+    "PAINTSHOP_PSP", "PHOTOSHOP_PAT", "AMIGA_DISKOBJECT", "WBMP_IMAGE", "PALM_BITMAP", "APPLE_PICT", "WORDPERFECT_WPG",
+    "KHOROS_VIFF", "RISC_OS_SPRITE", "WINDOWS_ANI", "WINDOWS_THUMBNAIL_CACHE", "SCUMMVM_DXA"]; }
+
+var sx_nextmedia_layouts = [sxnx_emf_header, sxnx_emf_record, sxnx_emf_rectangle, sxnx_emf_point, sxnx_emf_poly_count,
+    sxnx_emf_mode, sxnx_emf_flags, sxnx_emf_color, sxnx_emf_restore, sxnx_emf_handle, sxnx_emf_pen, sxnx_emf_brush,
+    sxnx_emf_eof, sxnx_wmf_placeable, sxnx_wmf_header, sxnx_wmf_record, sxnx_wmf_point, sxnx_wmf_coordinate_pair,
+    sxnx_wmf_rectangle, sxnx_wmf_poly_count, sxnx_wmf_mode, sxnx_wmf_restore, sxnx_wmf_handle, sxnx_wmf_color, sxnx_wmf_pen,
+    sxnx_wmf_brush, sxnx_wbmp_header, sxnx_wbmp_width_1, sxnx_wbmp_height_1, sxnx_wbmp_width_2, sxnx_wbmp_height_2,
+    sxnx_palm_bitmap_header, sxnx_palm_palette_header, sxnx_palm_palette_entry, sxnx_palm_compressed_header,
+    sxnx_viff_header_le, sxnx_viff_header_be, sxnx_viff_header_dec, sxnx_abr_header, sxnx_abr_record, sxnx_abr_sample_prefix,
+    sxnx_abr_name_header, sxnx_abr_sample_geometry, sxnx_abr_row_size, sxnx_wpg_header, sxnx_wpg_record_short,
+    sxnx_wpg_record_medium, sxnx_wpg_record_long, sxnx_wpg_start, sxnx_wpg_palette, sxnx_rgb_palette_entry, sxnx_wpg_bitmap,
+    sxnx_psp_header, sxnx_psp_block, sxnx_psp_image, sxnx_psp_layer, sxnx_psp_channel, sxnx_pat_header, sxnx_pat_pattern,
+    sxnx_pat_id_length, sxnx_pat_vma, sxnx_pat_slot, sxnx_pat_channel, sxnx_pat_row_size, sxnx_pat_hierarchy,
+    sxnx_pat_empty_descriptor, sxnx_qpic_header, sxnx_qpic_record, sxnx_qpic_record_long, sxnx_qpic_point, sxnx_qpic_rectangle,
+    sxnx_qpic_line, sxnx_qpic_rounding, sxnx_qpic_angles, sxnx_qpic_point_count, sxnx_qpic_fill_rule, sxnx_qpic_mode,
+    sxnx_qpic_flags, sxnx_qpic_raster_operation, sxnx_qpic_boolean, sxnx_qpic_opacity, sxnx_icon_diskobject, sxnx_icon_drawer,
+    sxnx_icon_image, sxnx_icon_string, sxnx_icon_tooltypes, sxnx_icon_new_drawer, sxnx_pict_header, sxnx_pict_clip,
+    sxnx_pict_directbits, sxnx_pict_row_short, sxnx_pict_row_long, sxnx_pict_end, sxnx_sprite_area, sxnx_sprite_header,
+    sxnx_sprite_palette, sxnx_thumb_header_old, sxnx_thumb_header_28, sxnx_thumb_header_new, sxnx_thumb_entry_20,
+    sxnx_thumb_entry_21, sxnx_thumb_entry_new, sxnx_xcf_header, sxnx_xcf_property, sxnx_xcf_string, sxnx_xcf_offset,
+    sxnx_xcf_layer, sxnx_xcf_channel, sxnx_xcf_hierarchy, sxnx_xcf_level, sxnx_xcf_color_count, sxnx_xcf_opacity, sxnx_xcf_mode,
+    sxnx_xcf_boolean, sxnx_xcf_geometry_offset, sxnx_xcf_compression, sxnx_xcf_guide, sxnx_xcf_resolution, sxnx_xcf_tattoo,
+    sxnx_xcf_unit, sxnx_xcf_parasite, sxnx_xcf_sample_point, sxnx_bpg_header, sxnx_bpg_width_1, sxnx_bpg_width_2,
+    sxnx_bpg_width_3, sxnx_bpg_height_1, sxnx_bpg_height_2, sxnx_bpg_height_3, sxnx_bpg_picture_bytes_1,
+    sxnx_bpg_picture_bytes_2, sxnx_bpg_picture_bytes_3, sxnx_bpg_picture_bytes_4, sxnx_bpg_extension_bytes_1,
+    sxnx_bpg_extension_bytes_2, sxnx_bpg_extension_bytes_3, sxnx_bpg_extension_tag_1, sxnx_bpg_extension_tag_2,
+    sxnx_bpg_extension_tag_3, sxnx_bpg_extension_tag_4, sxnx_bpg_extension_tag_5, sxnx_bpg_extension_data_bytes_1,
+    sxnx_bpg_extension_data_bytes_2, sxnx_bpg_extension_data_bytes_3, sxnx_bpg_hevc_header_bytes_1, sxnx_bpg_nal, sxnx_ani_riff,
+    sxnx_ani_chunk, sxnx_ani_list, sxnx_ani_header, sxnx_ani_rate, sxnx_ani_sequence, sxnx_ani_icon_header, sxnx_ani_icon_entry,
+    sxnx_ani_cursor_entry, sxnx_pamf_header, sxnx_pamf_sequence, sxnx_pamf_period, sxnx_pamf_group, sxnx_pamf_stream,
+    sxnx_pamf_avc, sxnx_pamf_m2v, sxnx_pamf_audio, sxnx_pamf_userdata, sxnx_pamf_entry_point, sxnx_usm_chunk,
+    sxnx_usm_utf_header, sxnx_usm_utf_column, sxnx_usm_utf_value_u8, sxnx_usm_utf_value_i8, sxnx_usm_utf_value_u16,
+    sxnx_usm_utf_value_i16, sxnx_usm_utf_value_u32, sxnx_usm_utf_value_i32, sxnx_usm_utf_value_u64, sxnx_usm_utf_value_i64,
+    sxnx_usm_utf_value_f32, sxnx_usm_utf_value_f64, sxnx_usm_utf_string, sxnx_usm_utf_data, sxnx_usm_utf_guid, sxnx_mve_header,
+    sxnx_mve_chunk, sxnx_mve_opcode, sxnx_mve_timer, sxnx_mve_audio_init, sxnx_mve_video_init_0, sxnx_mve_video_init_1,
+    sxnx_mve_video_init_2, sxnx_mve_send_buffer, sxnx_mve_audio_frame, sxnx_mve_video_mode, sxnx_mve_palette, sxnx_vqa_form,
+    sxnx_vqa_chunk, sxnx_vqa_header, sxnx_vqa_frame_index, sxnx_vqa_sound, sxnx_mng_signature, sxnx_mng_chunk, sxnx_mng_crc,
+    sxnx_mng_header, sxnx_mng_png_header, sxnx_mng_gray, sxnx_mng_rgb, sxnx_mng_palette_index, sxnx_mng_alpha, sxnx_mng_gamma,
+    sxnx_mng_chromaticity, sxnx_mng_srgb, sxnx_mng_physical, sxnx_mng_term, sxnx_mng_fram, sxnx_mng_defi, sxnx_mng_back_flag,
+    sxnx_dxa_header, sxnx_dxa_wave_size, sxnx_dxa_riff, sxnx_dxa_tag, sxnx_dxa_frame, sxnx_rmf_header, sxnx_rm_object,
+    sxnx_rm_prop, sxnx_rm_title_length, sxnx_rm_author_length, sxnx_rm_copyright_length, sxnx_rm_comment_length, sxnx_rm_mdpr,
+    sxnx_rm_name_length, sxnx_rm_mime_length, sxnx_rm_specific_length, sxnx_rm_video, sxnx_rm_audio_prefix, sxnx_rm_data,
+    sxnx_rm_packet, sxnx_rm_index, sxnx_rm_index_entry, sxnx_mpeg_start_code, sxnx_mpeg_pack1, sxnx_mpeg_pack2,
+    sxnx_mpeg_packet, sxnx_mpeg_pes2, sxnx_mpeg_timestamp, sxnx_mpeg_pes1_buffer, sxnx_mpeg_pes1_no_timestamp, sxnx_mpeg_system,
+    sxnx_mpeg_system_stream, sxnx_mpeg_map, sxnx_mpeg_map_length, sxnx_mpeg_map_stream, sxnx_mpeg_crc, sxnx_ts_header,
+    sxnx_ts_adaptation_size, sxnx_ts_adaptation_flags, sxnx_ts_clock, sxnx_ts_splice, sxnx_ts_private_size, sxnx_ts_pointer,
+    sxnx_ts_section, sxnx_ts_pat_program, sxnx_ts_pmt, sxnx_ts_pmt_stream, sxnx_ts_sdt, sxnx_ts_sdt_service, sxnx_ts_descriptor];
+
+function structs() {
+    return sxCatalog([sxnx_emf_header, sxnx_emf_record, sxnx_emf_rectangle, sxnx_emf_point, sxnx_emf_poly_count, sxnx_emf_mode,
+        sxnx_emf_flags, sxnx_emf_color, sxnx_emf_restore, sxnx_emf_handle, sxnx_emf_pen, sxnx_emf_brush, sxnx_emf_eof,
+        sxnx_wmf_placeable, sxnx_wmf_header, sxnx_wmf_record, sxnx_wmf_point, sxnx_wmf_coordinate_pair, sxnx_wmf_rectangle,
+        sxnx_wmf_poly_count, sxnx_wmf_mode, sxnx_wmf_restore, sxnx_wmf_handle, sxnx_wmf_color, sxnx_wmf_pen, sxnx_wmf_brush,
+        sxnx_wbmp_header, sxnx_wbmp_width_1, sxnx_wbmp_height_1, sxnx_wbmp_width_2, sxnx_wbmp_height_2, sxnx_palm_bitmap_header,
+        sxnx_palm_palette_header, sxnx_palm_palette_entry, sxnx_palm_compressed_header, sxnx_viff_header_le,
+        sxnx_viff_header_be, sxnx_viff_header_dec, sxnx_abr_header, sxnx_abr_record, sxnx_abr_sample_prefix,
+        sxnx_abr_name_header, sxnx_abr_sample_geometry, sxnx_abr_row_size, sxnx_wpg_header, sxnx_wpg_record_short,
+        sxnx_wpg_record_medium, sxnx_wpg_record_long, sxnx_wpg_start, sxnx_wpg_palette, sxnx_rgb_palette_entry, sxnx_wpg_bitmap,
+        sxnx_psp_header, sxnx_psp_block, sxnx_psp_image, sxnx_psp_layer, sxnx_psp_channel, sxnx_pat_header, sxnx_pat_pattern,
+        sxnx_pat_id_length, sxnx_pat_vma, sxnx_pat_slot, sxnx_pat_channel, sxnx_pat_row_size, sxnx_pat_hierarchy,
+        sxnx_pat_empty_descriptor, sxnx_qpic_header, sxnx_qpic_record, sxnx_qpic_record_long, sxnx_qpic_point,
+        sxnx_qpic_rectangle, sxnx_qpic_line, sxnx_qpic_rounding, sxnx_qpic_angles, sxnx_qpic_point_count, sxnx_qpic_fill_rule,
+        sxnx_qpic_mode, sxnx_qpic_flags, sxnx_qpic_raster_operation, sxnx_qpic_boolean, sxnx_qpic_opacity, sxnx_icon_diskobject,
+        sxnx_icon_drawer, sxnx_icon_image, sxnx_icon_string, sxnx_icon_tooltypes, sxnx_icon_new_drawer, sxnx_pict_header,
+        sxnx_pict_clip, sxnx_pict_directbits, sxnx_pict_row_short, sxnx_pict_row_long, sxnx_pict_end, sxnx_sprite_area,
+        sxnx_sprite_header, sxnx_sprite_palette, sxnx_thumb_header_old, sxnx_thumb_header_28, sxnx_thumb_header_new,
+        sxnx_thumb_entry_20, sxnx_thumb_entry_21, sxnx_thumb_entry_new, sxnx_xcf_header, sxnx_xcf_property, sxnx_xcf_string,
+        sxnx_xcf_offset, sxnx_xcf_layer, sxnx_xcf_channel, sxnx_xcf_hierarchy, sxnx_xcf_level, sxnx_xcf_color_count,
+        sxnx_xcf_opacity, sxnx_xcf_mode, sxnx_xcf_boolean, sxnx_xcf_geometry_offset, sxnx_xcf_compression, sxnx_xcf_guide,
+        sxnx_xcf_resolution, sxnx_xcf_tattoo, sxnx_xcf_unit, sxnx_xcf_parasite, sxnx_xcf_sample_point, sxnx_bpg_header,
+        sxnx_bpg_width_1, sxnx_bpg_width_2, sxnx_bpg_width_3, sxnx_bpg_height_1, sxnx_bpg_height_2, sxnx_bpg_height_3,
+        sxnx_bpg_picture_bytes_1, sxnx_bpg_picture_bytes_2, sxnx_bpg_picture_bytes_3, sxnx_bpg_picture_bytes_4,
+        sxnx_bpg_extension_bytes_1, sxnx_bpg_extension_bytes_2, sxnx_bpg_extension_bytes_3, sxnx_bpg_extension_tag_1,
+        sxnx_bpg_extension_tag_2, sxnx_bpg_extension_tag_3, sxnx_bpg_extension_tag_4, sxnx_bpg_extension_tag_5,
+        sxnx_bpg_extension_data_bytes_1, sxnx_bpg_extension_data_bytes_2, sxnx_bpg_extension_data_bytes_3,
+        sxnx_bpg_hevc_header_bytes_1, sxnx_bpg_nal, sxnx_ani_riff, sxnx_ani_chunk, sxnx_ani_list, sxnx_ani_header,
+        sxnx_ani_rate, sxnx_ani_sequence, sxnx_ani_icon_header, sxnx_ani_icon_entry, sxnx_ani_cursor_entry, sxnx_pamf_header,
+        sxnx_pamf_sequence, sxnx_pamf_period, sxnx_pamf_group, sxnx_pamf_stream, sxnx_pamf_avc, sxnx_pamf_m2v, sxnx_pamf_audio,
+        sxnx_pamf_userdata, sxnx_pamf_entry_point, sxnx_usm_chunk, sxnx_usm_utf_header, sxnx_usm_utf_column,
+        sxnx_usm_utf_value_u8, sxnx_usm_utf_value_i8, sxnx_usm_utf_value_u16, sxnx_usm_utf_value_i16, sxnx_usm_utf_value_u32,
+        sxnx_usm_utf_value_i32, sxnx_usm_utf_value_u64, sxnx_usm_utf_value_i64, sxnx_usm_utf_value_f32, sxnx_usm_utf_value_f64,
+        sxnx_usm_utf_string, sxnx_usm_utf_data, sxnx_usm_utf_guid, sxnx_mve_header, sxnx_mve_chunk, sxnx_mve_opcode,
+        sxnx_mve_timer, sxnx_mve_audio_init, sxnx_mve_video_init_0, sxnx_mve_video_init_1, sxnx_mve_video_init_2,
+        sxnx_mve_send_buffer, sxnx_mve_audio_frame, sxnx_mve_video_mode, sxnx_mve_palette, sxnx_vqa_form, sxnx_vqa_chunk,
+        sxnx_vqa_header, sxnx_vqa_frame_index, sxnx_vqa_sound, sxnx_mng_signature, sxnx_mng_chunk, sxnx_mng_crc,
+        sxnx_mng_header, sxnx_mng_png_header, sxnx_mng_gray, sxnx_mng_rgb, sxnx_mng_palette_index, sxnx_mng_alpha,
+        sxnx_mng_gamma, sxnx_mng_chromaticity, sxnx_mng_srgb, sxnx_mng_physical, sxnx_mng_term, sxnx_mng_fram, sxnx_mng_defi,
+        sxnx_mng_back_flag, sxnx_dxa_header, sxnx_dxa_wave_size, sxnx_dxa_riff, sxnx_dxa_tag, sxnx_dxa_frame, sxnx_rmf_header,
+        sxnx_rm_object, sxnx_rm_prop, sxnx_rm_title_length, sxnx_rm_author_length, sxnx_rm_copyright_length,
+        sxnx_rm_comment_length, sxnx_rm_mdpr, sxnx_rm_name_length, sxnx_rm_mime_length, sxnx_rm_specific_length, sxnx_rm_video,
+        sxnx_rm_audio_prefix, sxnx_rm_data, sxnx_rm_packet, sxnx_rm_index, sxnx_rm_index_entry, sxnx_mpeg_start_code,
+        sxnx_mpeg_pack1, sxnx_mpeg_pack2, sxnx_mpeg_packet, sxnx_mpeg_pes2, sxnx_mpeg_timestamp, sxnx_mpeg_pes1_buffer,
+        sxnx_mpeg_pes1_no_timestamp, sxnx_mpeg_system, sxnx_mpeg_system_stream, sxnx_mpeg_map, sxnx_mpeg_map_length,
+        sxnx_mpeg_map_stream, sxnx_mpeg_crc, sxnx_ts_header, sxnx_ts_adaptation_size, sxnx_ts_adaptation_flags, sxnx_ts_clock,
+        sxnx_ts_splice, sxnx_ts_private_size, sxnx_ts_pointer, sxnx_ts_section, sxnx_ts_pat_program, sxnx_ts_pmt,
+        sxnx_ts_pmt_stream, sxnx_ts_sdt, sxnx_ts_sdt_service, sxnx_ts_descriptor], sx_nextmedia_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_nextmedia_build, false);
+}

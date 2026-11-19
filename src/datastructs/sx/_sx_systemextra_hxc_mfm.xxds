@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hxc_mfm/xx_hxc_mfm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_hxc_mfm_header_fields = layout([chars("signature", 7, SIGNATURE), u16("cylinder_count", COUNT),
+    u8("side_count", COUNT), u16("rpm"), u16("bitrate_kbps"), u8("interface_type", ID), u32("track_table_offset", OFFSET)]);
+var sxse_hxc_mfm_header = sxLayout(0x602F0054, "hxc_mfm_header", LE, sxse_hxc_mfm_header_fields);
+var sxse_hxc_mfm_track_fields = layout([u16("cylinder", ID), u8("side", ID), u32("data_size", SIZE), u32("data_offset", OFFSET)]);
+var sxse_hxc_mfm_track = sxLayout(0x602F0055, "hxc_mfm_track", LE, sxse_hxc_mfm_track_fields);
+function sxse_mfm(c) {
+    var b = [];
+    if (!sxse_read(c, 0, b, 19) || sxMemcmp(b, "HXCMFM\x00", 7) || !sxse_put(c, sxse_hxc_mfm_header, 0, 19, 1)) {
+        return false;
+    }
+    var n = sxse_u16(b, 7, false) * b[9];
+    var p = sxse_u32(b, 15, false);
+    return n <= 340 && p >= 19 && sxse_put(c, sxse_hxc_mfm_track, p, 11, n);
+}
+function sx_hxc_mfm_build(c) {
+    return sxse_mfm(c);
+}

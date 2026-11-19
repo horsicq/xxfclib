@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/fcs/xx_fcs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_fcs_header_fields = layout([chars("version", 6, ID), chars("reserved", 4, RESERVED),
+    field("text_start", "ascii_decimal[8]", 8, OFFSET), field("text_end", "ascii_decimal[8]", 8, OFFSET),
+    field("data_start", "ascii_decimal[8]", 8, OFFSET), field("data_end", "ascii_decimal[8]", 8, OFFSET),
+    field("analysis_start", "ascii_decimal[8]", 8, OFFSET), field("analysis_end", "ascii_decimal[8]", 8, OFFSET)]);
+var sxsh_fcs_header = sxLayout(0x602A0024, "fcs_header", LE, sxsh_fcs_header_fields);
+function sx_fcs_build(c) {
+    var ok = false;
+    ok = sxsh_add(c, sxsh_fcs_header, 0, 58);
+    return ok && sxsh_finish(c);
+}

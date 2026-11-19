@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/powerarc/xx_powerarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxatp_powerarc_header_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxatp_powerarc_header = sxLayout(0x6089006D, "powerarc_header", LE, sxatp_powerarc_header_fields);
+var sxatp_powerarc_bzip2_stream_fields = layout([chars("signature", 3, SIGNATURE), chars("block_size_digit", 1, NONE)]);
+var sxatp_powerarc_bzip2_stream = sxLayout(0x6089006E, "powerarc_bzip2_stream", BE, sxatp_powerarc_bzip2_stream_fields);
+var sxatp_powerarc_bzip2_first_block_fields = layout([field("block_magic", "uint48", 6, SIGNATURE),
+    u32("block_crc32", CHECKSUM), field("randomized", "msb_bits[0,1]", 1, FLAGS),
+    at(10, field("bwt_original_pointer", "msb_bits[1,24]", 4))]);
+var sxatp_powerarc_bzip2_first_block = sxLayout(0x6089006F, "powerarc_bzip2_first_block", BE, sxatp_powerarc_bzip2_first_block_fields);
+var sxatp_powerarc_bzip2_empty_end_fields = layout([field("end_magic", "uint48", 6, SIGNATURE), u32("combined_crc32", CHECKSUM)]);
+var sxatp_powerarc_bzip2_empty_end = sxLayout(0x60890070, "powerarc_bzip2_empty_end", BE, sxatp_powerarc_bzip2_empty_end_fields);
+var sxatp_powerarc_block = [0x31, 0x41, 0x59, 0x26, 0x53, 0x59];
+var sxatp_powerarc_end = [0x17, 0x72, 0x45, 0x38, 0x50, 0x90];
+function sxatp_powerarc(c) {
+    var h = [];
+    if (!sxatp_read(c, 0, h, 0, 18) || sxMemcmp(h, "BZIP0001BZh", 11) || h[11] < 49 /*1*/ || h[11] > 57 /*9*/ || !sxatp_add(c, sxatp_powerarc_header, 0) || !sxatp_add(c, sxatp_powerarc_bzip2_stream, 8)) {
+        return false;
+    }
+    if (h[12] === sxatp_powerarc_block[0] && !sxMemcmpAt(h, 12, sxatp_powerarc_block, 0, 6)) {
+        return sxatp_add(c, sxatp_powerarc_bzip2_first_block, 12);
+    }
+    if (h[12] === sxatp_powerarc_end[0] && !sxMemcmpAt(h, 12, sxatp_powerarc_end, 0, 6)) {
+        return sxatp_add(c, sxatp_powerarc_bzip2_empty_end, 12);
+    }
+    return false;
+}
+function sx_powerarc_build(c) {
+    return sxatp_powerarc(c);
+}

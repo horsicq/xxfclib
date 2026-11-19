@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/defy_adlibtracker_dtm/xx_defy_adlibtracker_dtm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_pc_u8_length_fields = layout([u8("byte_length", SIZE)]);
+var sxpcm_pc_u8_length = sxLayout(0x60940002, "pc_u8_length", LE, sxpcm_pc_u8_length_fields);
+var sxpcm_pc_packed_pattern_fields = layout([u16("packed_byte_length", SIZE)]);
+var sxpcm_pc_packed_pattern = sxLayout(0x60940009, "pc_packed_pattern", LE, sxpcm_pc_packed_pattern_fields);
+var sxpcm_defy_instrument_fields = layout([u8("carrier_characteristics", FLAGS), u8("modulator_characteristics", FLAGS),
+    u8("carrier_level", FLAGS), u8("modulator_level", FLAGS), u8("carrier_attack_decay", FLAGS),
+    u8("modulator_attack_decay", FLAGS), u8("carrier_sustain_release", FLAGS), u8("modulator_sustain_release", FLAGS),
+    u8("feedback_connection", FLAGS), u8("carrier_waveform", ID), u8("modulator_waveform", ID), u8("extra_byte")]);
+var sxpcm_defy_instrument = sxLayout(0x6094000B, "defy_instrument", LE, sxpcm_defy_instrument_fields);
+function sxpcm_defy(c) {
+    var h = [];
+    if (!sxpcm_read(c, 0, h, 55) || sxMemcmp(h, "DeFy DTM ", 9) || h[12] !== 0x10) {
+        return false;
+    }
+    if (!sxpcm_put(c, sxpcm_defy_header, 0, 1)) {
+        return false;
+    }
+    var p = 55;
+    var z = [0];
+    for (var i = 0; i < 16; i++) {
+        if (!sxpcm_u8(c, p, z) || z[0] > 80 || !sxpcm_put(c, sxpcm_pc_u8_length, p++, 1)) {
+            return true;
+        }
+        if (!sxpcm_text(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    var count = h[54] + 1;
+    if (count > 128) {
+        return true;
+    }
+    for (i = 0; i < count; i++) {
+        if (!sxpcm_u8(c, p, z) || z[0] >= 13 || !sxpcm_put(c, sxpcm_pc_u8_length, p++, 1)) {
+            return true;
+        }
+        if (!sxpcm_text(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+        if (!sxpcm_put(c, sxpcm_defy_instrument, p, 1)) {
+            return true;
+        }
+        p += 12;
+    }
+    if (!sxpcm_put(c, sxpcm_pc_pattern_index, p, 100)) {
+        return true;
+    }
+    p += 100;
+    for (i = 0; i < h[53]; i++) {
+        var n = [0];
+        if (!sxpcm_u16(c, p, n) || !sxpcm_put(c, sxpcm_pc_packed_pattern, p, 1)) {
+            return true;
+        }
+        p += 2;
+        if (!sxpcm_span(c, p, n[0])) {
+            return true;
+        }
+        p += n[0];
+    }
+    return true;
+}
+function sx_defy_adlibtracker_dtm_build(c) {
+    return sxpcm_defy(c);
+}

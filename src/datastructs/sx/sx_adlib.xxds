@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_adlib.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_adlib");
+include("_sx_adlib_adlib_bam");
+include("_sx_adlib_adlib_bmf");
+include("_sx_adlib_adlib_bnk");
+include("_sx_adlib_adlib_d00");
+include("_sx_adlib_adlib_dfm");
+include("_sx_adlib_adlib_hsc");
+include("_sx_adlib_adlib_jbm");
+include("_sx_adlib_adlib_lds");
+include("_sx_adlib_adlib_rad");
+include("_sx_adlib_adlib_rol");
+include("_sx_adlib_adlib_xsm");
+include("_sx_adlib_ken_ksm");
+include("_sx_adlib_rdos_raw");
+
+function fileTypes() { return ["ADLIB_RAD", "ADLIB_HSC", "ADLIB_D00", "ADLIB_BNK", "ADLIB_BAM", "ADLIB_BMF", "ADLIB_DFM",
+    "ADLIB_LDS", "ADLIB_ROL", "ADLIB_JBM", "ADLIB_XSM", "KEN_KSM", "RDOS_RAW"]; }
+
+var sx_adlib_layouts = [sxad_adlib_rad_header, sxad_adlib_rad_instrument, sxad_adlib_instrument_end, sxad_adlib_rad_order_count,
+    sxad_adlib_rad_order, sxad_adlib_rad_pattern_offset, sxad_adlib_rad_row, sxad_adlib_rad_event, sxad_adlib_rad_effect_event,
+    sxad_adlib_hsc_instrument, sxad_adlib_hsc_order, sxad_adlib_hsc_event, sxad_adlib_zero_terminator, sxad_adlib_d00_header,
+    sxad_adlib_d00_subsong, sxad_adlib_d00_order_header, sxad_adlib_d00_order_word, sxad_adlib_d00_sequence_offset,
+    sxad_adlib_d00_sequence_word, sxad_adlib_d00_instrument, sxad_adlib_d00_data_info_end, sxad_adlib_bnk_header,
+    sxad_adlib_bnk_name, sxad_adlib_bnk_instrument, sxad_adlib_bam_header, sxad_adlib_bam_command, sxad_adlib_bam_note,
+    sxad_adlib_bam_instrument, sxad_adlib_bam_jump, sxad_adlib_bmf_signature, sxad_adlib_bmf_settings,
+    sxad_adlib_bmf_instrument, sxad_adlib_bmf_stream_flags, sxad_adlib_bmf_note_or_control, sxad_adlib_bmf_loop,
+    sxad_adlib_bmf_note_delay, sxad_adlib_bmf_note_command, sxad_adlib_bmf_note_delay_command, sxad_adlib_dfm_header,
+    sxad_adlib_dfm_instrument_name, sxad_adlib_dfm_instrument, sxad_adlib_dfm_order, sxad_adlib_dfm_pattern_count,
+    sxad_adlib_dfm_pattern_header, sxad_adlib_dfm_note, sxad_adlib_dfm_note_effect, sxad_adlib_lds_header, sxad_adlib_lds_patch,
+    sxad_adlib_lds_position_count, sxad_adlib_lds_position, sxad_adlib_lds_digital_count, sxad_adlib_lds_pattern_word,
+    sxad_adlib_rol_header, sxad_adlib_rol_tempo_count, sxad_adlib_rol_tempo_event, sxad_adlib_rol_note_header,
+    sxad_adlib_rol_note_event, sxad_adlib_rol_event_header, sxad_adlib_rol_instrument_event, sxad_adlib_rol_volume_event,
+    sxad_adlib_rol_pitch_event, sxad_adlib_jbm_header, sxad_adlib_jbm_sequence_offset, sxad_adlib_jbm_order, sxad_adlib_jbm_end,
+    sxad_adlib_jbm_instrument_select, sxad_adlib_jbm_note, sxad_adlib_jbm_instrument, sxad_adlib_xsm_header,
+    sxad_adlib_xsm_instrument, sxad_adlib_xsm_note, sxad_adlib_ksm_header, sxad_adlib_ksm_event, sxad_adlib_raw_header,
+    sxad_adlib_raw_command, sxad_adlib_raw_timer, sxad_adlib_raw_metadata_tag];
+
+function structs() {
+    return sxCatalog([sxad_adlib_rad_header, sxad_adlib_rad_instrument, sxad_adlib_instrument_end, sxad_adlib_rad_order_count,
+        sxad_adlib_rad_order, sxad_adlib_rad_pattern_offset, sxad_adlib_rad_row, sxad_adlib_rad_event,
+        sxad_adlib_rad_effect_event, sxad_adlib_hsc_instrument, sxad_adlib_hsc_order, sxad_adlib_hsc_event,
+        sxad_adlib_zero_terminator, sxad_adlib_d00_header, sxad_adlib_d00_subsong, sxad_adlib_d00_order_header,
+        sxad_adlib_d00_order_word, sxad_adlib_d00_sequence_offset, sxad_adlib_d00_sequence_word, sxad_adlib_d00_instrument,
+        sxad_adlib_d00_data_info_end, sxad_adlib_bnk_header, sxad_adlib_bnk_name, sxad_adlib_bnk_instrument,
+        sxad_adlib_bam_header, sxad_adlib_bam_command, sxad_adlib_bam_note, sxad_adlib_bam_instrument, sxad_adlib_bam_jump,
+        sxad_adlib_bmf_signature, sxad_adlib_bmf_settings, sxad_adlib_bmf_instrument, sxad_adlib_bmf_stream_flags,
+        sxad_adlib_bmf_note_or_control, sxad_adlib_bmf_loop, sxad_adlib_bmf_note_delay, sxad_adlib_bmf_note_command,
+        sxad_adlib_bmf_note_delay_command, sxad_adlib_dfm_header, sxad_adlib_dfm_instrument_name, sxad_adlib_dfm_instrument,
+        sxad_adlib_dfm_order, sxad_adlib_dfm_pattern_count, sxad_adlib_dfm_pattern_header, sxad_adlib_dfm_note,
+        sxad_adlib_dfm_note_effect, sxad_adlib_lds_header, sxad_adlib_lds_patch, sxad_adlib_lds_position_count,
+        sxad_adlib_lds_position, sxad_adlib_lds_digital_count, sxad_adlib_lds_pattern_word, sxad_adlib_rol_header,
+        sxad_adlib_rol_tempo_count, sxad_adlib_rol_tempo_event, sxad_adlib_rol_note_header, sxad_adlib_rol_note_event,
+        sxad_adlib_rol_event_header, sxad_adlib_rol_instrument_event, sxad_adlib_rol_volume_event, sxad_adlib_rol_pitch_event,
+        sxad_adlib_jbm_header, sxad_adlib_jbm_sequence_offset, sxad_adlib_jbm_order, sxad_adlib_jbm_end,
+        sxad_adlib_jbm_instrument_select, sxad_adlib_jbm_note, sxad_adlib_jbm_instrument, sxad_adlib_xsm_header,
+        sxad_adlib_xsm_instrument, sxad_adlib_xsm_note, sxad_adlib_ksm_header, sxad_adlib_ksm_event, sxad_adlib_raw_header,
+        sxad_adlib_raw_command, sxad_adlib_raw_timer, sxad_adlib_raw_metadata_tag], sx_adlib_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_adlib_build, false);
+}

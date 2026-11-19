@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/snatchit_cp2/xx_snatchit_cp2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_cp2_header_fields = layout([chars("producer", 16, NONE), chars("release_label", 8, NONE), chars("version", 4, ID),
+    chars("suffix", 2, SIGNATURE)]);
+var sxdn_cp2_header = sxLayout(0x6078001B, "cp2_header", LE, sxdn_cp2_header_fields);
+var sxdn_cp2_segment_header_fields = layout([u16("track_headers_size", SIZE)]);
+var sxdn_cp2_segment_header = sxLayout(0x6078001C, "cp2_segment_header", LE, sxdn_cp2_segment_header_fields);
+var sxdn_cp2_track_fields = layout([u8("cylinder"), u8("head"), u8("sector_count", COUNT)]);
+var sxdn_cp2_track = sxLayout(0x6078001D, "cp2_track", LE, sxdn_cp2_track_fields);
+var sxdn_cp2_sector_fields = layout([field("status", "byte[4]", 4), u8("cylinder"), u8("head"), u8("sector_id", ID),
+    u8("sector_size_code"), u16("biased_payload_offset", OFFSET), field("unknown", "byte[6]", 6)]);
+var sxdn_cp2_sector = sxLayout(0x6078001E, "cp2_sector", LE, sxdn_cp2_sector_fields);
+var sxdn_cp2_header_checksum_fields = layout([u8("checksum", CHECKSUM)]);
+var sxdn_cp2_header_checksum = sxLayout(0x6078001F, "cp2_header_checksum", LE, sxdn_cp2_header_checksum_fields);
+var sxdn_cp2_segment_payload_fields = layout([u16("payload_size", SIZE)]);
+var sxdn_cp2_segment_payload = sxLayout(0x60780020, "cp2_segment_payload", LE, sxdn_cp2_segment_payload_fields);
+function sxdn_cp2(c) {
+    var h = [];
+    if (!sxdn_put(c, sxdn_cp2_header, 0, 1)) {
+        return false;
+    }
+    for (var p = 30; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; ) {
+        if (!sxdn_read(c, p, h, 2)) {
+            break;
+        }
+        var z = sxdn16(h, 0, 0);
+        if (z < 388 || sxU64(z - 1) % 387 || z > 12385 || !sxdn_span(c, p, 4 + z) || !sxdn_put(c, sxdn_cp2_segment_header, p, 1)) {
+            break;
+        }
+        for (var i = 0; i < Math.floor(sxU64(z - 1) / 387); i++) {
+            var a = p + 2 + i * 387;
+            if (!sxdn_read(c, a, h, 3) || h[2] > 24 || !sxdn_put(c, sxdn_cp2_track, a, 1) || !sxdn_put(c, sxdn_cp2_sector, a + 3, h[2])) {
+                return false;
+            }
+        }
+        if (!sxdn_put(c, sxdn_cp2_header_checksum, p + 1 + z, 1) || !sxdn_put(c, sxdn_cp2_segment_payload, p + 2 + z, 1) || !sxdn_read(c, p + 2 + z, h, 2)) {
+            return false;
+        }
+        var n = sxdn16(h, 0, 0);
+        p += 4 + z;
+        if (!sxdn_span(c, p, n)) {
+            break;
+        }
+        p += n;
+    }
+    return true;
+}
+function sx_snatchit_cp2_build(c) {
+    return sxdn_cp2(c);
+}

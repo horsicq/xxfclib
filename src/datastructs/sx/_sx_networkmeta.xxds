@@ -1,0 +1,1417 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_networkmeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_ethernet_header_fields = layout([blob("destination_mac", 6), blob("source_mac", 6), u16("ether_type", ID)]);
+var sxnm_ethernet_header = sxLayout(0x60260001, "ethernet_header", BE, sxnm_ethernet_header_fields);
+var sxnm_ipv4_header_fields = layout([u8("version_and_ihl", FLAGS), u8("dscp_and_ecn", FLAGS), u16("total_length", SIZE),
+    u16("identification", ID), u16("flags_and_fragment_offset", FLAGS), u8("ttl"), u8("protocol", ID),
+    u16("header_checksum", CHECKSUM), blob("source_ipv4", 4), blob("destination_ipv4", 4)]);
+var sxnm_ipv4_header = sxLayout(0x60260002, "ipv4_header", BE, sxnm_ipv4_header_fields);
+var sxnm_ipv6_header_fields = layout([u32("version_traffic_class_flow_label", FLAGS), u16("payload_length", SIZE),
+    u8("next_header", ID), u8("hop_limit"), blob("source_ipv6", 16), blob("destination_ipv6", 16)]);
+var sxnm_ipv6_header = sxLayout(0x60260003, "ipv6_header", BE, sxnm_ipv6_header_fields);
+var sxnm_ipv4_single_byte_option_fields = layout([u8("option_type", ID)]);
+var sxnm_ipv4_single_byte_option = sxLayout(0x60260004, "ipv4_single_byte_option", BE, sxnm_ipv4_single_byte_option_fields);
+var sxnm_ipv4_option_header_fields = layout([u8("option_type", ID), u8("option_length", SIZE)]);
+var sxnm_ipv4_option_header = sxLayout(0x60260005, "ipv4_option_header", BE, sxnm_ipv4_option_header_fields);
+var sxnm_udp_header_fields = layout([u16("source_port", ID), u16("destination_port", ID), u16("datagram_length", SIZE),
+    u16("checksum", CHECKSUM)]);
+var sxnm_udp_header = sxLayout(0x60260006, "udp_header", BE, sxnm_udp_header_fields);
+var sxnm_icmp_echo_header_fields = layout([u8("message_type", ID), u8("code", ID), u16("checksum", CHECKSUM),
+    u16("identifier", ID), u16("sequence", ID)]);
+var sxnm_icmp_echo_header = sxLayout(0x60260007, "icmp_echo_header", BE, sxnm_icmp_echo_header_fields);
+var sxnm_bgp_message_header_fields = layout([blob("marker", 16, SIGNATURE), u16("message_length", SIZE), u8("message_type", ID)]);
+var sxnm_bgp_message_header = sxLayout(0x60260008, "bgp_message_header", BE, sxnm_bgp_message_header_fields);
+var sxnm_bgp_open_fields = layout([u8("version", ID), u16("autonomous_system", ID), u16("hold_time"),
+    blob("router_identifier", 4), u8("optional_parameters_length", SIZE)]);
+var sxnm_bgp_open = sxLayout(0x60260009, "bgp_open", BE, sxnm_bgp_open_fields);
+var sxnm_bgp_optional_parameter_fields = layout([u8("parameter_type", ID), u8("parameter_length", SIZE)]);
+var sxnm_bgp_optional_parameter = sxLayout(0x6026000A, "bgp_optional_parameter", BE, sxnm_bgp_optional_parameter_fields);
+var sxnm_bgp_capability_header_fields = layout([u8("capability_code", ID), u8("capability_length", SIZE)]);
+var sxnm_bgp_capability_header = sxLayout(0x6026000B, "bgp_capability_header", BE, sxnm_bgp_capability_header_fields);
+var sxnm_ospfv2_header_fields = layout([u8("version", ID), u8("packet_type", ID), u16("packet_length", SIZE),
+    blob("router_id", 4), blob("area_id", 4), u16("checksum", CHECKSUM), u16("authentication_type", ID),
+    blob("authentication", 8)]);
+var sxnm_ospfv2_header = sxLayout(0x6026000C, "ospfv2_header", BE, sxnm_ospfv2_header_fields);
+var sxnm_ospfv2_hello_fields = layout([blob("network_mask", 4), u16("hello_interval"), u8("options", FLAGS),
+    u8("router_priority"), u32("router_dead_interval"), blob("designated_router", 4), blob("backup_designated_router", 4)]);
+var sxnm_ospfv2_hello = sxLayout(0x6026000D, "ospfv2_hello", BE, sxnm_ospfv2_hello_fields);
+var sxnm_sctp_common_header_fields = layout([u16("source_port", ID), u16("destination_port", ID), u32("verification_tag", ID),
+    field("checksum_crc32c", "uint32le", 4, CHECKSUM)]);
+var sxnm_sctp_common_header = sxLayout(0x6026000F, "sctp_common_header", BE, sxnm_sctp_common_header_fields);
+var sxnm_sctp_data_chunk_fields = layout([u8("chunk_type", ID), u8("chunk_flags", FLAGS), u16("chunk_length", SIZE),
+    u32("transmission_sequence", ID), u16("stream_identifier", ID), u16("stream_sequence", ID),
+    u32("payload_protocol_identifier", ID)]);
+var sxnm_sctp_data_chunk = sxLayout(0x60260010, "sctp_data_chunk", BE, sxnm_sctp_data_chunk_fields);
+var sxnm_isakmp_header_fields = layout([blob("initiator_cookie", 8, ID), blob("responder_cookie", 8, ID),
+    u8("next_payload", ID), u8("version", ID), u8("exchange_type", ID), u8("flags", FLAGS), u32("message_id", ID),
+    u32("message_length", SIZE)]);
+var sxnm_isakmp_header = sxLayout(0x60260011, "isakmp_header", BE, sxnm_isakmp_header_fields);
+var sxnm_isakmp_sa_payload_fields = layout([u8("next_payload", ID), u8("reserved", RESERVED), u16("payload_length", SIZE),
+    u32("domain_of_interpretation", ID), u32("situation", FLAGS)]);
+var sxnm_isakmp_sa_payload = sxLayout(0x60260012, "isakmp_sa_payload", BE, sxnm_isakmp_sa_payload_fields);
+var sxnm_isakmp_proposal_fields = layout([u8("next_payload", ID), u8("reserved", RESERVED), u16("payload_length", SIZE),
+    u8("proposal_number", ID), u8("protocol_id", ID), u8("spi_size", SIZE), u8("transform_count", COUNT)]);
+var sxnm_isakmp_proposal = sxLayout(0x60260013, "isakmp_proposal", BE, sxnm_isakmp_proposal_fields);
+var sxnm_isakmp_transform_fields = layout([u8("next_payload", ID), u8("reserved1", RESERVED), u16("payload_length", SIZE),
+    u8("transform_number", ID), u8("transform_id", ID), u16("reserved2", RESERVED)]);
+var sxnm_isakmp_transform = sxLayout(0x60260014, "isakmp_transform", BE, sxnm_isakmp_transform_fields);
+var sxnm_isakmp_basic_attribute_fields = layout([u16("format_and_type", FLAGS), u16("attribute_value")]);
+var sxnm_isakmp_basic_attribute = sxLayout(0x60260015, "isakmp_basic_attribute", BE, sxnm_isakmp_basic_attribute_fields);
+var sxnm_isakmp_variable_attribute_fields = layout([u16("format_and_type", FLAGS), u16("attribute_length", SIZE)]);
+var sxnm_isakmp_variable_attribute = sxLayout(0x60260016, "isakmp_variable_attribute", BE, sxnm_isakmp_variable_attribute_fields);
+var sxnm_rtp_header_fields = layout([u8("version_padding_extension_csrc_count", FLAGS), u8("marker_and_payload_type", FLAGS),
+    u16("sequence_number", ID), u32("timestamp"), u32("synchronization_source", ID)]);
+var sxnm_rtp_header = sxLayout(0x60260017, "rtp_header", BE, sxnm_rtp_header_fields);
+var sxnm_rtp_extension_header_fields = layout([u16("profile", ID), u16("data_length_words", COUNT)]);
+var sxnm_rtp_extension_header = sxLayout(0x60260019, "rtp_extension_header", BE, sxnm_rtp_extension_header_fields);
+var sxnm_rtp_padding_count_fields = layout([u8("padding_bytes", SIZE)]);
+var sxnm_rtp_padding_count = sxLayout(0x6026001A, "rtp_padding_count", BE, sxnm_rtp_padding_count_fields);
+var sxnm_rtcp_header_fields = layout([u8("version_padding_count", FLAGS), u8("packet_type", ID), u16("length_words_minus_one")]);
+var sxnm_rtcp_header = sxLayout(0x6026001B, "rtcp_header", BE, sxnm_rtcp_header_fields);
+var sxnm_rtcp_sender_info_fields = layout([u32("synchronization_source", ID), u32("ntp_seconds", TIMESTAMP),
+    u32("ntp_fraction"), u32("rtp_timestamp"), u32("sender_packet_count", COUNT), u32("sender_octet_count", SIZE)]);
+var sxnm_rtcp_sender_info = sxLayout(0x6026001C, "rtcp_sender_info", BE, sxnm_rtcp_sender_info_fields);
+var sxnm_rtcp_report_block_fields = layout([u32("source_identifier", ID), u8("fraction_lost"),
+    field("cumulative_packets_lost", "int24", 3), u32("extended_highest_sequence", ID), u32("interarrival_jitter"),
+    u32("last_sender_report"), u32("delay_since_last_report")]);
+var sxnm_rtcp_report_block = sxLayout(0x6026001E, "rtcp_report_block", BE, sxnm_rtcp_report_block_fields);
+var sxnm_rtcp_sdes_item_fields = layout([u8("item_type", ID), u8("text_length", SIZE)]);
+var sxnm_rtcp_sdes_item = sxLayout(0x60260020, "rtcp_sdes_item", BE, sxnm_rtcp_sdes_item_fields);
+var sxnm_tls_record_header_fields = layout([u8("content_type", ID), u16("legacy_record_version", ID),
+    u16("payload_length", SIZE)]);
+var sxnm_tls_record_header = sxLayout(0x60260024, "tls_record_header", BE, sxnm_tls_record_header_fields);
+var sxnm_tls_handshake_header_fields = layout([u8("handshake_type", ID), field("body_length", "uint24", 3, SIZE)]);
+var sxnm_tls_handshake_header = sxLayout(0x60260025, "tls_handshake_header", BE, sxnm_tls_handshake_header_fields);
+var sxnm_tls_cipher_suite_fields = layout([u16("cipher_suite", ID)]);
+var sxnm_tls_cipher_suite = sxLayout(0x60260029, "tls_cipher_suite", BE, sxnm_tls_cipher_suite_fields);
+var sxnm_tls_compression_method_fields = layout([u8("compression_method", ID)]);
+var sxnm_tls_compression_method = sxLayout(0x6026002B, "tls_compression_method", BE, sxnm_tls_compression_method_fields);
+var sxnm_tls_extension_header_fields = layout([u16("extension_type", ID), u16("extension_length", SIZE)]);
+var sxnm_tls_extension_header = sxLayout(0x6026002D, "tls_extension_header", BE, sxnm_tls_extension_header_fields);
+var sxnm_diameter_header_fields = layout([u8("version", ID), field("message_length", "uint24", 3, SIZE),
+    u8("command_flags", FLAGS), field("command_code", "uint24", 3, ID), u32("application_id", ID),
+    u32("hop_by_hop_identifier", ID), u32("end_to_end_identifier", ID)]);
+var sxnm_diameter_header = sxLayout(0x6026002F, "diameter_header", BE, sxnm_diameter_header_fields);
+var sxnm_diameter_avp_header_fields = layout([u32("avp_code", ID), u8("avp_flags", FLAGS),
+    field("avp_length", "uint24", 3, SIZE)]);
+var sxnm_diameter_avp_header = sxLayout(0x60260030, "diameter_avp_header", BE, sxnm_diameter_avp_header_fields);
+var sxnm_diameter_address_family_fields = layout([u16("address_family", ID)]);
+var sxnm_diameter_address_family = sxLayout(0x60260031, "diameter_address_family", BE, sxnm_diameter_address_family_fields);
+var sxnm_tacacs_header_fields = layout([u8("version", ID), u8("packet_type", ID), u8("sequence_number", ID), u8("flags", FLAGS),
+    u32("session_id", ID), u32("body_length", SIZE)]);
+var sxnm_tacacs_header = sxLayout(0x60260033, "tacacs_header", BE, sxnm_tacacs_header_fields);
+var sxnm_tacacs_authentication_start_fields = layout([u8("action", ID), u8("privilege_level"), u8("authentication_type", ID),
+    u8("service", ID), u8("user_length", SIZE), u8("port_length", SIZE), u8("remote_address_length", SIZE),
+    u8("data_length", SIZE)]);
+var sxnm_tacacs_authentication_start = sxLayout(0x60260034, "tacacs_authentication_start", BE, sxnm_tacacs_authentication_start_fields);
+var sxnm_gtpv1_header_fields = layout([u8("flags", FLAGS), u8("message_type", ID), u16("payload_length", SIZE),
+    u32("tunnel_endpoint_identifier", ID)]);
+var sxnm_gtpv1_header = sxLayout(0x60260035, "gtpv1_header", BE, sxnm_gtpv1_header_fields);
+var sxnm_pfcp_node_header_fields = layout([u8("flags", FLAGS), u8("message_type", ID), u16("message_length", SIZE),
+    field("sequence_number", "uint24", 3, ID), u8("spare", RESERVED)]);
+var sxnm_pfcp_node_header = sxLayout(0x60260036, "pfcp_node_header", BE, sxnm_pfcp_node_header_fields);
+var sxnm_pfcp_information_element_fields = layout([u16("ie_type", ID), u16("value_length", SIZE)]);
+var sxnm_pfcp_information_element = sxLayout(0x60260037, "pfcp_information_element", BE, sxnm_pfcp_information_element_fields);
+var sxnm_pfcp_node_id_type_fields = layout([u8("node_id_type", ID)]);
+var sxnm_pfcp_node_id_type = sxLayout(0x60260038, "pfcp_node_id_type", BE, sxnm_pfcp_node_id_type_fields);
+var sxnm_pfcp_recovery_time_fields = layout([u32("ntp_seconds", TIMESTAMP)]);
+var sxnm_pfcp_recovery_time = sxLayout(0x6026003C, "pfcp_recovery_time", BE, sxnm_pfcp_recovery_time_fields);
+var sxnm_pptp_control_header_fields = layout([u16("message_length", SIZE), u16("message_type", ID),
+    u32("magic_cookie", SIGNATURE), u16("control_message_type", ID), u16("reserved", RESERVED)]);
+var sxnm_pptp_control_header = sxLayout(0x6026003D, "pptp_control_header", BE, sxnm_pptp_control_header_fields);
+var sxnm_rsvp_header_fields = layout([u8("version_and_flags", FLAGS), u8("message_type", ID), u16("checksum", CHECKSUM),
+    u8("send_ttl"), u8("reserved", RESERVED), u16("message_length", SIZE)]);
+var sxnm_rsvp_header = sxLayout(0x6026003F, "rsvp_header", BE, sxnm_rsvp_header_fields);
+var sxnm_rsvp_object_header_fields = layout([u16("object_length", SIZE), u8("class_number", ID), u8("class_type", ID)]);
+var sxnm_rsvp_object_header = sxLayout(0x60260040, "rsvp_object_header", BE, sxnm_rsvp_object_header_fields);
+var sxnm_pim_option_header_fields = layout([u16("option_type", ID), u16("option_length", SIZE)]);
+var sxnm_pim_option_header = sxLayout(0x60260043, "pim_option_header", BE, sxnm_pim_option_header_fields);
+var sxnm_pim_holdtime_fields = layout([u16("hold_time")]);
+var sxnm_pim_holdtime = sxLayout(0x60260044, "pim_holdtime", BE, sxnm_pim_holdtime_fields);
+var sxnm_pim_lan_prune_delay_fields = layout([u16("tracking_and_propagation_delay", FLAGS), u16("override_interval")]);
+var sxnm_pim_lan_prune_delay = sxLayout(0x60260045, "pim_lan_prune_delay", BE, sxnm_pim_lan_prune_delay_fields);
+var sxnm_ldp_pdu_header_fields = layout([u16("version", ID), u16("pdu_length", SIZE), blob("router_identifier", 4),
+    u16("label_space", ID)]);
+var sxnm_ldp_pdu_header = sxLayout(0x60260048, "ldp_pdu_header", BE, sxnm_ldp_pdu_header_fields);
+var sxnm_ldp_message_header_fields = layout([u16("unknown_bit_and_type", FLAGS), u16("message_length", SIZE),
+    u32("message_id", ID)]);
+var sxnm_ldp_message_header = sxLayout(0x60260049, "ldp_message_header", BE, sxnm_ldp_message_header_fields);
+var sxnm_ldp_tlv_header_fields = layout([u16("flags_and_type", FLAGS), u16("value_length", SIZE)]);
+var sxnm_ldp_tlv_header = sxLayout(0x6026004A, "ldp_tlv_header", BE, sxnm_ldp_tlv_header_fields);
+var sxnm_ldp_common_hello_fields = layout([u16("hold_time"), u16("flags", FLAGS)]);
+var sxnm_ldp_common_hello = sxLayout(0x6026004B, "ldp_common_hello", BE, sxnm_ldp_common_hello_fields);
+var sxnm_gre_header_fields = layout([u16("flags_and_version", FLAGS), u16("protocol_type", ID)]);
+var sxnm_gre_header = sxLayout(0x6026004E, "gre_header", BE, sxnm_gre_header_fields);
+var sxnm_l2tp_control_header_fields = layout([u16("flags_and_version", FLAGS), u16("message_length", SIZE),
+    u16("tunnel_id", ID), u16("session_id", ID), u16("send_sequence", ID), u16("receive_sequence", ID)]);
+var sxnm_l2tp_control_header = sxLayout(0x60260052, "l2tp_control_header", BE, sxnm_l2tp_control_header_fields);
+var sxnm_l2tp_avp_header_fields = layout([u16("flags_and_length", FLAGS), u16("vendor_id", ID), u16("attribute_type", ID)]);
+var sxnm_l2tp_avp_header = sxLayout(0x60260053, "l2tp_avp_header", BE, sxnm_l2tp_avp_header_fields);
+var sxnm_l2tp_message_type_fields = layout([u16("message_type", ID)]);
+var sxnm_l2tp_message_type = sxLayout(0x60260054, "l2tp_message_type", BE, sxnm_l2tp_message_type_fields);
+var sxnm_netflow_v5_header_fields = layout([u16("version", ID), u16("record_count", COUNT), u32("system_uptime_ms"),
+    u32("unix_seconds", TIMESTAMP), u32("unix_nanoseconds"), u32("flow_sequence", ID), u8("engine_type", ID),
+    u8("engine_id", ID), u16("sampling_mode_and_interval", FLAGS)]);
+var sxnm_netflow_v5_header = sxLayout(0x6026005B, "netflow_v5_header", BE, sxnm_netflow_v5_header_fields);
+var sxnm_netflow_v5_record_fields = layout([blob("source_ipv4", 4), blob("destination_ipv4", 4), blob("next_hop_ipv4", 4),
+    u16("input_interface", ID), u16("output_interface", ID), u32("packet_count", COUNT), u32("octet_count", SIZE),
+    u32("first_uptime_ms"), u32("last_uptime_ms"), u16("source_port", ID), u16("destination_port", ID),
+    u8("reserved1", RESERVED), u8("tcp_flags", FLAGS), u8("protocol", ID), u8("type_of_service", FLAGS), u16("source_as", ID),
+    u16("destination_as", ID), u8("source_mask_bits"), u8("destination_mask_bits"), u16("reserved2", RESERVED)]);
+var sxnm_netflow_v5_record = sxLayout(0x6026005C, "netflow_v5_record", BE, sxnm_netflow_v5_record_fields);
+var sxnm_ntlm_negotiate_fields = layout([chars("signature", 8, SIGNATURE), u32("message_type", ID),
+    u32("negotiate_flags", FLAGS), u16("domain_length", SIZE), u16("domain_max_length", SIZE),
+    u32("domain_buffer_offset", OFFSET), u16("workstation_length", SIZE), u16("workstation_max_length", SIZE),
+    u32("workstation_buffer_offset", OFFSET)]);
+var sxnm_ntlm_negotiate = sxLayout(0x6026005D, "ntlm_negotiate", LE, sxnm_ntlm_negotiate_fields);
+var sxnm_rtps_submessage_le_fields = layout([u8("submessage_id", ID), u8("flags", FLAGS), u16("following_length", SIZE)]);
+var sxnm_rtps_submessage_le = sxLayout(0x60260060, "rtps_submessage_le", LE, sxnm_rtps_submessage_le_fields);
+var sxnm_rtps_timestamp_le_fields = layout([i32("seconds", TIMESTAMP), u32("fraction")]);
+var sxnm_rtps_timestamp_le = sxLayout(0x60260061, "rtps_timestamp_le", LE, sxnm_rtps_timestamp_le_fields);
+var sxnm_rtps_heartbeat_le_fields = layout([blob("reader_entity_id", 4, ID), blob("writer_entity_id", 4, ID),
+    i32("first_sequence_high"), u32("first_sequence_low"), i32("last_sequence_high"), u32("last_sequence_low"),
+    i32("heartbeat_count", ID)]);
+var sxnm_rtps_heartbeat_le = sxLayout(0x60260062, "rtps_heartbeat_le", LE, sxnm_rtps_heartbeat_le_fields);
+var sxnm_rtps_data_le_fields = layout([u16("extra_flags", FLAGS), u16("inline_qos_offset", OFFSET),
+    blob("reader_entity_id", 4, ID), blob("writer_entity_id", 4, ID), i32("sequence_high"), u32("sequence_low")]);
+var sxnm_rtps_data_le = sxLayout(0x60260063, "rtps_data_le", LE, sxnm_rtps_data_le_fields);
+var sxnm_dcerpc_header_le_fields = layout([u8("version", ID), u8("minor_version", ID), u8("packet_type", ID),
+    u8("packet_flags", FLAGS), blob("data_representation", 4), u16("fragment_length", SIZE), u16("authentication_length", SIZE),
+    u32("call_id", ID)]);
+var sxnm_dcerpc_header_le = sxLayout(0x60260064, "dcerpc_header_le", LE, sxnm_dcerpc_header_le_fields);
+var sxnm_dcerpc_request_le_fields = layout([u32("allocation_hint", SIZE), u16("context_id", ID), u16("operation_number", ID)]);
+var sxnm_dcerpc_request_le = sxLayout(0x60260068, "dcerpc_request_le", LE, sxnm_dcerpc_request_le_fields);
+var sxnm_dcerpc_response_le_fields = layout([u32("allocation_hint", SIZE), u16("context_id", ID), u8("cancel_count", COUNT),
+    u8("reserved", RESERVED)]);
+var sxnm_dcerpc_response_le = sxLayout(0x60260069, "dcerpc_response_le", LE, sxnm_dcerpc_response_le_fields);
+var sxnm_rtps_submessage_be_fields = layout([u8("submessage_id", ID), u8("flags", FLAGS), u16("following_length", SIZE)]);
+var sxnm_rtps_submessage_be = sxLayout(0x6026006A, "rtps_submessage_be", BE, sxnm_rtps_submessage_be_fields);
+var sxnm_rtps_timestamp_be_fields = layout([i32("seconds", TIMESTAMP), u32("fraction")]);
+var sxnm_rtps_timestamp_be = sxLayout(0x6026006B, "rtps_timestamp_be", BE, sxnm_rtps_timestamp_be_fields);
+var sxnm_rtps_heartbeat_be_fields = layout([blob("reader_entity_id", 4, ID), blob("writer_entity_id", 4, ID),
+    i32("first_sequence_high"), u32("first_sequence_low"), i32("last_sequence_high"), u32("last_sequence_low"),
+    i32("heartbeat_count", ID)]);
+var sxnm_rtps_heartbeat_be = sxLayout(0x6026006C, "rtps_heartbeat_be", BE, sxnm_rtps_heartbeat_be_fields);
+var sxnm_rtps_data_be_fields = layout([u16("extra_flags", FLAGS), u16("inline_qos_offset", OFFSET),
+    blob("reader_entity_id", 4, ID), blob("writer_entity_id", 4, ID), i32("sequence_high"), u32("sequence_low")]);
+var sxnm_rtps_data_be = sxLayout(0x6026006D, "rtps_data_be", BE, sxnm_rtps_data_be_fields);
+var sxnm_dcerpc_header_be_fields = layout([u8("version", ID), u8("minor_version", ID), u8("packet_type", ID),
+    u8("packet_flags", FLAGS), blob("data_representation", 4), u16("fragment_length", SIZE), u16("authentication_length", SIZE),
+    u32("call_id", ID)]);
+var sxnm_dcerpc_header_be = sxLayout(0x6026006E, "dcerpc_header_be", BE, sxnm_dcerpc_header_be_fields);
+var sxnm_dcerpc_request_be_fields = layout([u32("allocation_hint", SIZE), u16("context_id", ID), u16("operation_number", ID)]);
+var sxnm_dcerpc_request_be = sxLayout(0x60260072, "dcerpc_request_be", BE, sxnm_dcerpc_request_be_fields);
+var sxnm_dcerpc_response_be_fields = layout([u32("allocation_hint", SIZE), u16("context_id", ID), u8("cancel_count", COUNT),
+    u8("reserved", RESERVED)]);
+var sxnm_dcerpc_response_be = sxLayout(0x60260073, "dcerpc_response_be", BE, sxnm_dcerpc_response_be_fields);
+var sxnm_rtps_cdr_encapsulation_fields = layout([u16("representation_identifier", ID), u16("representation_options", FLAGS)]);
+var sxnm_rtps_cdr_encapsulation = sxLayout(0x60260075, "rtps_cdr_encapsulation", BE, sxnm_rtps_cdr_encapsulation_fields);
+var sxnm_mqtt_control_byte_fields = layout([u8("packet_type_and_flags", FLAGS)]);
+var sxnm_mqtt_control_byte = sxLayout(0x60260076, "mqtt_control_byte", BE, sxnm_mqtt_control_byte_fields);
+var sxnm_mqtt_remaining_length_1_fields = layout([field("remaining_length", "uleb128_64", 1, SIZE)]);
+var sxnm_mqtt_remaining_length_1 = sxLayout(0x60260077, "mqtt_remaining_length_1", BE, sxnm_mqtt_remaining_length_1_fields);
+var sxnm_mqtt_remaining_length_2_fields = layout([field("remaining_length", "uleb128_64", 2, SIZE)]);
+var sxnm_mqtt_remaining_length_2 = sxLayout(0x60260078, "mqtt_remaining_length_2", BE, sxnm_mqtt_remaining_length_2_fields);
+var sxnm_mqtt_remaining_length_3_fields = layout([field("remaining_length", "uleb128_64", 3, SIZE)]);
+var sxnm_mqtt_remaining_length_3 = sxLayout(0x60260079, "mqtt_remaining_length_3", BE, sxnm_mqtt_remaining_length_3_fields);
+var sxnm_mqtt_remaining_length_4_fields = layout([field("remaining_length", "uleb128_64", 4, SIZE)]);
+var sxnm_mqtt_remaining_length_4 = sxLayout(0x6026007A, "mqtt_remaining_length_4", BE, sxnm_mqtt_remaining_length_4_fields);
+var sxnm_mqtt_connect_fields = layout([u16("protocol_name_length", SIZE), chars("protocol_name", 4, SIGNATURE),
+    u8("protocol_level", ID), u8("connect_flags", FLAGS), u16("keepalive_seconds")]);
+var sxnm_mqtt_connect = sxLayout(0x6026007B, "mqtt_connect", BE, sxnm_mqtt_connect_fields);
+var sxnm_mqtt_connack_fields = layout([u8("session_present_flags", FLAGS), u8("return_code", ID)]);
+var sxnm_mqtt_connack = sxLayout(0x6026007D, "mqtt_connack", BE, sxnm_mqtt_connack_fields);
+var sxnm_amqp_frame_header_fields = layout([u8("frame_type", ID), u16("channel", ID), u32("payload_length", SIZE)]);
+var sxnm_amqp_frame_header = sxLayout(0x60260082, "amqp_frame_header", BE, sxnm_amqp_frame_header_fields);
+var sxnm_amqp_content_header_fields = layout([u16("class_id", ID), u16("weight"), u64("body_size", SIZE),
+    u16("property_flags", FLAGS)]);
+var sxnm_amqp_content_header = sxLayout(0x60260084, "amqp_content_header", BE, sxnm_amqp_content_header_fields);
+var sxnm_amqp_field_type_fields = layout([u8("field_type", ID)]);
+var sxnm_amqp_field_type = sxLayout(0x6026008C, "amqp_field_type", BE, sxnm_amqp_field_type_fields);
+var sxnm_amqp_float_bits_fields = layout([u32("ieee754_binary32_bits")]);
+var sxnm_amqp_float_bits = sxLayout(0x60260096, "amqp_float_bits", BE, sxnm_amqp_float_bits_fields);
+var sxnm_amqp_double_bits_fields = layout([u64("ieee754_binary64_bits")]);
+var sxnm_amqp_double_bits = sxLayout(0x60260097, "amqp_double_bits", BE, sxnm_amqp_double_bits_fields);
+var sxnm_amqp_decimal_fields = layout([u8("scale"), i32("mantissa")]);
+var sxnm_amqp_decimal = sxLayout(0x60260098, "amqp_decimal", BE, sxnm_amqp_decimal_fields);
+var sxnm_amqp_timestamp_fields = layout([u64("unix_seconds", TIMESTAMP)]);
+var sxnm_amqp_timestamp = sxLayout(0x60260099, "amqp_timestamp", BE, sxnm_amqp_timestamp_fields);
+var sxnm_amqp_delivery_mode_fields = layout([u8("delivery_mode", ID)]);
+var sxnm_amqp_delivery_mode = sxLayout(0x6026009B, "amqp_delivery_mode", BE, sxnm_amqp_delivery_mode_fields);
+var sxnm_websocket_frame_header_fields = layout([u8("fin_rsv_opcode", FLAGS), u8("mask_and_length", FLAGS)]);
+var sxnm_websocket_frame_header = sxLayout(0x6026009D, "websocket_frame_header", BE, sxnm_websocket_frame_header_fields);
+var sxnm_websocket_close_code_fields = layout([u16("status_code", ID)]);
+var sxnm_websocket_close_code = sxLayout(0x602600A1, "websocket_close_code", BE, sxnm_websocket_close_code_fields);
+function sx_networkmeta_supports(t) {
+    switch (t) {
+    case "RTP_RTCP":
+    case "BGP_MESSAGES":
+    case "OSPF_PACKET":
+    case "SCTP_PACKET":
+    case "ISAKMP_MESSAGE":
+    case "TLS_RECORDS":
+    case "ETHERNET_FRAME":
+    case "IP_PACKET":
+    case "ICMP_MESSAGE":
+    case "DIAMETER_MESSAGE":
+    case "TACACS_PACKET":
+    case "GTP_MESSAGE":
+    case "PFCP_MESSAGE":
+    case "PPTP_MESSAGE":
+    case "RSVP_MESSAGE":
+    case "DDS_RTPS":
+    case "PIM_MESSAGE":
+    case "LDP_MESSAGE":
+    case "GRE_PACKET":
+    case "L2TP_PACKET":
+    case "NETFLOW_DATAGRAM":
+    case "NTLM_MESSAGE":
+    case "DCERPC_PDU":
+    case "MQTT_PACKETS":
+    case "AMQP_FRAMES":
+    case "WEBSOCKET_FRAMES":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxnm_need(v, at, n, end) {
+    return end <= v.n && at <= end && n <= sxU64(end - at);
+}
+function sxnm_u16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, true);
+}
+function sxnm_u24(p, p_o) {
+    return p[p_o] << 16 | p[p_o + 1] << 8 | p[p_o + 2];
+}
+function sxnm_u32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, true);
+}
+function sxnm_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (++v.work > 2000000 || !sxnm_need(v, at, n, end)) {
+        return false;
+    }
+    return v.c.count >= 24000 || sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxnm_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    return a.offset < b.offset ? -1 : a.offset > b.offset ? 1 : 0;
+}
+function sxnm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxnm_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + bytes;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxnm_order, true);
+    return !c.failed;
+}
+function sxnm_ip(v, at, end) {
+    if (!sxnm_need(v, at, 1, end)) {
+        return false;
+    }
+    var ver = v.p[at] >> 4;
+    var udp;
+    if (ver === 4) {
+        if (!sxnm_row(v, sxnm_ipv4_header, at, end)) {
+            return false;
+        }
+        var h = (v.p[at] & 15) * 4;
+        if (h < 20 || !sxnm_need(v, at, h + 8, end) || sxnm_u16(v.p, at + 2) !== sxU64(end - at) || v.p[at + 9] !== 17) {
+            return false;
+        }
+        udp = at + h;
+        var o = at + 20;
+        while (o < udp) {
+            var type = v.p[o];
+            if (type < 2) {
+                if (!sxnm_row(v, sxnm_ipv4_single_byte_option, o, udp)) {
+                    return false;
+                }
+                o++;
+                if (!type) {
+                    break;
+                }
+            } else {
+                if (!sxnm_row(v, sxnm_ipv4_option_header, o, udp)) {
+                    return false;
+                }
+                var n = v.p[o + 1];
+                if (n < 2 || !sxnm_need(v, o, n, udp)) {
+                    return false;
+                }
+                o += n;
+            }
+        }
+    } else if (ver === 6) {
+        if (!sxnm_row(v, sxnm_ipv6_header, at, end) || sxnm_u16(v.p, at + 4) !== sxU64(sxU64(end - at) - 40) || v.p[at + 6] !== 17) {
+            return false;
+        }
+        udp = at + 40;
+    } else {
+        return false;
+    }
+    return sxnm_row(v, sxnm_udp_header, udp, end) && sxnm_u16(v.p, udp + 4) === sxU64(end - udp);
+}
+function sx_networkmeta_build(c) {
+    done: {
+        if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0 || c.size > 0x4000000) {
+            return false;
+        }
+        var view = { c: c, p: null, n: (c.size < 0 ? c.size + SX_U64_MAX : c.size), work: 0 };
+        var v = view;
+        v.p = sxAlloc(v.n);
+        if (v.p === null) {
+            return false;
+        }
+        var ok = false;
+        if (!sx_read(c, 0, v.p, v.n)) {
+            break done;
+        }
+        switch (c.f.file_type) {
+        case "IP_PACKET":
+            ok = sx_ip_packet_build(v);
+            break;
+        case "ETHERNET_FRAME":
+            ok = sx_ethernet_frame_build(v);
+            break;
+        case "GTP_MESSAGE":
+            ok = sx_gtp_message_build(v);
+            break;
+        case "ICMP_MESSAGE":
+            ok = sx_icmp_message_build(v);
+            break;
+        case "BGP_MESSAGES":
+            ok = sx_bgp_messages_build(v);
+            break;
+        case "OSPF_PACKET":
+            ok = sx_ospf_packet_build(v);
+            break;
+        case "SCTP_PACKET":
+            ok = sx_sctp_packet_build(v);
+            break;
+        case "ISAKMP_MESSAGE":
+            ok = sx_isakmp_message_build(v);
+            break;
+        case "RTP_RTCP":
+            ok = sx_rtp_rtcp_build(v);
+            break;
+        case "TLS_RECORDS":
+            ok = sx_tls_records_build(v);
+            break;
+        case "DIAMETER_MESSAGE":
+            ok = sx_diameter_message_build(v);
+            break;
+        case "TACACS_PACKET":
+            ok = sx_tacacs_packet_build(v);
+            break;
+        case "PFCP_MESSAGE":
+            ok = sx_pfcp_message_build(v);
+            break;
+        case "PPTP_MESSAGE":
+            ok = sx_pptp_message_build(v);
+            break;
+        case "RSVP_MESSAGE":
+            ok = sx_rsvp_message_build(v);
+            break;
+        case "PIM_MESSAGE":
+            ok = sx_pim_message_build(v);
+            break;
+        case "LDP_MESSAGE":
+            ok = sx_ldp_message_build(v);
+            break;
+        case "GRE_PACKET":
+            ok = sx_gre_packet_build(v);
+            break;
+        case "L2TP_PACKET":
+            ok = sx_l2tp_packet_build(v);
+            break;
+        case "NETFLOW_DATAGRAM":
+            ok = sx_netflow_datagram_build(v);
+            break;
+        case "NTLM_MESSAGE":
+            ok = sx_ntlm_message_build(v);
+            break;
+        case "DDS_RTPS":
+            ok = sx_dds_rtps_build(v);
+            break;
+        case "DCERPC_PDU":
+            ok = sx_dcerpc_pdu_build(v);
+            break;
+        case "MQTT_PACKETS":
+            ok = sx_mqtt_packets_build(v);
+            break;
+        case "AMQP_FRAMES":
+            ok = sx_amqp_frames_build(v);
+            break;
+        case "WEBSOCKET_FRAMES":
+            ok = sx_websocket_frames_build(v);
+            break;
+        default:
+            break;
+        }
+    }
+    return ok && sxnm_finish(c);
+}
+function sx_networkmeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60260001 || id > 0x6026FFFF) {
+        return true;
+    }
+    var text = null;
+    var type = sxVarType(r.value);
+    var number = type >= 1 /*XX_VAR_TYPE_INT8*/ && type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = number ? sxVarU64(r.value) : 0;
+    if (id === sxnm_ipv4_header.id && r.name === "version_and_ihl") {
+        text = "High nibble: IP version; low nibble: header length in 32-bit words";
+    }
+    if (id === sxnm_ipv4_header.id && r.name === "dscp_and_ecn") {
+        text = "High 6 bits: DSCP; low 2 bits: ECN";
+    }
+    if (id === sxnm_ipv4_header.id && r.name === "flags_and_fragment_offset") {
+        text = "Flags in high 3 bits; low 13 bits: fragment offset in 8-byte units";
+    }
+    if (id === sxnm_ipv4_header.id && r.name === "ttl") {
+        text = "Time to live, decremented at each forwarding hop";
+    }
+    if (id === sxnm_ipv6_header.id && r.name === "version_traffic_class_flow_label") {
+        text = "Version:4, traffic class:8, flow label:20";
+    }
+    if (id === sxnm_ipv6_header.id && r.name === "payload_length") {
+        text = "Bytes after the 40-byte IPv6 header";
+    }
+    if (id === sxnm_bgp_open.id && r.name === "hold_time") {
+        text = "Seconds; zero disables the hold timer";
+    }
+    if (id === sxnm_ospfv2_hello.id && r.name === "hello_interval") {
+        text = "Seconds between Hello packets";
+    }
+    if (id === sxnm_ospfv2_hello.id && r.name === "router_dead_interval") {
+        text = "Seconds before declaring a silent router down";
+    }
+    if (id === sxnm_sctp_common_header.id && r.name === "checksum_crc32c") {
+        text = "CRC32C; wire checksum bytes are little-endian, independently of the other network-order fields";
+    }
+    if (id === sxnm_sctp_data_chunk.id && r.name === "chunk_length") {
+        text = "Chunk bytes including its header, excluding alignment padding";
+    }
+    if (id === sxnm_sctp_data_chunk.id && r.name === "chunk_flags") {
+        text = "Bits: I=8, U=4, B=2, E=1; native reader accepts U/B/E";
+    }
+    if (id === sxnm_isakmp_header.id && r.name === "version") {
+        text = "High nibble: major; low nibble: minor version";
+    }
+    if (id === sxnm_isakmp_basic_attribute.id && r.name === "format_and_type") {
+        text = "High bit set: basic 16-bit attribute value; low 15 bits: attribute type";
+    }
+    if (id === sxnm_isakmp_variable_attribute.id && r.name === "format_and_type") {
+        text = "High bit clear: variable-length attribute; low 15 bits: attribute type";
+    }
+    if (id === sxnm_rtp_header.id && r.name === "version_padding_extension_csrc_count") {
+        text = "Version:2, padding:1, extension:1, CSRC count:4";
+    }
+    if (id === sxnm_rtp_header.id && r.name === "marker_and_payload_type") {
+        text = "Marker:1, payload type:7; dynamic payload types require session negotiation";
+    }
+    if (id === sxnm_rtp_header.id && r.name === "timestamp") {
+        text = "RTP sampling-clock units; clock rate depends on the negotiated payload format";
+    }
+    if (id === sxnm_rtp_extension_header.id && r.name === "data_length_words") {
+        text = "Extension data in 32-bit words, excluding the four-byte extension header";
+    }
+    if (id === sxnm_rtp_padding_count.id && r.name === "padding_bytes") {
+        text = "Padding bytes including this final count byte";
+    }
+    if (id === sxnm_rtcp_header.id && r.name === "version_padding_count") {
+        text = "Version:2, padding:1, report/source count or subtype:5";
+    }
+    if (id === sxnm_rtcp_header.id && r.name === "length_words_minus_one") {
+        text = "Packet length in 32-bit words minus one, including header and padding";
+    }
+    if (id === sxnm_rtcp_sender_info.id && r.name === "ntp_seconds") {
+        text = "NTP seconds since 1900-01-01, subject to NTP era rollover";
+    }
+    if (id === sxnm_rtcp_sender_info.id && r.name === "ntp_fraction") {
+        text = "Fractional second in units of 2^-32 seconds";
+    }
+    if (id === sxnm_rtcp_sender_info.id && r.name === "rtp_timestamp") {
+        text = "RTP sampling-clock timestamp corresponding to the NTP time";
+    }
+    if (id === sxnm_rtcp_report_block.id && r.name === "fraction_lost") {
+        text = "Fraction of packets lost, in units of 1/256";
+    }
+    if (id === sxnm_rtcp_report_block.id && r.name === "cumulative_packets_lost") {
+        text = "Signed 24-bit cumulative packet-loss count; may be negative for duplicates";
+    }
+    if (id === sxnm_rtcp_report_block.id && r.name === "interarrival_jitter") {
+        text = "RTP timestamp units";
+    }
+    if (id === sxnm_rtcp_report_block.id && r.name === "last_sender_report") {
+        text = "Middle 32 bits of the last sender-report NTP timestamp";
+    }
+    if (id === sxnm_rtcp_report_block.id && r.name === "delay_since_last_report") {
+        text = "Units of 1/65536 second since the last sender report";
+    }
+    if (id === sxnm_diameter_header.id && r.name === "message_length") {
+        text = "Bytes including the 20-byte Diameter header";
+    }
+    if (id === sxnm_diameter_avp_header.id && r.name === "avp_length") {
+        text = "AVP bytes including its header, excluding four-byte alignment padding";
+    }
+    if (id === sxnm_pfcp_node_header.id && r.name === "message_length") {
+        text = "Bytes after the first four PFCP header bytes";
+    }
+    if (id === sxnm_pfcp_recovery_time.id && r.name === "ntp_seconds") {
+        text = "NTP seconds since 1900-01-01";
+    }
+    if (id === sxnm_pim_holdtime.id && r.name === "hold_time") {
+        text = "Seconds; 65535 means indefinite";
+    }
+    if (id === sxnm_pim_lan_prune_delay.id && r.name === "tracking_and_propagation_delay") {
+        text = "High bit: explicit tracking support; low 15 bits: propagation delay in milliseconds";
+    }
+    if (id === sxnm_pim_lan_prune_delay.id && r.name === "override_interval") {
+        text = "Milliseconds";
+    }
+    if (id === sxnm_ldp_pdu_header.id && r.name === "pdu_length") {
+        text = "Bytes after the version and PDU length words";
+    }
+    if (id === sxnm_ldp_message_header.id && r.name === "message_length") {
+        text = "Bytes after the message type and length words, including message identifier";
+    }
+    if (id === sxnm_ldp_common_hello.id && r.name === "hold_time") {
+        text = "Seconds; zero requests the default hold time";
+    }
+    if (id === sxnm_ldp_message_header.id && r.name === "unknown_bit_and_type") {
+        text = "High bit: unknown-message handling flag; low 15 bits: message type";
+    }
+    if (id === sxnm_ldp_tlv_header.id && r.name === "flags_and_type") {
+        text = "High bits: U/F flags; low 14 bits: TLV type";
+    }
+    if (id === sxnm_gre_header.id && r.name === "flags_and_version") {
+        text = "C=0x8000, K=0x2000, S=0x1000; low 3 bits: version";
+    }
+    if (id === sxnm_l2tp_avp_header.id && r.name === "flags_and_length") {
+        text = "M=0x8000, H=0x4000; low 10 bits: AVP length including the six-byte header";
+    }
+    if (id === sxnm_l2tp_control_header.id && r.name === "flags_and_version") {
+        text = "T=0x8000, L=0x4000, S=0x0800, O=0x0200, P=0x0100; low 4 bits: version";
+    }
+    if (id === sxnm_netflow_v5_header.id && r.name === "system_uptime_ms") {
+        text = "Milliseconds since the export device booted";
+    }
+    if (id === sxnm_netflow_v5_header.id && r.name === "unix_seconds") {
+        text = "Seconds since 1970-01-01 UTC";
+    }
+    if (id === sxnm_netflow_v5_header.id && r.name === "unix_nanoseconds") {
+        text = "Additional nanoseconds within the export timestamp second";
+    }
+    if (id === sxnm_netflow_v5_header.id && r.name === "sampling_mode_and_interval") {
+        text = "High 2 bits: sampling mode; low 14 bits: sampling interval";
+    }
+    if (id === sxnm_netflow_v5_record.id && r.name === "first_uptime_ms") {
+        text = "Device uptime in milliseconds at the first packet";
+    }
+    if (id === sxnm_netflow_v5_record.id && r.name === "last_uptime_ms") {
+        text = "Device uptime in milliseconds at the last packet";
+    }
+    if (id === sxnm_netflow_v5_record.id && r.name === "source_mask_bits") {
+        text = "IPv4 source-prefix length in bits";
+    }
+    if (id === sxnm_netflow_v5_record.id && r.name === "destination_mask_bits") {
+        text = "IPv4 destination-prefix length in bits";
+    }
+    if (id === sxnm_ntlm_negotiate.id && r.name === "domain_buffer_offset") {
+        text = "Byte offset from the start of the NTLM message";
+    }
+    if (id === sxnm_ntlm_negotiate.id && r.name === "workstation_buffer_offset") {
+        text = "Byte offset from the start of the NTLM message";
+    }
+    if (id === sxnm_mqtt_connect.id && r.name === "keepalive_seconds") {
+        text = "Maximum allowed idle interval in seconds; zero disables keepalive";
+    }
+    if (id === sxnm_mqtt_connect.id && r.name === "connect_flags") {
+        text = "Username:0x80, password:0x40, will-retain:0x20, will-QoS:0x18, will:0x04, clean-session:0x02";
+    }
+    if (id === sxnm_mqtt_control_byte.id && r.name === "packet_type_and_flags") {
+        text = "High nibble: MQTT control packet type; low nibble: packet-specific flags";
+    }
+    if (id === sxnm_amqp_content_header.id && r.name === "body_size") {
+        text = "Total body bytes across the following content-body frames";
+    }
+    if (id === sxnm_amqp_content_header.id && r.name === "property_flags") {
+        text = "Presence bits for Basic properties in descending wire order; low bit indicates continuation";
+    }
+    if (id === sxnm_amqp_field_type.id && r.name === "field_type") {
+        text = "Published AMQP 0-9-1 field-table dialect: s=short string, l=unsigned 64-bit; other broker dialects differ";
+    }
+    if (id === sxnm_amqp_decimal.id && r.name === "scale") {
+        text = "Power-of-ten fractional scale applied to the signed mantissa";
+    }
+    if (id === sxnm_amqp_timestamp.id && r.name === "unix_seconds") {
+        text = "Seconds since 1970-01-01 UTC";
+    }
+    if (id === sxnm_amqp_float_bits.id && r.name === "ieee754_binary32_bits") {
+        text = "Raw IEEE 754 binary32 bit pattern in network byte order";
+    }
+    if (id === sxnm_amqp_double_bits.id && r.name === "ieee754_binary64_bits") {
+        text = "Raw IEEE 754 binary64 bit pattern in network byte order";
+    }
+    if (id === sxnm_websocket_frame_header.id && r.name === "fin_rsv_opcode") {
+        text = "FIN=0x80, RSV1..3=0x70, opcode=low 4 bits";
+    }
+    if (id === sxnm_websocket_frame_header.id && r.name === "mask_and_length") {
+        text = "High bit: masking; low 7 bits: length or 126/127 extended-length marker";
+    }
+    if (id === sxnm_rtps_data_le.id && r.name === "inline_qos_offset") {
+        text = "Byte offset from immediately after this offset field to the inline-QoS/data boundary";
+    }
+    if (id === sxnm_rtps_timestamp_le.id && r.name === "seconds") {
+        text = "Signed seconds relative to the RTPS timestamp epoch";
+    }
+    if (id === sxnm_rtps_timestamp_le.id && r.name === "fraction") {
+        text = "Fractional second in units of 2^-32 seconds";
+    }
+    if (id === sxnm_rtps_submessage_le.id && r.name === "flags") {
+        text = "Bit 0 selects little-endian submessage fields; other bits depend on submessage kind";
+    }
+    if (id === sxnm_rtps_submessage_le.id && r.name === "following_length") {
+        text = "Bytes following the four-byte submessage header; zero can mean the remaining message";
+    }
+    if (id === sxnm_rtps_data_le.id && r.name === "sequence_high") {
+        text = "Signed high 32 bits of a sequence number; followed by its unsigned low 32 bits";
+    }
+    if (id === sxnm_rtps_heartbeat_le.id && r.name === "first_sequence_high") {
+        text = "Signed high 32 bits of a sequence number; followed by its unsigned low 32 bits";
+    }
+    if (id === sxnm_rtps_heartbeat_le.id && r.name === "last_sequence_high") {
+        text = "Signed high 32 bits of a sequence number; followed by its unsigned low 32 bits";
+    }
+    if (id === sxnm_dcerpc_header_le.id && r.name === "data_representation") {
+        text = "Byte 0: integer byte order; remaining representation bytes are defined by DCE/RPC";
+    }
+    if (id === sxnm_dcerpc_request_le.id && r.name === "allocation_hint") {
+        text = "Advisory total stub bytes for this call; not a source-file offset";
+    }
+    if (id === sxnm_dcerpc_response_le.id && r.name === "allocation_hint") {
+        text = "Advisory total stub bytes for this call; not a source-file offset";
+    }
+    if (id === sxnm_rtps_data_be.id && r.name === "inline_qos_offset") {
+        text = "Byte offset from immediately after this offset field to the inline-QoS/data boundary";
+    }
+    if (id === sxnm_rtps_timestamp_be.id && r.name === "seconds") {
+        text = "Signed seconds relative to the RTPS timestamp epoch";
+    }
+    if (id === sxnm_rtps_timestamp_be.id && r.name === "fraction") {
+        text = "Fractional second in units of 2^-32 seconds";
+    }
+    if (id === sxnm_rtps_submessage_be.id && r.name === "flags") {
+        text = "Bit 0 selects little-endian submessage fields; other bits depend on submessage kind";
+    }
+    if (id === sxnm_rtps_submessage_be.id && r.name === "following_length") {
+        text = "Bytes following the four-byte submessage header; zero can mean the remaining message";
+    }
+    if (id === sxnm_rtps_data_be.id && r.name === "sequence_high") {
+        text = "Signed high 32 bits of a sequence number; followed by its unsigned low 32 bits";
+    }
+    if (id === sxnm_rtps_heartbeat_be.id && r.name === "first_sequence_high") {
+        text = "Signed high 32 bits of a sequence number; followed by its unsigned low 32 bits";
+    }
+    if (id === sxnm_rtps_heartbeat_be.id && r.name === "last_sequence_high") {
+        text = "Signed high 32 bits of a sequence number; followed by its unsigned low 32 bits";
+    }
+    if (id === sxnm_dcerpc_header_be.id && r.name === "data_representation") {
+        text = "Byte 0: integer byte order; remaining representation bytes are defined by DCE/RPC";
+    }
+    if (id === sxnm_dcerpc_request_be.id && r.name === "allocation_hint") {
+        text = "Advisory total stub bytes for this call; not a source-file offset";
+    }
+    if (id === sxnm_dcerpc_response_be.id && r.name === "allocation_hint") {
+        text = "Advisory total stub bytes for this call; not a source-file offset";
+    }
+    if (id === sxnm_mqtt_remaining_length_1.id && r.name === "remaining_length") {
+        text = "Unsigned base-128 byte count after this variable-length field";
+    }
+    if (id === sxnm_mqtt_remaining_length_2.id && r.name === "remaining_length") {
+        text = "Unsigned base-128 byte count after this variable-length field";
+    }
+    if (id === sxnm_mqtt_remaining_length_3.id && r.name === "remaining_length") {
+        text = "Unsigned base-128 byte count after this variable-length field";
+    }
+    if (id === sxnm_mqtt_remaining_length_4.id && r.name === "remaining_length") {
+        text = "Unsigned base-128 byte count after this variable-length field";
+    }
+    if (number && id === sxnm_ethernet_header.id && r.name === "ether_type") {
+        switch (value) {
+        case 2048:
+            text = "ETHERTYPE_IPV4";
+            break;
+        case 34525:
+            text = "ETHERTYPE_IPV6";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_ipv4_header.id && r.name === "protocol") {
+        switch (value) {
+        case 17:
+            text = "IPPROTO_UDP";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_ipv6_header.id && r.name === "next_header") {
+        switch (value) {
+        case 17:
+            text = "IPPROTO_UDP";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_icmp_echo_header.id && r.name === "message_type") {
+        switch (value) {
+        case 0:
+            text = "ICMP_ECHO_REPLY";
+            break;
+        case 8:
+            text = "ICMP_ECHO_REQUEST";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_bgp_message_header.id && r.name === "message_type") {
+        switch (value) {
+        case 1:
+            text = "BGP_OPEN";
+            break;
+        case 4:
+            text = "BGP_KEEPALIVE";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_bgp_optional_parameter.id && r.name === "parameter_type") {
+        switch (value) {
+        case 2:
+            text = "CAPABILITY";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_bgp_capability_header.id && r.name === "capability_code") {
+        switch (value) {
+        case 1:
+            text = "MULTIPROTOCOL_EXTENSIONS";
+            break;
+        case 2:
+            text = "ROUTE_REFRESH";
+            break;
+        case 65:
+            text = "FOUR_OCTET_AS_NUMBER";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_ospfv2_header.id && r.name === "packet_type") {
+        switch (value) {
+        case 1:
+            text = "HELLO";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_ospfv2_header.id && r.name === "authentication_type") {
+        switch (value) {
+        case 0:
+            text = "NULL_AUTHENTICATION";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_sctp_data_chunk.id && r.name === "chunk_type") {
+        switch (value) {
+        case 0:
+            text = "DATA";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_isakmp_header.id && r.name === "next_payload") {
+        switch (value) {
+        case 1:
+            text = "SECURITY_ASSOCIATION";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_isakmp_header.id && r.name === "exchange_type") {
+        switch (value) {
+        case 2:
+            text = "IDENTITY_PROTECTION";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_isakmp_sa_payload.id && r.name === "domain_of_interpretation") {
+        switch (value) {
+        case 1:
+            text = "IPSEC_DOI";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_isakmp_proposal.id && r.name === "protocol_id") {
+        switch (value) {
+        case 1:
+            text = "ISAKMP";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_isakmp_transform.id && r.name === "transform_id") {
+        switch (value) {
+        case 1:
+            text = "KEY_IKE";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rtcp_header.id && r.name === "packet_type") {
+        switch (value) {
+        case 200:
+            text = "SR";
+            break;
+        case 201:
+            text = "RR";
+            break;
+        case 202:
+            text = "SDES";
+            break;
+        case 203:
+            text = "BYE";
+            break;
+        case 204:
+            text = "APP";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rtcp_sdes_item.id && r.name === "item_type") {
+        switch (value) {
+        case 1:
+            text = "CNAME";
+            break;
+        case 2:
+            text = "NAME";
+            break;
+        case 3:
+            text = "EMAIL";
+            break;
+        case 4:
+            text = "PHONE";
+            break;
+        case 5:
+            text = "LOC";
+            break;
+        case 6:
+            text = "TOOL";
+            break;
+        case 7:
+            text = "NOTE";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tls_record_header.id && r.name === "content_type") {
+        switch (value) {
+        case 20:
+            text = "change_cipher_spec";
+            break;
+        case 22:
+            text = "handshake";
+            break;
+        case 23:
+            text = "application_data";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tls_handshake_header.id && r.name === "handshake_type") {
+        switch (value) {
+        case 1:
+            text = "client_hello";
+            break;
+        case 2:
+            text = "server_hello";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tls_extension_header.id && r.name === "extension_type") {
+        switch (value) {
+        case 0:
+            text = "server_name";
+            break;
+        case 10:
+            text = "supported_groups";
+            break;
+        case 11:
+            text = "ec_point_formats";
+            break;
+        case 13:
+            text = "signature_algorithms";
+            break;
+        case 43:
+            text = "supported_versions";
+            break;
+        case 50:
+            text = "signature_algorithms_cert";
+            break;
+        case 51:
+            text = "key_share";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tls_cipher_suite.id && r.name === "cipher_suite") {
+        switch (value) {
+        case 4865:
+            text = "TLS_AES_128_GCM_SHA256";
+            break;
+        case 4866:
+            text = "TLS_AES_256_GCM_SHA384";
+            break;
+        case 4867:
+            text = "TLS_CHACHA20_POLY1305_SHA256";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tls_compression_method.id && r.name === "compression_method") {
+        switch (value) {
+        case 0:
+            text = "NULL_COMPRESSION";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_diameter_header.id && r.name === "command_code") {
+        switch (value) {
+        case 257:
+            text = "CAPABILITIES_EXCHANGE";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_diameter_avp_header.id && r.name === "avp_code") {
+        switch (value) {
+        case 264:
+            text = "Origin-Host";
+            break;
+        case 296:
+            text = "Origin-Realm";
+            break;
+        case 257:
+            text = "Host-IP-Address";
+            break;
+        case 266:
+            text = "Vendor-Id";
+            break;
+        case 269:
+            text = "Product-Name";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_diameter_address_family.id && r.name === "address_family") {
+        switch (value) {
+        case 1:
+            text = "IPv4";
+            break;
+        case 2:
+            text = "IPv6";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tacacs_header.id && r.name === "packet_type") {
+        switch (value) {
+        case 1:
+            text = "AUTHENTICATION";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_tacacs_authentication_start.id && r.name === "action") {
+        switch (value) {
+        case 1:
+            text = "LOGIN";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_gtpv1_header.id && r.name === "message_type") {
+        switch (value) {
+        case 255:
+            text = "G_PDU";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_pfcp_node_header.id && r.name === "message_type") {
+        switch (value) {
+        case 5:
+            text = "ASSOCIATION_SETUP_REQUEST";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_pfcp_information_element.id && r.name === "ie_type") {
+        switch (value) {
+        case 60:
+            text = "Node_ID";
+            break;
+        case 96:
+            text = "Recovery_Time_Stamp";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_pfcp_node_id_type.id && r.name === "node_id_type") {
+        switch (value) {
+        case 0:
+            text = "IPv4";
+            break;
+        case 1:
+            text = "IPv6";
+            break;
+        case 2:
+            text = "FQDN";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_pptp_control_header.id && r.name === "control_message_type") {
+        switch (value) {
+        case 1:
+            text = "START_CONTROL_CONNECTION_REQUEST";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rsvp_header.id && r.name === "message_type") {
+        switch (value) {
+        case 20:
+            text = "HELLO";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rsvp_object_header.id && r.name === "class_number") {
+        switch (value) {
+        case 22:
+            text = "HELLO";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rsvp_object_header.id && r.name === "class_type") {
+        switch (value) {
+        case 1:
+            text = "HELLO_REQUEST";
+            break;
+        case 2:
+            text = "HELLO_ACK";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_pim_option_header.id && r.name === "option_type") {
+        switch (value) {
+        case 1:
+            text = "Holdtime";
+            break;
+        case 2:
+            text = "LAN_Prune_Delay";
+            break;
+        case 19:
+            text = "DR_Priority";
+            break;
+        case 20:
+            text = "Generation_ID";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_l2tp_message_type.id && r.name === "message_type") {
+        switch (value) {
+        case 1:
+            text = "SCCRQ";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_l2tp_avp_header.id && r.name === "attribute_type") {
+        switch (value) {
+        case 0:
+            text = "Message_Type";
+            break;
+        case 2:
+            text = "Protocol_Version";
+            break;
+        case 3:
+            text = "Framing_Capabilities";
+            break;
+        case 4:
+            text = "Bearer_Capabilities";
+            break;
+        case 6:
+            text = "Firmware_Revision";
+            break;
+        case 7:
+            text = "Host_Name";
+            break;
+        case 8:
+            text = "Vendor_Name";
+            break;
+        case 9:
+            text = "Assigned_Tunnel_ID";
+            break;
+        case 10:
+            text = "Receive_Window_Size";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_ntlm_negotiate.id && r.name === "message_type") {
+        switch (value) {
+        case 1:
+            text = "NEGOTIATE_MESSAGE";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rtps_cdr_encapsulation.id && r.name === "representation_identifier") {
+        switch (value) {
+        case 0:
+            text = "CDR_BE";
+            break;
+        case 1:
+            text = "CDR_LE";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_mqtt_connack.id && r.name === "return_code") {
+        switch (value) {
+        case 0:
+            text = "CONNECTION_ACCEPTED";
+            break;
+        case 1:
+            text = "UNACCEPTABLE_PROTOCOL_VERSION";
+            break;
+        case 2:
+            text = "IDENTIFIER_REJECTED";
+            break;
+        case 3:
+            text = "SERVER_UNAVAILABLE";
+            break;
+        case 4:
+            text = "BAD_USERNAME_OR_PASSWORD";
+            break;
+        case 5:
+            text = "NOT_AUTHORIZED";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_amqp_frame_header.id && r.name === "frame_type") {
+        switch (value) {
+        case 1:
+            text = "METHOD";
+            break;
+        case 2:
+            text = "HEADER";
+            break;
+        case 3:
+            text = "BODY";
+            break;
+        case 8:
+            text = "HEARTBEAT";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_amqp_delivery_mode.id && r.name === "delivery_mode") {
+        switch (value) {
+        case 1:
+            text = "NON_PERSISTENT";
+            break;
+        case 2:
+            text = "PERSISTENT";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_websocket_close_code.id && r.name === "status_code") {
+        switch (value) {
+        case 1000:
+            text = "NORMAL_CLOSURE";
+            break;
+        case 1001:
+            text = "GOING_AWAY";
+            break;
+        case 1002:
+            text = "PROTOCOL_ERROR";
+            break;
+        case 1003:
+            text = "UNSUPPORTED_DATA";
+            break;
+        case 1007:
+            text = "INVALID_PAYLOAD_DATA";
+            break;
+        case 1008:
+            text = "POLICY_VIOLATION";
+            break;
+        case 1009:
+            text = "MESSAGE_TOO_BIG";
+            break;
+        case 1010:
+            text = "MANDATORY_EXTENSION";
+            break;
+        case 1011:
+            text = "INTERNAL_ERROR";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rtps_submessage_le.id && r.name === "submessage_id") {
+        switch (value) {
+        case 7:
+            text = "HEARTBEAT";
+            break;
+        case 9:
+            text = "INFO_TS";
+            break;
+        case 14:
+            text = "INFO_DST";
+            break;
+        case 21:
+            text = "DATA";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_dcerpc_header_le.id && r.name === "packet_type") {
+        switch (value) {
+        case 0:
+            text = "REQUEST";
+            break;
+        case 2:
+            text = "RESPONSE";
+            break;
+        case 11:
+            text = "BIND";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_rtps_submessage_be.id && r.name === "submessage_id") {
+        switch (value) {
+        case 7:
+            text = "HEARTBEAT";
+            break;
+        case 9:
+            text = "INFO_TS";
+            break;
+        case 14:
+            text = "INFO_DST";
+            break;
+        case 21:
+            text = "DATA";
+            break;
+        default:
+            break;
+        }
+    }
+    if (number && id === sxnm_dcerpc_header_be.id && r.name === "packet_type") {
+        switch (value) {
+        case 0:
+            text = "REQUEST";
+            break;
+        case 2:
+            text = "RESPONSE";
+            break;
+        case 11:
+            text = "BIND";
+            break;
+        default:
+            break;
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}

@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/birdies/xx_birdies_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_birdies_header_fields = layout([u32("magic", SIGNATURE), u32("member_count", COUNT)]);
+var sxan_birdies_header = sxLayout(0x60770039, "birdies_header", LE, sxan_birdies_header_fields);
+var sxan_birdies_member_fields = layout([u32("data_offset", OFFSET), u32("payload_size", SIZE)]);
+var sxan_birdies_member = sxLayout(0x6077003A, "birdies_member", LE, sxan_birdies_member_fields);
+function sxan_birdies(c) {
+    var n = [0];
+    var p = 8;
+    var len = [0];
+    if (!sxan_add(c, sxan_birdies_header, 0) || !sxan_word(c, 4, 4, false, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxan_zlen(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), len) || !sxan_named(c, p, len[0]) || !sxan_add(c, sxan_birdies_member, p + len[0])) {
+            return false;
+        }
+        p += len[0] + 8;
+    }
+    return true;
+}
+function sx_birdies_build(c) {
+    var ok = false;
+    ok = sxan_birdies(c);
+    return !!(c.count && sxan_finish(c));
+}

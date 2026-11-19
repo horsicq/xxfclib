@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_bnk/xx_adlib_bnk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_bnk_header_fields = layout([field("version_major", "uint8_t", 1), field("version_minor", "uint8_t", 1),
+    chars("signature", 6, SIGNATURE), field("used_entry_count", "uint16_t", 2, COUNT),
+    field("total_entry_count", "uint16_t", 2, COUNT), field("name_list_offset", "uint32_t", 4, OFFSET),
+    field("instrument_data_offset", "uint32_t", 4, OFFSET)]);
+var sxad_adlib_bnk_header = sxLayout(0x600F0016, "adlib_bnk_header", LE, sxad_adlib_bnk_header_fields);
+var sxad_adlib_bnk_name_fields = layout([field("instrument_index", "uint16_t", 2, ID),
+    field("record_used", "uint8_t", 1, FLAGS), chars("name", 9, STRING)]);
+var sxad_adlib_bnk_name = sxLayout(0x600F0017, "adlib_bnk_name", LE, sxad_adlib_bnk_name_fields);
+var sxad_adlib_bnk_instrument_fields = layout([field("mode", "uint8_t", 1), field("voice_number", "uint8_t", 1),
+    field("modulator_key_scale_level", "uint8_t", 1), field("modulator_frequency_multiplier", "uint8_t", 1),
+    field("modulator_feedback", "uint8_t", 1), field("modulator_attack_rate", "uint8_t", 1),
+    field("modulator_sustain_level", "uint8_t", 1), field("modulator_sustaining_sound", "uint8_t", 1),
+    field("modulator_decay_rate", "uint8_t", 1), field("modulator_release_rate", "uint8_t", 1),
+    field("modulator_output_level", "uint8_t", 1), field("modulator_amplitude_vibrato", "uint8_t", 1),
+    field("modulator_frequency_vibrato", "uint8_t", 1), field("modulator_envelope_scaling", "uint8_t", 1),
+    field("modulator_fm_type", "uint8_t", 1), field("carrier_key_scale_level", "uint8_t", 1),
+    field("carrier_frequency_multiplier", "uint8_t", 1), field("carrier_feedback", "uint8_t", 1),
+    field("carrier_attack_rate", "uint8_t", 1), field("carrier_sustain_level", "uint8_t", 1),
+    field("carrier_sustaining_sound", "uint8_t", 1), field("carrier_decay_rate", "uint8_t", 1),
+    field("carrier_release_rate", "uint8_t", 1), field("carrier_output_level", "uint8_t", 1),
+    field("carrier_amplitude_vibrato", "uint8_t", 1), field("carrier_frequency_vibrato", "uint8_t", 1),
+    field("carrier_envelope_scaling", "uint8_t", 1), field("carrier_fm_type", "uint8_t", 1),
+    field("modulator_waveform", "uint8_t", 1), field("carrier_waveform", "uint8_t", 1)]);
+var sxad_adlib_bnk_instrument = sxLayout(0x600F0018, "adlib_bnk_instrument", LE, sxad_adlib_bnk_instrument_fields);
+function sxad_bnk(c) {
+    var version = [];
+    var used;
+    var total;
+    var names;
+    var data;
+    if (!sx_read(c, 0, version, 2) || version[0] !== 1 || version[1] || !sxad_tag(c, 2, "ADLIB-", 6) || (used = sx_u16(c, 8, false)) === null || (total = sx_u16(c, 10, false)) === null || (names = sx_u32(c, 12, false)) === null || (data = sx_u32(c, 16, false)) === null) {
+        return false;
+    }
+    if (!used || used > total || total > 1000 || names < 20 || data < names + 12 * total || data > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || (c.size - data) % 30) {
+        return false;
+    }
+    var count = Math.floor((c.size - data < 0 ? c.size - data + SX_U64_MAX : c.size - data) / 30);
+    if (!count || count > 1000) {
+        return false;
+    }
+    return sx_add(c, sxad_adlib_bnk_header, 0, 20) && sx_table(c, sxad_adlib_bnk_name, names, 12, total) && sx_table(c, sxad_adlib_bnk_instrument, data, 30, count);
+}
+function sx_adlib_bnk_build(c) {
+    return sxad_bnk(c);
+}

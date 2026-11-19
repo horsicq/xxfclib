@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/biomedical_bdf/xx_biomedical_bdf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_biomedical_bdf_build(c) {
+    var ok = false;
+    ok = sxsh_edf(c);
+    return ok && sxsh_finish(c);
+}

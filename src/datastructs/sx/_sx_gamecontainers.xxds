@@ -1,0 +1,790 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gamecontainers.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_filename_byte_fields = layout([chars("byte", 1, STRING)]);
+var sxgco_filename_byte = sxLayout(0x60400001, "filename_byte", LE, sxgco_filename_byte_fields);
+var sxgco_encoded_byte_fields = layout([blob("byte", 1)]);
+var sxgco_encoded_byte = sxLayout(0x60400002, "encoded_byte", LE, sxgco_encoded_byte_fields);
+var sxgco_count16_fields = layout([u16("entries", COUNT)]);
+var sxgco_count16 = sxLayout(0x60400003, "count16", LE, sxgco_count16_fields);
+var sxgco_offset32_fields = layout([u32("offset", OFFSET)]);
+var sxgco_offset32 = sxLayout(0x60400004, "offset32", LE, sxgco_offset32_fields);
+var sxgco_name_size32_fields = layout([u32("name_bytes", SIZE)]);
+var sxgco_name_size32 = sxLayout(0x60400006, "name_size32", LE, sxgco_name_size32_fields);
+var sxgco_krml_entry_fields = layout([chars("name", 13, STRING), i32("data_offset", OFFSET), i32("data_bytes", SIZE)]);
+var sxgco_krml_entry = sxLayout(0x60400008, "krml_entry", LE, sxgco_krml_entry_fields);
+var sxgco_sci_header_fields = layout([chars("magic", 3, SIGNATURE), u8("version", ID), chars("banner", 42, STRING)]);
+var sxgco_sci_header = sxLayout(0x60400009, "sci_header", LE, sxgco_sci_header_fields);
+var sxgco_seadata_entry_fields = layout([u32("tag", SIGNATURE), i32("next_offset", OFFSET), i32("name_bytes", SIZE)]);
+var sxgco_seadata_entry = sxLayout(0x6040000C, "seadata_entry", LE, sxgco_seadata_entry_fields);
+var sxgco_stk_entry_fields = layout([chars("name", 13, STRING), u32("stored_bytes", SIZE), u32("data_offset", OFFSET),
+    u8("method", ID)]);
+var sxgco_stk_entry = sxLayout(0x6040000E, "stk_entry", LE, sxgco_stk_entry_fields);
+var sxgco_stk2_header_fields = layout([chars("magic", 5, SIGNATURE), u8("version", ID), chars("timestamp", 14, STRING),
+    chars("creator", 8, STRING), u32("directory_offset", OFFSET)]);
+var sxgco_stk2_header = sxLayout(0x6040000F, "stk2_header", LE, sxgco_stk2_header_fields);
+var sxgco_stk2_directory_fields = layout([u32("entries", COUNT), u32("metadata_offset", OFFSET)]);
+var sxgco_stk2_directory = sxLayout(0x60400010, "stk2_directory", LE, sxgco_stk2_directory_fields);
+var sxgco_stk2_entry_fields = layout([u32("name_offset", OFFSET), blob("unknown04", 36), u32("stored_bytes", SIZE),
+    u32("decoded_bytes", SIZE), blob("unknown30", 13)]);
+var sxgco_stk2_entry = sxLayout(0x60400011, "stk2_entry", LE, sxgco_stk2_entry_fields);
+var sxgco_battle_entry_fields = layout([chars("name", 8, STRING), u32("data_offset", OFFSET)]);
+var sxgco_battle_entry = sxLayout(0x60400014, "battle_entry", LE, sxgco_battle_entry_fields);
+var sxgco_mxs_entry_fields = layout([u32("stored_bytes", SIZE), chars("name", 13, STRING), u32("decoded_bytes", SIZE)]);
+var sxgco_mxs_entry = sxLayout(0x60400015, "mxs_entry", LE, sxgco_mxs_entry_fields);
+var sxgco_sinner_entry_fields = layout([chars("name", 256, STRING), u32("data_bytes", SIZE), u32("relative_offset", OFFSET)]);
+var sxgco_sinner_entry = sxLayout(0x60400017, "sinner_entry", LE, sxgco_sinner_entry_fields);
+var sxgco_res_entry_fields = layout([u8("name_bytes", SIZE), chars("name", 12, STRING), u32("data_offset", OFFSET),
+    u32("data_bytes", SIZE), u8("type", ID)]);
+var sxgco_res_entry = sxLayout(0x60400018, "res_entry", LE, sxgco_res_entry_fields);
+var sxgco_rsc_entry_fields = layout([u32("data_bytes", SIZE), u32("dos_timestamp"), u32("data_offset", OFFSET),
+    chars("name", 13, STRING)]);
+var sxgco_rsc_entry = sxLayout(0x60400019, "rsc_entry", LE, sxgco_rsc_entry_fields);
+var sxgco_vis_index_marker_fields = layout([blob("encrypted_marker", 3)]);
+var sxgco_vis_index_marker = sxLayout(0x6040001C, "vis_index_marker", LE, sxgco_vis_index_marker_fields);
+var sxgco_vis_entry_fields = layout([blob("encrypted_relative_offset", 4), blob("encrypted_stored_bytes", 4),
+    blob("encrypted_decoded_bytes", 4), blob("encrypted_flags", 4)]);
+var sxgco_vis_entry = sxLayout(0x6040001D, "vis_entry", LE, sxgco_vis_entry_fields);
+var sxgco_bgi_header_fields = layout([chars("magic", 12, SIGNATURE), u32("entries", COUNT)]);
+var sxgco_bgi_header = sxLayout(0x6040001E, "bgi_header", LE, sxgco_bgi_header_fields);
+var sxgco_bgi_entry_fields = layout([chars("name", 16, STRING), u32("relative_offset", OFFSET), u32("data_bytes", SIZE),
+    blob("unknown", 8)]);
+var sxgco_bgi_entry = sxLayout(0x6040001F, "bgi_entry", LE, sxgco_bgi_entry_fields);
+var sxgco_bgi2_entry_fields = layout([chars("name", 96, STRING), u32("relative_offset", OFFSET), u32("data_bytes", SIZE),
+    blob("unknown", 24)]);
+var sxgco_bgi2_entry = sxLayout(0x60400020, "bgi2_entry", LE, sxgco_bgi2_entry_fields);
+var sxgco_dxa_header1_fields = layout([blob("encrypted_magic", 2), blob("encrypted_version", 2),
+    blob("encrypted_index_bytes", 4), blob("encrypted_data_offset", 4), blob("encrypted_index_offset", 4),
+    blob("encrypted_file_table_offset", 4), blob("encrypted_directory_table_offset", 4)]);
+var sxgco_dxa_header1 = sxLayout(0x60400021, "dxa_header1", LE, sxgco_dxa_header1_fields);
+var sxgco_dxa_header4_fields = layout([blob("encrypted_magic", 2), blob("encrypted_version", 2),
+    blob("encrypted_index_bytes", 4), blob("encrypted_data_offset", 4), blob("encrypted_index_offset", 4),
+    blob("encrypted_file_table_offset", 4), blob("encrypted_directory_table_offset", 4), blob("encrypted_unknown18", 4)]);
+var sxgco_dxa_header4 = sxLayout(0x60400022, "dxa_header4", LE, sxgco_dxa_header4_fields);
+var sxgco_dxa_header6_fields = layout([blob("encrypted_magic", 2), blob("encrypted_version", 2),
+    blob("encrypted_index_bytes", 4), blob("encrypted_data_offset", 8), blob("encrypted_index_offset", 8),
+    blob("encrypted_file_table_offset", 8), blob("encrypted_directory_table_offset", 8), blob("encrypted_codepage", 4),
+    blob("encrypted_unknown2c", 4)]);
+var sxgco_dxa_header6 = sxLayout(0x60400023, "dxa_header6", LE, sxgco_dxa_header6_fields);
+var sxgco_livemaker_offset_fields = layout([blob("encrypted_offset", 8)]);
+var sxgco_livemaker_offset = sxLayout(0x60400025, "livemaker_offset", LE, sxgco_livemaker_offset_fields);
+var sxgco_livemaker_flags_fields = layout([u8("flags", FLAGS)]);
+var sxgco_livemaker_flags = sxLayout(0x60400026, "livemaker_flags", LE, sxgco_livemaker_flags_fields);
+var sxgco_noa_entry_fields = layout([u64("decoded_bytes", SIZE), u32("attributes", FLAGS), u32("encoding", ID),
+    i64("relative_record_offset", OFFSET), u64("timestamp"), u32("extra_bytes", SIZE)]);
+var sxgco_noa_entry = sxLayout(0x6040002A, "noa_entry", LE, sxgco_noa_entry_fields);
+var sxgco_rgss_name_size_fields = layout([blob("encrypted_name_bytes", 4)]);
+var sxgco_rgss_name_size = sxLayout(0x6040002D, "rgss_name_size", LE, sxgco_rgss_name_size_fields);
+var sxgco_rgss_data_size_fields = layout([blob("encrypted_data_bytes", 4)]);
+var sxgco_rgss_data_size = sxLayout(0x6040002E, "rgss_data_size", LE, sxgco_rgss_data_size_fields);
+var sxgco_rgss_entry3_fields = layout([blob("encrypted_data_offset", 4), blob("encrypted_data_bytes", 4),
+    blob("encrypted_data_key", 4), blob("encrypted_name_bytes", 4)]);
+var sxgco_rgss_entry3 = sxLayout(0x6040002F, "rgss_entry3", LE, sxgco_rgss_entry3_fields);
+var sxgco_rgss_end3_fields = layout([blob("encrypted_terminator", 4)]);
+var sxgco_rgss_end3 = sxLayout(0x60400030, "rgss_end3", LE, sxgco_rgss_end3_fields);
+var sxgco_stos_header_fields = layout([chars("magic", 10, SIGNATURE), u32("bank_number", ID), u8("bank_type", ID),
+    field("encoded_bank_size", "uint24", 3)]);
+var sxgco_stos_header = sxLayout(0x60400031, "stos_header", BE, sxgco_stos_header_fields);
+var sxgco_stos_sprite_fields = layout([u32("bank_id", ID), u32("low_offset", OFFSET), u32("medium_offset", OFFSET),
+    u32("high_offset", OFFSET), u16("low_sprites", COUNT), u16("medium_sprites", COUNT), u16("high_sprites", COUNT)]);
+var sxgco_stos_sprite = sxLayout(0x60400032, "stos_sprite", BE, sxgco_stos_sprite_fields);
+var sxgco_stos_sprite_param_fields = layout([u32("relative_data_offset", OFFSET), u8("width_words"), u8("height"),
+    blob("unknown06", 2)]);
+var sxgco_stos_sprite_param = sxLayout(0x60400033, "stos_sprite_param", BE, sxgco_stos_sprite_param_fields);
+var sxgco_stos_color_fields = layout([u16("color")]);
+var sxgco_stos_color = sxLayout(0x60400035, "stos_color", BE, sxgco_stos_color_fields);
+var sxgco_npk2_header_fields = layout([chars("magic", 4, SIGNATURE), u32("unknown04"), blob("iv", 16), u32("entries", COUNT),
+    u32("encrypted_index_bytes", SIZE)]);
+var sxgco_npk2_header = sxLayout(0x60400037, "npk2_header", LE, sxgco_npk2_header_fields);
+var sxgco_kif_entry32_fields = layout([chars("name", 32, STRING), u32("data_offset", OFFSET), u32("data_bytes", SIZE)]);
+var sxgco_kif_entry32 = sxLayout(0x60400039, "kif_entry32", LE, sxgco_kif_entry32_fields);
+var sxgco_kif_entry64_fields = layout([chars("name", 64, STRING), u32("data_offset", OFFSET), u32("data_bytes", SIZE)]);
+var sxgco_kif_entry64 = sxLayout(0x6040003A, "kif_entry64", LE, sxgco_kif_entry64_fields);
+var sxgco_malie_entry_fields = layout([chars("name", 36, STRING), u32("data_bytes", SIZE), u32("relative_offset", OFFSET),
+    blob("unknown2c", 4)]);
+var sxgco_malie_entry = sxLayout(0x6040003D, "malie_entry", LE, sxgco_malie_entry_fields);
+var sxgco_malieu_entry_fields = layout([blob("name_utf16le", 68), u32("data_bytes", SIZE), i64("relative_offset", OFFSET)]);
+var sxgco_malieu_entry = sxLayout(0x6040003E, "malieu_entry", LE, sxgco_malieu_entry_fields);
+var sxgco_ypf_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("entries", COUNT),
+    u32("index_end", OFFSET), blob("reserved", 16, RESERVED)]);
+var sxgco_ypf_header = sxLayout(0x6040003F, "ypf_header", LE, sxgco_ypf_header_fields);
+var sxgco_ypf_name_fields = layout([u32("name_hash", CHECKSUM), u8("encoded_name_bytes")]);
+var sxgco_ypf_name = sxLayout(0x60400040, "ypf_name", LE, sxgco_ypf_name_fields);
+var sxgco_ypf_fields_fields = layout([u8("file_type", ID), u8("packed", FLAGS), u32("decoded_bytes", SIZE),
+    u32("stored_bytes", SIZE), u32("data_offset", OFFSET), u32("stored_checksum", CHECKSUM)]);
+var sxgco_ypf_fields = sxLayout(0x60400041, "ypf_fields", LE, sxgco_ypf_fields_fields);
+var sxgco_ypf_offset_high_fields = layout([u32("data_offset_high")]);
+var sxgco_ypf_offset_high = sxLayout(0x60400043, "ypf_offset_high", LE, sxgco_ypf_offset_high_fields);
+var sxgco_npa_fields_fields = layout([u8("entry_type", ID), i32("directory_id", ID), u32("relative_offset", OFFSET),
+    u32("stored_bytes", SIZE), u32("decoded_bytes", SIZE)]);
+var sxgco_npa_fields = sxLayout(0x60400046, "npa_fields", LE, sxgco_npa_fields_fields);
+var sxgco_qlie_footer_fields = layout([chars("magic", 11, SIGNATURE), chars("major", 1, ID), chars("dot", 1, NONE),
+    chars("minor", 1, ID), blob("reserved", 2, RESERVED), u32("entries", COUNT), u64("index_offset", OFFSET)]);
+var sxgco_qlie_footer = sxLayout(0x60400047, "qlie_footer", LE, sxgco_qlie_footer_fields);
+var sxgco_qlie_name_units_fields = layout([u16("name_units", COUNT)]);
+var sxgco_qlie_name_units = sxLayout(0x60400048, "qlie_name_units", LE, sxgco_qlie_name_units_fields);
+var sxgco_qlie_entry_fields = layout([u64("data_offset", OFFSET), u32("stored_bytes", SIZE), u32("decoded_bytes", SIZE),
+    u32("packed", FLAGS), u32("encryption", ID), u32("ciphertext_hash", CHECKSUM)]);
+var sxgco_qlie_entry = sxLayout(0x60400049, "qlie_entry", LE, sxgco_qlie_entry_fields);
+var sxgco_cpk_utf_header_fields = layout([chars("magic", 4, SIGNATURE), u32("size_minus8"), u16("encoding", ID),
+    u16("rows_offset", OFFSET), u32("strings_offset", OFFSET), u32("data_offset", OFFSET), u32("table_name_offset", OFFSET),
+    u16("columns", COUNT), u16("row_bytes", SIZE), u32("rows", COUNT)]);
+var sxgco_cpk_utf_header = sxLayout(0x6040004B, "cpk_utf_header", BE, sxgco_cpk_utf_header_fields);
+var sxgco_cpk_utf_column_fields = layout([u8("storage_and_type", FLAGS), u32("name_offset", OFFSET)]);
+var sxgco_cpk_utf_column = sxLayout(0x6040004C, "cpk_utf_column", BE, sxgco_cpk_utf_column_fields);
+var sxgco_cpk_crilayla_fields = layout([chars("magic", 8, SIGNATURE), u32("decoded_bytes", SIZE), u32("packed_bytes", SIZE)]);
+var sxgco_cpk_crilayla = sxLayout(0x6040004D, "cpk_crilayla", LE, sxgco_cpk_crilayla_fields);
+var sxgco_gcf_block_entry_fields = layout([u32("flags", FLAGS), u32("file_data_offset", OFFSET), u32("file_data_bytes", SIZE),
+    u32("first_block", ID), u32("next_entry", ID), u32("previous_entry", ID), u32("directory_item", ID)]);
+var sxgco_gcf_block_entry = sxLayout(0x60400050, "gcf_block_entry", LE, sxgco_gcf_block_entry_fields);
+var sxgco_gcf_fragment_header_fields = layout([u32("blocks", COUNT), u32("first_unused_block", ID), u32("terminator", ID),
+    u32("checksum", CHECKSUM)]);
+var sxgco_gcf_fragment_header = sxLayout(0x60400051, "gcf_fragment_header", LE, sxgco_gcf_fragment_header_fields);
+var sxgco_gcf_directory_header_fields = layout([u32("unknown00"), u32("cache_id", ID), u32("last_version_played", ID),
+    u32("items", COUNT), u32("files", COUNT), u32("unknown14"), u32("directory_bytes", SIZE), u32("name_bytes", SIZE),
+    u32("info1_count", COUNT), u32("copy_count", COUNT), u32("local_count", COUNT), u32("unknown2c"), u32("unknown30"),
+    u32("checksum", CHECKSUM)]);
+var sxgco_gcf_directory_header = sxLayout(0x60400055, "gcf_directory_header", LE, sxgco_gcf_directory_header_fields);
+var sxgco_gcf_directory_file_fields = layout([u32("name_offset", OFFSET), u32("data_bytes", SIZE), u32("checksum_index", ID),
+    u32("flags", FLAGS), u32("parent_item", ID), u32("next_sibling", ID), u32("first_child", ID)]);
+var sxgco_gcf_directory_file = sxLayout(0x60400056, "gcf_directory_file", LE, sxgco_gcf_directory_file_fields);
+var sxgco_gcf_directory_folder_fields = layout([u32("name_offset", OFFSET), u32("child_items", COUNT),
+    u32("checksum_index", ID), u32("flags", FLAGS), u32("parent_item", ID), u32("next_sibling", ID), u32("first_child", ID)]);
+var sxgco_gcf_directory_folder = sxLayout(0x60400057, "gcf_directory_folder", LE, sxgco_gcf_directory_folder_fields);
+var sxgco_gcf_data_header3_fields = layout([u32("blocks", COUNT), u32("block_bytes", SIZE), u32("first_block_offset", OFFSET),
+    u32("used_blocks", COUNT), u32("checksum", CHECKSUM)]);
+var sxgco_gcf_data_header3 = sxLayout(0x6040005B, "gcf_data_header3", LE, sxgco_gcf_data_header3_fields);
+var sxgco_gcf_data_header5_fields = layout([u32("last_version_played", ID), u32("blocks", COUNT), u32("block_bytes", SIZE),
+    u32("first_block_offset", OFFSET), u32("used_blocks", COUNT), u32("checksum", CHECKSUM)]);
+var sxgco_gcf_data_header5 = sxLayout(0x6040005C, "gcf_data_header5", LE, sxgco_gcf_data_header5_fields);
+var sxgco_noa_directory_record_fields = layout([chars("tag", 8, ID), i64("body_bytes", SIZE)]);
+var sxgco_noa_directory_record = sxLayout(0x6040005D, "noa_directory_record", LE, sxgco_noa_directory_record_fields);
+var sxgco_stos_icon_fields = layout([blob("unknown00", 4), u16("format_flags", FLAGS), u16("background"), u16("foreground")]);
+var sxgco_stos_icon = sxLayout(0x6040005F, "stos_icon", BE, sxgco_stos_icon_fields);
+function sxgco_span(v, at, n, end) {
+    return v.c.size >= 0 && end <= (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) && at <= end && n <= sxU64(end - at);
+}
+function sxgco_read(v, at, p, n, end) {
+    return sxgco_span(v, at, n, end) && sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), p, n);
+}
+function sxgco_word(v, at, n, be, out, end) {
+    var b = [];
+    if (!n || n > 8 || !sxgco_read(v, at, b, n, end)) {
+        return false;
+    }
+    var x = 0;
+    for (var i = 0; i < n; i++) {
+        x = sxOr64(x, sxShl64(b[be ? (((n - i) >>> 0) - 1) >>> 0 : i], (8 * i) >>> 0));
+    }
+    out[0] = x;
+    return true;
+}
+function sxgco_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (++v.work > 4000000 || !sxgco_span(v, at, z, end)) {
+        return false;
+    }
+    return v.c.count >= 24000 || sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (z >= SX_I64_MAX ? z - SX_U64_MAX : z));
+}
+function sxgco_table(v, l, at, count, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!z || count > 4000000 || count > Math.floor(SX_U64_MAX / z) || !sxgco_span(v, at, count * z, end)) {
+        return false;
+    }
+    for (var i = 0; i < count && v.c.count < 24000; i++, at += z) {
+        if (!sxgco_row(v, l, at, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxgco_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    return a.total_size < b.total_size ? -1 : a.total_size > b.total_size ? 1 : 0;
+}
+function sxgco_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxgco_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (at < end) {
+            continue;
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = at + z;
+    }
+    c.count = keep;
+    n = keep;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        at = c.items[i].offset - c.f.base_address;
+        z = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxgco_order, true);
+    return !c.failed;
+}
+function sxgco_counted(v, l) {
+    var n = [0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgco_row(v, sxgco_count16, 0, e) && sxgco_word(v, 0, 2, false, n, e) && sxgco_table(v, l, 2, n[0], e);
+}
+function sxgco_bgi_common(v, two) {
+    var n = [0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgco_row(v, sxgco_bgi_header, 0, e) && sxgco_word(v, 12, 4, false, n, e) && sxgco_table(v, two ? sxgco_bgi2_entry : sxgco_bgi_entry, 16, n[0], e);
+}
+function sx_gamecontainers_supports(t) {
+    switch (t) {
+    case "KRML":
+    case "SCI":
+    case "SEADATA":
+    case "STK":
+    case "BEATTHEHOUSE":
+    case "BATTLEISLE":
+    case "MXS":
+    case "SINNER":
+    case "MEGATECHVOL":
+    case "RES":
+    case "RSC":
+    case "VISIONAIRE_STUDIO_VIS":
+    case "BGI":
+    case "BGI2":
+    case "CPK":
+    case "DXA":
+    case "LIVEMAKER":
+    case "NOA":
+    case "RPG_MAKER_RGSSAD":
+    case "STOS_MEMORY_BANK":
+    case "VALVE_GCF_CACHE":
+    case "YPF":
+    case "NITROPLUS_NPK2":
+    case "CATSYSTEM_KIF":
+    case "MALIE_LIB":
+    case "NITROPLUS_NPA":
+    case "QLIE_PACK":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_gamecontainers_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0) {
+        return false;
+    }
+    var view = { c: c, work: 0 };
+    var v = view;
+    var ok = false;
+    switch (c.f.file_type) {
+    case "KRML":
+        ok = sx_krml_build(v);
+        break;
+    case "SCI":
+        ok = sx_sci_build(v);
+        break;
+    case "SEADATA":
+        ok = sx_seadata_build(v);
+        break;
+    case "STK":
+        ok = sx_stk_build(v);
+        break;
+    case "BEATTHEHOUSE":
+        ok = sx_beatthehouse_build(v);
+        break;
+    case "BATTLEISLE":
+        ok = sx_battleisle_build(v);
+        break;
+    case "MXS":
+        ok = sx_mxs_build(v);
+        break;
+    case "SINNER":
+        ok = sx_sinner_build(v);
+        break;
+    case "MEGATECHVOL":
+        ok = sx_megatechvol_build(v);
+        break;
+    case "RES":
+        ok = sx_res_build(v);
+        break;
+    case "RSC":
+        ok = sx_rsc_build(v);
+        break;
+    case "VISIONAIRE_STUDIO_VIS":
+        ok = sx_visionaire_studio_vis_build(v);
+        break;
+    case "BGI":
+        ok = sx_bgi_build(v);
+        break;
+    case "BGI2":
+        ok = sx_bgi2_build(v);
+        break;
+    case "CPK":
+        ok = sx_cpk_build(v);
+        break;
+    case "DXA":
+        ok = sx_dxa_build(v);
+        break;
+    case "LIVEMAKER":
+        ok = sx_livemaker_build(v);
+        break;
+    case "NOA":
+        ok = sx_noa_build(v);
+        break;
+    case "RPG_MAKER_RGSSAD":
+        ok = sx_rpg_maker_rgssad_build(v);
+        break;
+    case "STOS_MEMORY_BANK":
+        ok = sx_stos_memory_bank_build(v);
+        break;
+    case "VALVE_GCF_CACHE":
+        ok = sx_valve_gcf_cache_build(v);
+        break;
+    case "YPF":
+        ok = sx_ypf_build(v);
+        break;
+    case "NITROPLUS_NPK2":
+        ok = sx_nitroplus_npk2_build(v);
+        break;
+    case "CATSYSTEM_KIF":
+        ok = sx_catsystem_kif_build(v);
+        break;
+    case "MALIE_LIB":
+        ok = sx_malie_lib_build(v);
+        break;
+    case "NITROPLUS_NPA":
+        ok = sx_nitroplus_npa_build(v);
+        break;
+    case "QLIE_PACK":
+        ok = sx_qlie_pack_build(v);
+        break;
+    default:
+        break;
+    }
+    return ok && sxgco_finish(c);
+}
+function sx_gamecontainers_comment(r, id) {
+    if (r === null || r.name === null || id <= 0x60400000 || id >= 0x60410000) {
+        return true;
+    }
+    if (id === sxgco_filename_byte.id && r.name === "byte") {
+        return sxSetComment(r, "Physical name/string-pool byte, including terminators; original encoding is preserved.");
+    }
+    if (id === sxgco_encoded_byte.id && r.name === "byte") {
+        return sxSetComment(r, "Original obfuscated filename byte; decoded text is not substituted for physical bytes.");
+    }
+    if (id === sxgco_offset32.id && r.name === "offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_krml_entry.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_seadata_entry.id && r.name === "next_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_stk_entry.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_stk2_header.id && r.name === "directory_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_stk2_directory.id && r.name === "metadata_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_stk2_entry.id && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_battle_entry.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_mxs_entry.id && r.name === "stored_bytes") {
+        return sxSetComment(r, "Stored member length includes the four-byte decoded-length word after the filename.");
+    }
+    if (id === sxgco_sinner_entry.id && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte offset relative to the end of the complete archive index.");
+    }
+    if (id === sxgco_res_entry.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_rsc_entry.id && r.name === "dos_timestamp") {
+        return sxSetComment(r, "Packed DOS date high16 (year since1980,month4,day5) and time low16 (hour5,minute6,two-second count5).");
+    }
+    if (id === sxgco_rsc_entry.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_vis_index_marker.id && r.name === "encrypted_marker") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_vis_entry.id && r.name === "encrypted_relative_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_vis_entry.id && r.name === "encrypted_stored_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_vis_entry.id && r.name === "encrypted_decoded_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_vis_entry.id && r.name === "encrypted_flags") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_bgi_entry.id && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte offset relative to the end of the complete archive index.");
+    }
+    if (id === sxgco_bgi2_entry.id && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte offset relative to the end of the complete archive index.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_magic") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_version") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_index_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_data_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_index_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_file_table_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header1.id && r.name === "encrypted_directory_table_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_magic") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_version") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_index_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_data_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_index_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_file_table_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_directory_table_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header4.id && r.name === "encrypted_unknown18") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_magic") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_version") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_index_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_data_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_index_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_file_table_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_directory_table_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_codepage") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_dxa_header6.id && r.name === "encrypted_unknown2c") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_livemaker_offset.id && r.name === "encrypted_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_noa_entry.id && r.name === "relative_record_offset") {
+        return sxSetComment(r, "Signed byte displacement relative to the containing DirEntry record; may point backwards.");
+    }
+    if (id === sxgco_noa_entry.id && r.name === "timestamp") {
+        return sxSetComment(r, "Stored eight-byte time metadata; retained verbatim because the native reader does not interpret its epoch.");
+    }
+    if (id === sxgco_rgss_name_size.id && r.name === "encrypted_name_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_rgss_data_size.id && r.name === "encrypted_data_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_rgss_entry3.id && r.name === "encrypted_data_offset") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_rgss_entry3.id && r.name === "encrypted_data_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_rgss_entry3.id && r.name === "encrypted_data_key") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_rgss_entry3.id && r.name === "encrypted_name_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_rgss_end3.id && r.name === "encrypted_terminator") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_stos_header.id && r.name === "encoded_bank_size") {
+        return sxSetComment(r, "Stored low24-bit bank-size value; producers can round it to256 bytes and truncate it. Physical bounds come from the file.");
+    }
+    if (id === sxgco_stos_sprite.id && r.name === "low_offset") {
+        return sxSetComment(r, "Parameter-table byte offset relative to four bytes after the sprite-bank header start.");
+    }
+    if (id === sxgco_stos_sprite.id && r.name === "medium_offset") {
+        return sxSetComment(r, "Parameter-table byte offset relative to four bytes after the sprite-bank header start.");
+    }
+    if (id === sxgco_stos_sprite.id && r.name === "high_offset") {
+        return sxSetComment(r, "Parameter-table byte offset relative to four bytes after the sprite-bank header start.");
+    }
+    if (id === sxgco_stos_sprite_param.id && r.name === "relative_data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this resolution's parameter-block group, not this individual parameter.");
+    }
+    if (id === sxgco_stos_sprite_param.id && r.name === "width_words") {
+        return sxSetComment(r, "Width in 16-pixel words.");
+    }
+    if (id === sxgco_stos_sprite_param.id && r.name === "height") {
+        return sxSetComment(r, "Height in pixels.");
+    }
+    if (id === sxgco_stos_sprite_param.id && r.name === "unknown06") {
+        return sxSetComment(r, "Two original bytes unused by the native sprite parser; no hotspot meaning is assumed.");
+    }
+    if (id === sxgco_stos_color.id && r.name === "color") {
+        return sxSetComment(r, "Stored Atari ST palette word; native rendering supports both9-bit and12-bit channel encodings.");
+    }
+    if (id === sxgco_npk2_header.id && r.name === "magic") {
+        return sxSetComment(r, "Encrypted NPK2 archive: clear-header metadata only; encrypted index and payload remain raw.");
+    }
+    if (id === sxgco_npk2_header.id && r.name === "unknown04") {
+        return sxSetComment(r, "Stored word written as 1 by the reference producer; no broader meaning is assumed.");
+    }
+    if (id === sxgco_npk2_header.id && r.name === "iv") {
+        return sxSetComment(r, "AES-CBC initialization vector used independently by the encrypted index and each segment.");
+    }
+    if (id === sxgco_npk2_header.id && r.name === "entries") {
+        return sxSetComment(r, "Declared encrypted-index record count; without a key it is not authenticated.");
+    }
+    if (id === sxgco_npk2_header.id && r.name === "encrypted_index_bytes") {
+        return sxSetComment(r, "Original encrypted bytes; neither decoded numeric values nor decoded offsets are substituted.");
+    }
+    if (id === sxgco_kif_entry32.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_kif_entry64.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_malie_entry.id && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of the immediate containing LIB/LIBU directory.");
+    }
+    if (id === sxgco_malieu_entry.id && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of the immediate containing LIB/LIBU directory.");
+    }
+    if (id === sxgco_ypf_header.id && r.name === "index_end") {
+        return sxSetComment(r, "Writer stores header32 plus index bytes; this is an archive-relative byte boundary.");
+    }
+    if (id === sxgco_ypf_header.id && r.name === "reserved") {
+        return sxSetComment(r, "Original16-byte header tail; normally zero, not enforced by the native reader.");
+    }
+    if (id === sxgco_ypf_name.id && r.name === "name_hash") {
+        return sxSetComment(r, "Stored resource-name lookup hash; not a payload checksum.");
+    }
+    if (id === sxgco_ypf_name.id && r.name === "encoded_name_bytes") {
+        return sxSetComment(r, "Name length is bitwise inverted, then transformed by a version-selected swap table.");
+    }
+    if (id === sxgco_ypf_fields.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_ypf_fields.id && r.name === "stored_checksum") {
+        return sxSetComment(r, "Stored payload checksum; not verified by the native reader.");
+    }
+    if (id === sxgco_ypf_offset_high.id && r.name === "data_offset_high") {
+        return sxSetComment(r, "Original extra32-bit entry word for newer versions; native parsing uses the preceding32-bit data offset and leaves this word uninterpreted.");
+    }
+    if (id === sxgco_npa_fields.id && r.name === "relative_offset") {
+        return sxSetComment(r, "Byte offset relative to the end of the 41-byte header plus the complete index.");
+    }
+    if (id === sxgco_qlie_footer.id && r.name === "index_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_qlie_name_units.id && r.name === "name_units") {
+        return sxSetComment(r, "Name length in bytes for1.0/2.0/3.0; UTF-16 code units for3.1.");
+    }
+    if (id === sxgco_qlie_entry.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_qlie_entry.id && r.name === "ciphertext_hash") {
+        return sxSetComment(r, "Stored hash over complete ciphertext qwords forversion3; older versions do not verify this field.");
+    }
+    if (id === sxgco_cpk_utf_header.id && r.name === "size_minus8") {
+        return sxSetComment(r, "Stored table length excludes the first eight bytes.");
+    }
+    if (id === sxgco_cpk_utf_header.id && r.name === "rows_offset") {
+        return sxSetComment(r, "Byte offset relative to eight bytes after this UTF table header start.");
+    }
+    if (id === sxgco_cpk_utf_header.id && r.name === "strings_offset") {
+        return sxSetComment(r, "Byte offset relative to eight bytes after this UTF table header start.");
+    }
+    if (id === sxgco_cpk_utf_header.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to eight bytes after this UTF table header start.");
+    }
+    if (id === sxgco_cpk_utf_header.id && r.name === "table_name_offset") {
+        return sxSetComment(r, "Byte offset in this UTF table's string pool.");
+    }
+    if (id === sxgco_cpk_utf_column.id && r.name === "storage_and_type") {
+        return sxSetComment(r, "High nibble selects NONE/ZERO/CONSTANT/PER_ROW; low nibble selects UTF scalar/string/data type. Constant and row values remain raw.");
+    }
+    if (id === sxgco_cpk_utf_column.id && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset in this UTF table's string pool.");
+    }
+    if (id === sxgco_cpk_crilayla.id && r.name === "decoded_bytes") {
+        return sxSetComment(r, "Decoded suffix size; the uncompressed prefix after the packed stream is additional output.");
+    }
+    if (id === sxgco_gcf_block_entry.id && r.name === "file_data_offset") {
+        return sxSetComment(r, "Logical byte offset within the extracted member, not the physical GCF file.");
+    }
+    if (id === sxgco_gcf_fragment_header.id && r.name === "terminator") {
+        return sxSetComment(r, "Stored fragmentation terminator selector:0 denotes0xFFFF,1 denotes0xFFFFFFFF; native compatibility preserves other values.");
+    }
+    if (id === sxgco_gcf_directory_header.id && r.name === "directory_bytes") {
+        return sxSetComment(r, "Stored directory extent; native readers accept header-inclusive and legacy header-exclusive variants when the following tables validate.");
+    }
+    if (id === sxgco_gcf_directory_file.id && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset in the directory-name pool after all directory entries.");
+    }
+    if (id === sxgco_gcf_directory_folder.id && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset in the directory-name pool after all directory entries.");
+    }
+    if (id === sxgco_gcf_directory_folder.id && r.name === "child_items") {
+        return sxSetComment(r, "Directory item count; the same physical word is a byte length for file entries.");
+    }
+    if (id === sxgco_gcf_data_header3.id && r.name === "first_block_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_gcf_data_header5.id && r.name === "first_block_offset") {
+        return sxSetComment(r, "Byte offset relative to the start of this archive.");
+    }
+    if (id === sxgco_noa_directory_record.id && r.name === "body_bytes") {
+        return sxSetComment(r, "Declared directory-body length; native compatibility may accept a body clipped by the physical file end.");
+    }
+    if (id === sxgco_stos_icon.id && r.name === "background") {
+        return sxSetComment(r, "Stored monochrome background-color selector; retained without inventing a palette mapping.");
+    }
+    if (id === sxgco_stos_icon.id && r.name === "foreground") {
+        return sxSetComment(r, "Stored monochrome foreground-color selector; retained without inventing a palette mapping.");
+    }
+    if (r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    if (id === sxgco_stk_entry.id && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "Stored");
+        case 1:
+            return sxSetComment(r, "LZSS with a physical four-byte decoded-size prefix");
+        default:
+            break;
+        }
+    }
+    if (id === sxgco_npa_fields.id && r.name === "entry_type") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "Directory");
+        case 2:
+            return sxSetComment(r, "File");
+        default:
+            break;
+        }
+    }
+    if (id === sxgco_livemaker_flags.id && r.name === "flags") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "Zlib");
+        case 1:
+            return sxSetComment(r, "Stored");
+        case 2:
+            return sxSetComment(r, "Chunk-scrambled");
+        case 3:
+            return sxSetComment(r, "Chunk-scrambled then zlib");
+        default:
+            break;
+        }
+    }
+    if (id === sxgco_stos_header.id && r.name === "bank_type") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "Work");
+        case 2:
+            return sxSetComment(r, "Screen");
+        case 129:
+            return sxSetComment(r, "Data");
+        case 130:
+            return sxSetComment(r, "Data screen");
+        case 132:
+            return sxSetComment(r, "Set");
+        case 133:
+            return sxSetComment(r, "Packed files");
+        default:
+            break;
+        }
+    }
+    if (id === sxgco_noa_entry.id && r.name === "attributes") {
+        switch (sxVarU64(r.value)) {
+        case 16:
+            return sxSetComment(r, "Directory");
+        case 32:
+            return sxSetComment(r, "End of directory");
+        case 64:
+            return sxSetComment(r, "End of directory");
+        default:
+            break;
+        }
+    }
+    if (id === sxgco_noa_entry.id && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "Stored");
+        case 2147483664:
+            return sxSetComment(r, "ERISA/Nemesis coded");
+        default:
+            break;
+        }
+    }
+    if (id === sxgco_sci_header.id && r.name === "version") {
+        switch (sxVarU64(r.value)) {
+        case 49:
+            return sxSetComment(r, "ASCII version1");
+        case 50:
+            return sxSetComment(r, "ASCII version2");
+        default:
+            break;
+        }
+    }
+    return true;
+}

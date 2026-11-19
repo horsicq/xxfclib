@@ -1,0 +1,164 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/jpeg/xx_jpeg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_jpeg_segment_fields = layout([u16("marker", ID), u16("segment_length", SIZE)]);
+var sxi_jpeg_segment = sxLayout(0x60010027, "JPEG_SEGMENT_HEADER", BE, sxi_jpeg_segment_fields);
+var sxi_jpeg_frame_fields = layout([u16("marker", ID), u16("frame_header_length", SIZE), u8("sample_precision"),
+    u16("number_of_lines"), u16("samples_per_line"), u8("number_of_components", COUNT)]);
+var sxi_jpeg_frame = sxLayout(0x60010028, "JPEG_FRAME_HEADER", BE, sxi_jpeg_frame_fields);
+var sxi_jpeg_component_fields = layout([u8("component_identifier", ID), u8("sampling_factors", FLAGS),
+    u8("quantization_table_selector", ID)]);
+var sxi_jpeg_component = sxLayout(0x60010029, "JPEG_FRAME_COMPONENT", BE, sxi_jpeg_component_fields);
+var sxi_jpeg_scan_fields = layout([u16("marker", ID), u16("scan_header_length", SIZE), u8("number_of_components", COUNT)]);
+var sxi_jpeg_scan = sxLayout(0x6001002A, "JPEG_SCAN_HEADER", BE, sxi_jpeg_scan_fields);
+var sxi_jpeg_scan_component_fields = layout([u8("component_selector", ID), u8("entropy_coding_table_selectors", FLAGS)]);
+var sxi_jpeg_scan_component = sxLayout(0x6001002B, "JPEG_SCAN_COMPONENT", BE, sxi_jpeg_scan_component_fields);
+var sxi_jpeg_scan_tail_fields = layout([u8("spectral_selection_start"), u8("spectral_selection_end"),
+    u8("successive_approximation", FLAGS)]);
+var sxi_jpeg_scan_tail = sxLayout(0x6001002C, "JPEG_SCAN_PARAMETERS", BE, sxi_jpeg_scan_tail_fields);
+var sxi_jpeg_dri_fields = layout([u16("marker", ID), u16("segment_length", SIZE), u16("restart_interval", COUNT)]);
+var sxi_jpeg_dri = sxLayout(0x6001002D, "JPEG_RESTART_INTERVAL", BE, sxi_jpeg_dri_fields);
+var sxi_jpeg_jfif_fields = layout([u16("marker", ID), u16("segment_length", SIZE), chars("identifier", 5, SIGNATURE),
+    u8("version_major"), u8("version_minor"), u8("density_units", ID), u16("x_density"), u16("y_density"), u8("x_thumbnail"),
+    u8("y_thumbnail")]);
+var sxi_jpeg_jfif = sxLayout(0x6001002E, "JPEG_JFIF_APP0", BE, sxi_jpeg_jfif_fields);
+var sxi_jpeg_dqt8_fields = layout([u8("precision_and_identifier", FLAGS), bytes("quantization_values", 64)]);
+var sxi_jpeg_dqt8 = sxLayout(0x6001002F, "JPEG_QUANTIZATION_TABLE8", BE, sxi_jpeg_dqt8_fields);
+var sxi_jpeg_dqt16_fields = layout([u8("precision_and_identifier", FLAGS), field("quantization_values", "uint16[64]", 128)]);
+var sxi_jpeg_dqt16 = sxLayout(0x60010030, "JPEG_QUANTIZATION_TABLE16", BE, sxi_jpeg_dqt16_fields);
+function sx_image_jpeg(c) {
+    var h = [];
+    var at = 0;
+    var markers = 0;
+    var cursor = { context: c, start: -1, valid: 0, bytes: sxZeros(4096) };
+    if (!sx_read(c, 0, h, 2) || h[0] !== 0xFF || h[1] !== 0xD8) {
+        return false;
+    }
+    while (++markers <= 100000) {
+        var marker;
+        var length;
+        var end;
+        if (!sx_read(c, at, h, 2) || h[0] !== 0xFF || !h[1]) {
+            return false;
+        }
+        if (h[1] === 0xFF) {
+            if (!sx_raw(c, at, 1)) {
+                return false;
+            }
+            ++at;
+            continue;
+        }
+        marker = h[1];
+        if (marker === 0x01 || marker >= 0xD0 && marker <= 0xD9) {
+            if (!sx_add(c, sxi_jpeg_marker, at, 2)) {
+                return false;
+            }
+            if (marker === 0xD9) {
+                return true;
+            }
+            at += 2;
+            continue;
+        }
+        if ((length = sx_u16(c, at + 2, true)) === null || length < 2 || !sx_image_range(c, at, length + 2)) {
+            return false;
+        }
+        end = at + length + 2;
+        if (marker >= 0xC0 && marker <= 0xCF && marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC) {
+            var n;
+            if (length < 8 || !sx_read(c, at + 9, h, 1)) {
+                return false;
+            }
+            n = h[0];
+            if (!n || length !== (8 + ((3 * n) >>> 0)) >>> 0 || !sx_add(c, sxi_jpeg_frame, at, 10) || !sx_table(c, sxi_jpeg_component, at + 10, 3, n)) {
+                return false;
+            }
+        } else if (marker === 0xDA) {
+            if (length < 6 || !sx_read(c, at + 4, h, 1)) {
+                return false;
+            }
+            n = h[0];
+            if (!n || length !== (6 + ((2 * n) >>> 0)) >>> 0 || !sx_add(c, sxi_jpeg_scan, at, 5) || !sx_table(c, sxi_jpeg_scan_component, at + 5, 2, n) || !sx_add(c, sxi_jpeg_scan_tail, at + 5 + n * 2, 3)) {
+                return false;
+            }
+        } else if (marker === 0xDD) {
+            if (length !== 4 || !sx_add(c, sxi_jpeg_dri, at, 6)) {
+                return false;
+            }
+        } else if (marker === 0xE0 && length >= 16 && sx_read(c, at + 4, h, 5) && !sxMemcmp(h, "JFIF\x00", 5)) {
+            if (!sx_add(c, sxi_jpeg_jfif, at, 18) || !sx_raw(c, at + 18, length - 16)) {
+                return false;
+            }
+        } else if (marker === 0xDB || marker === 0xC4) {
+            var p = at + 4;
+            if (!sx_add(c, sxi_jpeg_segment, at, 4)) {
+                return false;
+            }
+            while (p < end) {
+                if (marker === 0xDB) {
+                    if (!sx_read(c, p, h, 1) || h[0] >> 4 > 1 || (h[0] & 15) > 3) {
+                        return false;
+                    }
+                    n = h[0] >> 4 ? 129 : 65;
+                    if (n > (end - p < 0 ? end - p + SX_U64_MAX : end - p) || !sx_add(c, n === 129 ? sxi_jpeg_dqt16 : sxi_jpeg_dqt8, p, n)) {
+                        return false;
+                    }
+                    p += n;
+                } else {
+                    n = 0;
+                    var i;
+                    if (end - p < 17 || !sx_read(c, p, h, 17) || h[0] >> 4 > 1 || (h[0] & 15) > 3) {
+                        return false;
+                    }
+                    for (i = 1; i <= 16; ++i) {
+                        n = (n + h[i]) >>> 0;
+                    }
+                    if (n > 256 || n > (end - p - 17 < 0 ? end - p - 17 + SX_U64_MAX : end - p - 17) || !sx_add(c, sxi_jpeg_dht, p, 17) || !sx_raw(c, p + 17, n)) {
+                        return false;
+                    }
+                    p += n + 17;
+                }
+            }
+        } else if (!sx_add(c, sxi_jpeg_segment, at, 4) || !sx_raw(c, at + 4, length - 2)) {
+            return false;
+        }
+        at = end;
+        if (marker === 0xDA) {
+            var start = at;
+            for (; ; ) {
+                if (!sxi_byte(cursor, at, h, 0)) {
+                    return false;
+                }
+                if (h[0] !== 0xFF) {
+                    ++at;
+                    continue;
+                }
+                if (!sxi_byte(cursor, at + 1, h, 1)) {
+                    return false;
+                }
+                if (h[1] === 0) {
+                    at += 2;
+                    continue;
+                }
+                if (h[1] >= 0xD0 && h[1] <= 0xD7) {
+                    if (!sx_raw(c, start, at - start) || !sx_add(c, sxi_jpeg_marker, at, 2)) {
+                        return false;
+                    }
+                    at += 2;
+                    start = at;
+                    continue;
+                }
+                if (!sx_raw(c, start, at - start)) {
+                    return false;
+                }
+                break;
+            }
+        }
+    }
+    return false;
+}
+function sx_jpeg_build(c) {
+    return sx_image_jpeg(c);
+}

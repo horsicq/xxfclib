@@ -1,0 +1,2113 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_trackerextra.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtx_count_u8le_fields = layout([u8("count", COUNT)]);
+var sxtx_count_u8le = sxLayout(0x60340001, "count_u8le", LE, sxtx_count_u8le_fields);
+var sxtx_length_u8le_fields = layout([u8("length", SIZE)]);
+var sxtx_length_u8le = sxLayout(0x60340002, "length_u8le", LE, sxtx_length_u8le_fields);
+var sxtx_order_u8le_fields = layout([u8("order", ID)]);
+var sxtx_order_u8le = sxLayout(0x60340003, "order_u8le", LE, sxtx_order_u8le_fields);
+var sxtx_count_u16le_fields = layout([u16("count", COUNT)]);
+var sxtx_count_u16le = sxLayout(0x60340004, "count_u16le", LE, sxtx_count_u16le_fields);
+var sxtx_length_u16le_fields = layout([u16("length", SIZE)]);
+var sxtx_length_u16le = sxLayout(0x60340005, "length_u16le", LE, sxtx_length_u16le_fields);
+var sxtx_order_u16le_fields = layout([u16("order", ID)]);
+var sxtx_order_u16le = sxLayout(0x60340006, "order_u16le", LE, sxtx_order_u16le_fields);
+var sxtx_count_u16be_fields = layout([u16("count", COUNT)]);
+var sxtx_count_u16be = sxLayout(0x60340007, "count_u16be", BE, sxtx_count_u16be_fields);
+var sxtx_order_u16be_fields = layout([u16("order", ID)]);
+var sxtx_order_u16be = sxLayout(0x60340009, "order_u16be", BE, sxtx_order_u16be_fields);
+var sxtx_count_u32le_fields = layout([u32("count", COUNT)]);
+var sxtx_count_u32le = sxLayout(0x6034000A, "count_u32le", LE, sxtx_count_u32le_fields);
+var sxtx_length_u32le_fields = layout([u32("length", SIZE)]);
+var sxtx_length_u32le = sxLayout(0x6034000B, "length_u32le", LE, sxtx_length_u32le_fields);
+var sxtx_paragraph_u16_fields = layout([u16("paragraph_index")]);
+var sxtx_paragraph_u16 = sxLayout(0x60340010, "paragraph_u16", LE, sxtx_paragraph_u16_fields);
+var sxtx_offset_u32_fields = layout([u32("file_offset", OFFSET)]);
+var sxtx_offset_u32 = sxLayout(0x60340011, "offset_u32", LE, sxtx_offset_u32_fields);
+var sxtx_pan_u8_fields = layout([u8("pan")]);
+var sxtx_pan_u8 = sxLayout(0x60340012, "pan_u8", LE, sxtx_pan_u8_fields);
+var sxtx_volume_u8_fields = layout([u8("volume")]);
+var sxtx_volume_u8 = sxLayout(0x60340013, "volume_u8", LE, sxtx_volume_u8_fields);
+var sxtx_chunk_le_fields = layout([chars("id", 4, ID), u32("data_size", SIZE)]);
+var sxtx_chunk_le = sxLayout(0x60340014, "chunk_le", LE, sxtx_chunk_le_fields);
+var sxtx_chunk_be_fields = layout([chars("id", 4, ID), u32("data_size", SIZE)]);
+var sxtx_chunk_be = sxLayout(0x60340015, "chunk_be", BE, sxtx_chunk_be_fields);
+var sxtx_stm_header_fields = layout([chars("title", 20, STRING), chars("tracker", 8, SIGNATURE), u8("eof_marker", SIGNATURE),
+    u8("file_type", ID), u8("version_major", ID), u8("version_minor", ID), u8("tempo"), u8("patterns", COUNT),
+    u8("global_volume"), bytes("reserved", 13, RESERVED)]);
+var sxtx_stm_header = sxLayout(0x60340016, "stm_header", LE, sxtx_stm_header_fields);
+var sxtx_stm_sample_fields = layout([chars("filename", 13, STRING), u8("disk_id", ID), u16("data_paragraph"),
+    u16("sample_bytes", SIZE), u16("loop_start", OFFSET), u16("loop_end", OFFSET), u8("volume"), u8("reserved_byte", RESERVED),
+    u16("sample_rate"), u32("reserved_dword", RESERVED), u16("length_paragraphs")]);
+var sxtx_stm_sample = sxLayout(0x60340017, "stm_sample", LE, sxtx_stm_sample_fields);
+var sxtx_stm_event_fields = layout([u8("note", ID), u8("instrument_volume", FLAGS), u8("volume_effect", FLAGS), u8("parameter")]);
+var sxtx_stm_event = sxLayout(0x60340018, "stm_event", LE, sxtx_stm_event_fields);
+var sxtx_stm_short_event_fields = layout([u8("note", ID)]);
+var sxtx_stm_short_event = sxLayout(0x60340019, "stm_short_event", LE, sxtx_stm_short_event_fields);
+var sxtx_c669_header_fields = layout([chars("magic", 2, SIGNATURE), chars("message", 108, STRING), u8("samples", COUNT),
+    u8("patterns", COUNT), u8("restart_order")]);
+var sxtx_c669_header = sxLayout(0x6034001A, "c669_header", LE, sxtx_c669_header_fields);
+var sxtx_c669_speed_fields = layout([u8("speed")]);
+var sxtx_c669_speed = sxLayout(0x6034001B, "c669_speed", LE, sxtx_c669_speed_fields);
+var sxtx_c669_last_row_fields = layout([u8("last_row")]);
+var sxtx_c669_last_row = sxLayout(0x6034001C, "c669_last_row", LE, sxtx_c669_last_row_fields);
+var sxtx_c669_sample_fields = layout([chars("filename", 13, STRING), u32("sample_bytes", SIZE), u32("loop_start", OFFSET),
+    u32("loop_end", OFFSET)]);
+var sxtx_c669_sample = sxLayout(0x6034001D, "c669_sample", LE, sxtx_c669_sample_fields);
+var sxtx_c669_event_fields = layout([u8("note_instrument", FLAGS), u8("instrument_volume", FLAGS), u8("effect_parameter", FLAGS)]);
+var sxtx_c669_event = sxLayout(0x6034001E, "c669_event", LE, sxtx_c669_event_fields);
+var sxtx_liq_header_fields = layout([chars("magic", 14, SIGNATURE), chars("title", 30, STRING), chars("author", 20, STRING),
+    u8("eof_marker", SIGNATURE), chars("tracker", 20, STRING), u16("version", ID), u16("speed"), u16("bpm"), u16("low_period"),
+    u16("high_period"), u16("channels", COUNT), u32("flags", FLAGS), u16("patterns", COUNT), u16("instruments", COUNT),
+    u16("orders", COUNT), u16("header_size", SIZE)]);
+var sxtx_liq_header = sxLayout(0x6034001F, "liq_header", LE, sxtx_liq_header_fields);
+var sxtx_liq_pattern_fields = layout([chars("magic", 4, SIGNATURE), chars("name", 30, STRING), u16("rows", COUNT),
+    u32("packed_size", SIZE), u32("reserved", RESERVED)]);
+var sxtx_liq_pattern = sxLayout(0x60340020, "liq_pattern", LE, sxtx_liq_pattern_fields);
+var sxtx_liq_empty_instrument_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxtx_liq_empty_instrument = sxLayout(0x60340021, "liq_empty_instrument", LE, sxtx_liq_empty_instrument_fields);
+var sxtx_liq_sample_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID), chars("name", 30, STRING),
+    chars("editor", 20, STRING), chars("author", 20, STRING), u8("hardware_id", ID), u32("sample_bytes", SIZE),
+    u32("loop_start", OFFSET), u32("loop_end", OFFSET), u32("sample_rate"), u8("volume"), u8("flags", FLAGS), u8("pan"),
+    u8("midi_instrument", ID), u8("global_volume"), u8("chord", ID), u16("header_size", SIZE), u16("compression", ID),
+    u32("crc", CHECKSUM), u8("midi_channel", ID), i8("loop_type", ID), bytes("reserved", 10, RESERVED),
+    chars("filename", 25, STRING)]);
+var sxtx_liq_sample = sxLayout(0x60340022, "liq_sample", LE, sxtx_liq_sample_fields);
+var sxtx_dmf_header_fields = layout([chars("magic", 4, SIGNATURE), u8("version", ID), chars("tracker", 8, STRING),
+    chars("title", 30, STRING), chars("composer", 20, STRING), u8("creation_day"), u8("creation_month"), u8("creation_year")]);
+var sxtx_dmf_header = sxLayout(0x60340023, "dmf_header", LE, sxtx_dmf_header_fields);
+var sxtx_dmf_sequence_fields = layout([u16("loop_start_order"), u16("loop_end_order")]);
+var sxtx_dmf_sequence = sxLayout(0x60340024, "dmf_sequence", LE, sxtx_dmf_sequence_fields);
+var sxtx_dmf_patterns_fields = layout([u16("patterns", COUNT), u8("channels", COUNT)]);
+var sxtx_dmf_patterns = sxLayout(0x60340025, "dmf_patterns", LE, sxtx_dmf_patterns_fields);
+var sxtx_dmf_pattern_fields = layout([u8("channels", COUNT), u8("beat", FLAGS), u16("rows", COUNT), u32("packed_size", SIZE)]);
+var sxtx_dmf_pattern = sxLayout(0x60340026, "dmf_pattern", LE, sxtx_dmf_pattern_fields);
+var sxtx_dmf_sample_fields = layout([u32("sample_bytes", SIZE), u32("loop_start", OFFSET), u32("loop_end", OFFSET),
+    u16("sample_rate"), u8("volume"), u8("flags", FLAGS), chars("library_filename", 8, STRING), bytes("filler_or_crc", 6)]);
+var sxtx_dmf_sample = sxLayout(0x60340027, "dmf_sample", LE, sxtx_dmf_sample_fields);
+var sxtx_dmf_end_fields = layout([chars("marker", 4, SIGNATURE)]);
+var sxtx_dmf_end = sxLayout(0x60340028, "dmf_end", LE, sxtx_dmf_end_fields);
+var sxtx_ptm_header_fields = layout([chars("title", 28, STRING), u8("eof_marker", SIGNATURE), u8("version_minor", ID),
+    u8("version_major", ID), u8("reserved1", RESERVED), u16("orders", COUNT), u16("samples", COUNT), u16("patterns", COUNT),
+    u16("channels", COUNT), u16("flags", FLAGS), bytes("reserved2", 2, RESERVED), chars("magic", 4, SIGNATURE),
+    bytes("reserved3", 16, RESERVED)]);
+var sxtx_ptm_header = sxLayout(0x60340029, "ptm_header", LE, sxtx_ptm_header_fields);
+var sxtx_ptm_sample_fields = layout([u8("flags", FLAGS), chars("filename", 12, STRING), u8("volume"), u16("sample_rate"),
+    u16("memory_segment"), u32("data_offset", OFFSET), u32("sample_bytes", SIZE), u32("loop_start", OFFSET),
+    u32("loop_end", OFFSET), bytes("gus_state", 14), chars("name", 28, STRING), chars("magic", 4, SIGNATURE)]);
+var sxtx_ptm_sample = sxLayout(0x6034002A, "ptm_sample", LE, sxtx_ptm_sample_fields);
+var sxtx_ams_header_fields = layout([chars("magic", 7, SIGNATURE), u8("version_minor", ID), u8("version_major", ID),
+    u8("channel_config", FLAGS), u8("samples", COUNT), u16("patterns", COUNT), u16("orders", COUNT), u8("midi_channels", COUNT),
+    u16("extra_size", SIZE)]);
+var sxtx_ams_header = sxLayout(0x6034002B, "ams_header", LE, sxtx_ams_header_fields);
+var sxtx_ams_sample_fields = layout([u32("sample_frames", COUNT), u32("loop_start_frame"), u32("loop_end_frame"),
+    u8("pan_finetune", FLAGS), u16("sample_rate"), u8("volume"), u8("flags", FLAGS)]);
+var sxtx_ams_sample = sxLayout(0x6034002C, "ams_sample", LE, sxtx_ams_sample_fields);
+var sxtx_emod_header_fields = layout([chars("magic", 4, SIGNATURE), u32("form_size", SIZE), chars("form_type", 4, ID)]);
+var sxtx_emod_header = sxLayout(0x6034002D, "emod_header", BE, sxtx_emod_header_fields);
+var sxtx_emod_info_fields = layout([u16("version", ID), chars("title", 20, STRING), chars("composer", 20, STRING), u8("bpm"),
+    u8("samples", COUNT)]);
+var sxtx_emod_info = sxLayout(0x6034002E, "emod_info", BE, sxtx_emod_info_fields);
+var sxtx_emod_sample_fields = layout([u8("number", ID), u8("volume"), u16("length_words"), chars("name", 20, STRING),
+    u8("flags", FLAGS), u8("finetune", FLAGS), u16("loop_start_words"), u16("loop_length_words"), u32("memory_pointer", VA)]);
+var sxtx_emod_sample = sxLayout(0x6034002F, "emod_sample", BE, sxtx_emod_sample_fields);
+var sxtx_emod_pattern_count_fields = layout([u8("padding", RESERVED), u8("patterns", COUNT)]);
+var sxtx_emod_pattern_count = sxLayout(0x60340030, "emod_pattern_count", LE, sxtx_emod_pattern_count_fields);
+var sxtx_emod_pattern_fields = layout([u8("pattern_id", ID), u8("rows_minus_one"), chars("name", 20, STRING),
+    u32("memory_pointer", VA)]);
+var sxtx_emod_pattern = sxLayout(0x60340031, "emod_pattern", BE, sxtx_emod_pattern_fields);
+var sxtx_emod_event_fields = layout([u8("instrument", ID), u8("note", ID), u8("effect", ID), u8("parameter")]);
+var sxtx_emod_event = sxLayout(0x60340032, "emod_event", LE, sxtx_emod_event_fields);
+var sxtx_mt2_header_fields = layout([chars("magic", 4, SIGNATURE), u32("user_id", ID), u16("version", ID),
+    chars("tracker", 32, STRING), chars("title", 64, STRING), u16("orders", COUNT), u16("restart_order"),
+    u16("patterns", COUNT), u16("channels", COUNT), u16("samples_per_tick"), u8("ticks_per_line"), u8("lines_per_beat"),
+    u32("flags", FLAGS), u16("instruments", COUNT), u16("samples", COUNT)]);
+var sxtx_mt2_header = sxLayout(0x60340033, "mt2_header", LE, sxtx_mt2_header_fields);
+var sxtx_mt2_drum_size_fields = layout([u16("drum_data_size", SIZE)]);
+var sxtx_mt2_drum_size = sxLayout(0x60340034, "mt2_drum_size", LE, sxtx_mt2_drum_size_fields);
+var sxtx_mt2_extra_size_fields = layout([u32("extra_data_size", SIZE)]);
+var sxtx_mt2_extra_size = sxLayout(0x60340035, "mt2_extra_size", LE, sxtx_mt2_extra_size_fields);
+var sxtx_mt2_pattern_fields = layout([u16("rows", COUNT), u32("data_size", SIZE)]);
+var sxtx_mt2_pattern = sxLayout(0x60340036, "mt2_pattern", LE, sxtx_mt2_pattern_fields);
+var sxtx_mt2_event_fields = layout([u8("note", ID), u8("instrument", ID), u8("volume"), u8("pan"), u8("effect", ID),
+    u8("parameter1"), u8("parameter2")]);
+var sxtx_mt2_event = sxLayout(0x60340037, "mt2_event", LE, sxtx_mt2_event_fields);
+var sxtx_mt2_slot_fields = layout([chars("name", 32, STRING), u32("data_size", SIZE)]);
+var sxtx_mt2_slot = sxLayout(0x60340038, "mt2_slot", LE, sxtx_mt2_slot_fields);
+var sxtx_psm_header_fields = layout([chars("magic", 4, SIGNATURE), u32("container_size", SIZE), chars("container_type", 4, ID)]);
+var sxtx_psm_header = sxLayout(0x60340039, "psm_header", LE, sxtx_psm_header_fields);
+var sxtx_psm_format_fields = layout([chars("song_type", 8, ID)]);
+var sxtx_psm_format = sxLayout(0x6034003A, "psm_format", LE, sxtx_psm_format_fields);
+var sxtx_psm_pattern_fields = layout([u32("chunk_data_size", SIZE), chars("pattern_id", 4, ID), u16("rows", COUNT)]);
+var sxtx_psm_pattern = sxLayout(0x6034003B, "psm_pattern", LE, sxtx_psm_pattern_fields);
+var sxtx_psm_song_fields = layout([chars("song_type", 9, ID), u8("compression", ID), u8("channels", COUNT)]);
+var sxtx_psm_song = sxLayout(0x6034003C, "psm_song", LE, sxtx_psm_song_fields);
+var sxtx_psm_sample_fields = layout([u8("flags", FLAGS), chars("filename", 8, STRING), chars("sample_id", 4, ID),
+    chars("name", 33, STRING), bytes("unknown1", 6), u16("sample_number", ID), u32("sample_bytes", SIZE),
+    u32("loop_start", OFFSET), u32("loop_end", OFFSET), u8("unknown3"), u8("finetune"), u8("volume"), u32("unknown4"),
+    u32("sample_rate"), bytes("padding", 19, RESERVED)]);
+var sxtx_psm_sample = sxLayout(0x6034003D, "psm_sample", LE, sxtx_psm_sample_fields);
+var sxtx_psm_date_fields = layout([chars("date", 6, STRING)]);
+var sxtx_psm_date = sxLayout(0x6034003E, "psm_date", LE, sxtx_psm_date_fields);
+var sxtx_psm_opcode_fields = layout([u8("opcode", ID)]);
+var sxtx_psm_opcode = sxLayout(0x6034003F, "psm_opcode", LE, sxtx_psm_opcode_fields);
+var sxtx_psm_play_fields = layout([chars("pattern_id", 4, ID)]);
+var sxtx_psm_play = sxLayout(0x60340040, "psm_play", LE, sxtx_psm_play_fields);
+var sxtx_psm_range_fields = layout([u16("range_operand0"), u16("range_operand1")]);
+var sxtx_psm_range = sxLayout(0x60340041, "psm_range", LE, sxtx_psm_range_fields);
+var sxtx_psm_jump_loop_fields = layout([u16("line"), u8("unknown")]);
+var sxtx_psm_jump_loop = sxLayout(0x60340042, "psm_jump_loop", LE, sxtx_psm_jump_loop_fields);
+var sxtx_psm_jump_fields = layout([u16("line")]);
+var sxtx_psm_jump = sxLayout(0x60340043, "psm_jump", LE, sxtx_psm_jump_fields);
+var sxtx_psm_channel_value_fields = layout([u8("channel", ID), u8("value")]);
+var sxtx_psm_channel_value = sxLayout(0x60340044, "psm_channel_value", LE, sxtx_psm_channel_value_fields);
+var sxtx_psm_value_fields = layout([u8("value")]);
+var sxtx_psm_value = sxLayout(0x60340045, "psm_value", LE, sxtx_psm_value_fields);
+var sxtx_psm_sample_map_fields = layout([bytes("sample_map", 6)]);
+var sxtx_psm_sample_map = sxLayout(0x60340046, "psm_sample_map", LE, sxtx_psm_sample_map_fields);
+var sxtx_psm_panning_fields = layout([u8("channel", ID), u8("pan"), u8("mode", ID)]);
+var sxtx_psm_panning = sxLayout(0x60340047, "psm_panning", LE, sxtx_psm_panning_fields);
+var sxtx_dtt_header_fields = layout([chars("magic", 4, SIGNATURE), chars("title", 64, STRING), chars("author", 64, STRING),
+    u32("flags", FLAGS), u32("channels", COUNT), u32("orders", COUNT), bytes("channel_panning", 8), u32("speed"),
+    u32("restart_order"), u32("patterns", COUNT), u32("samples", COUNT)]);
+var sxtx_dtt_header = sxLayout(0x60340048, "dtt_header", LE, sxtx_dtt_header_fields);
+var sxtx_dtt_sample_fields = layout([u8("base_note", ID), u8("volume"), u16("reserved", RESERVED), u32("tuning_value"),
+    u32("sustain_start", OFFSET), u32("sustain_bytes", SIZE), u32("loop_start", OFFSET), u32("loop_bytes", SIZE),
+    u32("sample_bytes", SIZE), chars("name", 32, STRING), u32("data_offset", OFFSET)]);
+var sxtx_dtt_sample = sxLayout(0x60340049, "dtt_sample", LE, sxtx_dtt_sample_fields);
+var sxtx_dtt_event_fields = layout([u32("packed_event", FLAGS)]);
+var sxtx_dtt_event = sxLayout(0x6034004A, "dtt_event", LE, sxtx_dtt_event_fields);
+var sxtx_dtt_event_extra_fields = layout([u32("packed_parameters", FLAGS)]);
+var sxtx_dtt_event_extra = sxLayout(0x6034004B, "dtt_event_extra", LE, sxtx_dtt_event_extra_fields);
+var sxtx_stx_header_fields = layout([chars("title", 20, STRING), chars("tracker", 8, SIGNATURE), u16("pattern0_size", SIZE),
+    u16("unknown1"), u16("pattern_table_paragraph"), u16("instrument_table_paragraph"), u16("channel_table_paragraph"),
+    u16("unknown2"), u16("unknown3"), u8("global_volume"), u8("tempo"), u16("unknown4"), u16("unknown5"),
+    u16("patterns", COUNT), u16("instruments", COUNT), u16("orders", COUNT), u16("unknown6"), u16("unknown7"), u16("unknown8"),
+    chars("magic", 4, SIGNATURE)]);
+var sxtx_stx_header = sxLayout(0x6034004C, "stx_header", LE, sxtx_stx_header_fields);
+var sxtx_stx_sample_fields = layout([u8("type", ID), chars("filename", 13, STRING), u16("data_paragraph"),
+    u32("sample_bytes", SIZE), u32("loop_start", OFFSET), u32("loop_end", OFFSET), u8("volume"), u8("reserved1", RESERVED),
+    u8("packing", ID), u8("flags", FLAGS), u16("sample_rate"), u16("reserved2", RESERVED), bytes("reserved3", 4, RESERVED),
+    u16("gus_pointer"), u16("sb_pointer"), u32("sb_index"), chars("name", 28, STRING), chars("magic", 4, SIGNATURE)]);
+var sxtx_stx_sample = sxLayout(0x6034004D, "stx_sample", LE, sxtx_stx_sample_fields);
+var sxtx_stx_order_fields = layout([u8("pattern", ID), bytes("unknown", 4)]);
+var sxtx_stx_order = sxLayout(0x6034004E, "stx_order", LE, sxtx_stx_order_fields);
+var sxtx_stx_channels_fields = layout([bytes("channels", 32)]);
+var sxtx_stx_channels = sxLayout(0x6034004F, "stx_channels", LE, sxtx_stx_channels_fields);
+var sxtx_dtm_info_fields = layout([u16("module_type", ID), u8("stereo_mode", ID), u8("bit_depth"), u16("reserved", RESERVED),
+    u16("speed"), u16("tempo"), u32("forced_sample_rate")]);
+var sxtx_dtm_info = sxLayout(0x60340050, "dtm_info", BE, sxtx_dtm_info_fields);
+var sxtx_dtm_sequence_fields = layout([u16("orders", COUNT), u16("restart_order"), u32("reserved", RESERVED)]);
+var sxtx_dtm_sequence = sxLayout(0x60340051, "dtm_sequence", BE, sxtx_dtm_sequence_fields);
+var sxtx_dtm_pattern_info_fields = layout([u16("channels", COUNT), u16("patterns", COUNT), u32("event_format", ID)]);
+var sxtx_dtm_pattern_info = sxLayout(0x60340052, "dtm_pattern_info", BE, sxtx_dtm_pattern_info_fields);
+var sxtx_dtm_sample_fields = layout([u32("internal_value"), u32("sample_bytes", SIZE), u8("finetune", FLAGS), u8("volume"),
+    u32("loop_start", OFFSET), u32("loop_bytes", SIZE), chars("name", 22, STRING), u8("stereo", FLAGS), u8("bit_depth"),
+    u16("transpose"), u16("unknown"), u32("sample_rate")]);
+var sxtx_dtm_sample = sxLayout(0x60340053, "dtm_sample", BE, sxtx_dtm_sample_fields);
+var sxtx_dtm_pattern_fields = layout([u32("sentinel", SIGNATURE), u16("pattern_id", ID), u16("rows", COUNT)]);
+var sxtx_dtm_pattern = sxLayout(0x60340054, "dtm_pattern", BE, sxtx_dtm_pattern_fields);
+var sxtx_mod_event_fields = layout([u8("instrument_period_high", FLAGS), u8("period_low"), u8("instrument_effect", FLAGS),
+    u8("parameter")]);
+var sxtx_mod_event = sxLayout(0x60340055, "mod_event", LE, sxtx_mod_event_fields);
+var sxtx_dtm_event_fields = layout([u8("note", ID), u8("volume_instrument", FLAGS), u8("instrument_effect", FLAGS),
+    u8("parameter")]);
+var sxtx_dtm_event = sxLayout(0x60340056, "dtm_event", LE, sxtx_dtm_event_fields);
+var sxtx_funk_header_fields = layout([chars("magic", 4, SIGNATURE), bytes("tracker_info", 4), u32("file_size", SIZE),
+    chars("format_id", 4, ID), u8("restart_order")]);
+var sxtx_funk_header = sxLayout(0x60340057, "funk_header", LE, sxtx_funk_header_fields);
+var sxtx_funk_sample_fields = layout([chars("name", 19, STRING), u32("loop_start", OFFSET), u32("sample_bytes", SIZE),
+    u8("volume"), u8("pan"), u8("shifter", FLAGS), u8("waveform", FLAGS), u8("retrigger", FLAGS)]);
+var sxtx_funk_sample = sxLayout(0x60340058, "funk_sample", LE, sxtx_funk_sample_fields);
+var sxtx_funk_event_fields = layout([u8("note_instrument", FLAGS), u8("instrument_effect", FLAGS), u8("parameter")]);
+var sxtx_funk_event = sxLayout(0x60340059, "funk_event", LE, sxtx_funk_event_fields);
+var sxtx_musx_name_fields = layout([chars("name", 32, STRING)]);
+var sxtx_musx_name = sxLayout(0x6034005A, "musx_name", LE, sxtx_musx_name_fields);
+var sxtx_musx_tracker_fields = layout([u8("year_low_bcd"), u8("year_high_bcd"), u8("month_bcd"), u8("day_bcd")]);
+var sxtx_musx_tracker = sxLayout(0x6034005B, "musx_tracker", LE, sxtx_musx_tracker_fields);
+var sxtx_musx_volume_fields = layout([u32("volume")]);
+var sxtx_musx_volume = sxLayout(0x6034005C, "musx_volume", LE, sxtx_musx_volume_fields);
+var sxtx_musx_loop_offset_fields = layout([u32("loop_start", OFFSET)]);
+var sxtx_musx_loop_offset = sxLayout(0x6034005D, "musx_loop_offset", LE, sxtx_musx_loop_offset_fields);
+var sxtx_musx_event_fields = layout([u8("parameter"), u8("effect", ID), u8("instrument", ID), u8("note", ID)]);
+var sxtx_musx_event = sxLayout(0x6034005E, "musx_event", LE, sxtx_musx_event_fields);
+var sxtx_coco_header_fields = layout([u8("channel_flags", FLAGS), chars("title", 20, STRING), u8("instruments", COUNT),
+    u8("orders", COUNT), u8("patterns", COUNT), u32("orders_offset", OFFSET), u32("patterns_offset", OFFSET)]);
+var sxtx_coco_header = sxLayout(0x6034005F, "coco_header", LE, sxtx_coco_header_fields);
+var sxtx_coco_sample_fields = layout([u32("data_offset", OFFSET), u32("sample_bytes", SIZE), u32("inverse_volume"),
+    u32("loop_start", OFFSET), u32("loop_length_plus_one", SIZE), chars("name", 11, STRING), u8("unused", RESERVED)]);
+var sxtx_coco_sample = sxLayout(0x60340060, "coco_sample", LE, sxtx_coco_sample_fields);
+var sxtx_rtm_object_fields = layout([chars("object_type", 4, ID), u8("space", SIGNATURE), chars("name", 32, STRING),
+    u8("eof_marker", SIGNATURE), u16("version", ID), u16("object_size", SIZE)]);
+var sxtx_rtm_object = sxLayout(0x60340061, "rtm_object", LE, sxtx_rtm_object_fields);
+var sxtx_rtm_song_fields = layout([chars("software", 20, STRING), chars("composer", 32, STRING), u16("flags", FLAGS),
+    u8("channels", COUNT), u8("instruments", COUNT), u16("orders", COUNT), u16("patterns", COUNT), u8("speed"), u8("tempo")]);
+var sxtx_rtm_song = sxLayout(0x60340062, "rtm_song", LE, sxtx_rtm_song_fields);
+var sxtx_rtm_pan_fields = layout([i8("panning")]);
+var sxtx_rtm_pan = sxLayout(0x60340063, "rtm_pan", LE, sxtx_rtm_pan_fields);
+var sxtx_rtm_extra_size_fields = layout([u32("extra_data_size", SIZE)]);
+var sxtx_rtm_extra_size = sxLayout(0x60340064, "rtm_extra_size", LE, sxtx_rtm_extra_size_fields);
+var sxtx_rtm_original_name_fields = layout([chars("original_name", 32, STRING)]);
+var sxtx_rtm_original_name = sxLayout(0x60340065, "rtm_original_name", LE, sxtx_rtm_original_name_fields);
+var sxtx_rtm_pattern_fields = layout([u16("flags", FLAGS), u8("tracks", COUNT), u16("rows", COUNT), u32("packed_size", SIZE)]);
+var sxtx_rtm_pattern = sxLayout(0x60340066, "rtm_pattern", LE, sxtx_rtm_pattern_fields);
+var sxtx_rtm_instrument_fields = layout([u8("samples", COUNT), u16("flags", FLAGS)]);
+var sxtx_rtm_instrument = sxLayout(0x60340067, "rtm_instrument", LE, sxtx_rtm_instrument_fields);
+var sxtx_rtm_keymap_fields = layout([u8("sample_index", ID)]);
+var sxtx_rtm_keymap = sxLayout(0x60340068, "rtm_keymap", LE, sxtx_rtm_keymap_fields);
+var sxtx_rtm_envelope_point_fields = layout([u32("tick"), i32("value")]);
+var sxtx_rtm_envelope_point = sxLayout(0x60340069, "rtm_envelope_point", LE, sxtx_rtm_envelope_point_fields);
+var sxtx_rtm_envelope_tail_fields = layout([u8("sustain_point"), u8("loop_start_point"), u8("loop_end_point"),
+    u16("flags", FLAGS)]);
+var sxtx_rtm_envelope_tail = sxLayout(0x6034006A, "rtm_envelope_tail", LE, sxtx_rtm_envelope_tail_fields);
+var sxtx_rtm_instrument_tail_fields = layout([u8("vibrato_type", ID), u8("vibrato_sweep"), u8("vibrato_depth"),
+    u8("vibrato_rate"), u16("fadeout"), u8("midi_port", ID), u8("midi_channel", ID), u8("midi_program", ID),
+    u8("midi_enabled", FLAGS)]);
+var sxtx_rtm_instrument_tail = sxLayout(0x6034006B, "rtm_instrument_tail", LE, sxtx_rtm_instrument_tail_fields);
+var sxtx_rtm_instrument_v112_fields = layout([i8("midi_transpose"), u8("midi_bender_range"), u8("midi_base_volume"),
+    u8("midi_use_velocity", FLAGS)]);
+var sxtx_rtm_instrument_v112 = sxLayout(0x6034006C, "rtm_instrument_v112", LE, sxtx_rtm_instrument_v112_fields);
+var sxtx_rtm_sample_fields = layout([u16("flags", FLAGS), u8("base_volume"), u8("default_volume"), u32("sample_bytes", SIZE),
+    u8("loop_type", ID), bytes("reserved", 3, RESERVED), u32("loop_start", OFFSET), u32("loop_end", OFFSET), u32("sample_rate"),
+    u8("base_note", ID), i8("panning")]);
+var sxtx_rtm_sample = sxLayout(0x6034006D, "rtm_sample", LE, sxtx_rtm_sample_fields);
+var sxtx_mgt_header_fields = layout([chars("magic", 3, SIGNATURE), u8("version", ID), bytes("marker", 4, SIGNATURE),
+    u16("channels", COUNT), u16("songs", COUNT), u16("orders", COUNT), u16("patterns", COUNT), u16("tracks", COUNT),
+    u16("instruments", COUNT), u16("reserved1", RESERVED), u32("reserved2", RESERVED), u32("song_offset", OFFSET),
+    u32("sequence_offset", OFFSET), u32("instrument_offset", OFFSET), u32("pattern_offset", OFFSET),
+    u32("track_table_offset", OFFSET), u32("sample_offset", OFFSET), u32("sample_data_size", SIZE),
+    u32("unpacked_track_size", SIZE)]);
+var sxtx_mgt_header = sxLayout(0x6034006E, "mgt_header", BE, sxtx_mgt_header_fields);
+var sxtx_mgt_song_fields = layout([chars("title", 32, STRING), u32("sequence_offset", OFFSET), u16("orders", COUNT),
+    u16("restart_order"), u8("bpm"), u8("speed"), u16("global_volume"), u8("master_left"), u8("master_right")]);
+var sxtx_mgt_song = sxLayout(0x6034006F, "mgt_song", BE, sxtx_mgt_song_fields);
+var sxtx_mgt_pan_fields = layout([u16("panning")]);
+var sxtx_mgt_pan = sxLayout(0x60340070, "mgt_pan", BE, sxtx_mgt_pan_fields);
+var sxtx_mgt_offset_fields = layout([u32("file_offset", OFFSET)]);
+var sxtx_mgt_offset = sxLayout(0x60340071, "mgt_offset", BE, sxtx_mgt_offset_fields);
+var sxtx_mgt_sample_fields = layout([chars("name", 32, STRING), u32("data_offset", OFFSET), u32("sample_bytes", SIZE),
+    u32("loop_start", OFFSET), u32("loop_bytes", SIZE), u32("unknown1"), u32("unknown2"), u32("sample_rate"), u16("volume"),
+    u8("volume_left"), u8("volume_right"), u8("flags", FLAGS), u8("finetune"), u8("unused", RESERVED), u8("unknown3"),
+    u8("unknown4"), u8("unknown5"), u16("unknown6"), u32("unknown7"), u32("unknown8")]);
+var sxtx_mgt_sample = sxLayout(0x60340072, "mgt_sample", BE, sxtx_mgt_sample_fields);
+var sxtx_abk_header_fields = layout([chars("magic", 4, SIGNATURE), u16("bank_type", ID), u16("memory_type", FLAGS),
+    u32("bank_size_flags", FLAGS), chars("bank_name", 8, STRING), u32("instruments_offset", OFFSET),
+    u32("songs_offset", OFFSET), u32("patterns_offset", OFFSET)]);
+var sxtx_abk_header = sxLayout(0x60340073, "abk_header", BE, sxtx_abk_header_fields);
+var sxtx_abk_sample_fields = layout([u32("sample_offset", OFFSET), u32("repeat_offset", OFFSET), u16("length_words"),
+    u16("repeat_end_words"), u16("volume"), u16("extended_length_words"), chars("name", 16, STRING)]);
+var sxtx_abk_sample = sxLayout(0x60340074, "abk_sample", BE, sxtx_abk_sample_fields);
+var sxtx_abk_song_index_fields = layout([u16("songs", COUNT), u32("song_offset", OFFSET)]);
+var sxtx_abk_song_index = sxLayout(0x60340075, "abk_song_index", BE, sxtx_abk_song_index_fields);
+var sxtx_abk_song_fields = layout([u16("playlist0", OFFSET), u16("playlist1", OFFSET), u16("playlist2", OFFSET),
+    u16("playlist3", OFFSET), u16("tempo"), u16("unused"), chars("title", 16, STRING)]);
+var sxtx_abk_song = sxLayout(0x60340076, "abk_song", BE, sxtx_abk_song_fields);
+var sxtx_abk_pattern_offset_fields = layout([u16("track_offset", OFFSET)]);
+var sxtx_abk_pattern_offset = sxLayout(0x60340077, "abk_pattern_offset", BE, sxtx_abk_pattern_offset_fields);
+var sxtx_mad_header_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxtx_mad_header = sxLayout(0x60340078, "mad_header", LE, sxtx_mad_header_fields);
+var sxtx_mad_instrument_fields = layout([chars("name", 8, STRING), bytes("opl_parameters", 12)]);
+var sxtx_mad_instrument = sxLayout(0x60340079, "mad_instrument", LE, sxtx_mad_instrument_fields);
+var sxtx_mad_song_fields = layout([u8("reserved", RESERVED), u8("orders", COUNT), u8("patterns", COUNT), u8("timer")]);
+var sxtx_mad_song = sxLayout(0x6034007A, "mad_song", LE, sxtx_mad_song_fields);
+var sxtx_mad_event_fields = layout([u8("note", ID)]);
+var sxtx_mad_event = sxLayout(0x6034007B, "mad_event", LE, sxtx_mad_event_fields);
+function sx_trackerextra_static_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60340000 || id >= 0x60350000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60340010:
+        if (r.name === "paragraph_index") {
+            text = "16-byte paragraph units; file byte offset is this value multiplied by16.";
+        }
+        break;
+    case 0x60340012:
+        if (r.name === "pan") {
+            text = "Native tracker panning units; not a byte offset.";
+        }
+        break;
+    case 0x60340016:
+        if (r.name === "file_type") {
+            text = "1=song,2=module; native reader accepts modules.";
+        }
+        break;
+    case 0x60340017:
+        if (r.name === "data_paragraph") {
+            text = "16-byte paragraph units; file byte offset=value*16.";
+        }
+        if (r.name === "loop_start") {
+            text = "Byte position within the sample.";
+        }
+        if (r.name === "loop_end") {
+            text = "Byte position within the sample;65535 disables looping.";
+        }
+        if (r.name === "length_paragraphs") {
+            text = "Length measured in16-byte paragraphs.";
+        }
+        break;
+    case 0x60340018:
+        if (r.name === "instrument_volume") {
+            text = "Bits3..7:instrument;bits0..2:low volume bits.";
+        }
+        if (r.name === "volume_effect") {
+            text = "High nibble:remaining volume bits;low nibble:effect.";
+        }
+        break;
+    case 0x60340019:
+        if (r.name === "note") {
+            text = "251/252=empty,253=note cut; compact one-byte event.";
+        }
+        break;
+    case 0x6034001C:
+        if (r.name === "last_row") {
+            text = "Last played row index; not a byte offset.";
+        }
+        break;
+    case 0x6034001D:
+        if (r.name === "loop_end") {
+            text = "Values>=0xfffff disable looping.";
+        }
+        break;
+    case 0x6034001E:
+        if (r.name === "note_instrument") {
+            text = "Bits2..7:note;bits0..1:high sample bits.";
+        }
+        if (r.name === "instrument_volume") {
+            text = "High nibble:low sample bits;low nibble:volume.";
+        }
+        if (r.name === "effect_parameter") {
+            text = "High nibble:effect;low nibble:parameter.";
+        }
+        break;
+    case 0x6034001F:
+        if (r.name === "flags") {
+            text = "Bit0:cut notes at period limit;bit1:Scream Tracker compatibility.";
+        }
+        break;
+    case 0x60340022:
+        if (r.name === "flags") {
+            text = "Bit0:16-bit PCM;bit1:stereo;bit2:signed PCM.";
+        }
+        if (r.name === "loop_type") {
+            text = "0 or-1:normal;1:ping pong.";
+        }
+        break;
+    case 0x60340026:
+        if (r.name === "beat") {
+            text = "High nibble:rows per beat;low nibble:reserved.";
+        }
+        break;
+    case 0x60340027:
+        if (r.name === "flags") {
+            text = "Bit0:loop;bit1:16-bit;bits2..3:compression.";
+        }
+        break;
+    case 0x6034002A:
+        if (r.name === "flags") {
+            text = "Bits0..1:sample type,1=PCM;bit2:loop;bit3:ping pong;bit4:16-bit.";
+        }
+        if (r.name === "memory_segment") {
+            text = "Internal player segment; not a file offset.";
+        }
+        break;
+    case 0x6034002B:
+        if (r.name === "channel_config") {
+            text = "Low5bits store channel count minus1.";
+        }
+        break;
+    case 0x6034002C:
+        if (r.name === "pan_finetune") {
+            text = "High nibble:panning;low nibble:signed finetune.";
+        }
+        if (r.name === "flags") {
+            text = "Bit2:legacy16-bit;bit7:16-bit;bits0..1:packed method(native stored subset).";
+        }
+        break;
+    case 0x6034002F:
+        if (r.name === "length_words") {
+            text = "16-bit word count;sample byte size=value*2.";
+        }
+        if (r.name === "flags") {
+            text = "Bit0:loop.";
+        }
+        if (r.name === "finetune") {
+            text = "Low nibble encodes signed finetune.";
+        }
+        if (r.name === "memory_pointer") {
+            text = "Stored player pointer; physical samples are in the8SMP chunk.";
+        }
+        break;
+    case 0x60340031:
+        if (r.name === "memory_pointer") {
+            text = "Stored player pointer; physical patterns are in the PATT chunk.";
+        }
+        break;
+    case 0x60340033:
+        if (r.name === "flags") {
+            text = "Bit0:packed patterns;bit1:automation;bit3:drums automation;bit4:master automation.";
+        }
+        break;
+    case 0x60340039:
+        if (r.name === "container_size") {
+            text = "File length minus12.";
+        }
+        break;
+    case 0x6034003D:
+        if (r.name === "flags") {
+            text = "Bit7:loop enabled.";
+        }
+        if (r.name === "loop_end") {
+            text = "0xffffffff denotes end of sample.";
+        }
+        break;
+    case 0x60340041:
+        if (r.name === "range_operand0") {
+            text = "Native reader stores two16-bit operands for this unfinished playlist command.";
+        }
+        break;
+    case 0x60340047:
+        if (r.name === "mode") {
+            text = "0=normal,2=surround,4=center.";
+        }
+        break;
+    case 0x60340049:
+        if (r.name === "tuning_value") {
+            text = "Period/tuning field; units are not established by the reference reader.";
+        }
+        break;
+    case 0x6034004A:
+        if (r.name === "packed_event") {
+            text = "Bits0..5:instrument,6..11:note,12..16:effect;bits17..21 select an extra parameter word.";
+        }
+        break;
+    case 0x6034004B:
+        if (r.name === "packed_parameters") {
+            text = "Low byte:first effect parameter;next byte:second parameter.";
+        }
+        break;
+    case 0x6034004C:
+        if (r.name === "pattern_table_paragraph") {
+            text = "File byte position=value*16.";
+        }
+        if (r.name === "instrument_table_paragraph") {
+            text = "File byte position=value*16.";
+        }
+        if (r.name === "channel_table_paragraph") {
+            text = "File byte position=value*16.";
+        }
+        break;
+    case 0x6034004D:
+        if (r.name === "data_paragraph") {
+            text = "File byte position=value*16.";
+        }
+        if (r.name === "flags") {
+            text = "Bit0:loop;other sample modes unsupported by native reader.";
+        }
+        break;
+    case 0x60340052:
+        if (r.name === "event_format") {
+            text = "0=ProTracker events;0x322e3034=Digital Tracker2.04 events.";
+        }
+        break;
+    case 0x60340053:
+        if (r.name === "finetune") {
+            text = "Low nibble encodes signed finetune-8..7.";
+        }
+        break;
+    case 0x60340056:
+        if (r.name === "volume_instrument") {
+            text = "Bits2..7:volume;bits0..1:high instrument bits.";
+        }
+        if (r.name === "instrument_effect") {
+            text = "High nibble:low instrument bits;low nibble:effect.";
+        }
+        break;
+    case 0x60340058:
+        if (r.name === "loop_start") {
+            text = "0xffffffff disables looping.";
+        }
+        break;
+    case 0x6034005B:
+        if (r.name === "year_low_bcd") {
+            text = "Packed BCD:year modulo100.";
+        }
+        if (r.name === "year_high_bcd") {
+            text = "Packed BCD:century.";
+        }
+        if (r.name === "month_bcd") {
+            text = "Packed BCD month.";
+        }
+        if (r.name === "day_bcd") {
+            text = "Packed BCD day.";
+        }
+        break;
+    case 0x6034005F:
+        if (r.name === "channel_flags") {
+            text = "Bit7:format marker;low6bits:channel count.";
+        }
+        break;
+    case 0x60340062:
+        if (r.name === "flags") {
+            text = "Bit0:linear slides;bit1:track names.";
+        }
+        break;
+    case 0x60340067:
+        if (r.name === "flags") {
+            text = "Bit0:default pan;bit1:mute samples.";
+        }
+        break;
+    case 0x6034006A:
+        if (r.name === "flags") {
+            text = "Bit0:enabled;bit1:sustain;bit2:loop.";
+        }
+        break;
+    case 0x6034006D:
+        if (r.name === "flags") {
+            text = "Bit1:16-bit;bit2:delta coded.";
+        }
+        if (r.name === "loop_type") {
+            text = "0=none,1=forward,2=ping pong.";
+        }
+        break;
+    case 0x60340072:
+        if (r.name === "flags") {
+            text = "Bit0:loop;bit1:bidirectional.";
+        }
+        break;
+    case 0x60340073:
+        if (r.name === "bank_size_flags") {
+            text = "Low31bits:bank size excluding12-byte prefix;high bit:flag.";
+        }
+        if (r.name === "instruments_offset") {
+            text = "Relative to byte20 of this file.";
+        }
+        if (r.name === "songs_offset") {
+            text = "Relative to byte20 of this file.";
+        }
+        if (r.name === "patterns_offset") {
+            text = "Relative to byte20 of this file.";
+        }
+        break;
+    case 0x60340074:
+        if (r.name === "sample_offset") {
+            text = "Relative to instrument section.";
+        }
+        if (r.name === "repeat_offset") {
+            text = "Stored repeat position;reference byte loop start=2*(repeat_offset-sample_offset),clamped at zero.";
+        }
+        if (r.name === "length_words") {
+            text = "16-bit words;byte count=value*2.";
+        }
+        break;
+    case 0x60340075:
+        if (r.name === "song_offset") {
+            text = "Relative to song-index section.";
+        }
+        break;
+    case 0x60340076:
+        if (r.name === "playlist0") {
+            text = "Relative to the beginning of this song record.";
+        }
+        if (r.name === "playlist1") {
+            text = "Relative to the beginning of this song record.";
+        }
+        if (r.name === "playlist2") {
+            text = "Relative to the beginning of this song record.";
+        }
+        if (r.name === "playlist3") {
+            text = "Relative to the beginning of this song record.";
+        }
+        break;
+    case 0x60340077:
+        if (r.name === "track_offset") {
+            text = "Relative to pattern-index section.";
+        }
+        break;
+    case 0x60340079:
+        if (r.name === "opl_parameters") {
+            text = "Physical OPL instrument parameter block;no register writes are executed.";
+        }
+        break;
+    case 0x6034007B:
+        if (r.name === "note") {
+            text = "0..96=note,254=pattern break,255=release note.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sx_trackerextra_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60340000 || id >= 0x60350000) {
+        return true;
+    }
+    if (!sx_trackerextra_static_comment(r, id)) {
+        return false;
+    }
+    if (sxVarType(r.value) === 9 /*XX_VAR_TYPE_FLOAT*/ || sxVarType(r.value) === 10 /*XX_VAR_TYPE_DOUBLE*/ || sxVarType(r.value) === 12 /*XX_VAR_TYPE_STRING*/ || sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var text = null;
+    if (id === sxtx_stm_short_event.id) {
+        text = v === 251 || v === 252 ? "EMPTY_NOTE" : v === 253 ? "NOTE_CUT" : null;
+    }
+    if (id === sxtx_stm_header.id && r.name === "file_type") {
+        text = v === 1 ? "STM_SONG" : v === 2 ? "STM_MODULE" : null;
+    }
+    if (id === sxtx_mad_event.id) {
+        text = v === 254 ? "PATTERN_BREAK" : v === 255 ? "NOTE_RELEASE" : null;
+    }
+    if (id === sxtx_psm_opcode.id) {
+        switch (v) {
+        case 0:
+            text = "OPLH_END";
+            break;
+        case 1:
+            text = "OPLH_PLAY_ORDER";
+            break;
+        case 2:
+            text = "OPLH_PLAY_RANGE";
+            break;
+        case 3:
+            text = "OPLH_JUMP_LOOP";
+            break;
+        case 4:
+            text = "OPLH_JUMP_LINE";
+            break;
+        case 5:
+            text = "OPLH_CHANNEL_FLIP";
+            break;
+        case 6:
+            text = "OPLH_TRANSPOSE";
+            break;
+        case 7:
+            text = "OPLH_DEFAULT_SPEED";
+            break;
+        case 8:
+            text = "OPLH_DEFAULT_TEMPO";
+            break;
+        case 12:
+            text = "OPLH_SAMPLE_MAP";
+            break;
+        case 13:
+            text = "OPLH_CHANNEL_PANNING";
+            break;
+        case 14:
+            text = "OPLH_CHANNEL_VOLUME";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === sxtx_dtm_pattern_info.id && r.name === "event_format") {
+        text = v === 0 ? "PROTRACKER_EVENTS" : v === 0x322E3034 ? "DIGITAL_TRACKER_2_04_EVENTS" : null;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxtx_num(c, at, width, be) {
+    var b = [];
+    if (!width || width > 4 || !sx_read(c, at, b, width)) {
+        c.failed = true;
+        return 0;
+    }
+    var v = 0;
+    for (var i = 0; i < width; i++) {
+        v = (v | (b[i] << ((8 * (be ? (((width - 1) >>> 0) - i) >>> 0 : i)) >>> 0)) >>> 0) >>> 0;
+    }
+    return v;
+}
+function sxtx_take(c, l, at, end, count) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var width = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (at[0] < 0 || end < at[0] || !width || count > Math.floor((end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) / width)) {
+        return false;
+    }
+    if (count && c.count < 32000 && !sx_table(c, l, at[0], (width >= SX_I64_MAX ? width - SX_U64_MAX : width), count)) {
+        return false;
+    }
+    at[0] += (count * width >= SX_I64_MAX ? count * width - SX_U64_MAX : count * width);
+    return !c.failed;
+}
+function sxtx_skip(at, end, n) {
+    if (at[0] < 0 || end < at[0] || n > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+        return false;
+    }
+    at[0] += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    return true;
+}
+function sxtx_eq(a, a_o, b) {
+    return !sxStrcmpAt(a, a_o, b, 0);
+}
+function sxtx_prefix(a, a_o, b) {
+    return !sxStrncmpAt(a, a_o, b, 0, sxStrlen(b));
+}
+function sxtx_suffix(a, a_o, b) {
+    var x = sxStrlenAt(a, a_o);
+    var y = sxStrlen(b);
+    return x >= y && !sxStrcmpAt(a, a_o + x - y, b, 0);
+}
+function sxtx_tag(c, at, t) {
+    var b = [];
+    return sx_read(c, at, b, 4) && !sxMemcmp(b, t, 4);
+}
+function sxtx_dtm_mode(c) {
+    var at = 0;
+    for (var i = 0; i < 65536 && at < c.size; i++) {
+        if (!sx_range(c, at, 8)) {
+            return -1;
+        }
+        var n = sxtx_num(c, at + 4, 4, true);
+        if (!sx_range(c, at + 8, n)) {
+            return -1;
+        }
+        if (sxtx_tag(c, at, "PATT")) {
+            if (n !== 8) {
+                return -1;
+            }
+            return sxtx_num(c, at + 12, 4, true) ? 1 : 0;
+        }
+        at += 8 + n;
+    }
+    return -1;
+}
+function sxtx_psm_oplh(c, at, end) {
+    at = [at];
+    {
+        if (!sxtx_take(c, sxtx_count_u16le, at, end, 1)) {
+            return false;
+        }
+    }
+    for (var ops = 0; at[0] < end && ops < 4096; ops++) {
+        var op = sxtx_num(c, at[0], 1, false);
+        {
+            if (!sxtx_take(c, sxtx_psm_opcode, at, end, 1)) {
+                return false;
+            }
+        }
+        switch (op) {
+        case 0:
+            return at[0] === end;
+        case 1:
+            {
+                if (!sxtx_take(c, sxtx_psm_play, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 2:
+            {
+                if (!sxtx_take(c, sxtx_psm_range, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 3:
+            {
+                if (!sxtx_take(c, sxtx_psm_jump_loop, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 4:
+            {
+                if (!sxtx_take(c, sxtx_psm_jump, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 5:
+        case 14:
+            {
+                if (!sxtx_take(c, sxtx_psm_channel_value, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 6:
+        case 7:
+        case 8:
+            {
+                if (!sxtx_take(c, sxtx_psm_value, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 12:
+            {
+                if (!sxtx_take(c, sxtx_psm_sample_map, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        case 13:
+            {
+                if (!sxtx_take(c, sxtx_psm_panning, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        default:
+            return false;
+        }
+    }
+    return at[0] === end;
+}
+function sxtx_component(c, name, name_o, at, size) {
+    at = [at];
+    var end = at[0] + size;
+    var n;
+    var m;
+    var k;
+    switch (c.f.file_type) {
+    case "TRACKER_STM":
+        if (sxtx_eq(name, name_o, "stm-descriptor.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_stm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_stm_sample, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, 128)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_prefix(name, name_o, "pattern-")) {
+            while (at[0] < end) {
+                n = sxtx_num(c, at[0], 1, false);
+                if (n >= 251 && n <= 253) {
+                    {
+                        if (!sxtx_take(c, sxtx_stm_short_event, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    {
+                        if (!sxtx_take(c, sxtx_stm_event, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case "TRACKER_669":
+        if (sxtx_eq(name, name_o, "669-descriptor.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_c669_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, 128)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_c669_speed, at, end, 128)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_c669_last_row, at, end, 128)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_suffix(name, name_o, "-descriptor.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_c669_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_prefix(name, name_o, "pattern-")) {
+            if (size % 3) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_c669_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_LIQUID":
+        if (sxtx_eq(name, name_o, "headers-orders.bin")) {
+            n = sxtx_num(c, 95, 2, false);
+            m = sxtx_num(c, 105, 2, false);
+            {
+                if (!sxtx_take(c, sxtx_liq_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_pan_u8, at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_volume_u8, at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, m)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "encoded-pattern.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_liq_pattern, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "empty-instrument.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_liq_empty_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "sample-header.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_liq_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_DMF":
+        if (sxtx_eq(name, name_o, "header.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_dmf_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "ENDE.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_dmf_end, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (sxtx_eq(name, name_o, "SEQU.bin")) {
+                {
+                    if (!sxtx_take(c, sxtx_dmf_sequence, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if ((end - at[0]) % 2) {
+                    return false;
+                }
+                {
+                    if (!sxtx_take(c, sxtx_order_u16le, at, end, sxU64(sxDiv(end - at[0], 2)))) {
+                        return false;
+                    }
+                }
+            } else if (sxtx_eq(name, name_o, "PATT.bin")) {
+                n = sxtx_num(c, at[0], 2, false);
+                {
+                    if (!sxtx_take(c, sxtx_dmf_patterns, at, end, 1)) {
+                        return false;
+                    }
+                }
+                for (var i = 0; i < n; i++) {
+                    m = sxtx_num(c, at[0] + 4, 4, false);
+                    {
+                        if (!sxtx_take(c, sxtx_dmf_pattern, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_skip(at, end, m)) {
+                            return false;
+                        }
+                    }
+                }
+                if (at[0] !== end) {
+                    return false;
+                }
+            } else if (sxtx_eq(name, name_o, "SMPI.bin")) {
+                n = sxtx_num(c, at[0], 1, false);
+                {
+                    if (!sxtx_take(c, sxtx_count_u8le, at, end, 1)) {
+                        return false;
+                    }
+                }
+                for (i = 0; i < n; i++) {
+                    m = sxtx_num(c, at[0], 1, false);
+                    {
+                        if (!sxtx_take(c, sxtx_length_u8le, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_skip(at, end, m)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_take(c, sxtx_dmf_sample, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+                if (at[0] !== end) {
+                    return false;
+                }
+            } else if (sxtx_eq(name, name_o, "SMPD.bin")) {
+                while (at[0] < end) {
+                    n = sxtx_num(c, at[0], 4, false);
+                    {
+                        if (!sxtx_take(c, sxtx_length_u32le, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_skip(at, end, n)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case "TRACKER_PTM":
+        if (sxtx_eq(name, name_o, "headers.bin")) {
+            n = sxtx_num(c, 34, 2, false);
+            {
+                if (!sxtx_take(c, sxtx_ptm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_pan_u8, at, end, 32)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, 256)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_paragraph_u16, at, end, 128)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_ptm_sample, at, end, n)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        }
+        break;
+    case "TRACKER_AMS":
+        if (sxtx_eq(name, name_o, "headers-text-orders.bin")) {
+            n = sxtx_num(c, 10, 1, false);
+            m = sxtx_num(c, 11, 2, false);
+            k = sxtx_num(c, 13, 2, false);
+            var ch = (sxtx_num(c, 9, 1, false) & 31) + 1;
+            var extra = sxtx_num(c, 16, 2, false);
+            {
+                if (!sxtx_take(c, sxtx_ams_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_skip(at, end, extra)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_ams_sample, at, end, n)) {
+                    return false;
+                }
+            }
+            for (i = 0; i < (((((1 + n) >>> 0) + ch) >>> 0) + m) >>> 0; i++) {
+                var z = sxtx_num(c, at[0], 1, false);
+                {
+                    if (!sxtx_take(c, sxtx_length_u8le, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_skip(at, end, z)) {
+                        return false;
+                    }
+                }
+            }
+            n = sxtx_num(c, at[0], 2, false);
+            {
+                if (!sxtx_take(c, sxtx_length_u16le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_skip(at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u16le, at, end, k)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxtx_eq(name, name_o, "encoded-pattern.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_length_u32le, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_EMOD":
+        if (sxtx_eq(name, name_o, "header.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_emod_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxtx_take(c, sxtx_chunk_be, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (sxtx_eq(name, name_o, "EMIC.bin")) {
+                n = sxtx_num(c, at[0] + 43, 1, false);
+                {
+                    if (!sxtx_take(c, sxtx_emod_info, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_emod_sample, at, end, n)) {
+                        return false;
+                    }
+                }
+                n = sxtx_num(c, at[0] + 1, 1, false);
+                {
+                    if (!sxtx_take(c, sxtx_emod_pattern_count, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_emod_pattern, at, end, n)) {
+                        return false;
+                    }
+                }
+                n = sxtx_num(c, at[0], 1, false);
+                {
+                    if (!sxtx_take(c, sxtx_count_u8le, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_order_u8le, at, end, n)) {
+                        return false;
+                    }
+                }
+                if (at[0] !== end) {
+                    return false;
+                }
+            } else if (sxtx_eq(name, name_o, "PATT.bin")) {
+                if ((end - at[0]) % 4) {
+                    return false;
+                }
+                {
+                    if (!sxtx_take(c, sxtx_emod_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                        return false;
+                    }
+                }
+            }
+        }
+        break;
+    case "TRACKER_MT2":
+        if (sxtx_eq(name, name_o, "headers-orders.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_mt2_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, 256)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_mt2_drum_size, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_mt2_extra_size, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxtx_eq(name, name_o, "pattern.bin")) {
+            n = sxtx_num(c, at[0] + 2, 4, false);
+            {
+                if (!sxtx_take(c, sxtx_mt2_pattern, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (n % 7) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_mt2_event, at, end, Math.floor(n / 7))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "empty-instrument-sample-slots.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_mt2_slot, at, end, 511)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        }
+        break;
+    case "TRACKER_PSM":
+        if (sxtx_eq(name, name_o, "descriptor.bin")) {
+            {
+                if (!sxtx_take(c, sxtx_psm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (sxtx_eq(name, name_o, "chunk-SDFT.bin")) {
+                {
+                    if (!sxtx_take(c, sxtx_psm_format, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else if (sxtx_eq(name, name_o, "chunk-DSMP.bin")) {
+                {
+                    if (!sxtx_take(c, sxtx_psm_sample, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else if (sxtx_eq(name, name_o, "chunk-PBOD.bin")) {
+                {
+                    if (!sxtx_take(c, sxtx_psm_pattern, at, end, 1)) {
+                        return false;
+                    }
+                }
+                while (at[0] < end) {
+                    n = sxtx_num(c, at[0], 2, false);
+                    if (n < 2) {
+                        return false;
+                    }
+                    {
+                        if (!sxtx_take(c, sxtx_length_u16le, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_skip(at, end, (n - 2) >>> 0)) {
+                            return false;
+                        }
+                    }
+                }
+            } else if (sxtx_eq(name, name_o, "chunk-SONG.bin")) {
+                {
+                    if (!sxtx_take(c, sxtx_psm_song, at, end, 1)) {
+                        return false;
+                    }
+                }
+                for (i = 0; at[0] < end && i < 16; i++) {
+                    n = sxtx_num(c, at[0] + 4, 4, false);
+                    var oplh = sxtx_tag(c, at[0], "OPLH");
+                    var date = sxtx_tag(c, at[0], "DATE");
+                    {
+                        if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    if (n > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                        return false;
+                    }
+                    if (oplh && !sxtx_psm_oplh(c, at[0], at[0] + n)) {
+                        return false;
+                    }
+                    if (date) {
+                        var save = end;
+                        end = at[0] + n;
+                        {
+                            if (!sxtx_take(c, sxtx_psm_date, at, end, 1)) {
+                                return false;
+                            }
+                        }
+                        end = save;
+                    } else {
+                        {
+                            if (!sxtx_skip(at, end, n)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                if (at[0] !== end) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_DTT":
+        if (sxtx_eq(name, name_o, "module-index.bin")) {
+            n = sxtx_num(c, 140, 4, false);
+            m = sxtx_num(c, 160, 4, false);
+            k = sxtx_num(c, 164, 4, false);
+            {
+                if (!sxtx_take(c, sxtx_dtt_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_skip(at, end, -n >>> 0 & 3)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_offset_u32, at, end, m)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_count_u8le, at, end, m)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_skip(at, end, -m >>> 0 & 3)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_dtt_sample, at, end, k)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxtx_prefix(name, name_o, "pattern-")) {
+            while (at[0] < end) {
+                n = sxtx_num(c, at[0], 4, false);
+                {
+                    if (!sxtx_take(c, sxtx_dtt_event, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (n & 0x3E0000) {
+                    {
+                        if (!sxtx_take(c, sxtx_dtt_event_extra, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        break;
+    case "TRACKER_STX":
+        if (sxtx_eq(name, name_o, "descriptor.stx")) {
+            {
+                if (!sxtx_take(c, sxtx_stx_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern-index.stx") || sxtx_eq(name, name_o, "instrument-index.stx")) {
+            if (size % 2) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_paragraph_u16, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "channels-orders.stx")) {
+            {
+                if (!sxtx_take(c, sxtx_stx_channels, at, end, 1)) {
+                    return false;
+                }
+            }
+            if ((end - at[0]) % 5) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_stx_order, at, end, sxU64(sxDiv(end - at[0], 5)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "instrument.stx")) {
+            {
+                if (!sxtx_take(c, sxtx_stx_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_DTM":
+        var head = sxtx_tag(c, at[0], "D.T.");
+        var seq = sxtx_tag(c, at[0], "S.Q.");
+        var pat = sxtx_tag(c, at[0], "PATT");
+        var ins = sxtx_tag(c, at[0], "INST");
+        var dapt = sxtx_tag(c, at[0], "DAPT");
+        var dait = sxtx_tag(c, at[0], "DAIT");
+        {
+            if (!sxtx_take(c, sxtx_chunk_be, at, end, 1)) {
+                return false;
+            }
+        }
+        if (head) {
+            {
+                if (!sxtx_take(c, sxtx_dtm_info, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (seq) {
+            n = sxtx_num(c, at[0], 2, true);
+            {
+                if (!sxtx_take(c, sxtx_dtm_sequence, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (pat) {
+            {
+                if (!sxtx_take(c, sxtx_dtm_pattern_info, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (ins) {
+            n = sxtx_num(c, at[0], 2, true);
+            {
+                if (!sxtx_take(c, sxtx_count_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_dtm_sample, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (dapt) {
+            {
+                if (!sxtx_take(c, sxtx_dtm_pattern, at, end, 1)) {
+                    return false;
+                }
+            }
+            var mode = sxtx_dtm_mode(c);
+            if (mode < 0 || (end - at[0]) % 4) {
+                return false;
+            }
+            if (mode) {
+                {
+                    if (!sxtx_take(c, sxtx_dtm_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxtx_take(c, sxtx_mod_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (dait) {
+            {
+                if (!sxtx_take(c, sxtx_order_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_FUNK":
+        if (sxtx_eq(name, name_o, "descriptor.fnk")) {
+            {
+                if (!sxtx_take(c, sxtx_funk_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "orders.fnk")) {
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern-breaks.fnk")) {
+            {
+                if (!sxtx_take(c, sxtx_c669_last_row, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "instruments.fnk")) {
+            {
+                if (!sxtx_take(c, sxtx_funk_sample, at, end, 64)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern.fnk")) {
+            if (size % 3) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_funk_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_ARCHIMEDES":
+        if (sxtx_eq(name, name_o, "sample.vidc")) {
+            break;
+        }
+        var count = sxtx_tag(c, at[0], "MVOX") || sxtx_tag(c, at[0], "MLEN") || sxtx_tag(c, at[0], "PNUM");
+        var plen = sxtx_tag(c, at[0], "PLEN");
+        seq = sxtx_tag(c, at[0], "SEQU");
+        var names = sxtx_tag(c, at[0], "MNAM") || sxtx_tag(c, at[0], "ANAM");
+        var info = sxtx_tag(c, at[0], "TINF");
+        var pan = sxtx_tag(c, at[0], "STER");
+        pat = sxtx_tag(c, at[0], "PATT");
+        {
+            if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                return false;
+            }
+        }
+        if (count) {
+            {
+                if (!sxtx_take(c, sxtx_count_u32le, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (plen) {
+            {
+                if (!sxtx_take(c, sxtx_count_u8le, at, end, 64)) {
+                    return false;
+                }
+            }
+        } else if (seq) {
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, 128)) {
+                    return false;
+                }
+            }
+        } else if (names) {
+            {
+                if (!sxtx_take(c, sxtx_musx_name, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (info) {
+            {
+                if (!sxtx_take(c, sxtx_musx_tracker, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (pan) {
+            {
+                if (!sxtx_take(c, sxtx_pan_u8, at, end, 8)) {
+                    return false;
+                }
+            }
+        } else if (pat) {
+            if ((end - at[0]) % 4) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_musx_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "sample-descriptor.musx")) {
+            n = sxtx_num(c, at[0] + 4, 4, false);
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_skip(at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_musx_volume, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_length_u32le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_musx_loop_offset, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_length_u32le, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_chunk_le, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        }
+        break;
+    case "TRACKER_COCONIZER":
+        if (sxtx_eq(name, name_o, "descriptor.coco")) {
+            {
+                if (!sxtx_take(c, sxtx_coco_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "instruments.coco")) {
+            if (size % 32) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_coco_sample, at, end, sxU64(sxDiv(size, 32)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "orders.coco")) {
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern.coco")) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_musx_event, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_REAL":
+        if (sxtx_eq(name, name_o, "extra-data.rtm")) {
+            n = sxtx_num(c, 98, 2, false);
+            {
+                if (!sxtx_take(c, sxtx_order_u16le, at, end, n)) {
+                    return false;
+                }
+            }
+        } else {
+            n = sxtx_num(c, at[0] + 40, 2, false);
+            {
+                if (!sxtx_take(c, sxtx_rtm_object, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (sxtx_eq(name, name_o, "descriptor.rtm")) {
+                {
+                    if (!sxtx_take(c, sxtx_rtm_song, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_rtm_pan, at, end, 32)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_rtm_extra_size, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (n === 130) {
+                    {
+                        if (!sxtx_take(c, sxtx_rtm_original_name, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+            } else if (sxtx_eq(name, name_o, "pattern-object.rtm")) {
+                {
+                    if (!sxtx_take(c, sxtx_rtm_pattern, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else if (sxtx_eq(name, name_o, "instrument-object.rtm")) {
+                {
+                    if (!sxtx_take(c, sxtx_rtm_instrument, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_rtm_keymap, at, end, 120)) {
+                        return false;
+                    }
+                }
+                for (i = 0; i < 2; i++) {
+                    {
+                        if (!sxtx_take(c, sxtx_count_u8le, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_take(c, sxtx_rtm_envelope_point, at, end, 12)) {
+                            return false;
+                        }
+                    }
+                    {
+                        if (!sxtx_take(c, sxtx_rtm_envelope_tail, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_rtm_instrument_tail, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (n === 341) {
+                    {
+                        if (!sxtx_take(c, sxtx_rtm_instrument_v112, at, end, 1)) {
+                            return false;
+                        }
+                    }
+                }
+                if (at[0] !== end) {
+                    return false;
+                }
+            } else if (sxtx_eq(name, name_o, "sample-object.rtm")) {
+                {
+                    if (!sxtx_take(c, sxtx_rtm_sample, at, end, 1)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        break;
+    case "TRACKER_MEGATRACKER":
+        if (sxtx_eq(name, name_o, "descriptor.mgt")) {
+            {
+                if (!sxtx_take(c, sxtx_mgt_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "song.mgt")) {
+            n = sxtx_num(c, 8, 2, true);
+            {
+                if (!sxtx_take(c, sxtx_mgt_song, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_mgt_pan, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "orders.mgt")) {
+            if (size % 2) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u16be, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "instruments.mgt")) {
+            if (size % 80) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_mgt_sample, at, end, sxU64(sxDiv(size, 80)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern-map.mgt")) {
+            n = sxtx_num(c, 8, 2, true);
+            while (at[0] < end) {
+                {
+                    if (!sxtx_take(c, sxtx_count_u16be, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxtx_take(c, sxtx_order_u16be, at, end, n)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "track-offsets.mgt")) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_mgt_offset, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "track.mgt")) {
+            {
+                if (!sxtx_take(c, sxtx_count_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "AMOS_MUSIC_BANK":
+        if (sxtx_eq(name, name_o, "descriptor.abk")) {
+            {
+                if (!sxtx_take(c, sxtx_abk_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "instruments.abk")) {
+            n = sxtx_num(c, at[0], 2, true);
+            {
+                if (!sxtx_take(c, sxtx_count_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_abk_sample, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "song-index.abk")) {
+            {
+                if (!sxtx_take(c, sxtx_abk_song_index, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "song.abk")) {
+            {
+                if (!sxtx_take(c, sxtx_abk_song, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "playlist.abk")) {
+            if (size % 2) {
+                return false;
+            }
+            {
+                if (!sxtx_take(c, sxtx_order_u16be, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern-index.abk")) {
+            n = sxtx_num(c, at[0], 2, true);
+            {
+                if (!sxtx_take(c, sxtx_count_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtx_take(c, sxtx_abk_pattern_offset, at, end, (n * 4) >>> 0)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "MAD_TRACKER":
+        if (sxtx_eq(name, name_o, "descriptor.mad")) {
+            {
+                if (!sxtx_take(c, sxtx_mad_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "instrument.mad")) {
+            {
+                if (!sxtx_take(c, sxtx_mad_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "song-info.mad")) {
+            {
+                if (!sxtx_take(c, sxtx_mad_song, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "pattern.mad")) {
+            {
+                if (!sxtx_take(c, sxtx_mad_event, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (sxtx_eq(name, name_o, "orders.mad")) {
+            {
+                if (!sxtx_take(c, sxtx_order_u8le, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    default:
+        return false;
+    }
+    return !c.failed;
+}
+function sxtx_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxtx_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxtx_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxtx_order, true);
+    return !c.failed;
+}
+function sx_trackerextra_supports(type) {
+    switch (type) {
+    case "TRACKER_STM":
+    case "TRACKER_669":
+    case "TRACKER_LIQUID":
+    case "TRACKER_DMF":
+    case "TRACKER_PTM":
+    case "TRACKER_AMS":
+    case "TRACKER_EMOD":
+    case "TRACKER_MT2":
+    case "TRACKER_PSM":
+    case "TRACKER_DTT":
+    case "TRACKER_STX":
+    case "TRACKER_DTM":
+    case "TRACKER_FUNK":
+    case "TRACKER_ARCHIMEDES":
+    case "TRACKER_COCONIZER":
+    case "TRACKER_REAL":
+    case "TRACKER_MEGATRACKER":
+    case "AMOS_MUSIC_BANK":
+    case "MAD_TRACKER":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_trackerextra_build(c) {
+    if (c === null || c.size < 1 || c.size > 268435456 || c.f.create_archive_records_reading === null) {
+        return false;
+    }
+    var s = sxArcCreate(c.f);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    var walked = 0;
+    while (ok && s.has_record) {
+        var r = sxArcCurrent(c.f, s);
+        var name = r !== null ? sxArcName(r) : null;
+        if (++walked > 65536 || r === null || name === null || sxStrlen(name) < 5 || sxAt(name, 4) !== 45 /*-*/ || r.data_offset < c.f.base_address || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var at = r.data_offset - c.f.base_address;
+        var n = r.compressed_size;
+        if (!sx_range(c, at, (n < 0 ? n + SX_U64_MAX : n)) || !sxtx_component(c, name, 5, at, n)) {
+            ok = false;
+            break;
+        }
+        if (!sxArcNext(c.f, s)) {
+            break;
+        }
+    }
+    if (walked !== (s.total_records < 0 ? s.total_records + SX_U64_MAX : s.total_records)) {
+        ok = false;
+    }
+    sxArcFree(c.f, s);
+    return ok && c.count > 0 && sxtx_finish(c);
+}

@@ -1,0 +1,165 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/jvc/xx_jvc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_dragon_dos_geometry_fields = layout([u8("cylinders", COUNT), u8("sectors_per_cylinder", COUNT),
+    u8("cylinders_complement"), u8("sectors_complement")]);
+var sxdn_dragon_dos_geometry = sxLayout(0x60780010, "dragon_dos_geometry", LE, sxdn_dragon_dos_geometry_fields);
+var sxdn_dragon_dos_file_fields = layout([u8("flags", FLAGS), chars("filename", 8, NONE), chars("extension", 3, NONE),
+    field("extent_1_sector", "uint16be", 2), u8("extent_1_sectors", COUNT), field("extent_2_sector", "uint16be", 2),
+    u8("extent_2_sectors", COUNT), field("extent_3_sector", "uint16be", 2), u8("extent_3_sectors", COUNT),
+    field("extent_4_sector", "uint16be", 2), u8("extent_4_sectors", COUNT), u8("next_or_last_bytes")]);
+var sxdn_dragon_dos_file = sxLayout(0x60780011, "dragon_dos_file", LE, sxdn_dragon_dos_file_fields);
+var sxdn_dragon_dos_continuation_fields = layout([u8("flags", FLAGS), field("extent_1_sector", "uint16be", 2),
+    u8("extent_1_sectors", COUNT), field("extent_2_sector", "uint16be", 2), u8("extent_2_sectors", COUNT),
+    field("extent_3_sector", "uint16be", 2), u8("extent_3_sectors", COUNT), field("extent_4_sector", "uint16be", 2),
+    u8("extent_4_sectors", COUNT), field("extent_5_sector", "uint16be", 2), u8("extent_5_sectors", COUNT),
+    field("extent_6_sector", "uint16be", 2), u8("extent_6_sectors", COUNT), field("extent_7_sector", "uint16be", 2),
+    u8("extent_7_sectors", COUNT), field("reserved", "byte[2]", 2), u8("next_or_last_bytes")]);
+var sxdn_dragon_dos_continuation = sxLayout(0x60780012, "dragon_dos_continuation", LE, sxdn_dragon_dos_continuation_fields);
+var sxdn_jvc_os9_disk_descriptor_fields = layout([field("total_sectors", "uint24", 3, COUNT), u8("track_sector_count", COUNT),
+    u16("bitmap_bytes", SIZE), u16("sectors_per_cluster", COUNT), field("root_fd_sector", "uint24", 3), u16("owner", ID),
+    u8("attributes", FLAGS), u16("disk_id", ID), u8("format", FLAGS), u16("sectors_per_track", COUNT),
+    field("reserved19", "byte[2]", 2, RESERVED), field("bootstrap_sector", "uint24", 3), u16("bootstrap_bytes", SIZE),
+    field("creation_ymdhm", "byte[5]", 5), field("volume_name", "byte[32]", 32)]);
+var sxdn_jvc_os9_disk_descriptor = sxLayout(0x60780060, "jvc_os9_disk_descriptor", BE, sxdn_jvc_os9_disk_descriptor_fields);
+var sxdn_jvc_os9_path_options_fields = layout([u8("device_class", ID), u8("drive"), u8("step_rate"), u8("device_type", FLAGS),
+    u8("density", FLAGS), u16("cylinders", COUNT), u8("sides", COUNT), u8("verify_disable", FLAGS),
+    u16("sectors_per_track", COUNT), u16("track0_sectors", COUNT), u8("interleave"), u8("segment_allocation_size"),
+    u8("dma_mode", FLAGS), u16("record_extension"), u8("sector_track_offsets"), u8("file_attributes", FLAGS),
+    field("file_descriptor_sector", "uint24", 3), field("directory_descriptor_sector", "uint24", 3),
+    u32("directory_entry_offset", OFFSET), u16("device_table_address", VA)]);
+var sxdn_jvc_os9_path_options = sxLayout(0x60780061, "jvc_os9_path_options", BE, sxdn_jvc_os9_path_options_fields);
+var sxdn_jvc_os9_file_descriptor_fields = layout([u8("attributes", FLAGS), u16("owner", ID),
+    field("modification_ymdhm", "byte[5]", 5), u8("link_count", COUNT), u32("byte_size", SIZE),
+    field("creation_ymd", "byte[3]", 3)]);
+var sxdn_jvc_os9_file_descriptor = sxLayout(0x60780062, "jvc_os9_file_descriptor", BE, sxdn_jvc_os9_file_descriptor_fields);
+var sxdn_jvc_os9_segment_fields = layout([field("first_sector", "uint24", 3), u16("sector_count", COUNT)]);
+var sxdn_jvc_os9_segment = sxLayout(0x60780063, "jvc_os9_segment", BE, sxdn_jvc_os9_segment_fields);
+var sxdn_jvc_os9_directory_entry_fields = layout([field("name", "byte[29]", 29), field("file_descriptor_sector", "uint24", 3)]);
+var sxdn_jvc_os9_directory_entry = sxLayout(0x60780064, "jvc_os9_directory_entry", BE, sxdn_jvc_os9_directory_entry_fields);
+function sxdn24(b, b_o) {
+    return b[b_o] << 16 | b[b_o + 1] << 8 | b[b_o + 2];
+}
+function sxdn_os9(c, base) {
+    var b = [];
+    if (!sxdn_read(c, base, b, 256)) {
+        return false;
+    }
+    var total = sxdn24(b, 0);
+    var root = sxdn24(b, 8);
+    if (!total || root >= total || !sxdn_span(c, base, total * 256) || !sxdn_put(c, sxdn_jvc_os9_disk_descriptor, base, 1) || !sxdn_put(c, sxdn_jvc_os9_path_options, base + 63, 1)) {
+        return false;
+    }
+    var queue = [];
+    var n = 1;
+    queue[0] = root >>> 0;
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        var p = base + queue[i] * 256;
+        if (!sxdn_read(c, p, b, 256) || !sxdn_put(c, sxdn_jvc_os9_file_descriptor, p, 1)) {
+            return false;
+        }
+        var segments = 0;
+        for (var j = 0; j < 48; j++) {
+            var lsn = sxdn24(b, 16 + ((j * 5) >>> 0));
+            var cnt = sxdn16(b, 19 + ((j * 5) >>> 0), 1);
+            if (!lsn || !cnt) {
+                break;
+            }
+            if (lsn >= total || cnt > sxU64(total - lsn)) {
+                break;
+            }
+            segments++;
+        }
+        if (!sxdn_put(c, sxdn_jvc_os9_segment, p + 16, segments)) {
+            return false;
+        }
+        if (!(b[0] & 128)) {
+            continue;
+        }
+        var remaining = sxdn32(b, 9, 1);
+        if (remaining > 0x400000) {
+            continue;
+        }
+        for (j = 0; j < segments && remaining && c.count < 24000; j++) {
+            lsn = sxdn24(b, 16 + ((j * 5) >>> 0));
+            cnt = sxdn16(b, 19 + ((j * 5) >>> 0), 1);
+            var bytes = cnt * 256;
+            if (bytes > remaining) {
+                bytes = remaining;
+            }
+            var at = base + lsn * 256;
+            if (!sxdn_put(c, sxdn_jvc_os9_directory_entry, at, Math.floor(bytes / 32))) {
+                return false;
+            }
+            for (var off = 0; off + 32 <= bytes && n < 1024; off += 32) {
+                var e = [];
+                if (!sxdn_read(c, at + off, e, 32)) {
+                    return false;
+                }
+                var fd = sxdn24(e, 29);
+                if (!e[0] || !fd || fd >= total) {
+                    continue;
+                }
+                var seen = false;
+                for (var k = 0; k < n; k++) {
+                    if (queue[k] === fd) {
+                        seen = true;
+                        break;
+                    }
+                }
+                if (!seen) {
+                    queue[n++] = fd;
+                }
+            }
+            remaining = sxU64(remaining - bytes);
+        }
+    }
+    return true;
+}
+function sxdn_jvc(c) {
+    var h = (c.size < 0 ? c.size + SX_U64_MAX : c.size) % 256;
+    if (h > 5 || !sxdn_jvc_header(c, h)) {
+        return false;
+    }
+    var b = [];
+    var total;
+    var root;
+    if (sxdn_read(c, h, b, 256) && (total = sxdn24(b, 0)) && total <= Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - h) / 256) && (root = sxdn24(b, 8)) && root < total) {
+        var fd = [];
+        if (sxdn_read(c, h + root * 256, fd, 16) && fd[0] & 128) {
+            return sxdn_os9(c, h);
+        }
+    }
+    for (var heads = 1; heads <= 2; heads++) {
+        var p = h + ((((360 * heads) >>> 0) * 256) >>> 0);
+        if (!sxdn_read(c, p, b, 256) || b[253] !== (18 * heads) >>> 0 || (~b[252] & 0xFF) !== b[254] || (~b[253] & 0xFF) !== b[255] || !b[252]) {
+            continue;
+        }
+        if (!sxdn_put(c, sxdn_dragon_dos_geometry, p + 252, 1)) {
+            return false;
+        }
+        for (var s = 2; s < 18; s++) {
+            for (var i = 0; i < 10; i++) {
+                var at = p + s * 256 + ((i * 25) >>> 0);
+                var flag = [0];
+                if (!sxdn_read(c, at, flag, 1)) {
+                    return false;
+                }
+                if (flag[0] & 8) {
+                    return true;
+                }
+                if (!sxdn_put(c, flag[0] & 1 ? sxdn_dragon_dos_continuation : sxdn_dragon_dos_file, at, 1)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    return c.count !== 0;
+}
+function sx_jvc_build(c) {
+    return sxdn_jvc(c);
+}

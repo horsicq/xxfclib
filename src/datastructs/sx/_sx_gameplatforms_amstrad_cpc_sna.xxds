@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/amstrad_cpc_sna/xx_amstrad_cpc_sna_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_cpc_header_fields = layout([blob("signature", 8, SIGNATURE), blob("reserved", 8, RESERVED), u8("version", ID),
+    u8("f", FLAGS), u8("a"), u8("c"), u8("b"), u8("e"), u8("d"), u8("l"), u8("h"), u8("r"), u8("i"), u8("iff1", FLAGS),
+    u8("iff2", FLAGS), u16("ix"), u16("iy"), u16("sp", VA), u16("pc", VA), u8("interrupt_mode", ID), u8("f_alt", FLAGS),
+    u8("a_alt"), u8("c_alt"), u8("b_alt"), u8("e_alt"), u8("d_alt"), u8("l_alt"), u8("h_alt"), u8("selected_pen", ID),
+    u8("pen_0", ID), u8("pen_1", ID), u8("pen_2", ID), u8("pen_3", ID), u8("pen_4", ID), u8("pen_5", ID), u8("pen_6", ID),
+    u8("pen_7", ID), u8("pen_8", ID), u8("pen_9", ID), u8("pen_10", ID), u8("pen_11", ID), u8("pen_12", ID), u8("pen_13", ID),
+    u8("pen_14", ID), u8("pen_15", ID), u8("pen_16", ID), u8("gate_array_config", FLAGS), u8("ram_config", FLAGS),
+    u8("selected_crtc", ID), u8("crtc_0", FLAGS), u8("crtc_1", FLAGS), u8("crtc_2", FLAGS), u8("crtc_3", FLAGS),
+    u8("crtc_4", FLAGS), u8("crtc_5", FLAGS), u8("crtc_6", FLAGS), u8("crtc_7", FLAGS), u8("crtc_8", FLAGS),
+    u8("crtc_9", FLAGS), u8("crtc_10", FLAGS), u8("crtc_11", FLAGS), u8("crtc_12", FLAGS), u8("crtc_13", FLAGS),
+    u8("crtc_14", FLAGS), u8("crtc_15", FLAGS), u8("crtc_16", FLAGS), u8("crtc_17", FLAGS), u8("rom_selection", ID),
+    u8("ppi_a", FLAGS), u8("ppi_b", FLAGS), u8("ppi_c", FLAGS), u8("ppi_control", FLAGS), u8("selected_psg", ID),
+    u8("psg_0", FLAGS), u8("psg_1", FLAGS), u8("psg_2", FLAGS), u8("psg_3", FLAGS), u8("psg_4", FLAGS), u8("psg_5", FLAGS),
+    u8("psg_6", FLAGS), u8("psg_7", FLAGS), u8("psg_8", FLAGS), u8("psg_9", FLAGS), u8("psg_10", FLAGS), u8("psg_11", FLAGS),
+    u8("psg_12", FLAGS), u8("psg_13", FLAGS), u8("psg_14", FLAGS), u8("psg_15", FLAGS), u16("memory_dump_kib")]);
+var sxgp_cpc_header = sxLayout(0x60360086, "cpc_header", LE, sxgp_cpc_header_fields);
+var sxgp_cpc_v1_tail_fields = layout([blob("reserved", 147, RESERVED)]);
+var sxgp_cpc_v1_tail = sxLayout(0x60360087, "cpc_v1_tail", LE, sxgp_cpc_v1_tail_fields);
+var sxgp_cpc_model_fields = layout([u8("machine_type", ID)]);
+var sxgp_cpc_model = sxLayout(0x60360088, "cpc_model", LE, sxgp_cpc_model_fields);
+function sxgp_cpc(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var ver = [0];
+    return sxgp_row(v, sxgp_cpc_header, 0, end) && sxgp_word(v, 16, 1, false, ver, 0, end) && sxgp_row(v, ver[0] === 1 ? sxgp_cpc_v1_tail : sxgp_cpc_model, 0x6D, end);
+}
+function sx_amstrad_cpc_sna_build(v) {
+    return sxgp_cpc(v);
+}

@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/theloomsyndicate_dynamicstudio_dsm/xx_theloomsyndicate_dynamicstudio_dsm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_dynamic_header_fields = layout([blob("magic", 4, SIGNATURE), u8("version", ID), chars("title", 20, STRING),
+    chars("artist", 20, STRING), u8("channels", COUNT), u8("samples", COUNT), u8("orders", COUNT), u8("packing", FLAGS),
+    u8("global_volume"), blob("padding", 14)]);
+var sxmn_dynamic_header = sxLayout(0x60760039, "dynamic_header", LE, sxmn_dynamic_header_fields);
+var sxmn_dynamic_pan_fields = layout([u8("pan")]);
+var sxmn_dynamic_pan = sxLayout(0x6076003A, "dynamic_pan", LE, sxmn_dynamic_pan_fields);
+var sxmn_dynamic_track_name_fields = layout([chars("name", 8, STRING)]);
+var sxmn_dynamic_track_name = sxLayout(0x6076003B, "dynamic_track_name", LE, sxmn_dynamic_track_name_fields);
+var sxmn_dynamic_event_fields = layout([u8("instrument", ID), u8("packed_note", FLAGS), u8("effect", ID), u8("parameter")]);
+var sxmn_dynamic_event = sxLayout(0x6076003D, "dynamic_event", LE, sxmn_dynamic_event_fields);
+function sxmn_dynamic(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var chn = [0];
+    var smp = [0];
+    var ord = [0];
+    var at;
+    var n = 0;
+    if (!sxmn_row(v, sxmn_dynamic_header, 0, end) || !sxmn_word(v, 45, 1, false, chn, 0, end) || !sxmn_word(v, 46, 1, false, smp, 0, end) || !sxmn_word(v, 47, 1, false, ord, 0, end) || !chn[0] || chn[0] > 16 || !smp[0] || !ord[0] || !sxmn_table(v, sxmn_dynamic_pan, 64, chn[0], end) || !sxmn_table(v, sxmn_dsm_order, 64 + chn[0], ord[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < ord[0]; i++) {
+        var x = [0];
+        if (!sxmn_word(v, 64 + chn[0] + i, 1, false, x, 0, end)) {
+            return false;
+        }
+        if (x[0] >= n) {
+            n = x[0] + 1;
+        }
+    }
+    at = 64 + chn[0] + ord[0];
+    if (!sxmn_table(v, sxmn_dynamic_track_name, at, n * chn[0], end)) {
+        return false;
+    }
+    at += n * chn[0] * 8;
+    if (!sxmn_table(v, sxmn_dynamic_sample, at, smp[0], end)) {
+        return false;
+    }
+    var samples = at;
+    at += smp[0] * 32;
+    if (!sxmn_table(v, sxmn_dynamic_event, at, n * chn[0] * 64, end)) {
+        return false;
+    }
+    at += n * chn[0] * 64 * 4;
+    for (i = 0; i < smp[0]; i++) {
+        var z = [0];
+        var t = [0];
+        if (!sxmn_word(v, samples + i * 32 + 22, 1, false, t, 0, end) || !sxmn_word(v, samples + i * 32 + 23, 2, false, z, 0, end)) {
+            return false;
+        }
+        if (t[0] === 16) {
+            z[0] *= 2;
+        }
+        if (!sxmn_span(v, at, z[0], end)) {
+            return false;
+        }
+        at += z[0];
+    }
+    return true;
+}
+function sx_theloomsyndicate_dynamicstudio_dsm_build(v) {
+    return sxmn_dynamic(v);
+}

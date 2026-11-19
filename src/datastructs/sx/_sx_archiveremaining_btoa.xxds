@@ -1,0 +1,162 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/btoa/xx_btoa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_transport_hex_size_fields = layout([field("transport_hex_size", "ascii_hex", 0, SIZE)]);
+var sxarm_transport_hex_size = sxLayout(0x607C000B, "transport_hex_size", LE, sxarm_transport_hex_size_fields);
+var sxarm_btoa_line_width_fields = layout([field("btoa_line_width", "ascii_decimal", 0, COUNT)]);
+var sxarm_btoa_line_width = sxLayout(0x607C0014, "btoa_line_width", LE, sxarm_btoa_line_width_fields);
+var sxarm_btoa_begin_fields = layout([chars("marker", 11, SIGNATURE)]);
+var sxarm_btoa_begin = sxLayout(0x607C0040, "btoa_begin", LE, sxarm_btoa_begin_fields);
+var sxarm_btoa5_begin_fields = layout([chars("marker", 6, SIGNATURE)]);
+var sxarm_btoa5_begin = sxLayout(0x607C0041, "btoa5_begin", LE, sxarm_btoa5_begin_fields);
+var sxarm_btoa_end_fields = layout([chars("marker", 11, ID)]);
+var sxarm_btoa_end = sxLayout(0x607C0042, "btoa_end", LE, sxarm_btoa_end_fields);
+var sxarm_ascii85_begin_fields = layout([chars("marker", 2, SIGNATURE)]);
+var sxarm_ascii85_begin = sxLayout(0x607C0043, "ascii85_begin", LE, sxarm_ascii85_begin_fields);
+var sxarm_ascii85_end_fields = layout([chars("marker", 2, ID)]);
+var sxarm_ascii85_end = sxLayout(0x607C0044, "ascii85_end", LE, sxarm_ascii85_end_fields);
+var sxarm_ascii85_group_fields = layout([field("ascii85_group", "char", 0)]);
+var sxarm_ascii85_group = sxLayout(0x607C0045, "ascii85_group", LE, sxarm_ascii85_group_fields);
+var sxarm_ascii85_shorthand_fields = layout([chars("token", 1, ID)]);
+var sxarm_ascii85_shorthand = sxLayout(0x607C0046, "ascii85_shorthand", LE, sxarm_ascii85_shorthand_fields);
+var sxarm_btoa_line_check_fields = layout([chars("line_check_character", 1, CHECKSUM)]);
+var sxarm_btoa_line_check = sxLayout(0x607C0047, "btoa_line_check", LE, sxarm_btoa_line_check_fields);
+function sxarm_a85(c, p, b, b_o, n) {
+    for (var i = 0; i < n; ) {
+        if (b[b_o + i] >= 33 /*!*/ && b[b_o + i] <= 117 /*u*/) {
+            var a = i;
+            while (i < n && b[b_o + i] >= 33 /*!*/ && b[b_o + i] <= 117 /*u*/) {
+                i++;
+            }
+            if (!sxarm_text(c, sxarm_ascii85_group, p + a, sxU64(i - a), false)) {
+                return false;
+            }
+        } else {
+            if ((b[b_o + i] === 122 /*z*/ || b[b_o + i] === 121 /*y*/ || b[b_o + i] === 119 /*w*/) && !sxarm_add(c, sxarm_ascii85_shorthand, p + i)) {
+                return false;
+            }
+            i++;
+        }
+    }
+    return true;
+}
+function sxarm_btoa(c) {
+    var p = 0;
+    var next = [0];
+    var b = [];
+    var n = [0];
+    var body = false;
+    var new_format = false;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxarm_line(c, p, b, 0x1000, n, next)) {
+            return true;
+        }
+        if (n[0] >= 11 && !sxMemcmp(b, "xbtoa Begin", 11)) {
+            if (!sxarm_add(c, sxarm_btoa_begin, p)) {
+                return false;
+            }
+            body = true;
+            new_format = false;
+        } else if (n[0] >= 7 && !sxMemcmp(b, "xbtoa5", 6) && (b[6] === 32 || b[6] === 9)) {
+            if (!sxarm_add(c, sxarm_btoa5_begin, p)) {
+                return false;
+            }
+            var q = 6;
+            var e = n[0];
+            while (e && (b[sxU64(e - 1)] === 32 || b[sxU64(e - 1)] === 9)) {
+                e--;
+            }
+            while (q < e && (b[q] === 32 || b[q] === 9)) {
+                q++;
+            }
+            var a = q;
+            while (q < e && b[q] >= 48 /*0*/ && b[q] <= 57 /*9*/) {
+                q++;
+            }
+            if (!sxarm_text(c, sxarm_btoa_line_width, p + a, sxU64(q - a), false)) {
+                return false;
+            }
+            while (q < e && (b[q] === 32 || b[q] === 9)) {
+                q++;
+            }
+            if (e < q + 7 || sxMemcmpAt(b, e + -5, "Begin", 0, 5)) {
+                return true;
+            }
+            var name_end = sxU64(e - 6);
+            while (name_end > q && (b[sxU64(name_end - 1)] === 32 || b[sxU64(name_end - 1)] === 9)) {
+                name_end--;
+            }
+            if (!sxarm_text(c, sxarm_transport_filename, p + q, sxU64(name_end - q), false)) {
+                return false;
+            }
+            body = true;
+            new_format = true;
+        } else if (n[0] >= 11 && !sxMemcmp(b, "xbtoa End N", 11)) {
+            if (!sxarm_add(c, sxarm_btoa_end, p)) {
+                return false;
+            }
+            q = 11;
+            var field = 0;
+            while (q < n[0]) {
+                while (q < n[0] && (b[q] === 32 || b[q] === 9)) {
+                    q++;
+                }
+                a = q;
+                while (q < n[0] && b[q] !== 32 && b[q] !== 9) {
+                    q++;
+                }
+                if (q === a) {
+                    break;
+                }
+                if (sxU64(q - a) === 1 && (b[a] === 69 /*E*/ || b[a] === 83 /*S*/ || b[a] === 82 /*R*/)) {
+                    continue;
+                }
+                var l = field === 0 ? sxarm_transport_decimal_size : field === 1 ? sxarm_transport_hex_size : sxarm_transport_crc;
+                if (!sxarm_numeric_text(c, l, p + a, b, a, sxU64(q - a))) {
+                    return false;
+                }
+                field++;
+            }
+            body = false;
+        } else {
+            a = 0;
+            var end = n[0];
+            if (!body && n[0] >= 2 && b[0] === 60 /*<*/ && b[1] === 126 /*~*/) {
+                if (!sxarm_add(c, sxarm_ascii85_begin, p)) {
+                    return false;
+                }
+                a = 2;
+                body = true;
+            }
+            if (body) {
+                if (new_format && end > a) {
+                    end--;
+                    if (!sxarm_add(c, sxarm_btoa_line_check, p + end)) {
+                        return false;
+                    }
+                }
+                for (q = a; q + 1 < n[0]; q++) {
+                    if (b[q] === 126 /*~*/ && b[q + 1] === 62 /*>*/) {
+                        end = q;
+                        if (!sxarm_add(c, sxarm_ascii85_end, p + q)) {
+                            return false;
+                        }
+                        body = false;
+                        break;
+                    }
+                }
+                if (!sxarm_a85(c, p + a, b, a, sxU64(end - a))) {
+                    return false;
+                }
+            }
+        }
+        p = next[0];
+    }
+    return true;
+}
+function sx_btoa_build(c) {
+    return sxarm_btoa(c);
+}

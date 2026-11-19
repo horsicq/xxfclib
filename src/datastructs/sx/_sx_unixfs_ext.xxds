@@ -1,0 +1,283 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ext/xx_ext_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxuf_ext_dynamic_superblock_fields = layout([u32("inodes_count", COUNT), u32("blocks_count_lo"), u32("r_blocks_count_lo"),
+    u32("free_blocks_count_lo"), u32("free_inodes_count", COUNT), u32("first_data_block", ID), u32("log_block_size"),
+    i32("log_cluster_or_fragment_size"), u32("blocks_per_group", COUNT), u32("clusters_or_fragments_per_group", COUNT),
+    u32("inodes_per_group", COUNT), u32("mtime"), u32("wtime"), u16("mnt_count", COUNT), i16("max_mnt_count"),
+    u16("magic", SIGNATURE), u16("state", FLAGS), u16("errors"), u16("minor_rev_level"), u32("lastcheck"), u32("checkinterval"),
+    u32("creator_os", ID), u32("rev_level"), u16("def_resuid"), u16("def_resgid"), u32("first_ino", ID),
+    u16("inode_size", SIZE), u16("block_group_nr", ID), u32("feature_compat", FLAGS), u32("feature_incompat", FLAGS),
+    u32("feature_ro_compat", FLAGS), bytes("uuid", 16), chars("volume_name", 16, STRING), chars("last_mounted", 64, STRING),
+    u32("algorithm_usage_bitmap", FLAGS), u8("prealloc_blocks", COUNT), u8("prealloc_dir_blocks", COUNT),
+    u16("reserved_gdt_blocks", COUNT), bytes("journal_uuid", 16), u32("journal_inum", ID), u32("journal_dev", ID),
+    u32("last_orphan", ID), field("hash_seed", "uint32[4]", 16), u8("def_hash_version"), u8("jnl_backup_type"),
+    u16("desc_size", SIZE), u32("default_mount_opts", FLAGS), u32("first_meta_bg", ID), u32("mkfs_time"),
+    field("jnl_blocks", "uint32[17]", 68), u32("blocks_count_hi"), u32("r_blocks_count_hi"), u32("free_blocks_count_hi"),
+    u16("min_extra_isize", SIZE), u16("want_extra_isize", SIZE), u32("flags", FLAGS), u16("raid_stride"),
+    u16("mmp_update_interval"), u64("mmp_block", ID), u32("raid_stripe_width"), u8("log_groups_per_flex"), u8("checksum_type"),
+    u8("encryption_level"), u8("reserved_pad", RESERVED), u64("kbytes_written"), u32("snapshot_inum", ID),
+    u32("snapshot_id", ID), u64("snapshot_r_blocks_count", COUNT), u32("snapshot_list", ID), u32("error_count", COUNT),
+    u32("first_error_time"), u32("first_error_ino", ID), u64("first_error_block", ID), chars("first_error_func", 32, STRING),
+    u32("first_error_line"), u32("last_error_time"), u32("last_error_ino", ID), u32("last_error_line"),
+    u64("last_error_block", ID), chars("last_error_func", 32, STRING), chars("mount_opts", 64, STRING),
+    u32("usr_quota_inum", ID), u32("grp_quota_inum", ID), u32("overhead_clusters", COUNT),
+    field("backup_bgs", "uint32[2]", 8, ID), bytes("encrypt_algos", 4), bytes("encrypt_pw_salt", 16), u32("lpf_ino", ID),
+    u32("prj_quota_inum", ID), u32("checksum_seed"), u8("wtime_hi"), u8("mtime_hi"), u8("mkfs_time_hi"), u8("lastcheck_hi"),
+    u8("first_error_time_hi"), u8("last_error_time_hi"), u8("first_error_errcode"), u8("last_error_errcode"), u16("encoding"),
+    u16("encoding_flags", FLAGS), u32("orphan_file_inum", ID), u16("def_resuid_hi"), u16("def_resgid_hi"),
+    field("reserved", "uint32[93]", 372, RESERVED), u32("checksum", CHECKSUM)]);
+var sxuf_ext_dynamic_superblock = sxLayout(0x60110001, "ext_dynamic_superblock", LE, sxuf_ext_dynamic_superblock_fields);
+var sxuf_ext_original_superblock_fields = layout([u32("inodes_count", COUNT), u32("blocks_count", COUNT),
+    u32("r_blocks_count", COUNT), u32("free_blocks_count", COUNT), u32("free_inodes_count", COUNT), u32("first_data_block", ID),
+    u32("log_block_size"), i32("log_fragment_size"), u32("blocks_per_group", COUNT), u32("fragments_per_group", COUNT),
+    u32("inodes_per_group", COUNT), u32("mtime", TIMESTAMP), u32("wtime", TIMESTAMP), u16("mnt_count", COUNT),
+    i16("max_mnt_count"), u16("magic", SIGNATURE), u16("state", FLAGS), u16("errors"), u16("minor_rev_level"),
+    u32("lastcheck", TIMESTAMP), u32("checkinterval"), u32("creator_os", ID), u32("rev_level"), u16("def_resuid"),
+    u16("def_resgid")]);
+var sxuf_ext_original_superblock = sxLayout(0x60110002, "ext_original_superblock", LE, sxuf_ext_original_superblock_fields);
+var sxuf_ext_group_descriptor_64_fields = layout([u32("block_bitmap_lo", ID), u32("inode_bitmap_lo", ID),
+    u32("inode_table_lo", ID), u16("free_blocks_count_lo"), u16("free_inodes_count_lo"), u16("used_dirs_count_lo"),
+    u16("flags", FLAGS), u32("exclude_bitmap_lo", ID), u16("block_bitmap_csum_lo"), u16("inode_bitmap_csum_lo"),
+    u16("itable_unused_lo"), u16("checksum", CHECKSUM), u32("block_bitmap_hi", ID), u32("inode_bitmap_hi", ID),
+    u32("inode_table_hi", ID), u16("free_blocks_count_hi"), u16("free_inodes_count_hi"), u16("used_dirs_count_hi"),
+    u16("itable_unused_hi"), u32("exclude_bitmap_hi", ID), u16("block_bitmap_csum_hi"), u16("inode_bitmap_csum_hi"),
+    u32("reserved", RESERVED)]);
+var sxuf_ext_group_descriptor_64 = sxLayout(0x60110003, "ext_group_descriptor_64", LE, sxuf_ext_group_descriptor_64_fields);
+var sxuf_ext_group_descriptor_32_fields = layout([u32("block_bitmap", ID), u32("inode_bitmap", ID), u32("inode_table", ID),
+    u16("free_blocks_count", COUNT), u16("free_inodes_count", COUNT), u16("used_dirs_count", COUNT), u16("flags", FLAGS),
+    u32("exclude_bitmap", ID), u16("block_bitmap_csum"), u16("inode_bitmap_csum"), u16("itable_unused", COUNT),
+    u16("checksum", CHECKSUM)]);
+var sxuf_ext_group_descriptor_32 = sxLayout(0x60110004, "ext_group_descriptor_32", LE, sxuf_ext_group_descriptor_32_fields);
+var sxuf_ext_original_group_descriptor_fields = layout([u32("block_bitmap", ID), u32("inode_bitmap", ID),
+    u32("inode_table", ID), u16("free_blocks_count", COUNT), u16("free_inodes_count", COUNT), u16("used_dirs_count", COUNT),
+    u16("padding", RESERVED), field("reserved", "uint32[3]", 12, RESERVED)]);
+var sxuf_ext_original_group_descriptor = sxLayout(0x60110005, "ext_original_group_descriptor", LE, sxuf_ext_original_group_descriptor_fields);
+var sxuf_ext_linux_inode_fields = layout([u16("mode", FLAGS), u16("uid_low"), u32("size_low"), i32("atime_low"),
+    i32("ctime_low"), i32("mtime_low"), u32("deletion_time_or_next_orphan"), u16("gid_low"), u16("links_count", COUNT),
+    u32("blocks_low"), u32("flags", FLAGS), u32("version_low_or_reserved"), bytes("block_map_or_inline_data", 60),
+    u32("generation"), u32("file_acl_block_low", ID), u32("size_high_or_dir_acl"), u32("obsolete_fragment_block", ID),
+    u16("blocks_high_or_fragment_bytes"), u16("file_acl_block_high_or_reserved", ID), u16("uid_high"), u16("gid_high"),
+    u16("checksum_low_or_reserved"), u16("reserved", RESERVED)]);
+var sxuf_ext_linux_inode = sxLayout(0x60110006, "ext_linux_inode", LE, sxuf_ext_linux_inode_fields);
+var sxuf_ext_other_os_inode_fields = layout([u16("mode", FLAGS), u16("uid_low"), u32("size_low"), i32("atime_low"),
+    i32("ctime_low"), i32("mtime_low"), u32("deletion_time_or_next_orphan"), u16("gid_low"), u16("links_count", COUNT),
+    u32("blocks_low"), u32("flags", FLAGS), bytes("os_dependent1", 4), bytes("block_map_or_inline_data", 60), u32("generation"),
+    u32("file_acl_block_low", ID), u32("size_high_or_dir_acl"), u32("obsolete_fragment_block", ID), bytes("os_dependent2", 12)]);
+var sxuf_ext_other_os_inode = sxLayout(0x60110007, "ext_other_os_inode", LE, sxuf_ext_other_os_inode_fields);
+var sxuf_ext_inode_extra_2_fields = layout([u16("extra_size", SIZE)]);
+var sxuf_ext_inode_extra_2 = sxLayout(0x60110008, "ext_inode_extra_2", LE, sxuf_ext_inode_extra_2_fields);
+var sxuf_ext_inode_extra_4_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM)]);
+var sxuf_ext_inode_extra_4 = sxLayout(0x60110009, "ext_inode_extra_4", LE, sxuf_ext_inode_extra_4_fields);
+var sxuf_ext_inode_extra_8_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS)]);
+var sxuf_ext_inode_extra_8 = sxLayout(0x6011000A, "ext_inode_extra_8", LE, sxuf_ext_inode_extra_8_fields);
+var sxuf_ext_inode_extra_12_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS),
+    u32("mtime_extra", FLAGS)]);
+var sxuf_ext_inode_extra_12 = sxLayout(0x6011000B, "ext_inode_extra_12", LE, sxuf_ext_inode_extra_12_fields);
+var sxuf_ext_inode_extra_16_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS),
+    u32("mtime_extra", FLAGS), u32("atime_extra", FLAGS)]);
+var sxuf_ext_inode_extra_16 = sxLayout(0x6011000C, "ext_inode_extra_16", LE, sxuf_ext_inode_extra_16_fields);
+var sxuf_ext_inode_extra_20_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS),
+    u32("mtime_extra", FLAGS), u32("atime_extra", FLAGS), i32("creation_time_low")]);
+var sxuf_ext_inode_extra_20 = sxLayout(0x6011000D, "ext_inode_extra_20", LE, sxuf_ext_inode_extra_20_fields);
+var sxuf_ext_inode_extra_24_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS),
+    u32("mtime_extra", FLAGS), u32("atime_extra", FLAGS), i32("creation_time_low"), u32("creation_time_extra", FLAGS)]);
+var sxuf_ext_inode_extra_24 = sxLayout(0x6011000E, "ext_inode_extra_24", LE, sxuf_ext_inode_extra_24_fields);
+var sxuf_ext_inode_extra_28_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS),
+    u32("mtime_extra", FLAGS), u32("atime_extra", FLAGS), i32("creation_time_low"), u32("creation_time_extra", FLAGS),
+    u32("version_high")]);
+var sxuf_ext_inode_extra_28 = sxLayout(0x6011000F, "ext_inode_extra_28", LE, sxuf_ext_inode_extra_28_fields);
+var sxuf_ext_inode_extra_32_fields = layout([u16("extra_size", SIZE), u16("checksum_high", CHECKSUM), u32("ctime_extra", FLAGS),
+    u32("mtime_extra", FLAGS), u32("atime_extra", FLAGS), i32("creation_time_low"), u32("creation_time_extra", FLAGS),
+    u32("version_high"), u32("project_id", ID)]);
+var sxuf_ext_inode_extra_32 = sxLayout(0x60110010, "ext_inode_extra_32", LE, sxuf_ext_inode_extra_32_fields);
+function sxuf_power(x) {
+    return !!(x && !((x & (x - 1) >>> 0) >>> 0));
+}
+function sxuf_power_of(x, b) {
+    if (!x) {
+        return false;
+    }
+    while (x % b === 0) {
+        x = Math.floor(x / b);
+    }
+    return x === 1;
+}
+function sxuf_claim(c, ranges, n, at, size) {
+    if (!size || n[0] >= 8192 || !sxuf_span(c, at, size)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (at < ranges[i].end && ranges[i].at < at + size) {
+            return false;
+        }
+    }
+    ranges[n[0]].at = at;
+    ranges[n[0]].end = at + size;
+    n[0]++;
+    return true;
+}
+function sxuf_ext(c) {
+    var h = [];
+    var d = [];
+    var inode = [];
+    var revision;
+    var bs;
+    var shift;
+    var first;
+    var bpg;
+    var ipg;
+    var ninodes;
+    var isize;
+    var ds;
+    var incompat = 0;
+    var compat = 0;
+    var ro = 0;
+    var groups;
+    var os;
+    var blocks;
+    if (!sxuf_read(c, 1024, h, 1024) || sxuf_16(h, 56, false) !== 0xEF53) {
+        return false;
+    }
+    revision = sxuf_32(h, 76, false);
+    if (revision > 1) {
+        return false;
+    }
+    if (!sx_add(c, revision ? sxuf_ext_dynamic_superblock : sxuf_ext_original_superblock, 1024, revision ? 1024 : 84)) {
+        return false;
+    }
+    shift = sxuf_32(h, 24, false);
+    if (shift > 6) {
+        return true;
+    }
+    bs = (1024 << shift) >>> 0;
+    first = sxuf_32(h, 20, false);
+    blocks = sxuf_32(h, 4, false);
+    bpg = sxuf_32(h, 32, false);
+    ipg = sxuf_32(h, 40, false);
+    ninodes = sxuf_32(h, 0, false);
+    os = sxuf_32(h, 72, false);
+    isize = revision ? sxuf_16(h, 88, false) : 128;
+    ds = 32;
+    if (revision) {
+        compat = sxuf_32(h, 92, false);
+        incompat = sxuf_32(h, 96, false);
+        ro = sxuf_32(h, 100, false);
+        if (incompat & 128) {
+            blocks = sxOr64(blocks, sxShl64(sxuf_32(h, 336, false), 32));
+            ds = sxuf_16(h, 254, false);
+        }
+    }
+    if (first !== (bs === 1024 ? 1 : 0) || !bpg || bpg > (bs * 8) >>> 0 || !ipg || ipg > (bs * 8) >>> 0 || !ninodes || blocks <= first || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs) || !sxuf_power(isize) || isize < 128 || isize > bs || !sxuf_power(ds) || ds < 32 || ds > bs || incompat & 128 && ds < 64) {
+        return true;
+    }
+    var ng = Math.floor(sxU64(sxU64(blocks - first) + bpg - 1) / bpg);
+    if (!ng || ng > 1048576 || ipg * ng < ninodes) {
+        return true;
+    }
+    groups = ng >>> 0;
+    var ranges = sxNew_sxuf_range();
+    if (ranges === null) {
+        return false;
+    }
+    var nr = [0];
+    var ok = sxuf_claim(c, [ranges], nr, 1024, 1024);
+    var budget = 4096;
+    var dpb = Math.floor(bs / ds);
+    for (var g = 0; ok && g < groups && g < 4096; g++) {
+        var gi = Math.floor(g / dpb);
+        var block = first + 1 + gi;
+        if (incompat & 16 && gi >= sxuf_32(h, 260, false)) {
+            var fg = sxMul32(gi, dpb);
+            var has = fg === 0;
+            if (!has) {
+                if (compat & 512) {
+                    has = fg === sxuf_32(h, 588, false) || fg === sxuf_32(h, 592, false);
+                } else {
+                    has = !!(fg === 1 || !(ro & 1) || fg & 1 && (sxuf_power_of(fg, 3) || sxuf_power_of(fg, 5) || sxuf_power_of(fg, 7)));
+                }
+            }
+            block = first + fg * bpg + (has ? 1 : 0);
+        }
+        if (block >= blocks) {
+            continue;
+        }
+        var at = block * bs + g % dpb * ds;
+        if (!sxuf_claim(c, [ranges], nr, at, ds) || !sxuf_read(c, at, d, ds < 64 ? 32 : 64)) {
+            continue;
+        }
+        if (!sx_add(c, !revision ? sxuf_ext_original_group_descriptor : ds >= 64 ? sxuf_ext_group_descriptor_64 : sxuf_ext_group_descriptor_32, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), ds >= 64 ? 64 : 32)) {
+            ok = false;
+            break;
+        }
+        var table = sxuf_32(d, 8, false);
+        if (ds >= 64) {
+            table = sxOr64(table, sxShl64(sxuf_32(d, 40, false), 32));
+        }
+        var base_inode = g * ipg;
+        var count = base_inode < ninodes ? sxU64(ninodes - base_inode) : 0;
+        if (count > ipg) {
+            count = ipg;
+        }
+        if (count > budget) {
+            count = budget;
+        }
+        if (!count || !table || table >= blocks || !sxuf_claim(c, [ranges], nr, table * bs, count * isize)) {
+            continue;
+        }
+        budget = (budget - (count >>> 0)) >>> 0;
+        for (var i = 0; ok && i < count; i++) {
+            var pos = table * bs + i * isize;
+            if (!sxuf_read(c, pos, inode, isize >= 160 ? 160 : isize)) {
+                ok = false;
+                break;
+            }
+            ok = sx_add(c, os === 0 ? sxuf_ext_linux_inode : sxuf_ext_other_os_inode, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos), 128);
+            if (ok && os === 0 && isize > 128) {
+                var extra = sxuf_16(inode, 128, false);
+                var width = 2;
+                if (extra >= 4 && extra <= (isize - 128) >>> 0) {
+                    width = extra < 32 ? extra & 0xFFFFFFFC : 32;
+                }
+                var l = sxuf_ext_inode_extra_2;
+                switch (width) {
+                case 4:
+                    l = sxuf_ext_inode_extra_4;
+                    break;
+                case 8:
+                    l = sxuf_ext_inode_extra_8;
+                    break;
+                case 12:
+                    l = sxuf_ext_inode_extra_12;
+                    break;
+                case 16:
+                    l = sxuf_ext_inode_extra_16;
+                    break;
+                case 20:
+                    l = sxuf_ext_inode_extra_20;
+                    break;
+                case 24:
+                    l = sxuf_ext_inode_extra_24;
+                    break;
+                case 28:
+                    l = sxuf_ext_inode_extra_28;
+                    break;
+                case 32:
+                    l = sxuf_ext_inode_extra_32;
+                    break;
+                default:
+                    width = 2;
+                    break;
+                }
+                ok = sx_add(c, l, (pos >= SX_I64_MAX ? pos - SX_U64_MAX : pos) + 128, width);
+            }
+        }
+    }
+    return ok;
+}
+function sx_ext_build(c) {
+    return sxuf_ext(c) && sxuf_finish(c);
+}

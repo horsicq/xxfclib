@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/ucsc_nib/xx_ucsc_nib_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_nib_header_le_fields = layout([u32("magic", SIGNATURE), u32("sequence_length", COUNT)]);
+var sxm_nib_header_le = sxLayout(0x60060032, "nib_header_le", LE, sxm_nib_header_le_fields);
+var sxm_nib_header_be_fields = layout([u32("magic", SIGNATURE), u32("sequence_length", COUNT)]);
+var sxm_nib_header_be = sxLayout(0x60060033, "nib_header_be", BE, sxm_nib_header_be_fields);
+function sx_ucsc_nib_build(c, h, n) {
+    var be;
+    if (n < 8) {
+        return false;
+    }
+    be = sxGetU32(h, n, 0, true) === 0x6BE93D3A;
+    if (!be && sxGetU32(h, n, 0, false) !== 0x6BE93D3A) {
+        return false;
+    }
+    return sxm_span(c, 8, Math.floor((sxGetU32(h, n, 4, be) + 1) / 2)) && sxm_fixed(c, be ? sxm_nib_header_be : sxm_nib_header_le, 8);
+}

@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/boo/xx_boo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_boo_name_fields = layout([field("boo_name", "char", 0, STRING)]);
+var sxaend_boo_name = sxLayout(0x6084002A, "boo_name", LE, sxaend_boo_name_fields);
+var sxaend_boo_encoded_line_fields = layout([field("boo_encoded_line", "char", 0)]);
+var sxaend_boo_encoded_line = sxLayout(0x6084002B, "boo_encoded_line", LE, sxaend_boo_encoded_line_fields);
+function sxaend_line(c, p, b, cap, n, next) {
+    n[0] = 0;
+    var q = p;
+    while (q < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var x = [0];
+        if (!sxaend_read(c, q, x, 1)) {
+            return false;
+        }
+        q++;
+        if (x[0] === 13 || x[0] === 10) {
+            if (x[0] === 13 && q < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+                var y = [0];
+                if (!sxaend_read(c, q, y, 1)) {
+                    return false;
+                }
+                if (y[0] === 10) {
+                    q++;
+                }
+            }
+            next[0] = q;
+            return true;
+        }
+        if (n[0] >= cap) {
+            return false;
+        }
+        b[n[0]++] = x[0];
+    }
+    next[0] = q;
+    return q > p;
+}
+function sxaend_boo(c) {
+    var b = [];
+    var n = [0];
+    var p = 0;
+    var next = [0];
+    if (!sxaend_line(c, 0, b, 0x1000, n, next) || n[0] < 3 || n[0] > 12 || !sxaend_text(c, sxaend_boo_name, 0, n[0], false)) {
+        return false;
+    }
+    p = next[0];
+    for (var i = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && i < 20000; i++) {
+        if (!sxaend_line(c, p, b, 0x1000, n, next) || next[0] <= p) {
+            return false;
+        }
+        if (n[0] && !sxaend_text(c, sxaend_boo_encoded_line, p, n[0], false)) {
+            return false;
+        }
+        p = next[0];
+    }
+    return true;
+}
+function sx_boo_build(c) {
+    return sxaend_boo(c);
+}

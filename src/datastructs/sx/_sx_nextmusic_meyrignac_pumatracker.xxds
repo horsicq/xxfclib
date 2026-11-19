@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/meyrignac_pumatracker/xx_meyrignac_pumatracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_puma_position_fields = layout([u8("channel0_track", ID), i8("channel0_instrument_transpose"),
+    i8("channel0_note_transpose"), u8("channel1_track", ID), i8("channel1_instrument_transpose"), i8("channel1_note_transpose"),
+    u8("channel2_track", ID), i8("channel2_instrument_transpose"), i8("channel2_note_transpose"), u8("channel3_track", ID),
+    i8("channel3_instrument_transpose"), i8("channel3_note_transpose"), u8("speed"), u8("unknown")]);
+var sxnextm_puma_position = sxLayout(0x608B0060, "puma_position", LE, sxnextm_puma_position_fields);
+var sxnextm_puma_marker_fields = layout([blob("marker", 4, ID)]);
+var sxnextm_puma_marker = sxLayout(0x608B0061, "puma_marker", LE, sxnextm_puma_marker_fields);
+var sxnextm_puma_event_fields = layout([u8("note"), u8("instrument_and_effect", FLAGS), u8("argument"),
+    u8("rows_to_wait", COUNT)]);
+var sxnextm_puma_event = sxLayout(0x608B0062, "puma_event", LE, sxnextm_puma_event_fields);
+var sxnextm_puma_command_fields = layout([u8("command", ID), u8("argument1"), u8("argument2"), u8("argument3")]);
+var sxnextm_puma_command = sxLayout(0x608B0063, "puma_command", LE, sxnextm_puma_command_fields);
+function sxnextm_puma(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var tracks = [0];
+    var ins = [0];
+    var p = [80];
+    if (!sxnextm_row(v, sxnextm_puma_header, 0, e) || !sxnextm_be(v, 12, 2, n, 0, e) || !sxnextm_be(v, 14, 2, tracks, 0, e) || !sxnextm_be(v, 16, 2, ins, 0, e) || !sxnextm_take(v, sxnextm_puma_position, p, n[0] + 1, e)) {
+        return false;
+    }
+    for (var i = 0; i < tracks[0]; i++) {
+        if (!sxnextm_eq(v, p[0], "patt", 4, e) || !sxnextm_take(v, sxnextm_puma_marker, p, 1, e)) {
+            return false;
+        }
+        var rows = 0;
+        var count = 0;
+        while (rows < 32) {
+            var wait = [0];
+            if (count++ >= 65536 || !sxnextm_u(v, p[0] + 3, 1, wait, 0, e) || !sxnextm_take(v, sxnextm_puma_event, p, 1, e)) {
+                return false;
+            }
+            rows += wait[0];
+        }
+    }
+    if (!sxnextm_eq(v, p[0], "patt", 4, e) || !sxnextm_take(v, sxnextm_puma_marker, p, 1, e)) {
+        return false;
+    }
+    for (i = 0; i < ins[0]; i++) {
+        for (var kind = 0; kind < 2; kind++) {
+            if (!sxnextm_eq(v, p[0], kind ? "insf" : "inst", 4, e) || !sxnextm_take(v, sxnextm_puma_marker, p, 1, e)) {
+                return false;
+            }
+            for (var j = 0; ; j++) {
+                var op = [0];
+                if (j >= 65536 || !sxnextm_u(v, p[0], 1, op, 0, e)) {
+                    return false;
+                }
+                if (sxnextm_eq(v, p[0], "inst", 4, e)) {
+                    break;
+                }
+                if (!sxnextm_take(v, sxnextm_puma_command, p, 1, e)) {
+                    return false;
+                }
+                if (op[0] === 0xE0 || op[0] === 0xB0) {
+                    break;
+                }
+            }
+        }
+    }
+    if (p[0] < e && sxnextm_eq(v, p[0], "inst", 4, e) && !sxnextm_row(v, sxnextm_puma_marker, p[0], e)) {
+        return false;
+    }
+    return true;
+}
+function sx_meyrignac_pumatracker_build(v) {
+    return sxnextm_puma(v);
+}

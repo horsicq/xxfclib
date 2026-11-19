@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ubi/xx_ubi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_ubi_volume_table_record_fields = layout([u32("reserved_pebs", COUNT), u32("alignment", SIZE),
+    u32("data_padding", SIZE), u8("volume_type", ID), u8("update_marker", FLAGS), u16("name_length", SIZE),
+    chars("name", 128, NONE), u8("flags", FLAGS), field("padding", "byte[23]", 23, RESERVED), u32("crc", CHECKSUM)]);
+var sx_dm_ubi_volume_table_record = sxLayout(0x60290034, "ubi_volume_table_record", BE, sx_dm_ubi_volume_table_record_fields);
+function sx_dm_ubi_ec(c, p, h) {
+    return sx_dm_read(c, p, h, 64) && !sxMemcmp(h, "UBI#", 4) && sx_dm_u32(h, 60, true) === ~sxCrc32(0, h, 60) >>> 0;
+}
+function sx_dm_ubi(c) {
+    var h = [];
+    if (!sx_dm_ubi_ec(c, 0, h)) {
+        return false;
+    }
+    var peb = 0;
+    for (var pass = 0; pass < 2 && !peb; pass++) {
+        for (var candidate = 1024; candidate <= 16777216 && candidate <= (c.size < 0 ? c.size + SX_U64_MAX : c.size); candidate *= 2) {
+            for (var k = 1; k <= 64; k++) {
+                var p = candidate * k;
+                if (!sx_dm_span(c, p, 64)) {
+                    break;
+                }
+                if (sx_dm_ubi_ec(c, p, h)) {
+                    peb = candidate;
+                    break;
+                }
+                if (!pass) {
+                    break;
+                }
+                var erased = true;
+                for (var j = 0; j < 64; j++) {
+                    if (h[j] !== 255) {
+                        erased = false;
+                        break;
+                    }
+                }
+                if (!erased) {
+                    break;
+                }
+            }
+            if (peb) {
+                break;
+            }
+        }
+    }
+    if (!peb && (c.size < 0 ? c.size + SX_U64_MAX : c.size) <= 16777216) {
+        peb = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    if (!peb) {
+        return sx_dm_add(c, sx_dm_ubi_erase_counter_header, 0, 64);
+    }
+    var count = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / peb);
+    if (count > 8192) {
+        count = 8192;
+    }
+    for (var i = 0; i < count && c.count < 24000; i++) {
+        p = i * peb;
+        if (!sx_dm_ubi_ec(c, p, h)) {
+            continue;
+        }
+        var vo = sx_dm_u32(h, 16, true);
+        var data = sx_dm_u32(h, 20, true);
+        if (!sx_dm_add(c, sx_dm_ubi_erase_counter_header, p, 64)) {
+            return false;
+        }
+        if (vo < 64 || vo > sxU64(peb - 64) || data < vo + 64 || data >= peb || !sx_dm_read(c, p + vo, h, 64) || sxMemcmp(h, "UBI!", 4) || sx_dm_u32(h, 60, true) !== ~sxCrc32(0, h, 60) >>> 0) {
+            continue;
+        }
+        if (!sx_dm_add(c, sx_dm_ubi_volume_identifier_header, p + vo, 64)) {
+            return false;
+        }
+        if (sx_dm_u32(h, 8, true) === 0x7FFFEFFF && sx_dm_u32(h, 12, true) <= 1) {
+            var available = sxU64(peb - data);
+            var pad = sx_dm_u32(h, 28, true);
+            if (pad > available) {
+                continue;
+            }
+            available = sxU64(available - pad);
+            for (j = 0; j < 128 && (j + 1) * 172 <= available; j++) {
+                var q = p + data + j * 172;
+                if (!sx_dm_read(c, q, h, 172)) {
+                    return false;
+                }
+                if (sx_dm_u32(h, 168, true) === ~sxCrc32(0, h, 168) >>> 0 && !sx_dm_add(c, sx_dm_ubi_volume_table_record, q, 172)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_ubi_build(c) {
+    return sx_dm_ubi(c);
+}

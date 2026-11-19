@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencewire.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_sciencewire");
+include("_sx_sciencewire_fits");
+include("_sx_sciencewire_genomics_bgen");
+include("_sx_sciencewire_igor_ibw");
+include("_sx_sciencewire_lecroy_trc");
+include("_sx_sciencewire_microscopy_spider");
+include("_sx_sciencewire_neuroscan_cnt");
+include("_sx_sciencewire_openephys_continuous");
+include("_sx_sciencewire_rosbag1");
+include("_sx_sciencewire_sas_xport");
+include("_sx_sciencewire_spss_sav");
+include("_sx_sciencewire_stata_dta");
+include("_sx_sciencewire_tecplot_plt");
+include("_sx_sciencewire_wmo_bufr");
+include("_sx_sciencewire_wmo_grib");
+
+function fileTypes() { return ["FITS", "DICOM", "SAS_XPORT", "SPSS_SAV", "STATA_DTA", "TECPLOT_PLT", "ROSBAG1", "GENOMICS_BGEN",
+    "OPENEPHYS_CONTINUOUS", "IGOR_IBW", "MICROSCOPY_SPIDER", "WMO_GRIB", "WMO_BUFR", "LECROY_TRC", "NEUROSCAN_CNT"]; }
+
+var sx_sciencewire_layouts = [sxsw_fits_card, sxsw_fits_integer_card, sxsw_xport_header_record, sxsw_xport_namestr,
+    sxsw_sav_header_le, sxsw_sav_variable_le, sxsw_sav_extension_le, sxsw_sav_count_record_le, sxsw_sav_dictionary_end_le,
+    sxsw_sav_label_size_le, sxsw_sav_variable_index_le, sxsw_sav_value_label_le, sxsw_sav_machine_integer_le,
+    sxsw_sav_header_be, sxsw_sav_variable_be, sxsw_sav_extension_be, sxsw_sav_count_record_be, sxsw_sav_dictionary_end_be,
+    sxsw_sav_label_size_be, sxsw_sav_variable_index_be, sxsw_sav_value_label_be, sxsw_sav_machine_integer_be,
+    sxsw_sav_document_line, sxsw_bgen_header, sxsw_bgen_flags, sxsw_bgen_sample_header, sxsw_bgen_string16, sxsw_bgen_string32,
+    sxsw_bgen_variant_sample_count, sxsw_bgen_variant_position, sxsw_igor_binary5_le, sxsw_igor_wave5_le, sxsw_igor_binary5_be,
+    sxsw_igor_wave5_be, sxsw_spider_header_le, sxsw_lecroy_descriptor_le, sxsw_lecroy_trigger_time_le, sxsw_lecroy_ris_time_le,
+    sxsw_spider_header_be, sxsw_lecroy_descriptor_be, sxsw_lecroy_trigger_time_be, sxsw_lecroy_ris_time_be,
+    sxsw_grib2_indicator, sxsw_grib2_section, sxsw_grib2_identification, sxsw_grib2_grid, sxsw_grib2_product,
+    sxsw_grib2_representation, sxsw_grib2_bitmap, sxsw_wmo_end, sxsw_bufr4_indicator, sxsw_bufr4_identification,
+    sxsw_bufr4_section, sxsw_bufr4_data_description, sxsw_bufr_descriptor, sxsw_openephys_record, sxsw_openephys_marker,
+    sxsw_cnt_setup, sxsw_cnt_channel, sxsw_cnt_event_table, sxsw_cnt_event1, sxsw_cnt_event2, sxsw_cnt_event3,
+    sxsw_stata117_prefix_le, sxsw_stata117_label_size_le, sxsw_stata117_variable_name, sxsw_stata117_display_format,
+    sxsw_stata117_value_label_name, sxsw_stata117_variable_label, sxsw_stata118_prefix_le, sxsw_stata118_label_size_le,
+    sxsw_stata118_variable_name, sxsw_stata118_display_format, sxsw_stata118_value_label_name, sxsw_stata118_variable_label,
+    sxsw_stata_map_le, sxsw_stata_type_le, sxsw_stata_sort_index_le, sxsw_stata117_prefix_be, sxsw_stata117_label_size_be,
+    sxsw_stata118_prefix_be, sxsw_stata118_label_size_be, sxsw_stata_map_be, sxsw_stata_type_be, sxsw_stata_sort_index_be,
+    sxsw_stata_timestamp_size, sxsw_rosbag_signature, sxsw_rosbag_header_size, sxsw_rosbag_field_size, sxsw_rosbag_data_size,
+    sxsw_rosbag_op, sxsw_rosbag_conn, sxsw_rosbag_size, sxsw_rosbag_count, sxsw_rosbag_ver, sxsw_rosbag_index_pos,
+    sxsw_rosbag_chunk_pos, sxsw_rosbag_conn_count, sxsw_rosbag_chunk_count, sxsw_rosbag_time, sxsw_rosbag_index,
+    sxsw_rosbag_connection_count, sxsw_dicom_preamble, sxsw_dicom_implicit_le, sxsw_dicom_short_le, sxsw_dicom_wide_le,
+    sxsw_dicom_implicit_be, sxsw_dicom_short_be, sxsw_dicom_wide_be, sxsw_dicom_meta_size, sxsw_dicom_frame_offset,
+    sxsw_tecplot_prefix_le, sxsw_tecplot_codepoint_le, sxsw_tecplot_variable_count_le, sxsw_tecplot_marker_le,
+    sxsw_tecplot_ordered_zone_le, sxsw_tecplot_auxiliary_flag_le, sxsw_tecplot_variable_type_le, sxsw_tecplot_data_flags_le,
+    sxsw_tecplot_range_le, sxsw_tecplot_prefix_be, sxsw_tecplot_codepoint_be, sxsw_tecplot_variable_count_be,
+    sxsw_tecplot_marker_be, sxsw_tecplot_ordered_zone_be, sxsw_tecplot_auxiliary_flag_be, sxsw_tecplot_variable_type_be,
+    sxsw_tecplot_data_flags_be, sxsw_tecplot_range_be];
+
+function structs() {
+    return sxCatalog([sxsw_fits_card, sxsw_fits_integer_card, sxsw_xport_header_record, sxsw_xport_namestr, sxsw_sav_header_le,
+        sxsw_sav_variable_le, sxsw_sav_extension_le, sxsw_sav_count_record_le, sxsw_sav_dictionary_end_le,
+        sxsw_sav_label_size_le, sxsw_sav_variable_index_le, sxsw_sav_value_label_le, sxsw_sav_machine_integer_le,
+        sxsw_sav_header_be, sxsw_sav_variable_be, sxsw_sav_extension_be, sxsw_sav_count_record_be, sxsw_sav_dictionary_end_be,
+        sxsw_sav_label_size_be, sxsw_sav_variable_index_be, sxsw_sav_value_label_be, sxsw_sav_machine_integer_be,
+        sxsw_sav_document_line, sxsw_bgen_header, sxsw_bgen_flags, sxsw_bgen_sample_header, sxsw_bgen_string16,
+        sxsw_bgen_string32, sxsw_bgen_variant_sample_count, sxsw_bgen_variant_position, sxsw_igor_binary5_le,
+        sxsw_igor_wave5_le, sxsw_igor_binary5_be, sxsw_igor_wave5_be, sxsw_spider_header_le, sxsw_lecroy_descriptor_le,
+        sxsw_lecroy_trigger_time_le, sxsw_lecroy_ris_time_le, sxsw_spider_header_be, sxsw_lecroy_descriptor_be,
+        sxsw_lecroy_trigger_time_be, sxsw_lecroy_ris_time_be, sxsw_grib2_indicator, sxsw_grib2_section,
+        sxsw_grib2_identification, sxsw_grib2_grid, sxsw_grib2_product, sxsw_grib2_representation, sxsw_grib2_bitmap,
+        sxsw_wmo_end, sxsw_bufr4_indicator, sxsw_bufr4_identification, sxsw_bufr4_section, sxsw_bufr4_data_description,
+        sxsw_bufr_descriptor, sxsw_openephys_record, sxsw_openephys_marker, sxsw_cnt_setup, sxsw_cnt_channel,
+        sxsw_cnt_event_table, sxsw_cnt_event1, sxsw_cnt_event2, sxsw_cnt_event3, sxsw_stata117_prefix_le,
+        sxsw_stata117_label_size_le, sxsw_stata117_variable_name, sxsw_stata117_display_format, sxsw_stata117_value_label_name,
+        sxsw_stata117_variable_label, sxsw_stata118_prefix_le, sxsw_stata118_label_size_le, sxsw_stata118_variable_name,
+        sxsw_stata118_display_format, sxsw_stata118_value_label_name, sxsw_stata118_variable_label, sxsw_stata_map_le,
+        sxsw_stata_type_le, sxsw_stata_sort_index_le, sxsw_stata117_prefix_be, sxsw_stata117_label_size_be,
+        sxsw_stata118_prefix_be, sxsw_stata118_label_size_be, sxsw_stata_map_be, sxsw_stata_type_be, sxsw_stata_sort_index_be,
+        sxsw_stata_timestamp_size, sxsw_rosbag_signature, sxsw_rosbag_header_size, sxsw_rosbag_field_size,
+        sxsw_rosbag_data_size, sxsw_rosbag_op, sxsw_rosbag_conn, sxsw_rosbag_size, sxsw_rosbag_count, sxsw_rosbag_ver,
+        sxsw_rosbag_index_pos, sxsw_rosbag_chunk_pos, sxsw_rosbag_conn_count, sxsw_rosbag_chunk_count, sxsw_rosbag_time,
+        sxsw_rosbag_index, sxsw_rosbag_connection_count, sxsw_dicom_preamble, sxsw_dicom_implicit_le, sxsw_dicom_short_le,
+        sxsw_dicom_wide_le, sxsw_dicom_implicit_be, sxsw_dicom_short_be, sxsw_dicom_wide_be, sxsw_dicom_meta_size,
+        sxsw_dicom_frame_offset, sxsw_tecplot_prefix_le, sxsw_tecplot_codepoint_le, sxsw_tecplot_variable_count_le,
+        sxsw_tecplot_marker_le, sxsw_tecplot_ordered_zone_le, sxsw_tecplot_auxiliary_flag_le, sxsw_tecplot_variable_type_le,
+        sxsw_tecplot_data_flags_le, sxsw_tecplot_range_le, sxsw_tecplot_prefix_be, sxsw_tecplot_codepoint_be,
+        sxsw_tecplot_variable_count_be, sxsw_tecplot_marker_be, sxsw_tecplot_ordered_zone_be, sxsw_tecplot_auxiliary_flag_be,
+        sxsw_tecplot_variable_type_be, sxsw_tecplot_data_flags_be, sxsw_tecplot_range_be], sx_sciencewire_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_sciencewire_build, false);
+}

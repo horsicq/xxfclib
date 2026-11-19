@@ -1,0 +1,104 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/grouleff_earache/xx_grouleff_earache_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamip_ea_pattern_fields = layout([u8("channel0_note"), u8("channel0_instrument", ID), u8("channel1_note"),
+    u8("channel1_instrument", ID), u8("channel2_note"), u8("channel2_instrument", ID), u8("channel3_note"),
+    u8("channel3_instrument", ID)]);
+var sxamip_ea_pattern = sxLayout(0x6090001F, "ea_pattern", LE, sxamip_ea_pattern_fields);
+var sxamip_ea_magic_fields = layout([blob("signature", 4, SIGNATURE)]);
+var sxamip_ea_magic = sxLayout(0x60900023, "ea_magic", LE, sxamip_ea_magic_fields);
+function sxamip_ea(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var base = 0;
+    var off = [];
+    var p = [0];
+    var maxpat = 0;
+    var maxins = 0;
+    if (sxamip_eq(v, 0, "EASO", 4, e)) {
+        base = 4;
+        if (!sxamip_row(v, sxamip_ea_magic, 0, e)) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+    if (!sxamip_span(v, base, 24, e)) {
+        return false;
+    }
+    for (var i = 0; i < 6; i++) {
+        if (!sxamip_be(v, base + ((4 * i) >>> 0), 4, off, i, e) || off[i] > sxU64(e - base)) {
+            return false;
+        }
+        off[i] += base;
+    }
+    if (off[0] !== base + 24 || off[1] <= off[0] || sxU64(off[1] - off[0]) % 8 || off[4] <= off[2] || sxU64(off[4] - off[2]) % 16 || !sxamip_row(v, sxamip_ea_header, base, e)) {
+        return false;
+    }
+    p[0] = off[1];
+    for (i = 0; i < 65536; i++) {
+        var a = [0];
+        var b = [0];
+        if (!sxamip_be(v, p[0], 2, a, 0, e) || !sxamip_be(v, p[0] + 2, 2, b, 0, e) || !sxamip_take(v, sxamip_ea_position, p, 1, e)) {
+            return false;
+        }
+        if (a[0] === 65535) {
+            break;
+        }
+        if (sxAnd64(a[0], 4095) > maxpat) {
+            maxpat = sxAnd64(a[0], 4095);
+        }
+        if (sxAnd64(b[0], 4095) > maxpat) {
+            maxpat = sxAnd64(b[0], 4095);
+        }
+        if (i === 65535) {
+            return false;
+        }
+    }
+    if (maxpat + 1 > Math.floor(sxU64(off[1] - off[0]) / 8)) {
+        return false;
+    }
+    for (i = 0; i <= maxpat; i++) {
+        p[0] = off[0] + i * 8;
+        if (!sxamip_row(v, sxamip_ea_pattern, p[0], e)) {
+            return false;
+        }
+        for (var ch = 0; ch < 4; ch++) {
+            a = [0];
+            b = [0];
+            if (!sxamip_be(v, p[0] + ((ch * 2) >>> 0), 2, a, 0, e)) {
+                return false;
+            }
+            b[0] = sxAnd64(a[0], 255);
+            if (a[0] && b[0] > maxins) {
+                maxins = b[0];
+            }
+        }
+    }
+    if (!sxamip_table(v, sxamip_ea_instrument, off[2], maxins + 1, e)) {
+        return false;
+    }
+    p[0] = off[3];
+    for (i = 0; i < 128; i++) {
+        a = [0];
+        var z = [0];
+        if (!sxamip_be(v, p[0], 2, a, 0, e) || !sxamip_be(v, p[0] + 2, 2, z, 0, e) || !sxamip_take(v, sxamip_ea_sample, p, 1, e)) {
+            return false;
+        }
+        if (!a[0] && !z[0]) {
+            break;
+        }
+        if (!sxamip_span(v, base + a[0] * 4, z[0] * 2, e)) {
+            return false;
+        }
+        if (i === 127) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_grouleff_earache_build(v) {
+    return sxamip_ea(v);
+}

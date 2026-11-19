@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/lisa_blu/xx_lisa_blu_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_lisa_blu_header_fields = layout([chars("device_name", 13, NONE), field("device_type", "uint24", 3, ID),
+    field("unknown_10", "byte[2]", 2), field("block_count", "uint24", 3, COUNT), u16("bytes_per_block", SIZE)]);
+var sxst_lisa_blu_header = sxLayout(0x60370020, "lisa_blu_header", BE, sxst_lisa_blu_header_fields);
+function sx_lisa_blu_build(c) {
+    return sxst_put(c, sxst_lisa_blu_header, 0, 1);
+}

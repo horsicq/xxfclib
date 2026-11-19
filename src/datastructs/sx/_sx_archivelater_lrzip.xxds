@@ -1,0 +1,142 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lrzip/xx_lrzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_lrzip_header_fields = layout([chars("signature", 4, SIGNATURE), u8("major", ID), u8("minor", ID),
+    u64("unpacked_size", SIZE), u16("reserved", RESERVED), u8("lzma_properties"), u32("lzma_dictionary_size", SIZE),
+    u8("md5_present", FLAGS), u8("encrypted", FLAGS), u8("reserved23", RESERVED)]);
+var sxal_lrzip_header = sxLayout(0x60200034, "lrzip_header", LE, sxal_lrzip_header_fields);
+var sxal_lrzip_chunk1_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS), u8("unpacked_size", SIZE)]);
+var sxal_lrzip_chunk1 = sxLayout(0x60200035, "lrzip_chunk1", LE, sxal_lrzip_chunk1_fields);
+var sxal_lrzip_block1_fields = layout([u8("codec", ID), u8("packed_size", SIZE), u8("unpacked_size", SIZE),
+    u8("next_block_offset", OFFSET)]);
+var sxal_lrzip_block1 = sxLayout(0x60200036, "lrzip_block1", LE, sxal_lrzip_block1_fields);
+var sxal_lrzip_chunk2_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS), u16("unpacked_size", SIZE)]);
+var sxal_lrzip_chunk2 = sxLayout(0x60200037, "lrzip_chunk2", LE, sxal_lrzip_chunk2_fields);
+var sxal_lrzip_block2_fields = layout([u8("codec", ID), u16("packed_size", SIZE), u16("unpacked_size", SIZE),
+    u16("next_block_offset", OFFSET)]);
+var sxal_lrzip_block2 = sxLayout(0x60200038, "lrzip_block2", LE, sxal_lrzip_block2_fields);
+var sxal_lrzip_chunk3_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS),
+    field("unpacked_size", "uint24", 3, SIZE)]);
+var sxal_lrzip_chunk3 = sxLayout(0x60200039, "lrzip_chunk3", LE, sxal_lrzip_chunk3_fields);
+var sxal_lrzip_block3_fields = layout([u8("codec", ID), field("packed_size", "uint24", 3, SIZE),
+    field("unpacked_size", "uint24", 3, SIZE), field("next_block_offset", "uint24", 3, OFFSET)]);
+var sxal_lrzip_block3 = sxLayout(0x6020003A, "lrzip_block3", LE, sxal_lrzip_block3_fields);
+var sxal_lrzip_chunk4_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS), u32("unpacked_size", SIZE)]);
+var sxal_lrzip_chunk4 = sxLayout(0x6020003B, "lrzip_chunk4", LE, sxal_lrzip_chunk4_fields);
+var sxal_lrzip_block4_fields = layout([u8("codec", ID), u32("packed_size", SIZE), u32("unpacked_size", SIZE),
+    u32("next_block_offset", OFFSET)]);
+var sxal_lrzip_block4 = sxLayout(0x6020003C, "lrzip_block4", LE, sxal_lrzip_block4_fields);
+var sxal_lrzip_chunk5_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS),
+    field("unpacked_size", "uint40", 5, SIZE)]);
+var sxal_lrzip_chunk5 = sxLayout(0x6020003D, "lrzip_chunk5", LE, sxal_lrzip_chunk5_fields);
+var sxal_lrzip_block5_fields = layout([u8("codec", ID), field("packed_size", "uint40", 5, SIZE),
+    field("unpacked_size", "uint40", 5, SIZE), field("next_block_offset", "uint40", 5, OFFSET)]);
+var sxal_lrzip_block5 = sxLayout(0x6020003E, "lrzip_block5", LE, sxal_lrzip_block5_fields);
+var sxal_lrzip_chunk6_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS),
+    field("unpacked_size", "uint48", 6, SIZE)]);
+var sxal_lrzip_chunk6 = sxLayout(0x6020003F, "lrzip_chunk6", LE, sxal_lrzip_chunk6_fields);
+var sxal_lrzip_block6_fields = layout([u8("codec", ID), field("packed_size", "uint48", 6, SIZE),
+    field("unpacked_size", "uint48", 6, SIZE), field("next_block_offset", "uint48", 6, OFFSET)]);
+var sxal_lrzip_block6 = sxLayout(0x60200040, "lrzip_block6", LE, sxal_lrzip_block6_fields);
+var sxal_lrzip_chunk7_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS),
+    field("unpacked_size", "uint56", 7, SIZE)]);
+var sxal_lrzip_chunk7 = sxLayout(0x60200041, "lrzip_chunk7", LE, sxal_lrzip_chunk7_fields);
+var sxal_lrzip_block7_fields = layout([u8("codec", ID), field("packed_size", "uint56", 7, SIZE),
+    field("unpacked_size", "uint56", 7, SIZE), field("next_block_offset", "uint56", 7, OFFSET)]);
+var sxal_lrzip_block7 = sxLayout(0x60200042, "lrzip_block7", LE, sxal_lrzip_block7_fields);
+var sxal_lrzip_chunk8_fields = layout([u8("integer_width", SIZE), u8("final_chunk", FLAGS), u64("unpacked_size", SIZE)]);
+var sxal_lrzip_chunk8 = sxLayout(0x60200043, "lrzip_chunk8", LE, sxal_lrzip_chunk8_fields);
+var sxal_lrzip_block8_fields = layout([u8("codec", ID), u64("packed_size", SIZE), u64("unpacked_size", SIZE),
+    u64("next_block_offset", OFFSET)]);
+var sxal_lrzip_block8 = sxLayout(0x60200044, "lrzip_block8", LE, sxal_lrzip_block8_fields);
+var sxal_lrzip_md5_fields = layout([bytes("digest", 16, CHECKSUM)]);
+var sxal_lrzip_md5 = sxLayout(0x60200045, "lrzip_md5", LE, sxal_lrzip_md5_fields);
+var sxal_lr_chunks = [sxal_lrzip_chunk1, sxal_lrzip_chunk2, sxal_lrzip_chunk3, sxal_lrzip_chunk4, sxal_lrzip_chunk5,
+    sxal_lrzip_chunk6, sxal_lrzip_chunk7, sxal_lrzip_chunk8];
+var sxal_lr_blocks = [sxal_lrzip_block1, sxal_lrzip_block2, sxal_lrzip_block3, sxal_lrzip_block4, sxal_lrzip_block5,
+    sxal_lrzip_block6, sxal_lrzip_block7, sxal_lrzip_block8];
+function sxal_lrzip(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 24) || !sxal_add(c, sxal_lrzip_header, 0)) {
+        return false;
+    }
+    var md5 = b[21] !== 0;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = 24;
+    if (md5) {
+        if (end < 40) {
+            return true;
+        }
+        end = sxU64(end - 16);
+        if (!sxal_add(c, sxal_lrzip_md5, end)) {
+            return false;
+        }
+    }
+    for (var i = 0; i < 20000 && p < end; i++) {
+        if (!sxal_read(c, p, b, 2)) {
+            break;
+        }
+        var width = b[0];
+        var final = b[1] !== 0;
+        if (width < 1 || width > 8 || b[1] > 1 || (2 + width) >>> 0 > sxU64(end - p)) {
+            break;
+        }
+        if (!sxal_add(c, sxal_lr_chunks[(width - 1) >>> 0], p)) {
+            return false;
+        }
+        var base = p + 2 + width;
+        var head = (1 + ((3 * width) >>> 0)) >>> 0;
+        var readend = base + 2 * head;
+        if (readend > end) {
+            break;
+        }
+        var save = c.count;
+        var valid = true;
+        for (var stream = 0; stream < 2 && valid; stream++) {
+            var at = base + stream * head;
+            if (!sxal_read(c, at, b, head) || !sxal_add(c, sxal_lr_blocks[(width - 1) >>> 0], at)) {
+                return false;
+            }
+            var next = sxal_uint(b, 1 + ((2 * width) >>> 0), width, false);
+            var steps = 0;
+            while (next && steps++ < 20000) {
+                if (next < 2 * head || next > sxU64(end - base) || head > sxU64(sxU64(end - base) - next) || !sxal_read(c, base + next, b, head)) {
+                    valid = false;
+                    break;
+                }
+                var packed = sxal_uint(b, 1, width, false);
+                var link = sxal_uint(b, 1 + ((2 * width) >>> 0), width, false);
+                if (!packed || packed > sxU64(sxU64(sxU64(end - base) - next) - head) || link && link <= next) {
+                    valid = false;
+                    break;
+                }
+                if (!sxal_add(c, sxal_lr_blocks[(width - 1) >>> 0], base + next)) {
+                    return false;
+                }
+                var stop = base + next + head + packed;
+                if (stop > readend) {
+                    readend = stop;
+                }
+                next = link;
+            }
+            if (next) {
+                valid = false;
+            }
+        }
+        if (!valid) {
+            c.count = save;
+            break;
+        }
+        p = readend;
+        if (final) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_lrzip_build(c) {
+    return sxal_lrzip(c);
+}

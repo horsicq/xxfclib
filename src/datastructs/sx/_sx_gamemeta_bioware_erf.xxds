@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/bioware_erf/xx_bioware_erf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_erf_header_fields = layout([chars("signature", 4, SIGNATURE), chars("version", 4, ID), u32("language_count", COUNT),
+    u32("localized_size", SIZE), u32("entry_count", COUNT), u32("localized_offset", OFFSET), u32("keys_offset", OFFSET),
+    u32("resources_offset", OFFSET), u32("build_year"), u32("build_day"), u32("description_strref", ID),
+    bytes("reserved", 116, RESERVED)]);
+var sxgm_erf_header = sxLayout(0x60270034, "erf_header", LE, sxgm_erf_header_fields);
+var sxgm_erf_key16_fields = layout([chars("resref", 16, STRING), u32("resource_id", ID), u16("resource_type", ID),
+    u16("reserved", RESERVED)]);
+var sxgm_erf_key16 = sxLayout(0x60270035, "erf_key16", LE, sxgm_erf_key16_fields);
+var sxgm_erf_key32_fields = layout([chars("resref", 32, STRING), u32("resource_id", ID), u16("resource_type", ID),
+    u16("reserved", RESERVED)]);
+var sxgm_erf_key32 = sxLayout(0x60270036, "erf_key32", LE, sxgm_erf_key32_fields);
+var sxgm_erf_resource_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxgm_erf_resource = sxLayout(0x60270037, "erf_resource", LE, sxgm_erf_resource_fields);
+var sxgm_erf_localized_fields = layout([u32("language_id", ID), u32("text_size", SIZE)]);
+var sxgm_erf_localized = sxLayout(0x60270038, "erf_localized", LE, sxgm_erf_localized_fields);
+function sxgm_erf(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 160) || !sxgm_add(c, sxgm_erf_header, 0)) {
+        return false;
+    }
+    var n = sxgm32(b, 16, false);
+    var p = sxgm32(b, 20, false);
+    var z = sxgm32(b, 12, false);
+    var langs = sxgm32(b, 8, false);
+    if (!sxgm_table(c, b[7] === 49 /*1*/ ? sxgm_erf_key32 : sxgm_erf_key16, sxgm32(b, 24, false), n) || !sxgm_table(c, sxgm_erf_resource, sxgm32(b, 28, false), n)) {
+        return false;
+    }
+    if (!sxgm_span(c, p, z)) {
+        return true;
+    }
+    var end = p + z;
+    for (var i = 0; i < langs && i < 20000 && sxU64(end - p) >= 8; i++) {
+        var text = [0];
+        if (!sxgm_word(c, p + 4, 4, false, text) || text[0] > sxU64(sxU64(end - p) - 8)) {
+            break;
+        }
+        if (!sxgm_add(c, sxgm_erf_localized, p)) {
+            return false;
+        }
+        p += 8 + text[0];
+    }
+    return true;
+}
+function sx_bioware_erf_build(c) {
+    return sxgm_erf(c);
+}

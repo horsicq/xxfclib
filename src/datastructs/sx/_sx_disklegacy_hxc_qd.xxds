@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hxc_qd/xx_hxc_qd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_hxc_qd_header_fields = layout([chars("magic", 8, SIGNATURE), u32("revision", ID), u32("track_count", COUNT),
+    u32("side_count", COUNT), u32("encoding", ID), u32("write_protected", FLAGS), u32("cell_rate"), u32("flags", FLAGS),
+    u32("track_table_offset", OFFSET)]);
+var sxdleg_hxc_qd_header = sxLayout(0x60750028, "hxc_qd_header", LE, sxdleg_hxc_qd_header_fields);
+var sxdleg_hxc_qd_track_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE), u32("start_switch_offset", OFFSET),
+    u32("stop_switch_offset", OFFSET)]);
+var sxdleg_hxc_qd_track = sxLayout(0x60750029, "hxc_qd_track", LE, sxdleg_hxc_qd_track_fields);
+function sxdleg_qd(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 40) || sxMemcmp(h, "HXCQDDRV", 8) || !sxdleg_put(c, sxdleg_hxc_qd_header, 0, 1)) {
+        return false;
+    }
+    var tracks = sxdleg32(h, 12, 0);
+    var sides = sxdleg32(h, 16, 0);
+    var p = sxdleg32(h, 36, 0);
+    if (!tracks || tracks > 170 || !sides || sides > 2 || p < 40 || !sxdleg_span(c, p, tracks * sides * 16)) {
+        return true;
+    }
+    return sxdleg_put(c, sxdleg_hxc_qd_track, p, tracks * sides);
+}
+function sx_hxc_qd_build(c) {
+    return sxdleg_qd(c);
+}

@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/ym2151opmreglog_cym/xx_ym2151opmreglog_cym_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlog_cym_register_write_fields = layout([u8("register", FLAGS), u8("value")]);
+var sxlog_cym_register_write = sxLayout(0x608C0018, "cym_register_write", LE, sxlog_cym_register_write_fields);
+var sxlog_cym_frame_wait_fields = layout([u8("wait_marker", FLAGS)]);
+var sxlog_cym_frame_wait = sxLayout(0x608C0019, "cym_frame_wait", LE, sxlog_cym_frame_wait_fields);
+function sxlog_cym(c) {
+    var at = 0;
+    var work = 0;
+    var r = [0];
+    while (at < c.size && work++ < 16000) {
+        if (!sx_read(c, at, r, 1)) {
+            return false;
+        }
+        var size = r[0] ? 2 : 1;
+        if (size > (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at)) {
+            break;
+        }
+        if (!sx_add(c, r[0] ? sxlog_cym_register_write : sxlog_cym_frame_wait, at, size)) {
+            return false;
+        }
+        at += size;
+    }
+    return sx_raw(c, at, c.size - at);
+}
+function sx_ym2151opmreglog_cym_build(c) {
+    return sxlog_cym(c);
+}

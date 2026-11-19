@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/jasc/xx_jasc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_jasc_member_fields = layout([u8("header_size_minus2"), u8("header_check", SIGNATURE), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u32("modification_time", TIMESTAMP), u16("crc16", CHECKSUM), u8("name_size", SIZE)]);
+var sxao_jasc_member = sxLayout(0x60700027, "jasc_member", LE, sxao_jasc_member_fields);
+var sxao_jasc_end_fields = layout([u8("terminator")]);
+var sxao_jasc_end = sxLayout(0x60700028, "jasc_end", LE, sxao_jasc_end_fields);
+function sxao_jasc(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var hs = [0];
+        var n = [0];
+        var z = [0];
+        if (!sxao_word(c, p, 1, false, hs)) {
+            return false;
+        }
+        if (!hs[0]) {
+            return sxao_add(c, sxao_jasc_end, p);
+        }
+        if (!sxao_word(c, p + 16, 1, false, n) || hs[0] !== n[0] + 15 || !sxao_word(c, p + 2, 4, false, z) || !sxao_add(c, sxao_jasc_member, p) || !sxao_text(c, sxao_archiveobsolete_name, p + 17, n[0], false)) {
+            return false;
+        }
+        p += 17 + n[0];
+        if (!sxao_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_jasc_build(c) {
+    return sxao_jasc(c);
+}

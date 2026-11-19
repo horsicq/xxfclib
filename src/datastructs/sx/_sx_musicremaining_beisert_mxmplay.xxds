@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/beisert_mxmplay/xx_beisert_mxmplay_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_instrument_offset_fields = layout([u32("instrument_offset", OFFSET)]);
+var sxmr_instrument_offset = sxLayout(0x607D001A, "instrument_offset", LE, sxmr_instrument_offset_fields);
+var sxmr_mxm_pattern_fields = layout([u32("rows", COUNT)]);
+var sxmr_mxm_pattern = sxLayout(0x607D0021, "mxm_pattern", LE, sxmr_mxm_pattern_fields);
+var sxmr_mxm_note_fields = layout([u8("note"), u8("instrument", ID)]);
+var sxmr_mxm_note = sxLayout(0x607D0023, "mxm_note", LE, sxmr_mxm_note_fields);
+var sxmr_mxm_volume_fields = layout([u8("volume_effect")]);
+var sxmr_mxm_volume = sxLayout(0x607D0024, "mxm_volume", LE, sxmr_mxm_volume_fields);
+var sxmr_mxm_effect_fields = layout([u8("effect", ID), u8("parameter")]);
+var sxmr_mxm_effect = sxLayout(0x607D0025, "mxm_effect", LE, sxmr_mxm_effect_fields);
+function sxmr_mxm(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var np = [0];
+    var ni = [0];
+    var ch = [0];
+    var orders = [0];
+    var restart = [0];
+    var p;
+    var at = [0];
+    var n = [0];
+    var rows = [0];
+    var flags = [0];
+    var sm = [0];
+    var b8 = [0];
+    var b16 = [0];
+    if (!sxmr_eq(v, 0, "MXM\x00", 4, end) || !sxmr_u(v, 4, 4, orders, end) || !orders[0] || orders[0] > 256 || !sxmr_u(v, 8, 4, restart, end) || restart[0] >= orders[0] || !sxmr_u(v, 12, 4, ch, end) || !ch[0] || ch[0] > 32 || !sxmr_u(v, 16, 4, np, end) || !np[0] || np[0] > 256 || !sxmr_u(v, 20, 4, ni, end) || ni[0] > 128 || !sxmr_u(v, 28, 4, sm, end) || !sxmr_u(v, 32, 4, b8, end) || !sxmr_u(v, 36, 4, b16, end) || !sxmr_row(v, sxmr_mxm_header, 0, end)) {
+        return false;
+    }
+    if (!sxmr_table(v, sxmr_order8, 80, 256, end) || !sxmr_table(v, sxmr_instrument_offset, 336, 128, end) || !sxmr_table(v, sxmr_pattern_offset, 848, 256, end) || !sxmr_span(v, sm[0], b8[0] + 2 * b16[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < ni[0]; i++) {
+        if (!sxmr_u(v, 336 + i * 4, 4, at, end) || !at[0] || !sxmr_u(v, at[0], 4, n, end) || n[0] > 256 || !sxmr_row(v, sxmr_mxm_instrument, at[0], end) || !sxmr_table(v, sxmr_mxm_sample, at[0] + 256, n[0], end)) {
+            return false;
+        }
+    }
+    for (i = 0; i < np[0]; i++) {
+        if (!sxmr_u(v, 848 + i * 4, 4, at, end) || !at[0] || !sxmr_u(v, at[0], 4, rows, end) || !rows[0] || rows[0] > 65535 || !sxmr_row(v, sxmr_mxm_pattern, at[0], end)) {
+            return false;
+        }
+        p = at[0] + 4;
+        for (var r = 0; r < rows[0]; r++) {
+            for (; ; ) {
+                if (!sxmr_u(v, p, 1, flags, end) || !sxmr_row(v, sxmr_mxm_event_flags, p, end)) {
+                    return false;
+                }
+                p++;
+                if (!flags[0]) {
+                    break;
+                }
+                if (!sxAnd64(flags[0], 224) || sxAnd64(flags[0], 31) >= ch[0]) {
+                    return false;
+                }
+                if (sxAnd64(flags[0], 32)) {
+                    if (!sxmr_row(v, sxmr_mxm_note, p, end)) {
+                        return false;
+                    }
+                    p += 2;
+                }
+                if (sxAnd64(flags[0], 64)) {
+                    if (!sxmr_row(v, sxmr_mxm_volume, p, end)) {
+                        return false;
+                    }
+                    p++;
+                }
+                if (sxAnd64(flags[0], 128)) {
+                    if (!sxmr_row(v, sxmr_mxm_effect, p, end)) {
+                        return false;
+                    }
+                    p += 2;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_beisert_mxmplay_build(v) {
+    return sxmr_mxm(v);
+}

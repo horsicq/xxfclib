@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/linuxboot/xx_linuxboot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fw_linux_boot_setup_count_fields = layout([u8("setup_sects", COUNT), u16("root_flags", FLAGS)]);
+var sx_fw_linux_boot_setup_count = sxLayout(0x601E0017, "linux_boot_setup_count", LE, sx_fw_linux_boot_setup_count_fields);
+var sx_fw_linux_boot_syssize32_fields = layout([u32("syssize_paragraphs", COUNT)]);
+var sx_fw_linux_boot_syssize32 = sxLayout(0x601E0019, "linux_boot_syssize32", LE, sx_fw_linux_boot_syssize32_fields);
+var sx_fw_linux_boot_header_201_fields = layout([u16("heap_end_ptr", OFFSET)]);
+var sx_fw_linux_boot_header_201 = sxLayout(0x601E001B, "linux_boot_header_201", LE, sx_fw_linux_boot_header_201_fields);
+var sx_fw_linux_boot_header_202_fields = layout([u8("ext_loader_ver", ID), u8("ext_loader_type", ID),
+    u32("cmd_line_ptr", POINTER)]);
+var sx_fw_linux_boot_header_202 = sxLayout(0x601E001C, "linux_boot_header_202", LE, sx_fw_linux_boot_header_202_fields);
+var sx_fw_linux_boot_header_203_fields = layout([u32("initrd_addr_max", VA)]);
+var sx_fw_linux_boot_header_203 = sxLayout(0x601E001D, "linux_boot_header_203", LE, sx_fw_linux_boot_header_203_fields);
+var sx_fw_linux_boot_header_205_fields = layout([u32("kernel_alignment", SIZE), u8("relocatable_kernel", FLAGS)]);
+var sx_fw_linux_boot_header_205 = sxLayout(0x601E001E, "linux_boot_header_205", LE, sx_fw_linux_boot_header_205_fields);
+var sx_fw_linux_boot_header_206_fields = layout([u32("cmdline_size", SIZE)]);
+var sx_fw_linux_boot_header_206 = sxLayout(0x601E001F, "linux_boot_header_206", LE, sx_fw_linux_boot_header_206_fields);
+var sx_fw_linux_boot_header_207_fields = layout([u32("hardware_subarch", ID), u64("hardware_subarch_data", POINTER)]);
+var sx_fw_linux_boot_header_207 = sxLayout(0x601E0020, "linux_boot_header_207", LE, sx_fw_linux_boot_header_207_fields);
+var sx_fw_linux_boot_header_208_fields = layout([u32("payload_offset", OFFSET), u32("payload_length", SIZE)]);
+var sx_fw_linux_boot_header_208 = sxLayout(0x601E0021, "linux_boot_header_208", LE, sx_fw_linux_boot_header_208_fields);
+var sx_fw_linux_boot_header_209_fields = layout([u64("setup_data", POINTER)]);
+var sx_fw_linux_boot_header_209 = sxLayout(0x601E0022, "linux_boot_header_209", LE, sx_fw_linux_boot_header_209_fields);
+var sx_fw_linux_boot_min_alignment_210_fields = layout([u8("min_alignment")]);
+var sx_fw_linux_boot_min_alignment_210 = sxLayout(0x601E0023, "linux_boot_min_alignment_210", LE, sx_fw_linux_boot_min_alignment_210_fields);
+var sx_fw_linux_boot_header_210_fields = layout([u64("pref_address", VA), u32("init_size", SIZE)]);
+var sx_fw_linux_boot_header_210 = sxLayout(0x601E0024, "linux_boot_header_210", LE, sx_fw_linux_boot_header_210_fields);
+var sx_fw_linux_boot_header_211_fields = layout([u32("handover_offset", OFFSET)]);
+var sx_fw_linux_boot_header_211 = sxLayout(0x601E0025, "linux_boot_header_211", LE, sx_fw_linux_boot_header_211_fields);
+var sx_fw_linux_boot_header_215_fields = layout([u32("kernel_info_offset", OFFSET)]);
+var sx_fw_linux_boot_header_215 = sxLayout(0x601E0027, "linux_boot_header_215", LE, sx_fw_linux_boot_header_215_fields);
+function sx_fw_linux(c) {
+    var v;
+    var jump = [];
+    if ((v = sx_u16(c, 0x206, false)) === null || !sx_read(c, 0x200, jump, 2) || v >> 8 !== 2 || jump[0] !== 0xEB || jump[1] >= 128) {
+        return false;
+    }
+    var end = 0x202 + jump[1];
+    if (!sx_add(c, sx_fw_linux_boot_setup_count, 0x1F1, 3) || !sx_add(c, v < 0x204 ? sx_fw_linux_boot_syssize16 : sx_fw_linux_boot_syssize32, 0x1F4, 4) || !sx_add(c, sx_fw_linux_boot_header_200, 0x1F8, 44)) {
+        return false;
+    }
+    var ext = [{ v: 0x201, at: 0x224, n: 2, l: sx_fw_linux_boot_header_201 }, { v: 0x202, at: 0x226, n: 6, l: sx_fw_linux_boot_header_202 }, { v: 0x203, at: 0x22C, n: 4, l: sx_fw_linux_boot_header_203 }, { v: 0x205, at: 0x230, n: 5, l: sx_fw_linux_boot_header_205 }, { v: 0x206, at: 0x238, n: 4, l: sx_fw_linux_boot_header_206 }, { v: 0x207, at: 0x23C, n: 12, l: sx_fw_linux_boot_header_207 }, { v: 0x208, at: 0x248, n: 8, l: sx_fw_linux_boot_header_208 }, { v: 0x209, at: 0x250, n: 8, l: sx_fw_linux_boot_header_209 }, { v: 0x20A, at: 0x235, n: 1, l: sx_fw_linux_boot_min_alignment_210 }, { v: 0x20A, at: 0x258, n: 12, l: sx_fw_linux_boot_header_210 }, { v: 0x20B, at: 0x264, n: 4, l: sx_fw_linux_boot_header_211 }, { v: 0x20C, at: 0x236, n: 2, l: sx_fw_linux_boot_header_212 }, { v: 0x20F, at: 0x268, n: 4, l: sx_fw_linux_boot_header_215 }];
+    for (var i = 0; i < 13; i++) {
+        if (v >= ext[i].v && (ext[i].at + ext[i].n) >>> 0 <= end && !sx_add(c, ext[i].l, ext[i].at, ext[i].n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_linuxboot_build(c) {
+    var ok = false;
+    ok = sx_fw_linux(c);
+    return ok && sx_fw_finish(c);
+}

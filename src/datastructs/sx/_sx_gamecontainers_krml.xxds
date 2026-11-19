@@ -1,0 +1,16 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/krml/xx_krml_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_krml_header_fields = layout([chars("magic", 4, SIGNATURE), u16("entries", COUNT)]);
+var sxgco_krml_header = sxLayout(0x60400007, "krml_header", LE, sxgco_krml_header_fields);
+function sxgco_krml(v) {
+    var n = [0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgco_row(v, sxgco_krml_header, 0, e) && sxgco_word(v, 4, 2, false, n, e) && sxgco_table(v, sxgco_krml_entry, 6, n[0], e);
+}
+function sx_krml_build(v) {
+    return sxgco_krml(v);
+}

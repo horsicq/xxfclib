@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/jbf/xx_jbf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_jbf_member_fields = layout([chars("name", 13, NONE), i32("compressed_size", SIZE), i32("uncompressed_size", SIZE),
+    i32("payload_offset", OFFSET), u16("checksum", CHECKSUM), u16("dos_time"), u16("dos_date")]);
+var sxafr_jbf_member = sxLayout(0x60540013, "jbf_member", LE, sxafr_jbf_member_fields);
+var sxafr_jbf_count_fields = layout([u8("member_count", COUNT)]);
+var sxafr_jbf_count = sxLayout(0x60540014, "jbf_count", LE, sxafr_jbf_count_fields);
+function sxafr_jbf(c) {
+    var n = [0];
+    if (c.size < 1 || !sxafr_word(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1), 1, false, n) || !n[0] || n[0] > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1) / 31)) {
+        return false;
+    }
+    var p = sxU64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1) - n[0] * 31);
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxafr_add(c, sxafr_jbf_member, p + i * 31)) {
+            return false;
+        }
+    }
+    return sxafr_add(c, sxafr_jbf_count, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1));
+}
+function sx_jbf_build(c) {
+    return sxafr_jbf(c);
+}

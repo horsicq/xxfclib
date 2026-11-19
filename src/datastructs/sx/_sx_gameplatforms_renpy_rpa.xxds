@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/renpy_rpa/xx_renpy_rpa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_rpa_header_fields = layout([blob("signature", 8, SIGNATURE), field("index_offset", "ascii_hex[16]", 16, OFFSET),
+    u8("separator"), field("xor_key", "ascii_hex[8]", 8, FLAGS), u8("newline")]);
+var sxgp_rpa_header = sxLayout(0x6036006B, "rpa_header", LE, sxgp_rpa_header_fields);
+var sxgp_rpa_zlib_fields = layout([u8("compression_method_window", FLAGS), u8("compression_flags", FLAGS)]);
+var sxgp_rpa_zlib = sxLayout(0x6036006C, "rpa_zlib", LE, sxgp_rpa_zlib_fields);
+var sxgp_rpa_adler_fields = layout([u32("adler32", CHECKSUM)]);
+var sxgp_rpa_adler = sxLayout(0x6036006D, "rpa_adler", BE, sxgp_rpa_adler_fields);
+function sxgp_rpa(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var index = 0;
+    var text = [];
+    if (!sxgp_row(v, sxgp_rpa_header, 0, end) || !sxgp_read(v, 8, text, 16, end)) {
+        return false;
+    }
+    for (var i = 0; i < 16; i++) {
+        var d = (text[i] >= 48 /*0*/ && text[i] <= 57 /*9*/ ? text[i] - 48 /*0*/ : text[i] >= 97 /*a*/ && text[i] <= 102 /*f*/ ? text[i] - 97 /*a*/ + 10 : text[i] >= 65 /*A*/ && text[i] <= 70 /*F*/ ? text[i] - 65 /*A*/ + 10 : 16) >>> 0;
+        if (d === 16) {
+            return false;
+        }
+        index = sxOr64(sxShl64(index, 4), d);
+    }
+    return end >= 4 && sxgp_row(v, sxgp_rpa_zlib, index, end) && sxgp_row(v, sxgp_rpa_adler, sxU64(end - 4), end);
+}
+function sx_renpy_rpa_build(v) {
+    return sxgp_rpa(v);
+}

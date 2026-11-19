@@ -1,0 +1,86 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/wilenius_fmkingtracker/xx_wilenius_fmkingtracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_offset32le_fields = layout([u32("offset", OFFSET)]);
+var sxnextm_offset32le = sxLayout(0x608B003D, "offset32le", LE, sxnextm_offset32le_fields);
+var sxnextm_fmk_instrument_fields = layout([blob("unknown", 39), u8("opl_20", FLAGS), u8("opl_23", FLAGS), u8("opl_40", FLAGS),
+    u8("opl_43", FLAGS), u8("opl_60", FLAGS), u8("opl_63", FLAGS), u8("opl_80", FLAGS), u8("opl_83", FLAGS),
+    u8("opl_e0", FLAGS), u8("opl_e3", FLAGS), u8("opl_c0", FLAGS)]);
+var sxnextm_fmk_instrument = sxLayout(0x608B0044, "fmk_instrument", LE, sxnextm_fmk_instrument_fields);
+var sxnextm_fmk_note_fields = layout([u8("packed_note", FLAGS), u8("instrument", ID)]);
+var sxnextm_fmk_note = sxLayout(0x608B0047, "fmk_note", LE, sxnextm_fmk_note_fields);
+var sxnextm_fmk_volume_fields = layout([u8("volume")]);
+var sxnextm_fmk_volume = sxLayout(0x608B0048, "fmk_volume", LE, sxnextm_fmk_volume_fields);
+var sxnextm_fmk_effect_fields = layout([u8("effect", ID), u8("argument")]);
+var sxnextm_fmk_effect = sxLayout(0x608B0049, "fmk_effect", LE, sxnextm_fmk_effect_fields);
+function sxnextm_fmk(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [82];
+    var t = [0];
+    var no = [0];
+    var ni = [0];
+    var np = [0];
+    var inst;
+    var pat;
+    var z = [0];
+    var off = [0];
+    if (!sxnextm_eq(v, 0, "FMK!", 4, e) || !sxnextm_row(v, sxnextm_fmk_header, 0, e) || !sxnextm_u(v, 61, 1, t, 0, e) || !sxnextm_u(v, 74, 1, no, 0, e) || !sxnextm_u(v, 75, 1, ni, 0, e) || !sxnextm_u(v, 76, 1, np, 0, e) || !sxnextm_take(v, sxnextm_fmk_track_setting, p, t[0] >= 2 ? 18 : 20, e) || !sxnextm_take(v, sxnextm_order8, p, no[0], e) || !sxnextm_take(v, sxnextm_offset16le, p, 1, e)) {
+        return false;
+    }
+    inst = p[0];
+    if (!sxnextm_take(v, sxnextm_offset16le, p, ni[0], e)) {
+        return false;
+    }
+    pat = p[0];
+    if (!sxnextm_take(v, sxnextm_offset32le, p, np[0], e)) {
+        return false;
+    }
+    for (var i = 0; i < ni[0]; i++) {
+        if (!sxnextm_u(v, inst + i * 2, 2, off, 0, e)) {
+            return false;
+        }
+        if (off[0] && !sxnextm_row(v, sxnextm_fmk_instrument, off[0], e)) {
+            return false;
+        }
+    }
+    for (i = 0; i < np[0]; i++) {
+        if (!sxnextm_u(v, pat + i * 4, 4, off, 0, e)) {
+            return false;
+        }
+        if (!off[0]) {
+            continue;
+        }
+        if (!sxnextm_u(v, off[0], 2, z, 0, e) || !sxnextm_row(v, sxnextm_fmk_pattern, off[0], e) || !sxnextm_span(v, off[0] + 2, z[0], e)) {
+            return false;
+        }
+        var q = [off[0] + 2];
+        var end = q[0] + z[0];
+        var rows = 0;
+        while (q[0] < end && rows < 64) {
+            var c = [0];
+            if (!sxnextm_u(v, q[0], 1, c, 0, end) || !sxnextm_take(v, sxnextm_fmk_control, q, 1, end)) {
+                return false;
+            }
+            if (!c[0]) {
+                rows++;
+                continue;
+            }
+            if (sxAnd64(c[0], 32) && !sxnextm_take(v, sxnextm_fmk_note, q, 1, end)) {
+                return false;
+            }
+            if (sxAnd64(c[0], 64) && !sxnextm_take(v, sxnextm_fmk_volume, q, 1, end)) {
+                return false;
+            }
+            if (sxAnd64(c[0], 128) && !sxnextm_take(v, sxnextm_fmk_effect, q, 1, end)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_wilenius_fmkingtracker_build(v) {
+    return sxnextm_fmk(v);
+}

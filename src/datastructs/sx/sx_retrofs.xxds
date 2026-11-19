@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_retrofs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_retrofs");
+include("_sx_retrofs_acorn_adfs");
+include("_sx_retrofs_acorn_dfs");
+include("_sx_retrofs_adf");
+include("_sx_retrofs_aodos");
+include("_sx_retrofs_apple_dos32");
+include("_sx_retrofs_apple_dos33");
+include("_sx_retrofs_apple_dos33_32");
+include("_sx_retrofs_apple_pascal");
+include("_sx_retrofs_atari_dos2");
+include("_sx_retrofs_cbm_d64");
+include("_sx_retrofs_cbm_d67");
+include("_sx_retrofs_cbm_d71");
+include("_sx_retrofs_cbm_d81");
+include("_sx_retrofs_cbm_d8x");
+include("_sx_retrofs_cbm_d90");
+include("_sx_retrofs_hfs");
+include("_sx_retrofs_mfs");
+include("_sx_retrofs_os9_rbf");
+include("_sx_retrofs_prodos");
+include("_sx_retrofs_ti99_dsk");
+
+function fileTypes() { return ["AODOS", "ADF", "PRODOS", "APPLE_PASCAL", "MFS", "APPLE_DOS33", "HFS", "ADFS", "CBM_D64",
+    "CBM_D71", "CBM_D81", "ACORN_DFS", "ATARI_DOS2", "TI99_DSK", "APPLE_DOS32", "APPLE_DOS33_32", "CBM_D8X", "CBM_D67",
+    "CBM_D90", "OS9_RBF"]; }
+
+var sx_retrofs_layouts = [sxrfs_aodos_directory_entry, sxrfs_prodos_directory_links, sxrfs_prodos_volume_header,
+    sxrfs_prodos_subdirectory_header, sxrfs_prodos_file_entry, sxrfs_prodos_fork_descriptor, sxrfs_prodos_index_low,
+    sxrfs_prodos_index_high, sxrfs_pascal_volume_header, sxrfs_pascal_file_entry, sxrfs_apple_dos_vtoc, sxrfs_apple_dos_bitmap,
+    sxrfs_apple_dos_catalog_header, sxrfs_apple_dos_file_entry, sxrfs_apple_dos_ts_header, sxrfs_apple_dos_ts_pair,
+    sxrfs_mfs_master_directory, sxrfs_mfs_allocation_pair, sxrfs_mfs_file_entry, sxrfs_adfs_map0, sxrfs_adfs_map1,
+    sxrfs_adfs_directory_start, sxrfs_adfs_directory_entry, sxrfs_acorn_dfs_title, sxrfs_acorn_dfs_name,
+    sxrfs_acorn_dfs_catalog_header, sxrfs_acorn_dfs_file_metadata, sxrfs_atari_atr_header, sxrfs_atari_dos2_vtoc,
+    sxrfs_atari_dos2_directory_entry, sxrfs_atari_dos2_sector_trailer, sxrfs_ti99_vib, sxrfs_ti99_directory_pointer,
+    sxrfs_ti99_file_descriptor, sxrfs_ti99_cluster, sxrfs_os9_disk_descriptor, sxrfs_os9_path_options,
+    sxrfs_os9_file_descriptor, sxrfs_os9_segment, sxrfs_os9_directory_entry, sxrfs_cbm_sector_link, sxrfs_cbm_directory_entry,
+    sxrfs_cbm_d64_bam_header, sxrfs_cbm_bam_entry3, sxrfs_cbm_bam_entry4, sxrfs_cbm_bam_entry5, sxrfs_cbm_bitmap3,
+    sxrfs_cbm_free_count, sxrfs_cbm_d64_disk_identity, sxrfs_cbm_d81_header, sxrfs_cbm_d81_bam_header, sxrfs_cbm_d8x_header,
+    sxrfs_cbm_d8x_bam_header, sxrfs_cbm_d90_config, sxrfs_cbm_d90_header, sxrfs_cbm_d90_bam_header, sxrfs_adf_boot_header,
+    sxrfs_adf_root_block, sxrfs_adf_block_prefix, sxrfs_adf_block_pointer, sxrfs_adf_classic_entry_tail, sxrfs_adf_bitmap_block,
+    sxrfs_hfs_master_directory, sxrfs_hfs_btree_node, sxrfs_hfs_btree_header, sxrfs_hfs_node_record_offset,
+    sxrfs_hfs_catalog_key_prefix, sxrfs_hfs_extents_key, sxrfs_hfs_extent, sxrfs_hfs_btree_child, sxrfs_hfs_catalog_folder,
+    sxrfs_hfs_catalog_file, sxrfs_hfs_catalog_thread, sxrfs_atari_dos25_extended_vtoc, sxrfs_apple_dos_bitmap16,
+    sxrfs_adfs_directory_tail];
+
+function structs() {
+    return sxCatalog([sxrfs_aodos_directory_entry, sxrfs_prodos_directory_links, sxrfs_prodos_volume_header,
+        sxrfs_prodos_subdirectory_header, sxrfs_prodos_file_entry, sxrfs_prodos_fork_descriptor, sxrfs_prodos_index_low,
+        sxrfs_prodos_index_high, sxrfs_pascal_volume_header, sxrfs_pascal_file_entry, sxrfs_apple_dos_vtoc,
+        sxrfs_apple_dos_bitmap, sxrfs_apple_dos_catalog_header, sxrfs_apple_dos_file_entry, sxrfs_apple_dos_ts_header,
+        sxrfs_apple_dos_ts_pair, sxrfs_mfs_master_directory, sxrfs_mfs_allocation_pair, sxrfs_mfs_file_entry, sxrfs_adfs_map0,
+        sxrfs_adfs_map1, sxrfs_adfs_directory_start, sxrfs_adfs_directory_entry, sxrfs_acorn_dfs_title, sxrfs_acorn_dfs_name,
+        sxrfs_acorn_dfs_catalog_header, sxrfs_acorn_dfs_file_metadata, sxrfs_atari_atr_header, sxrfs_atari_dos2_vtoc,
+        sxrfs_atari_dos2_directory_entry, sxrfs_atari_dos2_sector_trailer, sxrfs_ti99_vib, sxrfs_ti99_directory_pointer,
+        sxrfs_ti99_file_descriptor, sxrfs_ti99_cluster, sxrfs_os9_disk_descriptor, sxrfs_os9_path_options,
+        sxrfs_os9_file_descriptor, sxrfs_os9_segment, sxrfs_os9_directory_entry, sxrfs_cbm_sector_link,
+        sxrfs_cbm_directory_entry, sxrfs_cbm_d64_bam_header, sxrfs_cbm_bam_entry3, sxrfs_cbm_bam_entry4, sxrfs_cbm_bam_entry5,
+        sxrfs_cbm_bitmap3, sxrfs_cbm_free_count, sxrfs_cbm_d64_disk_identity, sxrfs_cbm_d81_header, sxrfs_cbm_d81_bam_header,
+        sxrfs_cbm_d8x_header, sxrfs_cbm_d8x_bam_header, sxrfs_cbm_d90_config, sxrfs_cbm_d90_header, sxrfs_cbm_d90_bam_header,
+        sxrfs_adf_boot_header, sxrfs_adf_root_block, sxrfs_adf_block_prefix, sxrfs_adf_block_pointer,
+        sxrfs_adf_classic_entry_tail, sxrfs_adf_bitmap_block, sxrfs_hfs_master_directory, sxrfs_hfs_btree_node,
+        sxrfs_hfs_btree_header, sxrfs_hfs_node_record_offset, sxrfs_hfs_catalog_key_prefix, sxrfs_hfs_extents_key,
+        sxrfs_hfs_extent, sxrfs_hfs_btree_child, sxrfs_hfs_catalog_folder, sxrfs_hfs_catalog_file, sxrfs_hfs_catalog_thread,
+        sxrfs_atari_dos25_extended_vtoc, sxrfs_apple_dos_bitmap16, sxrfs_adfs_directory_tail], sx_retrofs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_retrofs_build, false);
+}

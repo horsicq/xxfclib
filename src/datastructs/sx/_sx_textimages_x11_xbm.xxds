@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/x11_xbm/xx_x11_xbm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_declaration_name_fields = layout([field("declaration_name", "char", 0, STRING)]);
+var sxti_declaration_name = sxLayout(0x6041000D, "textimage_declaration_name", LE, sxti_declaration_name_fields);
+var sxti_declared_bytes_fields = layout([field("declared_bytes", "ascii_signed", 0, SIZE)]);
+var sxti_declared_bytes = sxLayout(0x60410033, "textimage_declared_bytes", LE, sxti_declared_bytes_fields);
+function sxti_cword(q, a, z) {
+    if (!sxti_cskip(q) || q.p === q.n) {
+        return false;
+    }
+    a[0] = q.p;
+    while (q.p < q.n) {
+        var c = q.b[q.p];
+        if (!(c >= 97 /*a*/ && c <= 122 /*z*/ || c >= 65 /*A*/ && c <= 90 /*Z*/ || c >= 48 /*0*/ && c <= 57 /*9*/ || c === 95 /*_*/ || (c === 43 /*+*/ || c === 45 /*-*/) && q.p === a[0])) {
+            break;
+        }
+        q.p++;
+    }
+    z[0] = q.p - a[0];
+    return z[0] > 0;
+}
+function sxti_xbm(q) {
+    var defines = 0;
+    while (sxti_cskip(q) && q.p < q.n && q.b[q.p] === 35 /*#*/) {
+        q.p++;
+        var a = [0];
+        var z = [0];
+        if (!sxti_cword(q, a, z) || !sxti_eq(q, a[0], z[0], "define") || !sxti_cword(q, a, z)) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_define_name, a[0], z[0])) {
+                return false;
+            }
+        }
+        var l = z[0] >= 6 && sxti_eq(q, a[0] + z[0] - 6, 6, "_width") ? sxti_width : z[0] >= 7 && sxti_eq(q, a[0] + z[0] - 7, 7, "_height") ? sxti_height : z[0] >= 6 && sxti_eq(q, a[0] + z[0] - 6, 6, "_x_hot") ? sxti_hotspot_x : z[0] >= 6 && sxti_eq(q, a[0] + z[0] - 6, 6, "_y_hot") ? sxti_hotspot_y : null;
+        if (l === null || !sxti_cword(q, a, z) || !sxti_emit(q, l, a[0], z[0])) {
+            return false;
+        }
+        defines++;
+    }
+    if (!defines) {
+        return false;
+    }
+    a = [0];
+    z = [0];
+    while (sxti_cword(q, a, z)) {
+        if (sxti_eq(q, a[0], z[0], "static") || sxti_eq(q, a[0], z[0], "const") || sxti_eq(q, a[0], z[0], "unsigned") || sxti_eq(q, a[0], z[0], "char")) {
+            continue;
+        }
+        {
+            if (!sxti_emit(q, sxti_declaration_name, a[0], z[0])) {
+                return false;
+            }
+        }
+        break;
+    }
+    if (!sxti_cskip(q) || q.p === q.n || q.b[q.p++] !== 91 /*[*/ || !sxti_cskip(q)) {
+        return false;
+    }
+    if (q.p < q.n && q.b[q.p] !== 93 /*]*/) {
+        if (!sxti_cword(q, a, z)) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_declared_bytes, a[0], z[0])) {
+                return false;
+            }
+        }
+    }
+    var symbols = "]={";
+    for (var i = 0; i < 3; i++) {
+        if (!sxti_cskip(q) || q.p === q.n || q.b[q.p++] !== (sxAt(symbols, i) & 0xFF)) {
+            return false;
+        }
+    }
+    while (sxti_cskip(q) && q.p < q.n && q.b[q.p] !== 125 /*}*/) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (!sxti_cword(q, a, z) || z[0] < 3 || z[0] > 4 || q.b[a[0]] !== 48 /*0*/ || q.b[a[0] + 1] !== 120 /*x*/ && q.b[a[0] + 1] !== 88 /*X*/) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_bitmap_byte, a[0] + 2, z[0] - 2)) {
+                return false;
+            }
+        }
+        if (!sxti_cskip(q)) {
+            return false;
+        }
+        if (q.p < q.n && q.b[q.p] === 44 /*,*/) {
+            q.p++;
+        } else {
+            break;
+        }
+    }
+    return q.p < q.n && q.b[q.p] === 125 /*}*/;
+}
+function sx_x11_xbm_build(q) {
+    return sxti_xbm(q);
+}

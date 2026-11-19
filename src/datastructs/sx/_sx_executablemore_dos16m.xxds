@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/dos16m/xx_dos16m_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_dos_extender_mz_fields = layout([chars("magic", 2, SIGNATURE), u16("last_page_bytes", SIZE),
+    u16("pages_in_file", COUNT), u16("relocation_count", COUNT), u16("header_paragraphs", COUNT),
+    u16("min_alloc_paragraphs", COUNT), u16("max_alloc_paragraphs", COUNT), u16("initial_ss"), u16("initial_sp", VA),
+    u16("checksum", CHECKSUM), u16("initial_ip", VA), u16("initial_cs"), u16("relocations_offset", OFFSET),
+    u16("overlay_number", ID), field("reserved", "uint16[4]", 8, RESERVED), u16("oem_id", ID), u16("oem_info"),
+    field("reserved2", "uint16[10]", 20, RESERVED), u32("new_header_offset", OFFSET)]);
+var sxexm_dos_extender_mz = sxLayout(0x602B0043, "dos_extender_mz", LE, sxexm_dos_extender_mz_fields);
+var sxexm_dos16m_bw_header_fields = layout([chars("signature", 2, SIGNATURE), u16("last_page_bytes", SIZE),
+    u16("pages_in_file", COUNT), u16("reserved1", RESERVED), u16("reserved2", RESERVED), u16("min_alloc_kib", COUNT),
+    u16("max_alloc_kib", COUNT), u16("stack_selector", ID), u16("stack_pointer", VA), u16("first_relocation_selector", ID),
+    u16("initial_ip", VA), u16("code_selector", ID), u16("runtime_gdt_size", SIZE), u16("makepm_version"),
+    u32("next_header_offset", OFFSET), u32("codeview_offset", OFFSET), u16("last_selector", ID),
+    u16("physical_alloc_kib", COUNT), u16("allocation_increment_kib", COUNT), bytes("unknown42", 6), u16("options", FLAGS),
+    u16("transition_stack_selector", ID), u16("flags", FLAGS), u16("program_paragraphs", COUNT), u16("gdt_image_size", SIZE),
+    u16("first_selector", ID), u8("default_memory_strategy", ID), u8("unknown61"), u16("transfer_buffer_size", SIZE),
+    bytes("unknown64", 48), chars("exp_path", 64, STRING)]);
+var sxexm_dos16m_bw_header = sxLayout(0x602B0044, "dos16m_bw_header", LE, sxexm_dos16m_bw_header_fields);
+var sxexm_dos16m_mf_header_fields = layout([chars("signature", 2, SIGNATURE), u32("block_size", SIZE)]);
+var sxexm_dos16m_mf_header = sxLayout(0x602B0045, "dos16m_mf_header", LE, sxexm_dos16m_mf_header_fields);
+function sxexm_dos(c) {
+    var h = [];
+    if (!sxexm_read(c, 0, h, 64) || !sxexm_add(c, sxexm_dos_extender_mz, 0)) {
+        return false;
+    }
+    var pages = sxexm16(h, 4, false);
+    if (!pages) {
+        return true;
+    }
+    var p = sxU64(pages - 1) * 512 + sxexm16(h, 2, false);
+    for (var i = 0; i < 20000 && c.count < 20000; i++) {
+        if (!sxexm_read(c, p, h, 2)) {
+            break;
+        }
+        if (!sxMemcmp(h, "BW", 2)) {
+            var next = [0];
+            if (!sxexm_span(c, p, 176) || !sxexm_word(c, p + 28, 4, false, next)) {
+                break;
+            }
+            if (!sxexm_add(c, sxexm_dos16m_bw_header, p)) {
+                return false;
+            }
+            if (next[0] <= p) {
+                break;
+            }
+            p = next[0];
+        } else if (!sxMemcmp(h, "MF", 2)) {
+            var z = [0];
+            if (!sxexm_word(c, p + 2, 4, false, z) || z[0] < 6 || !sxexm_span(c, p, z[0])) {
+                break;
+            }
+            if (!sxexm_add(c, sxexm_dos16m_mf_header, p)) {
+                return false;
+            }
+            p += z[0];
+        } else if (!sxMemcmp(h, "MZ", 2)) {
+            if (sxexm_span(c, p, 64) && !sxexm_add(c, sxexm_dos_extender_mz, p)) {
+                return false;
+            }
+            break;
+        } else {
+            break;
+        }
+    }
+    return true;
+}
+function sx_dos16m_build(c) {
+    var ok = false;
+    ok = sxexm_dos(c);
+    return ok && sxexm_finish(c);
+}

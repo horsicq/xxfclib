@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/alz/xx_alz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_alz_header_fields = layout([chars("signature", 4, SIGNATURE), u32("reserved", RESERVED)]);
+var sx_p_alz_header = sxLayout(0x6007000B, "alz_header", LE, sx_p_alz_header_fields);
+var sx_p_alz_sizes1_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    u8("packed_size", SIZE), u8("original_size", SIZE)]);
+var sx_p_alz_sizes1 = sxLayout(0x6007000D, "alz_sizes1", LE, sx_p_alz_sizes1_fields);
+var sx_p_alz_sizes2_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    u16("packed_size", SIZE), u16("original_size", SIZE)]);
+var sx_p_alz_sizes2 = sxLayout(0x6007000E, "alz_sizes2", LE, sx_p_alz_sizes2_fields);
+var sx_p_alz_sizes3_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    field("packed_size", "uint24", 3, SIZE), field("original_size", "uint24", 3, SIZE)]);
+var sx_p_alz_sizes3 = sxLayout(0x6007000F, "alz_sizes3", LE, sx_p_alz_sizes3_fields);
+var sx_p_alz_sizes4_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    u32("packed_size", SIZE), u32("original_size", SIZE)]);
+var sx_p_alz_sizes4 = sxLayout(0x60070010, "alz_sizes4", LE, sx_p_alz_sizes4_fields);
+var sx_p_alz_sizes5_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    field("packed_size", "uint40", 5, SIZE), field("original_size", "uint40", 5, SIZE)]);
+var sx_p_alz_sizes5 = sxLayout(0x60070011, "alz_sizes5", LE, sx_p_alz_sizes5_fields);
+var sx_p_alz_sizes6_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    field("packed_size", "uint48", 6, SIZE), field("original_size", "uint48", 6, SIZE)]);
+var sx_p_alz_sizes6 = sxLayout(0x60070012, "alz_sizes6", LE, sx_p_alz_sizes6_fields);
+var sx_p_alz_sizes7_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    field("packed_size", "uint56", 7, SIZE), field("original_size", "uint56", 7, SIZE)]);
+var sx_p_alz_sizes7 = sxLayout(0x60070013, "alz_sizes7", LE, sx_p_alz_sizes7_fields);
+var sx_p_alz_sizes8_fields = layout([u8("method", ID), u8("reserved", RESERVED), u32("crc32", CHECKSUM),
+    u64("packed_size", SIZE), u64("original_size", SIZE)]);
+var sx_p_alz_sizes8 = sxLayout(0x60070014, "alz_sizes8", LE, sx_p_alz_sizes8_fields);
+function sx_p_alz(c) {
+    if (!sx_p_sig(c, 0, "ALZ\x01", 4) || !sx_add(c, sx_p_alz_header, 0, 8)) {
+        return false;
+    }
+    var off = 8;
+    while (off < c.size) {
+        var magic;
+        if ((magic = sx_u32(c, off, false)) === null) {
+            return false;
+        }
+        if (magic === 0x015A4C43) {
+            if (!sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), 12)) {
+                return false;
+            }
+            off += 12;
+            continue;
+        }
+        if (magic === 0x025A4C43) {
+            off += 4;
+            continue;
+        }
+        if (magic !== 0x015A4C42) {
+            return false;
+        }
+        var name;
+        var descriptor = [0];
+        var packed = [0];
+        if ((name = sx_u16(c, off + 4, false)) === null || !sx_p_byte(c, off + 11, descriptor) || !sx_add(c, sx_p_alz_file, off, 13)) {
+            return false;
+        }
+        off += 13;
+        var width = descriptor[0] >> 4;
+        if (width > 8) {
+            return false;
+        }
+        if (width) {
+            var rows = [sx_p_alz_sizes1, sx_p_alz_sizes2, sx_p_alz_sizes3, sx_p_alz_sizes4, sx_p_alz_sizes5, sx_p_alz_sizes6, sx_p_alz_sizes7, sx_p_alz_sizes8];
+            if (!sx_add(c, rows[(width - 1) >>> 0], off, (6 + ((2 * width) >>> 0)) >>> 0) || !sx_p_uint(c, off + 6, width, packed)) {
+                return false;
+            }
+            off += (6 + ((2 * width) >>> 0)) >>> 0;
+        }
+        if (!sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), name)) {
+            return false;
+        }
+        off += name;
+        if (!sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), packed[0])) {
+            return false;
+        }
+        off += (packed[0] >= SX_I64_MAX ? packed[0] - SX_U64_MAX : packed[0]);
+    }
+    return true;
+}
+function sx_alz_build(c) {
+    return sx_p_alz(c);
+}

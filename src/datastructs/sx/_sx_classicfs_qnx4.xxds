@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/qnx4/xx_qnx4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_qnx4_extent_block_header_fields = layout([u32("next_block"), u32("previous_block"), u8("extent_count", COUNT),
+    field("reserved", "byte[3]", 3, RESERVED), u32("block_count", COUNT)]);
+var sxcf_qnx4_extent_block_header = sxLayout(0x603D002F, "qnx4_extent_block_header", LE, sxcf_qnx4_extent_block_header_fields);
+var sxcf_qnx4_extent_fields = layout([u32("first_block"), u32("block_count", COUNT)]);
+var sxcf_qnx4_extent = sxLayout(0x603D0030, "qnx4_extent", LE, sxcf_qnx4_extent_fields);
+var sxcf_qnx4_extent_block_tail_fields = layout([chars("signature", 8, SIGNATURE), u32("first_block"), u32("block_count", COUNT)]);
+var sxcf_qnx4_extent_block_tail = sxLayout(0x603D0031, "qnx4_extent_block_tail", LE, sxcf_qnx4_extent_block_tail_fields);
+function sxcf_qnx_extent(c, block, count, left, dir, blocks, depth, visits) {
+    if (!left[0]) {
+        return true;
+    }
+    if (!block || (block - 1) >>> 0 >= blocks || count > sxU64(blocks - ((block - 1) >>> 0))) {
+        return false;
+    }
+    var p = ((block - 1) >>> 0) * 512;
+    var n = count * 512;
+    if (n > left[0]) {
+        n = left[0];
+    }
+    if (dir) {
+        for (var q = 0; q + 64 <= n && visits[0] < 4096 && c.count < 24000; q += 64) {
+            var b = [];
+            if (!sxcf_read(c, p + q, b, 64)) {
+                return false;
+            }
+            if (!(b[63] & 9)) {
+                continue;
+            }
+            if (b[0] === 46 /*.*/ && !b[1] || b[0] === 46 /*.*/ && b[1] === 46 /*.*/ && !b[2]) {
+                continue;
+            }
+            if (b[63] & 8) {
+                if (!sxcf_put(c, sxcf_qnx4_link, p + q, 1)) {
+                    return false;
+                }
+                var nr = sxcf32(b, 48, 0);
+                if (nr && nr <= blocks && b[52] < 8 && !sxcf_qnx_inode(c, ((nr - 1) >>> 0) * 512 + b[52] * 64, blocks, (depth + 1) >>> 0, visits)) {
+                    return false;
+                }
+            } else if (!sxcf_qnx_inode(c, p + q, blocks, (depth + 1) >>> 0, visits)) {
+                return false;
+            }
+        }
+    }
+    left[0] = sxU64(left[0] - n);
+    return true;
+}
+function sxcf_qnx_inode(c, at, blocks, depth, visits) {
+    var b = [];
+    if (depth > 24 || ++visits[0] > 4096 || c.count >= 24000) {
+        return true;
+    }
+    if (!sxcf_read(c, at, b, 64)) {
+        return false;
+    }
+    if (!(b[63] & 1)) {
+        return true;
+    }
+    if (!sxcf_put(c, sxcf_qnx4_inode, at, 1)) {
+        return false;
+    }
+    var left = [sxcf32(b, 16, 0)];
+    var dir = (sxcf16(b, 50, 0) & 0xF000) === 0x4000;
+    var next = sxcf32(b, 28, 0);
+    if (!sxcf_qnx_extent(c, sxcf32(b, 20, 0), sxcf32(b, 24, 0), left, dir, blocks, depth, visits)) {
+        return true;
+    }
+    for (var k = 0; left[0] && next && k < 4096 && c.count < 24000; k++) {
+        if (next > blocks || !sxcf_read(c, ((next - 1) >>> 0) * 512, b, 512) || b[8] > 60) {
+            break;
+        }
+        var p = ((next - 1) >>> 0) * 512;
+        var following = sxcf32(b, 0, 0);
+        if (!sxcf_put(c, sxcf_qnx4_extent_block_header, p, 1) || !sxcf_put(c, sxcf_qnx4_extent, p + 16, 60) || !sxcf_put(c, sxcf_qnx4_extent_block_tail, p + 496, 1)) {
+            return false;
+        }
+        for (var i = 0; i < b[8] && left[0]; i++) {
+            if (!sxcf_qnx_extent(c, sxcf32(b, 16 + ((8 * i) >>> 0), 0), sxcf32(b, 20 + ((8 * i) >>> 0), 0), left, dir, blocks, depth, visits)) {
+                return true;
+            }
+        }
+        if (following === next) {
+            break;
+        }
+        next = following;
+    }
+    return true;
+}
+function sxcf_qnx(c) {
+    var b = [];
+    if (!sxcf_read(c, 512, b, 256) || b[0] !== 47 || b[1] || (sxcf16(b, 50, 0) & 0xF000) !== 0x4000) {
+        return false;
+    }
+    if (!sxcf_put(c, sxcf_qnx4_inode, 512, 4)) {
+        return false;
+    }
+    var visits = [0];
+    return sxcf_qnx_inode(c, 512, Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512), 0, visits);
+}
+function sx_qnx4_build(c) {
+    return sxcf_qnx(c);
+}

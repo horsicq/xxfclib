@@ -1,0 +1,1755 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_nextmedia.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_rgb_palette_entry_fields = layout([u8("red"), u8("green"), u8("blue")]);
+var sxnx_rgb_palette_entry = sxLayout(0x60320033, "rgb_palette_entry", LE, sxnx_rgb_palette_entry_fields);
+var sxnx_mpeg_packet_fields = layout([blob("prefix", 3, SIGNATURE), u8("stream_id", ID), u16("packet_bytes", SIZE)]);
+var sxnx_mpeg_packet = sxLayout(0x603200F1, "mpeg_packet", BE, sxnx_mpeg_packet_fields);
+var sxnx_mpeg_pes2_fields = layout([u8("control", FLAGS), u8("timestamp_flags", FLAGS), u8("header_bytes", SIZE)]);
+var sxnx_mpeg_pes2 = sxLayout(0x603200F2, "mpeg_pes2", LE, sxnx_mpeg_pes2_fields);
+var sxnx_mpeg_timestamp_fields = layout([u8("tag_high_and_marker", FLAGS), u16("middle_and_marker", FLAGS),
+    u16("low_and_marker", FLAGS)]);
+var sxnx_mpeg_timestamp = sxLayout(0x603200F3, "mpeg_timestamp", BE, sxnx_mpeg_timestamp_fields);
+var sxnx_mpeg_pes1_buffer_fields = layout([u16("std_buffer_scale_size", FLAGS)]);
+var sxnx_mpeg_pes1_buffer = sxLayout(0x603200F4, "mpeg_pes1_buffer", BE, sxnx_mpeg_pes1_buffer_fields);
+var sxnx_mpeg_pes1_no_timestamp_fields = layout([u8("marker", SIGNATURE)]);
+var sxnx_mpeg_pes1_no_timestamp = sxLayout(0x603200F5, "mpeg_pes1_no_timestamp", LE, sxnx_mpeg_pes1_no_timestamp_fields);
+var sxnx_mpeg_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxnx_mpeg_crc = sxLayout(0x603200FB, "mpeg_crc", BE, sxnx_mpeg_crc_fields);
+function sxnx_need(v, at, n, end) {
+    return end <= v.n && at <= end && n <= sxU64(end - at);
+}
+function sxnx_u16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxnx_u32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxnx_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (++v.work > 4000000 || !sxnx_need(v, at, n, end)) {
+        return false;
+    }
+    return v.c.count >= 24000 || sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxnx_table(v, l, at, count, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (count > 4000000 || !sxnx_need(v, at, count * z, end)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++, at += z) {
+        if (!sxnx_row(v, l, at, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxnx_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    return a.total_size < b.total_size ? -1 : a.total_size > b.total_size ? 1 : 0;
+}
+function sxnx_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxnx_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (at < end) {
+            continue;
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = at + z;
+    }
+    c.count = keep;
+    n = keep;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        at = c.items[i].offset - c.f.base_address;
+        z = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxnx_order, true);
+    return !c.failed;
+}
+function sxnx_varuint(v, at, end, out, width) {
+    var start = at[0];
+    var u = 0;
+    for (var i = 0; i < 5; i++) {
+        if (!sxnx_need(v, at[0], 1, end)) {
+            return false;
+        }
+        var b = v.p[at[0]++];
+        if (!i && b === 128 || u > 0x1FFFFFF) {
+            return false;
+        }
+        u = ((u << 7) >>> 0 | b & 127) >>> 0;
+        if (!(b & 128)) {
+            out[0] = u;
+            width[0] = sxU64(at[0] - start) >>> 0;
+            return true;
+        }
+    }
+    return false;
+}
+function sxnx_pes(v, p, end) {
+    if (!sxnx_need(v, p, 1, end)) {
+        return false;
+    }
+    if ((v.p[p] & 0xC0) === 0x80) {
+        if (!sxnx_row(v, sxnx_mpeg_pes2, p, end)) {
+            return false;
+        }
+        var flags = v.p[p + 1] >> 6;
+        var z = v.p[p + 2];
+        p += 3;
+        if (!sxnx_need(v, p, z, end)) {
+            return false;
+        }
+        if (flags >= 2) {
+            if (!sxnx_row(v, sxnx_mpeg_timestamp, p, p + z)) {
+                return false;
+            }
+            if (flags === 3 && !sxnx_row(v, sxnx_mpeg_timestamp, p + 5, p + z)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    var work = 0;
+    while (p < end && v.p[p] === 255) {
+        if (++work > 16) {
+            return false;
+        }
+        p++;
+    }
+    if (!sxnx_need(v, p, 1, end)) {
+        return false;
+    }
+    if ((v.p[p] & 0xC0) === 0x40) {
+        if (!sxnx_row(v, sxnx_mpeg_pes1_buffer, p, end)) {
+            return false;
+        }
+        p += 2;
+    }
+    if (!sxnx_need(v, p, 1, end)) {
+        return false;
+    }
+    if (v.p[p] === 15) {
+        return sxnx_row(v, sxnx_mpeg_pes1_no_timestamp, p, end);
+    }
+    var tag = v.p[p] >> 4;
+    if (tag === 2 || tag === 3) {
+        if (!sxnx_row(v, sxnx_mpeg_timestamp, p, end)) {
+            return false;
+        }
+        return tag !== 3 || sxnx_row(v, sxnx_mpeg_timestamp, p + 5, end);
+    }
+    return false;
+}
+function sx_nextmedia_supports(t) {
+    switch (t) {
+    case "EMF":
+    case "WMF":
+    case "GIMP_XCF":
+    case "PHOTOSHOP_ABR":
+    case "QT_QPICTURE":
+    case "BPG_IMAGE":
+    case "PAINTSHOP_PSP":
+    case "PHOTOSHOP_PAT":
+    case "AMIGA_DISKOBJECT":
+    case "WBMP_IMAGE":
+    case "PALM_BITMAP":
+    case "APPLE_PICT":
+    case "WORDPERFECT_WPG":
+    case "KHOROS_VIFF":
+    case "RISC_OS_SPRITE":
+    case "WINDOWS_ANI":
+    case "WINDOWS_THUMBNAIL_CACHE":
+    case "SONY_PAMF":
+    case "CRI_USM":
+    case "MPEG_TRANSPORT_STREAM":
+    case "MPEG_PROGRAM_STREAM":
+    case "REALMEDIA_RM":
+    case "INTERPLAY_MVE":
+    case "WESTWOOD_VQA":
+    case "MNG_ANIMATION":
+    case "SCUMMVM_DXA":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_nextmedia_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0 || c.size > 134217728) {
+        return false;
+    }
+    var view = { c: c, p: null, n: (c.size < 0 ? c.size + SX_U64_MAX : c.size), work: 0 };
+    var v = view;
+    v.p = sxAlloc(v.n);
+    if (v.p === null || !sx_read(c, 0, v.p, v.n)) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "EMF":
+        ok = sx_emf_build(v);
+        break;
+    case "WMF":
+        ok = sx_wmf_build(v);
+        break;
+    case "GIMP_XCF":
+        ok = sx_gimp_xcf_build(v);
+        break;
+    case "PHOTOSHOP_ABR":
+        ok = sx_photoshop_abr_build(v);
+        break;
+    case "QT_QPICTURE":
+        ok = sx_qt_qpicture_build(v);
+        break;
+    case "BPG_IMAGE":
+        ok = sx_bpg_image_build(v);
+        break;
+    case "PAINTSHOP_PSP":
+        ok = sx_paintshop_psp_build(v);
+        break;
+    case "PHOTOSHOP_PAT":
+        ok = sx_photoshop_pat_build(v);
+        break;
+    case "AMIGA_DISKOBJECT":
+        ok = sx_amiga_diskobject_build(v);
+        break;
+    case "WBMP_IMAGE":
+        ok = sx_wbmp_image_build(v);
+        break;
+    case "PALM_BITMAP":
+        ok = sx_palm_bitmap_build(v);
+        break;
+    case "APPLE_PICT":
+        ok = sx_apple_pict_build(v);
+        break;
+    case "WORDPERFECT_WPG":
+        ok = sx_wordperfect_wpg_build(v);
+        break;
+    case "KHOROS_VIFF":
+        ok = sx_khoros_viff_build(v);
+        break;
+    case "RISC_OS_SPRITE":
+        ok = sx_risc_os_sprite_build(v);
+        break;
+    case "WINDOWS_ANI":
+        ok = sx_windows_ani_build(v);
+        break;
+    case "WINDOWS_THUMBNAIL_CACHE":
+        ok = sx_windows_thumbnail_cache_build(v);
+        break;
+    case "SONY_PAMF":
+        ok = sx_sony_pamf_build(v);
+        break;
+    case "CRI_USM":
+        ok = sx_cri_usm_build(v);
+        break;
+    case "MPEG_TRANSPORT_STREAM":
+        ok = sx_mpeg_transport_stream_build(v);
+        break;
+    case "MPEG_PROGRAM_STREAM":
+        ok = sx_mpeg_program_stream_build(v);
+        break;
+    case "REALMEDIA_RM":
+        ok = sx_realmedia_rm_build(v);
+        break;
+    case "INTERPLAY_MVE":
+        ok = sx_interplay_mve_build(v);
+        break;
+    case "WESTWOOD_VQA":
+        ok = sx_westwood_vqa_build(v);
+        break;
+    case "MNG_ANIMATION":
+        ok = sx_mng_animation_build(v);
+        break;
+    case "SCUMMVM_DXA":
+        ok = sx_scummvm_dxa_build(v);
+        break;
+    default:
+        break;
+    }
+    return ok && sxnx_finish(c);
+}
+function sx_nextmedia_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60320001 || id >= 0x60330000) {
+        return true;
+    }
+    if (id === 1613889537 && r.name === "record_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "EMR_HEADER");
+        case 2:
+            return sxSetComment(r, "EMR_POLYBEZIER");
+        case 3:
+            return sxSetComment(r, "EMR_POLYGON");
+        case 4:
+            return sxSetComment(r, "EMR_POLYLINE");
+        case 5:
+            return sxSetComment(r, "EMR_POLYBEZIERTO");
+        case 6:
+            return sxSetComment(r, "EMR_POLYLINETO");
+        case 9:
+            return sxSetComment(r, "EMR_SETWINDOWEXTEX");
+        case 10:
+            return sxSetComment(r, "EMR_SETWINDOWORGEX");
+        case 11:
+            return sxSetComment(r, "EMR_SETVIEWPORTEXTEX");
+        case 12:
+            return sxSetComment(r, "EMR_SETVIEWPORTORGEX");
+        case 14:
+            return sxSetComment(r, "EMR_EOF");
+        case 15:
+            return sxSetComment(r, "EMR_SETPIXELV");
+        case 16:
+            return sxSetComment(r, "EMR_SETMAPPERFLAGS");
+        case 17:
+            return sxSetComment(r, "EMR_SETMAPMODE");
+        case 18:
+            return sxSetComment(r, "EMR_SETBKMODE");
+        case 19:
+            return sxSetComment(r, "EMR_SETPOLYFILLMODE");
+        case 20:
+            return sxSetComment(r, "EMR_SETROP2");
+        case 21:
+            return sxSetComment(r, "EMR_SETSTRETCHBLTMODE");
+        case 22:
+            return sxSetComment(r, "EMR_SETTEXTALIGN");
+        case 24:
+            return sxSetComment(r, "EMR_SETTEXTCOLOR");
+        case 25:
+            return sxSetComment(r, "EMR_SETBKCOLOR");
+        case 27:
+            return sxSetComment(r, "EMR_MOVETOEX");
+        case 33:
+            return sxSetComment(r, "EMR_SAVEDC");
+        case 34:
+            return sxSetComment(r, "EMR_RESTOREDC");
+        case 37:
+            return sxSetComment(r, "EMR_SELECTOBJECT");
+        case 38:
+            return sxSetComment(r, "EMR_CREATEPEN");
+        case 39:
+            return sxSetComment(r, "EMR_CREATEBRUSHINDIRECT");
+        case 40:
+            return sxSetComment(r, "EMR_DELETEOBJECT");
+        case 42:
+            return sxSetComment(r, "EMR_ELLIPSE");
+        case 43:
+            return sxSetComment(r, "EMR_RECTANGLE");
+        case 54:
+            return sxSetComment(r, "EMR_LINETO");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889538 && r.name === "record_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "EMR_HEADER");
+        case 2:
+            return sxSetComment(r, "EMR_POLYBEZIER");
+        case 3:
+            return sxSetComment(r, "EMR_POLYGON");
+        case 4:
+            return sxSetComment(r, "EMR_POLYLINE");
+        case 5:
+            return sxSetComment(r, "EMR_POLYBEZIERTO");
+        case 6:
+            return sxSetComment(r, "EMR_POLYLINETO");
+        case 9:
+            return sxSetComment(r, "EMR_SETWINDOWEXTEX");
+        case 10:
+            return sxSetComment(r, "EMR_SETWINDOWORGEX");
+        case 11:
+            return sxSetComment(r, "EMR_SETVIEWPORTEXTEX");
+        case 12:
+            return sxSetComment(r, "EMR_SETVIEWPORTORGEX");
+        case 14:
+            return sxSetComment(r, "EMR_EOF");
+        case 15:
+            return sxSetComment(r, "EMR_SETPIXELV");
+        case 16:
+            return sxSetComment(r, "EMR_SETMAPPERFLAGS");
+        case 17:
+            return sxSetComment(r, "EMR_SETMAPMODE");
+        case 18:
+            return sxSetComment(r, "EMR_SETBKMODE");
+        case 19:
+            return sxSetComment(r, "EMR_SETPOLYFILLMODE");
+        case 20:
+            return sxSetComment(r, "EMR_SETROP2");
+        case 21:
+            return sxSetComment(r, "EMR_SETSTRETCHBLTMODE");
+        case 22:
+            return sxSetComment(r, "EMR_SETTEXTALIGN");
+        case 24:
+            return sxSetComment(r, "EMR_SETTEXTCOLOR");
+        case 25:
+            return sxSetComment(r, "EMR_SETBKCOLOR");
+        case 27:
+            return sxSetComment(r, "EMR_MOVETOEX");
+        case 33:
+            return sxSetComment(r, "EMR_SAVEDC");
+        case 34:
+            return sxSetComment(r, "EMR_RESTOREDC");
+        case 37:
+            return sxSetComment(r, "EMR_SELECTOBJECT");
+        case 38:
+            return sxSetComment(r, "EMR_CREATEPEN");
+        case 39:
+            return sxSetComment(r, "EMR_CREATEBRUSHINDIRECT");
+        case 40:
+            return sxSetComment(r, "EMR_DELETEOBJECT");
+        case 42:
+            return sxSetComment(r, "EMR_ELLIPSE");
+        case 43:
+            return sxSetComment(r, "EMR_RECTANGLE");
+        case 54:
+            return sxSetComment(r, "EMR_LINETO");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889552 && r.name === "function" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "META_EOF");
+        case 30:
+            return sxSetComment(r, "META_SAVEDC");
+        case 295:
+            return sxSetComment(r, "META_RESTOREDC");
+        case 301:
+            return sxSetComment(r, "META_SELECTOBJECT");
+        case 496:
+            return sxSetComment(r, "META_DELETEOBJECT");
+        case 513:
+            return sxSetComment(r, "META_SETBKCOLOR");
+        case 521:
+            return sxSetComment(r, "META_SETTEXTCOLOR");
+        case 531:
+            return sxSetComment(r, "META_LINETO");
+        case 532:
+            return sxSetComment(r, "META_MOVETO");
+        case 762:
+            return sxSetComment(r, "META_CREATEPENINDIRECT");
+        case 764:
+            return sxSetComment(r, "META_CREATEBRUSHINDIRECT");
+        case 804:
+            return sxSetComment(r, "META_POLYGON");
+        case 805:
+            return sxSetComment(r, "META_POLYLINE");
+        case 1048:
+            return sxSetComment(r, "META_ELLIPSE");
+        case 1051:
+            return sxSetComment(r, "META_RECTANGLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889551 && r.name === "file_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "MEMORY_METAFILE");
+        case 2:
+            return sxSetComment(r, "DISK_METAFILE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889548 && r.name === "style" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "BS_SOLID");
+        case 1:
+            return sxSetComment(r, "BS_NULL");
+        case 2:
+            return sxSetComment(r, "BS_HATCHED");
+        case 3:
+            return sxSetComment(r, "BS_PATTERN");
+        case 5:
+            return sxSetComment(r, "BS_DIBPATTERN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889562 && r.name === "style" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "BS_SOLID");
+        case 1:
+            return sxSetComment(r, "BS_NULL");
+        case 2:
+            return sxSetComment(r, "BS_HATCHED");
+        case 3:
+            return sxSetComment(r, "BS_PATTERN");
+        case 5:
+            return sxSetComment(r, "BS_DIBPATTERN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889548 && r.name === "hatch" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "HS_HORIZONTAL");
+        case 1:
+            return sxSetComment(r, "HS_VERTICAL");
+        case 2:
+            return sxSetComment(r, "HS_FDIAGONAL");
+        case 3:
+            return sxSetComment(r, "HS_BDIAGONAL");
+        case 4:
+            return sxSetComment(r, "HS_CROSS");
+        case 5:
+            return sxSetComment(r, "HS_DIAGCROSS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889562 && r.name === "hatch" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "HS_HORIZONTAL");
+        case 1:
+            return sxSetComment(r, "HS_VERTICAL");
+        case 2:
+            return sxSetComment(r, "HS_FDIAGONAL");
+        case 3:
+            return sxSetComment(r, "HS_BDIAGONAL");
+        case 4:
+            return sxSetComment(r, "HS_CROSS");
+        case 5:
+            return sxSetComment(r, "HS_DIAGCROSS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889563 && r.name === "type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "WBMP_TYPE_0_MONOCHROME");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889568 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "SCANLINE");
+        case 1:
+            return sxSetComment(r, "RLE");
+        case 2:
+            return sxSetComment(r, "PACKBITS");
+        case 255:
+            return sxSetComment(r, "UNCOMPRESSED");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889572 && r.name === "machine_dependency" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 2:
+            return sxSetComment(r, "IEEE_BIG_ENDIAN");
+        case 4:
+            return sxSetComment(r, "DEC_VAX");
+        case 8:
+            return sxSetComment(r, "IEEE_LITTLE_ENDIAN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889573 && r.name === "machine_dependency" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 2:
+            return sxSetComment(r, "IEEE_BIG_ENDIAN");
+        case 4:
+            return sxSetComment(r, "DEC_VAX");
+        case 8:
+            return sxSetComment(r, "IEEE_LITTLE_ENDIAN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889574 && r.name === "machine_dependency" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 2:
+            return sxSetComment(r, "IEEE_BIG_ENDIAN");
+        case 4:
+            return sxSetComment(r, "DEC_VAX");
+        case 8:
+            return sxSetComment(r, "IEEE_LITTLE_ENDIAN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889572 && r.name === "storage_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "VFF_TYP_1_BYTE");
+        case 2:
+            return sxSetComment(r, "VFF_TYP_2_BYTE");
+        case 4:
+            return sxSetComment(r, "VFF_TYP_4_BYTE");
+        case 5:
+            return sxSetComment(r, "VFF_TYP_FLOAT");
+        case 9:
+            return sxSetComment(r, "VFF_TYP_DOUBLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889573 && r.name === "storage_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "VFF_TYP_1_BYTE");
+        case 2:
+            return sxSetComment(r, "VFF_TYP_2_BYTE");
+        case 4:
+            return sxSetComment(r, "VFF_TYP_4_BYTE");
+        case 5:
+            return sxSetComment(r, "VFF_TYP_FLOAT");
+        case 9:
+            return sxSetComment(r, "VFF_TYP_DOUBLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889574 && r.name === "storage_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "VFF_TYP_1_BYTE");
+        case 2:
+            return sxSetComment(r, "VFF_TYP_2_BYTE");
+        case 4:
+            return sxSetComment(r, "VFF_TYP_4_BYTE");
+        case 5:
+            return sxSetComment(r, "VFF_TYP_FLOAT");
+        case 9:
+            return sxSetComment(r, "VFF_TYP_DOUBLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889576 && r.name === "brush_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "COMPUTED_BRUSH");
+        case 2:
+            return sxSetComment(r, "SAMPLED_BRUSH");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889579 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "STORED");
+        case 1:
+            return sxSetComment(r, "PACKBITS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889599 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "STORED");
+        case 1:
+            return sxSetComment(r, "PACKBITS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889582 && r.name === "record_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 11:
+            return sxSetComment(r, "BITMAP_TYPE_1");
+        case 14:
+            return sxSetComment(r, "COLORMAP");
+        case 15:
+            return sxSetComment(r, "START_WPG");
+        case 16:
+            return sxSetComment(r, "END_WPG");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889583 && r.name === "record_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 11:
+            return sxSetComment(r, "BITMAP_TYPE_1");
+        case 14:
+            return sxSetComment(r, "COLORMAP");
+        case 15:
+            return sxSetComment(r, "START_WPG");
+        case 16:
+            return sxSetComment(r, "END_WPG");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889584 && r.name === "record_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 11:
+            return sxSetComment(r, "BITMAP_TYPE_1");
+        case 14:
+            return sxSetComment(r, "COLORMAP");
+        case 15:
+            return sxSetComment(r, "START_WPG");
+        case 16:
+            return sxSetComment(r, "END_WPG");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889590 && r.name === "block_id" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PSP_IMAGE_BLOCK");
+        case 1:
+            return sxSetComment(r, "PSP_CREATOR_BLOCK");
+        case 2:
+            return sxSetComment(r, "PSP_COLOR_BLOCK");
+        case 3:
+            return sxSetComment(r, "PSP_LAYER_START_BLOCK");
+        case 4:
+            return sxSetComment(r, "PSP_LAYER_BLOCK");
+        case 5:
+            return sxSetComment(r, "PSP_CHANNEL_BLOCK");
+        case 6:
+            return sxSetComment(r, "PSP_SELECTION_BLOCK");
+        case 7:
+            return sxSetComment(r, "PSP_ALPHA_BANK_BLOCK");
+        case 8:
+            return sxSetComment(r, "PSP_ALPHA_CHANNEL_BLOCK");
+        case 9:
+            return sxSetComment(r, "PSP_COMPOSITE_IMAGE_BLOCK");
+        case 10:
+            return sxSetComment(r, "PSP_EXTENDED_DATA_BLOCK");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889591 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PSP_COMP_NONE");
+        case 1:
+            return sxSetComment(r, "PSP_COMP_RLE");
+        case 2:
+            return sxSetComment(r, "PSP_COMP_LZ77");
+        case 3:
+            return sxSetComment(r, "PSP_COMP_JPEG");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889591 && r.name === "resolution_unit" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "UNDEFINED");
+        case 1:
+            return sxSetComment(r, "INCHES");
+        case 2:
+            return sxSetComment(r, "CENTIMETERS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889592 && r.name === "layer_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "NORMAL_RASTER");
+        case 1:
+            return sxSetComment(r, "FLOATING_SELECTION");
+        case 2:
+            return sxSetComment(r, "VECTOR");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889595 && r.name === "image_mode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "GRAYSCALE");
+        case 2:
+            return sxSetComment(r, "INDEXED");
+        case 3:
+            return sxSetComment(r, "RGB");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889603 && r.name === "begin_opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 30:
+            return sxSetComment(r, "PdcBegin");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889604 && r.name === "opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PdcNOP");
+        case 1:
+            return sxSetComment(r, "PdcDrawPoint");
+        case 4:
+            return sxSetComment(r, "PdcDrawLine");
+        case 5:
+            return sxSetComment(r, "PdcDrawRect");
+        case 6:
+            return sxSetComment(r, "PdcDrawRoundRect");
+        case 7:
+            return sxSetComment(r, "PdcDrawEllipse");
+        case 8:
+            return sxSetComment(r, "PdcDrawArc");
+        case 9:
+            return sxSetComment(r, "PdcDrawPie");
+        case 10:
+            return sxSetComment(r, "PdcDrawChord");
+        case 12:
+            return sxSetComment(r, "PdcDrawPolyline");
+        case 13:
+            return sxSetComment(r, "PdcDrawPolygon");
+        case 31:
+            return sxSetComment(r, "PdcEnd");
+        case 32:
+            return sxSetComment(r, "PdcSave");
+        case 33:
+            return sxSetComment(r, "PdcRestore");
+        case 41:
+            return sxSetComment(r, "PdcSetBkMode");
+        case 42:
+            return sxSetComment(r, "PdcSetROP");
+        case 63:
+            return sxSetComment(r, "PdcSetRenderHint");
+        case 64:
+            return sxSetComment(r, "PdcSetCompositionMode");
+        case 65:
+            return sxSetComment(r, "PdcSetClipEnabled");
+        case 66:
+            return sxSetComment(r, "PdcSetOpacity");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889605 && r.name === "opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PdcNOP");
+        case 1:
+            return sxSetComment(r, "PdcDrawPoint");
+        case 4:
+            return sxSetComment(r, "PdcDrawLine");
+        case 5:
+            return sxSetComment(r, "PdcDrawRect");
+        case 6:
+            return sxSetComment(r, "PdcDrawRoundRect");
+        case 7:
+            return sxSetComment(r, "PdcDrawEllipse");
+        case 8:
+            return sxSetComment(r, "PdcDrawArc");
+        case 9:
+            return sxSetComment(r, "PdcDrawPie");
+        case 10:
+            return sxSetComment(r, "PdcDrawChord");
+        case 12:
+            return sxSetComment(r, "PdcDrawPolyline");
+        case 13:
+            return sxSetComment(r, "PdcDrawPolygon");
+        case 31:
+            return sxSetComment(r, "PdcEnd");
+        case 32:
+            return sxSetComment(r, "PdcSave");
+        case 33:
+            return sxSetComment(r, "PdcRestore");
+        case 41:
+            return sxSetComment(r, "PdcSetBkMode");
+        case 42:
+            return sxSetComment(r, "PdcSetROP");
+        case 63:
+            return sxSetComment(r, "PdcSetRenderHint");
+        case 64:
+            return sxSetComment(r, "PdcSetCompositionMode");
+        case 65:
+            return sxSetComment(r, "PdcSetClipEnabled");
+        case 66:
+            return sxSetComment(r, "PdcSetOpacity");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889612 && r.name === "fill_rule" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "OddEvenFill");
+        case 1:
+            return sxSetComment(r, "WindingFill");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889616 && r.name === "enabled" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "FALSE");
+        case 1:
+            return sxSetComment(r, "TRUE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889618 && r.name === "object_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "WBDISK");
+        case 2:
+            return sxSetComment(r, "WBDRAWER");
+        case 3:
+            return sxSetComment(r, "WBTOOL");
+        case 4:
+            return sxSetComment(r, "WBPROJECT");
+        case 5:
+            return sxSetComment(r, "WBGARBAGE");
+        case 6:
+            return sxSetComment(r, "WBDEVICE");
+        case 7:
+            return sxSetComment(r, "WBKICK");
+        case 8:
+            return sxSetComment(r, "WBAPPICON");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889625 && r.name === "opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "Clip");
+        case 154:
+            return sxSetComment(r, "DirectBitsRect");
+        case 255:
+            return sxSetComment(r, "EndPic");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889626 && r.name === "opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "Clip");
+        case 154:
+            return sxSetComment(r, "DirectBitsRect");
+        case 255:
+            return sxSetComment(r, "EndPic");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889629 && r.name === "opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "Clip");
+        case 154:
+            return sxSetComment(r, "DirectBitsRect");
+        case 255:
+            return sxSetComment(r, "EndPic");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889626 && r.name === "pack_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 4:
+            return sxSetComment(r, "COMPONENT_PACKBITS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889626 && r.name === "transfer_mode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 64:
+            return sxSetComment(r, "ditherCopy");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889639 && r.name === "image_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "RGB");
+        case 1:
+            return sxSetComment(r, "GRAY");
+        case 2:
+            return sxSetComment(r, "INDEXED");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889652 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "STORED");
+        case 1:
+            return sxSetComment(r, "RLE");
+        case 2:
+            return sxSetComment(r, "ZLIB");
+        case 3:
+            return sxSetComment(r, "FRACTAL");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889640 && r.name === "property_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PROP_END");
+        case 1:
+            return sxSetComment(r, "PROP_COLORMAP");
+        case 6:
+            return sxSetComment(r, "PROP_OPACITY");
+        case 7:
+            return sxSetComment(r, "PROP_MODE");
+        case 8:
+            return sxSetComment(r, "PROP_VISIBLE");
+        case 9:
+            return sxSetComment(r, "PROP_LINKED");
+        case 10:
+            return sxSetComment(r, "PROP_LOCK_ALPHA");
+        case 11:
+            return sxSetComment(r, "PROP_APPLY_MASK");
+        case 12:
+            return sxSetComment(r, "PROP_EDIT_MASK");
+        case 13:
+            return sxSetComment(r, "PROP_SHOW_MASK");
+        case 14:
+            return sxSetComment(r, "PROP_SHOW_MASKED");
+        case 15:
+            return sxSetComment(r, "PROP_OFFSETS");
+        case 16:
+            return sxSetComment(r, "PROP_COLOR");
+        case 17:
+            return sxSetComment(r, "PROP_COMPRESSION");
+        case 18:
+            return sxSetComment(r, "PROP_GUIDES");
+        case 19:
+            return sxSetComment(r, "PROP_RESOLUTION");
+        case 20:
+            return sxSetComment(r, "PROP_TATTOO");
+        case 21:
+            return sxSetComment(r, "PROP_PARASITES");
+        case 22:
+            return sxSetComment(r, "PROP_UNIT");
+        case 27:
+            return sxSetComment(r, "PROP_SAMPLE_POINTS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889689 && r.name === "image_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "ICON");
+        case 2:
+            return sxSetComment(r, "CURSOR");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889696 && r.name === "coding_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 27:
+            return sxSetComment(r, "AVC");
+        case 2:
+            return sxSetComment(r, "MPEG2_VIDEO");
+        case 220:
+            return sxSetComment(r, "ATRAC3PLUS");
+        case 128:
+            return sxSetComment(r, "LPCM");
+        case 129:
+            return sxSetComment(r, "AC3");
+        case 221:
+            return sxSetComment(r, "USER_DATA");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889702 && r.name === "payload_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "STREAM");
+        case 1:
+            return sxSetComment(r, "HEADER");
+        case 2:
+            return sxSetComment(r, "SECTION_END");
+        case 3:
+            return sxSetComment(r, "METADATA");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889719 && r.name === "chunk_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "INIT_AUDIO");
+        case 1:
+            return sxSetComment(r, "AUDIO_ONLY");
+        case 2:
+            return sxSetComment(r, "INIT_VIDEO");
+        case 3:
+            return sxSetComment(r, "VIDEO");
+        case 4:
+            return sxSetComment(r, "SHUTDOWN");
+        case 5:
+            return sxSetComment(r, "END");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889720 && r.name === "opcode" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "END_OF_STREAM");
+        case 1:
+            return sxSetComment(r, "END_OF_CHUNK");
+        case 2:
+            return sxSetComment(r, "CREATE_TIMER");
+        case 3:
+            return sxSetComment(r, "INIT_AUDIO");
+        case 4:
+            return sxSetComment(r, "START_STOP_AUDIO");
+        case 5:
+            return sxSetComment(r, "INIT_VIDEO");
+        case 6:
+            return sxSetComment(r, "VIDEO_DATA_06");
+        case 7:
+            return sxSetComment(r, "SEND_BUFFER");
+        case 8:
+            return sxSetComment(r, "AUDIO_FRAME");
+        case 9:
+            return sxSetComment(r, "AUDIO_SILENCE");
+        case 10:
+            return sxSetComment(r, "SET_VIDEO_MODE");
+        case 12:
+            return sxSetComment(r, "SET_PALETTE");
+        case 15:
+            return sxSetComment(r, "SET_DECODING_MAP");
+        case 16:
+            return sxSetComment(r, "VIDEO_DATA_10");
+        case 17:
+            return sxSetComment(r, "VIDEO_DATA_11");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889739 && r.name === "color_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "GRAYSCALE");
+        case 2:
+            return sxSetComment(r, "TRUECOLOR");
+        case 3:
+            return sxSetComment(r, "INDEXED_COLOR");
+        case 4:
+            return sxSetComment(r, "GRAYSCALE_ALPHA");
+        case 6:
+            return sxSetComment(r, "TRUECOLOR_ALPHA");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889739 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "DEFLATE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889739 && r.name === "interlace" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "NONE");
+        case 1:
+            return sxSetComment(r, "ADAM7");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889746 && r.name === "rendering_intent" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PERCEPTUAL");
+        case 1:
+            return sxSetComment(r, "RELATIVE_COLORIMETRIC");
+        case 2:
+            return sxSetComment(r, "SATURATION");
+        case 3:
+            return sxSetComment(r, "ABSOLUTE_COLORIMETRIC");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889747 && r.name === "unit" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "UNSPECIFIED");
+        case 1:
+            return sxSetComment(r, "METERS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889756 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 2:
+            return sxSetComment(r, "ZLIB");
+        case 3:
+            return sxSetComment(r, "ZLIB_XOR_PREVIOUS");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889795 && r.name === "table_id" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PAT");
+        case 2:
+            return sxSetComment(r, "PMT");
+        case 66:
+            return sxSetComment(r, "SDT_ACTUAL");
+        case 70:
+            return sxSetComment(r, "SDT_OTHER");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889798 && r.name === "stream_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "MPEG1_VIDEO");
+        case 2:
+            return sxSetComment(r, "MPEG2_VIDEO");
+        case 3:
+            return sxSetComment(r, "MPEG1_AUDIO");
+        case 4:
+            return sxSetComment(r, "MPEG2_AUDIO");
+        case 6:
+            return sxSetComment(r, "PRIVATE_DATA");
+        case 15:
+            return sxSetComment(r, "AAC_ADTS");
+        case 16:
+            return sxSetComment(r, "MPEG4_VIDEO");
+        case 17:
+            return sxSetComment(r, "AAC_LATM");
+        case 27:
+            return sxSetComment(r, "H264_AVC");
+        case 36:
+            return sxSetComment(r, "H265_HEVC");
+        case 129:
+            return sxSetComment(r, "AC3");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889786 && r.name === "stream_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "MPEG1_VIDEO");
+        case 2:
+            return sxSetComment(r, "MPEG2_VIDEO");
+        case 3:
+            return sxSetComment(r, "MPEG1_AUDIO");
+        case 4:
+            return sxSetComment(r, "MPEG2_AUDIO");
+        case 6:
+            return sxSetComment(r, "PRIVATE_DATA");
+        case 15:
+            return sxSetComment(r, "AAC_ADTS");
+        case 16:
+            return sxSetComment(r, "MPEG4_VIDEO");
+        case 17:
+            return sxSetComment(r, "AAC_LATM");
+        case 27:
+            return sxSetComment(r, "H264_AVC");
+        case 36:
+            return sxSetComment(r, "H265_HEVC");
+        case 129:
+            return sxSetComment(r, "AC3");
+        default:
+            break;
+        }
+    }
+    if (id === 1613889537 && r.name === "frame_left") {
+        return sxSetComment(r, "Frame coordinate in 0.01 millimeter units");
+    }
+    if (id === 1613889537 && r.name === "frame_top") {
+        return sxSetComment(r, "Frame coordinate in 0.01 millimeter units");
+    }
+    if (id === 1613889537 && r.name === "frame_right") {
+        return sxSetComment(r, "Frame coordinate in 0.01 millimeter units");
+    }
+    if (id === 1613889537 && r.name === "frame_bottom") {
+        return sxSetComment(r, "Frame coordinate in 0.01 millimeter units");
+    }
+    if (id === 1613889537 && r.name === "device_width") {
+        return sxSetComment(r, "Reference device size in pixels");
+    }
+    if (id === 1613889537 && r.name === "device_height") {
+        return sxSetComment(r, "Reference device size in pixels");
+    }
+    if (id === 1613889544 && r.name === "color_ref") {
+        return sxSetComment(r, "COLORREF packed as 0x00BBGGRR");
+    }
+    if (id === 1613889547 && r.name === "color_ref") {
+        return sxSetComment(r, "COLORREF packed as 0x00BBGGRR");
+    }
+    if (id === 1613889548 && r.name === "color_ref") {
+        return sxSetComment(r, "COLORREF packed as 0x00BBGGRR");
+    }
+    if (id === 1613889551 && r.name === "header_words") {
+        return sxSetComment(r, "Count of 16-bit words; multiply by 2 for bytes");
+    }
+    if (id === 1613889551 && r.name === "file_words") {
+        return sxSetComment(r, "Count of 16-bit words; multiply by 2 for bytes");
+    }
+    if (id === 1613889551 && r.name === "maximum_record_words") {
+        return sxSetComment(r, "Count of 16-bit words; multiply by 2 for bytes");
+    }
+    if (id === 1613889552 && r.name === "record_words") {
+        return sxSetComment(r, "Count of 16-bit words; multiply by 2 for bytes");
+    }
+    if (id === 1613889560 && r.name === "color_ref") {
+        return sxSetComment(r, "COLORREF packed as 0x00BBGGRR");
+    }
+    if (id === 1613889561 && r.name === "color_ref") {
+        return sxSetComment(r, "COLORREF packed as 0x00BBGGRR");
+    }
+    if (id === 1613889562 && r.name === "color_ref") {
+        return sxSetComment(r, "COLORREF packed as 0x00BBGGRR");
+    }
+    if (id === 1613889568 && r.name === "next_bitmap_words") {
+        return sxSetComment(r, "Bitmap-relative offset in 32-bit words; multiply by 4 for bytes");
+    }
+    if (id === 1613889574 && r.name === "x_bits_per_pixel_vax") {
+        return sxSetComment(r, "Original DEC VAX floating-point bytes; not IEEE decoded");
+    }
+    if (id === 1613889574 && r.name === "y_bits_per_pixel_vax") {
+        return sxSetComment(r, "Original DEC VAX floating-point bytes; not IEEE decoded");
+    }
+    if (id === 1613889618 && r.name === "next_gadget") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "gadget_render") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "select_render") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "gadget_text") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "special_info") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "user_data") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "default_tool") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "tool_types") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "drawer_data") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889618 && r.name === "tool_window") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889619 && r.name === "first_gadget") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889619 && r.name === "check_mark") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889619 && r.name === "title") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889619 && r.name === "screen") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889619 && r.name === "bitmap") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889620 && r.name === "image_data") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889620 && r.name === "next_image") {
+        return sxSetComment(r, "Serialized pointer or presence marker; not a file offset");
+    }
+    if (id === 1613889624 && r.name === "horizontal_resolution_fixed") {
+        return sxSetComment(r, "Unsigned 16.16 fixed-point value");
+    }
+    if (id === 1613889624 && r.name === "vertical_resolution_fixed") {
+        return sxSetComment(r, "Unsigned 16.16 fixed-point value");
+    }
+    if (id === 1613889626 && r.name === "horizontal_resolution_fixed") {
+        return sxSetComment(r, "Unsigned 16.16 fixed-point value");
+    }
+    if (id === 1613889626 && r.name === "vertical_resolution_fixed") {
+        return sxSetComment(r, "Unsigned 16.16 fixed-point value");
+    }
+    if (id === 1613889630 && r.name === "first_sprite_offset") {
+        return sxSetComment(r, "Byte offset relative to the omitted area-size word, 4 bytes before the file");
+    }
+    if (id === 1613889630 && r.name === "free_offset") {
+        return sxSetComment(r, "Byte offset relative to the omitted area-size word, 4 bytes before the file");
+    }
+    if (id === 1613889631 && r.name === "next_sprite_offset") {
+        return sxSetComment(r, "Byte offset relative to the current sprite header");
+    }
+    if (id === 1613889631 && r.name === "image_offset") {
+        return sxSetComment(r, "Byte offset relative to the current sprite header");
+    }
+    if (id === 1613889631 && r.name === "mask_offset") {
+        return sxSetComment(r, "Byte offset relative to the current sprite header");
+    }
+    if (id === 1613889686 && r.name === "display_rate_jiffies") {
+        return sxSetComment(r, "Duration in 1/60-second jiffies");
+    }
+    if (id === 1613889687 && r.name === "duration_jiffies") {
+        return sxSetComment(r, "Duration in 1/60-second jiffies");
+    }
+    if (id === 1613889693 && r.name === "start_pts_high") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889693 && r.name === "start_pts_low") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889693 && r.name === "end_pts_high") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889693 && r.name === "end_pts_low") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889694 && r.name === "start_pts_high") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889694 && r.name === "start_pts_low") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889694 && r.name === "end_pts_high") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889694 && r.name === "end_pts_low") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889697 && r.name === "width_16pixels") {
+        return sxSetComment(r, "Encoded dimension in 16-pixel units");
+    }
+    if (id === 1613889697 && r.name === "height_16pixels") {
+        return sxSetComment(r, "Encoded dimension in 16-pixel units");
+    }
+    if (id === 1613889698 && r.name === "width_16pixels") {
+        return sxSetComment(r, "Encoded dimension in 16-pixel units");
+    }
+    if (id === 1613889698 && r.name === "height_16pixels") {
+        return sxSetComment(r, "Encoded dimension in 16-pixel units");
+    }
+    if (id === 1613889701 && r.name === "pts_high") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889701 && r.name === "pts_low") {
+        return sxSetComment(r, "Split 90 kHz presentation timestamp; combine high and low words");
+    }
+    if (id === 1613889703 && r.name === "rows_offset") {
+        return sxSetComment(r, "Byte offset from the UTF table base plus 8");
+    }
+    if (id === 1613889703 && r.name === "strings_offset") {
+        return sxSetComment(r, "Byte offset from the UTF table base plus 8");
+    }
+    if (id === 1613889703 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset from the UTF table base plus 8");
+    }
+    if (id === 1613889703 && r.name === "table_name_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF string pool");
+    }
+    if (id === 1613889704 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF string pool");
+    }
+    if (id === 1613889715 && r.name === "string_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF string pool");
+    }
+    if (id === 1613889716 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the UTF data pool");
+    }
+    if (id === 1613889723 && r.name === "width_8pixels") {
+        return sxSetComment(r, "Encoded dimension in 8-pixel units");
+    }
+    if (id === 1613889723 && r.name === "height_8pixels") {
+        return sxSetComment(r, "Encoded dimension in 8-pixel units");
+    }
+    if (id === 1613889724 && r.name === "width_8pixels") {
+        return sxSetComment(r, "Encoded dimension in 8-pixel units");
+    }
+    if (id === 1613889724 && r.name === "height_8pixels") {
+        return sxSetComment(r, "Encoded dimension in 8-pixel units");
+    }
+    if (id === 1613889725 && r.name === "width_8pixels") {
+        return sxSetComment(r, "Encoded dimension in 8-pixel units");
+    }
+    if (id === 1613889725 && r.name === "height_8pixels") {
+        return sxSetComment(r, "Encoded dimension in 8-pixel units");
+    }
+    if (id === 1613889744 && r.name === "gamma_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "white_x_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "white_y_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "red_x_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "red_y_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "green_x_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "green_y_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "blue_x_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889745 && r.name === "blue_y_100000") {
+        return sxSetComment(r, "Fixed-point value scaled by 100000");
+    }
+    if (id === 1613889759 && r.name === "duration_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889759 && r.name === "preroll_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889764 && r.name === "start_time_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889764 && r.name === "preroll_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889764 && r.name === "duration_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889768 && r.name === "frame_rate_fixed") {
+        return sxSetComment(r, "Unsigned 16.16 fixed-point value");
+    }
+    if (id === 1613889771 && r.name === "timestamp_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889773 && r.name === "timestamp_ms") {
+        return sxSetComment(r, "Stream-relative time in milliseconds");
+    }
+    if (id === 1613889775 && r.name === "scr_marker_bits") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889775 && r.name === "mux_rate_marker_bits") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889776 && r.name === "scr_base_extension_marker_bits") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889776 && r.name === "mux_rate_marker_bits") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889778 && r.name === "timestamp_flags") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889779 && r.name === "tag_high_and_marker") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889779 && r.name === "middle_and_marker") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889779 && r.name === "low_and_marker") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889781 && r.name === "marker") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889782 && r.name === "rate_bound_marker_bits") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889782 && r.name === "audio_bound_flags") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889782 && r.name === "video_bound_flags") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889784 && r.name === "reserved_marker") {
+        return sxSetComment(r, "Packed MPEG field; marker, reserved and data bits preserved");
+    }
+    if (id === 1613889788 && r.name === "flags_pid") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889788 && r.name === "scrambling_adaptation_counter") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889790 && r.name === "flags") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889791 && r.name === "base_low_reserved_extension_high") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889795 && r.name === "flags_section_length") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889795 && r.name === "version_current_next") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889796 && r.name === "reserved_pid") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889797 && r.name === "reserved_pcr_pid") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889797 && r.name === "reserved_program_info_length") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889798 && r.name === "reserved_elementary_pid") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889798 && r.name === "reserved_info_length") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889800 && r.name === "eit_flags") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889800 && r.name === "running_free_ca_descriptor_length") {
+        return sxSetComment(r, "Packed transport field; flags, reserved bits and encoded values preserved");
+    }
+    if (id === 1613889549 && r.name === "palette_offset") {
+        return sxSetComment(r, "Byte offset relative to this EMR_EOF record");
+    }
+    if (id === 1613889537 && r.name === "description_chars") {
+        return sxSetComment(r, "UTF-16 code units, including terminators");
+    }
+    if (id === 1613889550 && r.name === "units_per_inch") {
+        return sxSetComment(r, "Metafile coordinate units per inch");
+    }
+    if (id === 1613889610 && r.name === "start_angle") {
+        return sxSetComment(r, "Angle in 1/16 degree units");
+    }
+    if (id === 1613889610 && r.name === "span_angle") {
+        return sxSetComment(r, "Angle in 1/16 degree units");
+    }
+    if (id === 1613889609 && r.name === "x_rounding") {
+        return sxSetComment(r, "Horizontal rounding percentage");
+    }
+    if (id === 1613889609 && r.name === "y_rounding") {
+        return sxSetComment(r, "Vertical rounding percentage");
+    }
+    if (id === 1613889622 && r.name === "pointer_array_bytes") {
+        return sxSetComment(r, "Serialized pointer-array byte size, including its terminating null pointer");
+    }
+    if (id === 1613889624 && r.name === "picture_size") {
+        return sxSetComment(r, "Legacy informational size; may be zero for PICT v2");
+    }
+    if (id === 1613889626 && r.name === "row_bytes_and_flag") {
+        return sxSetComment(r, "Bit 15 marks PixMap; bits 0..14 are bytes per decoded row");
+    }
+    if (id === 1613889631 && r.name === "width_words_minus_one") {
+        return sxSetComment(r, "Words per image row minus one; each word is 32 bits");
+    }
+    if (id === 1613889631 && r.name === "height_minus_one") {
+        return sxSetComment(r, "Image rows minus one");
+    }
+    if (id === 1613889632 && r.name === "color1") {
+        return sxSetComment(r, "First flashing palette color, packed as 0xBBGGRR00");
+    }
+    if (id === 1613889632 && r.name === "color2") {
+        return sxSetComment(r, "Second flashing palette color, packed as 0xBBGGRR00");
+    }
+    if (id === 1613889692 && r.name === "header_blocks") {
+        return sxSetComment(r, "Count of 2048-byte blocks");
+    }
+    if (id === 1613889692 && r.name === "data_blocks") {
+        return sxSetComment(r, "Count of 2048-byte blocks");
+    }
+    if (id === 1613889693 && r.name === "mux_rate_bound") {
+        return sxSetComment(r, "Rate in units of 50 bytes per second");
+    }
+    if (id === 1613889693 && r.name === "std_delay_bound") {
+        return sxSetComment(r, "Delay in 1/90000-second units");
+    }
+    if (id === 1613889701 && r.name === "relative_packet_blocks") {
+        return sxSetComment(r, "Data-relative packet position in 2048-byte blocks");
+    }
+    if (id === 1613889701 && r.name === "index_reference_picture_blocks") {
+        return sxSetComment(r, "Packed entry index and reference-picture size in 2048-byte blocks");
+    }
+    if (id === 1613889702 && r.name === "payload_offset") {
+        return sxSetComment(r, "Byte offset from this chunk base plus 8");
+    }
+    if (id === 1613889702 && r.name === "data_size") {
+        return sxSetComment(r, "Chunk bytes excluding its first 8 bytes");
+    }
+    if (id === 1613889702 && r.name === "frame_time") {
+        return sxSetComment(r, "Frame time in the accompanying stream frame-rate units");
+    }
+    if (id === 1613889702 && r.name === "frame_rate") {
+        return sxSetComment(r, "Stream frame-rate value");
+    }
+    if (id === 1613889721 && r.name === "microsecond_rate") {
+        return sxSetComment(r, "Frame duration is this microsecond rate multiplied by rate_divisor");
+    }
+    if (id === 1613889721 && r.name === "rate_divisor") {
+        return sxSetComment(r, "Multiplicative factor used with microsecond_rate");
+    }
+    if (id === 1613889733 && r.name === "word_offset_and_flags") {
+        return sxSetComment(r, "Low 30 bits hold the offset in 16-bit words; top two bits are flags");
+    }
+    if (id === 1613889738 && r.name === "nominal_play_time_ticks") {
+        return sxSetComment(r, "Duration in ticks at ticks_per_second");
+    }
+    if (id === 1613889752 && r.name === "frame_duration") {
+        return sxSetComment(r, "Positive: milliseconds; negative: magnitude in 1/100000 second units; zero: 10 fps");
+    }
+    if (id === 1613889791 && r.name === "base_high") {
+        return sxSetComment(r, "Upper 32 bits of the 33-bit 90 kHz clock base");
+    }
+    if (id === 1613889791 && r.name === "extension_low") {
+        return sxSetComment(r, "Low 8 bits of the 9-bit 27 MHz clock extension");
+    }
+    if (id === 1613889794 && r.name === "pointer_bytes") {
+        return sxSetComment(r, "Bytes to skip before the next PSI section");
+    }
+    if (id === 1613889586 && r.name === "end_index") {
+        return sxSetComment(r, "Exclusive ending palette index");
+    }
+    return true;
+}

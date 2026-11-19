@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/alias_pix/xx_alias_pix_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_alias_pix_header_fields = layout([u16("width"), u16("height"), u16("x_offset"), u16("y_offset"), u16("bits_per_pixel")]);
+var sxm_alias_pix_header = sxLayout(0x60060011, "alias_pix_header", BE, sxm_alias_pix_header_fields);
+function sx_alias_pix_build(c, n) {
+    return n >= 10 && sxm_fixed(c, sxm_alias_pix_header, 10);
+}

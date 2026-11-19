@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/avro_object/xx_avro_object_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_avro_magic_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxbl_avro_magic = sxLayout(0x603500F8, "avro_magic", LE, sxbl_avro_magic_fields);
+var sxbl_avro_sync_fields = layout([bytes("sync_marker", 16, SIGNATURE)]);
+var sxbl_avro_sync = sxLayout(0x603500F9, "avro_sync", LE, sxbl_avro_sync_fields);
+function sxbl_avro_long(c, p, end, role, out) {
+    var u = [0];
+    if (!sxbl_var(c, p, end, role, u)) {
+        return false;
+    }
+    out[0] = sxAnd64(u[0], 1) ? -sxShr64(u[0], 1) - 1 : sxShr64(u[0], 1);
+    return true;
+}
+function sxbl_avro(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var n = [0];
+    var z = [0];
+    if (!sxbl_emit(c, p, end, sxbl_avro_magic)) {
+        return false;
+    }
+    for (var b = 0; b < 1024; b++) {
+        if (!sxbl_avro_long(c, p, end, 1, n)) {
+            return false;
+        }
+        if (!n[0]) {
+            break;
+        }
+        if (n[0] === -(0x80000000 * 4294967296 + 0x0)) {
+            return false;
+        }
+        if (n[0] < 0) {
+            n[0] = (-n[0] >= SX_I64_MAX ? -n[0] - SX_U64_MAX : -n[0]);
+            if (!sxbl_avro_long(c, p, end, 0, z) || z[0] < 0 || (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]) > sxU64(end - p[0])) {
+                return false;
+            }
+        }
+        if (n[0] > 1024) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            for (var j = 0; j < 2; j++) {
+                if (!sxbl_avro_long(c, p, end, 0, z) || z[0] < 0 || !sxbl_skip(c, p, end, (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]))) {
+                    return false;
+                }
+            }
+        }
+    }
+    if (!sxbl_emit(c, p, end, sxbl_avro_sync)) {
+        return false;
+    }
+    for (i = 0; p[0] < end && i < 20000; i++) {
+        if (!sxbl_avro_long(c, p, end, 1, n) || n[0] <= 0 || !sxbl_avro_long(c, p, end, 0, z) || z[0] < 0 || !sxbl_skip(c, p, end, (z[0] < 0 ? z[0] + SX_U64_MAX : z[0])) || !sxbl_emit(c, p, end, sxbl_avro_sync)) {
+            return false;
+        }
+    }
+    return p[0] === end;
+}
+function sx_avro_object_build(c) {
+    return sxbl_avro(c);
+}

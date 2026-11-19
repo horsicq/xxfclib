@@ -1,0 +1,531 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from the struct types of the schema engine of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+//
+// Constructors and copy functions of the C structs the walkers hold by value.
+
+function sxNew_sx_context() { return { f: null, owned_reader: null, pd: null, size: 0, items: null, count: 0, capacity: 0,
+        failed: false }; }
+function sxCopy_sx_context(d, s) {
+    if (d === null || d === undefined) d = sxNew_sx_context();
+    d.f = s.f;
+    d.owned_reader = s.owned_reader;
+    d.pd = s.pd;
+    d.size = s.size;
+    d.items = s.items;
+    d.count = s.count;
+    d.capacity = s.capacity;
+    d.failed = s.failed;
+    return d;
+}
+function sxNew_xx_data_struct() { return { id: 0, offset: 0, address: 0, entry_size: 0, total_size: 0, count: 0, type: 0 }; }
+function sxCopy_xx_data_struct(d, s) {
+    if (d === null || d === undefined) d = sxNew_xx_data_struct();
+    d.id = s.id;
+    d.offset = s.offset;
+    d.address = s.address;
+    d.entry_size = s.entry_size;
+    d.total_size = s.total_size;
+    d.count = s.count;
+    d.type = s.type;
+    return d;
+}
+function sxNew_sx_v_gpt_copy_info() { return { header: 0, header_end: 0, entries: 0, count: 0, stride: 0, framed: false,
+        array: false }; }
+function sxCopy_sx_v_gpt_copy_info(d, s) {
+    if (d === null || d === undefined) d = sxNew_sx_v_gpt_copy_info();
+    d.header = s.header;
+    d.header_end = s.header_end;
+    d.entries = s.entries;
+    d.count = s.count;
+    d.stride = s.stride;
+    d.framed = s.framed;
+    d.array = s.array;
+    return d;
+}
+function sxNew_sxad_interval() { return { start: 0, end: 0 }; }
+function sxCopy_sxad_interval(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxad_interval();
+    d.start = s.start;
+    d.end = s.end;
+    return d;
+}
+function sxNew_sxuf_range() { return { at: 0, end: 0 }; }
+function sxCopy_sxuf_range(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxuf_range();
+    d.at = s.at;
+    d.end = s.end;
+    return d;
+}
+function sxNew_sxo_iso_directory() { return { lba: 0, size: 0, depth: 0 }; }
+function sxCopy_sxo_iso_directory(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxo_iso_directory();
+    d.lba = s.lba;
+    d.size = s.size;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxo_udf_partition() { return { number: 0, start: 0, length: 0 }; }
+function sxCopy_sxo_udf_partition(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxo_udf_partition();
+    d.number = s.number;
+    d.start = s.start;
+    d.length = s.length;
+    return d;
+}
+function sxNew_sxo_udf_work() { return { offset: 0, partition: 0, depth: 0 }; }
+function sxCopy_sxo_udf_work(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxo_udf_work();
+    d.offset = s.offset;
+    d.partition = s.partition;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxo_udf_state() { return { part: sxAllocN(16, sxNew_sxo_udf_partition), part_count: 0, maps: sxZeros(16),
+        map_valid: sxZeros(16), map_count: 0, fsd_block: 0, fsd_partition: 0, lvd: false }; }
+function sxCopy_sxo_udf_state(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxo_udf_state();
+    sxCopyN(d.part, 0, s.part, 0, 16, sxCopy_sxo_udf_partition);
+    d.part_count = s.part_count;
+    d.maps = s.maps.slice(0);
+    d.map_valid = s.map_valid.slice(0);
+    d.map_count = s.map_count;
+    d.fsd_block = s.fsd_block;
+    d.fsd_partition = s.fsd_partition;
+    d.lvd = s.lvd;
+    return d;
+}
+function sxNew_sxae_extent() { return { start: 0, end: 0 }; }
+function sxCopy_sxae_extent(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxae_extent();
+    d.start = s.start;
+    d.end = s.end;
+    return d;
+}
+function sxNew_sxc_apfs_work() { return { block: 0, key_size: 0, value_size: 0, depth: 0 }; }
+function sxCopy_sxc_apfs_work(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxc_apfs_work();
+    d.block = s.block;
+    d.key_size = s.key_size;
+    d.value_size = s.value_size;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxc_bt_mapping() { return { logical: 0, length: 0, physical: 0 }; }
+function sxCopy_sxc_bt_mapping(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxc_bt_mapping();
+    d.logical = s.logical;
+    d.length = s.length;
+    d.physical = s.physical;
+    return d;
+}
+function sxNew_sxc_bt_work() { return { logical: 0, depth: 0 }; }
+function sxCopy_sxc_bt_work(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxc_bt_work();
+    d.logical = s.logical;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxc_bt_maps() { return { rows: sxAllocN(128, sxNew_sxc_bt_mapping), count: 0 }; }
+function sxCopy_sxc_bt_maps(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxc_bt_maps();
+    sxCopyN(d.rows, 0, s.rows, 0, 128, sxCopy_sxc_bt_mapping);
+    d.count = s.count;
+    return d;
+}
+function sxNew_sxd_proto() { return { tag: 0, wire: 0, value: 0, at: 0, size: 0 }; }
+function sxCopy_sxd_proto(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxd_proto();
+    d.tag = s.tag;
+    d.wire = s.wire;
+    d.value = s.value;
+    d.at = s.at;
+    d.size = s.size;
+    return d;
+}
+function sxNew_sxd_handle() { return { at: 0, size: 0 }; }
+function sxCopy_sxd_handle(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxd_handle();
+    d.at = s.at;
+    d.size = s.size;
+    return d;
+}
+function sxNew_sx_am_chunk_info() { return { at: 0, end: 0, type: 0, header: 0 }; }
+function sxCopy_sx_am_chunk_info(d, s) {
+    if (d === null || d === undefined) d = sxNew_sx_am_chunk_info();
+    d.at = s.at;
+    d.end = s.end;
+    d.type = s.type;
+    d.header = s.header;
+    return d;
+}
+function sxNew_sx_am_flag() { return { mask: 0, name: null }; }
+function sxCopy_sx_am_flag(d, s) {
+    if (d === null || d === undefined) d = sxNew_sx_am_flag();
+    d.mask = s.mask;
+    d.name = s.name;
+    return d;
+}
+function sxNew_sxq_window() { return { c: null, b: null, n: 0, base: 0, work: 0 }; }
+function sxCopy_sxq_window(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxq_window();
+    d.c = s.c;
+    d.b = s.b;
+    d.n = s.n;
+    d.base = s.base;
+    d.work = s.work;
+    return d;
+}
+function sxNew_sxdm_dbx_job() { return { at: 0, parent: 0, kind: 0, depth: 0 }; }
+function sxCopy_sxdm_dbx_job(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxdm_dbx_job();
+    d.at = s.at;
+    d.parent = s.parent;
+    d.kind = s.kind;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxsw_dc_element() { return { group: 0, element: 0, vr: sxZeros(3), bytes: 0, header: 0 }; }
+function sxCopy_sxsw_dc_element(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxsw_dc_element();
+    d.group = s.group;
+    d.element = s.element;
+    d.vr = s.vr.slice(0);
+    d.bytes = s.bytes;
+    d.header = s.header;
+    return d;
+}
+function sxNew_anon12() { return { at: 0, n: 0 }; }
+function sxCopy_anon12(d, s) {
+    if (d === null || d === undefined) d = sxNew_anon12();
+    d.at = s.at;
+    d.n = s.n;
+    return d;
+}
+function sxNew_sxbx_col() { return { size: 0, offset: 0 }; }
+function sxCopy_sxbx_col(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxbx_col();
+    d.size = s.size;
+    d.offset = s.offset;
+    return d;
+}
+function sxNew_sxbl_java_state() { return { c: null, types: sxZeros(4096), count: 0 }; }
+function sxCopy_sxbl_java_state(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxbl_java_state();
+    d.c = s.c;
+    d.types = s.types.slice(0);
+    d.count = s.count;
+    return d;
+}
+function sxNew_sxcf_extent_map() { return { logical: 0, physical: 0, bytes: 0 }; }
+function sxCopy_sxcf_extent_map(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxcf_extent_map();
+    d.logical = s.logical;
+    d.physical = s.physical;
+    d.bytes = s.bytes;
+    return d;
+}
+function sxNew_anon13() { return { offset: 0, level: 0 }; }
+function sxCopy_anon13(d, s) {
+    if (d === null || d === undefined) d = sxNew_anon13();
+    d.offset = s.offset;
+    d.level = s.level;
+    return d;
+}
+function sxNew_sxcf_pfs_state() { return { c: null, first: 0, last: 0, unit: 0, options: 0, extension: 0, visits: 0,
+        root: sxZeros(512) }; }
+function sxCopy_sxcf_pfs_state(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxcf_pfs_state();
+    d.c = s.c;
+    d.first = s.first;
+    d.last = s.last;
+    d.unit = s.unit;
+    d.options = s.options;
+    d.extension = s.extension;
+    d.visits = s.visits;
+    d.root = s.root.slice(0);
+    return d;
+}
+function sxNew_sxmf_task() { return { p: 0, kind: 0, depth: 0 }; }
+function sxCopy_sxmf_task(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxmf_task();
+    d.p = s.p;
+    d.kind = s.kind;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxmf_queue() { return { items: sxAllocN(4096, sxNew_sxmf_task), count: 0, index: 0 }; }
+function sxCopy_sxmf_queue(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxmf_queue();
+    sxCopyN(d.items, 0, s.items, 0, 4096, sxCopy_sxmf_task);
+    d.count = s.count;
+    d.index = s.index;
+    return d;
+}
+function sxNew_sxmf_op_task() { return { avatar: 0, block: 0, blocks: 0, burst: 0, gap: 0, depth: 0 }; }
+function sxCopy_sxmf_op_task(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxmf_op_task();
+    d.avatar = s.avatar;
+    d.block = s.block;
+    d.blocks = s.blocks;
+    d.burst = s.burst;
+    d.gap = s.gap;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxsa_token() { return { a: 0, z: 0 }; }
+function sxCopy_sxsa_token(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxsa_token();
+    d.a = s.a;
+    d.z = s.z;
+    return d;
+}
+function sxNew_sxmt_element() { return { count: 0, fields: 0, props: sxAllocN(64, sxNew_sxmt_property) }; }
+function sxCopy_sxmt_element(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxmt_element();
+    d.count = s.count;
+    d.fields = s.fields;
+    sxCopyN(d.props, 0, s.props, 0, 64, sxCopy_sxmt_property);
+    return d;
+}
+function sxNew_sxmt_property() { return { kind: 0, width: 0, list_width: 0 }; }
+function sxCopy_sxmt_property(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxmt_property();
+    d.kind = s.kind;
+    d.width = s.width;
+    d.list_width = s.list_width;
+    return d;
+}
+function sxNew_sxvi_directory() { return { p: 0, size: 0, depth: 0 }; }
+function sxCopy_sxvi_directory(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxvi_directory();
+    d.p = s.p;
+    d.size = s.size;
+    d.depth = s.depth;
+    return d;
+}
+function sxNew_sxsch_token() { return { a: 0, z: 0 }; }
+function sxCopy_sxsch_token(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxsch_token();
+    d.a = s.a;
+    d.z = s.z;
+    return d;
+}
+function sxNew_sxvtx_key() { return { name: null, layout: null }; }
+function sxCopy_sxvtx_key(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxvtx_key();
+    d.name = s.name;
+    d.layout = s.layout;
+    return d;
+}
+function sxNew_anon14() { return { tag: 0, length: 0, csv: false }; }
+function sxCopy_anon14(d, s) {
+    if (d === null || d === undefined) d = sxNew_anon14();
+    d.tag = s.tag;
+    d.length = s.length;
+    d.csv = s.csv;
+    return d;
+}
+function sxNew_sxsm_token() { return { a: 0, z: 0 }; }
+function sxCopy_sxsm_token(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxsm_token();
+    d.a = s.a;
+    d.z = s.z;
+    return d;
+}
+function sxNew_sxseq_token() { return { a: 0, z: 0 }; }
+function sxCopy_sxseq_token(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxseq_token();
+    d.a = s.a;
+    d.z = s.z;
+    return d;
+}
+function sxNew_sxdw_pdf_span() { return { at: 0, end: 0 }; }
+function sxCopy_sxdw_pdf_span(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxdw_pdf_span();
+    d.at = s.at;
+    d.end = s.end;
+    return d;
+}
+function sxNew_sxan_fa_desc() { return { type: 0, packed: 0, plain: 0, start: 0, end: 0, crc: 0, stored: false }; }
+function sxCopy_sxan_fa_desc(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxan_fa_desc();
+    d.type = s.type;
+    d.packed = s.packed;
+    d.plain = s.plain;
+    d.start = s.start;
+    d.end = s.end;
+    d.crc = s.crc;
+    d.stored = s.stored;
+    return d;
+}
+function sxNew_sxan_stfs() { return { first: 0, allocated: 0, sex: 0, level: 0, top: 0 }; }
+function sxCopy_sxan_stfs(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxan_stfs();
+    d.first = s.first;
+    d.allocated = s.allocated;
+    d.sex = s.sex;
+    d.level = s.level;
+    d.top = s.top;
+    return d;
+}
+function sxNew_sxiw_java() { return { c: null, p: 0, end: 0, h: sxAllocN(4096, sxNew_sxiw_java_handle), count: 0 }; }
+function sxCopy_sxiw_java(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxiw_java();
+    d.c = s.c;
+    d.p = s.p;
+    d.end = s.end;
+    sxCopyN(d.h, 0, s.h, 0, 4096, sxCopy_sxiw_java_handle);
+    d.count = s.count;
+    return d;
+}
+function sxNew_sxiw_java_handle() { return { types: null, count: 0 }; }
+function sxCopy_sxiw_java_handle(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxiw_java_handle();
+    d.types = s.types;
+    d.count = s.count;
+    return d;
+}
+function sxNew_xx_cpm_directory_slot() { return { offset: 0, entry_count: 0, allocation_pointer_size: 0, version: 0,
+        length_mode: 0 }; }
+function sxCopy_xx_cpm_directory_slot(d, s) {
+    if (d === null || d === undefined) d = sxNew_xx_cpm_directory_slot();
+    d.offset = s.offset;
+    d.entry_count = s.entry_count;
+    d.allocation_pointer_size = s.allocation_pointer_size;
+    d.version = s.version;
+    d.length_mode = s.length_mode;
+    return d;
+}
+function sxNew_sxiex_member() { return { header: 0, header_size: 0, data: 0, packed: 0 }; }
+function sxCopy_sxiex_member(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxiex_member();
+    d.header = s.header;
+    d.header_size = s.header_size;
+    d.data = s.data;
+    d.packed = s.packed;
+    return d;
+}
+function sxNew_sxiex_records() { return { items: null, count: 0 }; }
+function sxCopy_sxiex_records(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxiex_records();
+    d.items = s.items;
+    d.count = s.count;
+    return d;
+}
+function sxNew_sxil_member() { return { header: 0, header_size: 0, data: 0, packed: 0, crc: 0 }; }
+function sxCopy_sxil_member(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxil_member();
+    d.header = s.header;
+    d.header_size = s.header_size;
+    d.data = s.data;
+    d.packed = s.packed;
+    d.crc = s.crc;
+    return d;
+}
+function sxNew_sxil_records() { return { items: null, count: 0 }; }
+function sxCopy_sxil_records(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxil_records();
+    d.items = s.items;
+    d.count = s.count;
+    return d;
+}
+function sxNew_sxil_vise_root() { return { head: 0, wrapper: 0, wrapper_size: 0, footer: 0, end: 0, cert: 0 }; }
+function sxCopy_sxil_vise_root(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxil_vise_root();
+    d.head = s.head;
+    d.wrapper = s.wrapper;
+    d.wrapper_size = s.wrapper_size;
+    d.footer = s.footer;
+    d.end = s.end;
+    d.cert = s.cert;
+    return d;
+}
+function sxNew_xx_molebox_physical_metadata() { return { package_count: 0, package_offset: 0, tree_offset: 0, header_offset: 0,
+        catalog_offset: 0, tree_size: 0, catalog_size: 0, has_verified_prefix: false }; }
+function sxCopy_xx_molebox_physical_metadata(d, s) {
+    if (d === null || d === undefined) d = sxNew_xx_molebox_physical_metadata();
+    d.package_count = s.package_count;
+    d.package_offset = s.package_offset;
+    d.tree_offset = s.tree_offset;
+    d.header_offset = s.header_offset;
+    d.catalog_offset = s.catalog_offset;
+    d.tree_size = s.tree_size;
+    d.catalog_size = s.catalog_size;
+    d.has_verified_prefix = s.has_verified_prefix;
+    return d;
+}
+function sxNew_sxatp_bits() { return { pos: 0, bit: 0 }; }
+function sxCopy_sxatp_bits(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxatp_bits();
+    d.pos = s.pos;
+    d.bit = s.bit;
+    return d;
+}
+function sxNew_sxarwire_huff() { return { count: sxZeros(17), symbol: sxZeros(510), maximum: 0, single: false, one: 0 }; }
+function sxCopy_sxarwire_huff(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxarwire_huff();
+    d.count = s.count.slice(0);
+    d.symbol = s.symbol.slice(0);
+    d.maximum = s.maximum;
+    d.single = s.single;
+    d.one = s.one;
+    return d;
+}
+function sxNew_sxamip_hunk() { return { first: 0, end: 0, rel: sxZeros(4096), n: 0 }; }
+function sxCopy_sxamip_hunk(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxamip_hunk();
+    d.first = s.first;
+    d.end = s.end;
+    d.rel = s.rel.slice(0);
+    d.n = s.n;
+    return d;
+}
+function sxNew_sxarfinal_compact_tree_s() { return { nodes: sxAllocN(258, sxNew_sxarfinal_compact_node_s),
+        blocks: sxAllocN(518, sxNew_sxarfinal_compact_block_s), block_free: 0, last_node: 0, leaf_node: sxZeros(258),
+        leaf_info: sxZeros(258) }; }
+function sxCopy_sxarfinal_compact_tree_s(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxarfinal_compact_tree_s();
+    sxCopyN(d.nodes, 0, s.nodes, 0, 258, sxCopy_sxarfinal_compact_node_s);
+    sxCopyN(d.blocks, 0, s.blocks, 0, 518, sxCopy_sxarfinal_compact_block_s);
+    d.block_free = s.block_free;
+    d.last_node = s.last_node;
+    d.leaf_node = s.leaf_node.slice(0);
+    d.leaf_info = s.leaf_info.slice(0);
+    return d;
+}
+function sxNew_sxarfinal_compact_node_s() { return { parent: 0, flags: 0, child: sxAllocN(2, sxNew_sxarfinal_compact_slot_s) }; }
+function sxCopy_sxarfinal_compact_node_s(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxarfinal_compact_node_s();
+    d.parent = s.parent;
+    d.flags = s.flags;
+    sxCopyN(d.child, 0, s.child, 0, 2, sxCopy_sxarfinal_compact_slot_s);
+    return d;
+}
+function sxNew_sxarfinal_compact_slot_s() { return { value: 0, block: 0, count: 0 }; }
+function sxCopy_sxarfinal_compact_slot_s(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxarfinal_compact_slot_s();
+    d.value = s.value;
+    d.block = s.block;
+    d.count = s.count;
+    return d;
+}
+function sxNew_sxarfinal_compact_block_s() { return { node: 0, next: 0 }; }
+function sxCopy_sxarfinal_compact_block_s(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxarfinal_compact_block_s();
+    d.node = s.node;
+    d.next = s.next;
+    return d;
+}
+function sxNew_sxcodeplayers_view() { return { c: null, end: 0, code_size: 0, code: sxZeros(16384), work: 0 }; }
+function sxCopy_sxcodeplayers_view(d, s) {
+    if (d === null || d === undefined) d = sxNew_sxcodeplayers_view();
+    d.c = s.c;
+    d.end = s.end;
+    d.code_size = s.code_size;
+    d.code = s.code.slice(0);
+    d.work = s.work;
+    return d;
+}

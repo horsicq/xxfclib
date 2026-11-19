@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/python_marshal/xx_python_marshal_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_marshal_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_marshal_tag = sxLayout(0x6035003F, "marshal_tag", LE, sxbl_marshal_tag_fields);
+var sxbl_marshal_signed_count_fields = layout([i32("signed_digit_count")]);
+var sxbl_marshal_signed_count = sxLayout(0x603500DE, "marshal_signed_count", LE, sxbl_marshal_signed_count_fields);
+var sxbl_marshal_long_digit_fields = layout([u16("magnitude_digit")]);
+var sxbl_marshal_long_digit = sxLayout(0x603500DF, "marshal_long_digit", LE, sxbl_marshal_long_digit_fields);
+var sxbl_marshal_reference_fields = layout([i32("reference_index", ID)]);
+var sxbl_marshal_reference = sxLayout(0x603500E0, "marshal_reference", LE, sxbl_marshal_reference_fields);
+var sxbl_marshal_count_fields = layout([i32("item_count", COUNT)]);
+var sxbl_marshal_count = sxLayout(0x603500E1, "marshal_count", LE, sxbl_marshal_count_fields);
+var sxbl_marshal_string_size_fields = layout([i32("byte_size", SIZE)]);
+var sxbl_marshal_string_size = sxLayout(0x603500E2, "marshal_string_size", LE, sxbl_marshal_string_size_fields);
+var sxbl_marshal_complex_fields = layout([field("real", "float64", 8), field("imaginary", "float64", 8)]);
+var sxbl_marshal_complex = sxLayout(0x603500E3, "marshal_complex", LE, sxbl_marshal_complex_fields);
+function sxbl_marshal(c, p, end, depth) {
+    var t = [0];
+    if (depth > 64 || !sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_marshal_tag)) {
+        return false;
+    }
+    t[0] &= 127;
+    var n = [0];
+    if (t[0] === 78 /*N*/ || t[0] === 70 /*F*/ || t[0] === 84 /*T*/ || t[0] === 46 /*.*/ || t[0] === 48 /*0*/) {
+        return true;
+    }
+    if (t[0] === 105 /*i*/ || t[0] === 73 /*I*/) {
+        return sxbl_numeric(c, p, end, t[0] === 105 /*i*/ ? 4 : 8, true, false);
+    }
+    if (t[0] === 103 /*g*/) {
+        return sxbl_float(c, p, end, 8, false);
+    }
+    if (t[0] === 121 /*y*/) {
+        return sxbl_emit(c, p, end, sxbl_marshal_complex);
+    }
+    if (t[0] === 114 /*r*/) {
+        return sxbl_emit(c, p, end, sxbl_marshal_reference);
+    }
+    if (t[0] === 108 /*l*/) {
+        if (!sxbl_word(c, p[0], 4, false, n) || !sxbl_emit(c, p, end, sxbl_marshal_signed_count)) {
+            return false;
+        }
+        var v = n[0] | 0;
+        n[0] = sxU64(v < 0 ? (-v >= SX_I64_MAX ? -v - SX_U64_MAX : -v) : v);
+        if (n[0] > 4096) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxbl_emit(c, p, end, sxbl_marshal_long_digit)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (t[0] === 122 /*z*/ || t[0] === 90 /*Z*/) {
+        return sxbl_string(c, p, end, 1, false);
+    }
+    if (t[0] === 115 /*s*/ || t[0] === 116 /*t*/ || t[0] === 117 /*u*/ || t[0] === 97 /*a*/ || t[0] === 65 /*A*/) {
+        if (!sxbl_word(c, p[0], 4, false, n) || !sxbl_emit(c, p, end, sxbl_marshal_string_size)) {
+            return false;
+        }
+        return sxbl_skip(c, p, end, n[0]);
+    }
+    if (t[0] === 123 /*{*/) {
+        for (i = 0; i < 4090; i++) {
+            if (!sxbl_byte(c, p[0], t)) {
+                return false;
+            }
+            if ((t[0] & 127) === 48 /*0*/) {
+                return sxbl_emit(c, p, end, sxbl_marshal_tag);
+            }
+            if (!sxbl_marshal(c, p, end, (depth + 1) >>> 0) || !sxbl_marshal(c, p, end, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return false;
+    }
+    if (t[0] === 40 /*(*/ || t[0] === 41 /*)*/ || t[0] === 91 /*[*/ || t[0] === 60 /*<*/ || t[0] === 62 /*>*/) {
+        if (t[0] === 41 /*)*/) {
+            if (!sxbl_length(c, p, end, 1, false, true, n)) {
+                return false;
+            }
+        } else if (!sxbl_word(c, p[0], 4, false, n) || !sxbl_emit(c, p, end, sxbl_marshal_count)) {
+            return false;
+        }
+        if (n[0] > 4090) {
+            return false;
+        }
+        for (i = 0; i < n[0]; i++) {
+            if (!sxbl_marshal(c, p, end, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+function sx_python_marshal_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    return sxbl_marshal(c, p, end, 0);
+}

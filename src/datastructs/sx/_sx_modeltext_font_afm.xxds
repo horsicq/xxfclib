@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_afm/xx_font_afm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_character_code_hex_fields = layout([field("character_code_hex", "ascii_hex", 0, ID)]);
+var sxmt_character_code_hex = sxLayout(0x60520060, "modeltext_character_code_hex", LE, sxmt_character_code_hex_fields);
+function sxmt_afm(q) {
+    var a = [0];
+    var e = [0];
+    while (sxmt_line(q, a, e, false)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var next = q.p;
+        for (var start = a[0]; start < e[0]; ) {
+            var stop = start;
+            while (stop < e[0] && q.b[stop] !== 59 /*;*/) {
+                stop++;
+            }
+            q.p = start;
+            var k = [0];
+            var z = [0];
+            if (!sxmt_token(q, stop, k, z, false)) {
+                start = stop + 1;
+                continue;
+            }
+            {
+                if (!sxmt_emit(q, sxmt_keyword, k[0], z[0])) {
+                    return false;
+                }
+            }
+            var l = sxmt_string_value;
+            if (sxmt_eq(q, k[0], z[0], "Comment")) {
+                if (!sxmt_remainder(q, l, e[0])) {
+                    return false;
+                }
+                break;
+            }
+            if (sxmt_eq(q, k[0], z[0], "StartFontMetrics")) {
+                l = sxmt_version;
+            } else if (sxmt_eq(q, k[0], z[0], "C")) {
+                l = sxmt_codepoint;
+            } else if (sxmt_eq(q, k[0], z[0], "CH")) {
+                while (q.p < stop && sxmt_space(q.b[q.p])) {
+                    q.p++;
+                }
+                if (q.p < stop && q.b[q.p] === 60 /*<*/) {
+                    var n = ++q.p;
+                    while (q.p < stop && q.b[q.p] !== 62 /*>*/) {
+                        q.p++;
+                    }
+                    {
+                        if (!sxmt_emit(q, sxmt_character_code_hex, n, q.p - n)) {
+                            return false;
+                        }
+                    }
+                }
+                start = stop + 1;
+                continue;
+            } else if (sxmt_eq(q, k[0], z[0], "N")) {
+                l = sxmt_glyph_name;
+            } else if (sxmt_eq(q, k[0], z[0], "StartCharMetrics") || sxmt_eq(q, k[0], z[0], "StartKernPairs") || sxmt_eq(q, k[0], z[0], "StartKernPairs0") || sxmt_eq(q, k[0], z[0], "StartKernPairs1") || sxmt_eq(q, k[0], z[0], "StartTrackKern") || sxmt_eq(q, k[0], z[0], "StartComposites") || sxmt_eq(q, k[0], z[0], "StartDirection")) {
+                l = sxmt_integer_value;
+            } else if (sxmt_eq(q, k[0], z[0], "WX") || sxmt_eq(q, k[0], z[0], "WY") || sxmt_eq(q, k[0], z[0], "W0X") || sxmt_eq(q, k[0], z[0], "W0Y") || sxmt_eq(q, k[0], z[0], "W1X") || sxmt_eq(q, k[0], z[0], "W1Y") || sxmt_eq(q, k[0], z[0], "W") || sxmt_eq(q, k[0], z[0], "W0") || sxmt_eq(q, k[0], z[0], "W1") || sxmt_eq(q, k[0], z[0], "B") || sxmt_eq(q, k[0], z[0], "VV") || sxmt_eq(q, k[0], z[0], "FontBBox") || sxmt_eq(q, k[0], z[0], "UnderlinePosition") || sxmt_eq(q, k[0], z[0], "UnderlineThickness") || sxmt_eq(q, k[0], z[0], "ItalicAngle") || sxmt_eq(q, k[0], z[0], "CapHeight") || sxmt_eq(q, k[0], z[0], "XHeight") || sxmt_eq(q, k[0], z[0], "Ascender") || sxmt_eq(q, k[0], z[0], "Descender") || sxmt_eq(q, k[0], z[0], "StdHW") || sxmt_eq(q, k[0], z[0], "StdVW") || sxmt_eq(q, k[0], z[0], "CharWidth")) {
+                l = sxmt_font_metric;
+            } else if (sxmt_eq(q, k[0], z[0], "KPX") || sxmt_eq(q, k[0], z[0], "KPY") || sxmt_eq(q, k[0], z[0], "KP")) {
+                {
+                    if (!sxmt_value(q, sxmt_glyph_name, stop, null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxmt_value(q, sxmt_glyph_name, stop, null)) {
+                        return false;
+                    }
+                }
+                l = sxmt_font_metric;
+            } else if (sxmt_eq(q, k[0], z[0], "TrackKern")) {
+                {
+                    if (!sxmt_value(q, sxmt_integer_value, stop, null)) {
+                        return false;
+                    }
+                }
+                l = sxmt_font_metric;
+            } else if (sxmt_eq(q, k[0], z[0], "CC")) {
+                {
+                    if (!sxmt_value(q, sxmt_glyph_name, stop, null)) {
+                        return false;
+                    }
+                }
+                l = sxmt_property_total;
+            } else if (sxmt_eq(q, k[0], z[0], "PCC")) {
+                {
+                    if (!sxmt_value(q, sxmt_glyph_name, stop, null)) {
+                        return false;
+                    }
+                }
+                l = sxmt_font_metric;
+            }
+            if (l === sxmt_string_value) {
+                if (!sxmt_remainder(q, l, stop)) {
+                    return false;
+                }
+            } else if (!sxmt_many(q, l, stop)) {
+                return false;
+            }
+            start = stop + 1;
+        }
+        q.p = next;
+    }
+    return true;
+}
+function sx_font_afm_build(q) {
+    return sxmt_afm(q);
+}

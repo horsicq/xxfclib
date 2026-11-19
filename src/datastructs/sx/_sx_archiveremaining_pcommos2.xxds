@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pcommos2/xx_pcommos2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_pcomm_literal_fields = layout([u8("control")]);
+var sxarm_pcomm_literal = sxLayout(0x607C0016, "pcomm_literal", LE, sxarm_pcomm_literal_fields);
+var sxarm_pcomm_near_match_fields = layout([u8("length_and_distance_high"), u8("distance_low")]);
+var sxarm_pcomm_near_match = sxLayout(0x607C0017, "pcomm_near_match", LE, sxarm_pcomm_near_match_fields);
+var sxarm_pcomm_far_match_fields = layout([u8("length_code"), u16("decoded_block_source", OFFSET)]);
+var sxarm_pcomm_far_match = sxLayout(0x607C0018, "pcomm_far_match", LE, sxarm_pcomm_far_match_fields);
+var sxarm_pcomm_block_end_fields = layout([u8("end_code", ID)]);
+var sxarm_pcomm_block_end = sxLayout(0x607C0019, "pcomm_block_end", LE, sxarm_pcomm_block_end_fields);
+function sxarm_pcomm(c) {
+    var gate = [];
+    if (c.size < 4 || !sxarm_read(c, 0, gate, 1) || gate[0] < 0xE1 || !sxarm_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 2), gate, 2) || gate[0] !== 0xE0 || gate[1] !== 0xE0) {
+        return false;
+    }
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var b = [0];
+        if (!sxarm_word(c, p, 1, false, b)) {
+            return false;
+        }
+        if (b[0] === 224) {
+            if (!sxarm_add(c, sxarm_pcomm_block_end, p++)) {
+                return false;
+            }
+        } else if (b[0] >= 225) {
+            if (!sxarm_add(c, sxarm_pcomm_literal, p) || !sxarm_span(c, p + 1, sxU64(b[0] - 224))) {
+                return false;
+            }
+            p += sxU64(1 + b[0] - 224);
+        } else {
+            var z = b[0] >= 32 ? 2 : 3;
+            if (!sxarm_add(c, b[0] >= 32 ? sxarm_pcomm_near_match : sxarm_pcomm_far_match, p)) {
+                return false;
+            }
+            p += z;
+        }
+    }
+    return true;
+}
+function sx_pcommos2_build(c) {
+    return sxarm_pcomm(c);
+}

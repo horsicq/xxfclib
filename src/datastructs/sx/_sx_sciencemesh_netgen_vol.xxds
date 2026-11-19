@@ -1,0 +1,127 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/netgen_vol/xx_netgen_vol_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_region_id_fields = layout([field("region_id", "ascii_signed", 0, ID)]);
+var sxsm_region_id = sxLayout(0x6063001D, "mesh_region_id", LE, sxsm_region_id_fields);
+var sxsm_surface_id_fields = layout([field("surface_id", "ascii_signed", 0, ID)]);
+var sxsm_surface_id = sxLayout(0x60630066, "mesh_surface_id", LE, sxsm_surface_id_fields);
+var sxsm_inside_domain_fields = layout([field("inside_domain", "ascii_signed", 0, ID)]);
+var sxsm_inside_domain = sxLayout(0x60630068, "mesh_inside_domain", LE, sxsm_inside_domain_fields);
+var sxsm_outside_domain_fields = layout([field("outside_domain", "ascii_signed", 0, ID)]);
+var sxsm_outside_domain = sxLayout(0x60630069, "mesh_outside_domain", LE, sxsm_outside_domain_fields);
+var sxsm_edge_region_fields = layout([field("edge_region", "ascii_signed", 0, ID)]);
+var sxsm_edge_region = sxLayout(0x6063006A, "mesh_edge_region", LE, sxsm_edge_region_fields);
+var sxsm_edge_triangle_fields = layout([field("edge_triangle", "ascii_signed", 0, ID)]);
+var sxsm_edge_triangle = sxLayout(0x6063006B, "mesh_edge_triangle", LE, sxsm_edge_triangle_fields);
+var sxsm_edge_surface_fields = layout([field("edge_surface", "ascii_signed", 0, ID)]);
+var sxsm_edge_surface = sxLayout(0x6063006C, "mesh_edge_surface", LE, sxsm_edge_surface_fields);
+var sxsm_edge_id_fields = layout([field("edge_id", "ascii_signed", 0, ID)]);
+var sxsm_edge_id = sxLayout(0x6063006D, "mesh_edge_id", LE, sxsm_edge_id_fields);
+var sxsm_edge_distance_fields = layout([field("edge_distance", "ascii_real", 0)]);
+var sxsm_edge_distance = sxLayout(0x6063006E, "mesh_edge_distance", LE, sxsm_edge_distance_fields);
+var sxsm_geometry_type_fields = layout([field("geometry_type", "ascii_signed", 0, ID)]);
+var sxsm_geometry_type = sxLayout(0x6063006F, "mesh_geometry_type", LE, sxsm_geometry_type_fields);
+function sxsm_netgen(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(40, sxNew_sxsm_token);
+    var n = [0];
+    if (!sxsm_next(q, line, t[0], 40, n, "#")) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, t[0]))) {
+            return false;
+        }
+    }
+    while (sxsm_next(q, line, t[0], 40, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_section, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "endmesh")) {
+            return true;
+        }
+        var mode = sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "dimension") ? 1 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "geomtype") ? 2 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "points") ? 3 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "surfaceelements") ? 4 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "volumeelements") ? 5 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "edgesegments") ? 6 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "edgesegmentsgi2") ? 7 : sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "face_colours") ? 8 : 0;
+        var count = [0];
+        if (!mode || !sxsm_next(q, line, t[0], 40, n, "#") || n[0] !== 1 || !sxsm_number(q, sxCopy_sxsm_token(null, t[0]), count) || count[0] > 1000000) {
+            return false;
+        }
+        if (!sxsm_emit(q, mode === 1 ? sxsm_dimension : mode === 2 ? sxsm_geometry_type : mode === 3 ? sxsm_node_count : mode === 8 ? sxsm_value_count : sxsm_element_count, sxCopy_sxsm_token(null, t[0]))) {
+            return false;
+        }
+        if (mode <= 2) {
+            continue;
+        }
+        for (var i = 0; i < count[0]; i++) {
+            if (q.c.count >= 24000) {
+                return true;
+            }
+            if (!sxsm_next(q, line, t[0], 40, n, "#")) {
+                return false;
+            }
+            if (mode === 3) {
+                if (n[0] !== 3 || !sxsm_xyz(q, t[0], 0)) {
+                    return false;
+                }
+            } else if (mode === 4) {
+                if (n[0] < 6) {
+                    return false;
+                }
+                var cols = [sxsm_surface_id, sxsm_boundary_id, sxsm_inside_domain, sxsm_outside_domain, sxsm_component_count];
+                if (!sxsm_fields(q, t, 0, 5, cols, 5) || !sxsm_each(q, t, 5, (n[0] - 5) >>> 0, sxsm_node_index)) {
+                    return false;
+                }
+            } else if (mode === 5) {
+                if (n[0] < 3) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_region_id, sxCopy_sxsm_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_component_count, sxCopy_sxsm_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+                if (!sxsm_each(q, t, 2, (n[0] - 2) >>> 0, sxsm_node_index)) {
+                    return false;
+                }
+            } else if (mode === 8) {
+                if (n[0] !== 4) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_surface_id, sxCopy_sxsm_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                cols = [sxsm_red, sxsm_green, sxsm_blue];
+                if (!sxsm_fields(q, t, 1, 3, cols, 3)) {
+                    return false;
+                }
+            } else {
+                if (n[0] !== (mode === 6 ? 4 : 12)) {
+                    return false;
+                }
+                for (var j = 0; j < n[0]; j++) {
+                    if (!sxsm_emit(q, j === 0 ? sxsm_edge_region : j === 1 ? sxsm_integer_value : j === 2 || j === 3 ? sxsm_node_index : j === 4 || j === 5 ? sxsm_edge_triangle : j === 6 || j === 7 ? sxsm_edge_surface : j === 9 || j === 11 ? sxsm_edge_distance : sxsm_edge_id, sxCopy_sxsm_token(null, t[j]))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_netgen_vol_build(q) {
+    return sxsm_netgen(q);
+}

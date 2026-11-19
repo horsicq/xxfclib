@@ -1,0 +1,107 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/btrfs_stream/xx_btrfs_stream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_btrfs_send_header_fields = layout([chars("magic", 13, SIGNATURE), u32("version", ID)]);
+var sxvi_btrfs_send_header = sxLayout(0x60530024, "btrfs_send_header", LE, sxvi_btrfs_send_header_fields);
+var sxvi_btrfs_send_command_fields = layout([u32("payload_size", SIZE), u16("command", ID), u32("crc32c", CHECKSUM)]);
+var sxvi_btrfs_send_command = sxLayout(0x60530025, "btrfs_send_command", LE, sxvi_btrfs_send_command_fields);
+var sxvi_btrfs_send_attribute_fields = layout([u16("type", ID), u16("value_size", SIZE)]);
+var sxvi_btrfs_send_attribute = sxLayout(0x60530026, "btrfs_send_attribute", LE, sxvi_btrfs_send_attribute_fields);
+var sxvi_btrfs_send_data_attribute_v2_fields = layout([u16("type", ID)]);
+var sxvi_btrfs_send_data_attribute_v2 = sxLayout(0x60530027, "btrfs_send_data_attribute_v2", LE, sxvi_btrfs_send_data_attribute_v2_fields);
+var sxvi_btrfs_send_uuid_fields = layout([field("uuid", "byte[16]", 16, ID)]);
+var sxvi_btrfs_send_uuid = sxLayout(0x60530028, "btrfs_send_uuid", LE, sxvi_btrfs_send_uuid_fields);
+var sxvi_btrfs_send_id64_fields = layout([u64("value", ID)]);
+var sxvi_btrfs_send_id64 = sxLayout(0x60530029, "btrfs_send_id64", LE, sxvi_btrfs_send_id64_fields);
+var sxvi_btrfs_send_size64_fields = layout([u64("size", SIZE)]);
+var sxvi_btrfs_send_size64 = sxLayout(0x6053002A, "btrfs_send_size64", LE, sxvi_btrfs_send_size64_fields);
+var sxvi_btrfs_send_offset64_fields = layout([u64("offset", OFFSET)]);
+var sxvi_btrfs_send_offset64 = sxLayout(0x6053002B, "btrfs_send_offset64", LE, sxvi_btrfs_send_offset64_fields);
+var sxvi_btrfs_send_flags64_fields = layout([u64("flags", FLAGS)]);
+var sxvi_btrfs_send_flags64 = sxLayout(0x6053002C, "btrfs_send_flags64", LE, sxvi_btrfs_send_flags64_fields);
+var sxvi_btrfs_send_flags32_fields = layout([u32("flags", FLAGS)]);
+var sxvi_btrfs_send_flags32 = sxLayout(0x6053002D, "btrfs_send_flags32", LE, sxvi_btrfs_send_flags32_fields);
+var sxvi_btrfs_send_codec32_fields = layout([u32("codec", ID)]);
+var sxvi_btrfs_send_codec32 = sxLayout(0x6053002E, "btrfs_send_codec32", LE, sxvi_btrfs_send_codec32_fields);
+var sxvi_btrfs_send_timespec_fields = layout([i64("seconds", TIMESTAMP), u32("nanoseconds")]);
+var sxvi_btrfs_send_timespec = sxLayout(0x6053002F, "btrfs_send_timespec", LE, sxvi_btrfs_send_timespec_fields);
+function sxvi_btrfs(c) {
+    var h = [];
+    var b = [];
+    if (!sxvi_read(c, 0, h, 17) || sxMemcmp(h, "btrfs-stream\x00", 13) || sxvi32(h, 13, 0) < 1 || sxvi32(h, 13, 0) > 3 || !sxvi_put(c, sxvi_btrfs_send_header, 0, 1)) {
+        return false;
+    }
+    var version = sxvi32(h, 13, 0);
+    for (var p = 17; p + 10 <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; ) {
+        if (!sxvi_read(c, p, b, 10)) {
+            return false;
+        }
+        var n = sxvi32(b, 0, 0);
+        if (n > 1048576 || !sxvi_span(c, p + 10, n)) {
+            break;
+        }
+        if (!sxvi_put(c, sxvi_btrfs_send_command, p, 1)) {
+            return false;
+        }
+        var end = p + 10 + n;
+        var q = p + 10;
+        while (q + 2 <= end && c.count < 24000) {
+            var a = [];
+            if (!sxvi_read(c, q, a, 2)) {
+                return false;
+            }
+            var type = sxvi16(a, 0, 0);
+            if (version >= 2 && type === 19) {
+                if (!sxvi_put(c, sxvi_btrfs_send_data_attribute_v2, q, 1)) {
+                    return false;
+                }
+                break;
+            }
+            if (sxU64(end - q) < 4 || !sxvi_read(c, q, a, 4)) {
+                break;
+            }
+            var z = sxvi16(a, 2, 0);
+            if (z > sxU64(sxU64(end - q) - 4)) {
+                break;
+            }
+            if (!sxvi_put(c, sxvi_btrfs_send_attribute, q, 1)) {
+                return false;
+            }
+            q += 4;
+            var l = null;
+            if ((type === 1 || type === 20) && z === 16) {
+                l = sxvi_btrfs_send_uuid;
+            } else if (type >= 9 && type <= 12 && z === 12) {
+                l = sxvi_btrfs_send_timespec;
+            } else if (z === 8) {
+                if (type === 4 || type === 24 || type === 27 || type === 28) {
+                    l = sxvi_btrfs_send_size64;
+                } else if (type === 18 || type === 23 || type === 29) {
+                    l = sxvi_btrfs_send_offset64;
+                } else if (type === 5 || type === 26) {
+                    l = sxvi_btrfs_send_flags64;
+                } else if (type === 2 || type === 3 || type === 6 || type === 7 || type === 8 || type === 21) {
+                    l = sxvi_btrfs_send_id64;
+                }
+            } else if (z === 4) {
+                if (type === 25) {
+                    l = sxvi_btrfs_send_flags32;
+                } else if (type === 30 || type === 31) {
+                    l = sxvi_btrfs_send_codec32;
+                }
+            }
+            if (l !== null && !sxvi_put(c, l, q, 1)) {
+                return false;
+            }
+            q += z;
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_btrfs_stream_build(c) {
+    return sxvi_btrfs(c);
+}

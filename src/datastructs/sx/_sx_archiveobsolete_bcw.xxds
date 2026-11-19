@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/bcw/xx_bcw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_bcw_header_fields = layout([u32("signature", SIGNATURE)]);
+var sxao_bcw_header = sxLayout(0x60700021, "bcw_header", LE, sxao_bcw_header_fields);
+var sxao_bcw_record_fields = layout([u8("kind")]);
+var sxao_bcw_record = sxLayout(0x60700022, "bcw_record", LE, sxao_bcw_record_fields);
+var sxao_bcw_time_fields = layout([u16("dos_date"), u16("dos_time")]);
+var sxao_bcw_time = sxLayout(0x60700023, "bcw_time", LE, sxao_bcw_time_fields);
+function sxao_bcw(c) {
+    if (!sxao_add(c, sxao_bcw_header, 0)) {
+        return false;
+    }
+    var s = sxArcCreate(c.f);
+    if (s === null) {
+        return false;
+    }
+    var p = 4;
+    var ok = true;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 20000) {
+        var kind = [0];
+        var name = [0];
+        if (!sxao_word(c, p, 1, false, kind) || kind[0] > 3 || !sxao_add(c, sxao_bcw_record, p++)) {
+            ok = false;
+            break;
+        }
+        if (!kind[0]) {
+            break;
+        }
+        if (kind[0] === 3) {
+            continue;
+        }
+        if (!sxao_zlen(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), name) || !sxao_text(c, sxao_archiveobsolete_name, p, name[0], false)) {
+            ok = false;
+            break;
+        }
+        p += name[0];
+        if (kind[0] === 2) {
+            continue;
+        }
+        if (!sxao_add(c, sxao_bcw_time, p)) {
+            ok = false;
+            break;
+        }
+        p += 4;
+        var r = sxArcCurrent(c.f, s);
+        if (r === null || r.data_offset < c.f.base_address || r.compressed_size < 0 || (r.data_offset - c.f.base_address < 0 ? r.data_offset - c.f.base_address + SX_U64_MAX : r.data_offset - c.f.base_address) !== p || !sxao_span(c, p, (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size))) {
+            ok = false;
+            break;
+        }
+        p += (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        sxArcNext(c.f, s);
+    }
+    sxArcFree(c.f, s);
+    return ok;
+}
+function sx_bcw_build(c) {
+    return sxao_bcw(c);
+}

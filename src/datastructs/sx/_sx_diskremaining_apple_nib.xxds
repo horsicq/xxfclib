@@ -1,0 +1,128 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_nib/xx_apple_nib_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_apple_gcr_address_fields = layout([field("prologue", "byte[3]", 3, SIGNATURE), field("volume_4and4", "byte[2]", 2),
+    field("track_4and4", "byte[2]", 2), field("sector_4and4", "byte[2]", 2),
+    field("xor_checksum_4and4", "byte[2]", 2, CHECKSUM), field("epilogue", "byte[3]", 3, SIGNATURE)]);
+var sxdr_apple_gcr_address = sxLayout(0x607F0014, "apple_gcr_address", LE, sxdr_apple_gcr_address_fields);
+var sxdr_apple_gcr_data_prefix_fields = layout([field("prologue", "byte[3]", 3, SIGNATURE)]);
+var sxdr_apple_gcr_data_prefix = sxLayout(0x607F0015, "apple_gcr_data_prefix", LE, sxdr_apple_gcr_data_prefix_fields);
+var sxdr_apple_gcr_data_suffix_fields = layout([u8("translated_xor_checksum", CHECKSUM),
+    field("epilogue", "byte[3]", 3, SIGNATURE)]);
+var sxdr_apple_gcr_data_suffix = sxLayout(0x607F0016, "apple_gcr_data_suffix", LE, sxdr_apple_gcr_data_suffix_fields);
+function sxdr_ring(b, n, p) {
+    return b[p % n];
+}
+function sxdr_four(b, n, p, v) {
+    var a = sxdr_ring(b, n, p);
+    var z = sxdr_ring(b, n, (p + 1) >>> 0);
+    if ((a & 0xAA) !== 0xAA || (z & 0xAA) !== 0xAA) {
+        return false;
+    }
+    v[0] = (a << 1 | 1) & z;
+    return true;
+}
+var sxdr_gcrcheck_codes62 = [0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2, 0xB3,
+    0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xCB, 0xCD, 0xCE, 0xCF, 0xD3, 0xD6, 0xD7, 0xD9, 0xDA,
+    0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE5, 0xE6, 0xE7, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6,
+    0xF7, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF];
+var sxdr_gcrcheck_codes53 = [0xAB, 0xAD, 0xAE, 0xAF, 0xB5, 0xB6, 0xB7, 0xBA, 0xBB, 0xBD, 0xBE, 0xBF, 0xD6, 0xD7, 0xDA, 0xDB,
+    0xDD, 0xDE, 0xDF, 0xEA, 0xEB, 0xED, 0xEE, 0xEF, 0xF5, 0xF6, 0xF7, 0xFA, 0xFB, 0xFD, 0xFE, 0xFF];
+function sxdr_gcrcheck(b, n, p, sectors) {
+    var inv = [];
+    var sum = 0;
+    sxFill(inv, 0, 256, 255);
+    for (var i = 0; i < (sectors === 13 ? 32 : 64); i++) {
+        inv[sectors === 13 ? sxdr_gcrcheck_codes53[i] : sxdr_gcrcheck_codes62[i]] = i & 0xFF;
+    }
+    var z = sectors === 13 ? 410 : 342;
+    for (i = 0; i < z; i++) {
+        var v = inv[sxdr_ring(b, n, (p + i) >>> 0)];
+        if (v === 255) {
+            return false;
+        }
+        sum ^= v;
+    }
+    return inv[sxdr_ring(b, n, (p + z) >>> 0)] === sum && sxdr_ring(b, n, (((p + z) >>> 0) + 1) >>> 0) === 0xDE && sxdr_ring(b, n, (((p + z) >>> 0) + 2) >>> 0) === 0xAA;
+}
+function sxdr_nib(c) {
+    var n = 0;
+    if (c.size >= 0x38E00 && c.size <= 0x51400 && c.size % 6656 === 0) {
+        n = 6656;
+    } else if (c.size >= 0x368D0 && c.size <= 0x3E580 && c.size % 6384 === 0) {
+        n = 6384;
+    } else {
+        return false;
+    }
+    var b = sxAlloc(n);
+    if (b === null) {
+        return false;
+    }
+    var ok = true;
+    for (var tr = 0; tr < Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / n) && ok && c.count < 24000; tr++) {
+        var base = tr * n;
+        if (!sxdr_read(c, base, b, n)) {
+            ok = false;
+            break;
+        }
+        for (var i = 0; i < n; i++) {
+            if (!(i & 255) && false) {
+                ok = false;
+                break;
+            }
+            if (b[i] !== 0xD5 || sxdr_ring(b, n, (i + 1) >>> 0) !== 0xAA) {
+                continue;
+            }
+            var mark = sxdr_ring(b, n, (i + 2) >>> 0);
+            var sectors = mark === 0x96 ? 16 : mark === 0xB5 ? 13 : 0;
+            if (!sectors) {
+                continue;
+            }
+            var v = [0];
+            var t = [0];
+            var s = [0];
+            var x = [0];
+            if (!sxdr_four(b, n, (i + 3) >>> 0, v) || !sxdr_four(b, n, (i + 5) >>> 0, t) || !sxdr_four(b, n, (i + 7) >>> 0, s) || !sxdr_four(b, n, (i + 9) >>> 0, x) || t[0] !== tr || s[0] >= sectors || (v[0] ^ t[0] ^ s[0]) !== x[0] || sxdr_ring(b, n, (i + 11) >>> 0) !== 0xDE || sxdr_ring(b, n, (i + 12) >>> 0) !== 0xAA) {
+                continue;
+            }
+            for (var gap = 14; gap < 270; gap++) {
+                var p = (i + gap) >>> 0;
+                if (sxdr_ring(b, n, p) !== 0xD5 || sxdr_ring(b, n, (p + 1) >>> 0) !== 0xAA) {
+                    continue;
+                }
+                mark = sxdr_ring(b, n, (p + 2) >>> 0);
+                if (mark === 0x96 || mark === 0xB5) {
+                    break;
+                }
+                if (mark !== 0xAD) {
+                    continue;
+                }
+                if (sxdr_gcrcheck(b, n, (p + 3) >>> 0, sectors)) {
+                    if ((i + 14) >>> 0 <= n && !sxdr_put(c, sxdr_apple_gcr_address, base + i, 1)) {
+                        ok = false;
+                        break;
+                    }
+                    var d = p % n;
+                    var z = sectors === 13 ? 410 : 342;
+                    var end = ((((p + 3) >>> 0) + z) >>> 0) % n;
+                    if ((d + 3) >>> 0 <= n && !sxdr_put(c, sxdr_apple_gcr_data_prefix, base + d, 1)) {
+                        ok = false;
+                        break;
+                    }
+                    if ((end + 4) >>> 0 <= n && !sxdr_put(c, sxdr_apple_gcr_data_suffix, base + end, 1)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    return ok && c.count !== 0;
+}
+function sx_apple_nib_build(c) {
+    return sxdr_nib(c);
+}

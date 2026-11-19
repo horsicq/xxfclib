@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_pasti_stx/xx_atari_pasti_stx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_stx_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("tool_id", ID),
+    u16("reserved1", RESERVED), u8("track_count", COUNT), u8("revision"), field("reserved2", "byte[4]", 4, RESERVED)]);
+var sxse_stx_header = sxLayout(0x602F0051, "stx_header", LE, sxse_stx_header_fields);
+var sxse_stx_track_fields = layout([u32("record_size", SIZE), u32("fuzzy_mask_size", SIZE), u16("sector_count", COUNT),
+    u16("flags", FLAGS), u16("track_length"), u8("track_and_side", FLAGS), u8("track_type", ID)]);
+var sxse_stx_track = sxLayout(0x602F0052, "stx_track", LE, sxse_stx_track_fields);
+var sxse_stx_sector_fields = layout([u32("data_offset", OFFSET), u16("bit_position"), u16("read_time"), u8("cylinder", ID),
+    u8("head", ID), u8("sector_id", ID), u8("size_code"), field("id_crc", "uint16be", 2, CHECKSUM), u8("fdc_status", FLAGS),
+    u8("reserved", RESERVED)]);
+var sxse_stx_sector = sxLayout(0x602F0053, "stx_sector", LE, sxse_stx_sector_fields);
+function sxse_stx(c) {
+    var b = [];
+    if (!sxse_read(c, 0, b, 16) || sxMemcmp(b, "RSY\x00", 4) || !sxse_put(c, sxse_stx_header, 0, 16, 1)) {
+        return false;
+    }
+    var n = b[10];
+    var p = 16;
+    for (var i = 0; i < n; i++) {
+        if (!sxse_read(c, p, b, 16)) {
+            return false;
+        }
+        var z = sxse_u32(b, 0, false);
+        var fuzzy = sxse_u32(b, 4, false);
+        var ns = sxse_u16(b, 8, false);
+        var flags = sxse_u16(b, 10, false);
+        if (z < 16 || !sxse_span(c, p, z) || !sxse_put(c, sxse_stx_track, p, 16, 1)) {
+            return false;
+        }
+        if (flags & 1) {
+            if (ns > 64 || 16 + ns * 16 + fuzzy > z || !sxse_put(c, sxse_stx_sector, p + 16, 16, ns)) {
+                return false;
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_atari_pasti_stx_build(c) {
+    return sxse_stx(c);
+}

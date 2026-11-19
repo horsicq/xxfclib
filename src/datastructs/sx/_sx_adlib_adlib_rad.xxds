@@ -1,0 +1,140 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_rad/xx_adlib_rad_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_rad_header_fields = layout([chars("signature", 16, SIGNATURE), field("version", "uint8_t", 1),
+    field("flags", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_rad_header = sxLayout(0x600F0001, "adlib_rad_header", LE, sxad_adlib_rad_header_fields);
+var sxad_adlib_rad_instrument_fields = layout([field("instrument_number", "uint8_t", 1, ID),
+    field("modulator_characteristics", "uint8_t", 1, FLAGS), field("carrier_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level", "uint8_t", 1, FLAGS), field("carrier_scale_level", "uint8_t", 1, FLAGS),
+    field("modulator_attack_decay", "uint8_t", 1, FLAGS), field("carrier_attack_decay", "uint8_t", 1, FLAGS),
+    field("modulator_sustain_release", "uint8_t", 1, FLAGS), field("carrier_sustain_release", "uint8_t", 1, FLAGS),
+    field("feedback_connection", "uint8_t", 1, FLAGS), field("modulator_waveform", "uint8_t", 1, FLAGS),
+    field("carrier_waveform", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_rad_instrument = sxLayout(0x600F0002, "adlib_rad_instrument", LE, sxad_adlib_rad_instrument_fields);
+var sxad_adlib_instrument_end_fields = layout([field("terminator", "uint8_t", 1, SIGNATURE)]);
+var sxad_adlib_instrument_end = sxLayout(0x600F0003, "adlib_instrument_end", LE, sxad_adlib_instrument_end_fields);
+var sxad_adlib_rad_order_count_fields = layout([field("order_count", "uint8_t", 1, COUNT)]);
+var sxad_adlib_rad_order_count = sxLayout(0x600F0004, "adlib_rad_order_count", LE, sxad_adlib_rad_order_count_fields);
+var sxad_adlib_rad_order_fields = layout([field("pattern_or_jump", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_rad_order = sxLayout(0x600F0005, "adlib_rad_order", LE, sxad_adlib_rad_order_fields);
+var sxad_adlib_rad_pattern_offset_fields = layout([field("pattern_offset", "uint16_t", 2, OFFSET)]);
+var sxad_adlib_rad_pattern_offset = sxLayout(0x600F0006, "adlib_rad_pattern_offset", LE, sxad_adlib_rad_pattern_offset_fields);
+var sxad_adlib_rad_row_fields = layout([field("row_flags", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_rad_row = sxLayout(0x600F0007, "adlib_rad_row", LE, sxad_adlib_rad_row_fields);
+var sxad_adlib_rad_event_fields = layout([field("channel_flags", "uint8_t", 1, FLAGS),
+    field("note_octave", "uint8_t", 1, FLAGS), field("instrument_effect", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_rad_event = sxLayout(0x600F0008, "adlib_rad_event", LE, sxad_adlib_rad_event_fields);
+var sxad_adlib_rad_effect_event_fields = layout([field("channel_flags", "uint8_t", 1, FLAGS),
+    field("note_octave", "uint8_t", 1, FLAGS), field("instrument_effect", "uint8_t", 1, FLAGS),
+    field("effect_parameter", "uint8_t", 1)]);
+var sxad_adlib_rad_effect_event = sxLayout(0x600F0009, "adlib_rad_effect_event", LE, sxad_adlib_rad_effect_event_fields);
+function sxad_rad(c) {
+    var v = [0];
+    var flags = [0];
+    var at = [18];
+    var last = 0;
+    var refs = [];
+    if (!sxad_tag(c, 0, "RAD by REALiTY!!", 16) || !sxad_byte(c, 16, v) || v[0] !== 0x10 || !sxad_byte(c, 17, flags) || flags[0] & 0x20 || !sx_add(c, sxad_adlib_rad_header, 0, 18)) {
+        return false;
+    }
+    if (flags[0] & 128 && !sxad_zraw(c, at, 65536)) {
+        return false;
+    }
+    for (; ; ) {
+        if (!sxad_byte(c, at[0], v)) {
+            return false;
+        }
+        if (!v[0]) {
+            if (!sxad_header(c, sxad_adlib_instrument_end, at, 1)) {
+                return false;
+            }
+            break;
+        }
+        if (v[0] > 31 || v[0] <= last || !sxad_header(c, sxad_adlib_rad_instrument, at, 12)) {
+            return false;
+        }
+        last = v[0];
+    }
+    if (!sxad_byte(c, at[0], v) || !v[0] || v[0] > 128 || !sxad_header(c, sxad_adlib_rad_order_count, at, 1) || !sx_table(c, sxad_adlib_rad_order, at[0], 1, v[0])) {
+        return false;
+    }
+    var orders = v[0];
+    for (var i = 0; i < orders; i++) {
+        if (!sxad_byte(c, at[0] + i, v) || (v[0] & 128 ? (v[0] & 127) >= orders : v[0] >= 32)) {
+            return false;
+        }
+    }
+    at[0] += orders;
+    if (!sx_table(c, sxad_adlib_rad_pattern_offset, at[0], 2, 32)) {
+        return false;
+    }
+    for (i = 0; i < 32; i++) {
+        if ((refs[i] = sx_u16(c, at[0] + ((2 * i) >>> 0), false)) === null) {
+            return false;
+        }
+    }
+    at[0] += 64;
+    var max_end = 0;
+    for (i = 0; i < 32; i++) {
+        if (refs[i]) {
+            var pos = [refs[i]];
+            var limit = c.size;
+            var previous = 0;
+            var first = true;
+            var ended = false;
+            if (pos[0] < at[0]) {
+                return false;
+            }
+            for (var j = 0; j < 32; j++) {
+                if (j !== i && refs[j]) {
+                    if (refs[j] === refs[i]) {
+                        return false;
+                    }
+                    if (refs[j] > refs[i] && refs[j] < limit) {
+                        limit = refs[j];
+                    }
+                }
+            }
+            for (var rows = 0; rows < 64 && !ended; rows++) {
+                if (pos[0] >= limit || !sxad_byte(c, pos[0], v) || (v[0] & 127) >= 64 || !first && (v[0] & 127) <= previous) {
+                    return false;
+                }
+                previous = v[0] & 127;
+                first = false;
+                ended = (v[0] & 128) !== 0;
+                if (!sxad_header(c, sxad_adlib_rad_row, pos, 1)) {
+                    return false;
+                }
+                var channel_end = false;
+                for (var channels = 0; channels < 1024 && !channel_end; channels++) {
+                    var b = [];
+                    if (pos[0] > limit || limit - pos[0] < 3 || !sx_read(c, pos[0], b, 3) || (b[0] & 15) >= 9 || b[0] & 0x70) {
+                        return false;
+                    }
+                    var size = b[2] & 15 ? 4 : 3;
+                    channel_end = (b[0] & 128) !== 0;
+                    if (size > limit - pos[0] || !sxad_header(c, size === 4 ? sxad_adlib_rad_effect_event : sxad_adlib_rad_event, pos, size)) {
+                        return false;
+                    }
+                }
+                if (!channel_end) {
+                    return false;
+                }
+            }
+            if (!ended) {
+                return false;
+            }
+            if (pos[0] > max_end) {
+                max_end = pos[0];
+            }
+        }
+    }
+    return max_end === c.size;
+}
+function sx_adlib_rad_build(c) {
+    return sxad_rad(c);
+}

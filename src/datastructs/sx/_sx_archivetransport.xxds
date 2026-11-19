@@ -1,0 +1,488 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivetransport.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_archivetransport_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60890000 || id >= 0x608A0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60890001:
+        text = "Payload excludes padding; chunk payload is rounded up to16bytes. Header CRC32 zeros its own field, retaining payload CRC32.";
+        break;
+    case 0x60890002:
+        text = "Flag1 encrypts bytes32..79 and DGCC headers/payloads. Unknown physical bytes are retained without invented semantics.";
+        break;
+    case 0x60890004:
+        text = "Method0: exactly uncompressed_size stored bytes follow.";
+        break;
+    case 0x60890005:
+        text = "Method1 entropy/LZP streams follow. BWT index is an index, not a file offset; high flags encode integration order.";
+        break;
+    case 0x60890006:
+        text = "Method2: plane_count consecutive stored/compressed units; decoded bytes are interleaved.";
+        break;
+    case 0x60890008:
+        text = "Physical first LSB of each byte-aligned element; native reader does not assign a semantic meaning.";
+        break;
+    case 0x60890009:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089000A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089000B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089000C:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089000D:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089000E:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089000F:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890010:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890011:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890012:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890013:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890014:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890015:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890016:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890017:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890018:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890019:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089001A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089001B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089001C:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089001D:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089001E:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089001F:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890020:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890021:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890022:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890023:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890024:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890025:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890026:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890027:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890028:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890029:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089002A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089002B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089002C:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089002D:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089002E:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089002F:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890030:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890031:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890032:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890033:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890034:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890035:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890036:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890037:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890038:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890039:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089003A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089003B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089003C:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089003D:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089003E:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089003F:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890040:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890041:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890042:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890043:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890044:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890045:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890046:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890047:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890048:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890049:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089004A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089004B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089004C:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089004D:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089004E:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089004F:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890050:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890051:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890052:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890053:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890054:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890055:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890056:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890057:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890058:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890059:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089005A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089005B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089005C:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089005D:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089005E:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089005F:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890060:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890061:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890062:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890063:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890064:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890065:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890066:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890067:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890068:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x60890069:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089006A:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089006B:
+        text = "P2 integer: LSB-first unary one-count, then bits through that many ones, minus1. Original byte window is retained; adjacent bit fields may share its boundary bytes.";
+        break;
+    case 0x6089006C:
+        text = "First4-byte trailing chunk: big-endian decoded-stream CRC32; stored value only.";
+        break;
+    case 0x6089006E:
+        text = "ASCII digit1..9 encodes maximum block size in100000-byte units.";
+        break;
+    case 0x6089006F:
+        text = "First data block physical prefix only. BWT original pointer is a row index. Later variable-bit blocks and Huffman payload remain raw.";
+        break;
+    case 0x60890072:
+        text = "Colon separates physical HQX transport. Decoded RLE header/forks have no linear source-field offsets.";
+        break;
+    case 0x60890073:
+        text = "Original HQX alphabet bytes; whitespace may split groups. No plaintext header/fork fields are assigned false positions.";
+        break;
+    case 0x60890074:
+        text = "Original CR/LF physical separator bytes.";
+        break;
+    case 0x60890077:
+        text = "RFC2045 hexadecimal escape. Displayed octet comes from its two original hex characters; it is not a file address.";
+        break;
+    case 0x60890078:
+        text = "Equals plus physical CRLF/LF, or a final equals at EOF; contributes no decoded octet.";
+        break;
+    case 0x60890079:
+        text = "Native-supported trailing NUL/SUB padding; not decoded text.";
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxatp_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxatp_read(c, p, b, b_o, n) {
+    return sxatp_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxatp_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxatp_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxatp_add(c, l, p) {
+    return sxatp_put(c, l, p, 0, false);
+}
+function sxatp_text(c, l, p, n, aliases) {
+    var max = sxVariableLimit(l.fields[sxU64(l.field_count - 1)].type);
+    return (!n || n > sxU64(max ? max : 4096) ? 1 : (sxatp_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxatp_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxatp_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxatp_order, true);
+    return !c.failed;
+}
+function sxatp_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxatp_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxatp_space(x) {
+    return x === 32 || x === 9 || x === 13 || x === 10;
+}
+function sx_archivetransport_supports(t) {
+    switch (t) {
+    case "DGCA":
+    case "STUFFITX":
+    case "SHAR":
+    case "BINHEX":
+    case "QUOTED_PRINTABLE_ENCODED_FIL":
+    case "POWERARC":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivetransport_build(c) {
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DGCA":
+        ok = sx_dgca_build(c);
+        break;
+    case "STUFFITX":
+        ok = sx_stuffitx_build(c);
+        break;
+    case "SHAR":
+        ok = sx_shar_build(c);
+        break;
+    case "BINHEX":
+        ok = sx_binhex_build(c);
+        break;
+    case "QUOTED_PRINTABLE_ENCODED_FIL":
+        ok = sx_quoted_printable_encoded_fil_build(c);
+        break;
+    case "POWERARC":
+        ok = sx_powerarc_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!(c.count && sxatp_finish(c));
+}

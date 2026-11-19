@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_dolby_ac3/xx_audio_dolby_ac3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_ac3_sync_info_fields = layout([u16("sync_word", SIGNATURE), u16("crc1", CHECKSUM),
+    u8("sample_rate_and_frame_size_code", FLAGS), u8("bitstream_id_and_mode", FLAGS)]);
+var sxau_ac3_sync_info = sxLayout(0x602C002D, "ac3_sync_info", BE, sxau_ac3_sync_info_fields);
+var sxau_ac3_checksum2_fields = layout([u16("crc2", CHECKSUM)]);
+var sxau_ac3_checksum2 = sxLayout(0x602C002E, "ac3_checksum2", BE, sxau_ac3_checksum2_fields);
+var sxau_ac3_br = [32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, 448, 512, 576, 640];
+var sxau_ac3_w44 = [69, 87, 104, 121, 139, 174, 208, 243, 278, 348, 417, 487, 557, 696, 835, 975, 1114, 1253, 1393];
+function sxau_ac3(v) {
+    var at = 0;
+    while (at < v.n) {
+        if (!sxau_row(v, sxau_ac3_sync_info, at, v.n)) {
+            return false;
+        }
+        var sr = v.p[at + 4] >> 6;
+        var code = v.p[at + 4] & 63;
+        if (sr >= 3 || code >= 38) {
+            return false;
+        }
+        var z = 2 * (sr === 0 ? sxau_ac3_br[Math.floor(code / 2)] * 2 : sr === 2 ? sxau_ac3_br[Math.floor(code / 2)] * 3 : sxau_ac3_w44[Math.floor(code / 2)] + (code & 1));
+        if (!sxau_need(v, at, z, v.n) || !sxau_row(v, sxau_ac3_checksum2, sxU64(at + z - 2), v.n)) {
+            return false;
+        }
+        at += z;
+    }
+    return true;
+}
+function sx_audio_dolby_ac3_build(v) {
+    return sxau_ac3(v);
+}

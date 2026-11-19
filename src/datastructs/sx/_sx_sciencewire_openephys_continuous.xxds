@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/openephys_continuous/xx_openephys_continuous_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_openephys_record_fields = layout([i64("timestamp"), u16("sample_count", COUNT),
+    field("recording_number", "uint16be", 2, ID)]);
+var sxsw_openephys_record = sxLayout(0x602D0038, "openephys_record", LE, sxsw_openephys_record_fields);
+var sxsw_openephys_marker_fields = layout([bytes("marker", 10, SIGNATURE)]);
+var sxsw_openephys_marker = sxLayout(0x602D0039, "openephys_marker", LE, sxsw_openephys_marker_fields);
+function sxsw_openephys(c) {
+    var at = 1024;
+    for (var i = 0; at < c.size && i < 4095; i++, at += 2070) {
+        if (!sxsw_span(c, at, 2070) || !sxsw_add(c, sxsw_openephys_record, at, 12) || !sxsw_add(c, sxsw_openephys_marker, at + 2060, 10)) {
+            return false;
+        }
+    }
+    return at === c.size;
+}
+function sx_openephys_continuous_build(c) {
+    return sxsw_openephys(c);
+}

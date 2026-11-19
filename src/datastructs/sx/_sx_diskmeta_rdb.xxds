@@ -1,0 +1,121 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/rdb/xx_rdb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_rdb_rigid_disk_block_fields = layout([field("identifier", "byte[4]", 4, SIGNATURE), u32("summed_longs", COUNT),
+    i32("checksum", CHECKSUM), u32("host_id", ID), u32("block_bytes", SIZE), u32("flags", FLAGS), u32("bad_block_list", ID),
+    u32("partition_list", ID), u32("filesystem_header_list", ID), u32("drive_init", ID),
+    field("reserved1", "uint32[6]", 24, RESERVED), u32("cylinders", COUNT), u32("sectors", COUNT), u32("heads", COUNT),
+    u32("interleave"), u32("parking_zone", ID), field("reserved2", "uint32[3]", 12, RESERVED),
+    u32("write_precompensation_cylinder", ID), u32("reduced_write_cylinder", ID), u32("step_rate"),
+    field("reserved3", "uint32[5]", 20, RESERVED), u32("rdb_blocks_low", ID), u32("rdb_blocks_high", ID),
+    u32("low_cylinder", ID), u32("high_cylinder", ID), u32("cylinder_blocks", COUNT), u32("autopark_seconds"),
+    u32("highest_rdb_block", ID), u32("reserved4", RESERVED), chars("disk_vendor", 8, NONE), chars("disk_product", 16, NONE),
+    chars("disk_revision", 4, NONE), chars("controller_vendor", 8, NONE), chars("controller_product", 16, NONE),
+    chars("controller_revision", 4, NONE), field("reserved5", "uint32[10]", 40, RESERVED)]);
+var sx_dm_rdb_rigid_disk_block = sxLayout(0x60290054, "rdb_rigid_disk_block", BE, sx_dm_rdb_rigid_disk_block_fields);
+var sx_dm_rdb_partition_block_fields = layout([field("identifier", "byte[4]", 4, SIGNATURE), u32("summed_longs", COUNT),
+    i32("checksum", CHECKSUM), u32("host_id", ID), u32("next_block", ID), u32("flags", FLAGS),
+    field("reserved1", "uint32[2]", 8, RESERVED), u32("device_flags", FLAGS), field("drive_name_bcpl", "byte[32]", 32),
+    field("reserved2", "uint32[15]", 60, RESERVED), u32("environment_table_size", COUNT), u32("longs_per_sector", COUNT),
+    u32("sector_origin", ID), u32("surfaces", COUNT), u32("sectors_per_block", COUNT), u32("blocks_per_track", COUNT),
+    u32("reserved_blocks", COUNT), u32("preallocated_blocks", COUNT), u32("interleave"), u32("low_cylinder", ID),
+    u32("high_cylinder", ID), u32("buffer_count", COUNT), u32("buffer_memory_type", FLAGS), u32("max_transfer", SIZE),
+    u32("address_mask", FLAGS), i32("boot_priority"), u32("dos_type", ID), u32("baud"), u32("control", FLAGS),
+    u32("boot_blocks", COUNT), field("environment_reserved", "uint32[12]", 48, RESERVED)]);
+var sx_dm_rdb_partition_block = sxLayout(0x60290055, "rdb_partition_block", BE, sx_dm_rdb_partition_block_fields);
+var sx_dm_rdb_load_segment_header_fields = layout([field("identifier", "byte[4]", 4, SIGNATURE), u32("summed_longs", COUNT),
+    i32("checksum", CHECKSUM), u32("host_id", ID), u32("next_block", ID)]);
+var sx_dm_rdb_load_segment_header = sxLayout(0x60290057, "rdb_load_segment_header", BE, sx_dm_rdb_load_segment_header_fields);
+function sx_dm_rdb_block(c, p, block, h, z) {
+    if (!sx_dm_read(c, p, h, z)) {
+        return false;
+    }
+    var count = sx_dm_u32(h, 4, true);
+    if (count < 5 || count > Math.floor(block / 4) || !sx_dm_span(c, p, count * 4)) {
+        return false;
+    }
+    var sum = 0;
+    for (var i = 0; i < count; i++) {
+        var word;
+        if ((word = sx_u32(c, (p + i * 4 >= SX_I64_MAX ? p + i * 4 - SX_U64_MAX : p + i * 4), true)) === null) {
+            return false;
+        }
+        sum = (sum + word) >>> 0;
+    }
+    return sum === 0;
+}
+function sx_dm_rdb_lseg(c, block, next) {
+    for (var i = 0; next !== 4294967295 && i < 16384 && c.count < 24000; i++) {
+        var p = block * next;
+        var h = [];
+        if (!sx_dm_rdb_block(c, p, block, h, 20) || sxMemcmp(h, "LSEG", 4)) {
+            break;
+        }
+        var old = c.count;
+        if (!sx_dm_add(c, sx_dm_rdb_load_segment_header, p, 20)) {
+            return false;
+        }
+        if (c.count === old) {
+            break;
+        }
+        next = sx_dm_u32(h, 16, true);
+    }
+    return true;
+}
+function sx_dm_rdb(c) {
+    var h = [];
+    var p;
+    var block = 0;
+    var part = 4294967295;
+    var fs = 4294967295;
+    for (p = 0; p < 8192; p += 512) {
+        if (!sx_dm_read(c, p, h, 256)) {
+            break;
+        }
+        if (sxMemcmp(h, "RDSK", 4)) {
+            continue;
+        }
+        var b = sx_dm_u32(h, 16, true);
+        if (b < 256 || b > 65536 || (b & (b - 1) >>> 0) >>> 0 || p % b || !sx_dm_rdb_block(c, p, b, h, 256)) {
+            continue;
+        }
+        block = b;
+        part = sx_dm_u32(h, 28, true);
+        fs = sx_dm_u32(h, 32, true);
+        if (!sx_dm_add(c, sx_dm_rdb_rigid_disk_block, p, 256)) {
+            return false;
+        }
+        break;
+    }
+    if (!block) {
+        return false;
+    }
+    for (var kind = 0; kind < 2; kind++) {
+        var next = kind ? fs : part;
+        for (var i = 0; next !== 4294967295 && i < (kind ? 64 : 128); i++) {
+            p = block * next;
+            var z = kind ? 80 : 256;
+            if (!sx_dm_rdb_block(c, p, block, h, z) || sxMemcmp(h, kind ? "FSHD" : "PART", 4)) {
+                break;
+            }
+            var old = c.count;
+            if (!sx_dm_add(c, kind ? sx_dm_rdb_filesystem_header : sx_dm_rdb_partition_block, p, z)) {
+                return false;
+            }
+            if (c.count === old) {
+                break;
+            }
+            next = sx_dm_u32(h, 16, true);
+            if (kind && !sx_dm_rdb_lseg(c, block, sx_dm_u32(h, 72, true))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_rdb_build(c) {
+    return sx_dm_rdb(c);
+}

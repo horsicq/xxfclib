@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/pchrom/xx_pchrom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fw_intel_flash_descriptor_map_fields = layout([u32("signature", SIGNATURE), u32("flmap0", FLAGS), u32("flmap1", FLAGS),
+    u32("flmap2", FLAGS)]);
+var sx_fw_intel_flash_descriptor_map = sxLayout(0x601E0014, "intel_flash_descriptor_map", LE, sx_fw_intel_flash_descriptor_map_fields);
+var sx_fw_intel_flash_component_fields = layout([u32("flcomp", FLAGS), u32("flill", FLAGS), u32("flpb")]);
+var sx_fw_intel_flash_component = sxLayout(0x601E0015, "intel_flash_component", LE, sx_fw_intel_flash_component_fields);
+function sx_fw_pch(c) {
+    var map1;
+    var comp;
+    if ((map1 = sx_u32(c, 0x18, false)) === null || (comp = sx_u32(c, 0x30, false)) === null) {
+        return false;
+    }
+    var master = (map1 & 255) * 16;
+    var n = comp >>> 17 & 7 ? 16 : 7;
+    if (master < 0x40 || master > 0xE00) {
+        return false;
+    }
+    if (n > Math.floor(((master - 0x40) >>> 0) / 4)) {
+        n = Math.floor(((master - 0x40) >>> 0) / 4);
+    }
+    return n >= 5 && sx_add(c, sx_fw_intel_flash_descriptor_map, 0x10, 16) && sx_add(c, sx_fw_intel_flash_component, 0x30, 12) && sx_table(c, sx_fw_intel_flash_region, 0x40, 4, n);
+}
+function sx_pchrom_build(c) {
+    var ok = false;
+    ok = sx_fw_pch(c);
+    return ok && sx_fw_finish(c);
+}

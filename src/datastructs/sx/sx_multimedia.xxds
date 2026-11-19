@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_multimedia.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_multimedia");
+
+function fileTypes() { return ["NINTENDO_TPL", "SONY_TIM", "SEGA_PVR2", "XCURSOR", "SFNT_COLLECTION", "GLB", "SONY_TIM2",
+    "ADOBE_ASE", "ADOBE_ACO", "NIFTI1", "GIPL", "FREESURFER_MGH", "MAGICAVOXEL_VOX", "NIFTI2", "LIGHTWAVE_MDD", "STEINBERG_FXB",
+    "ASTRONOMY_SER", "NINTENDO_NSF", "PSID_SID", "HES_SOUND", "UCSC_TWOBIT", "STEINBERG_VST3PRESET", "SNES_SPC", "GAMEBOY_GBS",
+    "SEGA_SGC", "S98_LOG", "SOFTIMAGE_PIC", "CALMA_GDSII", "YAMAHA_YM", "GRUB_PFF2", "DOSBOX_DRO", "ADOBE_ACV", "ADOBE_ACT",
+    "CREATIVE_CMF", "EA_FSH"]; }
+
+var sx_multimedia_layouts = [sxmm_ym_header, sxmm_ym_digidrum, sxmm_hes_header, sxmm_hes_data_header, sxmm_psid_header_v1,
+    sxmm_psid_header_v2, sxmm_psid_load_address, sxmm_nsf_header, sxmm_gbs_header, sxmm_sgc_header, sxmm_s98_header,
+    sxmm_s98_device, sxmm_vst3_header, sxmm_vst3_list, sxmm_vst3_entry, sxmm_vst2_program, sxmm_vst2_bank_v1, sxmm_vst2_bank_v2,
+    sxmm_vst2_parameter, sxmm_vst2_chunk, sxmm_dro_header_v2, sxmm_dro_register_map, sxmm_dro_pair, sxmm_cmf_header_v1,
+    sxmm_cmf_header_v11, sxmm_cmf_instrument, sxmm_spc_header, sxmm_spc_id666_common, sxmm_spc_xid6_header, sxmm_spc_xid6_item,
+    sxmm_glb_header, sxmm_glb_chunk, sxmm_vox_header, sxmm_vox_chunk, sxmm_vox_pack, sxmm_vox_size, sxmm_vox_xyzi,
+    sxmm_vox_voxel, sxmm_vox_rgba, sxmm_ase_header, sxmm_ase_block, sxmm_ase_name, sxmm_utf16_unit, sxmm_ase_rgb, sxmm_ase_lab,
+    sxmm_ase_cmyk, sxmm_ase_gray, sxmm_aco_header, sxmm_aco_color, sxmm_aco_lab_color, sxmm_aco_name, sxmm_acv_header,
+    sxmm_acv_curve, sxmm_acv_point, sxmm_act_color, sxmm_act_footer, sxmm_pvr2_header, sxmm_tim_header, sxmm_tim_block,
+    sxmm_tim2_header, sxmm_tim2_picture, sxmm_tpl_header, sxmm_tpl_entry, sxmm_tpl_image, sxmm_tpl_palette, sxmm_xcursor_header,
+    sxmm_xcursor_toc, sxmm_xcursor_image, sxmm_xcursor_comment, sxmm_mdd_header, sxmm_mdd_time, sxmm_mdd_point, sxmm_pic_header,
+    sxmm_pic_packet, sxmm_fsh_header, sxmm_fsh_entry, sxmm_fsh_bitmap, sxmm_twobit_header_le, sxmm_twobit_header_be,
+    sxmm_twobit_name, sxmm_twobit_index_offset_le, sxmm_twobit_index_offset_be, sxmm_twobit_sequence_le,
+    sxmm_twobit_sequence_be, sxmm_twobit_run_count_le, sxmm_twobit_run_count_be, sxmm_twobit_run_start_le,
+    sxmm_twobit_run_start_be, sxmm_twobit_run_size_le, sxmm_twobit_run_size_be, sxmm_twobit_reserved_le,
+    sxmm_twobit_reserved_be, sxmm_gds_record, sxmm_gds_int16, sxmm_gds_int32, sxmm_gds_bit_array, sxmm_gds_real64,
+    sxmm_gds_timestamp, sxmm_ser_header, sxmm_ser_timestamp, sxmm_mgh_header, sxmm_mgh_ras, sxmm_gipl_header_le,
+    sxmm_gipl_header_be, sxmm_nifti1_header_le, sxmm_nifti1_header_be, sxmm_nifti2_header_le, sxmm_nifti2_header_be,
+    sxmm_nifti_extension_flag, sxmm_nifti_extension_le, sxmm_nifti_extension_be, sxmm_pff2_section, sxmm_pff2_data,
+    sxmm_pff2_metric, sxmm_pff2_index, sxmm_pff2_glyph, sxmm_ttc_header, sxmm_ttc_font_offset, sxmm_ttc_dsig, sxmm_ttc_sfnt,
+    sxmm_ttc_table];
+
+function structs() {
+    return sxCatalog([sxmm_ym_header, sxmm_ym_digidrum, sxmm_hes_header, sxmm_hes_data_header, sxmm_psid_header_v1,
+        sxmm_psid_header_v2, sxmm_psid_load_address, sxmm_nsf_header, sxmm_gbs_header, sxmm_sgc_header, sxmm_s98_header,
+        sxmm_s98_device, sxmm_vst3_header, sxmm_vst3_list, sxmm_vst3_entry, sxmm_vst2_program, sxmm_vst2_bank_v1,
+        sxmm_vst2_bank_v2, sxmm_vst2_parameter, sxmm_vst2_chunk, sxmm_dro_header_v2, sxmm_dro_register_map, sxmm_dro_pair,
+        sxmm_cmf_header_v1, sxmm_cmf_header_v11, sxmm_cmf_instrument, sxmm_spc_header, sxmm_spc_id666_common,
+        sxmm_spc_xid6_header, sxmm_spc_xid6_item, sxmm_glb_header, sxmm_glb_chunk, sxmm_vox_header, sxmm_vox_chunk,
+        sxmm_vox_pack, sxmm_vox_size, sxmm_vox_xyzi, sxmm_vox_voxel, sxmm_vox_rgba, sxmm_ase_header, sxmm_ase_block,
+        sxmm_ase_name, sxmm_utf16_unit, sxmm_ase_rgb, sxmm_ase_lab, sxmm_ase_cmyk, sxmm_ase_gray, sxmm_aco_header,
+        sxmm_aco_color, sxmm_aco_lab_color, sxmm_aco_name, sxmm_acv_header, sxmm_acv_curve, sxmm_acv_point, sxmm_act_color,
+        sxmm_act_footer, sxmm_pvr2_header, sxmm_tim_header, sxmm_tim_block, sxmm_tim2_header, sxmm_tim2_picture,
+        sxmm_tpl_header, sxmm_tpl_entry, sxmm_tpl_image, sxmm_tpl_palette, sxmm_xcursor_header, sxmm_xcursor_toc,
+        sxmm_xcursor_image, sxmm_xcursor_comment, sxmm_mdd_header, sxmm_mdd_time, sxmm_mdd_point, sxmm_pic_header,
+        sxmm_pic_packet, sxmm_fsh_header, sxmm_fsh_entry, sxmm_fsh_bitmap, sxmm_twobit_header_le, sxmm_twobit_header_be,
+        sxmm_twobit_name, sxmm_twobit_index_offset_le, sxmm_twobit_index_offset_be, sxmm_twobit_sequence_le,
+        sxmm_twobit_sequence_be, sxmm_twobit_run_count_le, sxmm_twobit_run_count_be, sxmm_twobit_run_start_le,
+        sxmm_twobit_run_start_be, sxmm_twobit_run_size_le, sxmm_twobit_run_size_be, sxmm_twobit_reserved_le,
+        sxmm_twobit_reserved_be, sxmm_gds_record, sxmm_gds_int16, sxmm_gds_int32, sxmm_gds_bit_array, sxmm_gds_real64,
+        sxmm_gds_timestamp, sxmm_ser_header, sxmm_ser_timestamp, sxmm_mgh_header, sxmm_mgh_ras, sxmm_gipl_header_le,
+        sxmm_gipl_header_be, sxmm_nifti1_header_le, sxmm_nifti1_header_be, sxmm_nifti2_header_le, sxmm_nifti2_header_be,
+        sxmm_nifti_extension_flag, sxmm_nifti_extension_le, sxmm_nifti_extension_be, sxmm_pff2_section, sxmm_pff2_data,
+        sxmm_pff2_metric, sxmm_pff2_index, sxmm_pff2_glyph, sxmm_ttc_header, sxmm_ttc_font_offset, sxmm_ttc_dsig, sxmm_ttc_sfnt,
+        sxmm_ttc_table], sx_multimedia_comment, true, false);
+}
+
+function scan() {
+    return sxScan(sx_multimedia_build, false);
+}

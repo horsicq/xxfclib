@@ -1,0 +1,158 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/stata_dta/xx_stata_dta_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_stata117_prefix_le_fields = layout([chars("prefix", 28, SIGNATURE), chars("release", 3, ID),
+    chars("release_end", 21, NONE), chars("byte_order", 3, ID), chars("byte_order_end", 15, NONE), u16("variable_count", COUNT),
+    chars("variable_count_end", 7, NONE), u32("observation_count", COUNT)]);
+var sxsw_stata117_prefix_le = sxLayout(0x602D0040, "stata117_prefix_le", LE, sxsw_stata117_prefix_le_fields);
+var sxsw_stata117_label_size_le_fields = layout([u8("label_size", SIZE)]);
+var sxsw_stata117_label_size_le = sxLayout(0x602D0041, "stata117_label_size_le", LE, sxsw_stata117_label_size_le_fields);
+var sxsw_stata117_variable_name_fields = layout([chars("variable_name", 33, STRING)]);
+var sxsw_stata117_variable_name = sxLayout(0x602D0042, "stata117_variable_name", LE, sxsw_stata117_variable_name_fields);
+var sxsw_stata117_display_format_fields = layout([chars("display_format", 49, STRING)]);
+var sxsw_stata117_display_format = sxLayout(0x602D0043, "stata117_display_format", LE, sxsw_stata117_display_format_fields);
+var sxsw_stata117_value_label_name_fields = layout([chars("value_label_name", 33, STRING)]);
+var sxsw_stata117_value_label_name = sxLayout(0x602D0044, "stata117_value_label_name", LE, sxsw_stata117_value_label_name_fields);
+var sxsw_stata117_variable_label_fields = layout([chars("variable_label", 81, STRING)]);
+var sxsw_stata117_variable_label = sxLayout(0x602D0045, "stata117_variable_label", LE, sxsw_stata117_variable_label_fields);
+var sxsw_stata118_prefix_le_fields = layout([chars("prefix", 28, SIGNATURE), chars("release", 3, ID),
+    chars("release_end", 21, NONE), chars("byte_order", 3, ID), chars("byte_order_end", 15, NONE), u16("variable_count", COUNT),
+    chars("variable_count_end", 7, NONE), u64("observation_count", COUNT)]);
+var sxsw_stata118_prefix_le = sxLayout(0x602D0046, "stata118_prefix_le", LE, sxsw_stata118_prefix_le_fields);
+var sxsw_stata118_label_size_le_fields = layout([u16("label_size", SIZE)]);
+var sxsw_stata118_label_size_le = sxLayout(0x602D0047, "stata118_label_size_le", LE, sxsw_stata118_label_size_le_fields);
+var sxsw_stata118_variable_name_fields = layout([chars("variable_name", 129, STRING)]);
+var sxsw_stata118_variable_name = sxLayout(0x602D0048, "stata118_variable_name", LE, sxsw_stata118_variable_name_fields);
+var sxsw_stata118_display_format_fields = layout([chars("display_format", 57, STRING)]);
+var sxsw_stata118_display_format = sxLayout(0x602D0049, "stata118_display_format", LE, sxsw_stata118_display_format_fields);
+var sxsw_stata118_value_label_name_fields = layout([chars("value_label_name", 129, STRING)]);
+var sxsw_stata118_value_label_name = sxLayout(0x602D004A, "stata118_value_label_name", LE, sxsw_stata118_value_label_name_fields);
+var sxsw_stata118_variable_label_fields = layout([chars("variable_label", 321, STRING)]);
+var sxsw_stata118_variable_label = sxLayout(0x602D004B, "stata118_variable_label", LE, sxsw_stata118_variable_label_fields);
+var sxsw_stata_map_le_fields = layout([chars("start", 5, NONE), u64("file_start", OFFSET), u64("map_offset", OFFSET),
+    u64("variable_types_offset", OFFSET), u64("variable_names_offset", OFFSET), u64("sortlist_offset", OFFSET),
+    u64("formats_offset", OFFSET), u64("value_label_names_offset", OFFSET), u64("variable_labels_offset", OFFSET),
+    u64("characteristics_offset", OFFSET), u64("data_offset", OFFSET), u64("strls_offset", OFFSET),
+    u64("value_labels_offset", OFFSET), u64("file_end_tag_offset", OFFSET), u64("file_end", OFFSET), chars("end", 6, NONE)]);
+var sxsw_stata_map_le = sxLayout(0x602D004C, "stata_map_le", LE, sxsw_stata_map_le_fields);
+var sxsw_stata_sort_index_le_fields = layout([u16("variable_index", ID)]);
+var sxsw_stata_sort_index_le = sxLayout(0x602D004E, "stata_sort_index_le", LE, sxsw_stata_sort_index_le_fields);
+var sxsw_stata117_prefix_be_fields = layout([chars("prefix", 28, SIGNATURE), chars("release", 3, ID),
+    chars("release_end", 21, NONE), chars("byte_order", 3, ID), chars("byte_order_end", 15, NONE), u16("variable_count", COUNT),
+    chars("variable_count_end", 7, NONE), u32("observation_count", COUNT)]);
+var sxsw_stata117_prefix_be = sxLayout(0x602D004F, "stata117_prefix_be", BE, sxsw_stata117_prefix_be_fields);
+var sxsw_stata117_label_size_be_fields = layout([u8("label_size", SIZE)]);
+var sxsw_stata117_label_size_be = sxLayout(0x602D0050, "stata117_label_size_be", BE, sxsw_stata117_label_size_be_fields);
+var sxsw_stata118_prefix_be_fields = layout([chars("prefix", 28, SIGNATURE), chars("release", 3, ID),
+    chars("release_end", 21, NONE), chars("byte_order", 3, ID), chars("byte_order_end", 15, NONE), u16("variable_count", COUNT),
+    chars("variable_count_end", 7, NONE), u64("observation_count", COUNT)]);
+var sxsw_stata118_prefix_be = sxLayout(0x602D0051, "stata118_prefix_be", BE, sxsw_stata118_prefix_be_fields);
+var sxsw_stata118_label_size_be_fields = layout([u16("label_size", SIZE)]);
+var sxsw_stata118_label_size_be = sxLayout(0x602D0052, "stata118_label_size_be", BE, sxsw_stata118_label_size_be_fields);
+var sxsw_stata_map_be_fields = layout([chars("start", 5, NONE), u64("file_start", OFFSET), u64("map_offset", OFFSET),
+    u64("variable_types_offset", OFFSET), u64("variable_names_offset", OFFSET), u64("sortlist_offset", OFFSET),
+    u64("formats_offset", OFFSET), u64("value_label_names_offset", OFFSET), u64("variable_labels_offset", OFFSET),
+    u64("characteristics_offset", OFFSET), u64("data_offset", OFFSET), u64("strls_offset", OFFSET),
+    u64("value_labels_offset", OFFSET), u64("file_end_tag_offset", OFFSET), u64("file_end", OFFSET), chars("end", 6, NONE)]);
+var sxsw_stata_map_be = sxLayout(0x602D0053, "stata_map_be", BE, sxsw_stata_map_be_fields);
+var sxsw_stata_sort_index_be_fields = layout([u16("variable_index", ID)]);
+var sxsw_stata_sort_index_be = sxLayout(0x602D0055, "stata_sort_index_be", BE, sxsw_stata_sort_index_be_fields);
+var sxsw_stata_timestamp_size_fields = layout([u8("timestamp_size", SIZE)]);
+var sxsw_stata_timestamp_size = sxLayout(0x602D0056, "stata_timestamp_size", LE, sxsw_stata_timestamp_size_fields);
+function sxsw64(p, p_o, be) {
+    return sxGetU64At(p, p_o, 8, 0, be);
+}
+function sxsw_literal(c, at, s) {
+    var n = sxStrlen(s);
+    var b = [];
+    if (n > 128 || !sx_read(c, at[0], b, n) || sxMemcmp(b, s, n)) {
+        return false;
+    }
+    at[0] += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    return true;
+}
+function sxsw_stata(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 79)) {
+        return false;
+    }
+    var v118 = b[30] === 56 /*8*/;
+    var be = !sxMemcmpAt(b, 50, "MSF", 0, 3);
+    var width = v118 ? 8 : 4;
+    var at = [0];
+    if (!sxsw_literal(c, at, "<stata_dta><header><release>")) {
+        return false;
+    }
+    at[0] += 3;
+    if (!sxsw_literal(c, at, "</release><byteorder>")) {
+        return false;
+    }
+    if (!sx_read(c, at[0], b, 3)) {
+        return false;
+    }
+    be = !sxMemcmp(b, "MSF", 3);
+    at[0] += 3;
+    if (!sxsw_literal(c, at, "</byteorder><K>")) {
+        return false;
+    }
+    var vars;
+    if ((vars = sx_u16(c, at[0], be)) === null || !vars || vars > 4096) {
+        return false;
+    }
+    at[0] += 2;
+    if (!sxsw_literal(c, at, "</K><N>")) {
+        return false;
+    }
+    at[0] += width;
+    var prefix = v118 ? be ? sxsw_stata118_prefix_be : sxsw_stata118_prefix_le : be ? sxsw_stata117_prefix_be : sxsw_stata117_prefix_le;
+    if (!sxsw_add(c, prefix, 0, at[0]) || !sxsw_literal(c, at, "</N><label>")) {
+        return false;
+    }
+    var n;
+    if (v118) {
+        var x;
+        if ((x = sx_u16(c, at[0], be)) === null) {
+            return false;
+        }
+        n = x;
+    } else {
+        if (!sx_read(c, at[0], b, 1)) {
+            return false;
+        }
+        n = b[0];
+    }
+    if (!sxsw_add(c, v118 ? be ? sxsw_stata118_label_size_be : sxsw_stata118_label_size_le : be ? sxsw_stata117_label_size_be : sxsw_stata117_label_size_le, at[0], v118 ? 2 : 1) || !sxsw_span(c, at[0] + (v118 ? 2 : 1), n)) {
+        return false;
+    }
+    at[0] += ((v118 ? 2 : 1) + n) >>> 0;
+    if (!sxsw_literal(c, at, "</label><timestamp>") || !sx_read(c, at[0], b, 1) || !sxsw_add(c, sxsw_stata_timestamp_size, at[0], 1) || !sxsw_span(c, at[0] + 1, b[0])) {
+        return false;
+    }
+    at[0] += 1 + b[0];
+    if (!sxsw_literal(c, at, "</timestamp></header>") || !sx_read(c, at[0], b, 123) || !sxsw_add(c, be ? sxsw_stata_map_be : sxsw_stata_map_le, at[0], 123)) {
+        return false;
+    }
+    var offsets = [];
+    for (var i = 0; i < 14; i++) {
+        offsets[i] = sxsw64(b, 5 + ((i * 8) >>> 0), be);
+        if (offsets[i] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return false;
+        }
+    }
+    var tags = ["<variable_types>", "<varnames>", "<sortlist>", "<formats>", "<value_label_names>", "<variable_labels>"];
+    var layouts = [be ? sxsw_stata_type_be : sxsw_stata_type_le, v118 ? sxsw_stata118_variable_name : sxsw_stata117_variable_name, be ? sxsw_stata_sort_index_be : sxsw_stata_sort_index_le, v118 ? sxsw_stata118_display_format : sxsw_stata117_display_format, v118 ? sxsw_stata118_value_label_name : sxsw_stata117_value_label_name, v118 ? sxsw_stata118_variable_label : sxsw_stata117_variable_label];
+    var widths = [2, v118 ? 129 : 33, 2, v118 ? 57 : 49, v118 ? 129 : 33, v118 ? 321 : 81];
+    for (i = 0; i < 6; i++) {
+        at[0] = sxI64(offsets[(i + 2) >>> 0]);
+        if (!sxsw_literal(c, at, tags[i]) || !sxsw_table(c, layouts[i], at[0], widths[i], vars + (i === 2 ? 1 : 0))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_stata_dta_build(c) {
+    return sxsw_stata(c);
+}

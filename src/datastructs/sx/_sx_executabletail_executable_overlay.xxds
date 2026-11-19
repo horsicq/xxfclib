@@ -1,0 +1,183 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/executable_overlay/xx_executable_overlay_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexo_overlay_dos_e_res_fields = layout([field("e_res", "uint16le[4]", 8, RESERVED)]);
+var sxexo_overlay_dos_e_res = sxLayout(0x60880007, "overlay_dos_e_res", LE, sxexo_overlay_dos_e_res_fields);
+var sxexo_overlay_dos_e_oemid_fields = layout([u16("e_oemid", ID)]);
+var sxexo_overlay_dos_e_oemid = sxLayout(0x60880008, "overlay_dos_e_oemid", LE, sxexo_overlay_dos_e_oemid_fields);
+var sxexo_overlay_dos_e_oeminfo_fields = layout([u16("e_oeminfo")]);
+var sxexo_overlay_dos_e_oeminfo = sxLayout(0x60880009, "overlay_dos_e_oeminfo", LE, sxexo_overlay_dos_e_oeminfo_fields);
+var sxexo_overlay_dos_e_res2_fields = layout([field("e_res2", "uint16le[10]", 20, RESERVED)]);
+var sxexo_overlay_dos_e_res2 = sxLayout(0x6088000A, "overlay_dos_e_res2", LE, sxexo_overlay_dos_e_res2_fields);
+var sxexo_overlay_dos_e_lfanew_fields = layout([u32("e_lfanew", OFFSET)]);
+var sxexo_overlay_dos_e_lfanew = sxLayout(0x6088000B, "overlay_dos_e_lfanew", LE, sxexo_overlay_dos_e_lfanew_fields);
+var sxexo_overlay_dos_relocation_fields = layout([u16("offset", VA), u16("segment", VA)]);
+var sxexo_overlay_dos_relocation = sxLayout(0x6088000C, "overlay_dos_relocation", LE, sxexo_overlay_dos_relocation_fields);
+var sxexo_overlay_pe_signature_fields = layout([u32("Signature", ID)]);
+var sxexo_overlay_pe_signature = sxLayout(0x6088000D, "overlay_pe_signature", LE, sxexo_overlay_pe_signature_fields);
+var sxexo_overlay_coff_header_fields = layout([u16("Machine", ID), u16("NumberOfSections", COUNT),
+    u32("TimeDateStamp", TIMESTAMP), u32("PointerToSymbolTable", OFFSET), u32("NumberOfSymbols", COUNT),
+    u16("SizeOfOptionalHeader", SIZE), u16("Characteristics", FLAGS)]);
+var sxexo_overlay_coff_header = sxLayout(0x6088000E, "overlay_coff_header", LE, sxexo_overlay_coff_header_fields);
+var sxexo_overlay_pe_optional32_fields = layout([u16("Magic", ID), u8("MajorLinkerVersion"), u8("MinorLinkerVersion"),
+    u32("SizeOfCode", SIZE), u32("SizeOfInitializedData", SIZE), u32("SizeOfUninitializedData", SIZE),
+    u32("AddressOfEntryPoint", VA), u32("BaseOfCode", VA), u32("BaseOfData", VA), u32("ImageBase", VA),
+    u32("SectionAlignment", SIZE), u32("FileAlignment", SIZE), u16("MajorOperatingSystemVersion"),
+    u16("MinorOperatingSystemVersion"), u16("MajorImageVersion"), u16("MinorImageVersion"), u16("MajorSubsystemVersion"),
+    u16("MinorSubsystemVersion"), u32("Win32VersionValue", RESERVED), u32("SizeOfImage", SIZE), u32("SizeOfHeaders", SIZE),
+    u32("CheckSum", CHECKSUM), u16("Subsystem", ID), u16("DllCharacteristics", FLAGS), u32("SizeOfStackReserve", SIZE),
+    u32("SizeOfStackCommit", SIZE), u32("SizeOfHeapReserve", SIZE), u32("SizeOfHeapCommit", SIZE), u32("LoaderFlags", FLAGS),
+    u32("NumberOfRvaAndSizes", COUNT)]);
+var sxexo_overlay_pe_optional32 = sxLayout(0x6088000F, "overlay_pe_optional32", LE, sxexo_overlay_pe_optional32_fields);
+var sxexo_overlay_pe_optional64_fields = layout([u16("Magic", ID), u8("MajorLinkerVersion"), u8("MinorLinkerVersion"),
+    u32("SizeOfCode", SIZE), u32("SizeOfInitializedData", SIZE), u32("SizeOfUninitializedData", SIZE),
+    u32("AddressOfEntryPoint", VA), u32("BaseOfCode", VA), u64("ImageBase", VA), u32("SectionAlignment", SIZE),
+    u32("FileAlignment", SIZE), u16("MajorOperatingSystemVersion"), u16("MinorOperatingSystemVersion"),
+    u16("MajorImageVersion"), u16("MinorImageVersion"), u16("MajorSubsystemVersion"), u16("MinorSubsystemVersion"),
+    u32("Win32VersionValue", RESERVED), u32("SizeOfImage", SIZE), u32("SizeOfHeaders", SIZE), u32("CheckSum", CHECKSUM),
+    u16("Subsystem", ID), u16("DllCharacteristics", FLAGS), u64("SizeOfStackReserve", SIZE), u64("SizeOfStackCommit", SIZE),
+    u64("SizeOfHeapReserve", SIZE), u64("SizeOfHeapCommit", SIZE), u32("LoaderFlags", FLAGS), u32("NumberOfRvaAndSizes", COUNT)]);
+var sxexo_overlay_pe_optional64 = sxLayout(0x60880010, "overlay_pe_optional64", LE, sxexo_overlay_pe_optional64_fields);
+var sxexo_overlay_pe_directory_fields = layout([u32("VirtualAddress", VA), u32("Size", SIZE)]);
+var sxexo_overlay_pe_directory = sxLayout(0x60880011, "overlay_pe_directory", LE, sxexo_overlay_pe_directory_fields);
+var sxexo_overlay_pe_security_directory_fields = layout([u32("FileOffset", OFFSET), u32("Size", SIZE)]);
+var sxexo_overlay_pe_security_directory = sxLayout(0x60880012, "overlay_pe_security_directory", LE, sxexo_overlay_pe_security_directory_fields);
+var sxexo_overlay_pe_section_fields = layout([chars("Name", 8, STRING), u32("VirtualSize", SIZE), u32("VirtualAddress", VA),
+    u32("SizeOfRawData", SIZE), u32("PointerToRawData", OFFSET), u32("PointerToRelocations", OFFSET),
+    u32("PointerToLinenumbers", OFFSET), u16("NumberOfRelocations", COUNT), u16("NumberOfLinenumbers", COUNT),
+    u32("Characteristics", FLAGS)]);
+var sxexo_overlay_pe_section = sxLayout(0x60880013, "overlay_pe_section", LE, sxexo_overlay_pe_section_fields);
+function sxexo_within(size, at, bytes) {
+    return at >= 0 && at <= size && bytes <= (size - at < 0 ? size - at + SX_U64_MAX : size - at);
+}
+function sxexo_image(c, at, size) {
+    var h = [];
+    var sig = [];
+    var extended = 0;
+    var windows = false;
+    if (c.count > 23000) {
+        return true;
+    }
+    if (!sxexo_within(c.size, at, (size < 0 ? size + SX_U64_MAX : size)) || size < 28 || !sx_read(c, at, h, 28) || !(h[0] === 77 /*M*/ && h[1] === 90 /*Z*/ || h[0] === 90 /*Z*/ && h[1] === 77 /*M*/)) {
+        return false;
+    }
+    if (size >= 64) {
+        if (!sx_read_at(c, at + 28, h, 28, 36)) {
+            return false;
+        }
+        extended = sxGetU32(h, 64, 60, false);
+        if (extended >= 64 && sxexo_within(size, extended, 4)) {
+            if (!sx_read(c, at + extended, sig, 4)) {
+                return false;
+            }
+            windows = !sxMemcmp(sig, "PE\x00\x00", 4) || !sxMemcmp(sig, "NE", 2);
+        }
+    }
+    if (!sx_add(c, sxexo_overlay_dos_header, at, 28)) {
+        return false;
+    }
+    var reloc = sxGetU16(h, 28, 6, false);
+    var relat = sxGetU16(h, 28, 24, false);
+    var reloc_valid = !!(reloc && relat >= 28 && sxexo_within(size, relat, reloc * 4));
+    var reloc_end = relat + reloc * 4;
+    if (windows) {
+        var fields = [sxexo_overlay_dos_e_res, sxexo_overlay_dos_e_oemid, sxexo_overlay_dos_e_oeminfo, sxexo_overlay_dos_e_res2, sxexo_overlay_dos_e_lfanew];
+        var offsets = [28, 36, 38, 40, 60];
+        var sizes = [8, 2, 2, 20, 4];
+        for (var i = 0; i < 5; i++) {
+            var overlaps = reloc_valid && relat < offsets[i] + sizes[i] && reloc_end > offsets[i];
+            if (!overlaps && !sx_add(c, fields[i], at + offsets[i], sizes[i])) {
+                return false;
+            }
+        }
+    }
+    if (reloc_valid && (!windows || reloc_end <= extended) && !sx_table(c, sxexo_overlay_dos_relocation, at + relat, 4, reloc)) {
+        return false;
+    }
+    if (!windows) {
+        return true;
+    }
+    if (!sxMemcmp(sig, "NE", 2)) {
+        var ne = [];
+        if (!sxexo_within(size, extended, 64) || !sx_read(c, at + extended, ne, 64) || !sx_add(c, sxexo_overlay_ne_header, at + extended, 64)) {
+            return false;
+        }
+        var count = sxGetU16(ne, 64, 28, false);
+        var offset = sxGetU16(ne, 64, 34, false);
+        if (count && offset >= 64 && sxexo_within(size, extended + offset, count * 8)) {
+            return sx_table(c, sxexo_overlay_ne_segment, at + extended + offset, 8, count);
+        }
+        return true;
+    }
+    var pe = [];
+    var op = [];
+    if (!sxexo_within(size, extended, 24) || !sx_read(c, at + extended, pe, 24)) {
+        return false;
+    }
+    count = sxGetU16(pe, 24, 6, false);
+    var optional = sxGetU16(pe, 24, 20, false);
+    var opt = extended + 24;
+    if (optional < 96 || !sxexo_within(size, opt, optional) || !sx_read(c, at + opt, op, 96)) {
+        return false;
+    }
+    var magic = sxGetU16(op, 96, 0, false);
+    var prefix = magic === 0x20B ? 112 : 96;
+    if (magic !== 0x10B && magic !== 0x20B || optional < prefix || prefix === 112 && !sx_read(c, at + opt, op, 112)) {
+        return false;
+    }
+    var dirs = sxGetU32(op, (prefix < 0 ? prefix + SX_U64_MAX : prefix), sxU64((prefix < 0 ? prefix + SX_U64_MAX : prefix) - 4), false);
+    if (dirs > 16 || dirs * 8 > (optional - prefix < 0 ? optional - prefix + SX_U64_MAX : optional - prefix) || !sxexo_within(size, opt + optional, count * 40)) {
+        return false;
+    }
+    if (!sx_add(c, sxexo_overlay_pe_signature, at + extended, 4) || !sx_add(c, sxexo_overlay_coff_header, at + extended + 4, 20) || !sx_add(c, magic === 0x20B ? sxexo_overlay_pe_optional64 : sxexo_overlay_pe_optional32, at + opt, prefix)) {
+        return false;
+    }
+    for (i = 0; i < dirs; i++) {
+        if (!sx_add(c, i === 4 ? sxexo_overlay_pe_security_directory : sxexo_overlay_pe_directory, at + opt + prefix + i * 8, 8)) {
+            return false;
+        }
+    }
+    return !count || sx_table(c, sxexo_overlay_pe_section, at + opt + optional, 40, count);
+}
+function sxexo_overlay(c) {
+    var s = sxArcCreate(c.f);
+    var ok = true;
+    var first = true;
+    if (s === null) {
+        return false;
+    }
+    do {
+        var r = sxArcCurrent(c.f, s);
+        if (r === null) {
+            break;
+        }
+        var off = r.data_offset - c.f.base_address;
+        var size = r.compressed_size;
+        var name = sxArcName(r);
+        if (off < 0 || size < 0 || !sxexo_within(c.size, off, (size < 0 ? size + SX_U64_MAX : size))) {
+            ok = false;
+            break;
+        }
+        if (first) {
+            first = false;
+            if (!sxexo_image(c, 0, off)) {
+                ok = false;
+                break;
+            }
+        }
+        if (name !== null && (sxStrstr(name, "-dos-image.exe") || sxStrstr(name, "-pe-image.exe") || sxStrstr(name, "-ne-image.exe"))) {
+            if (!sxexo_image(c, off, size)) {
+                ok = false;
+                break;
+            }
+        }
+    } while (sxArcNext(c.f, s));
+    sxArcFree(c.f, s);
+    return ok && !first;
+}
+function sx_executable_overlay_build(c) {
+    return sxexo_overlay(c);
+}

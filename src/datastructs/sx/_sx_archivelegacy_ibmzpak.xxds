@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ibmzpak/xx_ibmzpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_ibmzpak_header_fields = layout([chars("signature", 5, SIGNATURE), u8("reserved", RESERVED), u16("version", ID)]);
+var sxag_ibmzpak_header = sxLayout(0x6025001D, "ibmzpak_header", LE, sxag_ibmzpak_header_fields);
+var sxag_ibmzpak_entry_fields = layout([chars("name", 80, STRING), u32("packed_size", SIZE), u16("date"), u16("time")]);
+var sxag_ibmzpak_entry = sxLayout(0x6025001E, "ibmzpak_entry", LE, sxag_ibmzpak_entry_fields);
+var sxag_ibmzpak_count_fields = layout([u16("entry_count", COUNT)]);
+var sxag_ibmzpak_count = sxLayout(0x6025001F, "ibmzpak_count", LE, sxag_ibmzpak_count_fields);
+function sxag_ibm(c) {
+    var b = [];
+    if (!sxag_add(c, sxag_ibmzpak_header, 0) || (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 10 || !sxag_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 2), b, 2)) {
+        return false;
+    }
+    var n = sxag16(b, 0, false);
+    if (!n || n > 20000 || n * 88 > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 10)) {
+        return true;
+    }
+    var table = sxU64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 2) - n * 88);
+    var p = 8;
+    if (!sxag_table(c, sxag_ibmzpak_entry, table, n) || !sxag_add(c, sxag_ibmzpak_count, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 2))) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxag_read(c, table + i * 88, b, 88)) {
+            break;
+        }
+        var z = sxag32(b, 80, false);
+        if (z < 2 || p > table || z > sxU64(table - p)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_archivelegacy_dcl, p)) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_ibmzpak_build(c) {
+    return sxag_ibm(c);
+}

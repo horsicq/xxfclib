@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/androidboot/xx_androidboot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fw_android_boot_v0_fields = layout([field("magic", "byte[8]", 8, SIGNATURE), u32("kernel_size", SIZE),
+    u32("kernel_addr", VA), u32("ramdisk_size", SIZE), u32("ramdisk_addr", VA), u32("second_size", SIZE),
+    u32("second_addr", VA), u32("tags_addr", VA), u32("page_size", SIZE), u32("header_version", ID), u32("os_version", ID),
+    chars("name", 16, NONE), chars("cmdline", 512, NONE), field("id", "byte[32]", 32), chars("extra_cmdline", 1024, NONE)]);
+var sx_fw_android_boot_v0 = sxLayout(0x601E0001, "android_boot_v0", LE, sx_fw_android_boot_v0_fields);
+var sx_fw_android_boot_qcom_fields = layout([field("magic", "byte[8]", 8, SIGNATURE), u32("kernel_size", SIZE),
+    u32("kernel_addr", VA), u32("ramdisk_size", SIZE), u32("ramdisk_addr", VA), u32("second_size", SIZE),
+    u32("second_addr", VA), u32("tags_addr", VA), u32("page_size", SIZE), u32("dt_size", SIZE), u32("unused", RESERVED),
+    chars("name", 16, NONE), chars("cmdline", 512, NONE), field("id", "byte[32]", 32), chars("extra_cmdline", 1024, NONE)]);
+var sx_fw_android_boot_qcom = sxLayout(0x601E0002, "android_boot_qcom", LE, sx_fw_android_boot_qcom_fields);
+var sx_fw_android_boot_v1_extra_fields = layout([u32("recovery_dtbo_size", SIZE), u64("recovery_dtbo_offset", OFFSET),
+    u32("header_size", SIZE)]);
+var sx_fw_android_boot_v1_extra = sxLayout(0x601E0003, "android_boot_v1_extra", LE, sx_fw_android_boot_v1_extra_fields);
+var sx_fw_android_boot_v2_extra_fields = layout([u32("dtb_size", SIZE), u64("dtb_addr", VA)]);
+var sx_fw_android_boot_v2_extra = sxLayout(0x601E0004, "android_boot_v2_extra", LE, sx_fw_android_boot_v2_extra_fields);
+var sx_fw_android_boot_v3_fields = layout([field("magic", "byte[8]", 8, SIGNATURE), u32("kernel_size", SIZE),
+    u32("ramdisk_size", SIZE), u32("os_version", ID), u32("header_size", SIZE), field("reserved", "uint32[4]", 16, RESERVED),
+    u32("header_version", ID), chars("cmdline", 1536, NONE)]);
+var sx_fw_android_boot_v3 = sxLayout(0x601E0005, "android_boot_v3", LE, sx_fw_android_boot_v3_fields);
+var sx_fw_android_boot_v4_extra_fields = layout([u32("signature_size", SIZE)]);
+var sx_fw_android_boot_v4_extra = sxLayout(0x601E0006, "android_boot_v4_extra", LE, sx_fw_android_boot_v4_extra_fields);
+function sx_fw_boot(c) {
+    var v;
+    if ((v = sx_u32(c, 40, false)) === null) {
+        return false;
+    }
+    if (v > 4) {
+        return sx_add(c, sx_fw_android_boot_qcom, 0, 1632);
+    }
+    if (v <= 2) {
+        if (!sx_add(c, sx_fw_android_boot_v0, 0, 1632)) {
+            return false;
+        }
+        if (v >= 1 && !sx_add(c, sx_fw_android_boot_v1_extra, 1632, 16)) {
+            return false;
+        }
+        return v < 2 || sx_add(c, sx_fw_android_boot_v2_extra, 1648, 12);
+    }
+    if (v > 4 || !sx_add(c, sx_fw_android_boot_v3, 0, 1580)) {
+        return false;
+    }
+    return v < 4 || sx_add(c, sx_fw_android_boot_v4_extra, 1580, 4);
+}
+function sx_androidboot_build(c) {
+    var ok = false;
+    ok = sx_fw_boot(c);
+    return ok && sx_fw_finish(c);
+}

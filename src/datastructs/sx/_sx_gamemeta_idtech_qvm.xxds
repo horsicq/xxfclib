@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/idtech_qvm/xx_idtech_qvm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_qvm_header_fields = layout([u32("signature", SIGNATURE), i32("instruction_count", COUNT), i32("code_offset", OFFSET),
+    i32("code_size", SIZE), i32("data_offset", OFFSET), i32("data_size", SIZE), i32("literals_size", SIZE),
+    i32("bss_size", SIZE)]);
+var sxgm_qvm_header = sxLayout(0x60270059, "qvm_header", LE, sxgm_qvm_header_fields);
+function sx_idtech_qvm_build(c) {
+    return sxgm_add(c, sxgm_qvm_header, 0);
+}

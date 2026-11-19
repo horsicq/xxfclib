@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_st_msa/xx_atari_st_msa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_msa_header_fields = layout([u16("signature", SIGNATURE), u16("sectors_per_track", COUNT), u16("sides_minus_one"),
+    u16("first_track", ID), u16("last_track", ID)]);
+var sxse_msa_header = sxLayout(0x602F0021, "msa_header", BE, sxse_msa_header_fields);
+var sxse_msa_track_header_fields = layout([u16("stored_size", SIZE)]);
+var sxse_msa_track_header = sxLayout(0x602F0022, "msa_track_header", BE, sxse_msa_track_header_fields);
+function sxse_msa(c) {
+    var b = [];
+    if (!sxse_read(c, 0, b, 10) || sxse_u16(b, 0, true) !== 0x0E0F || !sxse_put(c, sxse_msa_header, 0, 10, 1)) {
+        return false;
+    }
+    var side = sxse_u16(b, 4, true) + 1;
+    var first = sxse_u16(b, 6, true);
+    var last = sxse_u16(b, 8, true);
+    if (side > 2 || first > last || last > 85) {
+        return false;
+    }
+    var p = 10;
+    for (var i = 0; i < sxMul32((((last - first) >>> 0) + 1) >>> 0, side); i++) {
+        var z;
+        if ((z = sx_u16(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), true)) === null || !z || !sxse_span(c, p + 2, z) || !sxse_put(c, sxse_msa_track_header, p, 2, 1)) {
+            return false;
+        }
+        p += 2 + z;
+    }
+    return true;
+}
+function sx_atari_st_msa_build(c) {
+    return sxse_msa(c);
+}

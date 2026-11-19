@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/is_stored/xx_is_stored_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_is_stored_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxal_is_stored_signature = sxLayout(0x6020004F, "is_stored_signature", BE, sxal_is_stored_signature_fields);
+var sxal_is_stored_marker_fields = layout([chars("marker", 3, SIGNATURE)]);
+var sxal_is_stored_marker = sxLayout(0x60200050, "is_stored_marker", BE, sxal_is_stored_marker_fields);
+function sx_is_stored_build(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 16)) {
+        return false;
+    }
+    if (sxMemcmp(b, "\xE7P\xA9\xAE", 4) || sxMemcmpAt(b, 6, "\xE7P\xA9\xAE", 0, 4) || sxMemcmpAt(b, 12, "\xDD\xC1\xC0", 0, 3)) {
+        return false;
+    }
+    return sxal_add(c, sxal_is_stored_signature, 0) && sxal_add(c, sxal_is_stored_signature, 6) && sxal_add(c, sxal_is_stored_marker, 12);
+}

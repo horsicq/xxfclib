@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/mva/xx_mva_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_mva_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version")]);
+var sxasy_mva_header = sxLayout(0x6044001C, "mva_header", LE, sxasy_mva_header_fields);
+var sxasy_mva_member_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("header_size", SIZE),
+    u32("modification_time"), u32("creation_time"), chars("path", 260, NONE), i32("uncompressed_size", SIZE),
+    i32("compressed_size", SIZE), u32("checksum1", CHECKSUM), u32("checksum2", CHECKSUM), u32("attributes"), bytes("opaque", 50)]);
+var sxasy_mva_member = sxLayout(0x6044001D, "mva_member", LE, sxasy_mva_member_fields);
+function sxasy_mva(c) {
+    var p = 8;
+    if (!sxasy_add(c, sxasy_mva_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 346) || sxMemcmp(h, "mfen", 4)) {
+            return false;
+        }
+        var z = sxasy_uint(h, 280, 4, false);
+        if (z > 2147483647 || !sxasy_span(c, p + 346, z) || !sxasy_add(c, sxasy_mva_member, p)) {
+            return false;
+        }
+        p += 346 + z;
+    }
+    return true;
+}
+function sx_mva_build(c) {
+    return sxasy_mva(c);
+}

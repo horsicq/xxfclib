@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_au/xx_audio_au_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_c_au(c) {
+    var h = [];
+    var off;
+    var n;
+    if (!sx_read(c, 0, h, 24) || sxMemcmp(h, ".snd", 4)) {
+        return false;
+    }
+    off = sxGetU32At(h, 4, 4, 0, true);
+    n = sxGetU32At(h, 8, 4, 0, true);
+    if (off < 24 || off > c.size || n !== 4294967295 && !sx_c_bounds(c, off, n) || !sx_add(c, sx_c_au_header, 0, 24) || !sx_raw(c, 24, (off - 24) >>> 0)) {
+        return false;
+    }
+    return sx_raw(c, off, c.size - off);
+}
+function sx_audio_au_build(c) {
+    return sx_c_au(c);
+}

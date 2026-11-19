@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/povlablzh/xx_povlablzh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_povlab_header_fields = layout([u8("header_payload_size", SIZE), u8("checksum", CHECKSUM), chars("method", 5, NONE),
+    u32("skip_size", SIZE), u32("uncompressed_size", SIZE), u32("dos_timestamp"), u8("attributes"), u8("level"),
+    u8("name_size", SIZE)]);
+var sxasy_povlab_header = sxLayout(0x6044001E, "povlab_header", LE, sxasy_povlab_header_fields);
+var sxasy_povlab_attributes_fields = layout([u16("crc16", CHECKSUM), u8("origin_os")]);
+var sxasy_povlab_attributes = sxLayout(0x6044001F, "povlab_attributes", LE, sxasy_povlab_attributes_fields);
+var sxasy_povlab_extension_size_fields = layout([u16("next_header_size", SIZE)]);
+var sxasy_povlab_extension_size = sxLayout(0x60440020, "povlab_extension_size", LE, sxasy_povlab_extension_size_fields);
+var sxasy_povlab_extension_type_fields = layout([u8("type")]);
+var sxasy_povlab_extension_type = sxLayout(0x60440021, "povlab_extension_type", LE, sxasy_povlab_extension_type_fields);
+function sxasy_pov(c) {
+    var p = 0;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 1) || !h[0]) {
+            return true;
+        }
+        if (!sxasy_read(c, p, h, 22)) {
+            return false;
+        }
+        var hs = h[0] + 2;
+        var z = sxasy_uint(h, 7, 4, false);
+        var n = h[21];
+        var ex = [0];
+        var q;
+        if (hs < 27 + n || !sxasy_span(c, p, hs) || !sxasy_span(c, p + hs, z) || !sxasy_add(c, sxasy_povlab_header, p) || !sxasy_add(c, sxasy_povlab_attributes, p + 22 + n) || !sxasy_add(c, sxasy_povlab_extension_size, sxU64(p + hs - 2)) || !sxasy_word(c, sxU64(p + hs - 2), 2, false, ex)) {
+            return false;
+        }
+        q = p + hs;
+        var used = 0;
+        while (ex[0]) {
+            if (ex[0] < 3 || ex[0] > sxU64(z - used) || !sxasy_span(c, q, ex[0]) || !sxasy_add(c, sxasy_povlab_extension_type, q) || !sxasy_add(c, sxasy_povlab_extension_size, sxU64(q + ex[0] - 2))) {
+                return false;
+            }
+            used += ex[0];
+            q += ex[0];
+            if (!sxasy_word(c, sxU64(q - 2), 2, false, ex)) {
+                return false;
+            }
+        }
+        p += hs + z;
+    }
+    return true;
+}
+function sx_povlablzh_build(c) {
+    return sxasy_pov(c);
+}

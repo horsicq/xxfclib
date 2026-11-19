@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/sos/xx_sos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_sos_boot_prefix_fields = layout([chars("signature", 3, SIGNATURE), u8("filesystem_flags", FLAGS),
+    u32("boot_checksum", CHECKSUM), u32("root_block"), field("loader_code", "byte[4]", 4),
+    chars("loader_signature", 4, SIGNATURE)]);
+var sxst_sos_boot_prefix = sxLayout(0x60370003, "sos_boot_prefix", BE, sxst_sos_boot_prefix_fields);
+var sxst_sos_directory_entry_fields = layout([i32("data_offset", OFFSET), i32("data_size", SIZE), chars("name", 24, NONE)]);
+var sxst_sos_directory_entry = sxLayout(0x60370004, "sos_directory_entry", BE, sxst_sos_directory_entry_fields);
+function sxst_sos(c) {
+    var b = [];
+    if (!sxst_put(c, sxst_sos_boot_prefix, 0, 1)) {
+        return false;
+    }
+    var p = 0;
+    for (var i = 1; i <= 30; i++) {
+        if (!sxst_read(c, (i * 512) >>> 0, b, 32)) {
+            break;
+        }
+        if (!sxMemcmpAt(b, 8, "loader", 0, 6) && b[14] === 0) {
+            p = (i * 512) >>> 0;
+            break;
+        }
+    }
+    if (!p) {
+        return true;
+    }
+    for (i = 0; i < 24000 && c.count < 24000; i++, p += 32) {
+        if (!sxst_read(c, p, b, 32)) {
+            break;
+        }
+        if (!sxst_put(c, sxst_sos_directory_entry, p, 1)) {
+            return false;
+        }
+        if (!sxst_uint(b, 0, 4, true) || !b[8]) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_sos_build(c) {
+    return sxst_sos(c);
+}

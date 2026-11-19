@@ -1,0 +1,639 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_fontbinary.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfb_nintendo_font_header_be_fields = layout([chars("signature", 4, SIGNATURE), u16("byte_order", ID),
+    u16("header_size", SIZE), u32("version", ID), u32("file_size", SIZE), u32("block_count", COUNT)]);
+var sxfb_nintendo_font_header_be = sxLayout(0x60190001, "nintendo_font_header_be", BE, sxfb_nintendo_font_header_be_fields);
+var sxfb_nintendo_font_chunk_be_fields = layout([chars("block_id", 4, ID), u32("block_size", SIZE)]);
+var sxfb_nintendo_font_chunk_be = sxLayout(0x60190002, "nintendo_font_chunk_be", BE, sxfb_nintendo_font_chunk_be_fields);
+var sxfb_bfnt_finf_fields = layout([u8("font_type", ID), u8("height", COUNT), u8("width", COUNT), u8("ascent"),
+    u16("line_feed"), u16("alternate_character_index", ID), i8("default_left"), u8("default_glyph_width", COUNT),
+    u8("default_character_width", COUNT), u8("encoding", ID), u32("texture_header_offset", OFFSET),
+    u32("width_header_offset", OFFSET), u32("map_header_offset", OFFSET)]);
+var sxfb_bfnt_finf = sxLayout(0x60190003, "bfnt_finf", BE, sxfb_bfnt_finf_fields);
+var sxfb_bfnt_tglp_fields = layout([u8("cell_width", COUNT), u8("cell_height", COUNT), u8("sheet_count", COUNT),
+    u8("maximum_character_width", COUNT), u32("sheet_size", SIZE), u16("baseline_position"), u16("sheet_format", ID),
+    u16("sheet_columns", COUNT), u16("sheet_rows", COUNT), u16("sheet_width", COUNT), u16("sheet_height", COUNT),
+    u32("sheet_data_offset", OFFSET)]);
+var sxfb_bfnt_tglp = sxLayout(0x60190004, "bfnt_tglp", BE, sxfb_bfnt_tglp_fields);
+var sxfb_nintendo_cwdh_be_fields = layout([u16("first_glyph", ID), u16("last_glyph", ID), u32("next_body_offset", OFFSET)]);
+var sxfb_nintendo_cwdh_be = sxLayout(0x60190005, "nintendo_cwdh_be", BE, sxfb_nintendo_cwdh_be_fields);
+var sxfb_nintendo_width_be_fields = layout([i8("left_bearing"), u8("glyph_width", COUNT), u8("character_width", COUNT)]);
+var sxfb_nintendo_width_be = sxLayout(0x60190006, "nintendo_width_be", BE, sxfb_nintendo_width_be_fields);
+var sxfb_nintendo_cmap_be_fields = layout([u16("first_character", ID), u16("last_character", ID), u16("method", ID),
+    u16("reserved", RESERVED), u32("next_body_offset", OFFSET)]);
+var sxfb_nintendo_cmap_be = sxLayout(0x60190007, "nintendo_cmap_be", BE, sxfb_nintendo_cmap_be_fields);
+var sxfb_nintendo_map_index_be_fields = layout([u16("glyph_index", ID)]);
+var sxfb_nintendo_map_index_be = sxLayout(0x60190008, "nintendo_map_index_be", BE, sxfb_nintendo_map_index_be_fields);
+var sxfb_nintendo_map_count_be_fields = layout([u16("pair_count", COUNT)]);
+var sxfb_nintendo_map_count_be = sxLayout(0x60190009, "nintendo_map_count_be", BE, sxfb_nintendo_map_count_be_fields);
+var sxfb_nintendo_map_pair_be_fields = layout([u16("character", ID), u16("glyph_index", ID)]);
+var sxfb_nintendo_map_pair_be = sxLayout(0x6019000A, "nintendo_map_pair_be", BE, sxfb_nintendo_map_pair_be_fields);
+var sxfb_nintendo_font_header_le_fields = layout([chars("signature", 4, SIGNATURE), u16("byte_order", ID),
+    u16("header_size", SIZE), u32("version", ID), u32("file_size", SIZE), u32("block_count", COUNT)]);
+var sxfb_nintendo_font_header_le = sxLayout(0x6019000B, "nintendo_font_header_le", LE, sxfb_nintendo_font_header_le_fields);
+var sxfb_nintendo_font_chunk_le_fields = layout([chars("block_id", 4, ID), u32("block_size", SIZE)]);
+var sxfb_nintendo_font_chunk_le = sxLayout(0x6019000C, "nintendo_font_chunk_le", LE, sxfb_nintendo_font_chunk_le_fields);
+var sxfb_bcfnt_finf_fields = layout([u8("font_type", ID), u8("line_feed"), u16("alternate_character_index", ID),
+    i8("default_left"), u8("default_glyph_width", COUNT), u8("default_character_width", COUNT), u8("encoding", ID),
+    u32("texture_header_offset", OFFSET), u32("width_header_offset", OFFSET), u32("map_header_offset", OFFSET),
+    u8("height", COUNT), u8("width", COUNT), u8("ascent"), u8("padding", RESERVED)]);
+var sxfb_bcfnt_finf = sxLayout(0x6019000D, "bcfnt_finf", LE, sxfb_bcfnt_finf_fields);
+var sxfb_bcfnt_tglp_fields = layout([u8("cell_width", COUNT), u8("cell_height", COUNT), u8("baseline_position"),
+    u8("maximum_character_width", COUNT), u32("sheet_size", SIZE), u16("sheet_count", COUNT), u16("sheet_format", ID),
+    u16("sheet_columns", COUNT), u16("sheet_rows", COUNT), u16("sheet_width", COUNT), u16("sheet_height", COUNT),
+    u32("sheet_data_offset", OFFSET)]);
+var sxfb_bcfnt_tglp = sxLayout(0x6019000E, "bcfnt_tglp", LE, sxfb_bcfnt_tglp_fields);
+var sxfb_nintendo_cwdh_le_fields = layout([u16("first_glyph", ID), u16("last_glyph", ID), u32("next_body_offset", OFFSET)]);
+var sxfb_nintendo_cwdh_le = sxLayout(0x6019000F, "nintendo_cwdh_le", LE, sxfb_nintendo_cwdh_le_fields);
+var sxfb_nintendo_width_le_fields = layout([i8("left_bearing"), u8("glyph_width", COUNT), u8("character_width", COUNT)]);
+var sxfb_nintendo_width_le = sxLayout(0x60190010, "nintendo_width_le", LE, sxfb_nintendo_width_le_fields);
+var sxfb_nintendo_cmap_le_fields = layout([u16("first_character", ID), u16("last_character", ID), u16("method", ID),
+    u16("reserved", RESERVED), u32("next_body_offset", OFFSET)]);
+var sxfb_nintendo_cmap_le = sxLayout(0x60190011, "nintendo_cmap_le", LE, sxfb_nintendo_cmap_le_fields);
+var sxfb_nintendo_map_index_le_fields = layout([u16("glyph_index", ID)]);
+var sxfb_nintendo_map_index_le = sxLayout(0x60190012, "nintendo_map_index_le", LE, sxfb_nintendo_map_index_le_fields);
+var sxfb_nintendo_map_count_le_fields = layout([u16("pair_count", COUNT)]);
+var sxfb_nintendo_map_count_le = sxLayout(0x60190013, "nintendo_map_count_le", LE, sxfb_nintendo_map_count_le_fields);
+var sxfb_nintendo_map_pair_le_fields = layout([u16("character", ID), u16("glyph_index", ID)]);
+var sxfb_nintendo_map_pair_le = sxLayout(0x60190014, "nintendo_map_pair_le", LE, sxfb_nintendo_map_pair_le_fields);
+var sxfb_tex_font_preamble_fields = layout([u8("opcode", ID), u8("format_id", ID), u8("comment_length", SIZE)]);
+var sxfb_tex_font_preamble = sxLayout(0x6019002C, "tex_font_preamble", BE, sxfb_tex_font_preamble_fields);
+var sxfb_tex_opcode_fields = layout([u8("opcode", ID)]);
+var sxfb_tex_opcode = sxLayout(0x60190031, "tex_opcode", BE, sxfb_tex_opcode_fields);
+var sxfb_tex_special1_fields = layout([u8("opcode", ID), u8("payload_size", SIZE)]);
+var sxfb_tex_special1 = sxLayout(0x60190032, "tex_special1", BE, sxfb_tex_special1_fields);
+var sxfb_tex_special2_fields = layout([u8("opcode", ID), u16("payload_size", SIZE)]);
+var sxfb_tex_special2 = sxLayout(0x60190033, "tex_special2", BE, sxfb_tex_special2_fields);
+var sxfb_tex_special3_fields = layout([u8("opcode", ID), field("payload_size", "uint24", 3, SIZE)]);
+var sxfb_tex_special3 = sxLayout(0x60190034, "tex_special3", BE, sxfb_tex_special3_fields);
+var sxfb_tex_special4_fields = layout([u8("opcode", ID), i32("payload_size", SIZE)]);
+var sxfb_tex_special4 = sxLayout(0x60190035, "tex_special4", BE, sxfb_tex_special4_fields);
+var sxfb_tex_numeric_special_fields = layout([u8("opcode", ID), i32("value")]);
+var sxfb_tex_numeric_special = sxLayout(0x60190036, "tex_numeric_special", BE, sxfb_tex_numeric_special_fields);
+function sx_fontbinary_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60190000 || id >= 0x601A0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60190003:
+        if (r.name === "texture_header_offset") {
+            text = "File-relative byte offset to block body, eight bytes after its magic.";
+        }
+        if (r.name === "width_header_offset") {
+            text = "File-relative byte offset to block body, eight bytes after its magic.";
+        }
+        if (r.name === "map_header_offset") {
+            text = "File-relative byte offset to block body, eight bytes after its magic.";
+        }
+        break;
+    case 0x60190005:
+        if (r.name === "next_body_offset") {
+            text = "File-relative byte offset to next CWDH body; zero ends the chain.";
+        }
+        break;
+    case 0x60190007:
+        if (r.name === "method") {
+            text = "0=direct, 1=table, 2=scan pairs.";
+        }
+        if (r.name === "next_body_offset") {
+            text = "File-relative byte offset to next CMAP body; zero ends the chain.";
+        }
+        break;
+    case 0x60190008:
+        if (r.name === "glyph_index") {
+            text = "Direct mapping start or indexed glyph; 65535 marks an absent indexed glyph.";
+        }
+        break;
+    case 0x6019000D:
+        if (r.name === "texture_header_offset") {
+            text = "File-relative byte offset to block body, eight bytes after its magic.";
+        }
+        if (r.name === "width_header_offset") {
+            text = "File-relative byte offset to block body, eight bytes after its magic.";
+        }
+        if (r.name === "map_header_offset") {
+            text = "File-relative byte offset to block body, eight bytes after its magic.";
+        }
+        break;
+    case 0x6019000F:
+        if (r.name === "next_body_offset") {
+            text = "File-relative byte offset to next CWDH body; zero ends the chain.";
+        }
+        break;
+    case 0x60190011:
+        if (r.name === "method") {
+            text = "0=direct, 1=table, 2=scan pairs.";
+        }
+        if (r.name === "next_body_offset") {
+            text = "File-relative byte offset to next CMAP body; zero ends the chain.";
+        }
+        break;
+    case 0x60190012:
+        if (r.name === "glyph_index") {
+            text = "Direct mapping start or indexed glyph; 65535 marks an absent indexed glyph.";
+        }
+        break;
+    case 0x60190015:
+        if (r.name === "default_character_index") {
+            text = "Relative to first_character, not an absolute character code.";
+        }
+        if (r.name === "break_character_index") {
+            text = "Relative to first_character, not an absolute character code.";
+        }
+        if (r.name === "bits_pointer") {
+            text = "Runtime pointer word, normally zero in a disk font.";
+        }
+        break;
+    case 0x60190016:
+        if (r.name === "default_character_index") {
+            text = "Relative to first_character, not an absolute character code.";
+        }
+        if (r.name === "break_character_index") {
+            text = "Relative to first_character, not an absolute character code.";
+        }
+        if (r.name === "bits_pointer") {
+            text = "Runtime pointer word, normally zero in a disk font.";
+        }
+        break;
+    case 0x60190019:
+        if (r.name === "left_skew_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "right_skew_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "flags") {
+            text = "1=default, 2=horizontal table, 4=Motorola standard bitmap, 8=monospaced.";
+        }
+        if (r.name === "next_font_pointer") {
+            text = "Runtime linked-font pointer; native standalone files require zero.";
+        }
+        break;
+    case 0x6019001A:
+        if (r.name === "bit_position") {
+            text = "Horizontal bit position in a raster row; not a byte offset.";
+        }
+        break;
+    case 0x6019001B:
+        if (r.name === "left_skew_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "right_skew_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "flags") {
+            text = "1=default, 2=horizontal table, 4=Motorola standard bitmap, 8=monospaced.";
+        }
+        if (r.name === "next_font_pointer") {
+            text = "Runtime linked-font pointer; native standalone files require zero.";
+        }
+        break;
+    case 0x6019001C:
+        if (r.name === "bit_position") {
+            text = "Horizontal bit position in a raster row; not a byte offset.";
+        }
+        break;
+    case 0x6019001D:
+        if (r.name === "encoded_offsets") {
+            text = "Original two-byte horizontal offset entry; preserved without synthesizing metrics.";
+        }
+        break;
+    case 0x6019001E:
+        if (r.name === "file_words") {
+            text = "Total file length in four-byte words.";
+        }
+        if (r.name === "header_words") {
+            text = "Header length in four-byte words.";
+        }
+        break;
+    case 0x6019001F:
+        if (r.name === "design_size") {
+            text = "Signed fixed-point points with 20 fractional bits.";
+        }
+        break;
+    case 0x60190023:
+        if (r.name === "height_depth_indexes") {
+            text = "High nibble=height table index; low nibble=depth table index.";
+        }
+        if (r.name === "italic_index_and_tag") {
+            text = "High 6 bits=italic index; low 2 bits select remainder interpretation.";
+        }
+        if (r.name === "remainder") {
+            text = "Tag 0=unused,1=ligature program,2=next character,3=extensible recipe.";
+        }
+        break;
+    case 0x60190024:
+        if (r.name === "value") {
+            text = "Signed fixed-point word with 20 fractional bits; units depend on the metric or parameter.";
+        }
+        break;
+    case 0x60190025:
+        if (r.name === "value") {
+            text = "Signed fixed-point word with 20 fractional bits; units depend on the metric or parameter.";
+        }
+        break;
+    case 0x60190026:
+        if (r.name === "value") {
+            text = "Signed fixed-point word with 20 fractional bits; units depend on the metric or parameter.";
+        }
+        break;
+    case 0x60190027:
+        if (r.name === "value") {
+            text = "Signed fixed-point word with 20 fractional bits; units depend on the metric or parameter.";
+        }
+        break;
+    case 0x60190028:
+        if (r.name === "value") {
+            text = "Signed fixed-point word with 20 fractional bits; units depend on the metric or parameter.";
+        }
+        break;
+    case 0x60190029:
+        if (r.name === "value") {
+            text = "Signed fixed-point word with 20 fractional bits; units depend on the metric or parameter.";
+        }
+        break;
+    case 0x6019002A:
+        if (r.name === "remainder") {
+            text = "Ligature operation or kern/restart index component, selected by skip and operation bytes.";
+        }
+        break;
+    case 0x6019002D:
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        if (r.name === "horizontal_pixels_per_point") {
+            text = "Fixed-point ratio with 16 fractional bits.";
+        }
+        if (r.name === "vertical_pixels_per_point") {
+            text = "Fixed-point ratio with 16 fractional bits.";
+        }
+        break;
+    case 0x6019002E:
+        if (r.name === "packet_size_low") {
+            text = "Low packet-length bits; remaining bits are encoded in the low three flag bits.";
+        }
+        if (r.name === "tfm_width") {
+            text = "Fixed-point width with 20 fractional bits.";
+        }
+        if (r.name === "dx") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "width_pixels") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "height_pixels") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "horizontal_offset") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "vertical_offset") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        break;
+    case 0x6019002F:
+        if (r.name === "packet_size_low") {
+            text = "Low packet-length bits; remaining bits are encoded in the low three flag bits.";
+        }
+        if (r.name === "tfm_width") {
+            text = "Fixed-point width with 20 fractional bits.";
+        }
+        if (r.name === "dx") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "width_pixels") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "height_pixels") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "horizontal_offset") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        if (r.name === "vertical_offset") {
+            text = "Pixel quantity, not a file offset.";
+        }
+        break;
+    case 0x60190030:
+        if (r.name === "packet_size") {
+            text = "Byte count beginning at tfm_width, including metrics and raster.";
+        }
+        if (r.name === "tfm_width") {
+            text = "Signed fixed-point width with 20 fractional bits.";
+        }
+        if (r.name === "dx") {
+            text = "Pixel escapement with 16 fractional bits.";
+        }
+        if (r.name === "dy") {
+            text = "Pixel escapement with 16 fractional bits.";
+        }
+        if (r.name === "horizontal_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "vertical_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        break;
+    case 0x60190037:
+        if (r.name === "previous_boc_offset") {
+            text = "Relative file byte offset; -1 means no previous character packet.";
+        }
+        break;
+    case 0x6019003A:
+        if (r.name === "extra_rows") {
+            text = "Actual row advance is this value plus one.";
+        }
+        break;
+    case 0x6019003C:
+        if (r.name === "extra_rows") {
+            text = "Actual row advance is this value plus one.";
+        }
+        break;
+    case 0x6019003E:
+        if (r.name === "extra_rows") {
+            text = "Actual row advance is this value plus one.";
+        }
+        break;
+    case 0x6019003F:
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        if (r.name === "horizontal_pixels_per_point") {
+            text = "Fixed-point ratio with 16 fractional bits.";
+        }
+        if (r.name === "vertical_pixels_per_point") {
+            text = "Fixed-point ratio with 16 fractional bits.";
+        }
+        break;
+    case 0x60190040:
+        if (r.name === "dx") {
+            text = "Pixel escapement with 16 fractional bits.";
+        }
+        if (r.name === "dy") {
+            text = "Pixel escapement with 16 fractional bits.";
+        }
+        if (r.name === "tfm_width") {
+            text = "Signed fixed-point width with 20 fractional bits.";
+        }
+        if (r.name === "packet_offset") {
+            text = "File-relative byte offset; -1 means no packet.";
+        }
+        break;
+    case 0x60190041:
+        if (r.name === "dx") {
+            text = "Whole-pixel horizontal escapement.";
+        }
+        if (r.name === "tfm_width") {
+            text = "Signed fixed-point width with 20 fractional bits.";
+        }
+        if (r.name === "packet_offset") {
+            text = "File-relative byte offset; -1 means no packet.";
+        }
+        break;
+    case 0x60190043:
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        break;
+    case 0x60190044:
+        if (r.name === "scale") {
+            text = "Fixed-point scale with 20 fractional bits relative to the VF design size.";
+        }
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        break;
+    case 0x60190045:
+        if (r.name === "scale") {
+            text = "Fixed-point scale with 20 fractional bits relative to the VF design size.";
+        }
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        break;
+    case 0x60190046:
+        if (r.name === "scale") {
+            text = "Fixed-point scale with 20 fractional bits relative to the VF design size.";
+        }
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        break;
+    case 0x60190047:
+        if (r.name === "scale") {
+            text = "Fixed-point scale with 20 fractional bits relative to the VF design size.";
+        }
+        if (r.name === "design_size") {
+            text = "Fixed-point points with 20 fractional bits.";
+        }
+        break;
+    case 0x60190048:
+        if (r.name === "tfm_width") {
+            text = "Fixed-point width with 20 fractional bits.";
+        }
+        break;
+    case 0x60190049:
+        if (r.name === "tfm_width") {
+            text = "Signed fixed-point width with 20 fractional bits.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxfb_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxfb_read(c, p, b, n) {
+    return sxfb_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxfb_uint(b, b_o, n, be) {
+    var x = 0;
+    for (var i = 0; i < n; i++) {
+        x = (x | (b[b_o + i] << ((8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0)) >>> 0) >>> 0;
+    }
+    return x;
+}
+function sxfb16(b, b_o, be) {
+    return sxfb_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxfb32(b, b_o, be) {
+    return sxfb_uint(b, b_o, 4, be);
+}
+function sxfb_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    return p <= SX_I64_MAX && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), f.offset + f.size);
+}
+function sxfb_nintendo(c, be) {
+    var h = [];
+    if (!sxfb_read(c, 0, h, 20) || sxMemcmp(h, be ? "FFNT" : "CFNT", 4) || sxfb16(h, 4, be) !== 0xFEFF || sxfb16(h, 6, be) !== 20) {
+        return false;
+    }
+    var size = sxfb32(h, 12, be);
+    var blocks = sxfb32(h, 16, be);
+    if (size < 20 || !sxfb_span(c, 0, size) || blocks > 1024) {
+        return false;
+    }
+    if (!sxfb_add(c, be ? sxfb_nintendo_font_header_be : sxfb_nintendo_font_header_le, 0)) {
+        return false;
+    }
+    var p = 20;
+    for (var i = 0; i < blocks; i++) {
+        if (p > size || sxU64(size - p) < 8 || !sxfb_read(c, p, h, 8)) {
+            break;
+        }
+        var z = sxfb32(h, 4, be);
+        if (z < 8 || z > sxU64(size - p)) {
+            break;
+        }
+        if (!sxfb_add(c, be ? sxfb_nintendo_font_chunk_be : sxfb_nintendo_font_chunk_le, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "FINF", 4) && z >= 32) {
+            if (!sxfb_add(c, be ? sxfb_bfnt_finf : sxfb_bcfnt_finf, p + 8)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "TGLP", 4) && z >= 32) {
+            if (!sxfb_add(c, be ? sxfb_bfnt_tglp : sxfb_bcfnt_tglp, p + 8)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "CWDH", 4) && z >= 16) {
+            if (!sxfb_read(c, p + 8, h, 8) || !sxfb_add(c, be ? sxfb_nintendo_cwdh_be : sxfb_nintendo_cwdh_le, p + 8)) {
+                return false;
+            }
+            var first = sxfb16(h, 0, be);
+            var last = sxfb16(h, 2, be);
+            if (last >= first && ((((last - first) >>> 0) + 1) >>> 0) * 3 <= (z - 16) >>> 0 && !sx_table(c, be ? sxfb_nintendo_width_be : sxfb_nintendo_width_le, (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + 16, 3, (((last - first) >>> 0) + 1) >>> 0)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "CMAP", 4) && z >= 20) {
+            if (!sxfb_read(c, p + 8, h, 12) || !sxfb_add(c, be ? sxfb_nintendo_cmap_be : sxfb_nintendo_cmap_le, p + 8)) {
+                return false;
+            }
+            first = sxfb16(h, 0, be);
+            last = sxfb16(h, 2, be);
+            var method = sxfb16(h, 4, be);
+            if (!method && z >= 22) {
+                if (!sxfb_add(c, be ? sxfb_nintendo_map_index_be : sxfb_nintendo_map_index_le, p + 20)) {
+                    return false;
+                }
+            } else if (method === 1 && last >= first && ((((last - first) >>> 0) + 1) >>> 0) * 2 <= (z - 20) >>> 0) {
+                if (!sx_table(c, be ? sxfb_nintendo_map_index_be : sxfb_nintendo_map_index_le, (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + 20, 2, (((last - first) >>> 0) + 1) >>> 0)) {
+                    return false;
+                }
+            } else if (method === 2 && z >= 22) {
+                if (!sxfb_read(c, p + 20, h, 2) || !sxfb_add(c, be ? sxfb_nintendo_map_count_be : sxfb_nintendo_map_count_le, p + 20)) {
+                    return false;
+                }
+                var count = sxfb16(h, 0, be);
+                if (count && count * 4 <= (z - 22) >>> 0 && !sx_table(c, be ? sxfb_nintendo_map_pair_be : sxfb_nintendo_map_pair_le, (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + 22, 4, count)) {
+                    return false;
+                }
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sxfb_special(c, p, width) {
+    var l = [sxfb_tex_special1, sxfb_tex_special2, sxfb_tex_special3, sxfb_tex_special4];
+    var b = [];
+    if (width < 1 || width > 4 || !sxfb_read(c, p[0], b, (width + 1) >>> 0)) {
+        return false;
+    }
+    var n = sxfb_uint(b, 1, width, true);
+    if (!sxfb_span(c, p[0], width + 1 + n)) {
+        return false;
+    }
+    if (!sxfb_add(c, l[(width - 1) >>> 0], p[0])) {
+        return false;
+    }
+    p[0] += ((width + 1) >>> 0) + n;
+    return true;
+}
+function sxfb_preamble(c, id, p) {
+    var h = [];
+    if (!sxfb_read(c, 0, h, 3) || h[0] !== 247 || h[1] !== id || !sxfb_span(c, 3, h[2]) || !sxfb_add(c, sxfb_tex_font_preamble, 0)) {
+        return false;
+    }
+    p[0] = 3 + h[2];
+    return true;
+}
+function sxfb_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxfb_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxfb_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxfb_order, true);
+    return !c.failed;
+}
+function sx_fontbinary_supports(type) {
+    switch (type) {
+    case "NINTENDO_BFNT":
+    case "NINTENDO_BCFNT":
+    case "FONT_WINDOWS_FNT":
+    case "FONT_GEM_FNT":
+    case "TEX_TFM":
+    case "TEX_PK":
+    case "TEX_GF":
+    case "TEX_VF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_fontbinary_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "NINTENDO_BFNT":
+        ok = sx_nintendo_bfnt_build(c);
+        break;
+    case "NINTENDO_BCFNT":
+        ok = sx_nintendo_bcfnt_build(c);
+        break;
+    case "FONT_WINDOWS_FNT":
+        ok = sx_font_windows_fnt_build(c);
+        break;
+    case "FONT_GEM_FNT":
+        ok = sx_font_gem_fnt_build(c);
+        break;
+    case "TEX_TFM":
+        ok = sx_tex_tfm_build(c);
+        break;
+    case "TEX_PK":
+        ok = sx_tex_pk_build(c);
+        break;
+    case "TEX_GF":
+        ok = sx_tex_gf_build(c);
+        break;
+    case "TEX_VF":
+        ok = sx_tex_vf_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxfb_finish(c);
+}

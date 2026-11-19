@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/bittorrent_metainfo/xx_bittorrent_metainfo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_key_fields = layout([field("key", "utf8", 0, STRING)]);
+var sxtw_key = sxLayout(0x6071000B, "textwire_key", LE, sxtw_key_fields);
+function sxtw_bstring(q, a, z, key) {
+    var start = q.p;
+    while (q.p < q.n && q.b[q.p] >= 48 /*0*/ && q.b[q.p] <= 57 /*9*/) {
+        q.p++;
+    }
+    var n = [0];
+    if (q.p === q.n || q.b[q.p] !== 58 /*:*/ || !sxtw_number(q, start, q.p - start, 10, n)) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_byte_length, start, q.p - start)) {
+            return false;
+        }
+    }
+    q.p++;
+    if (n[0] > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p)) {
+        return false;
+    }
+    a[0] = q.p;
+    z[0] = (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]);
+    if (key) {
+        {
+            if (!sxtw_emit(q, sxtw_key, a[0], z[0])) {
+                return false;
+            }
+        }
+    }
+    q.p += (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]);
+    return true;
+}
+function sxtw_bvalue(q, depth, value) {
+    if (q.c.count >= 32000) {
+        return true;
+    }
+    if (depth > 40 || q.p >= q.n) {
+        return false;
+    }
+    var c = q.b[q.p];
+    if (c === 105 /*i*/) {
+        {
+            if (!sxtw_emit(q, sxtw_control, q.p, 1)) {
+                return false;
+            }
+        }
+        var a = [++q.p];
+        while (q.p < q.n && q.b[q.p] !== 101 /*e*/) {
+            q.p++;
+        }
+        if (q.p === q.n) {
+            return false;
+        }
+        if (!sxtw_emit(q, value !== null ? value : sxtw_integer_value, a[0], q.p - a[0])) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_control, q.p, 1)) {
+                return false;
+            }
+        }
+        q.p++;
+        return true;
+    }
+    if (c >= 48 /*0*/ && c <= 57 /*9*/) {
+        a = [0];
+        var z = [0];
+        return sxtw_bstring(q, a, z, false);
+    }
+    if (c !== 100 /*d*/ && c !== 108 /*l*/) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_control, q.p, 1)) {
+            return false;
+        }
+    }
+    q.p++;
+    while (q.p < q.n && q.b[q.p] !== 101 /*e*/) {
+        var l = null;
+        if (c === 100 /*d*/) {
+            a = [0];
+            z = [0];
+            if (!sxtw_bstring(q, a, z, true)) {
+                return false;
+            }
+            if (sxtw_eq(q, a[0], z[0], "length") || sxtw_eq(q, a[0], z[0], "piece length")) {
+                l = sxtw_declared_size;
+            }
+        }
+        if (!sxtw_bvalue(q, (depth + 1) >>> 0, l)) {
+            return false;
+        }
+        if (q.c.count >= 32000) {
+            return true;
+        }
+    }
+    if (q.p === q.n) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_control, q.p, 1)) {
+            return false;
+        }
+    }
+    q.p++;
+    return true;
+}
+function sx_bittorrent_metainfo_build(q) {
+    return sxtw_bvalue(q, 0, null);
+}

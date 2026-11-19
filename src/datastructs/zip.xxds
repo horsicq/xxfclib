@@ -1,0 +1,176 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// ZIP and the formats built on it (ZIP64, JAR, APK, IPA, APKS, PSC, CRX, and
+// an XORARCHIVE that unmasks to ZIP, read through the reader's unmasking
+// device). The local headers and payloads are listed in central directory
+// order with RAW_DATA for the gaps, then the central directory, the ZIP64
+// end records and the end of central directory record.
+//
+// Where each entry lives is the reader's parse of the central directory
+// (ZIP64 extra values, split-disk offsets, local header resolution):
+//
+//   Format.table("archive") - one row, offsets from the format start, -1 when absent
+//     records         central directory entry count
+//     cd, eocd        central directory and end of central directory record
+//     zip64           1 for a ZIP64 archive
+//     zip64Eocd, zip64EocdSize   ZIP64 end of central directory record
+//     base            format start in its device
+//
+//   Format.table("entries") - one row per central directory entry (the table
+//   fails where an entry does not parse)
+//     cd, cdSize          the central directory entry
+//     header, headerSize  its local header (header -1 without one, headerSize 0 unresolved)
+//     data, dataSize      the stored payload (data -1 unresolved)
+
+function fileTypes() { return ["ZIP", "ZIP64", "JAR", "APK", "IPA", "APKS", "ZIP_PSC", "CRX"]; }
+
+var LOCAL_FIELDS = [
+    u32("signature", ID), u16("version_needed"), u16("flags", FLAGS), u16("compression_method"),
+    u16("last_mod_time", TIMESTAMP), u16("last_mod_date", TIMESTAMP), u32("crc32", CHECKSUM),
+    u32("compressed_size", SIZE), u32("uncompressed_size", SIZE), u16("filename_length", SIZE),
+    u16("extra_field_length", SIZE) ];
+var CENTRAL_FIELDS = [
+    u32("signature", ID), u16("version_made_by"), u16("version_needed"), u16("flags", FLAGS),
+    u16("compression_method"), u16("last_mod_time", TIMESTAMP), u16("last_mod_date", TIMESTAMP),
+    u32("crc32", CHECKSUM), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE),
+    u16("filename_length", SIZE), u16("extra_field_length", SIZE), u16("comment_length", SIZE),
+    u16("disk_number_start"), u16("internal_attrs"), u32("external_attrs"),
+    u32("relative_offset_local_header", POINTER) ];
+var EOCD_FIELDS = [
+    u32("signature", ID), u16("disk_number"), u16("cd_start_disk"), u16("records_on_disk", COUNT),
+    u16("total_records", COUNT), u32("cd_size", SIZE), u32("cd_offset", POINTER), u16("comment_length", SIZE) ];
+var LOCATOR_FIELDS = [
+    u32("signature", ID), u32("disk_with_zip64_eocd"), u64("zip64_eocd_offset", POINTER), u32("total_disks", COUNT) ];
+var ZIP64_EOCD_FIELDS = [
+    u32("signature", ID), u64("record_size", SIZE), u16("version_made_by"), u16("version_needed"),
+    u32("disk_number"), u32("cd_start_disk"), u64("records_on_disk", COUNT), u64("total_records", COUNT),
+    u64("cd_size", SIZE), u64("cd_offset", POINTER) ];
+
+function structs() {
+    return [
+        { id: 1, name: "LOCAL_FILE_HEADER", fields: headerFields },
+        { id: 2, name: "DATA" },
+        { id: 3, name: "DATA_DESCRIPTOR" },
+        { id: 4, name: "CENTRAL_DIRECTORY_HEADER", fields: headerFields },
+        { id: 5, name: "END_OF_CENTRAL_DIRECTORY", fields: headerFields },
+        { id: 6, name: "ZIP64_END_OF_CENTRAL_DIRECTORY", fields: headerFields },
+        { id: 7, name: "ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR", fields: headerFields },
+        { id: 8, name: "EXTRA_FIELD", fields: extraFieldFields }
+    ];
+}
+
+// Copies of a fixed layout, so per-occurrence fields can be appended.
+function fixedFields(fields) {
+    var out = [], i, f;
+    fields = layout(fields);
+    for (i = 0; i < fields.length; i++) {
+        f = fields[i];
+        out.push({ name: f.name, type: f.type, offset: f.offset, size: f.size, role: f.role });
+    }
+    return out;
+}
+
+// A fixed header followed by the variable parts its length fields give
+// (file name, extra field, comment), all inside the occurrence.
+function headerFields(ds) {
+    var table, lengths = [0, 0, 0], names = ["filename", "extra_field", "comment"], fields, fixed, i, last;
+    switch (ds.name) {
+        case "LOCAL_FILE_HEADER": table = LOCAL_FIELDS; break;
+        case "CENTRAL_DIRECTORY_HEADER": table = CENTRAL_FIELDS; break;
+        case "END_OF_CENTRAL_DIRECTORY": table = EOCD_FIELDS; break;
+        case "ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR": table = LOCATOR_FIELDS; break;
+        default: table = ZIP64_EOCD_FIELDS; break;
+    }
+    fields = fixedFields(table);
+    last = fields[fields.length - 1];
+    fixed = last.offset + last.size;
+    if (ds.totalSize < fixed || !File.valid(ds.offset, ds.totalSize)) return undefined;
+    if (ds.name === "LOCAL_FILE_HEADER") {
+        lengths[0] = File.u16(ds.offset + 26);
+        lengths[1] = File.u16(ds.offset + 28);
+    } else if (ds.name === "CENTRAL_DIRECTORY_HEADER") {
+        lengths[0] = File.u16(ds.offset + 28);
+        lengths[1] = File.u16(ds.offset + 30);
+        lengths[2] = File.u16(ds.offset + 32);
+    } else if (ds.name === "END_OF_CENTRAL_DIRECTORY") {
+        lengths[2] = File.u16(ds.offset + 20);
+    }
+    for (i = 0; i < 3; i++) {
+        if (!lengths[i]) continue;
+        if (fixed > ds.totalSize || lengths[i] > ds.totalSize - fixed) return undefined;
+        fields.push({ name: names[i], type: i === 1 ? "uint8[]" : "char[]", offset: fixed, size: lengths[i], role: i === 1 ? NONE : STRING });
+        fixed += lengths[i];
+    }
+    if (ds.name === "ZIP64_END_OF_CENTRAL_DIRECTORY" && ds.totalSize > fixed) {
+        fields.push({ name: "extensible_data_sector", type: "uint8[]", offset: fixed, size: ds.totalSize - fixed, role: NONE });
+    }
+    return fields;
+}
+
+// header_id, data_size and the data the size announces.
+function extraFieldFields(ds) {
+    var fields = [ u16("header_id", ID), u16("data_size", SIZE) ];
+    if (ds.totalSize < 4 || !File.valid(ds.offset, ds.totalSize) || File.u16(ds.offset + 2) !== ds.totalSize - 4) return undefined;
+    if (ds.totalSize > 4) fields.push(blob("data", ds.totalSize - 4));
+    return layout(fields);
+}
+
+// The extra fields of a local (30-byte) or central (46-byte) header; a tail
+// too short for its announced size is RAW_DATA. False when the header does
+// not hold its name and extra field.
+function scanExtraFields(offset, headerSize, central) {
+    var fixed = central ? 46 : 30, nameSize, extraSize, cursor, end, size;
+    if (offset < 0 || headerSize < fixed || !File.valid(offset, headerSize)) return false;
+    nameSize = File.u16(offset + (central ? 28 : 26));
+    extraSize = File.u16(offset + (central ? 30 : 28));
+    if (nameSize > headerSize - fixed || extraSize > headerSize - fixed - nameSize) return false;
+    cursor = offset + fixed + nameSize;
+    end = cursor + extraSize;
+    while (cursor < end) {
+        size = end - cursor >= 4 ? 4 + File.u16(cursor + 2) : 0;
+        if (size < 4 || size > end - cursor) {
+            Structs.raw(cursor, end - cursor);
+            break;
+        }
+        Structs.add("EXTRA_FIELD", cursor, size);
+        cursor += size;
+    }
+    return true;
+}
+
+function scan() {
+    var archive = Format.table("archive")[0], entries = Format.table("entries"), expected = 0, i, e, locator, eocdSize, size;
+    for (i = 0; i < entries.length; i++) {
+        e = entries[i];
+        if (e.header < 0) continue;
+        if (e.header > expected) Structs.raw(expected, e.header - expected);
+        Structs.add("LOCAL_FILE_HEADER", e.header, e.headerSize);
+        if (!scanExtraFields(e.header, e.headerSize, false)) return false;
+        if (e.data >= 0) {
+            Structs.add("DATA", e.data, e.dataSize, RAW);
+            expected = e.data + e.dataSize;
+        } else {
+            expected = e.header + e.headerSize;
+        }
+    }
+    if (archive.cd >= 0 && expected < archive.cd) Structs.raw(expected, archive.cd - expected);
+    for (i = 0; i < entries.length; i++) {
+        e = entries[i];
+        Structs.add("CENTRAL_DIRECTORY_HEADER", e.cd, e.cdSize);
+        if (!scanExtraFields(e.cd, e.cdSize, true)) return false;
+    }
+    if (archive.zip64) {
+        locator = archive.eocd - 20;
+        if (archive.eocd >= 0 && locator >= 0 && File.u32(locator) === 0x07064B50) {
+            Structs.add("ZIP64_END_OF_CENTRAL_DIRECTORY_LOCATOR", locator, 20, LOCATOR);
+            if (archive.zip64Eocd >= 0) Structs.put("ZIP64_END_OF_CENTRAL_DIRECTORY", archive.zip64Eocd, 56, archive.zip64EocdSize, 1);
+        }
+    }
+    if (archive.eocd >= 0) {
+        // The record is measured against the absolute EOCD offset.
+        size = Format.size();
+        eocdSize = size >= archive.eocd + archive.base ? size - archive.eocd - archive.base : 22;
+        Structs.put("END_OF_CENTRAL_DIRECTORY", archive.eocd, 22, eocdSize, 1);
+    }
+}

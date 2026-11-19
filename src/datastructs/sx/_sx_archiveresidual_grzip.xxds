@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/grzip/xx_grzip_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarfinal_grzip_stream_header_fields = layout([bytes("signature", 12, SIGNATURE)]);
+var sxarfinal_grzip_stream_header = sxLayout(0x60920214, "grzip_stream_header", LE, sxarfinal_grzip_stream_header_fields);
+var sxarfinal_grzip_block_header_fields = layout([i32("uncompressed_size", SIZE), i32("compression_mode", FLAGS),
+    i32("mode_parameter"), i32("transform_parameter"), i32("stored_size", SIZE), u32("payload_crc32", CHECKSUM),
+    u32("header_crc32", CHECKSUM)]);
+var sxarfinal_grzip_block_header = sxLayout(0x60920215, "grzip_block_header", LE, sxarfinal_grzip_block_header_fields);
+var sxarfinal_grzip_magic = [71 /*G*/, 82 /*R*/, 90 /*Z*/, 105 /*i*/, 112 /*p*/, 73 /*I*/, 73 /*I*/, 0, 2, 4, 58 /*:*/, 41 /*)*/];
+function sxarfinal_grzip(c) {
+    var h = [];
+    var p = 12;
+    if (!sxarfinal_read(c, 0, h, 12) || sxMemcmp(h, sxarfinal_grzip_magic, 12) || !sxarfinal_put(c, sxarfinal_grzip_stream_header, 0)) {
+        return false;
+    }
+    for (var blocks = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && blocks < 20000; blocks++) {
+        if (!sxarfinal_read(c, p, h, 28)) {
+            return false;
+        }
+        var z = sxarfinal_num(h, 16, 4, false);
+        if (z > 2147483647 || !sxarfinal_span(c, p + 28, z) || !sxarfinal_put(c, sxarfinal_grzip_block_header, p)) {
+            return false;
+        }
+        p += 28 + z;
+    }
+    return true;
+}
+function sx_grzip_build(c) {
+    var ok = false;
+    ok = sxarfinal_grzip(c);
+    return !!(c.count && sxarfinal_finish(c));
+}

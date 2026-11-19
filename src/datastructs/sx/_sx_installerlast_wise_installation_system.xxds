@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/wise_installation_system/xx_wise_installation_system_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_wise_member_crc32_fields = layout([u32("crc32", CHECKSUM)]);
+var sxil_wise_member_crc32 = sxLayout(0x6085004E, "wise_member_crc32", LE, sxil_wise_member_crc32_fields);
+var sxil_wise_zip_local_fields = layout([u32("signature", SIGNATURE), u16("version_needed", ID), u16("flags", FLAGS),
+    u16("method", ID), u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), u32("packed_size", SIZE),
+    u32("unpacked_size", SIZE), u16("name_size", SIZE), u16("extra_size", SIZE)]);
+var sxil_wise_zip_local = sxLayout(0x6085004F, "wise_zip_local", LE, sxil_wise_zip_local_fields);
+var sxil_wise_zip_central_fields = layout([u32("signature", SIGNATURE), u16("version_made_by", ID), u16("version_needed", ID),
+    u16("flags", FLAGS), u16("method", ID), u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), u32("packed_size", SIZE),
+    u32("unpacked_size", SIZE), u16("name_size", SIZE), u16("extra_size", SIZE), u16("comment_size", SIZE), u16("disk_start"),
+    u16("internal_attributes", FLAGS), u32("external_attributes", FLAGS), u32("local_header_offset", OFFSET)]);
+var sxil_wise_zip_central = sxLayout(0x60850050, "wise_zip_central", LE, sxil_wise_zip_central_fields);
+var sxil_wise_zip_end_fields = layout([u32("signature", SIGNATURE), u16("disk_number"), u16("directory_disk"),
+    u16("entries_on_disk", COUNT), u16("total_entries", COUNT), u32("directory_size", SIZE), u32("directory_offset", OFFSET),
+    u16("comment_size", SIZE)]);
+var sxil_wise_zip_end = sxLayout(0x60850051, "wise_zip_end", LE, sxil_wise_zip_end_fields);
+function sxil_wise(c, r) {
+    var end = 0;
+    var zip = false;
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size >= 30 && sxil_eq(c, m.header, "PK\x03\x04", 4)) {
+            var b = [];
+            if (!sxil_read(c, m.header, b, 30)) {
+                continue;
+            }
+            var ns = sxil16(b, 26, false);
+            var es = sxil16(b, 28, false);
+            if (30 + ns + es !== m.header_size) {
+                continue;
+            }
+            zip = true;
+            if (!sxil_put(c, sxil_wise_zip_local, m.header, 1) || !sxil_name(c, m.header + 30, ns)) {
+                return false;
+            }
+            end = m.data + m.packed;
+        } else if (!m.header_size && m.crc <= 4294967295) {
+            var p = m.data + m.packed;
+            for (var pad = 0; pad <= 3; pad++) {
+                var v = [0];
+                if (sxil_u32(c, p + pad, v) && v[0] === m.crc >>> 0) {
+                    if (!sxil_put(c, sxil_wise_member_crc32, p + pad, 1)) {
+                        return false;
+                    }
+                    break;
+                }
+                var z = [0];
+                if (!sxil_read(c, p + pad, z, 1) || z[0]) {
+                    break;
+                }
+            }
+        }
+    }
+    if (zip) {
+        p = end;
+        for (var k = 0; k < 100000; k++) {
+            if (sxil_eq(c, p, "PK\x01\x02", 4)) {
+                b = [];
+                if (!sxil_read(c, p, b, 46)) {
+                    return true;
+                }
+                var n = sxil16(b, 28, false);
+                var e = sxil16(b, 30, false);
+                z = [sxil16(b, 32, false)];
+                if (!sxil_span(c, p, 46 + n + e + z[0])) {
+                    return true;
+                }
+                if (!sxil_put(c, sxil_wise_zip_central, p, 1) || !sxil_name(c, p + 46, n) || !sxil_name(c, p + 46 + n + e, z[0])) {
+                    return false;
+                }
+                p += 46 + n + e + z[0];
+            } else {
+                if (sxil_eq(c, p, "PK\x05\x06", 4) && sxil_span(c, p, 22) && !sxil_put(c, sxil_wise_zip_end, p, 1)) {
+                    return false;
+                }
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sx_wise_installation_system_build(c, records) {
+    return sxil_wise(c, records);
+}

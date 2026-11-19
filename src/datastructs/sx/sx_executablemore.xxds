@@ -1,0 +1,84 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_executablemore.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_executablemore");
+include("_sx_executablemore_amigahunk");
+include("_sx_executablemore_cgc");
+include("_sx_executablemore_dos16m");
+include("_sx_executablemore_hp_som");
+include("_sx_executablemore_microsoft_msf");
+include("_sx_executablemore_mub");
+include("_sx_executablemore_nintendo_nro");
+include("_sx_executablemore_nintendo_nso");
+include("_sx_executablemore_nintendo_rel");
+include("_sx_executablemore_omf");
+include("_sx_executablemore_pebble");
+include("_sx_executablemore_pyc");
+include("_sx_executablemore_qnx_lmf");
+include("_sx_executablemore_resourcefork");
+include("_sx_executablemore_vtech_vz");
+include("_sx_executablemore_windows_dmp64");
+include("_sx_executablemore_xamarin_compressed_assembly");
+include("_sx_executablemore_xbox_xbe");
+include("_sx_executablemore_xcoff");
+include("_sx_executablemore_xtac");
+
+function fileTypes() { return ["AMIGAHUNK", "DOS16M", "DOS4G", "RESOURCEFORK", "XBOX_XBE", "MICROSOFT_MSF", "VTECH_VZ",
+    "XAMARIN_COMPRESSED_ASSEMBLY", "MUB", "PYC", "CGC", "NINTENDO_NRO", "NINTENDO_NSO", "WINDOWS_DMP64", "OMF", "XTAC",
+    "PEBBLE", "HP_SOM", "QNX_LMF", "NINTENDO_REL", "XCOFF"]; }
+
+var sx_executablemore_layouts = [sxexm_vz_header, sxexm_xalz_header, sxexm_pyc_header8, sxexm_pyc_header12,
+    sxexm_pyc_header16_timestamp, sxexm_pyc_header16_hash, sxexm_msf7_superblock, sxexm_msf7_directory_block,
+    sxexm_msf7_stream_count, sxexm_msf7_stream_size, sxexm_msf7_stream_block, sxexm_mub_header_le, sxexm_mub_arch32_le,
+    sxexm_mub_header_be, sxexm_mub_arch32_be, sxexm_mub_arch64_be, sxexm_resource_fork_header, sxexm_resource_map_header,
+    sxexm_resource_type_count, sxexm_resource_type_entry, sxexm_resource_reference, sxexm_resource_data_length,
+    sxexm_resource_name_length, sxexm_pebble_header, sxexm_pebble_relocation, sxexm_nro_start, sxexm_nro_header,
+    sxexm_nro_asset_header, sxexm_nso_header, sxexm_xbe_header, sxexm_xbe_section, sxexm_xbe_certificate, sxexm_dmp64_prefix,
+    sxexm_dmp64_type, sxexm_dmp64_required_space, sxexm_dmp64_product, sxexm_dmp64_bitmap_header, sxexm_cgc_header_le,
+    sxexm_cgc_header_be, sxexm_cgc_program_header_le, sxexm_cgc_program_header_be, sxexm_cgc_section_header_le,
+    sxexm_cgc_section_header_be, sxexm_rel_header, sxexm_rel_v2_extension, sxexm_rel_v3_extension, sxexm_rel_section,
+    sxexm_rel_import, sxexm_rel_relocation, sxexm_xtac_header, sxexm_xtac_address_pair, sxexm_xtac_block_stub,
+    sxexm_xtac_linked_entry0, sxexm_xtac_linked_entry1, sxexm_xtac_linked_entry2, sxexm_xtac_linked_entry3,
+    sxexm_qnx_record_header, sxexm_qnx_module_header, sxexm_qnx_segment, sxexm_qnx_load_header, sxexm_qnx_resource_header,
+    sxexm_qnx_read_write_end, sxexm_qnx_image_end, sxexm_omf_record_header, sxexm_omf_checksum, sxexm_omf_name_length,
+    sxexm_dos_extender_mz, sxexm_dos16m_bw_header, sxexm_dos16m_mf_header, sxexm_amiga_hunk_tag, sxexm_amiga_hunk_length,
+    sxexm_amiga_hunk_table, sxexm_amiga_hunk_allocation, sxexm_amiga_memory_flags, sxexm_amiga_relocation_count16,
+    sxexm_amiga_relocation_target16, sxexm_amiga_relocation_offset16, sxexm_amiga_relocation_count32,
+    sxexm_amiga_relocation_target32, sxexm_amiga_relocation_offset32, sxexm_amiga_symbol_value, sxexm_amiga_ext_name,
+    sxexm_amiga_common_size, sxexm_som_header, sxexm_som_space, sxexm_som_subspace_initialized, sxexm_som_subspace_pattern,
+    sxexm_som_symbol, sxexm_xcoff32_file_header, sxexm_xcoff32_optional_header, sxexm_xcoff32_section, sxexm_xcoff32_loader,
+    sxexm_xcoff32_loader_symbol_inline, sxexm_xcoff32_loader_symbol_external];
+
+function structs() {
+    return sxCatalog([sxexm_vz_header, sxexm_xalz_header, sxexm_pyc_header8, sxexm_pyc_header12, sxexm_pyc_header16_timestamp,
+        sxexm_pyc_header16_hash, sxexm_msf7_superblock, sxexm_msf7_directory_block, sxexm_msf7_stream_count,
+        sxexm_msf7_stream_size, sxexm_msf7_stream_block, sxexm_mub_header_le, sxexm_mub_arch32_le, sxexm_mub_header_be,
+        sxexm_mub_arch32_be, sxexm_mub_arch64_be, sxexm_resource_fork_header, sxexm_resource_map_header,
+        sxexm_resource_type_count, sxexm_resource_type_entry, sxexm_resource_reference, sxexm_resource_data_length,
+        sxexm_resource_name_length, sxexm_pebble_header, sxexm_pebble_relocation, sxexm_nro_start, sxexm_nro_header,
+        sxexm_nro_asset_header, sxexm_nso_header, sxexm_xbe_header, sxexm_xbe_section, sxexm_xbe_certificate,
+        sxexm_dmp64_prefix, sxexm_dmp64_type, sxexm_dmp64_required_space, sxexm_dmp64_product, sxexm_dmp64_bitmap_header,
+        sxexm_cgc_header_le, sxexm_cgc_header_be, sxexm_cgc_program_header_le, sxexm_cgc_program_header_be,
+        sxexm_cgc_section_header_le, sxexm_cgc_section_header_be, sxexm_rel_header, sxexm_rel_v2_extension,
+        sxexm_rel_v3_extension, sxexm_rel_section, sxexm_rel_import, sxexm_rel_relocation, sxexm_xtac_header,
+        sxexm_xtac_address_pair, sxexm_xtac_block_stub, sxexm_xtac_linked_entry0, sxexm_xtac_linked_entry1,
+        sxexm_xtac_linked_entry2, sxexm_xtac_linked_entry3, sxexm_qnx_record_header, sxexm_qnx_module_header, sxexm_qnx_segment,
+        sxexm_qnx_load_header, sxexm_qnx_resource_header, sxexm_qnx_read_write_end, sxexm_qnx_image_end,
+        sxexm_omf_record_header, sxexm_omf_checksum, sxexm_omf_name_length, sxexm_dos_extender_mz, sxexm_dos16m_bw_header,
+        sxexm_dos16m_mf_header, sxexm_amiga_hunk_tag, sxexm_amiga_hunk_length, sxexm_amiga_hunk_table,
+        sxexm_amiga_hunk_allocation, sxexm_amiga_memory_flags, sxexm_amiga_relocation_count16, sxexm_amiga_relocation_target16,
+        sxexm_amiga_relocation_offset16, sxexm_amiga_relocation_count32, sxexm_amiga_relocation_target32,
+        sxexm_amiga_relocation_offset32, sxexm_amiga_symbol_value, sxexm_amiga_ext_name, sxexm_amiga_common_size,
+        sxexm_som_header, sxexm_som_space, sxexm_som_subspace_initialized, sxexm_som_subspace_pattern, sxexm_som_symbol,
+        sxexm_xcoff32_file_header, sxexm_xcoff32_optional_header, sxexm_xcoff32_section, sxexm_xcoff32_loader,
+        sxexm_xcoff32_loader_symbol_inline, sxexm_xcoff32_loader_symbol_external], sx_executablemore_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_executablemore_build, false);
+}

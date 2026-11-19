@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/wintersoft/xx_wintersoft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_wintersoft_header_fields = layout([chars("signature", 4, SIGNATURE), chars("method_tag", 4, NONE)]);
+var sxafr_wintersoft_header = sxLayout(0x60540025, "wintersoft_header", LE, sxafr_wintersoft_header_fields);
+var sxafr_wintersoft_member_fields = layout([u32("uncompressed_size", SIZE), u32("compressed_size", SIZE)]);
+var sxafr_wintersoft_member = sxLayout(0x60540026, "wintersoft_member", LE, sxafr_wintersoft_member_fields);
+function sxafr_winter(c) {
+    var p = 8;
+    if (!sxafr_add(c, sxafr_wintersoft_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var z = [0];
+        if (!sxafr_word(c, p + 4, 4, false, z) || !sxafr_span(c, p + 8, z[0]) || !sxafr_add(c, sxafr_wintersoft_member, p)) {
+            return false;
+        }
+        p += 8 + z[0];
+    }
+    return true;
+}
+function sx_wintersoft_build(c) {
+    return sxafr_winter(c);
+}

@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/gbi/xx_gbi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_gbi_header100_fields = layout([chars("signature", 16, SIGNATURE), u32("table_offset", OFFSET), u32("version", ID),
+    u32("data_offset", OFFSET), u32("marker", SIGNATURE), u32("reserved0", RESERVED), u32("chunk_size", SIZE),
+    u64("image_size", SIZE), u64("container_size", SIZE), field("reserved1", "byte[16]", 16, RESERVED), u32("crc32", CHECKSUM)]);
+var sxvi_gbi_header100 = sxLayout(0x6053001E, "gbi_header100", LE, sxvi_gbi_header100_fields);
+var sxvi_gbi_header110_fields = layout([chars("signature", 16, SIGNATURE), u32("table_offset", OFFSET), u32("version", ID),
+    u32("encoded_data_offset", FLAGS), u32("marker", SIGNATURE), u32("reserved0", RESERVED), u32("chunk_size_and_flags", FLAGS),
+    u64("image_size", SIZE), u64("container_size", SIZE), u8("profile", ID), u32("compressed_table_size", SIZE),
+    u8("table_bit_widths", FLAGS), u8("lzma_filter", ID), field("lzma_properties", "byte[5]", 5),
+    field("reserved1", "byte[4]", 4, RESERVED), u32("crc32", CHECKSUM)]);
+var sxvi_gbi_header110 = sxLayout(0x6053001F, "gbi_header110", LE, sxvi_gbi_header110_fields);
+var sxvi_gbi_descriptor_fields = layout([u32("type", ID), u32("size", SIZE)]);
+var sxvi_gbi_descriptor = sxLayout(0x60530020, "gbi_descriptor", LE, sxvi_gbi_descriptor_fields);
+var sxvi_gbi_part_count_fields = layout([u32("part_count", COUNT)]);
+var sxvi_gbi_part_count = sxLayout(0x60530021, "gbi_part_count", LE, sxvi_gbi_part_count_fields);
+function sxvi_gbi(c) {
+    var h = [];
+    var b = [];
+    if (!sxvi_read(c, 0, h, 76) || sxMemcmp(h, "GBI\x00", 4)) {
+        return false;
+    }
+    var v = sxvi32(h, 20, 0);
+    if (v !== 0x100 && v !== 0x110) {
+        return false;
+    }
+    if (!sxvi_put(c, v === 0x100 ? sxvi_gbi_header100 : sxvi_gbi_header110, 0, 1)) {
+        return false;
+    }
+    var end = sxvi32(h, 16, 0);
+    if (end < 76 || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return true;
+    }
+    for (var p = 76; p + 8 <= end && c.count < 24000; ) {
+        if (!sxvi_read(c, p, b, 8)) {
+            return false;
+        }
+        var z = sxvi32(b, 4, 0);
+        if (z < 8 || z > sxU64(end - p)) {
+            break;
+        }
+        if (!sxvi_put(c, sxvi_gbi_descriptor, p, 1)) {
+            return false;
+        }
+        if (sxvi32(b, 0, 0) === 2 && z >= 16 && !sxvi_put(c, sxvi_gbi_part_count, p + 8, 1)) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_gbi_build(c) {
+    return sxvi_gbi(c);
+}

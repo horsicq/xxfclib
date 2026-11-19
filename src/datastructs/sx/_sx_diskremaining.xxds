@@ -1,0 +1,660 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_diskremaining.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_diskremaining_comment(r, id) {
+    if (r === null || r.name === null || id < 0x607F0000 || id >= 0x60800000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    switch (id) {
+    case 0x607F0001:
+        if (r.name === "last_page_bytes") {
+            s = "Bytes used in the final512-byte page; zero denotes a full page";
+        } else if (r.name === "page_count") {
+            s = "512-byte pages; the size includes this stage header";
+        }
+        break;
+    case 0x607F0002:
+        if (r.name === "encryption") {
+            s = "Native reader requires zero; nonzero denotes encrypted image";
+        } else if (r.name === "description_bytes") {
+            s = "Nonnegative byte length immediately after the header";
+        } else if (r.name === "description_crc16") {
+            s = "CRC16/ARC of description; native reader does not require it";
+        } else if (r.name === "serial_marker") {
+            s = "SNUM marker in known producers";
+        } else if (r.name === "header_crc16") {
+            s = "CRC16/ARC over the first31 header bytes";
+        }
+        break;
+    case 0x607F0003:
+        if (r.name === "decoded_crc16") {
+            s = "CRC16/ARC of the reconstructed track";
+        } else if (r.name === "signed_packed_length") {
+            s = "Positive LZHUF byte length; negative magnitude is RLE byte length";
+        }
+        break;
+    case 0x607F0004:
+        if (r.name === "directory_track_flags") {
+            s = "Low7bits identify the directory track; highbit is preserved";
+        }
+        break;
+    case 0x607F0005:
+        if (r.name === "allocated_granules") {
+            s = "Model I: low two bits represent the two five-sector granules in this track";
+        }
+        break;
+    case 0x607F0006:
+        if (r.name === "date_text") {
+            s = "Stored calendar text, not an integer timestamp";
+        } else if (r.name === "auto_command") {
+            s = "Physical command bytes; NUL or carriage-return terminates the meaningful text";
+        }
+        break;
+    case 0x607F0007:
+        if (r.name === "filename_hash") {
+            s = "TRSDOS rotate/XOR filename hash; zero marks an unused directory-entry code";
+        }
+        break;
+    case 0x607F0008:
+        if (r.name === "flags") {
+            s = "bit7 extended,bit6 system,bit5 limits/PDS,bit4 active,bit3 invisible,low3 protection";
+        } else if (r.name === "month_flags") {
+            s = "Low4bits month; remaining bits stored flags";
+        } else if (r.name === "day_year_flags") {
+            s = "High5bits day; low3bits year relative to1980";
+        } else if (r.name === "last_sector_bytes") {
+            s = "Zero means full256-byte sector";
+        } else if (r.name === "logical_record_length") {
+            s = "Zero means256-byte record";
+        }
+        break;
+    case 0x607F0009:
+        if (r.name === "flags") {
+            s = "bit7 extended,bit6 system,bit5 limits/PDS,bit4 active,bit3 invisible,low3 protection";
+        } else if (r.name === "previous_entry_code") {
+            s = "Previous directory-entry code, not a byte offset";
+        } else if (r.name === "day_year_flags") {
+            s = "High5bits day; low3bits year relative to1980";
+        } else if (r.name === "last_sector_bytes") {
+            s = "Zero means full256-byte sector";
+        } else if (r.name === "logical_record_length") {
+            s = "Zero means256-byte record";
+        }
+        break;
+    case 0x607F000A:
+        if (r.name === "granule_start_count") {
+            s = "High3bits first granule; low5bits granule count minus one";
+        }
+        break;
+    case 0x607F000B:
+        if (r.name === "marker") {
+            s = "FE marks an extended-directory link";
+        } else if (r.name === "next_entry_code") {
+            s = "Directory-entry code, not a byte offset";
+        }
+        break;
+    case 0x607F000C:
+        if (r.name === "header_size_minus_two") {
+            s = "Native variant stores29 for a31-byte physical header";
+        } else if (r.name === "unknown_01") {
+            s = "Not interpreted by the native Savage reader";
+        } else if (r.name === "unknown_0f") {
+            s = "Native Savage grammar does not interpret these stored bytes";
+        } else if (r.name === "disk_crc16") {
+            s = "CRC16 of the decoded901120-byte disk";
+        }
+        break;
+    case 0x607F000D:
+        if (r.name === "rpm") {
+            s = "Revolutions per minute";
+        } else if (r.name === "bitrate_kbps") {
+            s = "Kilobits per second";
+        } else if (r.name === "track_list_block") {
+            s = "512-byte block number, not an unscaled byte offset";
+        }
+        break;
+    case 0x607F000E:
+        if (r.name === "track_block") {
+            s = "512-byte block number";
+        } else if (r.name === "combined_track_bytes") {
+            s = "Combined storage for both interleaved sides";
+        }
+        break;
+    case 0x607F000F:
+        if (r.name === "size_code") {
+            s = "Sector size128<<code; native requires1";
+        } else if (r.name === "crc16_or_token") {
+            s = "Stored CRC16 or F7F7 controller-generated-CRC token";
+        }
+        break;
+    case 0x607F0010:
+        if (r.name === "size_code") {
+            s = "Sector size128<<code; native requires1";
+        } else if (r.name === "crc16_or_token") {
+            s = "Stored CRC16 or F7F7 controller-generated-CRC token";
+        }
+        break;
+    case 0x607F0011:
+        if (r.name === "data_mark") {
+            s = "FB normal or F8 deleted data";
+        }
+        break;
+    case 0x607F0012:
+        if (r.name === "data_mark") {
+            s = "FB normal or F8 deleted data";
+        }
+        break;
+    case 0x607F0013:
+        if (r.name === "crc16_or_token") {
+            s = "Stored CRC16 or F7F7 controller-generated-CRC token";
+        }
+        break;
+    case 0x607F0014:
+        if (r.name === "prologue") {
+            s = "D5AA96 for16sector or D5AAB5 for13sector address framing";
+        } else if (r.name === "volume_4and4") {
+            s = "Original4-and-4 encoded8-bit volume; decoded=(first<<1|1)&second";
+        } else if (r.name === "track_4and4") {
+            s = "Original4-and-4 encoded8-bit track";
+        } else if (r.name === "sector_4and4") {
+            s = "Original4-and-4 encoded8-bit sector";
+        } else if (r.name === "xor_checksum_4and4") {
+            s = "Original4-and-4 encoding of volume XOR track XOR sector";
+        } else if (r.name === "epilogue") {
+            s = "Standard DEAAEB epilogue; native authenticates the significant prefix";
+        }
+        break;
+    case 0x607F0015:
+        if (r.name === "prologue") {
+            s = "D5AAAD data framing";
+        }
+        break;
+    case 0x607F0016:
+        if (r.name === "translated_xor_checksum") {
+            s = "Original translated GCR checksum code, not a decoded sample";
+        }
+        break;
+    case 0x607F0017:
+        if (r.name === "current_sector_flags") {
+            s = "bit7 marks first sector;40hex encodes zero in low7bits";
+        } else if (r.name === "next_track_flags") {
+            s = "bit7 marks end of chain and points back to its firstsector";
+        }
+        break;
+    case 0x607F0018:
+        if (r.name === "volume_name_high_ascii") {
+            s = "High-bit Apple text; trailing spaces padded";
+        } else if (r.name === "carriage_return") {
+            s = "8Dhex";
+        }
+        break;
+    case 0x607F0019:
+        if (r.name === "first_track_flags") {
+            s = "Low7bits track;40hex encodes zero";
+        } else if (r.name === "first_sector_flags") {
+            s = "Low7bits sector;40hex encodes zero";
+        } else if (r.name === "type_high_ascii") {
+            s = "Low7bits space/L/M/P";
+        } else if (r.name === "carriage_return") {
+            s = "8Dhex";
+        }
+        break;
+    case 0x607F001A:
+        if (r.name === "riff_bytes") {
+            s = "Size excluding the first8 bytes";
+        }
+        break;
+    case 0x607F001B:
+        if (r.name === "data_bytes") {
+            s = "Payload size excluding8-byte header and alignment byte";
+        }
+        break;
+    case 0x607F001C:
+        if (r.name === "sample_rate") {
+            s = "Samples per second";
+        } else if (r.name === "byte_rate") {
+            s = "Bytes per second";
+        }
+        break;
+    case 0x607F001D:
+        if (r.name === "root_cluster") {
+            s = "Cluster index";
+        }
+        break;
+    case 0x607F001E:
+        if (r.name === "root_cluster") {
+            s = "Cluster index";
+        }
+        break;
+    case 0x607F001F:
+        if (r.name === "tag") {
+            s = "Physical XML tag spelling";
+        }
+        break;
+    case 0x607F0020:
+        if (r.name === "key") {
+            s = "Physical property-list key; entity spelling retained";
+        }
+        break;
+    case 0x607F0021:
+        if (r.name === "value") {
+            s = "Physical string token";
+        }
+        break;
+    case 0x607F0022:
+        if (r.name === "value") {
+            s = "Decimal integer token";
+        }
+        break;
+    case 0x607F0023:
+        if (r.name === "disk_size") {
+            s = "Virtual disk byte length";
+        }
+        break;
+    case 0x607F0024:
+        if (r.name === "band_size") {
+            s = "Bytes per external band file";
+        }
+        break;
+    case 0x607F0025:
+        if (r.name === "bundle_version") {
+            s = "Native supports versions1 and2; the version key may be absent";
+        }
+        break;
+    case 0x607F0026:
+        if (r.name === "lockout_flags") {
+            s = "FF lockedout,FC available in native Model I scope";
+        }
+        break;
+    case 0x607F0027:
+        if (r.name === "cylinders_minus_35") {
+            s = "LDOS interpretation; native geometry is separately validated";
+        } else if (r.name === "geometry_flags") {
+            s = "LDOS low3bits granules-per-track minus1,bit5 sides,bit6 density";
+        }
+        break;
+    case 0x607F0028:
+        if (r.name === "description") {
+            s = "Physical description bytes; no decompression";
+        }
+        break;
+    case 0x607F0029:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit0";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit0; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F002A:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit1";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit1; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F002B:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit2";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit2; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F002C:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit3";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit3; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F002D:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit4";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit4; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F002E:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit5";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit5; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F002F:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit6";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit6; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F0030:
+        if (r.name === "sync_bitcells") {
+            s = "Three MFM missing-clock sync words; LSB-first physical bits, startingbit7";
+        } else if (r.name === "address_mark_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "cylinder_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "head_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "sector_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "size_code_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_high_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        } else if (r.name === "crc_low_mfm_bitcells") {
+            s = "Physical16-bit MFM clock/data window begins at LSB-first bit7; boundary bytes may also contain adjacent bits";
+        }
+        break;
+    case 0x607F0031:
+        if (r.name === "dos_lead") {
+            s = "Original DOS load-address/length prefix or DDD Pro marker; no synthesized semantics";
+        } else if (r.name === "reserved_prefix") {
+            s = "Three zero bits";
+        } else if (r.name === "volume_reversed_bits") {
+            s = "Stored MSB-positioned bit sequence; reverse these8bits for decoded volume";
+        } else if (r.name === "favorite_0_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_1_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_2_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_3_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_4_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_5_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_6_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_7_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_8_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_9_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_10_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_11_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_12_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_13_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_14_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_15_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_16_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_17_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_18_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        } else if (r.name === "favorite_19_reversed_bits") {
+            s = "First-track favorite byte stored least-significant bit first; displayed value retains the MSB-read physical code";
+        }
+        break;
+    case 0x607F0032:
+        if (r.name === "density") {
+            s = "0 MFM at250kbit/s;1 FM at125kbit/s";
+        } else if (r.name === "cylinders_and_sides") {
+            s = "Low7bits cylinders;highbit selects two sides";
+        }
+        break;
+    case 0x607F0033:
+        if (r.name === "extension_bytes") {
+            s = "Native PCM variant requires zero";
+        }
+        break;
+    case 0x607F0034:
+        if (r.name === "partition_name_utf16") {
+            s = "Original Xbox optional UTF16LE partition name; Xbox360 does not use this header field";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxdr_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxdr_read(c, p, b, n) {
+    return sxdr_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxdr16(b, b_o, be) {
+    return be ? b[b_o] << 8 | b[b_o + 1] : b[b_o] | b[b_o + 1] << 8;
+}
+function sxdr32(b, b_o, be) {
+    return be ? ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0 : (b[b_o] | b[b_o + 1] << 8 | b[b_o + 2] << 16 | (b[b_o + 3] << 24) >>> 0) >>> 0;
+}
+function sxdr_put(c, l, p, count) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxdr_span(c, p, count * z)) {
+        return false;
+    }
+    if (!count || c.count >= 24000) {
+        return true;
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxdr_text(c, l, p, n) {
+    if (!sxdr_span(c, p, n)) {
+        return false;
+    }
+    if (!n || n > 16384 || c.count >= 24000) {
+        return true;
+    }
+    return sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxdr_order(a, b) {
+    var x = a;
+    var y = b;
+    if (x.offset !== y.offset) {
+        return x.offset < y.offset ? -1 : 1;
+    }
+    if (x.total_size !== y.total_size) {
+        return x.total_size < y.total_size ? -1 : 1;
+    }
+    return x.id < y.id ? -1 : (x.id > y.id ? 1 : 0);
+}
+function sxdr_finish(c) {
+    var n = c.count;
+    var kept = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxdr_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end) {
+            continue;
+        }
+        c.items[kept++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = p + z;
+    }
+    c.count = kept;
+    n = kept;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxdr_order, true);
+    return !c.failed;
+}
+function sxdr_ccitt(b, b_o, n) {
+    var v = 0xFFFF;
+    for (var i = 0; i < n; i++) {
+        v ^= b[b_o + i] << 8;
+        for (var j = 0; j < 8; j++) {
+            v = (v << 1 ^ (v & 0x8000 ? 0x1021 : 0)) & 0xFFFF;
+        }
+    }
+    return v;
+}
+function sx_diskremaining_supports(type) {
+    switch (type) {
+    case "SFX_SYDEX_DISKETTE_IMAGE":
+    case "APPLE_SPARSE_BUNDLE":
+    case "TRS_80_JV1":
+    case "DDD":
+    case "FEI":
+    case "APPLE_NIB":
+    case "TI99_PC99":
+    case "VTR_DISK":
+    case "SPECCYDOS_SDD":
+    case "SAVAGE":
+    case "GUTENBERG":
+    case "APPLE_CASSETTE":
+    case "XBOX360_LAYOUT":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_diskremaining_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "SFX_SYDEX_DISKETTE_IMAGE":
+        ok = sx_sfx_sydex_diskette_image_build(c);
+        break;
+    case "APPLE_SPARSE_BUNDLE":
+        ok = sx_apple_sparse_bundle_build(c);
+        break;
+    case "TRS_80_JV1":
+        ok = sx_trs_80_jv1_build(c);
+        break;
+    case "DDD":
+        ok = sx_ddd_build(c);
+        break;
+    case "FEI":
+        ok = sx_fei_build(c);
+        break;
+    case "APPLE_NIB":
+        ok = sx_apple_nib_build(c);
+        break;
+    case "TI99_PC99":
+        ok = sx_ti99_pc99_build(c);
+        break;
+    case "VTR_DISK":
+        ok = sx_vtr_disk_build(c);
+        break;
+    case "SPECCYDOS_SDD":
+        ok = sx_speccydos_sdd_build(c);
+        break;
+    case "SAVAGE":
+        ok = sx_savage_build(c);
+        break;
+    case "GUTENBERG":
+        ok = sx_gutenberg_build(c);
+        break;
+    case "APPLE_CASSETTE":
+        ok = sx_apple_cassette_build(c);
+        break;
+    case "XBOX360_LAYOUT":
+        ok = sx_xbox360_layout_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!(ok && c.count && sxdr_finish(c));
+}

@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/acorn_adfs/xx_acorn_adfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_adfs_map0_fields = layout([field("free_start_sector_triplets", "byte[246]", 246), u8("reserved246", RESERVED),
+    field("disk_name_even_characters", "byte[5]", 5), field("total_sectors", "uint24", 3, COUNT), u8("checksum", CHECKSUM)]);
+var sxrfs_adfs_map0 = sxLayout(0x60650014, "adfs_map0", LE, sxrfs_adfs_map0_fields);
+var sxrfs_adfs_map1_fields = layout([field("free_length_sector_triplets", "byte[246]", 246),
+    field("disk_name_odd_characters", "byte[5]", 5), u16("disk_identifier", ID), u8("boot_option", ID),
+    u8("free_list_bytes", SIZE), u8("checksum", CHECKSUM)]);
+var sxrfs_adfs_map1 = sxLayout(0x60650015, "adfs_map1", LE, sxrfs_adfs_map1_fields);
+var sxrfs_adfs_directory_start_fields = layout([u8("sequence"), chars("signature", 4, SIGNATURE)]);
+var sxrfs_adfs_directory_start = sxLayout(0x60650016, "adfs_directory_start", LE, sxrfs_adfs_directory_start_fields);
+var sxrfs_adfs_directory_entry_fields = layout([field("name_and_attributes", "byte[10]", 10, FLAGS), u32("load_address", VA),
+    u32("execution_address", VA), u32("byte_size", SIZE), field("first_sector", "uint24", 3), u8("sequence")]);
+var sxrfs_adfs_directory_entry = sxLayout(0x60650017, "adfs_directory_entry", LE, sxrfs_adfs_directory_entry_fields);
+var sxrfs_adfs_directory_tail_fields = layout([u8("terminator", RESERVED), field("directory_name", "byte[10]", 10),
+    field("parent_sector", "uint24", 3), field("title", "byte[19]", 19), field("reserved", "byte[14]", 14, RESERVED),
+    u8("sequence"), chars("signature", 4, SIGNATURE), u8("reserved_last", RESERVED)]);
+var sxrfs_adfs_directory_tail = sxLayout(0x6065004C, "adfs_directory_tail", LE, sxrfs_adfs_directory_tail_fields);
+function sxrfs_adfs(c) {
+    var h = [];
+    if (!sxrfs_read(c, 0, h, 0, 256) || h[246]) {
+        return false;
+    }
+    var n = sxrfs24(h, 252, false);
+    if (n !== 640 && n !== 1280 && n !== 2560) {
+        return false;
+    }
+    if (!sxrfs_span(c, 0, n * 256) || !sxrfs_put(c, sxrfs_adfs_map0, 0, 1) || !sxrfs_put(c, sxrfs_adfs_map1, 256, 1) || !sxrfs_put(c, sxrfs_adfs_directory_start, 512, 1) || !sxrfs_put(c, sxrfs_adfs_directory_tail, 1739, 1)) {
+        return false;
+    }
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    for (var i = 0; i < 24000; i++) {
+        var r = c.f.get_current_archive_record(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset >= c.f.base_address && r.header_size === 26) {
+            var p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+            if ((n !== 2560 || p % 4096 + 26 <= 4096) && sxrfs_span(c, p, 26) && !sxrfs_put(c, sxrfs_adfs_directory_entry, p, 1)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, s, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sx_acorn_adfs_build(c) {
+    return sxrfs_adfs(c);
+}

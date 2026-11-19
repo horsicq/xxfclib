@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/matlab_mat5/xx_matlab_mat5_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_mat5_header_le_fields = layout([chars("description", 116, STRING), u64("subsystem_data_offset", OFFSET),
+    u16("version", ID), chars("endian_indicator", 2, ID)]);
+var sxm_mat5_header_le = sxLayout(0x6006003B, "mat5_header_le", LE, sxm_mat5_header_le_fields);
+var sxm_mat5_tag_le_fields = layout([u32("data_type", ID), u32("data_size", SIZE)]);
+var sxm_mat5_tag_le = sxLayout(0x6006003C, "mat5_tag_le", LE, sxm_mat5_tag_le_fields);
+var sxm_mat5_header_be_fields = layout([chars("description", 116, STRING), u64("subsystem_data_offset", OFFSET),
+    u16("version", ID), chars("endian_indicator", 2, ID)]);
+var sxm_mat5_header_be = sxLayout(0x6006003F, "mat5_header_be", BE, sxm_mat5_header_be_fields);
+var sxm_mat5_tag_be_fields = layout([u32("data_type", ID), u32("data_size", SIZE)]);
+var sxm_mat5_tag_be = sxLayout(0x60060040, "mat5_tag_be", BE, sxm_mat5_tag_be_fields);
+function sxm_mat5_tags(c, at, end, be, depth) {
+    if (depth > 8) {
+        return false;
+    }
+    while (at < end) {
+        var type;
+        var n;
+        var data;
+        var next;
+        if (sxU64(end - at) < 8 || (type = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), be)) === null) {
+            return false;
+        }
+        if ((type & 0xFFFF) === 15) {
+            return false;
+        }
+        if (type >>> 16) {
+            n = type >>> 16;
+            if (n > 4 || !sx_add(c, be ? sxm_mat5_small_tag_be : sxm_mat5_small_tag_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+                return false;
+            }
+            next = at + 8;
+        } else {
+            if ((n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 4, be)) === null) {
+                return false;
+            }
+            data = at + 8;
+            next = data + sxAnd64(n + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+            if (next > end || !sx_add(c, be ? sxm_mat5_tag_be : sxm_mat5_tag_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+                return false;
+            }
+            if (type === 14) {
+                if (!sxm_mat5_tags(c, data, data + n, be, (depth + 1) >>> 0) || !sxm_raw(c, data + n, sxU64(sxU64(next - data) - n))) {
+                    return false;
+                }
+            } else if (!sxm_raw(c, data, sxU64(next - data))) {
+                return false;
+            }
+        }
+        at = next;
+    }
+    return at === end;
+}
+function sx_matlab_mat5_build(c, h, n) {
+    var be;
+    if (n < 128 || sxMemcmp(h, "MATLAB 5.0 MAT-file", 19)) {
+        return false;
+    }
+    be = !sxMemcmpAt(h, 126, "MI", 0, 2);
+    if (!be && sxMemcmpAt(h, 126, "IM", 0, 2)) {
+        return false;
+    }
+    return sx_add(c, be ? sxm_mat5_header_be : sxm_mat5_header_le, 0, 128) && sxm_mat5_tags(c, 128, (c.size < 0 ? c.size + SX_U64_MAX : c.size), be, 0);
+}

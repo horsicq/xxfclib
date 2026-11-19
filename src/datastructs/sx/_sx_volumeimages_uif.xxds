@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/uif/xx_uif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_uif_trailer_fields = layout([chars("signature", 4, SIGNATURE), u32("trailer_size", SIZE), u16("version", ID),
+    u16("image_type", ID), u16("unknown"), u16("padding", RESERVED), u32("sector_count", COUNT), u32("sector_size", SIZE),
+    u32("last_sector_bytes", SIZE), u64("block_table_offset", OFFSET), u32("block_table_size", SIZE),
+    field("hash", "byte[16]", 16), u8("fixed_key_index", ID), u8("cipher", ID), field("cipher_parameters0", "byte[2]", 2),
+    u32("cipher_parameters1")]);
+var sxvi_uif_trailer = sxLayout(0x60530019, "uif_trailer", LE, sxvi_uif_trailer_fields);
+var sxvi_uif_table_header_fields = layout([chars("signature", 4, SIGNATURE), u32("payload_size", SIZE),
+    u32("compressed", FLAGS), u32("entry_count", COUNT)]);
+var sxvi_uif_table_header = sxLayout(0x6053001A, "uif_table_header", LE, sxvi_uif_table_header_fields);
+var sxvi_uif_block_entry_fields = layout([u64("offset", OFFSET), u32("stored_size", SIZE), u32("first_sector"),
+    u32("sector_count", COUNT), u32("type", ID)]);
+var sxvi_uif_block_entry = sxLayout(0x6053001B, "uif_block_entry", LE, sxvi_uif_block_entry_fields);
+var sxvi_uif_descriptor_header_fields = layout([chars("signature", 4, SIGNATURE), u32("payload_size", SIZE),
+    u32("compressed", FLAGS), u32("original_size", SIZE)]);
+var sxvi_uif_descriptor_header = sxLayout(0x6053001C, "uif_descriptor_header", LE, sxvi_uif_descriptor_header_fields);
+var sxvi_uif_output_format_fields = layout([u32("output_format", ID)]);
+var sxvi_uif_output_format = sxLayout(0x6053001D, "uif_output_format", LE, sxvi_uif_output_format_fields);
+function sxvi_uif(c) {
+    var t = [];
+    var h = [];
+    if (c.size < 80) {
+        return false;
+    }
+    var end = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 64);
+    if (!sxvi_read(c, end, t, 64) || sxMemcmp(t, "bbis", 4) || !sxvi_put(c, sxvi_uif_trailer, end, 1)) {
+        return false;
+    }
+    var p = sxvi64(t, 28, 0);
+    if (p > end || sxU64(end - p) < 16 || !sxvi_read(c, p, h, 16)) {
+        return true;
+    }
+    if (sxMemcmp(h, "blhr", 4) && sxMemcmp(h, "bsdr", 4)) {
+        return true;
+    }
+    if (!sxvi_put(c, sxvi_uif_table_header, p, 1)) {
+        return false;
+    }
+    var encrypted = !!(!sxMemcmp(h, "bsdr", 4) || t[57] === 2 || sxvi16(t, 8, 0) > 1 && t[56] && t[56] <= 16);
+    if (encrypted) {
+        return true;
+    }
+    var count = sxvi32(h, 12, 0);
+    var stored;
+    if (sxvi32(h, 8, 0)) {
+        if (sxvi32(h, 4, 0) < 8) {
+            return true;
+        }
+        stored = (sxvi32(h, 4, 0) - 8) >>> 0;
+    } else {
+        stored = count * 24;
+        if (count <= 1048576 && stored <= sxU64(sxU64(end - p) - 16) && !sxvi_put(c, sxvi_uif_block_entry, p + 16, count)) {
+            return false;
+        }
+    }
+    if (stored > sxU64(sxU64(end - p) - 16) || sxvi16(t, 10, 0) !== 9) {
+        return true;
+    }
+    p += 16 + stored;
+    if (p > end || sxU64(end - p) < 16 || !sxvi_read(c, p, h, 16) || sxMemcmp(h, "blms", 4)) {
+        return true;
+    }
+    if (!sxvi_put(c, sxvi_uif_descriptor_header, p, 1)) {
+        return false;
+    }
+    if (sxvi32(h, 8, 0)) {
+        if (sxvi32(h, 4, 0) < 8) {
+            return true;
+        }
+        stored = (sxvi32(h, 4, 0) - 8) >>> 0;
+    } else {
+        stored = sxvi32(h, 12, 0);
+    }
+    if (stored > sxU64(sxU64(end - p) - 16)) {
+        return true;
+    }
+    p += 16 + stored;
+    if (p > end || sxU64(end - p) < 20 || !sxvi_read(c, p, h, 20) || sxMemcmp(h, "blss", 4)) {
+        return true;
+    }
+    return sxvi_put(c, sxvi_uif_descriptor_header, p, 1) && sxvi_put(c, sxvi_uif_output_format, p + 16, 1);
+}
+function sx_uif_build(c) {
+    return sxvi_uif(c);
+}

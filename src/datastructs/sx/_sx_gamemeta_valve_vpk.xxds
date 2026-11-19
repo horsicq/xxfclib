@@ -1,0 +1,131 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/valve_vpk/xx_valve_vpk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_vpk_header_fields = layout([u32("signature", SIGNATURE), u32("version", ID), u32("tree_size", SIZE)]);
+var sxgm_vpk_header = sxLayout(0x60270010, "vpk_header", LE, sxgm_vpk_header_fields);
+var sxgm_vpk_v2_sections_fields = layout([u32("data_size", SIZE), u32("archive_md5_size", SIZE), u32("other_md5_size", SIZE),
+    u32("signature_size", SIZE)]);
+var sxgm_vpk_v2_sections = sxLayout(0x60270011, "vpk_v2_sections", LE, sxgm_vpk_v2_sections_fields);
+var sxgm_vpk_entry_fields = layout([u32("crc32", CHECKSUM), u16("preload_size", SIZE), u16("archive_index", ID),
+    u32("data_offset", OFFSET), u32("data_size", SIZE), u16("terminator", SIGNATURE)]);
+var sxgm_vpk_entry = sxLayout(0x60270012, "vpk_entry", LE, sxgm_vpk_entry_fields);
+var sxgm_vpk_archive_md5_fields = layout([u32("archive_index", ID), u32("data_offset", OFFSET), u32("data_size", SIZE),
+    bytes("md5", 16, CHECKSUM)]);
+var sxgm_vpk_archive_md5 = sxLayout(0x60270013, "vpk_archive_md5", LE, sxgm_vpk_archive_md5_fields);
+var sxgm_vpk_other_md5_fields = layout([bytes("tree_md5", 16, CHECKSUM), bytes("archive_md5_section_md5", 16, CHECKSUM),
+    bytes("file_md5", 16, CHECKSUM)]);
+var sxgm_vpk_other_md5 = sxLayout(0x60270014, "vpk_other_md5", LE, sxgm_vpk_other_md5_fields);
+var sxgm_vpk_public_key_length_fields = layout([u32("public_key_size", SIZE)]);
+var sxgm_vpk_public_key_length = sxLayout(0x60270015, "vpk_public_key_length", LE, sxgm_vpk_public_key_length_fields);
+var sxgm_vpk_signature_length_fields = layout([u32("signature_size", SIZE)]);
+var sxgm_vpk_signature_length = sxLayout(0x60270016, "vpk_signature_length", LE, sxgm_vpk_signature_length_fields);
+function sxgm_cstr(c, p, end, empty) {
+    var b = [0];
+    var start = p[0];
+    for (var i = 0; i < 4096 && p[0] < end; i++, p[0]++) {
+        if (!sxgm_read(c, p[0], b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            empty[0] = p[0] === start;
+            p[0]++;
+            return true;
+        }
+    }
+    return false;
+}
+function sxgm_vpk(c) {
+    sections: {
+        var b = [];
+        if (!sxgm_read(c, 0, b, 12) || !sxgm_add(c, sxgm_vpk_header, 0)) {
+            return false;
+        }
+        var v = sxgm32(b, 4, false);
+        var h = v === 1 ? 12 : 28;
+        var tree = sxgm32(b, 8, false);
+        if (v !== 1 && v !== 2) {
+            return true;
+        }
+        if (!sxgm_read(c, 0, b, h) || !sxgm_span(c, h, tree)) {
+            return true;
+        }
+        if (v === 2 && !sxgm_add(c, sxgm_vpk_v2_sections, 12)) {
+            return false;
+        }
+        var p = [h];
+        var end = h + tree;
+        var empty = [false];
+        var steps = 0;
+        while (p[0] < end && steps++ < 20000) {
+            if (!sxgm_cstr(c, p, end, empty) || empty[0]) {
+                break;
+            }
+            for (; ; ) {
+                if (++steps > 20000 || !sxgm_cstr(c, p, end, empty)) {
+                    break sections;
+                }
+                if (empty[0]) {
+                    break;
+                }
+                for (; ; ) {
+                    if (++steps > 20000 || !sxgm_cstr(c, p, end, empty)) {
+                        break sections;
+                    }
+                    if (empty[0]) {
+                        break;
+                    }
+                    var e = [];
+                    if (sxU64(end - p[0]) < 18 || !sxgm_read(c, p[0], e, 18) || sxgm16(e, 16, false) !== 0xFFFF) {
+                        break sections;
+                    }
+                    var z = [sxgm16(e, 4, false)];
+                    if (z[0] > sxU64(sxU64(end - p[0]) - 18)) {
+                        break sections;
+                    }
+                    if (!sxgm_add(c, sxgm_vpk_entry, p[0])) {
+                        return false;
+                    }
+                    p[0] += 18 + z[0];
+                }
+            }
+        }
+    }
+    if (v === 2) {
+        p[0] = end + sxgm32(b, 12, false);
+        var a = sxgm32(b, 16, false);
+        var o = sxgm32(b, 20, false);
+        var sig = sxgm32(b, 24, false);
+        if (!sxgm_span(c, p[0], a) || a % 28) {
+            return true;
+        }
+        if (!sxgm_table(c, sxgm_vpk_archive_md5, p[0], Math.floor(a / 28))) {
+            return false;
+        }
+        p[0] += a;
+        if (!sxgm_span(c, p[0], o)) {
+            return true;
+        }
+        if (o === 48 && !sxgm_add(c, sxgm_vpk_other_md5, p[0])) {
+            return false;
+        }
+        p[0] += o;
+        if (sig >= 8 && sxgm_span(c, p[0], sig)) {
+            z = [0];
+            if (sxgm_word(c, p[0], 4, false, z) && z[0] <= sxU64(sig - 8)) {
+                var sn = [0];
+                if (sxgm_word(c, p[0] + 4 + z[0], 4, false, sn) && sn[0] === sxU64(sxU64(sig - 8) - z[0])) {
+                    if (!sxgm_add(c, sxgm_vpk_public_key_length, p[0]) || !sxgm_add(c, sxgm_vpk_signature_length, p[0] + 4 + z[0])) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_valve_vpk_build(c) {
+    return sxgm_vpk(c);
+}

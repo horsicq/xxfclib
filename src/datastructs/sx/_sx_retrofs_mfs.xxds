@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/mfs/xx_mfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_mfs_master_directory_fields = layout([u16("signature", SIGNATURE), u32("creation_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), u16("attributes", FLAGS), u16("file_count", COUNT), u16("directory_start_sector"),
+    u16("directory_sector_count", COUNT), u16("allocation_block_count", COUNT), u32("allocation_block_size", SIZE),
+    u32("clump_size", SIZE), u16("allocation_start_sector"), u32("next_file_id", ID), u16("free_blocks", COUNT),
+    u8("volume_name_length", SIZE), field("volume_name_macroman", "byte[27]", 27)]);
+var sxrfs_mfs_master_directory = sxLayout(0x60650011, "mfs_master_directory", BE, sxrfs_mfs_master_directory_fields);
+var sxrfs_mfs_allocation_pair_fields = layout([field("two_packed_12bit_links", "uint24", 3)]);
+var sxrfs_mfs_allocation_pair = sxLayout(0x60650012, "mfs_allocation_pair", BE, sxrfs_mfs_allocation_pair_fields);
+var sxrfs_mfs_file_entry_fields = layout([u8("flags", FLAGS), u8("version", ID), u32("finder_type", ID),
+    u32("finder_creator", ID), u16("finder_flags", FLAGS), i16("finder_vertical"), i16("finder_horizontal"),
+    i16("finder_folder"), u32("file_id", ID), u16("data_first_block"), u32("data_logical_size", SIZE),
+    u32("data_physical_size", SIZE), u16("resource_first_block"), u32("resource_logical_size", SIZE),
+    u32("resource_physical_size", SIZE), u32("creation_time", TIMESTAMP), u32("modification_time", TIMESTAMP),
+    u8("name_length", SIZE)]);
+var sxrfs_mfs_file_entry = sxLayout(0x60650013, "mfs_file_entry", BE, sxrfs_mfs_file_entry_fields);
+function sxrfs_mfs(c) {
+    var h = [];
+    var b = [];
+    if (!sxrfs_read(c, 1024, h, 0, 64) || sxrfs16(h, 0, 1) !== 0xD2D7 || !sxrfs_put(c, sxrfs_mfs_master_directory, 1024, 1)) {
+        return false;
+    }
+    var units = sxrfs16(h, 18, 1);
+    var start = sxrfs16(h, 14, 1);
+    var sectors = sxrfs16(h, 16, 1);
+    if (units && units <= 640 && !sxrfs_put(c, sxrfs_mfs_allocation_pair, 1088, Math.floor(((units + 1) >>> 0) / 2))) {
+        return false;
+    }
+    if (!sectors || sectors > 32768 || !sxrfs_span(c, start * 512, sectors * 512)) {
+        return true;
+    }
+    for (var i = 0; i < sectors && c.count < 24000; i++) {
+        var p = ((start + i) >>> 0) * 512;
+        if (!sxrfs_read(c, p, b, 0, 512)) {
+            break;
+        }
+        for (var q = 0; (q + 51) >>> 0 <= 512; ) {
+            if (!(b[q] & 0x80)) {
+                break;
+            }
+            var len = b[(q + 50) >>> 0];
+            var z = ((((51 + len) >>> 0) + 1) >>> 0 & 0xFFFFFFFE) >>> 0;
+            if (!len || z > (512 - q) >>> 0) {
+                break;
+            }
+            if (!sxrfs_put(c, sxrfs_mfs_file_entry, p + q, 1)) {
+                return false;
+            }
+            q = (q + z) >>> 0;
+        }
+    }
+    return true;
+}
+function sx_mfs_build(c) {
+    return sxrfs_mfs(c);
+}

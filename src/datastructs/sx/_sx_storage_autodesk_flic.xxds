@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/autodesk_flic/xx_autodesk_flic_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_fli_header_fields = layout([u32("file_size", SIZE), u16("magic", SIGNATURE), u16("frame_count", COUNT), u16("width"),
+    u16("height"), u16("depth"), u16("flags", FLAGS), u16("speed_jiffies"), field("reserved", "byte[110]", 110, RESERVED)]);
+var sx_st_fli_header = sxLayout(0x60080045, "fli_header", LE, sx_st_fli_header_fields);
+var sx_st_flc_header_fields = layout([u32("file_size", SIZE), u16("magic", SIGNATURE), u16("frame_count", COUNT), u16("width"),
+    u16("height"), u16("depth"), u16("flags", FLAGS), u32("speed_milliseconds"), u16("reserved", RESERVED),
+    u32("created_dos_datetime"), u32("creator", ID), u32("updated_dos_datetime"), u32("updater", ID), u16("aspect_x"),
+    u16("aspect_y"), field("reserved2", "byte[38]", 38, RESERVED), u32("first_frame_offset", OFFSET),
+    u32("second_frame_offset", OFFSET), field("reserved3", "byte[40]", 40, RESERVED)]);
+var sx_st_flc_header = sxLayout(0x60080046, "flc_header", LE, sx_st_flc_header_fields);
+var sx_st_flic_chunk_fields = layout([u32("size", SIZE), u16("type", ID)]);
+var sx_st_flic_chunk = sxLayout(0x60080047, "flic_chunk", LE, sx_st_flic_chunk_fields);
+var sx_st_flic_frame_fields = layout([u32("size", SIZE), u16("type", ID), u16("chunk_count", COUNT), u16("delay"),
+    u16("reserved", RESERVED), u16("width_override"), u16("height_override")]);
+var sx_st_flic_frame = sxLayout(0x60080048, "flic_frame", LE, sx_st_flic_frame_fields);
+function sx_st_flic(c) {
+    var magic;
+    var at = 128;
+    if ((magic = sx_u16(c, 4, false)) === null || !sx_add(c, magic === 0xAF11 ? sx_st_fli_header : sx_st_flc_header, 0, 128)) {
+        return false;
+    }
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var n;
+        var type;
+        if ((n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), false)) === null || (type = sx_u16(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 4, false)) === null || n < 6 || !sx_st_fits(c, at, n)) {
+            return false;
+        }
+        if (type === 0xF1FA) {
+            var count;
+            var q = at + 16;
+            var end = at + n;
+            if (n < 16 || !sx_add(c, sx_st_flic_frame, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 16) || (count = sx_u16(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 6, false)) === null) {
+                return false;
+            }
+            for (var i = 0; i < count && c.count < 20000; i++) {
+                var z;
+                if (sxU64(end - q) < 6 || (z = sx_u32(c, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), false)) === null || z < 6 || z > sxU64(end - q) || !sx_add(c, sx_st_flic_chunk, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 6)) {
+                    return false;
+                }
+                q += z;
+            }
+        } else if (!sx_add(c, sx_st_flic_chunk, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 6)) {
+            return false;
+        }
+        at += n;
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_autodesk_flic_build(c) {
+    var ok = false;
+    ok = sx_st_flic(c);
+    return ok && sx_st_finish(c);
+}

@@ -1,0 +1,310 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_filesystems.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fs_fat_long_name_entry_fields = layout([u8("sequence_flags", FLAGS), field("name_part1", "uint16[5]", 10, STRING),
+    u8("attributes", FLAGS), u8("entry_type", ID), u8("short_name_checksum", CHECKSUM),
+    field("name_part2", "uint16[6]", 12, STRING), u16("reserved_cluster", RESERVED), field("name_part3", "uint16[2]", 4, STRING)]);
+var sx_fs_fat_long_name_entry = sxLayout(0x60100007, "fat_long_name_entry", LE, sx_fs_fat_long_name_entry_fields);
+var sx_fs_exfat_file_entry_fields = layout([u8("entry_type", ID), u8("secondary_count", COUNT), u16("set_checksum", CHECKSUM),
+    u16("file_attributes", FLAGS), u16("reserved1", RESERVED), u32("creation_timestamp"), u32("modification_timestamp"),
+    u32("access_timestamp"), u8("creation_centiseconds"), u8("modification_centiseconds"), u8("creation_utc_offset"),
+    u8("modification_utc_offset"), u8("access_utc_offset"), field("reserved2", "byte[7]", 7, RESERVED)]);
+var sx_fs_exfat_file_entry = sxLayout(0x60100011, "exfat_file_entry", LE, sx_fs_exfat_file_entry_fields);
+var sx_fs_ntfs_file_record_header_fields = layout([chars("signature", 4, SIGNATURE), u16("update_sequence_offset", OFFSET),
+    u16("update_sequence_count", COUNT), u64("log_sequence_number", ID), u16("sequence_number", ID),
+    u16("hard_link_count", COUNT), u16("first_attribute_offset", OFFSET), u16("flags", FLAGS), u32("bytes_in_use", SIZE),
+    u32("bytes_allocated", SIZE), u64("base_file_reference", ID), u16("next_attribute_id", ID), u16("reserved", RESERVED),
+    u32("record_number", ID)]);
+var sx_fs_ntfs_file_record_header = sxLayout(0x60100016, "ntfs_file_record_header", LE, sx_fs_ntfs_file_record_header_fields);
+var sx_fs_ntfs_attribute_common_fields = layout([u32("attribute_type", ID), u32("record_length", SIZE), u8("nonresident", ID),
+    u8("name_length", COUNT), u16("name_offset", OFFSET), u16("flags", FLAGS), u16("attribute_id", ID)]);
+var sx_fs_ntfs_attribute_common = sxLayout(0x60100018, "ntfs_attribute_common", LE, sx_fs_ntfs_attribute_common_fields);
+function sx_filesystems_supports(type) {
+    return type === "FAT" || type === "EXFAT" || type === "NTFS";
+}
+function sx_fs_limit(c) {
+    return c.f.format_size > 0 && c.f.format_size <= c.size ? (c.f.format_size < 0 ? c.f.format_size + SX_U64_MAX : c.f.format_size) : (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_fs_fits(c, o, n) {
+    var size = sx_fs_limit(c);
+    return o <= size && n <= sxU64(size - o);
+}
+function sx_fs_free(c, o, n) {
+    if (!sx_fs_fits(c, o, n) || c.count >= 20000) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (o < a + z && a < o + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_fs_emit(c, l, o, n, count) {
+    if (!count) {
+        return true;
+    }
+    if (!n || n > Math.floor(SX_I64_MAX / count)) {
+        return false;
+    }
+    return !sx_fs_free(c, o, n * count) || sx_table(c, l, (o >= SX_I64_MAX ? o - SX_U64_MAX : o), (n >= SX_I64_MAX ? n - SX_U64_MAX : n), count);
+}
+function sx_fs_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var d = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > d.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, d);
+        }
+    }
+}
+function sx_fs_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sx_fs_sort(c);
+    for (var i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        if (off < end) {
+            return false;
+        }
+        if (off > end && !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        end = off + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sx_fs_sort(c);
+    return !c.failed;
+}
+function sx_filesystems_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "FAT":
+        ok = sx_fat_schema_build(c);
+        break;
+    case "EXFAT":
+        ok = sx_exfat_build(c);
+        break;
+    case "NTFS":
+        ok = sx_ntfs_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sx_fs_finish(c);
+}
+function sx_fs_flags(r, flags, count) {
+    var out = [];
+    var used = 0;
+    var value = sxVarU64(r.value);
+    var known = 0;
+    for (var i = 0; i < count; i++) {
+        known = sxOr64(known, flags[i].mask);
+        if (!sxAnd64(value, flags[i].mask)) {
+            continue;
+        }
+        if (used + 32 >= 256) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        var p = flags[i].name, p_o = 0;
+        while (sxAt(p, p_o) && used + 24 < 256) {
+            out[used++] = sxAt(p, p_o++);
+        }
+        if (sxAt(p, p_o)) {
+            return false;
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var started = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var digit = sxAnd64(sxShr64(unknown, shift), 15);
+            if (digit || started || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", digit);
+                started = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_filesystems_comment_e = [{ mask: 1, name: "READ_ONLY" }, { mask: 2, name: "HIDDEN" }, { mask: 4, name: "SYSTEM" },
+    { mask: 16, name: "DIRECTORY" }, { mask: 32, name: "ARCHIVE" }];
+var sx_filesystems_comment_f = [{ mask: 1, name: "READ_ONLY" }, { mask: 2, name: "HIDDEN" }, { mask: 4, name: "SYSTEM" },
+    { mask: 8, name: "VOLUME_LABEL" }, { mask: 16, name: "DIRECTORY" }, { mask: 32, name: "ARCHIVE" }];
+var sx_filesystems_comment_f_2 = [{ mask: 1, name: "ACTIVE_FAT" }, { mask: 2, name: "VOLUME_DIRTY" },
+    { mask: 4, name: "MEDIA_FAILURE" }, { mask: 8, name: "CLEAR_TO_ZERO" }];
+var sx_filesystems_comment_f_3 = [{ mask: 1, name: "IN_USE" }, { mask: 2, name: "DIRECTORY" }];
+var sx_filesystems_comment_f_4 = [{ mask: 1, name: "COMPRESSED" }, { mask: 0x4000, name: "ENCRYPTED" }, { mask: 0x8000, name: "SPARSE" }];
+function sx_filesystems_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60100000 || id >= 0x60110000) {
+        return true;
+    }
+    var n = r.name;
+    var text = null;
+    if (!sxStrcmp(n, "attributes") || !sxStrcmp(n, "file_attributes")) {
+        if (id === sx_fs_exfat_file_entry.id) {
+            return sx_fs_flags(r, sx_filesystems_comment_e, 5);
+        }
+        if (id === sx_fs_fat_long_name_entry.id && sxVarU64(r.value) === 15) {
+            return sxSetComment(r, "ATTR_LONG_NAME");
+        }
+        return sx_fs_flags(r, sx_filesystems_comment_f, 6);
+    }
+    if (!sxStrcmp(n, "volume_flags")) {
+        return sx_fs_flags(r, sx_filesystems_comment_f_2, 4);
+    }
+    if (!sxStrcmp(n, "flags") && id === sx_fs_ntfs_file_record_header.id) {
+        return sx_fs_flags(r, sx_filesystems_comment_f_3, 2);
+    }
+    if (!sxStrcmp(n, "flags") && id === sx_fs_ntfs_attribute_common.id) {
+        return sx_fs_flags(r, sx_filesystems_comment_f_4, 3);
+    }
+    if (!sxStrcmp(n, "fsinfo_sector") || !sxStrcmp(n, "backup_boot_sector") || !sxStrcmp(n, "partition_sector_offset") || !sxStrcmp(n, "fat_sector_offset") || !sxStrcmp(n, "cluster_heap_sector_offset")) {
+        text = "Offset in logical sectors; multiply by the volume sector size for bytes";
+    } else if (!sxStrcmp(n, "value_offset") || !sxStrcmp(n, "mapping_pairs_offset") || !sxStrcmp(n, "name_offset")) {
+        text = "Byte offset relative to the start of the complete attribute";
+    } else if (!sxStrcmp(n, "bytes_per_sector_shift")) {
+        text = "Encoded exponent: sector bytes = 1 << value";
+    } else if (!sxStrcmp(n, "sectors_per_cluster_shift")) {
+        text = "Encoded exponent: sectors per cluster = 1 << value";
+    } else if (!sxStrcmp(n, "record_size_encoding") || !sxStrcmp(n, "index_size_encoding")) {
+        text = "Positive: cluster count; negative: byte size = 1 << -value";
+    } else if (!sxStrcmp(n, "creation_centiseconds") || !sxStrcmp(n, "modification_centiseconds")) {
+        text = "Encoded 10-millisecond increment in the range 0..199";
+    } else if (!sxStrcmp(n, "creation_time") || !sxStrcmp(n, "modification_time")) {
+        text = "DOS packed time: hour[15:11], minute[10:5], seconds/2[4:0]";
+    } else if (!sxStrcmp(n, "creation_date") || !sxStrcmp(n, "modification_date") || !sxStrcmp(n, "access_date")) {
+        text = "DOS packed date: year since 1980[15:9], month[8:5], day[4:0]";
+    } else if (!sxStrcmp(n, "creation_timestamp") || !sxStrcmp(n, "modification_timestamp") || !sxStrcmp(n, "access_timestamp")) {
+        text = "Packed date in the high word and DOS time in the low word";
+    } else if (!sxStrcmp(n, "creation_utc_offset") || !sxStrcmp(n, "modification_utc_offset") || !sxStrcmp(n, "access_utc_offset")) {
+        text = "Bit 7 marks validity; signed 7-bit offset in 15-minute units";
+    } else if (!sxStrcmp(n, "compression_unit_shift")) {
+        text = "Compression-unit cluster count is 1 << value; zero means uncompressed";
+    } else if (!sxStrcmp(n, "volume_flags")) {
+        text = "ACTIVE_FAT=0x1, VOLUME_DIRTY=0x2, MEDIA_FAILURE=0x4, CLEAR_TO_ZERO=0x8";
+    } else if (!sxStrcmp(n, "extended_flags")) {
+        text = "Bit 7 disables FAT mirroring; low four bits select the active FAT";
+    } else if (!sxStrcmp(n, "attributes") || !sxStrcmp(n, "file_attributes")) {
+        text = "READ_ONLY=0x01, HIDDEN=0x02, SYSTEM=0x04, VOLUME_LABEL=0x08, DIRECTORY=0x10, ARCHIVE=0x20";
+    } else if (!sxStrcmp(n, "general_secondary_flags")) {
+        text = "ALLOCATION_POSSIBLE=0x01, NO_FAT_CHAIN=0x02";
+    } else if (!sxStrcmp(n, "sequence_flags")) {
+        text = "Low five bits: long-name sequence; LAST_LONG_ENTRY=0x40";
+    } else if (!sxStrcmp(n, "case_flags")) {
+        text = "LOWERCASE_BASENAME=0x08, LOWERCASE_EXTENSION=0x10";
+    } else if (!sxStrcmp(n, "state_flags")) {
+        text = "DIRTY=0x01; other bits are implementation-specific";
+    } else if (!sxStrcmp(n, "cluster_link_flags")) {
+        text = "Low 28 bits are a cluster link; high four bits are reserved";
+    } else if (!sxStrcmp(n, "free_cluster_count") || !sxStrcmp(n, "next_free_cluster")) {
+        text = "0xFFFFFFFF means unknown";
+    } else if (!sxStrcmp(n, "percent_in_use")) {
+        text = "Percentage 0..100; 0xFF means unknown";
+    } else if (!sxStrcmp(n, "first_cluster") || !sxStrcmp(n, "root_cluster") || !sxStrcmp(n, "mft_cluster") || !sxStrcmp(n, "mft_mirror_cluster")) {
+        text = "Logical cluster number; not a byte offset";
+    } else if (!sxStrcmp(n, "entry_type")) {
+        switch (sxVarU64(r.value)) {
+        case 0x81:
+            text = "ALLOCATION_BITMAP";
+            break;
+        case 0x82:
+            text = "UPCASE_TABLE";
+            break;
+        case 0x83:
+            text = "VOLUME_LABEL";
+            break;
+        case 0x85:
+            text = "FILE";
+            break;
+        case 0xC0:
+            text = "STREAM_EXTENSION";
+            break;
+        case 0xC1:
+            text = "FILE_NAME";
+            break;
+        default:
+            break;
+        }
+    } else if (!sxStrcmp(n, "attribute_type")) {
+        switch (sxVarU64(r.value)) {
+        case 0x10:
+            text = "$STANDARD_INFORMATION";
+            break;
+        case 0x20:
+            text = "$ATTRIBUTE_LIST";
+            break;
+        case 0x30:
+            text = "$FILE_NAME";
+            break;
+        case 0x40:
+            text = "$OBJECT_ID";
+            break;
+        case 0x50:
+            text = "$SECURITY_DESCRIPTOR";
+            break;
+        case 0x60:
+            text = "$VOLUME_NAME";
+            break;
+        case 0x70:
+            text = "$VOLUME_INFORMATION";
+            break;
+        case 0x80:
+            text = "$DATA";
+            break;
+        case 0x90:
+            text = "$INDEX_ROOT";
+            break;
+        case 0xA0:
+            text = "$INDEX_ALLOCATION";
+            break;
+        case 0xB0:
+            text = "$BITMAP";
+            break;
+        case 0xC0:
+            text = "$REPARSE_POINT";
+            break;
+        case 0xD0:
+            text = "$EA_INFORMATION";
+            break;
+        case 0xE0:
+            text = "$EA";
+            break;
+        case 0x100:
+            text = "$LOGGED_UTILITY_STREAM";
+            break;
+        case 4294967295:
+            text = "ATTRIBUTE_END";
+            break;
+        default:
+            break;
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}

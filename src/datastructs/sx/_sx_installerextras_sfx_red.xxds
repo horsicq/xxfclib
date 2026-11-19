@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_red/xx_sfx_red_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_sfx_red_header_fields = layout([chars("signature", 2, SIGNATURE), u8("version", ID), u8("header_size", SIZE),
+    u16("dos_time"), u16("dos_date"), u32("packed_size", SIZE), u32("unpacked_size", SIZE), u16("crc1", CHECKSUM),
+    u16("crc2", CHECKSUM), u16("fragment_index"), u16("last_fragment_index"), u16("method", ID)]);
+var sxiex_sfx_red_header = sxLayout(0x60820058, "sfx_red_header", LE, sxiex_sfx_red_header_fields);
+var sxiex_sfx_red_name_fields = layout([chars("name", 12, NONE)]);
+var sxiex_sfx_red_name = sxLayout(0x60820059, "sfx_red_name", LE, sxiex_sfx_red_name_fields);
+var sxiex_sfx_red_short_name_fields = layout([chars("name", 11, NONE)]);
+var sxiex_sfx_red_short_name = sxLayout(0x6082005A, "sfx_red_short_name", LE, sxiex_sfx_red_short_name_fields);
+var sxiex_sfx_red_crc16_fields = layout([u16("checksum", CHECKSUM)]);
+var sxiex_sfx_red_crc16 = sxLayout(0x6082005B, "sfx_red_crc16", BE, sxiex_sfx_red_crc16_fields);
+function sxiex_red(c, r) {
+    for (var i = 0; i < r.count; i++) {
+        var p = r.items[i].data;
+        var end = p + r.items[i].packed;
+        var rows = 0;
+        while (sxU64(end - p) >= 39 && rows++ < 24000) {
+            var h = [];
+            if (!sxiex_read(c, p, h, 26) || sxMemcmp(h, "RR\x01", 3)) {
+                break;
+            }
+            var hs = h[3];
+            var packed = sxiex32(h, 8, false);
+            var method = sxiex16(h, 24, false);
+            if (hs < 39 || hs > sxU64(end - p) || packed > sxU64(sxU64(end - p) - hs)) {
+                break;
+            }
+            if (!sxiex_put(c, sxiex_sfx_red_header, p, 1) || !sxiex_put(c, hs === 39 ? sxiex_sfx_red_short_name : sxiex_sfx_red_name, p + 26, 1) || !sxiex_put(c, sxiex_sfx_red_crc16, sxU64(p + hs - 2), 1)) {
+                return false;
+            }
+            var data = p + hs;
+            if (method === 11) {
+                var q = data;
+                var remaining = packed;
+                while (remaining) {
+                    var z = remaining > 4096 ? 4096 : remaining;
+                    if (z >= 2 && !sxiex_put(c, sxiex_sfx_red_crc16, sxU64(q + z - 2), 1)) {
+                        return false;
+                    }
+                    q += z;
+                    remaining = sxU64(remaining - z);
+                }
+            }
+            p = data + packed;
+        }
+    }
+    return true;
+}
+function sx_sfx_red_build(c, records) {
+    return sxiex_red(c, records);
+}

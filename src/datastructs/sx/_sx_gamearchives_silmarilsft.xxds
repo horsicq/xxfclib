@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/silmarilsft/xx_silmarilsft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_silmarils_offset_widths_fields = layout([u8("width0"), u8("width1"), u8("width2"), u8("width3"), u8("width4"),
+    u8("width5"), u8("width6"), u8("width7")]);
+var sxga_silmarils_offset_widths = sxLayout(0x603B0026, "silmarils_offset_widths", LE, sxga_silmarils_offset_widths_fields);
+function sxga_silmarils(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var flag = [0];
+    var method = [0];
+    if (!sxga_word(v, 4, 2, false, flag, 0, end)) {
+        return false;
+    }
+    var be = flag[0] !== 1;
+    if (!sxga_row(v, be ? sxga_silmarils_header_be : sxga_silmarils_header_le, 0, end) || !sxga_word(v, be ? 0 : 3, 1, false, method, 0, end)) {
+        return false;
+    }
+    return method[0] !== 0xA1 || sxga_row(v, sxga_silmarils_offset_widths, 6, end);
+}
+function sx_silmarilsft_build(v) {
+    return sxga_silmarils(v);
+}

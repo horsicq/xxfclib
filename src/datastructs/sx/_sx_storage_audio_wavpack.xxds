@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_wavpack/xx_audio_wavpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_wavpack_block_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u32("size_minus_eight", SIZE),
+    u16("version"), u8("track_number"), u8("index_number"), u32("total_samples", COUNT), u32("block_index"),
+    u32("block_samples", COUNT), u32("flags", FLAGS), u32("crc32", CHECKSUM)]);
+var sx_st_wavpack_block = sxLayout(0x60080024, "wavpack_block", LE, sx_st_wavpack_block_fields);
+var sx_st_wavpack_metadata_fields = layout([u8("id_and_flags", FLAGS), u8("word_count", COUNT)]);
+var sx_st_wavpack_metadata = sxLayout(0x60080025, "wavpack_metadata", LE, sx_st_wavpack_metadata_fields);
+var sx_st_wavpack_metadata_large_fields = layout([u8("id_and_flags", FLAGS), field("word_count", "uint24", 3, COUNT)]);
+var sx_st_wavpack_metadata_large = sxLayout(0x60080026, "wavpack_metadata_large", LE, sx_st_wavpack_metadata_large_fields);
+var sx_st_apev2_tag_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("version"), u32("tag_size", SIZE),
+    u32("item_count", COUNT), u32("flags", FLAGS), field("reserved", "byte[8]", 8, RESERVED)]);
+var sx_st_apev2_tag = sxLayout(0x60080027, "apev2_tag", LE, sx_st_apev2_tag_fields);
+var sx_st_apev2_item_fields = layout([u32("value_size", SIZE), u32("flags", FLAGS)]);
+var sx_st_apev2_item = sxLayout(0x60080028, "apev2_item", LE, sx_st_apev2_item_fields);
+function sx_st_ape(c, at) {
+    var h = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var count;
+    var flags;
+    if (sxU64(end - at) < 32 || !sx_read(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end) - 32, h, 32) || !sx_add(c, sx_st_apev2_tag, (end >= SX_I64_MAX ? end - SX_U64_MAX : end) - 32, 32)) {
+        return false;
+    }
+    count = sxGetU32(h, 32, 16, false);
+    flags = sxGetU32(h, 32, 20, false);
+    end = sxU64(end - 32);
+    if ((flags & 0x80000000) >>> 0) {
+        if (sxU64(end - at) < 32 || !sx_add(c, sx_st_apev2_tag, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 32)) {
+            return false;
+        }
+        at += 32;
+    }
+    for (var j = 0; j < count; j++) {
+        var n;
+        var ch = [1];
+        var len = 0;
+        if (sxU64(end - at) < 8 || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), false)) === null || !sx_add(c, sx_st_apev2_item, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+            return false;
+        }
+        at += 8;
+        while (ch[0] && at < end && len++ < 256) {
+            if (!sx_read(c, sxI64(at++), ch, 1)) {
+                return false;
+            }
+        }
+        if (ch[0] || n > sxU64(end - at)) {
+            return false;
+        }
+        at += n;
+    }
+    return at === end;
+}
+function sx_st_wavpack(c) {
+    var at = 0;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 8)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "APETAGEX", 8)) {
+            return sx_st_ape(c, at);
+        }
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 32) || !sx_add(c, sx_st_wavpack_block, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 32)) {
+            return false;
+        }
+        n = sxGetU32(h, 32, 4, false);
+        if (n < 24 || !sx_st_fits(c, at, 8 + n)) {
+            return false;
+        }
+        var end = at + 8 + n;
+        at += 32;
+        while (at < end) {
+            var m = [];
+            var words;
+            var size;
+            if (sxU64(end - at) < 2 || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), m, 2)) {
+                return false;
+            }
+            size = m[0] & 128 ? 4 : 2;
+            if (sxU64(end - at) < size || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), m, size) || !sx_add(c, size === 4 ? sx_st_wavpack_metadata_large : sx_st_wavpack_metadata, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), size)) {
+                return false;
+            }
+            words = size === 4 ? sxGetU24(m, 4, 1, false) : m[1];
+            at += size;
+            if (words * 2 > sxU64(end - at)) {
+                return false;
+            }
+            at += words * 2;
+            if (c.count >= 20000) {
+                return true;
+            }
+        }
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_audio_wavpack_build(c) {
+    var ok = false;
+    ok = sx_st_wavpack(c);
+    return ok && sx_st_finish(c);
+}

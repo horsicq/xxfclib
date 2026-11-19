@@ -1,0 +1,84 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/chrons_unimodtrk/xx_chrons_unimodtrk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_text_length16_fields = layout([u16("text_bytes", SIZE)]);
+var sxmta_text_length16 = sxLayout(0x60810003, "text_length16", LE, sxmta_text_length16_fields);
+var sxmta_uni4_header_fields = layout([blob("magic", 4, SIGNATURE), u8("channels", COUNT), u16("orders", COUNT),
+    u16("patterns", COUNT), u16("tracks", COUNT), u16("instruments", COUNT), u8("speed"), u8("tempo"),
+    blob("orders_fixed", 256), blob("pan_fixed", 32), u8("flags", FLAGS)]);
+var sxmta_uni4_header = sxLayout(0x60810080, "uni4_header", LE, sxmta_uni4_header_fields);
+var sxmta_uni5_header_fields = layout([blob("magic", 4, SIGNATURE), u8("channels", COUNT), u16("orders", COUNT),
+    u16("restart_order"), u16("patterns", COUNT), u16("tracks", COUNT), u16("instruments", COUNT), u8("speed"), u8("tempo"),
+    blob("orders_fixed", 256), blob("pan_fixed", 32), u8("flags", FLAGS)]);
+var sxmta_uni5_header = sxLayout(0x60810081, "uni5_header", LE, sxmta_uni5_header_fields);
+var sxmta_uni6_header_fields = layout([blob("magic", 4, SIGNATURE), u8("unused"), u16("flags", FLAGS), u8("channels", COUNT),
+    u8("voices", COUNT), u16("orders", COUNT), u16("patterns", COUNT), u16("tracks", COUNT), u16("instruments", COUNT),
+    u16("samples", COUNT), u16("restart_order"), u8("speed"), u8("tempo"), u8("volume")]);
+var sxmta_uni6_header = sxLayout(0x60810082, "uni6_header", BE, sxmta_uni6_header_fields);
+var sxmta_apun_header_fields = layout([blob("magic", 4, SIGNATURE), u16("version", ID), u16("flags", FLAGS),
+    u8("channels", COUNT), u8("voices", COUNT), u16("orders", COUNT), u16("patterns", COUNT), u16("tracks", COUNT),
+    u16("instruments", COUNT), u16("samples", COUNT), u16("restart_order"), u8("speed"), u8("tempo"), u8("volume")]);
+var sxmta_apun_header = sxLayout(0x60810083, "apun_header", BE, sxmta_apun_header_fields);
+var sxmta_uni_bpm_limit_fields = layout([u16("bpm_limit")]);
+var sxmta_uni_bpm_limit = sxLayout(0x60810084, "uni_bpm_limit", BE, sxmta_uni_bpm_limit_fields);
+var sxmta_uni_sample_fields = layout([u16("flags", FLAGS), u32("sample_rate"), u8("volume"), u16("pan"),
+    u32("sample_frames", COUNT), u32("loop_start_frame"), u32("loop_end_frame"), u32("sustain_start_frame"),
+    u32("sustain_end_frame"), u8("global_volume"), u8("vibrato_flags", FLAGS), u8("vibrato_type", ID), u8("vibrato_sweep"),
+    u8("vibrato_depth"), u8("vibrato_rate")]);
+var sxmta_uni_sample = sxLayout(0x60810085, "uni_sample", BE, sxmta_uni_sample_fields);
+function sxmta_uni_string(v, p, end) {
+    var n = [0];
+    if (!sxmta_u(v, p[0], 2, n, 0, end) || !sxmta_take(v, sxmta_text_length16, p, 1, end) || !sxmta_text_emit(v, p[0], n[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    return true;
+}
+function sxmta_uni(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var ver = [0];
+    var ch = [0];
+    var orders = [0];
+    var ns = [0];
+    if (sxmta_eq(v, 0, "APUN", 4, end)) {
+        if (!sxmta_be(v, 4, 2, ver, 0, end) || ver[0] < 0x101 || ver[0] > 0x106 || !sxmta_u(v, 8, 1, ch, 0, end) || !sxmta_be(v, 10, 2, orders, 0, end) || !sxmta_be(v, 18, 2, ns, 0, end) || !sxmta_take(v, sxmta_apun_header, p, 1, end)) {
+            return false;
+        }
+        if (ver[0] >= 0x106 && !sxmta_take(v, sxmta_uni_bpm_limit, p, 1, end)) {
+            return false;
+        }
+    } else {
+        if (!sxmta_eq(v, 0, "UN0", 3, end) || !sxmta_u(v, 3, 1, ver, 0, end) || ver[0] < 52 /*4*/ || ver[0] > 54 /*6*/) {
+            return false;
+        }
+        ver[0] = sxU64(ver[0] - 48 /*0*/);
+        if (ver[0] === 6) {
+            if (!sxmta_u(v, 7, 1, ch, 0, end) || !sxmta_be(v, 9, 2, orders, 0, end) || !sxmta_be(v, 17, 2, ns, 0, end) || !sxmta_take(v, sxmta_uni6_header, p, 1, end)) {
+                return false;
+            }
+        } else if (!sxmta_take(v, ver[0] === 4 ? sxmta_uni4_header : sxmta_uni5_header, p, 1, end)) {
+            return false;
+        }
+    }
+    if (!sxmta_uni_string(v, p, end) || ver[0] < 0x102 && !sxmta_uni_string(v, p, end) || !sxmta_uni_string(v, p, end)) {
+        return false;
+    }
+    if (ver[0] >= 6) {
+        if (ch[0] > 64 || !sxmta_take(v, ver[0] >= 0x100 ? sxmta_order16be : sxmta_order8, p, orders[0], end) || !sxmta_take(v, sxmta_pan16be, p, ch[0], end) || !sxmta_take(v, sxmta_volume8, p, ch[0], end)) {
+            return false;
+        }
+        for (var i = 0; i < ns[0]; i++) {
+            if (!sxmta_take(v, sxmta_uni_sample, p, 1, end) || !sxmta_uni_string(v, p, end)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_chrons_unimodtrk_build(v) {
+    return sxmta_uni(v);
+}

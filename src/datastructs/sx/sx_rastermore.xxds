@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_rastermore.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_rastermore");
+include("_sx_rastermore_aseprite");
+include("_sx_rastermore_basis_texture");
+include("_sx_rastermore_cineon");
+include("_sx_rastermore_dpx");
+include("_sx_rastermore_fujifilm_raf");
+include("_sx_rastermore_godot_ctex");
+include("_sx_rastermore_iff_ilbm");
+include("_sx_rastermore_jbig2");
+include("_sx_rastermore_jpeg2000_jp2");
+include("_sx_rastermore_minolta_mrw");
+include("_sx_rastermore_nintendo_bntx");
+include("_sx_rastermore_openexr");
+include("_sx_rastermore_sega_gvr");
+include("_sx_rastermore_sigma_x3f");
+include("_sx_rastermore_utah_rle");
+include("_sx_rastermore_valve_vtf");
+
+function fileTypes() { return ["VALVE_VTF", "OPENEXR", "JPEG2000_JP2", "NINTENDO_BNTX", "SEGA_GVR", "IFF_ILBM", "UTAH_RLE",
+    "DPX", "CINEON", "ASEPRITE", "GODOT_CTEX", "JBIG2", "FUJIFILM_RAF", "SIGMA_X3F", "MINOLTA_MRW", "BASIS_TEXTURE"]; }
+
+var sx_rastermore_layouts = [sxrm_vtf70_header, sxrm_vtf72_header, sxrm_exr_header, sxrm_exr_attribute_length, sxrm_exr_channel,
+    sxrm_exr_box2i, sxrm_exr_float, sxrm_exr_v2f, sxrm_exr_compression, sxrm_exr_line_order, sxrm_exr_chunk_offset,
+    sxrm_exr_scanline_chunk, sxrm_jp2_box, sxrm_jp2_extended_size, sxrm_jp2_signature, sxrm_jp2_file_type,
+    sxrm_jp2_compatible_brand, sxrm_jp2_image_header, sxrm_jp2_color_header, sxrm_jp2_enumerated_color, sxrm_j2k_marker,
+    sxrm_j2k_segment_length, sxrm_j2k_siz, sxrm_j2k_component, sxrm_j2k_sot, sxrm_bntx_header, sxrm_bntx_container,
+    sxrm_bntx_block, sxrm_bntx_texture_info, sxrm_bntx_pointer, sxrm_bntx_string_length, sxrm_bntx_relocation_header,
+    sxrm_gvr_prefix, sxrm_gvr_dimensions, sxrm_ilbm_form, sxrm_ilbm_chunk, sxrm_ilbm_bitmap_header, sxrm_ilbm_palette_entry,
+    sxrm_ilbm_view_mode, sxrm_utah_rle_header, sxrm_utah_background, sxrm_utah_colormap, sxrm_utah_comment_length,
+    sxrm_utah_opcode, sxrm_utah_long_opcode, sxrm_utah_run_value, sxrm_dpx_file_header_be, sxrm_dpx_image_header_be,
+    sxrm_dpx_element_be, sxrm_dpx_image_reserved_be, sxrm_dpx_orientation_be, sxrm_dpx_film_be, sxrm_dpx_television_be,
+    sxrm_cineon_file_header_be, sxrm_cineon_image_header_be, sxrm_cineon_channel_be, sxrm_cineon_color_be,
+    sxrm_cineon_data_format_be, sxrm_cineon_origin_be, sxrm_cineon_film_be, sxrm_dpx_file_header_le, sxrm_dpx_image_header_le,
+    sxrm_dpx_element_le, sxrm_dpx_image_reserved_le, sxrm_dpx_orientation_le, sxrm_dpx_film_le, sxrm_dpx_television_le,
+    sxrm_cineon_file_header_le, sxrm_cineon_image_header_le, sxrm_cineon_channel_le, sxrm_cineon_color_le,
+    sxrm_cineon_data_format_le, sxrm_cineon_origin_le, sxrm_cineon_film_le, sxrm_aseprite_header, sxrm_aseprite_frame,
+    sxrm_aseprite_chunk, sxrm_aseprite_layer, sxrm_aseprite_layer_uuid, sxrm_aseprite_cel, sxrm_aseprite_cel_dimensions,
+    sxrm_aseprite_linked_cel, sxrm_aseprite_palette, sxrm_aseprite_palette_entry, sxrm_aseprite_string_length,
+    sxrm_aseprite_user_flags, sxrm_aseprite_rgba, sxrm_godot_ctex_header, sxrm_jbig2_file_header, sxrm_jbig2_page_count,
+    sxrm_jbig2_segment_prefix, sxrm_jbig2_reference1, sxrm_jbig2_reference2, sxrm_jbig2_reference4, sxrm_jbig2_segment_tail1,
+    sxrm_jbig2_segment_tail4, sxrm_jbig2_page_info, sxrm_jbig2_region, sxrm_jbig2_extension, sxrm_raf_header,
+    sxrm_raf_metadata_count, sxrm_raf_metadata_entry, sxrm_raf_dimensions, sxrm_x3f_header20, sxrm_x3f_header21,
+    sxrm_x3f_header23, sxrm_x3f_directory_offset, sxrm_x3f_directory, sxrm_x3f_directory_entry, sxrm_x3f_image, sxrm_x3f_camf2,
+    sxrm_x3f_properties, sxrm_x3f_property, sxrm_mrw_header, sxrm_mrw_chunk, sxrm_mrw_prd, sxrm_mrw_white_balance,
+    sxrm_mrw_tiff_header_le, sxrm_mrw_tiff_header_be, sxrm_basis_header, sxrm_basis_slice];
+
+function structs() {
+    return sxCatalog([sxrm_vtf70_header, sxrm_vtf72_header, sxrm_exr_header, sxrm_exr_attribute_length, sxrm_exr_channel,
+        sxrm_exr_box2i, sxrm_exr_float, sxrm_exr_v2f, sxrm_exr_compression, sxrm_exr_line_order, sxrm_exr_chunk_offset,
+        sxrm_exr_scanline_chunk, sxrm_jp2_box, sxrm_jp2_extended_size, sxrm_jp2_signature, sxrm_jp2_file_type,
+        sxrm_jp2_compatible_brand, sxrm_jp2_image_header, sxrm_jp2_color_header, sxrm_jp2_enumerated_color, sxrm_j2k_marker,
+        sxrm_j2k_segment_length, sxrm_j2k_siz, sxrm_j2k_component, sxrm_j2k_sot, sxrm_bntx_header, sxrm_bntx_container,
+        sxrm_bntx_block, sxrm_bntx_texture_info, sxrm_bntx_pointer, sxrm_bntx_string_length, sxrm_bntx_relocation_header,
+        sxrm_gvr_prefix, sxrm_gvr_dimensions, sxrm_ilbm_form, sxrm_ilbm_chunk, sxrm_ilbm_bitmap_header, sxrm_ilbm_palette_entry,
+        sxrm_ilbm_view_mode, sxrm_utah_rle_header, sxrm_utah_background, sxrm_utah_colormap, sxrm_utah_comment_length,
+        sxrm_utah_opcode, sxrm_utah_long_opcode, sxrm_utah_run_value, sxrm_dpx_file_header_be, sxrm_dpx_image_header_be,
+        sxrm_dpx_element_be, sxrm_dpx_image_reserved_be, sxrm_dpx_orientation_be, sxrm_dpx_film_be, sxrm_dpx_television_be,
+        sxrm_cineon_file_header_be, sxrm_cineon_image_header_be, sxrm_cineon_channel_be, sxrm_cineon_color_be,
+        sxrm_cineon_data_format_be, sxrm_cineon_origin_be, sxrm_cineon_film_be, sxrm_dpx_file_header_le,
+        sxrm_dpx_image_header_le, sxrm_dpx_element_le, sxrm_dpx_image_reserved_le, sxrm_dpx_orientation_le, sxrm_dpx_film_le,
+        sxrm_dpx_television_le, sxrm_cineon_file_header_le, sxrm_cineon_image_header_le, sxrm_cineon_channel_le,
+        sxrm_cineon_color_le, sxrm_cineon_data_format_le, sxrm_cineon_origin_le, sxrm_cineon_film_le, sxrm_aseprite_header,
+        sxrm_aseprite_frame, sxrm_aseprite_chunk, sxrm_aseprite_layer, sxrm_aseprite_layer_uuid, sxrm_aseprite_cel,
+        sxrm_aseprite_cel_dimensions, sxrm_aseprite_linked_cel, sxrm_aseprite_palette, sxrm_aseprite_palette_entry,
+        sxrm_aseprite_string_length, sxrm_aseprite_user_flags, sxrm_aseprite_rgba, sxrm_godot_ctex_header,
+        sxrm_jbig2_file_header, sxrm_jbig2_page_count, sxrm_jbig2_segment_prefix, sxrm_jbig2_reference1, sxrm_jbig2_reference2,
+        sxrm_jbig2_reference4, sxrm_jbig2_segment_tail1, sxrm_jbig2_segment_tail4, sxrm_jbig2_page_info, sxrm_jbig2_region,
+        sxrm_jbig2_extension, sxrm_raf_header, sxrm_raf_metadata_count, sxrm_raf_metadata_entry, sxrm_raf_dimensions,
+        sxrm_x3f_header20, sxrm_x3f_header21, sxrm_x3f_header23, sxrm_x3f_directory_offset, sxrm_x3f_directory,
+        sxrm_x3f_directory_entry, sxrm_x3f_image, sxrm_x3f_camf2, sxrm_x3f_properties, sxrm_x3f_property, sxrm_mrw_header,
+        sxrm_mrw_chunk, sxrm_mrw_prd, sxrm_mrw_white_balance, sxrm_mrw_tiff_header_le, sxrm_mrw_tiff_header_be,
+        sxrm_basis_header, sxrm_basis_slice], sx_rastermore_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_rastermore_build, false);
+}

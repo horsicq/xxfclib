@@ -1,0 +1,101 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ldbs/xx_ldbs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_ldbs_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), field("subtype", "byte[4]", 4, SIGNATURE),
+    u32("used_head_offset", OFFSET), u32("free_head_offset", OFFSET), u32("track_directory_offset", OFFSET)]);
+var sxdleg_ldbs_header = sxLayout(0x6075000A, "ldbs_header", LE, sxdleg_ldbs_header_fields);
+var sxdleg_ldbs_block_header_fields = layout([chars("magic", 4, SIGNATURE), field("block_type", "byte[4]", 4, ID),
+    u32("allocated_size", SIZE), u32("used_size", SIZE), u32("next_block_offset", OFFSET)]);
+var sxdleg_ldbs_block_header = sxLayout(0x6075000B, "ldbs_block_header", LE, sxdleg_ldbs_block_header_fields);
+var sxdleg_ldbs_directory_header_fields = layout([u16("entry_count", COUNT)]);
+var sxdleg_ldbs_directory_header = sxLayout(0x6075000C, "ldbs_directory_header", LE, sxdleg_ldbs_directory_header_fields);
+var sxdleg_ldbs_directory_entry_fields = layout([field("block_type", "byte[4]", 4, ID), u32("block_offset", OFFSET)]);
+var sxdleg_ldbs_directory_entry = sxLayout(0x6075000D, "ldbs_directory_entry", LE, sxdleg_ldbs_directory_entry_fields);
+var sxdleg_ldbs_track_header_fields = layout([u16("fixed_header_size", SIZE), u16("sector_descriptor_size", SIZE),
+    u16("sector_count", COUNT), u8("data_rate", ID), u8("recording_mode", ID), u8("gap3_length", SIZE), u8("filler", ID),
+    u16("track_length", SIZE)]);
+var sxdleg_ldbs_track_header = sxLayout(0x6075000E, "ldbs_track_header", LE, sxdleg_ldbs_track_header_fields);
+var sxdleg_ldbs_sector16_fields = layout([u8("cylinder"), u8("head"), u8("sector_id", ID), u8("size_code"),
+    u8("status1", FLAGS), u8("status2", FLAGS), u8("copies", COUNT), u8("filler", ID), u32("data_block_offset", OFFSET),
+    u16("trailing_size", SIZE), u16("track_offset", OFFSET)]);
+var sxdleg_ldbs_sector16 = sxLayout(0x6075000F, "ldbs_sector16", LE, sxdleg_ldbs_sector16_fields);
+var sxdleg_ldbs_sector18_fields = layout([u8("cylinder"), u8("head"), u8("sector_id", ID), u8("size_code"),
+    u8("status1", FLAGS), u8("status2", FLAGS), u8("copies", COUNT), u8("filler", ID), u32("data_block_offset", OFFSET),
+    u16("trailing_size", SIZE), u16("track_offset", OFFSET), u16("data_size", SIZE)]);
+var sxdleg_ldbs_sector18 = sxLayout(0x60750010, "ldbs_sector18", LE, sxdleg_ldbs_sector18_fields);
+var sxdleg_ldbs_geometry_fields = layout([u8("sidedness", ID), u16("cylinder_count", COUNT), u8("head_count", COUNT),
+    u8("sectors_per_track", COUNT), u8("first_sector_id", ID), u16("sector_size", SIZE), u8("data_rate", ID),
+    u8("read_write_gap", SIZE), u8("format_gap", SIZE), u8("recording_mode", ID), u8("complement_flag", FLAGS),
+    u8("no_multitrack", FLAGS), u8("no_skip_deleted", FLAGS)]);
+var sxdleg_ldbs_geometry = sxLayout(0x60750011, "ldbs_geometry", LE, sxdleg_ldbs_geometry_fields);
+var sxdleg_ldbs_track_directory_entry_fields = layout([u8("block_kind", ID), u16("cylinder"), u8("head"),
+    u32("block_offset", OFFSET)]);
+var sxdleg_ldbs_track_directory_entry = sxLayout(0x60750049, "ldbs_track_directory_entry", LE, sxdleg_ldbs_track_directory_entry_fields);
+var sxdleg_ldbs_track_block_header_fields = layout([chars("magic", 4, SIGNATURE), u8("block_kind", ID), u16("cylinder"),
+    u8("head"), u32("allocated_size", SIZE), u32("used_size", SIZE), u32("next_block_offset", OFFSET)]);
+var sxdleg_ldbs_track_block_header = sxLayout(0x6075004A, "ldbs_track_block_header", LE, sxdleg_ldbs_track_block_header_fields);
+var sxdleg_ldbs_sector_block_header_fields = layout([chars("magic", 4, SIGNATURE), u8("block_kind", ID), u8("cylinder"),
+    u8("head"), u8("sector_id", ID), u32("allocated_size", SIZE), u32("used_size", SIZE), u32("next_block_offset", OFFSET)]);
+var sxdleg_ldbs_sector_block_header = sxLayout(0x6075004B, "ldbs_sector_block_header", LE, sxdleg_ldbs_sector_block_header_fields);
+function sxdleg_ldbs(c) {
+    var h = [];
+    var b = [];
+    if (!sxdleg_read(c, 0, h, 0, 20) || sxMemcmp(h, "LBS\x01DSK\x02", 8) || !sxdleg_put(c, sxdleg_ldbs_header, 0, 1)) {
+        return false;
+    }
+    for (var p = 20, walk = 0; walk < 32768 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; walk++) {
+        if (!sxdleg_read(c, p, h, 0, 20) || sxMemcmp(h, "LDB\x01", 4)) {
+            break;
+        }
+        var alloc = sxdleg32(h, 8, 0);
+        var used = sxdleg32(h, 12, 0);
+        if (used > alloc || !sxdleg_span(c, p + 20, alloc)) {
+            break;
+        }
+        if (!sxdleg_put(c, h[4] === 84 /*T*/ ? sxdleg_ldbs_track_block_header : h[4] === 83 /*S*/ ? sxdleg_ldbs_sector_block_header : sxdleg_ldbs_block_header, p, 1)) {
+            return false;
+        }
+        var q = p + 20;
+        if (!sxMemcmpAt(h, 4, "DIR\x01", 0, 4) && used >= 2 && sxdleg_read(c, q, b, 0, 2)) {
+            var n = sxdleg16(b, 0, 0);
+            if (n <= Math.floor(((used - 2) >>> 0) / 8)) {
+                if (!sxdleg_put(c, sxdleg_ldbs_directory_header, q, 1)) {
+                    return false;
+                }
+                for (var j = 0; j < n; j++) {
+                    var tag = [0];
+                    if (!sxdleg_read(c, q + 2 + j * 8, tag, 0, 1)) {
+                        return false;
+                    }
+                    if (!sxdleg_put(c, tag[0] === 84 /*T*/ ? sxdleg_ldbs_track_directory_entry : sxdleg_ldbs_directory_entry, q + 2 + j * 8, 1)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (h[4] === 84 /*T*/ && used >= 12 && sxdleg_read(c, q, b, 0, 12)) {
+            var z = sxdleg16(b, 0, 0);
+            var step = sxdleg16(b, 2, 0);
+            n = sxdleg16(b, 4, 0);
+            if (z >= 12 && z <= used && step >= 16 && n <= 64 && n <= Math.floor(((used - z) >>> 0) / step)) {
+                if (!sxdleg_put(c, sxdleg_ldbs_track_header, q, 1)) {
+                    return false;
+                }
+                for (var i = 0; i < n; i++) {
+                    if (!sxdleg_put(c, step >= 18 ? sxdleg_ldbs_sector18 : sxdleg_ldbs_sector16, q + z + i * step, 1)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxMemcmpAt(h, 4, "GEOM", 0, 4) && used >= 15 && !sxdleg_put(c, sxdleg_ldbs_geometry, q, 1)) {
+            return false;
+        }
+        p = q + alloc;
+    }
+    return true;
+}
+function sx_ldbs_build(c) {
+    return sxdleg_ldbs(c);
+}

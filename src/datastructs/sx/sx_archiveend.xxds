@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveend.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archiveend");
+include("_sx_archiveend_boo");
+include("_sx_archiveend_copyqmexe");
+include("_sx_archiveend_dclraw");
+include("_sx_archiveend_diet_compression");
+include("_sx_archiveend_larc_pfx");
+include("_sx_archiveend_lhpak_sfx");
+include("_sx_archiveend_lhsfx");
+include("_sx_archiveend_pmarc_sfx");
+include("_sx_archiveend_s_omni");
+include("_sx_archiveend_sds_sfx");
+include("_sx_archiveend_sfx_arcv2");
+include("_sx_archiveend_sfx_cazip");
+include("_sx_archiveend_sfx_imp");
+include("_sx_archiveend_sfx_localzip");
+include("_sx_archiveend_sfx_nss");
+include("_sx_archiveend_sfx_rsfx");
+include("_sx_archiveend_sfx_spis");
+include("_sx_archiveend_sfx_starkit");
+include("_sx_archiveend_sfx_tgcf");
+include("_sx_archiveend_sfx_vms_dcx");
+
+function fileTypes() { return ["COPYQMEXE", "BOO", "DCLRAW", "SFX_SPIS", "SFX_ARCV2", "PMARC_SFX", "SFX_IMP", "SFX_CAZIP",
+    "SFX_TGCF", "SFX_STARKIT", "DIET_COMPRESSION", "SFX_LOCALZIP", "SFX_RSFX", "SFX_VMS_DCX", "SFX_NSS", "SDS_SFX", "LHPAK_SFX",
+    "LHSFX", "S_OMNI", "LARC_PFX"]; }
+
+var sx_archiveend_layouts = [sxaend_archiveend_name, sxaend_archiveend_comment, sxaend_sds_sfx_member,
+    sxaend_lhpak_sfx_position, sxaend_lhpak_sfx_member, sxaend_lhpak_sfx_block, sxaend_lhsfx_control, sxaend_lhsfx_member,
+    sxaend_omni_mode, sxaend_omni_comment_size, sxaend_omni_name_size, sxaend_omni_data_size, sxaend_omni_member_tail,
+    sxaend_omni_lh_block, sxaend_diet_data_v100, sxaend_diet_data_v102, sxaend_diet_data_v144, sxaend_diet_data_lengths,
+    sxaend_dclraw_stream, sxaend_copyqm_tx_header, sxaend_copyqm_tx_leaf, sxaend_copyqm_tx_branch, sxaend_copyqm_tx_screen6,
+    sxaend_copyqm_tx_screen8, sxaend_copyqm_tx_geometry, sxaend_copyqm_tx_line, sxaend_nss_member, sxaend_dcx_ftsv_header,
+    sxaend_dcx_ftsv_table, sxaend_dcx_ftsv_context, sxaend_dcx_ftsv_leaf_bitmap, sxaend_dcx_ftsv_nodes, sxaend_dcx_ftsv_map,
+    sxaend_dcx_ftsv_first_frame, sxaend_dcx_ftsv_second_group, sxaend_dcx_ftsv_frame, sxaend_dcx_ftsv_group_start,
+    sxaend_dcx_ftsv_group_end, sxaend_pmarc_member, sxaend_pmarc_crc, sxaend_pmarc_end, sxaend_boo_name,
+    sxaend_boo_encoded_line, sxaend_sfx_arcv2_header, sxaend_sfx_arcv2_block, sxaend_sfx_arcv2_attributes,
+    sxaend_sfx_tgcf_header, sxaend_sfx_tgcf_list_offset, sxaend_sfx_tgcf_crc, sxaend_sfx_tgcf_member_prefix,
+    sxaend_sfx_tgcf_member_attributes, sxaend_sfx_tgcf_member_flag, sxaend_sfx_tgcf_payload_offset, sxaend_sfx_imp_header,
+    sxaend_sfx_imp_directory_block, sxaend_sfx_cazip_header, sxaend_sfx_cazip_dcl_prefix, sxaend_sfx_starkit_header,
+    sxaend_sfx_starkit_commit, sxaend_sfx_starkit_root_prefix, sxaend_sfx_spis_header, sxaend_sfx_spis_member,
+    sxaend_pfx_gemdos_header, sxaend_pfx_lha_member, sxaend_pfx_lha_crc, sxaend_sfx_zip_local, sxaend_sfx_zip_extra,
+    sxaend_localzip_softpaq_table, sxaend_localzip_softpaq_member, sxaend_rsfx_rar_signature, sxaend_rsfx_rar_block,
+    sxaend_rsfx_rar_main, sxaend_rsfx_rar_file, sxaend_rsfx_rar_service_size];
+
+function structs() {
+    return sxCatalog([sxaend_archiveend_name, sxaend_archiveend_comment, sxaend_sds_sfx_member, sxaend_lhpak_sfx_position,
+        sxaend_lhpak_sfx_member, sxaend_lhpak_sfx_block, sxaend_lhsfx_control, sxaend_lhsfx_member, sxaend_omni_mode,
+        sxaend_omni_comment_size, sxaend_omni_name_size, sxaend_omni_data_size, sxaend_omni_member_tail, sxaend_omni_lh_block,
+        sxaend_diet_data_v100, sxaend_diet_data_v102, sxaend_diet_data_v144, sxaend_diet_data_lengths, sxaend_dclraw_stream,
+        sxaend_copyqm_tx_header, sxaend_copyqm_tx_leaf, sxaend_copyqm_tx_branch, sxaend_copyqm_tx_screen6,
+        sxaend_copyqm_tx_screen8, sxaend_copyqm_tx_geometry, sxaend_copyqm_tx_line, sxaend_nss_member, sxaend_dcx_ftsv_header,
+        sxaend_dcx_ftsv_table, sxaend_dcx_ftsv_context, sxaend_dcx_ftsv_leaf_bitmap, sxaend_dcx_ftsv_nodes, sxaend_dcx_ftsv_map,
+        sxaend_dcx_ftsv_first_frame, sxaend_dcx_ftsv_second_group, sxaend_dcx_ftsv_frame, sxaend_dcx_ftsv_group_start,
+        sxaend_dcx_ftsv_group_end, sxaend_pmarc_member, sxaend_pmarc_crc, sxaend_pmarc_end, sxaend_boo_name,
+        sxaend_boo_encoded_line, sxaend_sfx_arcv2_header, sxaend_sfx_arcv2_block, sxaend_sfx_arcv2_attributes,
+        sxaend_sfx_tgcf_header, sxaend_sfx_tgcf_list_offset, sxaend_sfx_tgcf_crc, sxaend_sfx_tgcf_member_prefix,
+        sxaend_sfx_tgcf_member_attributes, sxaend_sfx_tgcf_member_flag, sxaend_sfx_tgcf_payload_offset, sxaend_sfx_imp_header,
+        sxaend_sfx_imp_directory_block, sxaend_sfx_cazip_header, sxaend_sfx_cazip_dcl_prefix, sxaend_sfx_starkit_header,
+        sxaend_sfx_starkit_commit, sxaend_sfx_starkit_root_prefix, sxaend_sfx_spis_header, sxaend_sfx_spis_member,
+        sxaend_pfx_gemdos_header, sxaend_pfx_lha_member, sxaend_pfx_lha_crc, sxaend_sfx_zip_local, sxaend_sfx_zip_extra,
+        sxaend_localzip_softpaq_table, sxaend_localzip_softpaq_member, sxaend_rsfx_rar_signature, sxaend_rsfx_rar_block,
+        sxaend_rsfx_rar_main, sxaend_rsfx_rar_file, sxaend_rsfx_rar_service_size], sx_archiveend_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archiveend_build, false);
+}

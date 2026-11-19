@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/valve_hpak/xx_valve_hpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_hpak_header_fields = layout([chars("magic", 4, SIGNATURE), i32("version", ID), i32("directory_offset", OFFSET)]);
+var sxmx_hpak_header = sxLayout(0x602E001C, "hpak_header", LE, sxmx_hpak_header_fields);
+var sxmx_hpak_directory_fields = layout([i32("entry_count", COUNT)]);
+var sxmx_hpak_directory = sxLayout(0x602E001D, "hpak_directory", LE, sxmx_hpak_directory_fields);
+var sxmx_hpak_entry_fields = layout([chars("name", 64, STRING), i32("resource_type", ID), i32("resource_index", ID),
+    i32("download_size", SIZE), u8("flags", FLAGS), blob("md5", 16, CHECKSUM), u8("player_index", ID),
+    blob("reserved", 32, RESERVED), blob("alignment", 2), u32("next_pointer", POINTER), u32("previous_pointer", POINTER),
+    i32("file_offset", OFFSET), i32("file_size", SIZE)]);
+var sxmx_hpak_entry = sxLayout(0x602E001E, "hpak_entry", LE, sxmx_hpak_entry_fields);
+function sxmx_hpak(v) {
+    if (!sxmx_row(v, sxmx_hpak_header, 0, v.n)) {
+        return false;
+    }
+    var at = sxmx_u32(v.p, 8, false);
+    if (!sxmx_row(v, sxmx_hpak_directory, at, v.n)) {
+        return false;
+    }
+    return sxmx_table(v, sxmx_hpak_entry, at + 4, sxmx_u32(v.p, at, false), v.n);
+}
+function sx_valve_hpak_build(v) {
+    return sxmx_hpak(v);
+}

@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/nintendo_bntx/xx_nintendo_bntx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_bntx_header_fields = layout([chars("signature", 8, SIGNATURE), u32("version", ID), u16("byte_order", ID),
+    u8("alignment_shift"), u8("target_address_bits"), u32("filename_offset", OFFSET), u16("flags", FLAGS),
+    u16("first_block_offset", OFFSET), u32("relocation_offset", OFFSET), u32("file_size", SIZE)]);
+var sxrm_bntx_header = sxLayout(0x601D001A, "bntx_header", LE, sxrm_bntx_header_fields);
+var sxrm_bntx_container_fields = layout([chars("target", 4, ID), u32("texture_count", COUNT),
+    u64("texture_pointer_table_offset", OFFSET), u64("data_block_offset", OFFSET), u64("dictionary_offset", OFFSET),
+    u64("memory_pool_offset", OFFSET), u64("memory_pool_pointer", POINTER), u32("base_memory_pool_offset", OFFSET),
+    bytes("padding", 4, RESERVED)]);
+var sxrm_bntx_container = sxLayout(0x601D001B, "bntx_container", LE, sxrm_bntx_container_fields);
+var sxrm_bntx_block_fields = layout([chars("signature", 4, SIGNATURE), u32("next_block_offset", OFFSET),
+    u32("block_size", SIZE), bytes("padding", 4, RESERVED)]);
+var sxrm_bntx_block = sxLayout(0x601D001C, "bntx_block", LE, sxrm_bntx_block_fields);
+var sxrm_bntx_texture_info_fields = layout([u8("flags", FLAGS), u8("dimensions", COUNT), u16("tile_mode", ID), u16("swizzle"),
+    u16("mipmap_count", COUNT), u16("sample_count", COUNT), bytes("padding0", 2, RESERVED), u32("format", ID),
+    u32("access_flags", FLAGS), i32("width", COUNT), i32("height", COUNT), i32("depth", COUNT), u32("array_length", COUNT),
+    u32("texture_layout", FLAGS), u32("texture_layout2", FLAGS), bytes("padding1", 20, RESERVED), u32("image_size", SIZE),
+    u32("alignment_bytes", SIZE), u32("component_selection", FLAGS), u8("texture_type", ID), bytes("padding2", 3, RESERVED),
+    u64("name_offset", OFFSET), u64("parent_offset", OFFSET), u64("mipmap_pointer_table_offset", OFFSET),
+    u64("user_data_offset", OFFSET), u64("texture_pointer", POINTER), u64("texture_view_pointer", POINTER),
+    u64("descriptor_slot_offset", OFFSET), u64("user_dictionary_offset", OFFSET)]);
+var sxrm_bntx_texture_info = sxLayout(0x601D001D, "bntx_texture_info", LE, sxrm_bntx_texture_info_fields);
+var sxrm_bntx_pointer_fields = layout([u64("file_offset", OFFSET)]);
+var sxrm_bntx_pointer = sxLayout(0x601D001E, "bntx_pointer", LE, sxrm_bntx_pointer_fields);
+var sxrm_bntx_string_length_fields = layout([u16("byte_length", SIZE)]);
+var sxrm_bntx_string_length = sxLayout(0x601D001F, "bntx_string_length", LE, sxrm_bntx_string_length_fields);
+var sxrm_bntx_relocation_header_fields = layout([chars("signature", 4, SIGNATURE), u32("self_offset", OFFSET),
+    u32("section_count", COUNT), u32("reserved", RESERVED)]);
+var sxrm_bntx_relocation_header = sxLayout(0x601D0020, "bntx_relocation_header", LE, sxrm_bntx_relocation_header_fields);
+function sxrm_bntx_name(c, p) {
+    var b = [];
+    return !sxrm_read(c, p, b, 0, 2) || !sxrm_span(c, p + 2, sxrm16(b, 0, false)) || sxrm_add(c, sxrm_bntx_string_length, p);
+}
+function sxrm_bntx(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 88) || sxMemcmp(h, "BNTX\x00\x00\x00\x00", 8) || !sxrm_add(c, sxrm_bntx_header, 0) || !sxrm_add(c, sxrm_bntx_container, 32)) {
+        return false;
+    }
+    var table = sxrm_uint(h, 40, 8, false);
+    var data = sxrm_uint(h, 48, 8, false);
+    var count = sxrm32(h, 36, false);
+    var reloc = sxrm32(h, 24, false);
+    var name = sxrm32(h, 16, false);
+    if (name >= 2 && !sxrm_bntx_name(c, (name - 2) >>> 0)) {
+        return false;
+    }
+    if (data >= 88 && sxrm_read(c, data, h, 0, 16) && !sxMemcmp(h, "BRTD", 4) && !sxrm_add(c, sxrm_bntx_block, data)) {
+        return false;
+    }
+    if (reloc >= 88 && sxrm_read(c, reloc, h, 0, 16) && !sxMemcmp(h, "_RLT", 4) && !sxrm_add(c, sxrm_bntx_relocation_header, reloc)) {
+        return false;
+    }
+    if (count > 1024 || table < 88 || !sxrm_span(c, table, count * 8)) {
+        return true;
+    }
+    if (!sxrm_table(c, sxrm_bntx_pointer, table, count)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if (!sxrm_read(c, table + i * 8, h, 0, 8)) {
+            return false;
+        }
+        var q = sxrm_uint(h, 0, 8, false);
+        if (q < 88 || !sxrm_read(c, q, h, 0, 160) || sxMemcmp(h, "BRTI", 4)) {
+            continue;
+        }
+        if (!sxrm_add(c, sxrm_bntx_block, q) || !sxrm_add(c, sxrm_bntx_texture_info, q + 16)) {
+            return false;
+        }
+        var nameoff = sxrm_uint(h, 96, 8, false);
+        var mips = sxrm_uint(h, 112, 8, false);
+        var n = sxrm16(h, 22, false);
+        if (nameoff >= 88 && !sxrm_bntx_name(c, nameoff)) {
+            return false;
+        }
+        if (n <= 16 && mips >= 88 && sxrm_span(c, mips, n * 8) && !sxrm_table(c, sxrm_bntx_pointer, mips, n)) {
+            return false;
+        }
+    }
+    return !c.failed;
+}
+function sx_nintendo_bntx_build(c) {
+    return sxrm_bntx(c);
+}

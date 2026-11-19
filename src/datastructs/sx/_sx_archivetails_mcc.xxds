@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/mcc/xx_mcc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_mcc_member_fields = layout([chars("signature", 3, SIGNATURE), u8("method"), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u8("xor_key"), u8("attributes", FLAGS), u8("reserved"), u32("dos_datetime"),
+    u16("crc16", CHECKSUM), u8("name_size", SIZE), chars("name", 12, NONE)]);
+var sxat_mcc_member = sxLayout(0x6064001F, "mcc_member", LE, sxat_mcc_member_fields);
+function sxat_mcc(c) {
+    var p = 0;
+    while (sxat_span(c, p, 34)) {
+        var h = [];
+        if (!sxat_read(c, p, h, 34) || sxMemcmp(h, "MCC", 3)) {
+            return true;
+        }
+        var z = sxat_uint(h, 8, 4, false);
+        if (!sxat_add(c, sxat_mcc_member, p)) {
+            return false;
+        }
+        p += 34;
+        if (!sxat_span(c, p, z)) {
+            return true;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_mcc_build(c) {
+    return sxat_mcc(c);
+}

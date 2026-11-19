@@ -1,0 +1,169 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/mongodb_bson/xx_mongodb_bson_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_bson_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_bson_tag = sxLayout(0x60350035, "bson_tag", LE, sxbl_bson_tag_fields);
+var sxbl_bson_document_size_fields = layout([i32("document_size", SIZE)]);
+var sxbl_bson_document_size = sxLayout(0x60350088, "bson_document_size", LE, sxbl_bson_document_size_fields);
+var sxbl_bson_string_size_fields = layout([i32("string_size", SIZE)]);
+var sxbl_bson_string_size = sxLayout(0x60350089, "bson_string_size", LE, sxbl_bson_string_size_fields);
+var sxbl_bson_terminator_fields = layout([u8("terminator", SIGNATURE)]);
+var sxbl_bson_terminator = sxLayout(0x6035008A, "bson_terminator", LE, sxbl_bson_terminator_fields);
+var sxbl_bson_binary_header_fields = layout([i32("binary_size", SIZE), u8("subtype", ID)]);
+var sxbl_bson_binary_header = sxLayout(0x6035008B, "bson_binary_header", LE, sxbl_bson_binary_header_fields);
+var sxbl_bson_object_id_fields = layout([field("timestamp", "uint32be", 4), bytes("process_random", 5),
+    field("counter", "uint24be", 3)]);
+var sxbl_bson_object_id = sxLayout(0x6035008C, "bson_object_id", LE, sxbl_bson_object_id_fields);
+var sxbl_bson_timestamp_fields = layout([u32("increment"), u32("seconds")]);
+var sxbl_bson_timestamp = sxLayout(0x6035008D, "bson_timestamp", LE, sxbl_bson_timestamp_fields);
+var sxbl_bson_decimal128_fields = layout([bytes("encoded_decimal", 16)]);
+var sxbl_bson_decimal128 = sxLayout(0x6035008E, "bson_decimal128", LE, sxbl_bson_decimal128_fields);
+var sxbl_bson_bool_fields = layout([u8("boolean")]);
+var sxbl_bson_bool = sxLayout(0x6035008F, "bson_bool", LE, sxbl_bson_bool_fields);
+var sxbl_bson_code_scope_size_fields = layout([i32("total_size", SIZE)]);
+var sxbl_bson_code_scope_size = sxLayout(0x60350090, "bson_code_scope_size", LE, sxbl_bson_code_scope_size_fields);
+var sxbl_bson_datetime_fields = layout([i64("milliseconds_since_unix_epoch")]);
+var sxbl_bson_datetime = sxLayout(0x60350091, "bson_datetime", LE, sxbl_bson_datetime_fields);
+var sxbl_bson_legacy_binary_size_fields = layout([i32("binary_size", SIZE)]);
+var sxbl_bson_legacy_binary_size = sxLayout(0x603500FA, "bson_legacy_binary_size", LE, sxbl_bson_legacy_binary_size_fields);
+function sxbl_zero(c, p, end) {
+    var b = [0];
+    for (var i = 0; i < 65536; i++) {
+        if (p[0] >= end || !sxbl_byte(c, p[0]++, b)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxbl_bson(c, p, end, depth) {
+    var n = [0];
+    var stop;
+    if (depth > 32 || !sxbl_word(c, p[0], 4, false, n) || n[0] < 5 || p[0] > end || n[0] > sxU64(end - p[0])) {
+        return false;
+    }
+    stop = p[0] + n[0];
+    if (!sxbl_emit(c, p, stop, sxbl_bson_document_size)) {
+        return false;
+    }
+    while (p[0] < sxU64(stop - 1) && c.count < 20000) {
+        var t = [0];
+        if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, stop, sxbl_bson_tag) || !sxbl_zero(c, p, sxU64(stop - 1))) {
+            return false;
+        }
+        var z = [0];
+        switch (t[0]) {
+        case 1:
+            if (!sxbl_float(c, p, sxU64(stop - 1), 8, false)) {
+                return false;
+            }
+            break;
+        case 9:
+            if (!sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_datetime)) {
+                return false;
+            }
+            break;
+        case 0x11:
+            if (!sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_timestamp)) {
+                return false;
+            }
+            break;
+        case 0x12:
+            if (!sxbl_numeric(c, p, sxU64(stop - 1), 8, true, false)) {
+                return false;
+            }
+            break;
+        case 2:
+        case 13:
+        case 14:
+            if (!sxbl_word(c, p[0], 4, false, z) || !sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_string_size) || !sxbl_skip(c, p, sxU64(stop - 1), z[0])) {
+                return false;
+            }
+            break;
+        case 3:
+        case 4:
+            if (!sxbl_bson(c, p, sxU64(stop - 1), (depth + 1) >>> 0)) {
+                return false;
+            }
+            break;
+        case 5:
+            var subtype = [0];
+            if (!sxbl_word(c, p[0], 4, false, z) || !sxbl_byte(c, p[0] + 4, subtype) || !sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_binary_header) || z[0] > sxU64(sxU64(stop - 1) - p[0])) {
+                return false;
+            }
+            if (subtype[0] === 2) {
+                if (z[0] < 4 || !sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_legacy_binary_size)) {
+                    return false;
+                }
+                z[0] = sxU64(z[0] - 4);
+            }
+            if (!sxbl_skip(c, p, sxU64(stop - 1), z[0])) {
+                return false;
+            }
+            break;
+        case 6:
+        case 10:
+        case 127:
+        case 255:
+            break;
+        case 7:
+            if (!sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_object_id)) {
+                return false;
+            }
+            break;
+        case 8:
+            if (!sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_bool)) {
+                return false;
+            }
+            break;
+        case 11:
+            if (!sxbl_zero(c, p, sxU64(stop - 1)) || !sxbl_zero(c, p, sxU64(stop - 1))) {
+                return false;
+            }
+            break;
+        case 12:
+            if (!sxbl_word(c, p[0], 4, false, z) || !sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_string_size) || !sxbl_skip(c, p, sxU64(stop - 1), z[0]) || !sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_object_id)) {
+                return false;
+            }
+            break;
+        case 15:
+            var lim;
+            if (!sxbl_word(c, p[0], 4, false, z) || z[0] < 14 || z[0] > sxU64(sxU64(stop - 1) - p[0])) {
+                return false;
+            }
+            lim = p[0] + z[0];
+            if (!sxbl_emit(c, p, lim, sxbl_bson_code_scope_size) || !sxbl_word(c, p[0], 4, false, z) || !sxbl_emit(c, p, lim, sxbl_bson_string_size) || !sxbl_skip(c, p, lim, z[0]) || !sxbl_bson(c, p, lim, (depth + 1) >>> 0) || p[0] !== lim) {
+                return false;
+            }
+            break;
+        case 16:
+            if (!sxbl_numeric(c, p, sxU64(stop - 1), 4, true, false)) {
+                return false;
+            }
+            break;
+        case 19:
+            if (!sxbl_emit(c, p, sxU64(stop - 1), sxbl_bson_decimal128)) {
+                return false;
+            }
+            break;
+        default:
+            return false;
+        }
+    }
+    return p[0] === sxU64(stop - 1) && sxbl_emit(c, p, stop, sxbl_bson_terminator);
+}
+function sx_mongodb_bson_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var ok = false;
+    ok = true;
+    while (p[0] < end && ok) {
+        ok = sxbl_bson(c, p, end, 0);
+    }
+    return ok;
+}

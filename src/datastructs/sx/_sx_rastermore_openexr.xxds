@@ -1,0 +1,140 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/openexr/xx_openexr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_exr_header_fields = layout([u32("magic", SIGNATURE), u32("version_and_flags", FLAGS)]);
+var sxrm_exr_header = sxLayout(0x601D0003, "exr_header", LE, sxrm_exr_header_fields);
+var sxrm_exr_attribute_length_fields = layout([i32("value_size", SIZE)]);
+var sxrm_exr_attribute_length = sxLayout(0x601D0004, "exr_attribute_length", LE, sxrm_exr_attribute_length_fields);
+var sxrm_exr_channel_fields = layout([i32("pixel_type", ID), u8("perceptually_linear", FLAGS), bytes("reserved", 3, RESERVED),
+    i32("x_sampling"), i32("y_sampling")]);
+var sxrm_exr_channel = sxLayout(0x601D0005, "exr_channel", LE, sxrm_exr_channel_fields);
+var sxrm_exr_box2i_fields = layout([i32("minimum_x"), i32("minimum_y"), i32("maximum_x"), i32("maximum_y")]);
+var sxrm_exr_box2i = sxLayout(0x601D0006, "exr_box2i", LE, sxrm_exr_box2i_fields);
+var sxrm_exr_float_fields = layout([field("value", "float32", 4)]);
+var sxrm_exr_float = sxLayout(0x601D0007, "exr_float", LE, sxrm_exr_float_fields);
+var sxrm_exr_v2f_fields = layout([field("x", "float32", 4), field("y", "float32", 4)]);
+var sxrm_exr_v2f = sxLayout(0x601D0008, "exr_v2f", LE, sxrm_exr_v2f_fields);
+var sxrm_exr_compression_fields = layout([u8("method", ID)]);
+var sxrm_exr_compression = sxLayout(0x601D0009, "exr_compression", LE, sxrm_exr_compression_fields);
+var sxrm_exr_line_order_fields = layout([u8("order", ID)]);
+var sxrm_exr_line_order = sxLayout(0x601D000A, "exr_line_order", LE, sxrm_exr_line_order_fields);
+var sxrm_exr_chunk_offset_fields = layout([u64("chunk_offset", OFFSET)]);
+var sxrm_exr_chunk_offset = sxLayout(0x601D000B, "exr_chunk_offset", LE, sxrm_exr_chunk_offset_fields);
+var sxrm_exr_scanline_chunk_fields = layout([i32("y_coordinate"), i32("data_size", SIZE)]);
+var sxrm_exr_scanline_chunk = sxLayout(0x601D000C, "exr_scanline_chunk", LE, sxrm_exr_scanline_chunk_fields);
+function sxrm_string(c, p, end, out, cap) {
+    for (var i = 0; i < cap; i++) {
+        var b = [0];
+        if (p[0] >= end || !sxrm_read(c, p[0]++, b, 0, 1)) {
+            return false;
+        }
+        out[i] = b[0] << 24 >> 24;
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+var sxrm_exr_lines = [1, 1, 1, 16, 32, 16, 32, 32, 32, 256, 256, 32];
+function sxrm_exr(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 8) || sxrm32(h, 0, false) !== 20000630 || !sxrm_add(c, sxrm_exr_header, 0)) {
+        return false;
+    }
+    var p = [8];
+    var ymin = 0;
+    var ymax = -1;
+    var compression = 99;
+    var terminal = false;
+    for (var step = 0; step < 4096; step++) {
+        var name = [];
+        var type = [];
+        if (!sxrm_string(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), name, 258)) {
+            break;
+        }
+        if (!name[0]) {
+            terminal = true;
+            break;
+        }
+        if (!sxrm_string(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), type, 258) || !sxrm_read(c, p[0], h, 0, 4)) {
+            break;
+        }
+        var n = sxrm32(h, 0, false);
+        if (n > 2147483647 || !sxrm_span(c, p[0] + 4, n)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_exr_attribute_length, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+        if (!sxStrcmp(type, "chlist")) {
+            var q = [p[0]];
+            for (var ch = 0; ch < 256; ch++) {
+                var channel = [];
+                if (!sxrm_string(c, q, p[0] + n, channel, 258) || !channel[0] || sxU64(p[0] + n - q[0]) < 16) {
+                    break;
+                }
+                if (!sxrm_add(c, sxrm_exr_channel, q[0])) {
+                    return false;
+                }
+                q[0] += 16;
+            }
+        } else if (!sxStrcmp(type, "box2i") && n === 16) {
+            if (!sxrm_add(c, sxrm_exr_box2i, p[0])) {
+                return false;
+            }
+            if (!sxStrcmp(name, "dataWindow")) {
+                if (!sxrm_read(c, p[0], h, 0, 16)) {
+                    return false;
+                }
+                ymin = sxrm32(h, 4, false) | 0;
+                ymax = sxrm32(h, 12, false) | 0;
+            }
+        } else if (!sxStrcmp(type, "float") && n === 4) {
+            if (!sxrm_add(c, sxrm_exr_float, p[0])) {
+                return false;
+            }
+        } else if (!sxStrcmp(type, "v2f") && n === 8) {
+            if (!sxrm_add(c, sxrm_exr_v2f, p[0])) {
+                return false;
+            }
+        } else if (!sxStrcmp(type, "compression") && n === 1) {
+            if (!sxrm_read(c, p[0], h, 0, 1) || !sxrm_add(c, sxrm_exr_compression, p[0])) {
+                return false;
+            }
+            compression = h[0];
+        } else if (!sxStrcmp(type, "lineOrder") && n === 1) {
+            if (!sxrm_add(c, sxrm_exr_line_order, p[0])) {
+                return false;
+            }
+        }
+        p[0] += n;
+    }
+    if (terminal && compression < 12 && ymax >= ymin) {
+        n = Math.floor(sxU64((ymax - ymin + 1 < 0 ? ymax - ymin + 1 + SX_U64_MAX : ymax - ymin + 1) + sxrm_exr_lines[compression] - 1) / sxrm_exr_lines[compression]);
+        if (n <= 4096 && sxrm_span(c, p[0], n * 8)) {
+            if (!sxrm_table(c, sxrm_exr_chunk_offset, p[0], n)) {
+                return false;
+            }
+            for (var i = 0; i < n; i++) {
+                if (!sxrm_read(c, p[0] + i * 8, h, 0, 8)) {
+                    return false;
+                }
+                q = [sxrm_uint(h, 0, 8, false)];
+                if (q[0] < p[0] + n * 8 || !sxrm_read(c, q[0], h, 0, 8)) {
+                    continue;
+                }
+                if (sxrm_span(c, q[0] + 8, sxrm32(h, 4, false)) && !sxrm_add(c, sxrm_exr_scanline_chunk, q[0])) {
+                    return false;
+                }
+            }
+        }
+    }
+    return !c.failed;
+}
+function sx_openexr_build(c) {
+    return sxrm_exr(c);
+}

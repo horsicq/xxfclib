@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/artipack/xx_artipack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_artipack_header_fields = layout([blob("signature", 8, SIGNATURE), u16("version"), u16("member_count", COUNT),
+    u32("directory_offset", OFFSET), blob("unknown", 16)]);
+var sxl_artipack_header = sxLayout(0x600A0032, "artipack_header", LE, sxl_artipack_header_fields);
+var sxl_artipack_directory_fields = layout([chars("filename", 13, STRING), u8("unknown"), u32("data_offset", OFFSET),
+    u32("original_size", SIZE), u32("packed_size", SIZE), u16("dos_date"), u16("dos_time"), blob("unknown_tail", 4)]);
+var sxl_artipack_directory = sxLayout(0x600A0033, "artipack_directory", LE, sxl_artipack_directory_fields);
+var sxl_artipack_size_fields = layout([u32("original_size", SIZE)]);
+var sxl_artipack_size = sxLayout(0x600A0034, "artipack_size", LE, sxl_artipack_size_fields);
+function sxl_artipack(c) {
+    var version;
+    var count;
+    var dir;
+    var end = 32;
+    if (!sxl_sig(c, 0, "ARTIPACK", 8) || (version = sx_u16(c, 8, false)) === null || version !== 0x100 || (count = sx_u16(c, 10, false)) === null || !count || (dir = sx_u32(c, 12, false)) === null || dir < 32 || !sxl_span(c, dir, count * 34) || dir + count * 34 !== (c.size < 0 ? c.size + SX_U64_MAX : c.size) || !sx_add(c, sxl_artipack_header, 0, 32) || !sx_table(c, sxl_artipack_directory, dir, 34, count)) {
+        return false;
+    }
+    for (var i = 0; i < count; i = i + 1 & 0xFFFF) {
+        var off;
+        var size;
+        var n;
+        var inner;
+        var at = dir + i * 34;
+        if ((off = sx_u32(c, at + 14, false)) === null || off !== end || (n = sx_u32(c, at + 18, false)) === null || (size = sx_u32(c, at + 22, false)) === null || size < 4 || size > sxU64(dir - end) || (inner = sx_u32(c, off, false)) === null || inner !== n || !sx_add(c, sxl_artipack_size, off, 4)) {
+            return false;
+        }
+        end += size;
+    }
+    return end === dir;
+}
+function sx_artipack_build(c) {
+    return sxl_artipack(c);
+}

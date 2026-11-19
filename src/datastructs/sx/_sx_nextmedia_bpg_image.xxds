@@ -1,0 +1,234 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/bpg_image/xx_bpg_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_bpg_header_fields = layout([blob("signature", 4, SIGNATURE), u8("pixel_format_alpha_depth", FLAGS),
+    u8("color_space_extensions_alpha_flags", FLAGS)]);
+var sxnx_bpg_header = sxLayout(0x6032007B, "bpg_header", LE, sxnx_bpg_header_fields);
+var sxnx_bpg_width_1_fields = layout([field("width", "uintbase128", 1, COUNT)]);
+var sxnx_bpg_width_1 = sxLayout(0x6032007C, "bpg_width_1", LE, sxnx_bpg_width_1_fields);
+var sxnx_bpg_width_2_fields = layout([field("width", "uintbase128", 2, COUNT)]);
+var sxnx_bpg_width_2 = sxLayout(0x6032007D, "bpg_width_2", LE, sxnx_bpg_width_2_fields);
+var sxnx_bpg_width_3_fields = layout([field("width", "uintbase128", 3, COUNT)]);
+var sxnx_bpg_width_3 = sxLayout(0x6032007E, "bpg_width_3", LE, sxnx_bpg_width_3_fields);
+var sxnx_bpg_height_1_fields = layout([field("height", "uintbase128", 1, COUNT)]);
+var sxnx_bpg_height_1 = sxLayout(0x6032007F, "bpg_height_1", LE, sxnx_bpg_height_1_fields);
+var sxnx_bpg_height_2_fields = layout([field("height", "uintbase128", 2, COUNT)]);
+var sxnx_bpg_height_2 = sxLayout(0x60320080, "bpg_height_2", LE, sxnx_bpg_height_2_fields);
+var sxnx_bpg_height_3_fields = layout([field("height", "uintbase128", 3, COUNT)]);
+var sxnx_bpg_height_3 = sxLayout(0x60320081, "bpg_height_3", LE, sxnx_bpg_height_3_fields);
+var sxnx_bpg_picture_bytes_1_fields = layout([field("picture_bytes", "uintbase128", 1, SIZE)]);
+var sxnx_bpg_picture_bytes_1 = sxLayout(0x60320082, "bpg_picture_bytes_1", LE, sxnx_bpg_picture_bytes_1_fields);
+var sxnx_bpg_picture_bytes_2_fields = layout([field("picture_bytes", "uintbase128", 2, SIZE)]);
+var sxnx_bpg_picture_bytes_2 = sxLayout(0x60320083, "bpg_picture_bytes_2", LE, sxnx_bpg_picture_bytes_2_fields);
+var sxnx_bpg_picture_bytes_3_fields = layout([field("picture_bytes", "uintbase128", 3, SIZE)]);
+var sxnx_bpg_picture_bytes_3 = sxLayout(0x60320084, "bpg_picture_bytes_3", LE, sxnx_bpg_picture_bytes_3_fields);
+var sxnx_bpg_picture_bytes_4_fields = layout([field("picture_bytes", "uintbase128", 4, SIZE)]);
+var sxnx_bpg_picture_bytes_4 = sxLayout(0x60320085, "bpg_picture_bytes_4", LE, sxnx_bpg_picture_bytes_4_fields);
+var sxnx_bpg_extension_bytes_1_fields = layout([field("extension_bytes", "uintbase128", 1, SIZE)]);
+var sxnx_bpg_extension_bytes_1 = sxLayout(0x60320086, "bpg_extension_bytes_1", LE, sxnx_bpg_extension_bytes_1_fields);
+var sxnx_bpg_extension_bytes_2_fields = layout([field("extension_bytes", "uintbase128", 2, SIZE)]);
+var sxnx_bpg_extension_bytes_2 = sxLayout(0x60320087, "bpg_extension_bytes_2", LE, sxnx_bpg_extension_bytes_2_fields);
+var sxnx_bpg_extension_bytes_3_fields = layout([field("extension_bytes", "uintbase128", 3, SIZE)]);
+var sxnx_bpg_extension_bytes_3 = sxLayout(0x60320088, "bpg_extension_bytes_3", LE, sxnx_bpg_extension_bytes_3_fields);
+var sxnx_bpg_extension_tag_1_fields = layout([field("extension_tag", "uintbase128", 1, ID)]);
+var sxnx_bpg_extension_tag_1 = sxLayout(0x60320089, "bpg_extension_tag_1", LE, sxnx_bpg_extension_tag_1_fields);
+var sxnx_bpg_extension_tag_2_fields = layout([field("extension_tag", "uintbase128", 2, ID)]);
+var sxnx_bpg_extension_tag_2 = sxLayout(0x6032008A, "bpg_extension_tag_2", LE, sxnx_bpg_extension_tag_2_fields);
+var sxnx_bpg_extension_tag_3_fields = layout([field("extension_tag", "uintbase128", 3, ID)]);
+var sxnx_bpg_extension_tag_3 = sxLayout(0x6032008B, "bpg_extension_tag_3", LE, sxnx_bpg_extension_tag_3_fields);
+var sxnx_bpg_extension_tag_4_fields = layout([field("extension_tag", "uintbase128", 4, ID)]);
+var sxnx_bpg_extension_tag_4 = sxLayout(0x6032008C, "bpg_extension_tag_4", LE, sxnx_bpg_extension_tag_4_fields);
+var sxnx_bpg_extension_tag_5_fields = layout([field("extension_tag", "uintbase128", 5, ID)]);
+var sxnx_bpg_extension_tag_5 = sxLayout(0x6032008D, "bpg_extension_tag_5", LE, sxnx_bpg_extension_tag_5_fields);
+var sxnx_bpg_extension_data_bytes_1_fields = layout([field("extension_data_bytes", "uintbase128", 1, SIZE)]);
+var sxnx_bpg_extension_data_bytes_1 = sxLayout(0x6032008E, "bpg_extension_data_bytes_1", LE, sxnx_bpg_extension_data_bytes_1_fields);
+var sxnx_bpg_extension_data_bytes_2_fields = layout([field("extension_data_bytes", "uintbase128", 2, SIZE)]);
+var sxnx_bpg_extension_data_bytes_2 = sxLayout(0x6032008F, "bpg_extension_data_bytes_2", LE, sxnx_bpg_extension_data_bytes_2_fields);
+var sxnx_bpg_extension_data_bytes_3_fields = layout([field("extension_data_bytes", "uintbase128", 3, SIZE)]);
+var sxnx_bpg_extension_data_bytes_3 = sxLayout(0x60320090, "bpg_extension_data_bytes_3", LE, sxnx_bpg_extension_data_bytes_3_fields);
+var sxnx_bpg_hevc_header_bytes_1_fields = layout([field("hevc_header_bytes", "uintbase128", 1, SIZE)]);
+var sxnx_bpg_hevc_header_bytes_1 = sxLayout(0x60320091, "bpg_hevc_header_bytes_1", LE, sxnx_bpg_hevc_header_bytes_1_fields);
+var sxnx_bpg_nal_fields = layout([u8("type_layer", FLAGS), u8("layer_temporal_id", FLAGS)]);
+var sxnx_bpg_nal = sxLayout(0x60320092, "bpg_nal", LE, sxnx_bpg_nal_fields);
+function sxnx_bpg_uint(v, p, end, kind, out) {
+    var start = p[0];
+    var width = [0];
+    if (!sxnx_varuint(v, p, end, out, width)) {
+        return false;
+    }
+    var l = null;
+    switch (kind) {
+    case 0:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_width_1;
+            break;
+        case 2:
+            l = sxnx_bpg_width_2;
+            break;
+        case 3:
+            l = sxnx_bpg_width_3;
+            break;
+        }
+        break;
+    case 1:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_height_1;
+            break;
+        case 2:
+            l = sxnx_bpg_height_2;
+            break;
+        case 3:
+            l = sxnx_bpg_height_3;
+            break;
+        }
+        break;
+    case 2:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_picture_bytes_1;
+            break;
+        case 2:
+            l = sxnx_bpg_picture_bytes_2;
+            break;
+        case 3:
+            l = sxnx_bpg_picture_bytes_3;
+            break;
+        case 4:
+            l = sxnx_bpg_picture_bytes_4;
+            break;
+        }
+        break;
+    case 3:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_extension_bytes_1;
+            break;
+        case 2:
+            l = sxnx_bpg_extension_bytes_2;
+            break;
+        case 3:
+            l = sxnx_bpg_extension_bytes_3;
+            break;
+        }
+        break;
+    case 4:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_extension_tag_1;
+            break;
+        case 2:
+            l = sxnx_bpg_extension_tag_2;
+            break;
+        case 3:
+            l = sxnx_bpg_extension_tag_3;
+            break;
+        case 4:
+            l = sxnx_bpg_extension_tag_4;
+            break;
+        case 5:
+            l = sxnx_bpg_extension_tag_5;
+            break;
+        }
+        break;
+    case 5:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_extension_data_bytes_1;
+            break;
+        case 2:
+            l = sxnx_bpg_extension_data_bytes_2;
+            break;
+        case 3:
+            l = sxnx_bpg_extension_data_bytes_3;
+            break;
+        }
+        break;
+    case 6:
+        switch (width[0]) {
+        case 1:
+            l = sxnx_bpg_hevc_header_bytes_1;
+            break;
+        }
+        break;
+    }
+    return l !== null && sxnx_row(v, l, start, p[0]);
+}
+function sxnx_bpg(v) {
+    if (!sxnx_row(v, sxnx_bpg_header, 0, v.n)) {
+        return false;
+    }
+    var p = [6];
+    var z = [0];
+    for (var i = 0; i < 3; i++) {
+        if (!sxnx_bpg_uint(v, p, v.n, i, z)) {
+            return false;
+        }
+    }
+    if (v.p[5] & 8) {
+        if (!sxnx_bpg_uint(v, p, v.n, 3, z) || !sxnx_need(v, p[0], z[0], v.n)) {
+            return false;
+        }
+        var end = p[0] + z[0];
+        while (p[0] < end) {
+            if (!sxnx_bpg_uint(v, p, end, 4, z) || !sxnx_bpg_uint(v, p, end, 5, z) || !sxnx_need(v, p[0], z[0], end)) {
+                return false;
+            }
+            p[0] += z[0];
+        }
+    }
+    for (i = 0; i < (v.p[4] & 16 || v.p[5] & 4 ? 2 : 1); i++) {
+        if (!sxnx_bpg_uint(v, p, v.n, 6, z) || !sxnx_need(v, p[0], z[0], v.n)) {
+            return false;
+        }
+        p[0] += z[0];
+    }
+    var work = 0;
+    while (p[0] < v.n) {
+        if (++work > 2048 || !sxnx_row(v, sxnx_bpg_nal, p[0], v.n)) {
+            return false;
+        }
+        p[0] += 2;
+        end = p[0];
+        var zeros = 0;
+        while (end < v.n) {
+            if (!sxnx_need(v, end, 1, v.n)) {
+                return false;
+            }
+            if (!v.p[end]) {
+                zeros++;
+                end++;
+                continue;
+            }
+            if (v.p[end] === 1 && zeros >= 2) {
+                end = sxU64(end - zeros);
+                break;
+            }
+            zeros = 0;
+            end++;
+        }
+        p[0] = end;
+        if (p[0] < v.n) {
+            var zero = 0;
+            while (p[0] < v.n && !v.p[p[0]]) {
+                p[0]++;
+                zero++;
+            }
+            if (p[0] === v.n) {
+                break;
+            }
+            if (v.p[p[0]] !== 1 || zero < 2 || zero > 16) {
+                return false;
+            }
+            p[0]++;
+        }
+    }
+    return true;
+}
+function sx_bpg_image_build(v) {
+    return sxnx_bpg(v);
+}

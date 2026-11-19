@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/qemu_enhanced_disk/xx_qemu_enhanced_disk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_qed_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("cluster_size", SIZE),
+    u32("table_size_clusters", COUNT), u32("header_size_clusters", COUNT), u64("features", FLAGS),
+    u64("compatible_features", FLAGS), u64("autoclear_features", FLAGS), u64("l1_table_offset", OFFSET),
+    u64("image_size", SIZE), u32("backing_filename_offset", OFFSET), u32("backing_filename_size", SIZE)]);
+var sx_dm_qed_header = sxLayout(0x6029001B, "qed_header", LE, sx_dm_qed_header_fields);
+var sx_dm_qed_l1_entry_fields = layout([u64("l2_table_offset", OFFSET)]);
+var sx_dm_qed_l1_entry = sxLayout(0x6029001C, "qed_l1_entry", LE, sx_dm_qed_l1_entry_fields);
+var sx_dm_qed_l2_entry_fields = layout([u64("data_cluster_offset", OFFSET)]);
+var sx_dm_qed_l2_entry = sxLayout(0x6029001D, "qed_l2_entry", LE, sx_dm_qed_l2_entry_fields);
+function sx_dm_qed(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 64) || sxMemcmp(h, "QED\x00", 4) || !sx_dm_add(c, sx_dm_qed_header, 0, 64)) {
+        return false;
+    }
+    var cs = sx_dm_u32(h, 4, false);
+    var ts = sx_dm_u32(h, 8, false);
+    var p = sx_dm_u64(h, 40, false);
+    if (cs < 4096 || cs > 67108864 || !ts || ts > 16) {
+        return true;
+    }
+    var n = Math.floor(cs * ts / 8);
+    if (n > 65536) {
+        n = 65536;
+    }
+    if (!sx_dm_span(c, p, n * 8)) {
+        return true;
+    }
+    if (!sx_dm_table(c, sx_dm_qed_l1_entry, p, 8, n)) {
+        return false;
+    }
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        var q;
+        if ((q = sx_u64(c, (p + i * 8 >= SX_I64_MAX ? p + i * 8 - SX_U64_MAX : p + i * 8), false)) === null) {
+            return false;
+        }
+        if (q >= cs && q % cs === 0 && sx_dm_span(c, q, n * 8) && !sx_dm_table(c, sx_dm_qed_l2_entry, q, 8, n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_qemu_enhanced_disk_build(c) {
+    return sx_dm_qed(c);
+}

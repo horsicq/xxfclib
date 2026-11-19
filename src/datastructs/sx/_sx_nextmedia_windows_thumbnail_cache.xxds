@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/windows_thumbnail_cache/xx_windows_thumbnail_cache_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_thumb_header_old_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), u32("cache_type", ID),
+    u32("first_entry_offset", OFFSET), u32("available_offset", OFFSET), u32("entry_count", COUNT)]);
+var sxnx_thumb_header_old = sxLayout(0x60320061, "thumb_header_old", LE, sxnx_thumb_header_old_fields);
+var sxnx_thumb_header_28_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), u32("cache_type", ID),
+    u32("unknown"), u32("first_entry_offset", OFFSET), u32("available_offset", OFFSET), u32("entry_count", COUNT)]);
+var sxnx_thumb_header_28 = sxLayout(0x60320062, "thumb_header_28", LE, sxnx_thumb_header_28_fields);
+var sxnx_thumb_header_new_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), u32("cache_type", ID),
+    u32("unknown"), u32("first_entry_offset", OFFSET), u32("available_offset", OFFSET)]);
+var sxnx_thumb_header_new = sxLayout(0x60320063, "thumb_header_new", LE, sxnx_thumb_header_new_fields);
+var sxnx_thumb_entry_20_fields = layout([blob("signature", 4, SIGNATURE), u32("entry_size", SIZE), u64("cache_id", ID),
+    blob("extension_utf16", 8), u32("identifier_bytes", SIZE), u32("padding_bytes", SIZE), u32("data_bytes", SIZE),
+    u32("unknown"), u64("data_checksum", CHECKSUM), u64("header_checksum", CHECKSUM)]);
+var sxnx_thumb_entry_20 = sxLayout(0x60320064, "thumb_entry_20", LE, sxnx_thumb_entry_20_fields);
+var sxnx_thumb_entry_21_fields = layout([blob("signature", 4, SIGNATURE), u32("entry_size", SIZE), u64("cache_id", ID),
+    u32("identifier_bytes", SIZE), u32("padding_bytes", SIZE), u32("data_bytes", SIZE), u32("unknown"),
+    u64("data_checksum", CHECKSUM), u64("header_checksum", CHECKSUM)]);
+var sxnx_thumb_entry_21 = sxLayout(0x60320065, "thumb_entry_21", LE, sxnx_thumb_entry_21_fields);
+var sxnx_thumb_entry_new_fields = layout([blob("signature", 4, SIGNATURE), u32("entry_size", SIZE), u64("cache_id", ID),
+    u32("identifier_bytes", SIZE), u32("padding_bytes", SIZE), u32("data_bytes", SIZE), u32("width"), u32("height"),
+    u32("unknown"), u64("data_checksum", CHECKSUM), u64("header_checksum", CHECKSUM)]);
+var sxnx_thumb_entry_new = sxLayout(0x60320066, "thumb_entry_new", LE, sxnx_thumb_entry_new_fields);
+function sxnx_thumb(v) {
+    if (!sxnx_need(v, 0, 12, v.n)) {
+        return false;
+    }
+    var version = sxnx_u32(v.p, 4, false);
+    var hs = version === 28 ? 28 : 24;
+    var l = version <= 26 ? sxnx_thumb_header_old : version === 28 ? sxnx_thumb_header_28 : sxnx_thumb_header_new;
+    if (!sxnx_row(v, l, 0, v.n)) {
+        return false;
+    }
+    var off = version <= 26 ? 12 : 16;
+    var start = sxnx_u32(v.p, off, false);
+    var available = sxnx_u32(v.p, off + 4, false);
+    var p = start ? start : hs;
+    var end = available ? available : v.n;
+    if (end > v.n || p > end) {
+        return false;
+    }
+    l = version === 20 ? sxnx_thumb_entry_20 : version === 21 ? sxnx_thumb_entry_21 : sxnx_thumb_entry_new;
+    while (p < end) {
+        if (!sxnx_row(v, l, p, end)) {
+            return false;
+        }
+        var n = sxnx_u32(v.p, p + 4, false);
+        if (n < (version === 21 ? 48 : 56) || !sxnx_need(v, p, n, end)) {
+            return false;
+        }
+        p += n;
+    }
+    return true;
+}
+function sx_windows_thumbnail_cache_build(v) {
+    return sxnx_thumb(v);
+}

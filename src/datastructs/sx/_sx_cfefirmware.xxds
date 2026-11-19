@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_cfefirmware.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_cfefirmware_supports(t) {
+    switch (t) {
+    case "CFE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_cfefirmware_build(c) {
+    return sx_cfe_build(c);
+}
+function sx_cfefirmware_comment(r, id) {
+    if (id !== 0x609F0001 || r === null || r.name === null) {
+        return true;
+    }
+    var n = r.name;
+    if (!sxStrcmp(n, "seal")) {
+        return sxSetComment(r, "Original Broadcom flash-update envelope marker CFE1; distinct from the opaque ROM entry-point seal.");
+    }
+    if (!sxStrcmp(n, "flags")) {
+        return sxSetComment(r, "Payload CPU flags: bit0 big-endian image, bit1 little-endian image, bit2 64-bit-long build. Both endian bits mark the concatenated bi-endian payload; these header words always use big-endian byte order.");
+    }
+    if (!sxStrcmp(n, "payload_size")) {
+        return sxSetComment(r, "Firmware payload bytes following the 64-byte update envelope; excludes this header and any trailing overlay.");
+    }
+    if (!sxStrcmp(n, "payload_crc32")) {
+        return sxSetComment(r, "Stored CRC of payload bytes only: reflected polynomial 0xEDB88320, initial 0xFFFFFFFF, no final complement. The header bytes are not covered.");
+    }
+    if (!sxStrcmp(n, "board_name")) {
+        return sxSetComment(r, "Target board identifier in a fixed 32-byte ASCIIZ slot. Parsing does not establish compatibility with the current hardware.");
+    }
+    if (!sxStrcmp(n, "major_version") || !sxStrcmp(n, "minor_version") || !sxStrcmp(n, "eco_version")) {
+        return sxSetComment(r, "One stored firmware version component, written from mkflashimage's major.minor.eco option.");
+    }
+    if (!sxStrcmp(n, "misc_version")) {
+        return sxSetComment(r, "Fourth stored firmware-version byte; original mkflashimage writes zero.");
+    }
+    if (!sxStrcmp(n, "reserved")) {
+        return sxSetComment(r, "Twelve bytes reserved by the original Broadcom update-header declaration; the original writer clears them.");
+    }
+    return true;
+}

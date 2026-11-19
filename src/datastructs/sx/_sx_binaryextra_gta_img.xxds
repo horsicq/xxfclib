@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/gta_img/xx_gta_img_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_gta_img_header_fields = layout([chars("signature", 4, SIGNATURE), u32("entry_count", COUNT)]);
+var sxbx_gta_img_header = sxLayout(0x603000EB, "gta_img_header", LE, sxbx_gta_img_header_fields);
+var sxbx_gta_img_entry_fields = layout([u32("sector_offset"), u16("sector_count", COUNT), u16("reserved"),
+    chars("filename", 24, NONE)]);
+var sxbx_gta_img_entry = sxLayout(0x603000EC, "gta_img_entry", LE, sxbx_gta_img_entry_fields);
+function sx_gta_img_build(c) {
+    var n = [0];
+    return sxbx_word(c, 4, 4, false, n) && sxbx_add(c, sxbx_gta_img_header, 0) && sxbx_table(c, sxbx_gta_img_entry, 8, n[0]);
+}

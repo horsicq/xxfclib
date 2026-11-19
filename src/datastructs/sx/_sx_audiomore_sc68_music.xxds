@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/sc68_music/xx_sc68_music_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_sc68_header_fields = layout([chars("signature", 56, SIGNATURE), chars("magic", 4, SIGNATURE),
+    u32("file_size_from_magic", SIZE)]);
+var sxau_sc68_header = sxLayout(0x602C003F, "sc68_header", LE, sxau_sc68_header_fields);
+var sxau_sc68_chunk_fields = layout([chars("chunk_id", 4, ID), u32("payload_bytes", SIZE)]);
+var sxau_sc68_chunk = sxLayout(0x602C0040, "sc68_chunk", LE, sxau_sc68_chunk_fields);
+var sxau_sc68_default_fields = layout([u32("default_track", ID)]);
+var sxau_sc68_default = sxLayout(0x602C0041, "sc68_default", LE, sxau_sc68_default_fields);
+var sxau_sc68_load_address_fields = layout([u32("load_address", VA)]);
+var sxau_sc68_load_address = sxLayout(0x602C0042, "sc68_load_address", LE, sxau_sc68_load_address_fields);
+var sxau_sc68_integer_fields = layout([u32("value")]);
+var sxau_sc68_integer = sxLayout(0x602C0043, "sc68_integer", LE, sxau_sc68_integer_fields);
+function sxau_sc68(v) {
+    if (!sxau_row(v, sxau_sc68_header, 0, v.n)) {
+        return false;
+    }
+    var at = 64;
+    while (at < v.n) {
+        if (!sxau_row(v, sxau_sc68_chunk, at, v.n)) {
+            return false;
+        }
+        var n = sxau_u32(v.p, at + 4, false);
+        if (!sxau_need(v, at + 8, n, v.n)) {
+            return false;
+        }
+        var p = v.p, p_o = at;
+        if (n === 4) {
+            var l = !sxMemcmpAt(p, p_o, "SCDF", 0, 4) ? sxau_sc68_default : !sxMemcmpAt(p, p_o, "SCAT", 0, 4) ? sxau_sc68_load_address : !sxMemcmpAt(p, p_o, "SCD0", 0, 4) || !sxMemcmpAt(p, p_o, "SCTI", 0, 4) || !sxMemcmpAt(p, p_o, "SCFR", 0, 4) || !sxMemcmpAt(p, p_o, "SCFQ", 0, 4) || !sxMemcmpAt(p, p_o, "SCLP", 0, 4) || !sxMemcmpAt(p, p_o, "SCTY", 0, 4) ? sxau_sc68_integer : null;
+            if (l !== null && !sxau_row(v, l, at + 8, at + 8 + n)) {
+                return false;
+            }
+        }
+        at += (8 + n) >>> 0;
+    }
+    return true;
+}
+function sx_sc68_music_build(v) {
+    return sxau_sc68(v);
+}

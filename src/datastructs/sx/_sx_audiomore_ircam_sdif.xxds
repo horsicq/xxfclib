@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/ircam_sdif/xx_ircam_sdif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_sdif_header_fields = layout([chars("magic", 4, SIGNATURE), u32("header_data_size", SIZE), u32("format_version", ID),
+    u32("types_version", ID)]);
+var sxau_sdif_header = sxLayout(0x602C003A, "sdif_header", BE, sxau_sdif_header_fields);
+var sxau_sdif_frame_fields = layout([chars("frame_type", 4, ID), u32("frame_data_size", SIZE),
+    field("time_seconds", "double", 8), u32("stream_id", ID), u32("matrix_count", COUNT)]);
+var sxau_sdif_frame = sxLayout(0x602C003B, "sdif_frame", BE, sxau_sdif_frame_fields);
+var sxau_sdif_matrix_fields = layout([chars("matrix_type", 4, ID), u32("data_type", ID), u32("rows", COUNT),
+    u32("columns", COUNT)]);
+var sxau_sdif_matrix = sxLayout(0x602C003C, "sdif_matrix", BE, sxau_sdif_matrix_fields);
+function sxau_sdif(v) {
+    if (!sxau_row(v, sxau_sdif_header, 0, v.n)) {
+        return false;
+    }
+    var at = 16;
+    while (at < v.n) {
+        if (!sxau_row(v, sxau_sdif_frame, at, v.n)) {
+            return false;
+        }
+        var end = at + 8 + sxau_u32(v.p, at + 4, true);
+        if (end < at + 24 || end > v.n) {
+            return false;
+        }
+        var count = sxau_u32(v.p, at + 20, true);
+        at += 24;
+        for (var i = 0; i < count; i++) {
+            if (!sxau_row(v, sxau_sdif_matrix, at, end)) {
+                return false;
+            }
+            var type = sxau_u32(v.p, at + 4, true);
+            var rows = sxau_u32(v.p, at + 8, true);
+            var cols = sxau_u32(v.p, at + 12, true);
+            var width = type & 255;
+            if (width !== 1 && width !== 2 && width !== 4 && width !== 8) {
+                return false;
+            }
+            var z = rows * cols;
+            if (z > Math.floor(SX_U64_MAX / width)) {
+                return false;
+            }
+            z *= width;
+            at += 16;
+            var pad = (8 - z % 8) % 8;
+            if (z > SX_U64_MAX - pad || !sxau_need(v, at, z + pad, end)) {
+                return false;
+            }
+            at += z + pad;
+        }
+        if (at !== end) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ircam_sdif_build(v) {
+    return sxau_sdif(v);
+}

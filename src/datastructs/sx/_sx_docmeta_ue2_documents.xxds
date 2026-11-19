@@ -1,0 +1,95 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/ue2_documents/xx_ue2_documents_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_winhelp_header_fields = layout([u32("magic", SIGNATURE), u32("directory_offset", OFFSET),
+    u32("free_chain_offset", OFFSET), u32("file_size", SIZE)]);
+var sxdm_winhelp_header = sxLayout(0x60230015, "winhelp_header", LE, sxdm_winhelp_header_fields);
+var sxdm_winhelp_internal_file_header_fields = layout([u32("allocated_size", SIZE), u32("used_size", SIZE), u8("flags", FLAGS)]);
+var sxdm_winhelp_internal_file_header = sxLayout(0x60230016, "winhelp_internal_file_header", LE, sxdm_winhelp_internal_file_header_fields);
+var sxdm_winhelp_btree_header_fields = layout([u16("magic", SIGNATURE), u16("flags", FLAGS), u16("page_size", SIZE),
+    chars("data_format", 16, NONE), u16("unknown1"), u16("page_split"), u16("root_page", ID), u16("unknown2"),
+    u16("page_count", COUNT), u16("level_count", COUNT), u32("entry_count", COUNT)]);
+var sxdm_winhelp_btree_header = sxLayout(0x60230017, "winhelp_btree_header", LE, sxdm_winhelp_btree_header_fields);
+var sxdm_winhelp_index_header_fields = layout([u16("unused_size", SIZE), u16("entry_count", COUNT), u16("first_child", ID)]);
+var sxdm_winhelp_index_header = sxLayout(0x60230018, "winhelp_index_header", LE, sxdm_winhelp_index_header_fields);
+var sxdm_winhelp_leaf_header_fields = layout([u16("unused_size", SIZE), u16("entry_count", COUNT), u16("previous_page", ID),
+    u16("next_page", ID)]);
+var sxdm_winhelp_leaf_header = sxLayout(0x60230019, "winhelp_leaf_header", LE, sxdm_winhelp_leaf_header_fields);
+var sxdm_winhelp_file_pointer_fields = layout([u32("file_offset", OFFSET)]);
+var sxdm_winhelp_file_pointer = sxLayout(0x6023001A, "winhelp_file_pointer", LE, sxdm_winhelp_file_pointer_fields);
+function sxdm_hlp(c) {
+    done: {
+        var b = [];
+        var dir;
+        if ((dir = sx_u32(c, 4, false)) === null || !sxdm_add(c, sxdm_winhelp_header, 0, 16) || !sxdm_add(c, sxdm_winhelp_internal_file_header, dir, 9) || !sx_read(c, (dir + 9) >>> 0, b, 38) || !sxdm_add(c, sxdm_winhelp_btree_header, (dir + 9) >>> 0, 38)) {
+            return false;
+        }
+        var page = sxdm_u16(b, 4);
+        var count = sxdm_u16(b, 30);
+        var levels = sxdm_u16(b, 32);
+        var cur = sxdm_u16(b, 26);
+        var pages = dir + 47;
+        var seen = null;
+        var ok = false;
+        if (page < 64 || !count || levels < 1 || levels > 64 || !sxdm_span(c, pages, page * count)) {
+            return false;
+        }
+        seen = sxZeros(count);
+        if (seen === null) {
+            return false;
+        }
+        for (var i = 1; i < levels; i++) {
+            if (cur >= count || seen[cur]) {
+                break done;
+            }
+            seen[cur] = 1;
+            var at = [pages + cur * page];
+            if (!sx_read(c, at[0], b, 6) || !sxdm_add(c, sxdm_winhelp_index_header, at[0], 6)) {
+                break done;
+            }
+            cur = sxdm_u16(b, 4);
+        }
+        for (i = 0; cur !== 65535; i++) {
+            if (i >= count || cur >= count || seen[cur]) {
+                break done;
+            }
+            seen[cur] = 1;
+            var start = pages + cur * page;
+            at = [start + 8];
+            if (!sx_read(c, start, b, 8) || !sxdm_add(c, sxdm_winhelp_leaf_header, start, 8)) {
+                break done;
+            }
+            var unused = sxdm_u16(b, 0);
+            var entries = sxdm_u16(b, 2);
+            var next = sxdm_u16(b, 6);
+            if (unused > page - 8) {
+                break done;
+            }
+            var end = start + page - unused;
+            for (var j = 0; j < entries; j++) {
+                var off;
+                var alloc;
+                var used;
+                if (!sxdm_zero(c, at, end, 256) || end - at[0] < 4 || (off = sx_u32(c, at[0], false)) === null || !sxdm_add(c, sxdm_winhelp_file_pointer, at[0], 4)) {
+                    break done;
+                }
+                at[0] += 4;
+                if ((alloc = sx_u32(c, off, false)) === null || (used = sx_u32(c, off + 4, false)) === null || alloc < 9 || used > (alloc - 9) >>> 0 || !sxdm_span(c, off, alloc) || !sxdm_add(c, sxdm_winhelp_internal_file_header, off, 9)) {
+                    break done;
+                }
+            }
+            if (at[0] !== end) {
+                break done;
+            }
+            cur = next;
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_ue2_documents_build(c) {
+    return sxdm_hlp(c);
+}

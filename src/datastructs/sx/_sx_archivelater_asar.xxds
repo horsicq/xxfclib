@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/asar/xx_asar_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_asar_header_fields = layout([u32("size_pickle_payload_size", SIZE), u32("header_pickle_size", SIZE),
+    u32("header_pickle_payload_size", SIZE), u32("json_size", SIZE)]);
+var sxal_asar_header = sxLayout(0x6020000D, "asar_header", LE, sxal_asar_header_fields);
+function sx_asar_build(c) {
+    return sxal_add(c, sxal_asar_header, 0);
+}

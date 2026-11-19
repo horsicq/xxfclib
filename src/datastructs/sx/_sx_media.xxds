@@ -1,0 +1,192 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_media.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_tga_header_fields = layout([u8("id_length", SIZE), u8("color_map_type", ID), u8("image_type", ID),
+    u16("color_map_first_index"), u16("color_map_length", COUNT), u8("color_map_entry_bits"), u16("x_origin"), u16("y_origin"),
+    u16("width"), u16("height"), u8("pixel_depth_bits"), u8("image_descriptor", FLAGS)]);
+var sxm_tga_header = sxLayout(0x60060001, "tga_header", LE, sxm_tga_header_fields);
+var sxm_be_length32_fields = layout([u32("length", SIZE)]);
+var sxm_be_length32 = sxLayout(0x60060007, "be_length32", BE, sxm_be_length32_fields);
+var sxm_psd_compression_fields = layout([u16("compression", ID)]);
+var sxm_psd_compression = sxLayout(0x60060009, "psd_compression", BE, sxm_psd_compression_fields);
+var sxm_sgi_header_fields = layout([u16("magic", SIGNATURE), u8("storage", ID), u8("bytes_per_channel", SIZE), u16("dimension"),
+    u16("width"), u16("height"), u16("channels", COUNT), u32("minimum_pixel_value"), u32("maximum_pixel_value"),
+    u32("reserved1", RESERVED), chars("image_name", 80, STRING), u32("colormap", ID), blob("reserved2", 404, RESERVED)]);
+var sxm_sgi_header = sxLayout(0x6006000B, "sgi_header", BE, sxm_sgi_header_fields);
+var sxm_le_offset32_fields = layout([u32("offset", OFFSET)]);
+var sxm_le_offset32 = sxLayout(0x6006000E, "le_offset32", LE, sxm_le_offset32_fields);
+var sxm_gimp_gbr_header_fields = layout([u32("header_size", SIZE), u32("version", ID), u32("width"), u32("height"),
+    u32("bytes_per_pixel", SIZE), chars("magic", 4, SIGNATURE), u32("spacing_percent")]);
+var sxm_gimp_gbr_header = sxLayout(0x6006001C, "gimp_gbr_header", BE, sxm_gimp_gbr_header_fields);
+var sxm_gimp_pat_header_fields = layout([u32("header_size", SIZE), u32("version", ID), u32("width"), u32("height"),
+    u32("bytes_per_pixel", SIZE), chars("magic", 4, SIGNATURE)]);
+var sxm_gimp_pat_header = sxLayout(0x6006001D, "gimp_pat_header", BE, sxm_gimp_pat_header_fields);
+var sxm_mat4_header_le_fields = layout([i32("mopt", ID), i32("rows", COUNT), i32("columns", COUNT), i32("imaginary", FLAGS),
+    i32("name_length", SIZE)]);
+var sxm_mat4_header_le = sxLayout(0x6006003A, "mat4_header_le", LE, sxm_mat4_header_le_fields);
+var sxm_mat5_small_tag_le_fields = layout([u32("type_and_length", FLAGS), bytes("inline_data", 4)]);
+var sxm_mat5_small_tag_le = sxLayout(0x6006003D, "mat5_small_tag_le", LE, sxm_mat5_small_tag_le_fields);
+var sxm_mat4_header_be_fields = layout([i32("mopt", ID), i32("rows", COUNT), i32("columns", COUNT), i32("imaginary", FLAGS),
+    i32("name_length", SIZE)]);
+var sxm_mat4_header_be = sxLayout(0x6006003E, "mat4_header_be", BE, sxm_mat4_header_be_fields);
+var sxm_mat5_small_tag_be_fields = layout([u32("type_and_length", FLAGS), bytes("inline_data", 4)]);
+var sxm_mat5_small_tag_be = sxLayout(0x60060041, "mat5_small_tag_be", BE, sxm_mat5_small_tag_be_fields);
+function sxm_span(c, at, n) {
+    if (at > SX_I64_MAX) {
+        return false;
+    }
+    return sx_range(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), n);
+}
+function sxm_raw(c, at, n) {
+    return n <= SX_I64_MAX && sxm_span(c, at, n) && sx_raw(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxm_tail(c, at) {
+    return at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxm_raw(c, at, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at));
+}
+function sxm_fixed(c, l, bytes) {
+    return sx_add(c, l, 0, bytes) && sxm_tail(c, (bytes < 0 ? bytes + SX_U64_MAX : bytes));
+}
+function sx_media_supports(t) {
+    switch (t) {
+    case "TGA":
+    case "PCX":
+    case "DDS":
+    case "PHOTOSHOP_PSD":
+    case "FARBFELD":
+    case "SGI_RGB":
+    case "SUN_RASTER":
+    case "AVS_IMAGE":
+    case "ALIAS_PIX":
+    case "ASTC_TEXTURE":
+    case "PKM_TEXTURE":
+    case "KTX":
+    case "KTX2":
+    case "PVR":
+    case "GIMP_GBR":
+    case "GIMP_PAT":
+    case "ICNS":
+    case "XWD":
+    case "FONT_PSF":
+    case "FONT_PCF":
+    case "FONT_TYPE1_PFB":
+    case "FONT_BMFONT":
+    case "PROCESSING_VLW":
+    case "NUMPY_NPY":
+    case "UCSC_NIB":
+    case "SEQUENCING_SCF":
+    case "SEQUENCING_ABIF":
+    case "GENOMICS_SFF":
+    case "MATLAB_MAT4":
+    case "MATLAB_MAT5":
+    case "HDF4":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_media_build(c) {
+    var h = sxZeros(128);
+    var n;
+    if (c === null || c.f === null || c.size <= 0) {
+        return false;
+    }
+    n = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 128 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 128;
+    if (!sx_read(c, 0, h, n)) {
+        return false;
+    }
+    switch (c.f.file_type) {
+    case "TGA":
+        return sx_tga_build(c);
+    case "PCX":
+        return sx_pcx_build(c, h);
+    case "DDS":
+        return sx_dds_build(c, h, n);
+    case "PHOTOSHOP_PSD":
+        return sx_photoshop_psd_build(c, h, n);
+    case "FARBFELD":
+        return sx_farbfeld_build(c, h, n);
+    case "SGI_RGB":
+        return sx_sgi_rgb_build(c, h, n);
+    case "SUN_RASTER":
+        return sx_sun_raster_build(c, h, n);
+    case "AVS_IMAGE":
+        return sx_avs_image_build(c, h, n);
+    case "ALIAS_PIX":
+        return sx_alias_pix_build(c, n);
+    case "ASTC_TEXTURE":
+        return sx_astc_texture_build(c, h, n);
+    case "PKM_TEXTURE":
+        return sx_pkm_texture_build(c, h, n);
+    case "KTX":
+        return sx_ktx_build(c, h, n);
+    case "KTX2":
+        return sx_ktx2_build(c, h, n);
+    case "PVR":
+        return sx_pvr_build(c, h, n);
+    case "GIMP_GBR":
+    case "GIMP_PAT":
+        var pat = c.f.file_type === "GIMP_PAT";
+        var fixed = pat ? 24 : 28;
+        var header;
+        if (n < fixed || sxMemcmpAt(h, 20, pat ? "GPAT" : "GIMP", 0, 4)) {
+            return false;
+        }
+        header = sxGetU32(h, n, 0, true);
+        return header >= fixed && sxm_span(c, 0, header) && sxm_fixed(c, pat ? sxm_gimp_pat_header : sxm_gimp_gbr_header, fixed);
+    case "ICNS":
+        return sx_icns_build(c, h, n);
+    case "XWD":
+        return sx_xwd_build(c, h, n);
+    case "FONT_PSF":
+        return sx_font_psf_build(c, h, n);
+    case "FONT_PCF":
+        return sx_font_pcf_build(c, h, n);
+    case "FONT_TYPE1_PFB":
+        return sx_font_type1_pfb_build(c);
+    case "FONT_BMFONT":
+        return sx_font_bmfont_build(c, h, n);
+    case "PROCESSING_VLW":
+        return sx_processing_vlw_build(c, h, n);
+    case "NUMPY_NPY":
+        return sx_numpy_npy_build(c, h, n);
+    case "UCSC_NIB":
+        return sx_ucsc_nib_build(c, h, n);
+    case "SEQUENCING_SCF":
+        return sx_sequencing_scf_build(c, h, n);
+    case "SEQUENCING_ABIF":
+        return sx_sequencing_abif_build(c, h, n);
+    case "GENOMICS_SFF":
+        return sx_genomics_sff_build(c, h, n);
+    case "MATLAB_MAT4":
+        return sx_matlab_mat4_build(c);
+    case "MATLAB_MAT5":
+        return sx_matlab_mat5_build(c, h, n);
+    case "HDF4":
+        return sx_hdf4_build(c, h, n);
+    default:
+        return false;
+    }
+}
+function sx_media_comment(r, id) {
+    var s = null;
+    var v;
+    if (r === null || r.name === null || id < 0x60060000 || id > 0x6006FFFF) {
+        return true;
+    }
+    v = sxVarU64(r.value);
+    if (id === sxm_tga_header.id && r.name === "image_type") {
+        s = v === 1 ? "Color mapped" : v === 2 ? "True color" : v === 3 ? "Grayscale" : v === 9 ? "RLE color mapped" : v === 10 ? "RLE true color" : v === 11 ? "RLE grayscale" : null;
+    } else if (id === sxm_psd_compression.id) {
+        s = v === 0 ? "Raw" : v === 1 ? "PackBits RLE" : v === 2 ? "ZIP" : v === 3 ? "ZIP with prediction" : null;
+    } else if (id === sxm_sgi_header.id && r.name === "storage") {
+        s = v === 0 ? "Verbatim" : v === 1 ? "Run length encoding" : null;
+    } else if ((id === sxm_mat5_small_tag_le.id || id === sxm_mat5_small_tag_be.id) && r.name === "type_and_length") {
+        s = "Low 16 bits: data type; high 16 bits: inline byte count";
+    } else if ((id === sxm_mat4_header_le.id || id === sxm_mat4_header_be.id) && r.name === "mopt") {
+        s = "Decimal digits: machine, reserved, precision, matrix type";
+    }
+    return s === null || sxSetComment(r, s);
+}

@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/woloszyk_etracker/xx_woloszyk_etracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxzxm_etracker(c) {
+    var base = 0;
+    if ((sxzxm_eq(c, 0, "!\xB3\x84", 3) || sxzxm_eq(c, 0, "!\xB3\x04", 3)) && sxzxm_eq(c, 0x4BD, "ETracker (C) BY ESI.", 19)) {
+        base = 0x4B3;
+    }
+    var h = [];
+    var v = [0];
+    if (!sxzxm_read(c, base, h, 30) || !sxzxm_put(c, sxzxm_etracker_header, base, 1)) {
+        return false;
+    }
+    var pos = sxzxm16(h, 0);
+    var pt = sxzxm16(h, 2);
+    var sp = sxzxm16(h, 4);
+    var op = sxzxm16(h, 6);
+    var vol = sxzxm16(h, 8);
+    var patterns = 0;
+    var n = 0;
+    for (; n < 1024 && sxzxm_u8(c, base + pos + n, v); n++) {
+        if (v[0] === 255) {
+            n++;
+            break;
+        }
+        if (v[0] < 96) {
+            if (v[0] % 3) {
+                break;
+            }
+            if (Math.floor(v[0] / 3) + 1 > patterns) {
+                patterns = Math.floor(v[0] / 3) + 1;
+            }
+        }
+    }
+    if (!sxzxm_opt(c, sxzxm_etracker_position, base + pos, n) || !sxzxm_opt(c, sxzxm_etracker_pattern, base + pt, patterns)) {
+        return false;
+    }
+    var sc = op >= sp ? Math.floor(((op - sp) >>> 0) / 2) : 0;
+    var oc = vol >= op ? Math.floor(((vol - op) >>> 0) / 2) : 0;
+    if (sc > 32) {
+        sc = 32;
+    }
+    if (oc > 32) {
+        oc = 32;
+    }
+    return sxzxm_opt(c, sxzxm_etracker_sample_offset, base + sp, sc) && sxzxm_opt(c, sxzxm_etracker_ornament_offset, base + op, oc);
+}
+function sx_woloszyk_etracker_build(c) {
+    return sxzxm_etracker(c);
+}

@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_diskremaining.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_diskremaining");
+include("_sx_diskremaining_apple_cassette");
+include("_sx_diskremaining_apple_nib");
+include("_sx_diskremaining_apple_sparse_bundle");
+include("_sx_diskremaining_ddd");
+include("_sx_diskremaining_fei");
+include("_sx_diskremaining_gutenberg");
+include("_sx_diskremaining_savage");
+include("_sx_diskremaining_sfx_sydex_diskette_image");
+include("_sx_diskremaining_speccydos_sdd");
+include("_sx_diskremaining_ti99_pc99");
+include("_sx_diskremaining_trs_80_jv1");
+include("_sx_diskremaining_vtr_disk");
+include("_sx_diskremaining_xbox360_layout");
+
+function fileTypes() { return ["SFX_SYDEX_DISKETTE_IMAGE", "APPLE_SPARSE_BUNDLE", "TRS_80_JV1", "DDD", "FEI", "APPLE_NIB",
+    "TI99_PC99", "VTR_DISK", "SPECCYDOS_SDD", "SAVAGE", "GUTENBERG", "APPLE_CASSETTE", "XBOX360_LAYOUT"]; }
+
+var sx_diskremaining_layouts = [sxdr_sydex_wb_header, sxdr_sydex_image_header, sxdr_sydex_track_header,
+    sxdr_trs80_boot_directory, sxdr_trs80_gat_track, sxdr_trs80_gat_identity, sxdr_trs80_hit, sxdr_trs80_primary_entry,
+    sxdr_trs80_extended_entry, sxdr_trs80_extent, sxdr_trs80_extent_link, sxdr_savage_header, sxdr_vtr_header,
+    sxdr_vtr_track_entry, sxdr_pc99_id_fm, sxdr_pc99_id_mfm, sxdr_pc99_data_fm, sxdr_pc99_data_mfm, sxdr_pc99_data_crc,
+    sxdr_apple_gcr_address, sxdr_apple_gcr_data_prefix, sxdr_apple_gcr_data_suffix, sxdr_gutenberg_link, sxdr_gutenberg_volume,
+    sxdr_gutenberg_entry, sxdr_cassette_riff, sxdr_cassette_chunk, sxdr_cassette_pcm_format, sxdr_xbox_fatx_header_le,
+    sxdr_xbox_fatx_header_be, sxdr_plist_tag, sxdr_plist_key, sxdr_plist_string, sxdr_plist_integer, sxdr_plist_disk_size,
+    sxdr_plist_band_size, sxdr_plist_bundle_version, sxdr_trs80_gat_lockout, sxdr_trs80_gat_system, sxdr_sydex_description,
+    sxdr_fei_id_phase0, sxdr_fei_id_phase1, sxdr_fei_id_phase2, sxdr_fei_id_phase3, sxdr_fei_id_phase4, sxdr_fei_id_phase5,
+    sxdr_fei_id_phase6, sxdr_fei_id_phase7, sxdr_ddd_initial_dictionary, sxdr_speccydos_boot_header,
+    sxdr_cassette_pcm_extension, sxdr_xbox_fatx_name_le];
+
+function structs() {
+    return sxCatalog([sxdr_sydex_wb_header, sxdr_sydex_image_header, sxdr_sydex_track_header, sxdr_trs80_boot_directory,
+        sxdr_trs80_gat_track, sxdr_trs80_gat_identity, sxdr_trs80_hit, sxdr_trs80_primary_entry, sxdr_trs80_extended_entry,
+        sxdr_trs80_extent, sxdr_trs80_extent_link, sxdr_savage_header, sxdr_vtr_header, sxdr_vtr_track_entry, sxdr_pc99_id_fm,
+        sxdr_pc99_id_mfm, sxdr_pc99_data_fm, sxdr_pc99_data_mfm, sxdr_pc99_data_crc, sxdr_apple_gcr_address,
+        sxdr_apple_gcr_data_prefix, sxdr_apple_gcr_data_suffix, sxdr_gutenberg_link, sxdr_gutenberg_volume,
+        sxdr_gutenberg_entry, sxdr_cassette_riff, sxdr_cassette_chunk, sxdr_cassette_pcm_format, sxdr_xbox_fatx_header_le,
+        sxdr_xbox_fatx_header_be, sxdr_plist_tag, sxdr_plist_key, sxdr_plist_string, sxdr_plist_integer, sxdr_plist_disk_size,
+        sxdr_plist_band_size, sxdr_plist_bundle_version, sxdr_trs80_gat_lockout, sxdr_trs80_gat_system, sxdr_sydex_description,
+        sxdr_fei_id_phase0, sxdr_fei_id_phase1, sxdr_fei_id_phase2, sxdr_fei_id_phase3, sxdr_fei_id_phase4, sxdr_fei_id_phase5,
+        sxdr_fei_id_phase6, sxdr_fei_id_phase7, sxdr_ddd_initial_dictionary, sxdr_speccydos_boot_header,
+        sxdr_cassette_pcm_extension, sxdr_xbox_fatx_name_le], sx_diskremaining_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_diskremaining_build, false);
+}

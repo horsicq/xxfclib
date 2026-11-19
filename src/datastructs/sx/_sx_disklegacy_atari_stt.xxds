@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_stt/xx_atari_stt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_stt_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID), u16("flags", FLAGS),
+    u16("all_track_flags", FLAGS), u16("track_count", COUNT), u16("side_count", COUNT)]);
+var sxdleg_stt_header = sxLayout(0x60750013, "stt_header", LE, sxdleg_stt_header_fields);
+var sxdleg_stt_track_entry_fields = layout([u32("track_offset", OFFSET), u16("track_size", SIZE)]);
+var sxdleg_stt_track_entry = sxLayout(0x60750014, "stt_track_entry", LE, sxdleg_stt_track_entry_fields);
+var sxdleg_stt_track_header_fields = layout([chars("magic", 4, SIGNATURE), u16("data_flags", FLAGS)]);
+var sxdleg_stt_track_header = sxLayout(0x60750015, "stt_track_header", LE, sxdleg_stt_track_header_fields);
+var sxdleg_stt_sector_section_fields = layout([u16("end_offset", OFFSET), u16("flags", FLAGS), u16("sector_count", COUNT)]);
+var sxdleg_stt_sector_section = sxLayout(0x60750016, "stt_sector_section", LE, sxdleg_stt_sector_section_fields);
+var sxdleg_stt_sector_descriptor_fields = layout([u8("cylinder"), u8("side"), u8("sector_id", ID), u8("size_code"),
+    field("address_crc", "byte[2]", 2, CHECKSUM), u16("data_offset", OFFSET), u16("data_size", SIZE)]);
+var sxdleg_stt_sector_descriptor = sxLayout(0x60750017, "stt_sector_descriptor", LE, sxdleg_stt_sector_descriptor_fields);
+var sxdleg_stt_raw_section_fields = layout([u16("end_offset", OFFSET), u16("flags", FLAGS), u16("data_offset", OFFSET),
+    u16("data_size", SIZE)]);
+var sxdleg_stt_raw_section = sxLayout(0x60750018, "stt_raw_section", LE, sxdleg_stt_raw_section_fields);
+var sxdleg_stt_unknown_section_fields = layout([u16("end_offset", OFFSET)]);
+var sxdleg_stt_unknown_section = sxLayout(0x60750019, "stt_unknown_section", LE, sxdleg_stt_unknown_section_fields);
+function sxdleg_stt(c) {
+    var h = [];
+    var e = [];
+    if (!sxdleg_read(c, 0, h, 0, 14) || sxMemcmp(h, "STEM", 4)) {
+        return false;
+    }
+    var tracks = sxdleg16(h, 10, 0);
+    var sides = sxdleg16(h, 12, 0);
+    if (!tracks || tracks > 86 || !sides || sides > 2 || !sxdleg_span(c, 14, (sxMul32(tracks, sides) * 6) >>> 0) || !sxdleg_put(c, sxdleg_stt_header, 0, 1) || !sxdleg_put(c, sxdleg_stt_track_entry, 14, sxMul32(tracks, sides))) {
+        return false;
+    }
+    for (var i = 0; i < sxMul32(tracks, sides); i++) {
+        if (!sxdleg_read(c, (14 + ((i * 6) >>> 0)) >>> 0, e, 0, 6)) {
+            return false;
+        }
+        var p = sxdleg32(e, 0, 0);
+        var z = sxdleg16(e, 4, 0);
+        if (z < 6 || !sxdleg_span(c, p, z) || !sxdleg_read(c, p, e, 0, 6) || sxMemcmp(e, "TRCK", 4)) {
+            continue;
+        }
+        if (!sxdleg_put(c, sxdleg_stt_track_header, p, 1)) {
+            return false;
+        }
+        var flags = sxdleg16(e, 4, 0);
+        var q = 6;
+        for (var bit = 0; bit < 16; bit++) {
+            if (!((flags & (1 << bit) >>> 0) >>> 0)) {
+                continue;
+            }
+            var head = bit === 0 ? 6 : bit === 1 ? 8 : 2;
+            if (head > sxU64(z - q) || !sxdleg_read(c, p + q, e, 0, head)) {
+                break;
+            }
+            var end = sxdleg16(e, 0, 0);
+            if (end < q + head || end > z) {
+                break;
+            }
+            var l = bit === 0 ? sxdleg_stt_sector_section : bit === 1 ? sxdleg_stt_raw_section : sxdleg_stt_unknown_section;
+            if (!sxdleg_put(c, l, p + q, 1)) {
+                return false;
+            }
+            if (bit === 0) {
+                var n = sxdleg16(e, 4, 0);
+                if (n > 256 || n > Math.floor(sxU64(sxU64(end - q) - 6) / 10)) {
+                    break;
+                }
+                if (!sxdleg_put(c, sxdleg_stt_sector_descriptor, p + q + 6, n)) {
+                    return false;
+                }
+            }
+            q = end;
+        }
+    }
+    return true;
+}
+function sx_atari_stt_build(c) {
+    return sxdleg_stt(c);
+}

@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/multitrackcontainer/xx_multitrackcontainer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxpcmore_text(c, p, n) {
+    if (!sxpcmore_span(c, p, n)) {
+        return false;
+    }
+    if (!n || c.count >= 24000) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < a + z && a < p + n) {
+            return true;
+        }
+    }
+    return sx_add(c, sxpcmore_pcmore_text, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxpcmore_mtc_list(c, p, end, depth, work) {
+    while (p <= end && sxU64(end - p) >= 8 && work[0] < 1000000) {
+        var h = [];
+        if (!sxpcmore_read(c, p, h, 8)) {
+            return false;
+        }
+        work[0]++;
+        if (!sxpcmore_put(c, sxpcmore_mtc_chunk, p, 1)) {
+            return false;
+        }
+        var n = sxpcmore_be32(h, 4);
+        var body = p + 8;
+        if (n > sxU64(end - body)) {
+            return true;
+        }
+        if (depth === 0 && !sxMemcmp(h, "TRCK", 4)) {
+            if (!sxpcmore_mtc_list(c, body, body + n, 1, work)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "NAME", 4) || !sxMemcmp(h, "AUTH", 4) || !sxMemcmp(h, "ANNO", 4) || !sxMemcmp(h, "PROP", 4)) {
+            if (!sxpcmore_text(c, body, n)) {
+                return false;
+            }
+        }
+        p = body + n;
+        if (sxAnd64(n, 1)) {
+            if (p === end) {
+                return true;
+            }
+            p++;
+        }
+    }
+    return true;
+}
+function sxpcmore_mtc(c) {
+    var h = [];
+    if (!sxpcmore_read(c, 0, h, 8) || sxMemcmp(h, "MTC1", 4)) {
+        return false;
+    }
+    if (!sxpcmore_put(c, sxpcmore_mtc_chunk, 0, 1)) {
+        return false;
+    }
+    var n = sxpcmore_be32(h, 4);
+    var work = [0];
+    return !sxpcmore_span(c, 8, n) || sxpcmore_mtc_list(c, 8, 8 + n, 0, work);
+}
+function sx_multitrackcontainer_build(c) {
+    var ok = false;
+    ok = sxpcmore_mtc(c);
+    return !!(c.count && sxpcmore_finish(c));
+}

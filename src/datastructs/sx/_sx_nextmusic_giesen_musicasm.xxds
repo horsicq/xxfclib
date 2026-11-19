@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/giesen_musicasm/xx_giesen_musicasm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_ma_speed_fields = layout([u8("speed")]);
+var sxnextm_ma_speed = sxLayout(0x608B0068, "ma_speed", LE, sxnextm_ma_speed_fields);
+var sxnextm_ma_instrument_fields = layout([u8("sample_number", ID), u8("attack"), u8("decay_sustain", FLAGS),
+    u8("vibrato_delay"), u8("release"), u8("vibrato_speed"), u8("vibrato_level"), u8("arpeggio", FLAGS),
+    u8("fx_arpeggio_speed_loop", FLAGS), u8("hold"), u8("key_wave_rate", FLAGS), u8("wave_level_speed", FLAGS),
+    blob("unknown", 4)]);
+var sxnextm_ma_instrument = sxLayout(0x608B0069, "ma_instrument", LE, sxnextm_ma_instrument_fields);
+function sxnextm_ma(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var limit = e < 0x700 ? e : 0x700;
+    var p = [0];
+    var n = [0];
+    var speeds = [0];
+    var subs = [0];
+    var base = [0];
+    var ip = [0];
+    var sp = [0];
+    var tp = [0];
+    var ins = [0];
+    var samples = [0];
+    var tracks = [0];
+    var minpos = SX_U64_MAX;
+    var maxtrack = 0;
+    var have_track = false;
+    if (e < 0x622 || !sxnextm_eq(v, 0, "`\x00", 2, e) || !sxnextm_eq(v, 4, "`\x00", 2, e) || !sxnextm_eq(v, 8, "`\x00", 2, e) || !sxnextm_eq(v, 12, "H\xE7", 2, e) || !sxnextm_rel(v, 2, 2, 2, p, limit) || !sxnextm_find16(v, p, 0xB07C, sxU64(limit - 4), e) || !sxnextm_be(v, p[0] + 2, 2, n, 0, e) || !n[0] || n[0] > 256) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxnextm_find16(v, p, 0x49FA, sxU64(limit - 4), e) || !sxnextm_rel(v, p[0] + 2, 2, p[0] + 2, speeds, e)) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxnextm_find16(v, p, 0x49FB, sxU64(limit - 4), e) || !sxnextm_rel(v, p[0] + 3, 1, p[0] + 2, subs, e)) {
+        return false;
+    }
+    p[0] = 12;
+    if (!sxnextm_find16(v, p, 0x43FA, sxU64(limit - 4), e) || !sxnextm_rel(v, p[0] + 2, 2, p[0] + 2, base, e)) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxnextm_find16(v, p, 0xD3FA, sxU64(limit - 8), e) || !sxnextm_rel(v, p[0] + 2, 2, p[0] + 2, ip, e) || !sxnextm_eq(v, p[0] + 4, "\xD5\xFA", 2, e) || !sxnextm_rel(v, p[0] + 6, 2, p[0] + 6, sp, e)) {
+        return false;
+    }
+    p[0] += 8;
+    for (; p[0] + 2 < limit; p[0] += 2) {
+        var op = [0];
+        if (!sxnextm_u(v, p[0], 1, op, 0, e)) {
+            return false;
+        }
+        if (op[0] === 0x61) {
+            break;
+        }
+    }
+    if (p[0] + 2 >= limit || !sxnextm_rel(v, p[0] + 1, 1, p[0] + 2, p, limit) || !sxnextm_find16(v, p, 0xDBFA, sxU64(limit - 4), e) || !sxnextm_rel(v, p[0] + 2, 2, p[0] + 2, tp, e) || !sxnextm_rel32(v, ip[0], base[0], ins, 0, e) || !sxnextm_rel32(v, sp[0], base[0], samples, 0, e) || !sxnextm_rel32(v, tp[0], base[0], tracks, 0, e)) {
+        return false;
+    }
+    if (!sxnextm_row(v, sxnextm_ma_relative32, ip[0], e) || !sxnextm_row(v, sxnextm_ma_relative32, sp[0], e) || !sxnextm_row(v, sxnextm_ma_relative32, tp[0], e) || !sxnextm_table(v, sxnextm_ma_speed, speeds[0], n[0], e) || !sxnextm_table(v, sxnextm_ma_subsong, subs[0], n[0], e)) {
+        return false;
+    }
+    for (var i = 0; i < n[0] * 4; i++) {
+        var rel = [0];
+        var pos = [0];
+        if (!sxnextm_be(v, subs[0] + i * 2, 2, rel, 0, e) || rel[0] > sxU64(e - base[0])) {
+            return false;
+        }
+        pos[0] = base[0] + rel[0];
+        if (pos[0] < minpos) {
+            minpos = pos[0];
+        }
+        for (var j = 0; ; j++) {
+            var track = [0];
+            if (j >= 65536 || !sxnextm_u(v, pos[0], 1, track, 0, e) || !sxnextm_take(v, sxnextm_ma_position, pos, 1, e)) {
+                return false;
+            }
+            if (track[0] >= 254) {
+                break;
+            }
+            if (track[0] + 1 > maxtrack) {
+                maxtrack = track[0] + 1;
+            }
+            have_track = true;
+        }
+    }
+    if (have_track) {
+        if (!sxnextm_table(v, sxnextm_ma_track_offset, base[0], maxtrack, e)) {
+            return false;
+        }
+        for (i = 0; i < maxtrack; i++) {
+            var x = [0];
+            if (!sxnextm_be(v, base[0] + i * 2, 2, x, 0, e) || x[0] > sxU64(e - tracks[0])) {
+                return false;
+            }
+        }
+    }
+    if (ins[0] > samples[0] || samples[0] > minpos || sxU64(samples[0] - ins[0]) % 16 || sxU64(minpos - samples[0]) % 24 || !sxnextm_table(v, sxnextm_ma_instrument, ins[0], Math.floor(sxU64(samples[0] - ins[0]) / 16), e) || !sxnextm_table(v, sxnextm_ma_sample, samples[0], Math.floor(sxU64(minpos - samples[0]) / 24), e)) {
+        return false;
+    }
+    return true;
+}
+function sx_giesen_musicasm_build(v) {
+    return sxnextm_ma(v);
+}

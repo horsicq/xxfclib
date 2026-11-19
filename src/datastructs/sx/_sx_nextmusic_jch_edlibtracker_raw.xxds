@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/jch_edlibtracker_raw/xx_jch_edlibtracker_raw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_d00_end_fields = layout([u16("end_marker", ID)]);
+var sxnextm_d00_end = sxLayout(0x608B003F, "d00_end", LE, sxnextm_d00_end_fields);
+var sxnextm_d00_speed_fields = layout([u16("track_speed")]);
+var sxnextm_d00_speed = sxLayout(0x608B0041, "d00_speed", LE, sxnextm_d00_speed_fields);
+function sxnextm_d00(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var ver = [0];
+    var n = [0];
+    var p = [0];
+    var q = [0];
+    if (!sxnextm_u(v, 0, 1, ver, 0, e) || ver[0] > 1 || !sxnextm_u(v, 2, 1, n, 0, e) || !n[0] || !sxnextm_row(v, sxnextm_d00_header, 0, e)) {
+        return false;
+    }
+    if (ver[0] === 1 && !sxnextm_row(v, sxnextm_offset16le, 11, e)) {
+        return false;
+    }
+    if (!sxnextm_row(v, sxnextm_d00_end, ver[0] ? 13 : 11, e) || !sxnextm_u(v, 3, 2, p, 0, e) || !sxnextm_table(v, sxnextm_d00_tracks, p[0], n[0], e)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        for (var ch = 0; ch < 9; ch++) {
+            if (!sxnextm_u(v, p[0] + i * 32 + ((ch * 2) >>> 0), 2, q, 0, e)) {
+                return false;
+            }
+            if (q[0] && !sxnextm_row(v, sxnextm_d00_speed, q[0], e)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_jch_edlibtracker_raw_build(v) {
+    return sxnextm_d00(v);
+}

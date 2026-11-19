@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zoo/xx_zoo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_zoo_header_fields = layout([chars("banner", 20, STRING), u32("magic", SIGNATURE), u32("first_directory", OFFSET),
+    u32("negative_first_directory"), u8("version_major"), u8("version_minor")]);
+var sx_p_zoo_header = sxLayout(0x60070018, "zoo_header", LE, sx_p_zoo_header_fields);
+var sx_p_zoo_variable_fields = layout([u16("variable_size", SIZE), i8("timezone"), u16("header_crc16", CHECKSUM),
+    u8("name_size", SIZE), u8("directory_size", SIZE)]);
+var sx_p_zoo_variable = sxLayout(0x6007001A, "zoo_variable", LE, sx_p_zoo_variable_fields);
+var sx_p_zoo_attributes_fields = layout([u16("system_id", ID), field("attributes", "uint24", 3, FLAGS)]);
+var sx_p_zoo_attributes = sxLayout(0x6007004F, "zoo_attributes", LE, sx_p_zoo_attributes_fields);
+function sx_p_zoo(c) {
+    var magic;
+    var first;
+    if ((magic = sx_u32(c, 20, false)) === null || magic !== 0xFDC4A7DC || (first = sx_u32(c, 24, false)) === null || !sx_add(c, sx_p_zoo_header, 0, 34)) {
+        return false;
+    }
+    var off = first;
+    for (var steps = 0; off && steps < 100000; steps++) {
+        var type = [0];
+        var next;
+        var data;
+        var packed;
+        var comment;
+        var comment_size;
+        if ((magic = sx_u32(c, off, false)) === null || magic !== 0xFDC4A7DC || !sx_p_byte(c, off + 4, type) || (next = sx_u32(c, off + 6, false)) === null || (data = sx_u32(c, off + 10, false)) === null || (packed = sx_u32(c, off + 24, false)) === null || (comment = sx_u32(c, off + 32, false)) === null || (comment_size = sx_u16(c, off + 36, false)) === null || !sx_add(c, sx_p_zoo_directory, off, 51) || !sx_p_span(c, data, packed) || !sx_p_span(c, comment, comment_size)) {
+            return false;
+        }
+        if (type[0] === 2) {
+            var n;
+            var name = [0];
+            var dir = [0];
+            if ((n = sx_u16(c, off + 51, false)) === null || !sx_p_span(c, (off + 53 < 0 ? off + 53 + SX_U64_MAX : off + 53), n)) {
+                return false;
+            }
+            if (n >= 5) {
+                if (!sx_read(c, off + 56, name, 1) || !sx_read(c, off + 57, dir, 1) || name[0] + dir[0] > (n - 5) >>> 0 || !sx_add(c, sx_p_zoo_variable, off + 51, 7)) {
+                    return false;
+                }
+                if (n >= 10 + name[0] + dir[0] && !sx_add(c, sx_p_zoo_attributes, off + 58 + name[0] + dir[0], 5)) {
+                    return false;
+                }
+            } else if (!sx_add(c, sx_p_length16, off + 51, 2)) {
+                return false;
+            }
+        } else if (type[0] !== 1) {
+            return false;
+        }
+        if (!next) {
+            return true;
+        }
+        if (next <= off) {
+            return false;
+        }
+        off = next;
+    }
+    return off === 0;
+}
+function sx_zoo_build(c) {
+    return sx_p_zoo(c);
+}

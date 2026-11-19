@@ -1,0 +1,179 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/amber_prmtop/xx_amber_prmtop_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_format_string_fields = layout([field("format_string", "char", 0, STRING)]);
+var sxsch_format_string = sxLayout(0x60610012, "chemistry_format_string", LE, sxsch_format_string_fields);
+var sxsch_amber_flag_fields = layout([field("amber_flag", "char", 0, STRING)]);
+var sxsch_amber_flag = sxLayout(0x6061007D, "chemistry_amber_flag", LE, sxsch_amber_flag_fields);
+var sxsch_amber_atom_name_fields = layout([field("amber_atom_name", "char", 0, STRING)]);
+var sxsch_amber_atom_name = sxLayout(0x6061007E, "chemistry_amber_atom_name", LE, sxsch_amber_atom_name_fields);
+var sxsch_amber_residue_label_fields = layout([field("amber_residue_label", "char", 0, STRING)]);
+var sxsch_amber_residue_label = sxLayout(0x6061007F, "chemistry_amber_residue_label", LE, sxsch_amber_residue_label_fields);
+var sxsch_amber_atom_type_index_fields = layout([field("amber_atom_type_index", "ascii_signed", 0)]);
+var sxsch_amber_atom_type_index = sxLayout(0x60610080, "chemistry_amber_atom_type_index", LE, sxsch_amber_atom_type_index_fields);
+var sxsch_amber_excluded_count_fields = layout([field("amber_excluded_count", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_excluded_count = sxLayout(0x60610081, "chemistry_amber_excluded_count", LE, sxsch_amber_excluded_count_fields);
+var sxsch_amber_residue_pointer_fields = layout([field("amber_residue_pointer", "ascii_signed", 0)]);
+var sxsch_amber_residue_pointer = sxLayout(0x60610082, "chemistry_amber_residue_pointer", LE, sxsch_amber_residue_pointer_fields);
+var sxsch_amber_charge_fields = layout([field("amber_charge", "ascii_real", 0)]);
+var sxsch_amber_charge = sxLayout(0x60610083, "chemistry_amber_charge", LE, sxsch_amber_charge_fields);
+var sxsch_amber_mass_fields = layout([field("amber_mass", "ascii_real", 0)]);
+var sxsch_amber_mass = sxLayout(0x60610084, "chemistry_amber_mass", LE, sxsch_amber_mass_fields);
+var sxsch_amber_integer_fields = layout([field("amber_integer", "ascii_signed", 0)]);
+var sxsch_amber_integer = sxLayout(0x60610085, "chemistry_amber_integer", LE, sxsch_amber_integer_fields);
+var sxsch_amber_real_fields = layout([field("amber_real", "ascii_real", 0)]);
+var sxsch_amber_real = sxLayout(0x60610086, "chemistry_amber_real", LE, sxsch_amber_real_fields);
+var sxsch_amber_string_fields = layout([field("amber_string", "char", 0, STRING)]);
+var sxsch_amber_string = sxLayout(0x60610087, "chemistry_amber_string", LE, sxsch_amber_string_fields);
+var sxsch_amber_natom_fields = layout([field("amber_natom", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_natom = sxLayout(0x60610088, "chemistry_amber_natom", LE, sxsch_amber_natom_fields);
+var sxsch_amber_ntypes_fields = layout([field("amber_ntypes", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_ntypes = sxLayout(0x60610089, "chemistry_amber_ntypes", LE, sxsch_amber_ntypes_fields);
+var sxsch_amber_nbonh_fields = layout([field("amber_nbonh", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nbonh = sxLayout(0x6061008A, "chemistry_amber_nbonh", LE, sxsch_amber_nbonh_fields);
+var sxsch_amber_mbona_fields = layout([field("amber_mbona", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_mbona = sxLayout(0x6061008B, "chemistry_amber_mbona", LE, sxsch_amber_mbona_fields);
+var sxsch_amber_ntheth_fields = layout([field("amber_ntheth", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_ntheth = sxLayout(0x6061008C, "chemistry_amber_ntheth", LE, sxsch_amber_ntheth_fields);
+var sxsch_amber_mtheta_fields = layout([field("amber_mtheta", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_mtheta = sxLayout(0x6061008D, "chemistry_amber_mtheta", LE, sxsch_amber_mtheta_fields);
+var sxsch_amber_nphih_fields = layout([field("amber_nphih", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nphih = sxLayout(0x6061008E, "chemistry_amber_nphih", LE, sxsch_amber_nphih_fields);
+var sxsch_amber_mphia_fields = layout([field("amber_mphia", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_mphia = sxLayout(0x6061008F, "chemistry_amber_mphia", LE, sxsch_amber_mphia_fields);
+var sxsch_amber_nhparm_fields = layout([field("amber_nhparm", "ascii_signed", 0)]);
+var sxsch_amber_nhparm = sxLayout(0x60610090, "chemistry_amber_nhparm", LE, sxsch_amber_nhparm_fields);
+var sxsch_amber_nparm_fields = layout([field("amber_nparm", "ascii_signed", 0)]);
+var sxsch_amber_nparm = sxLayout(0x60610091, "chemistry_amber_nparm", LE, sxsch_amber_nparm_fields);
+var sxsch_amber_next_fields = layout([field("amber_next", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_next = sxLayout(0x60610092, "chemistry_amber_next", LE, sxsch_amber_next_fields);
+var sxsch_amber_nres_fields = layout([field("amber_nres", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nres = sxLayout(0x60610093, "chemistry_amber_nres", LE, sxsch_amber_nres_fields);
+var sxsch_amber_nbona_fields = layout([field("amber_nbona", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nbona = sxLayout(0x60610094, "chemistry_amber_nbona", LE, sxsch_amber_nbona_fields);
+var sxsch_amber_ntheta_fields = layout([field("amber_ntheta", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_ntheta = sxLayout(0x60610095, "chemistry_amber_ntheta", LE, sxsch_amber_ntheta_fields);
+var sxsch_amber_nphia_fields = layout([field("amber_nphia", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nphia = sxLayout(0x60610096, "chemistry_amber_nphia", LE, sxsch_amber_nphia_fields);
+var sxsch_amber_numbnd_fields = layout([field("amber_numbnd", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_numbnd = sxLayout(0x60610097, "chemistry_amber_numbnd", LE, sxsch_amber_numbnd_fields);
+var sxsch_amber_numang_fields = layout([field("amber_numang", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_numang = sxLayout(0x60610098, "chemistry_amber_numang", LE, sxsch_amber_numang_fields);
+var sxsch_amber_nptra_fields = layout([field("amber_nptra", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nptra = sxLayout(0x60610099, "chemistry_amber_nptra", LE, sxsch_amber_nptra_fields);
+var sxsch_amber_natyp_fields = layout([field("amber_natyp", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_natyp = sxLayout(0x6061009A, "chemistry_amber_natyp", LE, sxsch_amber_natyp_fields);
+var sxsch_amber_nphb_fields = layout([field("amber_nphb", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nphb = sxLayout(0x6061009B, "chemistry_amber_nphb", LE, sxsch_amber_nphb_fields);
+var sxsch_amber_ifpert_fields = layout([field("amber_ifpert", "ascii_signed", 0)]);
+var sxsch_amber_ifpert = sxLayout(0x6061009C, "chemistry_amber_ifpert", LE, sxsch_amber_ifpert_fields);
+var sxsch_amber_nbper_fields = layout([field("amber_nbper", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nbper = sxLayout(0x6061009D, "chemistry_amber_nbper", LE, sxsch_amber_nbper_fields);
+var sxsch_amber_ngper_fields = layout([field("amber_ngper", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_ngper = sxLayout(0x6061009E, "chemistry_amber_ngper", LE, sxsch_amber_ngper_fields);
+var sxsch_amber_ndper_fields = layout([field("amber_ndper", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_ndper = sxLayout(0x6061009F, "chemistry_amber_ndper", LE, sxsch_amber_ndper_fields);
+var sxsch_amber_mbper_fields = layout([field("amber_mbper", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_mbper = sxLayout(0x606100A0, "chemistry_amber_mbper", LE, sxsch_amber_mbper_fields);
+var sxsch_amber_mgper_fields = layout([field("amber_mgper", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_mgper = sxLayout(0x606100A1, "chemistry_amber_mgper", LE, sxsch_amber_mgper_fields);
+var sxsch_amber_mdper_fields = layout([field("amber_mdper", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_mdper = sxLayout(0x606100A2, "chemistry_amber_mdper", LE, sxsch_amber_mdper_fields);
+var sxsch_amber_ifbox_fields = layout([field("amber_ifbox", "ascii_signed", 0)]);
+var sxsch_amber_ifbox = sxLayout(0x606100A3, "chemistry_amber_ifbox", LE, sxsch_amber_ifbox_fields);
+var sxsch_amber_nmxrs_fields = layout([field("amber_nmxrs", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_nmxrs = sxLayout(0x606100A4, "chemistry_amber_nmxrs", LE, sxsch_amber_nmxrs_fields);
+var sxsch_amber_ifcap_fields = layout([field("amber_ifcap", "ascii_signed", 0)]);
+var sxsch_amber_ifcap = sxLayout(0x606100A5, "chemistry_amber_ifcap", LE, sxsch_amber_ifcap_fields);
+var sxsch_amber_numextra_fields = layout([field("amber_numextra", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_numextra = sxLayout(0x606100A6, "chemistry_amber_numextra", LE, sxsch_amber_numextra_fields);
+var sxsch_amber_ncopy_fields = layout([field("amber_ncopy", "ascii_signed", 0, COUNT)]);
+var sxsch_amber_ncopy = sxLayout(0x606100A7, "chemistry_amber_ncopy", LE, sxsch_amber_ncopy_fields);
+function sxsch_prmtop(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(4, sxNew_sxsch_token);
+    var n;
+    var width = 0;
+    var pointer_index = 0;
+    var real = false;
+    var chars = false;
+    var ptr = false;
+    var layout = sxsch_amber_string;
+    if (!sxsch_line(q, l)) {
+        return false;
+    }
+    {
+        if (!sxsch_emit(q, sxsch_text_value, sxCopy_sxsch_token(null, l))) {
+            return false;
+        }
+    }
+    while (sxsch_line(q, l)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (l.z && q.b[l.a] === 37 /*%*/) {
+            n = sxsch_split(q, sxCopy_sxsch_token(null, l), t, 4, false);
+            if (n === 2 && sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "%FLAG")) {
+                {
+                    if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsch_emit(q, sxsch_amber_flag, sxCopy_sxsch_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+                var name = sxCopy_sxsch_token(null, t[1]);
+                if (!sxsch_line(q, l)) {
+                    return false;
+                }
+                {
+                    if (!sxsch_emit(q, sxsch_format_string, sxCopy_sxsch_token(null, l))) {
+                        return false;
+                    }
+                }
+                sxCopy_sxsch_token(l, sxsch_trim(q, sxCopy_sxsch_token(null, l)));
+                ptr = sxsch_eq(q, sxCopy_sxsch_token(null, name), "POINTERS");
+                pointer_index = 0;
+                chars = sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(20a4)") || sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(20A4)") || sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(1a80)") || sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(1A80)");
+                real = sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(5E16.8)");
+                width = chars ? sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(1a80)") || sxsch_eq(q, sxCopy_sxsch_token(null, l), "%FORMAT(1A80)") ? 80 : 4 : real ? 16 : 8;
+                layout = sxsch_eq(q, sxCopy_sxsch_token(null, name), "ATOM_NAME") ? sxsch_amber_atom_name : sxsch_eq(q, sxCopy_sxsch_token(null, name), "CHARGE") ? sxsch_amber_charge : sxsch_eq(q, sxCopy_sxsch_token(null, name), "MASS") ? sxsch_amber_mass : sxsch_eq(q, sxCopy_sxsch_token(null, name), "ATOM_TYPE_INDEX") ? sxsch_amber_atom_type_index : sxsch_eq(q, sxCopy_sxsch_token(null, name), "NUMBER_EXCLUDED_ATOMS") ? sxsch_amber_excluded_count : sxsch_eq(q, sxCopy_sxsch_token(null, name), "RESIDUE_LABEL") ? sxsch_amber_residue_label : sxsch_eq(q, sxCopy_sxsch_token(null, name), "RESIDUE_POINTER") ? sxsch_amber_residue_pointer : sxsch_eq(q, sxCopy_sxsch_token(null, name), "ATOMIC_NUMBER") ? sxsch_atomic_number : chars ? sxsch_amber_string : real ? sxsch_amber_real : sxsch_amber_integer;
+            } else {
+                {
+                    if (!sxsch_emit(q, sxsch_comment, sxCopy_sxsch_token(null, l))) {
+                        return false;
+                    }
+                }
+            }
+        } else {
+            if (!width || l.z % width) {
+                return false;
+            }
+            for (var o = 0; o < l.z; o += width) {
+                var item = layout;
+                if (ptr) {
+                    var pointers = [sxsch_amber_natom, sxsch_amber_ntypes, sxsch_amber_nbonh, sxsch_amber_mbona, sxsch_amber_ntheth, sxsch_amber_mtheta, sxsch_amber_nphih, sxsch_amber_mphia, sxsch_amber_nhparm, sxsch_amber_nparm, sxsch_amber_next, sxsch_amber_nres, sxsch_amber_nbona, sxsch_amber_ntheta, sxsch_amber_nphia, sxsch_amber_numbnd, sxsch_amber_numang, sxsch_amber_nptra, sxsch_amber_natyp, sxsch_amber_nphb, sxsch_amber_ifpert, sxsch_amber_nbper, sxsch_amber_ngper, sxsch_amber_ndper, sxsch_amber_mbper, sxsch_amber_mgper, sxsch_amber_mdper, sxsch_amber_ifbox, sxsch_amber_nmxrs, sxsch_amber_ifcap, sxsch_amber_numextra, sxsch_amber_ncopy];
+                    if (!sxsch_trim(q, sxCopy_sxsch_token(null, { a: l.a + o, z: width })).z) {
+                        continue;
+                    }
+                    if (pointer_index >= 32) {
+                        return false;
+                    }
+                    item = pointers[pointer_index++];
+                }
+                if (!sxsch_column(q, item, sxCopy_sxsch_token(null, l), o >>> 0, width)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_amber_prmtop_build(q) {
+    return sxsch_prmtop(q);
+}

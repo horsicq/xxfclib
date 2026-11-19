@@ -1,0 +1,83 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/fatx/xx_fatx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_fatx_superblock_fields = layout([chars("magic", 4, SIGNATURE), u32("volume_id", ID),
+    u32("sectors_per_cluster", COUNT), u32("root_directory_cluster"), field("partition_name", "uint16[32]", 64)]);
+var sxdleg_fatx_superblock = sxLayout(0x6075003C, "fatx_superblock", LE, sxdleg_fatx_superblock_fields);
+var sxdleg_fatx_fat16_entry_fields = layout([u16("next_cluster")]);
+var sxdleg_fatx_fat16_entry = sxLayout(0x6075003D, "fatx_fat16_entry", LE, sxdleg_fatx_fat16_entry_fields);
+var sxdleg_fatx_fat32_entry_fields = layout([u32("next_cluster")]);
+var sxdleg_fatx_fat32_entry = sxLayout(0x6075003E, "fatx_fat32_entry", LE, sxdleg_fatx_fat32_entry_fields);
+var sxdleg_fatx_directory_entry_fields = layout([u8("name_length", COUNT), u8("attributes", FLAGS), chars("name", 42, NONE),
+    u32("first_cluster"), u32("file_size", SIZE), u16("modification_time"), u16("modification_date"), u16("creation_time"),
+    u16("creation_date"), u16("access_time"), u16("access_date")]);
+var sxdleg_fatx_directory_entry = sxLayout(0x6075003F, "fatx_directory_entry", LE, sxdleg_fatx_directory_entry_fields);
+function sxdleg_pow(v) {
+    return !!(v && !sxAnd64(v, sxU64(v - 1)));
+}
+function sxdleg_archive_entries(c, l, width) {
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    for (var i = 0; i < 65536 && c.count < 24000; i++) {
+        var r = c.f.get_current_archive_record(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset >= c.f.base_address && r.header_size === (width >= SX_I64_MAX ? width - SX_U64_MAX : width)) {
+            var p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+            if (sxdleg_span(c, p, width) && !sxdleg_put(c, l, p, 1)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, s, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sxdleg_fatx(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 16) || sxMemcmp(h, "FATX", 4) || c.size < 8704 || !sxdleg_put(c, sxdleg_fatx_superblock, 0, 1)) {
+        return false;
+    }
+    var sectors = sxdleg32(h, 8, 0);
+    if (!sectors || sectors > 1024 || !sxdleg_pow(sectors)) {
+        return true;
+    }
+    var cb = sectors * 512;
+    var nominal = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / cb) + 1;
+    var width = nominal < 0xFFF0 ? 2 : 4;
+    if (nominal > Math.floor(SX_U64_MAX / width)) {
+        return true;
+    }
+    var fat = sxAnd64(nominal * width + 4095, sxK(0xFFFFFFFF, 0xFFFFF000));
+    var data = 4096 + fat;
+    if (data >= (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return true;
+    }
+    var n = Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - data) / cb) + 1;
+    if (n > 8000001 || n > Math.floor(fat / width)) {
+        return true;
+    }
+    if (n > 1048576) {
+        n = 1048576;
+    }
+    if (!sxdleg_put(c, width === 2 ? sxdleg_fatx_fat16_entry : sxdleg_fatx_fat32_entry, 4096, n)) {
+        return false;
+    }
+    return sxdleg_archive_entries(c, sxdleg_fatx_directory_entry, 64);
+}
+function sx_fatx_build(c) {
+    return sxdleg_fatx(c);
+}

@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bendaglish_bd/xx_bendaglish_bd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxcodeplayers_bd(v) {
+    var init = [0];
+    var play = [0];
+    var sub = [0];
+    var smp = [0];
+    var table = [0];
+    var tracks = [0];
+    var a = SX_U64_MAX;
+    var b = SX_U64_MAX;
+    var p;
+    if (!sxcodeplayers_eq(v, 0, "`\x00", 2) || !sxcodeplayers_eq(v, 4, "`\x00", 2) || !sxcodeplayers_eq(v, 10, "`\x00", 2) || !sxcodeplayers_ref(v, 2, init) || !sxcodeplayers_ref(v, 6, play) || !sxcodeplayers_eq(v, init[0], "?\x00a\x00", 4) || !sxcodeplayers_eq(v, init[0] + 6, "=|", 2) || !sxcodeplayers_eq(v, init[0] + 12, "A\xFA", 2)) {
+        return false;
+    }
+    for (p = init[0]; p + 6 <= v.code_size; p += 2) {
+        if (sxcodeplayers_eq(v, p, "A\xFA", 2) && sxcodeplayers_eq(v, p + 4, "\"\x08", 2)) {
+            a = p;
+            break;
+        }
+    }
+    if (a === SX_U64_MAX || !sxcodeplayers_ref(v, a + 2, sub)) {
+        return false;
+    }
+    for (p = a + 4; p + 6 <= v.code_size; p += 2) {
+        if (sxcodeplayers_eq(v, p, "A\xFA", 2) && sxcodeplayers_eq(v, p + 4, "#H", 2)) {
+            b = p;
+            break;
+        }
+    }
+    if (b === SX_U64_MAX || !sxcodeplayers_ref(v, b + 2, smp)) {
+        return false;
+    }
+    a = SX_U64_MAX;
+    for (p = play[0]; p + 6 <= v.code_size; p += 2) {
+        if (sxcodeplayers_eq(v, p, "G\xFA", 2) && (sxcodeplayers_eq(v, p + 4, "H\x80", 2) || sxcodeplayers_eq(v, p + 4, "\xD0@", 2))) {
+            a = p;
+            break;
+        }
+    }
+    if (a === SX_U64_MAX || !sxcodeplayers_ref(v, a + 2, table)) {
+        return false;
+    }
+    b = SX_U64_MAX;
+    for (p = a + 4; p + 6 <= v.code_size; p += 2) {
+        if (sxcodeplayers_eq(v, p, "G\xFA", 2) && sxcodeplayers_eq(v, p + 4, "\xD6\xC0", 2)) {
+            b = p;
+            break;
+        }
+    }
+    if (b === SX_U64_MAX || !sxcodeplayers_ref(v, b + 2, tracks)) {
+        return false;
+    }
+    var end = v.end;
+    var pos = sub[0];
+    for (var i = 0; i < 256 && pos < end; i++, pos += 8) {
+        var row = [];
+        if (!sxcodeplayers_read(v, pos, row, 8)) {
+            break;
+        }
+        var good = true;
+        for (var j = 0; j < 4; j++) {
+            var off = sxcodeplayers_be16(row, (2 * j) >>> 0);
+            if (off > sxU64(v.end - sub[0]) || off < 8) {
+                good = false;
+                break;
+            }
+            if (sub[0] + off < end) {
+                end = sub[0] + off;
+            }
+        }
+        if (!good || pos > end || 8 > sxU64(end - pos)) {
+            break;
+        }
+        if (!sxcodeplayers_put(v, sxcodeplayers_bd_subsong, pos, 1)) {
+            return false;
+        }
+    }
+    if (table[0] < sub[0] && sxU64(sub[0] - table[0]) % 2 === 0 && Math.floor(sxU64(sub[0] - table[0]) / 2) <= 4096 && !sxcodeplayers_put(v, sxcodeplayers_bd_track_offset, table[0], Math.floor(sxU64(sub[0] - table[0]) / 2))) {
+        return false;
+    }
+    var offsets = [];
+    var n = 0;
+    var first = sxU64(v.end - smp[0]);
+    while (n < 256 && n * 4 < first) {
+        var x = [0];
+        if (!sxcodeplayers_u(v, smp[0] + n * 4, 4, x) || x[0] < 4 || x[0] > sxU64(v.end - smp[0])) {
+            break;
+        }
+        if (x[0] < first) {
+            first = x[0];
+        }
+        if ((n + 1) * 4 > first) {
+            break;
+        }
+        offsets[n++] = x[0];
+    }
+    if (!n || n * 4 !== first) {
+        return true;
+    }
+    if (!sxcodeplayers_put(v, sxcodeplayers_bd_sample_offset, smp[0], n)) {
+        return false;
+    }
+    for (i = 0; i < n; i++) {
+        if (sxcodeplayers_span(v, smp[0] + offsets[i], 28) && !sxcodeplayers_put(v, sxcodeplayers_bd_sample, smp[0] + offsets[i], 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_bendaglish_bd_build(v) {
+    return sxcodeplayers_bd(v);
+}

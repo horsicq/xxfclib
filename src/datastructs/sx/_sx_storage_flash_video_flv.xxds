@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/flash_video_flv/xx_flash_video_flv_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_flv_header_fields = layout([field("signature", "byte[3]", 3, SIGNATURE), u8("version"), u8("flags", FLAGS),
+    u32("data_offset", OFFSET)]);
+var sx_st_flv_header = sxLayout(0x60080030, "flv_header", BE, sx_st_flv_header_fields);
+var sx_st_flv_previous_tag_fields = layout([u32("previous_tag_size", SIZE)]);
+var sx_st_flv_previous_tag = sxLayout(0x60080031, "flv_previous_tag", BE, sx_st_flv_previous_tag_fields);
+var sx_st_flv_tag_fields = layout([u8("type", ID), field("data_size", "uint24", 3, SIZE), field("timestamp_low24", "uint24", 3),
+    u8("timestamp_high8"), field("stream_id", "uint24", 3, ID)]);
+var sx_st_flv_tag = sxLayout(0x60080032, "flv_tag", BE, sx_st_flv_tag_fields);
+var sx_st_flv_audio_fields = layout([u8("sound_format_rate_size_type", FLAGS)]);
+var sx_st_flv_audio = sxLayout(0x60080033, "flv_audio", LE, sx_st_flv_audio_fields);
+var sx_st_flv_aac_audio_fields = layout([u8("sound_format_rate_size_type", FLAGS), u8("aac_packet_type", ID)]);
+var sx_st_flv_aac_audio = sxLayout(0x60080034, "flv_aac_audio", LE, sx_st_flv_aac_audio_fields);
+var sx_st_flv_video_fields = layout([u8("frame_type_and_codec_id", FLAGS)]);
+var sx_st_flv_video = sxLayout(0x60080035, "flv_video", LE, sx_st_flv_video_fields);
+var sx_st_flv_avc_video_fields = layout([u8("frame_type_and_codec_id", FLAGS), u8("avc_packet_type", ID),
+    field("composition_time", "int24", 3)]);
+var sx_st_flv_avc_video = sxLayout(0x60080036, "flv_avc_video", BE, sx_st_flv_avc_video_fields);
+function sx_st_flv(c) {
+    var start;
+    var at;
+    if (!sx_add(c, sx_st_flv_header, 0, 9) || (start = sx_u32(c, 5, true)) === null || !sx_add(c, sx_st_flv_previous_tag, start, 4)) {
+        return false;
+    }
+    at = start + 4;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var first = [0];
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 11) || !sx_add(c, sx_st_flv_tag, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 11)) {
+            return false;
+        }
+        n = sxGetU24(h, 11, 1, true);
+        at += 11;
+        if (!n || !sx_st_fits(c, at, n + 4) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), first, 1)) {
+            return false;
+        }
+        if (h[0] === 8) {
+            var aac = first[0] >> 4 === 10;
+            if (n < (aac ? 2 : 1) || !sx_add(c, aac ? sx_st_flv_aac_audio : sx_st_flv_audio, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), aac ? 2 : 1)) {
+                return false;
+            }
+        } else if (h[0] === 9) {
+            var avc = (first[0] & 15) === 7;
+            if (n < (avc ? 5 : 1) || !sx_add(c, avc ? sx_st_flv_avc_video : sx_st_flv_video, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), avc ? 5 : 1)) {
+                return false;
+            }
+        }
+        at += n;
+        if (!sx_add(c, sx_st_flv_previous_tag, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+            return false;
+        }
+        at += 4;
+    }
+    return true;
+}
+function sx_flash_video_flv_build(c) {
+    var ok = false;
+    ok = sx_st_flv(c);
+    return ok && sx_st_finish(c);
+}

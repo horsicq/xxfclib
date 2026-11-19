@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/qip1/xx_qip1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_qip1_member_fields = layout([chars("signature", 2, SIGNATURE), u16("kind"), i32("compressed_size", SIZE),
+    u16("sequence"), u8("flag"), u16("dos_time"), u16("dos_date"), i32("uncompressed_size", SIZE), chars("name", 13, NONE)]);
+var sxasy_qip1_member = sxLayout(0x60440022, "qip1_member", LE, sxasy_qip1_member_fields);
+function sxasy_qip(c) {
+    var p = 0;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 32) || h[0] !== 81 /*Q*/ || h[1] !== 68 /*D*/) {
+            return false;
+        }
+        var z = sxasy_uint(h, 4, 4, false);
+        if (z > 2147483647 || !sxasy_span(c, p + 32, z) || !sxasy_add(c, sxasy_qip1_member, p)) {
+            return false;
+        }
+        if (sxasy_uint(h, 15, 4, false) && !sxasy_dcl(c, p + 32, z)) {
+            return false;
+        }
+        p += 32 + z;
+    }
+    return true;
+}
+function sx_qip1_build(c) {
+    return sxasy_qip(c);
+}

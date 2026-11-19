@@ -1,0 +1,189 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// RAR 1.5-4.x ("Rar!\x1A\x07\x00") and RAR 5 ("Rar!\x1A\x07\x01\x00"): the
+// signature, then a chain of blocks, each a header and optional data. The
+// chain runs to the end of the format (Format.size()) and stops after the end
+// block, or after the block that starts encrypted headers (the rest is one
+// RAW_DATA). RAR 1.4 has no structures here.
+//
+// Where the signature is (after an SFX stub, inside a PE resource) is the
+// reader's finding:
+//
+//   Format.table("archive") - one row, offsets from the format start
+//     version       4, 5, or 14 for RAR 1.4
+//     signature     signature offset
+//     firstHeader   first block offset
+//
+// The block chain was verified by the reader (header CRCs included) before it
+// accepted the archive, so the walk here only measures the blocks.
+
+function fileTypes() { return ["RAR"]; }
+
+var RAR4_SIGNATURE_FIELDS = [ u32("magic", ID), u16("magic_tail", ID), u8("version", ID) ];
+var RAR5_SIGNATURE_FIELDS = [ u32("magic", ID), u16("magic_tail", ID), u8("version", ID), u8("reserved", RESERVED) ];
+var RAR4_BASE_FIELDS = [ u16("header_crc", CHECKSUM), u8("header_type", ID), u16("header_flags", FLAGS), u16("header_size", SIZE) ];
+var RAR4_FILE_FIELDS = [
+    u16("header_crc", CHECKSUM), u8("header_type", ID), u16("header_flags", FLAGS), u16("header_size", SIZE),
+    u32("packed_size", SIZE), u32("unpacked_size", SIZE), u8("host_os"), u32("file_crc", CHECKSUM),
+    u32("file_time", TIMESTAMP), u8("unpack_version"), u8("method"), u16("name_size", SIZE), u32("attributes", FLAGS) ];
+
+function structs() {
+    return [
+        { id: 1, name: "SIGNATURE", fields: signatureFields },
+        { id: 2, name: "MAIN_HEADER", fields: headerFields },
+        { id: 3, name: "FILE_HEADER", fields: headerFields },
+        { id: 4, name: "SERVICE_HEADER", fields: headerFields },
+        { id: 5, name: "ENCRYPTION_HEADER", fields: headerFields },
+        { id: 6, name: "END_HEADER", fields: headerFields },
+        { id: 7, name: "OTHER_HEADER", fields: headerFields },
+        { id: 8, name: "DATA" }
+    ];
+}
+
+function rarArchive() {
+    return Format.table("archive")[0];
+}
+
+function signatureFields(ds) {
+    return layout(ds.totalSize === 7 ? RAR4_SIGNATURE_FIELDS : RAR5_SIGNATURE_FIELDS);
+}
+
+// RAR 5 variable-length integer at `position`, read below `limit`:
+// { value, width } or null.
+function rarVint(position, limit) {
+    var value = 0, scale = 1, count = 0, b;
+    while (count < 10) {
+        if (position + count >= limit) return null;
+        b = File.u8(position + count);
+        count++;
+        if (count === 10 && (b & 0xFE) !== 0) return null;
+        value += (b & 0x7F) * scale;
+        if ((b & 0x80) === 0) return { value: value, width: count };
+        scale *= 128;
+    }
+    return null;
+}
+
+// One block at `offset` (xx_rar_parse_block without the CRC check), or null.
+function rarBlock(version, offset, total) {
+    var type, flags, headerSize, dataSize = 0, size, position, headerEnd, v, block;
+    if (offset < 0 || total - offset < 7) return null;
+    if (version === 4) {
+        type = File.u8(offset + 2);
+        flags = File.u16(offset + 3);
+        headerSize = File.u16(offset + 5);
+        if (headerSize < 7 || headerSize > total - offset) return null;
+        if (flags & 0x8000) {
+            if (headerSize < 11) return null;
+            dataSize = File.u32(offset + 7);
+        }
+        if ((type === 0x74 || type === 0x7A) && (flags & 0x0100)) {
+            if (headerSize < 40) return null;
+            dataSize += File.u32(offset + 32) * 0x100000000;
+        }
+        if (dataSize > total - offset - headerSize) return null;
+        return { version: 4, offset: offset, headerSize: headerSize, type: type, flags: flags, data: offset + headerSize, dataSize: dataSize };
+    }
+    position = offset + 4;
+    v = rarVint(position, total);
+    if (!v || v.width > 3 || v.value === 0 || v.value > 2 * 1024 * 1024) return null;
+    size = v;
+    position += v.width;
+    headerEnd = position + size.value;
+    if (headerEnd > total) return null;
+    block = { version: 5, offset: offset, sizeField: size, extraRel: -1, dataRel: -1, extraSize: 0, dataSize: 0 };
+    block.typeRel = position - offset;
+    if (!(v = rarVint(position, headerEnd))) return null;
+    block.typeField = v;
+    block.type = v.value;
+    position += v.width;
+    block.flagsRel = position - offset;
+    if (!(v = rarVint(position, headerEnd))) return null;
+    block.flagsField = v;
+    block.flags = v.value;
+    position += v.width;
+    if (block.flags % 2 === 1) {
+        block.extraRel = position - offset;
+        if (!(v = rarVint(position, headerEnd))) return null;
+        block.extraField = v;
+        block.extraSize = v.value;
+        position += v.width;
+    }
+    if (Math.floor(block.flags / 2) % 2 === 1) {
+        block.dataRel = position - offset;
+        if (!(v = rarVint(position, headerEnd))) return null;
+        block.dataField = v;
+        block.dataSize = v.value;
+        position += v.width;
+    }
+    if (block.extraSize > headerEnd - position || block.dataSize > total - headerEnd) return null;
+    block.headerSize = headerEnd - offset;
+    block.data = headerEnd;
+    return block;
+}
+
+function blockName(block) {
+    if (block.version === 4) {
+        switch (block.type) {
+            case 0x73: return "MAIN_HEADER";
+            case 0x74: return "FILE_HEADER";
+            case 0x7A: return "SERVICE_HEADER";
+            case 0x7B: return "END_HEADER";
+            default: return "OTHER_HEADER";
+        }
+    }
+    switch (block.type) {
+        case 1: return "MAIN_HEADER";
+        case 2: return "FILE_HEADER";
+        case 3: return "SERVICE_HEADER";
+        case 4: return "ENCRYPTION_HEADER";
+        case 5: return "END_HEADER";
+        default: return "OTHER_HEADER";
+    }
+}
+
+// A RAR 5 header integer: raw bytes as stored, value as decoded. A size
+// carries no byte-count comment.
+function vintField(name, rel, width, role, value) {
+    var f = { name: name, type: "vint", offset: rel, size: width, role: role, endian: BE };
+    f.display = function () { return (role & (ID | FLAGS | CHECKSUM)) ? Util.hex(value) : "" + value; };
+    if (role & SIZE) f.comment = null;
+    return f;
+}
+
+function headerFields(ds) {
+    var version = rarArchive().version, block, fields;
+    if (version === 4) return layout(ds.name === "FILE_HEADER" || ds.name === "SERVICE_HEADER" ? RAR4_FILE_FIELDS : RAR4_BASE_FIELDS);
+    block = rarBlock(version, ds.offset, File.size());
+    if (!block) return undefined;
+    fields = [ { name: "header_crc", type: "uint32", offset: 0, size: 4, role: CHECKSUM, display: function (value) { return Util.hex(value); } },
+        vintField("header_size", 4, block.sizeField.width, SIZE, block.headerSize - 4 - block.sizeField.width),
+        vintField("header_type", block.typeRel, block.typeField.width, ID, block.type),
+        vintField("header_flags", block.flagsRel, block.flagsField.width, FLAGS, block.flags) ];
+    if (block.extraRel >= 0) fields.push(vintField("extra_area_size", block.extraRel, block.extraField.width, SIZE, block.extraSize));
+    if (block.dataRel >= 0) fields.push(vintField("data_size", block.dataRel, block.dataField.width, SIZE, block.dataSize));
+    return fields;
+}
+
+function scan() {
+    var archive = rarArchive(), end = Format.size(), total = File.size(), offset, block, name, encrypted;
+    if (archive.version !== 4 && archive.version !== 5) return false;
+    if (archive.signature > 0) Structs.raw(0, archive.signature);
+    Structs.add("SIGNATURE", archive.signature, archive.version === 4 ? 7 : 8);
+    offset = archive.firstHeader;
+    while (offset < end) {
+        block = rarBlock(archive.version, offset, total);
+        if (!block) return false;
+        name = blockName(block);
+        Structs.add(name, block.offset, block.headerSize, name === "END_HEADER" ? FOOTER : STRUCT);
+        if (block.dataSize > 0) Structs.add("DATA", block.data, block.dataSize, RAW);
+        encrypted = block.version === 4 ? block.type === 0x73 && (block.flags & 0x0080) !== 0 : block.type === 4;
+        offset = block.data + block.dataSize;
+        if (encrypted) {
+            if (offset < end) Structs.raw(offset, end - offset);
+            break;
+        }
+        if (name === "END_HEADER") break;
+    }
+}

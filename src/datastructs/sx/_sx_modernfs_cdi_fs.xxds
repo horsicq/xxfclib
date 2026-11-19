@@ -1,0 +1,181 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/cdi_fs/xx_cdi_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_cdi_volume_descriptor_fields = layout([u8("record_type", ID), chars("standard_id", 5, SIGNATURE), u8("version", ID),
+    u8("flags", FLAGS), chars("system_id", 32, STRING), chars("volume_id", 32, STRING),
+    field("reserved0", "byte[12]", 12, RESERVED), u32("volume_blocks", COUNT), chars("character_set", 32, STRING),
+    u16("reserved1", RESERVED), u16("album_volume_count", COUNT), u16("reserved2", RESERVED), u16("album_sequence"),
+    u16("reserved3", RESERVED), u16("logical_block_size", SIZE), u32("reserved4", RESERVED), u32("path_table_size", SIZE),
+    field("reserved5", "byte[8]", 8, RESERVED), u32("path_table_block"), field("reserved6", "byte[38]", 38, RESERVED),
+    chars("album_id", 128, STRING), chars("publisher", 128, STRING), chars("data_preparer", 128, STRING),
+    chars("application_id", 128, STRING), chars("copyright_file", 32, STRING), field("reserved7", "byte[5]", 5, RESERVED),
+    chars("abstract_file", 32, STRING), field("reserved8", "byte[5]", 5, RESERVED), chars("bibliography_file", 32, STRING),
+    field("reserved9", "byte[5]", 5, RESERVED), chars("creation_date", 16, NONE), u8("reserved10", RESERVED),
+    chars("modification_date", 16, NONE), u8("reserved11", RESERVED), chars("expiration_date", 16, NONE),
+    u8("reserved12", RESERVED), chars("effective_date", 16, NONE), u8("reserved13", RESERVED), u8("structure_version", ID),
+    u8("reserved14", RESERVED), field("application_use", "byte[512]", 512), field("reserved15", "byte[653]", 653, RESERVED)]);
+var sxmf_cdi_volume_descriptor = sxLayout(0x60420082, "cdi_volume_descriptor", BE, sxmf_cdi_volume_descriptor_fields);
+var sxmf_cdi_terminator_fields = layout([u8("record_type", ID), chars("standard_id", 5, SIGNATURE), u8("version", ID),
+    field("reserved", "byte[2041]", 2041, RESERVED)]);
+var sxmf_cdi_terminator = sxLayout(0x60420083, "cdi_terminator", BE, sxmf_cdi_terminator_fields);
+var sxmf_cdi_path_entry_fields = layout([u8("name_length", SIZE), u8("extended_attribute_blocks", COUNT),
+    u32("directory_block"), u16("parent_directory_number")]);
+var sxmf_cdi_path_entry = sxLayout(0x60420084, "cdi_path_entry", BE, sxmf_cdi_path_entry_fields);
+var sxmf_cdi_directory_entry_fields = layout([u8("record_length", SIZE), u8("extended_attribute_blocks", COUNT),
+    u32("reserved0", RESERVED), u32("file_block"), u32("reserved1", RESERVED), u32("file_size", SIZE), u8("year_since_1900"),
+    u8("month"), u8("day"), u8("hour"), u8("minute"), u8("second"), u8("reserved2", RESERVED), u8("flags", FLAGS),
+    u8("interleave_unit_sectors", COUNT), u8("interleave_gap_sectors", COUNT), u16("reserved3", RESERVED),
+    u16("album_sequence"), u8("name_length", SIZE)]);
+var sxmf_cdi_directory_entry = sxLayout(0x60420085, "cdi_directory_entry", BE, sxmf_cdi_directory_entry_fields);
+var sxmf_cdi_directory_attributes_fields = layout([u16("group_id", ID), u16("user_id", ID), u16("attributes", FLAGS),
+    u16("reserved0", RESERVED), u8("file_number", ID), u8("reserved1", RESERVED)]);
+var sxmf_cdi_directory_attributes = sxLayout(0x60420086, "cdi_directory_attributes", BE, sxmf_cdi_directory_attributes_fields);
+var sxmf_cdi_mode2_sector_header_fields = layout([field("sync", "byte[12]", 12, SIGNATURE), u8("minute_bcd"), u8("second_bcd"),
+    u8("frame_bcd"), u8("mode", ID), u8("file_number", ID), u8("channel_number", ID), u8("submode", FLAGS),
+    u8("coding_information", FLAGS), u8("repeated_file_number", ID), u8("repeated_channel_number", ID),
+    u8("repeated_submode", FLAGS), u8("repeated_coding_information", FLAGS)]);
+var sxmf_cdi_mode2_sector_header = sxLayout(0x60420087, "cdi_mode2_sector_header", LE, sxmf_cdi_mode2_sector_header_fields);
+var sxmf_cdi_form1_edc_fields = layout([u32("crc", CHECKSUM)]);
+var sxmf_cdi_form1_edc = sxLayout(0x60420088, "cdi_form1_edc", LE, sxmf_cdi_form1_edc_fields);
+function sxmf_ci_read(c, logical, out, n, stride) {
+    var p = out, p_o = 0;
+    while (n) {
+        var block = Math.floor(logical / 2048);
+        var within = logical % 2048;
+        var part = sxU64(2048 - within);
+        if (part > n) {
+            part = n;
+        }
+        if (block > Math.floor(SX_U64_MAX / stride) || !sxmf_read(c, block * stride + (stride === 2352 ? 24 : 0) + within, p, p_o, part)) {
+            return false;
+        }
+        p_o += part;
+        n = sxU64(n - part);
+        logical += part;
+    }
+    return true;
+}
+function sxmf_ci_frame(c, block, stride) {
+    if (stride !== 2352) {
+        return true;
+    }
+    var h = [];
+    var p = block * 2352;
+    if (!sxmf_read(c, p, h, 0, 24) || h[15] !== 2 || sxMemcmpAt(h, 16, h, 20, 4) || h[18] & 0x20) {
+        return true;
+    }
+    return sxmf_put(c, sxmf_cdi_mode2_sector_header, p, 1) && sxmf_put(c, sxmf_cdi_form1_edc, p + 2072, 1);
+}
+function sxmf_ci_row(c, l, logical, stride) {
+    var f = l.fields[l.field_count + -1];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var block = Math.floor(logical / 2048);
+    var within = logical % 2048;
+    if (stride === 2352 && n > sxU64(2048 - within)) {
+        return true;
+    }
+    if (!sxmf_ci_frame(c, block, stride)) {
+        return false;
+    }
+    return sxmf_put(c, l, block * stride + (stride === 2352 ? 24 : 0) + within, 1);
+}
+function sxmf_cdi(c) {
+    var h = [];
+    var b = [];
+    var stride = 2048;
+    if (!sxmf_ci_read(c, 0x8000, h, 2048, stride) || h[0] !== 1 || sxMemcmpAt(h, 1, "CD-I ", 0, 5)) {
+        stride = 2352;
+        if (!sxmf_ci_read(c, 0x8000, h, 2048, stride) || h[0] !== 1 || sxMemcmpAt(h, 1, "CD-I ", 0, 5)) {
+            return false;
+        }
+    }
+    if (!sxmf_ci_row(c, sxmf_cdi_volume_descriptor, 0x8000, stride)) {
+        return false;
+    }
+    var blocks = sxmf32(h, 84, 1);
+    var path = sxmf32(h, 148, 1);
+    var bytes = sxmf32(h, 136, 1);
+    if (blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / stride) || path >= blocks || bytes > 1048576 || bytes > sxU64(blocks - path) * 2048) {
+        return true;
+    }
+    for (var i = 17; i < blocks && i < 80; i++) {
+        if (!sxmf_ci_read(c, i * 2048, b, 2048, stride) || sxMemcmpAt(b, 1, "CD-I ", 0, 5) || b[6] !== 1) {
+            break;
+        }
+        if (b[0] === 255) {
+            if (!sxmf_ci_row(c, sxmf_cdi_terminator, i * 2048, stride)) {
+                return false;
+            }
+            break;
+        }
+        if (b[0] === 1 && !sxmf_ci_row(c, sxmf_cdi_volume_descriptor, i * 2048, stride)) {
+            return false;
+        }
+    }
+    var q = sxNew_sxmf_queue();
+    if (q === null) {
+        return false;
+    }
+    var ok = true;
+    for (var p = 0; p + 8 <= bytes && c.count < 24000; ) {
+        var d = [];
+        if (!sxmf_ci_read(c, path * 2048 + p, d, 8, stride) || !d[0]) {
+            break;
+        }
+        var z = 8 + d[0] + (d[0] & 1);
+        var dir = sxmf32(d, 2, 1);
+        if (z > sxU64(bytes - p)) {
+            break;
+        }
+        if (!sxmf_ci_row(c, sxmf_cdi_path_entry, path * 2048 + p, stride)) {
+            ok = false;
+            break;
+        }
+        if (dir < blocks) {
+            sxmf_queue_add(q, dir, 0, 0);
+        }
+        p += z;
+    }
+    while (ok && q.index < q.count && c.count < 24000) {
+        var block = q.items[q.index++].p;
+        if (!sxmf_ci_read(c, block * 2048, b, 2048, stride) || b[0] < 33) {
+            continue;
+        }
+        var size = sxmf32(b, 14, 1);
+        if (size > 16777216 || Math.floor((size + 2047) / 2048) > sxU64(blocks - block)) {
+            continue;
+        }
+        for (var pos = 0; pos < size && c.count < 24000 && ok; pos += 2048) {
+            var limit = sxU64(size - pos);
+            if (limit > 2048) {
+                limit = 2048;
+            }
+            if (!sxmf_ci_read(c, block * 2048 + pos, b, limit, stride)) {
+                break;
+            }
+            for (var at = 0; at + 33 <= limit; ) {
+                z = b[at];
+                var n = b[at + 32];
+                var tail = 33 + n + (sxAnd64(n, 1) === 0 ? 1 : 0);
+                if (!z) {
+                    break;
+                }
+                if (z > sxU64(limit - at) || z < 33 || tail > z || 10 > sxU64(z - tail)) {
+                    break;
+                }
+                if (!sxmf_ci_row(c, sxmf_cdi_directory_entry, block * 2048 + pos + at, stride) || !sxmf_ci_row(c, sxmf_cdi_directory_attributes, block * 2048 + pos + at + tail, stride)) {
+                    ok = false;
+                    break;
+                }
+                at += z;
+            }
+        }
+    }
+    return ok;
+}
+function sx_cdi_fs_build(c) {
+    return sxmf_cdi(c);
+}

@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/zoom/xx_zoom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_zoom_header_fields = layout([chars("signature", 4, SIGNATURE), u8("first_cylinder"), u8("last_cylinder"),
+    u8("version", ID), u8("unknown_07"), u32("flags", FLAGS), field("unknown_0c", "byte[12]", 12),
+    u32("attached_text_raw_size", SIZE), u32("attached_text_packed_size", SIZE), u32("note_offset", OFFSET),
+    u8("password_protected", FLAGS), field("unknown_25", "byte[35]", 35), u32("header_checksum", CHECKSUM)]);
+var sxst_zoom_header = sxLayout(0x60370005, "zoom_header", BE, sxst_zoom_header_fields);
+var sxst_zoom_note_checksum_fields = layout([u32("note_checksum", CHECKSUM)]);
+var sxst_zoom_note_checksum = sxLayout(0x60370006, "zoom_note_checksum", BE, sxst_zoom_note_checksum_fields);
+var sxst_zoom_chunk_fields = layout([bytes("cylinders", 5), u8("unknown_05"), field("sector_masks", "uint32[5]", 20, FLAGS),
+    u16("packed_size", SIZE), u16("middle_size", SIZE), u16("final_size", SIZE), u16("lzhuf_flag", FLAGS),
+    u32("packed_checksum", CHECKSUM), u32("record_checksum", CHECKSUM)]);
+var sxst_zoom_chunk = sxLayout(0x60370007, "zoom_chunk", BE, sxst_zoom_chunk_fields);
+function sxst_zoom(c) {
+    var h = [];
+    var b = [];
+    if (!sxst_read(c, 0, h, 76) || !sxst_put(c, sxst_zoom_header, 0, 1)) {
+        return false;
+    }
+    var p = 76;
+    var n = sxst_uint(h, 28, 4, true);
+    if (n) {
+        if (!sxst_span(c, p, n + 4)) {
+            return true;
+        }
+        if (!sxst_put(c, sxst_zoom_note_checksum, p + n, 1)) {
+            return false;
+        }
+        p += n + 4;
+    }
+    if (h[36]) {
+        return true;
+    }
+    for (var i = 0; i < 24000 && c.count < 24000; i++) {
+        if (!sxst_read(c, p, b, 42)) {
+            break;
+        }
+        n = sxst_uint(b, 26, 2, true);
+        if (!sxst_span(c, p + 42, n) || !sxst_put(c, sxst_zoom_chunk, p, 1)) {
+            break;
+        }
+        p += 42 + n;
+    }
+    return true;
+}
+function sx_zoom_build(c) {
+    return sxst_zoom(c);
+}

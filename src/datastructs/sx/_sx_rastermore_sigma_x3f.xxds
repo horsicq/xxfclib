@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/sigma_x3f/xx_sigma_x3f_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_x3f_header20_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), bytes("unique_identifier", 16, ID),
+    u32("mark_bits", FLAGS), u32("columns", COUNT), u32("rows", COUNT), u32("rotation_degrees")]);
+var sxrm_x3f_header20 = sxLayout(0x601D0068, "x3f_header20", LE, sxrm_x3f_header20_fields);
+var sxrm_x3f_header21_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), bytes("unique_identifier", 16, ID),
+    u32("mark_bits", FLAGS), u32("columns", COUNT), u32("rows", COUNT), u32("rotation_degrees"),
+    chars("white_balance", 32, STRING), bytes("extended_types", 32, ID), field("extended_data", "float32[32]", 128)]);
+var sxrm_x3f_header21 = sxLayout(0x601D0069, "x3f_header21", LE, sxrm_x3f_header21_fields);
+var sxrm_x3f_header23_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), bytes("unique_identifier", 16, ID),
+    u32("mark_bits", FLAGS), u32("columns", COUNT), u32("rows", COUNT), u32("rotation_degrees"),
+    chars("white_balance", 32, STRING), chars("color_mode", 32, STRING), bytes("extended_types", 32, ID),
+    field("extended_data", "float32[32]", 128)]);
+var sxrm_x3f_header23 = sxLayout(0x601D006A, "x3f_header23", LE, sxrm_x3f_header23_fields);
+var sxrm_x3f_directory_offset_fields = layout([u32("directory_offset", OFFSET)]);
+var sxrm_x3f_directory_offset = sxLayout(0x601D006B, "x3f_directory_offset", LE, sxrm_x3f_directory_offset_fields);
+var sxrm_x3f_directory_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("entry_count", COUNT)]);
+var sxrm_x3f_directory = sxLayout(0x601D006C, "x3f_directory", LE, sxrm_x3f_directory_fields);
+var sxrm_x3f_directory_entry_fields = layout([u32("section_offset", OFFSET), u32("section_size", SIZE),
+    chars("section_type", 4, ID)]);
+var sxrm_x3f_directory_entry = sxLayout(0x601D006D, "x3f_directory_entry", LE, sxrm_x3f_directory_entry_fields);
+var sxrm_x3f_image_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("image_type", ID),
+    u32("image_format", ID), u32("width", COUNT), u32("height", COUNT), u32("row_stride", SIZE)]);
+var sxrm_x3f_image = sxLayout(0x601D006E, "x3f_image", LE, sxrm_x3f_image_fields);
+var sxrm_x3f_camf2_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("type", ID),
+    u32("reserved", RESERVED), u32("information_type", ID), u32("information_type_version", ID), u32("encryption_key", ID)]);
+var sxrm_x3f_camf2 = sxLayout(0x601D006F, "x3f_camf2", LE, sxrm_x3f_camf2_fields);
+var sxrm_x3f_properties_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("property_count", COUNT),
+    u32("character_format", ID), u32("reserved", RESERVED), u32("string_pool_codeunits", COUNT)]);
+var sxrm_x3f_properties = sxLayout(0x601D0070, "x3f_properties", LE, sxrm_x3f_properties_fields);
+var sxrm_x3f_property_fields = layout([u32("name_index"), u32("value_index")]);
+var sxrm_x3f_property = sxLayout(0x601D0071, "x3f_property", LE, sxrm_x3f_property_fields);
+function sxrm_x3f(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 40) || sxMemcmp(h, "FOVb", 4)) {
+        return false;
+    }
+    var version = sxrm32(h, 4, false);
+    if (version < 0x20000 || version > 0x20003) {
+        return false;
+    }
+    var head = version === 0x20000 ? 40 : version < 0x20003 ? 232 : 264;
+    if (!sxrm_add(c, version === 0x20000 ? sxrm_x3f_header20 : version < 0x20003 ? sxrm_x3f_header21 : sxrm_x3f_header23, 0)) {
+        return false;
+    }
+    if (c.size < (head >= SX_I64_MAX ? head - SX_U64_MAX : head) + 4 || !sxrm_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4), h, 0, 4)) {
+        return true;
+    }
+    var dir = sxrm32(h, 0, false);
+    if (!sxrm_add(c, sxrm_x3f_directory_offset, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4))) {
+        return false;
+    }
+    if (dir < head || !sxrm_read(c, dir, h, 0, 12) || sxMemcmp(h, "SECd", 4)) {
+        return true;
+    }
+    var n = sxrm32(h, 8, false);
+    if (n > 32 || !sxrm_span(c, dir + 12, n * 12)) {
+        return true;
+    }
+    if (!sxrm_add(c, sxrm_x3f_directory, dir) || !sxrm_table(c, sxrm_x3f_directory_entry, dir + 12, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxrm_read(c, dir + 12 + i * 12, h, 0, 12)) {
+            return false;
+        }
+        var q = sxrm32(h, 0, false);
+        var z = sxrm32(h, 4, false);
+        if (q < head || z < 24 || !sxrm_span(c, q, z) || !sxrm_read(c, q, h, 0, 24)) {
+            continue;
+        }
+        if (!sxMemcmp(h, "SECi", 4) && z >= 28) {
+            if (!sxrm_add(c, sxrm_x3f_image, q)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "SECc", 4) && z >= 28 && sxrm32(h, 8, false) === 2) {
+            if (!sxrm_add(c, sxrm_x3f_camf2, q)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "SECp", 4)) {
+            if (!sxrm_add(c, sxrm_x3f_properties, q)) {
+                return false;
+            }
+            var count = sxrm32(h, 8, false);
+            if (count <= 20000 && count * 8 <= (z - 24) >>> 0 && !sxrm_table(c, sxrm_x3f_property, q + 24, count)) {
+                return false;
+            }
+        }
+    }
+    return !c.failed;
+}
+function sx_sigma_x3f_build(c) {
+    return sxrm_x3f(c);
+}

@@ -1,0 +1,143 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/hulsbeck_thefinalmusicsystemextended/xx_hulsbeck_thefinalmusicsystemextended_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcmus_tfmx_mod_wrapper_fields = layout([chars("signature", 8, SIGNATURE), u32("sample_data_offset", OFFSET),
+    u32("tag_table_offset", OFFSET), blob("opaque_word", 4)]);
+var sxcmus_tfmx_mod_wrapper = sxLayout(0x609E0015, "tfmx_mod_wrapper", LE, sxcmus_tfmx_mod_wrapper_fields);
+var sxcmus_tfmx_prefix_fields = layout([chars("signature", 4, SIGNATURE), blob("variant_tag", 4), blob("opaque_prefix", 8)]);
+var sxcmus_tfmx_prefix = sxLayout(0x609E0016, "tfmx_prefix", LE, sxcmus_tfmx_prefix_fields);
+var sxcmus_tfmx_comment_fields = layout([chars("comment", 40, NONE)]);
+var sxcmus_tfmx_comment = sxLayout(0x609E0017, "tfmx_comment", LE, sxcmus_tfmx_comment_fields);
+var sxcmus_tfmx_song_start_fields = layout([u16("first_track_step")]);
+var sxcmus_tfmx_song_start = sxLayout(0x609E0018, "tfmx_song_start", BE, sxcmus_tfmx_song_start_fields);
+function sxcmus16(b, b_o) {
+    return b[b_o] | b[b_o + 1] << 8;
+}
+function sxcmus_tfmx(c) {
+    var base = 0;
+    var music_end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var tag = 0;
+    var b = [];
+    if (sxcmus_eq(c, 0, "TFHD", 4)) {
+        if (!sxcmus_read(c, 0, b, 18) || !sxcmus_put(c, sxcmus_tfmx_tfhd, 0, 1)) {
+            return false;
+        }
+        base = sxcmus_be32(b, 4);
+        var n = sxcmus_be32(b, 10);
+        if (base < 18 || !sxcmus_span(c, base, n)) {
+            return true;
+        }
+        music_end = base + n;
+    } else if (sxcmus_eq(c, 0, "TFMX-MOD", 8)) {
+        if (!sxcmus_read(c, 0, b, 20) || !sxcmus_put(c, sxcmus_tfmx_mod_wrapper, 0, 1)) {
+            return false;
+        }
+        base = 20;
+        n = (b[8] | b[9] << 8 | b[10] << 16 | (b[11] << 24) >>> 0) >>> 0;
+        tag = (b[12] | b[13] << 8 | b[14] << 16 | (b[15] << 24) >>> 0) >>> 0;
+        if (n >= base && n <= music_end) {
+            music_end = n;
+        } else {
+            return true;
+        }
+    }
+    if (!sxcmus_span(c, base, 512) || music_end < base || sxU64(music_end - base) < 512 || !sxcmus_eq(c, base, "TFMX", 4) && !sxcmus_eq(c, base, "tfmx", 4)) {
+        return c.count !== 0;
+    }
+    if (!sxcmus_put(c, sxcmus_tfmx_prefix, base, 1) || !sxcmus_put(c, sxcmus_tfmx_comment, base + 16, 6) || !sxcmus_put(c, sxcmus_tfmx_song_start, base + 256, 32) || !sxcmus_put(c, sxcmus_tfmx_song_end, base + 320, 32) || !sxcmus_put(c, sxcmus_tfmx_song_tempo, base + 384, 32) || !sxcmus_put(c, sxcmus_tfmx_track_mute, base + 448, 8)) {
+        return false;
+    }
+    var ptr = [];
+    if (!sxcmus_read(c, base + 464, ptr, 12)) {
+        return false;
+    }
+    var refs = [];
+    var little = false;
+    for (var i = 0; i < 3; i++) {
+        refs[i] = sxcmus_be32(ptr, (4 * i) >>> 0);
+        if (refs[i] >= (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            little = true;
+        }
+    }
+    if (little) {
+        for (i = 0; i < 3; i++) {
+            var p = ptr, p_o = (4 * i) >>> 0;
+            refs[i] = (p[p_o] | p[p_o + 1] << 8 | p[p_o + 2] << 16 | (p[p_o + 3] << 24) >>> 0) >>> 0;
+        }
+    }
+    if (!sxcmus_put(c, little ? sxcmus_tfmx_tables_le : sxcmus_tfmx_tables_be, base + 464, 1)) {
+        return false;
+    }
+    if (!sxOr64(sxOr64(refs[0], refs[1]), refs[2])) {
+        refs[0] = 0x800;
+        refs[1] = 0x400;
+        refs[2] = 0x600;
+    }
+    var track = refs[0];
+    var pattern = refs[1];
+    var macro = refs[2];
+    var first = 0;
+    for (var j = 1; j <= 2; j++) {
+        p = refs[j];
+        var end = sxU64(music_end - base);
+        if (p < 512 || p > end) {
+            continue;
+        }
+        for (var k = 0; k < 3; k++) {
+            if (k !== j && refs[k] > p && refs[k] < end) {
+                end = refs[k];
+            }
+        }
+        var count = Math.floor(sxU64(end - p) / 4);
+        if (count > 128) {
+            count = 128;
+        }
+        if (count && !sxcmus_put(c, sxcmus_tfmx_pointer, base + p, count)) {
+            return false;
+        }
+    }
+    if (pattern >= 512 && pattern <= sxU64(music_end - base) && sxU64(sxU64(music_end - base) - pattern) >= 4 && sxcmus_read(c, base + pattern, ptr, 4)) {
+        first = sxcmus_be32(ptr, 0);
+    }
+    if (track >= 512 && first >= track && first <= sxU64(music_end - base)) {
+        n = Math.floor(sxU64(first - track) / 16);
+        if (n > 512) {
+            n = 512;
+        }
+        for (i = 0; i < n; i++) {
+            p = base + track + 16 * i;
+            var marker = [0];
+            if (!sxcmus_word(c, p, marker)) {
+                return false;
+            }
+            if (marker[0] === 0xEFFE) {
+                if (!sxcmus_put(c, sxcmus_tfmx_track_command, p, 1)) {
+                    return false;
+                }
+            } else if (!sxcmus_put(c, sxcmus_tfmx_track_channel, p, 8)) {
+                return false;
+            }
+        }
+    }
+    if (tag >= music_end && tag < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        for (i = 0; i < 4096 && sxcmus_span(c, tag, 3); i++) {
+            var h = [];
+            if (!sxcmus_read(c, tag, h, 3) || !sxcmus_put(c, sxcmus_tfmx_mod_tag, tag, 1)) {
+                return false;
+            }
+            n = sxcmus16(h, 1);
+            tag += 3;
+            if (!h[0] || !n || !sxcmus_span(c, tag, n)) {
+                break;
+            }
+            tag += n;
+        }
+    }
+    return true;
+}
+function sx_hulsbeck_thefinalmusicsystemextended_build(c) {
+    return sxcmus_tfmx(c);
+}

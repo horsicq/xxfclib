@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/binscii/xx_binscii_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_binscii_signature_fields = layout([chars("signature", 18, SIGNATURE)]);
+var sxarm_binscii_signature = sxLayout(0x607C0030, "binscii_signature", LE, sxarm_binscii_signature_fields);
+var sxarm_binscii_alphabet_fields = layout([chars("alphabet", 64, STRING)]);
+var sxarm_binscii_alphabet = sxLayout(0x607C0031, "binscii_alphabet", LE, sxarm_binscii_alphabet_fields);
+var sxarm_binscii_header_fields = layout([chars("name_length_code", 1, NONE), chars("prodos_name", 15, STRING),
+    chars("encoded_metadata", 36, NONE)]);
+var sxarm_binscii_header = sxLayout(0x607C0032, "binscii_header", LE, sxarm_binscii_header_fields);
+var sxarm_binscii_data_crc_fields = layout([chars("encoded_crc_and_padding", 4, CHECKSUM)]);
+var sxarm_binscii_data_crc = sxLayout(0x607C0033, "binscii_data_crc", LE, sxarm_binscii_data_crc_fields);
+function sxarm_binscii(c) {
+    var p = 0;
+    var next = [0];
+    var b = [];
+    var alphabet = [];
+    var n = [0];
+    var state = 0;
+    var lines = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxarm_line(c, p, b, 0x1000, n, next)) {
+            return true;
+        }
+        var a = 0;
+        while (a < n[0] && b[a] <= 32) {
+            a++;
+        }
+        var len = sxU64(n[0] - a);
+        if (len === 18 && !sxMemcmpAt(b, a, "FiLeStArTfIlEsTaRt", 0, 18)) {
+            if (!sxarm_add(c, sxarm_binscii_signature, p + a)) {
+                return false;
+            }
+            state = 1;
+        } else if (state === 1) {
+            if (len < 64) {
+                return true;
+            }
+            if (!sxarm_add(c, sxarm_binscii_alphabet, p + a)) {
+                return false;
+            }
+            sxMemcpy(alphabet, 0, b, a, 64);
+            state = 2;
+        } else if (state === 2) {
+            if (len < 52 || !sxarm_add(c, sxarm_binscii_header, p + a)) {
+                return true;
+            }
+            var raw = [];
+            for (var i = 0; i < 9; i++) {
+                var v = [];
+                for (var j = 0; j < 4; j++) {
+                    v[j] = 64;
+                    for (var k = 0; k < 64; k++) {
+                        if (alphabet[k] === b[a + 16 + ((4 * i) >>> 0) + j]) {
+                            v[j] = k;
+                            break;
+                        }
+                    }
+                    if (v[j] === 64) {
+                        return true;
+                    }
+                }
+                raw[(3 * i) >>> 0] = ((v[3] << 2) >>> 0 | v[2] >>> 4) >>> 0 & 0xFF;
+                raw[(((3 * i) >>> 0) + 1) >>> 0] = ((v[2] << 4) >>> 0 | v[1] >>> 2) >>> 0 & 0xFF;
+                raw[(((3 * i) >>> 0) + 2) >>> 0] = ((v[1] << 6) >>> 0 | v[0]) >>> 0 & 0xFF;
+            }
+            lines = Math.floor((sxarm_uint(raw, 21, 3, false) + 47) / 48);
+            state = lines ? 3 : 4;
+        } else if (state === 3) {
+            if (lines && !--lines) {
+                state = 4;
+            }
+        } else if (state === 4) {
+            if (len >= 4 && !sxarm_add(c, sxarm_binscii_data_crc, p + a)) {
+                return false;
+            }
+            state = 0;
+        }
+        p = next[0];
+    }
+    return true;
+}
+function sx_binscii_build(c) {
+    return sxarm_binscii(c);
+}

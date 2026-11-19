@@ -1,0 +1,160 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/zx_spectrum_tzx/xx_zx_spectrum_tzx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_tzx_header_fields = layout([chars("signature", 8, SIGNATURE), u8("version_major"), u8("version_minor")]);
+var sxse_tzx_header = sxLayout(0x602F000B, "tzx_header", LE, sxse_tzx_header_fields);
+var sxse_tzx_standard_data_fields = layout([u8("block_id", ID), u16("pause_milliseconds"), u16("data_size", SIZE)]);
+var sxse_tzx_standard_data = sxLayout(0x602F000C, "tzx_standard_data", LE, sxse_tzx_standard_data_fields);
+var sxse_tzx_turbo_data_fields = layout([u8("block_id", ID), u16("pilot_pulse_ticks"), u16("sync_first_ticks"),
+    u16("sync_second_ticks"), u16("zero_bit_ticks"), u16("one_bit_ticks"), u16("pilot_pulse_count", COUNT),
+    u8("last_byte_used_bits"), u16("pause_milliseconds"), field("data_size", "uint24", 3, SIZE)]);
+var sxse_tzx_turbo_data = sxLayout(0x602F000D, "tzx_turbo_data", LE, sxse_tzx_turbo_data_fields);
+var sxse_tzx_pure_tone_fields = layout([u8("block_id", ID), u16("pulse_ticks"), u16("pulse_count", COUNT)]);
+var sxse_tzx_pure_tone = sxLayout(0x602F000E, "tzx_pure_tone", LE, sxse_tzx_pure_tone_fields);
+var sxse_tzx_pulse_sequence_fields = layout([u8("block_id", ID), u8("pulse_count", COUNT)]);
+var sxse_tzx_pulse_sequence = sxLayout(0x602F000F, "tzx_pulse_sequence", LE, sxse_tzx_pulse_sequence_fields);
+var sxse_tzx_pulse_fields = layout([u16("duration_ticks")]);
+var sxse_tzx_pulse = sxLayout(0x602F0010, "tzx_pulse", LE, sxse_tzx_pulse_fields);
+var sxse_tzx_pure_data_fields = layout([u8("block_id", ID), u16("zero_bit_ticks"), u16("one_bit_ticks"),
+    u8("last_byte_used_bits"), u16("pause_milliseconds"), field("data_size", "uint24", 3, SIZE)]);
+var sxse_tzx_pure_data = sxLayout(0x602F0011, "tzx_pure_data", LE, sxse_tzx_pure_data_fields);
+var sxse_tzx_pause_fields = layout([u8("block_id", ID), u16("pause_milliseconds")]);
+var sxse_tzx_pause = sxLayout(0x602F0012, "tzx_pause", LE, sxse_tzx_pause_fields);
+var sxse_tzx_text_header_fields = layout([u8("block_id", ID), u8("text_size", SIZE)]);
+var sxse_tzx_text_header = sxLayout(0x602F0013, "tzx_text_header", LE, sxse_tzx_text_header_fields);
+var sxse_tzx_group_end_fields = layout([u8("block_id", ID)]);
+var sxse_tzx_group_end = sxLayout(0x602F0014, "tzx_group_end", LE, sxse_tzx_group_end_fields);
+var sxse_tzx_archive_info_fields = layout([u8("block_id", ID), u16("data_size", SIZE), u8("string_count", COUNT)]);
+var sxse_tzx_archive_info = sxLayout(0x602F0015, "tzx_archive_info", LE, sxse_tzx_archive_info_fields);
+var sxse_tzx_archive_string_fields = layout([u8("text_id", ID), u8("text_size", SIZE)]);
+var sxse_tzx_archive_string = sxLayout(0x602F0016, "tzx_archive_string", LE, sxse_tzx_archive_string_fields);
+var sxse_tzx_custom_info_fields = layout([u8("block_id", ID), chars("identifier", 16, STRING), u32("data_size", SIZE)]);
+var sxse_tzx_custom_info = sxLayout(0x602F0017, "tzx_custom_info", LE, sxse_tzx_custom_info_fields);
+function sxse_tzx(c) {
+    var b = [];
+    var p = 10;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var group = 0;
+    if (!sxse_read(c, 0, b, 10) || sxMemcmp(b, "ZXTape!\x1A", 8) || !sxse_put(c, sxse_tzx_header, 0, 10, 1)) {
+        return false;
+    }
+    for (var visit = 0; p < end && visit < 4095; visit++) {
+        if (!sxse_read(c, p, b, 1)) {
+            return false;
+        }
+        var l = null;
+        var z = 0;
+        var data = 0;
+        switch (b[0]) {
+        case 0x10:
+            l = sxse_tzx_standard_data;
+            z = 5;
+            break;
+        case 0x11:
+            l = sxse_tzx_turbo_data;
+            z = 19;
+            break;
+        case 0x12:
+            l = sxse_tzx_pure_tone;
+            z = 5;
+            break;
+        case 0x13:
+            l = sxse_tzx_pulse_sequence;
+            z = 2;
+            break;
+        case 0x14:
+            l = sxse_tzx_pure_data;
+            z = 11;
+            break;
+        case 0x20:
+            l = sxse_tzx_pause;
+            z = 3;
+            break;
+        case 0x21:
+            if (++group > 16) {
+                return false;
+            }
+        case 0x30:
+            l = sxse_tzx_text_header;
+            z = 2;
+            break;
+        case 0x22:
+            if (!group) {
+                return false;
+            }
+            group--;
+            l = sxse_tzx_group_end;
+            z = 1;
+            break;
+        case 0x32:
+            l = sxse_tzx_archive_info;
+            z = 4;
+            break;
+        case 0x35:
+            l = sxse_tzx_custom_info;
+            z = 21;
+            break;
+        default:
+            return false;
+        }
+        if (!sxse_read(c, p, b, z) || !sxse_put(c, l, p, z, 1)) {
+            return false;
+        }
+        switch (b[0]) {
+        case 0x10:
+            data = sxse_u16(b, 3, false);
+            break;
+        case 0x11:
+            data = b[16] | b[17] << 8 | b[18] << 16;
+            break;
+        case 0x13:
+            data = 2 * b[1];
+            if (!sxse_put(c, sxse_tzx_pulse, p + z, 2, b[1])) {
+                return false;
+            }
+            break;
+        case 0x14:
+            data = b[8] | b[9] << 8 | b[10] << 16;
+            break;
+        case 0x21:
+        case 0x30:
+            data = b[1];
+            break;
+        case 0x35:
+            data = sxse_u32(b, 17, false);
+            break;
+        case 0x32:
+            var len = sxse_u16(b, 1, false);
+            var n = b[3];
+            if (!len || !sxse_span(c, p + 3, len)) {
+                return false;
+            }
+            var q = p + 4;
+            var limit = p + 3 + len;
+            for (var i = 0; i < n; i++) {
+                if (sxU64(limit - q) < 2 || !sxse_read(c, q, b, 2) || !sxse_put(c, sxse_tzx_archive_string, q, 2, 1) || b[1] > sxU64(sxU64(limit - q) - 2)) {
+                    return false;
+                }
+                q += 2 + b[1];
+            }
+            if (q !== limit) {
+                return false;
+            }
+            data = sxU64(len - 1);
+            break;
+        default:
+            break;
+        }
+        if (!sxse_span(c, p + z, data)) {
+            return false;
+        }
+        p += z + data;
+    }
+    return p === end && !group && p > 10;
+}
+function sx_zx_spectrum_tzx_build(c) {
+    return sxse_tzx(c);
+}

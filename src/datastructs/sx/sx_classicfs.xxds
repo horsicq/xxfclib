@@ -1,0 +1,95 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_classicfs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_classicfs");
+include("_sx_classicfs_amiga_pfs");
+include("_sx_classicfs_ecma67_fs");
+include("_sx_classicfs_hp_lif");
+include("_sx_classicfs_hpofs");
+include("_sx_classicfs_locus_fs");
+include("_sx_classicfs_minix");
+include("_sx_classicfs_ods2_fs");
+include("_sx_classicfs_qnx4");
+include("_sx_classicfs_rt11_fs");
+include("_sx_classicfs_sgi_efs");
+include("_sx_classicfs_unicos_fs");
+
+function fileTypes() { return ["MINIX", "ATHEOS_FS", "BEOS_FS", "COHERENT_FS", "ODS2_FS", "RT11_FS", "ECMA67_FS", "HPOFS",
+    "HP_LIF", "LINUX_EXT", "LOCUS_FS", "AMIGA_PFS", "QNX4", "SGI_EFS", "UNICOS_FS", "SYSV_FS", "UNIX_V7", "UNIX_BFS",
+    "XENIX_FS", "XIA_FS"]; }
+
+var sx_classicfs_layouts = [sxcf_minix1_superblock_le, sxcf_minix1_superblock_be, sxcf_minix2_superblock_le,
+    sxcf_minix2_superblock_be, sxcf_minix3_superblock_le, sxcf_minix3_superblock_be, sxcf_minix1_inode_le, sxcf_minix1_inode_be,
+    sxcf_minix23_inode_le, sxcf_minix23_inode_be, sxcf_minix_directory_14_le, sxcf_minix_directory_14_be,
+    sxcf_minix_directory_30_le, sxcf_minix_directory_30_be, sxcf_minix3_directory_le, sxcf_minix3_directory_be,
+    sxcf_classic_block_number16_le, sxcf_classic_block_number16_be, sxcf_classic_block_number32_le,
+    sxcf_classic_block_number32_be, sxcf_classic_block_number_pdp, sxcf_v7_superblock_le, sxcf_v7_superblock_be,
+    sxcf_v7_superblock_pdp, sxcf_coherent_superblock_pdp, sxcf_sysv2_superblock_le, sxcf_sysv2_superblock_be,
+    sxcf_sysv4_superblock_le, sxcf_sysv4_superblock_be, sxcf_xenix_superblock_le, sxcf_xenix_superblock_be, sxcf_unix_inode_le,
+    sxcf_unix_inode_be, sxcf_unix_inode_pdp, sxcf_unix_directory_le, sxcf_unix_directory_be, sxcf_linux_ext_superblock,
+    sxcf_linux_ext_inode, sxcf_linux_ext_directory_header, sxcf_xia_superblock, sxcf_xia_inode, sxcf_xia_directory_header,
+    sxcf_unix_bfs_superblock, sxcf_unix_bfs_inode, sxcf_qnx4_inode, sxcf_qnx4_link, sxcf_qnx4_extent_block_header,
+    sxcf_qnx4_extent, sxcf_qnx4_extent_block_tail, sxcf_efs_superblock, sxcf_efs_inode_header, sxcf_efs_extent,
+    sxcf_efs_directory_header, sxcf_efs_directory_entry, sxcf_rt11_home_block, sxcf_rt11_directory_segment,
+    sxcf_rt11_directory_entry, sxcf_hp_lif_volume_header, sxcf_hp_lif_directory_entry, sxcf_ecma67_volume_label,
+    sxcf_ecma67_error_map_label, sxcf_ecma67_file_label, sxcf_locus_superblock_prefix_le, sxcf_locus_superblock_prefix_be,
+    sxcf_locus_inode_le, sxcf_locus_inode_be, sxcf_locus_inode_small_le, sxcf_locus_inode_small_be,
+    sxcf_locus_directory_header_le, sxcf_locus_directory_header_be, sxcf_pfs_root_block, sxcf_pfs_root_small_indexes,
+    sxcf_pfs_root_large_indexes, sxcf_pfs_index_header, sxcf_pfs_anode_header, sxcf_pfs_anode, sxcf_pfs_directory_header,
+    sxcf_pfs_directory_entry, sxcf_pfs_extension, sxcf_hpofs_boot_sector, sxcf_hpofs_media_information,
+    sxcf_hpofs_subfile_header, sxcf_hpofs_extent, sxcf_hpofs_directory_node, sxcf_hpofs_directory_record_prefix,
+    sxcf_hpofs_directory_record, sxcf_ods_home_block, sxcf_ods_file_header, sxcf_ods_file_checksum, sxcf_ods_retrieval_pointer0,
+    sxcf_ods_retrieval_pointer1, sxcf_ods_retrieval_pointer2, sxcf_ods_retrieval_pointer3, sxcf_ods_directory_header,
+    sxcf_ods_directory_version, sxcf_unicos_superblock_prefix, sxcf_unicos_partition, sxcf_unicos_superblock_tail,
+    sxcf_unicos_inode_prefix, sxcf_unicos_extent, sxcf_unicos_inode_tail, sxcf_unicos_directory_header, sxcf_beos_superblock_le,
+    sxcf_beos_superblock_be, sxcf_beos_inode_header_le, sxcf_beos_inode_header_be, sxcf_atheos_superblock_le,
+    sxcf_atheos_superblock_be, sxcf_atheos_inode_header_le, sxcf_atheos_inode_header_be, sxcf_bfs_block_run_le,
+    sxcf_bfs_block_run_be, sxcf_bfs_stream_tail_le, sxcf_bfs_stream_tail_be, sxcf_beos_inode_tail_le, sxcf_beos_inode_tail_be,
+    sxcf_bfs_small_data_header_le, sxcf_bfs_small_data_header_be, sxcf_beos_btree_header_le, sxcf_beos_btree_header_be,
+    sxcf_atheos_btree_header_le, sxcf_atheos_btree_header_be, sxcf_beos_btree_node_le, sxcf_beos_btree_node_be,
+    sxcf_atheos_btree_node_le, sxcf_atheos_btree_node_be, sxcf_hpofs_volume_information, sxcf_bfs_btree_key_end_le,
+    sxcf_bfs_btree_key_end_be, sxcf_bfs_btree_value_le, sxcf_bfs_btree_value_be];
+
+function structs() {
+    return sxCatalog([sxcf_minix1_superblock_le, sxcf_minix1_superblock_be, sxcf_minix2_superblock_le,
+        sxcf_minix2_superblock_be, sxcf_minix3_superblock_le, sxcf_minix3_superblock_be, sxcf_minix1_inode_le,
+        sxcf_minix1_inode_be, sxcf_minix23_inode_le, sxcf_minix23_inode_be, sxcf_minix_directory_14_le,
+        sxcf_minix_directory_14_be, sxcf_minix_directory_30_le, sxcf_minix_directory_30_be, sxcf_minix3_directory_le,
+        sxcf_minix3_directory_be, sxcf_classic_block_number16_le, sxcf_classic_block_number16_be,
+        sxcf_classic_block_number32_le, sxcf_classic_block_number32_be, sxcf_classic_block_number_pdp, sxcf_v7_superblock_le,
+        sxcf_v7_superblock_be, sxcf_v7_superblock_pdp, sxcf_coherent_superblock_pdp, sxcf_sysv2_superblock_le,
+        sxcf_sysv2_superblock_be, sxcf_sysv4_superblock_le, sxcf_sysv4_superblock_be, sxcf_xenix_superblock_le,
+        sxcf_xenix_superblock_be, sxcf_unix_inode_le, sxcf_unix_inode_be, sxcf_unix_inode_pdp, sxcf_unix_directory_le,
+        sxcf_unix_directory_be, sxcf_linux_ext_superblock, sxcf_linux_ext_inode, sxcf_linux_ext_directory_header,
+        sxcf_xia_superblock, sxcf_xia_inode, sxcf_xia_directory_header, sxcf_unix_bfs_superblock, sxcf_unix_bfs_inode,
+        sxcf_qnx4_inode, sxcf_qnx4_link, sxcf_qnx4_extent_block_header, sxcf_qnx4_extent, sxcf_qnx4_extent_block_tail,
+        sxcf_efs_superblock, sxcf_efs_inode_header, sxcf_efs_extent, sxcf_efs_directory_header, sxcf_efs_directory_entry,
+        sxcf_rt11_home_block, sxcf_rt11_directory_segment, sxcf_rt11_directory_entry, sxcf_hp_lif_volume_header,
+        sxcf_hp_lif_directory_entry, sxcf_ecma67_volume_label, sxcf_ecma67_error_map_label, sxcf_ecma67_file_label,
+        sxcf_locus_superblock_prefix_le, sxcf_locus_superblock_prefix_be, sxcf_locus_inode_le, sxcf_locus_inode_be,
+        sxcf_locus_inode_small_le, sxcf_locus_inode_small_be, sxcf_locus_directory_header_le, sxcf_locus_directory_header_be,
+        sxcf_pfs_root_block, sxcf_pfs_root_small_indexes, sxcf_pfs_root_large_indexes, sxcf_pfs_index_header,
+        sxcf_pfs_anode_header, sxcf_pfs_anode, sxcf_pfs_directory_header, sxcf_pfs_directory_entry, sxcf_pfs_extension,
+        sxcf_hpofs_boot_sector, sxcf_hpofs_media_information, sxcf_hpofs_subfile_header, sxcf_hpofs_extent,
+        sxcf_hpofs_directory_node, sxcf_hpofs_directory_record_prefix, sxcf_hpofs_directory_record, sxcf_ods_home_block,
+        sxcf_ods_file_header, sxcf_ods_file_checksum, sxcf_ods_retrieval_pointer0, sxcf_ods_retrieval_pointer1,
+        sxcf_ods_retrieval_pointer2, sxcf_ods_retrieval_pointer3, sxcf_ods_directory_header, sxcf_ods_directory_version,
+        sxcf_unicos_superblock_prefix, sxcf_unicos_partition, sxcf_unicos_superblock_tail, sxcf_unicos_inode_prefix,
+        sxcf_unicos_extent, sxcf_unicos_inode_tail, sxcf_unicos_directory_header, sxcf_beos_superblock_le,
+        sxcf_beos_superblock_be, sxcf_beos_inode_header_le, sxcf_beos_inode_header_be, sxcf_atheos_superblock_le,
+        sxcf_atheos_superblock_be, sxcf_atheos_inode_header_le, sxcf_atheos_inode_header_be, sxcf_bfs_block_run_le,
+        sxcf_bfs_block_run_be, sxcf_bfs_stream_tail_le, sxcf_bfs_stream_tail_be, sxcf_beos_inode_tail_le,
+        sxcf_beos_inode_tail_be, sxcf_bfs_small_data_header_le, sxcf_bfs_small_data_header_be, sxcf_beos_btree_header_le,
+        sxcf_beos_btree_header_be, sxcf_atheos_btree_header_le, sxcf_atheos_btree_header_be, sxcf_beos_btree_node_le,
+        sxcf_beos_btree_node_be, sxcf_atheos_btree_node_le, sxcf_atheos_btree_node_be, sxcf_hpofs_volume_information,
+        sxcf_bfs_btree_key_end_le, sxcf_bfs_btree_key_end_be, sxcf_bfs_btree_value_le, sxcf_bfs_btree_value_be], sx_classicfs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_classicfs_build, false);
+}

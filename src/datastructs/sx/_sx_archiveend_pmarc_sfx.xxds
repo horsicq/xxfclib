@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pmarc_sfx/xx_pmarc_sfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_pmarc_member_fields = layout([u8("header_size_minus_two"), u8("header_checksum", CHECKSUM), chars("method", 5, ID),
+    u32("packed_size", SIZE), u32("uncompressed_size", SIZE), u32("dos_date_time"), u8("attributes", FLAGS), u8("header_level"),
+    u8("name_size", SIZE)]);
+var sxaend_pmarc_member = sxLayout(0x60840027, "pmarc_member", LE, sxaend_pmarc_member_fields);
+var sxaend_pmarc_crc_fields = layout([u16("data_crc16", CHECKSUM)]);
+var sxaend_pmarc_crc = sxLayout(0x60840028, "pmarc_crc", LE, sxaend_pmarc_crc_fields);
+var sxaend_pmarc_end_fields = layout([u8("end_marker", ID)]);
+var sxaend_pmarc_end = sxLayout(0x60840029, "pmarc_end", LE, sxaend_pmarc_end_fields);
+function sxaend_pmarc(c) {
+    var p = [0];
+    var n = [0];
+    if (!sxaend_first_source(c, p, n)) {
+        return false;
+    }
+    var end = p[0] + n[0];
+    for (var i = 0; p[0] < end && i < 20000; i++) {
+        var h = [];
+        if (!sxaend_read(c, p[0], h, 1)) {
+            return false;
+        }
+        if (!h[0]) {
+            return sxaend_add(c, sxaend_pmarc_end, p[0]);
+        }
+        var z = h[0] + 2;
+        if (z < 24 || z > sxU64(end - p[0]) || !sxaend_read(c, p[0], h, 22) || z < 24 + h[21] || sxMemcmpAt(h, 2, "-pm", 0, 3) || !sxaend_add(c, sxaend_pmarc_member, p[0]) || !sxaend_name(c, p[0] + 22, h[21]) || !sxaend_add(c, sxaend_pmarc_crc, p[0] + 22 + h[21])) {
+            return false;
+        }
+        var packed = sxaend_uint(h, 7, 4, false);
+        if (packed > sxU64(sxU64(end - p[0]) - z)) {
+            return false;
+        }
+        p[0] += z + packed;
+    }
+    return true;
+}
+function sx_pmarc_sfx_build(c) {
+    return sxaend_pmarc(c);
+}

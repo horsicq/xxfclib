@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/samcoupe_sad/xx_samcoupe_sad_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_sad_header_fields = layout([chars("magic", 18, SIGNATURE), u8("side_count", COUNT), u8("track_count", COUNT),
+    u8("sectors_per_track", COUNT), u8("sector_size_div64")]);
+var sxdleg_sad_header = sxLayout(0x60750039, "sad_header", LE, sxdleg_sad_header_fields);
+function sxdleg_tag(c, p, s, size) {
+    var b = [];
+    return size <= 16 && sxdleg_read(c, p, b, 0, size) && !sxMemcmp(b, s, size);
+}
+function sxdleg_sad(c) {
+    return sxdleg_tag(c, 0, "Aley's disk back", 15) && sxdleg_put(c, sxdleg_sad_header, 0, 1);
+}
+function sx_samcoupe_sad_build(c) {
+    return sxdleg_sad(c);
+}

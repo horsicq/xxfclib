@@ -1,0 +1,113 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hxc_afi/xx_hxc_afi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_afi_header_fields = layout([chars("tag", 16, SIGNATURE), u8("version_major", ID), u8("version_minor", ID),
+    u32("header_size", SIZE), u32("info_offset", OFFSET), u32("track_list_offset", OFFSET),
+    field("header_crc", "uint16be", 2, CHECKSUM)]);
+var sxdleg_afi_header = sxLayout(0x6075001E, "afi_header", LE, sxdleg_afi_header_fields);
+var sxdleg_afi_info_fields = layout([chars("tag", 16, SIGNATURE), u32("info_size", SIZE), u32("media_type", ID),
+    u32("platform_type", ID), u32("total_track_count", COUNT), u32("first_track"), u32("last_track"), u32("first_side"),
+    u32("last_side"), u32("string_count", COUNT)]);
+var sxdleg_afi_info = sxLayout(0x6075001F, "afi_info", LE, sxdleg_afi_info_fields);
+var sxdleg_afi_string_offset_fields = layout([u32("string_offset", OFFSET)]);
+var sxdleg_afi_string_offset = sxLayout(0x60750020, "afi_string_offset", LE, sxdleg_afi_string_offset_fields);
+var sxdleg_afi_track_offset_fields = layout([u32("track_offset", OFFSET)]);
+var sxdleg_afi_track_offset = sxLayout(0x60750021, "afi_track_offset", LE, sxdleg_afi_track_offset_fields);
+var sxdleg_afi_data_offset_fields = layout([u32("data_offset", OFFSET)]);
+var sxdleg_afi_data_offset = sxLayout(0x60750022, "afi_data_offset", LE, sxdleg_afi_data_offset_fields);
+var sxdleg_afi_crc_fields = layout([u16("crc16", CHECKSUM)]);
+var sxdleg_afi_crc = sxLayout(0x60750023, "afi_crc", BE, sxdleg_afi_crc_fields);
+var sxdleg_afi_string_fields = layout([chars("tag", 16, SIGNATURE), chars("string_type", 16, ID), u32("string_size", SIZE)]);
+var sxdleg_afi_string = sxLayout(0x60750024, "afi_string", LE, sxdleg_afi_string_fields);
+var sxdleg_afi_track_list_fields = layout([chars("tag", 16, SIGNATURE), u32("track_count", COUNT)]);
+var sxdleg_afi_track_list = sxLayout(0x60750025, "afi_track_list", LE, sxdleg_afi_track_list_fields);
+var sxdleg_afi_track_fields = layout([chars("tag", 16, SIGNATURE), u32("track_number"), u32("side_number"),
+    u32("encoding_mode", ID), u32("element_count", COUNT), u32("chunk_count", COUNT)]);
+var sxdleg_afi_track = sxLayout(0x60750026, "afi_track", LE, sxdleg_afi_track_fields);
+var sxdleg_afi_data_fields = layout([chars("tag", 16, SIGNATURE), u32("type_id", ID), chars("type_tag", 16, ID),
+    u32("bits_per_element"), u32("packed_size", SIZE), u32("packer", ID), u32("unpacked_size", SIZE)]);
+var sxdleg_afi_data = sxLayout(0x60750027, "afi_data", LE, sxdleg_afi_data_fields);
+function sxdleg_afi(c) {
+    var h = [];
+    var e = [];
+    if (!sxdleg_read(c, 0, h, 0, 32) || sxMemcmp(h, "AFI_FLOPPY_IMG", 13) || !sxdleg_put(c, sxdleg_afi_header, 0, 1)) {
+        return false;
+    }
+    var info = sxdleg32(h, 22, 0);
+    var list = sxdleg32(h, 26, 0);
+    if (info < 32 || !sxdleg_read(c, info, h, 0, 54) || sxMemcmp(h, "AFI_INFO", 8)) {
+        return true;
+    }
+    var n = sxdleg32(h, 48, 0);
+    if (n > 256 || !sxdleg_span(c, info, 54 + n * 4)) {
+        return true;
+    }
+    if (!sxdleg_put(c, sxdleg_afi_info, info, 1) || !sxdleg_put(c, sxdleg_afi_string_offset, info + 52, n) || !sxdleg_put(c, sxdleg_afi_crc, info + 52 + n * 4, 1)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxdleg_read(c, info + 52 + ((i * 4) >>> 0), e, 0, 4)) {
+            return false;
+        }
+        var p = info + sxdleg32(e, 0, 0);
+        if (!sxdleg_read(c, p, h, 0, 36) || sxMemcmp(h, "STRING", 6)) {
+            continue;
+        }
+        var z = sxdleg32(h, 32, 0);
+        if (z > 1048576 || !sxdleg_span(c, p, 38 + z)) {
+            continue;
+        }
+        if (!sxdleg_put(c, sxdleg_afi_string, p, 1) || !sxdleg_put(c, sxdleg_afi_crc, p + 36 + z, 1)) {
+            return false;
+        }
+    }
+    if (list < 32 || !sxdleg_read(c, list, h, 0, 20) || sxMemcmp(h, "TRACKLIST", 9)) {
+        return true;
+    }
+    n = sxdleg32(h, 16, 0);
+    if (n > 340 || !sxdleg_span(c, list, 22 + n * 4)) {
+        return true;
+    }
+    if (!sxdleg_put(c, sxdleg_afi_track_list, list, 1) || !sxdleg_put(c, sxdleg_afi_track_offset, list + 20, n) || !sxdleg_put(c, sxdleg_afi_crc, list + 20 + n * 4, 1)) {
+        return false;
+    }
+    for (i = 0; i < n; i++) {
+        if (!sxdleg_read(c, list + 20 + ((i * 4) >>> 0), e, 0, 4)) {
+            return false;
+        }
+        p = list + sxdleg32(e, 0, 0);
+        if (!sxdleg_read(c, p, h, 0, 36) || sxMemcmp(h, "TRACK", 5)) {
+            continue;
+        }
+        var chunks = sxdleg32(h, 32, 0);
+        if (chunks > 16 || !sxdleg_span(c, p, 38 + chunks * 4)) {
+            continue;
+        }
+        if (!sxdleg_put(c, sxdleg_afi_track, p, 1) || !sxdleg_put(c, sxdleg_afi_data_offset, p + 36, chunks) || !sxdleg_put(c, sxdleg_afi_crc, p + 36 + chunks * 4, 1)) {
+            return false;
+        }
+        for (var j = 0; j < chunks; j++) {
+            if (!sxdleg_read(c, p + 36 + ((j * 4) >>> 0), e, 0, 4)) {
+                return false;
+            }
+            var d = p + sxdleg32(e, 0, 0);
+            if (!sxdleg_read(c, d, h, 0, 52) || sxMemcmp(h, "TRACKDATA", 9)) {
+                continue;
+            }
+            z = sxdleg32(h, 40, 0);
+            if (!sxdleg_span(c, d, 54 + z)) {
+                continue;
+            }
+            if (!sxdleg_put(c, sxdleg_afi_data, d, 1) || !sxdleg_put(c, sxdleg_afi_crc, d + 52 + z, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_hxc_afi_build(c) {
+    return sxdleg_afi(c);
+}

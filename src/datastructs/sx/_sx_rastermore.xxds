@@ -1,0 +1,381 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_rastermore.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_rastermore_comment(r, id) {
+    if (r === null || r.name === null || id < 0x601D0000 || id >= 0x601E0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x601D0001:
+        if (r.name === "first_frame") {
+            text = "Cubemaps use 65535 for six faces; other supported values include the legacy sphere-map face.";
+        }
+        if (r.name === "low_resolution_format") {
+            text = "-1 means no low-resolution image.";
+        }
+        break;
+    case 0x601D0002:
+        if (r.name === "first_frame") {
+            text = "Cubemaps use 65535 for six faces; other supported values include the legacy sphere-map face.";
+        }
+        if (r.name === "low_resolution_format") {
+            text = "-1 means no low-resolution image.";
+        }
+        break;
+    case 0x601D0003:
+        if (r.name === "version_and_flags") {
+            text = "Low byte is the version; upper bits are file feature flags.";
+        }
+        break;
+    case 0x601D0005:
+        if (r.name === "pixel_type") {
+            text = "0=UINT, 1=HALF, 2=FLOAT.";
+        }
+        break;
+    case 0x601D0009:
+        if (r.name === "method") {
+            text = "0=NONE, 1=RLE, 2=ZIPS, 3=ZIP, 4=PIZ, 5=PXR24, 6=B44, 7=B44A, 8=DWAA, 9=DWAB, 10=HTJ2K256, 11=HTJ2K32.";
+        }
+        break;
+    case 0x601D000A:
+        if (r.name === "order") {
+            text = "0=increasing Y, 1=decreasing Y, 2=random Y.";
+        }
+        break;
+    case 0x601D000D:
+        if (r.name === "box_size") {
+            text = "Zero extends to parent end; one selects the following extended size.";
+        }
+        break;
+    case 0x601D0012:
+        if (r.name === "bits_per_component") {
+            text = "Bit 7 is signedness; bits 0..6 store bit depth minus one; 255 uses BPCC.";
+        }
+        break;
+    case 0x601D0016:
+        if (r.name === "segment_size") {
+            text = "Includes this length field; excludes the two-byte marker.";
+        }
+        break;
+    case 0x601D0018:
+        if (r.name === "precision_and_sign") {
+            text = "Bit 7 is signedness; bits 0..6 store precision minus one.";
+        }
+        break;
+    case 0x601D0019:
+        if (r.name === "tile_part_size") {
+            text = "Includes the SOT marker and all bytes through this tile part.";
+        }
+        break;
+    case 0x601D001A:
+        if (r.name === "alignment_shift") {
+            text = "Alignment is 1 shifted left by this value, in bytes.";
+        }
+        break;
+    case 0x601D0021:
+        if (r.name === "chunk_size") {
+            text = "Byte count after the eight-byte chunk prefix.";
+        }
+        if (r.name === "palette_format_and_flags") {
+            text = "High nibble is the palette format; low nibble contains texture flags.";
+        }
+        break;
+    case 0x601D0023:
+        if (r.name === "form_size") {
+            text = "Bytes following the eight-byte FORM prefix.";
+        }
+        break;
+    case 0x601D0028:
+        if (r.name === "flags") {
+            text = "1=clear first, 2=no background, 4=alpha, 8=comments.";
+        }
+        if (r.name === "colormap_length_log2") {
+            text = "Entries per colormap channel are 1 shifted left by this value.";
+        }
+        break;
+    case 0x601D002C:
+        if (r.name === "operand") {
+            text = "Byte/run data counts store count minus one; other meanings depend on opcode.";
+        }
+        break;
+    case 0x601D002D:
+        if (r.name === "operand") {
+            text = "Byte/run data counts store count minus one; other meanings depend on opcode.";
+        }
+        break;
+    case 0x601D0033:
+        if (r.name === "x_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        break;
+    case 0x601D0035:
+        if (r.name === "time_code") {
+            text = "Packed SMPTE timecode, not a Unix timestamp.";
+        }
+        break;
+    case 0x601D003B:
+        if (r.name === "x_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        break;
+    case 0x601D0041:
+        if (r.name === "x_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        break;
+    case 0x601D0043:
+        if (r.name === "time_code") {
+            text = "Packed SMPTE timecode, not a Unix timestamp.";
+        }
+        break;
+    case 0x601D0049:
+        if (r.name === "x_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Pixel displacement, not a file offset.";
+        }
+        break;
+    case 0x601D004B:
+        if (r.name === "color_count") {
+            text = "Zero denotes 256 colors in older sprites.";
+        }
+        break;
+    case 0x601D004C:
+        if (r.name === "chunk_count") {
+            text = "If zero, use old_chunk_count.";
+        }
+        break;
+    case 0x601D0053:
+        if (r.name === "palette_size") {
+            text = "Number of entries, not byte size.";
+        }
+        break;
+    case 0x601D0058:
+        if (r.name === "mipmap_count") {
+            text = "Number of additional levels after the base image.";
+        }
+        break;
+    case 0x601D0059:
+        if (r.name === "flags") {
+            text = "Bit 0=sequential; bit 1=page count unknown.";
+        }
+        break;
+    case 0x601D005B:
+        if (r.name === "flags") {
+            text = "Low 6 bits=type; bit 6=wide page association; bit 7=deferred non-retain.";
+        }
+        if (r.name === "reference_count_and_retention") {
+            text = "High 3 bits=count (native short form); low bits=retention flags.";
+        }
+        break;
+    case 0x601D0063:
+        if (r.name === "extension_type") {
+            text = "Bit 31 marks a necessary extension; other bits identify its type.";
+        }
+        break;
+    case 0x601D0064:
+        if (r.name === "unknown") {
+            text = "Uninterpreted header bytes; no field meaning is asserted.";
+        }
+        break;
+    case 0x601D0070:
+        if (r.name === "string_pool_codeunits") {
+            text = "Length in UTF-16 code units, not bytes.";
+        }
+        break;
+    case 0x601D0071:
+        if (r.name === "name_index") {
+            text = "UTF-16 code-unit index relative to the string pool.";
+        }
+        if (r.name === "value_index") {
+            text = "UTF-16 code-unit index relative to the string pool.";
+        }
+        break;
+    case 0x601D0072:
+        if (r.name === "metadata_size") {
+            text = "Byte length after this header; raw image starts at 8 plus this value.";
+        }
+        break;
+    case 0x601D0074:
+        if (r.name === "unknown") {
+            text = "Uninterpreted camera-specific PRD bytes.";
+        }
+        break;
+    case 0x601D0075:
+        if (r.name === "denominator_exponents") {
+            text = "Four encoded gain denominators; the channel order depends on the PRD Bayer pattern.";
+        }
+        break;
+    case 0x601D0076:
+        if (r.name === "first_ifd_offset") {
+            text = "Relative to this embedded TIFF header.";
+        }
+        break;
+    case 0x601D0077:
+        if (r.name === "first_ifd_offset") {
+            text = "Relative to this embedded TIFF header.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxrm_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxrm_read(c, p, b, b_o, n) {
+    return sxrm_span(c, p, n) && sx_read_at(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, b_o, n);
+}
+function sxrm_uint(b, b_o, n, be) {
+    var x = 0;
+    for (var i = 0; i < n; i++) {
+        x = sxOr64(x, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return x;
+}
+function sxrm16(b, b_o, be) {
+    return sxrm_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxrm32(b, b_o, be) {
+    return sxrm_uint(b, b_o, 4, be) >>> 0;
+}
+function sxrm_table(c, l, p, n) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!n) {
+        return true;
+    }
+    if (n > 20000 || !sxrm_span(c, p, z * n)) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var b = a + (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < b && a < p + z * n) {
+            return true;
+        }
+    }
+    return sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxrm_add(c, l, p) {
+    return sxrm_table(c, l, p, 1);
+}
+function sxrm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxrm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxrm_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxrm_order, true);
+    return !c.failed;
+}
+function sx_rastermore_supports(type) {
+    switch (type) {
+    case "VALVE_VTF":
+    case "OPENEXR":
+    case "JPEG2000_JP2":
+    case "NINTENDO_BNTX":
+    case "SEGA_GVR":
+    case "IFF_ILBM":
+    case "UTAH_RLE":
+    case "DPX":
+    case "CINEON":
+    case "ASEPRITE":
+    case "GODOT_CTEX":
+    case "JBIG2":
+    case "FUJIFILM_RAF":
+    case "SIGMA_X3F":
+    case "MINOLTA_MRW":
+    case "BASIS_TEXTURE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_rastermore_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "VALVE_VTF":
+        ok = sx_valve_vtf_build(c);
+        break;
+    case "OPENEXR":
+        ok = sx_openexr_build(c);
+        break;
+    case "JPEG2000_JP2":
+        ok = sx_jpeg2000_jp2_build(c);
+        break;
+    case "NINTENDO_BNTX":
+        ok = sx_nintendo_bntx_build(c);
+        break;
+    case "SEGA_GVR":
+        ok = sx_sega_gvr_build(c);
+        break;
+    case "IFF_ILBM":
+        ok = sx_iff_ilbm_build(c);
+        break;
+    case "UTAH_RLE":
+        ok = sx_utah_rle_build(c);
+        break;
+    case "DPX":
+        ok = sx_dpx_build(c);
+        break;
+    case "CINEON":
+        ok = sx_cineon_build(c);
+        break;
+    case "ASEPRITE":
+        ok = sx_aseprite_build(c);
+        break;
+    case "GODOT_CTEX":
+        ok = sx_godot_ctex_build(c);
+        break;
+    case "JBIG2":
+        ok = sx_jbig2_build(c);
+        break;
+    case "FUJIFILM_RAF":
+        ok = sx_fujifilm_raf_build(c);
+        break;
+    case "SIGMA_X3F":
+        ok = sx_sigma_x3f_build(c);
+        break;
+    case "MINOLTA_MRW":
+        ok = sx_minolta_mrw_build(c);
+        break;
+    case "BASIS_TEXTURE":
+        ok = sx_basis_texture_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && c.count > 0 && sxrm_finish(c);
+}

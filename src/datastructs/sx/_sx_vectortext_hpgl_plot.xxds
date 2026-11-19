@@ -1,0 +1,114 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/hpgl_plot/xx_hpgl_plot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvtx_line_width_fields = layout([field("line_width", "ascii_real", 0)]);
+var sxvtx_line_width = sxLayout(0x6062004E, "vectortext_line_width", LE, sxvtx_line_width_fields);
+var sxvtx_radius_fields = layout([field("radius", "ascii_real", 0)]);
+var sxvtx_radius = sxLayout(0x60620075, "vectortext_radius", LE, sxvtx_radius_fields);
+var sxvtx_pen_number_fields = layout([field("pen_number", "ascii_real", 0)]);
+var sxvtx_pen_number = sxLayout(0x60620077, "vectortext_pen_number", LE, sxvtx_pen_number_fields);
+var sxvtx_label_terminator_fields = layout([u8("terminator")]);
+var sxvtx_label_terminator = sxLayout(0x60620079, "vectortext_label_terminator", LE, sxvtx_label_terminator_fields);
+function sxvtx_hpgl(q) {
+    var p = 0;
+    var terminator = 3;
+    while (p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        while (p < q.n && sxvtx_space(q.b[p])) {
+            p++;
+        }
+        if (p === q.n) {
+            break;
+        }
+        if (q.n - p < 2) {
+            return false;
+        }
+        var key = p;
+        {
+            if (!sxvtx_emit(q, sxvtx_keyword, key, 2)) {
+                return false;
+            }
+        }
+        p += 2;
+        if (sxvtx_eq(q, key, 2, "LB")) {
+            var a = p;
+            while (p < q.n && q.b[p] !== terminator) {
+                p++;
+            }
+            if (p === q.n) {
+                return false;
+            }
+            {
+                if (!sxvtx_emit(q, sxvtx_string_value, a, p - a)) {
+                    return false;
+                }
+            }
+            p++;
+            if (p < q.n && q.b[p] === 59 /*;*/) {
+                p++;
+            }
+            continue;
+        }
+        var end = p;
+        while (end < q.n && q.b[end] !== 59 /*;*/) {
+            end++;
+        }
+        if (end === q.n) {
+            return false;
+        }
+        if (sxvtx_eq(q, key, 2, "DT")) {
+            if (end - p > 1) {
+                return false;
+            }
+            if (end > p) {
+                terminator = q.b[p];
+                {
+                    if (!sxvtx_emit(q, sxvtx_label_terminator, p, 1)) {
+                        return false;
+                    }
+                }
+            } else {
+                terminator = 3;
+            }
+        } else {
+            var i = 0;
+            while (p < end) {
+                while (p < end && (sxvtx_space(q.b[p]) || q.b[p] === 44 /*,*/)) {
+                    p++;
+                }
+                a = p;
+                while (p < end && q.b[p] !== 44 /*,*/) {
+                    p++;
+                }
+                var stop = p;
+                while (stop > a && sxvtx_space(q.b[stop - 1])) {
+                    stop--;
+                }
+                var l = sxvtx_real_value;
+                if (sxvtx_eq(q, key, 2, "PA") || sxvtx_eq(q, key, 2, "PR") || sxvtx_eq(q, key, 2, "PU") || sxvtx_eq(q, key, 2, "PD")) {
+                    l = i % 2 ? sxvtx_y : sxvtx_x;
+                } else if (sxvtx_eq(q, key, 2, "SP")) {
+                    l = sxvtx_pen_number;
+                } else if (sxvtx_eq(q, key, 2, "CI") && i === 0) {
+                    l = sxvtx_radius;
+                } else if (sxvtx_eq(q, key, 2, "PW") && i === 0) {
+                    l = sxvtx_line_width;
+                }
+                if (!sxvtx_emit(q, l, a, stop - a)) {
+                    return false;
+                }
+                i++;
+            }
+        }
+        p = end + 1;
+    }
+    return true;
+}
+function sx_hpgl_plot_build(q) {
+    return sxvtx_hpgl(q);
+}

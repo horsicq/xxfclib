@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/gxl/xx_gxl_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_gxl_header_fields = layout([chars("magic", 2, SIGNATURE), chars("copyright", 50, STRING), u16("version"),
+    chars("volume", 40, STRING), u16("member_count", COUNT), bytes("unused", 32, RESERVED)]);
+var sxae_gxl_header = sxLayout(0x6017000B, "gxl_header", LE, sxae_gxl_header_fields);
+var sxae_gxl_member_fields = layout([u8("method", ID), chars("base_name", 8, STRING), chars("extension", 4, STRING),
+    u8("unused", RESERVED), u32("data_offset", OFFSET), u32("data_size", SIZE), u16("time"), u16("date")]);
+var sxae_gxl_member = sxLayout(0x6017000C, "gxl_member", LE, sxae_gxl_member_fields);
+function sxae_gxl(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 128) || sxae16(b, 0) !== 0xCA01) {
+        return false;
+    }
+    var n = sxae16(b, 94);
+    var e = 128 + n * 26;
+    if (!n || n > 20000 || !sxae_bound(c, 0, (e < 0 ? e + SX_U64_MAX : e)) || !sxae_add(c, sxae_gxl_header, 0) || !sx_table(c, sxae_gxl_member, 128, 26, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var r = [];
+        if (!sx_read(c, 128 + i * 26, r, 26)) {
+            return false;
+        }
+        var o = sxae32(r, 14);
+        var z = sxae32(r, 18);
+        if (o < e || !sxae_bound(c, o, z)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_gxl_build(c) {
+    return sxae_gxl(c);
+}

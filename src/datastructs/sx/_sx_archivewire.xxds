@@ -1,0 +1,2548 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivewire.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarwire_npack_signature_fields = layout([chars("signature", 5, SIGNATURE)]);
+var sxarwire_npack_signature = sxLayout(0x608D0001, "npack_signature", LE, sxarwire_npack_signature_fields);
+var sxarwire_stac_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxarwire_stac_signature = sxLayout(0x608D0002, "stac_signature", LE, sxarwire_stac_signature_fields);
+var sxarwire_lzs_is_match_bit0_fields = layout([field("is_match", "msb_bits[0,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit0 = sxLayout(0x608D0006, "lzs_is_match_bit0", LE, sxarwire_lzs_is_match_bit0_fields);
+var sxarwire_lzs_is_match_bit1_fields = layout([field("is_match", "msb_bits[1,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit1 = sxLayout(0x608D0007, "lzs_is_match_bit1", LE, sxarwire_lzs_is_match_bit1_fields);
+var sxarwire_lzs_is_match_bit2_fields = layout([field("is_match", "msb_bits[2,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit2 = sxLayout(0x608D0008, "lzs_is_match_bit2", LE, sxarwire_lzs_is_match_bit2_fields);
+var sxarwire_lzs_is_match_bit3_fields = layout([field("is_match", "msb_bits[3,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit3 = sxLayout(0x608D0009, "lzs_is_match_bit3", LE, sxarwire_lzs_is_match_bit3_fields);
+var sxarwire_lzs_is_match_bit4_fields = layout([field("is_match", "msb_bits[4,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit4 = sxLayout(0x608D000A, "lzs_is_match_bit4", LE, sxarwire_lzs_is_match_bit4_fields);
+var sxarwire_lzs_is_match_bit5_fields = layout([field("is_match", "msb_bits[5,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit5 = sxLayout(0x608D000B, "lzs_is_match_bit5", LE, sxarwire_lzs_is_match_bit5_fields);
+var sxarwire_lzs_is_match_bit6_fields = layout([field("is_match", "msb_bits[6,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit6 = sxLayout(0x608D000C, "lzs_is_match_bit6", LE, sxarwire_lzs_is_match_bit6_fields);
+var sxarwire_lzs_is_match_bit7_fields = layout([field("is_match", "msb_bits[7,1]", 1, FLAGS)]);
+var sxarwire_lzs_is_match_bit7 = sxLayout(0x608D000D, "lzs_is_match_bit7", LE, sxarwire_lzs_is_match_bit7_fields);
+var sxarwire_lzs_short_distance_bit0_fields = layout([field("short_distance", "msb_bits[0,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit0 = sxLayout(0x608D000E, "lzs_short_distance_bit0", LE, sxarwire_lzs_short_distance_bit0_fields);
+var sxarwire_lzs_short_distance_bit1_fields = layout([field("short_distance", "msb_bits[1,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit1 = sxLayout(0x608D000F, "lzs_short_distance_bit1", LE, sxarwire_lzs_short_distance_bit1_fields);
+var sxarwire_lzs_short_distance_bit2_fields = layout([field("short_distance", "msb_bits[2,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit2 = sxLayout(0x608D0010, "lzs_short_distance_bit2", LE, sxarwire_lzs_short_distance_bit2_fields);
+var sxarwire_lzs_short_distance_bit3_fields = layout([field("short_distance", "msb_bits[3,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit3 = sxLayout(0x608D0011, "lzs_short_distance_bit3", LE, sxarwire_lzs_short_distance_bit3_fields);
+var sxarwire_lzs_short_distance_bit4_fields = layout([field("short_distance", "msb_bits[4,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit4 = sxLayout(0x608D0012, "lzs_short_distance_bit4", LE, sxarwire_lzs_short_distance_bit4_fields);
+var sxarwire_lzs_short_distance_bit5_fields = layout([field("short_distance", "msb_bits[5,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit5 = sxLayout(0x608D0013, "lzs_short_distance_bit5", LE, sxarwire_lzs_short_distance_bit5_fields);
+var sxarwire_lzs_short_distance_bit6_fields = layout([field("short_distance", "msb_bits[6,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit6 = sxLayout(0x608D0014, "lzs_short_distance_bit6", LE, sxarwire_lzs_short_distance_bit6_fields);
+var sxarwire_lzs_short_distance_bit7_fields = layout([field("short_distance", "msb_bits[7,1]", 1, FLAGS)]);
+var sxarwire_lzs_short_distance_bit7 = sxLayout(0x608D0015, "lzs_short_distance_bit7", LE, sxarwire_lzs_short_distance_bit7_fields);
+var sxarwire_lzs_literal_bit0_fields = layout([field("literal_byte", "msb_bits[0,8]", 1)]);
+var sxarwire_lzs_literal_bit0 = sxLayout(0x608D0016, "lzs_literal_bit0", LE, sxarwire_lzs_literal_bit0_fields);
+var sxarwire_lzs_literal_bit1_fields = layout([field("literal_byte", "msb_bits[1,8]", 2)]);
+var sxarwire_lzs_literal_bit1 = sxLayout(0x608D0017, "lzs_literal_bit1", LE, sxarwire_lzs_literal_bit1_fields);
+var sxarwire_lzs_literal_bit2_fields = layout([field("literal_byte", "msb_bits[2,8]", 2)]);
+var sxarwire_lzs_literal_bit2 = sxLayout(0x608D0018, "lzs_literal_bit2", LE, sxarwire_lzs_literal_bit2_fields);
+var sxarwire_lzs_literal_bit3_fields = layout([field("literal_byte", "msb_bits[3,8]", 2)]);
+var sxarwire_lzs_literal_bit3 = sxLayout(0x608D0019, "lzs_literal_bit3", LE, sxarwire_lzs_literal_bit3_fields);
+var sxarwire_lzs_literal_bit4_fields = layout([field("literal_byte", "msb_bits[4,8]", 2)]);
+var sxarwire_lzs_literal_bit4 = sxLayout(0x608D001A, "lzs_literal_bit4", LE, sxarwire_lzs_literal_bit4_fields);
+var sxarwire_lzs_literal_bit5_fields = layout([field("literal_byte", "msb_bits[5,8]", 2)]);
+var sxarwire_lzs_literal_bit5 = sxLayout(0x608D001B, "lzs_literal_bit5", LE, sxarwire_lzs_literal_bit5_fields);
+var sxarwire_lzs_literal_bit6_fields = layout([field("literal_byte", "msb_bits[6,8]", 2)]);
+var sxarwire_lzs_literal_bit6 = sxLayout(0x608D001C, "lzs_literal_bit6", LE, sxarwire_lzs_literal_bit6_fields);
+var sxarwire_lzs_literal_bit7_fields = layout([field("literal_byte", "msb_bits[7,8]", 2)]);
+var sxarwire_lzs_literal_bit7 = sxLayout(0x608D001D, "lzs_literal_bit7", LE, sxarwire_lzs_literal_bit7_fields);
+var sxarwire_lzs_distance7_bit0_fields = layout([field("distance", "msb_bits[0,7]", 1)]);
+var sxarwire_lzs_distance7_bit0 = sxLayout(0x608D001E, "lzs_distance7_bit0", LE, sxarwire_lzs_distance7_bit0_fields);
+var sxarwire_lzs_distance7_bit1_fields = layout([field("distance", "msb_bits[1,7]", 1)]);
+var sxarwire_lzs_distance7_bit1 = sxLayout(0x608D001F, "lzs_distance7_bit1", LE, sxarwire_lzs_distance7_bit1_fields);
+var sxarwire_lzs_distance7_bit2_fields = layout([field("distance", "msb_bits[2,7]", 2)]);
+var sxarwire_lzs_distance7_bit2 = sxLayout(0x608D0020, "lzs_distance7_bit2", LE, sxarwire_lzs_distance7_bit2_fields);
+var sxarwire_lzs_distance7_bit3_fields = layout([field("distance", "msb_bits[3,7]", 2)]);
+var sxarwire_lzs_distance7_bit3 = sxLayout(0x608D0021, "lzs_distance7_bit3", LE, sxarwire_lzs_distance7_bit3_fields);
+var sxarwire_lzs_distance7_bit4_fields = layout([field("distance", "msb_bits[4,7]", 2)]);
+var sxarwire_lzs_distance7_bit4 = sxLayout(0x608D0022, "lzs_distance7_bit4", LE, sxarwire_lzs_distance7_bit4_fields);
+var sxarwire_lzs_distance7_bit5_fields = layout([field("distance", "msb_bits[5,7]", 2)]);
+var sxarwire_lzs_distance7_bit5 = sxLayout(0x608D0023, "lzs_distance7_bit5", LE, sxarwire_lzs_distance7_bit5_fields);
+var sxarwire_lzs_distance7_bit6_fields = layout([field("distance", "msb_bits[6,7]", 2)]);
+var sxarwire_lzs_distance7_bit6 = sxLayout(0x608D0024, "lzs_distance7_bit6", LE, sxarwire_lzs_distance7_bit6_fields);
+var sxarwire_lzs_distance7_bit7_fields = layout([field("distance", "msb_bits[7,7]", 2)]);
+var sxarwire_lzs_distance7_bit7 = sxLayout(0x608D0025, "lzs_distance7_bit7", LE, sxarwire_lzs_distance7_bit7_fields);
+var sxarwire_lzs_distance11_bit0_fields = layout([field("distance", "msb_bits[0,11]", 2)]);
+var sxarwire_lzs_distance11_bit0 = sxLayout(0x608D0026, "lzs_distance11_bit0", LE, sxarwire_lzs_distance11_bit0_fields);
+var sxarwire_lzs_distance11_bit1_fields = layout([field("distance", "msb_bits[1,11]", 2)]);
+var sxarwire_lzs_distance11_bit1 = sxLayout(0x608D0027, "lzs_distance11_bit1", LE, sxarwire_lzs_distance11_bit1_fields);
+var sxarwire_lzs_distance11_bit2_fields = layout([field("distance", "msb_bits[2,11]", 2)]);
+var sxarwire_lzs_distance11_bit2 = sxLayout(0x608D0028, "lzs_distance11_bit2", LE, sxarwire_lzs_distance11_bit2_fields);
+var sxarwire_lzs_distance11_bit3_fields = layout([field("distance", "msb_bits[3,11]", 2)]);
+var sxarwire_lzs_distance11_bit3 = sxLayout(0x608D0029, "lzs_distance11_bit3", LE, sxarwire_lzs_distance11_bit3_fields);
+var sxarwire_lzs_distance11_bit4_fields = layout([field("distance", "msb_bits[4,11]", 2)]);
+var sxarwire_lzs_distance11_bit4 = sxLayout(0x608D002A, "lzs_distance11_bit4", LE, sxarwire_lzs_distance11_bit4_fields);
+var sxarwire_lzs_distance11_bit5_fields = layout([field("distance", "msb_bits[5,11]", 2)]);
+var sxarwire_lzs_distance11_bit5 = sxLayout(0x608D002B, "lzs_distance11_bit5", LE, sxarwire_lzs_distance11_bit5_fields);
+var sxarwire_lzs_distance11_bit6_fields = layout([field("distance", "msb_bits[6,11]", 3)]);
+var sxarwire_lzs_distance11_bit6 = sxLayout(0x608D002C, "lzs_distance11_bit6", LE, sxarwire_lzs_distance11_bit6_fields);
+var sxarwire_lzs_distance11_bit7_fields = layout([field("distance", "msb_bits[7,11]", 3)]);
+var sxarwire_lzs_distance11_bit7 = sxLayout(0x608D002D, "lzs_distance11_bit7", LE, sxarwire_lzs_distance11_bit7_fields);
+var sxarwire_lzs_length_prefix_bit0_fields = layout([field("length_prefix", "msb_bits[0,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit0 = sxLayout(0x608D002E, "lzs_length_prefix_bit0", LE, sxarwire_lzs_length_prefix_bit0_fields);
+var sxarwire_lzs_length_prefix_bit1_fields = layout([field("length_prefix", "msb_bits[1,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit1 = sxLayout(0x608D002F, "lzs_length_prefix_bit1", LE, sxarwire_lzs_length_prefix_bit1_fields);
+var sxarwire_lzs_length_prefix_bit2_fields = layout([field("length_prefix", "msb_bits[2,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit2 = sxLayout(0x608D0030, "lzs_length_prefix_bit2", LE, sxarwire_lzs_length_prefix_bit2_fields);
+var sxarwire_lzs_length_prefix_bit3_fields = layout([field("length_prefix", "msb_bits[3,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit3 = sxLayout(0x608D0031, "lzs_length_prefix_bit3", LE, sxarwire_lzs_length_prefix_bit3_fields);
+var sxarwire_lzs_length_prefix_bit4_fields = layout([field("length_prefix", "msb_bits[4,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit4 = sxLayout(0x608D0032, "lzs_length_prefix_bit4", LE, sxarwire_lzs_length_prefix_bit4_fields);
+var sxarwire_lzs_length_prefix_bit5_fields = layout([field("length_prefix", "msb_bits[5,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit5 = sxLayout(0x608D0033, "lzs_length_prefix_bit5", LE, sxarwire_lzs_length_prefix_bit5_fields);
+var sxarwire_lzs_length_prefix_bit6_fields = layout([field("length_prefix", "msb_bits[6,2]", 1)]);
+var sxarwire_lzs_length_prefix_bit6 = sxLayout(0x608D0034, "lzs_length_prefix_bit6", LE, sxarwire_lzs_length_prefix_bit6_fields);
+var sxarwire_lzs_length_prefix_bit7_fields = layout([field("length_prefix", "msb_bits[7,2]", 2)]);
+var sxarwire_lzs_length_prefix_bit7 = sxLayout(0x608D0035, "lzs_length_prefix_bit7", LE, sxarwire_lzs_length_prefix_bit7_fields);
+var sxarwire_lzs_length_secondary_bit0_fields = layout([field("length_secondary", "msb_bits[0,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit0 = sxLayout(0x608D0036, "lzs_length_secondary_bit0", LE, sxarwire_lzs_length_secondary_bit0_fields);
+var sxarwire_lzs_length_secondary_bit1_fields = layout([field("length_secondary", "msb_bits[1,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit1 = sxLayout(0x608D0037, "lzs_length_secondary_bit1", LE, sxarwire_lzs_length_secondary_bit1_fields);
+var sxarwire_lzs_length_secondary_bit2_fields = layout([field("length_secondary", "msb_bits[2,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit2 = sxLayout(0x608D0038, "lzs_length_secondary_bit2", LE, sxarwire_lzs_length_secondary_bit2_fields);
+var sxarwire_lzs_length_secondary_bit3_fields = layout([field("length_secondary", "msb_bits[3,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit3 = sxLayout(0x608D0039, "lzs_length_secondary_bit3", LE, sxarwire_lzs_length_secondary_bit3_fields);
+var sxarwire_lzs_length_secondary_bit4_fields = layout([field("length_secondary", "msb_bits[4,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit4 = sxLayout(0x608D003A, "lzs_length_secondary_bit4", LE, sxarwire_lzs_length_secondary_bit4_fields);
+var sxarwire_lzs_length_secondary_bit5_fields = layout([field("length_secondary", "msb_bits[5,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit5 = sxLayout(0x608D003B, "lzs_length_secondary_bit5", LE, sxarwire_lzs_length_secondary_bit5_fields);
+var sxarwire_lzs_length_secondary_bit6_fields = layout([field("length_secondary", "msb_bits[6,2]", 1)]);
+var sxarwire_lzs_length_secondary_bit6 = sxLayout(0x608D003C, "lzs_length_secondary_bit6", LE, sxarwire_lzs_length_secondary_bit6_fields);
+var sxarwire_lzs_length_secondary_bit7_fields = layout([field("length_secondary", "msb_bits[7,2]", 2)]);
+var sxarwire_lzs_length_secondary_bit7 = sxLayout(0x608D003D, "lzs_length_secondary_bit7", LE, sxarwire_lzs_length_secondary_bit7_fields);
+var sxarwire_lzs_length_extension_bit0_fields = layout([field("length_extension", "msb_bits[0,4]", 1)]);
+var sxarwire_lzs_length_extension_bit0 = sxLayout(0x608D003E, "lzs_length_extension_bit0", LE, sxarwire_lzs_length_extension_bit0_fields);
+var sxarwire_lzs_length_extension_bit1_fields = layout([field("length_extension", "msb_bits[1,4]", 1)]);
+var sxarwire_lzs_length_extension_bit1 = sxLayout(0x608D003F, "lzs_length_extension_bit1", LE, sxarwire_lzs_length_extension_bit1_fields);
+var sxarwire_lzs_length_extension_bit2_fields = layout([field("length_extension", "msb_bits[2,4]", 1)]);
+var sxarwire_lzs_length_extension_bit2 = sxLayout(0x608D0040, "lzs_length_extension_bit2", LE, sxarwire_lzs_length_extension_bit2_fields);
+var sxarwire_lzs_length_extension_bit3_fields = layout([field("length_extension", "msb_bits[3,4]", 1)]);
+var sxarwire_lzs_length_extension_bit3 = sxLayout(0x608D0041, "lzs_length_extension_bit3", LE, sxarwire_lzs_length_extension_bit3_fields);
+var sxarwire_lzs_length_extension_bit4_fields = layout([field("length_extension", "msb_bits[4,4]", 1)]);
+var sxarwire_lzs_length_extension_bit4 = sxLayout(0x608D0042, "lzs_length_extension_bit4", LE, sxarwire_lzs_length_extension_bit4_fields);
+var sxarwire_lzs_length_extension_bit5_fields = layout([field("length_extension", "msb_bits[5,4]", 2)]);
+var sxarwire_lzs_length_extension_bit5 = sxLayout(0x608D0043, "lzs_length_extension_bit5", LE, sxarwire_lzs_length_extension_bit5_fields);
+var sxarwire_lzs_length_extension_bit6_fields = layout([field("length_extension", "msb_bits[6,4]", 2)]);
+var sxarwire_lzs_length_extension_bit6 = sxLayout(0x608D0044, "lzs_length_extension_bit6", LE, sxarwire_lzs_length_extension_bit6_fields);
+var sxarwire_lzs_length_extension_bit7_fields = layout([field("length_extension", "msb_bits[7,4]", 2)]);
+var sxarwire_lzs_length_extension_bit7 = sxLayout(0x608D0045, "lzs_length_extension_bit7", LE, sxarwire_lzs_length_extension_bit7_fields);
+var sxarwire_sco_table_prefix1_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit0 = sxLayout(0x608D01D6, "sco_table_prefix1_bit0", LE, sxarwire_sco_table_prefix1_bit0_fields);
+var sxarwire_sco_table_prefix1_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit1 = sxLayout(0x608D01D7, "sco_table_prefix1_bit1", LE, sxarwire_sco_table_prefix1_bit1_fields);
+var sxarwire_sco_table_prefix1_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit2 = sxLayout(0x608D01D8, "sco_table_prefix1_bit2", LE, sxarwire_sco_table_prefix1_bit2_fields);
+var sxarwire_sco_table_prefix1_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit3 = sxLayout(0x608D01D9, "sco_table_prefix1_bit3", LE, sxarwire_sco_table_prefix1_bit3_fields);
+var sxarwire_sco_table_prefix1_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit4 = sxLayout(0x608D01DA, "sco_table_prefix1_bit4", LE, sxarwire_sco_table_prefix1_bit4_fields);
+var sxarwire_sco_table_prefix1_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit5 = sxLayout(0x608D01DB, "sco_table_prefix1_bit5", LE, sxarwire_sco_table_prefix1_bit5_fields);
+var sxarwire_sco_table_prefix1_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit6 = sxLayout(0x608D01DC, "sco_table_prefix1_bit6", LE, sxarwire_sco_table_prefix1_bit6_fields);
+var sxarwire_sco_table_prefix1_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,1]", 1)]);
+var sxarwire_sco_table_prefix1_bit7 = sxLayout(0x608D01DD, "sco_table_prefix1_bit7", LE, sxarwire_sco_table_prefix1_bit7_fields);
+var sxarwire_sco_table_prefix2_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit0 = sxLayout(0x608D01DE, "sco_table_prefix2_bit0", LE, sxarwire_sco_table_prefix2_bit0_fields);
+var sxarwire_sco_table_prefix2_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit1 = sxLayout(0x608D01DF, "sco_table_prefix2_bit1", LE, sxarwire_sco_table_prefix2_bit1_fields);
+var sxarwire_sco_table_prefix2_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit2 = sxLayout(0x608D01E0, "sco_table_prefix2_bit2", LE, sxarwire_sco_table_prefix2_bit2_fields);
+var sxarwire_sco_table_prefix2_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit3 = sxLayout(0x608D01E1, "sco_table_prefix2_bit3", LE, sxarwire_sco_table_prefix2_bit3_fields);
+var sxarwire_sco_table_prefix2_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit4 = sxLayout(0x608D01E2, "sco_table_prefix2_bit4", LE, sxarwire_sco_table_prefix2_bit4_fields);
+var sxarwire_sco_table_prefix2_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit5 = sxLayout(0x608D01E3, "sco_table_prefix2_bit5", LE, sxarwire_sco_table_prefix2_bit5_fields);
+var sxarwire_sco_table_prefix2_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,2]", 1)]);
+var sxarwire_sco_table_prefix2_bit6 = sxLayout(0x608D01E4, "sco_table_prefix2_bit6", LE, sxarwire_sco_table_prefix2_bit6_fields);
+var sxarwire_sco_table_prefix2_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,2]", 2)]);
+var sxarwire_sco_table_prefix2_bit7 = sxLayout(0x608D01E5, "sco_table_prefix2_bit7", LE, sxarwire_sco_table_prefix2_bit7_fields);
+var sxarwire_sco_table_prefix3_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,3]", 1)]);
+var sxarwire_sco_table_prefix3_bit0 = sxLayout(0x608D01E6, "sco_table_prefix3_bit0", LE, sxarwire_sco_table_prefix3_bit0_fields);
+var sxarwire_sco_table_prefix3_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,3]", 1)]);
+var sxarwire_sco_table_prefix3_bit1 = sxLayout(0x608D01E7, "sco_table_prefix3_bit1", LE, sxarwire_sco_table_prefix3_bit1_fields);
+var sxarwire_sco_table_prefix3_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,3]", 1)]);
+var sxarwire_sco_table_prefix3_bit2 = sxLayout(0x608D01E8, "sco_table_prefix3_bit2", LE, sxarwire_sco_table_prefix3_bit2_fields);
+var sxarwire_sco_table_prefix3_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,3]", 1)]);
+var sxarwire_sco_table_prefix3_bit3 = sxLayout(0x608D01E9, "sco_table_prefix3_bit3", LE, sxarwire_sco_table_prefix3_bit3_fields);
+var sxarwire_sco_table_prefix3_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,3]", 1)]);
+var sxarwire_sco_table_prefix3_bit4 = sxLayout(0x608D01EA, "sco_table_prefix3_bit4", LE, sxarwire_sco_table_prefix3_bit4_fields);
+var sxarwire_sco_table_prefix3_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,3]", 1)]);
+var sxarwire_sco_table_prefix3_bit5 = sxLayout(0x608D01EB, "sco_table_prefix3_bit5", LE, sxarwire_sco_table_prefix3_bit5_fields);
+var sxarwire_sco_table_prefix3_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,3]", 2)]);
+var sxarwire_sco_table_prefix3_bit6 = sxLayout(0x608D01EC, "sco_table_prefix3_bit6", LE, sxarwire_sco_table_prefix3_bit6_fields);
+var sxarwire_sco_table_prefix3_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,3]", 2)]);
+var sxarwire_sco_table_prefix3_bit7 = sxLayout(0x608D01ED, "sco_table_prefix3_bit7", LE, sxarwire_sco_table_prefix3_bit7_fields);
+var sxarwire_sco_table_prefix4_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,4]", 1)]);
+var sxarwire_sco_table_prefix4_bit0 = sxLayout(0x608D01EE, "sco_table_prefix4_bit0", LE, sxarwire_sco_table_prefix4_bit0_fields);
+var sxarwire_sco_table_prefix4_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,4]", 1)]);
+var sxarwire_sco_table_prefix4_bit1 = sxLayout(0x608D01EF, "sco_table_prefix4_bit1", LE, sxarwire_sco_table_prefix4_bit1_fields);
+var sxarwire_sco_table_prefix4_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,4]", 1)]);
+var sxarwire_sco_table_prefix4_bit2 = sxLayout(0x608D01F0, "sco_table_prefix4_bit2", LE, sxarwire_sco_table_prefix4_bit2_fields);
+var sxarwire_sco_table_prefix4_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,4]", 1)]);
+var sxarwire_sco_table_prefix4_bit3 = sxLayout(0x608D01F1, "sco_table_prefix4_bit3", LE, sxarwire_sco_table_prefix4_bit3_fields);
+var sxarwire_sco_table_prefix4_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,4]", 1)]);
+var sxarwire_sco_table_prefix4_bit4 = sxLayout(0x608D01F2, "sco_table_prefix4_bit4", LE, sxarwire_sco_table_prefix4_bit4_fields);
+var sxarwire_sco_table_prefix4_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,4]", 2)]);
+var sxarwire_sco_table_prefix4_bit5 = sxLayout(0x608D01F3, "sco_table_prefix4_bit5", LE, sxarwire_sco_table_prefix4_bit5_fields);
+var sxarwire_sco_table_prefix4_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,4]", 2)]);
+var sxarwire_sco_table_prefix4_bit6 = sxLayout(0x608D01F4, "sco_table_prefix4_bit6", LE, sxarwire_sco_table_prefix4_bit6_fields);
+var sxarwire_sco_table_prefix4_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,4]", 2)]);
+var sxarwire_sco_table_prefix4_bit7 = sxLayout(0x608D01F5, "sco_table_prefix4_bit7", LE, sxarwire_sco_table_prefix4_bit7_fields);
+var sxarwire_sco_table_prefix5_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,5]", 1)]);
+var sxarwire_sco_table_prefix5_bit0 = sxLayout(0x608D01F6, "sco_table_prefix5_bit0", LE, sxarwire_sco_table_prefix5_bit0_fields);
+var sxarwire_sco_table_prefix5_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,5]", 1)]);
+var sxarwire_sco_table_prefix5_bit1 = sxLayout(0x608D01F7, "sco_table_prefix5_bit1", LE, sxarwire_sco_table_prefix5_bit1_fields);
+var sxarwire_sco_table_prefix5_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,5]", 1)]);
+var sxarwire_sco_table_prefix5_bit2 = sxLayout(0x608D01F8, "sco_table_prefix5_bit2", LE, sxarwire_sco_table_prefix5_bit2_fields);
+var sxarwire_sco_table_prefix5_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,5]", 1)]);
+var sxarwire_sco_table_prefix5_bit3 = sxLayout(0x608D01F9, "sco_table_prefix5_bit3", LE, sxarwire_sco_table_prefix5_bit3_fields);
+var sxarwire_sco_table_prefix5_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,5]", 2)]);
+var sxarwire_sco_table_prefix5_bit4 = sxLayout(0x608D01FA, "sco_table_prefix5_bit4", LE, sxarwire_sco_table_prefix5_bit4_fields);
+var sxarwire_sco_table_prefix5_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,5]", 2)]);
+var sxarwire_sco_table_prefix5_bit5 = sxLayout(0x608D01FB, "sco_table_prefix5_bit5", LE, sxarwire_sco_table_prefix5_bit5_fields);
+var sxarwire_sco_table_prefix5_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,5]", 2)]);
+var sxarwire_sco_table_prefix5_bit6 = sxLayout(0x608D01FC, "sco_table_prefix5_bit6", LE, sxarwire_sco_table_prefix5_bit6_fields);
+var sxarwire_sco_table_prefix5_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,5]", 2)]);
+var sxarwire_sco_table_prefix5_bit7 = sxLayout(0x608D01FD, "sco_table_prefix5_bit7", LE, sxarwire_sco_table_prefix5_bit7_fields);
+var sxarwire_sco_table_prefix6_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,6]", 1)]);
+var sxarwire_sco_table_prefix6_bit0 = sxLayout(0x608D01FE, "sco_table_prefix6_bit0", LE, sxarwire_sco_table_prefix6_bit0_fields);
+var sxarwire_sco_table_prefix6_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,6]", 1)]);
+var sxarwire_sco_table_prefix6_bit1 = sxLayout(0x608D01FF, "sco_table_prefix6_bit1", LE, sxarwire_sco_table_prefix6_bit1_fields);
+var sxarwire_sco_table_prefix6_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,6]", 1)]);
+var sxarwire_sco_table_prefix6_bit2 = sxLayout(0x608D0200, "sco_table_prefix6_bit2", LE, sxarwire_sco_table_prefix6_bit2_fields);
+var sxarwire_sco_table_prefix6_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,6]", 2)]);
+var sxarwire_sco_table_prefix6_bit3 = sxLayout(0x608D0201, "sco_table_prefix6_bit3", LE, sxarwire_sco_table_prefix6_bit3_fields);
+var sxarwire_sco_table_prefix6_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,6]", 2)]);
+var sxarwire_sco_table_prefix6_bit4 = sxLayout(0x608D0202, "sco_table_prefix6_bit4", LE, sxarwire_sco_table_prefix6_bit4_fields);
+var sxarwire_sco_table_prefix6_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,6]", 2)]);
+var sxarwire_sco_table_prefix6_bit5 = sxLayout(0x608D0203, "sco_table_prefix6_bit5", LE, sxarwire_sco_table_prefix6_bit5_fields);
+var sxarwire_sco_table_prefix6_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,6]", 2)]);
+var sxarwire_sco_table_prefix6_bit6 = sxLayout(0x608D0204, "sco_table_prefix6_bit6", LE, sxarwire_sco_table_prefix6_bit6_fields);
+var sxarwire_sco_table_prefix6_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,6]", 2)]);
+var sxarwire_sco_table_prefix6_bit7 = sxLayout(0x608D0205, "sco_table_prefix6_bit7", LE, sxarwire_sco_table_prefix6_bit7_fields);
+var sxarwire_sco_table_prefix7_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,7]", 1)]);
+var sxarwire_sco_table_prefix7_bit0 = sxLayout(0x608D0206, "sco_table_prefix7_bit0", LE, sxarwire_sco_table_prefix7_bit0_fields);
+var sxarwire_sco_table_prefix7_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,7]", 1)]);
+var sxarwire_sco_table_prefix7_bit1 = sxLayout(0x608D0207, "sco_table_prefix7_bit1", LE, sxarwire_sco_table_prefix7_bit1_fields);
+var sxarwire_sco_table_prefix7_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,7]", 2)]);
+var sxarwire_sco_table_prefix7_bit2 = sxLayout(0x608D0208, "sco_table_prefix7_bit2", LE, sxarwire_sco_table_prefix7_bit2_fields);
+var sxarwire_sco_table_prefix7_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,7]", 2)]);
+var sxarwire_sco_table_prefix7_bit3 = sxLayout(0x608D0209, "sco_table_prefix7_bit3", LE, sxarwire_sco_table_prefix7_bit3_fields);
+var sxarwire_sco_table_prefix7_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,7]", 2)]);
+var sxarwire_sco_table_prefix7_bit4 = sxLayout(0x608D020A, "sco_table_prefix7_bit4", LE, sxarwire_sco_table_prefix7_bit4_fields);
+var sxarwire_sco_table_prefix7_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,7]", 2)]);
+var sxarwire_sco_table_prefix7_bit5 = sxLayout(0x608D020B, "sco_table_prefix7_bit5", LE, sxarwire_sco_table_prefix7_bit5_fields);
+var sxarwire_sco_table_prefix7_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,7]", 2)]);
+var sxarwire_sco_table_prefix7_bit6 = sxLayout(0x608D020C, "sco_table_prefix7_bit6", LE, sxarwire_sco_table_prefix7_bit6_fields);
+var sxarwire_sco_table_prefix7_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,7]", 2)]);
+var sxarwire_sco_table_prefix7_bit7 = sxLayout(0x608D020D, "sco_table_prefix7_bit7", LE, sxarwire_sco_table_prefix7_bit7_fields);
+var sxarwire_sco_table_prefix8_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,8]", 1)]);
+var sxarwire_sco_table_prefix8_bit0 = sxLayout(0x608D020E, "sco_table_prefix8_bit0", LE, sxarwire_sco_table_prefix8_bit0_fields);
+var sxarwire_sco_table_prefix8_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit1 = sxLayout(0x608D020F, "sco_table_prefix8_bit1", LE, sxarwire_sco_table_prefix8_bit1_fields);
+var sxarwire_sco_table_prefix8_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit2 = sxLayout(0x608D0210, "sco_table_prefix8_bit2", LE, sxarwire_sco_table_prefix8_bit2_fields);
+var sxarwire_sco_table_prefix8_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit3 = sxLayout(0x608D0211, "sco_table_prefix8_bit3", LE, sxarwire_sco_table_prefix8_bit3_fields);
+var sxarwire_sco_table_prefix8_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit4 = sxLayout(0x608D0212, "sco_table_prefix8_bit4", LE, sxarwire_sco_table_prefix8_bit4_fields);
+var sxarwire_sco_table_prefix8_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit5 = sxLayout(0x608D0213, "sco_table_prefix8_bit5", LE, sxarwire_sco_table_prefix8_bit5_fields);
+var sxarwire_sco_table_prefix8_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit6 = sxLayout(0x608D0214, "sco_table_prefix8_bit6", LE, sxarwire_sco_table_prefix8_bit6_fields);
+var sxarwire_sco_table_prefix8_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,8]", 2)]);
+var sxarwire_sco_table_prefix8_bit7 = sxLayout(0x608D0215, "sco_table_prefix8_bit7", LE, sxarwire_sco_table_prefix8_bit7_fields);
+var sxarwire_sco_table_prefix9_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit0 = sxLayout(0x608D0216, "sco_table_prefix9_bit0", LE, sxarwire_sco_table_prefix9_bit0_fields);
+var sxarwire_sco_table_prefix9_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit1 = sxLayout(0x608D0217, "sco_table_prefix9_bit1", LE, sxarwire_sco_table_prefix9_bit1_fields);
+var sxarwire_sco_table_prefix9_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit2 = sxLayout(0x608D0218, "sco_table_prefix9_bit2", LE, sxarwire_sco_table_prefix9_bit2_fields);
+var sxarwire_sco_table_prefix9_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit3 = sxLayout(0x608D0219, "sco_table_prefix9_bit3", LE, sxarwire_sco_table_prefix9_bit3_fields);
+var sxarwire_sco_table_prefix9_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit4 = sxLayout(0x608D021A, "sco_table_prefix9_bit4", LE, sxarwire_sco_table_prefix9_bit4_fields);
+var sxarwire_sco_table_prefix9_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit5 = sxLayout(0x608D021B, "sco_table_prefix9_bit5", LE, sxarwire_sco_table_prefix9_bit5_fields);
+var sxarwire_sco_table_prefix9_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit6 = sxLayout(0x608D021C, "sco_table_prefix9_bit6", LE, sxarwire_sco_table_prefix9_bit6_fields);
+var sxarwire_sco_table_prefix9_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,9]", 2)]);
+var sxarwire_sco_table_prefix9_bit7 = sxLayout(0x608D021D, "sco_table_prefix9_bit7", LE, sxarwire_sco_table_prefix9_bit7_fields);
+var sxarwire_sco_table_prefix10_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit0 = sxLayout(0x608D021E, "sco_table_prefix10_bit0", LE, sxarwire_sco_table_prefix10_bit0_fields);
+var sxarwire_sco_table_prefix10_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit1 = sxLayout(0x608D021F, "sco_table_prefix10_bit1", LE, sxarwire_sco_table_prefix10_bit1_fields);
+var sxarwire_sco_table_prefix10_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit2 = sxLayout(0x608D0220, "sco_table_prefix10_bit2", LE, sxarwire_sco_table_prefix10_bit2_fields);
+var sxarwire_sco_table_prefix10_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit3 = sxLayout(0x608D0221, "sco_table_prefix10_bit3", LE, sxarwire_sco_table_prefix10_bit3_fields);
+var sxarwire_sco_table_prefix10_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit4 = sxLayout(0x608D0222, "sco_table_prefix10_bit4", LE, sxarwire_sco_table_prefix10_bit4_fields);
+var sxarwire_sco_table_prefix10_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit5 = sxLayout(0x608D0223, "sco_table_prefix10_bit5", LE, sxarwire_sco_table_prefix10_bit5_fields);
+var sxarwire_sco_table_prefix10_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,10]", 2)]);
+var sxarwire_sco_table_prefix10_bit6 = sxLayout(0x608D0224, "sco_table_prefix10_bit6", LE, sxarwire_sco_table_prefix10_bit6_fields);
+var sxarwire_sco_table_prefix10_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,10]", 3)]);
+var sxarwire_sco_table_prefix10_bit7 = sxLayout(0x608D0225, "sco_table_prefix10_bit7", LE, sxarwire_sco_table_prefix10_bit7_fields);
+var sxarwire_sco_table_prefix11_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,11]", 2)]);
+var sxarwire_sco_table_prefix11_bit0 = sxLayout(0x608D0226, "sco_table_prefix11_bit0", LE, sxarwire_sco_table_prefix11_bit0_fields);
+var sxarwire_sco_table_prefix11_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,11]", 2)]);
+var sxarwire_sco_table_prefix11_bit1 = sxLayout(0x608D0227, "sco_table_prefix11_bit1", LE, sxarwire_sco_table_prefix11_bit1_fields);
+var sxarwire_sco_table_prefix11_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,11]", 2)]);
+var sxarwire_sco_table_prefix11_bit2 = sxLayout(0x608D0228, "sco_table_prefix11_bit2", LE, sxarwire_sco_table_prefix11_bit2_fields);
+var sxarwire_sco_table_prefix11_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,11]", 2)]);
+var sxarwire_sco_table_prefix11_bit3 = sxLayout(0x608D0229, "sco_table_prefix11_bit3", LE, sxarwire_sco_table_prefix11_bit3_fields);
+var sxarwire_sco_table_prefix11_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,11]", 2)]);
+var sxarwire_sco_table_prefix11_bit4 = sxLayout(0x608D022A, "sco_table_prefix11_bit4", LE, sxarwire_sco_table_prefix11_bit4_fields);
+var sxarwire_sco_table_prefix11_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,11]", 2)]);
+var sxarwire_sco_table_prefix11_bit5 = sxLayout(0x608D022B, "sco_table_prefix11_bit5", LE, sxarwire_sco_table_prefix11_bit5_fields);
+var sxarwire_sco_table_prefix11_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,11]", 3)]);
+var sxarwire_sco_table_prefix11_bit6 = sxLayout(0x608D022C, "sco_table_prefix11_bit6", LE, sxarwire_sco_table_prefix11_bit6_fields);
+var sxarwire_sco_table_prefix11_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,11]", 3)]);
+var sxarwire_sco_table_prefix11_bit7 = sxLayout(0x608D022D, "sco_table_prefix11_bit7", LE, sxarwire_sco_table_prefix11_bit7_fields);
+var sxarwire_sco_table_prefix12_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,12]", 2)]);
+var sxarwire_sco_table_prefix12_bit0 = sxLayout(0x608D022E, "sco_table_prefix12_bit0", LE, sxarwire_sco_table_prefix12_bit0_fields);
+var sxarwire_sco_table_prefix12_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,12]", 2)]);
+var sxarwire_sco_table_prefix12_bit1 = sxLayout(0x608D022F, "sco_table_prefix12_bit1", LE, sxarwire_sco_table_prefix12_bit1_fields);
+var sxarwire_sco_table_prefix12_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,12]", 2)]);
+var sxarwire_sco_table_prefix12_bit2 = sxLayout(0x608D0230, "sco_table_prefix12_bit2", LE, sxarwire_sco_table_prefix12_bit2_fields);
+var sxarwire_sco_table_prefix12_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,12]", 2)]);
+var sxarwire_sco_table_prefix12_bit3 = sxLayout(0x608D0231, "sco_table_prefix12_bit3", LE, sxarwire_sco_table_prefix12_bit3_fields);
+var sxarwire_sco_table_prefix12_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,12]", 2)]);
+var sxarwire_sco_table_prefix12_bit4 = sxLayout(0x608D0232, "sco_table_prefix12_bit4", LE, sxarwire_sco_table_prefix12_bit4_fields);
+var sxarwire_sco_table_prefix12_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,12]", 3)]);
+var sxarwire_sco_table_prefix12_bit5 = sxLayout(0x608D0233, "sco_table_prefix12_bit5", LE, sxarwire_sco_table_prefix12_bit5_fields);
+var sxarwire_sco_table_prefix12_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,12]", 3)]);
+var sxarwire_sco_table_prefix12_bit6 = sxLayout(0x608D0234, "sco_table_prefix12_bit6", LE, sxarwire_sco_table_prefix12_bit6_fields);
+var sxarwire_sco_table_prefix12_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,12]", 3)]);
+var sxarwire_sco_table_prefix12_bit7 = sxLayout(0x608D0235, "sco_table_prefix12_bit7", LE, sxarwire_sco_table_prefix12_bit7_fields);
+var sxarwire_sco_table_prefix13_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,13]", 2)]);
+var sxarwire_sco_table_prefix13_bit0 = sxLayout(0x608D0236, "sco_table_prefix13_bit0", LE, sxarwire_sco_table_prefix13_bit0_fields);
+var sxarwire_sco_table_prefix13_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,13]", 2)]);
+var sxarwire_sco_table_prefix13_bit1 = sxLayout(0x608D0237, "sco_table_prefix13_bit1", LE, sxarwire_sco_table_prefix13_bit1_fields);
+var sxarwire_sco_table_prefix13_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,13]", 2)]);
+var sxarwire_sco_table_prefix13_bit2 = sxLayout(0x608D0238, "sco_table_prefix13_bit2", LE, sxarwire_sco_table_prefix13_bit2_fields);
+var sxarwire_sco_table_prefix13_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,13]", 2)]);
+var sxarwire_sco_table_prefix13_bit3 = sxLayout(0x608D0239, "sco_table_prefix13_bit3", LE, sxarwire_sco_table_prefix13_bit3_fields);
+var sxarwire_sco_table_prefix13_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,13]", 3)]);
+var sxarwire_sco_table_prefix13_bit4 = sxLayout(0x608D023A, "sco_table_prefix13_bit4", LE, sxarwire_sco_table_prefix13_bit4_fields);
+var sxarwire_sco_table_prefix13_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,13]", 3)]);
+var sxarwire_sco_table_prefix13_bit5 = sxLayout(0x608D023B, "sco_table_prefix13_bit5", LE, sxarwire_sco_table_prefix13_bit5_fields);
+var sxarwire_sco_table_prefix13_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,13]", 3)]);
+var sxarwire_sco_table_prefix13_bit6 = sxLayout(0x608D023C, "sco_table_prefix13_bit6", LE, sxarwire_sco_table_prefix13_bit6_fields);
+var sxarwire_sco_table_prefix13_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,13]", 3)]);
+var sxarwire_sco_table_prefix13_bit7 = sxLayout(0x608D023D, "sco_table_prefix13_bit7", LE, sxarwire_sco_table_prefix13_bit7_fields);
+var sxarwire_sco_table_prefix14_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,14]", 2)]);
+var sxarwire_sco_table_prefix14_bit0 = sxLayout(0x608D023E, "sco_table_prefix14_bit0", LE, sxarwire_sco_table_prefix14_bit0_fields);
+var sxarwire_sco_table_prefix14_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,14]", 2)]);
+var sxarwire_sco_table_prefix14_bit1 = sxLayout(0x608D023F, "sco_table_prefix14_bit1", LE, sxarwire_sco_table_prefix14_bit1_fields);
+var sxarwire_sco_table_prefix14_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,14]", 2)]);
+var sxarwire_sco_table_prefix14_bit2 = sxLayout(0x608D0240, "sco_table_prefix14_bit2", LE, sxarwire_sco_table_prefix14_bit2_fields);
+var sxarwire_sco_table_prefix14_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,14]", 3)]);
+var sxarwire_sco_table_prefix14_bit3 = sxLayout(0x608D0241, "sco_table_prefix14_bit3", LE, sxarwire_sco_table_prefix14_bit3_fields);
+var sxarwire_sco_table_prefix14_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,14]", 3)]);
+var sxarwire_sco_table_prefix14_bit4 = sxLayout(0x608D0242, "sco_table_prefix14_bit4", LE, sxarwire_sco_table_prefix14_bit4_fields);
+var sxarwire_sco_table_prefix14_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,14]", 3)]);
+var sxarwire_sco_table_prefix14_bit5 = sxLayout(0x608D0243, "sco_table_prefix14_bit5", LE, sxarwire_sco_table_prefix14_bit5_fields);
+var sxarwire_sco_table_prefix14_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,14]", 3)]);
+var sxarwire_sco_table_prefix14_bit6 = sxLayout(0x608D0244, "sco_table_prefix14_bit6", LE, sxarwire_sco_table_prefix14_bit6_fields);
+var sxarwire_sco_table_prefix14_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,14]", 3)]);
+var sxarwire_sco_table_prefix14_bit7 = sxLayout(0x608D0245, "sco_table_prefix14_bit7", LE, sxarwire_sco_table_prefix14_bit7_fields);
+var sxarwire_sco_table_prefix15_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,15]", 2)]);
+var sxarwire_sco_table_prefix15_bit0 = sxLayout(0x608D0246, "sco_table_prefix15_bit0", LE, sxarwire_sco_table_prefix15_bit0_fields);
+var sxarwire_sco_table_prefix15_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,15]", 2)]);
+var sxarwire_sco_table_prefix15_bit1 = sxLayout(0x608D0247, "sco_table_prefix15_bit1", LE, sxarwire_sco_table_prefix15_bit1_fields);
+var sxarwire_sco_table_prefix15_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,15]", 3)]);
+var sxarwire_sco_table_prefix15_bit2 = sxLayout(0x608D0248, "sco_table_prefix15_bit2", LE, sxarwire_sco_table_prefix15_bit2_fields);
+var sxarwire_sco_table_prefix15_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,15]", 3)]);
+var sxarwire_sco_table_prefix15_bit3 = sxLayout(0x608D0249, "sco_table_prefix15_bit3", LE, sxarwire_sco_table_prefix15_bit3_fields);
+var sxarwire_sco_table_prefix15_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,15]", 3)]);
+var sxarwire_sco_table_prefix15_bit4 = sxLayout(0x608D024A, "sco_table_prefix15_bit4", LE, sxarwire_sco_table_prefix15_bit4_fields);
+var sxarwire_sco_table_prefix15_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,15]", 3)]);
+var sxarwire_sco_table_prefix15_bit5 = sxLayout(0x608D024B, "sco_table_prefix15_bit5", LE, sxarwire_sco_table_prefix15_bit5_fields);
+var sxarwire_sco_table_prefix15_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,15]", 3)]);
+var sxarwire_sco_table_prefix15_bit6 = sxLayout(0x608D024C, "sco_table_prefix15_bit6", LE, sxarwire_sco_table_prefix15_bit6_fields);
+var sxarwire_sco_table_prefix15_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,15]", 3)]);
+var sxarwire_sco_table_prefix15_bit7 = sxLayout(0x608D024D, "sco_table_prefix15_bit7", LE, sxarwire_sco_table_prefix15_bit7_fields);
+var sxarwire_sco_table_prefix16_bit0_fields = layout([field("encoded_code_length_symbol", "msb_bits[0,16]", 2)]);
+var sxarwire_sco_table_prefix16_bit0 = sxLayout(0x608D024E, "sco_table_prefix16_bit0", LE, sxarwire_sco_table_prefix16_bit0_fields);
+var sxarwire_sco_table_prefix16_bit1_fields = layout([field("encoded_code_length_symbol", "msb_bits[1,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit1 = sxLayout(0x608D024F, "sco_table_prefix16_bit1", LE, sxarwire_sco_table_prefix16_bit1_fields);
+var sxarwire_sco_table_prefix16_bit2_fields = layout([field("encoded_code_length_symbol", "msb_bits[2,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit2 = sxLayout(0x608D0250, "sco_table_prefix16_bit2", LE, sxarwire_sco_table_prefix16_bit2_fields);
+var sxarwire_sco_table_prefix16_bit3_fields = layout([field("encoded_code_length_symbol", "msb_bits[3,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit3 = sxLayout(0x608D0251, "sco_table_prefix16_bit3", LE, sxarwire_sco_table_prefix16_bit3_fields);
+var sxarwire_sco_table_prefix16_bit4_fields = layout([field("encoded_code_length_symbol", "msb_bits[4,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit4 = sxLayout(0x608D0252, "sco_table_prefix16_bit4", LE, sxarwire_sco_table_prefix16_bit4_fields);
+var sxarwire_sco_table_prefix16_bit5_fields = layout([field("encoded_code_length_symbol", "msb_bits[5,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit5 = sxLayout(0x608D0253, "sco_table_prefix16_bit5", LE, sxarwire_sco_table_prefix16_bit5_fields);
+var sxarwire_sco_table_prefix16_bit6_fields = layout([field("encoded_code_length_symbol", "msb_bits[6,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit6 = sxLayout(0x608D0254, "sco_table_prefix16_bit6", LE, sxarwire_sco_table_prefix16_bit6_fields);
+var sxarwire_sco_table_prefix16_bit7_fields = layout([field("encoded_code_length_symbol", "msb_bits[7,16]", 3)]);
+var sxarwire_sco_table_prefix16_bit7 = sxLayout(0x608D0255, "sco_table_prefix16_bit7", LE, sxarwire_sco_table_prefix16_bit7_fields);
+var sxarwire_deflate_table_prefix1_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit0 = sxLayout(0x608D0256, "deflate_table_prefix1_bit0", LE, sxarwire_deflate_table_prefix1_bit0_fields);
+var sxarwire_deflate_table_prefix1_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit1 = sxLayout(0x608D0257, "deflate_table_prefix1_bit1", LE, sxarwire_deflate_table_prefix1_bit1_fields);
+var sxarwire_deflate_table_prefix1_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit2 = sxLayout(0x608D0258, "deflate_table_prefix1_bit2", LE, sxarwire_deflate_table_prefix1_bit2_fields);
+var sxarwire_deflate_table_prefix1_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit3 = sxLayout(0x608D0259, "deflate_table_prefix1_bit3", LE, sxarwire_deflate_table_prefix1_bit3_fields);
+var sxarwire_deflate_table_prefix1_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit4 = sxLayout(0x608D025A, "deflate_table_prefix1_bit4", LE, sxarwire_deflate_table_prefix1_bit4_fields);
+var sxarwire_deflate_table_prefix1_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit5 = sxLayout(0x608D025B, "deflate_table_prefix1_bit5", LE, sxarwire_deflate_table_prefix1_bit5_fields);
+var sxarwire_deflate_table_prefix1_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit6 = sxLayout(0x608D025C, "deflate_table_prefix1_bit6", LE, sxarwire_deflate_table_prefix1_bit6_fields);
+var sxarwire_deflate_table_prefix1_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,1]", 1)]);
+var sxarwire_deflate_table_prefix1_bit7 = sxLayout(0x608D025D, "deflate_table_prefix1_bit7", LE, sxarwire_deflate_table_prefix1_bit7_fields);
+var sxarwire_deflate_table_prefix2_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit0 = sxLayout(0x608D025E, "deflate_table_prefix2_bit0", LE, sxarwire_deflate_table_prefix2_bit0_fields);
+var sxarwire_deflate_table_prefix2_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit1 = sxLayout(0x608D025F, "deflate_table_prefix2_bit1", LE, sxarwire_deflate_table_prefix2_bit1_fields);
+var sxarwire_deflate_table_prefix2_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit2 = sxLayout(0x608D0260, "deflate_table_prefix2_bit2", LE, sxarwire_deflate_table_prefix2_bit2_fields);
+var sxarwire_deflate_table_prefix2_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit3 = sxLayout(0x608D0261, "deflate_table_prefix2_bit3", LE, sxarwire_deflate_table_prefix2_bit3_fields);
+var sxarwire_deflate_table_prefix2_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit4 = sxLayout(0x608D0262, "deflate_table_prefix2_bit4", LE, sxarwire_deflate_table_prefix2_bit4_fields);
+var sxarwire_deflate_table_prefix2_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit5 = sxLayout(0x608D0263, "deflate_table_prefix2_bit5", LE, sxarwire_deflate_table_prefix2_bit5_fields);
+var sxarwire_deflate_table_prefix2_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,2]", 1)]);
+var sxarwire_deflate_table_prefix2_bit6 = sxLayout(0x608D0264, "deflate_table_prefix2_bit6", LE, sxarwire_deflate_table_prefix2_bit6_fields);
+var sxarwire_deflate_table_prefix2_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,2]", 2)]);
+var sxarwire_deflate_table_prefix2_bit7 = sxLayout(0x608D0265, "deflate_table_prefix2_bit7", LE, sxarwire_deflate_table_prefix2_bit7_fields);
+var sxarwire_deflate_table_prefix3_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,3]", 1)]);
+var sxarwire_deflate_table_prefix3_bit0 = sxLayout(0x608D0266, "deflate_table_prefix3_bit0", LE, sxarwire_deflate_table_prefix3_bit0_fields);
+var sxarwire_deflate_table_prefix3_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,3]", 1)]);
+var sxarwire_deflate_table_prefix3_bit1 = sxLayout(0x608D0267, "deflate_table_prefix3_bit1", LE, sxarwire_deflate_table_prefix3_bit1_fields);
+var sxarwire_deflate_table_prefix3_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,3]", 1)]);
+var sxarwire_deflate_table_prefix3_bit2 = sxLayout(0x608D0268, "deflate_table_prefix3_bit2", LE, sxarwire_deflate_table_prefix3_bit2_fields);
+var sxarwire_deflate_table_prefix3_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,3]", 1)]);
+var sxarwire_deflate_table_prefix3_bit3 = sxLayout(0x608D0269, "deflate_table_prefix3_bit3", LE, sxarwire_deflate_table_prefix3_bit3_fields);
+var sxarwire_deflate_table_prefix3_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,3]", 1)]);
+var sxarwire_deflate_table_prefix3_bit4 = sxLayout(0x608D026A, "deflate_table_prefix3_bit4", LE, sxarwire_deflate_table_prefix3_bit4_fields);
+var sxarwire_deflate_table_prefix3_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,3]", 1)]);
+var sxarwire_deflate_table_prefix3_bit5 = sxLayout(0x608D026B, "deflate_table_prefix3_bit5", LE, sxarwire_deflate_table_prefix3_bit5_fields);
+var sxarwire_deflate_table_prefix3_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,3]", 2)]);
+var sxarwire_deflate_table_prefix3_bit6 = sxLayout(0x608D026C, "deflate_table_prefix3_bit6", LE, sxarwire_deflate_table_prefix3_bit6_fields);
+var sxarwire_deflate_table_prefix3_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,3]", 2)]);
+var sxarwire_deflate_table_prefix3_bit7 = sxLayout(0x608D026D, "deflate_table_prefix3_bit7", LE, sxarwire_deflate_table_prefix3_bit7_fields);
+var sxarwire_deflate_table_prefix4_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,4]", 1)]);
+var sxarwire_deflate_table_prefix4_bit0 = sxLayout(0x608D026E, "deflate_table_prefix4_bit0", LE, sxarwire_deflate_table_prefix4_bit0_fields);
+var sxarwire_deflate_table_prefix4_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,4]", 1)]);
+var sxarwire_deflate_table_prefix4_bit1 = sxLayout(0x608D026F, "deflate_table_prefix4_bit1", LE, sxarwire_deflate_table_prefix4_bit1_fields);
+var sxarwire_deflate_table_prefix4_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,4]", 1)]);
+var sxarwire_deflate_table_prefix4_bit2 = sxLayout(0x608D0270, "deflate_table_prefix4_bit2", LE, sxarwire_deflate_table_prefix4_bit2_fields);
+var sxarwire_deflate_table_prefix4_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,4]", 1)]);
+var sxarwire_deflate_table_prefix4_bit3 = sxLayout(0x608D0271, "deflate_table_prefix4_bit3", LE, sxarwire_deflate_table_prefix4_bit3_fields);
+var sxarwire_deflate_table_prefix4_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,4]", 1)]);
+var sxarwire_deflate_table_prefix4_bit4 = sxLayout(0x608D0272, "deflate_table_prefix4_bit4", LE, sxarwire_deflate_table_prefix4_bit4_fields);
+var sxarwire_deflate_table_prefix4_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,4]", 2)]);
+var sxarwire_deflate_table_prefix4_bit5 = sxLayout(0x608D0273, "deflate_table_prefix4_bit5", LE, sxarwire_deflate_table_prefix4_bit5_fields);
+var sxarwire_deflate_table_prefix4_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,4]", 2)]);
+var sxarwire_deflate_table_prefix4_bit6 = sxLayout(0x608D0274, "deflate_table_prefix4_bit6", LE, sxarwire_deflate_table_prefix4_bit6_fields);
+var sxarwire_deflate_table_prefix4_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,4]", 2)]);
+var sxarwire_deflate_table_prefix4_bit7 = sxLayout(0x608D0275, "deflate_table_prefix4_bit7", LE, sxarwire_deflate_table_prefix4_bit7_fields);
+var sxarwire_deflate_table_prefix5_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,5]", 1)]);
+var sxarwire_deflate_table_prefix5_bit0 = sxLayout(0x608D0276, "deflate_table_prefix5_bit0", LE, sxarwire_deflate_table_prefix5_bit0_fields);
+var sxarwire_deflate_table_prefix5_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,5]", 1)]);
+var sxarwire_deflate_table_prefix5_bit1 = sxLayout(0x608D0277, "deflate_table_prefix5_bit1", LE, sxarwire_deflate_table_prefix5_bit1_fields);
+var sxarwire_deflate_table_prefix5_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,5]", 1)]);
+var sxarwire_deflate_table_prefix5_bit2 = sxLayout(0x608D0278, "deflate_table_prefix5_bit2", LE, sxarwire_deflate_table_prefix5_bit2_fields);
+var sxarwire_deflate_table_prefix5_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,5]", 1)]);
+var sxarwire_deflate_table_prefix5_bit3 = sxLayout(0x608D0279, "deflate_table_prefix5_bit3", LE, sxarwire_deflate_table_prefix5_bit3_fields);
+var sxarwire_deflate_table_prefix5_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,5]", 2)]);
+var sxarwire_deflate_table_prefix5_bit4 = sxLayout(0x608D027A, "deflate_table_prefix5_bit4", LE, sxarwire_deflate_table_prefix5_bit4_fields);
+var sxarwire_deflate_table_prefix5_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,5]", 2)]);
+var sxarwire_deflate_table_prefix5_bit5 = sxLayout(0x608D027B, "deflate_table_prefix5_bit5", LE, sxarwire_deflate_table_prefix5_bit5_fields);
+var sxarwire_deflate_table_prefix5_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,5]", 2)]);
+var sxarwire_deflate_table_prefix5_bit6 = sxLayout(0x608D027C, "deflate_table_prefix5_bit6", LE, sxarwire_deflate_table_prefix5_bit6_fields);
+var sxarwire_deflate_table_prefix5_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,5]", 2)]);
+var sxarwire_deflate_table_prefix5_bit7 = sxLayout(0x608D027D, "deflate_table_prefix5_bit7", LE, sxarwire_deflate_table_prefix5_bit7_fields);
+var sxarwire_deflate_table_prefix6_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,6]", 1)]);
+var sxarwire_deflate_table_prefix6_bit0 = sxLayout(0x608D027E, "deflate_table_prefix6_bit0", LE, sxarwire_deflate_table_prefix6_bit0_fields);
+var sxarwire_deflate_table_prefix6_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,6]", 1)]);
+var sxarwire_deflate_table_prefix6_bit1 = sxLayout(0x608D027F, "deflate_table_prefix6_bit1", LE, sxarwire_deflate_table_prefix6_bit1_fields);
+var sxarwire_deflate_table_prefix6_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,6]", 1)]);
+var sxarwire_deflate_table_prefix6_bit2 = sxLayout(0x608D0280, "deflate_table_prefix6_bit2", LE, sxarwire_deflate_table_prefix6_bit2_fields);
+var sxarwire_deflate_table_prefix6_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,6]", 2)]);
+var sxarwire_deflate_table_prefix6_bit3 = sxLayout(0x608D0281, "deflate_table_prefix6_bit3", LE, sxarwire_deflate_table_prefix6_bit3_fields);
+var sxarwire_deflate_table_prefix6_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,6]", 2)]);
+var sxarwire_deflate_table_prefix6_bit4 = sxLayout(0x608D0282, "deflate_table_prefix6_bit4", LE, sxarwire_deflate_table_prefix6_bit4_fields);
+var sxarwire_deflate_table_prefix6_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,6]", 2)]);
+var sxarwire_deflate_table_prefix6_bit5 = sxLayout(0x608D0283, "deflate_table_prefix6_bit5", LE, sxarwire_deflate_table_prefix6_bit5_fields);
+var sxarwire_deflate_table_prefix6_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,6]", 2)]);
+var sxarwire_deflate_table_prefix6_bit6 = sxLayout(0x608D0284, "deflate_table_prefix6_bit6", LE, sxarwire_deflate_table_prefix6_bit6_fields);
+var sxarwire_deflate_table_prefix6_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,6]", 2)]);
+var sxarwire_deflate_table_prefix6_bit7 = sxLayout(0x608D0285, "deflate_table_prefix6_bit7", LE, sxarwire_deflate_table_prefix6_bit7_fields);
+var sxarwire_deflate_table_prefix7_bit0_fields = layout([field("encoded_code_length_symbol", "lsb_bits[0,7]", 1)]);
+var sxarwire_deflate_table_prefix7_bit0 = sxLayout(0x608D0286, "deflate_table_prefix7_bit0", LE, sxarwire_deflate_table_prefix7_bit0_fields);
+var sxarwire_deflate_table_prefix7_bit1_fields = layout([field("encoded_code_length_symbol", "lsb_bits[1,7]", 1)]);
+var sxarwire_deflate_table_prefix7_bit1 = sxLayout(0x608D0287, "deflate_table_prefix7_bit1", LE, sxarwire_deflate_table_prefix7_bit1_fields);
+var sxarwire_deflate_table_prefix7_bit2_fields = layout([field("encoded_code_length_symbol", "lsb_bits[2,7]", 2)]);
+var sxarwire_deflate_table_prefix7_bit2 = sxLayout(0x608D0288, "deflate_table_prefix7_bit2", LE, sxarwire_deflate_table_prefix7_bit2_fields);
+var sxarwire_deflate_table_prefix7_bit3_fields = layout([field("encoded_code_length_symbol", "lsb_bits[3,7]", 2)]);
+var sxarwire_deflate_table_prefix7_bit3 = sxLayout(0x608D0289, "deflate_table_prefix7_bit3", LE, sxarwire_deflate_table_prefix7_bit3_fields);
+var sxarwire_deflate_table_prefix7_bit4_fields = layout([field("encoded_code_length_symbol", "lsb_bits[4,7]", 2)]);
+var sxarwire_deflate_table_prefix7_bit4 = sxLayout(0x608D028A, "deflate_table_prefix7_bit4", LE, sxarwire_deflate_table_prefix7_bit4_fields);
+var sxarwire_deflate_table_prefix7_bit5_fields = layout([field("encoded_code_length_symbol", "lsb_bits[5,7]", 2)]);
+var sxarwire_deflate_table_prefix7_bit5 = sxLayout(0x608D028B, "deflate_table_prefix7_bit5", LE, sxarwire_deflate_table_prefix7_bit5_fields);
+var sxarwire_deflate_table_prefix7_bit6_fields = layout([field("encoded_code_length_symbol", "lsb_bits[6,7]", 2)]);
+var sxarwire_deflate_table_prefix7_bit6 = sxLayout(0x608D028C, "deflate_table_prefix7_bit6", LE, sxarwire_deflate_table_prefix7_bit6_fields);
+var sxarwire_deflate_table_prefix7_bit7_fields = layout([field("encoded_code_length_symbol", "lsb_bits[7,7]", 2)]);
+var sxarwire_deflate_table_prefix7_bit7 = sxLayout(0x608D028D, "deflate_table_prefix7_bit7", LE, sxarwire_deflate_table_prefix7_bit7_fields);
+var sxarwire_set_lzs_is_match = [sxarwire_lzs_is_match_bit0, sxarwire_lzs_is_match_bit1, sxarwire_lzs_is_match_bit2,
+    sxarwire_lzs_is_match_bit3, sxarwire_lzs_is_match_bit4, sxarwire_lzs_is_match_bit5, sxarwire_lzs_is_match_bit6,
+    sxarwire_lzs_is_match_bit7];
+var sxarwire_set_lzs_short_distance = [sxarwire_lzs_short_distance_bit0, sxarwire_lzs_short_distance_bit1,
+    sxarwire_lzs_short_distance_bit2, sxarwire_lzs_short_distance_bit3, sxarwire_lzs_short_distance_bit4,
+    sxarwire_lzs_short_distance_bit5, sxarwire_lzs_short_distance_bit6, sxarwire_lzs_short_distance_bit7];
+var sxarwire_set_lzs_literal = [sxarwire_lzs_literal_bit0, sxarwire_lzs_literal_bit1, sxarwire_lzs_literal_bit2,
+    sxarwire_lzs_literal_bit3, sxarwire_lzs_literal_bit4, sxarwire_lzs_literal_bit5, sxarwire_lzs_literal_bit6,
+    sxarwire_lzs_literal_bit7];
+var sxarwire_set_lzs_distance7 = [sxarwire_lzs_distance7_bit0, sxarwire_lzs_distance7_bit1, sxarwire_lzs_distance7_bit2,
+    sxarwire_lzs_distance7_bit3, sxarwire_lzs_distance7_bit4, sxarwire_lzs_distance7_bit5, sxarwire_lzs_distance7_bit6,
+    sxarwire_lzs_distance7_bit7];
+var sxarwire_set_lzs_distance11 = [sxarwire_lzs_distance11_bit0, sxarwire_lzs_distance11_bit1, sxarwire_lzs_distance11_bit2,
+    sxarwire_lzs_distance11_bit3, sxarwire_lzs_distance11_bit4, sxarwire_lzs_distance11_bit5, sxarwire_lzs_distance11_bit6,
+    sxarwire_lzs_distance11_bit7];
+var sxarwire_set_lzs_length_prefix = [sxarwire_lzs_length_prefix_bit0, sxarwire_lzs_length_prefix_bit1,
+    sxarwire_lzs_length_prefix_bit2, sxarwire_lzs_length_prefix_bit3, sxarwire_lzs_length_prefix_bit4,
+    sxarwire_lzs_length_prefix_bit5, sxarwire_lzs_length_prefix_bit6, sxarwire_lzs_length_prefix_bit7];
+var sxarwire_set_lzs_length_secondary = [sxarwire_lzs_length_secondary_bit0, sxarwire_lzs_length_secondary_bit1,
+    sxarwire_lzs_length_secondary_bit2, sxarwire_lzs_length_secondary_bit3, sxarwire_lzs_length_secondary_bit4,
+    sxarwire_lzs_length_secondary_bit5, sxarwire_lzs_length_secondary_bit6, sxarwire_lzs_length_secondary_bit7];
+var sxarwire_set_lzs_length_extension = [sxarwire_lzs_length_extension_bit0, sxarwire_lzs_length_extension_bit1,
+    sxarwire_lzs_length_extension_bit2, sxarwire_lzs_length_extension_bit3, sxarwire_lzs_length_extension_bit4,
+    sxarwire_lzs_length_extension_bit5, sxarwire_lzs_length_extension_bit6, sxarwire_lzs_length_extension_bit7];
+var sxarwire_set_sco_table_prefix1 = [sxarwire_sco_table_prefix1_bit0, sxarwire_sco_table_prefix1_bit1,
+    sxarwire_sco_table_prefix1_bit2, sxarwire_sco_table_prefix1_bit3, sxarwire_sco_table_prefix1_bit4,
+    sxarwire_sco_table_prefix1_bit5, sxarwire_sco_table_prefix1_bit6, sxarwire_sco_table_prefix1_bit7];
+var sxarwire_set_sco_table_prefix2 = [sxarwire_sco_table_prefix2_bit0, sxarwire_sco_table_prefix2_bit1,
+    sxarwire_sco_table_prefix2_bit2, sxarwire_sco_table_prefix2_bit3, sxarwire_sco_table_prefix2_bit4,
+    sxarwire_sco_table_prefix2_bit5, sxarwire_sco_table_prefix2_bit6, sxarwire_sco_table_prefix2_bit7];
+var sxarwire_set_sco_table_prefix3 = [sxarwire_sco_table_prefix3_bit0, sxarwire_sco_table_prefix3_bit1,
+    sxarwire_sco_table_prefix3_bit2, sxarwire_sco_table_prefix3_bit3, sxarwire_sco_table_prefix3_bit4,
+    sxarwire_sco_table_prefix3_bit5, sxarwire_sco_table_prefix3_bit6, sxarwire_sco_table_prefix3_bit7];
+var sxarwire_set_sco_table_prefix4 = [sxarwire_sco_table_prefix4_bit0, sxarwire_sco_table_prefix4_bit1,
+    sxarwire_sco_table_prefix4_bit2, sxarwire_sco_table_prefix4_bit3, sxarwire_sco_table_prefix4_bit4,
+    sxarwire_sco_table_prefix4_bit5, sxarwire_sco_table_prefix4_bit6, sxarwire_sco_table_prefix4_bit7];
+var sxarwire_set_sco_table_prefix5 = [sxarwire_sco_table_prefix5_bit0, sxarwire_sco_table_prefix5_bit1,
+    sxarwire_sco_table_prefix5_bit2, sxarwire_sco_table_prefix5_bit3, sxarwire_sco_table_prefix5_bit4,
+    sxarwire_sco_table_prefix5_bit5, sxarwire_sco_table_prefix5_bit6, sxarwire_sco_table_prefix5_bit7];
+var sxarwire_set_sco_table_prefix6 = [sxarwire_sco_table_prefix6_bit0, sxarwire_sco_table_prefix6_bit1,
+    sxarwire_sco_table_prefix6_bit2, sxarwire_sco_table_prefix6_bit3, sxarwire_sco_table_prefix6_bit4,
+    sxarwire_sco_table_prefix6_bit5, sxarwire_sco_table_prefix6_bit6, sxarwire_sco_table_prefix6_bit7];
+var sxarwire_set_sco_table_prefix7 = [sxarwire_sco_table_prefix7_bit0, sxarwire_sco_table_prefix7_bit1,
+    sxarwire_sco_table_prefix7_bit2, sxarwire_sco_table_prefix7_bit3, sxarwire_sco_table_prefix7_bit4,
+    sxarwire_sco_table_prefix7_bit5, sxarwire_sco_table_prefix7_bit6, sxarwire_sco_table_prefix7_bit7];
+var sxarwire_set_sco_table_prefix8 = [sxarwire_sco_table_prefix8_bit0, sxarwire_sco_table_prefix8_bit1,
+    sxarwire_sco_table_prefix8_bit2, sxarwire_sco_table_prefix8_bit3, sxarwire_sco_table_prefix8_bit4,
+    sxarwire_sco_table_prefix8_bit5, sxarwire_sco_table_prefix8_bit6, sxarwire_sco_table_prefix8_bit7];
+var sxarwire_set_sco_table_prefix9 = [sxarwire_sco_table_prefix9_bit0, sxarwire_sco_table_prefix9_bit1,
+    sxarwire_sco_table_prefix9_bit2, sxarwire_sco_table_prefix9_bit3, sxarwire_sco_table_prefix9_bit4,
+    sxarwire_sco_table_prefix9_bit5, sxarwire_sco_table_prefix9_bit6, sxarwire_sco_table_prefix9_bit7];
+var sxarwire_set_sco_table_prefix10 = [sxarwire_sco_table_prefix10_bit0, sxarwire_sco_table_prefix10_bit1,
+    sxarwire_sco_table_prefix10_bit2, sxarwire_sco_table_prefix10_bit3, sxarwire_sco_table_prefix10_bit4,
+    sxarwire_sco_table_prefix10_bit5, sxarwire_sco_table_prefix10_bit6, sxarwire_sco_table_prefix10_bit7];
+var sxarwire_set_sco_table_prefix11 = [sxarwire_sco_table_prefix11_bit0, sxarwire_sco_table_prefix11_bit1,
+    sxarwire_sco_table_prefix11_bit2, sxarwire_sco_table_prefix11_bit3, sxarwire_sco_table_prefix11_bit4,
+    sxarwire_sco_table_prefix11_bit5, sxarwire_sco_table_prefix11_bit6, sxarwire_sco_table_prefix11_bit7];
+var sxarwire_set_sco_table_prefix12 = [sxarwire_sco_table_prefix12_bit0, sxarwire_sco_table_prefix12_bit1,
+    sxarwire_sco_table_prefix12_bit2, sxarwire_sco_table_prefix12_bit3, sxarwire_sco_table_prefix12_bit4,
+    sxarwire_sco_table_prefix12_bit5, sxarwire_sco_table_prefix12_bit6, sxarwire_sco_table_prefix12_bit7];
+var sxarwire_set_sco_table_prefix13 = [sxarwire_sco_table_prefix13_bit0, sxarwire_sco_table_prefix13_bit1,
+    sxarwire_sco_table_prefix13_bit2, sxarwire_sco_table_prefix13_bit3, sxarwire_sco_table_prefix13_bit4,
+    sxarwire_sco_table_prefix13_bit5, sxarwire_sco_table_prefix13_bit6, sxarwire_sco_table_prefix13_bit7];
+var sxarwire_set_sco_table_prefix14 = [sxarwire_sco_table_prefix14_bit0, sxarwire_sco_table_prefix14_bit1,
+    sxarwire_sco_table_prefix14_bit2, sxarwire_sco_table_prefix14_bit3, sxarwire_sco_table_prefix14_bit4,
+    sxarwire_sco_table_prefix14_bit5, sxarwire_sco_table_prefix14_bit6, sxarwire_sco_table_prefix14_bit7];
+var sxarwire_set_sco_table_prefix15 = [sxarwire_sco_table_prefix15_bit0, sxarwire_sco_table_prefix15_bit1,
+    sxarwire_sco_table_prefix15_bit2, sxarwire_sco_table_prefix15_bit3, sxarwire_sco_table_prefix15_bit4,
+    sxarwire_sco_table_prefix15_bit5, sxarwire_sco_table_prefix15_bit6, sxarwire_sco_table_prefix15_bit7];
+var sxarwire_set_sco_table_prefix16 = [sxarwire_sco_table_prefix16_bit0, sxarwire_sco_table_prefix16_bit1,
+    sxarwire_sco_table_prefix16_bit2, sxarwire_sco_table_prefix16_bit3, sxarwire_sco_table_prefix16_bit4,
+    sxarwire_sco_table_prefix16_bit5, sxarwire_sco_table_prefix16_bit6, sxarwire_sco_table_prefix16_bit7];
+var sxarwire_set_deflate_table_prefix1 = [sxarwire_deflate_table_prefix1_bit0, sxarwire_deflate_table_prefix1_bit1,
+    sxarwire_deflate_table_prefix1_bit2, sxarwire_deflate_table_prefix1_bit3, sxarwire_deflate_table_prefix1_bit4,
+    sxarwire_deflate_table_prefix1_bit5, sxarwire_deflate_table_prefix1_bit6, sxarwire_deflate_table_prefix1_bit7];
+var sxarwire_set_deflate_table_prefix2 = [sxarwire_deflate_table_prefix2_bit0, sxarwire_deflate_table_prefix2_bit1,
+    sxarwire_deflate_table_prefix2_bit2, sxarwire_deflate_table_prefix2_bit3, sxarwire_deflate_table_prefix2_bit4,
+    sxarwire_deflate_table_prefix2_bit5, sxarwire_deflate_table_prefix2_bit6, sxarwire_deflate_table_prefix2_bit7];
+var sxarwire_set_deflate_table_prefix3 = [sxarwire_deflate_table_prefix3_bit0, sxarwire_deflate_table_prefix3_bit1,
+    sxarwire_deflate_table_prefix3_bit2, sxarwire_deflate_table_prefix3_bit3, sxarwire_deflate_table_prefix3_bit4,
+    sxarwire_deflate_table_prefix3_bit5, sxarwire_deflate_table_prefix3_bit6, sxarwire_deflate_table_prefix3_bit7];
+var sxarwire_set_deflate_table_prefix4 = [sxarwire_deflate_table_prefix4_bit0, sxarwire_deflate_table_prefix4_bit1,
+    sxarwire_deflate_table_prefix4_bit2, sxarwire_deflate_table_prefix4_bit3, sxarwire_deflate_table_prefix4_bit4,
+    sxarwire_deflate_table_prefix4_bit5, sxarwire_deflate_table_prefix4_bit6, sxarwire_deflate_table_prefix4_bit7];
+var sxarwire_set_deflate_table_prefix5 = [sxarwire_deflate_table_prefix5_bit0, sxarwire_deflate_table_prefix5_bit1,
+    sxarwire_deflate_table_prefix5_bit2, sxarwire_deflate_table_prefix5_bit3, sxarwire_deflate_table_prefix5_bit4,
+    sxarwire_deflate_table_prefix5_bit5, sxarwire_deflate_table_prefix5_bit6, sxarwire_deflate_table_prefix5_bit7];
+var sxarwire_set_deflate_table_prefix6 = [sxarwire_deflate_table_prefix6_bit0, sxarwire_deflate_table_prefix6_bit1,
+    sxarwire_deflate_table_prefix6_bit2, sxarwire_deflate_table_prefix6_bit3, sxarwire_deflate_table_prefix6_bit4,
+    sxarwire_deflate_table_prefix6_bit5, sxarwire_deflate_table_prefix6_bit6, sxarwire_deflate_table_prefix6_bit7];
+var sxarwire_set_deflate_table_prefix7 = [sxarwire_deflate_table_prefix7_bit0, sxarwire_deflate_table_prefix7_bit1,
+    sxarwire_deflate_table_prefix7_bit2, sxarwire_deflate_table_prefix7_bit3, sxarwire_deflate_table_prefix7_bit4,
+    sxarwire_deflate_table_prefix7_bit5, sxarwire_deflate_table_prefix7_bit6, sxarwire_deflate_table_prefix7_bit7];
+function sx_archivewire_comment(r, id) {
+    if (r === null || r.name === null || id < 0x608D0000 || id >= 0x608E0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x608D0003:
+        text = "FLS adaptive-phrase stream tag0x53; not a member header.";
+        break;
+    case 0x608D0005:
+        text = "Native-supported12-byte SPACK profile. Remaining profile bytes are preserved without inferred length or address semantics.";
+        break;
+    case 0x608D0006:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D0007:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D0008:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D0009:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D000A:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D000B:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D000C:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D000D:
+        text = "0=literal8-bit byte;1=match or stream terminator.";
+        break;
+    case 0x608D000E:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D000F:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D0010:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D0011:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D0012:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D0013:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D0014:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D0015:
+        text = "1 selects7-bit distance;0 selects11-bit distance.";
+        break;
+    case 0x608D001E:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D001F:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0020:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0021:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0022:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0023:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0024:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0025:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0026:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0027:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0028:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D0029:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D002A:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D002B:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D002C:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D002D:
+        text = "Distance back in decoded output bytes, not a physical file offset. Short distance0 is the end marker.";
+        break;
+    case 0x608D002E:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D002F:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0030:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0031:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0032:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0033:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0034:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0035:
+        text = "First2bits:0..2 means length2..4;3 introduces a second2-bit prefix.";
+        break;
+    case 0x608D0036:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D0037:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D0038:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D0039:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D003A:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D003B:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D003C:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D003D:
+        text = "Second2bits:0..2 means length5..7;3 introduces4-bit extension groups.";
+        break;
+    case 0x608D003E:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D003F:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0040:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0041:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0042:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0043:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0044:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0045:
+        text = "Extension nibble adds to a base length8;15 requires another extension nibble. Physical encoded value is retained.";
+        break;
+    case 0x608D0046:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0047:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0048:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0049:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D004A:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D004B:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D004C:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D004D:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D004E:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D004F:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0050:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0051:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0052:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0053:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0054:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0055:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0056:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0057:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0058:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0059:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D005A:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D005B:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D005C:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D005D:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D005E:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D005F:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0060:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0061:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0062:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0063:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0064:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0065:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0066:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0067:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0068:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0069:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D006A:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D006B:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D006C:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D006D:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D006E:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D006F:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0070:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0071:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0072:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0073:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0074:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0075:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0076:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0077:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0078:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D0079:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D007A:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D007B:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D007C:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D007D:
+        text = "0..255 literal;256 END;257 BUMP increments stored code width;258 CLEAR resets to9bits. Larger codes reference the adaptive dictionary.";
+        break;
+    case 0x608D007E:
+        text = "Stored SPACK12-bit code:0 ends stream; otherwise subtract1 to obtain literal/pair-tree code.";
+        break;
+    case 0x608D007F:
+        text = "Stored SPACK12-bit code:0 ends stream; otherwise subtract1 to obtain literal/pair-tree code.";
+        break;
+    case 0x608D0080:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0081:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0082:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0083:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0084:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0085:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0086:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0087:
+        text = "First of six code-width classes, stored anew every500 tokens; must be0..5.";
+        break;
+    case 0x608D0088:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D0089:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D008A:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D008B:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D008C:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D008D:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D008E:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D008F:
+        text = "Second distinct code-width class. The other classes follow in ascending order.";
+        break;
+    case 0x608D0090:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0091:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0092:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0093:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0094:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0095:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0096:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0097:
+        text = "0/1 select first/second class;2/3 introduce one extra selector bit.";
+        break;
+    case 0x608D0098:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D0099:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D009A:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D009B:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D009C:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D009D:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D009E:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D009F:
+        text = "For prefix2/3, selected rank is2*prefix-2+this bit.";
+        break;
+    case 0x608D00A0:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A1:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A2:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A3:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A4:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A5:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A6:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A7:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A8:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00A9:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00AA:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00AB:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00AC:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00AD:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00AE:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00AF:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B0:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B1:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B2:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B3:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B4:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B5:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B6:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B7:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B8:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00B9:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00BA:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00BB:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00BC:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00BD:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00BE:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00BF:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C0:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C1:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C2:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C3:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C4:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C5:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C6:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C7:
+        text = "Physical class-relative code. Class bases0,128,192,320,576,1600; code5695 ends stream. Reconstructing phrases is outside member display.";
+        break;
+    case 0x608D00C9:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00CA:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00CB:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00CC:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00CD:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00CE:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00CF:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00D0:
+        text = "Number of Huffman symbols in this block; zero terminates the stream.";
+        break;
+    case 0x608D00E1:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E2:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E3:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E4:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E5:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E6:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E7:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00E8:
+        text = "Stored prefix:0..6 code length;7 extends by a unary run of1 bits terminated by0.";
+        break;
+    case 0x608D00F1:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F2:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F3:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F4:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F5:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F6:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F7:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D00F8:
+        text = "Number of additional zero-length entries inserted after the third pretree code.";
+        break;
+    case 0x608D0119:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D011A:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D011B:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D011C:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D011D:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D011E:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D011F:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0120:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0121:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0122:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0123:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0124:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0125:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0126:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0127:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0128:
+        text = "Code-length repeat extra bits:4bits add3,9bits add20; decoded count is not a stored field.";
+        break;
+    case 0x608D0129:
+        text = "Physical copy of diskette BPB plus declared compressed stream size and CRC32 of decoded disk image. Sector counts are not byte offsets. Geometry bytes retain unknown subfields.";
+        break;
+    case 0x608D012A:
+        text = "Final51-byte ARDI trailer. Copyright year is decimal text, not a timestamp.";
+        break;
+    case 0x608D012B:
+        text = "Encoded WBITS prefix from RFC7932, not a byte count. Window size is(1<<WBITS)-16 after decoding the prefix.";
+        break;
+    case 0x608D012C:
+        text = "Encoded WBITS prefix from RFC7932, not a byte count. Window size is(1<<WBITS)-16 after decoding the prefix.";
+        break;
+    case 0x608D012D:
+        text = "Encoded WBITS prefix from RFC7932, not a byte count. Window size is(1<<WBITS)-16 after decoding the prefix.";
+        break;
+    case 0x608D013E:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D013F:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0140:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0141:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0142:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0143:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0144:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0145:
+        text = "Encoded0/1/2 mean4/5/6 nibbles;3 selects a metadata-only meta-block.";
+        break;
+    case 0x608D0146:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D0147:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D0148:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D0149:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D014A:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D014B:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D014C:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D014D:
+        text = "Explicit metadata-only reserved bit; must be zero.";
+        break;
+    case 0x608D0156:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0157:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0158:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0159:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D015A:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D015B:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D015C:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D015D:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D015E:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D015F:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0160:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0161:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0162:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0163:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0164:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0165:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0166:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0167:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0168:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D0169:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D016A:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D016B:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D016C:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D016D:
+        text = "Stored metadata byte length minus1; applies only when length-byte count is nonzero.";
+        break;
+    case 0x608D016E:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D016F:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0170:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0171:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0172:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0173:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0174:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0175:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0176:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0177:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0178:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0179:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D017A:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D017B:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D017C:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D017D:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D017E:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D017F:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0180:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0181:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0182:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0183:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0184:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D0185:
+        text = "Stored meta-block output byte length minus1; this is not the physical compressed extent.";
+        break;
+    case 0x608D018E:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D018F:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D0190:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D0191:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D0192:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D0193:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D0194:
+        text = "Explicit zero fill to the next byte boundary; compressed payload bits are never labeled padding.";
+        break;
+    case 0x608D0195:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D0196:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D0197:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D0198:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D0199:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D019A:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D019B:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D019C:
+        text = "BFINAL and BTYPE:0 stored,1 fixed Huffman,2 dynamic Huffman,3 invalid.";
+        break;
+    case 0x608D019D:
+        text = "LEN and bitwise complement NLEN; declared stored bytes follow. NLEN is not another size.";
+        break;
+    case 0x608D01B6:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01B7:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01B8:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01B9:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01BA:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01BB:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01BC:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01BD:
+        text = "Three-bit code length in RFC1951 permutation16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15.";
+        break;
+    case 0x608D01BE:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01BF:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C0:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C1:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C2:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C3:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C4:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C5:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C6:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C7:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C8:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01C9:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01CA:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01CB:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01CC:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01CD:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01CE:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01CF:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D0:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D1:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D2:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D3:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D4:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D5:
+        text = "Physical repeat extra bits: widths2/3 add3, width7 adds11. Previous decoded prefix selects repeat meaning.";
+        break;
+    case 0x608D01D6:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01D7:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01D8:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01D9:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01DA:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01DB:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01DC:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01DD:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01DE:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01DF:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E0:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E1:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E2:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E3:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E4:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E5:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E6:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E7:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E8:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01E9:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01EA:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01EB:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01EC:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01ED:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01EE:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01EF:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F0:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F1:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F2:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F3:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F4:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F5:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F6:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F7:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F8:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01F9:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01FA:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01FB:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01FC:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01FD:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01FE:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D01FF:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0200:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0201:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0202:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0203:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0204:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0205:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0206:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0207:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0208:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0209:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D020A:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D020B:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D020C:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D020D:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D020E:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D020F:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0210:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0211:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0212:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0213:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0214:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0215:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0216:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0217:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0218:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0219:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D021A:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D021B:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D021C:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D021D:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D021E:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D021F:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0220:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0221:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0222:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0223:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0224:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0225:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0226:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0227:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0228:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0229:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D022A:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D022B:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D022C:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D022D:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D022E:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D022F:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0230:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0231:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0232:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0233:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0234:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0235:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0236:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0237:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0238:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0239:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D023A:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D023B:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D023C:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D023D:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D023E:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D023F:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0240:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0241:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0242:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0243:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0244:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0245:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0246:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0247:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0248:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0249:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D024A:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D024B:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D024C:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D024D:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D024E:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D024F:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0250:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0251:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0252:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0253:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0254:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0255:
+        text = "Physical Huffman prefix bits interpreted using preceding pretree; numeric bit pattern is not a decoded symbol value.";
+        break;
+    case 0x608D0256:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0257:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0258:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0259:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D025A:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D025B:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D025C:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D025D:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D025E:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D025F:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0260:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0261:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0262:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0263:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0264:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0265:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0266:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0267:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0268:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0269:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D026A:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D026B:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D026C:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D026D:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D026E:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D026F:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0270:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0271:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0272:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0273:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0274:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0275:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0276:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0277:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0278:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0279:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D027A:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D027B:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D027C:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D027D:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D027E:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D027F:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0280:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0281:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0282:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0283:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0284:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0285:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0286:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0287:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0288:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D0289:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D028A:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D028B:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D028C:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D028D:
+        text = "Physical Huffman prefix window interpreted using preceding code-length tree. Display preserves LSB-window bit value, not the decoded symbol.";
+        break;
+    case 0x608D028E:
+        text = "7-Zip Brotli MT framing: header payload size is8; compressed bytes follow the16-byte frame header. The output limit is stored in65536-byte units, not bytes. Each frame contains an independent raw Brotli stream.";
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxarwire_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxarwire_read(c, p, b, n) {
+    return sxarwire_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxarwire_num(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxarwire_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+}
+function sxarwire_put(c, l, p) {
+    var n = sxarwire_width(l);
+    return !!(c.count < 20000 && n && sxarwire_span(c, p, n) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n)));
+}
+function sxarwire_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxarwire_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxarwire_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < 0 || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + z > end) {
+            end = p + z;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxarwire_order, true);
+    return !c.failed;
+}
+function sxarwire_take(b, n, v) {
+    var sxb1, sxr2;
+    if (!n || n > 64 || b.bit > SX_U64_MAX - n) {
+        return false;
+    }
+    var out = 0;
+    for (var i = 0; i < n; i++) {
+        var at = Math.floor(b.bit / 8);
+        if (!b.have || at !== b.cached_at) {
+            if (!(sxr2 = sxarwire_read(b.c, at, (sxb1 = [b.cached]), 1), b.cached = sxb1[0], sxr2)) {
+                return false;
+            }
+            b.cached_at = at;
+            b.have = true;
+        }
+        var bit = b.cached >> (b.lsb ? sxAnd64(b.bit, 7) : 7 - sxAnd64(b.bit, 7)) & 1;
+        if (b.lsb) {
+            out = sxOr64(out, sxShl64(bit, i));
+        } else {
+            out = sxOr64(sxShl64(out, 1), bit);
+        }
+        b.bit++;
+    }
+    v[0] = out;
+    return true;
+}
+function sxarwire_field(b, set, n, v) {
+    var begin = b.bit;
+    if (!sxarwire_take(b, n, v)) {
+        return false;
+    }
+    return sxarwire_put(b.c, set[sxAnd64(begin, 7)], Math.floor(begin / 8));
+}
+function sxarwire_lzs(c, prefix) {
+    if (prefix && !sxarwire_put(c, prefix === 5 ? sxarwire_npack_signature : sxarwire_stac_signature, 0)) {
+        return false;
+    }
+    var b = { c: c, bit: prefix * 8, lsb: false, cached_at: 0, cached: 0, have: false };
+    var produced = 0;
+    while (c.count < 20000) {
+        var match = [0];
+        var short_form = [0];
+        var dist = [0];
+        var len;
+        var x = [0];
+        if (!sxarwire_field(b, sxarwire_set_lzs_is_match, 1, match)) {
+            return false;
+        }
+        if (!match[0]) {
+            if (!sxarwire_field(b, sxarwire_set_lzs_literal, 8, x) || produced === SX_U64_MAX) {
+                return false;
+            }
+            produced++;
+            continue;
+        }
+        if (!sxarwire_field(b, sxarwire_set_lzs_short_distance, 1, short_form) || !sxarwire_field(b, short_form[0] ? sxarwire_set_lzs_distance7 : sxarwire_set_lzs_distance11, short_form[0] ? 7 : 11, dist)) {
+            return false;
+        }
+        if (!dist[0]) {
+            return short_form[0] !== 0;
+        }
+        if (dist[0] > produced) {
+            return false;
+        }
+        if (!sxarwire_field(b, sxarwire_set_lzs_length_prefix, 2, x)) {
+            return false;
+        }
+        len = x[0] + 2;
+        if (x[0] === 3) {
+            if (!sxarwire_field(b, sxarwire_set_lzs_length_secondary, 2, x)) {
+                return false;
+            }
+            len = x[0] + 5;
+            if (x[0] === 3) {
+                len = 8;
+                do {
+                    if (!sxarwire_field(b, sxarwire_set_lzs_length_extension, 4, x) || len > SX_U64_MAX - x[0]) {
+                        return false;
+                    }
+                    len += x[0];
+                } while (x[0] === 15);
+            }
+        }
+        if (produced > SX_U64_MAX - len) {
+            return false;
+        }
+        produced += len;
+    }
+    return true;
+}
+function sxarwire_hbuild(h, l, l_o, n, max) {
+    var offsets = sxZeros(17);
+    var left = 1;
+    sxCopy_sxarwire_huff(h, sxNew_sxarwire_huff());
+    if (n > 510 || max > 16) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (l[l_o + i] > max) {
+            return false;
+        }
+        h.count[l[l_o + i]] = h.count[l[l_o + i]] + 1 & 0xFFFF;
+        if (l[l_o + i] > h.maximum) {
+            h.maximum = l[l_o + i];
+        }
+    }
+    if (!h.maximum) {
+        return false;
+    }
+    for (i = 1; i <= max; i++) {
+        left = 2 * left - h.count[i];
+        if (left < 0) {
+            return false;
+        }
+    }
+    for (i = 2; i <= max; i++) {
+        offsets[i] = (offsets[(i - 1) >>> 0] + h.count[(i - 1) >>> 0]) >>> 0;
+    }
+    for (i = 0; i < n; i++) {
+        if (l[l_o + i]) {
+            h.symbol[offsets[l[l_o + i]]++] = i & 0xFFFF;
+        }
+    }
+    return true;
+}
+function sxarwire_hread(b, h, out) {
+    if (h.single) {
+        out[0] = h.one;
+        return true;
+    }
+    var code = 0;
+    var first = 0;
+    var index = 0;
+    for (var n = 1; n <= h.maximum; n++) {
+        var bit = [0];
+        if (!sxarwire_take(b, 1, bit)) {
+            return false;
+        }
+        code = ((code << 1) >>> 0 | bit[0] >>> 0) >>> 0;
+        var count = h.count[n];
+        if (code >= first && (code - first) >>> 0 < count) {
+            out[0] = h.symbol[(((index + code) >>> 0) - first) >>> 0];
+            return true;
+        }
+        index = (index + count) >>> 0;
+        first = ((first + count) >>> 0 << 1) >>> 0;
+    }
+    return false;
+}
+function sxarwire_table_code(b, h, out) {
+    var start = b.bit;
+    if (!sxarwire_hread(b, h, out)) {
+        return false;
+    }
+    var n = sxU64(b.bit - start) >>> 0;
+    if (!n) {
+        return true;
+    }
+    var set = null;
+    if (b.lsb) {
+        switch (n) {
+        case 1:
+            set = sxarwire_set_deflate_table_prefix1;
+            break;
+        case 2:
+            set = sxarwire_set_deflate_table_prefix2;
+            break;
+        case 3:
+            set = sxarwire_set_deflate_table_prefix3;
+            break;
+        case 4:
+            set = sxarwire_set_deflate_table_prefix4;
+            break;
+        case 5:
+            set = sxarwire_set_deflate_table_prefix5;
+            break;
+        case 6:
+            set = sxarwire_set_deflate_table_prefix6;
+            break;
+        case 7:
+            set = sxarwire_set_deflate_table_prefix7;
+            break;
+        default:
+            return false;
+        }
+    } else {
+        switch (n) {
+        case 1:
+            set = sxarwire_set_sco_table_prefix1;
+            break;
+        case 2:
+            set = sxarwire_set_sco_table_prefix2;
+            break;
+        case 3:
+            set = sxarwire_set_sco_table_prefix3;
+            break;
+        case 4:
+            set = sxarwire_set_sco_table_prefix4;
+            break;
+        case 5:
+            set = sxarwire_set_sco_table_prefix5;
+            break;
+        case 6:
+            set = sxarwire_set_sco_table_prefix6;
+            break;
+        case 7:
+            set = sxarwire_set_sco_table_prefix7;
+            break;
+        case 8:
+            set = sxarwire_set_sco_table_prefix8;
+            break;
+        case 9:
+            set = sxarwire_set_sco_table_prefix9;
+            break;
+        case 10:
+            set = sxarwire_set_sco_table_prefix10;
+            break;
+        case 11:
+            set = sxarwire_set_sco_table_prefix11;
+            break;
+        case 12:
+            set = sxarwire_set_sco_table_prefix12;
+            break;
+        case 13:
+            set = sxarwire_set_sco_table_prefix13;
+            break;
+        case 14:
+            set = sxarwire_set_sco_table_prefix14;
+            break;
+        case 15:
+            set = sxarwire_set_sco_table_prefix15;
+            break;
+        case 16:
+            set = sxarwire_set_sco_table_prefix16;
+            break;
+        default:
+            return false;
+        }
+    }
+    return sxarwire_put(b.c, set[sxAnd64(start, 7)], Math.floor(start / 8));
+}
+function sx_archivewire_supports(t) {
+    switch (t) {
+    case "BROTLI":
+    case "NPACK":
+    case "IBMSPACK":
+    case "TERSE":
+    case "RAW_LZW15V":
+    case "SCO":
+    case "STAC":
+    case "RAWSTAC":
+    case "SFX_ARDI_DISKETTE_IMAGE":
+    case "RAW_DEFLATE_COMPRESSED_DATA":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivewire_build(c) {
+    if (c === null || c.f === null || c.size < 0 || (c.size < 0 ? c.size + SX_U64_MAX : c.size) > (0x1FFFFFFF * 4294967296 + 0xFFFFFFFF) || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "BROTLI":
+        ok = sx_brotli_build(c);
+        break;
+    case "NPACK":
+        ok = sx_npack_build(c);
+        break;
+    case "STAC":
+        ok = sx_stac_build(c);
+        break;
+    case "RAWSTAC":
+        ok = sx_rawstac_build(c);
+        break;
+    case "IBMSPACK":
+        ok = sx_ibmspack_build(c);
+        break;
+    case "TERSE":
+        ok = sx_terse_build(c);
+        break;
+    case "RAW_LZW15V":
+        ok = sx_lzw15v_build(c);
+        break;
+    case "SCO":
+        ok = sx_sco_build(c);
+        break;
+    case "SFX_ARDI_DISKETTE_IMAGE":
+        ok = sx_sfx_ardi_diskette_image_build(c);
+        break;
+    case "RAW_DEFLATE_COMPRESSED_DATA":
+        ok = sx_raw_deflate_compressed_data_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!(c.count && sxarwire_finish(c));
+}

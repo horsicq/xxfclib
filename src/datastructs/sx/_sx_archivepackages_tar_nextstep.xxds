@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/tar_nextstep/xx_tar_nextstep_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_tar_nextstep_header_fields = layout([chars("name", 225, NONE), field("mode", "ascii_octal_padded[8]", 8, FLAGS),
+    field("uid", "ascii_octal_padded[8]", 8), field("gid", "ascii_octal_padded[8]", 8),
+    field("payload_size", "ascii_octal_padded[12]", 12, SIZE),
+    field("modification_time", "ascii_octal_padded[12]", 12, TIMESTAMP),
+    field("checksum", "ascii_octal_padded[8]", 8, CHECKSUM), chars("typeflag", 1, NONE), bytes("unknown_tail", 230)]);
+var sxap_tar_nextstep_header = sxLayout(0x60720032, "tar_nextstep_header", LE, sxap_tar_nextstep_header_fields);
+function sxap_octal(b, b_o, n, v) {
+    v[0] = 0;
+    var i = 0;
+    while (i < n && (b[b_o + i] === 32 || !b[b_o + i])) {
+        i++;
+    }
+    var digit = false;
+    for (; i < n; i++) {
+        if (b[b_o + i] === 32 || !b[b_o + i]) {
+            for (; i < n; i++) {
+                if (b[b_o + i] !== 32 && b[b_o + i]) {
+                    return false;
+                }
+            }
+            break;
+        }
+        if (b[b_o + i] < 48 /*0*/ || b[b_o + i] > 55 /*7*/ || v[0] > Math.floor((SX_U64_MAX - (b[b_o + i] - 48 /*0*/ < 0 ? b[b_o + i] - 48 /*0*/ + SX_U64_MAX : b[b_o + i] - 48 /*0*/)) / 8)) {
+            return false;
+        }
+        v[0] = sxU64(v[0] * 8 + b[b_o + i] - 48 /*0*/);
+        digit = true;
+    }
+    return digit;
+}
+function sxap_tar(c) {
+    var p = 0;
+    var h = [];
+    while (sxap_read(c, p, h, 512)) {
+        var zero = true;
+        for (var i = 0; i < 512; i++) {
+            if (h[i]) {
+                zero = false;
+            }
+        }
+        if (zero) {
+            break;
+        }
+        var stored = [0];
+        var z = [0];
+        var checksum = 256;
+        if (!sxap_octal(h, 0x111, 8, stored)) {
+            return true;
+        }
+        for (i = 0; i < 512; i++) {
+            if (i < 0x111 || i >= 0x119) {
+                checksum += h[i];
+            }
+        }
+        if (stored[0] !== checksum || !sxap_add(c, sxap_tar_nextstep_header, p) || !sxap_octal(h, 0xF9, 12, z)) {
+            return true;
+        }
+        if (h[0x119] === 49 /*1*/ || h[0x119] === 50 /*2*/) {
+            z[0] = 0;
+        }
+        if (z[0] > (0xFFFFFFFF * 4294967296 + 0xFFFFFE00)) {
+            return false;
+        }
+        z[0] = sxAnd64(z[0] + 511, sxK(0xFFFFFFFF, 0xFFFFFE00));
+        p += 512;
+        if (!sxap_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_tar_nextstep_build(c) {
+    return sxap_tar(c);
+}

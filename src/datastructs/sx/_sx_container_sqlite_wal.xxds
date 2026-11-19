@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/sqlite_wal/xx_sqlite_wal_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_sqlite_wal_header_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("page_size", SIZE),
+    u32("checkpoint_sequence", COUNT), u32("salt1", ID), u32("salt2", ID), u32("checksum1", CHECKSUM),
+    u32("checksum2", CHECKSUM)]);
+var sx_c_sqlite_wal_header = sxLayout(0x60020026, "sqlite_wal_header", BE, sx_c_sqlite_wal_header_fields);
+var sx_c_sqlite_wal_frame_header_fields = layout([u32("page_number"), u32("database_size_pages", COUNT), u32("salt1", ID),
+    u32("salt2", ID), u32("checksum1", CHECKSUM), u32("checksum2", CHECKSUM)]);
+var sx_c_sqlite_wal_frame_header = sxLayout(0x60020027, "sqlite_wal_frame_header", BE, sx_c_sqlite_wal_frame_header_fields);
+function sx_c_sqlite_wal(c) {
+    var h = [];
+    var magic;
+    var page;
+    var at = 32;
+    if (!sx_read(c, 0, h, 32)) {
+        return false;
+    }
+    magic = sxGetU32(h, 4, 0, true);
+    page = sxGetU32At(h, 8, 4, 0, true);
+    if (magic !== 0x377F0682 && magic !== 0x377F0683 || page < 512 || page > 65536 || (page & (page - 1) >>> 0) >>> 0 || !sx_add(c, sx_c_sqlite_wal_header, 0, 32)) {
+        return false;
+    }
+    while (at < c.size) {
+        var page_number;
+        var salt1;
+        var salt2;
+        if (!sx_c_bounds(c, at, 24 + page) || (page_number = sx_u32(c, at, true)) === null || !page_number || (salt1 = sx_u32(c, at + 8, true)) === null || (salt2 = sx_u32(c, at + 12, true)) === null || salt1 !== sxGetU32At(h, 16, 4, 0, true) || salt2 !== sxGetU32At(h, 20, 4, 0, true) || !sx_add(c, sx_c_sqlite_wal_frame_header, at, 24) || !sx_raw(c, at + 24, page)) {
+            return false;
+        }
+        at += 24 + page;
+    }
+    return true;
+}
+function sx_sqlite_wal_build(c) {
+    return sx_c_sqlite_wal(c);
+}

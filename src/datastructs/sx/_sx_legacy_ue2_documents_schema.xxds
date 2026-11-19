@@ -1,0 +1,147 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/ue2_documents/xx_ue2_documents_schema_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_mo_header_le_fields = layout([u32("signature", SIGNATURE), u32("revision"), u32("string_count", COUNT),
+    u32("originals_offset", OFFSET), u32("translations_offset", OFFSET), u32("hash_count", COUNT), u32("hash_offset", OFFSET)]);
+var sxl_mo_header_le = sxLayout(0x600A0021, "mo_header_le", LE, sxl_mo_header_le_fields);
+var sxl_mo_string_le_fields = layout([u32("string_size", SIZE), u32("string_offset", OFFSET)]);
+var sxl_mo_string_le = sxLayout(0x600A0022, "mo_string_le", LE, sxl_mo_string_le_fields);
+var sxl_mo_hash_le_fields = layout([u32("string_index", ID)]);
+var sxl_mo_hash_le = sxLayout(0x600A0023, "mo_hash_le", LE, sxl_mo_hash_le_fields);
+var sxl_mo_header_be_fields = layout([u32("signature", SIGNATURE), u32("revision"), u32("string_count", COUNT),
+    u32("originals_offset", OFFSET), u32("translations_offset", OFFSET), u32("hash_count", COUNT), u32("hash_offset", OFFSET)]);
+var sxl_mo_header_be = sxLayout(0x600A0024, "mo_header_be", BE, sxl_mo_header_be_fields);
+var sxl_mo_string_be_fields = layout([u32("string_size", SIZE), u32("string_offset", OFFSET)]);
+var sxl_mo_string_be = sxLayout(0x600A0025, "mo_string_be", BE, sxl_mo_string_be_fields);
+var sxl_mo_hash_be_fields = layout([u32("string_index", ID)]);
+var sxl_mo_hash_be = sxLayout(0x600A0026, "mo_hash_be", BE, sxl_mo_hash_be_fields);
+var sxl_qm_header_fields = layout([blob("signature", 16, SIGNATURE)]);
+var sxl_qm_header = sxLayout(0x600A0027, "qm_header", BE, sxl_qm_header_fields);
+var sxl_qm_hash_fields = layout([u32("hash", ID), u32("message_offset", OFFSET)]);
+var sxl_qm_hash = sxLayout(0x600A0029, "qm_hash", BE, sxl_qm_hash_fields);
+function sxl_mo(c) {
+    var magic;
+    var rev;
+    var count;
+    var a;
+    var b;
+    var hc;
+    var ho;
+    var be;
+    if ((magic = sx_u32(c, 0, false)) === null || magic !== 0x950412DE && magic !== 0xDE120495) {
+        return false;
+    }
+    be = magic === 0xDE120495;
+    if ((rev = sx_u32(c, 4, be)) === null || rev >>> 16 || (count = sx_u32(c, 8, be)) === null || count > 1000000 || (a = sx_u32(c, 12, be)) === null || (b = sx_u32(c, 16, be)) === null || (hc = sx_u32(c, 20, be)) === null || (ho = sx_u32(c, 24, be)) === null || !sxl_span(c, a, count * 8) || !sxl_span(c, b, count * 8) || hc && !sxl_span(c, ho, hc * 4)) {
+        return false;
+    }
+    if (!sx_add(c, be ? sxl_mo_header_be : sxl_mo_header_le, 0, 28) || !sx_table(c, be ? sxl_mo_string_be : sxl_mo_string_le, a, 8, count) || !sx_table(c, be ? sxl_mo_string_be : sxl_mo_string_le, b, 8, count) || !sx_table(c, be ? sxl_mo_hash_be : sxl_mo_hash_le, ho, 4, hc)) {
+        return false;
+    }
+    for (var table = 0; table < 2; table++) {
+        for (var i = 0; i < count; i++) {
+            var size;
+            var off;
+            var z = [0];
+            var at = (table ? b : a) + i * 8;
+            if ((size = sx_u32(c, at, be)) === null || (off = sx_u32(c, at + 4, be)) === null || !sxl_span(c, off, size + 1) || !sxl_byte(c, off + size, z) || z[0]) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < hc; i++) {
+        var v;
+        if ((v = sx_u32(c, ho + i * 4, be)) === null || v > count) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxl_qm(c) {
+    var at = 16;
+    var hash_at = -1;
+    var message_at = -1;
+    var hash_size = 0;
+    var message_size = 0;
+    if (!sxl_sig(c, 0, "<\xB8d\x18\xCA\xEF\x9C\x95\xCD!\x1C\xBF`\xA1\xBD\xDD", 16) || !sx_add(c, sxl_qm_header, 0, 16)) {
+        return false;
+    }
+    while (at < c.size) {
+        var tag = [0];
+        var size;
+        if (!sxl_byte(c, at, tag) || !tag[0] || (size = sx_u32(c, at + 1, true)) === null || !sxl_span(c, (at + 5 < 0 ? at + 5 + SX_U64_MAX : at + 5), size) || !sx_add(c, sxl_qm_block, at, 5)) {
+            return false;
+        }
+        at += 5;
+        if (tag[0] === 0x42) {
+            if (hash_at >= 0 || size % 8 || !sx_table(c, sxl_qm_hash, at, 8, Math.floor(size / 8))) {
+                return false;
+            }
+            hash_at = at;
+            hash_size = size;
+        } else if (tag[0] === 0x69) {
+            if (message_at >= 0) {
+                return false;
+            }
+            message_at = at;
+            message_size = size;
+            var p = at;
+            var end = at + size;
+            while (p < end) {
+                var field = [0];
+                var length;
+                if (!sxl_byte(c, p, field)) {
+                    return false;
+                }
+                if (field[0] === 1) {
+                    if (!sx_add(c, sxl_qm_message_end, p++, 1)) {
+                        return false;
+                    }
+                    continue;
+                }
+                if (end - p < 5 || (length = sx_u32(c, p + 1, true)) === null || !sx_add(c, field[0] === 5 ? sxl_qm_message_obsolete : sxl_qm_message_field, p, 5)) {
+                    return false;
+                }
+                p += 5;
+                if (field[0] === 5) {
+                    continue;
+                }
+                if (length === 4294967295) {
+                    length = 0;
+                }
+                if (length > (end - p < 0 ? end - p + SX_U64_MAX : end - p)) {
+                    return false;
+                }
+                p += length;
+            }
+        }
+        at += size;
+    }
+    if (hash_size && message_at < 0) {
+        return false;
+    }
+    for (var i = 0; i < Math.floor(hash_size / 8); i++) {
+        var off;
+        if ((off = sx_u32(c, hash_at + i * 8 + 4, true)) === null || off >= message_size) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ue2_documents_schema_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "GNU_GETTEXT_MO":
+        ok = sxl_mo(c);
+        break;
+    case "QT_QM":
+        ok = sxl_qm(c);
+        break;
+    default:
+        break;
+    }
+    return ok;
+}

@@ -1,0 +1,110 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/abinit_input/xx_abinit_input_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_abinit_cell_scale_x_fields = layout([field("abinit_cell_scale_x", "ascii_real", 0)]);
+var sxsch_abinit_cell_scale_x = sxLayout(0x6061003D, "chemistry_abinit_cell_scale_x", LE, sxsch_abinit_cell_scale_x_fields);
+var sxsch_abinit_cell_scale_y_fields = layout([field("abinit_cell_scale_y", "ascii_real", 0)]);
+var sxsch_abinit_cell_scale_y = sxLayout(0x6061003E, "chemistry_abinit_cell_scale_y", LE, sxsch_abinit_cell_scale_y_fields);
+var sxsch_abinit_cell_scale_z_fields = layout([field("abinit_cell_scale_z", "ascii_real", 0)]);
+var sxsch_abinit_cell_scale_z = sxLayout(0x6061003F, "chemistry_abinit_cell_scale_z", LE, sxsch_abinit_cell_scale_z_fields);
+var sxsch_abinit_rprim_x_fields = layout([field("abinit_rprim_x", "ascii_real", 0)]);
+var sxsch_abinit_rprim_x = sxLayout(0x60610040, "chemistry_abinit_rprim_x", LE, sxsch_abinit_rprim_x_fields);
+var sxsch_abinit_rprim_y_fields = layout([field("abinit_rprim_y", "ascii_real", 0)]);
+var sxsch_abinit_rprim_y = sxLayout(0x60610041, "chemistry_abinit_rprim_y", LE, sxsch_abinit_rprim_y_fields);
+var sxsch_abinit_rprim_z_fields = layout([field("abinit_rprim_z", "ascii_real", 0)]);
+var sxsch_abinit_rprim_z = sxLayout(0x60610042, "chemistry_abinit_rprim_z", LE, sxsch_abinit_rprim_z_fields);
+var sxsch_cutoff_selected_fields = layout([field("cutoff_selected", "ascii_real", 0)]);
+var sxsch_cutoff_selected = sxLayout(0x606100BB, "chemistry_cutoff_selected", LE, sxsch_cutoff_selected_fields);
+function sxsch_abinit(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(128, sxNew_sxsch_token);
+    var n = [0];
+    var atoms = [0];
+    while (sxsch_next(q, l, t[0], 128, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "acell")) {
+            if (!sxsch_next(q, l, t[0], 128, n, "#") || n[0] !== 3 && n[0] !== 4) {
+                return false;
+            }
+            var cols = [sxsch_abinit_cell_scale_x, sxsch_abinit_cell_scale_y, sxsch_abinit_cell_scale_z];
+            if (!sxsch_fields(q, t, 0, 3, cols, 3)) {
+                return false;
+            }
+            if (n[0] === 4) {
+                {
+                    if (!sxsch_emit(q, sxsch_units, sxCopy_sxsch_token(null, t[3]))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "rprim")) {
+            cols = [sxsch_abinit_rprim_x, sxsch_abinit_rprim_y, sxsch_abinit_rprim_z];
+            for (var j = 0; j < 3; j++) {
+                if (!sxsch_next(q, l, t[0], 128, n, "#") || n[0] !== 3 || !sxsch_fields(q, t, 0, 3, cols, 3)) {
+                    return false;
+                }
+            }
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "typat")) {
+            var count = 0;
+            while (count < atoms[0]) {
+                if (!sxsch_next(q, l, t[0], 128, n, "#") || n[0] > sxU64(atoms[0] - count) || !sxsch_each(q, t, 0, n[0], sxsch_species_index)) {
+                    return false;
+                }
+                count += n[0];
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+            }
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "xcart")) {
+            for (j = 0; j < atoms[0]; j++) {
+                if (!sxsch_next(q, l, t[0], 128, n, "#") || n[0] !== 3 || !sxsch_xyz(q, t[0], 1)) {
+                    return false;
+                }
+                if (q.c.count >= 24000) {
+                    return true;
+                }
+            }
+        } else {
+            if (n[0] < 2) {
+                return false;
+            }
+            var layout = sxsch_integer_value;
+            if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "natom")) {
+                if (!sxsch_number(q, sxCopy_sxsch_token(null, t[1]), atoms)) {
+                    return false;
+                }
+                layout = sxsch_atom_count;
+            } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "ntypat")) {
+                layout = sxsch_type_count;
+            } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "znucl")) {
+                layout = sxsch_atomic_number;
+            } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "ecut")) {
+                layout = sxsch_cutoff_selected;
+            }
+            if (!sxsch_each(q, t, 1, layout === sxsch_cutoff_selected ? 1 : (n[0] - 1) >>> 0, layout)) {
+                return false;
+            }
+            if (layout === sxsch_cutoff_selected && n[0] > 2) {
+                {
+                    if (!sxsch_emit(q, sxsch_units, sxCopy_sxsch_token(null, t[2]))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_abinit_input_build(q) {
+    return sxsch_abinit(q);
+}

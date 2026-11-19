@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/compute_sidplayer_mus/xx_compute_sidplayer_mus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlog_sidplayer_header_fields = layout([u16("load_address", VA), u16("voice_1_size", SIZE), u16("voice_2_size", SIZE),
+    u16("voice_3_size", SIZE)]);
+var sxlog_sidplayer_header = sxLayout(0x608C000C, "sidplayer_header", LE, sxlog_sidplayer_header_fields);
+var sxlog_sidplayer_command_fields = layout([u8("command", FLAGS), u8("option", FLAGS)]);
+var sxlog_sidplayer_command = sxLayout(0x608C000D, "sidplayer_command", LE, sxlog_sidplayer_command_fields);
+var sxlog_sidplayer_halt_fields = layout([u16("halt_command", FLAGS)]);
+var sxlog_sidplayer_halt = sxLayout(0x608C000E, "sidplayer_halt", BE, sxlog_sidplayer_halt_fields);
+var sxlog_sidplayer_description_fields = layout([field("petscii_bytes", "uint8", 0)]);
+var sxlog_sidplayer_description = sxLayout(0x608C000F, "sidplayer_description", LE, sxlog_sidplayer_description_fields);
+function sxlog_sid(c) {
+    var n = [];
+    var at = 8;
+    var halt = [];
+    if ((n[0] = sx_u16(c, 2, false)) === null || (n[1] = sx_u16(c, 4, false)) === null || (n[2] = sx_u16(c, 6, false)) === null) {
+        return false;
+    }
+    for (var i = 0; i < 3; i++) {
+        if (n[i] < 2 || n[i] & 1 || !sx_range(c, at, n[i]) || !sx_read(c, at + n[i] - 2, halt, 2) || halt[0] !== 1 || halt[1] !== 0x4F) {
+            return false;
+        }
+        at += n[i];
+    }
+    if (!sx_add(c, sxlog_sidplayer_header, 0, 8)) {
+        return false;
+    }
+    at = 8;
+    for (i = 0; i < 3; i++) {
+        if (!sx_table(c, sxlog_sidplayer_command, at, 2, sxU64(Math.floor(n[i] / 2) - 1)) || !sx_add(c, sxlog_sidplayer_halt, at + n[i] - 2, 2)) {
+            return false;
+        }
+        at += n[i];
+    }
+    if (at < c.size) {
+        var end = at;
+        var b = [0];
+        while (end < c.size && end - at < 4096) {
+            if (!sx_read(c, end++, b, 1)) {
+                return false;
+            }
+            if (!b[0]) {
+                break;
+            }
+        }
+        if (!sx_add(c, sxlog_sidplayer_description, at, end - at)) {
+            return false;
+        }
+        at = end;
+    }
+    return sx_raw(c, at, c.size - at);
+}
+function sx_compute_sidplayer_mus_build(c) {
+    return sxlog_sid(c);
+}

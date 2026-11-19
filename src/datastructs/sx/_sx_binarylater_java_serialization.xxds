@@ -1,0 +1,104 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/java_serialization/xx_java_serialization_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_java_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_java_tag = sxLayout(0x60350040, "java_tag", LE, sxbl_java_tag_fields);
+var sxbl_java_stream_fields = layout([u16("magic", SIGNATURE), u16("version", ID)]);
+var sxbl_java_stream = sxLayout(0x603500E4, "java_stream", BE, sxbl_java_stream_fields);
+var sxbl_java_handle_fields = layout([u32("wire_handle", ID)]);
+var sxbl_java_handle = sxLayout(0x603500E5, "java_handle", BE, sxbl_java_handle_fields);
+var sxbl_java_array_count_fields = layout([i32("element_count", COUNT)]);
+var sxbl_java_array_count = sxLayout(0x603500E6, "java_array_count", BE, sxbl_java_array_count_fields);
+var sxbl_java_class_fields_fields = layout([i64("serial_version_uid", ID), u8("flags", FLAGS), u16("field_count", COUNT)]);
+var sxbl_java_class_fields = sxLayout(0x603500E7, "java_class_fields", BE, sxbl_java_class_fields_fields);
+function sxbl_java_reserve(j, kind) {
+    if (j.count >= 4096) {
+        return false;
+    }
+    j.types[j.count++] = kind;
+    return true;
+}
+function sxbl_java_class(j, p, end, kind) {
+    var c = j.c;
+    var t = [0];
+    var n = [0];
+    if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_java_tag)) {
+        return false;
+    }
+    if (t[0] === 0x71) {
+        if (!sxbl_word(c, p[0], 4, true, n) || !sxbl_emit(c, p, end, sxbl_java_handle) || n[0] < 0x7E0000 || sxU64(n[0] - 0x7E0000) >= j.count) {
+            return false;
+        }
+        kind[0] = j.types[sxU64(n[0] - 0x7E0000)];
+        return kind[0] !== 0;
+    }
+    if (t[0] !== 0x72 || !sxbl_length(c, p, end, 2, true, false, n) || n[0] < 2 || !sxbl_byte(c, p[0] + 1, kind) || !sxbl_skip(c, p, end, n[0]) || !sxbl_java_reserve(j, kind[0]) || !sxbl_emit(c, p, end, sxbl_java_class_fields) || !sxbl_emit(c, p, end, sxbl_java_tag) || !sxbl_emit(c, p, end, sxbl_java_tag)) {
+        return false;
+    }
+    return true;
+}
+function sxbl_java_value(j, p, end, depth) {
+    var c = j.c;
+    var t = [0];
+    var n = [0];
+    if (depth > 32 || !sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_java_tag)) {
+        return false;
+    }
+    if (t[0] === 0x70) {
+        return true;
+    }
+    if (t[0] === 0x71) {
+        return sxbl_emit(c, p, end, sxbl_java_handle);
+    }
+    if (t[0] === 0x74 || t[0] === 0x7C) {
+        return sxbl_string(c, p, end, t[0] === 0x74 ? 2 : 8, true) && sxbl_java_reserve(j, 0);
+    }
+    var kind = [0];
+    if (t[0] !== 0x75 || !sxbl_java_class(j, p, end, kind) || !sxbl_word(c, p[0], 4, true, n) || !sxbl_emit(c, p, end, sxbl_java_array_count) || n[0] > 65536 || !sxbl_java_reserve(j, 0)) {
+        return false;
+    }
+    if (kind[0] === 76 /*L*/) {
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxbl_java_value(j, p, end, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    var z = kind[0] === 66 /*B*/ || kind[0] === 90 /*Z*/ ? 1 : kind[0] === 67 /*C*/ || kind[0] === 83 /*S*/ ? 2 : kind[0] === 70 /*F*/ || kind[0] === 73 /*I*/ ? 4 : kind[0] === 68 /*D*/ || kind[0] === 74 /*J*/ ? 8 : 0;
+    if (!z || p[0] > end || n[0] > Math.floor(sxU64(end - p[0]) / z)) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (kind[0] === 70 /*F*/ || kind[0] === 68 /*D*/) {
+            if (!sxbl_float(c, p, end, z, true)) {
+                return false;
+            }
+        } else if (!sxbl_numeric(c, p, end, z, kind[0] !== 67 /*C*/ && kind[0] !== 90 /*Z*/, true)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxbl_java(c) {
+    var j = sxNew_sxbl_java_state();
+    sxCopy_sxbl_java_state(j, sxNew_sxbl_java_state());
+    j.c = c;
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxbl_emit(c, p, end, sxbl_java_stream)) {
+        return false;
+    }
+    for (var i = 0; p[0] < end && i < 1024; i++) {
+        if (!sxbl_java_value(j, p, end, 0)) {
+            return false;
+        }
+    }
+    return p[0] === end;
+}
+function sx_java_serialization_build(c) {
+    return sxbl_java(c);
+}

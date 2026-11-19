@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/tps/xx_tps_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_tps_header_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxd_tps_header = sxLayout(0x601A0038, "tps_header", LE, sxd_tps_header_fields);
+var sxd_tps_terminator_fields = layout([u8("end_tag", ID)]);
+var sxd_tps_terminator = sxLayout(0x601A003A, "tps_terminator", LE, sxd_tps_terminator_fields);
+function sxd_tps(c, b) {
+    var at = 4;
+    if (!sxd_add(c, sxd_tps_header, 0, 4)) {
+        return false;
+    }
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at) === 1) {
+            if (b[at] === 4 && !sxd_add(c, sxd_tps_terminator, at, 1)) {
+                return false;
+            }
+            break;
+        }
+        if (!sxd_can(c, at, 22) || b[at] !== 2) {
+            break;
+        }
+        var coded = sxd_u32(b, at + 14) | 0;
+        if (coded < 0) {
+            coded = (-coded >= SX_I64_MAX ? -coded - SX_U64_MAX : -coded);
+        }
+        coded -= 4;
+        if (coded < 0 || coded > 0x10000000) {
+            return false;
+        }
+        var stored = (coded < 0 ? coded + SX_U64_MAX : coded) + Math.floor(((coded < 0 ? coded + SX_U64_MAX : coded) + 4 + 16383) / 16384) + 1;
+        if (!sxd_can(c, at + 22, stored) || !sxd_add(c, sxd_tps_entry, at, 22)) {
+            return false;
+        }
+        at += 22 + stored;
+    }
+    return true;
+}
+function sx_tps_build(c, b) {
+    return sxd_tps(c, b);
+}

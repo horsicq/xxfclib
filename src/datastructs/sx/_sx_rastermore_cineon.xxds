@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/cineon/xx_cineon_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_cineon_file_header_be_fields = layout([u32("magic", SIGNATURE), u32("image_offset", OFFSET),
+    u32("generic_header_size", SIZE), u32("industry_header_size", SIZE), u32("user_header_size", SIZE), u32("file_size", SIZE),
+    chars("version", 8, STRING), chars("filename", 100, STRING), chars("creation_date", 12, STRING),
+    chars("creation_time", 12, STRING), bytes("reserved", 36, RESERVED)]);
+var sxrm_cineon_file_header_be = sxLayout(0x601D0036, "cineon_file_header_be", BE, sxrm_cineon_file_header_be_fields);
+var sxrm_cineon_image_header_be_fields = layout([u8("orientation", ID), u8("channel_count", COUNT),
+    bytes("reserved", 2, RESERVED)]);
+var sxrm_cineon_image_header_be = sxLayout(0x601D0037, "cineon_image_header_be", BE, sxrm_cineon_image_header_be_fields);
+var sxrm_cineon_channel_be_fields = layout([u8("designator0", ID), u8("designator1", ID), u8("bit_depth"),
+    u8("reserved", RESERVED), u32("width", COUNT), u32("height", COUNT), field("minimum_data", "float32", 4),
+    field("minimum_quantity", "float32", 4), field("maximum_data", "float32", 4), field("maximum_quantity", "float32", 4)]);
+var sxrm_cineon_channel_be = sxLayout(0x601D0038, "cineon_channel_be", BE, sxrm_cineon_channel_be_fields);
+var sxrm_cineon_color_be_fields = layout([field("white_x", "float32", 4), field("white_y", "float32", 4),
+    field("red_x", "float32", 4), field("red_y", "float32", 4), field("green_x", "float32", 4), field("green_y", "float32", 4),
+    field("blue_x", "float32", 4), field("blue_y", "float32", 4), chars("label", 200, STRING), bytes("reserved", 28, RESERVED)]);
+var sxrm_cineon_color_be = sxLayout(0x601D0039, "cineon_color_be", BE, sxrm_cineon_color_be_fields);
+var sxrm_cineon_data_format_be_fields = layout([u8("interleave", ID), u8("packing", ID), u8("data_sign", ID),
+    u8("image_sense", ID), u32("line_padding", SIZE), u32("channel_padding", SIZE), bytes("reserved", 20, RESERVED)]);
+var sxrm_cineon_data_format_be = sxLayout(0x601D003A, "cineon_data_format_be", BE, sxrm_cineon_data_format_be_fields);
+var sxrm_cineon_origin_be_fields = layout([i32("x_offset"), i32("y_offset"), chars("source_filename", 100, STRING),
+    chars("source_date", 12, STRING), chars("source_time", 12, STRING), chars("input_device", 64, STRING),
+    chars("input_model", 32, STRING), chars("input_serial", 32, STRING), field("x_pitch", "float32", 4),
+    field("y_pitch", "float32", 4), field("gamma", "float32", 4), bytes("reserved", 40, RESERVED)]);
+var sxrm_cineon_origin_be = sxLayout(0x601D003B, "cineon_origin_be", BE, sxrm_cineon_origin_be_fields);
+var sxrm_cineon_film_be_fields = layout([u8("manufacturer_id", ID), u8("film_type", ID), u8("perforation_offset"),
+    u8("reserved0", RESERVED), u32("prefix", ID), u32("count", COUNT), chars("format", 32, STRING), u32("frame_position"),
+    field("frame_rate", "float32", 4), chars("frame_id", 32, STRING), chars("slate", 200, STRING),
+    bytes("reserved1", 740, RESERVED)]);
+var sxrm_cineon_film_be = sxLayout(0x601D003C, "cineon_film_be", BE, sxrm_cineon_film_be_fields);
+var sxrm_cineon_file_header_le_fields = layout([u32("magic", SIGNATURE), u32("image_offset", OFFSET),
+    u32("generic_header_size", SIZE), u32("industry_header_size", SIZE), u32("user_header_size", SIZE), u32("file_size", SIZE),
+    chars("version", 8, STRING), chars("filename", 100, STRING), chars("creation_date", 12, STRING),
+    chars("creation_time", 12, STRING), bytes("reserved", 36, RESERVED)]);
+var sxrm_cineon_file_header_le = sxLayout(0x601D0044, "cineon_file_header_le", LE, sxrm_cineon_file_header_le_fields);
+var sxrm_cineon_image_header_le_fields = layout([u8("orientation", ID), u8("channel_count", COUNT),
+    bytes("reserved", 2, RESERVED)]);
+var sxrm_cineon_image_header_le = sxLayout(0x601D0045, "cineon_image_header_le", LE, sxrm_cineon_image_header_le_fields);
+var sxrm_cineon_channel_le_fields = layout([u8("designator0", ID), u8("designator1", ID), u8("bit_depth"),
+    u8("reserved", RESERVED), u32("width", COUNT), u32("height", COUNT), field("minimum_data", "float32", 4),
+    field("minimum_quantity", "float32", 4), field("maximum_data", "float32", 4), field("maximum_quantity", "float32", 4)]);
+var sxrm_cineon_channel_le = sxLayout(0x601D0046, "cineon_channel_le", LE, sxrm_cineon_channel_le_fields);
+var sxrm_cineon_color_le_fields = layout([field("white_x", "float32", 4), field("white_y", "float32", 4),
+    field("red_x", "float32", 4), field("red_y", "float32", 4), field("green_x", "float32", 4), field("green_y", "float32", 4),
+    field("blue_x", "float32", 4), field("blue_y", "float32", 4), chars("label", 200, STRING), bytes("reserved", 28, RESERVED)]);
+var sxrm_cineon_color_le = sxLayout(0x601D0047, "cineon_color_le", LE, sxrm_cineon_color_le_fields);
+var sxrm_cineon_data_format_le_fields = layout([u8("interleave", ID), u8("packing", ID), u8("data_sign", ID),
+    u8("image_sense", ID), u32("line_padding", SIZE), u32("channel_padding", SIZE), bytes("reserved", 20, RESERVED)]);
+var sxrm_cineon_data_format_le = sxLayout(0x601D0048, "cineon_data_format_le", LE, sxrm_cineon_data_format_le_fields);
+var sxrm_cineon_origin_le_fields = layout([i32("x_offset"), i32("y_offset"), chars("source_filename", 100, STRING),
+    chars("source_date", 12, STRING), chars("source_time", 12, STRING), chars("input_device", 64, STRING),
+    chars("input_model", 32, STRING), chars("input_serial", 32, STRING), field("x_pitch", "float32", 4),
+    field("y_pitch", "float32", 4), field("gamma", "float32", 4), bytes("reserved", 40, RESERVED)]);
+var sxrm_cineon_origin_le = sxLayout(0x601D0049, "cineon_origin_le", LE, sxrm_cineon_origin_le_fields);
+var sxrm_cineon_film_le_fields = layout([u8("manufacturer_id", ID), u8("film_type", ID), u8("perforation_offset"),
+    u8("reserved0", RESERVED), u32("prefix", ID), u32("count", COUNT), chars("format", 32, STRING), u32("frame_position"),
+    field("frame_rate", "float32", 4), chars("frame_id", 32, STRING), chars("slate", 200, STRING),
+    bytes("reserved1", 740, RESERVED)]);
+var sxrm_cineon_film_le = sxLayout(0x601D004A, "cineon_film_le", LE, sxrm_cineon_film_le_fields);
+function sxrm_cineon(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 24)) {
+        return false;
+    }
+    var be = sxrm32(h, 0, true) === 0x802A5FD7;
+    if (!be && sxrm32(h, 0, false) !== 0x802A5FD7) {
+        return false;
+    }
+    if (!sxrm_add(c, be ? sxrm_cineon_file_header_be : sxrm_cineon_file_header_le, 0)) {
+        return false;
+    }
+    if (sxrm_span(c, 192, 4) && !sxrm_add(c, be ? sxrm_cineon_image_header_be : sxrm_cineon_image_header_le, 192)) {
+        return false;
+    }
+    if (sxrm_span(c, 196, 224) && !sxrm_table(c, be ? sxrm_cineon_channel_be : sxrm_cineon_channel_le, 196, 8)) {
+        return false;
+    }
+    if (sxrm_span(c, 420, 260) && !sxrm_add(c, be ? sxrm_cineon_color_be : sxrm_cineon_color_le, 420)) {
+        return false;
+    }
+    if (sxrm_span(c, 680, 32) && !sxrm_add(c, be ? sxrm_cineon_data_format_be : sxrm_cineon_data_format_le, 680)) {
+        return false;
+    }
+    if (sxrm_span(c, 712, 312) && !sxrm_add(c, be ? sxrm_cineon_origin_be : sxrm_cineon_origin_le, 712)) {
+        return false;
+    }
+    if (sxrm32(h, 12, be) >= 1024 && sxrm_span(c, 1024, 1024) && !sxrm_add(c, be ? sxrm_cineon_film_be : sxrm_cineon_film_le, 1024)) {
+        return false;
+    }
+    return !c.failed;
+}
+function sx_cineon_build(c) {
+    return sxrm_cineon(c);
+}

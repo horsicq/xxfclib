@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_cowfs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_cowfs");
+include("_sx_cowfs_apfs");
+include("_sx_cowfs_btrfs");
+
+function fileTypes() { return ["APFS", "BTRFS"]; }
+
+var sx_cowfs_layouts = [sxc_apfs_object_header, sxc_apfs_container_header, sxc_apfs_file_system_oid, sxc_apfs_container_counter,
+    sxc_apfs_container_tail, sxc_apfs_checkpoint_map, sxc_apfs_checkpoint_mapping, sxc_apfs_object_map, sxc_apfs_btree_node,
+    sxc_apfs_btree_info, sxc_apfs_btree_kvoff, sxc_apfs_btree_kvloc, sxc_apfs_omap_key, sxc_apfs_omap_value,
+    sxc_apfs_btree_child, sxc_apfs_volume_header, sxc_apfs_modified_by, sxc_apfs_volume_name, sxc_apfs_volume_tail,
+    sxc_btrfs_superblock_header, sxc_btrfs_device_item, sxc_btrfs_superblock_tail, sxc_btrfs_root_backup,
+    sxc_btrfs_superblock_padding, sxc_btrfs_disk_key, sxc_btrfs_chunk, sxc_btrfs_stripe, sxc_btrfs_tree_header,
+    sxc_btrfs_leaf_item, sxc_btrfs_key_pointer];
+
+function structs() {
+    return sxCatalog([sxc_apfs_object_header, sxc_apfs_container_header, sxc_apfs_file_system_oid, sxc_apfs_container_counter,
+        sxc_apfs_container_tail, sxc_apfs_checkpoint_map, sxc_apfs_checkpoint_mapping, sxc_apfs_object_map, sxc_apfs_btree_node,
+        sxc_apfs_btree_info, sxc_apfs_btree_kvoff, sxc_apfs_btree_kvloc, sxc_apfs_omap_key, sxc_apfs_omap_value,
+        sxc_apfs_btree_child, sxc_apfs_volume_header, sxc_apfs_modified_by, sxc_apfs_volume_name, sxc_apfs_volume_tail,
+        sxc_btrfs_superblock_header, sxc_btrfs_device_item, sxc_btrfs_superblock_tail, sxc_btrfs_root_backup,
+        sxc_btrfs_superblock_padding, sxc_btrfs_disk_key, sxc_btrfs_chunk, sxc_btrfs_stripe, sxc_btrfs_tree_header,
+        sxc_btrfs_leaf_item, sxc_btrfs_key_pointer], sx_cowfs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_cowfs_build, false);
+}

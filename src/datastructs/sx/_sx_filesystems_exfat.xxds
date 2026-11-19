@@ -1,0 +1,198 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/exfat/xx_exfat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fs_exfat_boot_sector_fields = layout([field("jump_boot", "byte[3]", 3), chars("filesystem_name", 8, SIGNATURE),
+    field("must_be_zero", "byte[53]", 53, RESERVED), u64("partition_sector_offset", OFFSET), u64("volume_sector_count", COUNT),
+    u32("fat_sector_offset", OFFSET), u32("fat_sector_count", COUNT), u32("cluster_heap_sector_offset", OFFSET),
+    u32("cluster_count", COUNT), u32("root_cluster", ID), u32("volume_serial", ID), u16("filesystem_revision", ID),
+    u16("volume_flags", FLAGS), u8("bytes_per_sector_shift"), u8("sectors_per_cluster_shift"), u8("fat_count", COUNT),
+    u8("drive_select", ID), u8("percent_in_use"), field("reserved", "byte[7]", 7, RESERVED),
+    field("boot_code", "byte[390]", 390), u16("boot_signature", SIGNATURE)]);
+var sx_fs_exfat_boot_sector = sxLayout(0x6010000B, "exfat_boot_sector", LE, sx_fs_exfat_boot_sector_fields);
+var sx_fs_exfat_extended_boot_signature_fields = layout([u32("signature", SIGNATURE)]);
+var sx_fs_exfat_extended_boot_signature = sxLayout(0x6010000C, "exfat_extended_boot_signature", LE, sx_fs_exfat_extended_boot_signature_fields);
+var sx_fs_exfat_boot_checksum_fields = layout([u32("checksum", CHECKSUM)]);
+var sx_fs_exfat_boot_checksum = sxLayout(0x6010000D, "exfat_boot_checksum", LE, sx_fs_exfat_boot_checksum_fields);
+var sx_fs_exfat_bitmap_entry_fields = layout([u8("entry_type", ID), u8("bitmap_flags", FLAGS),
+    field("reserved", "byte[18]", 18, RESERVED), u32("first_cluster", ID), u64("data_length", SIZE)]);
+var sx_fs_exfat_bitmap_entry = sxLayout(0x6010000E, "exfat_bitmap_entry", LE, sx_fs_exfat_bitmap_entry_fields);
+var sx_fs_exfat_upcase_entry_fields = layout([u8("entry_type", ID), field("reserved1", "byte[3]", 3, RESERVED),
+    u32("table_checksum", CHECKSUM), field("reserved2", "byte[12]", 12, RESERVED), u32("first_cluster", ID),
+    u64("data_length", SIZE)]);
+var sx_fs_exfat_upcase_entry = sxLayout(0x6010000F, "exfat_upcase_entry", LE, sx_fs_exfat_upcase_entry_fields);
+var sx_fs_exfat_volume_label_entry_fields = layout([u8("entry_type", ID), u8("character_count", COUNT),
+    field("volume_label", "uint16[11]", 22, STRING), field("reserved", "byte[8]", 8, RESERVED)]);
+var sx_fs_exfat_volume_label_entry = sxLayout(0x60100010, "exfat_volume_label_entry", LE, sx_fs_exfat_volume_label_entry_fields);
+var sx_fs_exfat_stream_entry_fields = layout([u8("entry_type", ID), u8("general_secondary_flags", FLAGS),
+    u8("reserved1", RESERVED), u8("name_length", COUNT), u16("name_hash", ID), u16("reserved2", RESERVED),
+    u64("valid_data_length", SIZE), u32("reserved3", RESERVED), u32("first_cluster", ID), u64("data_length", SIZE)]);
+var sx_fs_exfat_stream_entry = sxLayout(0x60100012, "exfat_stream_entry", LE, sx_fs_exfat_stream_entry_fields);
+var sx_fs_exfat_name_entry_fields = layout([u8("entry_type", ID), u8("general_secondary_flags", FLAGS),
+    field("filename", "uint16[15]", 30, STRING)]);
+var sx_fs_exfat_name_entry = sxLayout(0x60100013, "exfat_name_entry", LE, sx_fs_exfat_name_entry_fields);
+var sx_fs_exfat_fat_entry_fields = layout([u32("cluster_link", ID)]);
+var sx_fs_exfat_fat_entry = sxLayout(0x60100014, "exfat_fat_entry", LE, sx_fs_exfat_fat_entry_fields);
+function sx_fs_exfat_boot_valid(c, at, sector, b) {
+    if (!sx_fs_fits(c, at, sector * 12) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, 512)) {
+        return false;
+    }
+    if (sxMemcmpAt(b, 3, "EXFAT   ", 0, 8) || b[108] < 9 || b[108] > 12 || (1 << b[108]) >>> 0 !== sector || b[109] > 25 - b[108] || b[510] !== 0x55 || b[511] !== 0xAA) {
+        return false;
+    }
+    var sum = 0;
+    var buffer = [];
+    for (var i = 0; i < 12; i++) {
+        if (!sx_read(c, (at + i * sector >= SX_I64_MAX ? at + i * sector - SX_U64_MAX : at + i * sector), buffer, sector)) {
+            return false;
+        }
+        if (i < 11) {
+            for (var j = 0; j < sector; j++) {
+                if (i === 0 && (j === 106 || j === 107 || j === 112)) {
+                    continue;
+                }
+                sum = (((sum >>> 1 | (sum << 31) >>> 0) >>> 0) + buffer[j]) >>> 0;
+            }
+        } else {
+            for (j = 0; j < sector; j = (j + 4) >>> 0) {
+                if (sxGetU32(buffer, sector, j, false) !== sum) {
+                    return false;
+                }
+            }
+        }
+        if (i >= 1 && i <= 8 && sxGetU32(buffer, sector, (sector - 4) >>> 0, false) !== 0xAA550000) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_fs_exfat_directory(c, at, slots, ended) {
+    if (slots > 8192) {
+        slots = 8192;
+    }
+    for (var j = 0; j < slots; j++) {
+        var type = [0];
+        if (!sx_fs_fits(c, at + j * 32, 32) || !sx_read(c, (at + j * 32 >= SX_I64_MAX ? at + j * 32 - SX_U64_MAX : at + j * 32), type, 1)) {
+            return false;
+        }
+        if (!type[0]) {
+            ended[0] = true;
+            break;
+        }
+        var l = null;
+        switch (type[0]) {
+        case 0x81:
+            l = sx_fs_exfat_bitmap_entry;
+            break;
+        case 0x82:
+            l = sx_fs_exfat_upcase_entry;
+            break;
+        case 0x83:
+            l = sx_fs_exfat_volume_label_entry;
+            break;
+        case 0x85:
+            l = sx_fs_exfat_file_entry;
+            break;
+        case 0xC0:
+            l = sx_fs_exfat_stream_entry;
+            break;
+        case 0xC1:
+            l = sx_fs_exfat_name_entry;
+            break;
+        default:
+            break;
+        }
+        if (l !== null && !sx_fs_emit(c, l, at + j * 32, 32, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_fs_exfat(c) {
+    var b = [];
+    var h = [];
+    var sector = 0;
+    var primary = false;
+    for (var s = 512; s <= 4096; s = (s * 2) >>> 0) {
+        if (sx_fs_exfat_boot_valid(c, 0, s, b)) {
+            sector = s;
+            primary = true;
+            break;
+        }
+    }
+    if (!sector) {
+        for (s = 512; s <= 4096; s = (s * 2) >>> 0) {
+            if (sx_fs_exfat_boot_valid(c, s * 12, s, b) && b[110] === 1) {
+                sector = s;
+                break;
+            }
+        }
+    }
+    if (!sector) {
+        return false;
+    }
+    for (var copy = 0; copy < 2; copy++) {
+        var at = copy * 12 * sector;
+        if (!sx_fs_exfat_boot_valid(c, at, sector, h)) {
+            continue;
+        }
+        if (!sx_fs_emit(c, sx_fs_exfat_boot_sector, at, 512, 1)) {
+            return false;
+        }
+        for (var i = 1; i <= 8; i++) {
+            if (!sx_fs_emit(c, sx_fs_exfat_extended_boot_signature, sxU64(at + ((i + 1) >>> 0) * sector - 4), 4, 1)) {
+                return false;
+            }
+        }
+        if (!sx_fs_emit(c, sx_fs_exfat_boot_checksum, at + 11 * sector, 4, Math.floor(sector / 4))) {
+            return false;
+        }
+    }
+    var fat = sxGetU32(b, 512, 80, false);
+    var fatlen = sxGetU32(b, 512, 84, false);
+    var heap = sxGetU32(b, 512, 88, false);
+    var clusters = sxGetU32(b, 512, 92, false);
+    var cluster = sxGetU32(b, 512, 96, false);
+    var cluster_bytes = sxShl64(sector, b[109]);
+    var active = primary ? sxGetU16(b, 512, 106, false) & 1 : 0;
+    if (!fatlen || !clusters || b[110] < 1 || b[110] > 2 || active >= b[110]) {
+        return false;
+    }
+    for (i = 0; i < b[110]; i++) {
+        var count = Math.floor(fatlen * sector / 4);
+        if (count > 8192) {
+            count = 8192;
+        }
+        if (!sx_fs_emit(c, sx_fs_exfat_fat_entry, (fat + fatlen * i) * sector, 4, count)) {
+            return false;
+        }
+    }
+    var visited = [];
+    var seen = 0;
+    var ended = [false];
+    while (cluster >= 2 && (cluster - 2) >>> 0 < clusters && seen < 64 && !ended[0]) {
+        for (i = 0; i < seen; i++) {
+            if (visited[i] === cluster) {
+                return true;
+            }
+        }
+        visited[seen++] = cluster;
+        at = heap * sector + ((cluster - 2) >>> 0) * cluster_bytes;
+        if (!sx_fs_exfat_directory(c, at, Math.floor(cluster_bytes / 32), ended)) {
+            return false;
+        }
+        if (ended[0]) {
+            break;
+        }
+        var link = (fat + fatlen * active) * sector + cluster * 4;
+        if (!sx_fs_fits(c, link, 4) || (cluster = sx_u32(c, (link >= SX_I64_MAX ? link - SX_U64_MAX : link), false)) === null) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_exfat_build(c) {
+    return sx_fs_exfat(c);
+}

@@ -1,0 +1,134 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/iges_model/xx_iges_model_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvtx_entity_type_fields = layout([field("entity_type", "ascii_signed", 0)]);
+var sxvtx_entity_type = sxLayout(0x60620034, "vectortext_entity_type", LE, sxvtx_entity_type_fields);
+var sxvtx_directory_reference_fields = layout([field("directory_reference", "ascii_signed", 0)]);
+var sxvtx_directory_reference = sxLayout(0x60620035, "vectortext_directory_reference", LE, sxvtx_directory_reference_fields);
+var sxvtx_parameter_reference_fields = layout([field("parameter_reference", "ascii_signed", 0)]);
+var sxvtx_parameter_reference = sxLayout(0x60620036, "vectortext_parameter_reference", LE, sxvtx_parameter_reference_fields);
+var sxvtx_level_fields = layout([field("level", "ascii_signed", 0)]);
+var sxvtx_level = sxLayout(0x60620037, "vectortext_level", LE, sxvtx_level_fields);
+var sxvtx_line_font_pattern_fields = layout([field("line_font_pattern", "ascii_signed", 0)]);
+var sxvtx_line_font_pattern = sxLayout(0x60620038, "vectortext_line_font_pattern", LE, sxvtx_line_font_pattern_fields);
+var sxvtx_line_weight_fields = layout([field("line_weight", "ascii_signed", 0)]);
+var sxvtx_line_weight = sxLayout(0x60620039, "vectortext_line_weight", LE, sxvtx_line_weight_fields);
+var sxvtx_color_number_fields = layout([field("color_number", "ascii_signed", 0)]);
+var sxvtx_color_number = sxLayout(0x6062003A, "vectortext_color_number", LE, sxvtx_color_number_fields);
+var sxvtx_form_number_fields = layout([field("form_number", "ascii_signed", 0)]);
+var sxvtx_form_number = sxLayout(0x6062003B, "vectortext_form_number", LE, sxvtx_form_number_fields);
+var sxvtx_structure_reference_fields = layout([field("structure_reference", "ascii_signed", 0)]);
+var sxvtx_structure_reference = sxLayout(0x60620088, "vectortext_structure_reference", LE, sxvtx_structure_reference_fields);
+var sxvtx_view_reference_fields = layout([field("view_reference", "ascii_signed", 0)]);
+var sxvtx_view_reference = sxLayout(0x60620089, "vectortext_view_reference", LE, sxvtx_view_reference_fields);
+var sxvtx_transform_reference_fields = layout([field("transform_reference", "ascii_signed", 0)]);
+var sxvtx_transform_reference = sxLayout(0x6062008A, "vectortext_transform_reference", LE, sxvtx_transform_reference_fields);
+var sxvtx_label_display_reference_fields = layout([field("label_display_reference", "ascii_signed", 0)]);
+var sxvtx_label_display_reference = sxLayout(0x6062008B, "vectortext_label_display_reference", LE, sxvtx_label_display_reference_fields);
+var sxvtx_parameter_line_count_fields = layout([field("parameter_line_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_parameter_line_count = sxLayout(0x6062008C, "vectortext_parameter_line_count", LE, sxvtx_parameter_line_count_fields);
+var sxvtx_entity_subscript_fields = layout([field("entity_subscript", "ascii_signed", 0)]);
+var sxvtx_entity_subscript = sxLayout(0x6062008D, "vectortext_entity_subscript", LE, sxvtx_entity_subscript_fields);
+var sxvtx_section_record_count_fields = layout([field("section_record_count", "ascii_signed", 0, COUNT)]);
+var sxvtx_section_record_count = sxLayout(0x6062008E, "vectortext_section_record_count", LE, sxvtx_section_record_count_fields);
+var sxvtx_iges_status_fields = layout([field("iges_status", "char", 0, STRING)]);
+var sxvtx_iges_status = sxLayout(0x6062009D, "vectortext_iges_status", LE, sxvtx_iges_status_fields);
+var sxvtx_iges_record_label_fields = layout([chars("section", 1, STRING), field("sequence_number", "ascii_signed[7]", 7)]);
+var sxvtx_iges_record_label = sxLayout(0x606200A5, "vectortext_iges_record_label", LE, sxvtx_iges_record_label_fields);
+function sxvtx_iges(q) {
+    var p = 0;
+    var directory = 0;
+    while (p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (q.n - p < 81) {
+            return false;
+        }
+        var section = q.b[p + 72];
+        {
+            if (!sxvtx_emit(q, sxvtx_iges_record_label, p + 72, 8)) {
+                return false;
+            }
+        }
+        if (section === 68 /*D*/) {
+            var first = [sxvtx_entity_type, sxvtx_parameter_reference, sxvtx_structure_reference, sxvtx_line_font_pattern, sxvtx_level, sxvtx_view_reference, sxvtx_transform_reference, sxvtx_label_display_reference, sxvtx_iges_status];
+            var second = [sxvtx_entity_type, sxvtx_line_weight, sxvtx_color_number, sxvtx_parameter_line_count, sxvtx_form_number];
+            if (!(directory++ & 1)) {
+                for (var i = 0; i < 9; i++) {
+                    if (sxvtx_nonblank(q, p + ((i * 8) >>> 0), 8) && !sxvtx_emit(q, first[i], p + ((i * 8) >>> 0), 8)) {
+                        return false;
+                    }
+                }
+            } else {
+                for (i = 0; i < 5; i++) {
+                    if (sxvtx_nonblank(q, p + ((i * 8) >>> 0), 8) && !sxvtx_emit(q, second[i], p + ((i * 8) >>> 0), 8)) {
+                        return false;
+                    }
+                }
+                if (sxvtx_nonblank(q, p + 56, 8)) {
+                    {
+                        if (!sxvtx_emit(q, sxvtx_name, p + 56, 8)) {
+                            return false;
+                        }
+                    }
+                }
+                if (sxvtx_nonblank(q, p + 64, 8)) {
+                    {
+                        if (!sxvtx_emit(q, sxvtx_entity_subscript, p + 64, 8)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        } else if (section === 84 /*T*/) {
+            for (i = 0; i < 4; i++) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_keyword, p + ((i * 8) >>> 0), 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxvtx_emit(q, sxvtx_section_record_count, p + ((i * 8) >>> 0) + 1, 7)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (section === 80 /*P*/) {
+            {
+                if (!sxvtx_emit(q, sxvtx_record_text, p, 64)) {
+                    return false;
+                }
+            }
+            if (sxvtx_nonblank(q, p + 64, 8)) {
+                {
+                    if (!sxvtx_emit(q, sxvtx_directory_reference, p + 64, 8)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (section === 83 /*S*/ || section === 71 /*G*/) {
+            {
+                if (!sxvtx_emit(q, sxvtx_record_text, p, 72)) {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+        p += 80;
+        if (p < q.n && q.b[p] === 13) {
+            p++;
+        }
+        if (p >= q.n || q.b[p++] !== 10) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_iges_model_build(q) {
+    return sxvtx_iges(q);
+}

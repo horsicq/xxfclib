@@ -1,0 +1,9 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_dos33/xx_apple_dos33_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_apple_dos33_build(c) {
+    return sxrfs_apple_dos(c);
+}

@@ -1,0 +1,166 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zstd/xx_zstd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_zstd_frame_header_000_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS)]);
+var sx_a_zstd_frame_header_000 = sxLayout(0x60040017, "zstd_frame_header_000", LE, sx_a_zstd_frame_header_000_fields);
+var sx_a_zstd_frame_header_001_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_001 = sxLayout(0x60040018, "zstd_frame_header_001", LE, sx_a_zstd_frame_header_001_fields);
+var sx_a_zstd_frame_header_002_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_002 = sxLayout(0x60040019, "zstd_frame_header_002", LE, sx_a_zstd_frame_header_002_fields);
+var sx_a_zstd_frame_header_003_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_003 = sxLayout(0x6004001A, "zstd_frame_header_003", LE, sx_a_zstd_frame_header_003_fields);
+var sx_a_zstd_frame_header_010_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u8("dictionary_id", ID)]);
+var sx_a_zstd_frame_header_010 = sxLayout(0x6004001B, "zstd_frame_header_010", LE, sx_a_zstd_frame_header_010_fields);
+var sx_a_zstd_frame_header_011_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u8("dictionary_id", ID), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_011 = sxLayout(0x6004001C, "zstd_frame_header_011", LE, sx_a_zstd_frame_header_011_fields);
+var sx_a_zstd_frame_header_012_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u8("dictionary_id", ID), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_012 = sxLayout(0x6004001D, "zstd_frame_header_012", LE, sx_a_zstd_frame_header_012_fields);
+var sx_a_zstd_frame_header_013_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u8("dictionary_id", ID), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_013 = sxLayout(0x6004001E, "zstd_frame_header_013", LE, sx_a_zstd_frame_header_013_fields);
+var sx_a_zstd_frame_header_020_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u16("dictionary_id", ID)]);
+var sx_a_zstd_frame_header_020 = sxLayout(0x6004001F, "zstd_frame_header_020", LE, sx_a_zstd_frame_header_020_fields);
+var sx_a_zstd_frame_header_021_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u16("dictionary_id", ID), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_021 = sxLayout(0x60040020, "zstd_frame_header_021", LE, sx_a_zstd_frame_header_021_fields);
+var sx_a_zstd_frame_header_022_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u16("dictionary_id", ID), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_022 = sxLayout(0x60040021, "zstd_frame_header_022", LE, sx_a_zstd_frame_header_022_fields);
+var sx_a_zstd_frame_header_023_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u16("dictionary_id", ID), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_023 = sxLayout(0x60040022, "zstd_frame_header_023", LE, sx_a_zstd_frame_header_023_fields);
+var sx_a_zstd_frame_header_030_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u32("dictionary_id", ID)]);
+var sx_a_zstd_frame_header_030 = sxLayout(0x60040023, "zstd_frame_header_030", LE, sx_a_zstd_frame_header_030_fields);
+var sx_a_zstd_frame_header_031_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u32("dictionary_id", ID), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_031 = sxLayout(0x60040024, "zstd_frame_header_031", LE, sx_a_zstd_frame_header_031_fields);
+var sx_a_zstd_frame_header_032_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u32("dictionary_id", ID), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_032 = sxLayout(0x60040025, "zstd_frame_header_032", LE, sx_a_zstd_frame_header_032_fields);
+var sx_a_zstd_frame_header_033_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("window_descriptor", FLAGS), u32("dictionary_id", ID), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_033 = sxLayout(0x60040026, "zstd_frame_header_033", LE, sx_a_zstd_frame_header_033_fields);
+var sx_a_zstd_frame_header_100_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_100 = sxLayout(0x60040027, "zstd_frame_header_100", LE, sx_a_zstd_frame_header_100_fields);
+var sx_a_zstd_frame_header_101_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_101 = sxLayout(0x60040028, "zstd_frame_header_101", LE, sx_a_zstd_frame_header_101_fields);
+var sx_a_zstd_frame_header_102_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_102 = sxLayout(0x60040029, "zstd_frame_header_102", LE, sx_a_zstd_frame_header_102_fields);
+var sx_a_zstd_frame_header_103_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_103 = sxLayout(0x6004002A, "zstd_frame_header_103", LE, sx_a_zstd_frame_header_103_fields);
+var sx_a_zstd_frame_header_110_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("dictionary_id", ID), u8("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_110 = sxLayout(0x6004002B, "zstd_frame_header_110", LE, sx_a_zstd_frame_header_110_fields);
+var sx_a_zstd_frame_header_111_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("dictionary_id", ID), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_111 = sxLayout(0x6004002C, "zstd_frame_header_111", LE, sx_a_zstd_frame_header_111_fields);
+var sx_a_zstd_frame_header_112_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("dictionary_id", ID), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_112 = sxLayout(0x6004002D, "zstd_frame_header_112", LE, sx_a_zstd_frame_header_112_fields);
+var sx_a_zstd_frame_header_113_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u8("dictionary_id", ID), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_113 = sxLayout(0x6004002E, "zstd_frame_header_113", LE, sx_a_zstd_frame_header_113_fields);
+var sx_a_zstd_frame_header_120_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u16("dictionary_id", ID), u8("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_120 = sxLayout(0x6004002F, "zstd_frame_header_120", LE, sx_a_zstd_frame_header_120_fields);
+var sx_a_zstd_frame_header_121_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u16("dictionary_id", ID), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_121 = sxLayout(0x60040030, "zstd_frame_header_121", LE, sx_a_zstd_frame_header_121_fields);
+var sx_a_zstd_frame_header_122_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u16("dictionary_id", ID), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_122 = sxLayout(0x60040031, "zstd_frame_header_122", LE, sx_a_zstd_frame_header_122_fields);
+var sx_a_zstd_frame_header_123_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u16("dictionary_id", ID), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_123 = sxLayout(0x60040032, "zstd_frame_header_123", LE, sx_a_zstd_frame_header_123_fields);
+var sx_a_zstd_frame_header_130_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u32("dictionary_id", ID), u8("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_130 = sxLayout(0x60040033, "zstd_frame_header_130", LE, sx_a_zstd_frame_header_130_fields);
+var sx_a_zstd_frame_header_131_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u32("dictionary_id", ID), u16("frame_content_size_encoded", SIZE)]);
+var sx_a_zstd_frame_header_131 = sxLayout(0x60040034, "zstd_frame_header_131", LE, sx_a_zstd_frame_header_131_fields);
+var sx_a_zstd_frame_header_132_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u32("dictionary_id", ID), u32("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_132 = sxLayout(0x60040035, "zstd_frame_header_132", LE, sx_a_zstd_frame_header_132_fields);
+var sx_a_zstd_frame_header_133_fields = layout([u32("magic", SIGNATURE), u8("frame_header_descriptor", FLAGS),
+    u32("dictionary_id", ID), u64("frame_content_size", SIZE)]);
+var sx_a_zstd_frame_header_133 = sxLayout(0x60040036, "zstd_frame_header_133", LE, sx_a_zstd_frame_header_133_fields);
+var sx_a_zstd_variants = [
+    [[sx_a_zstd_frame_header_000, sx_a_zstd_frame_header_001, sx_a_zstd_frame_header_002, sx_a_zstd_frame_header_003], [sx_a_zstd_frame_header_010, sx_a_zstd_frame_header_011, sx_a_zstd_frame_header_012, sx_a_zstd_frame_header_013], [sx_a_zstd_frame_header_020, sx_a_zstd_frame_header_021, sx_a_zstd_frame_header_022, sx_a_zstd_frame_header_023], [sx_a_zstd_frame_header_030, sx_a_zstd_frame_header_031, sx_a_zstd_frame_header_032, sx_a_zstd_frame_header_033]],
+    [[sx_a_zstd_frame_header_100, sx_a_zstd_frame_header_101, sx_a_zstd_frame_header_102, sx_a_zstd_frame_header_103], [sx_a_zstd_frame_header_110, sx_a_zstd_frame_header_111, sx_a_zstd_frame_header_112, sx_a_zstd_frame_header_113], [sx_a_zstd_frame_header_120, sx_a_zstd_frame_header_121, sx_a_zstd_frame_header_122, sx_a_zstd_frame_header_123], [sx_a_zstd_frame_header_130, sx_a_zstd_frame_header_131, sx_a_zstd_frame_header_132, sx_a_zstd_frame_header_133]]];
+var sx_a_zstd_dictsize = [0, 1, 2, 4];
+function sx_a_zstd(c) {
+    var at = [0];
+    while (at[0] < c.size) {
+        var magic;
+        var d = [0];
+        if ((magic = sx_u32(c, at[0], false)) === null) {
+            return false;
+        }
+        if ((magic & 0xFFFFFFF0) >>> 0 === 0x184D2A50) {
+            if (!sx_a_skippable(c, at)) {
+                return false;
+            }
+            continue;
+        }
+        if (magic !== 0xFD2FB528 || !sx_read(c, at[0] + 4, d, 1) || d[0] & 0x18) {
+            return false;
+        }
+        var single = d[0] >> 5 & 1;
+        var dict = d[0] & 3;
+        var content = d[0] >> 6;
+        var cs = content === 0 ? single : content === 1 ? 2 : content === 2 ? 4 : 8;
+        var size = (((5 + (!single ? 1 : 0) + sx_a_zstd_dictsize[dict]) >>> 0) + cs) >>> 0;
+        if (!sx_add(c, sx_a_zstd_variants[single][dict][content], at[0], size)) {
+            return false;
+        }
+        at[0] += size;
+        for (; ; ) {
+            var h = [];
+            var block;
+            var kind;
+            var packed;
+            if (!sx_read(c, at[0], h, 3) || !sx_add(c, sx_a_zstd_block_header, at[0], 3)) {
+                return false;
+            }
+            block = sxGetU24(h, 3, 0, false);
+            kind = block >>> 1 & 3;
+            packed = kind === 1 ? 1 : block >>> 3;
+            if (kind === 3 || block >>> 3 > 131072) {
+                return false;
+            }
+            at[0] += 3;
+            if (!sx_a_raw_advance(c, at, packed)) {
+                return false;
+            }
+            if (block & 1) {
+                break;
+            }
+        }
+        if (d[0] & 4) {
+            if (!sx_add(c, sx_a_checksum_le, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+        }
+    }
+    return true;
+}
+function sx_zstd_build(c) {
+    return sx_a_zstd(c);
+}

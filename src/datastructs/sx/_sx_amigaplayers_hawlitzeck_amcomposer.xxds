@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/hawlitzeck_amcomposer/xx_hawlitzeck_amcomposer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxamip_amc(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var stop = [0];
+    var p = 72;
+    var n;
+    var off = [0];
+    var z = [0];
+    if (!sxamip_eq(v, 0, "AMC V1.2 REPLAY!", 16, e) || !sxamip_row(v, sxamip_amc_header, 0, e) || !sxamip_be(v, 24, 4, stop, 0, e) || stop[0] < 88 || sxU64(stop[0] - 72) % 16 || !sxamip_span(v, 72, sxU64(stop[0] - 72), e)) {
+        return false;
+    }
+    n = Math.floor(sxU64(stop[0] - 72) / 16);
+    for (var i = 0; i < n; i++, p += 16) {
+        if (!sxamip_be(v, p, 4, off, 0, e) || !sxamip_be(v, p + 4, 2, z, 0, e) || !sxamip_span(v, off[0], z[0] * 2, e) || !sxamip_row(v, sxamip_amc_sample, p, e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_hawlitzeck_amcomposer_build(v) {
+    return sxamip_amc(v);
+}

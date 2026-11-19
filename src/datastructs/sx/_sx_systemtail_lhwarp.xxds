@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/lhwarp/xx_lhwarp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_lhwarp_header0_fields = layout([u8("major_version", ID), u8("revision", ID), u8("minor_version", ID),
+    u8("reserved", RESERVED), u16("first_cylinder"), u16("last_cylinder"), u32("comment_size", SIZE),
+    u32("packed_comment_size", SIZE)]);
+var sxst_lhwarp_header0 = sxLayout(0x60370018, "lhwarp_header0", BE, sxst_lhwarp_header0_fields);
+var sxst_lhwarp_header3_fields = layout([u8("major_version", ID), u8("revision", ID), u8("minor_version", ID),
+    u8("reserved", RESERVED), u16("first_cylinder"), u16("last_cylinder"), u32("comment_size", SIZE),
+    u32("packed_comment_size", SIZE), u32("file_size", SIZE)]);
+var sxst_lhwarp_header3 = sxLayout(0x60370019, "lhwarp_header3", BE, sxst_lhwarp_header3_fields);
+var sxst_lhwarp_cylinder0_fields = layout([field("unknown_00", "byte[2]", 2), u8("cylinder"), u8("unknown_03"),
+    u32("unpacked_size", SIZE), u32("packed_size", SIZE), u32("byte_sum", SIGNATURE)]);
+var sxst_lhwarp_cylinder0 = sxLayout(0x6037001A, "lhwarp_cylinder0", BE, sxst_lhwarp_cylinder0_fields);
+var sxst_lhwarp_cylinder_fields = layout([u8("compression", ID), u8("flags", FLAGS), u8("cylinder"), u8("unknown_03"),
+    field("presence_bitmap", "uint24le", 3, FLAGS), u8("old_mode"), u32("unpacked_size", SIZE), u32("packed_size", SIZE),
+    u32("data_crc", CHECKSUM)]);
+var sxst_lhwarp_cylinder = sxLayout(0x6037001B, "lhwarp_cylinder", BE, sxst_lhwarp_cylinder_fields);
+function sxst_lhwarp(c) {
+    var h = [];
+    var b = [];
+    if (!sxst_read(c, 0, h, 16)) {
+        return false;
+    }
+    var rev = h[1];
+    var p = rev < 3 ? 16 : 20;
+    var low = sxst_uint(h, 4, 2, true);
+    var high = sxst_uint(h, 6, 2, true);
+    var z = sxst_uint(h, 12, 4, true);
+    if (rev > 3 || !sxst_put(c, rev < 3 ? sxst_lhwarp_header0 : sxst_lhwarp_header3, 0, 1)) {
+        return false;
+    }
+    if (low > high || high >= 80 || !sxst_span(c, p, z)) {
+        return true;
+    }
+    p += z;
+    for (var i = low; i <= high; i++) {
+        var hs = rev ? 20 : 16;
+        if (!sxst_read(c, p, b, hs)) {
+            break;
+        }
+        z = sxst_uint(b, rev ? 12 : 8, 4, true);
+        if (!sxst_span(c, p + hs, z) || !sxst_put(c, rev ? sxst_lhwarp_cylinder : sxst_lhwarp_cylinder0, p, 1)) {
+            break;
+        }
+        p += hs + z;
+    }
+    return true;
+}
+function sx_lhwarp_build(c) {
+    return sxst_lhwarp(c);
+}

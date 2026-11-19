@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/silverman_digitalmusic_kdm/xx_silverman_digitalmusic_kdm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_kdm_header_fields = layout([i32("version", ID), i32("notes", COUNT), i32("tracks", COUNT)]);
+var sxmr_kdm_header = sxLayout(0x607D0035, "kdm_header", LE, sxmr_kdm_header_fields);
+var sxmr_kdm_instrument_fields = layout([u8("wave_index", ID)]);
+var sxmr_kdm_instrument = sxLayout(0x607D0036, "kdm_instrument", LE, sxmr_kdm_instrument_fields);
+var sxmr_kdm_quantization_fields = layout([u8("quantization")]);
+var sxmr_kdm_quantization = sxLayout(0x607D0037, "kdm_quantization", LE, sxmr_kdm_quantization_fields);
+var sxmr_kdm_volume_fields = layout([u8("volume")]);
+var sxmr_kdm_volume = sxLayout(0x607D0038, "kdm_volume", LE, sxmr_kdm_volume_fields);
+var sxmr_kdm_track_fields = layout([u8("track", ID)]);
+var sxmr_kdm_track = sxLayout(0x607D003A, "kdm_track", LE, sxmr_kdm_track_fields);
+var sxmr_kdm_pitch_fields = layout([u8("pitch")]);
+var sxmr_kdm_pitch = sxLayout(0x607D003B, "kdm_pitch", LE, sxmr_kdm_pitch_fields);
+var sxmr_kdm_effect_fields = layout([u8("effect", ID)]);
+var sxmr_kdm_effect = sxLayout(0x607D003C, "kdm_effect", LE, sxmr_kdm_effect_fields);
+function sxmr_kdm(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var t = [0];
+    var x = [0];
+    var p = 12;
+    var tr = [sxmr_kdm_instrument, sxmr_kdm_quantization, sxmr_kdm_volume, sxmr_kdm_volume];
+    var nt = [sxmr_kdm_track, sxmr_kdm_pitch, sxmr_kdm_volume, sxmr_kdm_volume, sxmr_kdm_effect, sxmr_kdm_effect, sxmr_kdm_effect];
+    if (!sxmr_u(v, 0, 4, x, end) || x[0] || !sxmr_u(v, 4, 4, n, end) || !n[0] || n[0] > 8192 || !sxmr_u(v, 8, 4, t, end) || !t[0] || t[0] > 256 || !sxmr_row(v, sxmr_kdm_header, 0, end) || end !== 12 + 4 * t[0] + 11 * n[0] && end !== 12 + 4 * t[0] + 10 * n[0]) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxmr_table(v, tr[i], p, t[0], end)) {
+            return false;
+        }
+        p += t[0];
+    }
+    if (!sxmr_table(v, sxmr_kdm_time, p, n[0], end)) {
+        return false;
+    }
+    p += 4 * n[0];
+    for (i = 0; i < 7 && p < end; i++) {
+        if (!sxmr_table(v, nt[i], p, n[0], end)) {
+            return false;
+        }
+        p += n[0];
+    }
+    return true;
+}
+function sx_silverman_digitalmusic_kdm_build(v) {
+    return sxmr_kdm(v);
+}

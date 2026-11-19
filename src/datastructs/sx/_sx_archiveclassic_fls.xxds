@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/fls/xx_fls_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_fls_count_fields = layout([u16("record_count", COUNT)]);
+var sxacl_fls_count = sxLayout(0x60500028, "fls_count", LE, sxacl_fls_count_fields);
+var sxacl_fls_header_record_fields = layout([u8("tag", SIGNATURE), u8("reserved"), bytes("signature", 6, SIGNATURE),
+    bytes("opaque1", 15), u32("name_block_size", SIZE), bytes("opaque2", 17)]);
+var sxacl_fls_header_record = sxLayout(0x60500029, "fls_header_record", LE, sxacl_fls_header_record_fields);
+var sxacl_fls_member_fields = layout([u8("tag", SIGNATURE), u8("compressed"), bytes("signature", 4, SIGNATURE), u8("flag"),
+    chars("letter", 1, NONE), u32("name_reference", OFFSET), u16("component_count", COUNT), u32("tail_size", SIZE),
+    u8("opaque1"), u32("payload_offset", OFFSET), u32("compressed_size", SIZE), u16("dos_date"), u16("dos_time"),
+    u32("uncompressed_size", SIZE), bytes("opaque2", 9)]);
+var sxacl_fls_member = sxLayout(0x6050002A, "fls_member", LE, sxacl_fls_member_fields);
+var sxacl_fls_name_header_fields = layout([u16("marker", SIGNATURE), chars("signature", 7, SIGNATURE)]);
+var sxacl_fls_name_header = sxLayout(0x6050002B, "fls_name_header", LE, sxacl_fls_name_header_fields);
+var sxacl_fls_component_offset_fields = layout([u32("component_offset", OFFSET)]);
+var sxacl_fls_component_offset = sxLayout(0x6050002C, "fls_component_offset", LE, sxacl_fls_component_offset_fields);
+var sxacl_fls_component_size_fields = layout([u8("component_size", SIZE)]);
+var sxacl_fls_component_size = sxLayout(0x6050002D, "fls_component_size", LE, sxacl_fls_component_size_fields);
+function sxacl_fls(c) {
+    var n = [0];
+    var names;
+    var base;
+    var bytes = [0];
+    if (!sxacl_word(c, 0, 2, false, n) || n[0] < 2 || !sxacl_span(c, 2, n[0] * 44) || !sxacl_word(c, 25, 4, false, bytes) || !sxacl_add(c, sxacl_fls_count, 0) || !sxacl_add(c, sxacl_fls_header_record, 2)) {
+        return false;
+    }
+    base = 2 + n[0] * 44;
+    if (bytes[0] < 9 || !sxacl_span(c, base, bytes[0]) || !sxacl_add(c, sxacl_fls_name_header, base)) {
+        return false;
+    }
+    for (var i = 1; i < n[0]; i++) {
+        if (!sxacl_add(c, sxacl_fls_member, 2 + i * 44)) {
+            return false;
+        }
+    }
+    for (i = 1; i < n[0]; i++) {
+        var h = [];
+        if (!sxacl_read(c, 2 + i * 44, h, 14)) {
+            return false;
+        }
+        var off = sxacl_uint(h, 8, 4, false);
+        names = sxacl_uint(h, 12, 2, false);
+        if (off > bytes[0] || names > Math.floor(sxU64(bytes[0] - off) / 4)) {
+            continue;
+        }
+        for (var j = 0; j < names; j++) {
+            var q = [0];
+            var z = [0];
+            if (!sxacl_word(c, base + off + j * 4, 4, false, q) || !sxacl_add(c, sxacl_fls_component_offset, base + off + j * 4)) {
+                return false;
+            }
+            if (q[0] < 9 || q[0] >= bytes[0] || !sxacl_word(c, base + q[0], 1, false, z) || z[0] > sxU64(sxU64(bytes[0] - q[0]) - 1)) {
+                continue;
+            }
+            if (!sxacl_add(c, sxacl_fls_component_size, base + q[0])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_fls_build(c) {
+    return sxacl_fls(c);
+}

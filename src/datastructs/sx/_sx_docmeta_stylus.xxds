@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/stylus/xx_stylus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_stylus_header_fields = layout([blob("magic", 4, SIGNATURE), u16("version", ID), u8("stream_kind", ID),
+    chars("payload_tag", 3, ID), blob("unknown", 2), u32("plaintext_crc32", CHECKSUM)]);
+var sxdm_stylus_header = sxLayout(0x6023000C, "stylus_header", LE, sxdm_stylus_header_fields);
+function sx_stylus_build(c) {
+    return sxdm_add(c, sxdm_stylus_header, 0, 16);
+}

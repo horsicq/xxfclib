@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ppd/xx_ppd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_name_length32_fields = layout([u32("name_bytes", SIZE)]);
+var sxga_name_length32 = sxLayout(0x603B0004, "name_length32", LE, sxga_name_length32_fields);
+function sxga_ppd(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 4;
+    var n = [0];
+    var z = [0];
+    if (!sxga_row(v, sxga_count32, 0, end) || !sxga_word(v, 0, 4, false, n, 0, end) || n[0] > 4096) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxga_row(v, sxga_name_length32, at, end) || !sxga_word(v, at, 4, false, z, 0, end)) {
+            return false;
+        }
+        at += 4;
+        if (!sxga_named(v, at, z[0], end, false)) {
+            return false;
+        }
+        at += z[0];
+        if (!sxga_row(v, sxga_ppd_entry, at, end)) {
+            return false;
+        }
+        at += 12;
+    }
+    return true;
+}
+function sx_ppd_build(v) {
+    return sxga_ppd(v);
+}

@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_firmwaretail.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_firmwaretail_supports(type) {
+    return type === "ECOS";
+}
+function sx_firmwaretail_build(c) {
+    if (c === null || c.f === null || !sx_firmwaretail_supports(c.f.file_type) || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    return sx_ecos_build(c);
+}
+function sx_firmwaretail_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60860001 || id > 0x60860004) {
+        return true;
+    }
+    if (r.name === "cause_instruction") {
+        return sxSetComment(r, "MIPS mfc0 $k0, Cause instruction word; not an address or image length.");
+    }
+    if (r.name === "nop_instruction") {
+        return sxSetComment(r, "Optional MIPS nop instruction.");
+    }
+    if (r.name === "mask_instruction") {
+        return sxSetComment(r, "MIPS andi $k0, $k0, 0x7F instruction word.");
+    }
+    return true;
+}

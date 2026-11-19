@@ -1,0 +1,209 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_d00/xx_adlib_d00_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_d00_header_fields = layout([chars("signature", 6, SIGNATURE), field("type", "uint8_t", 1),
+    field("version", "uint8_t", 1), field("speed_hz", "uint8_t", 1), field("subsong_count", "uint8_t", 1, COUNT),
+    field("sound_card", "uint8_t", 1), chars("song_name", 32, STRING), chars("author", 32, STRING),
+    field("reserved", "uint8_t[32]", 32, RESERVED), field("subsong_table_offset", "uint16_t", 2, OFFSET),
+    field("sequence_index_offset", "uint16_t", 2, OFFSET), field("instrument_table_offset", "uint16_t", 2, OFFSET),
+    field("data_info_offset", "uint16_t", 2, OFFSET), field("special_effects_offset", "uint16_t", 2, OFFSET),
+    field("end_marker", "uint16_t", 2, SIGNATURE)]);
+var sxad_adlib_d00_header = sxLayout(0x600F000E, "adlib_d00_header", LE, sxad_adlib_d00_header_fields);
+var sxad_adlib_d00_subsong_fields = layout([field("channel0_order_offset", "uint16_t", 2, OFFSET),
+    field("channel1_order_offset", "uint16_t", 2, OFFSET), field("channel2_order_offset", "uint16_t", 2, OFFSET),
+    field("channel3_order_offset", "uint16_t", 2, OFFSET), field("channel4_order_offset", "uint16_t", 2, OFFSET),
+    field("channel5_order_offset", "uint16_t", 2, OFFSET), field("channel6_order_offset", "uint16_t", 2, OFFSET),
+    field("channel7_order_offset", "uint16_t", 2, OFFSET), field("channel8_order_offset", "uint16_t", 2, OFFSET),
+    field("channel0_volume_flags", "uint8_t", 1, FLAGS), field("channel1_volume_flags", "uint8_t", 1, FLAGS),
+    field("channel2_volume_flags", "uint8_t", 1, FLAGS), field("channel3_volume_flags", "uint8_t", 1, FLAGS),
+    field("channel4_volume_flags", "uint8_t", 1, FLAGS), field("channel5_volume_flags", "uint8_t", 1, FLAGS),
+    field("channel6_volume_flags", "uint8_t", 1, FLAGS), field("channel7_volume_flags", "uint8_t", 1, FLAGS),
+    field("channel8_volume_flags", "uint8_t", 1, FLAGS), field("reserved", "uint8_t[5]", 5, RESERVED)]);
+var sxad_adlib_d00_subsong = sxLayout(0x600F000F, "adlib_d00_subsong", LE, sxad_adlib_d00_subsong_fields);
+var sxad_adlib_d00_order_header_fields = layout([field("channel_speed", "uint16_t", 2)]);
+var sxad_adlib_d00_order_header = sxLayout(0x600F0010, "adlib_d00_order_header", LE, sxad_adlib_d00_order_header_fields);
+var sxad_adlib_d00_order_word_fields = layout([field("order_word", "uint16_t", 2, FLAGS)]);
+var sxad_adlib_d00_order_word = sxLayout(0x600F0011, "adlib_d00_order_word", LE, sxad_adlib_d00_order_word_fields);
+var sxad_adlib_d00_sequence_offset_fields = layout([field("sequence_offset", "uint16_t", 2, OFFSET)]);
+var sxad_adlib_d00_sequence_offset = sxLayout(0x600F0012, "adlib_d00_sequence_offset", LE, sxad_adlib_d00_sequence_offset_fields);
+var sxad_adlib_d00_sequence_word_fields = layout([field("event_word", "uint16_t", 2, FLAGS)]);
+var sxad_adlib_d00_sequence_word = sxLayout(0x600F0013, "adlib_d00_sequence_word", LE, sxad_adlib_d00_sequence_word_fields);
+var sxad_adlib_d00_instrument_fields = layout([field("carrier_attack_decay", "uint8_t", 1, FLAGS),
+    field("carrier_sustain_release", "uint8_t", 1, FLAGS), field("carrier_scale_level", "uint8_t", 1, FLAGS),
+    field("carrier_characteristics", "uint8_t", 1, FLAGS), field("carrier_waveform", "uint8_t", 1, FLAGS),
+    field("modulator_attack_decay", "uint8_t", 1, FLAGS), field("modulator_sustain_release", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level", "uint8_t", 1, FLAGS), field("modulator_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_waveform", "uint8_t", 1, FLAGS), field("feedback_connection", "uint8_t", 1, FLAGS),
+    field("tune_level", "uint8_t", 1, FLAGS), field("timer", "uint8_t", 1), field("sustain_release", "uint8_t", 1, FLAGS),
+    field("reserved", "uint8_t[2]", 2, RESERVED)]);
+var sxad_adlib_d00_instrument = sxLayout(0x600F0014, "adlib_d00_instrument", LE, sxad_adlib_d00_instrument_fields);
+var sxad_adlib_d00_data_info_end_fields = layout([field("terminator", "uint16_t", 2, SIGNATURE)]);
+var sxad_adlib_d00_data_info_end = sxLayout(0x600F0015, "adlib_d00_data_info_end", LE, sxad_adlib_d00_data_info_end_fields);
+function sxad_overlap(c, off, size) {
+    if (off < 0 || size <= 0 || off > c.size || size > c.size - off) {
+        return -1;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var d = c.items[i];
+        var at = d.offset - c.f.base_address;
+        if (at === off && d.total_size === size) {
+            return 1;
+        }
+        if (off < at + d.total_size && at < off + size) {
+            return -1;
+        }
+    }
+    return 0;
+}
+function sxad_d00(c) {
+    var h = [];
+    var table;
+    var seq;
+    var inst;
+    var info;
+    var order_starts = [];
+    var order_count = 0;
+    var max_index = 0;
+    if (!sx_read(c, 0, h, 119) || sxMemcmp(h, "JCH&\x02f", 6) || h[6] || h[7] !== 4 || !h[8] || !h[9] || h[10] || sxGetU16At(h, 117, 2, 0, false) !== 65535) {
+        return false;
+    }
+    table = sxGetU16At(h, 107, 2, 0, false);
+    seq = sxGetU16At(h, 109, 2, 0, false);
+    inst = sxGetU16At(h, 111, 2, 0, false);
+    info = sxGetU16At(h, 113, 2, 0, false);
+    if (table < 119 || seq < table + h[9] * 32 || inst <= seq || info < inst || info >= c.size || sxGetU16At(h, 115, 2, 0, false) !== seq || (info - inst) % 16 || c.size - info !== 2) {
+        return false;
+    }
+    var patches = sxDiv(info - inst, 16) >>> 0;
+    if (!patches || patches > 256) {
+        return false;
+    }
+    if (!sx_add(c, sxad_adlib_d00_header, 0, 119) || !sx_table(c, sxad_adlib_d00_subsong, table, 32, h[9]) || !sx_table(c, sxad_adlib_d00_instrument, inst, 16, patches) || !sx_add(c, sxad_adlib_d00_data_info_end, info, 2)) {
+        return false;
+    }
+    var marker;
+    if ((marker = sx_u16(c, info, false)) === null || marker !== 65535) {
+        return false;
+    }
+    for (var i = 0; i < h[9]; i++) {
+        for (var j = 0; j < 9; j++) {
+            var start;
+            if ((start = sx_u16(c, (((table + ((32 * i) >>> 0)) >>> 0) + ((2 * j) >>> 0)) >>> 0, false)) === null) {
+                return false;
+            }
+            if (!start) {
+                continue;
+            }
+            var seen = false;
+            for (var k = 0; k < order_count; k++) {
+                if (order_starts[k] === start) {
+                    seen = true;
+                }
+            }
+            if (seen) {
+                continue;
+            }
+            if (order_count >= 1024 || start < 119 || start + 4 > table) {
+                return false;
+            }
+            order_starts[order_count++] = start;
+            var pos = start + 2;
+            var words = 0;
+            var ended = false;
+            while (pos + 2 <= table) {
+                var v;
+                if ((v = sx_u16(c, pos, false)) === null) {
+                    return false;
+                }
+                pos += 2;
+                words++;
+                if (v === 65534) {
+                    ended = true;
+                    break;
+                }
+                if (v === 65535) {
+                    var target;
+                    if (pos + 2 > table || (target = sx_u16(c, pos, false)) === null || target >= (words - 1) >>> 0) {
+                        return false;
+                    }
+                    pos += 2;
+                    ended = true;
+                    break;
+                }
+                if (v < 0x8000) {
+                    if (v >= 512) {
+                        return false;
+                    }
+                    if (v > max_index) {
+                        max_index = v;
+                    }
+                } else if (v >= 0xA000) {
+                    return false;
+                }
+            }
+            if (!ended || sxad_overlap(c, start, pos - start) !== 0 || !sx_add(c, sxad_adlib_d00_order_header, start, 2) || !sx_table(c, sxad_adlib_d00_order_word, start + 2, 2, Math.floor((pos - start - 2 < 0 ? pos - start - 2 + SX_U64_MAX : pos - start - 2) / 2))) {
+                return false;
+            }
+        }
+    }
+    var n = (max_index + 1) >>> 0;
+    var refs = [];
+    var first = inst;
+    if ((seq + ((2 * n) >>> 0)) >>> 0 > inst || !sx_table(c, sxad_adlib_d00_sequence_offset, seq, 2, n)) {
+        return false;
+    }
+    for (i = 0; i < n; i++) {
+        if ((refs[i] = sx_u16(c, (seq + ((2 * i) >>> 0)) >>> 0, false)) === null || refs[i] < (seq + ((2 * n) >>> 0)) >>> 0 || refs[i] >= inst) {
+            return false;
+        }
+        if (refs[i] < first) {
+            first = refs[i];
+        }
+    }
+    if (first !== (seq + ((2 * n) >>> 0)) >>> 0) {
+        return false;
+    }
+    for (i = 0; i < n; i++) {
+        seen = false;
+        for (j = 0; j < i; j++) {
+            if (refs[j] === refs[i]) {
+                seen = true;
+            }
+        }
+        if (seen) {
+            continue;
+        }
+        var end = inst;
+        for (j = 0; j < n; j++) {
+            if (refs[j] > refs[i] && refs[j] < end) {
+                end = refs[j];
+            }
+        }
+        if (sxI64(sxAnd64(end - refs[i], 1))) {
+            return false;
+        }
+        var word = 0;
+        for (pos = refs[i]; pos < end; pos += 2) {
+            if ((word = sx_u16(c, pos, false)) === null) {
+                return false;
+            }
+            if (word === 65535) {
+                if (pos + 2 !== end) {
+                    return false;
+                }
+            } else if (word >> 12 === 11 || word >> 12 === 12 && (word & 4095) >= patches) {
+                return false;
+            }
+        }
+        if (word !== 65535 || sxad_overlap(c, refs[i], end - refs[i]) !== 0 || !sx_table(c, sxad_adlib_d00_sequence_word, refs[i], 2, Math.floor((end - refs[i] < 0 ? end - refs[i] + SX_U64_MAX : end - refs[i]) / 2))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_adlib_d00_build(c) {
+    return sxad_d00(c);
+}

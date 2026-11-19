@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_unixfs.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_unixfs");
+include("_sx_unixfs_ext");
+include("_sx_unixfs_squashfs");
+
+function fileTypes() { return ["SQUASHFS", "EXT"]; }
+
+var sx_unixfs_layouts = [sxuf_ext_dynamic_superblock, sxuf_ext_original_superblock, sxuf_ext_group_descriptor_64,
+    sxuf_ext_group_descriptor_32, sxuf_ext_original_group_descriptor, sxuf_ext_linux_inode, sxuf_ext_other_os_inode,
+    sxuf_ext_inode_extra_2, sxuf_ext_inode_extra_4, sxuf_ext_inode_extra_8, sxuf_ext_inode_extra_12, sxuf_ext_inode_extra_16,
+    sxuf_ext_inode_extra_20, sxuf_ext_inode_extra_24, sxuf_ext_inode_extra_28, sxuf_ext_inode_extra_32,
+    sxuf_squashfs1_superblock_le, sxuf_squashfs1_superblock_be, sxuf_squashfs2_superblock_le, sxuf_squashfs2_superblock_be,
+    sxuf_squashfs3_superblock_le, sxuf_squashfs3_superblock_be, sxuf_squashfs4_superblock_le, sxuf_squashfs4_superblock_be,
+    sxuf_squashfs_metadata_header_le, sxuf_squashfs_table_index_le, sxuf_squashfs2_fragment_index_le, sxuf_squashfs_identity_le,
+    sxuf_squashfs_xattr_table_le, sxuf_squashfs_metadata_header_be, sxuf_squashfs_table_index_be,
+    sxuf_squashfs2_fragment_index_be, sxuf_squashfs_identity_be, sxuf_squashfs_xattr_table_be];
+
+function structs() {
+    return sxCatalog([sxuf_ext_dynamic_superblock, sxuf_ext_original_superblock, sxuf_ext_group_descriptor_64,
+        sxuf_ext_group_descriptor_32, sxuf_ext_original_group_descriptor, sxuf_ext_linux_inode, sxuf_ext_other_os_inode,
+        sxuf_ext_inode_extra_2, sxuf_ext_inode_extra_4, sxuf_ext_inode_extra_8, sxuf_ext_inode_extra_12,
+        sxuf_ext_inode_extra_16, sxuf_ext_inode_extra_20, sxuf_ext_inode_extra_24, sxuf_ext_inode_extra_28,
+        sxuf_ext_inode_extra_32, sxuf_squashfs1_superblock_le, sxuf_squashfs1_superblock_be, sxuf_squashfs2_superblock_le,
+        sxuf_squashfs2_superblock_be, sxuf_squashfs3_superblock_le, sxuf_squashfs3_superblock_be, sxuf_squashfs4_superblock_le,
+        sxuf_squashfs4_superblock_be, sxuf_squashfs_metadata_header_le, sxuf_squashfs_table_index_le,
+        sxuf_squashfs2_fragment_index_le, sxuf_squashfs_identity_le, sxuf_squashfs_xattr_table_le,
+        sxuf_squashfs_metadata_header_be, sxuf_squashfs_table_index_be, sxuf_squashfs2_fragment_index_be,
+        sxuf_squashfs_identity_be, sxuf_squashfs_xattr_table_be], sx_unixfs_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_unixfs_build, false);
+}

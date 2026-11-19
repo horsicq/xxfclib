@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/bnd/xx_bnd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_bnd_header_fields = layout([bytes("volume_prefix", 16)]);
+var sxao_bnd_header = sxLayout(0x60700029, "bnd_header", LE, sxao_bnd_header_fields);
+var sxao_bnd_record_fields = layout([u32("next_record_offset", OFFSET), u32("attributes", FLAGS), bytes("unknown", 8),
+    u32("stored_member_size", SIZE), chars("path", 256, NONE)]);
+var sxao_bnd_record = sxLayout(0x6070002A, "bnd_record", LE, sxao_bnd_record_fields);
+var sxao_bnd_prologue_fields = layout([chars("link_name", 14, NONE), u16("constant1"), u16("constant2"), u16("record_type"),
+    u16("constant3"), bytes("zero", 36)]);
+var sxao_bnd_prologue = sxLayout(0x6070002B, "bnd_prologue", LE, sxao_bnd_prologue_fields);
+var sxao_bnd_member_tail_fields = layout([chars("name", 128, NONE), u32("attributes", FLAGS), u32("zero"),
+    u32("compressed_size", SIZE), u32("dos_date_word"), u32("dos_time_word"), bytes("unknown", 20)]);
+var sxao_bnd_member_tail = sxLayout(0x6070002C, "bnd_member_tail", LE, sxao_bnd_member_tail_fields);
+var sxao_bnd_trailer_fields = layout([chars("signature", 8, SIGNATURE), u32("first_record_offset", OFFSET),
+    u32("last_record_offset", OFFSET)]);
+var sxao_bnd_trailer = sxLayout(0x6070002D, "bnd_trailer", LE, sxao_bnd_trailer_fields);
+function sxao_bnd(c) {
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [0];
+    var last = [0];
+    if (n < 16 || !sxao_add(c, sxao_bnd_header, 0) || !sxao_add(c, sxao_bnd_trailer, sxU64(n - 16)) || !sxao_word(c, sxU64(n - 8), 4, false, p) || !sxao_word(c, sxU64(n - 4), 4, false, last)) {
+        return false;
+    }
+    for (var work = 0; work < 20000; work++) {
+        var next = [0];
+        var z = [0];
+        var kind = [0];
+        if (!sxao_word(c, p[0], 4, false, next) || !sxao_word(c, p[0] + 16, 4, false, z) || !sxao_add(c, sxao_bnd_record, p[0])) {
+            return false;
+        }
+        var q = p[0] + 276;
+        if (!sxao_span(c, q, z[0]) || z[0] < 58 || !sxao_word(c, q + 18, 2, false, kind) || !sxao_add(c, sxao_bnd_prologue, q)) {
+            return false;
+        }
+        if (kind[0] === 0x74 && z[0] >= 226) {
+            if (!sxao_add(c, sxao_bnd_member_tail, q + 58) || !sxao_dcl(c, q + 226, sxU64(z[0] - 226))) {
+                return false;
+            }
+        }
+        if (p[0] === last[0] || !next[0]) {
+            return true;
+        }
+        if (next[0] <= p[0]) {
+            return false;
+        }
+        p[0] = next[0];
+    }
+    return true;
+}
+function sx_bnd_build(c) {
+    return sxao_bnd(c);
+}

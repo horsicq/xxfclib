@@ -1,0 +1,153 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/emulatorii_eii/xx_emulatorii_eii_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsb_emulator2_selected_name_fields = layout([chars("selected_name", 12, NONE)]);
+var sxsb_emulator2_selected_name = sxLayout(0x603A0007, "emulator2_selected_name", LE, sxsb_emulator2_selected_name_fields);
+var sxsb_emulator2_keymaps_fields = layout([bytes("primary_voice_number", 61), bytes("primary_voice_identifier", 61, ID),
+    bytes("primary_transpose", 61), field("opaque_map_3", "byte[61]", 61), field("opaque_map_4", "byte[61]", 61),
+    field("opaque_map_5", "byte[61]", 61), field("opaque_map_6", "byte[61]", 61), field("opaque_map_7", "byte[61]", 61),
+    field("opaque_map_8", "byte[61]", 61), field("opaque_map_9", "byte[61]", 61), field("opaque_map_10", "byte[61]", 61)]);
+var sxsb_emulator2_keymaps = sxLayout(0x603A0008, "emulator2_keymaps", LE, sxsb_emulator2_keymaps_fields);
+var sxsb_emulator2_preset_header_fields = layout([field("encoded_header", "byte[8]", 8), u8("header_flags", FLAGS),
+    chars("name", 12, NONE), field("opaque_parameters", "byte[14]", 14)]);
+var sxsb_emulator2_preset_header = sxLayout(0x603A0009, "emulator2_preset_header", LE, sxsb_emulator2_preset_header_fields);
+var sxsb_emulator2_selection_fields = layout([u8("selected_preset"), bytes("voice_identifiers", 100, ID)]);
+var sxsb_emulator2_selection = sxLayout(0x603A000A, "emulator2_selection", LE, sxsb_emulator2_selection_fields);
+var sxsb_emulator2_preset_length_fields = layout([u16("record_size", SIZE)]);
+var sxsb_emulator2_preset_length = sxLayout(0x603A000B, "emulator2_preset_length", LE, sxsb_emulator2_preset_length_fields);
+var sxsb_emulator2_key_range_fields = layout([u8("mode_and_key_count", FLAGS), u8("opaque_01"), u8("voice_number"),
+    u8("transpose"), u8("level_encoded")]);
+var sxsb_emulator2_key_range = sxLayout(0x603A000C, "emulator2_key_range", LE, sxsb_emulator2_key_range_fields);
+var sxsb_emulator2_secondary_voice_fields = layout([u8("voice_number"), u8("transpose"), u8("level_encoded")]);
+var sxsb_emulator2_secondary_voice = sxLayout(0x603A000D, "emulator2_secondary_voice", LE, sxsb_emulator2_secondary_voice_fields);
+var sxsb_emulator2_key_range_end_fields = layout([field("end_marker", "byte[4]", 4, SIGNATURE)]);
+var sxsb_emulator2_key_range_end = sxLayout(0x603A000E, "emulator2_key_range_end", LE, sxsb_emulator2_key_range_end_fields);
+var sxsb_emulator2_voice_fields = layout([field("tag", "byte[2]", 2, SIGNATURE),
+    field("playback_start_minus_one", "uint24", 3, VA), u8("opaque_05"), field("preloop_negative_counter", "uint24", 3),
+    u8("opaque_09"), field("loop_start_minus_one", "uint24", 3, VA), u8("opaque_0d"),
+    field("loop_negative_counter", "uint24", 3), field("opaque_11", "byte[2]", 2),
+    field("loop_negative_counter_copy", "uint24", 3), field("opaque_16", "byte[4]", 4), i8("fine_tune"),
+    u8("velocity_attack", FLAGS), u8("lfo_delay_encoded"), u8("lfo_rate_encoded"), u8("opaque_1e"),
+    u8("filter_keyboard_tracking", FLAGS), field("opaque_20", "byte[2]", 2), u16("self_pointer_22", VA), u8("opaque_24"),
+    u8("filter_envelope_amount_encoded"), u16("self_pointer_26", VA), u16("lfo_pitch_table_address", VA),
+    u16("lfo_filter_table_address", VA), u16("lfo_level_table_address", VA), u8("filter_sustain_encoded"),
+    u8("filter_flags", FLAGS), bytes("cutoff_velocity_table", 16), bytes("level_velocity_table", 16),
+    bytes("filter_attack_passes", 16), bytes("filter_attack_increment", 16), bytes("amplitude_attack_passes", 16),
+    bytes("amplitude_attack_increment", 16), u8("filter_decay_passes"), u8("opaque_91"), u8("filter_decay_negative_increment"),
+    u8("filter_envelope_amount_copy"), field("opaque_94", "byte[10]", 10), u8("filter_release_passes"), u8("opaque_9f"),
+    u8("filter_release_negative_increment"), field("opaque_a1", "byte[4]", 4), u8("amplitude_decay_passes"), u8("opaque_a6"),
+    u8("amplitude_decay_negative_increment"), u8("opaque_a8"), u8("amplitude_sustain_encoded"),
+    field("opaque_aa", "byte[9]", 9), u8("amplitude_release_passes"), u8("opaque_b4"),
+    u8("amplitude_release_negative_increment"), field("opaque_b6", "byte[4]", 4), chars("name", 12, NONE), u8("flags", FLAGS),
+    field("region_offset", "uint24", 3, OFFSET), field("slot_frames", "uint24", 3, COUNT),
+    field("loop_offset", "uint24", 3, OFFSET), field("loop_frames", "uint24", 3, COUNT),
+    field("playback_offset", "uint24", 3, OFFSET), field("playback_frames_with_padding", "uint24", 3, COUNT),
+    field("opaque_d9", "byte[23]", 23), bytes("q_velocity_table", 16)]);
+var sxsb_emulator2_voice = sxLayout(0x603A000F, "emulator2_voice", LE, sxsb_emulator2_voice_fields);
+function sxsb_eii_preset(c, p, n, limit, emit) {
+    var b = [];
+    var r = [];
+    if (n < 41 || p > limit || n > sxU64(limit - p) || !sxsb_read(c, p, b, 35) || !(b[8] & 128)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        if (b[i] > 15) {
+            return false;
+        }
+    }
+    var q = p + 35;
+    var end = sxU64(p + n - 2);
+    var keys = 0;
+    while (q < end) {
+        if (sxU64(end - q) < 4 || !sxsb_read(c, q, r, 4)) {
+            return false;
+        }
+        var mode = r[0] >> 6;
+        var count = r[0] & 63;
+        if (!mode) {
+            if (sxU64(end - q) !== 4 || r[0] || r[1] !== 61 || r[2] || r[3]) {
+                return false;
+            }
+            return !emit || sxsb_put(c, sxsb_emulator2_key_range_end, q, 1) && sxsb_put(c, sxsb_emulator2_preset_length, end, 1);
+        }
+        var width = mode === 3 ? 8 : 5;
+        if (!count || (keys + count) >>> 0 > 61 || sxU64(end - q) < width || !sxsb_read(c, q, r, width)) {
+            return false;
+        }
+        if (r[2] > 100 || mode === 3 && r[5] > 100) {
+            return false;
+        }
+        if (emit && (!sxsb_put(c, sxsb_emulator2_key_range, q, 1) || mode === 3 && !sxsb_put(c, sxsb_emulator2_secondary_voice, q + 5, 1))) {
+            return false;
+        }
+        keys = (keys + count) >>> 0;
+        q += width;
+    }
+    return false;
+}
+function sxsb_eii(c) {
+    if (c.size !== 487424 || !sxsb_put(c, sxsb_emulator2_selected_name, 0, 1) || !sxsb_put(c, sxsb_emulator2_keymaps, 12, 1) || !sxsb_put(c, sxsb_emulator2_preset_header, 0x2AB, 1) || !sxsb_put(c, sxsb_emulator2_selection, 0x2CE, 1)) {
+        return false;
+    }
+    var p = 0x500;
+    var limit = 0x76A00;
+    var voices = 0;
+    var presets = 0;
+    var b = [];
+    while (p < limit) {
+        if (sxU64(limit - p) < 2 || !sxsb_read(c, p, b, 2)) {
+            break;
+        }
+        if (b[0] === 4 && b[1] === 3) {
+            if (voices >= 100 || sxU64(limit - p) < 256 || !sxsb_read(c, p, b, 256)) {
+                break;
+            }
+            var page = sxShr64(p + 0x9600, 8) >>> 0;
+            var data = sxsb24(b, 199);
+            var frames = sxsb24(b, 202);
+            if (page > 255 || b[35] !== page || b[39] !== page || data < p + 256 || data > 0x76A00 || frames > sxU64(0x76A00 - data)) {
+                break;
+            }
+            if (!sxsb_put(c, sxsb_emulator2_voice, p, 1)) {
+                return false;
+            }
+            if (data < limit) {
+                limit = data;
+            }
+            voices++;
+            p += 256;
+            continue;
+        }
+        var n = sxsb16(b, 0) & 0xFFFF;
+        var q = p + 2;
+        if (presets >= 100 || !sxsb_eii_preset(c, q, n, limit, false)) {
+            break;
+        }
+        if (!sxsb_put(c, sxsb_emulator2_preset_length, p, 1)) {
+            return false;
+        }
+        while (presets < 100 && sxsb_eii_preset(c, q, n, limit, false)) {
+            if (!sxsb_put(c, sxsb_emulator2_preset_header, q, 1) || !sxsb_eii_preset(c, q, n, limit, true)) {
+                return false;
+            }
+            var len = [];
+            if (!sxsb_read(c, sxU64(q + n - 2), len, 2)) {
+                return false;
+            }
+            q += n;
+            n = sxsb16(len, 0) & 0xFFFF;
+            presets++;
+            if (!n) {
+                break;
+            }
+        }
+        p = sxAnd64(q + 255, sxK(0xFFFFFFFF, 0xFFFFFF00));
+    }
+    return true;
+}
+function sx_emulatorii_eii_build(c) {
+    return sxsb_eii(c);
+}

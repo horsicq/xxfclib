@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/freesurfer_surface/xx_freesurfer_surface_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsc_freesurfer_signature_fields = layout([field("signature", "uint24", 3, SIGNATURE)]);
+var sxsc_freesurfer_signature = sxLayout(0x6028002F, "freesurfer_signature", BE, sxsc_freesurfer_signature_fields);
+var sxsc_freesurfer_counts_fields = layout([u32("vertex_count", COUNT), u32("face_count", COUNT)]);
+var sxsc_freesurfer_counts = sxLayout(0x60280030, "freesurfer_counts", BE, sxsc_freesurfer_counts_fields);
+var sxsc_freesurfer_vertex_fields = layout([field("x", "float32", 4), field("y", "float32", 4), field("z", "float32", 4)]);
+var sxsc_freesurfer_vertex = sxLayout(0x60280031, "freesurfer_vertex", BE, sxsc_freesurfer_vertex_fields);
+var sxsc_freesurfer_face_fields = layout([u32("vertex0", ID), u32("vertex1", ID), u32("vertex2", ID)]);
+var sxsc_freesurfer_face = sxLayout(0x60280032, "freesurfer_face", BE, sxsc_freesurfer_face_fields);
+var sxsc_freesurfer_volume_marker_fields = layout([u32("marker", ID)]);
+var sxsc_freesurfer_volume_marker = sxLayout(0x60280033, "freesurfer_volume_marker", BE, sxsc_freesurfer_volume_marker_fields);
+var sxsc_freesurfer_volume_marker_long_fields = layout([u32("marker", ID), u32("reserved", RESERVED), u32("volume_marker", ID)]);
+var sxsc_freesurfer_volume_marker_long = sxLayout(0x60280034, "freesurfer_volume_marker_long", BE, sxsc_freesurfer_volume_marker_long_fields);
+function sxsc_freesurfer(c) {
+    var b = [0];
+    var at = 3;
+    if (!sxsc_add(c, sxsc_freesurfer_signature, 0, 3)) {
+        return false;
+    }
+    for (var line = 0; line < 2; line++) {
+        var used = 0;
+        do {
+            if (used++ > 4096 || !sx_read(c, at++, b, 1)) {
+                return false;
+            }
+        } while (b[0] !== 10);
+    }
+    var vertices;
+    var faces;
+    if ((vertices = sx_u32(c, at, true)) === null || (faces = sx_u32(c, at + 4, true)) === null || vertices > 1000000 || faces > 1000000 || !sxsc_add(c, sxsc_freesurfer_counts, at, 8)) {
+        return false;
+    }
+    at += 8;
+    if (!sxsc_table(c, sxsc_freesurfer_vertex, at, 12, vertices)) {
+        return false;
+    }
+    at += vertices * 12;
+    if (!sxsc_table(c, sxsc_freesurfer_face, at, 12, faces)) {
+        return false;
+    }
+    at += faces * 12;
+    if (at < c.size) {
+        var marker;
+        if ((marker = sx_u32(c, at, true)) === null) {
+            return false;
+        }
+        if (marker === 20) {
+            return sxsc_add(c, sxsc_freesurfer_volume_marker, at, 4);
+        }
+        if (marker === 2) {
+            return sxsc_add(c, sxsc_freesurfer_volume_marker_long, at, 12);
+        }
+        return false;
+    }
+    return true;
+}
+function sx_freesurfer_surface_build(c) {
+    return sxsc_freesurfer(c);
+}

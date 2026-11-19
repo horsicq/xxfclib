@@ -1,0 +1,114 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencechem.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_sciencechem");
+include("_sx_sciencechem_abinit_input");
+include("_sx_sciencechem_aims_geometry");
+include("_sx_sciencechem_amber_prmtop");
+include("_sx_sciencechem_castep_cell");
+include("_sx_sciencechem_charmm_crd");
+include("_sx_sciencechem_cp2k_input");
+include("_sx_sciencechem_crystal_fort34");
+include("_sx_sciencechem_demon_input");
+include("_sx_sciencechem_dl_poly_config");
+include("_sx_sciencechem_gamess_input");
+include("_sx_sciencechem_gaussian_fchk");
+include("_sx_sciencechem_gaussian_input");
+include("_sx_sciencechem_lammps_data");
+include("_sx_sciencechem_lammps_dump");
+include("_sx_sciencechem_nwchem_input");
+include("_sx_sciencechem_orca_input");
+include("_sx_sciencechem_protein_mmcif");
+include("_sx_sciencechem_qchem_input");
+include("_sx_sciencechem_quantum_espresso_input");
+include("_sx_sciencechem_shelx_res");
+include("_sx_sciencechem_siesta_xv");
+include("_sx_sciencechem_vasp_poscar");
+include("_sx_sciencechem_xcrysden_xsf");
+
+function fileTypes() { return ["PROTEIN_MMCIF", "XCRYSDEN_XSF", "AMBER_PRMTOP", "GAUSSIAN_FCHK", "DL_POLY_CONFIG",
+    "LAMMPS_DATA", "LAMMPS_DUMP", "SHELX_RES", "CHARMM_CRD", "CASTEP_CELL", "CRYSTAL_FORT34", "SIESTA_XV", "QCHEM_INPUT",
+    "VASP_POSCAR", "QUANTUM_ESPRESSO_INPUT", "CP2K_INPUT", "NWCHEM_INPUT", "GAMESS_INPUT", "GAUSSIAN_INPUT", "ABINIT_INPUT",
+    "AIMS_GEOMETRY", "ORCA_INPUT", "DEMON_INPUT"]; }
+
+var sx_sciencechem_layouts = [sxsch_keyword, sxsch_section, sxsch_title, sxsch_comment, sxsch_text_value, sxsch_element,
+    sxsch_atom_label, sxsch_atom_name, sxsch_residue_name, sxsch_residue_id, sxsch_segment_name, sxsch_units,
+    sxsch_coordinate_mode, sxsch_boolean_text, sxsch_option_name, sxsch_option_value, sxsch_filename, sxsch_format_string,
+    sxsch_value_type, sxsch_atom_count, sxsch_type_count, sxsch_value_count, sxsch_symmetry_count, sxsch_species_count,
+    sxsch_atom_id, sxsch_residue_index, sxsch_species_index, sxsch_atomic_number, sxsch_charge, sxsch_multiplicity,
+    sxsch_integer_value, sxsch_real_value, sxsch_mass, sxsch_occupancy, sxsch_weight, sxsch_gaussian_coordinate_x,
+    sxsch_gaussian_coordinate_y, sxsch_gaussian_coordinate_z, sxsch_gaussian_lattice_x, sxsch_gaussian_lattice_y,
+    sxsch_gaussian_lattice_z, sxsch_mixing_factor, sxsch_qe_total_charge, sxsch_convergence_exponent, sxsch_angstrom_x,
+    sxsch_angstrom_y, sxsch_angstrom_z, sxsch_bohr_x, sxsch_bohr_y, sxsch_bohr_z, sxsch_fractional_x, sxsch_fractional_y,
+    sxsch_fractional_z, sxsch_lattice_angstrom_x, sxsch_lattice_angstrom_y, sxsch_lattice_angstrom_z, sxsch_lattice_bohr_x,
+    sxsch_lattice_bohr_y, sxsch_lattice_bohr_z, sxsch_lammps_mass, sxsch_abinit_cell_scale_x, sxsch_abinit_cell_scale_y,
+    sxsch_abinit_cell_scale_z, sxsch_abinit_rprim_x, sxsch_abinit_rprim_y, sxsch_abinit_rprim_z, sxsch_lattice_scaled_x,
+    sxsch_lattice_scaled_y, sxsch_lattice_scaled_z, sxsch_coordinate_scaled_x, sxsch_coordinate_scaled_y,
+    sxsch_coordinate_scaled_z, sxsch_lammps_coordinate_x, sxsch_lammps_coordinate_y, sxsch_lammps_coordinate_z,
+    sxsch_lammps_velocity_x, sxsch_lammps_velocity_y, sxsch_lammps_velocity_z, sxsch_dlp_velocity_x, sxsch_dlp_velocity_y,
+    sxsch_dlp_velocity_z, sxsch_dlp_force_x, sxsch_dlp_force_y, sxsch_dlp_force_z, sxsch_siesta_velocity_x,
+    sxsch_siesta_velocity_y, sxsch_siesta_velocity_z, sxsch_siesta_cell_velocity_x, sxsch_siesta_cell_velocity_y,
+    sxsch_siesta_cell_velocity_z, sxsch_xsf_force_x, sxsch_xsf_force_y, sxsch_xsf_force_z, sxsch_scale, sxsch_dlp_level,
+    sxsch_dlp_periodicity, sxsch_dimension, sxsch_crystal_centering, sxsch_crystal_type, sxsch_energy, sxsch_energy_delta,
+    sxsch_symmetry_component, sxsch_wavelength, sxsch_cell_a, sxsch_cell_b, sxsch_cell_c, sxsch_cell_alpha, sxsch_cell_beta,
+    sxsch_cell_gamma, sxsch_shelx_lattice, sxsch_lammps_timestep, sxsch_box_lower, sxsch_box_upper, sxsch_box_tilt,
+    sxsch_boundary_code, sxsch_column_name, sxsch_move_flag, sxsch_k_grid, sxsch_k_shift, sxsch_cif_data_block, sxsch_cif_tag,
+    sxsch_cif_group, sxsch_cif_value, sxsch_cif_atom_id, sxsch_amber_flag, sxsch_amber_atom_name, sxsch_amber_residue_label,
+    sxsch_amber_atom_type_index, sxsch_amber_excluded_count, sxsch_amber_residue_pointer, sxsch_amber_charge, sxsch_amber_mass,
+    sxsch_amber_integer, sxsch_amber_real, sxsch_amber_string, sxsch_amber_natom, sxsch_amber_ntypes, sxsch_amber_nbonh,
+    sxsch_amber_mbona, sxsch_amber_ntheth, sxsch_amber_mtheta, sxsch_amber_nphih, sxsch_amber_mphia, sxsch_amber_nhparm,
+    sxsch_amber_nparm, sxsch_amber_next, sxsch_amber_nres, sxsch_amber_nbona, sxsch_amber_ntheta, sxsch_amber_nphia,
+    sxsch_amber_numbnd, sxsch_amber_numang, sxsch_amber_nptra, sxsch_amber_natyp, sxsch_amber_nphb, sxsch_amber_ifpert,
+    sxsch_amber_nbper, sxsch_amber_ngper, sxsch_amber_ndper, sxsch_amber_mbper, sxsch_amber_mgper, sxsch_amber_mdper,
+    sxsch_amber_ifbox, sxsch_amber_nmxrs, sxsch_amber_ifcap, sxsch_amber_numextra, sxsch_amber_ncopy, sxsch_fchk_label,
+    sxsch_fchk_job, sxsch_fchk_method, sxsch_fchk_basis, sxsch_fchk_array_marker, sxsch_fchk_integer, sxsch_fchk_real,
+    sxsch_fchk_coordinate, sxsch_relaxation_constraint, sxsch_unpaired_electrons, sxsch_basis_name, sxsch_method_name,
+    sxsch_calculation_kind, sxsch_iteration_count, sxsch_threshold, sxsch_processor_count, sxsch_memory_amount, sxsch_memory_mb,
+    sxsch_cutoff_ry, sxsch_cutoff_selected, sxsch_initial_charge, sxsch_initial_spin, sxsch_nuclear_charge, sxsch_symmetry_name];
+
+function structs() {
+    return sxCatalog([sxsch_keyword, sxsch_section, sxsch_title, sxsch_comment, sxsch_text_value, sxsch_element,
+        sxsch_atom_label, sxsch_atom_name, sxsch_residue_name, sxsch_residue_id, sxsch_segment_name, sxsch_units,
+        sxsch_coordinate_mode, sxsch_boolean_text, sxsch_option_name, sxsch_option_value, sxsch_filename, sxsch_format_string,
+        sxsch_value_type, sxsch_atom_count, sxsch_type_count, sxsch_value_count, sxsch_symmetry_count, sxsch_species_count,
+        sxsch_atom_id, sxsch_residue_index, sxsch_species_index, sxsch_atomic_number, sxsch_charge, sxsch_multiplicity,
+        sxsch_integer_value, sxsch_real_value, sxsch_mass, sxsch_occupancy, sxsch_weight, sxsch_gaussian_coordinate_x,
+        sxsch_gaussian_coordinate_y, sxsch_gaussian_coordinate_z, sxsch_gaussian_lattice_x, sxsch_gaussian_lattice_y,
+        sxsch_gaussian_lattice_z, sxsch_mixing_factor, sxsch_qe_total_charge, sxsch_convergence_exponent, sxsch_angstrom_x,
+        sxsch_angstrom_y, sxsch_angstrom_z, sxsch_bohr_x, sxsch_bohr_y, sxsch_bohr_z, sxsch_fractional_x, sxsch_fractional_y,
+        sxsch_fractional_z, sxsch_lattice_angstrom_x, sxsch_lattice_angstrom_y, sxsch_lattice_angstrom_z, sxsch_lattice_bohr_x,
+        sxsch_lattice_bohr_y, sxsch_lattice_bohr_z, sxsch_lammps_mass, sxsch_abinit_cell_scale_x, sxsch_abinit_cell_scale_y,
+        sxsch_abinit_cell_scale_z, sxsch_abinit_rprim_x, sxsch_abinit_rprim_y, sxsch_abinit_rprim_z, sxsch_lattice_scaled_x,
+        sxsch_lattice_scaled_y, sxsch_lattice_scaled_z, sxsch_coordinate_scaled_x, sxsch_coordinate_scaled_y,
+        sxsch_coordinate_scaled_z, sxsch_lammps_coordinate_x, sxsch_lammps_coordinate_y, sxsch_lammps_coordinate_z,
+        sxsch_lammps_velocity_x, sxsch_lammps_velocity_y, sxsch_lammps_velocity_z, sxsch_dlp_velocity_x, sxsch_dlp_velocity_y,
+        sxsch_dlp_velocity_z, sxsch_dlp_force_x, sxsch_dlp_force_y, sxsch_dlp_force_z, sxsch_siesta_velocity_x,
+        sxsch_siesta_velocity_y, sxsch_siesta_velocity_z, sxsch_siesta_cell_velocity_x, sxsch_siesta_cell_velocity_y,
+        sxsch_siesta_cell_velocity_z, sxsch_xsf_force_x, sxsch_xsf_force_y, sxsch_xsf_force_z, sxsch_scale, sxsch_dlp_level,
+        sxsch_dlp_periodicity, sxsch_dimension, sxsch_crystal_centering, sxsch_crystal_type, sxsch_energy, sxsch_energy_delta,
+        sxsch_symmetry_component, sxsch_wavelength, sxsch_cell_a, sxsch_cell_b, sxsch_cell_c, sxsch_cell_alpha, sxsch_cell_beta,
+        sxsch_cell_gamma, sxsch_shelx_lattice, sxsch_lammps_timestep, sxsch_box_lower, sxsch_box_upper, sxsch_box_tilt,
+        sxsch_boundary_code, sxsch_column_name, sxsch_move_flag, sxsch_k_grid, sxsch_k_shift, sxsch_cif_data_block,
+        sxsch_cif_tag, sxsch_cif_group, sxsch_cif_value, sxsch_cif_atom_id, sxsch_amber_flag, sxsch_amber_atom_name,
+        sxsch_amber_residue_label, sxsch_amber_atom_type_index, sxsch_amber_excluded_count, sxsch_amber_residue_pointer,
+        sxsch_amber_charge, sxsch_amber_mass, sxsch_amber_integer, sxsch_amber_real, sxsch_amber_string, sxsch_amber_natom,
+        sxsch_amber_ntypes, sxsch_amber_nbonh, sxsch_amber_mbona, sxsch_amber_ntheth, sxsch_amber_mtheta, sxsch_amber_nphih,
+        sxsch_amber_mphia, sxsch_amber_nhparm, sxsch_amber_nparm, sxsch_amber_next, sxsch_amber_nres, sxsch_amber_nbona,
+        sxsch_amber_ntheta, sxsch_amber_nphia, sxsch_amber_numbnd, sxsch_amber_numang, sxsch_amber_nptra, sxsch_amber_natyp,
+        sxsch_amber_nphb, sxsch_amber_ifpert, sxsch_amber_nbper, sxsch_amber_ngper, sxsch_amber_ndper, sxsch_amber_mbper,
+        sxsch_amber_mgper, sxsch_amber_mdper, sxsch_amber_ifbox, sxsch_amber_nmxrs, sxsch_amber_ifcap, sxsch_amber_numextra,
+        sxsch_amber_ncopy, sxsch_fchk_label, sxsch_fchk_job, sxsch_fchk_method, sxsch_fchk_basis, sxsch_fchk_array_marker,
+        sxsch_fchk_integer, sxsch_fchk_real, sxsch_fchk_coordinate, sxsch_relaxation_constraint, sxsch_unpaired_electrons,
+        sxsch_basis_name, sxsch_method_name, sxsch_calculation_kind, sxsch_iteration_count, sxsch_threshold,
+        sxsch_processor_count, sxsch_memory_amount, sxsch_memory_mb, sxsch_cutoff_ry, sxsch_cutoff_selected,
+        sxsch_initial_charge, sxsch_initial_spin, sxsch_nuclear_charge, sxsch_symmetry_name], sx_sciencechem_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_sciencechem_build, false);
+}

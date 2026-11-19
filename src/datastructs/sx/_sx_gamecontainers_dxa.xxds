@@ -1,0 +1,22 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/dxa/xx_dxa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxgco_dxa(v) {
+    var version = ((sxVersion(v.c.f)[0] & 0xFF) - 48 /*0*/) >>> 0;
+    if (version >= 1 && version <= 3) {
+        return sxgco_row(v, sxgco_dxa_header1, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size));
+    }
+    if (version === 4) {
+        return sxgco_row(v, sxgco_dxa_header4, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size));
+    }
+    if (version === 6) {
+        return sxgco_row(v, sxgco_dxa_header6, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size));
+    }
+    return false;
+}
+function sx_dxa_build(v) {
+    return sxgco_dxa(v);
+}

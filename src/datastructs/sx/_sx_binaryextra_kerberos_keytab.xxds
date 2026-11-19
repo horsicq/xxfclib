@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/kerberos_keytab/xx_kerberos_keytab_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_keytab_header_fields = layout([u8("major"), u8("minor")]);
+var sxbx_keytab_header = sxLayout(0x60300074, "keytab_header", BE, sxbx_keytab_header_fields);
+var sxbx_keytab_entry_length_fields = layout([i32("signed_entry_size")]);
+var sxbx_keytab_entry_length = sxLayout(0x60300075, "keytab_entry_length", BE, sxbx_keytab_entry_length_fields);
+var sxbx_keytab_component_count_fields = layout([u16("component_count", COUNT)]);
+var sxbx_keytab_component_count = sxLayout(0x60300076, "keytab_component_count", BE, sxbx_keytab_component_count_fields);
+var sxbx_keytab_string_length_fields = layout([u16("byte_size", SIZE)]);
+var sxbx_keytab_string_length = sxLayout(0x60300077, "keytab_string_length", BE, sxbx_keytab_string_length_fields);
+var sxbx_kerberos_name_type_fields = layout([u32("name_type", ID)]);
+var sxbx_kerberos_name_type = sxLayout(0x60300078, "kerberos_name_type", BE, sxbx_kerberos_name_type_fields);
+var sxbx_keytab_key_fields = layout([u32("timestamp"), u8("kvno"), u16("enctype", ID), u16("key_size", SIZE)]);
+var sxbx_keytab_key = sxLayout(0x60300079, "keytab_key", BE, sxbx_keytab_key_fields);
+var sxbx_keytab_extended_kvno_fields = layout([u32("kvno")]);
+var sxbx_keytab_extended_kvno = sxLayout(0x6030007A, "keytab_extended_kvno", BE, sxbx_keytab_extended_kvno_fields);
+function sxbx_keytab(c) {
+    var p = 2;
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxbx_add(c, sxbx_keytab_header, 0)) {
+        return false;
+    }
+    for (var entries = 0; p < end && entries < 2048 && c.count < 20000; entries++) {
+        var raw = [0];
+        if (!sxbx_word(c, p, 4, true, raw)) {
+            break;
+        }
+        var z = (raw[0] >>> 0) | 0;
+        var n = z < 0 ? sxU64((-z >= SX_I64_MAX ? -z - SX_U64_MAX : -z)) : (z < 0 ? z + SX_U64_MAX : z);
+        if (n > sxU64(sxU64(end - p) - 4) || !sxbx_add(c, sxbx_keytab_entry_length, p)) {
+            break;
+        }
+        p += 4;
+        if (!z) {
+            break;
+        }
+        if (z < 0) {
+            p += n;
+            continue;
+        }
+        var q = [p];
+        var stop = p + n;
+        var count = [0];
+        if (!sxbx_word(c, q[0], 2, true, count) || count[0] > 32 || !count[0] || !sxbx_add(c, sxbx_keytab_component_count, q[0])) {
+            break;
+        }
+        q[0] += 2;
+        var ok = true;
+        for (var i = 0; i <= count[0]; i++) {
+            if (!sxbx_counted(c, q, stop, sxbx_keytab_string_length, 2, true, 1)) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok && sxU64(stop - q[0]) >= 13 && sxbx_add(c, sxbx_kerberos_name_type, q[0]) && sxbx_add(c, sxbx_keytab_key, q[0] + 4) && sxbx_word(c, q[0] + 11, 2, true, count) && count[0] <= sxU64(sxU64(stop - q[0]) - 13)) {
+            q[0] += 13 + count[0];
+            if (sxU64(stop - q[0]) >= 4 && !sxbx_add(c, sxbx_keytab_extended_kvno, q[0])) {
+                return false;
+            }
+        }
+        p = stop;
+    }
+    return true;
+}
+function sx_kerberos_keytab_build(c) {
+    return sxbx_keytab(c);
+}

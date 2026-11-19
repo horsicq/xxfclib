@@ -1,0 +1,189 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/xfig/xx_xfig_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_fig_orientation_fields = layout([field("fig_orientation", "char", 0, STRING)]);
+var sxmt_fig_orientation = sxLayout(0x60520080, "modeltext_fig_orientation", LE, sxmt_fig_orientation_fields);
+var sxmt_fig_justification_fields = layout([field("fig_justification", "char", 0, STRING)]);
+var sxmt_fig_justification = sxLayout(0x60520081, "modeltext_fig_justification", LE, sxmt_fig_justification_fields);
+var sxmt_fig_units_fields = layout([field("fig_units", "char", 0, STRING)]);
+var sxmt_fig_units = sxLayout(0x60520082, "modeltext_fig_units", LE, sxmt_fig_units_fields);
+var sxmt_fig_paper_size_fields = layout([field("fig_paper_size", "char", 0, STRING)]);
+var sxmt_fig_paper_size = sxLayout(0x60520083, "modeltext_fig_paper_size", LE, sxmt_fig_paper_size_fields);
+var sxmt_fig_page_mode_fields = layout([field("fig_page_mode", "char", 0, STRING)]);
+var sxmt_fig_page_mode = sxLayout(0x60520084, "modeltext_fig_page_mode", LE, sxmt_fig_page_mode_fields);
+var sxmt_fig_object_code_fields = layout([field("fig_object_code", "ascii_signed", 0)]);
+var sxmt_fig_object_code = sxLayout(0x60520085, "modeltext_fig_object_code", LE, sxmt_fig_object_code_fields);
+var sxmt_fig_subtype_fields = layout([field("fig_subtype", "ascii_signed", 0)]);
+var sxmt_fig_subtype = sxLayout(0x60520086, "modeltext_fig_subtype", LE, sxmt_fig_subtype_fields);
+var sxmt_fig_line_style_fields = layout([field("fig_line_style", "ascii_signed", 0)]);
+var sxmt_fig_line_style = sxLayout(0x60520087, "modeltext_fig_line_style", LE, sxmt_fig_line_style_fields);
+var sxmt_fig_thickness_fields = layout([field("fig_thickness", "ascii_signed", 0)]);
+var sxmt_fig_thickness = sxLayout(0x60520088, "modeltext_fig_thickness", LE, sxmt_fig_thickness_fields);
+var sxmt_fig_pen_color_fields = layout([field("fig_pen_color", "ascii_signed", 0)]);
+var sxmt_fig_pen_color = sxLayout(0x60520089, "modeltext_fig_pen_color", LE, sxmt_fig_pen_color_fields);
+var sxmt_fig_fill_color_fields = layout([field("fig_fill_color", "ascii_signed", 0)]);
+var sxmt_fig_fill_color = sxLayout(0x6052008A, "modeltext_fig_fill_color", LE, sxmt_fig_fill_color_fields);
+var sxmt_fig_depth_fields = layout([field("fig_depth", "ascii_signed", 0)]);
+var sxmt_fig_depth = sxLayout(0x6052008B, "modeltext_fig_depth", LE, sxmt_fig_depth_fields);
+var sxmt_fig_pen_style_fields = layout([field("fig_pen_style", "ascii_signed", 0)]);
+var sxmt_fig_pen_style = sxLayout(0x6052008C, "modeltext_fig_pen_style", LE, sxmt_fig_pen_style_fields);
+var sxmt_fig_area_fill_fields = layout([field("fig_area_fill", "ascii_signed", 0)]);
+var sxmt_fig_area_fill = sxLayout(0x6052008D, "modeltext_fig_area_fill", LE, sxmt_fig_area_fill_fields);
+var sxmt_fig_direction_fields = layout([field("fig_direction", "ascii_signed", 0)]);
+var sxmt_fig_direction = sxLayout(0x6052008E, "modeltext_fig_direction", LE, sxmt_fig_direction_fields);
+var sxmt_fig_center_x_fields = layout([field("fig_center_x", "ascii_signed", 0)]);
+var sxmt_fig_center_x = sxLayout(0x6052008F, "modeltext_fig_center_x", LE, sxmt_fig_center_x_fields);
+var sxmt_fig_center_y_fields = layout([field("fig_center_y", "ascii_signed", 0)]);
+var sxmt_fig_center_y = sxLayout(0x60520090, "modeltext_fig_center_y", LE, sxmt_fig_center_y_fields);
+var sxmt_fig_radius_x_fields = layout([field("fig_radius_x", "ascii_signed", 0)]);
+var sxmt_fig_radius_x = sxLayout(0x60520091, "modeltext_fig_radius_x", LE, sxmt_fig_radius_x_fields);
+var sxmt_fig_radius_y_fields = layout([field("fig_radius_y", "ascii_signed", 0)]);
+var sxmt_fig_radius_y = sxLayout(0x60520092, "modeltext_fig_radius_y", LE, sxmt_fig_radius_y_fields);
+var sxmt_fig_start_x_fields = layout([field("fig_start_x", "ascii_signed", 0)]);
+var sxmt_fig_start_x = sxLayout(0x60520093, "modeltext_fig_start_x", LE, sxmt_fig_start_x_fields);
+var sxmt_fig_start_y_fields = layout([field("fig_start_y", "ascii_signed", 0)]);
+var sxmt_fig_start_y = sxLayout(0x60520094, "modeltext_fig_start_y", LE, sxmt_fig_start_y_fields);
+var sxmt_fig_end_x_fields = layout([field("fig_end_x", "ascii_signed", 0)]);
+var sxmt_fig_end_x = sxLayout(0x60520095, "modeltext_fig_end_x", LE, sxmt_fig_end_x_fields);
+var sxmt_fig_end_y_fields = layout([field("fig_end_y", "ascii_signed", 0)]);
+var sxmt_fig_end_y = sxLayout(0x60520096, "modeltext_fig_end_y", LE, sxmt_fig_end_y_fields);
+var sxmt_fig_join_style_fields = layout([field("fig_join_style", "ascii_signed", 0)]);
+var sxmt_fig_join_style = sxLayout(0x60520097, "modeltext_fig_join_style", LE, sxmt_fig_join_style_fields);
+var sxmt_fig_cap_style_fields = layout([field("fig_cap_style", "ascii_signed", 0)]);
+var sxmt_fig_cap_style = sxLayout(0x60520098, "modeltext_fig_cap_style", LE, sxmt_fig_cap_style_fields);
+var sxmt_fig_radius_fields = layout([field("fig_radius", "ascii_signed", 0)]);
+var sxmt_fig_radius = sxLayout(0x60520099, "modeltext_fig_radius", LE, sxmt_fig_radius_fields);
+var sxmt_fig_forward_arrow_fields = layout([field("fig_forward_arrow", "ascii_signed", 0)]);
+var sxmt_fig_forward_arrow = sxLayout(0x6052009A, "modeltext_fig_forward_arrow", LE, sxmt_fig_forward_arrow_fields);
+var sxmt_fig_backward_arrow_fields = layout([field("fig_backward_arrow", "ascii_signed", 0)]);
+var sxmt_fig_backward_arrow = sxLayout(0x6052009B, "modeltext_fig_backward_arrow", LE, sxmt_fig_backward_arrow_fields);
+var sxmt_fig_point_count_fields = layout([field("fig_point_count", "ascii_signed", 0, COUNT)]);
+var sxmt_fig_point_count = sxLayout(0x6052009C, "modeltext_fig_point_count", LE, sxmt_fig_point_count_fields);
+var sxmt_fig_color_index_fields = layout([field("fig_color_index", "ascii_signed", 0)]);
+var sxmt_fig_color_index = sxLayout(0x6052009D, "modeltext_fig_color_index", LE, sxmt_fig_color_index_fields);
+var sxmt_fig_transparent_color_fields = layout([field("fig_transparent_color", "ascii_signed", 0)]);
+var sxmt_fig_transparent_color = sxLayout(0x6052009E, "modeltext_fig_transparent_color", LE, sxmt_fig_transparent_color_fields);
+var sxmt_fig_resolution_fields = layout([field("fig_resolution", "ascii_signed", 0)]);
+var sxmt_fig_resolution = sxLayout(0x6052009F, "modeltext_fig_resolution", LE, sxmt_fig_resolution_fields);
+var sxmt_fig_coordinate_system_fields = layout([field("fig_coordinate_system", "ascii_signed", 0)]);
+var sxmt_fig_coordinate_system = sxLayout(0x605200A0, "modeltext_fig_coordinate_system", LE, sxmt_fig_coordinate_system_fields);
+var sxmt_fig_magnification_fields = layout([field("fig_magnification", "ascii_real", 0)]);
+var sxmt_fig_magnification = sxLayout(0x605200A1, "modeltext_fig_magnification", LE, sxmt_fig_magnification_fields);
+var sxmt_fig_style_value_fields = layout([field("fig_style_value", "ascii_real", 0)]);
+var sxmt_fig_style_value = sxLayout(0x605200A2, "modeltext_fig_style_value", LE, sxmt_fig_style_value_fields);
+var sxmt_fig_angle_fields = layout([field("fig_angle", "ascii_real", 0)]);
+var sxmt_fig_angle = sxLayout(0x605200A3, "modeltext_fig_angle", LE, sxmt_fig_angle_fields);
+var sxmt_fig_rgb_fields = layout([field("fig_rgb", "ascii_hex", 0, FLAGS)]);
+var sxmt_fig_rgb = sxLayout(0x605200A4, "modeltext_fig_rgb", LE, sxmt_fig_rgb_fields);
+function sxmt_fig(q) {
+    var a = [0];
+    var e = [0];
+    var stage = 0;
+    var header = [sxmt_signature, sxmt_fig_orientation, sxmt_fig_justification, sxmt_fig_units, sxmt_fig_paper_size, sxmt_fig_magnification, sxmt_fig_page_mode, sxmt_fig_transparent_color];
+    while (stage < 9 && sxmt_line(q, a, e, false)) {
+        if (stage && q.b[a[0]] === 35 /*#*/) {
+            continue;
+        }
+        if (stage < 8) {
+            if (!sxmt_emit(q, header[stage], a[0], e[0] - a[0])) {
+                return false;
+            }
+        } else {
+            var next = q.p;
+            q.p = a[0];
+            {
+                if (!sxmt_value(q, sxmt_fig_resolution, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_fig_coordinate_system, e[0], null)) {
+                    return false;
+                }
+            }
+            q.p = next;
+        }
+        stage++;
+    }
+    if (stage !== 9) {
+        return false;
+    }
+    var common = [sxmt_fig_object_code, sxmt_fig_subtype, sxmt_fig_line_style, sxmt_fig_thickness, sxmt_fig_pen_color, sxmt_fig_fill_color, sxmt_fig_depth, sxmt_fig_pen_style, sxmt_fig_area_fill, sxmt_fig_style_value];
+    var ellipse = [sxmt_fig_direction, sxmt_fig_angle, sxmt_fig_center_x, sxmt_fig_center_y, sxmt_fig_radius_x, sxmt_fig_radius_y, sxmt_fig_start_x, sxmt_fig_start_y, sxmt_fig_end_x, sxmt_fig_end_y];
+    var poly = [sxmt_fig_join_style, sxmt_fig_cap_style, sxmt_fig_radius, sxmt_fig_forward_arrow, sxmt_fig_backward_arrow, sxmt_fig_point_count];
+    while (sxmt_line(q, a, e, false)) {
+        if (q.b[a[0]] === 35 /*#*/) {
+            continue;
+        }
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        next = q.p;
+        q.p = a[0];
+        var kind = [0];
+        {
+            if (!sxmt_value(q, sxmt_fig_object_code, e[0], kind)) {
+                return false;
+            }
+        }
+        if (kind[0] === 0) {
+            {
+                if (!sxmt_value(q, sxmt_fig_color_index, e[0], null)) {
+                    return false;
+                }
+            }
+            var z = [0];
+            if (!sxmt_token(q, e[0], a, z, false) || z[0] !== 7 || q.b[a[0]] !== 35 /*#*/) {
+                return false;
+            }
+            {
+                if (!sxmt_emit(q, sxmt_fig_rgb, a[0] + 1, 6)) {
+                    return false;
+                }
+            }
+            q.p = next;
+            continue;
+        }
+        if (kind[0] !== 1 && kind[0] !== 2) {
+            return false;
+        }
+        for (var i = 1; i < 10; i++) {
+            if (!sxmt_value(q, common[i], e[0], null)) {
+                return false;
+            }
+        }
+        var points = [0];
+        var n = kind[0] === 1 ? 10 : 6;
+        for (i = 0; i < n; i++) {
+            if (!sxmt_value(q, kind[0] === 1 ? ellipse[i] : poly[i], e[0], kind[0] === 2 && i === 5 ? points : null)) {
+                return false;
+            }
+        }
+        q.p = next;
+        if (points[0] > 65536) {
+            return false;
+        }
+        for (i = 0; i < points[0]; i++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            {
+                if (!sxmt_value(q, sxmt_x, q.n, null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_y, q.n, null)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_xfig_build(q) {
+    return sxmt_fig(q);
+}

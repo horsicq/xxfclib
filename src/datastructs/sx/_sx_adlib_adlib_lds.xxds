@@ -1,0 +1,67 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_lds/xx_adlib_lds_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_lds_header_fields = layout([field("mode", "uint8_t", 1), field("timer_divisor", "uint16_t", 2),
+    field("tempo", "uint8_t", 1), field("pattern_row_count", "uint8_t", 1, COUNT), field("channel0_delay", "uint8_t", 1),
+    field("channel1_delay", "uint8_t", 1), field("channel2_delay", "uint8_t", 1), field("channel3_delay", "uint8_t", 1),
+    field("channel4_delay", "uint8_t", 1), field("channel5_delay", "uint8_t", 1), field("channel6_delay", "uint8_t", 1),
+    field("channel7_delay", "uint8_t", 1), field("channel8_delay", "uint8_t", 1), field("rhythm_register", "uint8_t", 1, FLAGS),
+    field("patch_count", "uint16_t", 2, COUNT)]);
+var sxad_adlib_lds_header = sxLayout(0x600F002F, "adlib_lds_header", LE, sxad_adlib_lds_header_fields);
+var sxad_adlib_lds_patch_fields = layout([field("modulator_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level", "uint8_t", 1, FLAGS), field("modulator_attack_decay", "uint8_t", 1, FLAGS),
+    field("modulator_sustain_release", "uint8_t", 1, FLAGS), field("modulator_waveform", "uint8_t", 1, FLAGS),
+    field("carrier_characteristics", "uint8_t", 1, FLAGS), field("carrier_scale_level", "uint8_t", 1, FLAGS),
+    field("carrier_attack_decay", "uint8_t", 1, FLAGS), field("carrier_sustain_release", "uint8_t", 1, FLAGS),
+    field("carrier_waveform", "uint8_t", 1, FLAGS), field("feedback_connection", "uint8_t", 1, FLAGS),
+    field("key_off", "uint8_t", 1), field("portamento", "uint8_t", 1), field("glide", "uint8_t", 1),
+    field("fine_tune", "uint8_t", 1), field("vibrato", "uint8_t", 1, FLAGS), field("vibrato_delay", "uint8_t", 1),
+    field("modulator_tremolo", "uint8_t", 1, FLAGS), field("carrier_tremolo", "uint8_t", 1, FLAGS),
+    field("tremolo_wait", "uint8_t", 1), field("arpeggio", "uint8_t", 1, FLAGS), field("arpeggio_table", "uint8_t[12]", 12),
+    field("digital_start", "uint16_t", 2), field("digital_size", "uint16_t", 2), field("fms", "uint8_t", 1),
+    field("transpose", "uint16_t", 2), field("midi_instrument", "uint8_t", 1, ID), field("midi_velocity", "uint8_t", 1),
+    field("midi_key", "uint8_t", 1), field("midi_transpose", "uint8_t", 1), field("midi_reserved", "uint8_t[2]", 2, RESERVED)]);
+var sxad_adlib_lds_patch = sxLayout(0x600F0030, "adlib_lds_patch", LE, sxad_adlib_lds_patch_fields);
+var sxad_adlib_lds_position_count_fields = layout([field("position_count", "uint16_t", 2, COUNT)]);
+var sxad_adlib_lds_position_count = sxLayout(0x600F0031, "adlib_lds_position_count", LE, sxad_adlib_lds_position_count_fields);
+var sxad_adlib_lds_position_fields = layout([field("pattern_offset", "uint16_t", 2, OFFSET),
+    field("transpose_flags", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_lds_position = sxLayout(0x600F0032, "adlib_lds_position", LE, sxad_adlib_lds_position_fields);
+var sxad_adlib_lds_digital_count_fields = layout([field("digital_sound_count", "uint16_t", 2, COUNT)]);
+var sxad_adlib_lds_digital_count = sxLayout(0x600F0033, "adlib_lds_digital_count", LE, sxad_adlib_lds_digital_count_fields);
+var sxad_adlib_lds_pattern_word_fields = layout([field("event_word", "uint16_t", 2, FLAGS)]);
+var sxad_adlib_lds_pattern_word = sxLayout(0x600F0034, "adlib_lds_pattern_word", LE, sxad_adlib_lds_pattern_word_fields);
+function sxad_lds(c) {
+    var mode = [0];
+    var tempo = [0];
+    var len = [0];
+    var speed;
+    var patches;
+    var positions;
+    var at = [17];
+    if (!sxad_byte(c, 0, mode) || mode[0] > 2 || (speed = sx_u16(c, 1, false)) === null || !speed || !sxad_byte(c, 3, tempo) || !tempo[0] || !sxad_byte(c, 4, len) || !len[0] || (patches = sx_u16(c, 15, false)) === null || !patches || patches > 64 || !sx_add(c, sxad_adlib_lds_header, 0, 17) || !sx_table(c, sxad_adlib_lds_patch, at[0], 46, patches)) {
+        return false;
+    }
+    at[0] += 46 * patches;
+    if ((positions = sx_u16(c, at[0], false)) === null || !positions || positions > 256 || !sxad_header(c, sxad_adlib_lds_position_count, at, 2) || !sx_table(c, sxad_adlib_lds_position, at[0], 3, 9 * positions)) {
+        return false;
+    }
+    var position_start = at[0];
+    at[0] += 27 * positions;
+    if (!sxad_header(c, sxad_adlib_lds_digital_count, at, 2) || at[0] >= c.size || sxI64(sxAnd64(c.size - at[0], 1))) {
+        return false;
+    }
+    for (var i = 0; i < 9 * positions; i++) {
+        var off;
+        if ((off = sx_u16(c, position_start + ((3 * i) >>> 0), false)) === null || off & 1 || off >= c.size - at[0]) {
+            return false;
+        }
+    }
+    return sx_table(c, sxad_adlib_lds_pattern_word, at[0], 2, Math.floor((c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) / 2));
+}
+function sx_adlib_lds_build(c) {
+    return sxad_lds(c);
+}

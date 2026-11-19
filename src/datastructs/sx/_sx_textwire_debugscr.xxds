@@ -1,0 +1,97 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/debugscr/xx_debugscr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxtw_debug(q) {
+    var count = false;
+    var a = [0];
+    var end = [0];
+    while (sxtw_line(q, a, end)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        sxtw_trim(q, a, end);
+        if (a[0] === end[0]) {
+            continue;
+        }
+        if (count) {
+            var v = [0];
+            if (!sxtw_number(q, a[0], end[0] - a[0], 16, v)) {
+                break;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_hex_size, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            count = false;
+            continue;
+        }
+        if (sxtw_ci(q, a[0], end[0] - a[0], "rcx") || sxtw_ci(q, a[0], end[0] - a[0], "r cx")) {
+            {
+                if (!sxtw_emit(q, sxtw_command, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            count = true;
+            continue;
+        }
+        var c = q.b[a[0]] | 32;
+        {
+            if (!sxtw_emit(q, sxtw_command, a[0], 1)) {
+                return false;
+            }
+        }
+        var p = a[0] + 1;
+        while (p < end[0] && sxtw_space(q.b[p])) {
+            p++;
+        }
+        if (c === 110 /*n*/) {
+            {
+                if (!sxtw_emit(q, sxtw_name, p, end[0] - p)) {
+                    return false;
+                }
+            }
+        } else if (c === 101 /*e*/) {
+            var start = p;
+            while (p < end[0] && !sxtw_space(q.b[p])) {
+                p++;
+            }
+            v = [0];
+            if (!sxtw_number(q, start, p - start, 16, v)) {
+                return false;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_address_hex, start, p - start)) {
+                    return false;
+                }
+            }
+            while (p < end[0]) {
+                while (p < end[0] && sxtw_space(q.b[p])) {
+                    p++;
+                }
+                if (end[0] - p < 2 || !sxtw_number(q, p, 2, 16, v)) {
+                    break;
+                }
+                if (end[0] - p > 2 && sxtw_number(q, p + 2, 1, 16, v)) {
+                    break;
+                }
+                {
+                    if (!sxtw_emit(q, sxtw_hex_byte, p, 2)) {
+                        return false;
+                    }
+                }
+                p += 2;
+                if (q.c.count >= 32000) {
+                    return true;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_debugscr_build(q) {
+    return sxtw_debug(q);
+}

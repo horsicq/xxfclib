@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/larian_lspk/xx_larian_lspk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_lspk_header_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), u32("data_offset", OFFSET),
+    u32("file_list_size", SIZE), u16("part_count", COUNT), u8("flags", FLAGS), u8("priority"), u32("file_count", COUNT)]);
+var sxgp_lspk_header = sxLayout(0x60360063, "lspk_header", LE, sxgp_lspk_header_fields);
+var sxgp_lspk_file_fields = layout([chars("name", 256, STRING), u32("data_offset", OFFSET), u32("size_on_disk", SIZE),
+    u32("uncompressed_size", SIZE), u32("archive_part", ID), u32("compression_flags", FLAGS), u32("crc32", CHECKSUM)]);
+var sxgp_lspk_file = sxLayout(0x60360064, "lspk_file", LE, sxgp_lspk_file_fields);
+function sxgp_lspk(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    return sxgp_row(v, sxgp_lspk_header, 0, end) && sxgp_word(v, 20, 4, false, n, 0, end) && n[0] <= 4096 && sxgp_table(v, sxgp_lspk_file, 24, n[0], end);
+}
+function sx_larian_lspk_build(v) {
+    return sxgp_lspk(v);
+}

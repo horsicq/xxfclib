@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/base16/xx_base16_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxtw_base16(q) {
+    while (q.p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        while (q.p < q.n && sxtw_space(q.b[q.p])) {
+            q.p++;
+        }
+        var value = [0];
+        if (q.n - q.p < 2 || !sxtw_number(q, q.p, 2, 16, value)) {
+            break;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_hex_byte, q.p, 2)) {
+                return false;
+            }
+        }
+        q.p += 2;
+    }
+    return true;
+}
+function sx_base16_build(q) {
+    return sxtw_base16(q);
+}

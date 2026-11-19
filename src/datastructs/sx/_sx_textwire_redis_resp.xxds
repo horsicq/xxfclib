@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/redis_resp/xx_redis_resp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_array_count_fields = layout([field("array_count", "ascii_signed", 0, COUNT)]);
+var sxtw_array_count = sxLayout(0x60710027, "textwire_array_count", LE, sxtw_array_count_fields);
+function sxtw_resp(q) {
+    while (q.p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var a = [0];
+        var end = [0];
+        var count = [0];
+        if (!sxtw_line(q, a, end) || a[0] === end[0] || q.b[a[0]] !== 42 || !sxtw_number(q, a[0] + 1, end[0] - a[0] - 1, 10, count) || count[0] > 1024) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_control, a[0], 1)) {
+                return false;
+            }
+        }
+        {
+            if (!sxtw_emit(q, sxtw_array_count, a[0] + 1, end[0] - a[0] - 1)) {
+                return false;
+            }
+        }
+        for (var i = 0; i < count[0]; i++) {
+            var n = [0];
+            if (!sxtw_line(q, a, end) || a[0] === end[0] || q.b[a[0]] !== 36 /*$*/ || !sxtw_number(q, a[0] + 1, end[0] - a[0] - 1, 10, n)) {
+                return false;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_control, a[0], 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtw_emit(q, sxtw_byte_length, a[0] + 1, end[0] - a[0] - 1)) {
+                    return false;
+                }
+            }
+            if (n[0] > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p) || q.n - q.p - (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]) < 2) {
+                return false;
+            }
+            if (!i) {
+                {
+                    if (!sxtw_emit(q, sxtw_command, q.p, (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]))) {
+                        return false;
+                    }
+                }
+            }
+            q.p += (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]);
+            if (q.b[q.p] !== 13 || q.b[q.p + 1] !== 10) {
+                return false;
+            }
+            q.p += 2;
+            if (q.c.count >= 32000) {
+                return true;
+            }
+        }
+    }
+    return true;
+}
+function sx_redis_resp_build(q) {
+    return sxtw_resp(q);
+}

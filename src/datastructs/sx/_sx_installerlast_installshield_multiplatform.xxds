@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/installshield_multiplatform/xx_installshield_multiplatform_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_installshield_multiplatform_footer_fields = layout([u32("index_offset", OFFSET), u32("signature", SIGNATURE)]);
+var sxil_installshield_multiplatform_footer = sxLayout(0x6085002B, "installshield_multiplatform_footer", BE, sxil_installshield_multiplatform_footer_fields);
+var sxil_installshield_multiplatform_count_fields = layout([u32("resource_count", COUNT)]);
+var sxil_installshield_multiplatform_count = sxLayout(0x6085002C, "installshield_multiplatform_count", BE, sxil_installshield_multiplatform_count_fields);
+var sxil_installshield_multiplatform_record_fields = layout([u8("resource_type", ID), u32("resource_id", ID),
+    u32("file_size", SIZE), u32("file_offset", OFFSET), u16("name_size", SIZE)]);
+var sxil_installshield_multiplatform_record = sxLayout(0x6085002D, "installshield_multiplatform_record", BE, sxil_installshield_multiplatform_record_fields);
+var sxil_installshield_multiplatform_optional_fields = layout([u8("has_u64", FLAGS)]);
+var sxil_installshield_multiplatform_optional = sxLayout(0x6085002E, "installshield_multiplatform_optional", LE, sxil_installshield_multiplatform_optional_fields);
+var sxil_installshield_multiplatform_u64_fields = layout([u64("bundled_jvm_value")]);
+var sxil_installshield_multiplatform_u64 = sxLayout(0x6085002F, "installshield_multiplatform_u64", BE, sxil_installshield_multiplatform_u64_fields);
+function sxil_u32be(c, p, v) {
+    var b = [];
+    if (!sxil_read(c, p, b, 4)) {
+        return false;
+    }
+    v[0] = sxil32(b, 0, true);
+    return true;
+}
+function sxil_ismp(c) {
+    if (c.size < 12) {
+        return true;
+    }
+    var tr = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8);
+    var p = [0];
+    var n = [0];
+    if (!sxil_eq(c, tr + 4, "\xCA\x82\xCA\x82", 4) || !sxil_u32be(c, tr, p) || p[0] > tr || sxU64(tr - p[0]) < 4) {
+        return true;
+    }
+    if (!sxil_put(c, sxil_installshield_multiplatform_footer, tr, 1) || !sxil_u32be(c, p[0], n) || !sxil_put(c, sxil_installshield_multiplatform_count, p[0], 1)) {
+        return false;
+    }
+    var q = p[0] + 4;
+    for (var i = 0; i < n[0] && i < 100000 && q <= tr && 15 <= sxU64(tr - q); i++) {
+        var b = [];
+        var flag = [0];
+        if (!sxil_read(c, q, b, 15)) {
+            return true;
+        }
+        var z = sxil16(b, 13, true);
+        if (z > sxU64(sxU64(tr - q) - 15)) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_installshield_multiplatform_record, q, 1) || !sxil_name(c, q + 15, z)) {
+            return false;
+        }
+        q += 15 + z;
+        if (!sxil_read(c, q, flag, 1) || flag[0] > 1) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_installshield_multiplatform_optional, q, 1)) {
+            return false;
+        }
+        q++;
+        if (flag[0]) {
+            if (q > tr || 8 > sxU64(tr - q)) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_installshield_multiplatform_u64, q, 1)) {
+                return false;
+            }
+            q += 8;
+        }
+    }
+    return true;
+}
+function sx_installshield_multiplatform_build(c) {
+    return sxil_ismp(c);
+}

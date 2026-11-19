@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/luks/xx_luks_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_luks2_header_fields = layout([field("magic", "byte[6]", 6, SIGNATURE), u16("version"), u64("header_size", SIZE),
+    u64("sequence_id"), chars("label", 48, STRING), chars("checksum_algorithm", 32, STRING), field("salt", "byte[64]", 64),
+    chars("uuid", 40, STRING), chars("subsystem", 48, STRING), u64("header_offset", OFFSET),
+    field("padding", "byte[184]", 184, RESERVED), field("checksum", "byte[64]", 64, CHECKSUM),
+    field("padding4096", "byte[3584]", 3584, RESERVED)]);
+var sx_st_luks2_header = sxLayout(0x60080058, "luks2_header", BE, sx_st_luks2_header_fields);
+function sx_st_luks(c) {
+    var version;
+    if ((version = sx_u16(c, 6, true)) === null) {
+        return false;
+    }
+    if (version === 1) {
+        return sx_add(c, sx_st_luks1_header, 0, 208) && sx_table(c, sx_st_luks1_keyslot, 208, 48, 8);
+    }
+    if (version === 2) {
+        var span;
+        var magic = [];
+        if (!sx_add(c, sx_st_luks2_header, 0, 4096) || (span = sx_u64(c, 8, true)) === null) {
+            return false;
+        }
+        if (span >= 4096 && sx_st_fits(c, span, 4096)) {
+            var size;
+            var off;
+            if (!sx_read(c, (span >= SX_I64_MAX ? span - SX_U64_MAX : span), magic, 8)) {
+                return false;
+            }
+            if (!sxMemcmp(magic, "SKUL\xBA\xBE\x00\x02", 8)) {
+                if ((size = sx_u64(c, (span >= SX_I64_MAX ? span - SX_U64_MAX : span) + 8, true)) === null || (off = sx_u64(c, (span >= SX_I64_MAX ? span - SX_U64_MAX : span) + 256, true)) === null) {
+                    return false;
+                }
+                if (off === span && size >= 4096 && sx_st_fits(c, span, size) && !sx_add(c, sx_st_luks2_header, (span >= SX_I64_MAX ? span - SX_U64_MAX : span), 4096)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    return false;
+}
+function sx_luks_build(c) {
+    var ok = false;
+    ok = sx_st_luks(c);
+    return ok && sx_st_finish(c);
+}

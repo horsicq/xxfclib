@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lz4/xx_lz4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_a_lz4_frame_header_00_fields = layout([u32("magic", SIGNATURE), u8("FLG", FLAGS), u8("BD", FLAGS),
+    u8("header_checksum", CHECKSUM)]);
+var sx_a_lz4_frame_header_00 = sxLayout(0x6004000F, "lz4_frame_header_00", LE, sx_a_lz4_frame_header_00_fields);
+var sx_a_lz4_frame_header_01_fields = layout([u32("magic", SIGNATURE), u8("FLG", FLAGS), u8("BD", FLAGS),
+    u32("dictionary_id", ID), u8("header_checksum", CHECKSUM)]);
+var sx_a_lz4_frame_header_01 = sxLayout(0x60040010, "lz4_frame_header_01", LE, sx_a_lz4_frame_header_01_fields);
+var sx_a_lz4_frame_header_10_fields = layout([u32("magic", SIGNATURE), u8("FLG", FLAGS), u8("BD", FLAGS),
+    u64("content_size", SIZE), u8("header_checksum", CHECKSUM)]);
+var sx_a_lz4_frame_header_10 = sxLayout(0x60040011, "lz4_frame_header_10", LE, sx_a_lz4_frame_header_10_fields);
+var sx_a_lz4_frame_header_11_fields = layout([u32("magic", SIGNATURE), u8("FLG", FLAGS), u8("BD", FLAGS),
+    u64("content_size", SIZE), u32("dictionary_id", ID), u8("header_checksum", CHECKSUM)]);
+var sx_a_lz4_frame_header_11 = sxLayout(0x60040012, "lz4_frame_header_11", LE, sx_a_lz4_frame_header_11_fields);
+var sx_a_lz4_legacy_header_fields = layout([u32("magic", SIGNATURE)]);
+var sx_a_lz4_legacy_header = sxLayout(0x60040016, "lz4_legacy_header", LE, sx_a_lz4_legacy_header_fields);
+function sx_a_lz4(c) {
+    var at = [0];
+    while (at[0] < c.size) {
+        var magic;
+        var h = [];
+        if ((magic = sx_u32(c, at[0], false)) === null) {
+            return false;
+        }
+        if ((magic & 0xFFFFFFF0) >>> 0 === 0x184D2A50) {
+            if (!sx_a_skippable(c, at)) {
+                return false;
+            }
+            continue;
+        }
+        var legacy = magic === 0x184C2102;
+        var flags = 0;
+        if (legacy) {
+            if (!sx_add(c, sx_a_lz4_legacy_header, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+        } else {
+            var l;
+            if (magic !== 0x184D2204 || !sx_read(c, at[0], h, 6) || h[4] >> 6 !== 1 || h[4] & 2 || h[5] & 0x8F || (h[5] >> 4 & 7) < 4) {
+                return false;
+            }
+            flags = h[4];
+            var content = (flags & 8) !== 0;
+            var dictionary = (flags & 1) !== 0;
+            l = content ? dictionary ? sx_a_lz4_frame_header_11 : sx_a_lz4_frame_header_10 : dictionary ? sx_a_lz4_frame_header_01 : sx_a_lz4_frame_header_00;
+            var size = 7 + (content ? 8 : 0) + (dictionary ? 4 : 0);
+            if (!sx_add(c, l, at[0], size)) {
+                return false;
+            }
+            at[0] += size;
+        }
+        for (; ; ) {
+            var block;
+            if (legacy && at[0] === c.size) {
+                return true;
+            }
+            if ((block = sx_u32(c, at[0], false)) === null || !sx_add(c, sx_a_lz4_block_header, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+            if (!block) {
+                break;
+            }
+            size = legacy ? block : block & 0x7FFFFFFF;
+            if (!size || size > 0x800000 || !sx_a_raw_advance(c, at, size)) {
+                return false;
+            }
+            if (flags & 16) {
+                if (!sx_add(c, sx_a_checksum_le, at[0], 4)) {
+                    return false;
+                }
+                at[0] += 4;
+            }
+        }
+        if (flags & 4) {
+            if (!sx_add(c, sx_a_checksum_le, at[0], 4)) {
+                return false;
+            }
+            at[0] += 4;
+        }
+    }
+    return true;
+}
+function sx_lz4_build(c) {
+    return sx_a_lz4(c);
+}

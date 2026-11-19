@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/spring_s3o/xx_spring_s3o_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_s3o_header_fields = layout([chars("signature", 12, SIGNATURE), i32("version", ID), field("radius", "float32", 4),
+    field("height", "float32", 4), field("midpoint", "float32[3]", 12), i32("root_piece_offset", OFFSET),
+    i32("collision_data_offset", OFFSET), i32("texture1_offset", OFFSET), i32("texture2_offset", OFFSET)]);
+var sxmo_s3o_header = sxLayout(0x6021005B, "s3o_header", LE, sxmo_s3o_header_fields);
+var sxmo_s3o_piece_fields = layout([i32("name_offset", OFFSET), i32("child_count", COUNT), i32("children_offset", OFFSET),
+    i32("vertex_count", COUNT), i32("vertices_offset", OFFSET), i32("vertex_type", ID), i32("primitive_type", ID),
+    i32("index_count", COUNT), i32("indices_offset", OFFSET), i32("collision_data_offset", OFFSET),
+    field("offset", "float32[3]", 12)]);
+var sxmo_s3o_piece = sxLayout(0x6021005C, "s3o_piece", LE, sxmo_s3o_piece_fields);
+var sxmo_s3o_vertex_fields = layout([field("position", "float32[3]", 12), field("normal", "float32[3]", 12),
+    field("u", "float32", 4), field("v", "float32", 4)]);
+var sxmo_s3o_vertex = sxLayout(0x6021005D, "s3o_vertex", LE, sxmo_s3o_vertex_fields);
+var sxmo_s3o_child_fields = layout([i32("piece_offset", OFFSET)]);
+var sxmo_s3o_child = sxLayout(0x6021005E, "s3o_child", LE, sxmo_s3o_child_fields);
+var sxmo_s3o_index_fields = layout([i32("vertex_index", ID)]);
+var sxmo_s3o_index = sxLayout(0x6021005F, "s3o_index", LE, sxmo_s3o_index_fields);
+function sxmo_s3o_walk_piece(c, p, depth, seen, count) {
+    if (depth >= 32 || count[0] >= 256 || p < 52) {
+        return true;
+    }
+    for (var i = 0; i < count[0]; i++) {
+        if (seen[i] === p) {
+            return true;
+        }
+    }
+    var h = [];
+    if (!sxmo_read(c, p, h, 52)) {
+        return true;
+    }
+    seen[count[0]++] = p;
+    if (!sxmo_add(c, sxmo_s3o_piece, p)) {
+        return false;
+    }
+    var children = sxmo32(h, 8, false);
+    var verts = sxmo32(h, 16, false);
+    var indices = sxmo32(h, 32, false);
+    var nc = sxmo32(h, 4, false);
+    var nv = sxmo32(h, 12, false);
+    var ni = sxmo32(h, 28, false);
+    if (nv <= 65536 && verts >= 52 && sxmo_span(c, verts, nv * 32) && !sxmo_table(c, sxmo_s3o_vertex, verts, nv)) {
+        return false;
+    }
+    if (ni <= 262144 && indices >= 52 && sxmo_span(c, indices, ni * 4) && !sxmo_table(c, sxmo_s3o_index, indices, ni)) {
+        return false;
+    }
+    if (nc <= 256 && children >= 52 && sxmo_span(c, children, nc * 4)) {
+        if (!sxmo_table(c, sxmo_s3o_child, children, nc)) {
+            return false;
+        }
+        for (i = 0; i < nc; i++) {
+            if (!sxmo_read(c, children + ((i * 4) >>> 0), h, 4) || !sxmo_s3o_walk_piece(c, sxmo32(h, 0, false), (depth + 1) >>> 0, seen, count)) {
+                return false;
+            }
+        }
+    }
+    return !c.failed;
+}
+function sxmo_s3o(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 52) || sxMemcmp(h, "Spring unit\x00", 12) || !sxmo_add(c, sxmo_s3o_header, 0)) {
+        return false;
+    }
+    var seen = [];
+    var count = [0];
+    return sxmo_s3o_walk_piece(c, sxmo32(h, 36, false), 0, seen, count);
+}
+function sx_spring_s3o_build(c) {
+    var ok = false;
+    ok = sxmo_s3o(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

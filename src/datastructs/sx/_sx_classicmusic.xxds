@@ -1,0 +1,500 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_classicmusic.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcmus_hippel_header_fields = layout([chars("signature", 4, SIGNATURE), u16("frequency_last_index"),
+    u16("envelope_last_index"), u16("track_last_index"), u16("position_last_index"), u16("bytes_per_track", SIZE),
+    blob("opaque_word", 2), u16("subsong_count", COUNT), u16("sample_count", COUNT), blob("opaque_tail", 12)]);
+var sxcmus_hippel_header = sxLayout(0x609E0001, "hippel_header", BE, sxcmus_hippel_header_fields);
+var sxcmus_hippel_st_header_fields = layout([chars("signature", 4, SIGNATURE), u16("frequency_last_index"),
+    u16("envelope_last_index"), u16("track_last_index"), u16("position_last_index"), u16("bytes_per_track", SIZE),
+    blob("opaque_word", 2), u16("subsong_count", COUNT), u16("waveform_last_index"), blob("opaque_tail", 12)]);
+var sxcmus_hippel_st_header = sxLayout(0x609E0002, "hippel_st_header", BE, sxcmus_hippel_st_header_fields);
+var sxcmus_hippel_coso_fields = layout([chars("signature", 4, SIGNATURE), u32("frequency_table_offset", OFFSET),
+    u32("envelope_table_offset", OFFSET), u32("track_table_offset", OFFSET), u32("position_table_offset", OFFSET),
+    u32("subsong_table_offset", OFFSET), u32("sample_info_offset", OFFSET), i32("sample_data_offset", OFFSET)]);
+var sxcmus_hippel_coso = sxLayout(0x609E0003, "hippel_coso", BE, sxcmus_hippel_coso_fields);
+var sxcmus_hippel_st_coso_fields = layout([chars("signature", 4, SIGNATURE), u32("frequency_table_offset", OFFSET),
+    u32("envelope_table_offset", OFFSET), u32("track_table_offset", OFFSET), u32("position_table_offset", OFFSET),
+    u32("subsong_table_offset", OFFSET), u32("waveform_table_offset", OFFSET), blob("digital_data_offset_or_marker", 4)]);
+var sxcmus_hippel_st_coso = sxLayout(0x609E0004, "hippel_st_coso", BE, sxcmus_hippel_st_coso_fields);
+var sxcmus_hippel_pointer16_fields = layout([u16("data_offset", OFFSET)]);
+var sxcmus_hippel_pointer16 = sxLayout(0x609E0005, "hippel_pointer16", BE, sxcmus_hippel_pointer16_fields);
+var sxcmus_hippel_pointer32_fields = layout([u32("data_offset", OFFSET)]);
+var sxcmus_hippel_pointer32 = sxLayout(0x609E0006, "hippel_pointer32", BE, sxcmus_hippel_pointer32_fields);
+var sxcmus_hippel_st_pointer16_fields = layout([i16("data_offset", OFFSET)]);
+var sxcmus_hippel_st_pointer16 = sxLayout(0x609E0007, "hippel_st_pointer16", BE, sxcmus_hippel_st_pointer16_fields);
+var sxcmus_hippel_envelope_fields = layout([u8("speed"), u8("frequency_index"), u8("vibrato_speed"), u8("vibrato_depth"),
+    u8("vibrato_delay")]);
+var sxcmus_hippel_envelope = sxLayout(0x609E0008, "hippel_envelope", LE, sxcmus_hippel_envelope_fields);
+var sxcmus_hippel_position_fields = layout([u8("track_index"), i8("note_transpose"), i8("envelope_transpose")]);
+var sxcmus_hippel_position = sxLayout(0x609E0009, "hippel_position", LE, sxcmus_hippel_position_fields);
+var sxcmus_hippel_position_control_fields = layout([u8("track_index"), i8("note_transpose"), i8("envelope_transpose"),
+    u8("command")]);
+var sxcmus_hippel_position_control = sxLayout(0x609E000A, "hippel_position_control", LE, sxcmus_hippel_position_control_fields);
+var sxcmus_hippel_subsong_fields = layout([u16("first_position"), u16("last_position"), u16("start_speed")]);
+var sxcmus_hippel_subsong = sxLayout(0x609E000B, "hippel_subsong", BE, sxcmus_hippel_subsong_fields);
+var sxcmus_hippel_subsong7_fields = layout([u16("first_position"), u16("last_position"), blob("opaque_word", 2),
+    u16("start_speed")]);
+var sxcmus_hippel_subsong7 = sxLayout(0x609E000C, "hippel_subsong7", BE, sxcmus_hippel_subsong7_fields);
+var sxcmus_hippel_sample7_fields = layout([chars("name", 18, NONE), u32("sample_data_offset", OFFSET), u16("length_words"),
+    u16("volume_word"), u16("loop_start", OFFSET), u16("loop_length_words")]);
+var sxcmus_hippel_sample7 = sxLayout(0x609E000D, "hippel_sample7", BE, sxcmus_hippel_sample7_fields);
+var sxcmus_hippel_sample_coso_fields = layout([u32("sample_data_offset", OFFSET), u16("length_words"),
+    u16("loop_start", OFFSET), u16("loop_length_words")]);
+var sxcmus_hippel_sample_coso = sxLayout(0x609E000E, "hippel_sample_coso", BE, sxcmus_hippel_sample_coso_fields);
+var sxcmus_kefrens_sample_fields = layout([blob("opaque_prefix", 16), u32("sample_data_offset", OFFSET),
+    u16("byte_length", SIZE), u8("volume"), blob("opaque_byte", 1), u16("loop_start", OFFSET), blob("opaque_tail", 6)]);
+var sxcmus_kefrens_sample = sxLayout(0x609E0010, "kefrens_sample", BE, sxcmus_kefrens_sample_fields);
+var sxcmus_kefrens_end_fields = layout([u8("marker")]);
+var sxcmus_kefrens_end = sxLayout(0x609E0012, "kefrens_end", LE, sxcmus_kefrens_end_fields);
+var sxcmus_kefrens_cell_fields = layout([u8("note_index"), u8("sample_and_effect"), u8("parameter")]);
+var sxcmus_kefrens_cell = sxLayout(0x609E0013, "kefrens_cell", LE, sxcmus_kefrens_cell_fields);
+var sxcmus_tfmx_tfhd_fields = layout([chars("signature", 4, SIGNATURE), u32("header_byte_length", SIZE), u8("player_type", ID),
+    u8("wrapper_version", ID), u32("music_byte_length", SIZE), u32("sample_byte_length", SIZE)]);
+var sxcmus_tfmx_tfhd = sxLayout(0x609E0014, "tfmx_tfhd", BE, sxcmus_tfmx_tfhd_fields);
+var sxcmus_tfmx_song_end_fields = layout([u16("last_track_step")]);
+var sxcmus_tfmx_song_end = sxLayout(0x609E0019, "tfmx_song_end", BE, sxcmus_tfmx_song_end_fields);
+var sxcmus_tfmx_song_tempo_fields = layout([u16("tempo_word")]);
+var sxcmus_tfmx_song_tempo = sxLayout(0x609E001A, "tfmx_song_tempo", BE, sxcmus_tfmx_song_tempo_fields);
+var sxcmus_tfmx_track_mute_fields = layout([u16("mute_word")]);
+var sxcmus_tfmx_track_mute = sxLayout(0x609E001B, "tfmx_track_mute", BE, sxcmus_tfmx_track_mute_fields);
+var sxcmus_tfmx_tables_be_fields = layout([u32("track_table_offset", OFFSET), u32("pattern_table_offset", OFFSET),
+    u32("macro_table_offset", OFFSET)]);
+var sxcmus_tfmx_tables_be = sxLayout(0x609E001C, "tfmx_tables_be", BE, sxcmus_tfmx_tables_be_fields);
+var sxcmus_tfmx_tables_le_fields = layout([u32("track_table_offset", OFFSET), u32("pattern_table_offset", OFFSET),
+    u32("macro_table_offset", OFFSET)]);
+var sxcmus_tfmx_tables_le = sxLayout(0x609E001D, "tfmx_tables_le", LE, sxcmus_tfmx_tables_le_fields);
+var sxcmus_tfmx_pointer_fields = layout([u32("data_offset", OFFSET)]);
+var sxcmus_tfmx_pointer = sxLayout(0x609E001E, "tfmx_pointer", BE, sxcmus_tfmx_pointer_fields);
+var sxcmus_tfmx_track_channel_fields = layout([u8("pattern_or_control"), i8("transpose")]);
+var sxcmus_tfmx_track_channel = sxLayout(0x609E001F, "tfmx_track_channel", LE, sxcmus_tfmx_track_channel_fields);
+var sxcmus_tfmx_track_command_fields = layout([u16("marker", ID), u16("command", ID), blob("parameters", 12)]);
+var sxcmus_tfmx_track_command = sxLayout(0x609E0020, "tfmx_track_command", BE, sxcmus_tfmx_track_command_fields);
+var sxcmus_tfmx_mod_tag_fields = layout([u8("tag_id", ID), u16("declared_length")]);
+var sxcmus_tfmx_mod_tag = sxLayout(0x609E0021, "tfmx_mod_tag", LE, sxcmus_tfmx_mod_tag_fields);
+function sxcmus_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxcmus_read(c, p, b, n) {
+    return sxcmus_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxcmus_eq(c, p, s, n) {
+    var b = [];
+    return n <= 64 && sxcmus_read(c, p, b, n) && !sxMemcmp(b, s, n);
+}
+function sxcmus_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+}
+function sxcmus_put(c, l, p, count) {
+    var z = sxcmus_width(l);
+    if (!count) {
+        return true;
+    }
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxcmus_span(c, p, count * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    var end = p + count * z;
+    for (var i = 0; i < c.count; i++) {
+        var rel = c.items[i].offset - c.f.base_address;
+        var n = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (rel >= 0 && p < (rel < 0 ? rel + SX_U64_MAX : rel) + n && (rel < 0 ? rel + SX_U64_MAX : rel) < end) {
+            return true;
+        }
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxcmus_opt(c, l, p, count) {
+    var z = sxcmus_width(l);
+    return (!count || !z || count > Math.floor(SX_U64_MAX / z) || !sxcmus_span(c, p, count * z) ? 1 : (sxcmus_put(c, l, p, count) ? 1 : 0)) !== 0;
+}
+function sxcmus_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxcmus_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxcmus_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxcmus_order, true);
+    return !c.failed;
+}
+function sxcmus_be16(b, b_o) {
+    return b[b_o] << 8 | b[b_o + 1];
+}
+function sxcmus_be32(b, b_o) {
+    return ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0;
+}
+function sxcmus_word(c, p, v) {
+    var b = [];
+    if (!sxcmus_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxcmus_be16(b, 0);
+    return true;
+}
+function sxcmus_hippel_origin(c, kind, out) {
+    if (kind === 1) {
+        if (!sxcmus_eq(c, 0, "COSO", 4)) {
+            return false;
+        }
+        out[0] = 0;
+        return true;
+    }
+    if (sxcmus_eq(c, 0, "TFMX", 4) || kind === 2 && sxcmus_eq(c, 0, "COSO", 4)) {
+        out[0] = 0;
+        return true;
+    }
+    if (kind === 0 && sxcmus_eq(c, 0, "`\x00", 2)) {
+        var d = [0];
+        if (!sxcmus_word(c, 2, d) || !d[0] || d[0] >= 0x8000 || d[0] & 1) {
+            return false;
+        }
+        var p = 2 + d[0];
+        for (var i = 0; i < 20; i++) {
+            if (sxcmus_eq(c, p + i, "0\x81A\xFA", 4) && sxcmus_word(c, p + i + 4, d) && d[0] && d[0] < 0x8000 && !(d[0] & 1) && sxcmus_eq(c, p + i + 4 + d[0], "TFMX", 4)) {
+                out[0] = p + i + 4 + d[0];
+                return true;
+            }
+        }
+    } else if (kind === 2) {
+        for (i = 0; i < 127; i++) {
+            p = (2 * i) >>> 0;
+            d = [0];
+            if (sxcmus_eq(c, p, "A\xFA", 2) && sxcmus_word(c, p + 2, d) && d[0] < 0x8000 && !(d[0] & 1)) {
+                var q = p + 2 + d[0];
+                if (sxcmus_eq(c, q, "TFMX", 4) || sxcmus_eq(c, q, "COSO", 4)) {
+                    out[0] = q;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+function sxcmus_hippel(c, kind) {
+    var base = [0];
+    if (!sxcmus_hippel_origin(c, kind, base)) {
+        return false;
+    }
+    var packed = sxcmus_eq(c, base[0], "COSO", 4);
+    var st = kind === 2;
+    var seven = kind === 0;
+    var head = base[0] + (packed ? 32 : 0);
+    var h = [];
+    var co = [];
+    if (!sxcmus_read(c, head, h, 32) || sxMemcmp(h, "TFMX", 4)) {
+        return false;
+    }
+    if (packed) {
+        if (!sxcmus_read(c, base[0], co, 32) || !sxcmus_put(c, st ? sxcmus_hippel_st_coso : sxcmus_hippel_coso, base[0], 1)) {
+            return false;
+        }
+    }
+    if (!sxcmus_put(c, st ? sxcmus_hippel_st_header : sxcmus_hippel_header, head, 1)) {
+        return false;
+    }
+    var nf = sxcmus_be16(h, 4) + 1;
+    var ne = sxcmus_be16(h, 6) + 1;
+    var nt = sxcmus_be16(h, 8) + 1;
+    var np = sxcmus_be16(h, 10) + 1;
+    var trackbytes = sxcmus_be16(h, 12);
+    var songs = sxcmus_be16(h, 16);
+    var samples = sxcmus_be16(h, 18);
+    var pos;
+    var sub;
+    var smp;
+    if (!packed) {
+        var env = head + 32 + nf * 64;
+        var tr = env + ne * 64;
+        pos = tr + nt * trackbytes;
+        sub = pos + np * (seven ? 28 : 12);
+        smp = sub + (songs + 1) * (seven ? 8 : 6);
+        if (!sxcmus_span(c, head + 32, nf * 64 + ne * 64)) {
+            return true;
+        }
+        for (var i = 0; i < ne; i++) {
+            if (!sxcmus_put(c, sxcmus_hippel_envelope, env + i * 64, 1)) {
+                return false;
+            }
+        }
+    } else {
+        var fs = sxcmus_be32(co, 4);
+        var es = sxcmus_be32(co, 8);
+        var ts = sxcmus_be32(co, 12);
+        var ps = sxcmus_be32(co, 16);
+        var ss = sxcmus_be32(co, 20);
+        var ms = sxcmus_be32(co, 24);
+        pos = base[0] + ps;
+        sub = base[0] + ss;
+        smp = base[0] + ms;
+        var first = [0];
+        if (!sxcmus_word(c, base[0] + 64, first)) {
+            return true;
+        }
+        var width = st && !first[0] ? 4 : 2;
+        var offsets = [fs, es, ts];
+        var counts = [nf, ne, nt];
+        var ends = [es, ts, ps];
+        for (var j = 0; j < 3; j++) {
+            var p = base[0] + offsets[j];
+            var bytes = counts[j] * width;
+            if (offsets[j] < 64 || ends[j] < offsets[j] || bytes > sxU64(ends[j] - offsets[j]) || !sxcmus_span(c, p, bytes)) {
+                continue;
+            }
+            if (!sxcmus_put(c, width === 2 ? st ? sxcmus_hippel_st_pointer16 : sxcmus_hippel_pointer16 : sxcmus_hippel_pointer32, p, counts[j])) {
+                return false;
+            }
+            if (j === 1) {
+                for (i = 0; i < counts[j]; i++) {
+                    var b = [];
+                    if (!sxcmus_read(c, p + i * width, b, width)) {
+                        return false;
+                    }
+                    var ep = width === 2 ? sxcmus_be16(b, 0) : sxcmus_be32(b, 0);
+                    if (width === 2 && b[0] & 128) {
+                        continue;
+                    }
+                    if (ep >= offsets[j] + bytes && ep <= ends[j] && sxU64(ends[j] - ep) >= 5 && sxcmus_span(c, base[0] + ep, 5) && !sxcmus_put(c, sxcmus_hippel_envelope, base[0] + ep, 1)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        if (ps < 64 || ss < ps || np * (seven ? 28 : 12) > sxU64(ss - ps)) {
+            pos = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        }
+        if (ss < 64 || ms < ss || songs * (seven ? 8 : 6) > sxU64(ms - ss)) {
+            sub = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        }
+        if (ms < 64) {
+            smp = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        }
+    }
+    var position = seven || st ? sxcmus_hippel_position_control : sxcmus_hippel_position;
+    if (!sxcmus_opt(c, position, pos, np * (seven ? 7 : st ? 3 : 4))) {
+        return false;
+    }
+    if (!sxcmus_opt(c, seven ? sxcmus_hippel_subsong7 : sxcmus_hippel_subsong, sub, songs)) {
+        return false;
+    }
+    if (!st && !sxcmus_opt(c, seven ? sxcmus_hippel_sample7 : sxcmus_hippel_sample_coso, smp, samples)) {
+        return false;
+    }
+    return true;
+}
+function sx_classicmusic_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_HIPPEL_7":
+    case "DIE_MUSIC_HIPPEL_CO":
+    case "DIE_MUSIC_HIPPEL_ST":
+    case "DIE_MUSIC_RAZMO_KEFRENSSOUNDMACHINE":
+    case "DIE_MUSIC_HULSBECK_THEFINALMUSICSYSTEMEXTENDED":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_classicmusic_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_HIPPEL_7":
+        ok = sx_hippel_7_build(c);
+        break;
+    case "DIE_MUSIC_HIPPEL_CO":
+        ok = sx_hippel_co_build(c);
+        break;
+    case "DIE_MUSIC_HIPPEL_ST":
+        ok = sx_hippel_st_build(c);
+        break;
+    case "DIE_MUSIC_RAZMO_KEFRENSSOUNDMACHINE":
+        ok = sx_razmo_kefrenssoundmachine_build(c);
+        break;
+    case "DIE_MUSIC_HULSBECK_THEFINALMUSICSYSTEMEXTENDED":
+        ok = sx_hulsbeck_thefinalmusicsystemextended_build(c);
+        break;
+    default:
+        return false;
+    }
+    if (!c.count && c.f.file_type === "DIE_MUSIC_HIPPEL_ST" && c.f.base_info_handled && c.f.is_valid && c.size > 0 && !c.failed) {
+        return sx_raw(c, 0, c.size);
+    }
+    return !!(c.count && sxcmus_finish(c));
+}
+function sx_classicmusic_comment(r, id) {
+    if (r === null || r.name === null || id < 0x609E0000 || id >= 0x609F0000) {
+        return true;
+    }
+    if (id === sxcmus_hippel_header.id && r.name === "frequency_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_header.id && r.name === "envelope_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_header.id && r.name === "track_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_header.id && r.name === "position_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_header.id && r.name === "bytes_per_track") {
+        return sxSetComment(r, "Uncompressed track byte stride; packed COSO tracks instead use the physical offset table.");
+    }
+    if (id === sxcmus_hippel_st_header.id && r.name === "frequency_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_st_header.id && r.name === "envelope_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_st_header.id && r.name === "track_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_st_header.id && r.name === "position_last_index") {
+        return sxSetComment(r, "Stored final zero-based index; number of saved records is this word plus one.");
+    }
+    if (id === sxcmus_hippel_st_header.id && r.name === "bytes_per_track") {
+        return sxSetComment(r, "Uncompressed track byte stride; packed COSO tracks instead use the physical offset table.");
+    }
+    if (id === sxcmus_hippel_st_header.id && r.name === "waveform_last_index") {
+        return sxSetComment(r, "Stored final waveform-definition index in the Atari ST variant; definitions have six physical bytes and are kept raw pending stronger per-field semantics.");
+    }
+    if (id === sxcmus_hippel_coso.id && r.name === "sample_data_offset") {
+        return sxSetComment(r, "Signed displacement from the COSO module start; -1 denotes external sample data. It is never followed as an unsigned physical offset.");
+    }
+    if (id === sxcmus_hippel_st_coso.id && r.name === "digital_data_offset_or_marker") {
+        return sxSetComment(r, "Module-relative digital-data displacement, or the literal LSMP marker for an external sample set; external files and transformed audio remain raw.");
+    }
+    if (id === sxcmus_hippel_pointer16.id && r.name === "data_offset") {
+        return sxSetComment(r, "Stored module-relative16-bit offset interpreted unsigned by the maintained Amiga COSO loader. Original assembler short-pointer paths sign-extend it; values with bit15 set have variant-dependent target semantics and are not followed here.");
+    }
+    if (id === sxcmus_hippel_pointer32.id && r.name === "data_offset") {
+        return sxSetComment(r, "Stored byte displacement relative to the beginning of the COSO module, including its32-byte outer header. Shared target bytes are emitted once.");
+    }
+    if (id === sxcmus_hippel_st_pointer16.id && r.name === "data_offset") {
+        return sxSetComment(r, "Signed16-bit module-relative displacement: the original Atari ST player uses MOVEA.W to sign-extend this word before adding the COSO module base.");
+    }
+    if (id === sxcmus_hippel_position_control.id && r.name === "command") {
+        return sxSetComment(r, "Stored per-channel control byte. The7-voice Amiga position has seven such records; Atari ST has three. Command values are not converted to playback state.");
+    }
+    if (id === sxcmus_hippel_subsong.id && r.name === "last_position") {
+        return sxSetComment(r, "Inclusive final position index; the stored value is not a record count.");
+    }
+    if (id === sxcmus_hippel_subsong7.id && r.name === "last_position") {
+        return sxSetComment(r, "Inclusive final position index; the stored value is not a record count.");
+    }
+    if (id === sxcmus_hippel_sample7.id && r.name === "sample_data_offset") {
+        return sxSetComment(r, "Byte displacement relative to the sample-data region, which may be external; not relative to the physical module header.");
+    }
+    if (id === sxcmus_hippel_sample7.id && r.name === "length_words") {
+        return sxSetComment(r, "Stored sample length in two-byte words; preserved without multiplying the serialized value.");
+    }
+    if (id === sxcmus_hippel_sample7.id && r.name === "loop_start") {
+        return sxSetComment(r, "Byte displacement within the sample; the original loader clears its low bit before playback.");
+    }
+    if (id === sxcmus_hippel_sample7.id && r.name === "loop_length_words") {
+        return sxSetComment(r, "Stored sample loop length in two-byte words; no decoded sample bytes are synthesized.");
+    }
+    if (id === sxcmus_hippel_sample_coso.id && r.name === "sample_data_offset") {
+        return sxSetComment(r, "Byte displacement relative to the sample-data region, which may be external; not relative to the physical module header.");
+    }
+    if (id === sxcmus_hippel_sample_coso.id && r.name === "length_words") {
+        return sxSetComment(r, "Stored sample length in two-byte words; preserved without multiplying the serialized value.");
+    }
+    if (id === sxcmus_hippel_sample_coso.id && r.name === "loop_start") {
+        return sxSetComment(r, "Byte displacement within the sample; the original loader clears its low bit before playback.");
+    }
+    if (id === sxcmus_hippel_sample_coso.id && r.name === "loop_length_words") {
+        return sxSetComment(r, "Stored sample loop length in two-byte words; no decoded sample bytes are synthesized.");
+    }
+    if (id === sxcmus_hippel_sample7.id && r.name === "volume_word") {
+        return sxSetComment(r, "Physical volume word; the maintained7-voice loader ignores it and uses playback volume64.");
+    }
+    if (id === sxcmus_kefrens_sample.id && r.name === "sample_data_offset") {
+        return sxSetComment(r, "Stored physical byte offset relative to the beginning of the module.");
+    }
+    if (id === sxcmus_kefrens_sample.id && r.name === "byte_length") {
+        return sxSetComment(r, "Sample length in bytes, not hardware words; the converter divides this word by two for derived MOD metadata.");
+    }
+    if (id === sxcmus_kefrens_sample.id && r.name === "loop_start") {
+        return sxSetComment(r, "Sample-relative byte position; zero disables looping. The repeat length is derived and is not serialized.");
+    }
+    if (id === sxcmus_kefrens_end.id && r.name === "marker") {
+        return sxSetComment(r, "Physical0xFF in the first byte of an order entry ends active positions; remaining bytes are not inferred as another order.");
+    }
+    if (id === sxcmus_kefrens_cell.id && r.name === "note_index") {
+        return sxSetComment(r, "One-based note index; zero means no note. No frequency/period conversion is applied.");
+    }
+    if (id === sxcmus_kefrens_cell.id && r.name === "sample_and_effect") {
+        return sxSetComment(r, "High nibble sample number; low nibble stored effect. Stored effect D remains D even though the converter maps it to derived MOD effect A.");
+    }
+    if (id === sxcmus_tfmx_tfhd.id && r.name === "player_type") {
+        return sxSetComment(r, "Low7 bits:0 unspecified,1 TFMX1.5,2 Pro,3 seven voices; bit7 requests forced interpretation.");
+    }
+    if (id === sxcmus_tfmx_song_end.id && r.name === "last_track_step") {
+        return sxSetComment(r, "Inclusive final track-step index;0x01FF is commonly used in inactive song slots. No active-song count is invented.");
+    }
+    if (id === sxcmus_tfmx_song_tempo.id && r.name === "tempo_word") {
+        return sxSetComment(r, "Stored timing word. The player selects tick-count/BPM interpretation by value and module variant; retained without normalization.");
+    }
+    if (id === sxcmus_tfmx_track_mute.id && r.name === "mute_word") {
+        return sxSetComment(r, "Editor track-mute word; zero is the normal unmuted setting. Some playback variants ignore these words.");
+    }
+    if (id === sxcmus_tfmx_tables_be.id && r.name === "track_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the512-byte music-header origin, after any wrapper. All three zero words select default track/pattern/macro offsets0x800/0x400/0x600.");
+    }
+    if (id === sxcmus_tfmx_tables_be.id && r.name === "pattern_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the512-byte music-header origin, after any wrapper. All three zero words select default track/pattern/macro offsets0x800/0x400/0x600.");
+    }
+    if (id === sxcmus_tfmx_tables_be.id && r.name === "macro_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the512-byte music-header origin, after any wrapper. All three zero words select default track/pattern/macro offsets0x800/0x400/0x600.");
+    }
+    if (id === sxcmus_tfmx_tables_le.id && r.name === "track_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the512-byte music-header origin, after any wrapper. All three zero words select default track/pattern/macro offsets0x800/0x400/0x600.");
+    }
+    if (id === sxcmus_tfmx_tables_le.id && r.name === "pattern_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the512-byte music-header origin, after any wrapper. All three zero words select default track/pattern/macro offsets0x800/0x400/0x600.");
+    }
+    if (id === sxcmus_tfmx_tables_le.id && r.name === "macro_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the512-byte music-header origin, after any wrapper. All three zero words select default track/pattern/macro offsets0x800/0x400/0x600.");
+    }
+    if (id === sxcmus_tfmx_pointer.id && r.name === "data_offset") {
+        return sxSetComment(r, "Big-endian byte offset relative to the music-header origin, including when the three header table offsets use the legacy little-endian variant.");
+    }
+    if (id === sxcmus_tfmx_track_channel.id && r.name === "pattern_or_control") {
+        return sxSetComment(r, "Pattern index below0x80; higher values are stored sequencer control states. Eight channel words occupy a16-byte ordinary track step.");
+    }
+    if (id === sxcmus_tfmx_track_command.id && r.name === "marker") {
+        return sxSetComment(r, "0xEFFE identifies a track-command step; parameters remain opaque command-specific bytes.");
+    }
+    if (id === sxcmus_tfmx_mod_tag.id && r.name === "declared_length") {
+        return sxSetComment(r, "Stored tag length; ordinary text/data tags count bytes, tag0 uses a distinct four-byte-unit grammar and is not traversed further here.");
+    }
+    if (r.property & 0x00000004) {
+        return sxSetComment(r, "Stored byte offset relative to the module start, unless the enclosing structure specifies another origin.");
+    }
+    if (r.property & 0x00000002) {
+        return sxSetComment(r, "Encoded target-machine memory address; the field source-file offset is shown separately.");
+    }
+    return true;
+}

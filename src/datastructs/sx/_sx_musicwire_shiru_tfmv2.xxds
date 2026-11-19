@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/shiru_tfmv2/xx_shiru_tfmv2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_tfm_rle_header_fields = layout([blob("magic", 8, SIGNATURE)]);
+var sxmw_tfm_rle_header = sxLayout(0x6087002D, "tfm_rle_header", LE, sxmw_tfm_rle_header_fields);
+function sxmw_tfm(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxmw_eq(v, 0, "TFMfmtV2", 8, end) && sxmw_row(v, sxmw_tfm_rle_header, 0, end) && sxmw_rle(v, 8, end);
+}
+function sx_shiru_tfmv2_build(v) {
+    return sxmw_tfm(v);
+}

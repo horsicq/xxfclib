@@ -1,0 +1,403 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_image.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_png_ihdr_fields = layout([u32("width"), u32("height"), u8("bit_depth"), u8("color_type", ID),
+    u8("compression_method", ID), u8("filter_method", ID), u8("interlace_method", ID)]);
+var sxi_png_ihdr = sxLayout(0x60010004, "PNG_IHDR", BE, sxi_png_ihdr_fields);
+var sxi_png_fctl_fields = layout([u32("sequence_number"), u32("width"), u32("height"), u32("x_offset"), u32("y_offset"),
+    u16("delay_num"), u16("delay_den"), u8("dispose_op", ID), u8("blend_op", ID)]);
+var sxi_png_fctl = sxLayout(0x60010006, "PNG_fcTL", BE, sxi_png_fctl_fields);
+var sxi_rgb_fields = layout([u8("red"), u8("green"), u8("blue")]);
+var sxi_rgb = sxLayout(0x60010008, "RGB_COLOR", LE, sxi_rgb_fields);
+var sxi_png_phys_fields = layout([u32("pixels_per_unit_x"), u32("pixels_per_unit_y"), u8("unit_specifier", ID)]);
+var sxi_png_phys = sxLayout(0x60010009, "PNG_pHYs", BE, sxi_png_phys_fields);
+var sxi_png_srgb_fields = layout([u8("rendering_intent", ID)]);
+var sxi_png_srgb = sxLayout(0x6001000C, "PNG_sRGB", BE, sxi_png_srgb_fields);
+var sxi_bmp_info_fields = layout([u32("biSize", SIZE), i32("biWidth"), i32("biHeight"), u16("biPlanes", COUNT),
+    u16("biBitCount"), u32("biCompression", ID), u32("biSizeImage", SIZE), i32("biXPelsPerMeter"), i32("biYPelsPerMeter"),
+    u32("biClrUsed", COUNT), u32("biClrImportant", COUNT)]);
+var sxi_bmp_info = sxLayout(0x60010010, "BITMAPINFOHEADER", LE, sxi_bmp_info_fields);
+var sxi_bmp_v4_fields = layout([u32("bV4Size", SIZE), i32("bV4Width"), i32("bV4Height"), u16("bV4Planes", COUNT),
+    u16("bV4BitCount"), u32("bV4V4Compression", ID), u32("bV4SizeImage", SIZE), i32("bV4XPelsPerMeter"),
+    i32("bV4YPelsPerMeter"), u32("bV4ClrUsed", COUNT), u32("bV4ClrImportant", COUNT), u32("bV4RedMask", FLAGS),
+    u32("bV4GreenMask", FLAGS), u32("bV4BlueMask", FLAGS), u32("bV4AlphaMask", FLAGS), u32("bV4CSType", ID),
+    i32("bV4Endpoints.ciexyzRed.ciexyzX"), i32("bV4Endpoints.ciexyzRed.ciexyzY"), i32("bV4Endpoints.ciexyzRed.ciexyzZ"),
+    i32("bV4Endpoints.ciexyzGreen.ciexyzX"), i32("bV4Endpoints.ciexyzGreen.ciexyzY"), i32("bV4Endpoints.ciexyzGreen.ciexyzZ"),
+    i32("bV4Endpoints.ciexyzBlue.ciexyzX"), i32("bV4Endpoints.ciexyzBlue.ciexyzY"), i32("bV4Endpoints.ciexyzBlue.ciexyzZ"),
+    u32("bV4GammaRed"), u32("bV4GammaGreen"), u32("bV4GammaBlue")]);
+var sxi_bmp_v4 = sxLayout(0x60010011, "BITMAPV4HEADER", LE, sxi_bmp_v4_fields);
+var sxi_bmp_v5_fields = layout([u32("bV5Size", SIZE), i32("bV5Width"), i32("bV5Height"), u16("bV5Planes", COUNT),
+    u16("bV5BitCount"), u32("bV5Compression", ID), u32("bV5SizeImage", SIZE), i32("bV5XPelsPerMeter"), i32("bV5YPelsPerMeter"),
+    u32("bV5ClrUsed", COUNT), u32("bV5ClrImportant", COUNT), u32("bV5RedMask", FLAGS), u32("bV5GreenMask", FLAGS),
+    u32("bV5BlueMask", FLAGS), u32("bV5AlphaMask", FLAGS), u32("bV5CSType", ID), i32("bV5Endpoints.ciexyzRed.ciexyzX"),
+    i32("bV5Endpoints.ciexyzRed.ciexyzY"), i32("bV5Endpoints.ciexyzRed.ciexyzZ"), i32("bV5Endpoints.ciexyzGreen.ciexyzX"),
+    i32("bV5Endpoints.ciexyzGreen.ciexyzY"), i32("bV5Endpoints.ciexyzGreen.ciexyzZ"), i32("bV5Endpoints.ciexyzBlue.ciexyzX"),
+    i32("bV5Endpoints.ciexyzBlue.ciexyzY"), i32("bV5Endpoints.ciexyzBlue.ciexyzZ"), u32("bV5GammaRed"), u32("bV5GammaGreen"),
+    u32("bV5GammaBlue"), u32("bV5Intent", ID), u32("bV5ProfileData", OFFSET), u32("bV5ProfileSize", SIZE),
+    u32("bV5Reserved", RESERVED)]);
+var sxi_bmp_v5 = sxLayout(0x60010012, "BITMAPV5HEADER", LE, sxi_bmp_v5_fields);
+var sxi_gif_screen_fields = layout([u16("logical_screen_width"), u16("logical_screen_height"), u8("packed_fields", FLAGS),
+    u8("background_color_index"), u8("pixel_aspect_ratio")]);
+var sxi_gif_screen = sxLayout(0x60010018, "GIF_LOGICAL_SCREEN_DESCRIPTOR", LE, sxi_gif_screen_fields);
+var sxi_gif_image_fields = layout([u8("image_separator", SIGNATURE), u16("image_left_position"), u16("image_top_position"),
+    u16("image_width"), u16("image_height"), u8("packed_fields", FLAGS)]);
+var sxi_gif_image = sxLayout(0x60010019, "GIF_IMAGE_DESCRIPTOR", LE, sxi_gif_image_fields);
+var sxi_gif_graphic_fields = layout([u8("extension_introducer", SIGNATURE), u8("graphic_control_label", ID),
+    u8("block_size", SIZE), u8("packed_fields", FLAGS), u16("delay_time"), u8("transparent_color_index"),
+    u8("block_terminator", SIGNATURE)]);
+var sxi_gif_graphic = sxLayout(0x6001001B, "GIF_GRAPHIC_CONTROL_EXTENSION", LE, sxi_gif_graphic_fields);
+var sxi_ico_header_fields = layout([u16("idReserved", RESERVED), u16("idType", ID), u16("idCount", COUNT)]);
+var sxi_ico_header = sxLayout(0x60010021, "ICONDIR", LE, sxi_ico_header_fields);
+var sxi_ico_entry_fields = layout([u8("bWidth"), u8("bHeight"), u8("bColorCount", COUNT), u8("bReserved", RESERVED),
+    u16("wPlanes", COUNT), u16("wBitCount"), u32("dwBytesInRes", SIZE), u32("dwImageOffset", OFFSET)]);
+var sxi_ico_entry = sxLayout(0x60010022, "ICONDIRENTRY", LE, sxi_ico_entry_fields);
+var sxi_cur_entry_fields = layout([u8("bWidth"), u8("bHeight"), u8("bColorCount", COUNT), u8("bReserved", RESERVED),
+    u16("wXHotspot"), u16("wYHotspot"), u32("dwBytesInRes", SIZE), u32("dwImageOffset", OFFSET)]);
+var sxi_cur_entry = sxLayout(0x60010023, "CURSORDIRENTRY", LE, sxi_cur_entry_fields);
+var sxi_qoi_header_fields = layout([chars("magic", 4, SIGNATURE), u32("width"), u32("height"), u8("channels", COUNT),
+    u8("colorspace", ID)]);
+var sxi_qoi_header = sxLayout(0x60010024, "QOI_HEADER", BE, sxi_qoi_header_fields);
+var sxi_jpeg_marker_fields = layout([u16("marker", ID)]);
+var sxi_jpeg_marker = sxLayout(0x60010026, "JPEG_MARKER", BE, sxi_jpeg_marker_fields);
+var sxi_jpeg_dht_fields = layout([u8("table_class_and_identifier", FLAGS), u8("codes_of_length_1", COUNT),
+    u8("codes_of_length_2", COUNT), u8("codes_of_length_3", COUNT), u8("codes_of_length_4", COUNT),
+    u8("codes_of_length_5", COUNT), u8("codes_of_length_6", COUNT), u8("codes_of_length_7", COUNT),
+    u8("codes_of_length_8", COUNT), u8("codes_of_length_9", COUNT), u8("codes_of_length_10", COUNT),
+    u8("codes_of_length_11", COUNT), u8("codes_of_length_12", COUNT), u8("codes_of_length_13", COUNT),
+    u8("codes_of_length_14", COUNT), u8("codes_of_length_15", COUNT), u8("codes_of_length_16", COUNT)]);
+var sxi_jpeg_dht = sxLayout(0x60010031, "JPEG_HUFFMAN_TABLE_HEADER", BE, sxi_jpeg_dht_fields);
+var sxi_tiff_header_le_fields = layout([chars("byte_order", 2, ID), u16("version", ID), u32("first_ifd_offset", OFFSET)]);
+var sxi_tiff_header_le = sxLayout(0x60010032, "TIFF_HEADER_LE", LE, sxi_tiff_header_le_fields);
+function sx_image_range(c, at, n) {
+    return c !== null && at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxi_byte(cursor, at, value, value_o) {
+    var c = cursor.context;
+    if (!sx_image_range(c, at, 1)) {
+        return false;
+    }
+    if (at < cursor.start || (at - cursor.start < 0 ? at - cursor.start + SX_U64_MAX : at - cursor.start) >= cursor.valid) {
+        var remaining = (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+        cursor.start = at;
+        cursor.valid = remaining < 0x1000 ? remaining : 0x1000;
+        if (!sx_read(c, at, cursor.bytes, cursor.valid)) {
+            return false;
+        }
+    }
+    value[value_o] = cursor.bytes[(at - cursor.start < 0 ? at - cursor.start + SX_U64_MAX : at - cursor.start)];
+    return true;
+}
+function sx_image_supports(type) {
+    return type === "PNG" || type === "BMP" || type === "GIF" || type === "ICO" || type === "QOI" || type === "JPEG" || type === "TIFF";
+}
+function sx_image_build(c) {
+    switch (c.f.file_type) {
+    case "PNG":
+        return sx_png_build(c);
+    case "BMP":
+        return sx_bmp_build(c);
+    case "GIF":
+        return sx_gif_build(c);
+    case "ICO":
+        return sx_ico_build(c);
+    case "QOI":
+        return sx_qoi_build(c);
+    case "JPEG":
+        return sx_jpeg_build(c);
+    case "TIFF":
+        return sx_tiff_build(c);
+    default:
+        return false;
+    }
+}
+function sx_image_comment(rec, id) {
+    var v;
+    var comment = null;
+    var formatted = [];
+    var ascii = [];
+    if (rec === null || rec.name === null || id < 0x60010001 || id >= 0x60020000) {
+        return true;
+    }
+    v = sxVarU64(rec.value);
+    if (id === sxi_png_ihdr.id && rec.name === "color_type") {
+        switch (v) {
+        case 0:
+            comment = "Grayscale";
+            break;
+        case 2:
+            comment = "Truecolor";
+            break;
+        case 3:
+            comment = "Indexed-color";
+            break;
+        case 4:
+            comment = "Grayscale with alpha";
+            break;
+        case 6:
+            comment = "Truecolor with alpha";
+            break;
+        }
+    } else if (id === sxi_png_ihdr.id && rec.name === "compression_method" && v === 0) {
+        comment = "Deflate/inflate";
+    } else if (id === sxi_png_ihdr.id && rec.name === "filter_method" && v === 0) {
+        comment = "Adaptive filtering";
+    } else if (id === sxi_png_ihdr.id && rec.name === "interlace_method") {
+        comment = v === 0 ? "No interlace" : v === 1 ? "Adam7" : null;
+    } else if (id === sxi_png_phys.id && rec.name === "unit_specifier") {
+        comment = v === 0 ? "Unknown unit" : v === 1 ? "Metre" : null;
+    } else if (id === sxi_png_srgb.id && rec.name === "rendering_intent") {
+        comment = v === 0 ? "Perceptual" : v === 1 ? "Relative colorimetric" : v === 2 ? "Saturation" : v === 3 ? "Absolute colorimetric" : null;
+    } else if (id === sxi_png_fctl.id && rec.name === "dispose_op") {
+        comment = v === 0 ? "APNG_DISPOSE_OP_NONE" : v === 1 ? "APNG_DISPOSE_OP_BACKGROUND" : v === 2 ? "APNG_DISPOSE_OP_PREVIOUS" : null;
+    } else if (id === sxi_png_fctl.id && rec.name === "blend_op") {
+        comment = v === 0 ? "APNG_BLEND_OP_SOURCE" : v === 1 ? "APNG_BLEND_OP_OVER" : null;
+    } else if ((id === sxi_bmp_info.id || id === sxi_bmp_v4.id || id === sxi_bmp_v5.id) && (rec.name === "biCompression" || rec.name === "bV4V4Compression" || rec.name === "bV5Compression")) {
+        switch (v) {
+        case 0:
+            comment = "BI_RGB";
+            break;
+        case 1:
+            comment = "BI_RLE8";
+            break;
+        case 2:
+            comment = "BI_RLE4";
+            break;
+        case 3:
+            comment = "BI_BITFIELDS";
+            break;
+        case 4:
+            comment = "BI_JPEG";
+            break;
+        case 5:
+            comment = "BI_PNG";
+            break;
+        case 6:
+            comment = "BI_ALPHABITFIELDS";
+            break;
+        }
+    } else if (id === sxi_ico_header.id && rec.name === "idType") {
+        comment = v === 1 ? "Icon" : v === 2 ? "Cursor" : null;
+    } else if ((id === sxi_ico_entry.id || id === sxi_cur_entry.id) && (rec.name === "bWidth" || rec.name === "bHeight") && v === 0) {
+        comment = "256 pixels";
+    } else if (id === sxi_qoi_header.id && rec.name === "colorspace") {
+        comment = v === 0 ? "sRGB with linear alpha" : v === 1 ? "All channels linear" : null;
+    } else if ((id === sxi_gif_screen.id || id === sxi_gif_image.id || id === sxi_gif_graphic.id) && rec.name === "packed_fields") {
+        if (id === sxi_gif_screen.id) {
+            sxSnprintf(ascii, 0, 256, "GlobalColorTable=%u|ColorResolution=%u|Sorted=%u|TableEntries=%u", [sxShr64(v, 7) >>> 0 & 1, (sxShr64(v, 4) >>> 0 & 7) + 1, sxShr64(v, 3) >>> 0 & 1, 2 << sxAnd64(v, 7)]);
+        } else if (id === sxi_gif_image.id) {
+            sxSnprintf(ascii, 0, 256, "LocalColorTable=%u|Interlaced=%u|Sorted=%u|Reserved=0x%X|TableEntries=%u", [sxShr64(v, 7) >>> 0 & 1, sxShr64(v, 6) >>> 0 & 1, sxShr64(v, 5) >>> 0 & 1, v >>> 0 & 0x18, 2 << sxAnd64(v, 7)]);
+        } else {
+            sxSnprintf(ascii, 0, 256, "Reserved=0x%X|DisposalMethod=%u|UserInput=%u|Transparency=%u", [v >>> 0 & 0xE0, sxShr64(v, 2) >>> 0 & 7, sxShr64(v, 1) >>> 0 & 1, v >>> 0 & 1]);
+        }
+        for (var i = 0; i < 256; ++i) {
+            formatted[i] = ascii[i] & 0xFF;
+            if (!ascii[i]) {
+                break;
+            }
+        }
+        comment = formatted;
+    } else if (rec.name === "marker" && id >= sxi_jpeg_marker.id && id <= sxi_jpeg_dht.id) {
+        switch (v) {
+        case 0xFFD8:
+            comment = "SOI";
+            break;
+        case 0xFFD9:
+            comment = "EOI";
+            break;
+        case 0xFFDA:
+            comment = "SOS";
+            break;
+        case 0xFFDB:
+            comment = "DQT";
+            break;
+        case 0xFFC4:
+            comment = "DHT";
+            break;
+        case 0xFFDD:
+            comment = "DRI";
+            break;
+        case 0xFFC0:
+            comment = "SOF0";
+            break;
+        case 0xFFC1:
+            comment = "SOF1";
+            break;
+        case 0xFFC2:
+            comment = "SOF2";
+            break;
+        case 0xFFC3:
+            comment = "SOF3";
+            break;
+        case 0xFFE0:
+            comment = "APP0";
+            break;
+        case 0xFFE1:
+            comment = "APP1";
+            break;
+        case 0xFFFE:
+            comment = "COM";
+            break;
+        }
+        if (comment === null && (v >= 0xFFE0 && v <= 0xFFEF || v >= 0xFFD0 && v <= 0xFFD7)) {
+            sxSnprintf(ascii, 0, 256, "%s%u", [v >= 0xFFE0 ? "APP" : "RST", sxAnd64(v, 15)]);
+            for (i = 0; i < 256; ++i) {
+                formatted[i] = ascii[i] & 0xFF;
+                if (!ascii[i]) {
+                    break;
+                }
+            }
+            comment = formatted;
+        }
+    } else if (id >= sxi_tiff_header_le.id && rec.name === "field_type") {
+        switch (v) {
+        case 1:
+            comment = "TIFF_BYTE";
+            break;
+        case 2:
+            comment = "TIFF_ASCII";
+            break;
+        case 3:
+            comment = "TIFF_SHORT";
+            break;
+        case 4:
+            comment = "TIFF_LONG";
+            break;
+        case 5:
+            comment = "TIFF_RATIONAL";
+            break;
+        case 6:
+            comment = "TIFF_SBYTE";
+            break;
+        case 7:
+            comment = "TIFF_UNDEFINED";
+            break;
+        case 8:
+            comment = "TIFF_SSHORT";
+            break;
+        case 9:
+            comment = "TIFF_SLONG";
+            break;
+        case 10:
+            comment = "TIFF_SRATIONAL";
+            break;
+        case 11:
+            comment = "TIFF_FLOAT";
+            break;
+        case 12:
+            comment = "TIFF_DOUBLE";
+            break;
+        case 13:
+            comment = "TIFF_IFD";
+            break;
+        case 16:
+            comment = "TIFF_LONG8";
+            break;
+        case 17:
+            comment = "TIFF_SLONG8";
+            break;
+        case 18:
+            comment = "TIFF_IFD8";
+            break;
+        }
+    } else if (id >= sxi_tiff_header_le.id && rec.name === "tag") {
+        switch (v) {
+        case 254:
+            comment = "NewSubfileType";
+            break;
+        case 256:
+            comment = "ImageWidth";
+            break;
+        case 257:
+            comment = "ImageLength";
+            break;
+        case 258:
+            comment = "BitsPerSample";
+            break;
+        case 259:
+            comment = "Compression";
+            break;
+        case 262:
+            comment = "PhotometricInterpretation";
+            break;
+        case 270:
+            comment = "ImageDescription";
+            break;
+        case 271:
+            comment = "Make";
+            break;
+        case 272:
+            comment = "Model";
+            break;
+        case 273:
+            comment = "StripOffsets";
+            break;
+        case 274:
+            comment = "Orientation";
+            break;
+        case 277:
+            comment = "SamplesPerPixel";
+            break;
+        case 278:
+            comment = "RowsPerStrip";
+            break;
+        case 279:
+            comment = "StripByteCounts";
+            break;
+        case 282:
+            comment = "XResolution";
+            break;
+        case 283:
+            comment = "YResolution";
+            break;
+        case 284:
+            comment = "PlanarConfiguration";
+            break;
+        case 296:
+            comment = "ResolutionUnit";
+            break;
+        case 305:
+            comment = "Software";
+            break;
+        case 306:
+            comment = "DateTime";
+            break;
+        case 320:
+            comment = "ColorMap";
+            break;
+        case 322:
+            comment = "TileWidth";
+            break;
+        case 323:
+            comment = "TileLength";
+            break;
+        case 324:
+            comment = "TileOffsets";
+            break;
+        case 325:
+            comment = "TileByteCounts";
+            break;
+        case 330:
+            comment = "SubIFDs";
+            break;
+        case 338:
+            comment = "ExtraSamples";
+            break;
+        case 339:
+            comment = "SampleFormat";
+            break;
+        case 34665:
+            comment = "ExifIFD";
+            break;
+        case 34853:
+            comment = "GPSInfoIFD";
+            break;
+        case 40965:
+            comment = "InteroperabilityIFD";
+            break;
+        }
+    }
+    return comment === null || sxSetComment(rec, comment);
+}

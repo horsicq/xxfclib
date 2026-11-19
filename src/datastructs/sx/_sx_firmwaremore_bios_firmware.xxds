@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/bios_firmware/xx_bios_firmware_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_bios_firmware_build(c) {
+    var op = [0];
+    if (c.size < 16 || !sx_fm_read(c, c.size - 16, op, 1)) {
+        return false;
+    }
+    return (op[0] === 0xEA ? (sx_fm_add(c, sx_fm_bios_far_reset_jump, c.size - 16, 5) ? 1 : 0) : op[0] === 0xE9 ? (sx_fm_add(c, sx_fm_bios_near_reset_jump, c.size - 16, 3) ? 1 : 0) : 0) !== 0;
+}

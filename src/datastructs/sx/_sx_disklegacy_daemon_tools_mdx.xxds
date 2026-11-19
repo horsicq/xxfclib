@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/daemon_tools_mdx/xx_daemon_tools_mdx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_mds2_header_fields = layout([chars("signature", 16, SIGNATURE), u8("version_major", ID), u8("version_minor", ID),
+    chars("copyright", 26, NONE), u32("key_header_offset", OFFSET)]);
+var sxdleg_mds2_header = sxLayout(0x60750007, "mds2_header", LE, sxdleg_mds2_header_fields);
+var sxdleg_mdx_header_fields = layout([chars("signature", 16, SIGNATURE), u8("version_major", ID), u8("version_minor", ID),
+    chars("copyright", 26, NONE), u32("mdx_marker", ID), u64("descriptor_offset", OFFSET), u64("descriptor_span", SIZE)]);
+var sxdleg_mdx_header = sxLayout(0x60750008, "mdx_header", LE, sxdleg_mdx_header_fields);
+var sxdleg_mdx_key_salt_fields = layout([field("salt", "byte[64]", 64)]);
+var sxdleg_mdx_key_salt = sxLayout(0x60750009, "mdx_key_salt", LE, sxdleg_mdx_key_salt_fields);
+function sxdleg64(b, b_o) {
+    return sxOr64(sxShl64(sxdleg32(b, b_o + 4, 0), 32), sxdleg32(b, b_o, 0));
+}
+function sxdleg_mdx(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 48) || sxMemcmp(h, "MEDIA DESCRIPTOR", 16) || h[16] !== 2) {
+        return false;
+    }
+    var key = sxdleg32(h, 44, 0);
+    if (key === 4294967295) {
+        if (!sxdleg_read(c, 48, h, 48, 16) || !sxdleg_put(c, sxdleg_mdx_header, 0, 1)) {
+            return false;
+        }
+        var p = sxdleg64(h, 48);
+        var n = sxdleg64(h, 56);
+        if (p < 64 || n <= 64 || n > 16777280 || !sxdleg_span(c, p, n) || !sxdleg_span(c, sxU64(p + n - 64), 512)) {
+            return true;
+        }
+        key = sxU64(p + n - 64);
+    } else if (!sxdleg_put(c, sxdleg_mds2_header, 0, 1)) {
+        return false;
+    }
+    if (key >= 48 && sxdleg_span(c, key, 512)) {
+        return sxdleg_put(c, sxdleg_mdx_key_salt, key, 1);
+    }
+    return true;
+}
+function sx_daemon_tools_mdx_build(c) {
+    return sxdleg_mdx(c);
+}

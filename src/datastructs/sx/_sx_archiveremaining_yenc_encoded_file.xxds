@@ -1,0 +1,116 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/yenc_encoded_file/xx_yenc_encoded_file_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_transport_attribute_name_fields = layout([field("transport_attribute_name", "char", 0, STRING)]);
+var sxarm_transport_attribute_name = sxLayout(0x607C000D, "transport_attribute_name", LE, sxarm_transport_attribute_name_fields);
+var sxarm_transport_attribute_value_fields = layout([field("transport_attribute_value", "char", 0, STRING)]);
+var sxarm_transport_attribute_value = sxLayout(0x607C000E, "transport_attribute_value", LE, sxarm_transport_attribute_value_fields);
+var sxarm_yenc_line_width_fields = layout([field("yenc_line_width", "ascii_decimal", 0, COUNT)]);
+var sxarm_yenc_line_width = sxLayout(0x607C000F, "yenc_line_width", LE, sxarm_yenc_line_width_fields);
+var sxarm_yenc_part_number_fields = layout([field("yenc_part_number", "ascii_decimal", 0)]);
+var sxarm_yenc_part_number = sxLayout(0x607C0010, "yenc_part_number", LE, sxarm_yenc_part_number_fields);
+var sxarm_yenc_total_parts_fields = layout([field("yenc_total_parts", "ascii_decimal", 0, COUNT)]);
+var sxarm_yenc_total_parts = sxLayout(0x607C0011, "yenc_total_parts", LE, sxarm_yenc_total_parts_fields);
+var sxarm_yenc_begin_position_fields = layout([field("yenc_begin_position", "ascii_decimal", 0)]);
+var sxarm_yenc_begin_position = sxLayout(0x607C0012, "yenc_begin_position", LE, sxarm_yenc_begin_position_fields);
+var sxarm_yenc_end_position_fields = layout([field("yenc_end_position", "ascii_decimal", 0)]);
+var sxarm_yenc_end_position = sxLayout(0x607C0013, "yenc_end_position", LE, sxarm_yenc_end_position_fields);
+var sxarm_yenc_begin_fields = layout([chars("marker", 7, SIGNATURE)]);
+var sxarm_yenc_begin = sxLayout(0x607C003D, "yenc_begin", LE, sxarm_yenc_begin_fields);
+var sxarm_yenc_part_fields = layout([chars("marker", 6, ID)]);
+var sxarm_yenc_part = sxLayout(0x607C003E, "yenc_part", LE, sxarm_yenc_part_fields);
+var sxarm_yenc_end_fields = layout([chars("marker", 5, ID)]);
+var sxarm_yenc_end = sxLayout(0x607C003F, "yenc_end", LE, sxarm_yenc_end_fields);
+function sxarm_yenc(c) {
+    var p = 0;
+    var next = [0];
+    var b = [];
+    var n = [0];
+    var body = false;
+    var part_allowed = false;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxarm_line(c, p, b, 0x1000, n, next)) {
+            return true;
+        }
+        var head = 0;
+        var l = null;
+        if (!body && n[0] >= 7 && !sxMemcmp(b, "=ybegin", 7)) {
+            head = 7;
+            l = sxarm_yenc_begin;
+        } else if (part_allowed && n[0] >= 6 && !sxMemcmp(b, "=ypart", 6)) {
+            head = 6;
+            l = sxarm_yenc_part;
+        } else if (body && n[0] >= 5 && !sxMemcmp(b, "=yend", 5)) {
+            head = 5;
+            l = sxarm_yenc_end;
+        }
+        if (l !== null) {
+            if (head === 7) {
+                body = true;
+                part_allowed = true;
+            } else if (head === 6) {
+                part_allowed = false;
+            } else {
+                body = false;
+                part_allowed = false;
+            }
+            if (!sxarm_add(c, l, p)) {
+                return false;
+            }
+            var q = head;
+            while (q < n[0]) {
+                while (q < n[0] && (b[q] === 32 || b[q] === 9)) {
+                    q++;
+                }
+                var key = q;
+                while (q < n[0] && b[q] !== 61 /*=*/ && b[q] !== 32 && b[q] !== 9) {
+                    q++;
+                }
+                if (q === n[0] || b[q] !== 61 /*=*/) {
+                    break;
+                }
+                var keylen = sxU64(q - key);
+                var a = ++q;
+                var name = sxarm_eq(b, key, keylen, "name");
+                if (name) {
+                    q = n[0];
+                } else {
+                    while (q < n[0] && b[q] !== 32 && b[q] !== 9) {
+                        q++;
+                    }
+                }
+                l = sxarm_transport_attribute_value;
+                if (name) {
+                    l = sxarm_transport_filename;
+                } else if (sxarm_eq(b, key, keylen, "size")) {
+                    l = sxarm_transport_decimal_size;
+                } else if (sxarm_eq(b, key, keylen, "line")) {
+                    l = sxarm_yenc_line_width;
+                } else if (sxarm_eq(b, key, keylen, "part")) {
+                    l = sxarm_yenc_part_number;
+                } else if (sxarm_eq(b, key, keylen, "total")) {
+                    l = sxarm_yenc_total_parts;
+                } else if (sxarm_eq(b, key, keylen, "begin")) {
+                    l = sxarm_yenc_begin_position;
+                } else if (sxarm_eq(b, key, keylen, "end")) {
+                    l = sxarm_yenc_end_position;
+                } else if (sxarm_eq(b, key, keylen, "crc32") || sxarm_eq(b, key, keylen, "pcrc32")) {
+                    l = sxarm_transport_crc;
+                }
+                if (!sxarm_text(c, sxarm_transport_attribute_name, p + key, keylen, false) || !sxarm_numeric_text(c, l, p + a, b, a, sxU64(q - a))) {
+                    return false;
+                }
+            }
+        } else {
+            part_allowed = false;
+        }
+        p = next[0];
+    }
+    return true;
+}
+function sx_yenc_encoded_file_build(c) {
+    return sxarm_yenc(c);
+}

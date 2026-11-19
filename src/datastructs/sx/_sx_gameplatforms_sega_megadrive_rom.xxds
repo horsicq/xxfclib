@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/sega_megadrive_rom/xx_sega_megadrive_rom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_megadrive_boot_fields = layout([u32("stack_pointer", VA), u32("reset_address", VA)]);
+var sxgp_megadrive_boot = sxLayout(0x6036000A, "megadrive_boot", BE, sxgp_megadrive_boot_fields);
+var sxgp_megadrive_vector_fields = layout([u32("handler_address", VA)]);
+var sxgp_megadrive_vector = sxLayout(0x6036000B, "megadrive_vector", BE, sxgp_megadrive_vector_fields);
+var sxgp_megadrive_header_fields = layout([chars("system", 16, ID), chars("copyright", 16, STRING),
+    chars("domestic_name", 48, STRING), chars("overseas_name", 48, STRING), chars("product_code", 14, ID),
+    u16("checksum", CHECKSUM), chars("io_support", 16, FLAGS), u32("rom_start", VA), u32("rom_end", VA), u32("ram_start", VA),
+    u32("ram_end", VA), blob("sram_marker", 2, ID), u16("sram_type", FLAGS), u32("sram_start", VA), u32("sram_end", VA),
+    chars("modem", 12, STRING), chars("notes", 40, STRING), chars("regions", 16, FLAGS)]);
+var sxgp_megadrive_header = sxLayout(0x6036000C, "megadrive_header", BE, sxgp_megadrive_header_fields);
+function sxgp_megadrive(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgp_row(v, sxgp_megadrive_boot, 0, end) && sxgp_table(v, sxgp_megadrive_vector, 8, 62, end) && sxgp_row(v, sxgp_megadrive_header, 256, end);
+}
+function sx_sega_megadrive_rom_build(v) {
+    return sxgp_megadrive(v);
+}

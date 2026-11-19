@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modvariants.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_modvariants");
+include("_sx_modvariants_azatoth_phapacker");
+include("_sx_modvariants_digitalillusionscreativeent_di");
+include("_sx_modvariants_obi_soundtracker_stk");
+include("_sx_modvariants_southern_magneticfieldspacker");
+
+function fileTypes() { return ["DIE_MUSIC_AZATOTH_PHAPACKER", "DIE_MUSIC_DIGITALILLUSIONSCREATIVEENT_DI",
+    "DIE_MUSIC_OBI_SOUNDTRACKER_STK", "DIE_MUSIC_SOUTHERN_MAGNETICFIELDSPACKER"]; }
+
+var sx_modvariants_layouts = [sxmodv_di_header, sxmodv_mod_compact_sample, sxmodv_di_pattern_offset, sxmodv_mod_order,
+    sxmodv_di_orders_end, sxmodv_di_blank, sxmodv_di_event, sxmodv_di_event_value, sxmodv_pha_sample, sxmodv_pha_control,
+    sxmodv_pha_pattern_offset, sxmodv_soundtracker_title, sxmodv_soundtracker_sample, sxmodv_soundtracker_controls,
+    sxmodv_soundtracker_cell, sxmodv_mfp_controls, sxmodv_mfp_counts, sxmodv_mfp_channels];
+
+function structs() {
+    return sxCatalog([sxmodv_di_header, sxmodv_mod_compact_sample, sxmodv_di_pattern_offset, sxmodv_mod_order,
+        sxmodv_di_orders_end, sxmodv_di_blank, sxmodv_di_event, sxmodv_di_event_value, sxmodv_pha_sample, sxmodv_pha_control,
+        sxmodv_pha_pattern_offset, sxmodv_soundtracker_title, sxmodv_soundtracker_sample, sxmodv_soundtracker_controls,
+        sxmodv_soundtracker_cell, sxmodv_mfp_controls, sxmodv_mfp_counts, sxmodv_mfp_channels], sx_modvariants_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_modvariants_build, false);
+}

@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/qda/xx_qda_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_qda_header_fields = layout([u32("packed"), chars("signature", 4, SIGNATURE), u32("member_count", COUNT),
+    u32("reserved"), bytes("unused", 240)]);
+var sxafr_qda_header = sxLayout(0x6054001E, "qda_header", LE, sxafr_qda_header_fields);
+var sxafr_qda_member_fields = layout([u32("payload_offset", OFFSET), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), chars("name", 256, NONE)]);
+var sxafr_qda_member = sxLayout(0x6054001F, "qda_member", LE, sxafr_qda_member_fields);
+function sxafr_qda(c) {
+    var n = [0];
+    if (!sxafr_word(c, 8, 4, false, n) || !sxafr_add(c, sxafr_qda_header, 0) || n[0] > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 256) / 268)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxafr_add(c, sxafr_qda_member, 256 + i * 268)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_qda_build(c) {
+    return sxafr_qda(c);
+}

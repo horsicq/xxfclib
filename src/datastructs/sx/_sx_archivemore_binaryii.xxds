@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/binaryii/xx_binaryii_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_binaryii_header_fields = layout([chars("signature", 3, SIGNATURE), u8("access_low", FLAGS), u8("file_type_low"),
+    u16("auxiliary_type_low"), u8("storage_type_low"), u16("block_count_low"), u16("modified_date"), u16("modified_time"),
+    u16("created_date"), u16("created_time"), u8("identity", SIGNATURE), u8("reserved19", RESERVED),
+    field("eof_low", "uint24", 3), u8("name_size", SIZE), chars("name", 64, STRING), bytes("unused88", 21),
+    u16("auxiliary_type_high"), u8("access_high", FLAGS), u8("file_type_high"), u8("storage_type_high"),
+    u16("block_count_high"), u8("eof_high"), bytes("unused117", 4), u8("operating_system", ID), u16("native_file_type", ID),
+    u8("reserved124", RESERVED), u8("data_flags", FLAGS), u8("version", ID), u8("files_to_follow", COUNT)]);
+var sxar_binaryii_header = sxLayout(0x601C0011, "binaryii_header", LE, sxar_binaryii_header_fields);
+function sxar_binaryii(c) {
+    var p = 0;
+    for (var i = 0; i < 20000; i++) {
+        var b = [];
+        if (!sxar_read(c, p, b, 0, 128) || sxMemcmp(b, "\nGL", 3)) {
+            break;
+        }
+        if (!sxar_add(c, sxar_binaryii_header, p)) {
+            return false;
+        }
+        var n = b[7] === 13 ? 0 : sxOr64(sxar16(b, 20, false) | b[22] * 0x10000, b[116] * 0x1000000);
+        if (!b[127] || !sxar_span(c, p + 128, n)) {
+            break;
+        }
+        p = sxAnd64(p + 128 + n + 127, sxK(0xFFFFFFFF, 0xFFFFFF80));
+    }
+    return c.count !== 0;
+}
+function sx_binaryii_build(c) {
+    return sxar_binaryii(c);
+}

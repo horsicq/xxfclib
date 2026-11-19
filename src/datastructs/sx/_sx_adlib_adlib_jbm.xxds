@@ -1,0 +1,183 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_jbm/xx_adlib_jbm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_jbm_header_fields = layout([field("format_marker", "uint16_t", 2, SIGNATURE),
+    field("timer_divisor", "uint16_t", 2), field("sequence_table_offset", "uint16_t", 2, OFFSET),
+    field("instrument_table_offset", "uint16_t", 2, OFFSET), field("flags", "uint16_t", 2, FLAGS),
+    field("voice0_order_offset", "uint16_t", 2, OFFSET), field("voice1_order_offset", "uint16_t", 2, OFFSET),
+    field("voice2_order_offset", "uint16_t", 2, OFFSET), field("voice3_order_offset", "uint16_t", 2, OFFSET),
+    field("voice4_order_offset", "uint16_t", 2, OFFSET), field("voice5_order_offset", "uint16_t", 2, OFFSET),
+    field("voice6_order_offset", "uint16_t", 2, OFFSET), field("voice7_order_offset", "uint16_t", 2, OFFSET),
+    field("voice8_order_offset", "uint16_t", 2, OFFSET), field("voice9_order_offset", "uint16_t", 2, OFFSET),
+    field("voice10_order_offset", "uint16_t", 2, OFFSET)]);
+var sxad_adlib_jbm_header = sxLayout(0x600F003E, "adlib_jbm_header", LE, sxad_adlib_jbm_header_fields);
+var sxad_adlib_jbm_sequence_offset_fields = layout([field("sequence_offset", "uint16_t", 2, OFFSET)]);
+var sxad_adlib_jbm_sequence_offset = sxLayout(0x600F003F, "adlib_jbm_sequence_offset", LE, sxad_adlib_jbm_sequence_offset_fields);
+var sxad_adlib_jbm_order_fields = layout([field("sequence_or_end", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_jbm_order = sxLayout(0x600F0040, "adlib_jbm_order", LE, sxad_adlib_jbm_order_fields);
+var sxad_adlib_jbm_end_fields = layout([field("terminator", "uint8_t", 1, SIGNATURE)]);
+var sxad_adlib_jbm_end = sxLayout(0x600F0041, "adlib_jbm_end", LE, sxad_adlib_jbm_end_fields);
+var sxad_adlib_jbm_instrument_select_fields = layout([field("command", "uint8_t", 1, ID),
+    field("instrument_index", "uint8_t", 1, ID)]);
+var sxad_adlib_jbm_instrument_select = sxLayout(0x600F0042, "adlib_jbm_instrument_select", LE, sxad_adlib_jbm_instrument_select_fields);
+var sxad_adlib_jbm_note_fields = layout([field("note_flags", "uint8_t", 1, FLAGS), field("volume", "uint8_t", 1),
+    field("delay_minus_one", "uint16_t", 2)]);
+var sxad_adlib_jbm_note = sxLayout(0x600F0043, "adlib_jbm_note", LE, sxad_adlib_jbm_note_fields);
+var sxad_adlib_jbm_instrument_fields = layout([field("modulator_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level_encoded", "uint8_t", 1, FLAGS), field("modulator_attack_decay", "uint8_t", 1, FLAGS),
+    field("modulator_sustain_release", "uint8_t", 1, FLAGS), field("carrier_characteristics", "uint8_t", 1, FLAGS),
+    field("carrier_scale_level_encoded", "uint8_t", 1, FLAGS), field("carrier_attack_decay", "uint8_t", 1, FLAGS),
+    field("carrier_sustain_release", "uint8_t", 1, FLAGS), field("waveforms_feedback", "uint8_t", 1, FLAGS),
+    field("unused", "uint8_t[7]", 7, RESERVED)]);
+var sxad_adlib_jbm_instrument = sxLayout(0x600F0044, "adlib_jbm_instrument", LE, sxad_adlib_jbm_instrument_fields);
+function sxad_jbm(c) {
+    var marker;
+    var speed;
+    var table;
+    var inst;
+    var flags;
+    var refs = [];
+    var first = 65536;
+    var pool = 65536;
+    var used = sxZeros(255);
+    if ((marker = sx_u16(c, 0, false)) === null || marker !== 2 || (speed = sx_u16(c, 2, false)) === null || !speed || (table = sx_u16(c, 4, false)) === null || table !== 32 || (inst = sx_u16(c, 6, false)) === null || inst <= 32 || inst >= c.size || (c.size - inst) % 16 || (flags = sx_u16(c, 8, false)) === null || flags & 0xFFFFFFFE) {
+        return false;
+    }
+    var patches = Math.floor((c.size - inst < 0 ? c.size - inst + SX_U64_MAX : c.size - inst) / 16);
+    if (!patches || patches > 256) {
+        return false;
+    }
+    for (var i = 0; i < 11; i++) {
+        if ((refs[i] = sx_u16(c, (10 + ((2 * i) >>> 0)) >>> 0, false)) === null) {
+            return false;
+        }
+        if (refs[i]) {
+            if (refs[i] < table || refs[i] >= inst) {
+                return false;
+            }
+            if (refs[i] < first) {
+                first = refs[i];
+            }
+        }
+    }
+    if (first <= table || first >= inst || ((first - table) >>> 0) % 2) {
+        return false;
+    }
+    var sequences = Math.floor(((first - table) >>> 0) / 2);
+    if (!sequences || sequences > 255) {
+        return false;
+    }
+    for (i = 0; i < 11; i++) {
+        if (refs[i]) {
+            var v = [0];
+            var at = [refs[i]];
+            while (at[0] < inst) {
+                if (!sxad_byte(c, at[0]++, v)) {
+                    return false;
+                }
+                if (v[0] === 255) {
+                    break;
+                }
+                if (v[0] >= sequences) {
+                    return false;
+                }
+                used[v[0]] = 1;
+            }
+            if (v[0] !== 255) {
+                return false;
+            }
+        }
+    }
+    var sequence_refs = [];
+    for (i = 0; i < sequences; i++) {
+        if ((sequence_refs[i] = sx_u16(c, (table + ((2 * i) >>> 0)) >>> 0, false)) === null) {
+            return false;
+        }
+        if (used[i]) {
+            if (sequence_refs[i] <= first || sequence_refs[i] >= inst) {
+                return false;
+            }
+            if (sequence_refs[i] < pool) {
+                pool = sequence_refs[i];
+            }
+        }
+    }
+    if (pool >= inst || !sx_add(c, sxad_adlib_jbm_header, 0, 32) || !sx_table(c, sxad_adlib_jbm_sequence_offset, table, 2, sequences) || !sx_table(c, sxad_adlib_jbm_order, first, 1, (pool - first) >>> 0) || !sx_table(c, sxad_adlib_jbm_instrument, inst, 16, patches)) {
+        return false;
+    }
+    var found = sxFill([], 0, 255, false);
+    at = [pool];
+    while (at[0] < inst) {
+        for (i = 0; i < sequences; i++) {
+            if (sequence_refs[i] === at[0]) {
+                found[i] = true;
+            }
+        }
+        var ended = false;
+        while (at[0] < inst && !ended) {
+            v = [0];
+            if (!sxad_byte(c, at[0], v)) {
+                return false;
+            }
+            var size;
+            var l;
+            if (v[0] === 255) {
+                size = 1;
+                l = sxad_adlib_jbm_end;
+                ended = true;
+            } else if (v[0] === 253) {
+                var id = [0];
+                if (!sxad_byte(c, at[0] + 1, id) || id[0] >= patches) {
+                    return false;
+                }
+                size = 2;
+                l = sxad_adlib_jbm_instrument_select;
+            } else {
+                var volume = [0];
+                if ((v[0] & 127) > 95 || !sxad_byte(c, at[0] + 1, volume) || volume[0] > 63) {
+                    return false;
+                }
+                size = 4;
+                l = sxad_adlib_jbm_note;
+            }
+            if (size > inst - at[0] || !sxad_header(c, l, at, size)) {
+                return false;
+            }
+        }
+        if (!ended) {
+            return false;
+        }
+    }
+    for (i = 0; i < sequences; i++) {
+        if (used[i] && !found[i]) {
+            return false;
+        }
+    }
+    for (i = 0; i < 11; i++) {
+        if (refs[i]) {
+            var pos = refs[i];
+            v = [0];
+            if (pos >= pool) {
+                return false;
+            }
+            while (pos < pool) {
+                if (!sxad_byte(c, pos++, v)) {
+                    return false;
+                }
+                if (v[0] === 255) {
+                    break;
+                }
+            }
+            if (v[0] !== 255) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_adlib_jbm_build(c) {
+    return sxad_jbm(c);
+}

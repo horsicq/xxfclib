@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/vice_snapshot/xx_vice_snapshot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_vice_snapshot_header_fields = layout([chars("signature", 19, SIGNATURE), u8("major"), u8("minor"),
+    chars("machine", 16, NONE)]);
+var sxbx_vice_snapshot_header = sxLayout(0x6030000A, "vice_snapshot_header", LE, sxbx_vice_snapshot_header_fields);
+var sxbx_vice_version_header_fields = layout([chars("signature", 13, SIGNATURE), u8("major"), u8("minor"), u8("build"),
+    u8("revision"), u32("svn_revision")]);
+var sxbx_vice_version_header = sxLayout(0x6030000B, "vice_version_header", LE, sxbx_vice_version_header_fields);
+var sxbx_vice_module_header_fields = layout([chars("name", 16, NONE), u8("major"), u8("minor"), u32("module_size", SIZE)]);
+var sxbx_vice_module_header = sxLayout(0x6030000C, "vice_module_header", LE, sxbx_vice_module_header_fields);
+function sxbx_vice(c) {
+    var b = [];
+    var p = 37;
+    if (!sxbx_add(c, sxbx_vice_snapshot_header, 0)) {
+        return false;
+    }
+    if (sxbx_read(c, p, b, 21) && !sxMemcmp(b, "VICE Version\x1A", 13)) {
+        if (!sxbx_add(c, sxbx_vice_version_header, p)) {
+            return false;
+        }
+        p += 21;
+    }
+    for (var i = 0; i < 4096 && c.count < 20000; i++) {
+        if (!sxbx_read(c, p, b, 22)) {
+            break;
+        }
+        var z = sxbx32(b, 18, false);
+        if (z <= 22 || !sxbx_span(c, p, z)) {
+            break;
+        }
+        if (!sxbx_add(c, sxbx_vice_module_header, p)) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_vice_snapshot_build(c) {
+    return sxbx_vice(c);
+}

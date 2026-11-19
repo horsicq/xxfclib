@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/solar_fs/xx_solar_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_solar_volume_identity_fields = layout([field("boot_prefix", "byte[11]", 11), u16("bytes_per_sector", SIZE),
+    field("unknown13", "byte[5]", 5), u16("total_sectors", COUNT), field("unknown20", "byte[17]", 17),
+    u8("extended_signature", SIGNATURE), field("unknown38", "byte[4]", 4), chars("volume_label", 11, NONE),
+    chars("filesystem_signature", 8, SIGNATURE)]);
+var sxdt_solar_volume_identity = sxLayout(0x607A0066, "solar_volume_identity", LE, sxdt_solar_volume_identity_fields);
+function sxdt_solar(c) {
+    var b = [];
+    return sxdt_read(c, 0, b, 0, 61) && b[37] === 41 && !sxMemcmpAt(b, 53, "SOL_FS  ", 0, 8) && sxdt_put(c, sxdt_solar_volume_identity, 0, 1);
+}
+function sx_solar_fs_build(c) {
+    var ok = false;
+    ok = sxdt_solar(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musicnext.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_musicnext");
+include("_sx_musicnext_extendedmidi_xmi");
+include("_sx_musicnext_faust_goattracker2_ins");
+include("_sx_musicnext_faust_goattracker_sng");
+include("_sx_musicnext_gensmd_ym2612_gym");
+include("_sx_musicnext_hasan_dasik_dsm");
+include("_sx_musicnext_hasan_dsik_dsm");
+include("_sx_musicnext_idsoft_doom_mus");
+include("_sx_musicnext_iris_hivelytracker");
+include("_sx_musicnext_konami_kss");
+include("_sx_musicnext_konami_musicdataextended_mdx");
+include("_sx_musicnext_konami_mxdrv_pcm");
+include("_sx_musicnext_pixel_organya");
+include("_sx_musicnext_pixel_pxtone_ptcop");
+include("_sx_musicnext_pixel_pxtone_ptnoise");
+include("_sx_musicnext_pixel_pxtone_pttune");
+include("_sx_musicnext_pixel_pxtone_ptvoice");
+include("_sx_musicnext_riven_exoticadlib_xad");
+include("_sx_musicnext_shogun_deltamusic1");
+include("_sx_musicnext_shogun_deltamusic2");
+include("_sx_musicnext_simplemusicalscore_smus");
+include("_sx_musicnext_subz3ro_adlibtracker2_a2m");
+include("_sx_musicnext_subz3ro_adlibtracker2_tiny");
+include("_sx_musicnext_superions_futurecomposer_fc13");
+include("_sx_musicnext_superions_futurecomposer_fc14");
+include("_sx_musicnext_theloomsyndicate_dynamicstudio_dsm");
+include("_sx_musicnext_trixter_monotone");
+include("_sx_musicnext_ym2612reglog_gym");
+
+function fileTypes() { return ["DIE_MUSIC_SUBZ3RO_ADLIBTRACKER2_A2M", "DIE_MUSIC_SUBZ3RO_ADLIBTRACKER2_TINY",
+    "DIE_MUSIC_SHOGUN_DELTAMUSIC1", "DIE_MUSIC_SHOGUN_DELTAMUSIC2", "DIE_MUSIC_HASAN_DASIK_DSM", "DIE_MUSIC_HASAN_DSIK_DSM",
+    "DIE_MUSIC_THELOOMSYNDICATE_DYNAMICSTUDIO_DSM", "DIE_MUSIC_SUPERIONS_FUTURECOMPOSER_FC13",
+    "DIE_MUSIC_SUPERIONS_FUTURECOMPOSER_FC14", "DIE_MUSIC_FAUST_GOATTRACKER2_INS", "DIE_MUSIC_KONAMI_KSS",
+    "DIE_MUSIC_TRIXTER_MONOTONE", "DIE_MUSIC_IDSOFT_DOOM_MUS", "DIE_MUSIC_PIXEL_ORGANYA", "DIE_MUSIC_PIXEL_PXTONE_PTTUNE",
+    "DIE_MUSIC_PIXEL_PXTONE_PTCOP", "DIE_MUSIC_PIXEL_PXTONE_PTNOISE", "DIE_MUSIC_PIXEL_PXTONE_PTVOICE",
+    "DIE_MUSIC_FAUST_GOATTRACKER_SNG", "DIE_MUSIC_RIVEN_EXOTICADLIB_XAD", "DIE_MUSIC_EXTENDEDMIDI_XMI",
+    "DIE_MUSIC_IRIS_HIVELYTRACKER", "DIE_MUSIC_SIMPLEMUSICALSCORE_SMUS", "DIE_MUSIC_GENSMD_YM2612_GYM",
+    "DIE_MUSIC_KONAMI_MUSICDATAEXTENDED_MDX", "DIE_MUSIC_KONAMI_MXDRV_PCM", "DIE_MUSIC_YM2612REGLOG_GYM"]; }
+
+var sx_musicnext_layouts = [sxmn_a2m_header, sxmn_a2t_header, sxmn_a2t_flags, sxmn_a2t_timing, sxmn_a2t_locks,
+    sxmn_packed_length16, sxmn_packed_length32, sxmn_mus_header, sxmn_mus_instrument, sxmn_iff_form, sxmn_iff_chunk,
+    sxmn_xmi_info, sxmn_xmi_timb, sxmn_xmi_timbre, sxmn_xmi_rbrn, sxmn_xmi_branch, sxmn_kss_header, sxmn_kss_extended,
+    sxmn_gym_header, sxmn_gym_frame, sxmn_gym_ym_write, sxmn_gym_psg_write, sxmn_org_header, sxmn_org_instrument,
+    sxmn_org_position, sxmn_org_note, sxmn_org_length, sxmn_org_volume, sxmn_org_pan, sxmn_pxt_header, sxmn_pxt_chunk,
+    sxmn_pxt_master, sxmn_pxt_unit_count, sxmn_pxt_voice_header, sxmn_pxt_noise_header, sxmn_pxt_noise_samples1,
+    sxmn_pxt_noise_samples2, sxmn_pxt_noise_samples3, sxmn_pxt_noise_samples4, sxmn_pxt_noise_samples5, sxmn_pxt_noise_units,
+    sxmn_monotone_header, sxmn_monotone_order, sxmn_monotone_cell, sxmn_xad_header, sxmn_mdx_title_byte, sxmn_mdx_title_end,
+    sxmn_mdx_pdx_byte, sxmn_mdx_voice_offset, sxmn_mdx_track_offset, sxmn_pdx_entry, sxmn_dsm_riff, sxmn_dsm_chunk,
+    sxmn_dsm_song, sxmn_dsm_order, sxmn_dsm_sample, sxmn_dynamic_header, sxmn_dynamic_pan, sxmn_dynamic_track_name,
+    sxmn_dynamic_sample, sxmn_dynamic_event, sxmn_smus_header, sxmn_smus_instrument, sxmn_smus_event, sxmn_hvl_header,
+    sxmn_hvl_subsong, sxmn_hvl_position, sxmn_hvl_empty_event, sxmn_hvl_event, sxmn_hvl_instrument, sxmn_hvl_playlist,
+    sxmn_hvl_name_byte, sxmn_goat_header, sxmn_goat_magic, sxmn_goat_order_length, sxmn_goat_order, sxmn_goat_instrument_count,
+    sxmn_goat_instrument3, sxmn_goat_instrument2, sxmn_goat_table_count, sxmn_goat_table_left, sxmn_goat_table_right,
+    sxmn_goat_pattern_count, sxmn_goat_pattern_rows, sxmn_goat_event, sxmn_dsm1_header, sxmn_dsm1_instrument_paragraph,
+    sxmn_dsm1_pattern_paragraph, sxmn_dsm1_instrument, sxmn_dsm1_pattern, sxmn_fc13_header, sxmn_fc14_header, sxmn_fc_sample,
+    sxmn_fc_wave_length, sxmn_fc_sequence, sxmn_fc_pattern_row, sxmn_d1_header, sxmn_d1_track, sxmn_d1_control, sxmn_d1_pattern,
+    sxmn_d1_instrument, sxmn_d1_synth_entry, sxmn_d2_marker, sxmn_d2_arpeggio, sxmn_d2_track_header, sxmn_d2_track,
+    sxmn_d2_pattern_size, sxmn_d2_pattern, sxmn_d2_instrument_offset, sxmn_d2_instrument];
+
+function structs() {
+    return sxCatalog([sxmn_a2m_header, sxmn_a2t_header, sxmn_a2t_flags, sxmn_a2t_timing, sxmn_a2t_locks, sxmn_packed_length16,
+        sxmn_packed_length32, sxmn_mus_header, sxmn_mus_instrument, sxmn_iff_form, sxmn_iff_chunk, sxmn_xmi_info, sxmn_xmi_timb,
+        sxmn_xmi_timbre, sxmn_xmi_rbrn, sxmn_xmi_branch, sxmn_kss_header, sxmn_kss_extended, sxmn_gym_header, sxmn_gym_frame,
+        sxmn_gym_ym_write, sxmn_gym_psg_write, sxmn_org_header, sxmn_org_instrument, sxmn_org_position, sxmn_org_note,
+        sxmn_org_length, sxmn_org_volume, sxmn_org_pan, sxmn_pxt_header, sxmn_pxt_chunk, sxmn_pxt_master, sxmn_pxt_unit_count,
+        sxmn_pxt_voice_header, sxmn_pxt_noise_header, sxmn_pxt_noise_samples1, sxmn_pxt_noise_samples2, sxmn_pxt_noise_samples3,
+        sxmn_pxt_noise_samples4, sxmn_pxt_noise_samples5, sxmn_pxt_noise_units, sxmn_monotone_header, sxmn_monotone_order,
+        sxmn_monotone_cell, sxmn_xad_header, sxmn_mdx_title_byte, sxmn_mdx_title_end, sxmn_mdx_pdx_byte, sxmn_mdx_voice_offset,
+        sxmn_mdx_track_offset, sxmn_pdx_entry, sxmn_dsm_riff, sxmn_dsm_chunk, sxmn_dsm_song, sxmn_dsm_order, sxmn_dsm_sample,
+        sxmn_dynamic_header, sxmn_dynamic_pan, sxmn_dynamic_track_name, sxmn_dynamic_sample, sxmn_dynamic_event,
+        sxmn_smus_header, sxmn_smus_instrument, sxmn_smus_event, sxmn_hvl_header, sxmn_hvl_subsong, sxmn_hvl_position,
+        sxmn_hvl_empty_event, sxmn_hvl_event, sxmn_hvl_instrument, sxmn_hvl_playlist, sxmn_hvl_name_byte, sxmn_goat_header,
+        sxmn_goat_magic, sxmn_goat_order_length, sxmn_goat_order, sxmn_goat_instrument_count, sxmn_goat_instrument3,
+        sxmn_goat_instrument2, sxmn_goat_table_count, sxmn_goat_table_left, sxmn_goat_table_right, sxmn_goat_pattern_count,
+        sxmn_goat_pattern_rows, sxmn_goat_event, sxmn_dsm1_header, sxmn_dsm1_instrument_paragraph, sxmn_dsm1_pattern_paragraph,
+        sxmn_dsm1_instrument, sxmn_dsm1_pattern, sxmn_fc13_header, sxmn_fc14_header, sxmn_fc_sample, sxmn_fc_wave_length,
+        sxmn_fc_sequence, sxmn_fc_pattern_row, sxmn_d1_header, sxmn_d1_track, sxmn_d1_control, sxmn_d1_pattern,
+        sxmn_d1_instrument, sxmn_d1_synth_entry, sxmn_d2_marker, sxmn_d2_arpeggio, sxmn_d2_track_header, sxmn_d2_track,
+        sxmn_d2_pattern_size, sxmn_d2_pattern, sxmn_d2_instrument_offset, sxmn_d2_instrument], sx_musicnext_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_musicnext_build, false);
+}

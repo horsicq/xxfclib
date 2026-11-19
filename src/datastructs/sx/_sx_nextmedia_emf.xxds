@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/emf/xx_emf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_emf_header_fields = layout([u32("record_type", ID), u32("record_size", SIZE), i32("bounds_left"), i32("bounds_top"),
+    i32("bounds_right"), i32("bounds_bottom"), i32("frame_left"), i32("frame_top"), i32("frame_right"), i32("frame_bottom"),
+    u32("signature", SIGNATURE), u32("version", ID), u32("file_size", SIZE), u32("record_count", COUNT),
+    u16("handle_count", COUNT), u16("reserved", RESERVED), u32("description_chars", COUNT), u32("description_offset", OFFSET),
+    u32("palette_entries", COUNT), i32("device_width"), i32("device_height"), i32("millimeters_width"),
+    i32("millimeters_height")]);
+var sxnx_emf_header = sxLayout(0x60320001, "emf_header", LE, sxnx_emf_header_fields);
+var sxnx_emf_record_fields = layout([u32("record_type", ID), u32("record_size", SIZE)]);
+var sxnx_emf_record = sxLayout(0x60320002, "emf_record", LE, sxnx_emf_record_fields);
+var sxnx_emf_rectangle_fields = layout([i32("left"), i32("top"), i32("right"), i32("bottom")]);
+var sxnx_emf_rectangle = sxLayout(0x60320003, "emf_rectangle", LE, sxnx_emf_rectangle_fields);
+var sxnx_emf_point_fields = layout([i32("x"), i32("y")]);
+var sxnx_emf_point = sxLayout(0x60320004, "emf_point", LE, sxnx_emf_point_fields);
+var sxnx_emf_poly_count_fields = layout([u32("point_count", COUNT)]);
+var sxnx_emf_poly_count = sxLayout(0x60320005, "emf_poly_count", LE, sxnx_emf_poly_count_fields);
+var sxnx_emf_mode_fields = layout([u32("mode", ID)]);
+var sxnx_emf_mode = sxLayout(0x60320006, "emf_mode", LE, sxnx_emf_mode_fields);
+var sxnx_emf_flags_fields = layout([u32("flags", FLAGS)]);
+var sxnx_emf_flags = sxLayout(0x60320007, "emf_flags", LE, sxnx_emf_flags_fields);
+var sxnx_emf_color_fields = layout([u32("color_ref")]);
+var sxnx_emf_color = sxLayout(0x60320008, "emf_color", LE, sxnx_emf_color_fields);
+var sxnx_emf_restore_fields = layout([i32("relative_level")]);
+var sxnx_emf_restore = sxLayout(0x60320009, "emf_restore", LE, sxnx_emf_restore_fields);
+var sxnx_emf_handle_fields = layout([u32("object_index", ID)]);
+var sxnx_emf_handle = sxLayout(0x6032000A, "emf_handle", LE, sxnx_emf_handle_fields);
+var sxnx_emf_pen_fields = layout([u32("object_index", ID), u32("style", FLAGS), i32("width_x"), i32("width_y"), u32("color_ref")]);
+var sxnx_emf_pen = sxLayout(0x6032000B, "emf_pen", LE, sxnx_emf_pen_fields);
+var sxnx_emf_brush_fields = layout([u32("object_index", ID), u32("style", ID), u32("color_ref"), u32("hatch", ID)]);
+var sxnx_emf_brush = sxLayout(0x6032000C, "emf_brush", LE, sxnx_emf_brush_fields);
+var sxnx_emf_eof_fields = layout([u32("palette_count", COUNT), u32("palette_offset", OFFSET), u32("last_record_size", SIZE)]);
+var sxnx_emf_eof = sxLayout(0x6032000D, "emf_eof", LE, sxnx_emf_eof_fields);
+function sxnx_emf(v) {
+    if (!sxnx_row(v, sxnx_emf_header, 0, v.n)) {
+        return false;
+    }
+    var at = sxnx_u32(v.p, 4, false);
+    var work = 0;
+    while (at < v.n) {
+        if (++work > 4096 || !sxnx_row(v, sxnx_emf_record, at, v.n)) {
+            return false;
+        }
+        var kind = sxnx_u32(v.p, at, false);
+        var size = sxnx_u32(v.p, at + 4, false);
+        if (size < 8 || !sxnx_need(v, at, size, v.n)) {
+            return false;
+        }
+        var p = at + 8;
+        var end = at + size;
+        var l = null;
+        if (kind >= 2 && kind <= 4) {
+            if (!sxnx_row(v, sxnx_emf_rectangle, p, end) || !sxnx_row(v, sxnx_emf_poly_count, p + 16, end) || !sxnx_table(v, sxnx_emf_point, p + 20, sxnx_u32(v.p, p + 16, false), end)) {
+                return false;
+            }
+        } else {
+            if (kind >= 9 && kind <= 13 || kind === 27 || kind === 54) {
+                l = sxnx_emf_point;
+            } else if (kind === 15) {
+                if (!sxnx_row(v, sxnx_emf_point, p, end)) {
+                    return false;
+                }
+                l = sxnx_emf_color;
+                p += 8;
+            } else if (kind === 16 || kind === 22) {
+                l = sxnx_emf_flags;
+            } else if (kind >= 17 && kind <= 21) {
+                l = sxnx_emf_mode;
+            } else if (kind === 24 || kind === 25) {
+                l = sxnx_emf_color;
+            } else if (kind === 34) {
+                l = sxnx_emf_restore;
+            } else if (kind === 37 || kind === 40) {
+                l = sxnx_emf_handle;
+            } else if (kind === 29 || kind === 30 || kind === 42 || kind === 43) {
+                l = sxnx_emf_rectangle;
+            } else if (kind === 38) {
+                l = sxnx_emf_pen;
+            } else if (kind === 39) {
+                l = sxnx_emf_brush;
+            } else if (kind === 14) {
+                l = sxnx_emf_eof;
+            }
+            if (l !== null && !sxnx_row(v, l, p, end)) {
+                return false;
+            }
+        }
+        at = end;
+    }
+    return at === v.n;
+}
+function sx_emf_build(v) {
+    return sxnx_emf(v);
+}

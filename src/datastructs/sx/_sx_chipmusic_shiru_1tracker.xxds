@@ -1,0 +1,110 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/shiru_1tracker/xx_shiru_1tracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_1tracker_section_fields = layout([field("section", "char", 0)]);
+var sxchip_chip_1tracker_section = sxLayout(0x608F0055, "chip_1tracker_section", LE, sxchip_chip_1tracker_section_fields);
+var sxchip_chip_1tracker_key_fields = layout([field("key", "char", 0)]);
+var sxchip_chip_1tracker_key = sxLayout(0x608F0056, "chip_1tracker_key", LE, sxchip_chip_1tracker_key_fields);
+var sxchip_chip_1tracker_engine_fields = layout([field("engine", "char", 0)]);
+var sxchip_chip_1tracker_engine = sxLayout(0x608F0057, "chip_1tracker_engine", LE, sxchip_chip_1tracker_engine_fields);
+var sxchip_chip_1tracker_title_fields = layout([field("title", "char", 0)]);
+var sxchip_chip_1tracker_title = sxLayout(0x608F0058, "chip_1tracker_title", LE, sxchip_chip_1tracker_title_fields);
+var sxchip_chip_1tracker_author_fields = layout([field("author", "char", 0)]);
+var sxchip_chip_1tracker_author = sxLayout(0x608F0059, "chip_1tracker_author", LE, sxchip_chip_1tracker_author_fields);
+var sxchip_chip_1tracker_measure_fields = layout([field("measure", "ascii_signed", 0)]);
+var sxchip_chip_1tracker_measure = sxLayout(0x608F005D, "chip_1tracker_measure", LE, sxchip_chip_1tracker_measure_fields);
+function sxchip_text_row(c, l, p, n) {
+    if (!n || n > 4096 || !sxchip_span(c, p, n)) {
+        return true;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    return sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxchip_1tracker(c) {
+    if (!sxchip_eq(c, 0, "[1tracker module]\r\n", 19)) {
+        return true;
+    }
+    var p = 0;
+    var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (limit > 0x800000) {
+        limit = 0x800000;
+    }
+    var metadata = true;
+    var lines = 0;
+    while (p < limit && lines++ < 65536) {
+        var start = p;
+        var b = [];
+        var ch = [0];
+        var used = 0;
+        while (p < limit && sxchip_u8(c, p, ch)) {
+            p++;
+            if (ch[0] === 10) {
+                break;
+            }
+            if (used < 4097) {
+                b[used++] = ch[0];
+            }
+        }
+        var n = sxU64(p - start);
+        if (n && ch[0] === 10) {
+            n--;
+        }
+        if (n && used && b[sxU64(used - 1)] === 13) {
+            n--;
+            used--;
+        }
+        if (!n || n > 4096 || used !== n) {
+            continue;
+        }
+        if (b[0] === 91 /*[*/ && b[sxU64(n - 1)] === 93 /*]*/) {
+            metadata = n === 17 && !sxMemcmp(b, "[1tracker module]", 17) || n === 10 && !sxMemcmp(b, "[Settings]", 10);
+            if (!sxchip_text_row(c, sxchip_chip_1tracker_section, start, n)) {
+                return false;
+            }
+            if (!metadata) {
+                break;
+            }
+            continue;
+        }
+        if (!metadata) {
+            break;
+        }
+        var eq = 0;
+        while (eq < n && b[eq] !== 61 /*=*/) {
+            eq++;
+        }
+        if (!eq || eq === n) {
+            continue;
+        }
+        var l = null;
+        if (eq === 6 && !sxMemcmp(b, "Engine", 6)) {
+            l = sxchip_chip_1tracker_engine;
+        } else if (eq === 5 && !sxMemcmp(b, "Title", 5)) {
+            l = sxchip_chip_1tracker_title;
+        } else if (eq === 6 && !sxMemcmp(b, "Author", 6)) {
+            l = sxchip_chip_1tracker_author;
+        } else if (eq === 5 && !sxMemcmp(b, "Speed", 5)) {
+            l = sxchip_chip_1tracker_speed;
+        } else if (eq === 9 && !sxMemcmp(b, "LoopStart", 9)) {
+            l = sxchip_chip_1tracker_loop_start;
+        } else if (eq === 7 && !sxMemcmp(b, "LoopEnd", 7)) {
+            l = sxchip_chip_1tracker_loop_end;
+        } else if (eq === 7 && !sxMemcmp(b, "Measure", 7)) {
+            l = sxchip_chip_1tracker_measure;
+        } else if (eq === 13 && !sxMemcmp(b, "PatternFormat", 13)) {
+            l = sxchip_chip_1tracker_pattern_format;
+        }
+        if (l !== null && (!sxchip_text_row(c, sxchip_chip_1tracker_key, start, eq) || !sxchip_text_row(c, l, start + eq + 1, sxU64(sxU64(n - eq) - 1)))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_shiru_1tracker_build(c) {
+    return sxchip_1tracker(c);
+}

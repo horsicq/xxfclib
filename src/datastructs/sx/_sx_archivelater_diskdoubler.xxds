@@ -1,0 +1,164 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/diskdoubler/xx_diskdoubler_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_diskdoubler_file_fields = layout([u32("magic", SIGNATURE), u32("data_unpacked_size", SIZE),
+    u32("data_packed_size", SIZE), u32("resource_unpacked_size", SIZE), u32("resource_packed_size", SIZE),
+    u8("data_method", ID), u8("resource_method", ID), u8("generation", ID), bytes("finder_metadata23", 25),
+    u16("data_sum16", CHECKSUM), u16("resource_sum16", CHECKSUM), u8("lzw_info"), u8("padding"), u16("data_delta_filter", ID),
+    u16("resource_delta_filter", ID), bytes("finder_metadata58", 24), u16("header_crc16", CHECKSUM)]);
+var sxal_diskdoubler_file = sxLayout(0x60200025, "diskdoubler_file", BE, sxal_diskdoubler_file_fields);
+var sxal_dda2_header_fields = layout([chars("magic", 4, SIGNATURE), u16("header_size", SIZE), bytes("metadata6", 22),
+    u32("unpacked_size", SIZE), bytes("metadata32", 4), u32("archive_size", SIZE), u32("end_record_offset", OFFSET),
+    bytes("metadata44", 16), u16("header_crc16", CHECKSUM)]);
+var sxal_dda2_header = sxLayout(0x60200026, "dda2_header", BE, sxal_dda2_header_fields);
+var sxal_dda2_packed_fields = layout([chars("magic", 4, SIGNATURE), u16("kind", FLAGS), u8("name_size", SIZE),
+    chars("name", 31, STRING), u32("parent_folder_id", ID), u32("record_size", SIZE), bytes("metadata46", 8),
+    u16("header_crc16", CHECKSUM)]);
+var sxal_dda2_packed = sxLayout(0x60200027, "dda2_packed", BE, sxal_dda2_packed_fields);
+var sxal_dda2_folder_fields = layout([chars("magic", 4, SIGNATURE), u16("kind", FLAGS), u8("name_size", SIZE),
+    chars("name", 31, STRING), u32("parent_folder_id", ID), u32("record_size", SIZE), bytes("metadata46", 16),
+    u32("folder_id", ID), bytes("metadata66", 20), u16("header_crc16", CHECKSUM)]);
+var sxal_dda2_folder = sxLayout(0x60200028, "dda2_folder", BE, sxal_dda2_folder_fields);
+var sxal_dda2_stored_fields = layout([chars("magic", 4, SIGNATURE), u16("kind", FLAGS), u8("name_size", SIZE),
+    chars("name", 31, STRING), u32("parent_folder_id", ID), u32("record_size", SIZE), bytes("metadata46", 32),
+    u32("data_size", SIZE), u32("resource_size", SIZE), u8("data_xor8", SIGNATURE), u8("resource_xor8", SIGNATURE),
+    u16("header_crc16", CHECKSUM)]);
+var sxal_dda2_stored = sxLayout(0x60200029, "dda2_stored", BE, sxal_dda2_stored_fields);
+var sxal_dda2_end_fields = layout([chars("magic", 4, SIGNATURE), u16("kind", SIGNATURE)]);
+var sxal_dda2_end = sxLayout(0x6020002A, "dda2_end", BE, sxal_dda2_end_fields);
+var sxal_dda2_footer_fields = layout([u16("magic", SIGNATURE), u32("index_size", SIZE), u16("index_crc16", CHECKSUM),
+    bytes("reserved", 8, RESERVED)]);
+var sxal_dda2_footer = sxLayout(0x6020002B, "dda2_footer", BE, sxal_dda2_footer_fields);
+var sxal_dda2_index_word_fields = layout([u32("folder_id_or_record_offset")]);
+var sxal_dda2_index_word = sxLayout(0x6020002C, "dda2_index_word", BE, sxal_dda2_index_word_fields);
+var sxal_ddar_header_fields = layout([chars("magic", 4, SIGNATURE), bytes("archive_metadata", 72), u16("header_crc16", CHECKSUM)]);
+var sxal_ddar_header = sxLayout(0x6020002D, "ddar_header", BE, sxal_ddar_header_fields);
+var sxal_ddar_member_fields = layout([chars("magic", 4, SIGNATURE), bytes("unknown4", 4), u8("name_size", SIZE),
+    chars("name", 63, STRING), u8("folder_start", FLAGS), u8("folder_end", FLAGS), u32("data_size", SIZE),
+    u32("resource_size", SIZE), bytes("finder_metadata", 36), u16("data_sum16", CHECKSUM), u16("resource_sum16", CHECKSUM),
+    u16("header_crc16", CHECKSUM)]);
+var sxal_ddar_member = sxLayout(0x6020002E, "ddar_member", BE, sxal_ddar_member_fields);
+function sxal_ccitt(b, n) {
+    var crc = 0;
+    for (var i = 0; i < n; i++) {
+        crc ^= b[i] << 8;
+        for (var j = 0; j < 8; j++) {
+            crc = (crc << 1 ^ (crc & 32768 ? 0x1021 : 0)) & 0xFFFF;
+        }
+    }
+    return crc;
+}
+function sxal_dd_method(v) {
+    v &= 127;
+    return v === 0 || v === 1 || v === 6 || v === 8 || v === 9 || v === 10;
+}
+function sxal_dd_single(c, p, room) {
+    var b = [];
+    if (room < 84 || !sxal_read(c, p, b, 84) || sxal32(b, 0, true) !== 0xABCD0054) {
+        return true;
+    }
+    var size = 84 + sxal32(b, 8, true) + sxal32(b, 16, true);
+    var crc = sxal16(b, 82, true);
+    if (size > room || crc && crc !== sxal_ccitt(b, 82) || sxal16(b, 54, true) || sxal16(b, 56, true)) {
+        return true;
+    }
+    var plain = sxal32(b, 4, true);
+    var resource = sxal32(b, 12, true);
+    if (plain && !sxal_dd_method(b[20]) || resource && !sxal_dd_method(b[21]) || !(b[20] & 127) && plain !== sxal32(b, 8, true) || !(b[21] & 127) && resource !== sxal32(b, 16, true)) {
+        return true;
+    }
+    return sxal_add(c, sxal_diskdoubler_file, p);
+}
+function sxal_diskdoubler(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 4)) {
+        return false;
+    }
+    if (sxal32(b, 0, true) === 0xABCD0054) {
+        if (!sxal_read(c, 0, b, 84) || !sxal_add(c, sxal_diskdoubler_file, 0)) {
+            return false;
+        }
+        var n = 84 + sxal32(b, 8, true) + sxal32(b, 16, true);
+        if (sxal_span(c, n, 84)) {
+            var copy = [];
+            if (sxal_read(c, n, copy, 84) && !sxMemcmp(b, copy, 84) && !sxal_add(c, sxal_diskdoubler_file, n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    var dda = !sxMemcmp(b, "DDA2", 4);
+    if (!dda && sxMemcmp(b, "DDAR", 4)) {
+        return false;
+    }
+    var p = dda ? 62 : 78;
+    if (!sxal_add(c, dda ? sxal_dda2_header : sxal_ddar_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (dda) {
+            if (!sxal_read(c, p, b, 6) || sxMemcmp(b, "DDA2", 4)) {
+                break;
+            }
+            var type = sxal16(b, 4, true);
+            if (type === 0xBBBB) {
+                if (!sxal_add(c, sxal_dda2_end, p)) {
+                    return false;
+                }
+                p += 6;
+                if (sxal_read(c, p, b, 16) && sxal16(b, 0, true) === 0xBECD) {
+                    n = sxal32(b, 2, true);
+                    if (sxal_span(c, p + 16, n) && !sxal_add(c, sxal_dda2_footer, p)) {
+                        return false;
+                    }
+                    if (n && !sxAnd64(n, 3) && Math.floor(n / 4) <= 20000 && sxal_span(c, p + 16, n) && !sx_table(c, sxal_dda2_index_word, (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + 16, 4, Math.floor(n / 4))) {
+                        return false;
+                    }
+                }
+                break;
+            }
+            var h = type & 0x8000 ? 88 : type & 0x4000 ? 56 : 90;
+            if (h === 90 && (!sxal_read(c, p, b, 90) || sxal16(b, 88, true) !== sxal_ccitt(b, 88))) {
+                h = 56;
+            }
+            if (!sxal_read(c, p, b, h) || sxal16(b, h + -2, true) !== sxal_ccitt(b, (h - 2) >>> 0)) {
+                break;
+            }
+            n = sxal32(b, 42, true);
+            if (n < h || !sxal_span(c, p, n)) {
+                break;
+            }
+            if (!sxal_add(c, h === 88 ? sxal_dda2_folder : h === 56 ? sxal_dda2_packed : sxal_dda2_stored, p)) {
+                return false;
+            }
+            if (h === 56 && !sxal_dd_single(c, p + h, sxU64(n - h))) {
+                return false;
+            }
+            p += n;
+        } else {
+            if (!sxal_read(c, p, b, 124) || sxMemcmp(b, "DDAR", 4) || sxal16(b, 122, true) !== sxal_ccitt(b, 122)) {
+                break;
+            }
+            var data = sxal32(b, 74, true);
+            var resource = sxal32(b, 78, true);
+            n = b[73] ? 0 : data + resource;
+            if (!sxal_span(c, p + 124, n)) {
+                break;
+            }
+            if (!sxal_add(c, sxal_ddar_member, p)) {
+                return false;
+            }
+            if (!b[72] && !b[73] && !resource && !sxal_dd_single(c, p + 124, data)) {
+                return false;
+            }
+            p += 124 + n;
+        }
+    }
+    return true;
+}
+function sx_diskdoubler_build(c) {
+    return sxal_diskdoubler(c);
+}

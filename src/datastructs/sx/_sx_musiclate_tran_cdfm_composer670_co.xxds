@@ -1,0 +1,93 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/tran_cdfm_composer670_co/xx_tran_cdfm_composer670_co_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlate_c670_sample_fields = layout([u32("unknown_address_placeholder"), u32("sample_bytes", SIZE), u32("loop_begin"),
+    u32("loop_end")]);
+var sxlate_c670_sample = sxLayout(0x60930024, "c670_sample", LE, sxlate_c670_sample_fields);
+var sxlate_c670_fm_instrument_fields = layout([u8("feedback_connection"), u8("modulator_characteristics"),
+    u8("modulator_level"), u8("modulator_attack_decay"), u8("modulator_sustain_release"), u8("modulator_waveform"),
+    u8("carrier_characteristics"), u8("carrier_level"), u8("carrier_attack_decay"), u8("carrier_sustain_release"),
+    u8("carrier_waveform")]);
+var sxlate_c670_fm_instrument = sxLayout(0x60930025, "c670_fm_instrument", LE, sxlate_c670_fm_instrument_fields);
+var sxlate_c670_orders_fields = layout([field("pattern_index", "uint8", 0)]);
+var sxlate_c670_orders = sxLayout(0x60930026, "c670_orders", LE, sxlate_c670_orders_fields);
+var sxlate_c670_note_fields = layout([u8("channel"), u8("note_and_instrument_high"), u8("instrument_low_and_volume")]);
+var sxlate_c670_note = sxLayout(0x60930028, "c670_note", LE, sxlate_c670_note_fields);
+var sxlate_c670_volume_fields = layout([u8("command_channel"), u8("volume")]);
+var sxlate_c670_volume = sxLayout(0x60930029, "c670_volume", LE, sxlate_c670_volume_fields);
+function sxlate_c670(c) {
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [10];
+    var h = [];
+    var offsets = [];
+    if (!sxlate_read(c, 0, h, 10, end) || !h[0] || h[0] > 15 || !sxlate_row(c, sxlate_c670_header, 0, 10, end)) {
+        return false;
+    }
+    var sample_offset = sxGetU32(h, 10, 6, false);
+    var orders = h[1];
+    var patterns = h[2];
+    var samples = h[3];
+    var fm = h[4];
+    if (sample_offset > end || !sxlate_plane(c, sxlate_c670_orders, p, orders, end)) {
+        return false;
+    }
+    for (var i = 0; i < patterns; i++) {
+        if (!sxlate_u32(c, p[0] + ((i * 4) >>> 0), offsets, i, end)) {
+            return false;
+        }
+    }
+    if (!sxlate_table(c, sxlate_c670_pattern_offset, p, 4, patterns, end) || !sxlate_table(c, sxlate_c670_sample, p, 16, samples, end) || !sxlate_table(c, sxlate_c670_fm_instrument, p, 11, fm, end)) {
+        return false;
+    }
+    var base = p[0];
+    if (base > sample_offset) {
+        return false;
+    }
+    for (i = 0; i < patterns; i++) {
+        var q = base + offsets[i];
+        var stop = (i + 1) >>> 0 < patterns ? base + offsets[(i + 1) >>> 0] : sample_offset;
+        if (q < base || q > stop || stop > sample_offset) {
+            return false;
+        }
+        while (q < stop && c.count < 30000) {
+            var cmd = [0];
+            var l;
+            var n;
+            if (!sxlate_byte(c, q, cmd, stop)) {
+                return false;
+            }
+            if (cmd[0] <= 12) {
+                l = sxlate_c670_note;
+                n = 3;
+            } else if (cmd[0] >= 32 && cmd[0] <= 44) {
+                l = sxlate_c670_volume;
+                n = 2;
+            } else if (cmd[0] >= 64 && cmd[0] < 96) {
+                l = sxlate_c670_delay;
+                n = 2;
+            } else if (cmd[0] >= 96 && cmd[0] < 128) {
+                l = sxlate_c670_end;
+                n = 1;
+            } else {
+                return true;
+            }
+            if (!sxlate_row(c, l, q, n, stop)) {
+                return false;
+            }
+            q += n;
+            if (cmd[0] >= 96 && cmd[0] < 128) {
+                break;
+            }
+        }
+        if (c.count >= 30000) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_tran_cdfm_composer670_co_build(c) {
+    return sxlate_c670(c);
+}

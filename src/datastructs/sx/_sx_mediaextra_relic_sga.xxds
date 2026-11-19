@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/relic_sga/xx_relic_sga_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_sga6_header_fields = layout([chars("magic", 8, SIGNATURE), u16("major_version", ID), u16("minor_version", ID),
+    blob("archive_name_utf16le", 128), u32("table_size", SIZE), u32("data_offset", OFFSET), u32("platform", ID)]);
+var sxmx_sga6_header = sxLayout(0x602E0059, "sga6_header", LE, sxmx_sga6_header_fields);
+var sxmx_sga6_table_slot_fields = layout([u32("table_relative", OFFSET), u32("entry_count", COUNT)]);
+var sxmx_sga6_table_slot = sxLayout(0x602E005A, "sga6_table_slot", LE, sxmx_sga6_table_slot_fields);
+var sxmx_sga6_drive_fields = layout([chars("alias", 64, STRING), chars("name", 64, STRING), u32("first_folder", ID),
+    u32("end_folder", ID), u32("first_file", ID), u32("end_file", ID), u32("root_folder", ID)]);
+var sxmx_sga6_drive = sxLayout(0x602E005B, "sga6_drive", LE, sxmx_sga6_drive_fields);
+var sxmx_sga6_folder_fields = layout([u32("name_offset", OFFSET), u32("first_folder", ID), u32("end_folder", ID),
+    u32("first_file", ID), u32("end_file", ID)]);
+var sxmx_sga6_folder = sxLayout(0x602E005C, "sga6_folder", LE, sxmx_sga6_folder_fields);
+var sxmx_sga6_file_fields = layout([u32("name_offset", OFFSET), u32("data_relative", OFFSET), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u32("timestamp", TIMESTAMP), u8("verification", ID), u8("storage_type", ID),
+    u32("crc32", CHECKSUM)]);
+var sxmx_sga6_file = sxLayout(0x602E005D, "sga6_file", LE, sxmx_sga6_file_fields);
+function sxmx_sga(v) {
+    if (!sxmx_row(v, sxmx_sga6_header, 0, v.n) || !sxmx_table(v, sxmx_sga6_table_slot, 152, 4, v.n)) {
+        return false;
+    }
+    var end = 152 + sxmx_u32(v.p, 140, false);
+    if (end > v.n) {
+        return false;
+    }
+    var ls = [sxmx_sga6_drive, sxmx_sga6_folder, sxmx_sga6_file];
+    for (var i = 0; i < 3; i++) {
+        var p = v.p, p_o = 152 + ((i * 8) >>> 0);
+        if (!sxmx_table(v, ls[i], 152 + sxmx_u32(p, p_o, false), sxmx_u32(p, p_o + 4, false), end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_relic_sga_build(v) {
+    return sxmx_sga(v);
+}

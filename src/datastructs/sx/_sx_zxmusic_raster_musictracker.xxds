@@ -1,0 +1,93 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/raster_musictracker/xx_raster_musictracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_rmt_instrument_address_fields = layout([u16("instrument_address", VA)]);
+var sxzxm_rmt_instrument_address = sxLayout(0x608A006A, "rmt_instrument_address", LE, sxzxm_rmt_instrument_address_fields);
+function sxzxm_rmt(c) {
+    var b = [];
+    var h = [];
+    if (!sxzxm_read(c, 0, b, 6) || !sxzxm_put(c, sxzxm_rmt_binary_header, 0, 1)) {
+        return false;
+    }
+    var load = sxzxm16(b, 2);
+    var end = sxzxm16(b, 4);
+    if (end < load || !sxzxm_span(c, 6, (((end - load) >>> 0) + 1) >>> 0) || !sxzxm_read(c, 6, h, 16)) {
+        return true;
+    }
+    if (!sxzxm_eq(c, 6, "RMT", 3) || h[3] !== 52 /*4*/ && h[3] !== 56 /*8*/) {
+        return true;
+    }
+    if (!sxzxm_put(c, sxzxm_rmt_header, 6, 1)) {
+        return false;
+    }
+    var ip = sxzxm16(h, 8);
+    var lo = sxzxm16(h, 10);
+    var hi = sxzxm16(h, 12);
+    var song = sxzxm16(h, 14);
+    var segment_end = (((7 + end) >>> 0) - load) >>> 0;
+    if (ip >= (load + 16) >>> 0 && lo >= ip && hi >= lo && song >= hi && song <= (end + 1) >>> 0) {
+        var ic = Math.floor(((lo - ip) >>> 0) / 2);
+        var tc = (hi - lo) >>> 0;
+        if (ic > 256) {
+            ic = 256;
+        }
+        if (tc > 256) {
+            tc = 256;
+        }
+        var it = (((6 + ip) >>> 0) - load) >>> 0;
+        if (!sxzxm_opt(c, sxzxm_rmt_instrument_address, it, ic) || !sxzxm_opt(c, sxzxm_rmt_track_low, (((6 + lo) >>> 0) - load) >>> 0, tc) || !sxzxm_opt(c, sxzxm_rmt_track_high, (((6 + hi) >>> 0) - load) >>> 0, (song - hi) >>> 0 < tc ? (song - hi) >>> 0 : tc)) {
+            return false;
+        }
+        for (var i = 0; i < ic; i++) {
+            var address = [0];
+            if (!sxzxm_u16(c, it + ((2 * i) >>> 0), address)) {
+                break;
+            }
+            if (address[0] < (load + 16) >>> 0 || address[0] > end) {
+                continue;
+            }
+            var p = (6 + address[0] - load) >>> 0;
+            var ih = [];
+            if (p > segment_end || 12 > sxU64(segment_end - p) || !sxzxm_read(c, p, ih, 12)) {
+                continue;
+            }
+            if (!sxzxm_put(c, sxzxm_rmt_instrument, p, 1)) {
+                return false;
+            }
+        }
+    }
+    p = segment_end;
+    for (i = 0; i < 256 && sxzxm_span(c, p, 4); i++) {
+        var sh = [];
+        if (!sxzxm_read(c, p, sh, 4)) {
+            break;
+        }
+        var a = sxzxm16(sh, 0);
+        var z = sxzxm16(sh, 2);
+        if (a === 65535) {
+            if (!sxzxm_span(c, p + 2, 4)) {
+                break;
+            }
+            p += 2;
+            if (!sxzxm_read(c, p, sh, 4)) {
+                break;
+            }
+            a = sxzxm16(sh, 0);
+            z = sxzxm16(sh, 2);
+        }
+        if (z < a || !sxzxm_span(c, p + 4, (((z - a) >>> 0) + 1) >>> 0)) {
+            break;
+        }
+        if (!sxzxm_put(c, sxzxm_rmt_binary_segment, p, 1)) {
+            return false;
+        }
+        p += (((((4 + z) >>> 0) - a) >>> 0) + 1) >>> 0;
+    }
+    return true;
+}
+function sx_raster_musictracker_build(c) {
+    return sxzxm_rmt(c);
+}

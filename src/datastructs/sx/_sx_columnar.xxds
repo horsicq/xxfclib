@@ -1,0 +1,182 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_columnar.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxq_arrow_footer_version_fields = layout([i16("version", ID)]);
+var sxq_arrow_footer_version = sxLayout(0x601F000F, "arrow_footer_version", LE, sxq_arrow_footer_version_fields);
+var sxq_arrow_message_version_fields = layout([i16("version", ID)]);
+var sxq_arrow_message_version = sxLayout(0x601F0020, "arrow_message_version", LE, sxq_arrow_message_version_fields);
+function sxq_span(w, p, n) {
+    return p <= w.n && n <= sxU64(w.n - p);
+}
+function sxq_file_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxq32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, false);
+}
+function sxq_window_open(w, c, base, n) {
+    sxCopy_sxq_window(w, sxNew_sxq_window());
+    if (n < 4 || n > 0x1000000 || !sxq_file_span(c, base, n)) {
+        return false;
+    }
+    w.c = c;
+    w.n = n;
+    w.base = base;
+    w.b = sxAlloc(w.n);
+    if (w.b === null) {
+        return false;
+    }
+    if (!sx_read(c, (base >= SX_I64_MAX ? base - SX_U64_MAX : base), w.b, w.n)) {
+        w.b = null;
+        return false;
+    }
+    return true;
+}
+function sxq_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+    return c.count < 100000 && sxq_file_span(c, p, n) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxq_wadd(w, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    return sxq_span(w, p, (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size)) && sxq_add(w.c, l, w.base + p);
+}
+function sxq_order(a, b) {
+    var x = a;
+    var y = b;
+    if (x.offset !== y.offset) {
+        return x.offset < y.offset ? -1 : 1;
+    }
+    if (x.id !== y.id) {
+        return x.id < y.id ? -1 : 1;
+    }
+    if (x.total_size !== y.total_size) {
+        return x.total_size < y.total_size ? -1 : 1;
+    }
+    return 0;
+}
+function sxq_finish(c) {
+    sxQsort(c.items, 0, c.count, sxq_order, true);
+    var kept = 0;
+    for (var i = 0; i < c.count; i++) {
+        if (kept && c.items[sxU64(kept - 1)].offset === c.items[i].offset && c.items[sxU64(kept - 1)].id === c.items[i].id && c.items[sxU64(kept - 1)].total_size === c.items[i].total_size && c.items[sxU64(kept - 1)].entry_size === c.items[i].entry_size && c.items[sxU64(kept - 1)].count === c.items[i].count) {
+            continue;
+        }
+        if (kept !== i) {
+            c.items[kept] = sxCopy_xx_data_struct(null, c.items[i]);
+            sxCopy_xx_data_struct(c.items[i], sxNew_xx_data_struct());
+        }
+        kept++;
+    }
+    c.count = kept;
+    var end = 0;
+    for (i = 0; i < kept; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxq_order, true);
+    return !c.failed;
+}
+function sx_columnar_supports(t) {
+    return t === "APACHE_ARROW_FILE" || t === "APACHE_PARQUET";
+}
+function sx_columnar_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "APACHE_ARROW_FILE") {
+        return sx_apache_arrow_file_build(c);
+    }
+    if (c.f.file_type === "APACHE_PARQUET") {
+        return sx_apache_parquet_build(c);
+    }
+    return false;
+}
+var sx_columnar_comment_names = ["MetadataVersion_V1", "MetadataVersion_V2", "MetadataVersion_V3", "MetadataVersion_V4", "MetadataVersion_V5"];
+var sx_columnar_comment_names_2 = ["STOP", "BOOLEAN_TRUE", "BOOLEAN_FALSE", "BYTE", "I16", "I32", "I64", "DOUBLE", "BINARY",
+    "LIST", "SET", "MAP", "STRUCT", "UNKNOWN", "UNKNOWN", "UNKNOWN"];
+function sx_columnar_comment(r, id) {
+    if (r === null || r.name === null || id < 0x601F0000 || id >= 0x60200000) {
+        return true;
+    }
+    var t = null;
+    if (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    if (r.name === "version" && (id === sxq_arrow_footer_version.id || id === sxq_arrow_message_version.id)) {
+        var v = sxVarU64(r.value);
+        if (v < 5) {
+            t = sx_columnar_comment_names[v];
+        }
+    } else if (r.name === "endianness") {
+        v = sxVarU64(r.value);
+        t = v === 0 ? "Endianness_Little" : v === 1 ? "Endianness_Big" : "Unknown Arrow endianness";
+    } else if (r.name === "type_tag") {
+        if (sxVarU64(r.value) === 2) {
+            t = "Type_Int";
+        }
+    } else if (r.name === "header_tag") {
+        v = sxVarU64(r.value);
+        t = v === 1 ? "MessageHeader_Schema" : v === 2 ? "MessageHeader_DictionaryBatch" : v === 3 ? "MessageHeader_RecordBatch" : "Unknown IPC message header tag";
+    } else if (r.name === "nullable" || r.name === "is_signed") {
+        v = sxVarU64(r.value);
+        t = v === 0 ? "false" : v === 1 ? "true" : "Invalid Boolean";
+    }
+    if (t !== null) {
+        return sxSetComment(r, t);
+    }
+    if (r.name === "field_delta_and_type" || r.name === "count_and_element_type" || r.name === "key_and_value_type") {
+        v = sxVarU64(r.value) >>> 0;
+        var b = [];
+        var out = [];
+        var n;
+        if (r.name === "field_delta_and_type") {
+            n = sxSnprintf(b, 0, 192, "Compact Thrift %s; field-ID delta %u%s", [sx_columnar_comment_names_2[v & 15], v >>> 4, !v ? "; end of structure" : !(v >>> 4) ? "; explicit ZigZag field ID follows" : ""]);
+        } else if (r.name === "count_and_element_type") {
+            n = sxSnprintf(b, 0, 192, "Compact Thrift %s elements; %s %u", [sx_columnar_comment_names_2[v & 15], v >>> 4 === 15 ? "ULEB count follows; marker" : "inline count", v >>> 4]);
+        } else {
+            n = sxSnprintf(b, 0, 192, "Compact Thrift map: %s keys, %s values", [sx_columnar_comment_names_2[v >>> 4 & 15], sx_columnar_comment_names_2[v & 15]]);
+        }
+        if (n < 0 || n >= 192) {
+            return false;
+        }
+        for (var i = 0; i <= n; i++) {
+            out[i] = b[i] & 0xFF;
+        }
+        return sxSetComment(r, out);
+    }
+    if (r.name === "vtable_displacement") {
+        t = "Signed displacement subtracted from the table offset to locate its vtable.";
+    } else if (r.name === "field_offset") {
+        t = "Byte offset from the FlatBuffers table start; zero means the field is absent.";
+    } else if (r.name === "root_offset" || r.name === "object_offset") {
+        t = "Unsigned forward byte offset from this physical word.";
+    } else if (r.name === "body_offset") {
+        t = "Byte offset relative to the IPC record-batch body.";
+    } else if (r.name === "bit_width") {
+        t = "Number of bits in each integer value; not bytes.";
+    } else if (r.name === "field_delta_and_type") {
+        t = "High nibble is the field-ID delta; low nibble is Compact Thrift type. Zero ends the structure.";
+    } else if (r.name === "count_and_element_type") {
+        t = "High nibble is the element count (15 means a following ULEB count); low nibble is the element type.";
+    } else if (r.name === "key_and_value_type") {
+        t = "High nibble is the map key type; low nibble is its value type.";
+    } else if (r.name === "boolean_type") {
+        t = "Compact Thrift collection Boolean: 1 true; 2 false.";
+    } else if (r.name === "ieee754_binary64_bits") {
+        t = "Little-endian IEEE 754 binary64 wire representation.";
+    }
+    return t === null || sxSetComment(r, t);
+}

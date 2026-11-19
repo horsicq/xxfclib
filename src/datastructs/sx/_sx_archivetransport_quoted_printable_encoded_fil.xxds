@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/quoted_printable_encoded_fil/xx_quoted_printable_encoded_fil_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxatp_transport_line_end_fields = layout([field("line_ending", "uint8", 0)]);
+var sxatp_transport_line_end = sxLayout(0x60890074, "transport_line_end", LE, sxatp_transport_line_end_fields);
+var sxatp_qp_literal_run_fields = layout([field("literal_bytes", "uint8", 0)]);
+var sxatp_qp_literal_run = sxLayout(0x60890076, "qp_literal_run", LE, sxatp_qp_literal_run_fields);
+var sxatp_qp_hex_escape_fields = layout([chars("escape_marker", 1, NONE), field("encoded_octet", "ascii_hex[2]", 2)]);
+var sxatp_qp_hex_escape = sxLayout(0x60890077, "qp_hex_escape", LE, sxatp_qp_hex_escape_fields);
+var sxatp_qp_soft_break_fields = layout([field("soft_line_break", "uint8", 0)]);
+var sxatp_qp_soft_break = sxLayout(0x60890078, "qp_soft_break", LE, sxatp_qp_soft_break_fields);
+var sxatp_qp_padding_fields = layout([field("padding", "uint8", 0)]);
+var sxatp_qp_padding = sxLayout(0x60890079, "qp_padding", LE, sxatp_qp_padding_fields);
+function sxatp_hex(x) {
+    return x >= 48 /*0*/ && x <= 57 /*9*/ || x >= 65 /*A*/ && x <= 70 /*F*/ || x >= 97 /*a*/ && x <= 102 /*f*/;
+}
+function sxatp_qp(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 20000) {
+        var b = [];
+        if (!sxatp_read(c, p, b, 0, 1)) {
+            return false;
+        }
+        var q = p + 1;
+        var l = sxatp_qp_literal_run;
+        if (b[0] === 61 /*=*/) {
+            if (q === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+                l = sxatp_qp_soft_break;
+            } else {
+                if (!sxatp_read(c, q, b, 1, 1)) {
+                    return false;
+                }
+                if (b[1] === 10) {
+                    q++, l = sxatp_qp_soft_break;
+                } else if (b[1] === 13 && sxatp_read(c, q + 1, b, 2, 1) && b[2] === 10) {
+                    q += 2, l = sxatp_qp_soft_break;
+                } else if (sxatp_hex(b[1]) && sxatp_read(c, q + 1, b, 2, 1) && sxatp_hex(b[2])) {
+                    if (!sxatp_add(c, sxatp_qp_hex_escape, p)) {
+                        return false;
+                    }
+                    p += 3;
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+        } else if (b[0] === 13 || b[0] === 10) {
+            l = sxatp_transport_line_end;
+            if (b[0] === 13 && q < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxatp_read(c, q, b, 1, 1) && b[1] === 10) {
+                q++;
+            }
+        } else if (!b[0] || b[0] === 26) {
+            l = sxatp_qp_padding;
+            while (q < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxU64(q - p) < 4096) {
+                var x = [0];
+                if (!sxatp_read(c, q, x, 0, 1)) {
+                    return false;
+                }
+                if (x[0] && x[0] !== 26) {
+                    break;
+                }
+                q++;
+            }
+        } else {
+            while (q < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxU64(q - p) < 4096) {
+                x = [0];
+                if (!sxatp_read(c, q, x, 0, 1)) {
+                    return false;
+                }
+                if (x[0] === 61 /*=*/ || x[0] === 13 || x[0] === 10 || !x[0] || x[0] === 26) {
+                    break;
+                }
+                q++;
+            }
+        }
+        if (!sxatp_text(c, l, p, sxU64(q - p), false)) {
+            return false;
+        }
+        p = q;
+    }
+    return true;
+}
+function sx_quoted_printable_encoded_fil_build(c) {
+    return sxatp_qp(c);
+}

@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/jcamp_dx/xx_jcamp_dx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_jcamp_version_fields = layout([field("jcamp_version", "ascii_real", 0)]);
+var sxsm_jcamp_version = sxLayout(0x6063004C, "mesh_jcamp_version", LE, sxsm_jcamp_version_fields);
+var sxsm_first_x_fields = layout([field("first_x", "ascii_real", 0)]);
+var sxsm_first_x = sxLayout(0x6063004D, "mesh_first_x", LE, sxsm_first_x_fields);
+var sxsm_last_x_fields = layout([field("last_x", "ascii_real", 0)]);
+var sxsm_last_x = sxLayout(0x6063004E, "mesh_last_x", LE, sxsm_last_x_fields);
+var sxsm_x_factor_fields = layout([field("x_factor", "ascii_real", 0)]);
+var sxsm_x_factor = sxLayout(0x6063004F, "mesh_x_factor", LE, sxsm_x_factor_fields);
+var sxsm_y_factor_fields = layout([field("y_factor", "ascii_real", 0)]);
+var sxsm_y_factor = sxLayout(0x60630050, "mesh_y_factor", LE, sxsm_y_factor_fields);
+var sxsm_spectral_x_fields = layout([field("spectral_x", "ascii_real", 0)]);
+var sxsm_spectral_x = sxLayout(0x60630051, "mesh_spectral_x", LE, sxsm_spectral_x_fields);
+var sxsm_spectral_y_fields = layout([field("spectral_y", "ascii_real", 0)]);
+var sxsm_spectral_y = sxLayout(0x60630052, "mesh_spectral_y", LE, sxsm_spectral_y_fields);
+function sxsm_jcamp(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(128, sxNew_sxsm_token);
+    var key = sxNew_sxsm_token();
+    var value = sxNew_sxsm_token();
+    var n;
+    var data = false;
+    var pairs = false;
+    while (sxsm_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!line.z) {
+            continue;
+        }
+        if (line.z >= 2 && q.b[line.a] === 35 /*#*/ && q.b[line.a + 1] === 35 /*#*/) {
+            if (!sxsm_keyvalue(q, sxCopy_sxsm_token(null, { a: line.a + 2, z: line.z - 2 }), 61 /*=*/, key, value)) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, key))) {
+                    return false;
+                }
+            }
+            var k = [];
+            var used = 0;
+            for (var i = 0; i < key.z; i++) {
+                var ch = q.b[key.a + i];
+                if (ch === 32 || ch === 45 /*-*/ || ch === 47 || ch === 95 /*_*/) {
+                    continue;
+                }
+                if (ch >= 97 /*a*/ && ch <= 122 /*z*/) {
+                    ch = ch - 32 & 0xFF;
+                }
+                if (used === 63) {
+                    return false;
+                }
+                k[used++] = ch << 24 >> 24;
+            }
+            k[used] = 0;
+            var l = !sxStrcmp(k, "TITLE") ? sxsm_title : !sxStrcmp(k, "JCAMPDX") ? sxsm_jcamp_version : !sxStrcmp(k, "FIRSTX") ? sxsm_first_x : !sxStrcmp(k, "LASTX") ? sxsm_last_x : !sxStrcmp(k, "XFACTOR") ? sxsm_x_factor : !sxStrcmp(k, "YFACTOR") ? sxsm_y_factor : !sxStrcmp(k, "NPOINTS") ? sxsm_value_count : !sxStrcmp(k, "XUNITS") || !sxStrcmp(k, "YUNITS") ? sxsm_units : sxsm_option_value;
+            if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, value))) {
+                return false;
+            }
+            if (!sxStrcmp(k, "END")) {
+                return true;
+            }
+            if (!sxStrcmp(k, "XYDATA") || !sxStrcmp(k, "XYPOINTS")) {
+                data = true;
+                pairs = !sxStrcmp(k, "XYPOINTS");
+            }
+        } else if (data) {
+            n = sxsm_split(q, sxCopy_sxsm_token(null, line), t, 128, false);
+            if (n > 128) {
+                return false;
+            }
+            for (i = 0; i < n; i++) {
+                if (!sxsm_emit(q, (pairs ? !(i & 1) : i === 0) ? sxsm_spectral_x : sxsm_spectral_y, sxCopy_sxsm_token(null, t[i]))) {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_jcamp_dx_build(q) {
+    return sxsm_jcamp(q);
+}

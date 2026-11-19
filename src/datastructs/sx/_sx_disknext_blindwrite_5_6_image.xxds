@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/blindwrite_5_6_image/xx_blindwrite_5_6_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_blindwrite56_signature_fields = layout([chars("signature", 16, SIGNATURE)]);
+var sxdn_blindwrite56_signature = sxLayout(0x6078003B, "blindwrite56_signature", LE, sxdn_blindwrite56_signature_fields);
+var sxdn_blindwrite56_disc_fields = layout([field("unknown0", "uint32[8]", 32), u16("disc_type", ID),
+    u16("session_count", COUNT), field("unknown1", "uint32[3]", 12), u8("mcn_valid", FLAGS),
+    chars("media_catalog_number", 13, NONE), u16("unknown2"), field("unknown3", "uint32[4]", 16), u16("pma_size", SIZE),
+    u16("atip_size", SIZE), u16("cd_text_size", SIZE), u16("cd_info_size", SIZE), u32("bca_size", SIZE),
+    field("unknown4", "uint32[3]", 12), u32("dvd_structures_size", SIZE), u32("dvd_info_size", SIZE)]);
+var sxdn_blindwrite56_disc = sxLayout(0x6078003C, "blindwrite56_disc", LE, sxdn_blindwrite56_disc_fields);
+var sxdn_blindwrite56_inquiry_fields = layout([chars("vendor", 8, NONE), chars("product", 16, NONE), chars("revision", 4, ID),
+    field("vendor_specific", "byte[20]", 20)]);
+var sxdn_blindwrite56_inquiry = sxLayout(0x6078003D, "blindwrite56_inquiry", LE, sxdn_blindwrite56_inquiry_fields);
+var sxdn_blindwrite56_volume_name_fields = layout([chars("volume_identifier", 32, NONE)]);
+var sxdn_blindwrite56_volume_name = sxLayout(0x6078003E, "blindwrite56_volume_name", LE, sxdn_blindwrite56_volume_name_fields);
+var sxdn_blindwrite56_lengths_fields = layout([u32("mode_page_2a_size", SIZE), u32("unknown_block_size", SIZE),
+    u32("data_blocks_size", SIZE), u32("sessions_size", SIZE), u32("dpm_size", SIZE)]);
+var sxdn_blindwrite56_lengths = sxLayout(0x6078003F, "blindwrite56_lengths", LE, sxdn_blindwrite56_lengths_fields);
+var sxdn_blindwrite56_data_list_fields = layout([u32("block_count", COUNT), u32("drive_path_size", SIZE)]);
+var sxdn_blindwrite56_data_list = sxLayout(0x60780040, "blindwrite56_data_list", LE, sxdn_blindwrite56_data_list_fields);
+var sxdn_blindwrite56_data_block_fields = layout([u32("type", FLAGS), u32("payload_size", SIZE),
+    field("unknown0", "uint32[4]", 16), u32("external_file_offset", OFFSET), field("unknown1", "uint32[3]", 12),
+    i32("start_sector"), i32("sector_count", COUNT), u32("filename_size", SIZE)]);
+var sxdn_blindwrite56_data_block = sxLayout(0x60780041, "blindwrite56_data_block", LE, sxdn_blindwrite56_data_block_fields);
+var sxdn_blindwrite56_data_tail_fields = layout([u32("unknown")]);
+var sxdn_blindwrite56_data_tail = sxLayout(0x60780042, "blindwrite56_data_tail", LE, sxdn_blindwrite56_data_tail_fields);
+var sxdn_blindwrite56_session_fields = layout([u16("session_number"), u8("entry_count", COUNT), u8("unknown"),
+    i32("start_sector"), i32("end_sector"), u16("first_track"), u16("last_track")]);
+var sxdn_blindwrite56_session = sxLayout(0x60780043, "blindwrite56_session", LE, sxdn_blindwrite56_session_fields);
+var sxdn_blindwrite56_entry_fields = layout([u8("type", ID), field("unknown0", "byte[3]", 3), u32("unknown1"),
+    u8("subchannel", ID), u8("unknown2"), u8("control", FLAGS), u8("adr", ID), u8("point", ID), u8("track_number"),
+    u8("minute"), u8("second"), u8("frame"), u8("zero"), u8("pminute"), u8("psecond"), u8("pframe"), u8("unknown3"),
+    u32("pregap_sector_count", COUNT), field("unknown4", "uint32[4]", 16), i32("first_sector"), i32("sector_count", COUNT),
+    field("unknown5", "uint32[2]", 8), u32("session"), u16("unknown6")]);
+var sxdn_blindwrite56_entry = sxLayout(0x60780044, "blindwrite56_entry", LE, sxdn_blindwrite56_entry_fields);
+var sxdn_blindwrite56_cd_extra_fields = layout([field("producer_data", "byte[8]", 8)]);
+var sxdn_blindwrite56_cd_extra = sxLayout(0x60780045, "blindwrite56_cd_extra", LE, sxdn_blindwrite56_cd_extra_fields);
+var sxdn_blindwrite56_footer_fields = layout([u32("descriptor_size", SIZE), chars("signature", 16, SIGNATURE)]);
+var sxdn_blindwrite56_footer = sxLayout(0x60780046, "blindwrite56_footer", LE, sxdn_blindwrite56_footer_fields);
+function sxdn_bw56(c) {
+    var d = [];
+    var lengths = [];
+    var b = [];
+    var p = 260;
+    if (!sxdn_read(c, 16, d, 112) || !sxdn_read(c, 240, lengths, 20) || !sxdn_put(c, sxdn_blindwrite56_signature, 0, 1) || !sxdn_put(c, sxdn_blindwrite56_disc, 16, 1) || !sxdn_put(c, sxdn_blindwrite56_inquiry, 160, 1) || !sxdn_put(c, sxdn_blindwrite56_volume_name, 208, 1) || !sxdn_put(c, sxdn_blindwrite56_lengths, 240, 1)) {
+        return false;
+    }
+    var type = sxdn16(d, 32, 0);
+    var sessions = sxdn16(d, 34, 0);
+    var skips = [sxdn32(lengths, 0, 0), sxdn32(lengths, 4, 0), sxdn16(d, 80, 0), sxdn16(d, 82, 0), sxdn16(d, 84, 0), sxdn32(d, 88, 0), sxdn32(d, 104, 0), type >= 8 && type <= 10 ? sxdn16(d, 86, 0) : sxdn32(d, 108, 0)];
+    for (var i = 0; i < 8; i++) {
+        if (!sxdn_span(c, p, skips[i])) {
+            return true;
+        }
+        p += skips[i];
+    }
+    if (!sxdn_read(c, p, b, 8) || !sxdn_put(c, sxdn_blindwrite56_data_list, p, 1)) {
+        return true;
+    }
+    var n = sxdn32(b, 0, 0);
+    var path = sxdn32(b, 4, 0);
+    p += 8;
+    if (n > 65536 || !sxdn_span(c, p, path)) {
+        return true;
+    }
+    p += path;
+    for (i = 0; i < n && c.count < 24000; i++) {
+        if (!sxdn_read(c, p, b, 52) || !sxdn_put(c, sxdn_blindwrite56_data_block, p, 1)) {
+            return true;
+        }
+        var z = sxdn32(b, 48, 0);
+        p += 52;
+        if (!sxdn_span(c, p, z + 4)) {
+            return true;
+        }
+        p += z;
+        if (!sxdn_put(c, sxdn_blindwrite56_data_tail, p, 1)) {
+            return false;
+        }
+        p += 4;
+    }
+    if (sessions > 256) {
+        return true;
+    }
+    for (i = 0; i < sessions && c.count < 24000; i++) {
+        if (!sxdn_read(c, p, b, 16) || !sxdn_put(c, sxdn_blindwrite56_session, p, 1)) {
+            return true;
+        }
+        n = b[2];
+        p += 16;
+        for (var j = 0; j < n; j++) {
+            if (!sxdn_read(c, p, b, 64) || !sxdn_put(c, sxdn_blindwrite56_entry, p, 1)) {
+                return true;
+            }
+            p += 64;
+            if (b[0] >= 1 && b[0] <= 5) {
+                if (!sxdn_put(c, sxdn_blindwrite56_cd_extra, p, 1)) {
+                    return true;
+                }
+                p += 8;
+            }
+        }
+    }
+    n = sxdn32(lengths, 16, 0);
+    if (!sxdn_span(c, p, n + 20)) {
+        return true;
+    }
+    p += n;
+    return sxdn_put(c, sxdn_blindwrite56_footer, p, 1);
+}
+function sx_blindwrite_5_6_image_build(c) {
+    return sxdn_bw56(c);
+}

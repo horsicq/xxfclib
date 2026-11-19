@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/cgjp/xx_cgjp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_cgjp_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxan_cgjp_signature = sxLayout(0x60770037, "cgjp_signature", LE, sxan_cgjp_signature_fields);
+var sxan_cgjp_block_fields = layout([u16("uncompressed_size", SIZE), u16("compressed_size", SIZE)]);
+var sxan_cgjp_block = sxLayout(0x60770038, "cgjp_block", LE, sxan_cgjp_block_fields);
+function sxan_cgjp(c) {
+    var p = 0;
+    var z;
+    var plain;
+    var h = [];
+    while (sxan_read(c, p, h, 4)) {
+        if (!sxMemcmp(h, "CGJP", 4)) {
+            if (!sxan_add(c, sxan_cgjp_signature, p)) {
+                return false;
+            }
+            p += 4;
+            continue;
+        }
+        plain = sxan_uint(h, 0, 2, false);
+        z = sxan_uint(h, 2, 2, false);
+        if (!plain || plain > 32768 || z > 32768 || !sxan_add(c, sxan_cgjp_block, p)) {
+            return false;
+        }
+        p += 4;
+        if (!z) {
+            z = plain;
+        }
+        if (!sxan_span(c, p, z)) {
+            return true;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_cgjp_build(c) {
+    var ok = false;
+    ok = sxan_cgjp(c);
+    return !!(c.count && sxan_finish(c));
+}

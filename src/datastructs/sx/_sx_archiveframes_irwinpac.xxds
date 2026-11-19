@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/irwinpac/xx_irwinpac_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_irwinpac_header_fields = layout([chars("signature", 8, SIGNATURE), u16("header_size", SIZE), bytes("opaque", 10)]);
+var sxafr_irwinpac_header = sxLayout(0x60540017, "irwinpac_header", LE, sxafr_irwinpac_header_fields);
+var sxafr_irwinpac_block_fields = layout([u16("compressed"), u16("total_size", SIZE), u16("uncompressed_size", SIZE),
+    bytes("uninitialized", 4)]);
+var sxafr_irwinpac_block = sxLayout(0x60540018, "irwinpac_block", LE, sxafr_irwinpac_block_fields);
+function sxafr_irwin(c) {
+    var p = 20;
+    if (!sxafr_add(c, sxafr_irwinpac_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var z = [0];
+        if (!sxafr_word(c, p + 2, 2, false, z) || z[0] < 10 || !sxafr_span(c, p, z[0]) || !sxafr_add(c, sxafr_irwinpac_block, p)) {
+            return false;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_irwinpac_build(c) {
+    return sxafr_irwin(c);
+}

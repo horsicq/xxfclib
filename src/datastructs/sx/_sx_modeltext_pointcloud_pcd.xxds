@@ -1,0 +1,142 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/pointcloud_pcd/xx_pointcloud_pcd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_field_type_fields = layout([field("field_type", "char", 0, STRING)]);
+var sxmt_field_type = sxLayout(0x60520008, "modeltext_field_type", LE, sxmt_field_type_fields);
+var sxmt_point_count_fields = layout([field("point_count", "ascii_signed", 0, COUNT)]);
+var sxmt_point_count = sxLayout(0x60520018, "modeltext_point_count", LE, sxmt_point_count_fields);
+var sxmt_width_fields = layout([field("width", "ascii_signed", 0)]);
+var sxmt_width = sxLayout(0x60520019, "modeltext_width", LE, sxmt_width_fields);
+var sxmt_height_fields = layout([field("height", "ascii_signed", 0)]);
+var sxmt_height = sxLayout(0x6052001A, "modeltext_height", LE, sxmt_height_fields);
+var sxmt_sample_count_fields = layout([field("sample_count", "ascii_signed", 0, COUNT)]);
+var sxmt_sample_count = sxLayout(0x6052001B, "modeltext_sample_count", LE, sxmt_sample_count_fields);
+var sxmt_data_bytes_fields = layout([field("data_bytes", "ascii_signed", 0, SIZE)]);
+var sxmt_data_bytes = sxLayout(0x60520023, "modeltext_data_bytes", LE, sxmt_data_bytes_fields);
+var sxmt_quaternion_w_fields = layout([field("quaternion_w", "ascii_real", 0)]);
+var sxmt_quaternion_w = sxLayout(0x60520049, "modeltext_quaternion_w", LE, sxmt_quaternion_w_fields);
+var sxmt_quaternion_x_fields = layout([field("quaternion_x", "ascii_real", 0)]);
+var sxmt_quaternion_x = sxLayout(0x6052004A, "modeltext_quaternion_x", LE, sxmt_quaternion_x_fields);
+var sxmt_quaternion_y_fields = layout([field("quaternion_y", "ascii_real", 0)]);
+var sxmt_quaternion_y = sxLayout(0x6052004B, "modeltext_quaternion_y", LE, sxmt_quaternion_y_fields);
+var sxmt_quaternion_z_fields = layout([field("quaternion_z", "ascii_real", 0)]);
+var sxmt_quaternion_z = sxLayout(0x6052004C, "modeltext_quaternion_z", LE, sxmt_quaternion_z_fields);
+function sxmt_pcd(q) {
+    var sizes = sxZeros(64);
+    var counts = [];
+    var points = [0];
+    var kinds = sxZeros(64);
+    var nf = 0;
+    var a = [0];
+    var e = [0];
+    var z = [0];
+    var k = [0];
+    var ended = false;
+    for (var i = 0; i < 64; i++) {
+        counts[i] = 1;
+    }
+    while (sxmt_line(q, a, e, true)) {
+        if (q.p > 65536) {
+            return false;
+        }
+        var next = q.p;
+        q.p = a[0];
+        if (!sxmt_token(q, e[0], k, z, false)) {
+            return false;
+        }
+        var l = null;
+        var out = null;
+        if (sxmt_eq(q, k[0], z[0], "VERSION")) {
+            l = sxmt_version;
+        } else if (sxmt_eq(q, k[0], z[0], "WIDTH")) {
+            l = sxmt_width;
+        } else if (sxmt_eq(q, k[0], z[0], "HEIGHT")) {
+            l = sxmt_height;
+        } else if (sxmt_eq(q, k[0], z[0], "POINTS")) {
+            l = sxmt_point_count;
+            out = points;
+        } else if (sxmt_eq(q, k[0], z[0], "DATA")) {
+            if (!sxmt_value(q, sxmt_encoding, e[0], null)) {
+                return false;
+            }
+            q.p = next;
+            ended = true;
+            break;
+        } else if (sxmt_eq(q, k[0], z[0], "VIEWPOINT")) {
+            var ls = [sxmt_translate_x, sxmt_translate_y, sxmt_translate_z, sxmt_quaternion_w, sxmt_quaternion_x, sxmt_quaternion_y, sxmt_quaternion_z];
+            for (i = 0; i < 7; i++) {
+                if (!sxmt_value(q, ls[i], e[0], null)) {
+                    return false;
+                }
+            }
+        } else {
+            var index = 0;
+            var fields = sxmt_eq(q, k[0], z[0], "FIELDS");
+            var sz = sxmt_eq(q, k[0], z[0], "SIZE");
+            var ty = sxmt_eq(q, k[0], z[0], "TYPE");
+            var co = sxmt_eq(q, k[0], z[0], "COUNT");
+            if (!fields && !sz && !ty && !co) {
+                return false;
+            }
+            while (sxmt_token(q, e[0], a, z, true)) {
+                if (index >= 64) {
+                    return false;
+                }
+                if (fields) {
+                    if (!sxmt_emit(q, sxmt_property_name, a[0], z[0])) {
+                        return false;
+                    }
+                    nf++;
+                } else if (ty) {
+                    if (z[0] !== 1 || !sxmt_emit(q, sxmt_field_type, a[0], z[0])) {
+                        return false;
+                    }
+                    kinds[index] = q.b[a[0]];
+                } else {
+                    var n = [0];
+                    if (!sxmt_uint_token(q, a[0], z[0], n) || !sxmt_emit(q, sz ? sxmt_data_bytes : sxmt_sample_count, a[0], z[0])) {
+                        return false;
+                    }
+                    if (sz) {
+                        sizes[index] = n[0];
+                    } else {
+                        counts[index] = n[0];
+                    }
+                }
+                index++;
+            }
+            if (!fields && index !== nf) {
+                return false;
+            }
+        }
+        if (l !== null && !sxmt_value(q, l, e[0], out)) {
+            return false;
+        }
+        q.p = next;
+    }
+    if (!ended || !nf || !points[0] || points[0] > 1000000) {
+        return false;
+    }
+    for (i = 0; i < points[0]; i++) {
+        for (var j = 0; j < nf; j++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            if (sizes[j] > 8 || !counts[j] || counts[j] > 65536) {
+                return false;
+            }
+            l = sxmt_binary_type(kinds[j], sizes[j] >>> 0, false);
+            if (l === null || !sxmt_table(q, l, q.p, (sizes[j] >= SX_I64_MAX ? sizes[j] - SX_U64_MAX : sizes[j]), counts[j])) {
+                return false;
+            }
+            q.p += (sizes[j] * counts[j] >= SX_I64_MAX ? sizes[j] * counts[j] - SX_U64_MAX : sizes[j] * counts[j]);
+        }
+    }
+    return true;
+}
+function sx_pointcloud_pcd_build(q) {
+    return sxmt_pcd(q);
+}

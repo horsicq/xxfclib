@@ -1,0 +1,130 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/amiga_sfs/xx_amiga_sfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_sfs_root_block_fields = layout([u32("id", SIGNATURE), u32("checksum", CHECKSUM), u32("self_block"), u16("version", ID),
+    u16("sequence"), u32("creation_time", TIMESTAMP), u8("flags", FLAGS), u8("padding1", RESERVED), u16("padding2", RESERVED),
+    field("reserved1", "uint32[2]", 8, RESERVED), u64("first_byte", OFFSET), u64("last_byte", OFFSET),
+    u32("total_blocks", COUNT), u32("block_size", SIZE), field("reserved2", "uint32[10]", 40, RESERVED), u32("bitmap_block"),
+    u32("admin_space_block"), u32("root_object_block"), u32("extent_tree_block"), u32("object_tree_block"),
+    field("reserved3", "uint32[3]", 12, RESERVED)]);
+var sxmf_sfs_root_block = sxLayout(0x60420016, "sfs_root_block", BE, sxmf_sfs_root_block_fields);
+var sxmf_sfs_object_container_fields = layout([u32("id", SIGNATURE), u32("checksum", CHECKSUM), u32("self_block"),
+    u32("parent_object", ID), u32("next_block"), u32("previous_block")]);
+var sxmf_sfs_object_container = sxLayout(0x60420017, "sfs_object_container", BE, sxmf_sfs_object_container_fields);
+var sxmf_sfs_btree_header_fields = layout([u32("id", SIGNATURE), u32("checksum", CHECKSUM), u32("self_block"),
+    u16("node_count", COUNT), u8("leaf", ID), u8("node_size", SIZE)]);
+var sxmf_sfs_btree_header = sxLayout(0x60420018, "sfs_btree_header", BE, sxmf_sfs_btree_header_fields);
+var sxmf_sfs_extent16_fields = layout([u32("block"), u32("next_block"), u32("previous_block_or_object"),
+    u16("block_count", COUNT)]);
+var sxmf_sfs_extent16 = sxLayout(0x60420019, "sfs_extent16", BE, sxmf_sfs_extent16_fields);
+var sxmf_sfs_extent32_fields = layout([u32("block"), u32("next_block"), u32("previous_block_or_object"),
+    u32("block_count", COUNT)]);
+var sxmf_sfs_extent32 = sxLayout(0x6042001A, "sfs_extent32", BE, sxmf_sfs_extent32_fields);
+var sxmf_sfs_btree_index_fields = layout([u32("key"), u32("child_block")]);
+var sxmf_sfs_btree_index = sxLayout(0x6042001B, "sfs_btree_index", BE, sxmf_sfs_btree_index_fields);
+var sxmf_sfs_file_object_fields = layout([u16("owner_uid", ID), u16("owner_gid", ID), u32("object_node", ID),
+    u32("protection", FLAGS), u32("data_block"), u32("file_size", SIZE), u32("modification_time", TIMESTAMP), u8("type", FLAGS)]);
+var sxmf_sfs_file_object = sxLayout(0x6042008A, "sfs_file_object", BE, sxmf_sfs_file_object_fields);
+var sxmf_sfs_directory_object_fields = layout([u16("owner_uid", ID), u16("owner_gid", ID), u32("object_node", ID),
+    u32("protection", FLAGS), u32("hash_table_block"), u32("first_directory_block"), u32("modification_time", TIMESTAMP),
+    u8("type", FLAGS)]);
+var sxmf_sfs_directory_object = sxLayout(0x6042008B, "sfs_directory_object", BE, sxmf_sfs_directory_object_fields);
+function sxmf_sfs(c) {
+    var h = [];
+    if (!sxmf_read(c, 0, h, 0, 128)) {
+        return false;
+    }
+    var magic = sxmf32(h, 0, 1);
+    if (magic !== 0x53465300 && magic !== 0x53465302 || !sxmf_put(c, sxmf_sfs_root_block, 0, 1)) {
+        return false;
+    }
+    var bs = sxmf32(h, 52, 1);
+    var blocks = sxmf32(h, 48, 1);
+    if (bs < 512 || bs > 65536 || !sxmf_pow(bs) || !blocks || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
+        return true;
+    }
+    var b = sxAlloc(bs);
+    var q = sxNew_sxmf_queue();
+    if (b === null || q === null) {
+        return false;
+    }
+    var ok = true;
+    if (sxmf_read(c, sxU64(blocks - 1) * bs, b, 0, 128) && sxmf32(b, 0, 1) === magic && !sxmf_put(c, sxmf_sfs_root_block, sxU64(blocks - 1) * bs, 1)) {
+        ok = false;
+    }
+    sxmf_queue_add(q, sxmf32(h, 104, 1) * bs, 0, 0);
+    sxmf_queue_add(q, sxmf32(h, 108, 1) * bs, 1, 0);
+    while (ok && q.index < q.count && c.count < 24000) {
+        var t = sxCopy_sxmf_task(null, q.items[q.index++]);
+        if (Math.floor(t.p / bs) >= blocks || !sxmf_read(c, t.p, b, 0, bs)) {
+            continue;
+        }
+        if (t.kind === 0) {
+            if (sxmf32(b, 0, 1) !== 0x4F424A43 || sxmf32(b, 8, 1) !== Math.floor(t.p / bs)) {
+                continue;
+            }
+            if (!sxmf_put(c, sxmf_sfs_object_container, t.p, 1)) {
+                ok = false;
+                break;
+            }
+            sxmf_queue_add(q, sxmf32(b, 16, 1) * bs, 0, t.depth);
+            if (magic !== 0x53465300) {
+                continue;
+            }
+            for (var p = 24; p + 25 <= bs; ) {
+                if (!sxmf32(b, p + 4, 1)) {
+                    break;
+                }
+                var dir = (b[p + 24] & 128) !== 0;
+                var end = p + 25;
+                var strings = 0;
+                while (end < bs && strings < 2) {
+                    if (!b[end]) {
+                        strings++;
+                    }
+                    end++;
+                }
+                if (strings !== 2) {
+                    break;
+                }
+                if (!sxmf_put(c, dir ? sxmf_sfs_directory_object : sxmf_sfs_file_object, t.p + p, 1)) {
+                    ok = false;
+                    break;
+                }
+                if (dir) {
+                    sxmf_queue_add(q, sxmf32(b, p + 16, 1) * bs, 0, (t.depth + 1) >>> 0);
+                }
+                p = sxAnd64(end + 1, sxK(0xFFFFFFFF, 0xFFFFFFFE));
+            }
+        } else {
+            if (sxmf32(b, 0, 1) !== 0x424E4443 || sxmf32(b, 8, 1) !== Math.floor(t.p / bs)) {
+                continue;
+            }
+            var n = sxmf16(b, 12, 1);
+            var leaf = b[14];
+            var stride = b[15];
+            if (!stride || n > Math.floor(sxU64(bs - 16) / stride)) {
+                continue;
+            }
+            if (!sxmf_put(c, sxmf_sfs_btree_header, t.p, 1)) {
+                ok = false;
+                break;
+            }
+            if (leaf && stride === (magic === 0x53465300 ? 14 : 16)) {
+                ok = sxmf_put(c, magic === 0x53465300 ? sxmf_sfs_extent16 : sxmf_sfs_extent32, t.p + 16, n);
+            } else if (!leaf && stride === 8) {
+                ok = sxmf_put(c, sxmf_sfs_btree_index, t.p + 16, n);
+                for (var i = 0; i < n; i++) {
+                    sxmf_queue_add(q, sxmf32(b, 20 + ((i * 8) >>> 0), 1) * bs, 1, (t.depth + 1) >>> 0);
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_amiga_sfs_build(c) {
+    return sxmf_sfs(c);
+}

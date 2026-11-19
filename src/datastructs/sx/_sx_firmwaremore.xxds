@@ -1,0 +1,300 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_firmwaremore.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_rompaq_header_fields = layout([i32("image_size", SIZE), u32("checksum", CHECKSUM), u16("rom_id", ID),
+    u16("version", ID), chars("image_name", 7, NONE), u8("name_terminator", RESERVED), chars("date", 39, NONE),
+    u8("date_terminator", RESERVED), u8("method", ID), u16("part_count", COUNT), i32("packed_part_size", SIZE),
+    u32("reserved", RESERVED), u8("reserved2", RESERVED)]);
+var sx_fm_rompaq_header = sxLayout(0x60220001, "rompaq_header", LE, sx_fm_rompaq_header_fields);
+var sx_fm_dms_swapped_header_fields = layout([field("tag", "byte[2]", 2, SIGNATURE), u16("unknown16"),
+    field("magic", "uint32_halfword_be", 4, SIGNATURE), field("unknown32", "uint32_halfword_be", 4),
+    field("image_size", "uint32_halfword_be", 4, SIZE)]);
+var sx_fm_dms_swapped_header = sxLayout(0x60220002, "dms_swapped_header", BE, sx_fm_dms_swapped_header_fields);
+var sx_fm_mh01_signature_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("signature_offset", OFFSET),
+    u32("signature_size", SIZE), u32("unknown")]);
+var sx_fm_mh01_signature_header = sxLayout(0x60220005, "mh01_signature_header", LE, sx_fm_mh01_signature_header_fields);
+var sx_fm_dlke_arm_header_fields = layout([chars("rom_id", 12, NONE), u16("drange"), u16("image_checksum", CHECKSUM),
+    u32("block_size", SIZE), u32("reserved2", RESERVED), u16("reserved3", RESERVED), u8("lpvs", ID), u8("mbz", RESERVED),
+    u32("timestamp_ticks"), u32("erase_start", VA), u32("erase_size", SIZE), u32("data_start", VA), u32("data_size", SIZE),
+    u32("reserved4", RESERVED), u32("reserved5", RESERVED), u32("reserved6", RESERVED), u32("reserved7", RESERVED),
+    u16("header_id", SIGNATURE), u16("header_version", ID), u16("reserved8", RESERVED), u8("section_id", ID),
+    u8("image_info_type", ID), u32("image_info_offset", OFFSET), u16("family", ID), u16("header_checksum", CHECKSUM)]);
+var sx_fm_dlke_arm_header = sxLayout(0x60220008, "dlke_arm_header", LE, sx_fm_dlke_arm_header_fields);
+var sx_fm_alpha_encimg_payload_le_fields = layout([u32("encrypted_size", SIZE), u32("offset", OFFSET)]);
+var sx_fm_alpha_encimg_payload_le = sxLayout(0x6022000B, "alpha_encimg_payload_le", LE, sx_fm_alpha_encimg_payload_le_fields);
+var sx_fm_alpha_encimg_payload_be_fields = layout([u32("encrypted_size", SIZE), u32("offset", OFFSET)]);
+var sx_fm_alpha_encimg_payload_be = sxLayout(0x6022000C, "alpha_encimg_payload_be", BE, sx_fm_alpha_encimg_payload_be_fields);
+var sx_fm_dlink_package_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("unknown"),
+    u32("first_entry_offset", OFFSET)]);
+var sx_fm_dlink_package_header = sxLayout(0x6022000E, "dlink_package_header", BE, sx_fm_dlink_package_header_fields);
+var sx_fm_dlink_package_entry_fields = layout([u32("header_length", SIZE), u16("type", ID), u16("unknown"),
+    u32("file_size", SIZE), chars("name", 16, NONE)]);
+var sx_fm_dlink_package_entry = sxLayout(0x60220010, "dlink_package_entry", BE, sx_fm_dlink_package_entry_fields);
+var sx_fm_htc_nbh_block_header_fields = layout([u32("data_length", SIZE), u32("signature_length", SIZE), u8("flag", FLAGS)]);
+var sx_fm_htc_nbh_block_header = sxLayout(0x60220012, "htc_nbh_block_header", LE, sx_fm_htc_nbh_block_header_fields);
+var sx_fm_htc_dbh_section_type_fields = layout([u32("section_type", ID)]);
+var sx_fm_htc_dbh_section_type = sxLayout(0x60220014, "htc_dbh_section_type", LE, sx_fm_htc_dbh_section_type_fields);
+var sx_fm_htc_dbh_section_offset_fields = layout([u32("section_offset", OFFSET)]);
+var sx_fm_htc_dbh_section_offset = sxLayout(0x60220015, "htc_dbh_section_offset", LE, sx_fm_htc_dbh_section_offset_fields);
+var sx_fm_xiaomi_hdr1_prefix_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("signature_offset", OFFSET),
+    u32("crc32", CHECKSUM), u16("unused", RESERVED), u16("device_id", ID)]);
+var sx_fm_xiaomi_hdr1_prefix = sxLayout(0x60220018, "xiaomi_hdr1_prefix", LE, sx_fm_xiaomi_hdr1_prefix_fields);
+var sx_fm_xiaomi_hdr2_prefix_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("signature_offset", OFFSET),
+    u32("crc32", CHECKSUM), u32("unused", RESERVED), chars("device_id", 8, NONE), chars("region", 8, NONE),
+    field("unused2", "uint64[2]", 16, RESERVED)]);
+var sx_fm_xiaomi_hdr2_prefix = sxLayout(0x60220019, "xiaomi_hdr2_prefix", LE, sx_fm_xiaomi_hdr2_prefix_fields);
+var sx_fm_xiaomi_blob_offset_fields = layout([u32("blob_offset", OFFSET)]);
+var sx_fm_xiaomi_blob_offset = sxLayout(0x6022001A, "xiaomi_blob_offset", LE, sx_fm_xiaomi_blob_offset_fields);
+var sx_fm_xiaomi_blob_header_fields = layout([u32("magic", SIGNATURE), u32("flash_offset", OFFSET), u32("data_size", SIZE),
+    u16("type", ID), u16("unused", RESERVED), chars("name", 32, NONE)]);
+var sx_fm_xiaomi_blob_header = sxLayout(0x6022001B, "xiaomi_blob_header", LE, sx_fm_xiaomi_blob_header_fields);
+var sx_fm_xiaomi_signature_fields = layout([u32("signature_size", SIZE), field("padding", "uint32[3]", 12, RESERVED),
+    field("signature", "byte[256]", 256)]);
+var sx_fm_xiaomi_signature = sxLayout(0x6022001C, "xiaomi_signature", LE, sx_fm_xiaomi_signature_fields);
+var sx_fm_bios_far_reset_jump_fields = layout([u8("opcode", ID), u16("target_offset", OFFSET), u16("target_segment", VA)]);
+var sx_fm_bios_far_reset_jump = sxLayout(0x6022001D, "bios_far_reset_jump", LE, sx_fm_bios_far_reset_jump_fields);
+var sx_fm_bios_near_reset_jump_fields = layout([u8("opcode", ID), i16("displacement", OFFSET)]);
+var sx_fm_bios_near_reset_jump = sxLayout(0x6022001E, "bios_near_reset_jump", LE, sx_fm_bios_near_reset_jump_fields);
+var sx_fm_gns1_segment_fields = layout([u32("size", SIZE), u32("physical_address", VA), u32("image_offset", OFFSET)]);
+var sx_fm_gns1_segment = sxLayout(0x60220021, "gns1_segment", LE, sx_fm_gns1_segment_fields);
+var sx_fm_gns1_terminator_fields = layout([u32("size_sentinel", SIGNATURE), u32("address_sentinel", SIGNATURE),
+    u32("offset_sentinel", SIGNATURE)]);
+var sx_fm_gns1_terminator = sxLayout(0x60220022, "gns1_terminator", LE, sx_fm_gns1_terminator_fields);
+function sx_fm_span(c, p, n) {
+    return p >= 0 && p <= c.size && n <= (c.size - p < 0 ? c.size - p + SX_U64_MAX : c.size - p);
+}
+function sx_fm_read(c, p, b, n) {
+    return sx_fm_span(c, p, n) && sx_read(c, p, b, n);
+}
+function sx_fm_u32(c, p, be, v) {
+    var b = [];
+    if (!sx_fm_read(c, p, b, 4)) {
+        return false;
+    }
+    v[0] = sxGetU32(b, 4, 0, be);
+    return true;
+}
+function sx_fm_table(c, l, p, z, n) {
+    if (!n) {
+        return true;
+    }
+    if (z <= 0 || n > 1000000 || (z < 0 ? z + SX_U64_MAX : z) > Math.floor(SX_I64_MAX / n) || !sx_fm_span(c, p, (z < 0 ? z + SX_U64_MAX : z) * n)) {
+        return false;
+    }
+    if (c.count >= 32000) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = c.items[i].offset - c.f.base_address;
+        var b = a + c.items[i].total_size;
+        if (p < b && a < p + z * (n >= SX_I64_MAX ? n - SX_U64_MAX : n)) {
+            return true;
+        }
+    }
+    return sx_table(c, l, p, z, n);
+}
+function sx_fm_add(c, l, p, z) {
+    return sx_fm_table(c, l, p, z, 1);
+}
+function sx_firmwaremore_supports(t) {
+    switch (t) {
+    case "ROMPAQ":
+    case "DMSFW":
+    case "DKBS":
+    case "SHRS":
+    case "MH01":
+    case "AUTEL":
+    case "DLKE":
+    case "ENCRPTED_IMG":
+    case "D_LINK_ALPHA_ENCIMG_V2":
+    case "D_LINK_FPKG_CPKG":
+    case "HTC_NBH_ROM_IMAGE":
+    case "XIAOMI_HDR1":
+    case "XIAOMI_HDR2":
+    case "BIOS_FIRMWARE":
+    case "GNS1":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_fm_xiaomi(c, hdr2) {
+    var signature = [0];
+    var prefix = hdr2 ? 48 : 16;
+    if (!sx_fm_u32(c, 4, false, signature) || !sx_fm_add(c, hdr2 ? sx_fm_xiaomi_hdr2_prefix : sx_fm_xiaomi_hdr1_prefix, 0, prefix) || !sx_fm_table(c, sx_fm_xiaomi_blob_offset, prefix, 4, 8) || !sx_fm_add(c, sx_fm_xiaomi_signature, signature[0], 272)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        var off = [0];
+        if (!sx_fm_u32(c, prefix + ((4 * i) >>> 0), false, off)) {
+            return false;
+        }
+        if (!off[0]) {
+            break;
+        }
+        if (!sx_fm_add(c, sx_fm_xiaomi_blob_header, off[0], 48)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_fm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sx_fm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sx_fm_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end || at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sx_fm_order, true);
+    return !c.failed;
+}
+function sx_firmwaremore_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "ROMPAQ":
+        ok = sx_rompaq_build(c);
+        break;
+    case "DMSFW":
+        ok = sx_dmsfw_build(c);
+        break;
+    case "DKBS":
+        ok = sx_dkbs_build(c);
+        break;
+    case "SHRS":
+        ok = sx_shrs_build(c);
+        break;
+    case "MH01":
+        ok = sx_mh01_build(c);
+        break;
+    case "AUTEL":
+        ok = sx_autel_build(c);
+        break;
+    case "DLKE":
+        ok = sx_dlke_build(c);
+        break;
+    case "ENCRPTED_IMG":
+        ok = sx_encrpted_img_build(c);
+        break;
+    case "D_LINK_ALPHA_ENCIMG_V2":
+        ok = sx_d_link_alpha_encimg_v2_build(c);
+        break;
+    case "D_LINK_FPKG_CPKG":
+        ok = sx_d_link_fpkg_cpkg_build(c);
+        break;
+    case "HTC_NBH_ROM_IMAGE":
+        ok = sx_htc_nbh_rom_image_build(c);
+        break;
+    case "XIAOMI_HDR1":
+        ok = sx_xiaomi_hdr1_build(c);
+        break;
+    case "XIAOMI_HDR2":
+        ok = sx_xiaomi_hdr2_build(c);
+        break;
+    case "BIOS_FIRMWARE":
+        ok = sx_bios_firmware_build(c);
+        break;
+    case "GNS1":
+        ok = sx_gns1_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sx_fm_finish(c);
+}
+function sx_firmwaremore_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60220001 || id >= 0x60220023) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var s = null;
+    if (id === sx_fm_dlink_package_header.id && r.name === "unknown") {
+        s = "Stored constant 0x01000000; its meaning is not established";
+    } else if (id === sx_fm_dms_swapped_header.id && (r.name === "magic" || r.name === "unknown32" || r.name === "image_size")) {
+        s = "Physical bytes ABCD decode as big-endian CDAB after swapping the two 16-bit halves";
+    } else if (id === sx_fm_rompaq_header.id && r.name === "method") {
+        s = v === 1 ? "Stored" : v === 2 ? "PKWARE DCL implode" : null;
+    } else if (id === sx_fm_mh01_signature_header.id && r.name === "signature_offset") {
+        s = "Byte offset relative to the second MH01 header at file offset 0x10";
+    } else if (id === sx_fm_dlke_arm_header.id && r.name === "timestamp_ticks") {
+        s = "4-second ticks since 1998-03-07 16:00:00 UTC; stored value retained";
+    } else if (id === sx_fm_alpha_encimg_payload_le.id || id === sx_fm_alpha_encimg_payload_be.id) {
+        s = "Native payload byte order chooses the smaller size interpretation, independently of the header magic byte order";
+    } else if (id === sx_fm_dlink_package_entry.id && r.name === "type") {
+        s = v === 0x100 ? "FILE" : v === 0x101 ? "UNKNOWN_TYPE_0x101" : v === 0x102 ? "CHECKSUM" : v === 0x103 ? "SIGNATURE" : null;
+    } else if (id === sx_fm_htc_nbh_block_header.id && r.name === "flag") {
+        s = v === 1 ? "MORE_BLOCKS" : v === 2 ? "LAST_BLOCK" : v === 0 ? "Legacy zero flag" : null;
+    } else if (id === sx_fm_htc_dbh_section_type.id) {
+        switch (v) {
+        case 0:
+            s = "Unused section";
+            break;
+        case 0x100:
+            s = "IPL";
+            break;
+        case 0x101:
+            s = "G3IPL";
+            break;
+        case 0x102:
+            s = "G4IPL";
+            break;
+        case 0x200:
+            s = "SPL";
+            break;
+        case 0x201:
+            s = "G3SPL";
+            break;
+        case 0x202:
+            s = "G4SPL";
+            break;
+        case 0x300:
+            s = "GSM";
+            break;
+        case 0x400:
+            s = "OS";
+            break;
+        case 0x600:
+            s = "MainSplash";
+            break;
+        case 0x601:
+            s = "SubSplash";
+            break;
+        case 0x700:
+        case 0x900:
+            s = "ExtROM";
+            break;
+        }
+    } else if (id === sx_fm_htc_dbh_section_offset.id) {
+        s = "Byte offset in the logical reassembled DBH image, not in the signed NBH wrapper";
+    } else if (id === sx_fm_xiaomi_blob_header.id && r.name === "flash_offset") {
+        s = "Flash destination coordinate; not an offset in the container file";
+    } else if ((id === sx_fm_xiaomi_hdr1_prefix.id || id === sx_fm_xiaomi_hdr2_prefix.id) && r.name === "crc32") {
+        s = "CRC-32/JAMCRC from file offset 0x0C through the fixed signature block";
+    } else if (id === sx_fm_bios_far_reset_jump.id && r.name === "target_segment") {
+        s = "Real-mode segment; physical target is segment * 16 + target_offset";
+    } else if (id === sx_fm_bios_near_reset_jump.id && r.name === "displacement") {
+        s = "Signed 16-bit relative displacement from the end of the three-byte reset jump";
+    } else if (id === sx_fm_gns1_terminator.id) {
+        s = "Physical table terminator: all three words are zero or all are 0xFFFFFFFF; not a segment size, address or offset";
+    } else if (id === sx_fm_gns1_segment.id && r.name === "image_offset") {
+        s = "Byte offset relative to the GNS1 image, which can be embedded inside FTAB";
+    }
+    return s === null || sxSetComment(r, s);
+}

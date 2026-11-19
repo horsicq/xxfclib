@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/qlie_pack/xx_qlie_pack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxgco_qlie(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var n = [0];
+    var z = [0];
+    var major = [0];
+    var minor = [0];
+    if (e < 28 || !sxgco_row(v, sxgco_qlie_footer, sxU64(e - 28), e) || !sxgco_word(v, sxU64(e - 12), 4, false, n, e) || !sxgco_word(v, sxU64(e - 8), 8, false, p, e) || !sxgco_word(v, sxU64(e - 17), 1, false, major, e) || !sxgco_word(v, sxU64(e - 15), 1, false, minor, e) || n[0] > 0xFFFFF) {
+        return false;
+    }
+    var bound = sxU64(e - 28);
+    var unicode = major[0] === 51 /*3*/ && minor[0] === 49 /*1*/;
+    if (major[0] === 51 /*3*/) {
+        if (e < 0x440) {
+            return false;
+        }
+        bound = sxU64(e - 0x440);
+    }
+    if (major[0] === 49 /*1*/) {
+        return true;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxgco_row(v, sxgco_qlie_name_units, p[0], bound) || !sxgco_word(v, p[0], 2, false, z, bound) || !z[0] || z[0] > 256) {
+            return false;
+        }
+        if (unicode) {
+            z[0] *= 2;
+        }
+        if (!sxgco_table(v, sxgco_encoded_byte, p[0] + 2, z[0], bound) || !sxgco_row(v, sxgco_qlie_entry, p[0] + 2 + z[0], bound)) {
+            return false;
+        }
+        p[0] += 30 + z[0];
+    }
+    return true;
+}
+function sx_qlie_pack_build(v) {
+    return sxgco_qlie(v);
+}

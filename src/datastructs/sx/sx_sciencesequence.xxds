@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencesequence.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_sciencesequence");
+include("_sx_sciencesequence_alignment_clustal");
+include("_sx_sciencesequence_alignment_maf");
+include("_sx_sciencesequence_alignment_mauve");
+include("_sx_sciencesequence_alignment_phylip");
+include("_sx_sciencesequence_alignment_stockholm");
+include("_sx_sciencesequence_assembly_gfa");
+include("_sx_sciencesequence_genomics_embl");
+include("_sx_sciencesequence_genomics_genbank");
+include("_sx_sciencesequence_genomics_swissprot");
+include("_sx_sciencesequence_idtech_md5anim");
+include("_sx_sciencesequence_quake_md5mesh");
+
+function fileTypes() { return ["QUAKE_MD5MESH", "IDTECH_MD5ANIM", "GENOMICS_GENBANK", "GENOMICS_EMBL", "GENOMICS_SWISSPROT",
+    "ALIGNMENT_CLUSTAL", "ALIGNMENT_STOCKHOLM", "ALIGNMENT_PHYLIP", "ALIGNMENT_MAF", "ALIGNMENT_MAUVE", "ASSEMBLY_GFA"]; }
+
+var sx_sciencesequence_layouts = [sxseq_signature, sxseq_keyword, sxseq_field_key, sxseq_field_text, sxseq_identifier,
+    sxseq_molecule_type, sxseq_locus_options, sxseq_unit, sxseq_accession, sxseq_feature_key, sxseq_feature_location,
+    sxseq_feature_qualifier, sxseq_comment, sxseq_terminator, sxseq_entry_status, sxseq_date_text, sxseq_sequence_length,
+    sxseq_alignment_columns, sxseq_sequence_count, sxseq_adenine_count, sxseq_cytosine_count, sxseq_guanine_count,
+    sxseq_thymine_count, sxseq_other_base_count, sxseq_sequence_position, sxseq_residue_total, sxseq_sequence_text,
+    sxseq_consensus, sxseq_annotation_key, sxseq_annotation_text, sxseq_molecular_weight, sxseq_crc64, sxseq_maf_scoring,
+    sxseq_alignment_score, sxseq_maf_start, sxseq_maf_size, sxseq_source_length, sxseq_strand, sxseq_mauve_sequence_id,
+    sxseq_mauve_start, sxseq_mauve_end, sxseq_source_filename, sxseq_gfa_record_type, sxseq_segment_name, sxseq_path_name,
+    sxseq_orientation, sxseq_overlap_length, sxseq_cigar_operation, sxseq_missing_overlap, sxseq_tag_name, sxseq_tag_type,
+    sxseq_tag_integer, sxseq_tag_real, sxseq_tag_string, sxseq_tag_character, sxseq_tag_hex_bytes, sxseq_gfa_declared_length,
+    sxseq_version, sxseq_commandline, sxseq_joint_name, sxseq_shader_name, sxseq_md5_version, sxseq_joint_count,
+    sxseq_mesh_count, sxseq_vertex_count, sxseq_triangle_count, sxseq_weight_count, sxseq_frame_count,
+    sxseq_animated_component_count, sxseq_frame_rate, sxseq_parent_joint, sxseq_vertex_index, sxseq_triangle_index,
+    sxseq_weight_index, sxseq_joint_index, sxseq_frame_index, sxseq_first_weight, sxseq_component_start,
+    sxseq_vertex_weight_count, sxseq_animation_flags, sxseq_texture_u, sxseq_texture_v, sxseq_weight_bias, sxseq_position_x,
+    sxseq_position_y, sxseq_position_z, sxseq_bounds_min_x, sxseq_bounds_min_y, sxseq_bounds_min_z, sxseq_bounds_max_x,
+    sxseq_bounds_max_y, sxseq_bounds_max_z, sxseq_weight_position_x, sxseq_weight_position_y, sxseq_weight_position_z,
+    sxseq_local_position_x, sxseq_local_position_y, sxseq_local_position_z, sxseq_orientation_x, sxseq_orientation_y,
+    sxseq_orientation_z];
+
+function structs() {
+    return sxCatalog([sxseq_signature, sxseq_keyword, sxseq_field_key, sxseq_field_text, sxseq_identifier, sxseq_molecule_type,
+        sxseq_locus_options, sxseq_unit, sxseq_accession, sxseq_feature_key, sxseq_feature_location, sxseq_feature_qualifier,
+        sxseq_comment, sxseq_terminator, sxseq_entry_status, sxseq_date_text, sxseq_sequence_length, sxseq_alignment_columns,
+        sxseq_sequence_count, sxseq_adenine_count, sxseq_cytosine_count, sxseq_guanine_count, sxseq_thymine_count,
+        sxseq_other_base_count, sxseq_sequence_position, sxseq_residue_total, sxseq_sequence_text, sxseq_consensus,
+        sxseq_annotation_key, sxseq_annotation_text, sxseq_molecular_weight, sxseq_crc64, sxseq_maf_scoring,
+        sxseq_alignment_score, sxseq_maf_start, sxseq_maf_size, sxseq_source_length, sxseq_strand, sxseq_mauve_sequence_id,
+        sxseq_mauve_start, sxseq_mauve_end, sxseq_source_filename, sxseq_gfa_record_type, sxseq_segment_name, sxseq_path_name,
+        sxseq_orientation, sxseq_overlap_length, sxseq_cigar_operation, sxseq_missing_overlap, sxseq_tag_name, sxseq_tag_type,
+        sxseq_tag_integer, sxseq_tag_real, sxseq_tag_string, sxseq_tag_character, sxseq_tag_hex_bytes,
+        sxseq_gfa_declared_length, sxseq_version, sxseq_commandline, sxseq_joint_name, sxseq_shader_name, sxseq_md5_version,
+        sxseq_joint_count, sxseq_mesh_count, sxseq_vertex_count, sxseq_triangle_count, sxseq_weight_count, sxseq_frame_count,
+        sxseq_animated_component_count, sxseq_frame_rate, sxseq_parent_joint, sxseq_vertex_index, sxseq_triangle_index,
+        sxseq_weight_index, sxseq_joint_index, sxseq_frame_index, sxseq_first_weight, sxseq_component_start,
+        sxseq_vertex_weight_count, sxseq_animation_flags, sxseq_texture_u, sxseq_texture_v, sxseq_weight_bias, sxseq_position_x,
+        sxseq_position_y, sxseq_position_z, sxseq_bounds_min_x, sxseq_bounds_min_y, sxseq_bounds_min_z, sxseq_bounds_max_x,
+        sxseq_bounds_max_y, sxseq_bounds_max_z, sxseq_weight_position_x, sxseq_weight_position_y, sxseq_weight_position_z,
+        sxseq_local_position_x, sxseq_local_position_y, sxseq_local_position_z, sxseq_orientation_x, sxseq_orientation_y,
+        sxseq_orientation_z], sx_sciencesequence_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_sciencesequence_build, false);
+}

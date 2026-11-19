@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/rcf/xx_rcf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_rcf_header_fields = layout([u8("tag_size", SIZE), bytes("encoded_signature", 3, SIGNATURE), u8("version_size", SIZE),
+    chars("version", 3, NONE), u16("reserved")]);
+var sxasy_rcf_header = sxLayout(0x60440027, "rcf_header", LE, sxasy_rcf_header_fields);
+var sxasy_rcf_entry_fields = layout([u8("name_size", SIZE), chars("name", 12, NONE), i32("compressed_size", SIZE)]);
+var sxasy_rcf_entry = sxLayout(0x60440028, "rcf_entry", LE, sxasy_rcf_entry_fields);
+var sxasy_rcf_count_fields = layout([u16("member_count", COUNT)]);
+var sxasy_rcf_count = sxLayout(0x60440029, "rcf_count", LE, sxasy_rcf_count_fields);
+function sxasy_rcf(c) {
+    var n = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (end < 12 || !sxasy_word(c, sxU64(end - 2), 2, false, n) || n[0] > Math.floor(sxU64(end - 12) / 17) || !sxasy_add(c, sxasy_rcf_header, 0) || !sxasy_add(c, sxasy_rcf_count, sxU64(end - 2))) {
+        return false;
+    }
+    var table = sxU64(sxU64(end - 2) - n[0] * 17);
+    var p = 10;
+    for (var i = 0; i < n[0]; i++) {
+        var z = [0];
+        if (!sxasy_word(c, table + i * 17 + 13, 4, false, z) || z[0] > 2147483647 || p > table || z[0] > sxU64(table - p) || !sxasy_add(c, sxasy_rcf_entry, table + i * 17) || !sxasy_dcl(c, p, z[0])) {
+            return false;
+        }
+        p += z[0];
+    }
+    return p === table;
+}
+function sx_rcf_build(c) {
+    return sxasy_rcf(c);
+}

@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_jgsoft_deploymaster_package/xx_sfx_jgsoft_deploymaster_package_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_deploymaster_record_fields = layout([u32("compressed_size", SIZE)]);
+var sxiex_deploymaster_record = sxLayout(0x60820022, "deploymaster_record", LE, sxiex_deploymaster_record_fields);
+var sxiex_deploymaster_separator_fields = layout([u32("marker", SIGNATURE)]);
+var sxiex_deploymaster_separator = sxLayout(0x60820023, "deploymaster_separator", LE, sxiex_deploymaster_separator_fields);
+var sxiex_deploymaster_bzip2_fields = layout([chars("signature", 3, SIGNATURE), u8("block_size_digit", ID)]);
+var sxiex_deploymaster_bzip2 = sxLayout(0x60820024, "deploymaster_bzip2", LE, sxiex_deploymaster_bzip2_fields);
+function sxiex_deploy(c, r) {
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size === 4) {
+            var z = [0];
+            if (sxiex_u32(c, m.header, z) && z[0] === m.packed && !sxiex_put(c, sxiex_deploymaster_record, m.header, 1)) {
+                return false;
+            }
+        }
+        if (m.header_size === 0 && m.packed >= 4 && sxiex_eq(c, m.data, "BZh", 3)) {
+            if (!sxiex_put(c, sxiex_deploymaster_bzip2, m.data, 1)) {
+                return false;
+            }
+            var end = m.data + m.packed;
+            if (sxiex_eq(c, end, "\xFF\xFF\xFF\xFF", 4)) {
+                if (!sxiex_put(c, sxiex_deploymaster_separator, end, 1)) {
+                    return false;
+                }
+                var q = end + 4;
+                for (var j = 0; j < 2; j++) {
+                    z = [0];
+                    if (!sxiex_u32(c, q, z) || !sxiex_span(c, q + 4, z[0])) {
+                        break;
+                    }
+                    if (!sxiex_put(c, sxiex_deploymaster_record, q, 1)) {
+                        return false;
+                    }
+                    q += (4 + z[0]) >>> 0;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_sfx_jgsoft_deploymaster_package_build(c, records) {
+    return sxiex_deploy(c, records);
+}

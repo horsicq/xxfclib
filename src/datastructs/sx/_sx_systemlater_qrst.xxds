@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/qrst/xx_qrst_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_qrst_header_fields = layout([chars("signature", 4, SIGNATURE), field("version", "float32", 4), u32("set_id", ID),
+    u8("disk_type", ID), u8("disk_number"), u8("disk_count", COUNT), chars("description_and_banner", 781, NONE)]);
+var sxsl_qrst_header = sxLayout(0x60330009, "qrst_header", LE, sxsl_qrst_header_fields);
+var sxsl_qrst_track_fields = layout([u8("cylinder"), u8("head"), u8("method", ID)]);
+var sxsl_qrst_track = sxLayout(0x6033000A, "qrst_track", LE, sxsl_qrst_track_fields);
+var sxsl_qrst_fill_fields = layout([u8("fill_value", ID)]);
+var sxsl_qrst_fill = sxLayout(0x6033000B, "qrst_fill", LE, sxsl_qrst_fill_fields);
+var sxsl_qrst_encoded_size_fields = layout([u16("encoded_size", SIZE)]);
+var sxsl_qrst_encoded_size = sxLayout(0x6033000C, "qrst_encoded_size", LE, sxsl_qrst_encoded_size_fields);
+function sxsl_qrst(c) {
+    var p = 0;
+    var h = [];
+    var b = [];
+    for (var image = 0; image < 128 && c.count < 24000; image++) {
+        if (!sxsl_read(c, p, h, 15) || sxMemcmp(h, "QRST", 4) || !sxsl_span(c, p, 796)) {
+            break;
+        }
+        if (!sxsl_put(c, sxsl_qrst_header, p, 1)) {
+            return false;
+        }
+        if (sxsl32(h, 4) !== 0x3F800000 || h[12] !== 3 && h[12] !== 4) {
+            break;
+        }
+        var track = h[12] === 3 ? 4608 : 9216;
+        p += 796;
+        var ok = true;
+        for (var i = 0; i < 160; i++) {
+            if (!sxsl_read(c, p, b, 3)) {
+                ok = false;
+                break;
+            }
+            var data = b[2] === 0 ? track : b[2] === 1 ? 1 : 0;
+            if (b[2] === 2) {
+                if (!sxsl_read(c, p, b, 5)) {
+                    ok = false;
+                    break;
+                }
+                data = 2 + sxsl16(b, 3);
+            } else if (b[2] > 1) {
+                ok = false;
+                break;
+            }
+            if (!sxsl_span(c, p + 3, data)) {
+                ok = false;
+                break;
+            }
+            if (!sxsl_put(c, sxsl_qrst_track, p, 1) || b[2] === 1 && !sxsl_put(c, sxsl_qrst_fill, p + 3, 1) || b[2] === 2 && !sxsl_put(c, sxsl_qrst_encoded_size, p + 3, 1)) {
+                return false;
+            }
+            p += 3 + data;
+        }
+        if (!ok) {
+            break;
+        }
+    }
+    return c.count > 0;
+}
+function sx_qrst_build(c) {
+    var ok = false;
+    ok = sxsl_qrst(c);
+    return ok && sxsl_finish(c);
+}

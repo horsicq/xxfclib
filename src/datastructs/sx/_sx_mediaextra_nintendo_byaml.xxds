@@ -1,0 +1,149 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_byaml/xx_nintendo_byaml_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_byaml_header_le_fields = layout([chars("magic", 2, SIGNATURE), u16("version", ID), u32("key_table_offset", OFFSET),
+    u32("string_table_offset", OFFSET), u32("root_offset", OFFSET)]);
+var sxmx_byaml_header_le = sxLayout(0x602E005E, "byaml_header_le", LE, sxmx_byaml_header_le_fields);
+var sxmx_byaml_node_le_fields = layout([u8("kind", ID), field("entry_count", "uint24", 3, COUNT)]);
+var sxmx_byaml_node_le = sxLayout(0x602E005F, "byaml_node_le", LE, sxmx_byaml_node_le_fields);
+var sxmx_byaml_string_offset_le_fields = layout([u32("string_relative", OFFSET)]);
+var sxmx_byaml_string_offset_le = sxLayout(0x602E0060, "byaml_string_offset_le", LE, sxmx_byaml_string_offset_le_fields);
+var sxmx_byaml_map_key_le_fields = layout([field("key_index", "uint24", 3, ID), u8("value_kind", ID)]);
+var sxmx_byaml_map_key_le = sxLayout(0x602E0061, "byaml_map_key_le", LE, sxmx_byaml_map_key_le_fields);
+var sxmx_byaml_array_kind_le_fields = layout([u8("value_kind", ID)]);
+var sxmx_byaml_array_kind_le = sxLayout(0x602E0062, "byaml_array_kind_le", LE, sxmx_byaml_array_kind_le_fields);
+var sxmx_byaml_string_le_fields = layout([u32("value", ID)]);
+var sxmx_byaml_string_le = sxLayout(0x602E0063, "byaml_string_le", LE, sxmx_byaml_string_le_fields);
+var sxmx_byaml_bool_le_fields = layout([u32("value", FLAGS)]);
+var sxmx_byaml_bool_le = sxLayout(0x602E0064, "byaml_bool_le", LE, sxmx_byaml_bool_le_fields);
+var sxmx_byaml_int_le_fields = layout([i32("value")]);
+var sxmx_byaml_int_le = sxLayout(0x602E0065, "byaml_int_le", LE, sxmx_byaml_int_le_fields);
+var sxmx_byaml_float_le_fields = layout([field("value", "float", 4)]);
+var sxmx_byaml_float_le = sxLayout(0x602E0066, "byaml_float_le", LE, sxmx_byaml_float_le_fields);
+var sxmx_byaml_uint_le_fields = layout([u32("value")]);
+var sxmx_byaml_uint_le = sxLayout(0x602E0067, "byaml_uint_le", LE, sxmx_byaml_uint_le_fields);
+var sxmx_byaml_node_value_le_fields = layout([u32("value", OFFSET)]);
+var sxmx_byaml_node_value_le = sxLayout(0x602E0068, "byaml_node_value_le", LE, sxmx_byaml_node_value_le_fields);
+var sxmx_byaml_null_le_fields = layout([u32("value", RESERVED)]);
+var sxmx_byaml_null_le = sxLayout(0x602E0069, "byaml_null_le", LE, sxmx_byaml_null_le_fields);
+var sxmx_byaml_header_be_fields = layout([chars("magic", 2, SIGNATURE), u16("version", ID), u32("key_table_offset", OFFSET),
+    u32("string_table_offset", OFFSET), u32("root_offset", OFFSET)]);
+var sxmx_byaml_header_be = sxLayout(0x602E006A, "byaml_header_be", BE, sxmx_byaml_header_be_fields);
+var sxmx_byaml_node_be_fields = layout([u8("kind", ID), field("entry_count", "uint24", 3, COUNT)]);
+var sxmx_byaml_node_be = sxLayout(0x602E006B, "byaml_node_be", BE, sxmx_byaml_node_be_fields);
+var sxmx_byaml_string_offset_be_fields = layout([u32("string_relative", OFFSET)]);
+var sxmx_byaml_string_offset_be = sxLayout(0x602E006C, "byaml_string_offset_be", BE, sxmx_byaml_string_offset_be_fields);
+var sxmx_byaml_map_key_be_fields = layout([field("key_index", "uint24", 3, ID), u8("value_kind", ID)]);
+var sxmx_byaml_map_key_be = sxLayout(0x602E006D, "byaml_map_key_be", BE, sxmx_byaml_map_key_be_fields);
+var sxmx_byaml_array_kind_be_fields = layout([u8("value_kind", ID)]);
+var sxmx_byaml_array_kind_be = sxLayout(0x602E006E, "byaml_array_kind_be", BE, sxmx_byaml_array_kind_be_fields);
+var sxmx_byaml_string_be_fields = layout([u32("value", ID)]);
+var sxmx_byaml_string_be = sxLayout(0x602E006F, "byaml_string_be", BE, sxmx_byaml_string_be_fields);
+var sxmx_byaml_bool_be_fields = layout([u32("value", FLAGS)]);
+var sxmx_byaml_bool_be = sxLayout(0x602E0070, "byaml_bool_be", BE, sxmx_byaml_bool_be_fields);
+var sxmx_byaml_int_be_fields = layout([i32("value")]);
+var sxmx_byaml_int_be = sxLayout(0x602E0071, "byaml_int_be", BE, sxmx_byaml_int_be_fields);
+var sxmx_byaml_float_be_fields = layout([field("value", "float", 4)]);
+var sxmx_byaml_float_be = sxLayout(0x602E0072, "byaml_float_be", BE, sxmx_byaml_float_be_fields);
+var sxmx_byaml_uint_be_fields = layout([u32("value")]);
+var sxmx_byaml_uint_be = sxLayout(0x602E0073, "byaml_uint_be", BE, sxmx_byaml_uint_be_fields);
+var sxmx_byaml_node_value_be_fields = layout([u32("value", OFFSET)]);
+var sxmx_byaml_node_value_be = sxLayout(0x602E0074, "byaml_node_value_be", BE, sxmx_byaml_node_value_be_fields);
+var sxmx_byaml_null_be_fields = layout([u32("value", RESERVED)]);
+var sxmx_byaml_null_be = sxLayout(0x602E0075, "byaml_null_be", BE, sxmx_byaml_null_be_fields);
+function sxmx_by_node(v, at, be, depth) {
+    if (depth > 32 || !sxmx_row(v, be ? sxmx_byaml_node_be : sxmx_byaml_node_le, at, v.n)) {
+        return false;
+    }
+    var n = sxGetU24At(v.p, at + 1, 3, 0, be);
+    var kind = v.p[at];
+    if (n > 1024 || kind !== 0xC0 && kind !== 0xC1) {
+        return false;
+    }
+    if (kind === 0xC1) {
+        if (!sxmx_need(v, at + 4, n * 8, v.n)) {
+            return false;
+        }
+        for (var i = 0; i < n; i++) {
+            var row = at + 4 + i * 8;
+            if (!sxmx_row(v, be ? sxmx_byaml_map_key_be : sxmx_byaml_map_key_le, row, v.n) || !sxmx_by_value(v, row + 4, v.p[row + 3], be, depth)) {
+                return false;
+            }
+        }
+    } else {
+        var values = at + 4 + (((n + 3) >>> 0 & 0xFFFFFFFC) >>> 0);
+        if (!sxmx_table(v, be ? sxmx_byaml_array_kind_be : sxmx_byaml_array_kind_le, at + 4, n, v.n) || !sxmx_need(v, values, n * 4, v.n)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            if (!sxmx_by_value(v, values + i * 4, v.p[at + 4 + i], be, depth)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sxmx_by_value(v, at, kind, be, depth) {
+    var l = null;
+    switch (kind) {
+    case 0xA0:
+        l = be ? sxmx_byaml_string_be : sxmx_byaml_string_le;
+        break;
+    case 0xD0:
+        l = be ? sxmx_byaml_bool_be : sxmx_byaml_bool_le;
+        break;
+    case 0xD1:
+        l = be ? sxmx_byaml_int_be : sxmx_byaml_int_le;
+        break;
+    case 0xD2:
+        l = be ? sxmx_byaml_float_be : sxmx_byaml_float_le;
+        break;
+    case 0xD3:
+        l = be ? sxmx_byaml_uint_be : sxmx_byaml_uint_le;
+        break;
+    case 0xFF:
+        l = be ? sxmx_byaml_null_be : sxmx_byaml_null_le;
+        break;
+    case 0xC0:
+    case 0xC1:
+        l = be ? sxmx_byaml_node_value_be : sxmx_byaml_node_value_le;
+        break;
+    default:
+        return false;
+    }
+    if (kind === 0xC0 || kind === 0xC1) {
+        if (!sxmx_row(v, be ? sxmx_byaml_node_value_be : sxmx_byaml_node_value_le, at, v.n)) {
+            return false;
+        }
+        return sxmx_by_node(v, sxmx_u32(v.p, at, be), be, (depth + 1) >>> 0);
+    }
+    return sxmx_row(v, l, at, v.n);
+}
+function sxmx_byaml(v) {
+    if (!sxmx_need(v, 0, 16, v.n)) {
+        return false;
+    }
+    var be = v.p[0] === 66 /*B*/;
+    if (!sxmx_row(v, be ? sxmx_byaml_header_be : sxmx_byaml_header_le, 0, v.n)) {
+        return false;
+    }
+    for (var i = 4; i <= 8; i = (i + 4) >>> 0) {
+        var at = sxmx_u32(v.p, i, be);
+        if (at) {
+            if (!sxmx_row(v, be ? sxmx_byaml_node_be : sxmx_byaml_node_le, at, v.n)) {
+                return false;
+            }
+            var n = sxGetU24At(v.p, at + 1, 3, 0, be);
+            if (n > 1024 || !sxmx_table(v, be ? sxmx_byaml_string_offset_be : sxmx_byaml_string_offset_le, at + 4, n + 1, v.n)) {
+                return false;
+            }
+        }
+    }
+    return sxmx_by_node(v, sxmx_u32(v.p, 12, be), be, 0);
+}
+function sx_nintendo_byaml_build(v) {
+    return sxmx_byaml(v);
+}

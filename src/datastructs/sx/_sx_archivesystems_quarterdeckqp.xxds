@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/quarterdeckqp/xx_quarterdeckqp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_qp_header_fields = layout([chars("signature", 2, SIGNATURE), u16("member_count", COUNT), u32("index_size", SIZE),
+    u16("version"), bytes("reserved", 6)]);
+var sxasy_qp_header = sxLayout(0x60440023, "qp_header", LE, sxasy_qp_header_fields);
+var sxasy_qp_index_fields = layout([u32("member_offset", OFFSET), chars("name", 12, NONE)]);
+var sxasy_qp_index = sxLayout(0x60440024, "qp_index", LE, sxasy_qp_index_fields);
+var sxasy_qp_path_fields = layout([chars("signature", 2, SIGNATURE), u16("kind"), u32("path_blob_size", SIZE), u16("sequence"),
+    u32("reserved")]);
+var sxasy_qp_path = sxLayout(0x60440025, "qp_path", LE, sxasy_qp_path_fields);
+var sxasy_qp_member_fields = layout([chars("signature", 2, SIGNATURE), u16("kind"), u32("compressed_size", SIZE),
+    u16("sequence"), u32("crc32", CHECKSUM), u8("attributes"), u16("dos_time"), u16("dos_date"), u32("uncompressed_size", SIZE),
+    chars("name", 13, NONE)]);
+var sxasy_qp_member = sxLayout(0x60440026, "qp_member", LE, sxasy_qp_member_fields);
+function sxasy_qp(c) {
+    var n = [0];
+    var p;
+    if (!sxasy_word(c, 2, 2, false, n) || !sxasy_span(c, 16, n[0] * 16) || !sxasy_add(c, sxasy_qp_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxasy_add(c, sxasy_qp_index, 16 + 16 * i)) {
+            return false;
+        }
+    }
+    p = 16 + 16 * n[0];
+    for (i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 14) || h[0] !== 81 /*Q*/ || h[1] !== 68 /*D*/) {
+            return false;
+        }
+        var kind = sxasy_uint(h, 2, 2, false);
+        var z = sxasy_uint(h, 4, 4, false);
+        var hs = kind === 1 ? 14 : 36;
+        if (kind > 1 || !sxasy_span(c, p, hs) || !sxasy_span(c, p + hs, z) || !sxasy_add(c, kind ? sxasy_qp_path : sxasy_qp_member, p)) {
+            return false;
+        }
+        if (!kind && !sxasy_dcl(c, p + hs, z)) {
+            return false;
+        }
+        p += hs + z;
+    }
+    return true;
+}
+function sx_quarterdeckqp_build(c) {
+    return sxasy_qp(c);
+}

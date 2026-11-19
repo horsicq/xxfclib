@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/shiru_tfmd/xx_shiru_tfmd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_tfd_header_fields = layout([blob("magic", 4, SIGNATURE)]);
+var sxmw_tfd_header = sxLayout(0x60870029, "tfd_header", LE, sxmw_tfd_header_fields);
+var sxmw_tfd_write_fields = layout([u8("register_index", ID), u8("value")]);
+var sxmw_tfd_write = sxLayout(0x6087002C, "tfd_write", LE, sxmw_tfd_write_fields);
+function sxmw_tfd(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [4];
+    var cmd = [0];
+    if (!sxmw_eq(v, 0, "TFMD", 4, end) || !sxmw_row(v, sxmw_tfd_header, 0, end) || !sxmw_cstring(v, p, end, 65) || !sxmw_cstring(v, p, end, 65) || !sxmw_cstring(v, p, end, 385)) {
+        return false;
+    }
+    while (p[0] < end) {
+        if (!sxmw_u(v, p[0], 1, cmd, 0, end)) {
+            return false;
+        }
+        if (cmd[0] >= 0xFA) {
+            if (!sxmw_take(v, cmd[0] === 0xFE ? sxmw_tfd_skip : sxmw_tfd_command, p, 1, end)) {
+                return false;
+            }
+            if (cmd[0] === 0xFB) {
+                return true;
+            }
+        } else if (!sxmw_take(v, sxmw_tfd_write, p, 1, end)) {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_shiru_tfmd_build(v) {
+    return sxmw_tfd(v);
+}

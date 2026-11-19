@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/arni_installer_container/xx_arni_installer_container_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_arni_member_fields = layout([chars("signature", 4, SIGNATURE), i32("unpacked_size", SIZE)]);
+var sxil_arni_member = sxLayout(0x6085000E, "arni_member", LE, sxil_arni_member_fields);
+var sxil_arni_end_fields = layout([chars("signature", 8, SIGNATURE), field("terminator", "byte[2]", 2)]);
+var sxil_arni_end = sxLayout(0x6085000F, "arni_end", LE, sxil_arni_end_fields);
+function sxil_arni(c, r) {
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size !== 8 || !sxil_eq(c, m.header, "ARNI", 4)) {
+            continue;
+        }
+        if (!sxil_put(c, sxil_arni_member, m.header, 1)) {
+            return false;
+        }
+        var e = m.data + m.packed;
+        if (sxil_eq(c, e, "ARNIARNI\r\n", 10) && !sxil_put(c, sxil_arni_end, e, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_arni_installer_container_build(c, records) {
+    return sxil_arni(c, records);
+}

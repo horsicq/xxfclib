@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/igor_ibw/xx_igor_ibw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_igor_binary5_le_fields = layout([i16("version", ID), i16("checksum", CHECKSUM), i32("wfmSize", SIZE),
+    i32("formulaSize", SIZE), i32("noteSize", SIZE), i32("dataEUnitsSize", SIZE), i32("dimEUnitsSize0", SIZE),
+    i32("dimEUnitsSize1", SIZE), i32("dimEUnitsSize2", SIZE), i32("dimEUnitsSize3", SIZE), i32("dimLabelsSize0", SIZE),
+    i32("dimLabelsSize1", SIZE), i32("dimLabelsSize2", SIZE), i32("dimLabelsSize3", SIZE), i32("sIndicesSize", SIZE),
+    i32("optionsSize1", RESERVED), i32("optionsSize2", RESERVED)]);
+var sxsw_igor_binary5_le = sxLayout(0x602D001F, "igor_binary5_le", LE, sxsw_igor_binary5_le_fields);
+var sxsw_igor_binary5_be_fields = layout([i16("version", ID), i16("checksum", CHECKSUM), i32("wfmSize", SIZE),
+    i32("formulaSize", SIZE), i32("noteSize", SIZE), i32("dataEUnitsSize", SIZE), i32("dimEUnitsSize0", SIZE),
+    i32("dimEUnitsSize1", SIZE), i32("dimEUnitsSize2", SIZE), i32("dimEUnitsSize3", SIZE), i32("dimLabelsSize0", SIZE),
+    i32("dimLabelsSize1", SIZE), i32("dimLabelsSize2", SIZE), i32("dimLabelsSize3", SIZE), i32("sIndicesSize", SIZE),
+    i32("optionsSize1", RESERVED), i32("optionsSize2", RESERVED)]);
+var sxsw_igor_binary5_be = sxLayout(0x602D0021, "igor_binary5_be", BE, sxsw_igor_binary5_be_fields);
+function sxsw_igor(c) {
+    var version;
+    if ((version = sx_u16(c, 0, false)) === null) {
+        return false;
+    }
+    var be = version !== 5;
+    return sxsw_add(c, be ? sxsw_igor_binary5_be : sxsw_igor_binary5_le, 0, 64) && sxsw_add(c, be ? sxsw_igor_wave5_be : sxsw_igor_wave5_le, 64, 320);
+}
+function sx_igor_ibw_build(c) {
+    return sxsw_igor(c);
+}

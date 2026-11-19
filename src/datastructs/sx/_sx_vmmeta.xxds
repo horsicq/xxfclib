@@ -1,0 +1,270 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_vmmeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_vm_java_class_identity_fields = layout([u16("access_flags", FLAGS), u16("this_class", ID), u16("super_class", ID),
+    u16("interfaces_count", COUNT)]);
+var sx_vm_java_class_identity = sxLayout(0x60160013, "java_class_identity", BE, sx_vm_java_class_identity_fields);
+var sx_vm_java_field_info_fields = layout([u16("access_flags", FLAGS), u16("name_index", ID), u16("descriptor_index", ID),
+    u16("attributes_count", COUNT)]);
+var sx_vm_java_field_info = sxLayout(0x60160018, "java_field_info", BE, sx_vm_java_field_info_fields);
+var sx_vm_java_method_info_fields = layout([u16("access_flags", FLAGS), u16("name_index", ID), u16("descriptor_index", ID),
+    u16("attributes_count", COUNT)]);
+var sx_vm_java_method_info = sxLayout(0x60160019, "java_method_info", BE, sx_vm_java_method_info_fields);
+var sx_vm_lua51_prototype_fields = layout([i32("first_line"), i32("last_line"), u8("upvalue_count", COUNT),
+    u8("parameter_count", COUNT), u8("vararg_flags", FLAGS), u8("maximum_stack_size", COUNT)]);
+var sx_vm_lua51_prototype = sxLayout(0x6016001C, "lua51_prototype", LE, sx_vm_lua51_prototype_fields);
+var sx_vm_lua51_string32_fields = layout([u32("byte_length", SIZE)]);
+var sx_vm_lua51_string32 = sxLayout(0x60160023, "lua51_string32", LE, sx_vm_lua51_string32_fields);
+var sx_vm_lua51_string64_fields = layout([u64("byte_length", SIZE)]);
+var sx_vm_lua51_string64 = sxLayout(0x60160024, "lua51_string64", LE, sx_vm_lua51_string64_fields);
+var sx_vm_lua51_constant_tag_fields = layout([u8("type", ID)]);
+var sx_vm_lua51_constant_tag = sxLayout(0x60160025, "lua51_constant_tag", LE, sx_vm_lua51_constant_tag_fields);
+var sx_vm_lua51_setlist_extra_fields = layout([u32("block_index")]);
+var sx_vm_lua51_setlist_extra = sxLayout(0x60160029, "lua51_setlist_extra", LE, sx_vm_lua51_setlist_extra_fields);
+var sx_vm_cli_storage_header_fields = layout([u16("flags", RESERVED), u16("stream_count", COUNT)]);
+var sx_vm_cli_storage_header = sxLayout(0x60160035, "cli_storage_header", LE, sx_vm_cli_storage_header_fields);
+function sx_vmmeta_supports(type) {
+    return type === "JAVA_CLASS" || type === "LUA_BYTECODE51" || type === "ERLANG_BEAM" || type === "DOTNET_METADATA";
+}
+function sx_vm_span(c, at, n) {
+    return at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sx_vm_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var d = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > d.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, d);
+        }
+    }
+}
+function sx_vm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sx_vm_sort(c);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end || at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sx_vm_sort(c);
+    return !c.failed;
+}
+function sx_vmmeta_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "JAVA_CLASS":
+        ok = sx_java_class_build(c);
+        break;
+    case "LUA_BYTECODE51":
+        ok = sx_lua_bytecode51_build(c);
+        break;
+    case "ERLANG_BEAM":
+        ok = sx_erlang_beam_build(c);
+        break;
+    case "DOTNET_METADATA":
+        ok = sx_dotnet_metadata_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sx_vm_finish(c);
+}
+function sx_vm_flags(r, flags, count) {
+    var out = [];
+    var used = 0;
+    var value = sxVarU64(r.value);
+    var known = 0;
+    for (var i = 0; i < count; i++) {
+        known = sxOr64(known, flags[i].mask);
+        if (!sxAnd64(value, flags[i].mask)) {
+            continue;
+        }
+        if (used + 32 >= 256) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        var p = flags[i].name, p_o = 0;
+        while (sxAt(p, p_o) && used + 24 < 256) {
+            out[used++] = sxAt(p, p_o++);
+        }
+        if (sxAt(p, p_o)) {
+            return false;
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var started = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var digit = sxAnd64(sxShr64(unknown, shift), 15);
+            if (digit || started || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", digit);
+                started = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_vmmeta_comment_cls = [{ mask: 1, name: "ACC_PUBLIC" }, { mask: 16, name: "ACC_FINAL" }, { mask: 32, name: "ACC_SUPER" },
+    { mask: 512, name: "ACC_INTERFACE" }, { mask: 1024, name: "ACC_ABSTRACT" }, { mask: 4096, name: "ACC_SYNTHETIC" },
+    { mask: 8192, name: "ACC_ANNOTATION" }, { mask: 16384, name: "ACC_ENUM" }, { mask: 32768, name: "ACC_MODULE" }];
+var sx_vmmeta_comment_fld = [{ mask: 1, name: "ACC_PUBLIC" }, { mask: 2, name: "ACC_PRIVATE" },
+    { mask: 4, name: "ACC_PROTECTED" }, { mask: 8, name: "ACC_STATIC" }, { mask: 16, name: "ACC_FINAL" },
+    { mask: 64, name: "ACC_VOLATILE" }, { mask: 128, name: "ACC_TRANSIENT" }, { mask: 4096, name: "ACC_SYNTHETIC" },
+    { mask: 16384, name: "ACC_ENUM" }];
+var sx_vmmeta_comment_met = [{ mask: 1, name: "ACC_PUBLIC" }, { mask: 2, name: "ACC_PRIVATE" },
+    { mask: 4, name: "ACC_PROTECTED" }, { mask: 8, name: "ACC_STATIC" }, { mask: 16, name: "ACC_FINAL" },
+    { mask: 32, name: "ACC_SYNCHRONIZED" }, { mask: 64, name: "ACC_BRIDGE" }, { mask: 128, name: "ACC_VARARGS" },
+    { mask: 256, name: "ACC_NATIVE" }, { mask: 1024, name: "ACC_ABSTRACT" },
+    { mask: 2048, name: "ACC_STRICT (major versions46-60)" }, { mask: 4096, name: "ACC_SYNTHETIC" }];
+var sx_vmmeta_comment_flags = [{ mask: 1, name: "VARARG_HASARG" }, { mask: 2, name: "VARARG_ISVARARG" }, { mask: 4, name: "VARARG_NEEDSARG" }];
+var sx_vmmeta_comment_kinds = ["", "REF_getField", "REF_getStatic", "REF_putField", "REF_putStatic", "REF_invokeVirtual",
+    "REF_invokeStatic", "REF_invokeSpecial", "REF_newInvokeSpecial", "REF_invokeInterface"];
+var sx_vmmeta_comment_ops = ["MOVE", "LOADK", "LOADBOOL", "LOADNIL", "GETUPVAL", "GETGLOBAL", "GETTABLE", "SETGLOBAL",
+    "SETUPVAL", "SETTABLE", "NEWTABLE", "SELF", "ADD", "SUB", "MUL", "DIV", "MOD", "POW", "UNM", "NOT", "LEN", "CONCAT", "JMP",
+    "EQ", "LT", "LE", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN", "FORLOOP", "FORPREP", "TFORLOOP", "SETLIST", "CLOSE",
+    "CLOSURE", "VARARG"];
+function sx_vmmeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60160000 || id >= 0x60170000) {
+        return true;
+    }
+    var text = null;
+    if (r.name === "access_flags") {
+        if (id === sx_vm_java_class_identity.id) {
+            return sx_vm_flags(r, sx_vmmeta_comment_cls, 9);
+        }
+        if (id === sx_vm_java_field_info.id) {
+            return sx_vm_flags(r, sx_vmmeta_comment_fld, 9);
+        }
+        if (id === sx_vm_java_method_info.id) {
+            return sx_vm_flags(r, sx_vmmeta_comment_met, 12);
+        }
+    }
+    if (id === sx_vm_lua51_prototype.id && r.name === "vararg_flags") {
+        return sx_vm_flags(r, sx_vmmeta_comment_flags, 3);
+    }
+    if (r.name === "reference_kind") {
+        var v = sxVarU64(r.value);
+        if (v && v < 10) {
+            text = sx_vmmeta_comment_kinds[v];
+        }
+    }
+    if (r.name === "tag") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            text = "CONSTANT_Utf8";
+            break;
+        case 3:
+            text = "CONSTANT_Integer";
+            break;
+        case 4:
+            text = "CONSTANT_Float";
+            break;
+        case 5:
+            text = "CONSTANT_Long";
+            break;
+        case 6:
+            text = "CONSTANT_Double";
+            break;
+        case 7:
+            text = "CONSTANT_Class";
+            break;
+        case 8:
+            text = "CONSTANT_String";
+            break;
+        case 9:
+            text = "CONSTANT_Fieldref";
+            break;
+        case 10:
+            text = "CONSTANT_Methodref";
+            break;
+        case 11:
+            text = "CONSTANT_InterfaceMethodref";
+            break;
+        case 12:
+            text = "CONSTANT_NameAndType";
+            break;
+        case 15:
+            text = "CONSTANT_MethodHandle";
+            break;
+        case 16:
+            text = "CONSTANT_MethodType";
+            break;
+        case 17:
+            text = "CONSTANT_Dynamic";
+            break;
+        case 18:
+            text = "CONSTANT_InvokeDynamic";
+            break;
+        case 19:
+            text = "CONSTANT_Module";
+            break;
+        case 20:
+            text = "CONSTANT_Package";
+            break;
+        default:
+            break;
+        }
+    } else if (id === sx_vm_lua51_constant_tag.id) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            text = "LUA_TNIL";
+            break;
+        case 1:
+            text = "LUA_TBOOLEAN";
+            break;
+        case 3:
+            text = "LUA_TNUMBER";
+            break;
+        case 4:
+            text = "LUA_TSTRING";
+            break;
+        default:
+            break;
+        }
+    } else if (id === sx_vm_cli_storage_header.id && r.name === "flags") {
+        text = "Reserved; must be zero";
+    } else if (r.name === "ieee754_bits") {
+        text = "Stored IEEE754 bit pattern";
+    } else if (r.name === "stream_offset") {
+        text = "Byte offset from the CLI metadata root";
+    } else if (r.name === "byte_length" && (id === sx_vm_lua51_string32.id || id === sx_vm_lua51_string64.id)) {
+        text = "Stored string length including terminating zero; zero means no string";
+    } else if (r.name === "constant_pool_count") {
+        text = "Constant-pool index limit; long and double entries consume two indexes";
+    } else if (id === sx_vm_lua51_setlist_extra.id) {
+        text = "SETLIST auxiliary block index; not an opcode or byte offset";
+    } else if (r.name === "encoded_instruction") {
+        v = sxAnd64(sxVarU64(r.value), 63);
+        if (v < 38) {
+            text = sx_vmmeta_comment_ops[v];
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}

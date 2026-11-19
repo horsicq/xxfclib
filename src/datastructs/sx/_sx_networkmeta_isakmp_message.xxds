@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/isakmp_message/xx_isakmp_message_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxnm_isakmp(v) {
+    if (!sxnm_row(v, sxnm_isakmp_header, 0, v.n) || !sxnm_row(v, sxnm_isakmp_sa_payload, 28, v.n) || sxnm_u32(v.p, 24) !== v.n || sxnm_u16(v.p, 30) !== sxU64(v.n - 28)) {
+        return false;
+    }
+    var p = 40;
+    while (p < v.n) {
+        if (!sxnm_row(v, sxnm_isakmp_proposal, p, v.n)) {
+            return false;
+        }
+        var n = sxnm_u16(v.p, p + 2);
+        if (n < 8 || !sxnm_need(v, p, n, v.n)) {
+            return false;
+        }
+        var end = p + n;
+        var t = p + 8 + v.p[p + 6];
+        var count = v.p[p + 7];
+        if (t > end) {
+            return false;
+        }
+        for (var j = 0; j < count; j++) {
+            if (!sxnm_row(v, sxnm_isakmp_transform, t, end)) {
+                return false;
+            }
+            var z = sxnm_u16(v.p, t + 2);
+            if (z < 8 || !sxnm_need(v, t, z, end)) {
+                return false;
+            }
+            var te = t + z;
+            var a = t + 8;
+            while (a < te) {
+                if (!sxnm_need(v, a, 4, te)) {
+                    return false;
+                }
+                var basic = (v.p[a] & 128) !== 0;
+                if (!sxnm_row(v, basic ? sxnm_isakmp_basic_attribute : sxnm_isakmp_variable_attribute, a, te)) {
+                    return false;
+                }
+                var extra = basic ? 0 : sxnm_u16(v.p, a + 2);
+                a += 4;
+                if (!sxnm_need(v, a, extra, te)) {
+                    return false;
+                }
+                a += extra;
+            }
+            t = te;
+        }
+        if (t !== end) {
+            return false;
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_isakmp_message_build(v) {
+    return sxnm_isakmp(v);
+}

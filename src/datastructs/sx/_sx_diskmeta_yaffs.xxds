@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/yaffs/xx_yaffs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_yaffs_object_header_le_fields = layout([u32("object_type", ID), u32("parent_object_id", ID),
+    u16("obsolete_name_checksum", RESERVED), field("name", "byte[256]", 256),
+    field("alignment_padding", "byte[2]", 2, RESERVED), u32("mode", FLAGS), u32("uid", ID), u32("gid", ID),
+    u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP), u32("change_time", TIMESTAMP), u32("file_size_low"),
+    i32("equivalent_object_id", ID), field("alias", "byte[160]", 160), u32("device_id", ID),
+    field("wince_change_time_words", "uint32[2]", 8), field("wince_access_time_words", "uint32[2]", 8),
+    field("wince_modification_time_words", "uint32[2]", 8), u32("inband_shadowed_object_id", ID),
+    u32("inband_is_shrink", FLAGS), u32("file_size_high"), u32("reserved", RESERVED), i32("shadows_object", ID),
+    u32("is_shrink", FLAGS)]);
+var sx_dm_yaffs_object_header_le = sxLayout(0x60290045, "yaffs_object_header_le", LE, sx_dm_yaffs_object_header_le_fields);
+var sx_dm_yaffs_object_header_be_fields = layout([u32("object_type", ID), u32("parent_object_id", ID),
+    u16("obsolete_name_checksum", RESERVED), field("name", "byte[256]", 256),
+    field("alignment_padding", "byte[2]", 2, RESERVED), u32("mode", FLAGS), u32("uid", ID), u32("gid", ID),
+    u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP), u32("change_time", TIMESTAMP), u32("file_size_low"),
+    i32("equivalent_object_id", ID), field("alias", "byte[160]", 160), u32("device_id", ID),
+    field("wince_change_time_words", "uint32[2]", 8), field("wince_access_time_words", "uint32[2]", 8),
+    field("wince_modification_time_words", "uint32[2]", 8), u32("inband_shadowed_object_id", ID),
+    u32("inband_is_shrink", FLAGS), u32("file_size_high"), u32("reserved", RESERVED), i32("shadows_object", ID),
+    u32("is_shrink", FLAGS)]);
+var sx_dm_yaffs_object_header_be = sxLayout(0x6029004D, "yaffs_object_header_be", BE, sx_dm_yaffs_object_header_be_fields);
+function sx_dm_yaffs(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 10)) {
+        return false;
+    }
+    var be = sx_dm_u32(h, 0, false) > 5;
+    return sx_dm_add(c, be ? sx_dm_yaffs_object_header_be : sx_dm_yaffs_object_header_le, 0, 512);
+}
+function sx_yaffs_build(c) {
+    return sx_dm_yaffs(c);
+}

@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pdp11ar/xx_pdp11ar_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_pdp11ar_header_fields = layout([u16("magic", SIGNATURE)]);
+var sxar_pdp11ar_header = sxLayout(0x601C0032, "pdp11ar_header", LE, sxar_pdp11ar_header_fields);
+var sxar_pdp11ar_member_fields = layout([chars("name", 14, STRING), field("modified", "uint32_pdp", 4, TIMESTAMP),
+    u8("uid", ID), u8("gid", ID), u16("mode", FLAGS), field("data_size", "uint32_pdp", 4, SIZE)]);
+var sxar_pdp11ar_member = sxLayout(0x601C0033, "pdp11ar_member", LE, sxar_pdp11ar_member_fields);
+function sxar_pdp11ar(c) {
+    if (!sxar_span(c, 0, 2) || !sxar_add(c, sxar_pdp11ar_header, 0)) {
+        return false;
+    }
+    var p = 2;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var b = [];
+        if (!sxar_read(c, p, b, 0, 26) || !b[0]) {
+            break;
+        }
+        var n = ((sxar16(b, 22, false) << 16) >>> 0 | sxar16(b, 24, false)) >>> 0;
+        if (!sxar_span(c, p + 26, n)) {
+            break;
+        }
+        if (!sxar_add(c, sxar_pdp11ar_member, p)) {
+            return false;
+        }
+        p = sxAnd64(p + 26 + n + 1, sxK(0xFFFFFFFF, 0xFFFFFFFE));
+    }
+    return true;
+}
+function sx_pdp11ar_build(c) {
+    return sxar_pdp11ar(c);
+}

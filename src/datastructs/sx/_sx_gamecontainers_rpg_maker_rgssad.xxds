@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/rpg_maker_rgssad/xx_rpg_maker_rgssad_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_rgss_header_fields = layout([chars("magic", 7, SIGNATURE), u8("version", ID)]);
+var sxgco_rgss_header = sxLayout(0x6040002B, "rgss_header", LE, sxgco_rgss_header_fields);
+var sxgco_rgss_seed_fields = layout([u32("seed")]);
+var sxgco_rgss_seed = sxLayout(0x6040002C, "rgss_seed", LE, sxgco_rgss_seed_fields);
+function sxgco_rgss(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 8;
+    var x = [0];
+    var n;
+    var off = [0];
+    var version = [0];
+    var key = 0xDEADCAFE;
+    if (!sxgco_row(v, sxgco_rgss_header, 0, e) || !sxgco_word(v, 7, 1, false, version, e)) {
+        return false;
+    }
+    if (version[0] === 1) {
+        while (p < e) {
+            if (!sxgco_row(v, sxgco_rgss_name_size, p, e) || !sxgco_word(v, p, 4, false, x, e)) {
+                return false;
+            }
+            n = (x[0] >>> 0 ^ key) >>> 0;
+            key = (((key * 7) >>> 0) + 3) >>> 0;
+            p += 4;
+            if (!n || n > 1024 || !sxgco_table(v, sxgco_encoded_byte, p, n, e)) {
+                return false;
+            }
+            p += n;
+            for (var i = 0; i < n; i++) {
+                key = (((key * 7) >>> 0) + 3) >>> 0;
+            }
+            if (!sxgco_row(v, sxgco_rgss_data_size, p, e) || !sxgco_word(v, p, 4, false, x, e)) {
+                return false;
+            }
+            n = (x[0] >>> 0 ^ key) >>> 0;
+            key = (((key * 7) >>> 0) + 3) >>> 0;
+            p += 4;
+            if (!sxgco_span(v, p, n, e)) {
+                return false;
+            }
+            p += n;
+        }
+        return true;
+    }
+    if (version[0] !== 3 || !sxgco_row(v, sxgco_rgss_seed, 8, e) || !sxgco_word(v, 8, 4, false, x, e)) {
+        return false;
+    }
+    key = ((((x[0] >>> 0) * 9) >>> 0) + 3) >>> 0;
+    p = 12;
+    while (p < e) {
+        if (!sxgco_word(v, p, 4, false, off, e)) {
+            return false;
+        }
+        off[0] = (off[0] >>> 0 ^ key) >>> 0;
+        if (!off[0]) {
+            return sxgco_row(v, sxgco_rgss_end3, p, e);
+        }
+        if (!sxgco_row(v, sxgco_rgss_entry3, p, e) || !sxgco_word(v, p + 12, 4, false, x, e)) {
+            return false;
+        }
+        n = (x[0] >>> 0 ^ key) >>> 0;
+        if (!n || n > 1024 || !sxgco_table(v, sxgco_encoded_byte, p + 16, n, e)) {
+            return false;
+        }
+        p += 16 + n;
+    }
+    return false;
+}
+function sx_rpg_maker_rgssad_build(v) {
+    return sxgco_rgss(v);
+}

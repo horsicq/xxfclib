@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/lego_alp/xx_lego_alp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_alp_header_fields = layout([chars("magic", 4, SIGNATURE), u32("header_bytes_after_prefix", SIZE),
+    chars("encoding", 6, ID), u8("unknown"), u8("channels", COUNT)]);
+var sxau_alp_header = sxLayout(0x602C0070, "alp_header", LE, sxau_alp_header_fields);
+var sxau_alp_sample_rate_fields = layout([u32("sample_rate")]);
+var sxau_alp_sample_rate = sxLayout(0x602C0071, "alp_sample_rate", LE, sxau_alp_sample_rate_fields);
+function sx_lego_alp_build(v) {
+    var ok = false;
+    ok = sxau_row(v, sxau_alp_header, 0, v.n);
+    if (ok && sxau_u32(v.p, 4, false) === 12) {
+        ok = sxau_row(v, sxau_alp_sample_rate, 16, v.n);
+    }
+    return ok;
+}

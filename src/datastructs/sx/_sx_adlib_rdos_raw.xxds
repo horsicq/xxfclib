@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/rdos_raw/xx_rdos_raw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_raw_header_fields = layout([chars("signature", 8, SIGNATURE), field("timer_divisor", "uint16_t", 2)]);
+var sxad_adlib_raw_header = sxLayout(0x600F004A, "adlib_raw_header", LE, sxad_adlib_raw_header_fields);
+var sxad_adlib_raw_command_fields = layout([field("value", "uint8_t", 1), field("register_or_command", "uint8_t", 1, ID)]);
+var sxad_adlib_raw_command = sxLayout(0x600F004B, "adlib_raw_command", LE, sxad_adlib_raw_command_fields);
+var sxad_adlib_raw_timer_fields = layout([field("value", "uint8_t", 1), field("command", "uint8_t", 1, ID),
+    field("timer_divisor", "uint16_t", 2)]);
+var sxad_adlib_raw_timer = sxLayout(0x600F004C, "adlib_raw_timer", LE, sxad_adlib_raw_timer_fields);
+var sxad_adlib_raw_metadata_tag_fields = layout([field("tag", "uint8_t", 1, ID)]);
+var sxad_adlib_raw_metadata_tag = sxLayout(0x600F004D, "adlib_raw_metadata_tag", LE, sxad_adlib_raw_metadata_tag_fields);
+function sxad_raw(c) {
+    var clock;
+    var at = [10];
+    var end = false;
+    if (!sxad_tag(c, 0, "RAWADATA", 8) || (clock = sx_u16(c, 8, false)) === null || !clock || !sx_add(c, sxad_adlib_raw_header, 0, 10)) {
+        return false;
+    }
+    while (at[0] < c.size && !end) {
+        var b = [];
+        if (!sx_read(c, at[0], b, 2)) {
+            return false;
+        }
+        var width = 2;
+        var l = sxad_adlib_raw_command;
+        if (b[0] === 255 && b[1] === 255) {
+            end = true;
+        } else if (b[1] === 2) {
+            if (!b[0]) {
+                if ((clock = sx_u16(c, at[0] + 2, false)) === null || !clock) {
+                    return false;
+                }
+                width = 4;
+                l = sxad_adlib_raw_timer;
+            } else if (b[0] > 2) {
+                return false;
+            }
+        }
+        if (!sxad_header(c, l, at, width)) {
+            return false;
+        }
+    }
+    if (!end) {
+        return false;
+    }
+    for (var tag = 26; at[0] < c.size && tag <= 28; tag++) {
+        var v = [0];
+        if (!sxad_byte(c, at[0], v)) {
+            return false;
+        }
+        if (v[0] !== tag) {
+            if (tag === 26) {
+                return false;
+            }
+            continue;
+        }
+        if (!sxad_header(c, sxad_adlib_raw_metadata_tag, at, 1) || !sxad_zraw(c, at, tag === 28 ? 1023 : 40)) {
+            return false;
+        }
+    }
+    return at[0] === c.size;
+}
+function sx_rdos_raw_build(c) {
+    return sxad_raw(c);
+}

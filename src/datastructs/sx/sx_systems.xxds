@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_systems.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_systems");
+
+function fileTypes() { return ["SCL", "CHK", "PACKIMG", "DLOB", "WINCE", "BINHDR", "RTK", "CSMAN", "TWOIMG", "CISO",
+    "MATTER_OTA", "PDB", "T64", "PCAPNG", "ICC", "ICU_DATA_PACKAGE", "DBASE_DBF", "DBUS_MESSAGE", "WINDOWS_SHELL_LINK",
+    "DNS_MESSAGE", "MONGODB_WIRE", "COAP_MESSAGE", "STUN_MESSAGE", "DHCP_MESSAGE", "RADIUS_PACKET", "NTP_MESSAGE", "ARP_PACKET",
+    "MODBUS_TCP", "SOMEIP_MESSAGE", "RIP_MESSAGE", "VRRP_MESSAGE", "IGMP_MESSAGE", "LLDP_MESSAGE", "ZISO", "CISO2", "DAX"]; }
+
+var sx_systems_layouts = [sx_s_wince_image_header, sx_s_wince_record_header, sx_s_wince_terminator, sx_s_binhdr_header,
+    sx_s_rtk_header, sx_s_packimg_header, sx_s_dlob_entity_header, sx_s_dlob_digest, sx_s_chk_header, sx_s_csman_header_le,
+    sx_s_csman_entry_le, sx_s_csman_terminator_le, sx_s_csman_header_be, sx_s_csman_entry_be, sx_s_csman_terminator_be,
+    sx_s_matter_ota_preamble, sx_s_twoimg_header, sx_s_t64_header, sx_s_t64_directory_entry, sx_s_scl_header,
+    sx_s_scl_catalogue_entry, sx_s_ciso_header, sx_s_ciso_index_entry, sx_s_dax_header, sx_s_dax_frame_offset,
+    sx_s_dax_frame_size, sx_s_dax_uncompressed_area, sx_s_palm_database_header, sx_s_palm_record_entry,
+    sx_s_palm_resource_entry, sx_s_dbase3_header, sx_s_dbase3_field_descriptor, sx_s_dbase3_record_marker,
+    sx_s_dbase3_header_terminator, sx_s_dns_header, sx_s_dns_question, sx_s_dns_resource_header, sx_s_modbus_mbap_header,
+    sx_s_modbus_read_request, sx_s_modbus_write_multiple_response, sx_s_modbus_write_single, sx_s_modbus_read_response,
+    sx_s_modbus_write_multiple, sx_s_modbus_exception, sx_s_modbus_register_value, sx_s_someip_header, sx_s_coap_header,
+    sx_s_coap_option_header, sx_s_coap_delta_extension8, sx_s_coap_delta_extension16, sx_s_coap_length_extension8,
+    sx_s_coap_length_extension16, sx_s_stun_header, sx_s_stun_attribute_header, sx_s_dhcp_header, sx_s_dhcp_option,
+    sx_s_dhcp_option_marker, sx_s_radius_header, sx_s_radius_attribute, sx_s_ntp_header, sx_s_rip_header, sx_s_rip_route,
+    sx_s_vrrp2_header, sx_s_vrrp2_ipv4, sx_s_vrrp2_authentication, sx_s_igmp3_report_header, sx_s_igmp3_group_record,
+    sx_s_igmp3_source_ipv4, sx_s_lldp_tlv_header, sx_s_lldp_identifier_subtype, sx_s_lldp_ttl, sx_s_lldp_capabilities,
+    sx_s_arp_ethernet_ipv4, sx_s_mongodb_opmsg_header, sx_s_mongodb_section_kind, sx_s_mongodb_sequence_size,
+    sx_s_mongodb_document_size, sx_s_mongodb_checksum, sx_s_dbus_header_le, sx_s_dbus_header_be, sx_s_shell_link_header,
+    sx_s_shell_link_idlist_size, sx_s_shell_link_item_id, sx_s_shell_link_info, sx_s_shell_link_info_unicode_offsets,
+    sx_s_shell_link_string_count, sx_s_shell_link_extra_header, sx_s_shell_link_terminal, sx_s_icc_profile_header,
+    sx_s_icc_tag_count, sx_s_icc_tag_entry, sx_s_icc_tag_type, sx_s_pcapng_block_header_le, sx_s_pcapng_block_trailer_le,
+    sx_s_pcapng_section_body_le, sx_s_pcapng_interface_body_le, sx_s_pcapng_enhanced_packet_body_le,
+    sx_s_pcapng_simple_packet_body_le, sx_s_pcapng_obsolete_packet_body_le, sx_s_pcapng_option_le, sx_s_icu_data_header_le,
+    sx_s_icu_toc_count_le, sx_s_icu_toc_entry_le, sx_s_pcapng_block_header_be, sx_s_pcapng_block_trailer_be,
+    sx_s_pcapng_section_body_be, sx_s_pcapng_interface_body_be, sx_s_pcapng_enhanced_packet_body_be,
+    sx_s_pcapng_simple_packet_body_be, sx_s_pcapng_obsolete_packet_body_be, sx_s_pcapng_option_be, sx_s_icu_data_header_be,
+    sx_s_icu_toc_count_be, sx_s_icu_toc_entry_be];
+
+function structs() {
+    return sxCatalog([sx_s_wince_image_header, sx_s_wince_record_header, sx_s_wince_terminator, sx_s_binhdr_header,
+        sx_s_rtk_header, sx_s_packimg_header, sx_s_dlob_entity_header, sx_s_dlob_digest, sx_s_chk_header, sx_s_csman_header_le,
+        sx_s_csman_entry_le, sx_s_csman_terminator_le, sx_s_csman_header_be, sx_s_csman_entry_be, sx_s_csman_terminator_be,
+        sx_s_matter_ota_preamble, sx_s_twoimg_header, sx_s_t64_header, sx_s_t64_directory_entry, sx_s_scl_header,
+        sx_s_scl_catalogue_entry, sx_s_ciso_header, sx_s_ciso_index_entry, sx_s_dax_header, sx_s_dax_frame_offset,
+        sx_s_dax_frame_size, sx_s_dax_uncompressed_area, sx_s_palm_database_header, sx_s_palm_record_entry,
+        sx_s_palm_resource_entry, sx_s_dbase3_header, sx_s_dbase3_field_descriptor, sx_s_dbase3_record_marker,
+        sx_s_dbase3_header_terminator, sx_s_dns_header, sx_s_dns_question, sx_s_dns_resource_header, sx_s_modbus_mbap_header,
+        sx_s_modbus_read_request, sx_s_modbus_write_multiple_response, sx_s_modbus_write_single, sx_s_modbus_read_response,
+        sx_s_modbus_write_multiple, sx_s_modbus_exception, sx_s_modbus_register_value, sx_s_someip_header, sx_s_coap_header,
+        sx_s_coap_option_header, sx_s_coap_delta_extension8, sx_s_coap_delta_extension16, sx_s_coap_length_extension8,
+        sx_s_coap_length_extension16, sx_s_stun_header, sx_s_stun_attribute_header, sx_s_dhcp_header, sx_s_dhcp_option,
+        sx_s_dhcp_option_marker, sx_s_radius_header, sx_s_radius_attribute, sx_s_ntp_header, sx_s_rip_header, sx_s_rip_route,
+        sx_s_vrrp2_header, sx_s_vrrp2_ipv4, sx_s_vrrp2_authentication, sx_s_igmp3_report_header, sx_s_igmp3_group_record,
+        sx_s_igmp3_source_ipv4, sx_s_lldp_tlv_header, sx_s_lldp_identifier_subtype, sx_s_lldp_ttl, sx_s_lldp_capabilities,
+        sx_s_arp_ethernet_ipv4, sx_s_mongodb_opmsg_header, sx_s_mongodb_section_kind, sx_s_mongodb_sequence_size,
+        sx_s_mongodb_document_size, sx_s_mongodb_checksum, sx_s_dbus_header_le, sx_s_dbus_header_be, sx_s_shell_link_header,
+        sx_s_shell_link_idlist_size, sx_s_shell_link_item_id, sx_s_shell_link_info, sx_s_shell_link_info_unicode_offsets,
+        sx_s_shell_link_string_count, sx_s_shell_link_extra_header, sx_s_shell_link_terminal, sx_s_icc_profile_header,
+        sx_s_icc_tag_count, sx_s_icc_tag_entry, sx_s_icc_tag_type, sx_s_pcapng_block_header_le, sx_s_pcapng_block_trailer_le,
+        sx_s_pcapng_section_body_le, sx_s_pcapng_interface_body_le, sx_s_pcapng_enhanced_packet_body_le,
+        sx_s_pcapng_simple_packet_body_le, sx_s_pcapng_obsolete_packet_body_le, sx_s_pcapng_option_le, sx_s_icu_data_header_le,
+        sx_s_icu_toc_count_le, sx_s_icu_toc_entry_le, sx_s_pcapng_block_header_be, sx_s_pcapng_block_trailer_be,
+        sx_s_pcapng_section_body_be, sx_s_pcapng_interface_body_be, sx_s_pcapng_enhanced_packet_body_be,
+        sx_s_pcapng_simple_packet_body_be, sx_s_pcapng_obsolete_packet_body_be, sx_s_pcapng_option_be, sx_s_icu_data_header_be,
+        sx_s_icu_toc_count_be, sx_s_icu_toc_entry_be], sx_systems_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_systems_build, false);
+}

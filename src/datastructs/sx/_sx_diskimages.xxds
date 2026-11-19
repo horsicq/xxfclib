@@ -1,0 +1,287 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_diskimages.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_disk_fill_byte_fields = layout([u8("fill_value", ID)]);
+var sxdi_disk_fill_byte = sxLayout(0x60150008, "disk_fill_byte", LE, sxdi_disk_fill_byte_fields);
+function sx_diskimages_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60150000 || id >= 0x60160000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60150001:
+        if (r.name === "size_code") {
+            text = "Encoded nominal sector size: 128 << value; stored payload length is independent.";
+        }
+        break;
+    case 0x60150003:
+        if (r.name === "last_cylinder") {
+            text = "Zero-based last cylinder, not a cylinder count.";
+        }
+        break;
+    case 0x60150004:
+        if (r.name === "offset_in_256_byte_units") {
+            text = "File byte offset = value << 8; zero marks an absent track.";
+        }
+        break;
+    case 0x60150005:
+        if (r.name === "byte_length") {
+            text = "Absent tracks may retain the original 0x3333 filler; offset zero takes precedence.";
+        }
+        break;
+    case 0x60150006:
+        if (r.name === "blind_mode") {
+            text = "0=DOS, 1=blind copy, 2=HFS.";
+        }
+        if (r.name === "density") {
+            text = "0=double, 1=high, 2=extended.";
+        }
+        if (r.name === "dos_time") {
+            text = "Packed DOS time: hours bits11..15, minutes bits5..10, two-second units bits0..4.";
+        }
+        if (r.name === "dos_date") {
+            text = "Packed DOS date: year since1980 bits9..15, month bits5..8, day bits0..4.";
+        }
+        if (r.name === "first_sector_minus_one") {
+            text = "First sector ID is this encoded value plus one.";
+        }
+        if (r.name === "skew") {
+            text = "Signed track skew; negative values select alternating sides.";
+        }
+        if (r.name === "header_checksum") {
+            text = "Sum of all 133 header bytes modulo256 is zero.";
+        }
+        break;
+    case 0x60150007:
+        if (r.name === "signed_run_length") {
+            text = "Positive: literal byte count; negative: repeat next byte -value times; zero: end marker.";
+        }
+        break;
+    case 0x60150008:
+        if (r.name === "fill_value") {
+            text = "Repeated byte stored physically once; expanded bytes have no file offsets.";
+        }
+        break;
+    case 0x60150009:
+        if (r.name === "mode") {
+            text = "ImageDisk data-rate and recording-mode code.";
+        }
+        if (r.name === "head_and_maps") {
+            text = "Bit0=head, bit6=head map present, bit7=cylinder map present.";
+        }
+        if (r.name === "sector_size_code") {
+            text = "0..6: 128 << value bytes; 255: per-sector uint16 size map follows.";
+        }
+        break;
+    case 0x6015000E:
+        if (r.name === "status") {
+            text = "0=unavailable; 1/3/5/7=stored; 2/4/6/8=fill; variants encode deleted-data and error status.";
+        }
+        break;
+    case 0x6015000F:
+        if (r.name === "write_protected") {
+            text = "0=write enabled, 1=write protected.";
+        }
+        break;
+    case 0x60150010:
+        if (r.name === "track_data_offset") {
+            text = "Byte offset relative to the file header data_offset, not absolute.";
+        }
+        break;
+    case 0x60150011:
+        if (r.name === "size_code") {
+            text = "Nominal sector size is 128 << value bytes.";
+        }
+        if (r.name === "flags") {
+            text = "Bit7=deleted data; bits0..5 record valid CRC for 128 through4096-byte reads; bit6 reserved.";
+        }
+        if (r.name === "data_offset") {
+            text = "Byte offset relative to this track data area.";
+        }
+        break;
+    case 0x60150013:
+        if (r.name === "signature") {
+            text = "TD=uncompressed physical records; td=whole-body compressed.";
+        }
+        if (r.name === "version") {
+            text = "Decimal version multiplied by10.";
+        }
+        if (r.name === "rate_and_fm") {
+            text = "Low7 bits: 0=250,1=300,2=500 kbit/s; bit7=FM.";
+        }
+        if (r.name === "stepping_and_comment") {
+            text = "Low bits describe drive/media stepping; bit7 marks an optional comment.";
+        }
+        break;
+    case 0x60150014:
+        if (r.name === "year_since_1900") {
+            text = "Calendar component; not a Unix timestamp.";
+        }
+        break;
+    case 0x60150015:
+        if (r.name === "head_and_fm") {
+            text = "Low bits identify head; bit7 is FM.";
+        }
+        break;
+    case 0x60150017:
+        if (r.name === "size_code") {
+            text = "Nominal sector size is 128 << value bytes.";
+        }
+        if (r.name === "flags") {
+            text = "Bits4/5 omit data; other bits preserve duplicate, CRC, deleted and skipped-sector status.";
+        }
+        break;
+    case 0x60150018:
+        if (r.name === "encoded_size") {
+            text = "Number of bytes beginning with the method byte, including that method.";
+        }
+        if (r.name === "method") {
+            text = "0=literal, 1=two-byte pattern, 2=RLE fragments.";
+        }
+        break;
+    case 0x6015001A:
+        if (r.name === "track_offset") {
+            text = "Byte offset from the start of the containing disk image; zero means no track.";
+        }
+        break;
+    case 0x6015001B:
+        if (r.name === "size_code") {
+            text = "Encoded nominal size: 128 << value; actual stored size is separate.";
+        }
+        break;
+    case 0x6015001C:
+        if (r.name === "chunk_size") {
+            text = "Includes the12-byte chunk header; DATA payload follows outside this size.";
+        }
+        if (r.name === "header_crc") {
+            text = "CRC calculated with this field zero.";
+        }
+        break;
+    case 0x6015001D:
+        if (r.name === "creation_date") {
+            text = "Decimal packed calendar date YYYYMMDD; not Unix seconds.";
+        }
+        if (r.name === "creation_time") {
+            text = "Decimal packed time HHMMSSTTT; final3 digits are milliseconds.";
+        }
+        break;
+    case 0x6015001E:
+        if (r.name === "track_size_rounded") {
+            text = "Rounded decoded track-size quantity as stored by the encoder.";
+        }
+        if (r.name === "start_position_rounded") {
+            text = "Rounded decoded start position; not a file offset.";
+        }
+        if (r.name === "start_bit") {
+            text = "Position in decoded track bits; not a file byte offset.";
+        }
+        break;
+    case 0x60150020:
+        if (r.name === "data_offset") {
+            text = "Byte offset relative to DATA payload.";
+        }
+        break;
+    case 0x60150021:
+        if (r.name === "gap_offset") {
+            text = "Byte offset relative to DATA payload.";
+        }
+        if (r.name === "data_offset") {
+            text = "Byte offset relative to DATA payload.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxdi_span(c, at, n) {
+    return c.size >= 0 && at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sxdi_read(c, at, p, n) {
+    return sxdi_span(c, at, n) && sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), p, n);
+}
+function sxdi_le16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, false);
+}
+function sxdi_le32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, false);
+}
+function sxdi_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxdi_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxdi_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxdi_order, true);
+    return !c.failed;
+}
+function sx_diskimages_supports(t) {
+    switch (t) {
+    case "PCE_ANADISK":
+    case "PCE_TC":
+    case "COPYQM":
+    case "IMD":
+    case "FDI":
+    case "NEC_PC_98_FDI":
+    case "TELEDISK":
+    case "PC98_D88":
+    case "AMIGA_IPF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_diskimages_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "PCE_ANADISK":
+        ok = sx_pce_anadisk_build(c);
+        break;
+    case "PCE_TC":
+        ok = sx_pce_tc_build(c);
+        break;
+    case "COPYQM":
+        ok = sx_copyqm_build(c);
+        break;
+    case "IMD":
+        ok = sx_imd_build(c);
+        break;
+    case "FDI":
+        ok = sx_fdi_build(c);
+        break;
+    case "NEC_PC_98_FDI":
+        ok = sx_nec_pc_98_fdi_build(c);
+        break;
+    case "TELEDISK":
+        ok = sx_teledisk_build(c);
+        break;
+    case "PC98_D88":
+        ok = sx_pc98_d88_build(c);
+        break;
+    case "AMIGA_IPF":
+        ok = sx_amiga_ipf_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxdi_finish(c);
+}

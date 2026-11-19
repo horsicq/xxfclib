@@ -1,0 +1,183 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/ronklaren_rk/xx_ronklaren_rk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamore_rk_selector_fields = layout([u16("opcode", ID), u16("subsong", ID), blob("branch_code", 4)]);
+var sxamore_rk_selector = sxLayout(0x6095001D, "rk_selector", BE, sxamore_rk_selector_fields);
+var sxamore_rk_position_end_fields = layout([i32("end_marker", ID)]);
+var sxamore_rk_position_end = sxLayout(0x60950020, "rk_position_end", BE, sxamore_rk_position_end_fields);
+function sxamore_rk(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var x = [0];
+    var words = [0];
+    var alloc = [0];
+    var p = [64];
+    var jumps = 0;
+    var songs = 0;
+    var irq = 0;
+    var init = 0;
+    var targets = [0, 0];
+    if (!sxamore_be(v, 0, 4, x, 0, e) || x[0] !== 1011 || !sxamore_be(v, 4, 4, x, 0, e) || x[0] || !sxamore_be(v, 8, 4, x, 0, e) || x[0] !== 1 || !sxamore_be(v, 12, 4, x, 0, e) || x[0] || !sxamore_be(v, 16, 4, x, 0, e) || x[0] || !sxamore_be(v, 20, 4, alloc, 0, e) || !sxamore_be(v, 24, 4, x, 0, e) || sxAnd64(x[0], 0x3FFFFFFF) !== 1001 || !sxamore_be(v, 28, 4, words, 0, e) || words[0] < 656 || words[0] > sxAnd64(alloc[0], 0x3FFFFFFF) || !sxamore_span(v, 32, words[0] * 4, e) || !sxamore_eq(v, 40, "RON_KLAREN_SOUNDMODULE!\x00", 23, e)) {
+        return false;
+    }
+    var end = 32 + words[0] * 4;
+    var scan_end = end < 2656 ? end : 2656;
+    while (jumps < 128 && sxamore_be(v, p[0], 2, x, 0, scan_end) && x[0] === 0x4EF9) {
+        var off = [0];
+        if (!sxamore_be(v, p[0] + 2, 4, off, 0, scan_end) || off[0] >= words[0] * 4) {
+            return false;
+        }
+        if (jumps < 2) {
+            targets[jumps] = 32 + off[0];
+        }
+        jumps++;
+        p[0] += 6;
+    }
+    if (jumps < 2) {
+        return false;
+    }
+    var selectors = p[0];
+    while (songs < 128 && sxamore_be(v, p[0], 2, x, 0, scan_end) && x[0] === 0x303C) {
+        if (!sxamore_span(v, p[0], 8, scan_end)) {
+            return false;
+        }
+        songs++;
+        p[0] += 8;
+    }
+    if (!songs) {
+        return false;
+    }
+    for (var i = 0; i < 2; i++) {
+        if (!sxamore_be(v, targets[i], 2, x, 0, scan_end)) {
+            return false;
+        }
+        if (x[0] === 0x6100 || x[0] === 0x33FC) {
+            init = targets[i];
+            break;
+        }
+    }
+    var writes_at = [];
+    var writes_kind = [];
+    var nwrites = 0;
+    var cia_lo = 0;
+    var cia_hi = 0;
+    if (init) {
+        p[0] = init;
+        for (i = 0; i < 1024; i++, p[0] += 2) {
+            if (!sxamore_be(v, p[0], 2, x, 0, scan_end)) {
+                return false;
+            }
+            if (x[0] === 0x4E75) {
+                break;
+            }
+            if (x[0] === 0x13FC) {
+                var value = [0];
+                var reg = [0];
+                if (!sxamore_be(v, p[0] + 2, 2, value, 0, scan_end) || !sxamore_be(v, p[0] + 4, 4, reg, 0, scan_end)) {
+                    return false;
+                }
+                if (reg[0] === 0xBFD400) {
+                    cia_lo = sxAnd64(value[0], 255);
+                }
+                if (reg[0] === 0xBFD500) {
+                    cia_hi = sxAnd64(value[0], 255);
+                }
+                if (nwrites < 128) {
+                    writes_at[nwrites] = p[0];
+                    writes_kind[nwrites++] = 0;
+                }
+                p[0] += 6;
+            } else if (x[0] === 0x23FC) {
+                off = [0];
+                reg = [0];
+                if (!sxamore_be(v, p[0] + 2, 4, off, 0, scan_end) || !sxamore_be(v, p[0] + 6, 4, reg, 0, scan_end)) {
+                    return false;
+                }
+                if (reg[0] === 0x78) {
+                    if (off[0] >= words[0] * 4) {
+                        return false;
+                    }
+                    irq = 32 + off[0];
+                    if (nwrites < 128) {
+                        writes_at[nwrites] = p[0];
+                        writes_kind[nwrites++] = 1;
+                    }
+                }
+                p[0] += 8;
+            }
+        }
+        if (!irq || !sxOr64(cia_lo, cia_hi)) {
+            return false;
+        }
+    } else {
+        irq = targets[1];
+        if (!sxamore_be(v, irq, 2, x, 0, scan_end) || x[0] !== 0x41FA) {
+            return false;
+        }
+    }
+    p[0] = irq;
+    if (!sxamore_find(v, p, scan_end, 0x41FA, 2, 2)) {
+        return false;
+    }
+    var global = [0];
+    var global_op = p[0] + 2;
+    if (!sxamore_signed16(v, p[0] + 2, p[0] + 2, global, end)) {
+        return false;
+    }
+    p[0] += 4;
+    var index_op = 0;
+    for (i = 0; i < 1024; i++, p[0] += 2) {
+        if (!sxamore_be(v, p[0], 2, x, 0, scan_end)) {
+            return false;
+        }
+        if (x[0] === 0x4E73 || x[0] === 0x4E75) {
+            return false;
+        }
+        if (sxamore_eq(v, p[0], "\x02@\x00\x0FS@\xE9HG\xF0", 10, scan_end)) {
+            index_op = p[0] + 10;
+            break;
+        }
+    }
+    if (!index_op || !sxamore_be(v, index_op, 2, x, 0, scan_end) || x[0] > 127 || global[0] > end || x[0] > sxU64(end - global[0])) {
+        return false;
+    }
+    var table = global[0] + x[0];
+    if (!sxamore_span(v, table, songs * 16, end) || !sxamore_row(v, sxamore_rk_hunk_header, 0, e) || !sxamore_table(v, sxamore_rk_jump, 64, jumps, scan_end) || !sxamore_table(v, sxamore_rk_selector, selectors, songs, scan_end) || !sxamore_row(v, sxamore_signed_displacement, global_op, scan_end) || !sxamore_row(v, sxamore_rk_index_extension, index_op, scan_end) || !sxamore_table(v, sxamore_rk_subsong, table, songs, end)) {
+        return false;
+    }
+    for (i = 0; i < nwrites; i++) {
+        if (!sxamore_row(v, writes_kind[i] ? sxamore_rk_vector_write : sxamore_rk_cia_write, writes_at[i], scan_end)) {
+            return false;
+        }
+    }
+    for (i = 0; i < songs * 4; i++) {
+        off = [0];
+        if (!sxamore_be(v, table + i * 4, 4, off, 0, end) || off[0] > words[0] * 4) {
+            return false;
+        }
+        p[0] = 32 + off[0];
+        for (var j = 0; j < 4096; j++) {
+            if (!sxamore_be(v, p[0], 4, x, 0, end)) {
+                return false;
+            }
+            if (sxAnd64(x[0], 0x80000000)) {
+                if (!sxamore_row(v, sxamore_rk_position_end, p[0], end)) {
+                    return false;
+                }
+                break;
+            }
+            if (x[0] >= words[0] * 4 || !sxamore_take(v, sxamore_rk_position, p, 1, end)) {
+                return false;
+            }
+            if (j === 4095) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_ronklaren_rk_build(v) {
+    return sxamore_rk(v);
+}

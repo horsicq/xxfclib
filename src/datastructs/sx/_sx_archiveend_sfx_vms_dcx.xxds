@@ -1,0 +1,124 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sfx_vms_dcx/xx_sfx_vms_dcx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_dcx_ftsv_header_fields = layout([chars("signature", 32, SIGNATURE), u16("fdl_uncompressed_size", SIZE),
+    u32("group_marker", ID), u32("table_size_copy", SIZE)]);
+var sxaend_dcx_ftsv_header = sxLayout(0x6084001C, "dcx_ftsv_header", LE, sxaend_dcx_ftsv_header_fields);
+var sxaend_dcx_ftsv_table_fields = layout([u32("table_size", SIZE), u32("reserved_4", RESERVED), u32("signature", SIGNATURE),
+    u32("reserved_12", RESERVED), u16("context_count", COUNT), u16("header_size", SIZE)]);
+var sxaend_dcx_ftsv_table = sxLayout(0x6084001D, "dcx_ftsv_table", LE, sxaend_dcx_ftsv_table_fields);
+var sxaend_dcx_ftsv_context_fields = layout([u16("context_size", SIZE), u8("first_symbol"), u8("last_symbol"),
+    u16("reserved", RESERVED), u16("header_size", SIZE), u16("nodes_offset", OFFSET), u16("map_offset", OFFSET)]);
+var sxaend_dcx_ftsv_context = sxLayout(0x6084001E, "dcx_ftsv_context", LE, sxaend_dcx_ftsv_context_fields);
+var sxaend_dcx_ftsv_leaf_bitmap_fields = layout([field("dcx_ftsv_leaf_bitmap", "uint8", 0)]);
+var sxaend_dcx_ftsv_leaf_bitmap = sxLayout(0x6084001F, "dcx_ftsv_leaf_bitmap", LE, sxaend_dcx_ftsv_leaf_bitmap_fields);
+var sxaend_dcx_ftsv_nodes_fields = layout([field("dcx_ftsv_nodes", "uint8", 0)]);
+var sxaend_dcx_ftsv_nodes = sxLayout(0x60840020, "dcx_ftsv_nodes", LE, sxaend_dcx_ftsv_nodes_fields);
+var sxaend_dcx_ftsv_map_fields = layout([u16("next_context")]);
+var sxaend_dcx_ftsv_map = sxLayout(0x60840021, "dcx_ftsv_map", LE, sxaend_dcx_ftsv_map_fields);
+var sxaend_dcx_ftsv_first_frame_fields = layout([u32("group_marker", ID), u16("packed_size", SIZE),
+    u16("uncompressed_size", SIZE)]);
+var sxaend_dcx_ftsv_first_frame = sxLayout(0x60840022, "dcx_ftsv_first_frame", LE, sxaend_dcx_ftsv_first_frame_fields);
+var sxaend_dcx_ftsv_second_group_fields = layout([u32("end_marker", ID), u32("begin_marker", ID), u32("table_size_copy", SIZE)]);
+var sxaend_dcx_ftsv_second_group = sxLayout(0x60840023, "dcx_ftsv_second_group", LE, sxaend_dcx_ftsv_second_group_fields);
+var sxaend_dcx_ftsv_frame_fields = layout([u16("frame_marker", ID), u16("packed_size", SIZE), u16("uncompressed_size", SIZE)]);
+var sxaend_dcx_ftsv_frame = sxLayout(0x60840024, "dcx_ftsv_frame", LE, sxaend_dcx_ftsv_frame_fields);
+var sxaend_dcx_ftsv_group_start_fields = layout([u16("marker", ID)]);
+var sxaend_dcx_ftsv_group_start = sxLayout(0x60840025, "dcx_ftsv_group_start", LE, sxaend_dcx_ftsv_group_start_fields);
+var sxaend_dcx_ftsv_group_end_fields = layout([u32("marker", ID)]);
+var sxaend_dcx_ftsv_group_end = sxLayout(0x60840026, "dcx_ftsv_group_end", LE, sxaend_dcx_ftsv_group_end_fields);
+function sxaend_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxaend_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxaend_dcx_table(c, p, end, emit) {
+    var h = [];
+    if (!sxaend_read(c, p, h, 20)) {
+        return false;
+    }
+    var z = sxaend_uint(h, 0, 4, false);
+    var n = sxaend_uint(h, 16, 2, false);
+    if (z < 20 || z > 1048576 || !n || n > 256 || !sxaend_span(c, p, z) || sxaend_uint(h, 8, 4, false) !== 0x5BF5A3A7 || sxaend_uint(h, 18, 2, false) !== 20) {
+        return false;
+    }
+    if (emit && !sxaend_add(c, sxaend_dcx_ftsv_table, p)) {
+        return false;
+    }
+    end[0] = p + z;
+    p += 20;
+    for (var i = 0; i < n; i++) {
+        var b = [];
+        if (sxU64(end[0] - p) < 12 || !sxaend_read(c, p, b, 12)) {
+            return false;
+        }
+        var len = sxaend_uint(b, 0, 2, false);
+        var nodes = sxaend_uint(b, 8, 2, false);
+        var map = sxaend_uint(b, 10, 2, false);
+        var nodeend = map ? map : len;
+        if (len > sxU64(end[0] - p) || nodes <= 12 || sxU64(nodes - 12) > 64 || nodeend <= nodes || nodeend > len || sxU64(nodeend - nodes) > 512 || b[2] > b[3] || map && sxU64(len - map) !== 2 * (b[3] - b[2] + 1 < 0 ? b[3] - b[2] + 1 + SX_U64_MAX : b[3] - b[2] + 1)) {
+            return false;
+        }
+        if (emit && (!sxaend_add(c, sxaend_dcx_ftsv_context, p) || !sxaend_text(c, sxaend_dcx_ftsv_leaf_bitmap, p + 12, sxU64(nodes - 12), false) || !sxaend_text(c, sxaend_dcx_ftsv_nodes, p + nodes, sxU64(nodeend - nodes), false) || map && !sxaend_table(c, sxaend_dcx_ftsv_map, p + map, 2, (b[3] - b[2] + 1 < 0 ? b[3] - b[2] + 1 + SX_U64_MAX : b[3] - b[2] + 1)))) {
+            return false;
+        }
+        p += len;
+    }
+    return p === end[0];
+}
+function sxaend_dcx(c) {
+    var payload = [0];
+    var payloadz = [0];
+    if (!sxaend_first_source(c, payload, payloadz)) {
+        return false;
+    }
+    var cap = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 1048576 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 1048576;
+    for (var p = 0; p + 42 <= cap; p++) {
+        var h = [];
+        if (sxAnd64(p, 4095) === 0 && false) {
+            return false;
+        }
+        if (!sxaend_read(c, p, h, 1)) {
+            return false;
+        }
+        if (h[0] !== 79 /*O*/) {
+            continue;
+        }
+        if (!sxaend_read(c, p, h, 42) || sxMemcmp(h, "OpenVMS DCX FTSV Compressed File", 32)) {
+            continue;
+        }
+        var end = [0];
+        if (!sxaend_dcx_table(c, p + 42, end, false) || end[0] + 8 !== payload[0]) {
+            continue;
+        }
+        if (!sxaend_add(c, sxaend_dcx_ftsv_header, p) || !sxaend_dcx_table(c, p + 42, end, true) || !sxaend_add(c, sxaend_dcx_ftsv_first_frame, end[0])) {
+            return false;
+        }
+        var next = payload[0] + payloadz[0];
+        if (!sxaend_add(c, sxaend_dcx_ftsv_second_group, next) || !sxaend_dcx_table(c, next + 12, end, true) || !sxaend_add(c, sxaend_dcx_ftsv_group_start, end[0])) {
+            return false;
+        }
+        end[0] += 2;
+        for (var i = 0; end[0] + 4 < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && i < 20000; i++) {
+            var z = [0];
+            if (!sxaend_word(c, end[0] + 2, 2, false, z) || !z[0] || !sxaend_span(c, end[0] + 6, z[0]) || !sxaend_add(c, sxaend_dcx_ftsv_frame, end[0])) {
+                return false;
+            }
+            end[0] += 6 + z[0];
+        }
+        return end[0] + 4 === (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxaend_add(c, sxaend_dcx_ftsv_group_end, end[0]);
+    }
+    return false;
+}
+function sx_sfx_vms_dcx_build(c) {
+    return sxaend_dcx(c);
+}

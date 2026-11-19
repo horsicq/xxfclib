@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/adam/xx_adam_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_adam_volume_fields = layout([chars("name", 12, NONE), u8("directory_blocks_and_protection", FLAGS),
+    u32("directory_check", SIGNATURE), u32("volume_blocks", COUNT), field("unknown_15", "byte[2]", 2), u8("year_bcd"),
+    u8("month_bcd"), u8("day_bcd")]);
+var sxst_adam_volume = sxLayout(0x60370012, "adam_volume", LE, sxst_adam_volume_fields);
+var sxst_adam_entry_fields = layout([chars("name_and_type", 12, NONE), u8("attributes", FLAGS), u32("first_block"),
+    u16("allocated_blocks", COUNT), u16("used_blocks", COUNT), u16("last_block_used_bytes", SIZE), u8("year_bcd"),
+    u8("month_bcd"), u8("day_bcd")]);
+var sxst_adam_entry = sxLayout(0x60370013, "adam_entry", LE, sxst_adam_entry_fields);
+var sxst_adam_entry_split_prefix_fields = layout([chars("name_and_type", 12, NONE), u8("attributes", FLAGS), u32("first_block"),
+    u8("allocated_blocks_low")]);
+var sxst_adam_entry_split_prefix = sxLayout(0x60370014, "adam_entry_split_prefix", LE, sxst_adam_entry_split_prefix_fields);
+var sxst_adam_entry_split_tail_fields = layout([u8("allocated_blocks_high"), u16("used_blocks", COUNT),
+    u16("last_block_used_bytes", SIZE), u8("year_bcd"), u8("month_bcd"), u8("day_bcd")]);
+var sxst_adam_entry_split_tail = sxLayout(0x60370015, "adam_entry_split_tail", LE, sxst_adam_entry_split_tail_fields);
+function sxst_adam(c) {
+    var b = [0];
+    if (!sxst_read(c, 1036, b, 1) || !sxst_put(c, sxst_adam_volume, 1024, 1)) {
+        return false;
+    }
+    var n = b[0] & 127;
+    for (var i = 1; i <= n; i++) {
+        var p = i * 1024;
+        var q = sxXor64(i * 2, 5) * 512;
+        if (!sxst_span(c, p, 512) || !sxst_span(c, q, 512)) {
+            break;
+        }
+        if (i === 1) {
+            if (!sxst_put(c, sxst_adam_entry, p + 26, 18)) {
+                return false;
+            }
+        } else if (!sxst_put(c, sxst_adam_entry, p, 19)) {
+            return false;
+        }
+        if (!sxst_put(c, sxst_adam_entry_split_prefix, p + 494, 1) || !sxst_put(c, sxst_adam_entry_split_tail, q, 1) || !sxst_put(c, sxst_adam_entry, q + 8, 19)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_adam_build(c) {
+    return sxst_adam(c);
+}

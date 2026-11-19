@@ -1,0 +1,1103 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_scienceascii.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_record_type_fields = layout([field("record_type", "char", 0, STRING)]);
+var sxsa_record_type = sxLayout(0x60510001, "science_record_type", LE, sxsa_record_type_fields);
+var sxsa_metadata_key_fields = layout([field("metadata_key", "char", 0, STRING)]);
+var sxsa_metadata_key = sxLayout(0x60510002, "science_metadata_key", LE, sxsa_metadata_key_fields);
+var sxsa_metadata_value_fields = layout([field("metadata_value", "utf8", 0, STRING)]);
+var sxsa_metadata_value = sxLayout(0x60510003, "science_metadata_value", LE, sxsa_metadata_value_fields);
+var sxsa_comment_fields = layout([field("comment", "utf8", 0, STRING)]);
+var sxsa_comment = sxLayout(0x60510004, "science_comment", LE, sxsa_comment_fields);
+var sxsa_title_fields = layout([field("title", "utf8", 0, STRING)]);
+var sxsa_title = sxLayout(0x60510005, "science_title", LE, sxsa_title_fields);
+var sxsa_sequence_id_fields = layout([field("sequence_id", "char", 0, STRING)]);
+var sxsa_sequence_id = sxLayout(0x60510006, "science_sequence_id", LE, sxsa_sequence_id_fields);
+var sxsa_description_fields = layout([field("description", "utf8", 0, STRING)]);
+var sxsa_description = sxLayout(0x60510007, "science_description", LE, sxsa_description_fields);
+var sxsa_sequence_fields = layout([field("sequence", "char", 0, STRING)]);
+var sxsa_sequence = sxLayout(0x60510008, "science_sequence", LE, sxsa_sequence_fields);
+var sxsa_quality_fields = layout([field("quality", "char", 0, STRING)]);
+var sxsa_quality = sxLayout(0x60510009, "science_quality", LE, sxsa_quality_fields);
+var sxsa_separator_fields = layout([field("separator", "char", 0, STRING)]);
+var sxsa_separator = sxLayout(0x6051000A, "science_separator", LE, sxsa_separator_fields);
+var sxsa_reference_name_fields = layout([field("reference_name", "char", 0, STRING)]);
+var sxsa_reference_name = sxLayout(0x6051000B, "science_reference_name", LE, sxsa_reference_name_fields);
+var sxsa_feature_source_fields = layout([field("feature_source", "char", 0, STRING)]);
+var sxsa_feature_source = sxLayout(0x6051000C, "science_feature_source", LE, sxsa_feature_source_fields);
+var sxsa_feature_type_fields = layout([field("feature_type", "char", 0, STRING)]);
+var sxsa_feature_type = sxLayout(0x6051000D, "science_feature_type", LE, sxsa_feature_type_fields);
+var sxsa_strand_fields = layout([field("strand", "char", 0, STRING)]);
+var sxsa_strand = sxLayout(0x6051000E, "science_strand", LE, sxsa_strand_fields);
+var sxsa_attributes_fields = layout([field("attributes", "char", 0, STRING)]);
+var sxsa_attributes = sxLayout(0x6051000F, "science_attributes", LE, sxsa_attributes_fields);
+var sxsa_identifier_fields = layout([field("identifier", "char", 0, STRING)]);
+var sxsa_identifier = sxLayout(0x60510010, "science_identifier", LE, sxsa_identifier_fields);
+var sxsa_element_fields = layout([field("element", "char", 0, STRING)]);
+var sxsa_element = sxLayout(0x60510011, "science_element", LE, sxsa_element_fields);
+var sxsa_atom_count_fields = layout([field("atom_count", "ascii_signed", 0, COUNT)]);
+var sxsa_atom_count = sxLayout(0x60510015, "science_atom_count", LE, sxsa_atom_count_fields);
+var sxsa_bond_count_fields = layout([field("bond_count", "ascii_signed", 0, COUNT)]);
+var sxsa_bond_count = sxLayout(0x60510016, "science_bond_count", LE, sxsa_bond_count_fields);
+var sxsa_feature_count_fields = layout([field("feature_count", "ascii_signed", 0, COUNT)]);
+var sxsa_feature_count = sxLayout(0x60510018, "science_feature_count", LE, sxsa_feature_count_fields);
+var sxsa_grid_columns_fields = layout([field("grid_columns", "ascii_signed", 0, COUNT)]);
+var sxsa_grid_columns = sxLayout(0x6051001D, "science_grid_columns", LE, sxsa_grid_columns_fields);
+var sxsa_grid_rows_fields = layout([field("grid_rows", "ascii_signed", 0, COUNT)]);
+var sxsa_grid_rows = sxLayout(0x6051001E, "science_grid_rows", LE, sxsa_grid_rows_fields);
+var sxsa_position_1_fields = layout([field("position_1", "ascii_signed", 0)]);
+var sxsa_position_1 = sxLayout(0x60510020, "science_position_1", LE, sxsa_position_1_fields);
+var sxsa_start_1_fields = layout([field("start_1", "ascii_signed", 0)]);
+var sxsa_start_1 = sxLayout(0x60510021, "science_start_1", LE, sxsa_start_1_fields);
+var sxsa_end_1_fields = layout([field("end_1", "ascii_signed", 0)]);
+var sxsa_end_1 = sxLayout(0x60510022, "science_end_1", LE, sxsa_end_1_fields);
+var sxsa_start_0_fields = layout([field("start_0", "ascii_signed", 0)]);
+var sxsa_start_0 = sxLayout(0x60510023, "science_start_0", LE, sxsa_start_0_fields);
+var sxsa_end_0_fields = layout([field("end_0", "ascii_signed", 0)]);
+var sxsa_end_0 = sxLayout(0x60510024, "science_end_0", LE, sxsa_end_0_fields);
+var sxsa_thick_start_0_fields = layout([field("thick_start_0", "ascii_signed", 0)]);
+var sxsa_thick_start_0 = sxLayout(0x60510025, "science_thick_start_0", LE, sxsa_thick_start_0_fields);
+var sxsa_thick_end_0_fields = layout([field("thick_end_0", "ascii_signed", 0)]);
+var sxsa_thick_end_0 = sxLayout(0x60510026, "science_thick_end_0", LE, sxsa_thick_end_0_fields);
+var sxsa_part_number_fields = layout([field("part_number", "ascii_signed", 0)]);
+var sxsa_part_number = sxLayout(0x60510027, "science_part_number", LE, sxsa_part_number_fields);
+var sxsa_component_start_1_fields = layout([field("component_start_1", "ascii_signed", 0)]);
+var sxsa_component_start_1 = sxLayout(0x60510028, "science_component_start_1", LE, sxsa_component_start_1_fields);
+var sxsa_component_end_1_fields = layout([field("component_end_1", "ascii_signed", 0)]);
+var sxsa_component_end_1 = sxLayout(0x60510029, "science_component_end_1", LE, sxsa_component_end_1_fields);
+var sxsa_gap_length_fields = layout([field("gap_length", "ascii_signed", 0)]);
+var sxsa_gap_length = sxLayout(0x6051002A, "science_gap_length", LE, sxsa_gap_length_fields);
+var sxsa_span_fields = layout([field("span", "ascii_signed", 0)]);
+var sxsa_span = sxLayout(0x6051002B, "science_span", LE, sxsa_span_fields);
+var sxsa_step_fields = layout([field("step", "ascii_signed", 0)]);
+var sxsa_step = sxLayout(0x6051002C, "science_step", LE, sxsa_step_fields);
+var sxsa_block_size_fields = layout([field("block_size", "ascii_signed", 0)]);
+var sxsa_block_size = sxLayout(0x6051002D, "science_block_size", LE, sxsa_block_size_fields);
+var sxsa_block_start_fields = layout([field("block_start", "ascii_signed", 0)]);
+var sxsa_block_start = sxLayout(0x6051002E, "science_block_start", LE, sxsa_block_start_fields);
+var sxsa_score_fields = layout([field("score", "ascii_signed", 0)]);
+var sxsa_score = sxLayout(0x6051002F, "science_score", LE, sxsa_score_fields);
+var sxsa_phase_fields = layout([field("phase", "ascii_signed", 0)]);
+var sxsa_phase = sxLayout(0x60510031, "science_phase", LE, sxsa_phase_fields);
+var sxsa_rgb_fields = layout([field("rgb", "char", 0, STRING)]);
+var sxsa_rgb = sxLayout(0x60510032, "science_rgb", LE, sxsa_rgb_fields);
+var sxsa_gap_type_fields = layout([field("gap_type", "char", 0, STRING)]);
+var sxsa_gap_type = sxLayout(0x60510033, "science_gap_type", LE, sxsa_gap_type_fields);
+var sxsa_linkage_fields = layout([field("linkage", "char", 0, STRING)]);
+var sxsa_linkage = sxLayout(0x60510034, "science_linkage", LE, sxsa_linkage_fields);
+var sxsa_evidence_fields = layout([field("evidence", "char", 0, STRING)]);
+var sxsa_evidence = sxLayout(0x60510035, "science_evidence", LE, sxsa_evidence_fields);
+var sxsa_orientation_fields = layout([field("orientation", "char", 0, STRING)]);
+var sxsa_orientation = sxLayout(0x60510036, "science_orientation", LE, sxsa_orientation_fields);
+var sxsa_component_type_fields = layout([field("component_type", "char", 0, STRING)]);
+var sxsa_component_type = sxLayout(0x60510037, "science_component_type", LE, sxsa_component_type_fields);
+var sxsa_component_id_fields = layout([field("component_id", "char", 0, STRING)]);
+var sxsa_component_id = sxLayout(0x60510038, "science_component_id", LE, sxsa_component_id_fields);
+var sxsa_feature_score_fields = layout([field("feature_score", "ascii_real", 0)]);
+var sxsa_feature_score = sxLayout(0x60510039, "science_feature_score", LE, sxsa_feature_score_fields);
+var sxsa_variant_quality_fields = layout([field("variant_quality", "ascii_real", 0)]);
+var sxsa_variant_quality = sxLayout(0x6051003A, "science_variant_quality", LE, sxsa_variant_quality_fields);
+var sxsa_wiggle_value_fields = layout([field("wiggle_value", "ascii_real", 0)]);
+var sxsa_wiggle_value = sxLayout(0x6051003B, "science_wiggle_value", LE, sxsa_wiggle_value_fields);
+var sxsa_block_count_fields = layout([field("block_count", "ascii_signed", 0, COUNT)]);
+var sxsa_block_count = sxLayout(0x6051003C, "science_block_count", LE, sxsa_block_count_fields);
+var sxsa_variant_reference_fields = layout([field("variant_reference", "char", 0, STRING)]);
+var sxsa_variant_reference = sxLayout(0x60510049, "science_variant_reference", LE, sxsa_variant_reference_fields);
+var sxsa_variant_alternate_fields = layout([field("variant_alternate", "char", 0, STRING)]);
+var sxsa_variant_alternate = sxLayout(0x6051004A, "science_variant_alternate", LE, sxsa_variant_alternate_fields);
+var sxsa_filter_info_fields = layout([field("filter_info", "char", 0, STRING)]);
+var sxsa_filter_info = sxLayout(0x6051004B, "science_filter_info", LE, sxsa_filter_info_fields);
+var sxsa_info_field_fields = layout([field("info_field", "char", 0, STRING)]);
+var sxsa_info_field = sxLayout(0x6051004C, "science_info_field", LE, sxsa_info_field_fields);
+var sxsa_grid_x_origin_fields = layout([field("grid_x_origin", "ascii_real", 0)]);
+var sxsa_grid_x_origin = sxLayout(0x605100CB, "science_grid_x_origin", LE, sxsa_grid_x_origin_fields);
+var sxsa_grid_y_origin_fields = layout([field("grid_y_origin", "ascii_real", 0)]);
+var sxsa_grid_y_origin = sxLayout(0x605100CC, "science_grid_y_origin", LE, sxsa_grid_y_origin_fields);
+var sxsa_grid_cell_size_fields = layout([field("grid_cell_size", "ascii_real", 0)]);
+var sxsa_grid_cell_size = sxLayout(0x605100CD, "science_grid_cell_size", LE, sxsa_grid_cell_size_fields);
+var sxsa_grid_x_spacing_fields = layout([field("grid_x_spacing", "ascii_real", 0)]);
+var sxsa_grid_x_spacing = sxLayout(0x605100CE, "science_grid_x_spacing", LE, sxsa_grid_x_spacing_fields);
+var sxsa_grid_y_spacing_fields = layout([field("grid_y_spacing", "ascii_real", 0)]);
+var sxsa_grid_y_spacing = sxLayout(0x605100CF, "science_grid_y_spacing", LE, sxsa_grid_y_spacing_fields);
+var sxsa_grid_nodata_fields = layout([field("grid_nodata", "ascii_real", 0)]);
+var sxsa_grid_nodata = sxLayout(0x605100D0, "science_grid_nodata", LE, sxsa_grid_nodata_fields);
+var sxsa_grid_min_fields = layout([field("grid_min", "ascii_real", 0)]);
+var sxsa_grid_min = sxLayout(0x605100D1, "science_grid_min", LE, sxsa_grid_min_fields);
+var sxsa_grid_max_fields = layout([field("grid_max", "ascii_real", 0)]);
+var sxsa_grid_max = sxLayout(0x605100D2, "science_grid_max", LE, sxsa_grid_max_fields);
+var sxsa_grid_value_fields = layout([field("grid_value", "ascii_real", 0)]);
+var sxsa_grid_value = sxLayout(0x605100D3, "science_grid_value", LE, sxsa_grid_value_fields);
+var sxsa_grid_rotation_fields = layout([field("grid_rotation", "ascii_real", 0)]);
+var sxsa_grid_rotation = sxLayout(0x605100D4, "science_grid_rotation", LE, sxsa_grid_rotation_fields);
+var sxsa_grid_sense_fields = layout([field("grid_sense", "ascii_signed", 0)]);
+var sxsa_grid_sense = sxLayout(0x605100D5, "science_grid_sense", LE, sxsa_grid_sense_fields);
+var sxsa_grid_type_fields = layout([field("grid_type", "ascii_signed", 0)]);
+var sxsa_grid_type = sxLayout(0x605100D6, "science_grid_type", LE, sxsa_grid_type_fields);
+var sx_scienceascii_comment_names = ["PAIRED", "PROPER_PAIR", "UNMAPPED", "MATE_UNMAPPED", "REVERSE", "MATE_REVERSE", "READ1",
+    "READ2", "SECONDARY", "QCFAIL", "DUPLICATE", "SUPPLEMENTARY"];
+function sx_scienceascii_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    if (id < 0x60510001 || id >= 0x605100DE) {
+        return true;
+    }
+    if (r.name === null) {
+        return true;
+    }
+    switch (id) {
+    case 0x60510015:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x60510016:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x60510017:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x60510018:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x60510019:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x6051001A:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x6051001B:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x6051001C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x6051001D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x6051001E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of entries.") ? 1 : 0)) !== 0;
+    case 0x6051001F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Reference sequence length in bases.") ? 1 : 0)) !== 0;
+    case 0x60510020:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based biological sequence coordinate; SAM zero means unavailable. Not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510021:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based biological sequence coordinate; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510022:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based biological sequence coordinate; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510023:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "0-based biological sequence coordinate; end is exclusive. Not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510024:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "0-based biological sequence coordinate; end is exclusive. Not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510025:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "0-based biological sequence coordinate; end is exclusive. Not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510026:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "0-based biological sequence coordinate; end is exclusive. Not a file offset.") ? 1 : 0)) !== 0;
+    case 0x60510027:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based assembly part or component coordinate; not a byte offset.") ? 1 : 0)) !== 0;
+    case 0x60510028:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based assembly part or component coordinate; not a byte offset.") ? 1 : 0)) !== 0;
+    case 0x60510029:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based assembly part or component coordinate; not a byte offset.") ? 1 : 0)) !== 0;
+    case 0x6051002A:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Length or step in bases; not a file byte size.") ? 1 : 0)) !== 0;
+    case 0x6051002B:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Length or step in bases; not a file byte size.") ? 1 : 0)) !== 0;
+    case 0x6051002C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Length or step in bases; not a file byte size.") ? 1 : 0)) !== 0;
+    case 0x6051002D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Length or step in bases; not a file byte size.") ? 1 : 0)) !== 0;
+    case 0x6051002E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "0-based block start relative to chromStart, in bases.") ? 1 : 0)) !== 0;
+    case 0x6051002F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Format-defined numeric score, mapping quality or coding phase.") ? 1 : 0)) !== 0;
+    case 0x60510030:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Format-defined numeric score, mapping quality or coding phase.") ? 1 : 0)) !== 0;
+    case 0x60510031:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Format-defined numeric score, mapping quality or coding phase.") ? 1 : 0)) !== 0;
+    case 0x6051003C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of blocks.") ? 1 : 0)) !== 0;
+    case 0x60510045:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        var v = sxVarU64(r.value);
+        var text = [];
+        var used = 0;
+        text[0] = 0;
+        for (var i = 0; i < 12; i++) {
+            if (sxAnd64(v, sxShl64(1, i))) {
+                if (used) {
+                    text[used++] = 124;
+                }
+                var n = sxStrlen(sx_scienceascii_comment_names[i]);
+                sxMemcpy(text, used, sx_scienceascii_comment_names[i], 0, Math.floor((n * 2) / 2));
+                used += n;
+                text[used] = 0;
+            }
+        }
+        return (used ? (sxSetComment(r, text) ? 1 : 0) : 1) !== 0;
+    case 0x60510046:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Signed observed template length in bases.") ? 1 : 0)) !== 0;
+    case 0x60510047:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "SAM integer or integer-array element.") ? 1 : 0)) !== 0;
+    case 0x6051004D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based matrix index; not a byte offset.") ? 1 : 0)) !== 0;
+    case 0x6051004E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "1-based matrix index; not a byte offset.") ? 1 : 0)) !== 0;
+    case 0x6051005D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "PDB atom serial or residue sequence number.") ? 1 : 0)) !== 0;
+    case 0x6051005E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "PDB atom serial or residue sequence number.") ? 1 : 0)) !== 0;
+    case 0x6051005F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510060:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510061:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510062:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Occupancy fraction.") ? 1 : 0)) !== 0;
+    case 0x60510063:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Isotropic temperature factor in square angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510064:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Anisotropic displacement tensor component in units of 1e-4 square angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510065:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Anisotropic displacement tensor component in units of 1e-4 square angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510066:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Anisotropic displacement tensor component in units of 1e-4 square angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510067:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Anisotropic displacement tensor component in units of 1e-4 square angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510068:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Anisotropic displacement tensor component in units of 1e-4 square angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510069:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Anisotropic displacement tensor component in units of 1e-4 square angstroms.") ? 1 : 0)) !== 0;
+    case 0x6051006C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO decimal identifier, modulo 100000.") ? 1 : 0)) !== 0;
+    case 0x6051006D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO decimal identifier, modulo 100000.") ? 1 : 0)) !== 0;
+    case 0x6051006E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Coordinate in nanometres.") ? 1 : 0)) !== 0;
+    case 0x6051006F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Coordinate in nanometres.") ? 1 : 0)) !== 0;
+    case 0x60510070:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Coordinate in nanometres.") ? 1 : 0)) !== 0;
+    case 0x60510071:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Velocity in nanometres per picosecond.") ? 1 : 0)) !== 0;
+    case 0x60510072:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Velocity in nanometres per picosecond.") ? 1 : 0)) !== 0;
+    case 0x60510073:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Velocity in nanometres per picosecond.") ? 1 : 0)) !== 0;
+    case 0x60510074:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x60510075:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x60510076:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x60510077:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x60510078:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x60510079:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x6051007A:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x6051007B:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x6051007C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GRO box vector component in nanometres; physical order v1(x), v2(y), v3(z), v1(y), v1(z), v2(x), v2(z), v3(x), v3(y).") ? 1 : 0)) !== 0;
+    case 0x6051007D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x6051007E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x6051007F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x60510083:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x60510084:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x60510085:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x60510086:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x60510087:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x60510088:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x60510089:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x6051008A:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x6051008B:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 counts-line field; legacy/obsolete slots retain their physical decimal value.") ? 1 : 0)) !== 0;
+    case 0x6051008C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Molfile coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x6051008D:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Molfile coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x6051008E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Molfile coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x6051008F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Difference from the natural isotope mass number.") ? 1 : 0)) !== 0;
+    case 0x60510090:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        switch (sxVarI64(r.value)) {
+        case 0:
+            return sxSetComment(r, "UNCHARGED_OR_DEFAULT");
+        case 1:
+            return sxSetComment(r, "PLUS_3");
+        case 2:
+            return sxSetComment(r, "PLUS_2");
+        case 3:
+            return sxSetComment(r, "PLUS_1");
+        case 4:
+            return sxSetComment(r, "DOUBLET_RADICAL");
+        case 5:
+            return sxSetComment(r, "MINUS_1");
+        case 6:
+            return sxSetComment(r, "MINUS_2");
+        case 7:
+            return sxSetComment(r, "MINUS_3");
+        default:
+            return true;
+        }
+    case 0x60510091:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510092:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510093:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510094:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510095:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510096:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510097:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510098:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x60510099:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x6051009A:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 atom-block decimal field; codes retain wire representation.") ? 1 : 0)) !== 0;
+    case 0x6051009B:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 bond field; atom references are 1-based indices.") ? 1 : 0)) !== 0;
+    case 0x6051009C:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 bond field; atom references are 1-based indices.") ? 1 : 0)) !== 0;
+    case 0x6051009D:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        switch (sxVarI64(r.value)) {
+        case 1:
+            return sxSetComment(r, "SINGLE");
+        case 2:
+            return sxSetComment(r, "DOUBLE");
+        case 3:
+            return sxSetComment(r, "TRIPLE");
+        case 4:
+            return sxSetComment(r, "AROMATIC");
+        default:
+            return true;
+        }
+    case 0x6051009E:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 bond field; atom references are 1-based indices.") ? 1 : 0)) !== 0;
+    case 0x6051009F:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 bond field; atom references are 1-based indices.") ? 1 : 0)) !== 0;
+    case 0x605100A0:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 bond field; atom references are 1-based indices.") ? 1 : 0)) !== 0;
+    case 0x605100A1:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "V2000 bond field; atom references are 1-based indices.") ? 1 : 0)) !== 0;
+    case 0x605100A3:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Property atom index or signed property value; interpretation follows CHG/ISO/RAD.") ? 1 : 0)) !== 0;
+    case 0x605100A4:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Property atom index or signed property value; interpretation follows CHG/ISO/RAD.") ? 1 : 0)) !== 0;
+    case 0x605100A5:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100A6:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100A7:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100A8:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100A9:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100AA:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100AB:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100AC:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 decimal identifier/index/count; atom references are 1-based.") ? 1 : 0)) !== 0;
+    case 0x605100B5:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100B6:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100B7:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "MOL2 Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100B8:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Atomic partial charge in elementary-charge units.") ? 1 : 0)) !== 0;
+    case 0x605100B9:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100BA:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100BB:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100BC:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100BD:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100BE:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100BF:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100C0:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100C1:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Positive-count Gaussian Cube native subset: coordinates and grid-vector components in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100C2:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Number of grid points on this axis.") ? 1 : 0)) !== 0;
+    case 0x605100C3:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Atomic number.") ? 1 : 0)) !== 0;
+    case 0x605100C4:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Nuclear charge.") ? 1 : 0)) !== 0;
+    case 0x605100C5:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Scalar grid value; units depend on the generating program.") ? 1 : 0)) !== 0;
+    case 0x605100C6:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Simulation time in picoseconds, not wall-clock time.") ? 1 : 0)) !== 0;
+    case 0x605100C7:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "AMBER restart Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100C8:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "AMBER restart stored velocity; multiply by 20.455 for angstroms per picosecond.") ? 1 : 0)) !== 0;
+    case 0x605100C9:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Periodic cell length in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100CA:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Periodic cell angle in degrees.") ? 1 : 0)) !== 0;
+    case 0x605100CB:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100CC:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100CD:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100CE:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100CF:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100D0:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100D1:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100D2:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100D3:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid coordinate, spacing or scalar in the dataset coordinate/value units; not a file offset.") ? 1 : 0)) !== 0;
+    case 0x605100D4:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Grid rotation in degrees counter-clockwise from the X axis.") ? 1 : 0)) !== 0;
+    case 0x605100D5:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "GXF traversal sense code.") ? 1 : 0)) !== 0;
+    case 0x605100D6:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        switch (sxVarI64(r.value)) {
+        case 0:
+            return sxSetComment(r, "UNCOMPRESSED");
+        default:
+            return true;
+        }
+    case 0x605100D7:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "angs selects angstroms; absence selects atomic units (bohr).") ? 1 : 0)) !== 0;
+    case 0x605100D8:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100D9:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100DA:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in bohr.") ? 1 : 0)) !== 0;
+    case 0x605100DB:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100DC:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    case 0x605100DD:
+        return (sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/ ? 1 : (sxSetComment(r, "Cartesian coordinate in angstroms.") ? 1 : 0)) !== 0;
+    default:
+        return true;
+    }
+}
+function sxsa_space(c) {
+    return c === 32 || c === 9 || c === 13 || c === 10;
+}
+function sxsa_eq(q, t, s) {
+    var n = sxStrlen(s);
+    return t.a >= 0 && t.z === (n >= SX_I64_MAX ? n - SX_U64_MAX : n) && t.a <= q.n && t.z <= q.n - t.a && !sxMemcmpAt(q.b, t.a, s, 0, n);
+}
+function sxsa_ci(q, t, s) {
+    var n = sxStrlen(s);
+    if (t.a < 0 || t.z !== (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var ch = q.b[(t.a < 0 ? t.a + SX_U64_MAX : t.a) + i];
+        if (ch >= 65 /*A*/ && ch <= 90 /*Z*/) {
+            ch = (ch + 32) >>> 0;
+        }
+        if (ch !== (sxAt(s, i) & 0xFF)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsa_trim(q, t) {
+    while (t.z && sxsa_space(q.b[t.a])) {
+        t.a++;
+        t.z--;
+    }
+    while (t.z && sxsa_space(q.b[t.a + t.z - 1])) {
+        t.z--;
+    }
+    return sxCopy_sxsa_token(null, t);
+}
+function sxsa_line(q, t) {
+    if (q.p >= q.n || ++q.work > 2000000) {
+        return false;
+    }
+    t.a = q.p;
+    while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+        q.p++;
+    }
+    t.z = q.p - t.a;
+    if (q.p < q.n && q.b[q.p] === 13) {
+        q.p++;
+    }
+    if (q.p < q.n && q.b[q.p] === 10) {
+        q.p++;
+    }
+    return true;
+}
+function sxsa_split(q, line, t, cap, tabs) {
+    var n = 0;
+    var p = line.a;
+    var end = p + line.z;
+    while (p < end) {
+        if (tabs) {
+            var a = p;
+            while (p < end && q.b[p] !== 9) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxsa_token(null, { a: a, z: p - a });
+            if (p < end) {
+                p++;
+            }
+        } else {
+            while (p < end && sxsa_space(q.b[p])) {
+                p++;
+            }
+            if (p === end) {
+                break;
+            }
+            a = p;
+            while (p < end && !sxsa_space(q.b[p])) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxsa_token(null, { a: a, z: p - a });
+        }
+    }
+    return n;
+}
+function sxsa_emit(q, l, t) {
+    if (t.a < 0 || t.z < 0 || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    if (!t.z || q.c.count >= 24000) {
+        return true;
+    }
+    if (t.z > sxVariableLimit(l.fields[0].type)) {
+        return true;
+    }
+    return sx_add(q.c, l, t.a, t.z);
+}
+function sxsa_number(q, t, v) {
+    sxCopy_sxsa_token(t, sxsa_trim(q, sxCopy_sxsa_token(null, t)));
+    var n = 0;
+    var i = 0;
+    if (t.z && q.b[t.a] === 43 /*+*/) {
+        i++;
+    }
+    if (i === t.z) {
+        return false;
+    }
+    for (; i < t.z; i++) {
+        var d = (q.b[t.a + i] - 48 /*0*/) >>> 0;
+        if (d > 9 || n > Math.floor((SX_U64_MAX - d) / 10)) {
+            return false;
+        }
+        n = n * 10 + d;
+    }
+    v[0] = n;
+    return true;
+}
+function sxsa_fields(q, t, t_o, n, l, max) {
+    if (n > max) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (l[i] !== null && !sxsa_emit(q, l[i], sxCopy_sxsa_token(null, t[t_o + i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsa_column(q, l, line, at, width) {
+    if (at > (line.z < 0 ? line.z + SX_U64_MAX : line.z) || width > sxU64((line.z < 0 ? line.z + SX_U64_MAX : line.z) - at)) {
+        return false;
+    }
+    var t = { a: line.a + at, z: width };
+    if (!sxsa_trim(q, sxCopy_sxsa_token(null, t)).z) {
+        return true;
+    }
+    return sxsa_emit(q, l, sxCopy_sxsa_token(null, t));
+}
+function sxsa_sequence_file(q, fastq) {
+    var l = sxNew_sxsa_token();
+    var t = sxAllocN(2, sxNew_sxsa_token);
+    var phase = 0;
+    while (sxsa_line(q, l)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!l.z) {
+            return false;
+        }
+        if (fastq && phase === 0 || !fastq && q.b[l.a] === 62 /*>*/) {
+            {
+                if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, { a: l.a, z: 1 }))) {
+                    return false;
+                }
+            }
+            var p = l.a + 1;
+            var end = l.a + l.z;
+            while (p < end && !sxsa_space(q.b[p])) {
+                p++;
+            }
+            {
+                if (!sxsa_emit(q, sxsa_sequence_id, sxCopy_sxsa_token(null, { a: l.a + 1, z: p - l.a - 1 }))) {
+                    return false;
+                }
+            }
+            while (p < end && sxsa_space(q.b[p])) {
+                p++;
+            }
+            if (p < end) {
+                {
+                    if (!sxsa_emit(q, sxsa_description, sxCopy_sxsa_token(null, { a: p, z: end - p }))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (fastq && phase === 2) {
+            {
+                if (!sxsa_emit(q, sxsa_separator, sxCopy_sxsa_token(null, { a: l.a, z: 1 }))) {
+                    return false;
+                }
+            }
+            if (l.z > 1) {
+                {
+                    if (!sxsa_emit(q, sxsa_description, sxCopy_sxsa_token(null, { a: l.a + 1, z: l.z - 1 }))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (fastq && phase === 3) {
+            {
+                if (!sxsa_emit(q, sxsa_quality, sxCopy_sxsa_token(null, l))) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxsa_emit(q, sxsa_sequence, sxCopy_sxsa_token(null, l))) {
+                    return false;
+                }
+            }
+        }
+        if (fastq) {
+            phase = ((phase + 1) >>> 0) % 4;
+        }
+    }
+    return !fastq || phase === 0;
+}
+function sxsa_metadata(q, l) {
+    var p = l.a;
+    var end = p + l.z;
+    while (p < end && q.b[p] !== 61 /*=*/ && q.b[p] !== 9 && q.b[p] !== 32) {
+        p++;
+    }
+    {
+        if (!sxsa_emit(q, sxsa_metadata_key, sxCopy_sxsa_token(null, { a: l.a, z: p - l.a }))) {
+            return false;
+        }
+    }
+    while (p < end && (q.b[p] === 61 /*=*/ || sxsa_space(q.b[p]))) {
+        p++;
+    }
+    if (p < end) {
+        {
+            if (!sxsa_emit(q, sxsa_metadata_value, sxCopy_sxsa_token(null, { a: p, z: end - p }))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sxsa_csv(q, t, l) {
+    var p = t.a;
+    var end = p + t.z;
+    while (p < end) {
+        var a = p;
+        while (p < end && q.b[p] !== 44 /*,*/) {
+            p++;
+        }
+        if (p > a && !sxsa_emit(q, l, sxCopy_sxsa_token(null, { a: a, z: p - a }))) {
+            return false;
+        }
+        if (p < end) {
+            p++;
+        }
+    }
+    return true;
+}
+function sxsa_genomic_table(q, type) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(16, sxNew_sxsa_token);
+    var wigfixed = false;
+    var gff = [sxsa_reference_name, sxsa_feature_source, sxsa_feature_type, sxsa_start_1, sxsa_end_1, sxsa_feature_score, sxsa_strand, sxsa_phase, sxsa_attributes];
+    var vcf = [sxsa_reference_name, sxsa_position_1, sxsa_identifier, sxsa_variant_reference, sxsa_variant_alternate, sxsa_variant_quality, sxsa_filter_info, sxsa_info_field];
+    var bed = [sxsa_reference_name, sxsa_start_0, sxsa_end_0, sxsa_identifier, sxsa_score, sxsa_strand, sxsa_thick_start_0, sxsa_thick_end_0, sxsa_rgb, sxsa_block_count];
+    var agp = [sxsa_identifier, sxsa_start_1, sxsa_end_1, sxsa_part_number, sxsa_component_type];
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxsa_token(line, sxsa_trim(q, sxCopy_sxsa_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        if (q.b[line.a] === 35 /*#*/) {
+            if (!sxsa_metadata(q, sxCopy_sxsa_token(null, line))) {
+                return false;
+            }
+            continue;
+        }
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 16, type !== "GENOMICS_WIGGLE");
+        if (!n || n > 16) {
+            return false;
+        }
+        if (sxsa_eq(q, sxCopy_sxsa_token(null, t[0]), "track") || sxsa_eq(q, sxCopy_sxsa_token(null, t[0]), "browser") || line.z >= 5 && sxsa_eq(q, sxCopy_sxsa_token(null, { a: line.a, z: 5 }), "track")) {
+            if (!sxsa_metadata(q, sxCopy_sxsa_token(null, line))) {
+                return false;
+            }
+            continue;
+        }
+        if (type === "GENOMICS_WIGGLE") {
+            if (sxsa_eq(q, sxCopy_sxsa_token(null, t[0]), "fixedStep") || sxsa_eq(q, sxCopy_sxsa_token(null, t[0]), "variableStep")) {
+                wigfixed = sxsa_eq(q, sxCopy_sxsa_token(null, t[0]), "fixedStep");
+                {
+                    if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                for (var i = 1; i < n; i++) {
+                    var z = 0;
+                    while (z < t[i].z && q.b[t[i].a + z] !== 61 /*=*/) {
+                        z++;
+                    }
+                    if (z === t[i].z) {
+                        return false;
+                    }
+                    var k = { a: t[i].a, z: z };
+                    var v = { a: t[i].a + z + 1, z: t[i].z - z - 1 };
+                    var l = sxsa_eq(q, sxCopy_sxsa_token(null, k), "chrom") ? sxsa_reference_name : sxsa_eq(q, sxCopy_sxsa_token(null, k), "start") ? sxsa_start_1 : sxsa_eq(q, sxCopy_sxsa_token(null, k), "step") ? sxsa_step : sxsa_eq(q, sxCopy_sxsa_token(null, k), "span") ? sxsa_span : null;
+                    if (l === null || !sxsa_emit(q, l, sxCopy_sxsa_token(null, v))) {
+                        return false;
+                    }
+                }
+            } else {
+                if (n !== (wigfixed ? 1 : 2)) {
+                    return false;
+                }
+                if (!wigfixed) {
+                    {
+                        if (!sxsa_emit(q, sxsa_position_1, sxCopy_sxsa_token(null, t[0]))) {
+                            return false;
+                        }
+                    }
+                }
+                {
+                    if (!sxsa_emit(q, sxsa_wiggle_value, sxCopy_sxsa_token(null, t[(n - 1) >>> 0]))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (type === "GENOMICS_BED") {
+            if (n < 3 || n > 12 || !sxsa_fields(q, t, 0, n < 10 ? n : 10, bed, 10)) {
+                return false;
+            }
+            if (n > 10 && !sxsa_csv(q, sxCopy_sxsa_token(null, t[10]), sxsa_block_size)) {
+                return false;
+            }
+            if (n > 11 && !sxsa_csv(q, sxCopy_sxsa_token(null, t[11]), sxsa_block_start)) {
+                return false;
+            }
+        } else if (type === "GENOMICS_AGP") {
+            if (n !== 9 || !sxsa_fields(q, t, 0, 5, agp, 5)) {
+                return false;
+            }
+            var gap = sxsa_eq(q, sxCopy_sxsa_token(null, t[4]), "N") || sxsa_eq(q, sxCopy_sxsa_token(null, t[4]), "U");
+            var tail = [gap ? sxsa_gap_length : sxsa_component_id, gap ? sxsa_gap_type : sxsa_component_start_1, gap ? sxsa_linkage : sxsa_component_end_1, gap ? sxsa_evidence : sxsa_orientation];
+            if (!sxsa_fields(q, t, 5, 4, tail, 4)) {
+                return false;
+            }
+        } else {
+            v = type === "GENOMICS_VCF";
+            if (n !== (v ? 8 : 9)) {
+                return false;
+            }
+            for (i = 0; i < n; i++) {
+                l = v ? vcf[i] : gff[i];
+                if (sxsa_eq(q, sxCopy_sxsa_token(null, t[i]), ".") && (i === 5 || !v && i === 7)) {
+                    l = sxsa_metadata_value;
+                }
+                if (!sxsa_emit(q, l, sxCopy_sxsa_token(null, t[i]))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sxsa_grid(q, gxf) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(32, sxNew_sxsa_token);
+    var key = { a: 0, z: 0 };
+    var data = false;
+    var pending = false;
+    var headers = 0;
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxsa_token(line, sxsa_trim(q, sxCopy_sxsa_token(null, line)));
+        if (!line.z) {
+            if (gxf && pending) {
+                pending = false;
+            }
+            continue;
+        }
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 32, false);
+        if (gxf) {
+            if (q.b[line.a] === 35 /*#*/ && !pending) {
+                sxCopy_sxsa_token(key, { a: t[0].a + 1, z: t[0].z - 1 });
+                {
+                    if (!sxsa_emit(q, sxsa_metadata_key, sxCopy_sxsa_token(null, key))) {
+                        return false;
+                    }
+                }
+                if (sxsa_ci(q, sxCopy_sxsa_token(null, key), "grid")) {
+                    data = true;
+                }
+                pending = !data;
+                continue;
+            }
+            if (!data) {
+                pending = false;
+                var l = sxsa_ci(q, sxCopy_sxsa_token(null, key), "points") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "poin") ? sxsa_grid_columns : sxsa_ci(q, sxCopy_sxsa_token(null, key), "rows") ? sxsa_grid_rows : sxsa_ci(q, sxCopy_sxsa_token(null, key), "ptseparation") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "ptse") ? sxsa_grid_x_spacing : sxsa_ci(q, sxCopy_sxsa_token(null, key), "rwseparation") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "rwse") ? sxsa_grid_y_spacing : sxsa_ci(q, sxCopy_sxsa_token(null, key), "xorigin") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "xori") ? sxsa_grid_x_origin : sxsa_ci(q, sxCopy_sxsa_token(null, key), "yorigin") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "yori") ? sxsa_grid_y_origin : sxsa_ci(q, sxCopy_sxsa_token(null, key), "sense") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "sens") ? sxsa_grid_sense : sxsa_ci(q, sxCopy_sxsa_token(null, key), "gtype") ? sxsa_grid_type : sxsa_ci(q, sxCopy_sxsa_token(null, key), "zmin") ? sxsa_grid_min : sxsa_ci(q, sxCopy_sxsa_token(null, key), "zmax") ? sxsa_grid_max : sxsa_ci(q, sxCopy_sxsa_token(null, key), "rotation") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "rota") ? sxsa_grid_rotation : sxsa_ci(q, sxCopy_sxsa_token(null, key), "title") || sxsa_ci(q, sxCopy_sxsa_token(null, key), "titl") ? sxsa_title : sxsa_grid_nodata;
+                if (!sxsa_emit(q, l, sxCopy_sxsa_token(null, line))) {
+                    return false;
+                }
+                continue;
+            }
+        } else if (headers < 5 || n && sxsa_ci(q, sxCopy_sxsa_token(null, t[0]), "nodata_value")) {
+            if (n !== 2) {
+                return false;
+            }
+            {
+                if (!sxsa_emit(q, sxsa_metadata_key, sxCopy_sxsa_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            l = headers === 0 ? sxsa_grid_columns : headers === 1 ? sxsa_grid_rows : headers === 2 ? sxsa_grid_x_origin : headers === 3 ? sxsa_grid_y_origin : headers === 4 ? sxsa_grid_cell_size : sxsa_grid_nodata;
+            if (!sxsa_emit(q, l, sxCopy_sxsa_token(null, t[1]))) {
+                return false;
+            }
+            headers++;
+            continue;
+        }
+        var p = line.a;
+        var end = p + line.z;
+        while (p < end) {
+            while (p < end && sxsa_space(q.b[p])) {
+                p++;
+            }
+            var a = p;
+            while (p < end && !sxsa_space(q.b[p])) {
+                p++;
+            }
+            if (p > a) {
+                {
+                    if (!sxsa_emit(q, sxsa_grid_value, sxCopy_sxsa_token(null, { a: a, z: p - a }))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sxsa_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxsa_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxsa_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsa_order, true);
+    return !c.failed;
+}
+function sx_scienceascii_supports(type) {
+    switch (type) {
+    case "GENOMICS_FASTA":
+    case "GENOMICS_FASTQ":
+    case "GENOMICS_SAM":
+    case "GENOMICS_VCF":
+    case "GENOMICS_GFF3":
+    case "GENOMICS_BED":
+    case "GENOMICS_WIGGLE":
+    case "GENOMICS_GTF":
+    case "GENOMICS_AGP":
+    case "PROTEIN_PDB":
+    case "GROMACS_GRO":
+    case "MOLECULE_XYZ":
+    case "MDL_MOLFILE":
+    case "TRIPOS_MOL2":
+    case "GAUSSIAN_CUBE":
+    case "AMBER_RESTART":
+    case "MATRIX_MARKET":
+    case "ESRI_ASCII_GRID":
+    case "GXF_GRID":
+    case "TURBOMOLE_COORD":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_scienceascii_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 67108864) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: b, n: c.size, p: 0, work: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "GENOMICS_FASTA":
+            ok = sx_genomics_fasta_build(q);
+            break;
+        case "GENOMICS_FASTQ":
+            ok = sx_genomics_fastq_build(q);
+            break;
+        case "GENOMICS_SAM":
+            ok = sx_genomics_sam_build(q);
+            break;
+        case "GENOMICS_VCF":
+            ok = sx_genomics_vcf_build(q, type);
+            break;
+        case "GENOMICS_GFF3":
+            ok = sx_genomics_gff3_build(q, type);
+            break;
+        case "GENOMICS_BED":
+            ok = sx_genomics_bed_build(q, type);
+            break;
+        case "GENOMICS_WIGGLE":
+            ok = sx_genomics_wiggle_build(q, type);
+            break;
+        case "GENOMICS_GTF":
+            ok = sx_genomics_gtf_build(q, type);
+            break;
+        case "GENOMICS_AGP":
+            ok = sx_genomics_agp_build(q, type);
+            break;
+        case "PROTEIN_PDB":
+            ok = sx_protein_pdb_build(q);
+            break;
+        case "GROMACS_GRO":
+            ok = sx_gromacs_gro_build(q);
+            break;
+        case "MOLECULE_XYZ":
+            ok = sx_molecule_xyz_build(q);
+            break;
+        case "MDL_MOLFILE":
+            ok = sx_mdl_molfile_build(q);
+            break;
+        case "TRIPOS_MOL2":
+            ok = sx_tripos_mol2_build(q);
+            break;
+        case "GAUSSIAN_CUBE":
+            ok = sx_gaussian_cube_build(q);
+            break;
+        case "AMBER_RESTART":
+            ok = sx_amber_restart_build(q);
+            break;
+        case "MATRIX_MARKET":
+            ok = sx_matrix_market_build(q);
+            break;
+        case "ESRI_ASCII_GRID":
+            ok = sx_esri_ascii_grid_build(q);
+            break;
+        case "GXF_GRID":
+            ok = sx_gxf_grid_build(q);
+            break;
+        case "TURBOMOLE_COORD":
+            ok = sx_turbomole_coord_build(q);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxsa_finish(c);
+}

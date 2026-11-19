@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hxc_stream/xx_hxc_stream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_hxc_stream_chunk_fields = layout([chars("magic", 4, SIGNATURE), u32("total_size", SIZE), u32("packet_number")]);
+var sxdleg_hxc_stream_chunk = sxLayout(0x6075002A, "hxc_stream_chunk", LE, sxdleg_hxc_stream_chunk_fields);
+var sxdleg_hxc_stream_metadata_fields = layout([u32("type", ID), u32("payload_size", SIZE)]);
+var sxdleg_hxc_stream_metadata = sxLayout(0x6075002B, "hxc_stream_metadata", LE, sxdleg_hxc_stream_metadata_fields);
+var sxdleg_hxc_stream_io_fields = layout([u32("type", ID), u32("payload_size", SIZE), u32("packed_size", SIZE),
+    u32("unpacked_size", SIZE)]);
+var sxdleg_hxc_stream_io = sxLayout(0x6075002C, "hxc_stream_io", LE, sxdleg_hxc_stream_io_fields);
+var sxdleg_hxc_stream_flux_fields = layout([u32("type", ID), u32("payload_size", SIZE), u32("packed_size", SIZE),
+    u32("unpacked_size", SIZE), u32("pulse_count", COUNT)]);
+var sxdleg_hxc_stream_flux = sxLayout(0x6075002D, "hxc_stream_flux", LE, sxdleg_hxc_stream_flux_fields);
+var sxdleg_hxc_stream_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxdleg_hxc_stream_crc = sxLayout(0x6075002E, "hxc_stream_crc", LE, sxdleg_hxc_stream_crc_fields);
+function sxdleg_stream(c) {
+    var h = [];
+    var p = 0;
+    for (var i = 0; i < 1024 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count < 24000; i++) {
+        if (!sxdleg_read(c, p, h, 0, 12) || sxMemcmp(h, "CHKH", 4)) {
+            break;
+        }
+        var z = sxdleg32(h, 4, 0);
+        if (z < 24 || z % 4 || !sxdleg_span(c, p, z)) {
+            break;
+        }
+        if (!sxdleg_put(c, sxdleg_hxc_stream_chunk, p, 1) || !sxdleg_put(c, sxdleg_hxc_stream_crc, sxU64(p + z - 4), 1)) {
+            return false;
+        }
+        var q = p + 12;
+        var end = sxU64(p + z - 4);
+        for (var j = 0; j < 64 && q < end; j++) {
+            if (sxU64(end - q) < 8 || !sxdleg_read(c, q, h, 0, 8)) {
+                break;
+            }
+            var n = sxdleg32(h, 4, 0);
+            var type = sxdleg32(h, 0, 0);
+            var head = type === 0 ? 8 : type === 1 ? 16 : type === 2 ? 20 : 0;
+            if (!head || n > sxU64(sxU64(end - q) - 8) || head > 8 + n) {
+                break;
+            }
+            var l = type === 0 ? sxdleg_hxc_stream_metadata : type === 1 ? sxdleg_hxc_stream_io : sxdleg_hxc_stream_flux;
+            if (!sxdleg_put(c, l, q, 1)) {
+                return false;
+            }
+            q += 8 + n;
+        }
+        p += z;
+    }
+    return c.count !== 0;
+}
+function sx_hxc_stream_build(c) {
+    return sxdleg_stream(c);
+}

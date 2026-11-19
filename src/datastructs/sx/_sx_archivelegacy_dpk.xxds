@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/dpk/xx_dpk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_dpk_header_fields = layout([chars("signature", 4, SIGNATURE), i32("archive_size", SIZE), i32("directory_size", SIZE),
+    i32("entry_count", COUNT)]);
+var sxag_dpk_header = sxLayout(0x60250027, "dpk_header", LE, sxag_dpk_header_fields);
+var sxag_dpk_entry_fields = layout([i32("record_size", SIZE), i32("unpacked_size", SIZE), i32("packed_size", SIZE),
+    i32("data_offset", OFFSET)]);
+var sxag_dpk_entry = sxLayout(0x60250028, "dpk_entry", LE, sxag_dpk_entry_fields);
+function sxag_dpk(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 16) || !sxag_add(c, sxag_dpk_header, 0)) {
+        return false;
+    }
+    var n = sxag32(b, 12, false);
+    var z = sxag32(b, 8, false);
+    var p = 16;
+    if (n > 20000 || !sxag_span(c, p, z)) {
+        return true;
+    }
+    var end = p + z;
+    for (var i = 0; i < n && sxU64(end - p) >= 16; i++) {
+        if (!sxag_read(c, p, b, 16)) {
+            break;
+        }
+        var h = sxag32(b, 0, false);
+        if (h < 17 || h > sxU64(end - p)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_dpk_entry, p)) {
+            return false;
+        }
+        p += h;
+    }
+    return true;
+}
+function sx_dpk_build(c) {
+    return sxag_dpk(c);
+}

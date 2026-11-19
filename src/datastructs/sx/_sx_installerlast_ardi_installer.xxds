@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/ardi_installer/xx_ardi_installer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_ardi_trailer_fields = layout([chars("copyright", 25, NONE), u32("builder_check"), u16("builder_counter"),
+    chars("copyright_suffix", 14, NONE), chars("year", 4, NONE), chars("terminator", 1, NONE)]);
+var sxil_ardi_trailer = sxLayout(0x60850009, "ardi_trailer", LE, sxil_ardi_trailer_fields);
+var sxil_ardi_block_tag_fields = layout([u32("tag", ID)]);
+var sxil_ardi_block_tag = sxLayout(0x6085000A, "ardi_block_tag", LE, sxil_ardi_block_tag_fields);
+var sxil_ardi_block_length_fields = layout([u32("block_size", SIZE)]);
+var sxil_ardi_block_length = sxLayout(0x6085000B, "ardi_block_length", LE, sxil_ardi_block_length_fields);
+var sxil_ardi_member_time_fields = layout([u32("modification_time", TIMESTAMP)]);
+var sxil_ardi_member_time = sxLayout(0x6085000C, "ardi_member_time", LE, sxil_ardi_member_time_fields);
+var sxil_ardi_chain_start_fields = layout([u32("sentinel", SIGNATURE)]);
+var sxil_ardi_chain_start = sxLayout(0x6085000D, "ardi_chain_start", LE, sxil_ardi_chain_start_fields);
+function sxil_ardi(c) {
+    if (c.size < 54) {
+        return true;
+    }
+    var end = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 50);
+    if (!sxil_put(c, sxil_ardi_trailer, end, 1)) {
+        return false;
+    }
+    for (var k = 0; k < 100000 && end >= 4; k++) {
+        var n = [0];
+        if (!sxil_u32(c, sxU64(end - 4), n)) {
+            return true;
+        }
+        if (n[0] === 0x98765432) {
+            return sxil_put(c, sxil_ardi_chain_start, sxU64(end - 4), 1);
+        }
+        if (n[0] < 8 || n[0] > end) {
+            return true;
+        }
+        var p = sxU64(end - n[0]);
+        var tag = [0];
+        if (!sxil_u32(c, p, tag)) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_ardi_block_tag, p, 1) || !sxil_put(c, sxil_ardi_block_length, sxU64(end - 4), 1)) {
+            return false;
+        }
+        if (tag[0] === 0x12345677 && n[0] >= 14) {
+            if (!sxil_put(c, sxil_ardi_member_time, p + 4, 1) || !sxil_name(c, p + 8, (n[0] - 12) >>> 0)) {
+                return false;
+            }
+        } else if (tag[0] === 0x11221122 || tag[0] === 0x97979797 || tag[0] === 0x12121212 || tag[0] === 0x13131313) {
+            if (!sxil_name(c, p + 4, (n[0] - 8) >>> 0)) {
+                return false;
+            }
+        }
+        end = p;
+    }
+    return true;
+}
+function sx_ardi_installer_build(c) {
+    return sxil_ardi(c);
+}

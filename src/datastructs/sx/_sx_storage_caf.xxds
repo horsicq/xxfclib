@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/caf/xx_caf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_caf_header_fields = layout([field("signature", "byte[4]", 4, SIGNATURE), u16("version"), u16("flags", FLAGS)]);
+var sx_st_caf_header = sxLayout(0x60080003, "caf_header", BE, sx_st_caf_header_fields);
+var sx_st_caf_description_fields = layout([field("sample_rate", "float64", 8), chars("format_id", 4, STRING),
+    u32("format_flags", FLAGS), u32("bytes_per_packet", SIZE), u32("frames_per_packet", COUNT),
+    u32("channels_per_frame", COUNT), u32("bits_per_channel", COUNT)]);
+var sx_st_caf_description = sxLayout(0x60080005, "caf_description", BE, sx_st_caf_description_fields);
+var sx_st_caf_data_fields = layout([u32("edit_count", COUNT)]);
+var sx_st_caf_data = sxLayout(0x60080006, "caf_data", BE, sx_st_caf_data_fields);
+var sx_st_caf_packet_table_fields = layout([i64("packet_count", COUNT), i64("valid_frame_count", COUNT),
+    i32("priming_frame_count", COUNT), i32("remainder_frame_count", COUNT)]);
+var sx_st_caf_packet_table = sxLayout(0x60080007, "caf_packet_table", BE, sx_st_caf_packet_table_fields);
+function sx_st_caf(c) {
+    var at = 8;
+    if (!sx_add(c, sx_st_caf_header, 0, 8)) {
+        return false;
+    }
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 12) || !sx_add(c, sx_st_caf_chunk, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 12)) {
+            return false;
+        }
+        n = sxGetU64(h, 12, 4, true);
+        at += 12;
+        if (n === SX_U64_MAX) {
+            n = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+        }
+        if (!sx_st_fits(c, at, n)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "desc", 4)) {
+            if (n !== 32 || !sx_add(c, sx_st_caf_description, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 32)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "data", 4)) {
+            if (n < 4 || !sx_add(c, sx_st_caf_data, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 4)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "pakt", 4)) {
+            if (n < 24 || !sx_add(c, sx_st_caf_packet_table, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 24)) {
+                return false;
+            }
+        }
+        at += n;
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_caf_build(c) {
+    var ok = false;
+    ok = sx_st_caf(c);
+    return ok && sx_st_finish(c);
+}

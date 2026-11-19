@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ensoniq_ede/xx_ensoniq_ede_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_ede_text_header_fields = layout([field("line_start", "byte[2]", 2, SIGNATURE), chars("description", 76, NONE),
+    field("line_end", "byte[2]", 2, SIGNATURE)]);
+var sxdleg_ede_text_header = sxLayout(0x60750035, "ede_text_header", LE, sxdleg_ede_text_header_fields);
+var sxdleg_ede_bitmap_marker_fields = layout([field("text_end", "byte[3]", 3, SIGNATURE)]);
+var sxdleg_ede_bitmap_marker = sxLayout(0x60750036, "ede_bitmap_marker", LE, sxdleg_ede_bitmap_marker_fields);
+var sxdleg_ede_bitmap_byte_fields = layout([u8("sector_bitmap", FLAGS)]);
+var sxdleg_ede_bitmap_byte = sxLayout(0x60750037, "ede_bitmap_byte", LE, sxdleg_ede_bitmap_byte_fields);
+var sxdleg_ede_format_fields = layout([u8("computer_format", FLAGS), u8("disk_type", ID)]);
+var sxdleg_ede_format = sxLayout(0x60750038, "ede_format", LE, sxdleg_ede_format_fields);
+function sxdleg_ede(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 512) || h[0] !== 13 || h[1] !== 10 || h[78] !== 13 || h[79] !== 10) {
+        return false;
+    }
+    var t = h[511];
+    var heads = t === 1 ? 1 : 2;
+    var sectors = t === 1 || t === 2 ? 6 : t === 203 || t === 204 ? 20 : 10;
+    var bitmap = t === 203 || t === 204 ? 96 : 160;
+    var n = Math.floor(((sxMul32((80 * heads) >>> 0, sectors) + 7) >>> 0) / 8);
+    if ((bitmap + n) >>> 0 > 510) {
+        return false;
+    }
+    return sxdleg_put(c, sxdleg_ede_text_header, 0, 1) && sxdleg_put(c, sxdleg_ede_bitmap_marker, (bitmap - 3) >>> 0, 1) && sxdleg_put(c, sxdleg_ede_bitmap_byte, bitmap, n) && sxdleg_put(c, sxdleg_ede_format, 510, 1);
+}
+function sx_ensoniq_ede_build(c) {
+    return sxdleg_ede(c);
+}

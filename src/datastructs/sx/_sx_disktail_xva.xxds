@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/xva/xx_xva_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_xva_tar_v7_fields = layout([chars("name", 100, NONE), field("mode", "ascii_cpio_octal[8]", 8, FLAGS),
+    field("uid", "ascii_cpio_octal[8]", 8, ID), field("gid", "ascii_cpio_octal[8]", 8, ID),
+    field("data_size", "ascii_cpio_octal[12]", 12, SIZE), field("modification_time", "ascii_cpio_octal[12]", 12, TIMESTAMP),
+    field("checksum", "ascii_cpio_octal[8]", 8, CHECKSUM), chars("type_flag", 1, ID), chars("link_name", 100, NONE),
+    field("padding", "byte[255]", 255, RESERVED)]);
+var sxdt_xva_tar_v7 = sxLayout(0x607A003E, "xva_tar_v7", LE, sxdt_xva_tar_v7_fields);
+var sxdt_xva_tar_ustar_fields = layout([chars("name", 100, NONE), field("mode", "ascii_cpio_octal[8]", 8, FLAGS),
+    field("uid", "ascii_cpio_octal[8]", 8, ID), field("gid", "ascii_cpio_octal[8]", 8, ID),
+    field("data_size", "ascii_cpio_octal[12]", 12, SIZE), field("modification_time", "ascii_cpio_octal[12]", 12, TIMESTAMP),
+    field("checksum", "ascii_cpio_octal[8]", 8, CHECKSUM), chars("type_flag", 1, ID), chars("link_name", 100, NONE),
+    chars("magic", 6, SIGNATURE), chars("version", 2, ID), chars("user_name", 32, NONE), chars("group_name", 32, NONE),
+    field("device_major", "ascii_cpio_octal[8]", 8, ID), field("device_minor", "ascii_cpio_octal[8]", 8, ID),
+    chars("prefix", 155, NONE), field("padding", "byte[12]", 12, RESERVED)]);
+var sxdt_xva_tar_ustar = sxLayout(0x607A003F, "xva_tar_ustar", LE, sxdt_xva_tar_ustar_fields);
+var sxdt_xva_sha1_text_fields = layout([chars("sha1", 40, CHECKSUM)]);
+var sxdt_xva_sha1_text = sxLayout(0x607A0040, "xva_sha1_text", LE, sxdt_xva_sha1_text_fields);
+var sxdt_xva_xxhash_text_fields = layout([chars("xxh64", 16, CHECKSUM)]);
+var sxdt_xva_xxhash_text = sxLayout(0x607A0041, "xva_xxhash_text", LE, sxdt_xva_xxhash_text_fields);
+function sxdt_tar_octal(b, b_o, n, out) {
+    var v = 0;
+    var digits = false;
+    var tail = false;
+    for (var i = 0; i < n; i++) {
+        var x = b[b_o + i];
+        if (x === 0 || x === 32) {
+            if (digits) {
+                tail = true;
+            }
+            continue;
+        }
+        if (tail || x < 48 /*0*/ || x > 55 /*7*/ || v > Math.floor((SX_U64_MAX - ((x - 48 /*0*/) >>> 0)) / 8)) {
+            return false;
+        }
+        v = sxU64(v * 8 + x - 48 /*0*/);
+        digits = true;
+    }
+    out[0] = v;
+    return true;
+}
+function sxdt_xva(c) {
+    var p = 0;
+    var h = [];
+    for (var visited = 0; visited < 1000000 && sxdt_span(c, p, 512) && c.count < 24000; visited++) {
+        if (!sxdt_read(c, p, h, 0, 512)) {
+            return false;
+        }
+        var zero = true;
+        for (var i = 0; i < 512; i++) {
+            if (h[i]) {
+                zero = false;
+            }
+        }
+        if (zero) {
+            break;
+        }
+        var size = [0];
+        if (!sxdt_tar_octal(h, 124, 12, size) || !sxdt_span(c, p + 512, size[0])) {
+            break;
+        }
+        var ustar = !sxMemcmpAt(h, 257, "ustar", 0, 5);
+        if (!sxdt_put(c, ustar ? sxdt_xva_tar_ustar : sxdt_xva_tar_v7, p, 1)) {
+            return false;
+        }
+        var namelen = 0;
+        while (namelen < 100 && h[namelen]) {
+            namelen++;
+        }
+        if (sxdt_eq(h, 0, namelen, "ova.xml")) {
+            if (!sxdt_xml(c, p + 512, size[0], false)) {
+                return false;
+            }
+        } else if (namelen >= 9 && !sxMemcmpAt(h, namelen + -9, ".checksum", 0, 9) || namelen >= 7 && !sxMemcmpAt(h, namelen + -7, ".xxhash", 0, 7)) {
+            if (size[0] === 40 && !sxdt_put(c, sxdt_xva_sha1_text, p + 512, 1)) {
+                return false;
+            }
+            if (size[0] === 16 && !sxdt_put(c, sxdt_xva_xxhash_text, p + 512, 1)) {
+                return false;
+            }
+        }
+        var padded = sxAnd64(size[0] + 511, sxK(0xFFFFFFFF, 0xFFFFFE00));
+        if (size[0] > (0xFFFFFFFF * 4294967296 + 0xFFFFFE00) || padded > sxU64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) - 512)) {
+            break;
+        }
+        p += 512 + padded;
+    }
+    return c.count !== 0;
+}
+function sx_xva_build(c) {
+    var ok = false;
+    ok = sxdt_xva(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

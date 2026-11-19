@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/pkt/xx_pkt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_pkt_type2_header_fields = layout([u16("origin_node", ID), u16("destination_node", ID), u16("year"),
+    u16("month_zero_based"), u16("day"), u16("hour"), u16("minute"), u16("second"), u16("baud_rate"), u16("packet_type", ID),
+    u16("origin_net", ID), u16("destination_net", ID), u8("product_code", ID), u8("serial_number"), chars("password", 8, NONE),
+    u16("origin_zone", ID), u16("destination_zone", ID), blob("reserved_or_extension", 20)]);
+var sxdm_pkt_type2_header = sxLayout(0x6023000E, "pkt_type2_header", LE, sxdm_pkt_type2_header_fields);
+var sxdm_pkt_message_header_fields = layout([u16("message_type", ID), u16("origin_node", ID), u16("destination_node", ID),
+    u16("origin_net", ID), u16("destination_net", ID), u16("attributes", FLAGS), u16("cost")]);
+var sxdm_pkt_message_header = sxLayout(0x6023000F, "pkt_message_header", LE, sxdm_pkt_message_header_fields);
+function sxdm_pkt(c) {
+    var at = [58];
+    var type;
+    if (!sxdm_add(c, sxdm_pkt_type2_header, 0, 58)) {
+        return false;
+    }
+    for (var i = 0; at[0] < c.size; i++) {
+        if (i >= 65536) {
+            return false;
+        }
+        if (c.size - at[0] < 2) {
+            return true;
+        }
+        if ((type = sx_u16(c, at[0], false)) === null) {
+            return false;
+        }
+        if (!type) {
+            return true;
+        }
+        if (c.size - at[0] < 3) {
+            return true;
+        }
+        if (type !== 2 || !sxdm_add(c, sxdm_pkt_message_header, at[0], 14)) {
+            return false;
+        }
+        at[0] += 14;
+        for (var j = 0; j < 5; j++) {
+            if (!sxdm_zero(c, at, c.size, 0x1000000)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_pkt_build(c) {
+    return sxdm_pkt(c);
+}

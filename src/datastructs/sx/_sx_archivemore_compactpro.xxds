@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/compactpro/xx_compactpro_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_compactpro_header_fields = layout([u8("version", ID), u8("volume_number", ID), u16("volume_set", ID),
+    u32("catalogue_offset", OFFSET)]);
+var sxar_compactpro_header = sxLayout(0x601C001C, "compactpro_header", BE, sxar_compactpro_header_fields);
+var sxar_compactpro_catalogue_fields = layout([u32("crc32_register", CHECKSUM), u16("record_count", COUNT),
+    u8("comment_size", SIZE)]);
+var sxar_compactpro_catalogue = sxLayout(0x601C001D, "compactpro_catalogue", BE, sxar_compactpro_catalogue_fields);
+var sxar_compactpro_name_size_fields = layout([u8("name_size_and_folder", FLAGS)]);
+var sxar_compactpro_name_size = sxLayout(0x601C001E, "compactpro_name_size", LE, sxar_compactpro_name_size_fields);
+var sxar_compactpro_directory_fields = layout([u16("descendant_count", COUNT)]);
+var sxar_compactpro_directory = sxLayout(0x601C001F, "compactpro_directory", BE, sxar_compactpro_directory_fields);
+var sxar_compactpro_file_fields = layout([u8("volume_number", ID), u32("data_offset", OFFSET), chars("file_type", 4, ID),
+    chars("creator", 4, ID), u32("created"), u32("modified"), u16("finder_flags", FLAGS), u32("crc32_register", CHECKSUM),
+    u16("flags", FLAGS), u32("resource_unpacked_size", SIZE), u32("data_unpacked_size", SIZE),
+    u32("resource_packed_size", SIZE), u32("data_packed_size", SIZE)]);
+var sxar_compactpro_file = sxLayout(0x601C0020, "compactpro_file", BE, sxar_compactpro_file_fields);
+function sxar_compactpro(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 8) || !sxar_add(c, sxar_compactpro_header, 0)) {
+        return false;
+    }
+    var p = sxar32(b, 4, true);
+    if (p < 8 || !sxar_read(c, p, b, 0, 7)) {
+        return true;
+    }
+    var n = sxar16(b, 4, true);
+    if (n > 20000 || !sxar_add(c, sxar_compactpro_catalogue, p)) {
+        return false;
+    }
+    p += 7 + b[6];
+    for (var i = 0; i < n; i++) {
+        if (!sxar_read(c, p, b, 0, 1)) {
+            break;
+        }
+        var q = b[0];
+        if (!sxar_span(c, p + 1, (q & 127) + (q & 128 ? 2 : 45))) {
+            break;
+        }
+        if (!sxar_add(c, sxar_compactpro_name_size, p)) {
+            return false;
+        }
+        p += 1 + (q & 127);
+        if (!sxar_add(c, q & 128 ? sxar_compactpro_directory : sxar_compactpro_file, p)) {
+            return false;
+        }
+        p += q & 128 ? 2 : 45;
+    }
+    return true;
+}
+function sx_compactpro_build(c) {
+    return sxar_compactpro(c);
+}

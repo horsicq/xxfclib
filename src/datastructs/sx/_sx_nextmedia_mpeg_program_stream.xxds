@@ -1,0 +1,115 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/mpeg_program_stream/xx_mpeg_program_stream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_mpeg_start_code_fields = layout([blob("prefix", 3, SIGNATURE), u8("stream_id", ID)]);
+var sxnx_mpeg_start_code = sxLayout(0x603200EE, "mpeg_start_code", LE, sxnx_mpeg_start_code_fields);
+var sxnx_mpeg_pack1_fields = layout([blob("prefix", 3, SIGNATURE), u8("pack_id", ID),
+    field("scr_marker_bits", "uint40", 5, FLAGS), field("mux_rate_marker_bits", "uint24", 3, FLAGS)]);
+var sxnx_mpeg_pack1 = sxLayout(0x603200EF, "mpeg_pack1", BE, sxnx_mpeg_pack1_fields);
+var sxnx_mpeg_pack2_fields = layout([blob("prefix", 3, SIGNATURE), u8("pack_id", ID),
+    field("scr_base_extension_marker_bits", "uint48", 6, FLAGS), field("mux_rate_marker_bits", "uint24", 3, FLAGS),
+    u8("reserved_stuffing_length", FLAGS)]);
+var sxnx_mpeg_pack2 = sxLayout(0x603200F0, "mpeg_pack2", BE, sxnx_mpeg_pack2_fields);
+var sxnx_mpeg_system_fields = layout([field("rate_bound_marker_bits", "uint24", 3, FLAGS), u8("audio_bound_flags", FLAGS),
+    u8("video_bound_flags", FLAGS), u8("packet_rate_restriction_reserved", FLAGS)]);
+var sxnx_mpeg_system = sxLayout(0x603200F6, "mpeg_system", BE, sxnx_mpeg_system_fields);
+var sxnx_mpeg_system_stream_fields = layout([u8("stream_id", ID), u16("buffer_scale_size", FLAGS)]);
+var sxnx_mpeg_system_stream = sxLayout(0x603200F7, "mpeg_system_stream", BE, sxnx_mpeg_system_stream_fields);
+var sxnx_mpeg_map_fields = layout([u8("version_current_next", FLAGS), u8("reserved_marker", FLAGS),
+    u16("program_info_bytes", SIZE)]);
+var sxnx_mpeg_map = sxLayout(0x603200F8, "mpeg_map", BE, sxnx_mpeg_map_fields);
+var sxnx_mpeg_map_length_fields = layout([u16("elementary_map_bytes", SIZE)]);
+var sxnx_mpeg_map_length = sxLayout(0x603200F9, "mpeg_map_length", BE, sxnx_mpeg_map_length_fields);
+var sxnx_mpeg_map_stream_fields = layout([u8("stream_type", ID), u8("stream_id", ID), u16("descriptor_bytes", SIZE)]);
+var sxnx_mpeg_map_stream = sxLayout(0x603200FA, "mpeg_map_stream", BE, sxnx_mpeg_map_stream_fields);
+function sxnx_ps(v) {
+    var p = 0;
+    while (p < v.n) {
+        if (!sxnx_need(v, p, 4, v.n)) {
+            return false;
+        }
+        var kind = v.p[p + 3];
+        if (kind === 0xB9) {
+            if (!sxnx_row(v, sxnx_mpeg_start_code, p, v.n)) {
+                return false;
+            }
+            p += 4;
+            continue;
+        }
+        if (kind === 0xBA) {
+            if (!sxnx_need(v, p, 5, v.n)) {
+                return false;
+            }
+            var one = v.p[p + 4] >> 4 === 2;
+            if (!sxnx_row(v, one ? sxnx_mpeg_pack1 : sxnx_mpeg_pack2, p, v.n)) {
+                return false;
+            }
+            var z = one ? 0 : v.p[p + 13] & 7;
+            p += one ? 12 : 14;
+            if (!sxnx_need(v, p, z, v.n)) {
+                return false;
+            }
+            p += z;
+            continue;
+        }
+        if (!sxnx_row(v, sxnx_mpeg_packet, p, v.n)) {
+            return false;
+        }
+        z = sxnx_u16(v.p, p + 4, true);
+        p += 6;
+        if (!sxnx_need(v, p, z, v.n)) {
+            return false;
+        }
+        var end = p + z;
+        if (kind === 0xBB) {
+            if (!sxnx_row(v, sxnx_mpeg_system, p, end) || z < 6 || ((z - 6) >>> 0) % 3 || !sxnx_table(v, sxnx_mpeg_system_stream, p + 6, Math.floor(((z - 6) >>> 0) / 3), end)) {
+                return false;
+            }
+        } else if (kind === 0xBC) {
+            if (z < 10 || !sxnx_row(v, sxnx_mpeg_map, p, end)) {
+                return false;
+            }
+            var bytes = sxnx_u16(v.p, p + 2, true);
+            p += 4;
+            if (!sxnx_need(v, p, bytes, sxU64(end - 4))) {
+                return false;
+            }
+            p += bytes;
+            if (!sxnx_row(v, sxnx_mpeg_map_length, p, sxU64(end - 4))) {
+                return false;
+            }
+            bytes = sxnx_u16(v.p, p, true);
+            p += 2;
+            if (!sxnx_need(v, p, bytes, sxU64(end - 4))) {
+                return false;
+            }
+            var stop = p + bytes;
+            while (p < stop) {
+                if (!sxnx_row(v, sxnx_mpeg_map_stream, p, stop)) {
+                    return false;
+                }
+                var n = sxnx_u16(v.p, p + 2, true);
+                p += 4;
+                if (!sxnx_need(v, p, n, stop)) {
+                    return false;
+                }
+                p += n;
+            }
+            if (!sxnx_row(v, sxnx_mpeg_crc, sxU64(end - 4), end)) {
+                return false;
+            }
+        } else if (kind === 0xBD || kind >= 0xC0 && kind <= 0xEF) {
+            if (!sxnx_pes(v, p, end)) {
+                return false;
+            }
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_mpeg_program_stream_build(v) {
+    return sxnx_ps(v);
+}

@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/thomson_sap/xx_thomson_sap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_sap_header_fields = layout([u8("version", ID), chars("signature", 65, SIGNATURE)]);
+var sxsl_sap_header = sxLayout(0x60330020, "sap_header", LE, sxsl_sap_header_fields);
+var sxsl_sap_sector_fields = layout([u8("format", ID), u8("protection", FLAGS), u8("cylinder"), u8("sector")]);
+var sxsl_sap_sector = sxLayout(0x60330021, "sap_sector", LE, sxsl_sap_sector_fields);
+var sxsl_sap_checksum_fields = layout([u16("crc16", CHECKSUM)]);
+var sxsl_sap_checksum = sxLayout(0x60330022, "sap_checksum", BE, sxsl_sap_checksum_fields);
+function sxsl_sap(c) {
+    var version = [0];
+    if (!sxsl_read(c, 0, version, 1) || !sxsl_put(c, sxsl_sap_header, 0, 1)) {
+        return false;
+    }
+    var z = version[0] === 1 ? 256 : version[0] === 2 ? 128 : 0;
+    var n = version[0] === 1 ? 1280 : 640;
+    if (!z) {
+        return true;
+    }
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        var p = 66 + i * (z + 6);
+        if (!sxsl_span(c, p, z + 6)) {
+            break;
+        }
+        if (!sxsl_put(c, sxsl_sap_sector, p, 1) || !sxsl_put(c, sxsl_sap_checksum, p + 4 + z, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_thomson_sap_build(c) {
+    var ok = false;
+    ok = sxsl_sap(c);
+    return ok && sxsl_finish(c);
+}

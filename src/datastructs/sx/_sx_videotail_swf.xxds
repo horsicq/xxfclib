@@ -1,0 +1,218 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/swf/xx_swf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvt_swf_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version", ID), u32("uncompressed_file_size", SIZE)]);
+var sxvt_swf_header = sxLayout(0x60390004, "swf_header", LE, sxvt_swf_header_fields);
+var sxvt_swf_lzma_header_fields = layout([u32("compressed_size", SIZE), u8("lc_lp_pb", FLAGS), u32("dictionary_size", SIZE)]);
+var sxvt_swf_lzma_header = sxLayout(0x60390005, "swf_lzma_header", LE, sxvt_swf_lzma_header_fields);
+var sxvt_swf_rect1_fields = layout([bytes("encoded_rect", 1)]);
+var sxvt_swf_rect1 = sxLayout(0x60390006, "swf_rect1", LE, sxvt_swf_rect1_fields);
+var sxvt_swf_rect2_fields = layout([bytes("encoded_rect", 2)]);
+var sxvt_swf_rect2 = sxLayout(0x60390007, "swf_rect2", LE, sxvt_swf_rect2_fields);
+var sxvt_swf_rect3_fields = layout([bytes("encoded_rect", 3)]);
+var sxvt_swf_rect3 = sxLayout(0x60390008, "swf_rect3", LE, sxvt_swf_rect3_fields);
+var sxvt_swf_rect4_fields = layout([bytes("encoded_rect", 4)]);
+var sxvt_swf_rect4 = sxLayout(0x60390009, "swf_rect4", LE, sxvt_swf_rect4_fields);
+var sxvt_swf_rect5_fields = layout([bytes("encoded_rect", 5)]);
+var sxvt_swf_rect5 = sxLayout(0x6039000A, "swf_rect5", LE, sxvt_swf_rect5_fields);
+var sxvt_swf_rect6_fields = layout([bytes("encoded_rect", 6)]);
+var sxvt_swf_rect6 = sxLayout(0x6039000B, "swf_rect6", LE, sxvt_swf_rect6_fields);
+var sxvt_swf_rect7_fields = layout([bytes("encoded_rect", 7)]);
+var sxvt_swf_rect7 = sxLayout(0x6039000C, "swf_rect7", LE, sxvt_swf_rect7_fields);
+var sxvt_swf_rect8_fields = layout([bytes("encoded_rect", 8)]);
+var sxvt_swf_rect8 = sxLayout(0x6039000D, "swf_rect8", LE, sxvt_swf_rect8_fields);
+var sxvt_swf_rect9_fields = layout([bytes("encoded_rect", 9)]);
+var sxvt_swf_rect9 = sxLayout(0x6039000E, "swf_rect9", LE, sxvt_swf_rect9_fields);
+var sxvt_swf_rect10_fields = layout([bytes("encoded_rect", 10)]);
+var sxvt_swf_rect10 = sxLayout(0x6039000F, "swf_rect10", LE, sxvt_swf_rect10_fields);
+var sxvt_swf_rect11_fields = layout([bytes("encoded_rect", 11)]);
+var sxvt_swf_rect11 = sxLayout(0x60390010, "swf_rect11", LE, sxvt_swf_rect11_fields);
+var sxvt_swf_rect12_fields = layout([bytes("encoded_rect", 12)]);
+var sxvt_swf_rect12 = sxLayout(0x60390011, "swf_rect12", LE, sxvt_swf_rect12_fields);
+var sxvt_swf_rect13_fields = layout([bytes("encoded_rect", 13)]);
+var sxvt_swf_rect13 = sxLayout(0x60390012, "swf_rect13", LE, sxvt_swf_rect13_fields);
+var sxvt_swf_rect14_fields = layout([bytes("encoded_rect", 14)]);
+var sxvt_swf_rect14 = sxLayout(0x60390013, "swf_rect14", LE, sxvt_swf_rect14_fields);
+var sxvt_swf_rect15_fields = layout([bytes("encoded_rect", 15)]);
+var sxvt_swf_rect15 = sxLayout(0x60390014, "swf_rect15", LE, sxvt_swf_rect15_fields);
+var sxvt_swf_rect16_fields = layout([bytes("encoded_rect", 16)]);
+var sxvt_swf_rect16 = sxLayout(0x60390015, "swf_rect16", LE, sxvt_swf_rect16_fields);
+var sxvt_swf_rect17_fields = layout([bytes("encoded_rect", 17)]);
+var sxvt_swf_rect17 = sxLayout(0x60390016, "swf_rect17", LE, sxvt_swf_rect17_fields);
+var sxvt_swf_movie_fields = layout([u16("frame_rate_fixed8"), u16("frame_count", COUNT)]);
+var sxvt_swf_movie = sxLayout(0x60390017, "swf_movie", LE, sxvt_swf_movie_fields);
+var sxvt_swf_tag_short_fields = layout([u16("code_and_length", FLAGS)]);
+var sxvt_swf_tag_short = sxLayout(0x60390018, "swf_tag_short", LE, sxvt_swf_tag_short_fields);
+var sxvt_swf_tag_long_fields = layout([u16("code_and_length", FLAGS), u32("body_size", SIZE)]);
+var sxvt_swf_tag_long = sxLayout(0x60390019, "swf_tag_long", LE, sxvt_swf_tag_long_fields);
+var sxvt_swf_sprite_fields = layout([u16("sprite_id", ID), u16("frame_count", COUNT)]);
+var sxvt_swf_sprite = sxLayout(0x6039001A, "swf_sprite", LE, sxvt_swf_sprite_fields);
+var sxvt_swf_background_fields = layout([u8("red"), u8("green"), u8("blue")]);
+var sxvt_swf_background = sxLayout(0x6039001B, "swf_background", LE, sxvt_swf_background_fields);
+var sxvt_swf_character_id_fields = layout([u16("character_id", ID)]);
+var sxvt_swf_character_id = sxLayout(0x6039001C, "swf_character_id", LE, sxvt_swf_character_id_fields);
+var sxvt_swf_jpeg3_fields = layout([u16("character_id", ID), u32("alpha_data_offset", OFFSET)]);
+var sxvt_swf_jpeg3 = sxLayout(0x6039001D, "swf_jpeg3", LE, sxvt_swf_jpeg3_fields);
+var sxvt_swf_jpeg4_fields = layout([u16("character_id", ID), u32("alpha_data_offset", OFFSET), u16("deblock_fixed8")]);
+var sxvt_swf_jpeg4 = sxLayout(0x6039001E, "swf_jpeg4", LE, sxvt_swf_jpeg4_fields);
+var sxvt_swf_lossless_fields = layout([u16("character_id", ID), u8("bitmap_format", ID), u16("width"), u16("height")]);
+var sxvt_swf_lossless = sxLayout(0x6039001F, "swf_lossless", LE, sxvt_swf_lossless_fields);
+var sxvt_swf_palette_count_fields = layout([u8("palette_count_minus_one")]);
+var sxvt_swf_palette_count = sxLayout(0x60390020, "swf_palette_count", LE, sxvt_swf_palette_count_fields);
+var sxvt_swf_sound_fields = layout([u16("sound_id", ID), u8("sound_format_flags", FLAGS), u32("sample_count", COUNT)]);
+var sxvt_swf_sound = sxLayout(0x60390021, "swf_sound", LE, sxvt_swf_sound_fields);
+var sxvt_swf_mp3_seek_fields = layout([i16("seek_samples")]);
+var sxvt_swf_mp3_seek = sxLayout(0x60390022, "swf_mp3_seek", LE, sxvt_swf_mp3_seek_fields);
+var sxvt_swf_stream_sound_fields = layout([u8("playback_flags", FLAGS), u8("stream_flags", FLAGS), u16("sample_count", COUNT)]);
+var sxvt_swf_stream_sound = sxLayout(0x60390023, "swf_stream_sound", LE, sxvt_swf_stream_sound_fields);
+var sxvt_swf_binary_fields = layout([u16("character_id", ID), u32("reserved", RESERVED)]);
+var sxvt_swf_binary = sxLayout(0x60390024, "swf_binary", LE, sxvt_swf_binary_fields);
+var sxvt_swf_file_attributes_fields = layout([u32("flags", FLAGS)]);
+var sxvt_swf_file_attributes = sxLayout(0x60390025, "swf_file_attributes", LE, sxvt_swf_file_attributes_fields);
+function sxvt_swftags(c, p, end, depth) {
+    if (depth > 16) {
+        return false;
+    }
+    while (p < end && c.count < 20000) {
+        var h = [0];
+        var n = [0];
+        var z = 2;
+        if (sxU64(end - p) < 2 || !sxvt_word(c, p, 2, false, h)) {
+            return false;
+        }
+        n[0] = sxAnd64(h[0], 63);
+        if (n[0] === 63) {
+            z = 6;
+            if (sxU64(end - p) < 6 || !sxvt_word(c, p + 2, 4, false, n)) {
+                return false;
+            }
+        }
+        if (n[0] > sxU64(sxU64(end - p) - z)) {
+            return false;
+        }
+        if (!sxvt_add(c, z === 2 ? sxvt_swf_tag_short : sxvt_swf_tag_long, p)) {
+            return false;
+        }
+        var code = sxShr64(h[0], 6) >>> 0;
+        p += z;
+        var stop = p + n[0];
+        var l = null;
+        if (!code) {
+            return true;
+        }
+        switch (code) {
+        case 39:
+            if (n[0] >= 4) {
+                if (!sxvt_add(c, sxvt_swf_sprite, p)) {
+                    return false;
+                }
+                sxvt_swftags(c, p + 4, stop, (depth + 1) >>> 0);
+            }
+            break;
+        case 9:
+            if (n[0] === 3) {
+                l = sxvt_swf_background;
+            }
+            break;
+        case 6:
+        case 21:
+            if (n[0] >= 2) {
+                l = sxvt_swf_character_id;
+            }
+            break;
+        case 35:
+            if (n[0] >= 6) {
+                l = sxvt_swf_jpeg3;
+            }
+            break;
+        case 90:
+            if (n[0] >= 8) {
+                l = sxvt_swf_jpeg4;
+            }
+            break;
+        case 20:
+        case 36:
+            if (n[0] >= 7) {
+                var f = [0];
+                if (!sxvt_add(c, sxvt_swf_lossless, p) || !sxvt_byte(c, p + 2, f, 0)) {
+                    return false;
+                }
+                if (f[0] === 3 && n[0] >= 8 && !sxvt_add(c, sxvt_swf_palette_count, p + 7)) {
+                    return false;
+                }
+            }
+            break;
+        case 14:
+            if (n[0] >= 7) {
+                f = [0];
+                if (!sxvt_add(c, sxvt_swf_sound, p) || !sxvt_byte(c, p + 2, f, 0)) {
+                    return false;
+                }
+                if (f[0] >> 4 === 2 && n[0] >= 9 && !sxvt_add(c, sxvt_swf_mp3_seek, p + 7)) {
+                    return false;
+                }
+            }
+            break;
+        case 18:
+        case 45:
+            if (n[0] >= 4) {
+                f = [0];
+                if (!sxvt_add(c, sxvt_swf_stream_sound, p) || !sxvt_byte(c, p + 1, f, 0)) {
+                    return false;
+                }
+                if (f[0] >> 4 === 2 && n[0] >= 6 && !sxvt_add(c, sxvt_swf_mp3_seek, p + 4)) {
+                    return false;
+                }
+            }
+            break;
+        case 69:
+            if (n[0] === 4) {
+                l = sxvt_swf_file_attributes;
+            }
+            break;
+        case 87:
+            if (n[0] >= 6) {
+                l = sxvt_swf_binary;
+            }
+            break;
+        default:
+            break;
+        }
+        if (l !== null && !sxvt_add(c, l, p)) {
+            return false;
+        }
+        p = stop;
+    }
+    return p === end;
+}
+function sxvt_swf(c) {
+    var h = [];
+    if (!sxvt_read(c, 0, h, 0, 8) || !sxvt_add(c, sxvt_swf_header, 0)) {
+        return false;
+    }
+    if (h[0] === 90 /*Z*/) {
+        return sxvt_add(c, sxvt_swf_lzma_header, 8);
+    }
+    if (h[0] !== 70 /*F*/) {
+        return h[0] === 67 /*C*/;
+    }
+    if (!sxvt_byte(c, 8, h, 8)) {
+        return false;
+    }
+    var z = Math.floor((5 + 4 * (h[8] >> 3) + 7) / 8);
+    var a = [sxvt_swf_rect1, sxvt_swf_rect2, sxvt_swf_rect3, sxvt_swf_rect4, sxvt_swf_rect5, sxvt_swf_rect6, sxvt_swf_rect7, sxvt_swf_rect8, sxvt_swf_rect9, sxvt_swf_rect10, sxvt_swf_rect11, sxvt_swf_rect12, sxvt_swf_rect13, sxvt_swf_rect14, sxvt_swf_rect15, sxvt_swf_rect16, sxvt_swf_rect17];
+    if (!z || z > 17 || !sxvt_add(c, a[(z - 1) >>> 0], 8) || !sxvt_add(c, sxvt_swf_movie, (8 + z) >>> 0)) {
+        return false;
+    }
+    var end = sxvt_uint(h, 4, 4, false);
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    return sxvt_swftags(c, (12 + z) >>> 0, end, 0);
+}
+function sx_swf_build(c) {
+    return sxvt_swf(c);
+}

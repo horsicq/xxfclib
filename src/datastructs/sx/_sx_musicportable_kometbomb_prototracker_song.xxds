@@ -1,0 +1,131 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kometbomb_prototracker_song/xx_kometbomb_prototracker_song_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxportable_proto_version0_fields = layout([u8("version")]);
+var sxportable_proto_version0 = sxLayout(0x60910002, "proto_version0", LE, sxportable_proto_version0_fields);
+var sxportable_proto_version1_fields = layout([u8("version"), u8("track_count", COUNT)]);
+var sxportable_proto_version1 = sxLayout(0x60910003, "proto_version1", LE, sxportable_proto_version1_fields);
+var sxportable_proto_version17_fields = layout([u8("version"), u8("track_count", COUNT), u8("effect_column_count", COUNT)]);
+var sxportable_proto_version17 = sxLayout(0x60910004, "proto_version17", LE, sxportable_proto_version17_fields);
+var sxportable_proto_text_fields = layout([field("text", "char", 0)]);
+var sxportable_proto_text = sxLayout(0x60910005, "proto_text", LE, sxportable_proto_text_fields);
+var sxportable_proto_sequence_row_count_fields = layout([u8("sequence_row_count", COUNT)]);
+var sxportable_proto_sequence_row_count = sxLayout(0x60910007, "proto_sequence_row_count", LE, sxportable_proto_sequence_row_count_fields);
+var sxportable_proto_pattern_count_fields = layout([u8("pattern_count", COUNT)]);
+var sxportable_proto_pattern_count = sxLayout(0x60910008, "proto_pattern_count", LE, sxportable_proto_pattern_count_fields);
+var sxportable_proto_macro_count_fields = layout([u8("macro_count", COUNT)]);
+var sxportable_proto_macro_count = sxLayout(0x60910009, "proto_macro_count", LE, sxportable_proto_macro_count_fields);
+var sxportable_proto_sequence_pattern_index_plane_fields = layout([field("sequence_pattern_index", "uint8", 0)]);
+var sxportable_proto_sequence_pattern_index_plane = sxLayout(0x6091000B, "proto_sequence_pattern_index_plane", LE, sxportable_proto_sequence_pattern_index_plane_fields);
+var sxportable_proto_note_effect_plane_fields = layout([field("note_effect", "uint8", 0)]);
+var sxportable_proto_note_effect_plane = sxLayout(0x6091000C, "proto_note_effect_plane", LE, sxportable_proto_note_effect_plane_fields);
+var sxportable_proto_note_parameter_plane_fields = layout([field("note_parameter", "uint8", 0)]);
+var sxportable_proto_note_parameter_plane = sxLayout(0x6091000D, "proto_note_parameter_plane", LE, sxportable_proto_note_parameter_plane_fields);
+var sxportable_proto_effect_plane_fields = layout([field("effect", "uint8", 0)]);
+var sxportable_proto_effect_plane = sxLayout(0x6091000E, "proto_effect_plane", LE, sxportable_proto_effect_plane_fields);
+var sxportable_proto_effect_parameter_plane_fields = layout([field("effect_parameter", "uint8", 0)]);
+var sxportable_proto_effect_parameter_plane = sxLayout(0x6091000F, "proto_effect_parameter_plane", LE, sxportable_proto_effect_parameter_plane_fields);
+function sxportable_proto_pattern(c, p, end, effects) {
+    var encoded = [0];
+    if (!sxportable_byte(c, p[0], encoded, end) || !sxportable_row(c, sxportable_proto_pattern_rows, p[0], 1, end)) {
+        return false;
+    }
+    ++p[0];
+    var rows = encoded[0] === 255 ? 256 : encoded[0];
+    if (!sxportable_plane(c, sxportable_proto_note_effect_plane, p, rows, end) || !sxportable_plane(c, sxportable_proto_note_parameter_plane, p, rows, end)) {
+        return false;
+    }
+    for (var i = 0; i < effects; i++) {
+        if (!sxportable_plane(c, sxportable_proto_effect_plane, p, rows, end) || !sxportable_plane(c, sxportable_proto_effect_parameter_plane, p, rows, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxportable_proto(c) {
+    var h = [];
+    var v;
+    var tracks = [4];
+    var effects = [1];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [0];
+    if (!sxportable_read(c, 0, h, 9, end) || sxMemcmp(h, "SONG", 4)) {
+        return false;
+    }
+    var declared = sxGetU32(h, 9, 4, false);
+    v = h[8];
+    if (declared < 9 || declared > end || !sxportable_row(c, sxportable_proto_section, 0, 8, end)) {
+        return false;
+    }
+    end = declared;
+    p[0] = 9;
+    if (v > 17) {
+        return sxportable_row(c, sxportable_proto_version0, 8, 1, end);
+    }
+    if (v >= 1 && !sxportable_byte(c, p[0]++, tracks, end)) {
+        return false;
+    }
+    if (v >= 17 && !sxportable_byte(c, p[0]++, effects, end)) {
+        return false;
+    }
+    var l = v >= 17 ? sxportable_proto_version17 : v ? sxportable_proto_version1 : sxportable_proto_version0;
+    if (!sxportable_row(c, l, 8, sxU64(p[0] - 8), end) || !sxportable_string(c, sxportable_proto_text, p, end) || !sxportable_row(c, sxportable_proto_dimensions, p[0], 2, end)) {
+        return false;
+    }
+    p[0] += 2;
+    if (tracks[0] > 32 || effects[0] > 16) {
+        return true;
+    }
+    for (var chunks = 0; p[0] < end && chunks < 4096 && c.count < 30000; chunks++) {
+        if (!sxportable_read(c, p[0], h, 8, end)) {
+            return false;
+        }
+        var size = sxGetU32(h, 8, 4, false);
+        if (size < 8 || !sxportable_span(c, p[0], size, end) || !sxportable_row(c, sxportable_proto_section, p[0], 8, end)) {
+            return false;
+        }
+        var q = [p[0] + 8];
+        var limit = p[0] + size;
+        var count = [0];
+        if (!sxMemcmp(h, "SEQU", 4)) {
+            if (!sxportable_byte(c, q[0], count, limit) || !sxportable_row(c, sxportable_proto_sequence_row_count, q[0]++, 1, limit) || !sxportable_plane(c, sxportable_proto_sequence_pattern_index_plane, q, count[0] * tracks[0], limit)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "PATT", 4)) {
+            var sets = v >= 17 ? tracks[0] : 1;
+            for (var track = 0; track < sets; track++) {
+                if (!sxportable_byte(c, q[0], count, limit) || !sxportable_row(c, sxportable_proto_pattern_count, q[0]++, 1, limit)) {
+                    return false;
+                }
+                for (var i = 0; i < count[0]; i++) {
+                    if (c.count >= 30000) {
+                        return true;
+                    }
+                    if (!sxportable_proto_pattern(c, q, limit, effects[0])) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxMemcmp(h, "MACR", 4)) {
+            if (!sxportable_byte(c, q[0], count, limit) || !sxportable_row(c, sxportable_proto_macro_count, q[0]++, 1, limit)) {
+                return false;
+            }
+            for (i = 0; i < count[0]; i++) {
+                if (c.count >= 30000) {
+                    return true;
+                }
+                if (!sxportable_string(c, sxportable_proto_text, q, limit) || !sxportable_proto_pattern(c, q, limit, effects[0])) {
+                    return false;
+                }
+            }
+        }
+        p[0] = limit;
+    }
+    return true;
+}
+function sx_kometbomb_prototracker_song_build(c) {
+    return sxportable_proto(c);
+}

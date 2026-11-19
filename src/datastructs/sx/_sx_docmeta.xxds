@@ -1,0 +1,307 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_docmeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_itolitls_header_fields = layout([chars("magic", 8, SIGNATURE), u32("version", ID), u32("table_offset", OFFSET),
+    u32("section_count", COUNT), u32("postheader_size", SIZE), blob("format_guid", 16, ID)]);
+var sxdm_itolitls_header = sxLayout(0x60230038, "itolitls_header", LE, sxdm_itolitls_header_fields);
+var sxdm_itolitls_section_fields = layout([u64("section_offset", OFFSET), u64("section_size", SIZE)]);
+var sxdm_itolitls_section = sxLayout(0x60230039, "itolitls_section", LE, sxdm_itolitls_section_fields);
+var sxdm_hxs_post_header_fields = layout([u32("version", ID), u32("caol_offset", OFFSET), blob("directory_metadata", 56),
+    u64("entry_count", COUNT), blob("index_metadata", 80)]);
+var sxdm_hxs_post_header = sxLayout(0x6023003A, "hxs_post_header", LE, sxdm_hxs_post_header_fields);
+var sxdm_hxs_caol_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("header_size", SIZE),
+    blob("metadata", 36)]);
+var sxdm_hxs_caol = sxLayout(0x6023003B, "hxs_caol", LE, sxdm_hxs_caol_fields);
+var sxdm_hxs_itsf_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("header_size", SIZE),
+    u32("flags", FLAGS), u64("content_offset", OFFSET), u32("timestamp", TIMESTAMP), u32("language_id", ID)]);
+var sxdm_hxs_itsf = sxLayout(0x6023003C, "hxs_itsf", LE, sxdm_hxs_itsf_fields);
+var sxdm_hxs_file_size_header_fields = layout([u32("magic", SIGNATURE), u32("reserved1", RESERVED), u64("file_size", SIZE),
+    blob("reserved2", 8, RESERVED)]);
+var sxdm_hxs_file_size_header = sxLayout(0x6023003D, "hxs_file_size_header", LE, sxdm_hxs_file_size_header_fields);
+var sxdm_hxs_ifcm_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("chunk_size", SIZE), u32("unknown"),
+    i32("sentinel1"), i32("sentinel2"), u32("chunk_count", COUNT), u32("reserved", RESERVED)]);
+var sxdm_hxs_ifcm = sxLayout(0x6023003E, "hxs_ifcm", LE, sxdm_hxs_ifcm_fields);
+var sxdm_hxs_aoll_header_fields = layout([chars("magic", 4, SIGNATURE), u32("quickref_size", SIZE), blob("metadata", 40)]);
+var sxdm_hxs_aoll_header = sxLayout(0x6023003F, "hxs_aoll_header", LE, sxdm_hxs_aoll_header_fields);
+var sxdm_hxs_aoll_count_fields = layout([u16("entry_count", COUNT)]);
+var sxdm_hxs_aoll_count = sxLayout(0x60230040, "hxs_aoll_count", LE, sxdm_hxs_aoll_count_fields);
+function sx_docmeta_supports(t) {
+    switch (t) {
+    case "DJVU":
+    case "ZXML":
+    case "LSZ":
+    case "PAIN":
+    case "THEBAT_MSB":
+    case "STYLUS":
+    case "PERFORM":
+    case "PKT":
+    case "PAPERPORT":
+    case "WINDOWS_HELP":
+    case "IVT":
+    case "OPENZIM":
+    case "HXS":
+    case "MICROSOFT_LIT":
+    case "OUTLOOK_EXPRESS_DBX_MAILBOX":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxdm_u16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, false);
+}
+function sxdm_u32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, false);
+}
+function sxdm_u64(p, p_o) {
+    return sxGetU64At(p, p_o, 8, 0, false);
+}
+function sxdm_span(c, at, n) {
+    return at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxdm_add(c, l, at, n) {
+    if (n <= 0 || !sxdm_span(c, at, (n < 0 ? n + SX_U64_MAX : n))) {
+        return false;
+    }
+    return sx_add(c, l, at, n);
+}
+function sxdm_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    if (a.total_size !== b.total_size) {
+        return a.total_size < b.total_size ? -1 : 1;
+    }
+    return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+}
+function sxdm_finish(c) {
+    var n = c.count;
+    var out = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxdm_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        var at = d.offset - c.f.base_address;
+        if (out && sxdm_order(c.items[sxU64(out - 1)], d) === 0) {
+            continue;
+        }
+        if (at < end) {
+            if (c.f.file_type === "OUTLOOK_EXPRESS_DBX_MAILBOX" || c.f.file_type === "PAPERPORT") {
+                continue;
+            }
+            return false;
+        }
+        c.items[out++] = sxCopy_xx_data_struct(null, d);
+        end = at + d.total_size;
+    }
+    c.count = out;
+    end = 0;
+    for (i = 0; i < out; i++) {
+        at = c.items[i].offset - c.f.base_address;
+        var nbytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + nbytes;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxdm_order, true);
+    return !c.failed;
+}
+function sxdm_zero(c, at, end, limit) {
+    var b = [];
+    var used = 0;
+    while (at[0] < end && used < limit) {
+        var n = sxU64(end - at[0] > 256 ? 256 : end - at[0]);
+        if (n > (limit - used) >>> 0) {
+            n = (limit - used) >>> 0;
+        }
+        if (!sx_read(c, at[0], b, n)) {
+            return false;
+        }
+        for (var i = 0; i < n; i++) {
+            ++at[0];
+            ++used;
+            if (!b[i]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+function sxdm_itolitls(c) {
+    var b = [];
+    var offsets = [];
+    var sizes = [];
+    if (!sx_read(c, 0, b, 40) || !sxdm_add(c, sxdm_itolitls_header, 0, 40)) {
+        return false;
+    }
+    var table = sxdm_u32(b, 12);
+    var post = sxdm_u32(b, 20);
+    if (sxdm_u32(b, 16) !== 5 || table < 40 || post < 232 || !sxdm_span(c, table, 80 + post)) {
+        return false;
+    }
+    for (var i = 0; i < 5; i++) {
+        var at = table + ((i * 16) >>> 0);
+        if (!sx_read(c, at, b, 16) || !sxdm_add(c, sxdm_itolitls_section, at, 16)) {
+            return false;
+        }
+        offsets[i] = sxdm_u64(b, 0);
+        sizes[i] = sxdm_u64(b, 8);
+        if (offsets[i] > SX_I64_MAX || !sxdm_span(c, (offsets[i] >= SX_I64_MAX ? offsets[i] - SX_U64_MAX : offsets[i]), sizes[i])) {
+            return false;
+        }
+    }
+    if (c.f.file_type === "MICROSOFT_LIT") {
+        return true;
+    }
+    var p = table + 80;
+    if (!sxdm_add(c, sxdm_hxs_post_header, p, 152) || !sxdm_add(c, sxdm_hxs_caol, p + 152, 48) || !sxdm_add(c, sxdm_hxs_itsf, p + 200, 32) || sizes[0] < 24 || !sxdm_add(c, sxdm_hxs_file_size_header, (offsets[0] >= SX_I64_MAX ? offsets[0] - SX_U64_MAX : offsets[0]), 24) || sizes[1] < 32 || !sx_read(c, (offsets[1] >= SX_I64_MAX ? offsets[1] - SX_U64_MAX : offsets[1]), b, 32) || !sxdm_add(c, sxdm_hxs_ifcm, (offsets[1] >= SX_I64_MAX ? offsets[1] - SX_U64_MAX : offsets[1]), 32)) {
+        return false;
+    }
+    var width = sxdm_u32(b, 8);
+    var count = sxdm_u32(b, 24);
+    if (width < 50 || count > 65536 || count * width > sxU64(sizes[1] - 32)) {
+        return false;
+    }
+    for (i = 0; i < count; i++) {
+        at = (offsets[1] >= SX_I64_MAX ? offsets[1] - SX_U64_MAX : offsets[1]) + 32 + i * width;
+        if (!sx_read(c, at, b, 8)) {
+            return false;
+        }
+        if (sxMemcmp(b, "AOLL", 4)) {
+            continue;
+        }
+        var qr = sxdm_u32(b, 4);
+        if (qr < 2 || qr > (width - 48) >>> 0) {
+            return false;
+        }
+        if (!sxdm_add(c, sxdm_hxs_aoll_header, at, 48) || !sxdm_add(c, sxdm_hxs_aoll_count, at + width - 2, 2)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_docmeta_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DJVU":
+        ok = sx_djvu_build(c);
+        break;
+    case "ZXML":
+        ok = sx_zxml_build(c);
+        break;
+    case "LSZ":
+        ok = sx_lsz_build(c);
+        break;
+    case "PAIN":
+        ok = sx_pain_build(c);
+        break;
+    case "THEBAT_MSB":
+        ok = sx_thebat_msb_build(c);
+        break;
+    case "STYLUS":
+        ok = sx_stylus_build(c);
+        break;
+    case "PERFORM":
+        ok = sx_perform_build(c);
+        break;
+    case "PKT":
+        ok = sx_pkt_build(c);
+        break;
+    case "PAPERPORT":
+        ok = sx_paperport_build(c);
+        break;
+    case "WINDOWS_HELP":
+        ok = sx_ue2_documents_build(c);
+        break;
+    case "IVT":
+        ok = sx_ivt_build(c);
+        break;
+    case "OPENZIM":
+        ok = sx_openzim_build(c);
+        break;
+    case "HXS":
+    case "MICROSOFT_LIT":
+        ok = sxdm_itolitls(c);
+        break;
+    case "OUTLOOK_EXPRESS_DBX_MAILBOX":
+        ok = sx_outlook_express_dbx_mailbox_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sxdm_finish(c);
+}
+function sx_docmeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60230001 || id > 0x6023FFFF) {
+        return true;
+    }
+    var comment = null;
+    var v = 0;
+    var number = sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/;
+    if (number) {
+        v = sxVarU64(r.value);
+    }
+    if (id === sxdm_djvu_info.id && r.name === "gamma_times_ten") {
+        comment = "Gamma multiplied by 10";
+    } else if (id === sxdm_djvu_info.id && r.name === "dpi") {
+        comment = "Dots per inch";
+    } else if (id === sxdm_djvu_info.id && r.name === "orientation") {
+        comment = v === 1 ? "Upright" : v === 2 ? "Upside down" : v === 5 ? "Quarter-turn rotation, flag 5" : v === 6 ? "Quarter-turn rotation, flag 6" : "Unknown orientation";
+    } else if (id === sxdm_djvu_form_header.id && r.name === "form_size") {
+        comment = "Bytes after the FORM size word, including form type and chunk padding";
+    } else if (id === sxdm_lsz_member_header.id && r.name === "method") {
+        comment = v === 1 ? "Stored" : v === 2 ? "PKWARE DCL implode" : v === 6 ? "Empty member" : null;
+    } else if (id === sxdm_lsz_member_header.id && r.name === "dos_time") {
+        comment = "DOS packed local time: hour:5, minute:6, seconds/2:5";
+    } else if (id === sxdm_lsz_member_header.id && r.name === "dos_date") {
+        comment = "DOS packed date: years since 1980:7, month:4, day:5";
+    } else if (id === sxdm_lsz_member_header.id && r.name === "attributes") {
+        comment = "DOS file attribute bits";
+    } else if (id === sxdm_pain_directory_entry.id && r.name === "method") {
+        comment = v === 0 ? "Stored" : v === 3 ? "PAiN LZSS" : null;
+    } else if (id === sxdm_pain_lzss_block_header.id && r.name === "block_type") {
+        comment = v === 0 ? "Compressed LZSS block" : v === 1 ? "Stored block" : null;
+    } else if (id === sxdm_stylus_header.id && r.name === "plaintext_crc32") {
+        comment = "CRC-32 of decoded dictionary";
+    } else if (id === sxdm_perform_header.id && r.name === "plaintext_crc16") {
+        comment = "CRC-16/ARC of decoded database";
+    } else if (id === sxdm_pkt_type2_header.id && r.name === "month_zero_based") {
+        comment = "0=January, 11=December";
+    } else if (id === sxdm_pkt_type2_header.id && r.name === "packet_type" || id === sxdm_pkt_message_header.id && r.name === "message_type") {
+        comment = v === 2 ? "FidoNet Type 2" : null;
+    } else if (id === sxdm_pkt_type2_header.id && r.name === "baud_rate") {
+        comment = "Bits per second";
+    } else if (id === sxdm_paperport_chunk_header.id && r.name === "chunk_type") {
+        comment = v === 0x8000 ? "Root" : v === 0x4000 ? "Page item" : v === 0x1000 ? "Image object" : null;
+    } else if (id === sxdm_zim_cluster_header.id && r.name === "compression_and_flags") {
+        comment = sxAnd64(v, 15) <= 1 ? sxAnd64(v, 16) ? "Stored; 64-bit blob offsets" : "Stored; 32-bit blob offsets" : sxAnd64(v, 15) === 4 ? "XZ compressed cluster" : sxAnd64(v, 15) === 5 ? "Zstandard compressed cluster" : "Unknown cluster compression";
+    } else if (id === sxdm_zim_blob_offset32.id && r.name === "cluster_data_offset" || id === sxdm_zim_blob_offset64.id && r.name === "cluster_data_offset") {
+        comment = "Byte offset from stored cluster data, after its flag byte";
+    } else if (id === sxdm_zim_redirect_entry.id && r.name === "mime_type") {
+        comment = "Redirect entry (0xFFFF)";
+    } else if (id === sxdm_hxs_post_header.id && r.name === "caol_offset") {
+        comment = "Byte offset relative to post-header";
+    } else if (id === sxdm_dbx_attribute.id && r.name === "id_and_direct_flag" || id === sxdm_dbx_attribute_indirect.id && r.name === "id_and_direct_flag" || id === sxdm_dbx_attribute_message.id && r.name === "id_and_direct_flag") {
+        comment = sxAnd64(v, 128) ? sxAnd64(v, 127) === 4 ? "First message block; value stored directly" : "Direct attribute value" : sxAnd64(v, 127) === 4 ? "First message block; value is data-area offset" : "Indirect attribute; offset into data area";
+    } else if (id === sxdm_dbx_attribute.id && r.name === "direct_value") {
+        comment = "24-bit direct attribute value";
+    } else if (id === sxdm_dbx_attribute_indirect.id && r.name === "data_offset") {
+        comment = "Byte offset relative to attribute data area, after all attribute words";
+    } else if (id === sxdm_dbx_attribute_message.id && r.name === "first_block_offset") {
+        comment = "Byte offset relative to file base, stored directly in the attribute";
+    } else if (r.property === 0x00000004) {
+        comment = "Byte offset relative to file base";
+    } else if ((r.name === "root_page" || r.name === "previous_page" || r.name === "next_page" || r.name === "child_page" || r.name === "last_leaf_page") && r.property === 0x00000001) {
+        comment = "Page index; sentinel values may denote no page";
+    }
+    return comment === null || sxSetComment(r, comment);
+}

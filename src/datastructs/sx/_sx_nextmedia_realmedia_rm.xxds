@@ -1,0 +1,157 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/realmedia_rm/xx_realmedia_rm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_rmf_header_fields = layout([blob("signature", 4, SIGNATURE), u32("header_size", SIZE), u16("object_version", ID),
+    u32("file_version", ID), u32("header_count", COUNT)]);
+var sxnx_rmf_header = sxLayout(0x603200DD, "rmf_header", BE, sxnx_rmf_header_fields);
+var sxnx_rm_object_fields = layout([blob("object_id", 4, ID), u32("object_size", SIZE), u16("object_version", ID)]);
+var sxnx_rm_object = sxLayout(0x603200DE, "rm_object", BE, sxnx_rm_object_fields);
+var sxnx_rm_prop_fields = layout([u32("max_bit_rate"), u32("average_bit_rate"), u32("max_packet_size", SIZE),
+    u32("average_packet_size", SIZE), u32("packet_count", COUNT), u32("duration_ms"), u32("preroll_ms"),
+    u32("index_offset", OFFSET), u32("data_offset", OFFSET), u16("stream_count", COUNT), u16("flags", FLAGS)]);
+var sxnx_rm_prop = sxLayout(0x603200DF, "rm_prop", BE, sxnx_rm_prop_fields);
+var sxnx_rm_title_length_fields = layout([u16("title_bytes", SIZE)]);
+var sxnx_rm_title_length = sxLayout(0x603200E0, "rm_title_length", BE, sxnx_rm_title_length_fields);
+var sxnx_rm_author_length_fields = layout([u16("author_bytes", SIZE)]);
+var sxnx_rm_author_length = sxLayout(0x603200E1, "rm_author_length", BE, sxnx_rm_author_length_fields);
+var sxnx_rm_copyright_length_fields = layout([u16("copyright_bytes", SIZE)]);
+var sxnx_rm_copyright_length = sxLayout(0x603200E2, "rm_copyright_length", BE, sxnx_rm_copyright_length_fields);
+var sxnx_rm_comment_length_fields = layout([u16("comment_bytes", SIZE)]);
+var sxnx_rm_comment_length = sxLayout(0x603200E3, "rm_comment_length", BE, sxnx_rm_comment_length_fields);
+var sxnx_rm_mdpr_fields = layout([u16("stream_number", ID), u32("max_bit_rate"), u32("average_bit_rate"),
+    u32("max_packet_size", SIZE), u32("average_packet_size", SIZE), u32("start_time_ms"), u32("preroll_ms"), u32("duration_ms")]);
+var sxnx_rm_mdpr = sxLayout(0x603200E4, "rm_mdpr", BE, sxnx_rm_mdpr_fields);
+var sxnx_rm_name_length_fields = layout([u8("name_bytes", SIZE)]);
+var sxnx_rm_name_length = sxLayout(0x603200E5, "rm_name_length", LE, sxnx_rm_name_length_fields);
+var sxnx_rm_mime_length_fields = layout([u8("mime_bytes", SIZE)]);
+var sxnx_rm_mime_length = sxLayout(0x603200E6, "rm_mime_length", LE, sxnx_rm_mime_length_fields);
+var sxnx_rm_specific_length_fields = layout([u32("data_size", SIZE)]);
+var sxnx_rm_specific_length = sxLayout(0x603200E7, "rm_specific_length", BE, sxnx_rm_specific_length_fields);
+var sxnx_rm_video_fields = layout([u32("data_size", SIZE), blob("signature", 4, SIGNATURE), blob("codec_id", 4, ID),
+    u16("width"), u16("height"), u16("bits_per_pixel"), u16("pad_width"), u16("pad_height"), u32("frame_rate_fixed")]);
+var sxnx_rm_video = sxLayout(0x603200E8, "rm_video", BE, sxnx_rm_video_fields);
+var sxnx_rm_audio_prefix_fields = layout([blob("signature", 4, SIGNATURE), u16("version", ID), u16("revision", ID)]);
+var sxnx_rm_audio_prefix = sxLayout(0x603200E9, "rm_audio_prefix", BE, sxnx_rm_audio_prefix_fields);
+var sxnx_rm_data_fields = layout([u32("packet_count", COUNT), u32("next_data_offset", OFFSET)]);
+var sxnx_rm_data = sxLayout(0x603200EA, "rm_data", BE, sxnx_rm_data_fields);
+var sxnx_rm_packet_fields = layout([u16("version", ID), u16("packet_size", SIZE), u16("stream_number", ID), u32("timestamp_ms"),
+    u8("reserved", RESERVED), u8("flags", FLAGS)]);
+var sxnx_rm_packet = sxLayout(0x603200EB, "rm_packet", BE, sxnx_rm_packet_fields);
+var sxnx_rm_index_fields = layout([u32("entry_count", COUNT), u16("stream_number", ID), u32("next_index_offset", OFFSET)]);
+var sxnx_rm_index = sxLayout(0x603200EC, "rm_index", BE, sxnx_rm_index_fields);
+var sxnx_rm_index_entry_fields = layout([u16("version", ID), u32("timestamp_ms"), u32("packet_offset", OFFSET),
+    u32("packet_number", ID)]);
+var sxnx_rm_index_entry = sxLayout(0x603200ED, "rm_index_entry", BE, sxnx_rm_index_entry_fields);
+function sxnx_rm(v) {
+    if (!sxnx_row(v, sxnx_rmf_header, 0, v.n)) {
+        return false;
+    }
+    var p = 18;
+    var work = 0;
+    while (p < v.n) {
+        if (++work > 20 || !sxnx_row(v, sxnx_rm_object, p, v.n)) {
+            return false;
+        }
+        var id = sxnx_u32(v.p, p, true);
+        var n = sxnx_u32(v.p, p + 4, true);
+        var start = p;
+        p += 10;
+        if (n < 10) {
+            return false;
+        }
+        if (id === 0x44415441) {
+            if (!sxnx_row(v, sxnx_rm_data, p, v.n)) {
+                return false;
+            }
+            var count = sxnx_u32(v.p, p, true);
+            if (count > 4090) {
+                return false;
+            }
+            p += 8;
+            for (var i = 0; i < count; i++) {
+                if (!sxnx_row(v, sxnx_rm_packet, p, v.n)) {
+                    return false;
+                }
+                var z = sxnx_u16(v.p, p + 2, true);
+                if (z < 12 || !sxnx_need(v, p, z, v.n)) {
+                    return false;
+                }
+                p += z;
+            }
+            if (n === sxU64(p - start) + 18) {
+                if (!sxnx_need(v, p, 8, v.n)) {
+                    return false;
+                }
+                p += 8;
+            } else if (n !== sxU64(p - start)) {
+                return false;
+            }
+            continue;
+        }
+        if (!sxnx_need(v, start, n, v.n)) {
+            return false;
+        }
+        var end = start + n;
+        if (id === 0x50524F50) {
+            if (!sxnx_row(v, sxnx_rm_prop, p, end)) {
+                return false;
+            }
+        } else if (id === 0x434F4E54) {
+            var l = [sxnx_rm_title_length, sxnx_rm_author_length, sxnx_rm_copyright_length, sxnx_rm_comment_length];
+            for (i = 0; i < 4; i++) {
+                if (!sxnx_row(v, l[i], p, end)) {
+                    return false;
+                }
+                z = sxnx_u16(v.p, p, true);
+                p += 2;
+                if (!sxnx_need(v, p, z, end)) {
+                    return false;
+                }
+                p += z;
+            }
+        } else if (id === 0x4D445052) {
+            if (!sxnx_row(v, sxnx_rm_mdpr, p, end)) {
+                return false;
+            }
+            p += 30;
+            l = [sxnx_rm_name_length, sxnx_rm_mime_length];
+            for (i = 0; i < 2; i++) {
+                if (!sxnx_row(v, l[i], p, end)) {
+                    return false;
+                }
+                z = v.p[p++];
+                if (!sxnx_need(v, p, z, end)) {
+                    return false;
+                }
+                p += z;
+            }
+            if (!sxnx_row(v, sxnx_rm_specific_length, p, end)) {
+                return false;
+            }
+            z = sxnx_u32(v.p, p, true);
+            p += 4;
+            if (!sxnx_need(v, p, z, end)) {
+                return false;
+            }
+            if (z >= 12 && !sxMemcmpAt(v.p, p + 4, "VIDO", 0, 4)) {
+                if (!sxnx_row(v, sxnx_rm_video, p, p + z)) {
+                    return false;
+                }
+            } else if (!sxnx_row(v, sxnx_rm_audio_prefix, p, p + z)) {
+                return false;
+            }
+        } else if (id === 0x494E4458) {
+            if (!sxnx_row(v, sxnx_rm_index, p, end) || !sxnx_table(v, sxnx_rm_index_entry, p + 10, sxnx_u32(v.p, p, true), end)) {
+                return false;
+            }
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_realmedia_rm_build(v) {
+    return sxnx_rm(v);
+}

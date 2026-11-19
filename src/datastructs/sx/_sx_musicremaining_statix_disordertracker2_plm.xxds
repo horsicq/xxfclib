@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/statix_disordertracker2_plm/xx_statix_disordertracker2_plm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_plm_header_fields = layout([blob("magic", 4, SIGNATURE), u8("header_bytes", SIZE), u8("version", ID),
+    chars("title", 48, NONE), u8("channels", COUNT), u8("flags", FLAGS), u8("max_volume"), u8("amplification"), u8("tempo"),
+    u8("speed"), blob("pan_positions", 32), u8("samples", COUNT), u8("patterns", COUNT), u16("orders", COUNT)]);
+var sxmr_plm_header = sxLayout(0x607D0016, "plm_header", LE, sxmr_plm_header_fields);
+var sxmr_plm_order_fields = layout([u16("start_row"), u8("first_channel", ID), u8("pattern", ID)]);
+var sxmr_plm_order = sxLayout(0x607D0017, "plm_order", LE, sxmr_plm_order_fields);
+var sxmr_sample_offset_fields = layout([u32("sample_offset", OFFSET)]);
+var sxmr_sample_offset = sxLayout(0x607D0019, "sample_offset", LE, sxmr_sample_offset_fields);
+var sxmr_plm_pattern_fields = layout([u32("pattern_bytes", SIZE), u8("rows", COUNT), u8("channels", COUNT), u8("color", ID),
+    chars("name", 25, NONE)]);
+var sxmr_plm_pattern = sxLayout(0x607D001C, "plm_pattern", LE, sxmr_plm_pattern_fields);
+var sxmr_plm_event_fields = layout([u8("note"), u8("instrument", ID), u8("volume"), u8("effect", ID), u8("parameter")]);
+var sxmr_plm_event = sxLayout(0x607D001D, "plm_event", LE, sxmr_plm_event_fields);
+function sxmr_plm(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var hs = [0];
+    var ch = [0];
+    var ns = [0];
+    var np = [0];
+    var no = [0];
+    var p;
+    var pt;
+    var st;
+    var at = [0];
+    var n = [0];
+    var x = [0];
+    var y = [0];
+    if (!sxmr_eq(v, 0, "PLM\x1A", 4, end) || !sxmr_u(v, 4, 1, hs, end) || hs[0] < 96 || !sxmr_u(v, 5, 1, x, end) || x[0] !== 16 || !sxmr_u(v, 54, 1, ch, end) || !ch[0] || ch[0] > 32 || !sxmr_u(v, 92, 1, ns, end) || !sxmr_u(v, 93, 1, np, end) || !sxmr_u(v, 94, 2, no, end) || !sxmr_row(v, sxmr_plm_header, 0, end)) {
+        return false;
+    }
+    p = hs[0];
+    if (!sxmr_table(v, sxmr_plm_order, p, no[0], end)) {
+        return false;
+    }
+    p += no[0] * 4;
+    pt = p;
+    if (!sxmr_table(v, sxmr_pattern_offset, p, np[0], end)) {
+        return false;
+    }
+    p += np[0] * 4;
+    st = p;
+    if (!sxmr_table(v, sxmr_sample_offset, p, ns[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < np[0]; i++) {
+        if (!sxmr_u(v, pt + i * 4, 4, at, end)) {
+            return false;
+        }
+        if (!at[0]) {
+            continue;
+        }
+        if (!sxmr_u(v, at[0], 4, n, end) || n[0] < 32 || !sxmr_span(v, at[0], n[0], end) || !sxmr_u(v, at[0] + 4, 1, x, end) || !sxmr_u(v, at[0] + 5, 1, y, end) || y[0] > 32 || !sxmr_row(v, sxmr_plm_pattern, at[0], end) || !sxmr_table(v, sxmr_plm_event, at[0] + 32, x[0] * y[0], at[0] + n[0])) {
+            return false;
+        }
+    }
+    for (i = 0; i < ns[0]; i++) {
+        if (!sxmr_u(v, st + i * 4, 4, at, end)) {
+            return false;
+        }
+        if (!at[0]) {
+            continue;
+        }
+        if (!sxmr_eq(v, at[0], "PLS\x1A", 4, end) || !sxmr_u(v, at[0] + 4, 1, hs, end) || hs[0] < 71 || !sxmr_u(v, at[0] + 67, 4, n, end) || !sxmr_span(v, at[0], hs[0], end) || !sxmr_span(v, at[0] + hs[0], n[0], end) || !sxmr_row(v, sxmr_plm_sample, at[0], end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_statix_disordertracker2_plm_build(v) {
+    return sxmr_plm(v);
+}

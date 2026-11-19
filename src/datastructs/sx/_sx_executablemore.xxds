@@ -1,0 +1,613 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_executablemore.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_executablemore_comment(r, id) {
+    if (r === null || r.name === null || id < 0x602B0000 || id >= 0x602C0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x602B0001:
+        if (r.name === "file_type") {
+            text = "0xF0=BASIC, 0xF1=machine code.";
+        }
+        break;
+    case 0x602B0005:
+        if (r.name === "flags") {
+            text = "PEP 552: bit 0 selects hash-based header; bit 1 requests source checking.";
+        }
+        break;
+    case 0x602B0006:
+        if (r.name === "flags") {
+            text = "PEP 552: bit 0 selects hash-based header; bit 1 requests source checking.";
+        }
+        break;
+    case 0x602B0007:
+        if (r.name === "free_block_map_block") {
+            text = "File block index, in block_size-byte units.";
+        }
+        if (r.name === "block_map_block") {
+            text = "File block index of the directory-block index array.";
+        }
+        break;
+    case 0x602B0008:
+        if (r.name === "directory_block_index") {
+            text = "Physical file block index containing one page of the logical stream directory.";
+        }
+        break;
+    case 0x602B000A:
+        if (r.name === "stream_size") {
+            text = "0xFFFFFFFF denotes an absent stream; other values are byte sizes.";
+        }
+        break;
+    case 0x602B000B:
+        if (r.name === "stream_block_index") {
+            text = "Physical file block index in block_size-byte units.";
+        }
+        break;
+    case 0x602B000D:
+        if (r.name === "alignment_shift") {
+            text = "Slice alignment is 1 << alignment_shift bytes.";
+        }
+        break;
+    case 0x602B000F:
+        if (r.name === "alignment_shift") {
+            text = "Slice alignment is 1 << alignment_shift bytes.";
+        }
+        break;
+    case 0x602B0010:
+        if (r.name === "alignment_shift") {
+            text = "Slice alignment is 1 << alignment_shift bytes.";
+        }
+        break;
+    case 0x602B0012:
+        if (r.name === "type_list_offset") {
+            text = "Relative to the resource map start.";
+        }
+        if (r.name === "name_list_offset") {
+            text = "Relative to the resource map start.";
+        }
+        break;
+    case 0x602B0013:
+        if (r.name === "type_count_minus_one") {
+            text = "Encoded count minus one; 0xFFFF denotes no types.";
+        }
+        break;
+    case 0x602B0014:
+        if (r.name === "resource_count_minus_one") {
+            text = "Number of references minus one.";
+        }
+        if (r.name === "references_offset") {
+            text = "Relative to the beginning of the type list, including its count word.";
+        }
+        break;
+    case 0x602B0015:
+        if (r.name === "name_offset") {
+            text = "Relative to the name list; 0xFFFF means unnamed.";
+        }
+        if (r.name === "data_offset") {
+            text = "Relative to the data area; points to the resource length word.";
+        }
+        break;
+    case 0x602B0018:
+        if (r.name === "entry_point") {
+            text = "Byte offset in the loaded application image.";
+        }
+        if (r.name === "symbol_table_address") {
+            text = "Application-image address retained as stored; zero means absent.";
+        }
+        break;
+    case 0x602B0019:
+        if (r.name === "relocation_offset") {
+            text = "Byte offset of the location to relocate in the application image.";
+        }
+        break;
+    case 0x602B001A:
+        if (r.name === "version_or_instruction") {
+            text = "Module-header-location version on firmware 17 or later; padding or an entry instruction in older/homebrew images.";
+        }
+        if (r.name === "version_offset") {
+            text = "Module-version byte offset on firmware 17 or later; reserved on older NRO images.";
+        }
+        break;
+    case 0x602B001B:
+        if (r.name === "flags") {
+            text = "Bit 0 requests aligned header; bit 1 marks compression on firmware 23 or later.";
+        }
+        if (r.name === "additional_header_offset") {
+            text = "Additional NRA0 header offset on firmware 23 or later; reserved in older images.";
+        }
+        if (r.name === "dso_handle_offset") {
+            text = "Image-relative DSO handle offset.";
+        }
+        if (r.name === "embedded_offset") {
+            text = "Image-relative embedded metadata offset; older tooling names this API-info offset.";
+        }
+        break;
+    case 0x602B001C:
+        if (r.name === "icon_offset") {
+            text = "Relative to this ASET header.";
+        }
+        if (r.name === "nacp_offset") {
+            text = "Relative to this ASET header.";
+        }
+        if (r.name === "romfs_offset") {
+            text = "Relative to this ASET header.";
+        }
+        break;
+    case 0x602B001D:
+        if (r.name === "flags") {
+            text = "Bits 0..2 select section compression; bits 3..5 select decompressed-section SHA-256 checks. Bit 6 selects execute-only memory; bit 7 selects Zstandard instead of LZ4 on newer runtimes.";
+        }
+        if (r.name === "text_address") {
+            text = "Image-relative virtual address.";
+        }
+        if (r.name === "ro_address") {
+            text = "Image-relative virtual address.";
+        }
+        if (r.name === "data_address") {
+            text = "Image-relative virtual address.";
+        }
+        if (r.name === "embedded_offset") {
+            text = "Offset within decompressed rodata; older tooling names this API-info offset.";
+        }
+        if (r.name === "dynstr_offset") {
+            text = "Offset within decompressed rodata.";
+        }
+        if (r.name === "dynsym_offset") {
+            text = "Offset within decompressed rodata.";
+        }
+        break;
+    case 0x602B001E:
+        if (r.name === "encoded_entry_point") {
+            text = "XOR-encoded entry-point word; encoding key depends on retail/debug variant.";
+        }
+        if (r.name === "encoded_kernel_thunk_address") {
+            text = "XOR-encoded kernel-thunk address word; not a direct virtual address.";
+        }
+        break;
+    case 0x602B0025:
+        if (r.name === "present_page_count") {
+            text = "Number of stored 4096-byte physical memory pages.";
+        }
+        if (r.name === "addressable_page_count") {
+            text = "Number of bits in the page-presence bitmap.";
+        }
+        break;
+    case 0x602B002A:
+        if (r.name === "name_offset") {
+            text = "Relative to the section-name string table.";
+        }
+        break;
+    case 0x602B002B:
+        if (r.name === "name_offset") {
+            text = "Relative to the section-name string table.";
+        }
+        break;
+    case 0x602B002C:
+        if (r.name === "module_name_offset") {
+            text = "Offset in the external module-name string table, not a byte offset in this REL image.";
+        }
+        if (r.name === "prolog_offset") {
+            text = "Byte offset within the corresponding section.";
+        }
+        if (r.name === "epilog_offset") {
+            text = "Byte offset within the corresponding section.";
+        }
+        if (r.name === "unresolved_offset") {
+            text = "Byte offset within the corresponding section.";
+        }
+        break;
+    case 0x602B002F:
+        if (r.name === "offset_and_executable") {
+            text = "Low bit marks executable; bits 2..31 are the aligned file byte offset (bit 1 is excluded). Zero offset with nonzero size is BSS.";
+        }
+        break;
+    case 0x602B0031:
+        if (r.name === "offset_delta") {
+            text = "Byte delta from the preceding patch position in the current section.";
+        }
+        if (r.name === "relocation_type") {
+            text = "201=NOP, 202=section selection, 203=end of table; other values are PowerPC relocations.";
+        }
+        break;
+    case 0x602B0033:
+        if (r.name === "x86_rva") {
+            text = "Relative virtual address in the original x86 image.";
+        }
+        if (r.name === "arm64_rva") {
+            text = "Relative virtual address in the translated ARM64 image.";
+        }
+        break;
+    case 0x602B0034:
+        if (r.name === "offset_to_next_entry") {
+            text = "Byte extent of the code regions following this 16-byte stub.";
+        }
+        if (r.name === "next_entry_offset") {
+            text = "File-relative byte offset of the next BLCK stub; zero terminates.";
+        }
+        break;
+    case 0x602B0035:
+        if (r.name === "metadata_and_step") {
+            text = "High nibble selects edge fields; low 28 bits encode forward distance in four-byte words, 0x0FFFFFFF terminates.";
+        }
+        break;
+    case 0x602B0036:
+        if (r.name === "metadata_and_step") {
+            text = "High nibble selects edge fields; low 28 bits encode forward distance in four-byte words, 0x0FFFFFFF terminates.";
+        }
+        break;
+    case 0x602B0037:
+        if (r.name === "metadata_and_step") {
+            text = "High nibble selects edge fields; low 28 bits encode forward distance in four-byte words, 0x0FFFFFFF terminates.";
+        }
+        break;
+    case 0x602B0038:
+        if (r.name === "metadata_and_step") {
+            text = "High nibble selects edge fields; low 28 bits encode forward distance in four-byte words, 0x0FFFFFFF terminates.";
+        }
+        break;
+    case 0x602B0039:
+        if (r.name === "record_type") {
+            text = "0=module header, 1=comment, 2=load, 3=fixup, 4=8087 fixup, 5=image end, 6=resource, 7=read/write end, 8=linear fixup.";
+        }
+        break;
+    case 0x602B003B:
+        if (r.name === "size_and_flags") {
+            text = "Low 28 bits encode segment byte size; high nibble carries segment attributes.";
+        }
+        break;
+    case 0x602B003C:
+        if (r.name === "segment_offset") {
+            text = "Offset within the selected load segment.";
+        }
+        break;
+    case 0x602B0040:
+        if (r.name === "record_size") {
+            text = "Payload bytes plus the trailing one-byte checksum; excludes this three-byte record header.";
+        }
+        break;
+    case 0x602B0041:
+        if (r.name === "checksum") {
+            text = "Byte sum of the complete record is zero; zero also denotes an omitted checksum in legacy tools.";
+        }
+        break;
+    case 0x602B0043:
+        if (r.name === "pages_in_file") {
+            text = "Number of 512-byte pages; extender chain location follows the native reader convention.";
+        }
+        if (r.name === "header_paragraphs") {
+            text = "Number of 16-byte paragraphs in the MZ header.";
+        }
+        if (r.name === "min_alloc_paragraphs") {
+            text = "Allocation count in 16-byte paragraphs.";
+        }
+        if (r.name === "max_alloc_paragraphs") {
+            text = "Allocation count in 16-byte paragraphs.";
+        }
+        break;
+    case 0x602B0044:
+        if (r.name === "makepm_version") {
+            text = "Encoded version multiplied by 100.";
+        }
+        if (r.name === "next_header_offset") {
+            text = "Byte offset relative to the containing DOS executable.";
+        }
+        if (r.name === "program_paragraphs") {
+            text = "Number of 16-byte paragraphs in the program.";
+        }
+        if (r.name === "transfer_buffer_size") {
+            text = "Byte size; zero encodes the default 8192-byte buffer.";
+        }
+        break;
+    case 0x602B0046:
+        if (r.name === "type_and_memory_flags") {
+            text = "Low 30 bits are the HUNK type; top two bits encode memory attributes.";
+        }
+        break;
+    case 0x602B0047:
+        if (r.name === "longword_count") {
+            text = "Count in four-byte longwords.";
+        }
+        break;
+    case 0x602B0049:
+        if (r.name === "size_and_memory_flags") {
+            text = "Low 30 bits encode allocation size in longwords; top bits are memory flags. Both top bits set add an explicit memory-attribute word.";
+        }
+        break;
+    case 0x602B004D:
+        if (r.name === "offset") {
+            text = "Byte offset of the relocation in its source hunk.";
+        }
+        break;
+    case 0x602B0050:
+        if (r.name === "offset") {
+            text = "Byte offset of the relocation in its source hunk.";
+        }
+        break;
+    case 0x602B0052:
+        if (r.name === "name_longwords") {
+            text = "Name length in four-byte longwords.";
+        }
+        break;
+    case 0x602B0054:
+        if (r.name === "entry_offset") {
+            text = "Byte offset within the entry subspace.";
+        }
+        break;
+    case 0x602B0055:
+        if (r.name === "name_offset") {
+            text = "Byte offset in the space string table.";
+        }
+        break;
+    case 0x602B0056:
+        if (r.name === "space_index") {
+            text = "Signed space index; negative values retain their sentinel meaning.";
+        }
+        if (r.name === "file_offset") {
+            text = "SOM-relative byte offset of the initialization image; used only when initialization_size is nonzero.";
+        }
+        if (r.name === "subspace_start") {
+            text = "Virtual byte address relative to the start of the owning space.";
+        }
+        if (r.name === "alignment_and_reserved") {
+            text = "Packed alignment/reserved word retained without splitting: HP structure diagram specifies 5/27 bits while descriptive text gives 16/16.";
+        }
+        if (r.name === "name_offset") {
+            text = "Byte offset in the space string table.";
+        }
+        if (r.name === "fixup_request_index") {
+            text = "Signed index of the first fixup; negative values denote no index.";
+        }
+        break;
+    case 0x602B0057:
+        if (r.name === "space_index") {
+            text = "Signed space index; negative values retain their sentinel meaning.";
+        }
+        if (r.name === "initialization_pattern") {
+            text = "Repeated 32-bit initialization bit pattern for the subspace; not a file offset.";
+        }
+        if (r.name === "subspace_start") {
+            text = "Virtual byte address relative to the start of the owning space.";
+        }
+        if (r.name === "alignment_and_reserved") {
+            text = "Packed alignment/reserved word retained without splitting: HP structure diagram specifies 5/27 bits while descriptive text gives 16/16.";
+        }
+        if (r.name === "name_offset") {
+            text = "Byte offset in the space string table.";
+        }
+        if (r.name === "fixup_request_index") {
+            text = "Signed index of the first fixup; negative values denote no index.";
+        }
+        break;
+    case 0x602B0058:
+        if (r.name === "name_offset") {
+            text = "Byte offset in the symbol string table.";
+        }
+        if (r.name === "qualifier_name_offset") {
+            text = "Byte offset in the symbol string table.";
+        }
+        break;
+    case 0x602B005A:
+        if (r.name === "text_alignment_shift") {
+            text = "Power-of-two alignment exponent.";
+        }
+        if (r.name === "data_alignment_shift") {
+            text = "Power-of-two alignment exponent.";
+        }
+        if (r.name === "text_page_size") {
+            text = "Encoded page-size request; preserved without conversion.";
+        }
+        if (r.name === "data_page_size") {
+            text = "Encoded page-size request; preserved without conversion.";
+        }
+        if (r.name === "stack_page_size") {
+            text = "Encoded page-size request; preserved without conversion.";
+        }
+        break;
+    case 0x602B005C:
+        if (r.name === "import_files_offset") {
+            text = "Relative to the loader section.";
+        }
+        if (r.name === "strings_offset") {
+            text = "Relative to the loader section.";
+        }
+        break;
+    case 0x602B005D:
+    case 0x602B005E:
+        if (r.name === "name_offset") {
+            text = "Relative to the loader string table.";
+        }
+        if (r.name === "parameter_type_offset") {
+            text = "Byte offset from the loader string table to the parameter type-check string (after its length field); zero means absent.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxexm_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxexm_read(c, p, b, n) {
+    return sxexm_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxexm_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxexm16(b, b_o, be) {
+    return sxexm_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxexm32(b, b_o, be) {
+    return sxexm_uint(b, b_o, 4, be) >>> 0;
+}
+function sxexm_free(c, p, n) {
+    for (var i = 0; i < c.count; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < at + z && at < p + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxexm_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!sxexm_span(c, p, n)) {
+        return false;
+    }
+    if (!sxexm_free(c, p, n)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxexm_table(c, l, p, n) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!n || n > 20000 || !sxexm_span(c, p, n * z)) {
+        return true;
+    }
+    if (!sxexm_free(c, p, n * z)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxexm_word(c, p, n, be, v) {
+    var b = [];
+    if (n > 8 || !sxexm_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxexm_uint(b, 0, n, be);
+    return true;
+}
+function sxexm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxexm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxexm_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxexm_order, true);
+    return !c.failed;
+}
+function sx_executablemore_supports(type) {
+    switch (type) {
+    case "AMIGAHUNK":
+    case "DOS16M":
+    case "DOS4G":
+    case "RESOURCEFORK":
+    case "XBOX_XBE":
+    case "MICROSOFT_MSF":
+    case "PYC":
+    case "VTECH_VZ":
+    case "XAMARIN_COMPRESSED_ASSEMBLY":
+    case "MUB":
+    case "CGC":
+    case "NINTENDO_NRO":
+    case "NINTENDO_NSO":
+    case "WINDOWS_DMP64":
+    case "OMF":
+    case "XTAC":
+    case "PEBBLE":
+    case "HP_SOM":
+    case "QNX_LMF":
+    case "NINTENDO_REL":
+    case "XCOFF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_executablemore_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "AMIGAHUNK") {
+        return sx_amigahunk_build(c);
+    }
+    if (c.f.file_type === "DOS16M") {
+        return sx_dos16m_build(c);
+    }
+    if (c.f.file_type === "DOS4G") {
+        return sx_dos16m_build(c);
+    }
+    if (c.f.file_type === "RESOURCEFORK") {
+        return sx_resourcefork_build(c);
+    }
+    if (c.f.file_type === "XBOX_XBE") {
+        return sx_xbox_xbe_build(c);
+    }
+    if (c.f.file_type === "MICROSOFT_MSF") {
+        return sx_microsoft_msf_build(c);
+    }
+    if (c.f.file_type === "PYC") {
+        return sx_pyc_build(c);
+    }
+    if (c.f.file_type === "VTECH_VZ") {
+        return sx_vtech_vz_build(c);
+    }
+    if (c.f.file_type === "XAMARIN_COMPRESSED_ASSEMBLY") {
+        return sx_xamarin_compressed_assembly_build(c);
+    }
+    if (c.f.file_type === "MUB") {
+        return sx_mub_build(c);
+    }
+    if (c.f.file_type === "CGC") {
+        return sx_cgc_build(c);
+    }
+    if (c.f.file_type === "NINTENDO_NRO") {
+        return sx_nintendo_nro_build(c);
+    }
+    if (c.f.file_type === "NINTENDO_NSO") {
+        return sx_nintendo_nso_build(c);
+    }
+    if (c.f.file_type === "WINDOWS_DMP64") {
+        return sx_windows_dmp64_build(c);
+    }
+    if (c.f.file_type === "OMF") {
+        return sx_omf_build(c);
+    }
+    if (c.f.file_type === "XTAC") {
+        return sx_xtac_build(c);
+    }
+    if (c.f.file_type === "PEBBLE") {
+        return sx_pebble_build(c);
+    }
+    if (c.f.file_type === "HP_SOM") {
+        return sx_hp_som_build(c);
+    }
+    if (c.f.file_type === "QNX_LMF") {
+        return sx_qnx_lmf_build(c);
+    }
+    if (c.f.file_type === "NINTENDO_REL") {
+        return sx_nintendo_rel_build(c);
+    }
+    if (c.f.file_type === "XCOFF") {
+        return sx_xcoff_build(c);
+    }
+    return false;
+}

@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/mdcd/xx_mdcd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_mdcd_member_fields = layout([chars("signature", 4, SIGNATURE), u8("version"), u8("header_type"),
+    u16("header_size", SIZE), bytes("unused", 16), u8("method"), u32("uncompressed_size", SIZE), u32("compressed_size", SIZE),
+    u16("attributes", FLAGS), u16("dos_time"), u16("dos_date"), u16("crc16", CHECKSUM), u8("name_size", SIZE),
+    chars("name", 12, NONE)]);
+var sxat_mdcd_member = sxLayout(0x60640022, "mdcd_member", LE, sxat_mdcd_member_fields);
+var sxat_mdcd_path_fields = layout([u8("path_size", SIZE)]);
+var sxat_mdcd_path = sxLayout(0x60640023, "mdcd_path", LE, sxat_mdcd_path_fields);
+function sxat_mdcd(c) {
+    var p = 0;
+    while (sxat_span(c, p, 54)) {
+        var h = [];
+        if (!sxat_read(c, p, h, 54) || sxMemcmp(h, "MDmd", 4)) {
+            return true;
+        }
+        var hs = sxat_uint(h, 6, 2, false);
+        var z = sxat_uint(h, 29, 4, false);
+        if (hs < 54 || !sxat_span(c, p, hs) || !sxat_add(c, sxat_mdcd_member, p)) {
+            return false;
+        }
+        if (hs >= 55 && !sxat_add(c, sxat_mdcd_path, p + 54)) {
+            return false;
+        }
+        p += hs;
+        if (!sxat_span(c, p, z)) {
+            return true;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_mdcd_build(c) {
+    return sxat_mdcd(c);
+}

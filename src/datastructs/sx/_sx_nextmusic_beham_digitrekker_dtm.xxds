@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/beham_digitrekker_dtm/xx_beham_digitrekker_dtm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_track16_fields = layout([u16("track_index", ID)]);
+var sxnextm_track16 = sxLayout(0x608B0007, "track16", LE, sxnextm_track16_fields);
+var sxnextm_chunk_le_fields = layout([blob("chunk_id", 4, ID), u32("payload_bytes", SIZE)]);
+var sxnextm_chunk_le = sxLayout(0x608B0009, "chunk_le", LE, sxnextm_chunk_le_fields);
+var sxnextm_dtm_info_fields = layout([u16("channels", COUNT), u16("sequence_length", COUNT), u16("patterns", COUNT),
+    u16("tracks", COUNT), u16("instruments", COUNT)]);
+var sxnextm_dtm_info = sxLayout(0x608B0019, "dtm_info", LE, sxnextm_dtm_info_fields);
+var sxnextm_dtm_speed_fields = layout([u16("frames_per_row"), u16("beats_per_minute")]);
+var sxnextm_dtm_speed = sxLayout(0x608B001A, "dtm_speed", LE, sxnextm_dtm_speed_fields);
+var sxnextm_dtm_pan_fields = layout([u8("left_volume"), u8("right_volume")]);
+var sxnextm_dtm_pan = sxLayout(0x608B001B, "dtm_pan", LE, sxnextm_dtm_pan_fields);
+var sxnextm_dtm_rows_fields = layout([u16("rows", COUNT)]);
+var sxnextm_dtm_rows = sxLayout(0x608B001D, "dtm_rows", LE, sxnextm_dtm_rows_fields);
+var sxnextm_dtm_instrument_fields = layout([u8("instrument", ID)]);
+var sxnextm_dtm_instrument = sxLayout(0x608B001F, "dtm_instrument", LE, sxnextm_dtm_instrument_fields);
+var sxnextm_dtm_argument_high_fields = layout([u8("argument_high")]);
+var sxnextm_dtm_argument_high = sxLayout(0x608B0022, "dtm_argument_high", LE, sxnextm_dtm_argument_high_fields);
+var sxnextm_dtm_argument_low_fields = layout([u8("argument_low")]);
+var sxnextm_dtm_argument_low = sxLayout(0x608B0023, "dtm_argument_low", LE, sxnextm_dtm_argument_low_fields);
+function sxnextm_dtm_chunks(v, p, e, context, depth) {
+    if (depth > 3) {
+        return false;
+    }
+    while (p < e) {
+        var id = [];
+        var z = [0];
+        if (!sxnextm_read(v, p, id, 4, e) || !sxnextm_u(v, p + 4, 4, z, 0, e) || !sxnextm_row(v, sxnextm_chunk_le, p, e) || !sxnextm_span(v, p + 8, z[0], e)) {
+            return false;
+        }
+        var b = p + 8;
+        var end = b + z[0];
+        if (!sxMemcmp(id, "SONG", 4) && depth === 0 || !sxMemcmp(id, "INIT", 4) && context === 1 || !sxMemcmp(id, "INST", 4) && context === 1 || !sxMemcmp(id, "TRAK", 4) && context === 1 || !sxMemcmp(id, "SAMP", 4) && context === 1) {
+            var next = !sxMemcmp(id, "SONG", 4) ? 1 : !sxMemcmp(id, "INIT", 4) ? 2 : !sxMemcmp(id, "INST", 4) ? 3 : !sxMemcmp(id, "TRAK", 4) ? 4 : 5;
+            if (!sxnextm_dtm_chunks(v, b, end, next, (depth + 1) >>> 0)) {
+                return false;
+            }
+        } else if (context === 1 && !sxMemcmp(id, "INFO", 4)) {
+            if (!sxnextm_row(v, sxnextm_dtm_info, b, end)) {
+                return false;
+            }
+        } else if (context === 1 && !sxMemcmp(id, "NAME", 4) || (context === 3 || context === 5) && !sxMemcmp(id, "text", 4)) {
+            if (!sxnextm_text_emit(v, b, z[0], end)) {
+                return false;
+            }
+        } else if (context === 2 && !sxMemcmp(id, "sped", 4)) {
+            if (!sxnextm_row(v, sxnextm_dtm_speed, b, end)) {
+                return false;
+            }
+        } else if (context === 2 && !sxMemcmp(id, "vpan", 4)) {
+            if (z[0] % 2 || !sxnextm_table(v, sxnextm_dtm_pan, b, Math.floor(z[0] / 2), end)) {
+                return false;
+            }
+        } else if (context === 1 && !sxMemcmp(id, "PSEQ", 4)) {
+            if (!sxnextm_table(v, sxnextm_order8, b, z[0], end)) {
+                return false;
+            }
+        } else if (context === 1 && !sxMemcmp(id, "PATT", 4)) {
+            if (z[0] % 2 || !sxnextm_table(v, sxnextm_track16, b, Math.floor(z[0] / 2), end)) {
+                return false;
+            }
+        } else if (context === 3 && !sxMemcmp(id, "samp", 4)) {
+            if (!sxnextm_row(v, sxnextm_dtm_sample, b, end)) {
+                return false;
+            }
+        } else if (context === 4 && !sxMemcmp(id, "trak", 4)) {
+            var n = [0];
+            var q = [b];
+            if (!sxnextm_u(v, b, 2, n, 0, end) || !sxnextm_take(v, sxnextm_dtm_rows, q, 1, end) || !sxnextm_take(v, sxnextm_dtm_pitch, q, n[0], end) || !sxnextm_take(v, sxnextm_dtm_instrument, q, n[0], end) || !sxnextm_take(v, sxnextm_dtm_volume, q, n[0], end) || !sxnextm_take(v, sxnextm_dtm_effect, q, n[0], end) || !sxnextm_take(v, sxnextm_dtm_argument_high, q, n[0], end) || !sxnextm_take(v, sxnextm_dtm_argument_low, q, n[0], end)) {
+                return false;
+            }
+        }
+        p = end;
+    }
+    return true;
+}
+function sxnextm_dtm(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var z = [0];
+    return sxnextm_eq(v, 0, "SONG", 4, e) && sxnextm_u(v, 4, 4, z, 0, e) && sxnextm_span(v, 8, z[0], e) && sxnextm_dtm_chunks(v, 0, 8 + z[0], 0, 0);
+}
+function sx_beham_digitrekker_dtm_build(v) {
+    return sxnextm_dtm(v);
+}

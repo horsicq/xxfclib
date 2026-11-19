@@ -1,0 +1,685 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Runtime of the schema scripts (sx_<family>.xxds), which were generated once from
+// the retired C schema engine. This file is the hand-written part:
+// the sx_* primitives of xx_format_datastructs.c, the layout catalog, the
+// record object of the comment hooks, the C integer helpers and the C library
+// functions the walkers use. Offsets are relative to the format start.
+
+var SX_MAX_ITEMS = 100000;
+var SX_U64_MAX = 18446744073709551616;
+var SX_I64_MAX = 9223372036854775808;
+var SX_I64_MIN = -9223372036854775808;
+var SX_2_32 = 4294967296;
+
+// ------------------------------------------------------------ integers
+
+function sxU64(x) { return x < 0 ? x + SX_U64_MAX : x; }
+// The helpers below first take the path for operands below 2^31 (plain JS operators, no nested call).
+function sxI64(x) { return x >= SX_I64_MAX ? x - SX_U64_MAX : x; }
+function sxTrunc(x) { return x < 0 ? Math.ceil(x) : Math.floor(x); }
+function sxDiv(a, b) { return sxTrunc(a / b); }
+// A 64-bit constant a double cannot hold, as exact halves; only an operand of the sx*64 helpers.
+function sxK(hi, lo) { return { hi: hi, lo: lo }; }
+// 64-bit values above 2^53 do not fit a double. Every such value that is read from the file or produced by
+// a helper below is also remembered with its exact halves (the last SX_WIDE_KEEP of them, found again by the
+// rounded number), so masks and shifts of a value that was just read are exact. The memo is emptied at the
+// start of every scan and hook call; it is a cache of numbers, not file state a script could depend on.
+var SX_WIDE_KEEP = 64;
+var sxWide = [];
+var sxWideNext = 0;
+function sxWideReset() { sxWide = []; sxWideNext = 0; }
+function sxWideFind(x) {
+    var n = sxWide.length, k, i;
+    // newest first: of two wide values that round to the same number the later one is the one in hand
+    for (k = 1; k <= n; k++) {
+        i = (sxWideNext - k + SX_WIDE_KEEP) % SX_WIDE_KEEP;
+        if (i < n && sxWide[i].v === x) return sxWide[i];
+    }
+    return null;
+}
+function sxMake64(hi, lo) {
+    var v;
+    hi = hi >>> 0;
+    lo = lo >>> 0;
+    v = hi * SX_2_32 + lo;
+    if (hi >= 0x200000) {
+        sxWide[sxWideNext] = { v: v, hi: hi, lo: lo };
+        sxWideNext = (sxWideNext + 1) % SX_WIDE_KEEP;
+    }
+    return v;
+}
+function sxHi(x) {
+    var w;
+    if (typeof x === "object" && x !== null) return x.hi;
+    if (x < 0) return (Math.floor(x / SX_2_32) + SX_2_32) >>> 0;    // two's complement, exact for |x| < 2^53
+    if (x >= 9007199254740992 && (w = sxWideFind(x)) !== null) return w.hi;
+    return x >= SX_U64_MAX ? 0xFFFFFFFF : Math.floor(x / SX_2_32) >>> 0;
+}
+function sxLo(x) {
+    var w;
+    if (typeof x === "object" && x !== null) return x.lo;
+    if (x < 0) return (x % SX_2_32 + SX_2_32) % SX_2_32 >>> 0;
+    if (x >= 9007199254740992 && (w = sxWideFind(x)) !== null) return w.lo;
+    return x >= SX_U64_MAX ? 0xFFFFFFFF : x % SX_2_32 >>> 0;
+}
+function sxAnd64(a, b) {
+    if (a >= 0 && a < 2147483648 && b >= 0 && b < 2147483648) return a & b;
+    if (b >= 0 && b < 2147483648 && a >= 0 && a < 9007199254740992) return a % SX_2_32 & b;
+    if (a >= 0 && a < 2147483648 && b >= 0 && b < 9007199254740992) return b % SX_2_32 & a;
+    return sxMake64(sxHi(a) & sxHi(b), sxLo(a) & sxLo(b));
+}
+function sxOr64(a, b) {
+    if (a >= 0 && a < 2147483648 && b >= 0 && b < 2147483648) return a | b;
+    return sxMake64(sxHi(a) | sxHi(b), sxLo(a) | sxLo(b));
+}
+function sxXor64(a, b) {
+    if (a >= 0 && a < 2147483648 && b >= 0 && b < 2147483648) return a ^ b;
+    return sxMake64(sxHi(a) ^ sxHi(b), sxLo(a) ^ sxLo(b));
+}
+function sxNot64(a) { return sxMake64(~sxHi(a), ~sxLo(a)); }
+function sxShr64(a, n) {
+    var hi, lo;
+    n &= 63;
+    if (a < 9007199254740992) return Math.floor(a / Math.pow(2, n));    // also the arithmetic shift of a negative value
+    hi = sxHi(a);
+    lo = sxLo(a);
+    if (n === 0) return a;
+    if (n >= 32) return hi >>> (n - 32);
+    return sxMake64(hi >>> n, (lo >>> n) | (hi << (32 - n)));
+}
+function sxShl64(a, n) {
+    var hi, lo;
+    n &= 63;
+    if (a >= 0 && a < 2097152 && n < 32) return a * (n === 31 ? 2147483648 : 1 << n);    // below 2^53, exact
+    hi = sxHi(a);
+    lo = sxLo(a);
+    if (n === 0) return sxU64(a);
+    if (n >= 32) return sxMake64(lo << (n - 32), 0);
+    return sxMake64((hi << n) | (lo >>> (32 - n)), lo << n);
+}
+function sxMul32(a, b) {
+    var al = a & 0xFFFF, ah = a >>> 16;
+    return ((ah * b << 16 >>> 0) + al * b) % SX_2_32 >>> 0;
+}
+
+// ------------------------------------------------------ arrays, strings
+
+function sxZeros(n) { var a = [], i; for (i = 0; i < n; i++) a.push(0); return a; }
+function sxAlloc(n) { return []; }
+function sxRealloc(a, n) { return a === null ? [] : a; }
+function sxAllocN(n, make) { var a = [], i; for (i = 0; i < n; i++) a.push(make()); return a; }
+function sxReallocN(a, n, make) {
+    var i;
+    if (a === null) a = [];
+    for (i = a.length; i < n; i++) a.push(make());
+    return a;
+}
+function sxFill(a, o, n, v) { var i; for (i = 0; i < n; i++) a[o + i] = v; return a; }
+function sxFillN(a, o, n, make) { var i; for (i = 0; i < n; i++) a[o + i] = make(); return a; }
+function sxDeep(a) { var r = [], i; for (i = 0; i < a.length; i++) r.push(a[i] instanceof Array ? sxDeep(a[i]) : a[i]); return r; }
+function sxPtr(b, o) { return { b: b, o: o }; }
+function sxFatAdd(p, i) { return p === null ? null : { b: p.b, o: p.o + i }; }
+
+// Element i of a C string that is either a JS string or an array of codes.
+function sxAt(s, i) {
+    var c;
+    if (typeof s === "string") {
+        c = s.charCodeAt(i);
+        return c === c ? c : 0;
+    }
+    c = s[i];
+    return c === undefined ? 0 : c;
+}
+function sxBytes(s) {
+    var a, i;
+    if (typeof s !== "string") return s;
+    a = [];
+    for (i = 0; i < s.length; i++) a.push(s.charCodeAt(i));
+    a.push(0);
+    return a;
+}
+// The C string at s + o as a JS string.
+function sxSub(s, o) {
+    var r = "", c;
+    if (s === null) return null;
+    if (typeof s === "string") return o ? s.substring(o) : s;
+    for (;; o++) {
+        c = s[o];
+        if (!c) break;
+        r += String.fromCharCode(c & 0xFF);
+    }
+    return r;
+}
+function sxMemcmpAt(a, ao, b, bo, n) {
+    var i, x, y;
+    if (n > 0 && typeof a !== "string" && typeof b !== "string") {
+        // two byte arrays: the common case of buffer scans, kept free of calls
+        for (i = 0; i < n; i++) {
+            x = a[ao + i];
+            y = b[bo + i];
+            if (x !== y) {
+                x = x === undefined ? 0 : x & 0xFF;
+                y = y === undefined ? 0 : y & 0xFF;
+                if (x !== y) return x < y ? -1 : 1;
+            }
+        }
+        return 0;
+    }
+    for (i = 0; i < n; i++) {
+        x = sxAt(a, ao + i) & 0xFF;
+        y = sxAt(b, bo + i) & 0xFF;
+        if (x !== y) return x < y ? -1 : 1;
+    }
+    return 0;
+}
+function sxMemcmp(a, b, n) { return sxMemcmpAt(a, 0, b, 0, n); }
+function sxStrncmpAt(a, ao, b, bo, n) {
+    var i, x, y;
+    for (i = 0; i < n; i++) {
+        x = sxAt(a, ao + i);
+        y = sxAt(b, bo + i);
+        if (x !== y) return x < y ? -1 : 1;
+        if (x === 0) return 0;
+    }
+    return 0;
+}
+function sxStrncmp(a, b, n) { return sxStrncmpAt(a, 0, b, 0, n); }
+function sxStrcmpAt(a, ao, b, bo) { return sxStrncmpAt(a, ao, b, bo, SX_U64_MAX); }
+function sxStrcmp(a, b) {
+    if (typeof a === "string" && typeof b === "string") return a === b ? 0 : a < b ? -1 : 1;
+    return sxStrncmpAt(a, 0, b, 0, SX_U64_MAX);
+}
+function sxStrlenAt(s, o) { var n = 0; while (sxAt(s, o + n) !== 0) n++; return n; }
+function sxStrlen(s) { return typeof s === "string" ? s.length : sxStrlenAt(s, 0); }
+function sxStrchrAt(s, o, c) {
+    var x;
+    for (;; o++) {
+        x = sxAt(s, o);
+        if (x === c) return sxPtr(s, o);
+        if (x === 0) return null;
+    }
+}
+function sxStrchr(s, c) { return sxStrchrAt(s, 0, c); }
+function sxStrstrAt(h, ho, n, no) {
+    var i, j;
+    if (h === null || n === null) return null;
+    if (sxAt(n, no) === 0) return sxPtr(h, ho);
+    for (i = 0; sxAt(h, ho + i) !== 0; i++) {
+        for (j = 0; sxAt(n, no + j) !== 0 && sxAt(h, ho + i + j) === sxAt(n, no + j); j++) {}
+        if (sxAt(n, no + j) === 0) return sxPtr(h, ho + i);
+    }
+    return null;
+}
+function sxStrstr(h, n) { return sxStrstrAt(h, 0, n, 0); }
+function sxMemchrAt(s, o, c, n) {
+    var i;
+    for (i = 0; i < n; i++) if ((sxAt(s, o + i) & 0xFF) === (c & 0xFF)) return sxPtr(s, o + i);
+    return null;
+}
+function sxMemchr(s, c, n) { return sxMemchrAt(s, 0, c, n); }
+// sx_wappend(dst, cap, src) of xx_format_schema_internal.h
+function sxWappendAt(d, dO, cap, s, sO) {
+    var n = 0;
+    while (n < cap && d[dO + n]) n++;
+    if (n >= cap) return;
+    while (sxAt(s, sO) !== 0 && n + 1 < cap) d[dO + n++] = sxAt(s, sO++);
+    d[dO + n] = 0;
+}
+function sxWappend(d, cap, s) { sxWappendAt(d, 0, cap, s, 0); }
+function sxMemcpy(d, dO, s, sO, n) {
+    var i;
+    if (d === s && dO > sO) for (i = n - 1; i >= 0; i--) d[dO + i] = s[sO + i];
+    else for (i = 0; i < n; i++) d[dO + i] = sxAt(s, sO + i);
+    return d;
+}
+function sxCopyN(d, dO, s, sO, n, copy) {
+    var i, t = [];
+    for (i = 0; i < n; i++) t.push(copy(null, s[sO + i]));
+    for (i = 0; i < n; i++) d[dO + i] = t[i];
+    return d;
+}
+
+function sxGetAt(b, bo, size, off, width, be) {
+    var v = 0, i;
+    if (b === null || off + width > size) return 0;
+    for (i = 0; i < width; i++) v = v * 256 + (sxAt(b, bo + off + (be ? i : width - 1 - i)) & 0xFF);
+    return v;
+}
+function sxGetU16At(b, bo, size, off, be) { return sxGetAt(b, bo, size, off, 2, be); }
+function sxGetU16(b, size, off, be) { return sxGetAt(b, 0, size, off, 2, be); }
+function sxGetI16At(b, bo, size, off, be) { return sxGetAt(b, bo, size, off, 2, be) << 16 >> 16; }
+function sxGetI16(b, size, off, be) { return sxGetAt(b, 0, size, off, 2, be) << 16 >> 16; }
+function sxGetU24At(b, bo, size, off, be) { return sxGetAt(b, bo, size, off, 3, be); }
+function sxGetU24(b, size, off, be) { return sxGetAt(b, 0, size, off, 3, be); }
+function sxGetU32At(b, bo, size, off, be) { return sxGetAt(b, bo, size, off, 4, be); }
+function sxGetU32(b, size, off, be) { return sxGetAt(b, 0, size, off, 4, be); }
+function sxGetU64At(b, bo, size, off, be) {
+    if (b === null || off + 8 > size) return 0;
+    return sxMake64(sxGetAt(b, bo, size, off + (be ? 0 : 4), 4, be), sxGetAt(b, bo, size, off + (be ? 4 : 0), 4, be));
+}
+function sxGetU64(b, size, off, be) { return sxGetU64At(b, 0, size, off, be); }
+
+// xx_rt_qsort. On Windows the library sorts with its own heap sort (xx_sort_context_impl in
+// src/sort/xx_sort_algorithms.inc); Util.heapSort is that algorithm in the host, so elements the comparator
+// calls equal end in the same order as in the Windows build. (The POSIX build calls the C library qsort, whose
+// order of equal elements is unspecified.) The comparator gets element objects (structs) or one-element
+// arrays (scalars).
+function sxQsort(a, o, n, cmp, structs) {
+    if (a === null || n < 2) return;
+    Util.heapSort(a, o, n, cmp, !structs);
+}
+
+function sxPad(s, width, left, zero) {
+    while (s.length < width) s = left ? s + " " : (zero ? "0" : " ") + s;
+    return s;
+}
+function sxUtoa(v, base, upper) {
+    var digits = upper ? "0123456789ABCDEF" : "0123456789abcdef", s = "", hi, lo, r;
+    if (v < SX_2_32 || base === 10 && v < 9007199254740992) {
+        if (v === 0) return "0";
+        while (v > 0) {
+            r = v % base;
+            s = digits.charAt(r) + s;
+            v = (v - r) / base;
+        }
+        return s;
+    }
+    hi = Math.floor(v / SX_2_32);
+    lo = v % SX_2_32;
+    if (base === 16) return sxUtoa(hi, 16, upper) + sxPad(sxUtoa(lo, 16, upper), 8, false, true);
+    // decimal above 2^53: digit by digit over the two halves
+    while (hi > 0 || lo > 0) {
+        r = hi % 10;
+        hi = (hi - r) / 10;
+        lo = r * SX_2_32 + lo;
+        r = lo % 10;
+        lo = (lo - r) / 10;
+        s = digits.charAt(r) + s;
+    }
+    return s;
+}
+// xx_rt_snprintf for the conversions the engine uses: d i u x X c s with flags
+// "-" and "0", width, precision and "*". Returns the untruncated length.
+function sxSnprintf(buf, bo, cap, fmt, args) {
+    var out = "", i = 0, a = 0, c, left, zero, width, prec, conv, v, s, neg, n;
+    fmt = sxSub(fmt, 0);
+    while (i < fmt.length) {
+        c = fmt.charAt(i++);
+        if (c !== "%") { out += c; continue; }
+        if (fmt.charAt(i) === "%") { out += "%"; i++; continue; }
+        left = false; zero = false; width = 0; prec = -1;
+        for (;; i++) {
+            c = fmt.charAt(i);
+            if (c === "-") left = true;
+            else if (c === "0") zero = true;
+            else if (c !== "+" && c !== " " && c !== "#") break;
+        }
+        if (fmt.charAt(i) === "*") { width = args[a++]; i++; if (width < 0) { left = true; width = -width; } }
+        else while (fmt.charAt(i) >= "0" && fmt.charAt(i) <= "9") width = width * 10 + (fmt.charCodeAt(i++) - 48);
+        if (fmt.charAt(i) === ".") {
+            i++;
+            prec = 0;
+            if (fmt.charAt(i) === "*") { prec = args[a++]; i++; }
+            else while (fmt.charAt(i) >= "0" && fmt.charAt(i) <= "9") prec = prec * 10 + (fmt.charCodeAt(i++) - 48);
+        }
+        while ("hlzjtL".indexOf(fmt.charAt(i)) >= 0 && i < fmt.length) i++;
+        conv = fmt.charAt(i++);
+        v = args[a++];
+        if (conv === "s") {
+            s = v === null ? "(null)" : sxSub(v, 0);
+            if (prec >= 0 && s.length > prec) s = s.substring(0, prec);
+            out += sxPad(s, width, left, false);
+        } else if (conv === "c") {
+            out += sxPad(String.fromCharCode(v & 0xFF), width, left, false);
+        } else {
+            if (v === true) v = 1;
+            else if (!v) v = 0;
+            neg = (conv === "d" || conv === "i") && v < 0;
+            s = sxUtoa(neg ? -v : v, conv === "x" || conv === "X" ? 16 : 10, conv === "X");
+            if (prec >= 0) { s = sxPad(s, prec, false, true); zero = false; }
+            if (zero && !left) s = sxPad(s, width - (neg ? 1 : 0), false, true);
+            out += sxPad(neg ? "-" + s : s, width, left, false);
+        }
+    }
+    if (buf !== null && cap > 0) {
+        n = out.length < cap - 1 ? out.length : cap - 1;
+        for (i = 0; i < n; i++) buf[bo + i] = out.charCodeAt(i);
+        buf[bo + n] = 0;
+    }
+    return out.length;
+}
+
+
+// --------------------------------------------------------------- context
+
+// The reader facts a walker may read through c->f.
+function sxFormat() {
+    var size = Format.size(), shift = Format.baseShift();
+    return { file_type: Format.typeName(), endian: Format.isBigEndian() ? XX_ENDIAN_BIG : XX_ENDIAN_LITTLE,
+        base_address: shift, format_size: size > 0 ? size : 0, is_valid: size > 0, base_info_handled: size > 0,
+        is_mapped: Format.isMapped(), device: SX_DEVICE, handle_base_info: sxBaseInfo,
+        create_archive_records_reading: sxArcCreate, get_current_archive_record: sxArcCurrent,
+        archive_record_move_to_next: sxArcNext, free_archive_records_reading: sxArcFree };
+}
+var SX_DEVICE = { device: true };
+// The concrete reader behind c->f (the C down-casts the format to xx_gpt, xx_btrfs, ...): its members as the
+// one row of the fact table "reader"; arrays of structs inside it are the tables "reader.<member>".
+function sxReader(f) {
+    var row;
+    if (f.reader === undefined) {
+        row = Format.table("reader")[0];
+        row.format = f;
+        f.reader = row;
+    }
+    return f.reader;
+}
+function sxReaderRows(reader, member) {
+    if (reader[member] === undefined) reader[member] = Format.table("reader." + member);
+    return reader[member];
+}
+// The reader's archive records (xx_archive_record), from the fact table "archiveRecords": one row per record,
+// keys named like the C members, offsets relative to the format start (host request 5).
+function sxArcCreate(f) {
+    var rows;
+    try { rows = Format.table("archiveRecords"); } catch (e) { return null; }
+    return { rows: rows, index: 0 };
+}
+function sxArcCurrent(f, s) { return s !== null && s.index < s.rows.length ? s.rows[s.index] : null; }
+function sxArcNext(f, s) { if (s === null || s.index >= s.rows.length) return false; s.index++; return s.index < s.rows.length; }
+function sxArcFree(f, s) { return; }
+// xx_archive_record_get_original_name: the table has "" when the record has no name.
+function sxArcName(r) { return r.original_name === undefined || r.original_name === "" ? null : r.original_name; }
+// xx_archive_record_get_meta_u64(r, XX_META_ID_<KEY>, default): the row key is the lower-case id suffix.
+function sxArcMeta(r, key, dflt) { return r[key] === undefined ? dflt : r[key]; }
+// A walker's copy of the reader facts (`Abstractformat view = *c->f`), used to rebase to an outer container.
+function sxCopyFormat(d, s) {
+    var k;
+    if (d === null || d === undefined) d = {};
+    for (k in s) d[k] = s[k];
+    return d;
+}
+function sxVersion(f) { return Format.version(); }
+function sxExtraParam(f, id) { var s = Format.extra(id); return s === null ? null : { t: XX_VAR_TYPE_STRING, v: s }; }
+function sxTable(f, name) {
+    if (f["t_" + name] === undefined) {
+        try { f["t_" + name] = Format.table(name); } catch (e) { f["t_" + name] = null; }
+    }
+    return f["t_" + name];
+}
+// xx_psa_disk_get_container_span / xx_binsh_starkit_get_container_span: offsets on the script's base.
+function sxContainerSpan(f, base, size, inner) {
+    var rows = sxTable(f, "container");
+    if (rows === null || rows.length !== 1) return false;
+    base[0] = rows[0].base;
+    size[0] = rows[0].size;
+    if (inner !== undefined) inner[0] = rows[0].inner;
+    return true;
+}
+function sxTgcfSpan(f, at, size) {
+    var rows = sxTable(f, "tgcfPayload");
+    if (rows === null || rows.length !== 1) return false;
+    at[0] = rows[0].at;
+    size[0] = rows[0].size;
+    return true;
+}
+function sxFactRow(rows, index, out) {
+    var k;
+    if (rows === null || index >= rows.length) return false;
+    for (k in rows[index]) out[k] = rows[index][k];
+    return true;
+}
+function sxMoleboxMetadata(f, index, m) {
+    if (!sxFactRow(sxTable(f, "moleboxMetadata"), index, m)) return false;
+    m.has_verified_prefix = m.has_verified_prefix !== 0;
+    return true;
+}
+function sxCpmSlot(f, state, index, slot) { return sxFactRow(sxTable(f, "cpmDirectory"), index, slot); }
+function sxBaseInfo(f) {
+    var size;
+    f.is_valid = Format.ensure();
+    f.base_info_handled = true;
+    size = Format.size();
+    f.format_size = size > 0 ? size : 0;
+    return f.is_valid;
+}
+function sxIsValid(f) { return f.is_valid; }
+function sxIoTotalSize(device) { return File.size(); }
+function sxIoReadAt(device, off, buf, bo, n) {
+    if (off < 0 || !File.valid(off, n)) return false;
+    if (n) File.read(off, n, buf, bo);
+    return true;
+}
+// xx_crc32_calc / xx_crc32c_calc / xx_crc16_xmodem_calc(crc, data, size): the library's own functions over
+// a byte array (host native Util.crc), continued from crc.
+function sxCrcBytes(b) { return typeof b === "string" ? sxBytes(b) : b; }
+function sxCrc32At(crc, b, bo, n) { return b === null || n === 0 ? crc : Util.crc("crc32", crc, sxCrcBytes(b), bo, n); }
+function sxCrc32(crc, b, n) { return sxCrc32At(crc, b, 0, n); }
+function sxCrc32cAt(crc, b, bo, n) { return b === null || n === 0 ? crc : Util.crc("crc32c", crc, sxCrcBytes(b), bo, n); }
+function sxCrc32c(crc, b, n) { return sxCrc32cAt(crc, b, 0, n); }
+function sxCrc16XmodemAt(crc, b, bo, n) { return Util.crc("crc16xmodem", crc, sxCrcBytes(b), bo, n); }
+function sxCrc16Xmodem(crc, b, n) { return sxCrc16XmodemAt(crc, b, 0, n); }
+
+function sx_range(c, off, n) {
+    if (c === null || c.failed || off < 0 || off > c.size || n > c.size - off) {
+        if (c !== null) c.failed = true;
+        return false;
+    }
+    return true;
+}
+function sx_read_at(c, off, out, oo, n) {
+    if (!sx_range(c, off, n) || (out === null && n)) return false;
+    if (!n) return true;
+    File.read(c.f.base_address + off, n, out, oo);
+    return true;
+}
+// Scan loops: the next position at or after `from` whose byte is the first needle byte, else the array length.
+function sxSeekByte(b, from, needle, no) {
+    var r = Util.indexOf(b, sxAt(needle, no) & 0xFF, from);
+    return r < 0 ? b.length : r;
+}
+function sx_read(c, off, out, n) { return sx_read_at(c, off, out, 0, n); }
+function sx_u16(c, off, be) { return sx_range(c, off, 2) ? File.u16(c.f.base_address + off, be) : null; }
+function sx_u32(c, off, be) { return sx_range(c, off, 4) ? File.u32(c.f.base_address + off, be) : null; }
+function sx_u64(c, off, be) { return sx_range(c, off, 8) ? sxMake64(File.u64hi(c.f.base_address + off, be), File.u64lo(c.f.base_address + off, be)) : null; }
+
+// xx_format_schema_variable_field.inc
+function sxVariableLimit(type) {
+    if (type.length === 13 && type.substring(0, 12) === "stuffitx_p2_" && type.charAt(12) >= "0" && type.charAt(12) <= "7") return 17;
+    if (type === "char" || type === "utf8" || type === "bias33_char") return 4096;
+    if (type === "ascii_signed" || type === "ascii_real" || type === "ascii_fortran_real" || type === "ascii_nastran_real") return 128;
+    if (type === "ascii_hex" || type === "ascii_decimal") return 24;
+    if (type === "uint8" || type === "uint16") return 4096;
+    return 0;
+}
+// sx_expand_field: the field as it applies to an entry of entrySize bytes, or null.
+function sxExpandField(l, index, entrySize) {
+    var f, limit, size, i, prior, elements;
+    if (l === null || !l.fields || index >= l.fields.length || entrySize <= 0) return null;
+    f = l.fields[index];
+    if (!f.name || !f.type || f.offset < 0 || f.offset >= entrySize || f.size < 0) return null;
+    if (f.size) return f.size <= entrySize - f.offset ? f : null;
+    limit = sxVariableLimit(f.type);
+    size = entrySize - f.offset;
+    if (!limit || index + 1 !== l.fields.length || size > limit) return null;
+    for (i = 0; i < index; i++) {
+        prior = l.fields[i];
+        if (prior.offset < 0 || prior.size <= 0 || prior.offset > f.offset || prior.size > f.offset - prior.offset) return null;
+    }
+    elements = size;
+    if (f.type === "uint16") {
+        if (size & 1) return null;
+        elements = size / 2;
+    }
+    if (f.type.length + ("[" + elements + "]").length >= 64) return null;
+    return sxFieldCopy(f, f.type + "[" + elements + "]", size);
+}
+function sxFieldCopy(f, type, size) {
+    var r = { name: f.name, type: type, offset: f.offset, size: size, role: f.role };
+    if (f.comment !== undefined) r.comment = f.comment;
+    if (f.display !== undefined) r.display = f.display;
+    return r;
+}
+
+function sx_push(c, l, off, entry, count, raw) {
+    var total, i;
+    if (entry < 0 || (!raw && (l === null || !l.fields || !l.field_count || entry === 0))) return false;
+    if (!count) return true;
+    if (entry > Math.floor(SX_I64_MAX / count)) return false;
+    total = entry * count;
+    if (!sx_range(c, off, total) || c.count >= SX_MAX_ITEMS) { c.failed = true; return false; }
+    if (!raw) for (i = 0; i < l.field_count; i++) if (sxExpandField(l, i, entry) === null) { c.failed = true; return false; }
+    c.items[c.count++] = { id: raw ? 0xFFFF0001 : l.id, offset: c.f.base_address + off, address: -1, entry_size: entry, total_size: total, count: count,
+        type: raw ? XX_DATA_STRUCT_TYPE_RAW_DATA : XX_DATA_STRUCT_TYPE_STRUCT };
+    return true;
+}
+function sx_add(c, l, o, n) { return sx_push(c, l, o, n, 1, false); }
+function sx_table(c, l, o, n, count) { return sx_push(c, l, o, n, count, false); }
+function sx_raw(c, o, n) { if (!n) return true; return sx_push(c, null, o, n, 1, true); }
+
+// sx_structs: runs a family build and reports its items.
+function sxScan(build, volume) {
+    var f = sxFormat(), available = File.size() - f.base_address, contentEnd = available, c, i, d;
+    if (!volume && f.is_valid && f.format_size > 0 && f.format_size <= available) contentEnd = f.format_size;
+    sxWideReset();
+    c = { f: f, pd: null, size: contentEnd, items: [], count: 0, capacity: 0, failed: false, owned_reader: null };
+    if (!build(c) || c.failed) return false;
+    c.size = available;
+    if (contentEnd < available && !sx_raw(c, contentEnd, available - contentEnd)) return false;
+    for (i = 0; i < c.count; i++) {
+        d = c.items[i];
+        Structs.put(d.id === 0xFFFF0001 ? "RAW_DATA" : d.id, d.offset, d.entry_size, d.total_size, d.count, d.type, d.address);
+    }
+    return true;
+}
+
+// --------------------------------------------------------------- layouts
+
+function sxLayout(id, name, endian, fields) {
+    var own = [], i;
+    for (i = 0; i < fields.length; i++) own.push(sxFieldCopy(fields[i], fields[i].type, fields[i].size));
+    return { id: id, name: name, endian: endian, fields: own, field_count: own.length };
+}
+
+// The record a family comment hook sees (xx_data_struct_record). The value is tagged with the xx_var type
+// xx_data_struct_record_populate gives a field of this type and size.
+function sxVarKind(f) {
+    var t = f.type, size = f.size;
+    if (t === "float32" || t === "float") return XX_VAR_TYPE_FLOAT;
+    if (t === "float64" || t === "double") return XX_VAR_TYPE_DOUBLE;
+    if (t === "int8" || t === "int16" || t === "int24" || t === "int32" || t === "int40" || t === "int48" || t === "int56" || t === "int64")
+        return size === 1 ? XX_VAR_TYPE_INT8 : size === 2 ? XX_VAR_TYPE_INT16 : size === 4 ? XX_VAR_TYPE_INT32 : XX_VAR_TYPE_INT64;
+    if (t === "uint8" || t === "uint16" || t === "uint24" || t === "uint32" || t === "uint40" || t === "uint48" || t === "uint56" || t === "uint64")
+        return size === 1 ? XX_VAR_TYPE_UINT8 : size === 2 ? XX_VAR_TYPE_UINT16 : size === 4 ? XX_VAR_TYPE_UINT32 : XX_VAR_TYPE_UINT64;
+    // Every other type text: an array/bytes field, or an extended type the host decodes (see sxVarOf).
+    return -1;
+}
+function sxVarOf(f, kind, value) {
+    var t;
+    if (kind >= 0) return { t: kind, v: value };
+    // An extended field type (ascii_decimal[8], uleb128, ...) is decoded by the host: a number then is the
+    // decoded value, which the engine stores as uint64 (int64 when negative, double when fractional).
+    if (typeof value === "number") return { t: value !== Math.floor(value) ? XX_VAR_TYPE_DOUBLE : value < 0 ? XX_VAR_TYPE_INT64 : XX_VAR_TYPE_UINT64, v: value };
+    t = f.type;
+    if (t.indexOf("[") >= 0 || t === "bytes" || f.size > 8) return { t: t.substring(0, 5) === "char[" ? XX_VAR_TYPE_STRING : XX_VAR_TYPE_BYTES, v: value };
+    return { t: f.size === 1 ? XX_VAR_TYPE_UINT8 : f.size === 2 ? XX_VAR_TYPE_UINT16 : f.size === 4 ? XX_VAR_TYPE_UINT32 : XX_VAR_TYPE_UINT64, v: value };
+}
+function sxVarType(v) { return v.t; }
+function sxVarU64(v) { return typeof v.v === "number" ? sxU64(sxTrunc(v.v)) : 0; }
+function sxVarI64(v) { return typeof v.v === "number" ? sxI64(sxTrunc(v.v)) : 0; }
+function sxVarDouble(v) { return typeof v.v === "number" ? v.v : 0; }
+function sxVarStr(v) { return v.t === XX_VAR_TYPE_STRING ? v.v : null; }
+function sxVarBytes(v, setSize) {
+    if (v.t !== XX_VAR_TYPE_BYTES) { setSize(0); return null; }
+    setSize(v.v.length);
+    return sxBytes(v.v);
+}
+function sxSetComment(rec, text) { rec.comment = text === null ? null : sxSub(text, 0); rec.commentSet = true; return true; }
+function sxSetDisplay(rec, text) { rec.display = text === null ? null : sxSub(text, 0); rec.displaySet = true; return true; }
+// xx_var_set_u64/i64 from a hook: the hook decodes the value itself. The host takes it through the field's
+// `logical` function, which it calls first; the comment and display functions that follow for the same
+// field of the same occurrence reuse that hook run (the host hands them the changed value, which the hook
+// must not see again).
+function sxVarSetU64(v, x) { v.t = XX_VAR_TYPE_UINT64; v.v = x; v.set = true; }
+function sxVarSetI64(v, x) { v.t = XX_VAR_TYPE_INT64; v.v = x; v.set = true; }
+function sxHooked(l, f, hook, display, value) {
+    var r = sxFieldCopy(f, f.type, f.size), kind = sxVarKind(f), id = l.id, held = null, heldAt = -1;
+    function run(v) {
+        var rec = { name: f.name, type: f.type, offset: f.offset, size: f.size, property: f.role, value: sxVarOf(f, kind, v),
+            comment: null, display: null, commentSet: false, displaySet: false };
+        sxWideReset();
+        if (!hook(rec, id)) throw "sx: the comment hook failed for " + l.name + "." + f.name;
+        return rec;
+    }
+    function again(v, ds) {
+        var rec = held !== null && heldAt === ds.offset ? held : run(v);
+        return rec;
+    }
+    if (value) r.logical = function (v, ds) {
+        held = run(v);
+        heldAt = ds.offset;
+        if (held.value.set) return held.value.v;
+        held = null;
+        return undefined;
+    };
+    r.comment = function (v, ds) { var rec = again(v, ds); return rec.commentSet ? rec.comment : undefined; };
+    if (display) r.display = function (v, ds) {
+        var rec = again(v, ds);
+        held = null;
+        return rec.displaySet && rec.display !== null ? rec.display : undefined;
+    };
+    else if (value) r.display = function (v, ds) { held = null; return undefined; };
+    return r;
+}
+// Catalog of a family: its layouts in list order; hook is sx_<family>_comment or null.
+function sxCatalog(layouts, hook, display, value) {
+    var cat = [], i;
+    function entry(l) {
+        var last = l.fields.length ? l.fields[l.fields.length - 1] : null, fixed = [], j;
+        function fields(ds) {
+            var out = [], k, f;
+            for (k = 0; k < l.fields.length; k++) {
+                f = sxExpandField(l, k, ds.entrySize);
+                if (f === null) return undefined;
+                out.push(hook ? sxHooked(l, f, hook, display, value) : f);
+            }
+            return out;
+        }
+        if (last !== null && last.size === 0) return { id: l.id, name: l.name, endian: l.endian, fields: fields };
+        for (j = 0; j < l.fields.length; j++) fixed.push(hook ? sxHooked(l, l.fields[j], hook, display, value) : sxFieldCopy(l.fields[j], l.fields[j].type, l.fields[j].size));
+        return { id: l.id, name: l.name, endian: l.endian, fields: fixed };
+    }
+    for (i = 0; i < layouts.length; i++) cat.push(entry(layouts[i]));
+    return cat;
+}
+
+// Generated: enumerators the scripts name.
+var XX_ENDIAN_UNKNOWN = 0;
+var XX_VAR_TYPE_NONE = 0;
+var XX_DATA_STRUCT_TYPE_UNKNOWN = 0;
+var XX_ENDIAN_LITTLE = 1;
+var XX_VAR_TYPE_INT8 = 1;
+var XX_DATA_STRUCT_TYPE_STRUCT = 1;
+var XX_ENDIAN_BIG = 2;
+var XX_VAR_TYPE_INT16 = 2;
+var XX_DATA_STRUCT_TYPE_ENTRY = 2;
+var XX_VAR_TYPE_INT32 = 3;
+var XX_DATA_STRUCT_TYPE_FOOTER = 3;
+var XX_VAR_TYPE_INT64 = 4;
+var XX_DATA_STRUCT_TYPE_LOCATOR = 4;
+var XX_VAR_TYPE_UINT8 = 5;
+var XX_DATA_STRUCT_TYPE_RAW_DATA = 5;
+var XX_VAR_TYPE_UINT16 = 6;
+var XX_VAR_TYPE_UINT32 = 7;
+var XX_VAR_TYPE_UINT64 = 8;
+var XX_VAR_TYPE_FLOAT = 9;
+var XX_VAR_TYPE_DOUBLE = 10;
+var XX_VAR_TYPE_BOOL = 11;
+var XX_VAR_TYPE_STRING = 12;
+var XX_VAR_TYPE_WSTRING = 13;
+var XX_VAR_TYPE_BYTES = 14;
+var XX_VAR_TYPE_STRING_VIEW = 15;
+var XX_VAR_TYPE_WSTRING_VIEW = 16;
+var XX_VAR_TYPE_BYTES_VIEW = 17;
+var XX_VAR_TYPE_PTR = 18;

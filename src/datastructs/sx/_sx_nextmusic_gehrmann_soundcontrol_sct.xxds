@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/gehrmann_soundcontrol_sct/xx_gehrmann_soundcontrol_sct_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_sct_header_fields = layout([chars("title", 16, NONE), u32("track_section_bytes", SIZE),
+    u32("sample_section_bytes", SIZE), u32("position_section_bytes", SIZE), u32("instrument_section_bytes", SIZE),
+    u16("format_word", ID), u16("speed"), blob("unknown", 28)]);
+var sxnextm_sct_header = sxLayout(0x608B004A, "sct_header", BE, sxnextm_sct_header_fields);
+var sxnextm_sct_track_fields = layout([chars("name", 16, NONE)]);
+var sxnextm_sct_track = sxLayout(0x608B004B, "sct_track", LE, sxnextm_sct_track_fields);
+var sxnextm_sct_position_fields = layout([u8("track_index", ID), u8("ignored")]);
+var sxnextm_sct_position = sxLayout(0x608B004C, "sct_position", LE, sxnextm_sct_position_fields);
+var sxnextm_sct_command_fields = layout([u16("command", ID), u16("argument1"), u16("argument2")]);
+var sxnextm_sct_command = sxLayout(0x608B004E, "sct_command", BE, sxnextm_sct_command_fields);
+function sxnextm_sct(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var b = [];
+    var z = [];
+    var p = 64;
+    var off = [0];
+    var n = [0];
+    if (!sxnextm_row(v, sxnextm_sct_header, 0, e)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxnextm_be(v, (16 + ((i * 4) >>> 0)) >>> 0, 4, z, i, e) || !sxnextm_span(v, p, z[i], e)) {
+            return false;
+        }
+        b[i] = p;
+        p += z[i];
+    }
+    if (!sxnextm_table(v, sxnextm_offset16, b[0], 256, b[0] + z[0]) || !sxnextm_table(v, sxnextm_offset32be, b[1], 256, b[1] + z[1]) || z[2] % 12 || !sxnextm_table(v, sxnextm_sct_position, b[2], Math.floor(z[2] / 2), b[2] + z[2])) {
+        return false;
+    }
+    if (z[3] && !sxnextm_table(v, sxnextm_offset16, b[3], 256, b[3] + z[3])) {
+        return false;
+    }
+    for (i = 0; i < 256; i++) {
+        if (!sxnextm_be(v, b[0] + ((i * 2) >>> 0), 2, off, 0, e)) {
+            return false;
+        }
+        if (off[0] && !sxnextm_row(v, sxnextm_sct_track, b[0] + off[0], b[0] + z[0])) {
+            return false;
+        }
+        if (!sxnextm_be(v, b[1] + ((i * 4) >>> 0), 4, off, 0, e)) {
+            return false;
+        }
+        if (off[0]) {
+            p = b[1] + off[0];
+            if (!sxnextm_row(v, sxnextm_sct_sample, p, b[1] + z[1]) || !sxnextm_be(v, p + 60, 4, n, 0, e) || n[0] < 64 || !sxnextm_span(v, p, n[0], b[1] + z[1])) {
+                return false;
+            }
+        }
+        if (z[3]) {
+            if (!sxnextm_be(v, b[3] + ((i * 2) >>> 0), 2, off, 0, e)) {
+                return false;
+            }
+            if (off[0]) {
+                p = b[3] + off[0];
+                if (!sxnextm_row(v, sxnextm_sct_instrument, p, b[3] + z[3]) || !sxnextm_be(v, p + 16, 2, n, 0, e) || n[0] % 6 || !sxnextm_table(v, sxnextm_sct_command, p + 48, Math.floor(n[0] / 6), b[3] + z[3])) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_gehrmann_soundcontrol_sct_build(v) {
+    return sxnextm_sct(v);
+}

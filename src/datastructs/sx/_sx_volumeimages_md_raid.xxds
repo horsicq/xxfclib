@@ -1,0 +1,88 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/md_raid/xx_md_raid_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_md1_superblock_fields = layout([u32("magic", SIGNATURE), u32("major_version", ID), u32("feature_map", FLAGS),
+    u32("reserved0", RESERVED), field("set_uuid", "byte[16]", 16, ID), chars("set_name", 32, STRING),
+    u64("creation_time_encoded"), i32("level", ID), u32("layout", ID), u64("component_sectors", COUNT),
+    u32("chunk_sectors", COUNT), u32("raid_disks", COUNT), i32("bitmap_offset"), i32("new_level", ID), u64("reshape_position"),
+    i32("delta_disks"), u32("new_layout", ID), u32("new_chunk_sectors", COUNT), i32("new_data_offset"), u64("data_offset"),
+    u64("data_sectors", COUNT), u64("super_offset"), u64("recovery_or_journal_offset"), u32("device_number", ID),
+    u32("corrected_reads", COUNT), field("device_uuid", "byte[16]", 16, ID), u8("device_flags", FLAGS), u8("bad_block_shift"),
+    u16("bad_block_log_sectors", COUNT), i32("bad_block_log_offset"), u64("update_time_encoded"), u64("events", COUNT),
+    u64("resync_offset"), u32("checksum", CHECKSUM), u32("max_devices", COUNT), field("padding", "byte[32]", 32, RESERVED)]);
+var sxvi_md1_superblock = sxLayout(0x6053003D, "md1_superblock", LE, sxvi_md1_superblock_fields);
+var sxvi_md1_superblock_ppl_fields = layout([u32("magic", SIGNATURE), u32("major_version", ID), u32("feature_map", FLAGS),
+    u32("reserved0", RESERVED), field("set_uuid", "byte[16]", 16, ID), chars("set_name", 32, STRING),
+    u64("creation_time_encoded"), i32("level", ID), u32("layout", ID), u64("component_sectors", COUNT),
+    u32("chunk_sectors", COUNT), u32("raid_disks", COUNT), i16("ppl_offset"), u16("ppl_sectors", COUNT), i32("new_level", ID),
+    u64("reshape_position"), i32("delta_disks"), u32("new_layout", ID), u32("new_chunk_sectors", COUNT), i32("new_data_offset"),
+    u64("data_offset"), u64("data_sectors", COUNT), u64("super_offset"), u64("recovery_or_journal_offset"),
+    u32("device_number", ID), u32("corrected_reads", COUNT), field("device_uuid", "byte[16]", 16, ID),
+    u8("device_flags", FLAGS), u8("bad_block_shift"), u16("bad_block_log_sectors", COUNT), i32("bad_block_log_offset"),
+    u64("update_time_encoded"), u64("events", COUNT), u64("resync_offset"), u32("checksum", CHECKSUM),
+    u32("max_devices", COUNT), field("padding", "byte[32]", 32, RESERVED)]);
+var sxvi_md1_superblock_ppl = sxLayout(0x6053003E, "md1_superblock_ppl", LE, sxvi_md1_superblock_ppl_fields);
+var sxvi_md1_device_role_fields = layout([u16("role", ID)]);
+var sxvi_md1_device_role = sxLayout(0x6053003F, "md1_device_role", LE, sxvi_md1_device_role_fields);
+var sxvi_md090_header_le_fields = layout([u32("magic", SIGNATURE), u32("major_version", ID), u32("minor_version", ID),
+    u32("patch_version", ID), u32("valid_words", COUNT), u32("uuid0", ID), u32("creation_time", TIMESTAMP), i32("level", ID),
+    u32("component_kib"), u32("total_disks", COUNT), u32("raid_disks", COUNT), u32("preferred_minor", ID),
+    u32("not_persistent", FLAGS), u32("uuid1", ID), u32("uuid2", ID), u32("uuid3", ID),
+    field("constant_reserved", "byte[64]", 64, RESERVED), u32("update_time", TIMESTAMP), u32("state", FLAGS),
+    u32("active_disks", COUNT), u32("working_disks", COUNT), u32("failed_disks", COUNT), u32("spare_disks", COUNT),
+    u32("checksum", CHECKSUM), u64("events", COUNT), u64("checkpoint_events", COUNT), u32("recovery_checkpoint"),
+    field("state_reserved", "byte[80]", 80, RESERVED), u32("layout", ID), u32("chunk_size", SIZE), u32("root_pv", ID),
+    u32("root_block"), field("personality_reserved", "byte[240]", 240, RESERVED)]);
+var sxvi_md090_header_le = sxLayout(0x60530040, "md090_header_le", LE, sxvi_md090_header_le_fields);
+var sxvi_md090_header_be_fields = layout([u32("magic", SIGNATURE), u32("major_version", ID), u32("minor_version", ID),
+    u32("patch_version", ID), u32("valid_words", COUNT), u32("uuid0", ID), u32("creation_time", TIMESTAMP), i32("level", ID),
+    u32("component_kib"), u32("total_disks", COUNT), u32("raid_disks", COUNT), u32("preferred_minor", ID),
+    u32("not_persistent", FLAGS), u32("uuid1", ID), u32("uuid2", ID), u32("uuid3", ID),
+    field("constant_reserved", "byte[64]", 64, RESERVED), u32("update_time", TIMESTAMP), u32("state", FLAGS),
+    u32("active_disks", COUNT), u32("working_disks", COUNT), u32("failed_disks", COUNT), u32("spare_disks", COUNT),
+    u32("checksum", CHECKSUM), u64("events", COUNT), u64("checkpoint_events", COUNT), u32("recovery_checkpoint"),
+    field("state_reserved", "byte[80]", 80, RESERVED), u32("layout", ID), u32("chunk_size", SIZE), u32("root_pv", ID),
+    u32("root_block"), field("personality_reserved", "byte[240]", 240, RESERVED)]);
+var sxvi_md090_header_be = sxLayout(0x60530041, "md090_header_be", BE, sxvi_md090_header_be_fields);
+var sxvi_md090_disk_le_fields = layout([u32("number", ID), u32("major", ID), u32("minor", ID), u32("raid_role", ID),
+    u32("state", FLAGS), field("reserved", "byte[108]", 108, RESERVED)]);
+var sxvi_md090_disk_le = sxLayout(0x60530042, "md090_disk_le", LE, sxvi_md090_disk_le_fields);
+var sxvi_md090_disk_be_fields = layout([u32("number", ID), u32("major", ID), u32("minor", ID), u32("raid_role", ID),
+    u32("state", FLAGS), field("reserved", "byte[108]", 108, RESERVED)]);
+var sxvi_md090_disk_be = sxLayout(0x60530043, "md090_disk_be", BE, sxvi_md090_disk_be_fields);
+function sxvi_md(c) {
+    var b = [];
+    var sectors = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512);
+    var at = [0, 4096, SX_U64_MAX];
+    if (sectors >= 16) {
+        at[2] = sxAnd64(sxU64(sectors - 16), sxK(0xFFFFFFFF, 0xFFFFFFF8)) * 512;
+    }
+    for (var i = 0; i < 3; i++) {
+        if (at[i] === SX_U64_MAX || !sxvi_read(c, at[i], b, 256) || sxvi32(b, 0, 0) !== 0xA92B4EFC || sxvi32(b, 4, 0) !== 1) {
+            continue;
+        }
+        var n = sxvi32(b, 220, 0);
+        if (!n || n > 3840 || sxvi64(b, 144, 0) !== Math.floor(at[i] / 512) || !sxvi_span(c, at[i] + 256, n * 2)) {
+            continue;
+        }
+        return sxvi_put(c, sxvi32(b, 8, 0) & 1024 ? sxvi_md1_superblock_ppl : sxvi_md1_superblock, at[i], 1) && sxvi_put(c, sxvi_md1_device_role, at[i] + 256, n);
+    }
+    if (c.size < 131072) {
+        return false;
+    }
+    var p = sxU64(sxAnd64((c.size < 0 ? c.size + SX_U64_MAX : c.size), sxK(0xFFFFFFFF, 0xFFFF0000)) - 65536);
+    if (!sxvi_read(c, p, b, 16) || !sxvi_span(c, p, 4096)) {
+        return false;
+    }
+    var o = sxvi32(b, 0, 0) === 0xA92B4EFC ? 0 : sxvi32(b, 0, 1) === 0xA92B4EFC ? 1 : 2;
+    if (o === 2 || sxvi32(b, 4, o) || sxvi32(b, 8, o) !== 90) {
+        return false;
+    }
+    return sxvi_put(c, o === 1 ? sxvi_md090_header_be : sxvi_md090_header_le, p, 1) && sxvi_put(c, o === 1 ? sxvi_md090_disk_be : sxvi_md090_disk_le, p + 512, 27) && sxvi_put(c, o === 1 ? sxvi_md090_disk_be : sxvi_md090_disk_le, p + 3968, 1);
+}
+function sx_md_raid_build(c) {
+    return sxvi_md(c);
+}

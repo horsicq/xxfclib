@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bzyk_soundtracker_stc_zxs/xx_bzyk_soundtracker_stc_zxs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_stc_header_fields = layout([u8("tempo"), u16("positions_offset", OFFSET), u16("ornaments_offset", OFFSET),
+    u16("patterns_offset", OFFSET), chars("identifier", 18, NONE), u16("declared_size", SIZE)]);
+var sxzxm_stc_header = sxLayout(0x608A0036, "stc_header", LE, sxzxm_stc_header_fields);
+var sxzxm_stc_position_fields = layout([u8("pattern_number"), i8("transposition")]);
+var sxzxm_stc_position = sxLayout(0x608A0038, "stc_position", LE, sxzxm_stc_position_fields);
+var sxzxm_stc_pattern_fields = layout([u8("pattern_number"), u16("channel_a_offset", OFFSET), u16("channel_b_offset", OFFSET),
+    u16("channel_c_offset", OFFSET)]);
+var sxzxm_stc_pattern = sxLayout(0x608A0039, "stc_pattern", LE, sxzxm_stc_pattern_fields);
+var sxzxm_stc_sample_prefix_fields = layout([u8("sample_number")]);
+var sxzxm_stc_sample_prefix = sxLayout(0x608A003A, "stc_sample_prefix", LE, sxzxm_stc_sample_prefix_fields);
+var sxzxm_stc_sample_line_fields = layout([u8("effect_high_volume", FLAGS), u8("noise_masks", FLAGS), u8("effect_low")]);
+var sxzxm_stc_sample_line = sxLayout(0x608A003B, "stc_sample_line", LE, sxzxm_stc_sample_line_fields);
+var sxzxm_stc_sample_loop_fields = layout([u8("loop_index"), u8("loop_length", COUNT)]);
+var sxzxm_stc_sample_loop = sxLayout(0x608A003C, "stc_sample_loop", LE, sxzxm_stc_sample_loop_fields);
+var sxzxm_stc_ornament_prefix_fields = layout([u8("ornament_number")]);
+var sxzxm_stc_ornament_prefix = sxLayout(0x608A003D, "stc_ornament_prefix", LE, sxzxm_stc_ornament_prefix_fields);
+function sxzxm_stc(c) {
+    var h = [];
+    var n = [0];
+    if (!sxzxm_read(c, 0, h, 27) || !sxzxm_put(c, sxzxm_stc_header, 0, 1)) {
+        return false;
+    }
+    var pos = sxzxm16(h, 1);
+    var orn = sxzxm16(h, 3);
+    var pat = sxzxm16(h, 5);
+    if (sxzxm_u8(c, pos, n) && (!sxzxm_put(c, sxzxm_stc_positions, pos, 1) || !sxzxm_opt(c, sxzxm_stc_position, (pos + 1) >>> 0, n[0] + 1))) {
+        return false;
+    }
+    var before = pos;
+    if (orn >= 27 && orn < before) {
+        before = orn;
+    }
+    if (pat >= 27 && pat < before) {
+        before = pat;
+    }
+    if (before >= 27) {
+        var sc = Math.floor(((before - 27) >>> 0) / 99);
+        if (sc > 16) {
+            sc = 16;
+        }
+        for (var i = 0; i < sc; i++) {
+            var p = (27 + ((99 * i) >>> 0)) >>> 0;
+            if (!sxzxm_put(c, sxzxm_stc_sample_prefix, p, 1) || !sxzxm_opt(c, sxzxm_stc_sample_line, p + 1, 32) || !sxzxm_put(c, sxzxm_stc_sample_loop, p + 97, 1)) {
+                return false;
+            }
+        }
+    }
+    if (pat >= orn) {
+        var oc = Math.floor(((pat - orn) >>> 0) / 33);
+        if (oc > 16) {
+            oc = 16;
+        }
+        for (i = 0; i < oc; i++) {
+            p = orn + ((33 * i) >>> 0);
+            if (!sxzxm_span(c, p, 33)) {
+                break;
+            }
+            if (!sxzxm_put(c, sxzxm_stc_ornament_prefix, p, 1) || !sxzxm_opt(c, sxzxm_zx_ornament_step, p + 1, 32)) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < 32; i++) {
+        p = pat + ((7 * i) >>> 0);
+        if (!sxzxm_u8(c, p, n)) {
+            break;
+        }
+        if (n[0] === 255) {
+            if (!sxzxm_put(c, sxzxm_zx_marker, p, 1)) {
+                return false;
+            }
+            break;
+        }
+        if (!sxzxm_span(c, p, 7)) {
+            break;
+        }
+        if (!sxzxm_put(c, sxzxm_stc_pattern, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_bzyk_soundtracker_stc_zxs_build(c) {
+    return sxzxm_stc(c);
+}

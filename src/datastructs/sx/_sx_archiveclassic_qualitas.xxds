@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/qualitas/xx_qualitas_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_qualitas_header_fields = layout([bytes("opaque1", 4), u16("header_size", SIZE), u16("directory_size", SIZE),
+    bytes("opaque2", 2), u16("member_count", COUNT), bytes("opaque3", 2)]);
+var sxacl_qualitas_header = sxLayout(0x60500015, "qualitas_header", LE, sxacl_qualitas_header_fields);
+var sxacl_qualitas_member_fields = layout([i32("next_record_offset", OFFSET), bytes("unused", 2), i32("payload_offset", OFFSET),
+    u16("dos_time"), u16("dos_date"), i32("uncompressed_size", SIZE), i32("block_size", SIZE), u16("attributes"),
+    u8("disk_number"), u8("method")]);
+var sxacl_qualitas_member = sxLayout(0x60500016, "qualitas_member", LE, sxacl_qualitas_member_fields);
+var sxacl_qualitas_crc32_fields = layout([u32("crc32", CHECKSUM)]);
+var sxacl_qualitas_crc32 = sxLayout(0x60500017, "qualitas_crc32", LE, sxacl_qualitas_crc32_fields);
+function sxacl_zstr(c, p, end, cap) {
+    for (var i = 0; i < cap && p[0] < end; i++) {
+        var b = [0];
+        if (!sxacl_read(c, p[0]++, b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxacl_qualitas(c) {
+    var z = [0];
+    var n = [0];
+    var p = 14;
+    if (!sxacl_word(c, 6, 2, false, z) || !sxacl_word(c, 10, 2, false, n) || !sxacl_span(c, p, z[0]) || !sxacl_add(c, sxacl_qualitas_header, 0)) {
+        return false;
+    }
+    var end = p + z[0];
+    for (var i = 0; i < n[0]; i++) {
+        var h = [];
+        if (p > end || sxU64(end - p) < 26 || !sxacl_read(c, p, h, 26) || !sxacl_add(c, sxacl_qualitas_member, p)) {
+            return false;
+        }
+        var next = sxacl_uint(h, 0, 4, false);
+        var data = sxacl_uint(h, 6, 4, false);
+        var packed = sxacl_uint(h, 18, 4, false);
+        var q = [p + 26];
+        if (!sxacl_zstr(c, q, end, 256) || next !== q[0]) {
+            return false;
+        }
+        if (h[24] === 1 && h[25] <= 1 && data >= end && packed >= 4 && packed <= 2147483647 && sxacl_span(c, data, packed)) {
+            if (!sxacl_add(c, sxacl_qualitas_crc32, data) || !sxacl_dcl(c, data + 4, sxU64(packed - 4))) {
+                return false;
+            }
+        }
+        p = q[0];
+    }
+    return true;
+}
+function sx_qualitas_build(c) {
+    return sxacl_qualitas(c);
+}

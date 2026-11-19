@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_nitro_strm/xx_audio_nitro_strm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_nitro_header_le_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT)]);
+var sxau_nitro_header_le = sxLayout(0x602C0066, "nitro_header_le", LE, sxau_nitro_header_le_fields);
+var sxau_nitro_chunk_le_fields = layout([chars("chunk_id", 4, ID), u32("chunk_size", SIZE)]);
+var sxau_nitro_chunk_le = sxLayout(0x602C0067, "nitro_chunk_le", LE, sxau_nitro_chunk_le_fields);
+var sxau_nitro_stream_le_fields = layout([u8("encoding", ID), u8("loop_flag", FLAGS), u8("channels", COUNT),
+    u8("reserved", RESERVED), u16("sample_rate"), u16("timer"), u32("loop_start_sample"), u32("total_samples", COUNT),
+    u32("data_offset", OFFSET), u32("block_count", COUNT), u32("block_bytes", SIZE), u32("samples_per_block", COUNT),
+    u32("last_block_bytes", SIZE), u32("last_block_samples", COUNT)]);
+var sxau_nitro_stream_le = sxLayout(0x602C0068, "nitro_stream_le", LE, sxau_nitro_stream_le_fields);
+var sxau_nitro_header_be_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", ID), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT)]);
+var sxau_nitro_header_be = sxLayout(0x602C006B, "nitro_header_be", BE, sxau_nitro_header_be_fields);
+var sxau_nitro_chunk_be_fields = layout([chars("chunk_id", 4, ID), u32("chunk_size", SIZE)]);
+var sxau_nitro_chunk_be = sxLayout(0x602C006C, "nitro_chunk_be", BE, sxau_nitro_chunk_be_fields);
+var sxau_nitro_stream_be_fields = layout([u8("encoding", ID), u8("loop_flag", FLAGS), u8("channels", COUNT),
+    u8("reserved", RESERVED), u16("sample_rate"), u16("timer"), u32("loop_start_sample"), u32("total_samples", COUNT),
+    u32("data_offset", OFFSET), u32("block_count", COUNT), u32("block_bytes", SIZE), u32("samples_per_block", COUNT),
+    u32("last_block_bytes", SIZE), u32("last_block_samples", COUNT)]);
+var sxau_nitro_stream_be = sxLayout(0x602C006D, "nitro_stream_be", BE, sxau_nitro_stream_be_fields);
+function sxau_nitro(v) {
+    if (!sxau_need(v, 0, 6, v.n)) {
+        return false;
+    }
+    var be = v.p[4] === 254;
+    if (!sxau_row(v, be ? sxau_nitro_header_be : sxau_nitro_header_le, 0, v.n) || !sxau_row(v, be ? sxau_nitro_chunk_be : sxau_nitro_chunk_le, 16, v.n)) {
+        return false;
+    }
+    var n = sxau_u32(v.p, 20, be);
+    if (n < 48 || !sxau_need(v, 16, n, v.n) || !sxau_row(v, be ? sxau_nitro_stream_be : sxau_nitro_stream_le, 24, 16 + n)) {
+        return false;
+    }
+    return sxau_row(v, be ? sxau_nitro_chunk_be : sxau_nitro_chunk_le, 16 + n, v.n);
+}
+function sx_audio_nitro_strm_build(v) {
+    return sxau_nitro(v);
+}

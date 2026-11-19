@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/wpk/xx_wpk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_wpk_header_fields = layout([u32("signature", SIGNATURE), u16("member_count", COUNT), u16("directory_size", SIZE),
+    u32("directory_offset", OFFSET)]);
+var sxafr_wpk_header = sxLayout(0x60540027, "wpk_header", LE, sxafr_wpk_header_fields);
+var sxafr_wpk_member_fields = layout([u32("uncompressed_size", SIZE), u32("payload_offset", OFFSET), u32("timestamp"),
+    u32("crc32", CHECKSUM), u8("method_and_name_size", FLAGS)]);
+var sxafr_wpk_member = sxLayout(0x60540028, "wpk_member", LE, sxafr_wpk_member_fields);
+function sxafr_wpk(c) {
+    var p = [0];
+    var n = [0];
+    var z = [0];
+    if (!sxafr_word(c, 4, 2, false, n) || !sxafr_word(c, 6, 2, false, z) || !sxafr_word(c, 8, 4, false, p) || !sxafr_span(c, p[0], z[0]) || !sxafr_add(c, sxafr_wpk_header, 0)) {
+        return false;
+    }
+    var end = p[0] + z[0];
+    for (var i = 0; i < n[0]; i++) {
+        var flags = [0];
+        if (p[0] > end || sxU64(end - p[0]) < 17 || !sxafr_word(c, p[0] + 16, 1, false, flags) || sxAnd64(flags[0], 127) > sxU64(sxU64(end - p[0]) - 17) || !sxafr_add(c, sxafr_wpk_member, p[0])) {
+            return false;
+        }
+        p[0] += 17 + sxAnd64(flags[0], 127);
+    }
+    return true;
+}
+function sx_wpk_build(c) {
+    return sxafr_wpk(c);
+}

@@ -1,0 +1,139 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/matrix_market/xx_matrix_market_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_matrix_rows_fields = layout([field("matrix_rows", "ascii_signed", 0, COUNT)]);
+var sxsa_matrix_rows = sxLayout(0x6051001A, "science_matrix_rows", LE, sxsa_matrix_rows_fields);
+var sxsa_matrix_columns_fields = layout([field("matrix_columns", "ascii_signed", 0, COUNT)]);
+var sxsa_matrix_columns = sxLayout(0x6051001B, "science_matrix_columns", LE, sxsa_matrix_columns_fields);
+var sxsa_matrix_entries_fields = layout([field("matrix_entries", "ascii_signed", 0, COUNT)]);
+var sxsa_matrix_entries = sxLayout(0x6051001C, "science_matrix_entries", LE, sxsa_matrix_entries_fields);
+var sxsa_matrix_row_fields = layout([field("matrix_row", "ascii_signed", 0)]);
+var sxsa_matrix_row = sxLayout(0x6051004D, "science_matrix_row", LE, sxsa_matrix_row_fields);
+var sxsa_matrix_column_fields = layout([field("matrix_column", "ascii_signed", 0)]);
+var sxsa_matrix_column = sxLayout(0x6051004E, "science_matrix_column", LE, sxsa_matrix_column_fields);
+var sxsa_matrix_object_fields = layout([field("matrix_object", "char", 0, STRING)]);
+var sxsa_matrix_object = sxLayout(0x6051004F, "science_matrix_object", LE, sxsa_matrix_object_fields);
+var sxsa_matrix_storage_fields = layout([field("matrix_storage", "char", 0, STRING)]);
+var sxsa_matrix_storage = sxLayout(0x60510050, "science_matrix_storage", LE, sxsa_matrix_storage_fields);
+var sxsa_matrix_field_fields = layout([field("matrix_field", "char", 0, STRING)]);
+var sxsa_matrix_field = sxLayout(0x60510051, "science_matrix_field", LE, sxsa_matrix_field_fields);
+var sxsa_matrix_symmetry_fields = layout([field("matrix_symmetry", "char", 0, STRING)]);
+var sxsa_matrix_symmetry = sxLayout(0x60510052, "science_matrix_symmetry", LE, sxsa_matrix_symmetry_fields);
+var sxsa_matrix_integer_fields = layout([field("matrix_integer", "ascii_signed", 0)]);
+var sxsa_matrix_integer = sxLayout(0x60510053, "science_matrix_integer", LE, sxsa_matrix_integer_fields);
+var sxsa_matrix_real_fields = layout([field("matrix_real", "ascii_real", 0)]);
+var sxsa_matrix_real = sxLayout(0x60510054, "science_matrix_real", LE, sxsa_matrix_real_fields);
+var sxsa_matrix_imaginary_fields = layout([field("matrix_imaginary", "ascii_real", 0)]);
+var sxsa_matrix_imaginary = sxLayout(0x60510055, "science_matrix_imaginary", LE, sxsa_matrix_imaginary_fields);
+function sxsa_matrix(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(5, sxNew_sxsa_token);
+    if (!sxsa_line(q, line) || sxsa_split(q, sxCopy_sxsa_token(null, line), t, 5, false) !== 5) {
+        return false;
+    }
+    {
+        if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, t[0]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsa_emit(q, sxsa_matrix_object, sxCopy_sxsa_token(null, t[1]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsa_emit(q, sxsa_matrix_storage, sxCopy_sxsa_token(null, t[2]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsa_emit(q, sxsa_matrix_field, sxCopy_sxsa_token(null, t[3]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxsa_emit(q, sxsa_matrix_symmetry, sxCopy_sxsa_token(null, t[4]))) {
+            return false;
+        }
+    }
+    var coord = sxsa_eq(q, sxCopy_sxsa_token(null, t[2]), "coordinate");
+    var integer = sxsa_eq(q, sxCopy_sxsa_token(null, t[3]), "integer");
+    var complex = sxsa_eq(q, sxCopy_sxsa_token(null, t[3]), "complex");
+    var pattern = sxsa_eq(q, sxCopy_sxsa_token(null, t[3]), "pattern");
+    var header = true;
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxsa_token(line, sxsa_trim(q, sxCopy_sxsa_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        if (q.b[line.a] === 37 /*%*/) {
+            {
+                if (!sxsa_emit(q, sxsa_comment, sxCopy_sxsa_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 5, false);
+        if (header) {
+            if (n !== (coord ? 3 : 2)) {
+                return false;
+            }
+            {
+                if (!sxsa_emit(q, sxsa_matrix_rows, sxCopy_sxsa_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsa_emit(q, sxsa_matrix_columns, sxCopy_sxsa_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (coord) {
+                {
+                    if (!sxsa_emit(q, sxsa_matrix_entries, sxCopy_sxsa_token(null, t[2]))) {
+                        return false;
+                    }
+                }
+            }
+            header = false;
+        } else {
+            var at = coord ? 2 : 0;
+            if (n !== (at + (pattern ? 0 : complex ? 2 : 1)) >>> 0) {
+                return false;
+            }
+            if (coord) {
+                {
+                    if (!sxsa_emit(q, sxsa_matrix_row, sxCopy_sxsa_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsa_emit(q, sxsa_matrix_column, sxCopy_sxsa_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+            }
+            if (!pattern && !sxsa_emit(q, integer ? sxsa_matrix_integer : sxsa_matrix_real, sxCopy_sxsa_token(null, t[at]))) {
+                return false;
+            }
+            if (complex) {
+                {
+                    if (!sxsa_emit(q, sxsa_matrix_imaginary, sxCopy_sxsa_token(null, t[(at + 1) >>> 0]))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return !header;
+}
+function sx_matrix_market_build(q) {
+    return sxsa_matrix(q);
+}

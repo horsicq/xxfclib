@@ -1,0 +1,144 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/pyz/xx_pyz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_pyz_header_le_fields = layout([chars("magic", 4, SIGNATURE), bytes("python_magic", 4, SIGNATURE),
+    u32("toc_offset", OFFSET)]);
+var sxbx_pyz_header_le = sxLayout(0x603000A7, "pyz_header_le", LE, sxbx_pyz_header_le_fields);
+var sxbx_pyz_header_be_fields = layout([chars("magic", 4, SIGNATURE), bytes("python_magic", 4, SIGNATURE),
+    u32("toc_offset", OFFSET)]);
+var sxbx_pyz_header_be = sxLayout(0x603000A8, "pyz_header_be", BE, sxbx_pyz_header_be_fields);
+var sxbx_pyz_marshal_tag_fields = layout([u8("type_and_reference", FLAGS)]);
+var sxbx_pyz_marshal_tag = sxLayout(0x603000A9, "pyz_marshal_tag", LE, sxbx_pyz_marshal_tag_fields);
+var sxbx_pyz_marshal_int32_fields = layout([i32("value")]);
+var sxbx_pyz_marshal_int32 = sxLayout(0x603000AA, "pyz_marshal_int32", LE, sxbx_pyz_marshal_int32_fields);
+var sxbx_pyz_marshal_int64_fields = layout([i64("value")]);
+var sxbx_pyz_marshal_int64 = sxLayout(0x603000AB, "pyz_marshal_int64", LE, sxbx_pyz_marshal_int64_fields);
+var sxbx_pyz_marshal_length_fields = layout([i32("value", SIZE)]);
+var sxbx_pyz_marshal_length = sxLayout(0x603000AC, "pyz_marshal_length", LE, sxbx_pyz_marshal_length_fields);
+var sxbx_pyz_marshal_count_fields = layout([i32("value", COUNT)]);
+var sxbx_pyz_marshal_count = sxLayout(0x603000AD, "pyz_marshal_count", LE, sxbx_pyz_marshal_count_fields);
+var sxbx_pyz_marshal_short_count_fields = layout([u8("value", COUNT)]);
+var sxbx_pyz_marshal_short_count = sxLayout(0x603000AE, "pyz_marshal_short_count", LE, sxbx_pyz_marshal_short_count_fields);
+var sxbx_pyz_marshal_short_length_fields = layout([u8("value", SIZE)]);
+var sxbx_pyz_marshal_short_length = sxLayout(0x603000AF, "pyz_marshal_short_length", LE, sxbx_pyz_marshal_short_length_fields);
+var sxbx_pyz_marshal_reference_fields = layout([i32("value")]);
+var sxbx_pyz_marshal_reference = sxLayout(0x603000B0, "pyz_marshal_reference", LE, sxbx_pyz_marshal_reference_fields);
+var sxbx_pyz_marshal_long_digits_fields = layout([i32("value")]);
+var sxbx_pyz_marshal_long_digits = sxLayout(0x603000B1, "pyz_marshal_long_digits", LE, sxbx_pyz_marshal_long_digits_fields);
+var sxbx_pyz_marshal_digit_fields = layout([u16("value")]);
+var sxbx_pyz_marshal_digit = sxLayout(0x603000B2, "pyz_marshal_digit", LE, sxbx_pyz_marshal_digit_fields);
+var sxbx_pyz_marshal_offset32_fields = layout([i32("file_offset", OFFSET)]);
+var sxbx_pyz_marshal_offset32 = sxLayout(0x603000F4, "pyz_marshal_offset32", LE, sxbx_pyz_marshal_offset32_fields);
+var sxbx_pyz_marshal_size32_fields = layout([i32("packed_size", SIZE)]);
+var sxbx_pyz_marshal_size32 = sxLayout(0x603000F5, "pyz_marshal_size32", LE, sxbx_pyz_marshal_size32_fields);
+var sxbx_pyz_marshal_offset64_fields = layout([i64("file_offset", OFFSET)]);
+var sxbx_pyz_marshal_offset64 = sxLayout(0x603000F6, "pyz_marshal_offset64", LE, sxbx_pyz_marshal_offset64_fields);
+var sxbx_pyz_marshal_size64_fields = layout([i64("packed_size", SIZE)]);
+var sxbx_pyz_marshal_size64 = sxLayout(0x603000F7, "pyz_marshal_size64", LE, sxbx_pyz_marshal_size64_fields);
+function sxbx_marshal(c, p, end, depth, work, role) {
+    if (depth > 32 || ++work[0] > 20000 || c.count >= 20000 || p[0] >= end) {
+        return false;
+    }
+    var code = [0];
+    var n = [0];
+    if (!sxbx_word(c, p[0], 1, false, code) || !sxbx_add(c, sxbx_pyz_marshal_tag, p[0]++)) {
+        return false;
+    }
+    code[0] = sxAnd64(code[0], 127);
+    var l = null;
+    var width = 0;
+    if (code[0] === 105 /*i*/) {
+        l = role === 1 ? sxbx_pyz_marshal_offset32 : role === 2 ? sxbx_pyz_marshal_size32 : sxbx_pyz_marshal_int32;
+        width = 4;
+    } else if (code[0] === 73 /*I*/) {
+        l = role === 1 ? sxbx_pyz_marshal_offset64 : role === 2 ? sxbx_pyz_marshal_size64 : sxbx_pyz_marshal_int64;
+        width = 8;
+    } else if (code[0] === 114 /*r*/) {
+        l = sxbx_pyz_marshal_reference;
+        width = 4;
+    } else if (code[0] === 78 /*N*/ || code[0] === 48 /*0*/ || code[0] === 70 /*F*/ || code[0] === 84 /*T*/) {
+        return true;
+    }
+    if (l !== null) {
+        if (width > sxU64(end - p[0]) || !sxbx_add(c, l, p[0])) {
+            return false;
+        }
+        p[0] += width;
+        return true;
+    }
+    if (code[0] === 115 /*s*/ || code[0] === 116 /*t*/ || code[0] === 117 /*u*/ || code[0] === 97 /*a*/ || code[0] === 65 /*A*/) {
+        return sxbx_counted(c, p, end, sxbx_pyz_marshal_length, 4, false, 1);
+    }
+    if (code[0] === 122 /*z*/ || code[0] === 90 /*Z*/) {
+        return sxbx_counted(c, p, end, sxbx_pyz_marshal_short_length, 1, false, 1);
+    }
+    if (code[0] === 108 /*l*/) {
+        if (sxU64(end - p[0]) < 4 || !sxbx_word(c, p[0], 4, false, n) || !sxbx_add(c, sxbx_pyz_marshal_long_digits, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+        var z = (n[0] >>> 0) | 0;
+        n[0] = z < 0 ? sxU64((-z >= SX_I64_MAX ? -z - SX_U64_MAX : -z)) : (z < 0 ? z + SX_U64_MAX : z);
+        if (n[0] > 5 || n[0] > Math.floor(sxU64(end - p[0]) / 2) || !sxbx_table(c, sxbx_pyz_marshal_digit, p[0], n[0])) {
+            return false;
+        }
+        p[0] += n[0] * 2;
+        return true;
+    }
+    if (code[0] === 91 /*[*/ || code[0] === 40 /*(*/ || code[0] === 41 /*)*/) {
+        width = code[0] === 41 /*)*/ ? 1 : 4;
+        if (width > sxU64(end - p[0]) || !sxbx_word(c, p[0], width, false, n) || n[0] > 20000 || !sxbx_add(c, width === 1 ? sxbx_pyz_marshal_short_count : sxbx_pyz_marshal_count, p[0])) {
+            return false;
+        }
+        p[0] += width;
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxbx_marshal(c, p, end, (depth + 1) >>> 0, work, code[0] !== 91 /*[*/ && n[0] === 3 && i ? i >>> 0 : 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (code[0] === 123 /*{*/) {
+        for (i = 0; i < 20000; i++) {
+            if (p[0] >= end || !sxbx_word(c, p[0], 1, false, n)) {
+                return false;
+            }
+            if (sxAnd64(n[0], 127) === 48 /*0*/) {
+                return sxbx_marshal(c, p, end, (depth + 1) >>> 0, work, 0);
+            }
+            if (!sxbx_marshal(c, p, end, (depth + 1) >>> 0, work, 0) || !sxbx_marshal(c, p, end, (depth + 1) >>> 0, work, 0)) {
+                return false;
+            }
+        }
+        return false;
+    }
+    return false;
+}
+function sxbx_pyz(c) {
+    var b = [];
+    if (!sxbx_read(c, 0, b, 12)) {
+        return false;
+    }
+    var p = [sxbx32(b, 8, true)];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var be = true;
+    if (p[0] < 12 || p[0] >= end) {
+        p[0] = sxbx32(b, 8, false);
+        be = false;
+    }
+    if (p[0] < 12 || p[0] >= end || !sxbx_add(c, be ? sxbx_pyz_header_be : sxbx_pyz_header_le, 0)) {
+        return false;
+    }
+    var keep = c.count;
+    var work = [0];
+    if (!sxbx_marshal(c, p, end, 0, work, 0) || p[0] !== end) {
+        c.count = keep;
+    }
+    return true;
+}
+function sx_pyz_build(c) {
+    return sxbx_pyz(c);
+}

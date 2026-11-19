@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_legacy.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_legacy");
+include("_sx_legacy_arcfs");
+include("_sx_legacy_artipack");
+include("_sx_legacy_ash0");
+include("_sx_legacy_atarist");
+include("_sx_legacy_gashuff");
+include("_sx_legacy_huf");
+include("_sx_legacy_lzdiet");
+include("_sx_legacy_lzpis2");
+include("_sx_legacy_lzv1");
+include("_sx_legacy_mscompress");
+include("_sx_legacy_oraclesqueeze");
+include("_sx_legacy_pef");
+include("_sx_legacy_rnc");
+include("_sx_legacy_softronics");
+include("_sx_legacy_ue2_documents_schema");
+include("_sx_legacy_wiilz77");
+
+function fileTypes() { return ["ARCFS", "ARTIPACK", "LZ5", "LIZARD", "MS_COMPRESS", "ASH0", "WII_LZ77", "LZV1",
+    "ORACLE_SQUEEZE", "SOFTRONICS", "LOGITECH_COMPRESS", "DMA_PACKED", "GAS_HUFF", "HUF", "LZDIET", "LZPIS2", "ATARIST", "RNC",
+    "GNU_GETTEXT_MO", "QT_QM", "PEF"]; }
+
+var sx_legacy_layouts = [sxl_szdd_header, sxl_sz_header, sxl_imd5_header, sxl_wii_lz77_tag, sxl_wii_lz77_header,
+    sxl_wii_lz77_extended_size, sxl_ash0_header, sxl_lzv1_header, sxl_oracle_squeeze_header, sxl_squeeze_tree_header,
+    sxl_squeeze_tree_node, sxl_filename_byte, sxl_softronics_header, sxl_softronics_metadata, sxl_logitech_header,
+    sxl_dma_packed_header, sxl_dcl_header, sxl_gas_huff_header, sxl_huf_header, sxl_huf_symbol, sxl_huf_directory,
+    sxl_lzdiet_header, sxl_lzdiet_chunk, sxl_lzdiet_table_end, sxl_lzpis2_header, sxl_lzpis2_chunk, sxl_legacy_frame_header,
+    sxl_legacy_frame_block, sxl_legacy_frame_skip, sxl_legacy_frame_checksum, sxl_bullfrog_tag, sxl_rnc_header,
+    sxl_mo_header_le, sxl_mo_string_le, sxl_mo_hash_le, sxl_mo_header_be, sxl_mo_string_be, sxl_mo_hash_be, sxl_qm_header,
+    sxl_qm_block, sxl_qm_hash, sxl_qm_message_field, sxl_qm_message_end, sxl_qm_message_obsolete, sxl_atarist_header,
+    sxl_atarist_symbol, sxl_pef_header, sxl_pef_section, sxl_pef_loader, sxl_artipack_header, sxl_artipack_directory,
+    sxl_artipack_size, sxl_arcfs_header, sxl_arcfs_directory];
+
+function structs() {
+    return sxCatalog([sxl_szdd_header, sxl_sz_header, sxl_imd5_header, sxl_wii_lz77_tag, sxl_wii_lz77_header,
+        sxl_wii_lz77_extended_size, sxl_ash0_header, sxl_lzv1_header, sxl_oracle_squeeze_header, sxl_squeeze_tree_header,
+        sxl_squeeze_tree_node, sxl_filename_byte, sxl_softronics_header, sxl_softronics_metadata, sxl_logitech_header,
+        sxl_dma_packed_header, sxl_dcl_header, sxl_gas_huff_header, sxl_huf_header, sxl_huf_symbol, sxl_huf_directory,
+        sxl_lzdiet_header, sxl_lzdiet_chunk, sxl_lzdiet_table_end, sxl_lzpis2_header, sxl_lzpis2_chunk, sxl_legacy_frame_header,
+        sxl_legacy_frame_block, sxl_legacy_frame_skip, sxl_legacy_frame_checksum, sxl_bullfrog_tag, sxl_rnc_header,
+        sxl_mo_header_le, sxl_mo_string_le, sxl_mo_hash_le, sxl_mo_header_be, sxl_mo_string_be, sxl_mo_hash_be, sxl_qm_header,
+        sxl_qm_block, sxl_qm_hash, sxl_qm_message_field, sxl_qm_message_end, sxl_qm_message_obsolete, sxl_atarist_header,
+        sxl_atarist_symbol, sxl_pef_header, sxl_pef_section, sxl_pef_loader, sxl_artipack_header, sxl_artipack_directory,
+        sxl_artipack_size, sxl_arcfs_header, sxl_arcfs_directory], sx_legacy_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_legacy_build, false);
+}

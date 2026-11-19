@@ -1,0 +1,105 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/zfs/xx_zfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_zfs_embedded_checksum_le_fields = layout([u64("magic", SIGNATURE), field("checksum", "uint64[4]", 32, CHECKSUM)]);
+var sxmf_zfs_embedded_checksum_le = sxLayout(0x6042003D, "zfs_embedded_checksum_le", LE, sxmf_zfs_embedded_checksum_le_fields);
+var sxmf_zfs_embedded_checksum_be_fields = layout([u64("magic", SIGNATURE), field("checksum", "uint64[4]", 32, CHECKSUM)]);
+var sxmf_zfs_embedded_checksum_be = sxLayout(0x6042003E, "zfs_embedded_checksum_be", BE, sxmf_zfs_embedded_checksum_be_fields);
+var sxmf_zfs_block_pointer_le_fields = layout([u64("dva0_word0", FLAGS), u64("dva0_word1", FLAGS), u64("dva1_word0", FLAGS),
+    u64("dva1_word1", FLAGS), u64("dva2_word0", FLAGS), u64("dva2_word1", FLAGS), u64("properties", FLAGS),
+    u64("properties2", FLAGS), u64("padding", RESERVED), u64("physical_birth_word"), u64("logical_birth_word"),
+    u64("fill_count", COUNT), field("checksum", "uint64[4]", 32, CHECKSUM)]);
+var sxmf_zfs_block_pointer_le = sxLayout(0x6042003F, "zfs_block_pointer_le", LE, sxmf_zfs_block_pointer_le_fields);
+var sxmf_zfs_block_pointer_be_fields = layout([u64("dva0_word0", FLAGS), u64("dva0_word1", FLAGS), u64("dva1_word0", FLAGS),
+    u64("dva1_word1", FLAGS), u64("dva2_word0", FLAGS), u64("dva2_word1", FLAGS), u64("properties", FLAGS),
+    u64("properties2", FLAGS), u64("padding", RESERVED), u64("physical_birth_word"), u64("logical_birth_word"),
+    u64("fill_count", COUNT), field("checksum", "uint64[4]", 32, CHECKSUM)]);
+var sxmf_zfs_block_pointer_be = sxLayout(0x60420040, "zfs_block_pointer_be", BE, sxmf_zfs_block_pointer_be_fields);
+var sxmf_zfs_uberblock_prefix_le_fields = layout([u64("magic", SIGNATURE), u64("version", ID), u64("transaction_group"),
+    u64("guid_sum", ID), u64("timestamp", TIMESTAMP)]);
+var sxmf_zfs_uberblock_prefix_le = sxLayout(0x60420041, "zfs_uberblock_prefix_le", LE, sxmf_zfs_uberblock_prefix_le_fields);
+var sxmf_zfs_uberblock_prefix_be_fields = layout([u64("magic", SIGNATURE), u64("version", ID), u64("transaction_group"),
+    u64("guid_sum", ID), u64("timestamp", TIMESTAMP)]);
+var sxmf_zfs_uberblock_prefix_be = sxLayout(0x60420042, "zfs_uberblock_prefix_be", BE, sxmf_zfs_uberblock_prefix_be_fields);
+var sxmf_zfs_uberblock_tail_le_fields = layout([u64("software_version", ID), u64("mmp_magic", SIGNATURE), u64("mmp_delay"),
+    u64("mmp_config", FLAGS), u64("checkpoint_transaction_group"), u64("raidz_reflow_info", FLAGS)]);
+var sxmf_zfs_uberblock_tail_le = sxLayout(0x60420043, "zfs_uberblock_tail_le", LE, sxmf_zfs_uberblock_tail_le_fields);
+var sxmf_zfs_uberblock_tail_be_fields = layout([u64("software_version", ID), u64("mmp_magic", SIGNATURE), u64("mmp_delay"),
+    u64("mmp_config", FLAGS), u64("checkpoint_transaction_group"), u64("raidz_reflow_info", FLAGS)]);
+var sxmf_zfs_uberblock_tail_be = sxLayout(0x60420044, "zfs_uberblock_tail_be", BE, sxmf_zfs_uberblock_tail_be_fields);
+function sxmf_zfs(c) {
+    var b = [];
+    var any = false;
+    var labels = [0, 262144, SX_U64_MAX, SX_U64_MAX];
+    if (c.size >= 524288) {
+        labels[2] = sxU64(sxAnd64((c.size < 0 ? c.size + SX_U64_MAX : c.size), sxK(0xFFFFFFFF, 0xFFFC0000)) - 524288);
+        labels[3] = labels[2] + 262144;
+    }
+    for (var i = 0; i < 4; i++) {
+        var p = labels[i];
+        if (p === SX_U64_MAX || !sxmf_span(c, p, 262144)) {
+            continue;
+        }
+        var dup = false;
+        for (var k = 0; k < i; k++) {
+            if (labels[k] === p) {
+                dup = true;
+            }
+        }
+        if (dup) {
+            continue;
+        }
+        var ck = [p + 8192 - 40, p + 16384 - 40, p + 131072 - 40];
+        for (k = 0; k < 3; k++) {
+            if (sxmf_read(c, ck[k], b, 0, 40)) {
+                var o = sxmf64(b, 0, 0) === (0x210DA7A * 4294967296 + 0xB10C7A11) ? 0 : sxmf64(b, 0, 1) === (0x210DA7A * 4294967296 + 0xB10C7A11) ? 1 : 2;
+                if (o < 2) {
+                    if (!sxmf_put(c, o === 1 ? sxmf_zfs_embedded_checksum_be : sxmf_zfs_embedded_checksum_le, ck[k], 1)) {
+                        return false;
+                    }
+                    any = true;
+                }
+            }
+        }
+        for (var q = p + 131072; q + 1024 <= p + 262144; q += 1024) {
+            if (!sxmf_read(c, q, b, 0, 216)) {
+                break;
+            }
+            o = sxmf64(b, 0, 0) === 0xBAB10C ? 0 : sxmf64(b, 0, 1) === 0xBAB10C ? 1 : 2;
+            if (o === 2) {
+                continue;
+            }
+            if (!sxmf_put(c, o === 1 ? sxmf_zfs_uberblock_prefix_be : sxmf_zfs_uberblock_prefix_le, q, 1) || !sxmf_put(c, o === 1 ? sxmf_zfs_block_pointer_be : sxmf_zfs_block_pointer_le, q + 40, 1) || !sxmf_put(c, o === 1 ? sxmf_zfs_uberblock_tail_be : sxmf_zfs_uberblock_tail_le, q + 168, 1)) {
+                return false;
+            }
+            any = true;
+            for (var z = 1024; z <= 131072 && z <= sxU64(p + 262144 - q); z *= 2) {
+                if (sxmf_read(c, sxU64(q + z - 40), b, 0, 40) && sxmf64(b, 0, o) === (0x210DA7A * 4294967296 + 0xB10C7A11)) {
+                    if (!sxmf_put(c, o === 1 ? sxmf_zfs_embedded_checksum_be : sxmf_zfs_embedded_checksum_le, sxU64(q + z - 40), 1)) {
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    var probe = [8192, 15872, 130560, 392704];
+    for (i = 0; i < 4; i++) {
+        if (sxmf_read(c, probe[i] + 472, b, 0, 40)) {
+            o = sxmf64(b, 0, 0) === (0x210DA7A * 4294967296 + 0xB10C7A11) ? 0 : sxmf64(b, 0, 1) === (0x210DA7A * 4294967296 + 0xB10C7A11) ? 1 : 2;
+            if (o < 2) {
+                if (!sxmf_put(c, o === 1 ? sxmf_zfs_embedded_checksum_be : sxmf_zfs_embedded_checksum_le, probe[i] + 472, 1)) {
+                    return false;
+                }
+                any = true;
+            }
+        }
+    }
+    return any;
+}
+function sx_zfs_build(c) {
+    return sxmf_zfs(c);
+}

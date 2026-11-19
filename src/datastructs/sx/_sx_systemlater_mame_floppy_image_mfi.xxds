@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/mame_floppy_image_mfi/xx_mame_floppy_image_mfi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_mfi_header_fields = layout([chars("signature", 16, SIGNATURE), u32("cylinders_and_resolution", FLAGS),
+    u32("head_count", COUNT), u32("form_factor", ID), u32("variant", ID)]);
+var sxsl_mfi_header = sxLayout(0x60330019, "mfi_header", LE, sxsl_mfi_header_fields);
+var sxsl_mfi_track_fields = layout([u32("data_offset", OFFSET), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("write_splice")]);
+var sxsl_mfi_track = sxLayout(0x6033001A, "mfi_track", LE, sxsl_mfi_track_fields);
+function sxsl_mfi(c) {
+    var b = [];
+    if (!sxsl_read(c, 0, b, 32) || !sxsl_put(c, sxsl_mfi_header, 0, 1)) {
+        return false;
+    }
+    var n = sxsl32(b, 16) & 0x3FFFFFFF;
+    var heads = sxsl32(b, 20);
+    var shift = sxsl32(b, 16) >>> 30;
+    if (shift > 2 || heads > 2 || n > 256) {
+        return true;
+    }
+    n *= heads * ((1 << shift) >>> 0);
+    return !sxsl_span(c, 32, n * 16) || sxsl_put(c, sxsl_mfi_track, 32, n);
+}
+function sx_mame_floppy_image_mfi_build(c) {
+    var ok = false;
+    ok = sxsl_mfi(c);
+    return ok && sxsl_finish(c);
+}

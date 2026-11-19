@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/microdeal_quartet_smp/xx_microdeal_quartet_smp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxlate_quartet(c) {
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = 16;
+    var channels = 0;
+    var cmd;
+    if (!sxlate_row(c, sxlate_quartet_header, 0, 16, end)) {
+        return false;
+    }
+    while (sxU64(end - p) >= 12 && channels < 4 && c.count < 30000) {
+        if ((cmd = sx_u16(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), true)) === null) {
+            return false;
+        }
+        if (cmd !== 70 /*F*/ && cmd !== 80 /*P*/ && cmd !== 83 /*S*/ && cmd !== 82 /*R*/ && cmd !== 76 /*L*/ && cmd !== 86 /*V*/ && cmd !== 108 /*l*/) {
+            return true;
+        }
+        if (!sxlate_row(c, sxlate_quartet_sequence, p, 12, end)) {
+            return false;
+        }
+        p += 12;
+        if (cmd === 70 /*F*/) {
+            ++channels;
+        }
+    }
+    return true;
+}
+function sx_microdeal_quartet_smp_build(c) {
+    return sxlate_quartet(c);
+}

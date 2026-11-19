@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveclassic.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archiveclassic");
+include("_sx_archiveclassic_ascendbackup");
+include("_sx_archiveclassic_borlandpack");
+include("_sx_archiveclassic_bwcf");
+include("_sx_archiveclassic_bwf");
+include("_sx_archiveclassic_cmp");
+include("_sx_archiveclassic_dtpacked");
+include("_sx_archiveclassic_fls");
+include("_sx_archiveclassic_fmc1");
+include("_sx_archiveclassic_genius");
+include("_sx_archiveclassic_hzl");
+include("_sx_archiveclassic_jetbbs");
+include("_sx_archiveclassic_jgpak");
+include("_sx_archiveclassic_kboom");
+include("_sx_archiveclassic_qualitas");
+include("_sx_archiveclassic_spis");
+include("_sx_archiveclassic_stork");
+include("_sx_archiveclassic_zap");
+include("_sx_archiveclassic_zlwb");
+include("_sx_archiveclassic_zz");
+include("_sx_archiveclassic_zzz");
+
+function fileTypes() { return ["DTPACKED", "ZLWB", "ZZ", "ZZZ", "JGPAK", "BORLANDPACK", "JETBBS", "QUALITAS", "BWF", "ZAP",
+    "STORK", "ASCENDBACKUP", "FMC1", "SPIS", "BWCF", "CMP", "FLS", "GENIUS", "HZL", "KBOOM"]; }
+
+var sx_archiveclassic_layouts = [sxacl_dtpacked_header, sxacl_zlwb_header, sxacl_zlwb_blob, sxacl_zz_header, sxacl_zzz_member,
+    sxacl_jgpak_header, sxacl_jgpak_version_size, sxacl_jgpak_count, sxacl_jgpak_name_size, sxacl_jgpak_member,
+    sxacl_borlandpack_header, sxacl_borlandpack_attributes, sxacl_borlandpack_size, sxacl_borlandpack_lzw_flags,
+    sxacl_jetbbs_member, sxacl_jetbbs_crc16, sxacl_jetbbs_os, sxacl_jetbbs_extension_size, sxacl_jetbbs_extension_type,
+    sxacl_jetbbs_sizes64, sxacl_qualitas_header, sxacl_qualitas_member, sxacl_qualitas_crc32, sxacl_bwf_member,
+    sxacl_zap_member, sxacl_stork_member, sxacl_ascendbackup_name_size, sxacl_ascendbackup_size, sxacl_fmc1_header,
+    sxacl_fmc1_member, sxacl_spis_header, sxacl_spis_member, sxacl_bwcf_header, sxacl_bwcf_name_v1, sxacl_bwcf_name_v2,
+    sxacl_bwcf_directory_size, sxacl_bwcf_member, sxacl_bwcf_block_size, sxacl_cmp_header, sxacl_fls_count,
+    sxacl_fls_header_record, sxacl_fls_member, sxacl_fls_name_header, sxacl_fls_component_offset, sxacl_fls_component_size,
+    sxacl_genius_header, sxacl_genius_member, sxacl_genius_block_size, sxacl_genius_footer, sxacl_hzl_header,
+    sxacl_kboom_header, sxacl_archiveclassic_dcl];
+
+function structs() {
+    return sxCatalog([sxacl_dtpacked_header, sxacl_zlwb_header, sxacl_zlwb_blob, sxacl_zz_header, sxacl_zzz_member,
+        sxacl_jgpak_header, sxacl_jgpak_version_size, sxacl_jgpak_count, sxacl_jgpak_name_size, sxacl_jgpak_member,
+        sxacl_borlandpack_header, sxacl_borlandpack_attributes, sxacl_borlandpack_size, sxacl_borlandpack_lzw_flags,
+        sxacl_jetbbs_member, sxacl_jetbbs_crc16, sxacl_jetbbs_os, sxacl_jetbbs_extension_size, sxacl_jetbbs_extension_type,
+        sxacl_jetbbs_sizes64, sxacl_qualitas_header, sxacl_qualitas_member, sxacl_qualitas_crc32, sxacl_bwf_member,
+        sxacl_zap_member, sxacl_stork_member, sxacl_ascendbackup_name_size, sxacl_ascendbackup_size, sxacl_fmc1_header,
+        sxacl_fmc1_member, sxacl_spis_header, sxacl_spis_member, sxacl_bwcf_header, sxacl_bwcf_name_v1, sxacl_bwcf_name_v2,
+        sxacl_bwcf_directory_size, sxacl_bwcf_member, sxacl_bwcf_block_size, sxacl_cmp_header, sxacl_fls_count,
+        sxacl_fls_header_record, sxacl_fls_member, sxacl_fls_name_header, sxacl_fls_component_offset, sxacl_fls_component_size,
+        sxacl_genius_header, sxacl_genius_member, sxacl_genius_block_size, sxacl_genius_footer, sxacl_hzl_header,
+        sxacl_kboom_header, sxacl_archiveclassic_dcl], sx_archiveclassic_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archiveclassic_build, false);
+}

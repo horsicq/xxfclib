@@ -1,0 +1,419 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_scienceheaders.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_nsx_channel_fields = layout([chars("type", 2, ID), u16("channel_id", ID), chars("label", 16, STRING),
+    u8("connector_bank", ID), u8("connector_pin", ID), i16("digital_min"), i16("digital_max"), i16("analog_min"),
+    i16("analog_max"), chars("units", 16, STRING), u32("high_frequency_corner"), u32("high_frequency_order"),
+    u16("high_filter_type", ID), u32("low_frequency_corner"), u32("low_frequency_order"), u16("low_filter_type", ID)]);
+var sxsh_nsx_channel = sxLayout(0x602A0002, "nsx_channel", LE, sxsh_nsx_channel_fields);
+var sxsh_nev_filter_extension_fields = layout([chars("type", 8, ID), u16("electrode_id", ID), u32("high_frequency_corner"),
+    u32("high_frequency_order"), u16("high_filter_type", ID), u32("low_frequency_corner"), u32("low_frequency_order"),
+    u16("low_filter_type", ID), bytes("reserved", 2, RESERVED)]);
+var sxsh_nev_filter_extension = sxLayout(0x602A0009, "nev_filter_extension", LE, sxsh_nev_filter_extension_fields);
+var sxsh_spe_header_fields = layout([i16("controller_version", ID), i16("logic_output", ID), u16("amplifier_mode", ID),
+    u16("detector_width", COUNT), i16("timing_mode", ID), field("exposure_seconds", "float32", 4),
+    i16("virtual_chip_width", COUNT), i16("virtual_chip_height", COUNT), u16("detector_height", COUNT),
+    chars("date", 10, STRING), bytes("opaque_1e", 6), field("detector_temperature", "float32", 4), i16("detector_type", ID),
+    u16("width", COUNT), i16("diode_start"), field("delay_time", "float32", 4), u16("shutter_control", ID),
+    i16("absorbance_live", FLAGS), u16("absorbance_mode", ID), i16("virtual_chip_enabled", FLAGS),
+    i16("threshold_min_enabled", FLAGS), field("threshold_min", "float32", 4), i16("threshold_max_enabled", FLAGS),
+    field("threshold_max", "float32", 4), bytes("opaque_46", 28), i16("x_pre_pixels", COUNT), i16("x_post_pixels", COUNT),
+    i16("y_pre_pixels", COUNT), i16("y_post_pixels", COUNT), bytes("opaque_6a", 2), i16("data_type", ID),
+    bytes("opaque_6e", 62), chars("local_time", 7, STRING), chars("utc_time", 7, STRING), bytes("opaque_ba", 2),
+    u16("adc_offset"), u16("adc_rate"), u16("adc_type", ID), u16("adc_resolution"), u16("adc_bit_adjust"), u16("gain"),
+    chars("comment1", 80, STRING), chars("comment2", 80, STRING), chars("comment3", 80, STRING), chars("comment4", 80, STRING),
+    chars("comment5", 80, STRING), u16("geometry", FLAGS), bytes("opaque_25a", 54), u16("height", COUNT),
+    bytes("opaque_292", 14), field("readout_time", "float32", 4), bytes("opaque_2a4", 12),
+    chars("software_version", 16, STRING), i16("controller_type", ID), bytes("opaque_2c2", 722),
+    field("clock_speed_microseconds", "float32", 4), bytes("opaque_598", 14), i32("frame_count", COUNT),
+    bytes("opaque_5aa", 30), u16("readout_mode", ID), u16("window_size"), bytes("opaque_5cc", 26), i16("roi_count", COUNT),
+    u16("roi1_start_x"), u16("roi1_end_x"), u16("roi1_group_x"), u16("roi1_start_y"), u16("roi1_end_y"), u16("roi1_group_y"),
+    u16("roi2_start_x"), u16("roi2_end_x"), u16("roi2_group_x"), u16("roi2_start_y"), u16("roi2_end_y"), u16("roi2_group_y"),
+    u16("roi3_start_x"), u16("roi3_end_x"), u16("roi3_group_x"), u16("roi3_start_y"), u16("roi3_end_y"), u16("roi3_group_y"),
+    u16("roi4_start_x"), u16("roi4_end_x"), u16("roi4_group_x"), u16("roi4_start_y"), u16("roi4_end_y"), u16("roi4_group_y"),
+    u16("roi5_start_x"), u16("roi5_end_x"), u16("roi5_group_x"), u16("roi5_start_y"), u16("roi5_end_y"), u16("roi5_group_y"),
+    u16("roi6_start_x"), u16("roi6_end_x"), u16("roi6_group_x"), u16("roi6_start_y"), u16("roi6_end_y"), u16("roi6_group_y"),
+    u16("roi7_start_x"), u16("roi7_end_x"), u16("roi7_group_x"), u16("roi7_start_y"), u16("roi7_end_y"), u16("roi7_group_y"),
+    u16("roi8_start_x"), u16("roi8_end_x"), u16("roi8_group_x"), u16("roi8_start_y"), u16("roi8_end_y"), u16("roi8_group_y"),
+    u16("roi9_start_x"), u16("roi9_end_x"), u16("roi9_group_x"), u16("roi9_start_y"), u16("roi9_end_y"), u16("roi9_group_y"),
+    u16("roi10_start_x"), u16("roi10_end_x"), u16("roi10_group_x"), u16("roi10_start_y"), u16("roi10_end_y"),
+    u16("roi10_group_y"), bytes("opaque_660", 360), field("file_header_version", "float32", 4, ID), bytes("opaque_7cc", 2102),
+    u16("signature", SIGNATURE)]);
+var sxsh_spe_header = sxLayout(0x602A000C, "spe_header", LE, sxsh_spe_header_fields);
+var sxsh_netcdf_attribute_fields = layout([u32("data_type", ID), u32("value_count", COUNT)]);
+var sxsh_netcdf_attribute = sxLayout(0x602A0021, "netcdf_attribute", BE, sxsh_netcdf_attribute_fields);
+var sxsh_netcdf_variable32_fields = layout([u32("data_type", ID), u32("padded_size", SIZE), u32("data_offset", OFFSET)]);
+var sxsh_netcdf_variable32 = sxLayout(0x602A0022, "netcdf_variable32", BE, sxsh_netcdf_variable32_fields);
+var sxsh_netcdf_variable64_fields = layout([u32("data_type", ID), u32("padded_size", SIZE), u64("data_offset", OFFSET)]);
+var sxsh_netcdf_variable64 = sxLayout(0x602A0023, "netcdf_variable64", BE, sxsh_netcdf_variable64_fields);
+var sxsh_edf_header_fields = layout([chars("version", 8, ID), chars("patient", 80, STRING), chars("recording", 80, STRING),
+    chars("start_date", 8, STRING), chars("start_time", 8, STRING), field("header_size", "ascii_decimal[8]", 8, SIZE),
+    chars("reserved", 44, RESERVED), field("record_count", "ascii_decimal[8]", 8, COUNT), chars("record_duration", 8, STRING),
+    field("signal_count", "ascii_decimal[4]", 4, COUNT)]);
+var sxsh_edf_header = sxLayout(0x602A0025, "edf_header", LE, sxsh_edf_header_fields);
+var sxsh_edf_signal_label_fields = layout([chars("label", 16, STRING)]);
+var sxsh_edf_signal_label = sxLayout(0x602A0026, "edf_signal_label", LE, sxsh_edf_signal_label_fields);
+var sxsh_edf_signal_transducer_fields = layout([chars("transducer", 80, STRING)]);
+var sxsh_edf_signal_transducer = sxLayout(0x602A0027, "edf_signal_transducer", LE, sxsh_edf_signal_transducer_fields);
+var sxsh_edf_signal_physical_dimension_fields = layout([chars("physical_dimension", 8, STRING)]);
+var sxsh_edf_signal_physical_dimension = sxLayout(0x602A0028, "edf_signal_physical_dimension", LE, sxsh_edf_signal_physical_dimension_fields);
+var sxsh_edf_signal_physical_min_fields = layout([chars("physical_min", 8, STRING)]);
+var sxsh_edf_signal_physical_min = sxLayout(0x602A0029, "edf_signal_physical_min", LE, sxsh_edf_signal_physical_min_fields);
+var sxsh_edf_signal_physical_max_fields = layout([chars("physical_max", 8, STRING)]);
+var sxsh_edf_signal_physical_max = sxLayout(0x602A002A, "edf_signal_physical_max", LE, sxsh_edf_signal_physical_max_fields);
+var sxsh_edf_signal_digital_min_fields = layout([chars("digital_min", 8, STRING)]);
+var sxsh_edf_signal_digital_min = sxLayout(0x602A002B, "edf_signal_digital_min", LE, sxsh_edf_signal_digital_min_fields);
+var sxsh_edf_signal_digital_max_fields = layout([chars("digital_max", 8, STRING)]);
+var sxsh_edf_signal_digital_max = sxLayout(0x602A002C, "edf_signal_digital_max", LE, sxsh_edf_signal_digital_max_fields);
+var sxsh_edf_signal_prefilter_fields = layout([chars("prefilter", 80, STRING)]);
+var sxsh_edf_signal_prefilter = sxLayout(0x602A002D, "edf_signal_prefilter", LE, sxsh_edf_signal_prefilter_fields);
+var sxsh_edf_signal_reserved_fields = layout([chars("reserved", 32, RESERVED)]);
+var sxsh_edf_signal_reserved = sxLayout(0x602A002E, "edf_signal_reserved", LE, sxsh_edf_signal_reserved_fields);
+var sxsh_edf_signal_samples_fields = layout([field("samples_per_record", "ascii_decimal[8]", 8, COUNT)]);
+var sxsh_edf_signal_samples = sxLayout(0x602A002F, "edf_signal_samples", LE, sxsh_edf_signal_samples_fields);
+var sxsh_segy_binary_header_fields = layout([i32("job_identification_number"), i32("line_number"), i32("reel_number"),
+    i16("number_of_data_traces_per_ensemble", COUNT), i16("number_of_auxiliary_traces_per_ensemble", COUNT),
+    u16("sample_interval_in_microseconds"), u16("sample_interval_in_microseconds_of_original_field_recording"),
+    u16("number_of_samples_per_data_trace", COUNT), u16("number_of_samples_per_data_trace_for_original_field_recording", COUNT),
+    i16("data_sample_format_code", ID), i16("ensemble_fold"), i16("trace_sorting_code", ID), i16("vertical_sum_code", ID),
+    i16("sweep_frequency_at_start"), i16("sweep_frequency_at_end"), i16("sweep_length"), i16("sweep_type_code", ID),
+    i16("trace_number_of_sweep_channel"), i16("sweep_trace_taper_length_in_ms_at_start"),
+    i16("sweep_trace_taper_length_in_ms_at_end"), i16("taper_type"), i16("correlated_data_traces"),
+    i16("binary_gain_recovered"), i16("amplitude_recovery_method"), i16("measurement_system"), i16("impulse_signal_polarity"),
+    i16("vibratory_polarity_code", ID), bytes("unassigned_1", 240, RESERVED), u16("seg_y_format_revision_number", ID),
+    i16("fixed_length_trace_flag", FLAGS), i16("number_of_3200_byte_ext_file_header_records_following", COUNT),
+    bytes("unassigned_2", 94, RESERVED)]);
+var sxsh_segy_binary_header = sxLayout(0x602A0030, "segy_binary_header", BE, sxsh_segy_binary_header_fields);
+function sx_scienceheaders_static_comment(r, id) {
+    if (r === null || r.name === null || id < 0x602A0000 || id >= 0x602B0000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x602A0002:
+        if (r.name === "high_frequency_corner") {
+            text = "Frequency in millihertz.";
+        }
+        if (r.name === "low_frequency_corner") {
+            text = "Frequency in millihertz.";
+        }
+        break;
+    case 0x602A0003:
+        if (r.name === "timestamp") {
+            text = "Device clock ticks, not Unix seconds.";
+        }
+        break;
+    case 0x602A0004:
+        if (r.name === "flags") {
+            text = "Bit 0: all waveforms use sixteen-bit samples.";
+        }
+        break;
+    case 0x602A0005:
+        if (r.name === "payload") {
+            text = "Extension payload is not decoded for this tag.";
+        }
+        break;
+    case 0x602A000A:
+        if (r.name === "timestamp") {
+            text = "Device clock ticks, not Unix seconds.";
+        }
+        break;
+    case 0x602A000B:
+        if (r.name === "timestamp") {
+            text = "Device clock ticks, not Unix seconds.";
+        }
+        if (r.name === "reason") {
+            text = "Bit 0 digital input; bit 7 periodic sampling.";
+        }
+        break;
+    case 0x602A000E:
+        if (r.name === "record_size") {
+            text = "Fortran record byte length; appears before and after the payload.";
+        }
+        break;
+    case 0x602A0013:
+        if (r.name === "record_size") {
+            text = "Fortran record byte length; appears before and after the payload.";
+        }
+        break;
+    case 0x602A001B:
+        if (r.name === "version") {
+            text = "1=CDF1, 2=CDF2 (64-bit offsets).";
+        }
+        break;
+    case 0x602A001C:
+        if (r.name === "tag") {
+            text = "0=absent, 10=NC_DIMENSION, 11=NC_VARIABLE, 12=NC_ATTRIBUTE.";
+        }
+        break;
+    case 0x602A001D:
+        if (r.name === "name_size") {
+            text = "Bytes of the following UTF-8 name; padded to a multiple of four.";
+        }
+        break;
+    case 0x602A001E:
+        if (r.name === "dimension_length") {
+            text = "Zero denotes the unlimited dimension.";
+        }
+        break;
+    case 0x602A0022:
+        if (r.name === "data_offset") {
+            text = "Byte offset from the file base.";
+        }
+        break;
+    case 0x602A0023:
+        if (r.name === "data_offset") {
+            text = "Byte offset from the file base.";
+        }
+        break;
+    case 0x602A0024:
+        if (r.name === "text_start") {
+            text = "File-relative byte offset; end offsets are inclusive. Zero may delegate to TEXT keywords.";
+        }
+        if (r.name === "text_end") {
+            text = "File-relative byte offset; end offsets are inclusive. Zero may delegate to TEXT keywords.";
+        }
+        if (r.name === "data_start") {
+            text = "File-relative byte offset; end offsets are inclusive. Zero may delegate to TEXT keywords.";
+        }
+        if (r.name === "data_end") {
+            text = "File-relative byte offset; end offsets are inclusive. Zero may delegate to TEXT keywords.";
+        }
+        if (r.name === "analysis_start") {
+            text = "File-relative byte offset; end offsets are inclusive. Zero may delegate to TEXT keywords.";
+        }
+        if (r.name === "analysis_end") {
+            text = "File-relative byte offset; end offsets are inclusive. Zero may delegate to TEXT keywords.";
+        }
+        break;
+    case 0x602A0025:
+        if (r.name === "record_duration") {
+            text = "ASCII decimal seconds, including a possible fractional part.";
+        }
+        break;
+    case 0x602A0029:
+        if (r.name === "physical_min") {
+            text = "Stored ASCII numeric text, with sign/fraction preserved.";
+        }
+        break;
+    case 0x602A002A:
+        if (r.name === "physical_max") {
+            text = "Stored ASCII numeric text, with sign/fraction preserved.";
+        }
+        break;
+    case 0x602A002B:
+        if (r.name === "digital_min") {
+            text = "Stored ASCII numeric text, with sign/fraction preserved.";
+        }
+        break;
+    case 0x602A002C:
+        if (r.name === "digital_max") {
+            text = "Stored ASCII numeric text, with sign/fraction preserved.";
+        }
+        break;
+    case 0x602A0031:
+        if (r.name === "sample_interval_in_microseconds") {
+            text = "Microseconds per sample.";
+        }
+        if (r.name === "source_energy_direction") {
+            text = "Stored six-byte direction representation; interpretation is not assumed.";
+        }
+        break;
+    case 0x602A0032:
+        if (r.name === "text_bytes") {
+            text = "Original ASCII or EBCDIC bytes are preserved without assuming character encoding.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+var sx_scienceheaders_comment_names = ["SPE_FLOAT32", "SPE_INT32", "SPE_INT16", "SPE_UINT16"];
+var sx_scienceheaders_comment_names_2 = ["NC_NAT", "NC_BYTE", "NC_CHAR", "NC_SHORT", "NC_INT", "NC_FLOAT", "NC_DOUBLE"];
+function sx_scienceheaders_comment(r, id) {
+    if (!sx_scienceheaders_static_comment(r, id)) {
+        return false;
+    }
+    if (r === null || r.name === null || id < 0x602A0000 || id >= 0x602B0000 || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/ || r.value.t === 12 /*XX_VAR_TYPE_STRING*/ || r.value.t === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var text = null;
+    if (id === sxsh_spe_header.id && r.name === "data_type") {
+        if (v < 4) {
+            text = sx_scienceheaders_comment_names[v];
+        }
+    }
+    if ((id === sxsh_netcdf_attribute.id || id === sxsh_netcdf_variable32.id || id === sxsh_netcdf_variable64.id) && r.name === "data_type") {
+        if (v < 7) {
+            text = sx_scienceheaders_comment_names_2[v];
+        }
+    }
+    if (id === sxsh_segy_binary_header.id && r.name === "data_sample_format_code") {
+        switch (v) {
+        case 1:
+            text = "IBM_FLOAT32";
+            break;
+        case 2:
+            text = "INT32";
+            break;
+        case 3:
+            text = "INT16";
+            break;
+        case 5:
+            text = "IEEE_FLOAT32";
+            break;
+        case 8:
+            text = "INT8";
+            break;
+        default:
+            break;
+        }
+    }
+    if ((id === sxsh_nsx_channel.id || id === sxsh_nev_filter_extension.id) && (r.name === "high_filter_type" || r.name === "low_filter_type")) {
+        if (v === 0) {
+            text = "NONE";
+        } else if (v === 1) {
+            text = "BUTTERWORTH";
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sx_scienceheaders_supports(t) {
+    switch (t) {
+    case "BLACKROCK_NSX":
+    case "BLACKROCK_NEV":
+    case "PRINCETON_SPE":
+    case "CHARMM_DCD":
+    case "GROMACS_TRR":
+    case "NETCDF_CLASSIC":
+    case "SEISMIC_SEGY":
+    case "FCS":
+    case "EDF":
+    case "BIOMEDICAL_BDF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxsh16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxsh32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxsh_span(c, at, n) {
+    return c !== null && at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxsh_add(c, l, at, bytes) {
+    return sxsh_span(c, at, (bytes < 0 ? bytes + SX_U64_MAX : bytes)) && (c.count >= 32000 || sx_add(c, l, at, bytes));
+}
+function sxsh_table(c, l, at, bytes, count) {
+    return bytes > 0 && count <= Math.floor(SX_I64_MAX / (bytes < 0 ? bytes + SX_U64_MAX : bytes)) && sxsh_span(c, at, (bytes < 0 ? bytes + SX_U64_MAX : bytes) * count) && (c.count >= 32000 || sx_table(c, l, at, bytes, count));
+}
+function sxsh_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : 0;
+}
+function sxsh_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxsh_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + bytes;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsh_order, true);
+    return !c.failed;
+}
+function sxsh_decimal(c, at, width, v) {
+    var b = [];
+    if (width > 16 || !sx_read(c, at, b, width)) {
+        return false;
+    }
+    var digit = false;
+    var space = false;
+    v[0] = 0;
+    for (var i = 0; i < width; i++) {
+        if (b[i] === 32) {
+            if (digit) {
+                space = true;
+            }
+            continue;
+        }
+        if (b[i] < 48 /*0*/ || b[i] > 57 /*9*/ || space) {
+            return false;
+        }
+        digit = true;
+        v[0] = v[0] * 10 + ((b[i] - 48 /*0*/) >>> 0);
+    }
+    return digit;
+}
+function sxsh_edf(c) {
+    var header = [0];
+    var count = [0];
+    if (!sxsh_decimal(c, 184, 8, header) || !sxsh_decimal(c, 252, 4, count) || !count[0] || count[0] > 512 || header[0] !== 256 * (count[0] + 1) || !sxsh_span(c, 0, header[0]) || !sxsh_add(c, sxsh_edf_header, 0, 256)) {
+        return false;
+    }
+    var l = [sxsh_edf_signal_label, sxsh_edf_signal_transducer, sxsh_edf_signal_physical_dimension, sxsh_edf_signal_physical_min, sxsh_edf_signal_physical_max, sxsh_edf_signal_digital_min, sxsh_edf_signal_digital_max, sxsh_edf_signal_prefilter, sxsh_edf_signal_samples, sxsh_edf_signal_reserved];
+    var widths = [16, 80, 8, 8, 8, 8, 8, 80, 8, 32];
+    var at = 256;
+    for (var i = 0; i < 10; i++) {
+        if (!sxsh_table(c, l[i], at, widths[i], count[0])) {
+            return false;
+        }
+        at += widths[i] * (count[0] >= SX_I64_MAX ? count[0] - SX_U64_MAX : count[0]);
+    }
+    return (at < 0 ? at + SX_U64_MAX : at) === header[0];
+}
+function sx_scienceheaders_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "BLACKROCK_NSX") {
+        return sx_blackrock_nsx_build(c);
+    }
+    if (c.f.file_type === "BLACKROCK_NEV") {
+        return sx_blackrock_nev_build(c);
+    }
+    if (c.f.file_type === "PRINCETON_SPE") {
+        return sx_princeton_spe_build(c);
+    }
+    if (c.f.file_type === "CHARMM_DCD") {
+        return sx_charmm_dcd_build(c);
+    }
+    if (c.f.file_type === "GROMACS_TRR") {
+        return sx_gromacs_trr_build(c);
+    }
+    if (c.f.file_type === "NETCDF_CLASSIC") {
+        return sx_netcdf_classic_build(c);
+    }
+    if (c.f.file_type === "FCS") {
+        return sx_fcs_build(c);
+    }
+    if (c.f.file_type === "EDF") {
+        return sx_edf_build(c);
+    }
+    if (c.f.file_type === "BIOMEDICAL_BDF") {
+        return sx_biomedical_bdf_build(c);
+    }
+    if (c.f.file_type === "SEISMIC_SEGY") {
+        return sx_seismic_segy_build(c);
+    }
+    return false;
+}

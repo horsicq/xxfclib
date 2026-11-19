@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/westwood_pak/xx_westwood_pak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_westwood_offset_fields = layout([u32("data_offset", OFFSET)]);
+var sxan_westwood_offset = sxLayout(0x60770029, "westwood_offset", LE, sxan_westwood_offset_fields);
+function sxan_westwood(c) {
+    var end = [0];
+    var p = 0;
+    var z = [0];
+    var len = [0];
+    if (!sxan_word(c, 0, 4, false, end) || !sxan_span(c, 0, end[0])) {
+        return false;
+    }
+    while (p < end[0]) {
+        if (sxU64(end[0] - p) < 4 || !sxan_word(c, p, 4, false, z) || !sxan_add(c, sxan_westwood_offset, p)) {
+            return false;
+        }
+        p += 4;
+        if (!z[0]) {
+            break;
+        }
+        if (p === end[0]) {
+            break;
+        }
+        if (!sxan_zlen(c, p, end[0], len) || !sxan_named(c, p, len[0])) {
+            return false;
+        }
+        p += len[0];
+    }
+    return true;
+}
+function sx_westwood_pak_build(c) {
+    var ok = false;
+    ok = sxan_westwood(c);
+    return !!(c.count && sxan_finish(c));
+}

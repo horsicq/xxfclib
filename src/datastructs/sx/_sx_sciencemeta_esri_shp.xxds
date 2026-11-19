@@ -1,0 +1,84 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/esri_shp/xx_esri_shp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsc_shp_file_header_fields = layout([field("file_code", "int32be", 4, SIGNATURE),
+    field("unused", "int32be[5]", 20, RESERVED), field("file_length_words", "int32be", 4), field("version", "int32le", 4, ID),
+    field("shape_type", "int32le", 4, ID), field("xmin", "float64", 8), field("ymin", "float64", 8),
+    field("xmax", "float64", 8), field("ymax", "float64", 8), field("zmin", "float64", 8), field("zmax", "float64", 8),
+    field("mmin", "float64", 8), field("mmax", "float64", 8)]);
+var sxsc_shp_file_header = sxLayout(0x60280004, "shp_file_header", LE, sxsc_shp_file_header_fields);
+var sxsc_shp_record_header_fields = layout([field("record_number", "int32be", 4, ID),
+    field("content_length_words", "int32be", 4)]);
+var sxsc_shp_record_header = sxLayout(0x60280005, "shp_record_header", LE, sxsc_shp_record_header_fields);
+var sxsc_shp_shape_type_fields = layout([i32("shape_type", ID)]);
+var sxsc_shp_shape_type = sxLayout(0x60280006, "shp_shape_type", LE, sxsc_shp_shape_type_fields);
+var sxsc_shp_point_fields = layout([i32("shape_type", ID), field("x", "float64", 8), field("y", "float64", 8)]);
+var sxsc_shp_point = sxLayout(0x60280007, "shp_point", LE, sxsc_shp_point_fields);
+var sxsc_shp_multipoint_fields = layout([i32("shape_type", ID), field("xmin", "float64", 8), field("ymin", "float64", 8),
+    field("xmax", "float64", 8), field("ymax", "float64", 8), i32("point_count", COUNT)]);
+var sxsc_shp_multipoint = sxLayout(0x60280008, "shp_multipoint", LE, sxsc_shp_multipoint_fields);
+var sxsc_shp_polyline_polygon_fields = layout([i32("shape_type", ID), field("xmin", "float64", 8), field("ymin", "float64", 8),
+    field("xmax", "float64", 8), field("ymax", "float64", 8), i32("part_count", COUNT), i32("point_count", COUNT)]);
+var sxsc_shp_polyline_polygon = sxLayout(0x60280009, "shp_polyline_polygon", LE, sxsc_shp_polyline_polygon_fields);
+var sxsc_shp_part_fields = layout([i32("first_point_index", ID)]);
+var sxsc_shp_part = sxLayout(0x6028000A, "shp_part", LE, sxsc_shp_part_fields);
+var sxsc_shp_xy_fields = layout([field("x", "float64", 8), field("y", "float64", 8)]);
+var sxsc_shp_xy = sxLayout(0x6028000B, "shp_xy", LE, sxsc_shp_xy_fields);
+function sxsc_shp(c) {
+    var b = [];
+    var words;
+    if ((words = sx_u32(c, 24, true)) === null || !sxsc_add(c, sxsc_shp_file_header, 0, 100)) {
+        return false;
+    }
+    var end = words * 2;
+    var at = 100;
+    if (!sxsc_span(c, 0, (end < 0 ? end + SX_U64_MAX : end)) || end < 100) {
+        return false;
+    }
+    for (var n = 0; at < end; n++) {
+        if (n >= 4095 || end - at < 12 || !sx_read(c, at, b, 12)) {
+            return false;
+        }
+        var size = sxsc32(b, 4, true) * 2;
+        var kind = sxsc32(b, 8, false);
+        var data = at + 8;
+        if (size < 4 || size > (end - data < 0 ? end - data + SX_U64_MAX : end - data) || !sxsc_add(c, sxsc_shp_record_header, at, 8)) {
+            return false;
+        }
+        if (kind === 0) {
+            if (size !== 4 || !sxsc_add(c, sxsc_shp_shape_type, data, 4)) {
+                return false;
+            }
+        } else if (kind === 1) {
+            if (size !== 20 || !sxsc_add(c, sxsc_shp_point, data, 20)) {
+                return false;
+            }
+        } else if (kind === 3 || kind === 5 || kind === 8) {
+            var h = kind === 8 ? 40 : 44;
+            var parts = 0;
+            var points;
+            if (size < h || !sx_read(c, data, b, h)) {
+                return false;
+            }
+            if (kind === 8) {
+                points = sxsc32(b, 36, false);
+            } else {
+                parts = sxsc32(b, 36, false);
+                points = sxsc32(b, 40, false);
+            }
+            if (parts > 4096 || points > 1000000 || size !== h + parts * 4 + points * 16 || !sxsc_add(c, kind === 8 ? sxsc_shp_multipoint : sxsc_shp_polyline_polygon, data, h) || !sxsc_table(c, sxsc_shp_part, data + h, 4, parts) || !sxsc_table(c, sxsc_shp_xy, data + h + parts * 4, 16, points)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        at = data + (size >= SX_I64_MAX ? size - SX_U64_MAX : size);
+    }
+    return at === end;
+}
+function sx_esri_shp_build(c) {
+    return sxsc_shp(c);
+}

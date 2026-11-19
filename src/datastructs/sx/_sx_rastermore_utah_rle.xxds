@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/utah_rle/xx_utah_rle_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_utah_rle_header_fields = layout([u16("magic", SIGNATURE), i16("x_position"), i16("y_position"), u16("width", COUNT),
+    u16("height", COUNT), u8("flags", FLAGS), u8("color_channels", COUNT), u8("pixel_bits"), u8("colormap_channels", COUNT),
+    u8("colormap_length_log2")]);
+var sxrm_utah_rle_header = sxLayout(0x601D0028, "utah_rle_header", LE, sxrm_utah_rle_header_fields);
+var sxrm_utah_background_fields = layout([u8("value")]);
+var sxrm_utah_background = sxLayout(0x601D0029, "utah_background", LE, sxrm_utah_background_fields);
+var sxrm_utah_colormap_fields = layout([u16("value")]);
+var sxrm_utah_colormap = sxLayout(0x601D002A, "utah_colormap", LE, sxrm_utah_colormap_fields);
+var sxrm_utah_comment_length_fields = layout([u16("byte_length", SIZE)]);
+var sxrm_utah_comment_length = sxLayout(0x601D002B, "utah_comment_length", LE, sxrm_utah_comment_length_fields);
+var sxrm_utah_opcode_fields = layout([u8("opcode_and_flags", FLAGS), u8("operand")]);
+var sxrm_utah_opcode = sxLayout(0x601D002C, "utah_opcode", LE, sxrm_utah_opcode_fields);
+var sxrm_utah_long_opcode_fields = layout([u8("opcode_and_flags", FLAGS), u8("unused", RESERVED), u16("operand")]);
+var sxrm_utah_long_opcode = sxLayout(0x601D002D, "utah_long_opcode", LE, sxrm_utah_long_opcode_fields);
+var sxrm_utah_run_value_fields = layout([u8("value"), u8("padding", RESERVED)]);
+var sxrm_utah_run_value = sxLayout(0x601D002E, "utah_run_value", LE, sxrm_utah_run_value_fields);
+function sxrm_utah(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 15) || sxrm16(h, 0, false) !== 0xCC52 || !sxrm_add(c, sxrm_utah_rle_header, 0)) {
+        return false;
+    }
+    var flags = h[10];
+    var colors = h[11];
+    var maps = h[13];
+    var log = h[14];
+    var p = 15;
+    if (!(flags & 2) && colors && colors <= 4 && sxrm_span(c, p, colors) && !sxrm_table(c, sxrm_utah_background, p, colors)) {
+        return false;
+    }
+    p += flags & 2 ? 1 : 1 + Math.floor(colors / 2) * 2;
+    if (log > 8 || maps > 4) {
+        return true;
+    }
+    var n = sxShl64(maps, log);
+    if (!sxrm_span(c, p, n * 2)) {
+        return true;
+    }
+    if (n && !sxrm_table(c, sxrm_utah_colormap, p, n)) {
+        return false;
+    }
+    p += n * 2;
+    if (flags & 8) {
+        if (!sxrm_read(c, p, h, 0, 2)) {
+            return true;
+        }
+        n = sxrm16(h, 0, false);
+        if (!sxrm_span(c, p + 2, n)) {
+            return true;
+        }
+        if (!sxrm_add(c, sxrm_utah_comment_length, p)) {
+            return false;
+        }
+        p += 2 + n + sxAnd64(n, 1);
+    }
+    for (var step = 0; step < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); step++) {
+        if (!sxrm_read(c, p, h, 0, 2)) {
+            break;
+        }
+        var op = h[0] & 0x3F;
+        var longop = h[0] & 0x40;
+        var count = h[1];
+        var size = longop ? 4 : 2;
+        if (h[0] & 0x80 || op === 0 || op === 4 || op > 7) {
+            break;
+        }
+        if (longop) {
+            if (!sxrm_read(c, p, h, 0, 4)) {
+                break;
+            }
+            count = sxrm16(h, 2, false);
+        }
+        if (!sxrm_add(c, longop ? sxrm_utah_long_opcode : sxrm_utah_opcode, p)) {
+            return false;
+        }
+        p += size;
+        if (op === 7) {
+            break;
+        }
+        if (op === 5) {
+            var z = count + 1;
+            p += z + sxAnd64(z, 1);
+        } else if (op === 6) {
+            if (!sxrm_span(c, p, 2)) {
+                break;
+            }
+            if (!sxrm_add(c, sxrm_utah_run_value, p)) {
+                return false;
+            }
+            p += 2;
+        }
+    }
+    return !c.failed;
+}
+function sx_utah_rle_build(c) {
+    return sxrm_utah(c);
+}

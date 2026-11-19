@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/freeze/xx_freeze_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_freeze2_header_fields = layout([u8("signature", SIGNATURE), u8("format_version", ID), u16("distance_counts_1_to_5"),
+    u8("distance_count_6", COUNT)]);
+var sxarm_freeze2_header = sxLayout(0x607C001C, "freeze2_header", LE, sxarm_freeze2_header_fields);
+function sx_freeze_build(c) {
+    var ok = false;
+    var v = [0];
+    if (sxarm_word(c, 0, 2, true, v) && v[0] === 0x1F9F) {
+        ok = sxarm_add(c, sxarm_freeze2_header, 0);
+    }
+    return ok;
+}

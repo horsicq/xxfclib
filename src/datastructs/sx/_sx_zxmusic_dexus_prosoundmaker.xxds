@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/dexus_prosoundmaker/xx_dexus_prosoundmaker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_prosoundmaker_header_fields = layout([u16("positions_offset", OFFSET), u16("samples_offset", OFFSET),
+    u16("ornaments_offset", OFFSET), u16("patterns_offset", OFFSET)]);
+var sxzxm_prosoundmaker_header = sxLayout(0x608A0030, "prosoundmaker_header", LE, sxzxm_prosoundmaker_header_fields);
+var sxzxm_prosoundmaker_pattern_fields = layout([u8("tempo"), u16("channel_a_offset", OFFSET), u16("channel_b_offset", OFFSET),
+    u16("channel_c_offset", OFFSET)]);
+var sxzxm_prosoundmaker_pattern = sxLayout(0x608A0032, "prosoundmaker_pattern", LE, sxzxm_prosoundmaker_pattern_fields);
+function sxzxm_psm(c) {
+    var h = [];
+    if (!sxzxm_read(c, 0, h, 8) || !sxzxm_put(c, sxzxm_prosoundmaker_header, 0, 1)) {
+        return false;
+    }
+    var pos = sxzxm16(h, 0);
+    var sp = sxzxm16(h, 2);
+    var op = sxzxm16(h, 4);
+    var pt = sxzxm16(h, 6);
+    var patterns = 0;
+    var n = 0;
+    var v = [0];
+    for (; n < 256; n++) {
+        if (!sxzxm_span(c, pos + ((2 * n) >>> 0), 2) || !sxzxm_u8(c, pos + ((2 * n) >>> 0), v)) {
+            break;
+        }
+        if (v[0] === 255) {
+            n++;
+            break;
+        }
+        if (v[0] >= 32) {
+            break;
+        }
+        if (v[0] + 1 > patterns) {
+            patterns = v[0] + 1;
+        }
+    }
+    if (!sxzxm_opt(c, sxzxm_prosoundmaker_position, pos, n) || !sxzxm_opt(c, sxzxm_prosoundmaker_pattern, pt, patterns)) {
+        return false;
+    }
+    var first = [0];
+    var sc = 0;
+    var oc = 0;
+    if (sxzxm_u16(c, sp, first) && first[0] >= sp && ((first[0] - sp) >>> 0) % 2 === 0) {
+        sc = Math.floor(((first[0] - sp) >>> 0) / 2);
+    }
+    if (op !== pt && sxzxm_u16(c, op, first) && first[0] >= op && ((first[0] - op) >>> 0) % 2 === 0) {
+        oc = Math.floor(((first[0] - op) >>> 0) / 2);
+    }
+    if (sc > 32) {
+        sc = 0;
+    }
+    if (oc > 16) {
+        oc = 0;
+    }
+    for (var k = 0; k < 2; k++) {
+        var tab = k ? op : sp;
+        var count = k ? oc : sc;
+        if (!sxzxm_opt(c, k ? sxzxm_zx_ornament_offset : sxzxm_zx_sample_offset, tab, count)) {
+            return false;
+        }
+        for (var i = 0; i < count; i++) {
+            var p = [0];
+            if (!sxzxm_u16(c, (tab + ((2 * i) >>> 0)) >>> 0, p)) {
+                break;
+            }
+            if (p[0] >= 8 && !sxzxm_object(c, p[0], k ? 9 : 8)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_dexus_prosoundmaker_build(c) {
+    return sxzxm_psm(c);
+}

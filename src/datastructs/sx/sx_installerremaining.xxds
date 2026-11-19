@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_installerremaining.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_installerremaining");
+include("_sx_installerremaining_bitrock");
+include("_sx_installerremaining_desksoft");
+include("_sx_installerremaining_excelsior");
+include("_sx_installerremaining_fead");
+include("_sx_installerremaining_instalit_data");
+include("_sx_installerremaining_lyme_sfx");
+include("_sx_installerremaining_metaproducts");
+include("_sx_installerremaining_nsis");
+include("_sx_installerremaining_sfx_ad01");
+include("_sx_installerremaining_sfx_inftool");
+include("_sx_installerremaining_sfx_softpaq4");
+include("_sx_installerremaining_smart_install_maker");
+include("_sx_installerremaining_solarispkg_zip");
+include("_sx_installerremaining_superdat");
+include("_sx_installerremaining_visualware");
+
+function fileTypes() { return ["SFX_AD01", "SFX_SOFTPAQ4", "SFX_INFTOOL", "NSIS", "BITROCK", "SMART_INSTALL_MAKER",
+    "EXCELSIOR_INSTALLER", "NETOPSYSTEMS_FEAD", "SUPERDAT", "SOLARISPKG_ZIP", "DESKSOFT", "METAPRODUCTS", "VISUALWARE",
+    "LYME_SFX", "INSTALIT_DATA"]; }
+
+var sx_installerremaining_layouts = [sxir_nsis_firstheader, sxir_nsis_common_flags, sxir_nsis_block32, sxir_nsis_block64,
+    sxir_nsis_instruction, sxir_nsis_block_length, sxir_installer_crc32, sxir_installer_name, sxir_installer_utf8,
+    sxir_installer_terminator, sxir_installer_size, sxir_cookfs_footer, sxir_cookfs_page_digest, sxir_cookfs_page_size,
+    sxir_cookfs_blob, sxir_cookfs_index, sxir_cookfs_directory, sxir_cookfs_name_length, sxir_cookfs_entry, sxir_cookfs_block,
+    sxir_sim_footer, sxir_sim_stored_file, sxir_excelsior_header, sxir_excelsior_lzma_stream, sxir_fead_outer_prefix,
+    sxir_fead_encoded_header, sxir_superdat_group, sxir_superdat_member, sxir_superdat_lh1_stream, sxir_superdat_group_trailer,
+    sxir_superdat_original_footer, sxir_superdat_footer_v0, sxir_superdat_footer_v1, sxir_superdat_footer_v12,
+    sxir_superdat_manifest_170, sxir_superdat_manifest_178, sxir_solaris_zip_signature, sxir_solaris_zip_object,
+    sxir_solaris_zip_group, sxir_solaris_zip_block, sxir_desksoft_header, sxir_desksoft_end, sxir_metaproducts_header,
+    sxir_metaproducts_member, sxir_metaproducts_footer, sxir_visualware_header, sxir_visualware_legacy_header,
+    sxir_visualware_legacy_data_header, sxir_lyme_footer, sxir_lyme_member, sxir_lyme_name_length, sxir_lyme_label,
+    sxir_instalit_dcl_header, sxir_softpaq4_descriptor_0, sxir_softpaq4_descriptor_8, sxir_softpaq4_name_length,
+    sxir_softpaq4_footer, sxir_inftool_header_22, sxir_inftool_header_24, sxir_active_delivery_header, sxir_lyme_zero_sentinel,
+    sxir_nsis_string_pool];
+
+function structs() {
+    return sxCatalog([sxir_nsis_firstheader, sxir_nsis_common_flags, sxir_nsis_block32, sxir_nsis_block64,
+        sxir_nsis_instruction, sxir_nsis_block_length, sxir_installer_crc32, sxir_installer_name, sxir_installer_utf8,
+        sxir_installer_terminator, sxir_installer_size, sxir_cookfs_footer, sxir_cookfs_page_digest, sxir_cookfs_page_size,
+        sxir_cookfs_blob, sxir_cookfs_index, sxir_cookfs_directory, sxir_cookfs_name_length, sxir_cookfs_entry,
+        sxir_cookfs_block, sxir_sim_footer, sxir_sim_stored_file, sxir_excelsior_header, sxir_excelsior_lzma_stream,
+        sxir_fead_outer_prefix, sxir_fead_encoded_header, sxir_superdat_group, sxir_superdat_member, sxir_superdat_lh1_stream,
+        sxir_superdat_group_trailer, sxir_superdat_original_footer, sxir_superdat_footer_v0, sxir_superdat_footer_v1,
+        sxir_superdat_footer_v12, sxir_superdat_manifest_170, sxir_superdat_manifest_178, sxir_solaris_zip_signature,
+        sxir_solaris_zip_object, sxir_solaris_zip_group, sxir_solaris_zip_block, sxir_desksoft_header, sxir_desksoft_end,
+        sxir_metaproducts_header, sxir_metaproducts_member, sxir_metaproducts_footer, sxir_visualware_header,
+        sxir_visualware_legacy_header, sxir_visualware_legacy_data_header, sxir_lyme_footer, sxir_lyme_member,
+        sxir_lyme_name_length, sxir_lyme_label, sxir_instalit_dcl_header, sxir_softpaq4_descriptor_0,
+        sxir_softpaq4_descriptor_8, sxir_softpaq4_name_length, sxir_softpaq4_footer, sxir_inftool_header_22,
+        sxir_inftool_header_24, sxir_active_delivery_header, sxir_lyme_zero_sentinel, sxir_nsis_string_pool], sx_installerremaining_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_installerremaining_build, false);
+}

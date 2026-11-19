@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/msxperformer_opx/xx_msxperformer_opx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxlate_opx_at(c, p) {
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var h = [];
+    if (!sxlate_read(c, p, h, 159, end)) {
+        return false;
+    }
+    var marked = !sxMemcmpAt(h, 122, " \r\n\x1A", 0, 4) && !sxMemcmpAt(h, 53, "\r\n", 0, 2) && !sxMemcmpAt(h, 108, "\r\n", 0, 2);
+    if (!marked && sxMemcmpAt(h, 122, "    ", 0, 4)) {
+        return false;
+    }
+    if (h[134] > 1) {
+        return false;
+    }
+    for (var i = 0; i < 12; i++) {
+        if (sxGetU16(h, 159, (135 + ((i * 2) >>> 0)) >>> 0, false) >= 0x4000) {
+            return false;
+        }
+    }
+    return sxlate_row(c, sxlate_opx_text_header, p, 128, end) && sxlate_row(c, sxlate_opx_info, p + 128, 31, end);
+}
+function sx_msxperformer_opx_build(c) {
+    return sxlate_opx_at(c, 0) || sxlate_opx_at(c, 0xC00);
+}

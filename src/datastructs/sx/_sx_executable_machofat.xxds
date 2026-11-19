@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/machofat/xx_machofat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fat_header_fields = layout([u32("magic", SIGNATURE), u32("nfat_arch", COUNT)]);
+var sx_fat_header_le = sxLayout(0x6003001B, "fat_header_le", LE, sx_fat_header_fields);
+var sx_fat_header_be = sxLayout(0x6003001C, "fat_header_be", BE, sx_fat_header_fields);
+var sx_fat_arch_fields = layout([u32("cputype", ID), u32("cpusubtype", ID), u32("offset", OFFSET), u32("size", SIZE),
+    u32("align")]);
+var sx_fat_arch_le = sxLayout(0x6003001D, "fat_arch_le", LE, sx_fat_arch_fields);
+var sx_fat_arch_be = sxLayout(0x6003001E, "fat_arch_be", BE, sx_fat_arch_fields);
+var sx_fat_arch_64_fields = layout([u32("cputype", ID), u32("cpusubtype", ID), u64("offset", OFFSET), u64("size", SIZE),
+    u32("align"), u32("reserved", RESERVED)]);
+var sx_fat_arch_64_le = sxLayout(0x6003001F, "fat_arch_64_le", LE, sx_fat_arch_64_fields);
+var sx_fat_arch_64_be = sxLayout(0x60030020, "fat_arch_64_be", BE, sx_fat_arch_64_fields);
+function sx_fat_build(c) {
+    var h = [];
+    var magic;
+    var n;
+    var be;
+    var wide;
+    if (!sx_read(c, 0, h, 8)) {
+        return false;
+    }
+    magic = sxGetU32(h, 8, 0, true);
+    be = magic === 0xCAFEBABE || magic === 0xCAFEBABF;
+    wide = magic === 0xCAFEBABF || magic === 0xBFBAFECA;
+    if (!be && magic !== 0xBEBAFECA && magic !== 0xBFBAFECA) {
+        return false;
+    }
+    n = sxGetU32(h, 8, 4, be);
+    if (!n || n > 4096) {
+        return false;
+    }
+    if (!sx_add(c, be ? sx_fat_header_be : sx_fat_header_le, 0, 8) || !sx_table(c, wide ? be ? sx_fat_arch_64_be : sx_fat_arch_64_le : be ? sx_fat_arch_be : sx_fat_arch_le, 8, wide ? 32 : 20, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var a = [];
+        var off;
+        var size;
+        var stride = wide ? 32 : 20;
+        if (!sx_read(c, 8 + i * stride, a, (stride < 0 ? stride + SX_U64_MAX : stride))) {
+            return false;
+        }
+        off = wide ? sxGetU64(a, (stride < 0 ? stride + SX_U64_MAX : stride), 8, be) : sxGetU32(a, (stride < 0 ? stride + SX_U64_MAX : stride), 8, be);
+        size = wide ? sxGetU64(a, (stride < 0 ? stride + SX_U64_MAX : stride), 16, be) : sxGetU32(a, (stride < 0 ? stride + SX_U64_MAX : stride), 12, be);
+        if (off > SX_I64_MAX || size > SX_I64_MAX || !sx_raw(c, (off >= SX_I64_MAX ? off - SX_U64_MAX : off), (size >= SX_I64_MAX ? size - SX_U64_MAX : size))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_machofat_build(c) {
+    return sx_fat_build(c);
+}

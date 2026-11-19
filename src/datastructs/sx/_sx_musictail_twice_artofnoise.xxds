@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/twice_artofnoise/xx_twice_artofnoise_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_aon_arpeggio_fields = layout([u8("note0"), u8("note1"), u8("note2"), u8("note3")]);
+var sxmta_aon_arpeggio = sxLayout(0x60810052, "aon_arpeggio", LE, sxmta_aon_arpeggio_fields);
+var sxmta_aon_header_fields = layout([blob("magic", 4, SIGNATURE), chars("identification", 42, NONE)]);
+var sxmta_aon_header = sxLayout(0x60810054, "aon_header", LE, sxmta_aon_header_fields);
+var sxmta_aon_chunk_fields = layout([blob("chunk_id", 4, ID), i32("payload_bytes", SIZE)]);
+var sxmta_aon_chunk = sxLayout(0x60810055, "aon_chunk", BE, sxmta_aon_chunk_fields);
+var sxmta_aon_info_fields = layout([u8("version", ID), u8("orders", COUNT), u8("restart_order")]);
+var sxmta_aon_info = sxLayout(0x60810056, "aon_info", LE, sxmta_aon_info_fields);
+var sxmta_aon_event_fields = layout([u8("note"), u8("instrument_arpeggio", FLAGS), u8("effect", ID), u8("parameter")]);
+var sxmta_aon_event = sxLayout(0x60810059, "aon_event", LE, sxmta_aon_event_fields);
+var sxmta_aon_wave_length_fields = layout([u32("wave_bytes", SIZE)]);
+var sxmta_aon_wave_length = sxLayout(0x6081005A, "aon_wave_length", BE, sxmta_aon_wave_length_fields);
+var sxmta_aon_instrument_name_fields = layout([chars("name", 32, NONE)]);
+var sxmta_aon_instrument_name = sxLayout(0x6081005B, "aon_instrument_name", LE, sxmta_aon_instrument_name_fields);
+function sxmta_aon(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [46];
+    var n = [0];
+    var ce;
+    var x = [0];
+    var ch = [0];
+    var tag = [];
+    if (!sxmta_eq(v, 0, "AON4", 4, end) && !sxmta_eq(v, 0, "AON8", 4, end) || !sxmta_u(v, 3, 1, ch, 0, end) || !sxmta_row(v, sxmta_aon_header, 0, end)) {
+        return false;
+    }
+    ch[0] = sxU64(ch[0] - 48 /*0*/);
+    while (p[0] < end) {
+        if (!sxmta_u(v, p[0], 1, x, 0, end)) {
+            return false;
+        }
+        if (x[0] === 63 /*?*/) {
+            return true;
+        }
+        if (!sxmta_read(v, p[0], tag, 4, end) || !sxmta_be(v, p[0] + 4, 4, n, 0, end) || n[0] > 2147483647 || !sxmta_span(v, p[0] + 8, n[0], end) || !sxmta_row(v, sxmta_aon_chunk, p[0], end)) {
+            return false;
+        }
+        p[0] += 8;
+        ce = p[0] + n[0];
+        if (!sxMemcmp(tag, "NAME", 4) || !sxMemcmp(tag, "AUTH", 4) || !sxMemcmp(tag, "RMRK", 4)) {
+            if (!sxmta_text_emit(v, p[0], n[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "INFO", 4)) {
+            if (!sxmta_row(v, sxmta_aon_info, p[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "ARPG", 4)) {
+            if (!sxmta_take(v, sxmta_aon_arpeggio, p, 16, ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "PLST", 4)) {
+            if (!sxmta_take(v, sxmta_order8, p, n[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "PATT", 4)) {
+            if (n[0] % (ch[0] * 64 * 4) || !sxmta_take(v, sxmta_aon_event, p, Math.floor(n[0] / 4), ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "INST", 4)) {
+            if (n[0] % 32) {
+                return false;
+            }
+            while (p[0] < ce) {
+                if (!sxmta_u(v, p[0], 1, x, 0, ce) || (x[0] > 1 ? !sxmta_skip(v, p, 32, ce) : !sxmta_take(v, x[0] ? sxmta_aon_synth : sxmta_aon_sample, p, 1, ce))) {
+                    return false;
+                }
+            }
+        } else if (!sxMemcmp(tag, "INAM", 4)) {
+            if (n[0] % 32 || !sxmta_take(v, sxmta_aon_instrument_name, p, Math.floor(n[0] / 32), ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "WLEN", 4)) {
+            if (n[0] % 4 || !sxmta_take(v, sxmta_aon_wave_length, p, Math.floor(n[0] / 4), ce)) {
+                return false;
+            }
+        }
+        p[0] = ce;
+    }
+    return true;
+}
+function sx_twice_artofnoise_build(v) {
+    return sxmta_aon(v);
+}

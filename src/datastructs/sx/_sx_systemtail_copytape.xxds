@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/copytape/xx_copytape_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_copytape_block_fields = layout([chars("marker", 9, SIGNATURE), field("block_length", "ascii_decimal[6]", 6, SIZE),
+    u8("line_feed", ID)]);
+var sxst_copytape_block = sxLayout(0x60370024, "copytape_block", LE, sxst_copytape_block_fields);
+var sxst_copytape_mark_fields = layout([chars("prefix", 5, SIGNATURE), chars("kind", 3, ID), u8("line_feed", ID)]);
+var sxst_copytape_mark = sxLayout(0x60370025, "copytape_mark", LE, sxst_copytape_mark_fields);
+var sxst_copytape_separator_fields = layout([u8("line_feed", ID)]);
+var sxst_copytape_separator = sxLayout(0x60370026, "copytape_separator", LE, sxst_copytape_separator_fields);
+function sxst_copytape(c) {
+    var p = 0;
+    var b = [];
+    for (var i = 0; i < 100000 && c.count < 24000; i++) {
+        if (!sxst_read(c, p, b, 9)) {
+            break;
+        }
+        if (!sxMemcmp(b, "CPTP:MRK\n", 9) || !sxMemcmp(b, "CPTP:EOT\n", 9)) {
+            if (!sxst_put(c, sxst_copytape_mark, p, 1)) {
+                return false;
+            }
+            p += 9;
+            if (b[5] === 69 /*E*/) {
+                break;
+            }
+            continue;
+        }
+        if (sxMemcmp(b, "CPTP:BLK ", 9) || !sxst_read(c, p, b, 16) || b[15] !== 10) {
+            break;
+        }
+        var z = 0;
+        var valid = true;
+        for (var j = 9; j < 15; j++) {
+            if (b[j] < 48 /*0*/ || b[j] > 57 /*9*/) {
+                valid = false;
+                break;
+            }
+            z = sxU64(z * 10 + b[j] - 48 /*0*/);
+        }
+        if (!valid || !z || !sxst_span(c, p, 17 + z) || !sxst_put(c, sxst_copytape_block, p, 1) || !sxst_put(c, sxst_copytape_separator, p + 16 + z, 1)) {
+            break;
+        }
+        p += 17 + z;
+    }
+    return c.count > 0;
+}
+function sx_copytape_build(c) {
+    return sxst_copytape(c);
+}

@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/netware2/xx_netware2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_netware2_record_fields = layout([u32("record_size", SIZE), u8("name_count")]);
+var sxasy_netware2_record = sxLayout(0x60440035, "netware2_record", LE, sxasy_netware2_record_fields);
+var sxasy_netware2_metadata_fields = layout([u8("subtag", SIGNATURE), u8("flags"), chars("date_text", 8, NONE),
+    chars("time_text", 8, NONE), chars("attribute_identifier_text", 34, NONE), u32("uncompressed_size", SIZE),
+    u32("unidentified_stamp"), u8("name_size", SIZE)]);
+var sxasy_netware2_metadata = sxLayout(0x60440036, "netware2_metadata", LE, sxasy_netware2_metadata_fields);
+var sxasy_netware2_packed_fields = layout([u8("version"), u8("method"), u32("uncompressed_size", SIZE)]);
+var sxasy_netware2_packed = sxLayout(0x60440037, "netware2_packed", LE, sxasy_netware2_packed_fields);
+function sxasy_netware2(c) {
+    var p = 0;
+    for (var i = 0; i < 256 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 5)) {
+            return false;
+        }
+        var z = sxasy_uint(h, 0, 4, false);
+        var n = h[4];
+        if (!n || n > 65 || z < 4 + n || !sxasy_span(c, p, z) || !sxasy_read(c, p + 5, h, sxU64(n - 1)) || !sxasy_add(c, sxasy_netware2_record, p)) {
+            return false;
+        }
+        var q = p + 4 + n;
+        var left = sxU64(sxU64(z - 4) - n);
+        if (n === 12 && !sxMemcmp(h, "NetWareFile", 11)) {
+            if (left < 61 || !sxasy_add(c, sxasy_netware2_metadata, q)) {
+                return false;
+            }
+        } else if (n === 11 && !sxMemcmp(h, "PackedData", 10)) {
+            if (left < 6 || !sxasy_add(c, sxasy_netware2_packed, q)) {
+                return false;
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_netware2_build(c) {
+    return sxasy_netware2(c);
+}

@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kahlin_victracker/xx_kahlin_victracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcm_victracker_header_fields = layout([u16("load_address", VA), chars("signature", 2, SIGNATURE), u8("version", ID),
+    u8("revision", ID), u8("play_mode", ID), u8("scale", ID), u8("reserved", RESERVED), u8("song_count", COUNT)]);
+var sxpcm_victracker_header = sxLayout(0x6094002A, "victracker_header", LE, sxpcm_victracker_header_fields);
+var sxpcm_victracker_arpeggio_fields = layout([bytes("steps", 16)]);
+var sxpcm_victracker_arpeggio = sxLayout(0x6094002C, "victracker_arpeggio", LE, sxpcm_victracker_arpeggio_fields);
+var sxpcm_victracker_arpeggio_config_fields = layout([bytes("configuration", 2, FLAGS)]);
+var sxpcm_victracker_arpeggio_config = sxLayout(0x6094002D, "victracker_arpeggio_config", LE, sxpcm_victracker_arpeggio_config_fields);
+var sxpcm_victracker_title_fields = layout([blob("reserved", 60, RESERVED), chars("title", 16, NONE), chars("author", 16, NONE),
+    chars("year", 4, NONE)]);
+var sxpcm_victracker_title = sxLayout(0x6094002E, "victracker_title", LE, sxpcm_victracker_title_fields);
+var sxpcm_victracker_sound_fields = layout([u8("note_length"), u8("frequency_offset"), u8("frequency_glide"),
+    u8("arpeggio", ID), blob("reserved", 4, RESERVED)]);
+var sxpcm_victracker_sound = sxLayout(0x6094002F, "victracker_sound", LE, sxpcm_victracker_sound_fields);
+var sxpcm_victracker_event_fields = layout([u8("pitch"), u8("parameter")]);
+var sxpcm_victracker_event = sxLayout(0x60940031, "victracker_event", LE, sxpcm_victracker_event_fields);
+var sxpcm_victracker_reserved_fields = layout([blob("reserved", 128, RESERVED)]);
+var sxpcm_victracker_reserved = sxLayout(0x60940040, "victracker_reserved", LE, sxpcm_victracker_reserved_fields);
+var sxpcm_victracker_sequence_fields = layout([u8("pattern_index")]);
+var sxpcm_victracker_sequence = sxLayout(0x60940041, "victracker_sequence", LE, sxpcm_victracker_sequence_fields);
+function sxpcm_vic(c) {
+    var h = [];
+    if (!sxpcm_read(c, 0, h, 10) || h[2] !== 84 /*T*/ || h[3] !== 49 /*1*/ || h[4] !== 2 || h[5] > 1 || !sxpcm_put(c, sxpcm_victracker_header, 0, 1)) {
+        return false;
+    }
+    if (!sxpcm_opt(c, sxpcm_victracker_song, 10, 14) || !sxpcm_opt(c, sxpcm_victracker_arpeggio, 66, 16) || !sxpcm_opt(c, sxpcm_victracker_arpeggio_config, 322, 16) || !sxpcm_opt(c, sxpcm_victracker_title, 354, 1) || !sxpcm_opt(c, sxpcm_victracker_sound, 450, 16) || !sxpcm_opt(c, sxpcm_victracker_reserved, 578, 1) || !sxpcm_opt(c, sxpcm_victracker_sequence_length, 706, 256) || !sxpcm_opt(c, sxpcm_victracker_sequence, 962, 1280)) {
+        return false;
+    }
+    if (c.size > 2242) {
+        var count = Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 2242) / 2);
+        if (count > 0x2000) {
+            count = 0x2000;
+        }
+        return sxpcm_put(c, sxpcm_victracker_event, 2242, count);
+    }
+    return true;
+}
+function sx_kahlin_victracker_build(c) {
+    return sxpcm_vic(c);
+}

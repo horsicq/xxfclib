@@ -1,0 +1,395 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modelmeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_modelmeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60210000 || id >= 0x60220000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60210002:
+        if (r.name === "data_size") {
+            text = "Payload bytes excluding the eight-byte chunk header.";
+        }
+        break;
+    case 0x60210005:
+        if (r.name === "texture_index") {
+            text = "-1 means no texture.";
+        }
+        break;
+    case 0x60210007:
+        if (r.name === "rotation_wxyz") {
+            text = "Quaternion stored as W, X, Y, Z.";
+        }
+        break;
+    case 0x60210008:
+        if (r.name === "brush_index") {
+            text = "-1 means no brush.";
+        }
+        break;
+    case 0x60210009:
+        if (r.name === "flags") {
+            text = "Bit 0 adds normals; bit 1 adds vertex colors.";
+        }
+        break;
+    case 0x60210014:
+        if (r.name === "bone_index") {
+            text = "-1 means no bone.";
+        }
+        break;
+    case 0x60210018:
+        if (r.name === "material_index") {
+            text = "-1 means no material.";
+        }
+        break;
+    case 0x6021001A:
+        if (r.name === "current_time") {
+            text = "Animation time in seconds.";
+        }
+        break;
+    case 0x6021001C:
+        if (r.name === "encoded_relocation") {
+            text = "Bits 29..31 select source section, 25..28 target section; low 25 bits are a source byte offset for target 1, otherwise a word offset.";
+        }
+        break;
+    case 0x6021001E:
+        if (r.name === "chunk_size") {
+            text = "Includes the six-byte chunk header.";
+        }
+        break;
+    case 0x60210023:
+        if (r.name === "offset") {
+            text = "Byte offset within the vertex.";
+        }
+        break;
+    case 0x60210026:
+        if (r.name === "operation_type") {
+            text = "4 means triangle list.";
+        }
+        break;
+    case 0x60210028:
+        if (r.name === "pointer_size") {
+            text = "Underscore means 32-bit pointers; hyphen means 64-bit pointers.";
+        }
+        if (r.name === "byte_order") {
+            text = "v means little-endian; V means big-endian.";
+        }
+        break;
+    case 0x60210029:
+        if (r.name === "old_pointer") {
+            text = "Original in-memory address before relocation.";
+        }
+        break;
+    case 0x6021002A:
+        if (r.name === "old_pointer") {
+            text = "Original in-memory address before relocation.";
+        }
+        break;
+    case 0x60210032:
+        if (r.name === "old_pointer") {
+            text = "Original in-memory address before relocation.";
+        }
+        break;
+    case 0x60210033:
+        if (r.name === "old_pointer") {
+            text = "Original in-memory address before relocation.";
+        }
+        break;
+    case 0x60210045:
+        if (r.name === "encoding") {
+            text = "0 means raw values; 1 means zlib compressed.";
+        }
+        break;
+    case 0x60210046:
+        if (r.name === "identifier") {
+            text = "Writer-generated footer identifier.";
+        }
+        break;
+    case 0x60210048:
+        if (r.name === "chunk_size") {
+            text = "Includes this six-byte chunk header.";
+        }
+        break;
+    case 0x60210057:
+        if (r.name === "count_and_flags") {
+            text = "Low 10 bits are vertex count; upper 6 bits are polygon flags.";
+        }
+        break;
+    case 0x60210060:
+        if (r.name === "header") {
+            text = "Application-defined binary header bytes.";
+        }
+        break;
+    case 0x60210061:
+        if (r.name === "attribute_byte_count") {
+            text = "Native reader accepts zero; nonzero vendor color encodings are outside this provider.";
+        }
+        break;
+    case 0x60210062:
+        if (r.name === "flags") {
+            text = "Bit 0 indicates vertex normals.";
+        }
+        break;
+    case 0x6021006A:
+        if (r.name === "color_format") {
+            text = "0=RGBA, 1=BGRA.";
+        }
+        break;
+    case 0x6021006D:
+        if (r.name === "encoded_color") {
+            text = "Color byte order and alpha/visibility-mask meaning are selected by the file header.";
+        }
+        break;
+    case 0x6021006E:
+        if (r.name === "marker") {
+            text = "2=run; 6=end of slice.";
+        }
+        break;
+    case 0x60210072:
+        if (r.name === "size_minus_one") {
+            text = "Shorter terrain side is this value plus one samples.";
+        }
+        break;
+    case 0x60210078:
+        if (r.name === "height_sample") {
+            text = "Encoded height; convert using base_height and height_scale, then vertical scale.";
+        }
+        break;
+    case 0x60210079:
+        if (r.name === "encoding") {
+            text = "0=UTF-16LE, 1=UTF-8.";
+        }
+        break;
+    case 0x60210080:
+        if (r.name === "deform_type") {
+            text = "0=BDEF1, 1=BDEF2, 2=BDEF4, 3=SDEF.";
+        }
+        break;
+    case 0x60210081:
+        if (r.name === "bone_index") {
+            text = "-1 means no bone.";
+        }
+        break;
+    case 0x60210083:
+        if (r.name === "bone_index") {
+            text = "-1 means no bone.";
+        }
+        break;
+    case 0x60210085:
+        if (r.name === "bone_index") {
+            text = "-1 means no bone.";
+        }
+        break;
+    case 0x6021008C:
+        if (r.name === "chunk_size") {
+            text = "Includes this six-byte header.";
+        }
+        break;
+    case 0x6021008D:
+        if (r.name === "fixed_size") {
+            text = "Historical bone length excludes the newline-terminated bone name; includes the six-byte header.";
+        }
+        break;
+    case 0x60210092:
+        if (r.name === "duration") {
+            text = "Animation duration in seconds.";
+        }
+        break;
+    case 0x60210094:
+        if (r.name === "time") {
+            text = "Animation time in seconds.";
+        }
+        break;
+    case 0x60210096:
+        if (r.name === "name_size") {
+            text = "Includes the terminating NUL byte.";
+        }
+        break;
+    case 0x60210097:
+        if (r.name === "parent_index") {
+            text = "-1 means no parent.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxmo_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxmo_read(c, p, b, n) {
+    return sxmo_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxmo_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxmo32(b, b_o, be) {
+    return sxmo_uint(b, b_o, 4, be) >>> 0;
+}
+function sxmo16(b, b_o, be) {
+    return sxmo_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxmo_table(c, l, p, n) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!n) {
+        return true;
+    }
+    if (n > 1000000 || !sxmo_span(c, p, z * n)) {
+        return false;
+    }
+    if (c.count >= 20000) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var b = a + (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < b && a < p + z * n) {
+            return true;
+        }
+    }
+    return sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxmo_add(c, l, p) {
+    return sxmo_table(c, l, p, 1);
+}
+function sxmo_string(c, p, end, terminal) {
+    for (var i = 0; i < 4096; i++) {
+        var b = [0];
+        if (p[0] >= end || !sxmo_read(c, p[0]++, b, 1)) {
+            return false;
+        }
+        if (b[0] === terminal) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxmo_take(c, l, p, end) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (p[0] > end || z > sxU64(end - p[0]) || !sxmo_add(c, l, p[0])) {
+        return false;
+    }
+    p[0] += z;
+    return true;
+}
+function sxmo_text(c, l, p, end) {
+    var b = [];
+    if (p[0] > end || sxU64(end - p[0]) < 4 || !sxmo_read(c, p[0], b, 4)) {
+        return false;
+    }
+    var n = sxmo32(b, 0, false);
+    if (n > 1048576 || n > sxU64(sxU64(end - p[0]) - 4) || !sxmo_add(c, l, p[0])) {
+        return false;
+    }
+    p[0] += (4 + n) >>> 0;
+    return true;
+}
+function sxmo_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxmo_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxmo_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxmo_order, true);
+    return !c.failed;
+}
+function sx_modelmeta_supports(type) {
+    switch (type) {
+    case "BLITZ3D_B3D":
+    case "MILKSHAPE_MS3D":
+    case "NINTENDO_BCH":
+    case "OGRE_MESH":
+    case "BLENDER_BLEND":
+    case "AUTODESK_FBX":
+    case "AUTODESK_3DS":
+    case "LIGHTWAVE_LWO2":
+    case "SPRING_S3O":
+    case "STEREOLITHOGRAPHY_STL":
+    case "OPENCTM_MESH":
+    case "QUBICLE_QB":
+    case "TERRAGEN_TER":
+    case "MMD_PMX":
+    case "OGRE_SKELETON":
+    case "CAL3D_SKELETON":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_modelmeta_build(c) {
+    if (c.f.file_type === "BLITZ3D_B3D") {
+        return sx_blitz3d_b3d_build(c);
+    }
+    if (c.f.file_type === "MILKSHAPE_MS3D") {
+        return sx_milkshape_ms3d_build(c);
+    }
+    if (c.f.file_type === "NINTENDO_BCH") {
+        return sx_nintendo_bch_build(c);
+    }
+    if (c.f.file_type === "OGRE_MESH") {
+        return sx_ogre_mesh_build(c);
+    }
+    if (c.f.file_type === "BLENDER_BLEND") {
+        return sx_blender_blend_build(c);
+    }
+    if (c.f.file_type === "AUTODESK_FBX") {
+        return sx_autodesk_fbx_build(c);
+    }
+    if (c.f.file_type === "AUTODESK_3DS") {
+        return sx_autodesk_3ds_build(c);
+    }
+    if (c.f.file_type === "LIGHTWAVE_LWO2") {
+        return sx_lightwave_lwo2_build(c);
+    }
+    if (c.f.file_type === "SPRING_S3O") {
+        return sx_spring_s3o_build(c);
+    }
+    if (c.f.file_type === "STEREOLITHOGRAPHY_STL") {
+        return sx_stereolithography_stl_build(c);
+    }
+    if (c.f.file_type === "OPENCTM_MESH") {
+        return sx_openctm_mesh_build(c);
+    }
+    if (c.f.file_type === "QUBICLE_QB") {
+        return sx_qubicle_qb_build(c);
+    }
+    if (c.f.file_type === "TERRAGEN_TER") {
+        return sx_terragen_ter_build(c);
+    }
+    if (c.f.file_type === "MMD_PMX") {
+        return sx_mmd_pmx_build(c);
+    }
+    if (c.f.file_type === "OGRE_SKELETON") {
+        return sx_ogre_skeleton_build(c);
+    }
+    if (c.f.file_type === "CAL3D_SKELETON") {
+        return sx_cal3d_skeleton_build(c);
+    }
+    return false;
+}

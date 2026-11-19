@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/apple_pict/xx_apple_pict_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_pict_header_fields = layout([u16("picture_size", SIZE), i16("frame_top"), i16("frame_left"), i16("frame_bottom"),
+    i16("frame_right"), u16("version_opcode", ID), u16("version", ID), u16("header_opcode", ID), i16("header_version"),
+    u16("reserved", RESERVED), u32("horizontal_resolution_fixed"), u32("vertical_resolution_fixed"), i16("source_top"),
+    i16("source_left"), i16("source_bottom"), i16("source_right"), u32("reserved_tail", RESERVED)]);
+var sxnx_pict_header = sxLayout(0x60320058, "pict_header", BE, sxnx_pict_header_fields);
+var sxnx_pict_clip_fields = layout([u16("opcode", ID), u16("region_size", SIZE), i16("top"), i16("left"), i16("bottom"),
+    i16("right")]);
+var sxnx_pict_clip = sxLayout(0x60320059, "pict_clip", BE, sxnx_pict_clip_fields);
+var sxnx_pict_directbits_fields = layout([u16("opcode", ID), u32("base_address", POINTER), u16("row_bytes_and_flag", FLAGS),
+    i16("top"), i16("left"), i16("bottom"), i16("right"), u16("pixmap_version", ID), u16("pack_type", ID),
+    u32("pack_size", SIZE), u32("horizontal_resolution_fixed"), u32("vertical_resolution_fixed"), u16("pixel_type", ID),
+    u16("pixel_bits"), u16("component_count", COUNT), u16("component_bits"), u32("plane_bytes", SIZE),
+    u32("color_table", POINTER), u32("reserved", RESERVED), i16("source_top"), i16("source_left"), i16("source_bottom"),
+    i16("source_right"), i16("destination_top"), i16("destination_left"), i16("destination_bottom"), i16("destination_right"),
+    u16("transfer_mode", ID)]);
+var sxnx_pict_directbits = sxLayout(0x6032005A, "pict_directbits", BE, sxnx_pict_directbits_fields);
+var sxnx_pict_row_short_fields = layout([u8("packed_size", SIZE)]);
+var sxnx_pict_row_short = sxLayout(0x6032005B, "pict_row_short", LE, sxnx_pict_row_short_fields);
+var sxnx_pict_row_long_fields = layout([u16("packed_size", SIZE)]);
+var sxnx_pict_row_long = sxLayout(0x6032005C, "pict_row_long", BE, sxnx_pict_row_long_fields);
+var sxnx_pict_end_fields = layout([u16("opcode", ID)]);
+var sxnx_pict_end = sxLayout(0x6032005D, "pict_end", BE, sxnx_pict_end_fields);
+function sxnx_pict(v) {
+    var base = 0;
+    if (sxnx_need(v, 0, 14, v.n)) {
+        var zero = true;
+        for (var i = 0; i < 14; i++) {
+            if (v.p[i]) {
+                zero = false;
+            }
+        }
+        if (zero) {
+            base = 512;
+        }
+    }
+    if (!sxnx_row(v, sxnx_pict_header, base, v.n) || !sxnx_row(v, sxnx_pict_clip, base + 40, v.n) || !sxnx_row(v, sxnx_pict_directbits, base + 52, v.n)) {
+        return false;
+    }
+    var height = sxGetI16At(v.p, base + 6, 2, 0, true) - sxGetI16At(v.p, base + 2, 2, 0, true);
+    if (height <= 0 || height > 4091) {
+        return false;
+    }
+    var h = height >>> 0;
+    var rb = sxnx_u16(v.p, base + 58, true) & 0x7FFF;
+    var p = base + 122;
+    for (i = 0; i < h; i++) {
+        if (!sxnx_row(v, rb > 250 ? sxnx_pict_row_long : sxnx_pict_row_short, p, v.n)) {
+            return false;
+        }
+        var n = rb > 250 ? sxnx_u16(v.p, p, true) : v.p[p];
+        p += rb > 250 ? 2 : 1;
+        if (!sxnx_need(v, p, n, v.n)) {
+            return false;
+        }
+        p += n;
+    }
+    if (sxAnd64(sxU64(p - base), 1)) {
+        p++;
+    }
+    return sxnx_row(v, sxnx_pict_end, p, v.n) && p + 2 === v.n;
+}
+function sx_apple_pict_build(v) {
+    return sxnx_pict(v);
+}

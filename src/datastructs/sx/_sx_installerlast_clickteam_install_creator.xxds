@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/clickteam_install_creator/xx_clickteam_install_creator_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_clickteam_creator_tag_fields = layout([chars("signature", 6, SIGNATURE)]);
+var sxil_clickteam_creator_tag = sxLayout(0x6085003D, "clickteam_creator_tag", LE, sxil_clickteam_creator_tag_fields);
+var sxil_clickteam_creator_chunk_fields = layout([u16("chunk_id", ID), u16("flags", FLAGS), u32("payload_size", SIZE)]);
+var sxil_clickteam_creator_chunk = sxLayout(0x6085003E, "clickteam_creator_chunk", LE, sxil_clickteam_creator_chunk_fields);
+var sxil_clickteam_creator_data_chunk_fields = layout([u16("chunk_id", ID), u16("flags", FLAGS), u32("data_size", SIZE),
+    u32("repeated_data_size", SIZE)]);
+var sxil_clickteam_creator_data_chunk = sxLayout(0x6085003F, "clickteam_creator_data_chunk", LE, sxil_clickteam_creator_data_chunk_fields);
+var sxil_clickteam_creator_compression1_fields = layout([u32("unpacked_size", SIZE)]);
+var sxil_clickteam_creator_compression1 = sxLayout(0x60850040, "clickteam_creator_compression1", LE, sxil_clickteam_creator_compression1_fields);
+var sxil_clickteam_creator_compression2_fields = layout([u32("unpacked_size", SIZE), u8("method", ID)]);
+var sxil_clickteam_creator_compression2 = sxLayout(0x60850041, "clickteam_creator_compression2", LE, sxil_clickteam_creator_compression2_fields);
+var sxil_clickteam_creator_method_fields = layout([u8("method", ID)]);
+var sxil_clickteam_creator_method = sxLayout(0x60850042, "clickteam_creator_method", LE, sxil_clickteam_creator_method_fields);
+function sxil_clickteam(c, r) {
+    var p = [0];
+    if (!sxil_pe(c, p)) {
+        return true;
+    }
+    var v2 = sxil_eq(c, p[0], "wwgT)H", 6);
+    if (v2) {
+        if (!sxil_put(c, sxil_clickteam_creator_tag, p[0], 1)) {
+            return false;
+        }
+        p[0] += 6;
+    }
+    for (var k = 0; k < 4096 && sxil_span(c, p[0], 8); k++) {
+        var b = [];
+        if (!sxil_read(c, p[0], b, 8)) {
+            return true;
+        }
+        var id = sxil16(b, 0, false);
+        var flags = sxil16(b, 2, false);
+        var n = sxil32(b, 4, false);
+        if (id === 0x7F7F) {
+            if (sxil_span(c, p[0], 12) && !sxil_put(c, sxil_clickteam_creator_data_chunk, p[0], 1)) {
+                return false;
+            }
+            break;
+        }
+        if (!sxil_span(c, p[0] + 8, n)) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_clickteam_creator_chunk, p[0], 1)) {
+            return false;
+        }
+        if (flags && n >= (v2 ? 5 : 4)) {
+            if (!sxil_put(c, v2 ? sxil_clickteam_creator_compression2 : sxil_clickteam_creator_compression1, p[0] + 8, 1)) {
+                return false;
+            }
+        }
+        p[0] += 8 + n;
+    }
+    if (v2) {
+        for (var i = 0; i < r.count; i++) {
+            var m = r.items[i];
+            if (m.packed && sxil_span(c, m.data, 1) && !sxil_put(c, sxil_clickteam_creator_method, m.data, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_clickteam_install_creator_build(c, records) {
+    return sxil_clickteam(c, records);
+}

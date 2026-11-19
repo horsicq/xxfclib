@@ -1,0 +1,114 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_music38modern.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmd38_shroom_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u8("compression", FLAGS),
+    chars("title", 32, STRING), chars("author", 32, STRING), chars("preferred_instrument_set", 32, STRING)]);
+var sxmd38_shroom_header = sxLayout(0x60B10001, "shroom_header", LE, sxmd38_shroom_header_fields);
+var sxmd38_shroom_note_fields = layout([u8("pitch", ID), u8("instrument", ID)]);
+var sxmd38_shroom_note = sxLayout(0x60B10002, "shroom_note", LE, sxmd38_shroom_note_fields);
+var sxmd38_shroom_tempo_fields = layout([u8("tempo")]);
+var sxmd38_shroom_tempo = sxLayout(0x60B10003, "shroom_tempo", LE, sxmd38_shroom_tempo_fields);
+var sxmd38_shroom_extension_fields = layout([u8("song_length", COUNT), u8("loop_enabled", FLAGS), u8("metre")]);
+var sxmd38_shroom_extension = sxLayout(0x60B10004, "shroom_extension", LE, sxmd38_shroom_extension_fields);
+function sx_music38modern_supports(t) {
+    return t === "DIE_MUSIC_MARIOPAINT_SHROOM";
+}
+function sxmd38_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxmd38_raw(c) {
+    var b = [0];
+    if (c === null || c.count || c.failed || c.size <= 0 || !sx_read(c, 0, b, 1)) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}
+function sxmd38_tail(c, p) {
+    var b = [0];
+    if (c === null || c.failed || !sxmd38_span(c, p, 0)) {
+        return false;
+    }
+    if (p === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return c.count > 0;
+    }
+    if (!sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, 1)) {
+        return false;
+    }
+    return sx_raw(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), c.size - (p >= SX_I64_MAX ? p - SX_U64_MAX : p));
+}
+function sx_music38modern_build(c) {
+    var h = [];
+    var tail = [];
+    if (c === null || c.f === null || !sx_music38modern_supports(c.f.file_type)) {
+        return false;
+    }
+    if (!sxmd38_span(c, 0, 103)) {
+        return sxmd38_raw(c);
+    }
+    if (!sx_read(c, 0, h, 103)) {
+        return false;
+    }
+    if (sxMemcmp(h, "shro\x02\x00\x00", 7)) {
+        return sxmd38_raw(c);
+    }
+    if (!sx_add(c, sxmd38_shroom_header, 0, 103)) {
+        return false;
+    }
+    var end = 103;
+    if (sxmd38_span(c, 103, 576)) {
+        if (!sx_table(c, sxmd38_shroom_note, 103, 2, 288)) {
+            return false;
+        }
+        end = 679;
+    }
+    if (end === 679 && sxmd38_span(c, 679, 1)) {
+        if (!sx_read(c, 679, tail, 1) || !sx_add(c, sxmd38_shroom_tempo, 679, 1)) {
+            return false;
+        }
+        end = 680;
+    }
+    if (end === 680 && sxmd38_span(c, 680, 3)) {
+        if (!sx_read(c, 680, tail, 3) || !sx_add(c, sxmd38_shroom_extension, 680, 3)) {
+            return false;
+        }
+        end = 683;
+    }
+    return sxmd38_tail(c, end) && !c.failed;
+}
+function sx_music38modern_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60B10001 || id > 0x60B10004 || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60B10001) {
+        if (r.name === "signature") {
+            s = "shro physical file signature.";
+        } else if (r.name === "version") {
+            s = "Little-endian version2. The native format detector currently recognizes this version; Mariopants version3 is outside this provider.";
+        } else if (r.name === "compression") {
+            s = "0=UNCOMPRESSED. The Mariopants loader rejects nonzero compression modes.";
+        } else if (r.name === "preferred_instrument_set") {
+            s = "Fixed32-byte preferred SHI instrument-set name. Mariopants writes default.shi and its loader ignores this preference.";
+        } else {
+            s = "Fixed32-byte stored metadata buffer, preserved without modifying the original text bytes.";
+        }
+    } else if (id === 0x60B10002) {
+        if (r.name === "pitch") {
+            s = sxVarU64(r.value) === 255 ? "0xFF=EMPTY_NOTE." : "Original staff pitch range is1..13;0xFF is empty. Other stored values are preserved. Three consecutive note records form one song row.";
+        } else {
+            s = sxVarU64(r.value) === 223 ? "0xDF=EMPTY_INSTRUMENT." : "Original instrument-bank range is0..14;0xDF is empty. Other stored values are preserved without imposing a different sample bank.";
+        }
+    } else if (id === 0x60B10003) {
+        s = "Original Mario Paint tempo selector is normally0..159; other stored values remain visible without an inferred BPM conversion.";
+    } else if (r.name === "song_length") {
+        s = "Logical song length in rows (normally1..96). The physical v2 file always stores all96 rows.";
+    } else if (r.name === "loop_enabled") {
+        s = "0=NO_LOOP; nonzero=LOOP_ENABLED in the original loader.";
+    } else {
+        s = "0=THREE_BEAT_METRE; nonzero=FOUR_BEAT_METRE in the original loader.";
+    }
+    return s === null || sxSetComment(r, s);
+}

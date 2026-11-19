@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/arcv4/xx_arcv4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_arcv4_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("subvariant")]);
+var sxasy_arcv4_header = sxLayout(0x60440004, "arcv4_header", LE, sxasy_arcv4_header_fields);
+var sxasy_arcv4_record_fields = layout([chars("tag", 4, SIGNATURE), u32("chunk_type"), u32("header_size", SIZE),
+    u32("record_size", SIZE)]);
+var sxasy_arcv4_record = sxLayout(0x60440005, "arcv4_record", LE, sxasy_arcv4_record_fields);
+var sxasy_arcv4_tag_size_fields = layout([u32("tag_size", SIZE)]);
+var sxasy_arcv4_tag_size = sxLayout(0x60440006, "arcv4_tag_size", LE, sxasy_arcv4_tag_size_fields);
+var sxasy_arcv4_name_size_fields = layout([u32("name_size", SIZE)]);
+var sxasy_arcv4_name_size = sxLayout(0x60440007, "arcv4_name_size", LE, sxasy_arcv4_name_size_fields);
+var sxasy_arcv4_attributes_fields = layout([u32("uncompressed_size", SIZE), u32("flags"), u64("filetime"), bytes("opaque", 8),
+    u32("compressed_size", SIZE), u32("method")]);
+var sxasy_arcv4_attributes = sxLayout(0x60440008, "arcv4_attributes", LE, sxasy_arcv4_attributes_fields);
+var sxasy_arcv4_data_fields = layout([chars("tag", 4, SIGNATURE), u32("chunk_type"), u32("header_size", SIZE),
+    u32("compressed_size", SIZE), u32("reserved1"), u32("crc32", CHECKSUM), u32("reserved2"), u32("reserved3")]);
+var sxasy_arcv4_data = sxLayout(0x60440009, "arcv4_data", LE, sxasy_arcv4_data_fields);
+function sxasy_arcv4(c) {
+    var p = 0x79C;
+    if (!sxasy_span(c, 0, p) || !sxasy_add(c, sxasy_arcv4_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 16)) {
+            return false;
+        }
+        var hs = sxasy_uint(h, 8, 4, false);
+        var z = sxasy_uint(h, 12, 4, false);
+        if (hs !== 16 || !sxasy_span(c, p + 16, z) || !sxMemcmp(h, "EOFM", 4) && z) {
+            return false;
+        }
+        if (!sxasy_add(c, sxasy_arcv4_record, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "EOFM", 4)) {
+            return true;
+        }
+        if (sxMemcmp(h, "FILE", 4)) {
+            return false;
+        }
+        var end = p + 16 + z;
+        var q = p + 16;
+        var n = [0];
+        if (sxU64(end - q) < 4 || !sxasy_word(c, q, 4, false, n) || n[0] > sxU64(sxU64(end - q) - 4) || !sxasy_add(c, sxasy_arcv4_tag_size, q)) {
+            return false;
+        }
+        q += 4 + n[0];
+        if (q > end || sxU64(end - q) < 4 || !sxasy_word(c, q, 4, false, n) || n[0] > sxU64(sxU64(end - q) - 4) || !sxasy_add(c, sxasy_arcv4_name_size, q)) {
+            return false;
+        }
+        q += 4 + n[0];
+        if (sxU64(end - q) < 32 || !sxasy_add(c, sxasy_arcv4_attributes, q)) {
+            return false;
+        }
+        p = end;
+        if (!sxasy_read(c, p, h, 32) || sxMemcmp(h, "DATA", 4) || sxasy_uint(h, 8, 4, false) !== 32) {
+            return false;
+        }
+        z = sxasy_uint(h, 12, 4, false);
+        if (!sxasy_span(c, p + 32, z) || !sxasy_add(c, sxasy_arcv4_data, p)) {
+            return false;
+        }
+        p += 32 + z;
+    }
+    return false;
+}
+function sx_arcv4_build(c) {
+    return sxasy_arcv4(c);
+}

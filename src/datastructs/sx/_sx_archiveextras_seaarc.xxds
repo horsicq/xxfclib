@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/seaarc/xx_seaarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_arc_member_old_fields = layout([u8("marker", SIGNATURE), u8("method", ID), chars("name", 13, STRING),
+    u32("packed_size", SIZE), u16("date"), u16("time"), u16("crc16", CHECKSUM)]);
+var sxae_arc_member_old = sxLayout(0x60170001, "arc_member_old", LE, sxae_arc_member_old_fields);
+var sxae_arc_member_fields = layout([u8("marker", SIGNATURE), u8("method", ID), chars("name", 13, STRING),
+    u32("packed_size", SIZE), u16("date"), u16("time"), u16("crc16", CHECKSUM), u32("unpacked_size", SIZE)]);
+var sxae_arc_member = sxLayout(0x60170002, "arc_member", LE, sxae_arc_member_fields);
+var sxae_arc_end_fields = layout([u8("marker", SIGNATURE), u8("method", ID)]);
+var sxae_arc_end = sxLayout(0x60170003, "arc_end", LE, sxae_arc_end_fields);
+function sxae_arc(c) {
+    var p = 0;
+    var b = [];
+    for (var k = 0; k < 20000; k++) {
+        if (!sx_read(c, p, b, 2) || b[0] !== 0x1A) {
+            return false;
+        }
+        if (!b[1]) {
+            return sxae_add(c, sxae_arc_end, p);
+        }
+        var n = b[1] === 1 ? 25 : 29;
+        if (!sx_read(c, p, b, (n < 0 ? n + SX_U64_MAX : n)) || !sxae_add(c, n === 25 ? sxae_arc_member_old : sxae_arc_member, p)) {
+            return false;
+        }
+        var z = sxae32(b, 15);
+        if (!sxae_data(c, p + n, z)) {
+            return false;
+        }
+        p += (n + z) >>> 0;
+    }
+    return false;
+}
+function sx_seaarc_build(c) {
+    return sxae_arc(c);
+}

@@ -1,0 +1,460 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_adlib.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_adlib_comment(r, id) {
+    if (r === null || r.name === null || id < 0x600F0000 || id >= 0x60100000) {
+        return true;
+    }
+    var comment = null;
+    switch (id) {
+    case 0x600F0001:
+        if (r.name === "flags") {
+            comment = "Low five bits: initial speed; bit6: slow timer; bit7: description present. Native reader accepts RAD1.0 only.";
+        }
+        break;
+    case 0x600F0005:
+        if (r.name === "pattern_or_jump") {
+            comment = "Bit7 selects a jump to the low7-bit order index; otherwise a pattern number.";
+        }
+        break;
+    case 0x600F0006:
+        if (r.name === "pattern_offset") {
+            comment = "Byte offset from the beginning of the RAD file; zero means absent.";
+        }
+        break;
+    case 0x600F0007:
+        if (r.name === "row_flags") {
+            comment = "Bits0..6: row number; bit7: last row in this pattern.";
+        }
+        break;
+    case 0x600F0008:
+        if (r.name === "channel_flags") {
+            comment = "Low nibble: channel; bit7: final channel entry in the row.";
+        }
+        if (r.name === "note_octave") {
+            comment = "Low4 bits: note; bits4..6: octave; bit7 supplies instrument bit4.";
+        }
+        if (r.name === "instrument_effect") {
+            comment = "Instrument and effect selector bits; nonzero low nibble has a following parameter.";
+        }
+        break;
+    case 0x600F0009:
+        if (r.name === "channel_flags") {
+            comment = "Low nibble: channel; bit7: final channel entry in the row.";
+        }
+        if (r.name === "note_octave") {
+            comment = "Low4 bits: note; bits4..6: octave; bit7 supplies instrument bit4.";
+        }
+        if (r.name === "instrument_effect") {
+            comment = "Instrument and effect selector bits; nonzero low nibble has a following parameter.";
+        }
+        break;
+    case 0x600F000A:
+        if (r.name === "carrier_characteristics") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "modulator_characteristics") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "carrier_scale_level") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "modulator_scale_level") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "carrier_attack_decay") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "modulator_attack_decay") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "carrier_sustain_release") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "modulator_sustain_release") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "feedback_connection") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "carrier_waveform") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "modulator_waveform") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        if (r.name === "slide_encoded") {
+            comment = "Encoded HSC instrument byte; slide uses the high nibble, and scale-level bits require HSC conversion.";
+        }
+        break;
+    case 0x600F000B:
+        if (r.name === "pattern_or_jump_or_end") {
+            comment = "0..127: pattern; bit7: order jump; values0xB2..0xFF end the order list.";
+        }
+        break;
+    case 0x600F000C:
+        if (r.name === "note_or_instrument") {
+            comment = "Bit7 selects an instrument-change event; otherwise a note, with127 for key-off.";
+        }
+        if (r.name === "effect_or_instrument") {
+            comment = "Instrument index when byte0 bit7 is set; otherwise packed effect and parameter.";
+        }
+        break;
+    case 0x600F0011:
+        if (r.name === "order_word") {
+            comment = "Sequence index, transpose command,0xFFFE end,0xFFFF loop, or loop target word according to position.";
+        }
+        break;
+    case 0x600F0013:
+        if (r.name === "event_word") {
+            comment = "Encoded D00 event/effect word;0xFFFF terminates the sequence. Playback/effect expansion is outside the schema.";
+        }
+        break;
+    case 0x600F001A:
+        if (r.name === "command_channel") {
+            comment = "High nibble: command; low nibble: channel/label. Bytes>=0x80 encode delay.";
+        }
+        break;
+    case 0x600F001C:
+        if (r.name === "modulator_characteristics") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_characteristics") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_scale_level") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_scale_level") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_attack_decay") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_attack_decay") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_sustain_release") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_sustain_release") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_waveform") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_waveform") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "feedback_connection") {
+            comment = "Encoded OPL2 register value.";
+        }
+        break;
+    case 0x600F001D:
+        if (r.name === "repeat_mode") {
+            comment = "0: end loop;254: endless;255: chorus; other values: repetition count.";
+        }
+        break;
+    case 0x600F001F:
+        if (r.name === "instrument_mask") {
+            comment = "Bits31..0 indicate which of32 instrument records are present.";
+        }
+        break;
+    case 0x600F0021:
+        if (r.name === "channel_mask") {
+            comment = "Bits31..23 indicate which of9 channel streams are present.";
+        }
+        break;
+    case 0x600F0022:
+        if (r.name === "note_or_control") {
+            comment = "0xFE ends stream;0x7D loops; ordinary values encode a note and optional-field bit.";
+        }
+        break;
+    case 0x600F0023:
+        if (r.name === "repeat_count_encoded") {
+            comment = "Low6 bits encode repeat count; playback decrements by one.";
+        }
+        break;
+    case 0x600F0024:
+        if (r.name === "delay_flags") {
+            comment = "Low6 bits: delay; bit7 indicates delay; bit6 announces a following command.";
+        }
+        break;
+    case 0x600F0025:
+        if (r.name === "command") {
+            comment = "0x20..0x3F select instrument;0x40..0x7F select volume.";
+        }
+        break;
+    case 0x600F002A:
+        if (r.name === "pattern_or_end") {
+            comment = "0x80 ends the order list; preceding values index stored patterns.";
+        }
+        break;
+    case 0x600F002D:
+        if (r.name === "note_flags") {
+            comment = "Packed octave/note; bit7 announces an effect byte, low nibble0xF is key-off.";
+        }
+        break;
+    case 0x600F002E:
+        if (r.name === "effect_parameter") {
+            comment = "Top3 bits: effect selector; low5 bits: parameter or instrument index.";
+        }
+        break;
+    case 0x600F0030:
+        if (r.name === "digital_start") {
+            comment = "Encoded digital-sound parameter, ignored by the native FM reader; no address/unit conversion is inferred.";
+        }
+        if (r.name === "digital_size") {
+            comment = "Encoded digital-sound parameter ignored by the native FM reader; no byte-size unit is inferred.";
+        }
+        break;
+    case 0x600F0032:
+        if (r.name === "pattern_offset") {
+            comment = "Byte offset from the pattern-word pool; physical value is even.";
+        }
+        if (r.name === "transpose_flags") {
+            comment = "Bit7 selects instrument transposition; bits0..6 encode a signed7-bit transpose.";
+        }
+        break;
+    case 0x600F0034:
+        if (r.name === "event_word") {
+            comment = "Encoded note/instrument or command word; duration/loop semantics remain encoded.";
+        }
+        break;
+    case 0x600F003E:
+        if (r.name === "flags") {
+            comment = "Bit0 selects AdLib rhythm mode.";
+        }
+        break;
+    case 0x600F0040:
+        if (r.name === "sequence_or_end") {
+            comment = "0xFF ends a voice order list; other values index the sequence table.";
+        }
+        break;
+    case 0x600F0043:
+        if (r.name === "note_flags") {
+            comment = "Low7 bits: note; bit7: key-off.";
+        }
+        if (r.name === "delay_minus_one") {
+            comment = "Encoded duration; playback adds one tick.";
+        }
+        break;
+    case 0x600F0044:
+        if (r.name === "modulator_characteristics") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "modulator_scale_level_encoded") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "modulator_attack_decay") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "modulator_sustain_release") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "carrier_characteristics") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "carrier_scale_level_encoded") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "carrier_attack_decay") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "carrier_sustain_release") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        if (r.name === "waveforms_feedback") {
+            comment = "Encoded JBM OPL value; scale-level bytes invert low6 output bits; byte8 packs both waveforms and feedback.";
+        }
+        break;
+    case 0x600F0046:
+        if (r.name === "modulator_characteristics") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_characteristics") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_scale_level") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_scale_level") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_attack_decay") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_attack_decay") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_sustain_release") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_sustain_release") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "modulator_waveform") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "carrier_waveform") {
+            comment = "Encoded OPL2 register value.";
+        }
+        if (r.name === "feedback_connection") {
+            comment = "Encoded OPL2 register value.";
+        }
+        break;
+    case 0x600F0049:
+        if (r.name === "packed_note_event") {
+            comment = "Bits0..5: note;6..7: note/volume action;8..11: track;12..31: event tick. Not a wall-clock timestamp.";
+        }
+        break;
+    case 0x600F004B:
+        if (r.name === "register_or_command") {
+            comment = "0: delay;2: timer/chip control;other values: OPL register;0xFFFF pair ends stream.";
+        }
+        break;
+    case 0x600F004D:
+        if (r.name === "tag") {
+            comment = "0x1A title;0x1B author;0x1C description; following NUL-terminated bytes remain raw.";
+        }
+        break;
+    default:
+        break;
+    }
+    return comment === null || sxSetComment(r, comment);
+}
+function sxad_byte(c, at, v) {
+    return sx_read(c, at, v, 1);
+}
+function sxad_tag(c, at, tag, n) {
+    var b = [];
+    return n <= 16 && sx_read(c, at, b, n) && !sxMemcmp(b, tag, n);
+}
+function sxad_zraw(c, at, limit) {
+    var start = at[0];
+    var v = [0];
+    for (var i = 0; i < limit; i++) {
+        if (!sxad_byte(c, at[0], v)) {
+            return false;
+        }
+        at[0]++;
+        if (!v[0]) {
+            return sx_raw(c, start, at[0] - start);
+        }
+    }
+    return false;
+}
+function sxad_header(c, l, at, size) {
+    if (!sx_add(c, l, at[0], size)) {
+        return false;
+    }
+    at[0] += size;
+    return true;
+}
+function sxad_compare_interval(a, b) {
+    var x = a;
+    var y = b;
+    return x.start < y.start ? -1 : x.start > y.start ? 1 : 0;
+}
+function sxad_fill_gaps(c) {
+    var n = c.count;
+    if (!n || n > 100000) {
+        return false;
+    }
+    var ranges = sxAllocN(Math.floor((n * 16) / 16), sxNew_sxad_interval);
+    if (ranges === null) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        ranges[i].start = c.items[i].offset - c.f.base_address;
+        ranges[i].end = ranges[i].start + c.items[i].total_size;
+    }
+    sxQsort(ranges, 0, n, sxad_compare_interval, true);
+    var end = 0;
+    var ok = true;
+    for (i = 0; i < n; i++) {
+        if (ranges[i].start < end) {
+            ok = false;
+            break;
+        }
+        if (ranges[i].start > end && !sx_raw(c, end, ranges[i].start - end)) {
+            ok = false;
+            break;
+        }
+        end = ranges[i].end;
+    }
+    if (ok && end < c.size) {
+        ok = sx_raw(c, end, c.size - end);
+    }
+    return ok;
+}
+function sx_adlib_supports(type) {
+    switch (type) {
+    case "ADLIB_RAD":
+    case "ADLIB_HSC":
+    case "ADLIB_D00":
+    case "ADLIB_BNK":
+    case "ADLIB_BAM":
+    case "ADLIB_BMF":
+    case "ADLIB_DFM":
+    case "ADLIB_LDS":
+    case "ADLIB_ROL":
+    case "ADLIB_JBM":
+    case "ADLIB_XSM":
+    case "KEN_KSM":
+    case "RDOS_RAW":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_adlib_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "ADLIB_RAD":
+        ok = sx_adlib_rad_build(c);
+        break;
+    case "ADLIB_HSC":
+        ok = sx_adlib_hsc_build(c);
+        break;
+    case "ADLIB_D00":
+        ok = sx_adlib_d00_build(c);
+        break;
+    case "ADLIB_BNK":
+        ok = sx_adlib_bnk_build(c);
+        break;
+    case "ADLIB_BAM":
+        ok = sx_adlib_bam_build(c);
+        break;
+    case "ADLIB_BMF":
+        ok = sx_adlib_bmf_build(c);
+        break;
+    case "ADLIB_DFM":
+        ok = sx_adlib_dfm_build(c);
+        break;
+    case "ADLIB_LDS":
+        ok = sx_adlib_lds_build(c);
+        break;
+    case "ADLIB_ROL":
+        ok = sx_adlib_rol_build(c);
+        break;
+    case "ADLIB_JBM":
+        ok = sx_adlib_jbm_build(c);
+        break;
+    case "ADLIB_XSM":
+        ok = sx_adlib_xsm_build(c);
+        break;
+    case "KEN_KSM":
+        ok = sx_ken_ksm_build(c);
+        break;
+    case "RDOS_RAW":
+        ok = sx_rdos_raw_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sxad_fill_gaps(c);
+}

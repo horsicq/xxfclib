@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ulead/xx_ulead_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_ulead_prefix_fields = layout([chars("signature", 12, SIGNATURE), u32("reserved1"), u16("constant1"), u16("constant2"),
+    u32("reserved2")]);
+var sxao_ulead_prefix = sxLayout(0x6070000B, "ulead_prefix", LE, sxao_ulead_prefix_fields);
+var sxao_ulead_name_fields = layout([chars("name", 16, NONE)]);
+var sxao_ulead_name = sxLayout(0x6070000C, "ulead_name", LE, sxao_ulead_name_fields);
+var sxao_ulead_block_counts_fields = layout([u16("block_count", COUNT), u16("last_block_size", SIZE)]);
+var sxao_ulead_block_counts = sxLayout(0x6070000D, "ulead_block_counts", LE, sxao_ulead_block_counts_fields);
+var sxao_ulead_block_size_fields = layout([u16("compressed_size", SIZE)]);
+var sxao_ulead_block_size = sxLayout(0x6070000E, "ulead_block_size", LE, sxao_ulead_block_size_fields);
+function sxao_ulead(c) {
+    var b = [];
+    if (!sxao_read(c, 0, b, 0, 44) || !sxao_add(c, sxao_ulead_prefix, 0)) {
+        return false;
+    }
+    var n1 = sxao_uint(b, 24, 2, false);
+    var z1 = sxao_uint(b, 26, 2, false);
+    var n2 = sxao_uint(b, 40, 2, false);
+    var z2 = sxao_uint(b, 42, 2, false);
+    var a = !!(n1 && z1 <= 16384 && 28 + 2 * n1 < (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var d = !!(n2 && z2 <= 16384 && 44 + 2 * n2 < (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var short_header = a && (!d || n1 < 0x2000);
+    if (!a && !d) {
+        return false;
+    }
+    var p = short_header ? 24 : 40;
+    var n = short_header ? n1 : n2;
+    if (!short_header && !sxao_add(c, sxao_ulead_name, 24)) {
+        return false;
+    }
+    return sxao_add(c, sxao_ulead_block_counts, p) && sxao_table(c, sxao_ulead_block_size, p + 4, 2, n);
+}
+function sx_ulead_build(c) {
+    return sxao_ulead(c);
+}

@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/rsvp_message/xx_rsvp_message_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_rsvp_hello_instances_fields = layout([u32("source_instance", ID), u32("destination_instance", ID)]);
+var sxnm_rsvp_hello_instances = sxLayout(0x60260041, "rsvp_hello_instances", BE, sxnm_rsvp_hello_instances_fields);
+function sx_rsvp_message_build(v) {
+    return sxnm_row(v, sxnm_rsvp_header, 0, v.n) && sxnm_row(v, sxnm_rsvp_object_header, 8, v.n) && sxnm_row(v, sxnm_rsvp_hello_instances, 12, v.n);
+}

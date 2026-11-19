@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/acorn_uef/xx_acorn_uef_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_uef_header_fields = layout([chars("signature", 10, SIGNATURE), u8("version_minor"), u8("version_major")]);
+var sxse_uef_header = sxLayout(0x602F0039, "uef_header", LE, sxse_uef_header_fields);
+var sxse_uef_chunk_fields = layout([u16("chunk_id", ID), u32("data_size", SIZE)]);
+var sxse_uef_chunk = sxLayout(0x602F003A, "uef_chunk", LE, sxse_uef_chunk_fields);
+var sxse_uef_carrier_fields = layout([u16("cycles")]);
+var sxse_uef_carrier = sxLayout(0x602F003B, "uef_carrier", LE, sxse_uef_carrier_fields);
+var sxse_uef_carrier_dummy_fields = layout([u16("leading_cycles"), u16("trailing_cycles")]);
+var sxse_uef_carrier_dummy = sxLayout(0x602F003C, "uef_carrier_dummy", LE, sxse_uef_carrier_dummy_fields);
+var sxse_uef_gap_fields = layout([u16("duration_cycles")]);
+var sxse_uef_gap = sxLayout(0x602F003D, "uef_gap", LE, sxse_uef_gap_fields);
+var sxse_uef_phase_fields = layout([u16("degrees")]);
+var sxse_uef_phase = sxLayout(0x602F003E, "uef_phase", LE, sxse_uef_phase_fields);
+function sxse_uef(c) {
+    var b = [];
+    if (!sxse_read(c, 0, b, 12) || sxMemcmp(b, "UEF File!\x00", 10) || !sxse_put(c, sxse_uef_header, 0, 12, 1)) {
+        return false;
+    }
+    var p = 12;
+    for (var k = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && k < 65536; k++) {
+        if (!sxse_read(c, p, b, 6)) {
+            return false;
+        }
+        var z = sxse_u32(b, 2, false);
+        var type = sxse_u16(b, 0, false);
+        if (!sxse_span(c, p + 6, z) || !sxse_put(c, sxse_uef_chunk, p, 6, 1)) {
+            return false;
+        }
+        var l = type === 0x110 ? sxse_uef_carrier : type === 0x111 ? sxse_uef_carrier_dummy : type === 0x112 ? sxse_uef_gap : type === 0x115 ? sxse_uef_phase : null;
+        if (l !== null && (z !== (type === 0x111 ? 4 : 2) || !sxse_put(c, l, p + 6, z, 1))) {
+            return false;
+        }
+        p += 6 + z;
+    }
+    return p === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_acorn_uef_build(c) {
+    return sxse_uef(c);
+}

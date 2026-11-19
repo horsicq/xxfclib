@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/atarist_sndh/xx_atarist_sndh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxportable_ice(c) {
+    var h = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxportable_read(c, 0, h, 12, end) || sxMemcmp(h, "Ice!", 4) && sxMemcmp(h, "ICE!", 4)) {
+        return false;
+    }
+    var packed = sxGetU32(h, 12, 4, true);
+    var unpacked = sxGetU32(h, 12, 8, true);
+    return !!(packed >= 12 && packed <= end && unpacked && sxportable_row(c, sxportable_ice_music_header, 0, 12, end));
+}
+function sx_atarist_sndh_build(c) {
+    return sxportable_ice(c);
+}

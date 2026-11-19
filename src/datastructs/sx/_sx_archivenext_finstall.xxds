@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/finstall/xx_finstall_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_finstall_header_fields = layout([u8("marker", SIGNATURE), chars("signature", 10, SIGNATURE), chars("version", 1, NONE),
+    u32("capacity", SIZE), u16("member_count", COUNT)]);
+var sxan_finstall_header = sxLayout(0x60770015, "finstall_header", LE, sxan_finstall_header_fields);
+var sxan_finstall_member_fields = layout([u32("data_offset", OFFSET), u32("payload_size", SIZE), chars("name", 16, NONE)]);
+var sxan_finstall_member = sxLayout(0x60770016, "finstall_member", LE, sxan_finstall_member_fields);
+function sxan_finstall(c) {
+    var n = [0];
+    return sxan_add(c, sxan_finstall_header, 0) && sxan_word(c, 16, 2, false, n) && sxan_table(c, sxan_finstall_member, 18, 24, n[0]);
+}
+function sx_finstall_build(c) {
+    var ok = false;
+    ok = sxan_finstall(c);
+    return !!(c.count && sxan_finish(c));
+}

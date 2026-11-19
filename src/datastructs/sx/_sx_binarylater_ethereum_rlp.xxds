@@ -1,0 +1,67 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/ethereum_rlp/xx_ethereum_rlp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_rlp_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_rlp_tag = sxLayout(0x60350041, "rlp_tag", LE, sxbl_rlp_tag_fields);
+var sxbl_rlp_payload_size1_fields = layout([u8("payload_size", SIZE)]);
+var sxbl_rlp_payload_size1 = sxLayout(0x603500FD, "rlp_payload_size1", BE, sxbl_rlp_payload_size1_fields);
+var sxbl_rlp_payload_size2_fields = layout([u16("payload_size", SIZE)]);
+var sxbl_rlp_payload_size2 = sxLayout(0x603500FF, "rlp_payload_size2", BE, sxbl_rlp_payload_size2_fields);
+var sxbl_rlp_payload_size3_fields = layout([field("payload_size", "uint24", 3, SIZE)]);
+var sxbl_rlp_payload_size3 = sxLayout(0x60350101, "rlp_payload_size3", BE, sxbl_rlp_payload_size3_fields);
+var sxbl_rlp_payload_size4_fields = layout([u32("payload_size", SIZE)]);
+var sxbl_rlp_payload_size4 = sxLayout(0x60350103, "rlp_payload_size4", BE, sxbl_rlp_payload_size4_fields);
+var sxbl_rlp_payload_size5_fields = layout([field("payload_size", "uint40", 5, SIZE)]);
+var sxbl_rlp_payload_size5 = sxLayout(0x60350105, "rlp_payload_size5", BE, sxbl_rlp_payload_size5_fields);
+var sxbl_rlp_payload_size6_fields = layout([field("payload_size", "uint48", 6, SIZE)]);
+var sxbl_rlp_payload_size6 = sxLayout(0x60350107, "rlp_payload_size6", BE, sxbl_rlp_payload_size6_fields);
+var sxbl_rlp_payload_size7_fields = layout([field("payload_size", "uint56", 7, SIZE)]);
+var sxbl_rlp_payload_size7 = sxLayout(0x60350109, "rlp_payload_size7", BE, sxbl_rlp_payload_size7_fields);
+var sxbl_rlp_payload_size8_fields = layout([u64("payload_size", SIZE)]);
+var sxbl_rlp_payload_size8 = sxLayout(0x6035010B, "rlp_payload_size8", BE, sxbl_rlp_payload_size8_fields);
+var sxbl_rlp_literal_fields = layout([u8("literal_byte")]);
+var sxbl_rlp_literal = sxLayout(0x60350119, "rlp_literal", LE, sxbl_rlp_literal_fields);
+function sxbl_rlp(c, p, end, depth) {
+    var t = [0];
+    if (depth > 32 || !sxbl_byte(c, p[0], t)) {
+        return false;
+    }
+    if (t[0] < 128) {
+        return sxbl_emit(c, p, end, sxbl_rlp_literal);
+    }
+    if (!sxbl_emit(c, p, end, sxbl_rlp_tag)) {
+        return false;
+    }
+    var list = t[0] >= 192;
+    var lb = list ? 247 : 183;
+    var sb = list ? 192 : 128;
+    var n = [(t[0] - sb) >>> 0];
+    if (t[0] > lb) {
+        var z = (t[0] - lb) >>> 0;
+        var a = [sxbl_rlp_payload_size1, sxbl_rlp_payload_size2, sxbl_rlp_payload_size3, sxbl_rlp_payload_size4, sxbl_rlp_payload_size5, sxbl_rlp_payload_size6, sxbl_rlp_payload_size7, sxbl_rlp_payload_size8];
+        if (!z || z > 8 || !sxbl_word(c, p[0], z, true, n) || !sxbl_emit(c, p, end, a[(z - 1) >>> 0])) {
+            return false;
+        }
+    }
+    if (p[0] > end || n[0] > sxU64(end - p[0])) {
+        return false;
+    }
+    var stop = p[0] + n[0];
+    if (list) {
+        while (p[0] < stop) {
+            if (!sxbl_rlp(c, p, stop, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return sxbl_skip(c, p, end, n[0]);
+}
+function sx_ethereum_rlp_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    return sxbl_rlp(c, p, end, 0);
+}

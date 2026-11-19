@@ -1,0 +1,131 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hsf/xx_hsf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_hsf_volume_prefix_fields = layout([field("descriptor_sector_le", "uint32le", 4),
+    field("descriptor_sector_be", "uint32be", 4), u8("type", ID), chars("signature", 5, SIGNATURE), u8("version", ID),
+    u8("unused0", RESERVED), chars("system_identifier", 32, STRING), chars("volume_identifier", 32, STRING),
+    field("unused1", "byte[8]", 8, RESERVED), field("volume_blocks_le", "uint32le", 4, COUNT),
+    field("volume_blocks_be", "uint32be", 4, COUNT), field("unused2", "byte[32]", 32, RESERVED),
+    field("volume_set_size_le", "uint16le", 2, COUNT), field("volume_set_size_be", "uint16be", 2, COUNT),
+    field("sequence_number_le", "uint16le", 2, ID), field("sequence_number_be", "uint16be", 2, ID),
+    field("block_size_le", "uint16le", 2, SIZE), field("block_size_be", "uint16be", 2, SIZE),
+    field("path_table_size_le", "uint32le", 4, SIZE), field("path_table_size_be", "uint32be", 4, SIZE),
+    field("path_table_locations", "byte[32]", 32)]);
+var sxvi_hsf_volume_prefix = sxLayout(0x60530052, "hsf_volume_prefix", LE, sxvi_hsf_volume_prefix_fields);
+var sxvi_hsf_descriptor_header_fields = layout([field("descriptor_sector_le", "uint32le", 4),
+    field("descriptor_sector_be", "uint32be", 4), u8("type", ID), chars("signature", 5, SIGNATURE), u8("version", ID)]);
+var sxvi_hsf_descriptor_header = sxLayout(0x60530053, "hsf_descriptor_header", LE, sxvi_hsf_descriptor_header_fields);
+var sxvi_hsf_directory_record_fields = layout([u8("record_size", SIZE), u8("extended_attribute_blocks", COUNT),
+    field("extent_block_le", "uint32le", 4), field("extent_block_be", "uint32be", 4),
+    field("data_size_le", "uint32le", 4, SIZE), field("data_size_be", "uint32be", 4, SIZE), u8("year_since1900"), u8("month"),
+    u8("day"), u8("hour"), u8("minute"), u8("second"), u8("flags", FLAGS), u8("reserved", RESERVED),
+    u8("interleave_unit_blocks", COUNT), u8("interleave_gap_blocks", COUNT), field("volume_sequence_le", "uint16le", 2, ID),
+    field("volume_sequence_be", "uint16be", 2, ID), u8("identifier_size", SIZE)]);
+var sxvi_hsf_directory_record = sxLayout(0x60530054, "hsf_directory_record", LE, sxvi_hsf_directory_record_fields);
+var sxvi_hsf_volume_identifiers_fields = layout([chars("volume_set_identifier", 128, STRING),
+    chars("publisher_identifier", 128, STRING), chars("preparer_identifier", 128, STRING),
+    chars("application_identifier", 128, STRING), chars("copyright_identifier", 32, STRING),
+    chars("abstract_identifier", 32, STRING), chars("creation_time", 16, STRING), chars("modification_time", 16, STRING),
+    chars("expiration_time", 16, STRING), chars("effective_time", 16, STRING), u8("file_structure_version", ID)]);
+var sxvi_hsf_volume_identifiers = sxLayout(0x60530055, "hsf_volume_identifiers", LE, sxvi_hsf_volume_identifiers_fields);
+function sxvi_hsf(c) {
+    var h = [];
+    var bs = 0;
+    var blocks = 0;
+    var root = 0;
+    var rootsize = 0;
+    var found = false;
+    for (var i = 16; i < 80; i++) {
+        var p = i * 2048;
+        if (!sxvi_read(c, p, h, 2048) || sxMemcmpAt(h, 9, "CDROM", 0, 5) || h[14] !== 1 || sxvi32(h, 0, 0) !== i || sxvi32(h, 4, 1) !== i) {
+            break;
+        }
+        if (h[8] === 1) {
+            if (!sxvi_put(c, sxvi_hsf_volume_prefix, p, 1) || !sxvi_put(c, sxvi_hsf_directory_record, p + 180, 1) || !sxvi_put(c, sxvi_hsf_volume_identifiers, p + 214, 1)) {
+                return false;
+            }
+            if (!found) {
+                bs = sxvi16(h, 136, 0);
+                blocks = sxvi32(h, 88, 0);
+                root = sxvi32(h, 182, 0) + h[181];
+                rootsize = sxvi32(h, 190, 0);
+                found = true;
+            }
+        } else if (!sxvi_put(c, sxvi_hsf_descriptor_header, p, 1)) {
+            return false;
+        }
+        if (h[8] === 255) {
+            break;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    if (bs !== 512 && bs !== 1024 && bs !== 2048 || !blocks || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs) || root >= blocks || rootsize > sxU64(blocks - root) * bs) {
+        return true;
+    }
+    var q = sxAllocN(0x1000, sxNew_sxvi_directory);
+    if (q === null) {
+        return false;
+    }
+    var count = 1;
+    var index = 0;
+    var walked = 0;
+    var ok = true;
+    q[0] = sxCopy_sxvi_directory(null, { p: root * bs, size: rootsize, depth: 0 });
+    while (ok && index < count && c.count < 24000) {
+        var d = sxCopy_sxvi_directory(null, q[index++]);
+        if (d.depth > 32 || d.size > 16777216 || walked > sxU64(67108864 - d.size) || !sxvi_span(c, d.p, d.size)) {
+            continue;
+        }
+        walked += d.size;
+        for (var pos = 0; pos < d.size && ok && c.count < 24000; pos += bs) {
+            var n = sxU64(d.size - pos);
+            if (n > bs) {
+                n = bs;
+            }
+            if (!sxvi_read(c, d.p + pos, h, n)) {
+                break;
+            }
+            for (var at = 0; at + 33 <= n; ) {
+                var z = h[at];
+                var len = h[at + 32];
+                if (!z) {
+                    break;
+                }
+                if (z < 33 || z > sxU64(n - at) || !len || len > (z - 33) >>> 0) {
+                    break;
+                }
+                if (!sxvi_put(c, sxvi_hsf_directory_record, d.p + pos + at, 1)) {
+                    ok = false;
+                    break;
+                }
+                var block = sxvi32(h, at + 2, 0);
+                var size = sxvi32(h, at + 10, 0);
+                var child = !!(h[at + 24] & 2 && !(len === 1 && (h[at + 33] === 0 || h[at + 33] === 1)));
+                if (child && count < 4096 && block === sxvi32(h, at + 6, 1) && size === sxvi32(h, at + 14, 1)) {
+                    block += h[at + 1];
+                    if (block < blocks && size <= sxU64(blocks - block) * bs) {
+                        var seen = false;
+                        for (var k = 0; k < count; k++) {
+                            if (q[k].p === block * bs) {
+                                seen = true;
+                            }
+                        }
+                        if (!seen) {
+                            q[count++] = sxCopy_sxvi_directory(null, { p: block * bs, size: size, depth: (d.depth + 1) >>> 0 });
+                        }
+                    }
+                }
+                at += z;
+            }
+        }
+    }
+    return ok;
+}
+function sx_hsf_build(c) {
+    return sxvi_hsf(c);
+}

@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/softronics/xx_softronics_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_softronics_header_fields = layout([u8("header_size", SIZE), u8("reserved", RESERVED), blob("signature", 40, SIGNATURE),
+    u32("packed_size", SIZE)]);
+var sxl_softronics_header = sxLayout(0x600A000D, "softronics_header", LE, sxl_softronics_header_fields);
+var sxl_softronics_metadata_fields = layout([u32("original_size", SIZE), u16("dos_time"), u16("dos_date")]);
+var sxl_softronics_metadata = sxLayout(0x600A000E, "softronics_metadata", LE, sxl_softronics_metadata_fields);
+function sxl_softronics(c) {
+    var at = [0];
+    var size = [0];
+    var packed;
+    var n;
+    if (!sxl_byte(c, 0, size) || !sxl_sig(c, 1, "\x00", 1) || !sxl_sig(c, 2, "Softronics Compressed File\x00Version 2.00\x00", 40) || (packed = sx_u32(c, 42, false)) === null || !packed || !sx_add(c, sxl_softronics_header, 0, 46) || !sxl_name(c, 46, c.size < 59 ? c.size : 59, at) || at[0] + 8 !== size[0] || (n = sx_u32(c, at[0], false)) === null || !n || !sx_add(c, sxl_softronics_metadata, at[0], 8)) {
+        return false;
+    }
+    return sxl_span(c, size[0], packed) && size[0] + packed === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_softronics_build(c) {
+    return sxl_softronics(c);
+}

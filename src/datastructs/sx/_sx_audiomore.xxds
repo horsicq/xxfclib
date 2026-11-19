@@ -1,0 +1,938 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_audiomore.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_xact_name_fields = layout([chars("name", 64, STRING)]);
+var sxau_xact_name = sxLayout(0x602C000A, "xact_name", LE, sxau_xact_name_fields);
+var sxau_adts_header_fields = layout([u16("sync_id_layer_protection", FLAGS),
+    u8("profile_sampling_private_channel_high", FLAGS), u8("channel_low_original_home_copyright_length_high", FLAGS),
+    u8("frame_length_middle", FLAGS), u8("length_low_buffer_fullness_high", FLAGS), u8("fullness_low_raw_block_count", FLAGS)]);
+var sxau_adts_header = sxLayout(0x602C0033, "adts_header", BE, sxau_adts_header_fields);
+var sxau_adts_crc_fields = layout([u16("crc", CHECKSUM)]);
+var sxau_adts_crc = sxLayout(0x602C0034, "adts_crc", BE, sxau_adts_crc_fields);
+function sx_audiomore_supports(t) {
+    switch (t) {
+    case "CRI_AWB":
+    case "MICROSOFT_XWB":
+    case "MICROSOFT_XSB":
+    case "AUDIO_AST":
+    case "AUDIO_HCA":
+    case "IFF_8SVX":
+    case "VGM_LOG":
+    case "AUDIO_DOLBY_AC3":
+    case "AUDIO_MPEG_MP3":
+    case "AUDIO_AAC_ADTS":
+    case "AUDIO_MONKEYS_APE":
+    case "IRCAM_SDIF":
+    case "ATARI_SAP":
+    case "SC68_MUSIC":
+    case "AMIGA_AHX":
+    case "SONY_VAB":
+    case "ZX_AYEMUL":
+    case "FMOD_SAMPLE_BANK":
+    case "INTERPLAY_ACM":
+    case "CRI_AHX":
+    case "OLYMPUS_DSS":
+    case "EA_EXA":
+    case "AUDIO_NITRO_STRM":
+    case "ENSONIQ_PAF":
+    case "ABYLIGHT_STRM":
+    case "LEGO_ALP":
+    case "PARSEC_PMM":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxau_need(v, at, n, end) {
+    return end <= v.n && at <= end && n <= sxU64(end - at);
+}
+function sxau_u16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxau_u32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxau_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (++v.work > 4000000 || !sxau_need(v, at, n, end)) {
+        return false;
+    }
+    return v.c.count >= 24000 || sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxau_table(v, l, at, count, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (count > 4000000 || !sxau_need(v, at, count * z, end)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++, at += z) {
+        if (!sxau_row(v, l, at, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxau_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    return a.total_size < b.total_size ? -1 : a.total_size > b.total_size ? 1 : 0;
+}
+function sxau_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxau_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (at < end) {
+            continue;
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = at + z;
+    }
+    c.count = keep;
+    n = keep;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        at = c.items[i].offset - c.f.base_address;
+        z = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxau_order, true);
+    return !c.failed;
+}
+function sxau_adts(v, at, end) {
+    while (at < end) {
+        if (!sxau_row(v, sxau_adts_header, at, end)) {
+            return false;
+        }
+        var z = (v.p[at + 3] & 3) << 11 | v.p[at + 4] << 3 | v.p[at + 5] >> 5;
+        var h = v.p[at + 1] & 1 ? 7 : 9;
+        if (z < h || !sxau_need(v, at, z, end)) {
+            return false;
+        }
+        if (h === 9 && !sxau_row(v, sxau_adts_crc, at + 7, at + z)) {
+            return false;
+        }
+        at += z;
+    }
+    return at === end;
+}
+function sx_audiomore_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0 || c.size > 134217728) {
+        return false;
+    }
+    var view = { c: c, p: null, n: (c.size < 0 ? c.size + SX_U64_MAX : c.size), work: 0 };
+    var v = view;
+    v.p = sxAlloc(v.n);
+    if (v.p === null || !sx_read(c, 0, v.p, v.n)) {
+        if (v.p !== null) {
+        }
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "CRI_AWB":
+        ok = sx_cri_awb_build(v);
+        break;
+    case "MICROSOFT_XWB":
+        ok = sx_microsoft_xwb_build(v);
+        break;
+    case "MICROSOFT_XSB":
+        ok = sx_microsoft_xsb_build(v);
+        break;
+    case "AUDIO_AST":
+        ok = sx_audio_ast_build(v);
+        break;
+    case "AUDIO_HCA":
+        ok = sx_audio_hca_build(v);
+        break;
+    case "IFF_8SVX":
+        ok = sx_iff_8svx_build(v);
+        break;
+    case "VGM_LOG":
+        ok = sx_vgm_log_build(v);
+        break;
+    case "AUDIO_DOLBY_AC3":
+        ok = sx_audio_dolby_ac3_build(v);
+        break;
+    case "AUDIO_MPEG_MP3":
+        ok = sx_audio_mpeg_mp3_build(v);
+        break;
+    case "AUDIO_AAC_ADTS":
+        ok = sx_audio_aac_adts_build(v);
+        break;
+    case "AUDIO_MONKEYS_APE":
+        ok = sx_audio_monkeys_ape_build(v);
+        break;
+    case "IRCAM_SDIF":
+        ok = sx_ircam_sdif_build(v);
+        break;
+    case "ATARI_SAP":
+        ok = sx_atari_sap_build(v);
+        break;
+    case "SC68_MUSIC":
+        ok = sx_sc68_music_build(v);
+        break;
+    case "AMIGA_AHX":
+        ok = sx_amiga_ahx_build(v);
+        break;
+    case "SONY_VAB":
+        ok = sx_sony_vab_build(v);
+        break;
+    case "ZX_AYEMUL":
+        ok = sx_zx_ayemul_build(v);
+        break;
+    case "FMOD_SAMPLE_BANK":
+        ok = sx_fmod_sample_bank_build(v);
+        break;
+    case "INTERPLAY_ACM":
+        ok = sx_interplay_acm_build(v);
+        break;
+    case "CRI_AHX":
+        ok = sx_cri_ahx_build(v);
+        break;
+    case "OLYMPUS_DSS":
+        ok = sx_olympus_dss_build(v);
+        break;
+    case "EA_EXA":
+        ok = sx_ea_exa_build(v);
+        break;
+    case "AUDIO_NITRO_STRM":
+        ok = sx_audio_nitro_strm_build(v);
+        break;
+    case "ENSONIQ_PAF":
+        ok = sx_ensoniq_paf_build(v);
+        break;
+    case "ABYLIGHT_STRM":
+        ok = sx_abylight_strm_build(v);
+        break;
+    case "LEGO_ALP":
+        ok = sx_lego_alp_build(v);
+        break;
+    case "PARSEC_PMM":
+        ok = sx_parsec_pmm_build(v);
+        break;
+    default:
+        break;
+    }
+    return ok && sxau_finish(c);
+}
+function sx_audiomore_comment(r, id) {
+    if (r === null || r.name === null || id < 0x602C0000 || id >= 0x602D0000) {
+        return true;
+    }
+    if (id === 1613496334 && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "PCM");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496336 && r.name === "version") {
+        switch (sxVarU64(r.value)) {
+        case 512:
+            return sxSetComment(r, "HCA2.0");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496341 && r.name === "cipher_type") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "HCA_CIPHER_NONE");
+        case 1:
+            return sxSetComment(r, "HCA_CIPHER1");
+        case 56:
+            return sxSetComment(r, "HCA_CIPHER56");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496339 && r.name === "ath_type") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "ATH_DISABLED");
+        case 1:
+            return sxSetComment(r, "ATH_ENABLED");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496349 && r.name === "compression") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "CMP_NONE");
+        case 1:
+            return sxSetComment(r, "CMP_FIBDELTA");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496350 && r.name === "channel_assignment") {
+        switch (sxVarU64(r.value)) {
+        case 2:
+            return sxSetComment(r, "LEFT");
+        case 4:
+            return sxSetComment(r, "RIGHT");
+        case 6:
+            return sxSetComment(r, "STEREO");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496374 && r.name === "compression_level") {
+        switch (sxVarU64(r.value)) {
+        case 1000:
+            return sxSetComment(r, "FAST");
+        case 2000:
+            return sxSetComment(r, "NORMAL");
+        case 3000:
+            return sxSetComment(r, "HIGH");
+        case 4000:
+            return sxSetComment(r, "EXTRA_HIGH");
+        case 5000:
+            return sxSetComment(r, "INSANE");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496417 && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 16:
+            return sxSetComment(r, "AHX_LOW_RATE");
+        case 17:
+            return sxSetComment(r, "AHX_STANDARD");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496417 && r.name === "encryption_type") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "UNENCRYPTED");
+        case 8:
+            return sxSetComment(r, "KEY8");
+        case 9:
+            return sxSetComment(r, "KEY9");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496424 && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PCM8");
+        case 1:
+            return sxSetComment(r, "PCM16");
+        case 2:
+            return sxSetComment(r, "IMA_ADPCM");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496425 && r.name === "sample_byte_order") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "BIG_ENDIAN");
+        case 1:
+            return sxSetComment(r, "LITTLE_ENDIAN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496425 && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PCM16");
+        case 1:
+            return sxSetComment(r, "PACKED_PCM24");
+        case 2:
+            return sxSetComment(r, "PCM8");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496425 && r.name === "source") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "ANALOG_RECORDING");
+        case 2:
+            return sxSetComment(r, "DIGITAL_TRANSFER");
+        case 3:
+            return sxSetComment(r, "MULTITRACK_MIXDOWN");
+        case 5:
+            return sxSetComment(r, "DSP_PROCESSING");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496429 && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PCM8");
+        case 1:
+            return sxSetComment(r, "PCM16");
+        case 2:
+            return sxSetComment(r, "IMA_ADPCM");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496430 && r.name === "sample_byte_order") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "BIG_ENDIAN");
+        case 1:
+            return sxSetComment(r, "LITTLE_ENDIAN");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496430 && r.name === "encoding") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PCM16");
+        case 1:
+            return sxSetComment(r, "PACKED_PCM24");
+        case 2:
+            return sxSetComment(r, "PCM8");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496430 && r.name === "source") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            return sxSetComment(r, "ANALOG_RECORDING");
+        case 2:
+            return sxSetComment(r, "DIGITAL_TRANSFER");
+        case 3:
+            return sxSetComment(r, "MULTITRACK_MIXDOWN");
+        case 5:
+            return sxSetComment(r, "DSP_PROCESSING");
+        default:
+            break;
+        }
+    }
+    if (id === 1613496321 && r.name === "alignment") {
+        return sxSetComment(r, "Byte alignment applied to stored member offsets.");
+    }
+    if (id === 1613496321 && r.name === "subkey") {
+        return sxSetComment(r, "CRI AWB subkey; does not imply payload decryption.");
+    }
+    if (id === 1613496328 && r.name === "build_time") {
+        return sxSetComment(r, "Windows FILETIME:100 ns intervals since1601-01-01 UTC.");
+    }
+    if (id === 1613496331 && r.name === "last_modified") {
+        return sxSetComment(r, "Windows FILETIME:100 ns intervals since1601-01-01 UTC.");
+    }
+    if (id === 1613496329 && r.name === "play_offset") {
+        return sxSetComment(r, "Byte offset from the wave-data segment, not from the file start.");
+    }
+    if (id === 1613496329 && r.name === "flags_and_duration") {
+        return sxSetComment(r, "Bits0..3:entry flags; bits4..31:decoded duration in samples.");
+    }
+    if (id === 1613496329 && r.name === "mini_wave_format") {
+        return sxSetComment(r, "Bits0..1:codec;2..4:channels;5..22:sample rate;23..30:block alignment;31:16-bit PCM flag.");
+    }
+    if (id === 1613496328 && r.name === "compact_format") {
+        return sxSetComment(r, "Packed mini-wave format used by compact banks; native supported banks are noncompact.");
+    }
+    if (id === 1613496340 && r.name === "start_frame") {
+        return sxSetComment(r, "Zero-based encoded frame index.");
+    }
+    if (id === 1613496340 && r.name === "end_frame") {
+        return sxSetComment(r, "Inclusive encoded frame index.");
+    }
+    if (id === 1613496342 && r.name === "volume") {
+        return sxSetComment(r, "IEEE754 relative linear volume multiplier.");
+    }
+    if (id === 1613496349 && r.name === "volume_fixed16_16") {
+        return sxSetComment(r, "Unsigned16.16 fixed-point volume;65536 means1.0.");
+    }
+    if (id === 1613496347 && r.name === "form_bytes") {
+        return sxSetComment(r, "Byte length after the first8 bytes.");
+    }
+    if (id === 1613496348 && r.name === "payload_size") {
+        return sxSetComment(r, "Payload bytes; excludes8-byte header and optional odd-byte pad.");
+    }
+    if (id === 1613496351 && r.name === "eof_offset") {
+        return sxSetComment(r, "Byte displacement from file byte4; zero has the version-specific absent/default meaning.");
+    }
+    if (id === 1613496351 && r.name === "gd3_offset") {
+        return sxSetComment(r, "Byte displacement from file byte20; zero has the version-specific absent/default meaning.");
+    }
+    if (id === 1613496351 && r.name === "loop_offset") {
+        return sxSetComment(r, "Byte displacement from file byte28; zero has the version-specific absent/default meaning.");
+    }
+    if (id === 1613496351 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte displacement from file byte52; zero has the version-specific absent/default meaning.");
+    }
+    if (id === 1613496351 && r.name === "sn76489_clock") {
+        return sxSetComment(r, "Clock frequency in Hz; high bits may carry chip configuration flags.");
+    }
+    if (id === 1613496351 && r.name === "ym2413_clock") {
+        return sxSetComment(r, "Clock frequency in Hz; high bits may carry chip configuration flags.");
+    }
+    if (id === 1613496351 && r.name === "ym2612_clock") {
+        return sxSetComment(r, "Clock frequency in Hz; high bits may carry chip configuration flags.");
+    }
+    if (id === 1613496351 && r.name === "ym2151_clock") {
+        return sxSetComment(r, "Clock frequency in Hz; high bits may carry chip configuration flags.");
+    }
+    if (id === 1613496351 && r.name === "sega_pcm_clock") {
+        return sxSetComment(r, "Clock frequency in Hz; high bits may carry chip configuration flags.");
+    }
+    if (id === 1613496351 && r.name === "version") {
+        return sxSetComment(r, "Packed hexadecimal VGM version (for example0x160 means1.60).");
+    }
+    if (id === 1613496351 && r.name === "total_samples") {
+        return sxSetComment(r, "Total duration in44100-Hz sample ticks.");
+    }
+    if (id === 1613496351 && r.name === "loop_samples") {
+        return sxSetComment(r, "Loop duration in44100-Hz sample ticks.");
+    }
+    if (id === 1613496356 && r.name === "wait_samples") {
+        return sxSetComment(r, "Delay in44100-Hz sample ticks.");
+    }
+    if (id === 1613496358 && r.name === "pcm_bank_offset") {
+        return sxSetComment(r, "Byte offset into the concatenated PCM data bank, not a file position.");
+    }
+    if (id === 1613496362 && r.name === "data_start_offset") {
+        return sxSetComment(r, "Byte offset into PCM data bank;0xFFFFFFFF continues current position.");
+    }
+    if (id === 1613496362 && r.name === "data_length") {
+        return sxSetComment(r, "Length interpretation depends on length_mode (commands, milliseconds, or data remainder).");
+    }
+    if (id === 1613496360 && r.name === "step_base") {
+        return sxSetComment(r, "Byte displacement within each PCM step.");
+    }
+    if (id === 1613496360 && r.name === "step_size") {
+        return sxSetComment(r, "PCM step size in bytes.");
+    }
+    if (id === 1613496362 && r.name === "length_mode") {
+        return sxSetComment(r, "Low2 bits:length mode; bit4:reverse; bit7:loop.");
+    }
+    if (id === 1613496365 && r.name === "sample_rate_and_frame_size_code") {
+        return sxSetComment(r, "Bits6..7:sample-rate code; bits0..5:frame-size code, not a byte count.");
+    }
+    if (id === 1613496365 && r.name === "bitstream_id_and_mode") {
+        return sxSetComment(r, "Bits3..7:bitstream ID; bits0..2:bitstream mode. Native supports classic AC-3 bsid8.");
+    }
+    if (id === 1613496367 && r.name === "sync_version_layer_protection") {
+        return sxSetComment(r, "11-bit sync, MPEG version, layer and protection-absent bit. Native supports MPEG1 LayerIII unprotected frames.");
+    }
+    if (id === 1613496367 && r.name === "bitrate_rate_padding_private") {
+        return sxSetComment(r, "Bits4..7:bitrate index;2..3:sample-rate index;1:padding;0:private.");
+    }
+    if (id === 1613496367 && r.name === "channel_mode_extension_flags") {
+        return sxSetComment(r, "Bits6..7:channel mode;4..5:mode extension;3:copyright;2:original;0..1:emphasis.");
+    }
+    if (id === 1613496368 && r.name === "synchsafe_size") {
+        return sxSetComment(r, "Four7-bit groups, most significant first; decoded tag length excludes10-byte prefix.");
+    }
+    if (id === 1613496370 && r.name === "synchsafe_size") {
+        return sxSetComment(r, "Four7-bit groups, most significant first; decoded frame payload byte length.");
+    }
+    if (id === 1613496371 && r.name === "sync_id_layer_protection") {
+        return sxSetComment(r, "Bits4..15:sync0xFFF;3:MPEG ID;1..2:layer;0:protection absent.");
+    }
+    if (id === 1613496371 && r.name === "profile_sampling_private_channel_high") {
+        return sxSetComment(r, "Bits6..7:profile;2..5:sampling frequency index;1:private;0:channel configuration high bit.");
+    }
+    if (id === 1613496371 && r.name === "channel_low_original_home_copyright_length_high") {
+        return sxSetComment(r, "Bits6..7:channel configuration low bits;5:original;4:home;3..2:copyright bits;1..0:frame length high bits.");
+    }
+    if (id === 1613496371 && r.name === "frame_length_middle") {
+        return sxSetComment(r, "Middle8 bits of the13-bit total ADTS frame byte length.");
+    }
+    if (id === 1613496371 && r.name === "length_low_buffer_fullness_high") {
+        return sxSetComment(r, "Bits5..7:frame length low bits;0..4:buffer fullness high bits.");
+    }
+    if (id === 1613496371 && r.name === "fullness_low_raw_block_count") {
+        return sxSetComment(r, "Bits2..7:buffer fullness low bits;0..1:raw data block count minus one.");
+    }
+    if (id === 1613496373 && r.name === "audio_data_bytes_low") {
+        return sxSetComment(r, "Low32 bits of encoded audio byte count; native scope requires high word zero.");
+    }
+    if (id === 1613496373 && r.name === "audio_data_bytes_high") {
+        return sxSetComment(r, "High32 bits of encoded audio byte count.");
+    }
+    if (id === 1613496373 && r.name === "md5") {
+        return sxSetComment(r, "Stored MD5; schema does not recompute or validate decoded audio.");
+    }
+    if (id === 1613496376 && r.name === "tag_bytes") {
+        return sxSetComment(r, "Tag byte length including footer, excluding optional32-byte header.");
+    }
+    if (id === 1613496377 && r.name === "flags") {
+        return sxSetComment(r, "Bit0:read-only; bits1..2:value type (UTF8,binary,external,reserved).");
+    }
+    if (id === 1613496379 && r.name === "frame_data_size") {
+        return sxSetComment(r, "Frame byte length after its first8 bytes.");
+    }
+    if (id === 1613496379 && r.name === "time_seconds") {
+        return sxSetComment(r, "IEEE754 seconds from start of stream, not a Unix timestamp.");
+    }
+    if (id === 1613496380 && r.name === "data_type") {
+        return sxSetComment(r, "High byte:numeric class (0 floating,1 signed,2 unsigned); low byte:element width in bytes.");
+    }
+    if (id === 1613496383 && r.name === "file_size_from_magic") {
+        return sxSetComment(r, "Byte length from the SC68 signature at file byte56.");
+    }
+    if (id === 1613496387 && r.name === "value") {
+        return sxSetComment(r, "32-bit value interpreted by the preceding SC68 chunk ID; timing/count/register units vary by tag.");
+    }
+    if (id === 1613496386 && r.name === "load_address") {
+        return sxSetComment(r, "68000 memory load address, not a file offset.");
+    }
+    if (id === 1613496388 && r.name === "names_offset_low16") {
+        return sxSetComment(r, "Low16 bits of the actual name-table byte offset; large modules wrap modulo65536.");
+    }
+    if (id === 1613496388 && r.name === "flags_and_position_count") {
+        return sxSetComment(r, "Low12 bits:position count; high bit:track0 omitted; other high bits encode replay-speed flags.");
+    }
+    if (id === 1613496391 && r.name === "filter_speed_and_wave_length") {
+        return sxSetComment(r, "Low3 bits:wave length code; high bits:filter speed.");
+    }
+    if (id === 1613496392 && r.name === "effects_and_waveform") {
+        return sxSetComment(r, "Packed playlist effects and waveform selector; source bit pattern preserved.");
+    }
+    if (id === 1613496392 && r.name === "note_and_fixed") {
+        return sxSetComment(r, "Low6 bits:note; high bits:fixed-note/effect flags.");
+    }
+    if (id === 1613496396 && r.name === "size_in_8byte_units") {
+        return sxSetComment(r, "Encoded sample length in8-byte units; multiply by8 for bytes.");
+    }
+    if (id === 1613496397 && r.name === "track_count_minus_one") {
+        return sxSetComment(r, "Number of tracks minus one.");
+    }
+    if (id === 1613496399 && r.name === "duration_frames") {
+        return sxSetComment(r, "Duration in50-Hz replay frames.");
+    }
+    if (id === 1613496399 && r.name === "fade_frames") {
+        return sxSetComment(r, "Fade duration in50-Hz replay frames.");
+    }
+    if (id === 1613496411 && r.name === "packed_sample_metadata") {
+        return sxSetComment(r, "Bit0:more chunks;1..4:rate code;5..6:channel code;7..33:data offset in32-byte units;34..63:sample count.");
+    }
+    if (id === 1613496412 && r.name === "more_size_type") {
+        return sxSetComment(r, "Bit0:more chunks;1..24:chunk payload bytes;25..31:chunk type.");
+    }
+    if (id === 1613496415 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the name-table beginning.");
+    }
+    if (id === 1613496416 && r.name === "levels_and_subblocks") {
+        return sxSetComment(r, "Low4 bits:transform levels; high12 bits:subblocks.");
+    }
+    if (id === 1613496417 && r.name === "data_offset_minus_four") {
+        return sxSetComment(r, "Stored relative offset; add4 to obtain encoded-data byte offset.");
+    }
+    if (id === 1613496420 && r.name === "header_512byte_blocks") {
+        return sxSetComment(r, "Header length in512-byte blocks, not bytes.");
+    }
+    if (id === 1613496420 && r.name === "recording_start") {
+        return sxSetComment(r, "Twelve ASCII digits:YYMMDDhhmmss; no time zone encoded.");
+    }
+    if (id === 1613496420 && r.name === "recording_end") {
+        return sxSetComment(r, "Twelve ASCII digits:YYMMDDhhmmss; no time zone encoded.");
+    }
+    if (id === 1613496420 && r.name === "duration_hhmmss") {
+        return sxSetComment(r, "Six ASCII digits:HHMMSS duration.");
+    }
+    if (id === 1613496421 && r.name === "block_size") {
+        return sxSetComment(r, "Total block byte length including8-byte prefix.");
+    }
+    if (id === 1613496423 && r.name === "chunk_size") {
+        return sxSetComment(r, "Total chunk bytes including8-byte prefix.");
+    }
+    if (id === 1613496424 && r.name === "block_bytes") {
+        return sxSetComment(r, "Encoded bytes per channel in each full block.");
+    }
+    if (id === 1613496424 && r.name === "last_block_bytes") {
+        return sxSetComment(r, "Encoded bytes per channel in the final block.");
+    }
+    if (id === 1613496424 && r.name === "timer") {
+        return sxSetComment(r, "Nintendo hardware playback timer value; not a timestamp.");
+    }
+    if (id === 1613496426 && r.name === "block_size") {
+        return sxSetComment(r, "Total block byte length including8-byte prefix.");
+    }
+    if (id === 1613496428 && r.name === "chunk_size") {
+        return sxSetComment(r, "Total chunk bytes including8-byte prefix.");
+    }
+    if (id === 1613496429 && r.name === "block_bytes") {
+        return sxSetComment(r, "Encoded bytes per channel in each full block.");
+    }
+    if (id === 1613496429 && r.name === "last_block_bytes") {
+        return sxSetComment(r, "Encoded bytes per channel in the final block.");
+    }
+    if (id === 1613496429 && r.name === "timer") {
+        return sxSetComment(r, "Nintendo hardware playback timer value; not a timestamp.");
+    }
+    if (id === 1613496432 && r.name === "header_bytes_after_prefix") {
+        return sxSetComment(r, "Header bytes following the first8 bytes;8 means implicit22050Hz,12 includes sample-rate word.");
+    }
+    if (id === 1613496434 && r.name === "track_relative_offset") {
+        return sxSetComment(r, "Byte displacement relative to MDH signature at file byte0x38.");
+    }
+    if (id === 1613496323 && r.name === "entry_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496325 && r.name === "entry_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496327 && r.name === "segment_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496329 && r.name === "loop_start_samples") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496331 && r.name === "unknown_17") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496331 && r.name === "unknown_20") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496331 && r.name === "simple_cues_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "complex_cues_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "cue_names_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "unknown_offset") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496331 && r.name === "variation_tables_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "transition_tables_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "wave_bank_names_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "cue_name_hash_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "cue_name_index_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496331 && r.name === "sounds_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496332 && r.name === "sound_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496334 && r.name === "bits_per_sample") {
+        return sxSetComment(r, "Bits per decoded sample per channel.");
+    }
+    if (id === 1613496334 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496334 && r.name === "loop_start_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496334 && r.name === "loop_end_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496334 && r.name === "unknown_tail") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496337 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496349 && r.name === "samples_per_second") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496361 && r.name === "frequency") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496374 && r.name === "bits_per_sample") {
+        return sxSetComment(r, "Bits per decoded sample per channel.");
+    }
+    if (id === 1613496374 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496375 && r.name === "frame_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496382 && r.name === "start_address") {
+        return sxSetComment(r, "Target machine memory address, not a file offset.");
+    }
+    if (id === 1613496382 && r.name === "end_address_inclusive") {
+        return sxSetComment(r, "Target machine memory address, not a file offset.");
+    }
+    if (id === 1613496391 && r.name === "unknown_a") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496397 && r.name === "custom_player_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496397 && r.name === "author_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496397 && r.name === "comment_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496397 && r.name === "track_table_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496398 && r.name === "name_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496398 && r.name === "descriptor_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496399 && r.name === "cpu_state_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496399 && r.name === "block_index_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496400 && r.name === "stack_pointer") {
+        return sxSetComment(r, "Target machine memory address, not a file offset.");
+    }
+    if (id === 1613496400 && r.name === "init_address") {
+        return sxSetComment(r, "Target machine memory address, not a file offset.");
+    }
+    if (id === 1613496400 && r.name === "interrupt_address") {
+        return sxSetComment(r, "Target machine memory address, not a file offset.");
+    }
+    if (id === 1613496401 && r.name === "load_address") {
+        return sxSetComment(r, "Target machine memory address, not a file offset.");
+    }
+    if (id === 1613496401 && r.name === "payload_relative") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this pointer word.");
+    }
+    if (id === 1613496404 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496404 && r.name === "opaque_2c") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496404 && r.name === "loop_start_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496404 && r.name === "loop_end_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496408 && r.name === "loop_start_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496408 && r.name === "loop_end_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496408 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496414 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496416 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496417 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496417 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496420 && r.name === "opaque_metadata") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496424 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496424 && r.name === "loop_start_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496424 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496425 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496429 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496429 && r.name === "loop_start_sample") {
+        return sxSetComment(r, "Decoded sample index, not a byte offset.");
+    }
+    if (id === 1613496429 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496430 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496431 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496431 && r.name === "unknown_c") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496431 && r.name === "unknown_14") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496431 && r.name === "unknown_1c") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496432 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496433 && r.name === "sample_rate") {
+        return sxSetComment(r, "Frequency in Hz.");
+    }
+    if (id === 1613496434 && r.name === "instrument_offset") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset0") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset1") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset2") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset3") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset4") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset5") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset6") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "sample_offset7") {
+        return sxSetComment(r, "Byte offset relative to this file or bank beginning.");
+    }
+    if (id === 1613496434 && r.name === "unknown_3c") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    if (id === 1613496435 && r.name === "unknown") {
+        return sxSetComment(r, "Uninterpreted physical header bytes; no guessed member semantics.");
+    }
+    return true;
+}

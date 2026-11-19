@@ -1,0 +1,80 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_installerextras.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_installerextras");
+include("_sx_installerextras_sfx_abbyy_fine_objects");
+include("_sx_installerextras_sfx_analogx_emucore_ffs");
+include("_sx_installerextras_sfx_clickteam_multimedia_fusion");
+include("_sx_installerextras_sfx_compaq_softpaq");
+include("_sx_installerextras_sfx_ebook_compiler_executables");
+include("_sx_installerextras_sfx_flashjester_jugglor");
+include("_sx_installerextras_sfx_hci_instalit");
+include("_sx_installerextras_sfx_jgsoft_deploymaster_package");
+include("_sx_installerextras_sfx_krzip");
+include("_sx_installerextras_sfx_nullsoft_pimp");
+include("_sx_installerextras_sfx_packagefortheweb");
+include("_sx_installerextras_sfx_red");
+include("_sx_installerextras_sfx_sbx_extractor");
+include("_sx_installerextras_sfx_warpin_package");
+include("_sx_installerextras_sfx_wasp_windows_auto");
+include("_sx_installerextras_sfxstart");
+
+function fileTypes() { return ["SFX_SBX_EXTRACTOR", "SFX_ANALOGX_EMUCORE_FFS", "SFX_KRZIP", "SFX_WARPIN_PACKAGE",
+    "SFX_HCI_INSTALIT", "SFX_CLICKTEAM_MULTIMEDIA_FUSION", "SFX_ABBYY_FINE_OBJECTS", "SFX_FLASHJESTER_JUGGLOR",
+    "SFX_JGSOFT_DEPLOYMASTER_PACKAGE", "SFX_NULLSOFT_PIMP", "SFX_COMPAQ_SOFTPAQ", "SFX_WASP_WINDOWS_AUTO", "SFXSTART",
+    "SFX_EBOOK_COMPILER_EXECUTABLES", "SFX_PACKAGEFORTHEWEB", "SFX_RED"]; }
+
+var sx_installerextras_layouts = [sxiex_sbx_member, sxiex_sbx_plain_size, sxiex_installer_name, sxiex_installer_utf16_name,
+    sxiex_installer_encoded_bytes, sxiex_ffs_header, sxiex_ffs_index, sxiex_ffs_member, sxiex_ffs_cmp1, sxiex_ffs_cmp2,
+    sxiex_ffs_footer, sxiex_krzip_header, sxiex_krzip_encoded_name_length, sxiex_krzip_encoded_fields, sxiex_krzip_footer,
+    sxiex_warpin_header, sxiex_warpin_extension, sxiex_warpin_package, sxiex_warpin_member, sxiex_instalit_engine,
+    sxiex_instalit_footer, sxiex_instalit_catalog_prefix, sxiex_instalit_catalog_1c55, sxiex_instalit_catalog_1c59,
+    sxiex_instalit_catalog_1a47, sxiex_instalit_script, sxiex_instalit_data_marker, sxiex_abbyy_count, sxiex_abbyy_string,
+    sxiex_abbyy_stream_size, sxiex_abbyy_dates, sxiex_abbyy_finear, sxiex_abbyy_trailer, sxiex_deploymaster_record,
+    sxiex_deploymaster_separator, sxiex_deploymaster_bzip2, sxiex_pimp_header, sxiex_pimp_directory, sxiex_pimp_text,
+    sxiex_pimp_v1_count, sxiex_pimp_v2_count, sxiex_pimp_name_length, sxiex_pimp_v1_sizes, sxiex_pimp_v2_sizes,
+    sxiex_pimp_command_length, sxiex_softpaq_fit1, sxiex_softpaq_fit2, sxiex_wasp_resource_shift, sxiex_wasp_resource_type,
+    sxiex_wasp_resource_entry, sxiex_wasp_string_length, sxiex_wasp_payload_size, sxiex_sfxstart_header, sxiex_sfxstart_name,
+    sxiex_sfxstart_size, sxiex_sfxstart_separator, sxiex_sfxstart_command, sxiex_sfxstart_footer, sxiex_clickteam_pack,
+    sxiex_clickteam_name, sxiex_clickteam_size, sxiex_clickteam_checksum_size, sxiex_jugglor_member, sxiex_exeattachment_member,
+    sxiex_jugglor_trailer, sxiex_exeattachment_trailer, sxiex_ebook_creator_header, sxiex_ebook_creator_member,
+    sxiex_ebook_creator_ref, sxiex_ebook_creator_list, sxiex_ebook_creator_element, sxiex_ebook_creator_name,
+    sxiex_ebook_creator_footer, sxiex_sbook_header, sxiex_sbook_count, sxiex_sbook_name_length, sxiex_sbook_member,
+    sxiex_sbook_chunk, sxiex_sbook_footer, sxiex_pftw_settings_size, sxiex_pftw_settings_new, sxiex_pftw_settings_old,
+    sxiex_pftw_cab_header, sxiex_pftw_cab_reserve, sxiex_pftw_cab_folder, sxiex_pftw_cab_file, sxiex_pftw_cab_data,
+    sxiex_sfx_red_header, sxiex_sfx_red_name, sxiex_sfx_red_short_name, sxiex_sfx_red_crc16, sxiex_instalit_resource_shift,
+    sxiex_instalit_resource_type, sxiex_instalit_resource_entry, sxiex_instalit_resource_end,
+    sxiex_instalit_resource_name_length, sxiex_wasp_name_separator, sxiex_wasp_run_marker, sxiex_wasp_resource_end];
+
+function structs() {
+    return sxCatalog([sxiex_sbx_member, sxiex_sbx_plain_size, sxiex_installer_name, sxiex_installer_utf16_name,
+        sxiex_installer_encoded_bytes, sxiex_ffs_header, sxiex_ffs_index, sxiex_ffs_member, sxiex_ffs_cmp1, sxiex_ffs_cmp2,
+        sxiex_ffs_footer, sxiex_krzip_header, sxiex_krzip_encoded_name_length, sxiex_krzip_encoded_fields, sxiex_krzip_footer,
+        sxiex_warpin_header, sxiex_warpin_extension, sxiex_warpin_package, sxiex_warpin_member, sxiex_instalit_engine,
+        sxiex_instalit_footer, sxiex_instalit_catalog_prefix, sxiex_instalit_catalog_1c55, sxiex_instalit_catalog_1c59,
+        sxiex_instalit_catalog_1a47, sxiex_instalit_script, sxiex_instalit_data_marker, sxiex_abbyy_count, sxiex_abbyy_string,
+        sxiex_abbyy_stream_size, sxiex_abbyy_dates, sxiex_abbyy_finear, sxiex_abbyy_trailer, sxiex_deploymaster_record,
+        sxiex_deploymaster_separator, sxiex_deploymaster_bzip2, sxiex_pimp_header, sxiex_pimp_directory, sxiex_pimp_text,
+        sxiex_pimp_v1_count, sxiex_pimp_v2_count, sxiex_pimp_name_length, sxiex_pimp_v1_sizes, sxiex_pimp_v2_sizes,
+        sxiex_pimp_command_length, sxiex_softpaq_fit1, sxiex_softpaq_fit2, sxiex_wasp_resource_shift, sxiex_wasp_resource_type,
+        sxiex_wasp_resource_entry, sxiex_wasp_string_length, sxiex_wasp_payload_size, sxiex_sfxstart_header,
+        sxiex_sfxstart_name, sxiex_sfxstart_size, sxiex_sfxstart_separator, sxiex_sfxstart_command, sxiex_sfxstart_footer,
+        sxiex_clickteam_pack, sxiex_clickteam_name, sxiex_clickteam_size, sxiex_clickteam_checksum_size, sxiex_jugglor_member,
+        sxiex_exeattachment_member, sxiex_jugglor_trailer, sxiex_exeattachment_trailer, sxiex_ebook_creator_header,
+        sxiex_ebook_creator_member, sxiex_ebook_creator_ref, sxiex_ebook_creator_list, sxiex_ebook_creator_element,
+        sxiex_ebook_creator_name, sxiex_ebook_creator_footer, sxiex_sbook_header, sxiex_sbook_count, sxiex_sbook_name_length,
+        sxiex_sbook_member, sxiex_sbook_chunk, sxiex_sbook_footer, sxiex_pftw_settings_size, sxiex_pftw_settings_new,
+        sxiex_pftw_settings_old, sxiex_pftw_cab_header, sxiex_pftw_cab_reserve, sxiex_pftw_cab_folder, sxiex_pftw_cab_file,
+        sxiex_pftw_cab_data, sxiex_sfx_red_header, sxiex_sfx_red_name, sxiex_sfx_red_short_name, sxiex_sfx_red_crc16,
+        sxiex_instalit_resource_shift, sxiex_instalit_resource_type, sxiex_instalit_resource_entry, sxiex_instalit_resource_end,
+        sxiex_instalit_resource_name_length, sxiex_wasp_name_separator, sxiex_wasp_run_marker, sxiex_wasp_resource_end], sx_installerextras_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_installerextras_build, false);
+}

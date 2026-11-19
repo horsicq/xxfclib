@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/amira_mesh/xx_amira_mesh_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_box_min_z_fields = layout([field("box_min_z", "ascii_real", 0)]);
+var sxsm_box_min_z = sxLayout(0x60630030, "mesh_box_min_z", LE, sxsm_box_min_z_fields);
+var sxsm_box_max_z_fields = layout([field("box_max_z", "ascii_real", 0)]);
+var sxsm_box_max_z = sxLayout(0x60630033, "mesh_box_max_z", LE, sxsm_box_max_z_fields);
+function sxsm_amira(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxNew_sxsm_token();
+    if (!sxsm_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, line))) {
+            return false;
+        }
+    }
+    for (var i = 0; i < 2; i++) {
+        if (!sxsm_lex(q, t, true)) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t))) {
+                return false;
+            }
+        }
+    }
+    if (!sxsm_many(q, sxsm_axis_count, 3, true) || !sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_expect(q, "{", true) || !sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    var cols = [sxsm_box_min_x, sxsm_box_max_x, sxsm_box_min_y, sxsm_box_max_y, sxsm_box_min_z, sxsm_box_max_z];
+    for (i = 0; i < 6; i++) {
+        if (!sxsm_one(q, cols[i], true)) {
+            return false;
+        }
+    }
+    if (!sxsm_lex(q, t, true)) {
+        return false;
+    }
+    if (sxsm_eq(q, sxCopy_sxsm_token(null, t), ",")) {
+        if (!sxsm_lex(q, t, true)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_one(q, sxsm_option_value, true) || !sxsm_expect(q, "}", true) || !sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_expect(q, "{", true) || !sxsm_lex(q, t, true)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_type_name, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_lex(q, t, true)) {
+        return false;
+    }
+    if (sxsm_eq(q, sxCopy_sxsm_token(null, t), "[")) {
+        if (!sxsm_one(q, sxsm_component_count, true) || !sxsm_expect(q, "]", true) || !sxsm_lex(q, t, true)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_emit(q, sxsm_name, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_expect(q, "}", true)) {
+        return false;
+    }
+    for (i = 0; i < 2; i++) {
+        if (!sxsm_expect(q, "@", true) || !sxsm_one(q, sxsm_entity_id, true)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_amira_mesh_build(q) {
+    return sxsm_amira(q);
+}

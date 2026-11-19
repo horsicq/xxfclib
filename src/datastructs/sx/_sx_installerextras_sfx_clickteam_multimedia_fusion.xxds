@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/sfx_clickteam_multimedia_fusion/xx_sfx_clickteam_multimedia_fusion_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_installer_utf16_name_fields = layout([field("name", "uint16", 0)]);
+var sxiex_installer_utf16_name = sxLayout(0x60820004, "installer_utf16_name", LE, sxiex_installer_utf16_name_fields);
+var sxiex_clickteam_pack_fields = layout([chars("signature", 4, SIGNATURE), u32("secondary_signature", SIGNATURE),
+    u32("header_size", SIZE), u32("pack_size", SIZE), u32("unknown"), u32("reserved1", RESERVED), u32("reserved2", RESERVED),
+    u32("file_count", COUNT)]);
+var sxiex_clickteam_pack = sxLayout(0x6082003B, "clickteam_pack", LE, sxiex_clickteam_pack_fields);
+var sxiex_clickteam_name_fields = layout([u16("name_length", COUNT)]);
+var sxiex_clickteam_name = sxLayout(0x6082003C, "clickteam_name", LE, sxiex_clickteam_name_fields);
+var sxiex_clickteam_size_fields = layout([u32("packed_size", SIZE)]);
+var sxiex_clickteam_size = sxLayout(0x6082003D, "clickteam_size", LE, sxiex_clickteam_size_fields);
+var sxiex_clickteam_checksum_size_fields = layout([u32("checksum", CHECKSUM), u32("packed_size", SIZE)]);
+var sxiex_clickteam_checksum_size = sxLayout(0x6082003E, "clickteam_checksum_size", LE, sxiex_clickteam_checksum_size_fields);
+function sxiex_clickteam(c, r) {
+    var p = [0];
+    if (!sxiex_pe(c, p) || !sxiex_eq(c, p[0], "wwww", 4)) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_clickteam_pack, p[0], 1)) {
+        return false;
+    }
+    var known = false;
+    var unicode = false;
+    var two = false;
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        var n = [0];
+        if (m.header !== p[0] + 32 || !sxiex_u16(c, m.header, n) || !n[0]) {
+            continue;
+        }
+        var choices = 0;
+        for (var u = 0; u < 2; u++) {
+            for (var t = 0; t < 2; t++) {
+                var nb = n[0] * ((u + 1) >>> 0);
+                var z = [0];
+                var crc = [0];
+                if (m.header_size !== 2 + nb + (t ? 8 : 4) || !sxiex_u32(c, m.header + 2 + nb + (t ? 4 : 0), z) || z[0] !== m.packed) {
+                    continue;
+                }
+                if (t && (!sxiex_u32(c, m.header + 2 + nb, crc) || crc[0])) {
+                    continue;
+                }
+                unicode = u !== 0;
+                two = t !== 0;
+                choices++;
+            }
+        }
+        known = choices === 1;
+        break;
+    }
+    if (!known) {
+        return true;
+    }
+    for (i = 0; i < r.count; i++) {
+        m = r.items[i];
+        n = [0];
+        if (!m.header_size || !sxiex_u16(c, m.header, n)) {
+            continue;
+        }
+        nb = n[0] * (unicode ? 2 : 1);
+        if (m.header_size !== 2 + nb + (two ? 8 : 4)) {
+            continue;
+        }
+        if (!sxiex_put(c, sxiex_clickteam_name, m.header, 1) || !sxiex_text(c, unicode ? sxiex_installer_utf16_name : sxiex_installer_name, m.header + 2, nb) || !sxiex_put(c, two ? sxiex_clickteam_checksum_size : sxiex_clickteam_size, m.header + 2 + nb, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_sfx_clickteam_multimedia_fusion_build(c, records) {
+    return sxiex_clickteam(c, records);
+}

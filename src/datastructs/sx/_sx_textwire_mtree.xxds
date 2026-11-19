@@ -1,0 +1,119 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/mtree/xx_mtree_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_type_name_fields = layout([field("type_name", "utf8", 0, STRING)]);
+var sxtw_type_name = sxLayout(0x60710016, "textwire_type_name", LE, sxtw_type_name_fields);
+var sxtw_time_text_fields = layout([field("time_text", "utf8", 0, STRING)]);
+var sxtw_time_text = sxLayout(0x60710017, "textwire_time_text", LE, sxtw_time_text_fields);
+var sxtw_inode_fields = layout([field("inode", "ascii_signed", 0)]);
+var sxtw_inode = sxLayout(0x6071002E, "textwire_inode", LE, sxtw_inode_fields);
+var sxtw_link_count_fields = layout([field("link_count", "ascii_signed", 0, COUNT)]);
+var sxtw_link_count = sxLayout(0x6071002F, "textwire_link_count", LE, sxtw_link_count_fields);
+var sxtw_checksum_decimal_fields = layout([field("checksum_decimal", "ascii_signed", 0, CHECKSUM)]);
+var sxtw_checksum_decimal = sxLayout(0x60710030, "textwire_checksum_decimal", LE, sxtw_checksum_decimal_fields);
+function sxtw_mtree(q) {
+    var a = [0];
+    var end = [0];
+    var continued = false;
+    while (sxtw_line(q, a, end)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var slash = 0;
+        for (var i = end[0]; i > a[0] && q.b[i - 1] === 92; i--) {
+            slash++;
+        }
+        var next = (slash & 1) !== 0;
+        if (continued || next) {
+            continued = next;
+            continue;
+        }
+        sxtw_trim(q, a, end);
+        if (a[0] === end[0]) {
+            continue;
+        }
+        if (q.b[a[0]] === 35 /*#*/) {
+            if (sxtw_eq(q, a[0], end[0] - a[0], "#mtree")) {
+                {
+                    if (!sxtw_emit(q, sxtw_signature, a[0], end[0] - a[0])) {
+                        return false;
+                    }
+                }
+            }
+            continue;
+        }
+        var first = true;
+        while (a[0] < end[0]) {
+            while (a[0] < end[0] && sxtw_space(q.b[a[0]])) {
+                a[0]++;
+            }
+            var p = a[0];
+            while (p < end[0] && !sxtw_space(q.b[p])) {
+                p++;
+            }
+            if (p === a[0]) {
+                break;
+            }
+            var e = a[0];
+            while (e < p && q.b[e] !== 61 /*=*/) {
+                e++;
+            }
+            if (e === p) {
+                if (first) {
+                    {
+                        if (!sxtw_emit(q, sxtw_path, a[0], p - a[0])) {
+                            return false;
+                        }
+                    }
+                } else {
+                    {
+                        if (!sxtw_emit(q, sxtw_field_name, a[0], p - a[0])) {
+                            return false;
+                        }
+                    }
+                }
+            } else {
+                {
+                    if (!sxtw_emit(q, sxtw_field_name, a[0], e - a[0])) {
+                        return false;
+                    }
+                }
+                var l = sxtw_field_value;
+                if (sxtw_eq(q, a[0], e - a[0], "size")) {
+                    l = sxtw_declared_size;
+                } else if (sxtw_eq(q, a[0], e - a[0], "uid")) {
+                    l = sxtw_uid;
+                } else if (sxtw_eq(q, a[0], e - a[0], "gid")) {
+                    l = sxtw_gid;
+                } else if (sxtw_eq(q, a[0], e - a[0], "inode")) {
+                    l = sxtw_inode;
+                } else if (sxtw_eq(q, a[0], e - a[0], "nlink")) {
+                    l = sxtw_link_count;
+                } else if (sxtw_eq(q, a[0], e - a[0], "cksum")) {
+                    l = sxtw_checksum_decimal;
+                } else if (sxtw_eq(q, a[0], e - a[0], "mode")) {
+                    l = sxtw_octal_mode;
+                } else if (sxtw_eq(q, a[0], e - a[0], "time")) {
+                    l = sxtw_time_text;
+                } else if (sxtw_eq(q, a[0], e - a[0], "type")) {
+                    l = sxtw_type_name;
+                }
+                if (!sxtw_emit(q, l, e + 1, p - e - 1)) {
+                    return false;
+                }
+            }
+            first = false;
+            a[0] = p;
+            if (q.c.count >= 32000) {
+                return true;
+            }
+        }
+    }
+    return true;
+}
+function sx_mtree_build(q) {
+    return sxtw_mtree(q);
+}

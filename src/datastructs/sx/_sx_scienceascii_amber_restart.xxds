@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/amber_restart/xx_amber_restart_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_amber_time_fields = layout([field("amber_time", "ascii_real", 0)]);
+var sxsa_amber_time = sxLayout(0x605100C6, "science_amber_time", LE, sxsa_amber_time_fields);
+var sxsa_amber_coordinate_fields = layout([field("amber_coordinate", "ascii_real", 0)]);
+var sxsa_amber_coordinate = sxLayout(0x605100C7, "science_amber_coordinate", LE, sxsa_amber_coordinate_fields);
+var sxsa_amber_velocity_fields = layout([field("amber_velocity", "ascii_real", 0)]);
+var sxsa_amber_velocity = sxLayout(0x605100C8, "science_amber_velocity", LE, sxsa_amber_velocity_fields);
+var sxsa_amber_box_length_fields = layout([field("amber_box_length", "ascii_real", 0)]);
+var sxsa_amber_box_length = sxLayout(0x605100C9, "science_amber_box_length", LE, sxsa_amber_box_length_fields);
+var sxsa_amber_box_angle_fields = layout([field("amber_box_angle", "ascii_real", 0)]);
+var sxsa_amber_box_angle = sxLayout(0x605100CA, "science_amber_box_angle", LE, sxsa_amber_box_angle_fields);
+function sxsa_amber(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(2, sxNew_sxsa_token);
+    var atoms = [0];
+    if (!sxsa_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxsa_emit(q, sxsa_title, sxCopy_sxsa_token(null, line))) {
+            return false;
+        }
+    }
+    if (!sxsa_line(q, line)) {
+        return false;
+    }
+    var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 2, false);
+    if (!n || n > 2 || !sxsa_number(q, sxCopy_sxsa_token(null, t[0]), atoms) || atoms[0] > 100000) {
+        return false;
+    }
+    {
+        if (!sxsa_emit(q, sxsa_atom_count, sxCopy_sxsa_token(null, t[0]))) {
+            return false;
+        }
+    }
+    if (n > 1) {
+        {
+            if (!sxsa_emit(q, sxsa_amber_time, sxCopy_sxsa_token(null, t[1]))) {
+                return false;
+            }
+        }
+    }
+    var data = q.p;
+    var values = 0;
+    while (sxsa_line(q, line)) {
+        if (line.z % 12) {
+            return false;
+        }
+        values += Math.floor((line.z < 0 ? line.z + SX_U64_MAX : line.z) / 12);
+    }
+    var xyz = atoms[0] * 3;
+    var tail = values >= xyz ? sxU64(values - xyz) : 0;
+    if (values < xyz) {
+        return false;
+    }
+    var velocities = tail === xyz || tail === xyz + 6;
+    var i = 0;
+    q.p = data;
+    while (sxsa_line(q, line)) {
+        for (var o = 0; o + 12 <= line.z; o += 12, i++) {
+            var l = i < xyz ? sxsa_amber_coordinate : velocities && i < xyz * 2 ? sxsa_amber_velocity : sxU64(i - (velocities ? xyz * 2 : xyz)) < 3 ? sxsa_amber_box_length : sxsa_amber_box_angle;
+            if (!sxsa_emit(q, l, sxCopy_sxsa_token(null, { a: line.a + o, z: 12 }))) {
+                return false;
+            }
+        }
+        if (q.c.count >= 24000) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_amber_restart_build(q) {
+    return sxsa_amber(q);
+}

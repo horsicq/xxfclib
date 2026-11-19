@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/smtp_transcript/xx_smtp_transcript_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxtw_smtp(q) {
+    var body = false;
+    var a = [0];
+    var end = [0];
+    while (sxtw_line(q, a, end)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (body) {
+            if (sxtw_eq(q, a[0], end[0] - a[0], ".")) {
+                {
+                    if (!sxtw_emit(q, sxtw_command, a[0], 1)) {
+                        return false;
+                    }
+                }
+                body = false;
+            }
+            continue;
+        }
+        var split = a[0];
+        while (split < end[0] && q.b[split] !== 32 && q.b[split] !== 58 /*:*/) {
+            split++;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_command, a[0], split - a[0])) {
+                return false;
+            }
+        }
+        if (split < end[0]) {
+            {
+                if (!sxtw_emit(q, sxtw_field_value, split + 1, end[0] - split - 1)) {
+                    return false;
+                }
+            }
+        }
+        if (sxtw_ci(q, a[0], end[0] - a[0], "DATA")) {
+            body = true;
+        }
+    }
+    return !body;
+}
+function sx_smtp_transcript_build(q) {
+    return sxtw_smtp(q);
+}

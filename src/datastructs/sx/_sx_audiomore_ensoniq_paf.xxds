@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/ensoniq_paf/xx_ensoniq_paf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_paf_header_le_fields = layout([chars("magic", 4, SIGNATURE), i32("version", ID), i32("sample_byte_order", ID),
+    i32("sample_rate"), i32("encoding", ID), i32("channels", COUNT), i32("source", ID)]);
+var sxau_paf_header_le = sxLayout(0x602C0069, "paf_header_le", LE, sxau_paf_header_le_fields);
+var sxau_paf_header_be_fields = layout([chars("magic", 4, SIGNATURE), i32("version", ID), i32("sample_byte_order", ID),
+    i32("sample_rate"), i32("encoding", ID), i32("channels", COUNT), i32("source", ID)]);
+var sxau_paf_header_be = sxLayout(0x602C006E, "paf_header_be", BE, sxau_paf_header_be_fields);
+function sx_ensoniq_paf_build(v) {
+    return sxau_need(v, 0, 4, v.n) && sxau_row(v, v.p[0] === 32 ? sxau_paf_header_be : sxau_paf_header_le, 0, v.n);
+}

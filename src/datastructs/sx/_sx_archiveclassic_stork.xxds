@@ -1,0 +1,9 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/stork/xx_stork_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_stork_build(c) {
+    return sxacl_chain(c, sxacl_stork_member, 0, 18, 13, true, true);
+}

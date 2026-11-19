@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/bsn/xx_bsn_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_bsn_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version")]);
+var sxae_bsn_header = sxLayout(0x60170004, "bsn_header", BE, sxae_bsn_header_fields);
+var sxae_bsn_member_prefix_fields = layout([chars("magic", 4, SIGNATURE), u16("body_size", SIZE), u32("attributes", FLAGS),
+    u32("date_time")]);
+var sxae_bsn_member_prefix = sxLayout(0x60170005, "bsn_member_prefix", BE, sxae_bsn_member_prefix_fields);
+var sxae_bsn_member_sizes_fields = layout([u32("unpacked_size", SIZE), u32("packed_size", SIZE), u32("data_crc32", CHECKSUM),
+    u32("header_crc32", CHECKSUM)]);
+var sxae_bsn_member_sizes = sxLayout(0x60170006, "bsn_member_sizes", BE, sxae_bsn_member_sizes_fields);
+var sxae_bsn_end_fields = layout([u16("marker", SIGNATURE)]);
+var sxae_bsn_end = sxLayout(0x60170007, "bsn_end", BE, sxae_bsn_end_fields);
+function sxae_bsn(c) {
+    var b = [];
+    var p = 6;
+    if (!sx_read(c, 0, b, 6) || sxMemcmp(b, "\xFFBSG", 4) || !sxae_add(c, sxae_bsn_header, 0)) {
+        return false;
+    }
+    for (var k = 0; k < 20000; k++) {
+        if (!sx_read(c, p, b, 2)) {
+            return false;
+        }
+        if (!b[0] && !b[1]) {
+            return sxae_add(c, sxae_bsn_end, p);
+        }
+        if (!sx_read(c, p, b, 14) || sxMemcmp(b, "\xFFBSA", 4)) {
+            return false;
+        }
+        var z = sxGetU16At(b, 4, 2, 0, true);
+        if (z < 22 || z > 281 || !sxae_bound(c, p, 10 + z)) {
+            return false;
+        }
+        var tail = p + 6 + z - 12;
+        var packed;
+        if ((packed = sx_u32(c, tail + 4, true)) === null || !sxae_add(c, sxae_bsn_member_prefix, p) || !sxae_add(c, sxae_bsn_member_sizes, tail) || !sxae_data(c, p + 10 + z, packed)) {
+            return false;
+        }
+        p += (10 + z + packed) >>> 0;
+    }
+    return false;
+}
+function sx_bsn_build(c) {
+    return sxae_bsn(c);
+}

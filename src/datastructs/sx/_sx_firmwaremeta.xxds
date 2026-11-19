@@ -1,0 +1,289 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_firmwaremeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fw_android_vendor_ramdisk_entry_fields = layout([u32("ramdisk_size", SIZE), u32("ramdisk_offset", OFFSET),
+    u32("ramdisk_type", ID), chars("ramdisk_name", 32, NONE), field("board_id", "uint32[16]", 64, ID)]);
+var sx_fw_android_vendor_ramdisk_entry = sxLayout(0x601E0009, "android_vendor_ramdisk_entry", LE, sx_fw_android_vendor_ramdisk_entry_fields);
+var sx_fw_esp32_image_header_fields = layout([u8("magic", SIGNATURE), u8("segment_count", COUNT), u8("flash_mode", ID),
+    u8("flash_size_frequency", FLAGS), u32("entry_addr", VA), u8("wp_pin", ID),
+    field("spi_pin_drive_settings", "byte[3]", 3, FLAGS), u16("chip_id", ID), u8("min_chip_rev", ID),
+    u16("min_chip_rev_full", ID), u16("max_chip_rev_full", ID), field("reserved", "byte[4]", 4, RESERVED),
+    u8("hash_appended", FLAGS)]);
+var sx_fw_esp32_image_header = sxLayout(0x601E000A, "esp32_image_header", LE, sx_fw_esp32_image_header_fields);
+var sx_fw_esp32_checksum_fields = layout([u8("xor_checksum", CHECKSUM)]);
+var sx_fw_esp32_checksum = sxLayout(0x601E000C, "esp32_checksum", LE, sx_fw_esp32_checksum_fields);
+var sx_fw_dlink_tlv_header_fields = layout([u32("magic", SIGNATURE), chars("model_name", 32, NONE), chars("board_id", 32, NONE),
+    field("unknown", "byte[8]", 8), chars("md5", 32, CHECKSUM), u32("data_type", ID), u32("data_length", SIZE)]);
+var sx_fw_dlink_tlv_header = sxLayout(0x601E000D, "dlink_tlv_header", LE, sx_fw_dlink_tlv_header_fields);
+var sx_fw_tplink_linux_header_fields = layout([field("version", "byte[4]", 4, SIGNATURE), chars("vendor_name", 24, NONE),
+    chars("fw_version", 36, NONE), u32("hw_id", ID), u32("hw_rev", ID), u32("region_code", ID),
+    field("md5sum1", "byte[16]", 16, CHECKSUM), u32("unknown2"), field("md5sum2", "byte[16]", 16, CHECKSUM), u32("unknown3"),
+    u32("kernel_load_addr", VA), u32("kernel_entry_addr", VA), u32("firmware_length", SIZE), u32("kernel_offset", OFFSET),
+    u32("kernel_length", SIZE), u32("rootfs_offset", OFFSET), u32("rootfs_length", SIZE), u32("boot_offset", OFFSET),
+    u32("boot_length", SIZE), u16("version_major", ID), u16("version_minor", ID), u16("version_patch", ID),
+    field("padding", "byte[130]", 130, RESERVED), chars("region_str1", 32, NONE), chars("region_str2", 32, NONE),
+    field("padding2", "byte[160]", 160, RESERVED)]);
+var sx_fw_tplink_linux_header = sxLayout(0x601E000E, "tplink_linux_header", FILE, sx_fw_tplink_linux_header_fields);
+var sx_fw_tplink_rtos_header_prefix_fields = layout([u32("magic", SIGNATURE), field("unknown", "byte[16]", 16),
+    u32("magic2", SIGNATURE), u32("data_size", SIZE), u16("model_number", ID), u8("hardware_revision_major", ID),
+    u8("hardware_revision_minor", ID)]);
+var sx_fw_tplink_rtos_header_prefix = sxLayout(0x601E000F, "tplink_rtos_header_prefix", BE, sx_fw_tplink_rtos_header_prefix_fields);
+var sx_fw_jboot_sch2_header_fields = layout([u16("magic", SIGNATURE), u8("compression_type", ID), u8("version", ID),
+    u32("ram_entry_addr", VA), u32("kernel_image_size", SIZE), u32("kernel_crc", CHECKSUM), u32("ram_start_addr", VA),
+    u32("rootfs_flash_addr", VA), u32("rootfs_size", SIZE), u32("rootfs_crc", CHECKSUM), u32("header_crc", CHECKSUM),
+    u16("header_size", SIZE), u16("cmdline_size", SIZE)]);
+var sx_fw_jboot_sch2_header = sxLayout(0x601E0010, "jboot_sch2_header", LE, sx_fw_jboot_sch2_header_fields);
+var sx_fw_jboot_arm_header_fields = layout([chars("rom_id", 12, NONE), u16("drange"), u16("image_checksum", CHECKSUM),
+    u32("block_size", SIZE), u32("reserved2", RESERVED), u16("reserved3", RESERVED), u8("lpvs", ID), u8("mbz", RESERVED),
+    u32("timestamp_ticks"), u32("erase_start", VA), u32("erase_size", SIZE), u32("data_start", VA), u32("data_size", SIZE),
+    u32("reserved4", RESERVED), u32("reserved5", RESERVED), u32("reserved6", RESERVED), u32("reserved7", RESERVED),
+    u16("header_id", SIGNATURE), u16("header_version", ID), u16("reserved8", RESERVED), u8("section_id", ID),
+    u8("image_info_type", ID), u32("image_info_offset", OFFSET), u16("family", ID), u16("header_checksum", CHECKSUM)]);
+var sx_fw_jboot_arm_header = sxLayout(0x601E0012, "jboot_arm_header", LE, sx_fw_jboot_arm_header_fields);
+var sx_fw_intel_flash_region_fields = layout([u32("flreg", FLAGS)]);
+var sx_fw_intel_flash_region = sxLayout(0x601E0016, "intel_flash_region", LE, sx_fw_intel_flash_region_fields);
+var sx_fw_linux_boot_syssize16_fields = layout([u16("syssize_paragraphs", COUNT), u16("legacy_swap_dev", ID)]);
+var sx_fw_linux_boot_syssize16 = sxLayout(0x601E0018, "linux_boot_syssize16", LE, sx_fw_linux_boot_syssize16_fields);
+var sx_fw_linux_boot_header_200_fields = layout([u16("ram_size"), u16("vid_mode", ID), u16("root_dev", ID),
+    u16("boot_flag", SIGNATURE), field("jump", "byte[2]", 2), field("header", "byte[4]", 4, SIGNATURE), u16("version", ID),
+    u32("realmode_swtch", POINTER), u16("start_sys_seg", VA), u16("kernel_version", OFFSET), u8("type_of_loader", ID),
+    u8("loadflags", FLAGS), u16("setup_move_size", SIZE), u32("code32_start", VA), u32("ramdisk_image", VA),
+    u32("ramdisk_size", SIZE), u32("bootsect_kludge", POINTER)]);
+var sx_fw_linux_boot_header_200 = sxLayout(0x601E001A, "linux_boot_header_200", LE, sx_fw_linux_boot_header_200_fields);
+var sx_fw_linux_boot_header_212_fields = layout([u16("xloadflags", FLAGS)]);
+var sx_fw_linux_boot_header_212 = sxLayout(0x601E0026, "linux_boot_header_212", LE, sx_fw_linux_boot_header_212_fields);
+function sx_firmwaremeta_supports(t) {
+    switch (t) {
+    case "ANDROIDBOOT":
+    case "ANDROID_VENDOR_BOOT":
+    case "ESPRESSIF_IMAGE":
+    case "DLINK_TLV":
+    case "TPLINK":
+    case "JBOOT":
+    case "QNAP_NAS_FIRMWARE":
+    case "PCHROM":
+    case "LINUXBOOT":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_fw_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sx_fw_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sx_fw_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end || at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sx_fw_order, true);
+    return !c.failed;
+}
+function sx_fw_native_header_size(c) {
+    var f = c.f;
+    var width = -1;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.free_archive_records_reading === null) {
+        return -1;
+    }
+    var st = f.create_archive_records_reading(f, null, c.pd);
+    if (st === null) {
+        return -1;
+    }
+    var r = f.get_current_archive_record(f, st);
+    if (r !== null && r.header_offset === f.base_address && r.header_size > 0 && r.header_size <= c.size) {
+        width = r.header_size;
+    }
+    f.free_archive_records_reading(f, st);
+    return width;
+}
+function sx_firmwaremeta_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    if (c.f.file_type === "ANDROIDBOOT") {
+        return sx_androidboot_build(c);
+    }
+    if (c.f.file_type === "ANDROID_VENDOR_BOOT") {
+        return sx_android_vendor_boot_build(c);
+    }
+    if (c.f.file_type === "ESPRESSIF_IMAGE") {
+        return sx_espressif_image_build(c);
+    }
+    if (c.f.file_type === "DLINK_TLV") {
+        return sx_dlink_tlv_build(c);
+    }
+    if (c.f.file_type === "TPLINK") {
+        return sx_tplink_build(c);
+    }
+    if (c.f.file_type === "JBOOT") {
+        return sx_jboot_build(c);
+    }
+    if (c.f.file_type === "QNAP_NAS_FIRMWARE") {
+        return sx_qnap_nas_firmware_build(c);
+    }
+    if (c.f.file_type === "PCHROM") {
+        return sx_pchrom_build(c);
+    }
+    if (c.f.file_type === "LINUXBOOT") {
+        return sx_linuxboot_build(c);
+    }
+    return false;
+}
+function sx_fw_text(r, s) {
+    var b = [];
+    var i = 0;
+    while (sxAt(s, i) && i + 1 < 512) {
+        b[i] = sxAt(s, i) & 0xFF;
+        i++;
+    }
+    if (sxAt(s, i)) {
+        return false;
+    }
+    b[i] = 0;
+    return sxSetComment(r, b);
+}
+function sx_fw_flags(r, names, count) {
+    var out = [];
+    var used = 0;
+    var value = sxVarU64(r.value);
+    var known = 0;
+    for (var i = 0; i < count; i++) {
+        if (names[i] !== null) {
+            known = sxOr64(known, sxShl64(1, i));
+            if (sxAnd64(value, sxShl64(1, i))) {
+                var n = sxSnprintf(out, used, sxU64(512 - used), "%s%s", [used ? "|" : "", names[i]]);
+                if (n < 0 || (n < 0 ? n + SX_U64_MAX : n) >= sxU64(512 - used)) {
+                    return false;
+                }
+                used += (n < 0 ? n + SX_U64_MAX : n);
+            }
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        n = sxSnprintf(out, used, sxU64(512 - used), "%s0x%llX", [used ? "|" : "", unknown]);
+        if (n < 0 || (n < 0 ? n + SX_U64_MAX : n) >= sxU64(512 - used)) {
+            return false;
+        }
+        used += (n < 0 ? n + SX_U64_MAX : n);
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sx_fw_text(r, out);
+}
+var sx_firmwaremeta_comment_flags = ["LOADED_HIGH", "KASLR_FLAG", null, null, null, "QUIET_FLAG", "KEEP_SEGMENTS", "CAN_USE_HEAP"];
+var sx_firmwaremeta_comment_flags_2 = ["XLF_KERNEL_64", "XLF_CAN_BE_LOADED_ABOVE_4G", "XLF_EFI_HANDOVER_32",
+    "XLF_EFI_HANDOVER_64", "XLF_EFI_KEXEC", "XLF_5LEVEL", "XLF_5LEVEL_ENABLED", "XLF_MEM_ENCRYPTION"];
+function sx_firmwaremeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x601E0001 || id >= 0x601E0028) {
+        return true;
+    }
+    var v = sxVarU64(r.value);
+    var b = [];
+    var s = null;
+    if (id === sx_fw_linux_boot_header_200.id && r.name === "loadflags") {
+        return sx_fw_flags(r, sx_firmwaremeta_comment_flags, 8);
+    }
+    if (id === sx_fw_linux_boot_header_212.id && r.name === "xloadflags") {
+        return sx_fw_flags(r, sx_firmwaremeta_comment_flags_2, 8);
+    }
+    if (r.name === "os_version") {
+        if (!v) {
+            s = "Unspecified OS version and security patch level";
+        } else {
+            sxSnprintf(b, 0, 400, "Android %llu.%llu.%llu; security patch %llu-%02llu", [sxAnd64(sxShr64(v, 25), 127), sxAnd64(sxShr64(v, 18), 127), sxAnd64(sxShr64(v, 11), 127), 2000 + sxAnd64(sxShr64(v, 4), 127), sxAnd64(v, 15)]);
+            s = b;
+        }
+    } else if (id === sx_fw_android_vendor_ramdisk_entry.id && r.name === "ramdisk_type") {
+        var types = ["VENDOR_RAMDISK_TYPE_NONE", "VENDOR_RAMDISK_TYPE_PLATFORM", "VENDOR_RAMDISK_TYPE_RECOVERY", "VENDOR_RAMDISK_TYPE_DLKM"];
+        if (v < 4) {
+            s = types[v];
+        }
+    } else if (id === sx_fw_android_vendor_ramdisk_entry.id && r.name === "ramdisk_offset") {
+        s = "Byte offset within the vendor ramdisk section";
+    } else if (id === sx_fw_esp32_image_header.id) {
+        if (r.name === "flash_mode") {
+            var names = ["QIO", "QOUT", "DIO", "DOUT"];
+            if (v < 4) {
+                s = names[v];
+            }
+        } else if (r.name === "flash_size_frequency") {
+            var freq = sxAnd64(v, 15) === 0 ? "40 MHz" : sxAnd64(v, 15) === 1 ? "26 MHz" : sxAnd64(v, 15) === 2 ? "20 MHz" : sxAnd64(v, 15) === 15 ? "80 MHz" : "unknown frequency";
+            var size = sxShr64(v, 4) >>> 0;
+            if (size <= 4) {
+                sxSnprintf(b, 0, 400, "%u MiB; %s", [(1 << size) >>> 0, freq]);
+            } else {
+                sxSnprintf(b, 0, 400, "Flash-size code %u; %s", [size, freq]);
+            }
+            s = b;
+        } else if (r.name === "chip_id" && !v) {
+            s = "ESP32";
+        } else if (r.name === "hash_appended") {
+            s = v === 0 ? "No appended SHA-256 digest" : v === 1 ? "SHA-256 digest appended" : null;
+        } else if (r.name === "min_chip_rev") {
+            s = "Deprecated minimum chip revision";
+        } else if (r.name === "min_chip_rev_full" || r.name === "max_chip_rev_full") {
+            sxSnprintf(b, 0, 400, "Chip revision %llu.%llu (major * 100 + minor)", [Math.floor(v / 100), v % 100]);
+            s = b;
+        }
+    } else if (id === sx_fw_esp32_checksum.id) {
+        s = "XOR of all segment payload bytes, initialized to 0xEF";
+    } else if (id === sx_fw_dlink_tlv_header.id && r.name === "data_type" && v === 1) {
+        s = "Firmware payload";
+    } else if (id === sx_fw_tplink_linux_header.id && (r.name === "kernel_load_addr" || r.name === "kernel_entry_addr")) {
+        s = "Encoded address word in the native-selected header byte order; mktplinkfw -e images byte-swap these two words without an identifying flag";
+    } else if (id === sx_fw_tplink_rtos_header_prefix.id && r.name === "data_size") {
+        s = "Bytes following the first 20 bytes of the image";
+    } else if (id === sx_fw_jboot_sch2_header.id && r.name === "compression_type") {
+        names = ["Stored", "JZ", "gzip", "LZMA"];
+        if (v < 4) {
+            s = names[v];
+        }
+    } else if (r.name === "timestamp_ticks") {
+        s = "4-second ticks since 1998-03-07 16:00:00 UTC; stored value retained";
+    } else if (id === sx_fw_jboot_arm_header.id && (r.name === "erase_start" || r.name === "data_start")) {
+        s = "Flash coordinate; not a file offset";
+    } else if (id === sx_fw_intel_flash_region.id) {
+        var base = sxAnd64(v, 0x7FFF);
+        var limit = sxAnd64(sxShr64(v, 16), 0x7FFF);
+        if (v === 4294967295 || base > limit) {
+            s = "Disabled/unprogrammed flash region";
+        } else {
+            sxSnprintf(b, 0, 400, "Flash base 0x%llX; inclusive limit 0x%llX (4 KiB units); reserved bits 0x%llX", [sxShl64(base, 12), sxOr64(sxShl64(limit, 12), 4095), sxAnd64(v, 0x80008000)]);
+            s = b;
+        }
+    } else if (r.name === "setup_sects") {
+        s = "512-byte setup sectors; stored zero means 4";
+    } else if (r.name === "syssize_paragraphs") {
+        s = id === sx_fw_linux_boot_syssize16.id ? "16-byte paragraphs, low 16 bits; old bzImage size may wrap" : "16-byte paragraphs";
+    } else if (r.name === "start_sys_seg") {
+        s = "Legacy load segment; linear address is the stored segment times 16";
+    } else if (r.name === "hardware_subarch_data") {
+        s = "Physical pointer to subarchitecture-specific data";
+    } else if (r.name === "kernel_version") {
+        s = "Byte offset relative to the setup header at image offset 0x200";
+    } else if (r.name === "payload_offset") {
+        s = "Byte offset relative to the protected-mode code";
+    } else if (r.name === "min_alignment") {
+        s = "Minimum alignment as a power of two; value is an exponent";
+    } else if (r.name === "kernel_info_offset" || r.name === "handover_offset") {
+        s = "Byte offset relative to the protected-mode code";
+    }
+    return s === null || sx_fw_text(r, s);
+}

@@ -1,0 +1,185 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/reiserfs/xx_reiserfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_reiser35_superblock_fields = layout([u32("block_count", COUNT), u32("free_blocks", COUNT), u32("root_block"),
+    u32("journal_first_block"), u32("journal_device", ID), u32("journal_blocks", COUNT), u32("journal_transaction_max", COUNT),
+    u32("journal_magic", SIGNATURE), u32("journal_max_batch", COUNT), u32("journal_max_commit_age"),
+    u32("journal_max_transaction_age"), u16("block_size", SIZE), u16("objectid_max_count", COUNT), u16("objectid_count", COUNT),
+    u16("unmount_state", ID), chars("magic", 10, SIGNATURE), u16("fs_state", FLAGS), u32("hash_function", ID),
+    u16("tree_height", COUNT), u16("bitmap_block_count", COUNT), u16("version", ID), u16("reserved_journal_blocks", COUNT)]);
+var sxmf_reiser35_superblock = sxLayout(0x60420011, "reiser35_superblock", LE, sxmf_reiser35_superblock_fields);
+var sxmf_reiser36_superblock_fields = layout([u32("block_count", COUNT), u32("free_blocks", COUNT), u32("root_block"),
+    u32("journal_first_block"), u32("journal_device", ID), u32("journal_blocks", COUNT), u32("journal_transaction_max", COUNT),
+    u32("journal_magic", SIGNATURE), u32("journal_max_batch", COUNT), u32("journal_max_commit_age"),
+    u32("journal_max_transaction_age"), u16("block_size", SIZE), u16("objectid_max_count", COUNT), u16("objectid_count", COUNT),
+    u16("unmount_state", ID), chars("magic", 10, SIGNATURE), u16("fs_state", FLAGS), u32("hash_function", ID),
+    u16("tree_height", COUNT), u16("bitmap_block_count", COUNT), u16("version", ID), u16("reserved_journal_blocks", COUNT),
+    u32("inode_generation"), u32("flags", FLAGS), field("uuid", "byte[16]", 16, ID), chars("label", 16, STRING),
+    u16("mount_count", COUNT), u16("max_mount_count", COUNT), u32("last_check", TIMESTAMP), u32("check_interval"),
+    field("reserved", "byte[76]", 76, RESERVED)]);
+var sxmf_reiser36_superblock = sxLayout(0x60420012, "reiser36_superblock", LE, sxmf_reiser36_superblock_fields);
+var sxmf_reiser_block_header_fields = layout([u16("level"), u16("item_count", COUNT), u16("free_space", SIZE),
+    u16("reserved", RESERVED), field("right_delimiting_key", "byte[16]", 16)]);
+var sxmf_reiser_block_header = sxLayout(0x60420013, "reiser_block_header", LE, sxmf_reiser_block_header_fields);
+var sxmf_reiser_item_header_fields = layout([field("key", "byte[16]", 16), u16("free_space_or_entry_count"),
+    u16("item_length", SIZE), u16("item_location", OFFSET), u16("version", ID)]);
+var sxmf_reiser_item_header = sxLayout(0x60420014, "reiser_item_header", LE, sxmf_reiser_item_header_fields);
+var sxmf_reiser_child_fields = layout([u32("block"), u16("used_bytes", SIZE), u16("reserved", RESERVED)]);
+var sxmf_reiser_child = sxLayout(0x60420015, "reiser_child", LE, sxmf_reiser_child_fields);
+var sxmf_reiser4_master_fields = layout([chars("magic", 16, SIGNATURE), u16("format_plugin", ID), u16("block_size", SIZE),
+    field("uuid", "byte[16]", 16, ID), chars("label", 16, STRING)]);
+var sxmf_reiser4_master = sxLayout(0x60420072, "reiser4_master", LE, sxmf_reiser4_master_fields);
+var sxmf_reiser4_format40_superblock_fields = layout([u64("block_count", COUNT), u64("free_blocks", COUNT), u64("root_block"),
+    field("object_id_state", "uint64[2]", 16), u64("flush_count", COUNT), u32("mkfs_id", ID), chars("magic", 16, SIGNATURE),
+    u16("tree_height", COUNT), u16("allocation_policy", ID), u64("flags", FLAGS), u32("version", ID), u32("node_plugin", ID),
+    field("reserved", "byte[424]", 424, RESERVED)]);
+var sxmf_reiser4_format40_superblock = sxLayout(0x60420073, "reiser4_format40_superblock", LE, sxmf_reiser4_format40_superblock_fields);
+var sxmf_reiser4_node40_header_fields = layout([u16("plugin", ID), u16("item_count", COUNT), u16("free_space", SIZE),
+    u16("free_space_start", OFFSET), u32("magic", SIGNATURE), u32("mkfs_id", ID), u64("flush_id"), u16("flags", FLAGS),
+    u8("level"), u8("padding", RESERVED)]);
+var sxmf_reiser4_node40_header = sxLayout(0x60420074, "reiser4_node40_header", LE, sxmf_reiser4_node40_header_fields);
+var sxmf_reiser4_item_header_large_fields = layout([u64("locality_and_type", FLAGS), u64("ordering"),
+    u64("object_and_type", FLAGS), u64("offset"), u16("data_offset", OFFSET), u16("flags", FLAGS), u16("plugin", ID)]);
+var sxmf_reiser4_item_header_large = sxLayout(0x60420075, "reiser4_item_header_large", LE, sxmf_reiser4_item_header_large_fields);
+var sxmf_reiser4_child_fields = layout([u64("block")]);
+var sxmf_reiser4_child = sxLayout(0x60420076, "reiser4_child", LE, sxmf_reiser4_child_fields);
+var sxmf_reiser4_extent_fields = layout([u64("block"), u64("block_count", COUNT)]);
+var sxmf_reiser4_extent = sxLayout(0x60420077, "reiser4_extent", LE, sxmf_reiser4_extent_fields);
+function sxmf_reiser(c) {
+    var h = [];
+    var super_ = 65536;
+    var four = false;
+    if (!sxmf_read(c, super_, h, 0, 512)) {
+        return false;
+    }
+    four = !sxMemcmp(h, "ReIsEr4", 7);
+    if (!four && sxMemcmpAt(h, 52, "ReIsEr", 0, 6)) {
+        super_ = 8192;
+        if (!sxmf_read(c, super_, h, 0, 512) || sxMemcmpAt(h, 52, "ReIsErFs", 0, 8)) {
+            return false;
+        }
+    }
+    var bs;
+    var blocks;
+    var root;
+    if (four) {
+        if (!sxmf_put(c, sxmf_reiser4_master, super_, 1)) {
+            return false;
+        }
+        bs = sxmf16(h, 18, 0);
+        if (bs < 512 || bs > 65536 || !sxmf_pow(bs) || !sxmf_read(c, super_ + bs, h, 0, 512) || sxMemcmpAt(h, 52, "ReIsEr40FoRmAt", 0, 13)) {
+            return true;
+        }
+        if (!sxmf_put(c, sxmf_reiser4_format40_superblock, super_ + bs, 1)) {
+            return false;
+        }
+        blocks = sxmf64(h, 0, 0);
+        root = sxmf64(h, 16, 0);
+    } else {
+        bs = sxmf16(h, 44, 0);
+        blocks = sxmf32(h, 0, 0);
+        root = sxmf32(h, 8, 0);
+        if (!sxmf_put(c, sxmf16(h, 72, 0) === 2 ? sxmf_reiser36_superblock : sxmf_reiser35_superblock, super_, 1)) {
+            return false;
+        }
+    }
+    if (bs < 512 || bs > 65536 || !sxmf_pow(bs) || !blocks || blocks > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
+        return true;
+    }
+    var b = sxAlloc(bs);
+    var q = sxNew_sxmf_queue();
+    if (b === null || q === null) {
+        return false;
+    }
+    var ok = true;
+    sxmf_queue_add(q, root * bs, 0, 0);
+    while (ok && q.index < q.count && c.count < 24000) {
+        var t = sxCopy_sxmf_task(null, q.items[q.index++]);
+        if (Math.floor(t.p / bs) >= blocks || !sxmf_read(c, t.p, b, 0, bs)) {
+            continue;
+        }
+        if (four) {
+            var n = sxmf16(b, 2, 0);
+            if (sxmf16(b, 0, 0) !== 0 || sxmf32(b, 8, 0) !== 0x52344653 || n > Math.floor(sxU64(bs - 28) / 38)) {
+                continue;
+            }
+            if (!sxmf_put(c, sxmf_reiser4_node40_header, t.p, 1)) {
+                ok = false;
+                break;
+            }
+            var headers = sxU64(bs - n * 38);
+            for (var i = 0; i < n; i++) {
+                var hp = sxU64(bs - ((i + 1) >>> 0) * 38);
+                var dp = sxmf16(b, hp + 32, 0);
+                var end = (i + 1) >>> 0 < n ? sxmf16(b, hp + -38 + 32, 0) : sxmf16(b, 6, 0);
+                var plugin = sxmf16(b, hp + 36, 0);
+                if (dp < 28 || dp > end || end > headers) {
+                    continue;
+                }
+                if (!sxmf_put(c, sxmf_reiser4_item_header_large, t.p + hp, 1)) {
+                    ok = false;
+                    break;
+                }
+                if (plugin === 3 && sxU64(end - dp) === 8) {
+                    if (!sxmf_put(c, sxmf_reiser4_child, t.p + dp, 1)) {
+                        ok = false;
+                        break;
+                    }
+                    var child = sxmf64(b, dp, 0);
+                    if (child < blocks) {
+                        sxmf_queue_add(q, child * bs, 0, (t.depth + 1) >>> 0);
+                    }
+                } else if (plugin === 5 && sxU64(end - dp) % 16 === 0 && !sxmf_put(c, sxmf_reiser4_extent, t.p + dp, Math.floor(sxU64(end - dp) / 16))) {
+                    ok = false;
+                    break;
+                }
+            }
+        } else {
+            var level = sxmf16(b, 0, 0);
+            n = sxmf16(b, 2, 0);
+            if (!level || level > 16 || n > Math.floor(sxU64(bs - 24) / 24)) {
+                continue;
+            }
+            if (!sxmf_put(c, sxmf_reiser_block_header, t.p, 1)) {
+                ok = false;
+                break;
+            }
+            if (level === 1) {
+                for (i = 0; i < n; i++) {
+                    var p = (24 + ((i * 24) >>> 0)) >>> 0;
+                    var z = sxmf16(b, p + 18, 0);
+                    var at = sxmf16(b, p + 20, 0);
+                    if (at < (24 + ((n * 24) >>> 0)) >>> 0 || at > bs || z > sxU64(bs - at)) {
+                        continue;
+                    }
+                    if (!sxmf_put(c, sxmf_reiser_item_header, t.p + p, 1)) {
+                        ok = false;
+                        break;
+                    }
+                }
+            } else {
+                p = 24 + n * 16;
+                if ((n + 1) >>> 0 > Math.floor(sxU64(bs - p) / 8)) {
+                    continue;
+                }
+                if (!sxmf_put(c, sxmf_reiser_child, t.p + p, (n + 1) >>> 0)) {
+                    ok = false;
+                    break;
+                }
+                for (i = 0; i <= n; i++) {
+                    child = sxmf32(b, p + ((i * 8) >>> 0), 0);
+                    if (child < blocks) {
+                        sxmf_queue_add(q, child * bs, 0, (t.depth + 1) >>> 0);
+                    }
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_reiserfs_build(c) {
+    return sxmf_reiser(c);
+}

@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/plan9_partitions/xx_plan9_partitions_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_plan9_keyword_fields = layout([field("keyword", "utf8", 0, ID)]);
+var sxdt_plan9_keyword = sxLayout(0x607A0042, "plan9_keyword", LE, sxdt_plan9_keyword_fields);
+var sxdt_plan9_name_fields = layout([field("name", "utf8", 0)]);
+var sxdt_plan9_name = sxLayout(0x607A0043, "plan9_name", LE, sxdt_plan9_name_fields);
+var sxdt_plan9_first_sector_fields = layout([field("first_sector", "ascii_signed", 0)]);
+var sxdt_plan9_first_sector = sxLayout(0x607A0044, "plan9_first_sector", LE, sxdt_plan9_first_sector_fields);
+var sxdt_plan9_end_sector_fields = layout([field("exclusive_end_sector", "ascii_signed", 0)]);
+var sxdt_plan9_end_sector = sxLayout(0x607A0045, "plan9_end_sector", LE, sxdt_plan9_end_sector_fields);
+function sxdt_plan9(c) {
+    var b = [];
+    if (!sxdt_read(c, 512, b, 0, 512) || sxMemcmp(b, "part ", 5)) {
+        return false;
+    }
+    var p = 0;
+    var n = 511;
+    while (p < n && b[p] && c.count < 24000) {
+        var end = p;
+        while (end < n && b[end] && b[end] !== 10) {
+            end++;
+        }
+        var word = [];
+        var len = [];
+        var k = 0;
+        while (p < end && k < 4) {
+            while (p < end && sxdt_space(b[p])) {
+                p++;
+            }
+            word[k] = p;
+            while (p < end && !sxdt_space(b[p])) {
+                p++;
+            }
+            len[k] = sxU64(p - word[k]);
+            k++;
+        }
+        if (k === 4 && sxdt_eq(b, word[0], len[0], "part")) {
+            if (!sxdt_value(c, sxdt_plan9_keyword, 512 + word[0], len[0]) || !sxdt_value(c, sxdt_plan9_name, 512 + word[1], len[1]) || !sxdt_value(c, sxdt_plan9_first_sector, 512 + word[2], len[2]) || !sxdt_value(c, sxdt_plan9_end_sector, 512 + word[3], len[3])) {
+                return false;
+            }
+        }
+        p = end + 1;
+    }
+    return c.count !== 0;
+}
+function sx_plan9_partitions_build(c) {
+    var ok = false;
+    ok = sxdt_plan9(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

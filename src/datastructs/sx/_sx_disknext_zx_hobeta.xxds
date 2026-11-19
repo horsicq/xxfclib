@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/zx_hobeta/xx_zx_hobeta_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_hobeta_header_fields = layout([chars("filename", 8, NONE), chars("file_type", 1, ID), u16("start_or_parameter"),
+    u16("logical_size", SIZE), u8("reserved"), u8("stored_sector_count", COUNT), u16("header_checksum", CHECKSUM)]);
+var sxdn_hobeta_header = sxLayout(0x60780006, "hobeta_header", LE, sxdn_hobeta_header_fields);
+var sxdn_hobeta_code_header_fields = layout([chars("filename", 8, NONE), chars("file_type", 1, ID), u16("load_address", VA),
+    u16("logical_size", SIZE), u8("reserved"), u8("stored_sector_count", COUNT), u16("header_checksum", CHECKSUM)]);
+var sxdn_hobeta_code_header = sxLayout(0x60780007, "hobeta_code_header", LE, sxdn_hobeta_code_header_fields);
+function sxdn_hobeta(c) {
+    var h = [];
+    return sxdn_read(c, 0, h, 17) && sxdn_put(c, h[8] === 67 /*C*/ ? sxdn_hobeta_code_header : sxdn_hobeta_header, 0, 1);
+}
+function sx_zx_hobeta_build(c) {
+    return sxdn_hobeta(c);
+}

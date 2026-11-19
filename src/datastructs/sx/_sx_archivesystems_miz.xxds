@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/miz/xx_miz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_miz_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), chars("signature2", 4, SIGNATURE),
+    u16("name_field_size", SIZE)]);
+var sxasy_miz_header = sxLayout(0x6044001A, "miz_header", LE, sxasy_miz_header_fields);
+var sxasy_miz_member_fields = layout([u16("dos_time"), u16("dos_date"), i32("uncompressed_size", SIZE),
+    i32("compressed_size", SIZE)]);
+var sxasy_miz_member = sxLayout(0x6044001B, "miz_member", LE, sxasy_miz_member_fields);
+var sxasy_miz_footer_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxasy_miz_footer = sxLayout(0x60440039, "miz_footer", LE, sxasy_miz_footer_fields);
+function sxasy_miz(c) {
+    var n = [0];
+    var z = [0];
+    if (!sxasy_word(c, 10, 2, false, n) || n[0] < 2 || n[0] > 64 || !sxasy_add(c, sxasy_miz_header, 0) || !sxasy_word(c, 20 + n[0], 4, false, z) || !sxasy_add(c, sxasy_miz_member, 12 + n[0])) {
+        return false;
+    }
+    return sxasy_dcl(c, 24 + n[0], z[0]) && sxasy_add(c, sxasy_miz_footer, 24 + n[0] + z[0]);
+}
+function sx_miz_build(c) {
+    return sxasy_miz(c);
+}

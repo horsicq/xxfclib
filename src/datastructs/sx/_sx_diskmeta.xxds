@@ -1,0 +1,335 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_diskmeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_vhdx_metadata_table_entry_fields = layout([field("item_id", "byte[16]", 16, ID), u32("offset", OFFSET),
+    u32("length", SIZE), u32("flags", FLAGS), u32("reserved", RESERVED)]);
+var sx_dm_vhdx_metadata_table_entry = sxLayout(0x60290006, "vhdx_metadata_table_entry", LE, sx_dm_vhdx_metadata_table_entry_fields);
+var sx_dm_vhdx_parent_locator_entry_fields = layout([u32("key_offset", OFFSET), u32("value_offset", OFFSET),
+    u16("key_length", SIZE), u16("value_length", SIZE)]);
+var sx_dm_vhdx_parent_locator_entry = sxLayout(0x6029000D, "vhdx_parent_locator_entry", LE, sx_dm_vhdx_parent_locator_entry_fields);
+var sx_dm_vhdx_bat_entry_fields = layout([u64("file_offset_and_state", FLAGS)]);
+var sx_dm_vhdx_bat_entry = sxLayout(0x6029000E, "vhdx_bat_entry", LE, sx_dm_vhdx_bat_entry_fields);
+var sx_dm_vhd_footer_511_fields = layout([field("cookie", "byte[8]", 8, SIGNATURE), u32("features", FLAGS),
+    u32("file_format_version"), u64("data_offset", OFFSET), u32("timestamp", TIMESTAMP),
+    field("creator_application", "byte[4]", 4, ID), u32("creator_version"), field("creator_host_os", "byte[4]", 4, ID),
+    u64("original_size", SIZE), u64("current_size", SIZE), u16("cylinders", COUNT), u8("heads", COUNT),
+    u8("sectors_per_track", COUNT), u32("disk_type", ID), u32("checksum", CHECKSUM), field("unique_id", "byte[16]", 16, ID),
+    u8("saved_state", FLAGS), field("reserved", "byte[426]", 426, RESERVED)]);
+var sx_dm_vhd_footer_511 = sxLayout(0x6029000F, "vhd_footer_511", BE, sx_dm_vhd_footer_511_fields);
+var sx_dm_vhd_footer_512_fields = layout([field("cookie", "byte[8]", 8, SIGNATURE), u32("features", FLAGS),
+    u32("file_format_version"), u64("data_offset", OFFSET), u32("timestamp", TIMESTAMP),
+    field("creator_application", "byte[4]", 4, ID), u32("creator_version"), field("creator_host_os", "byte[4]", 4, ID),
+    u64("original_size", SIZE), u64("current_size", SIZE), u16("cylinders", COUNT), u8("heads", COUNT),
+    u8("sectors_per_track", COUNT), u32("disk_type", ID), u32("checksum", CHECKSUM), field("unique_id", "byte[16]", 16, ID),
+    u8("saved_state", FLAGS), field("reserved", "byte[427]", 427, RESERVED)]);
+var sx_dm_vhd_footer_512 = sxLayout(0x60290010, "vhd_footer_512", BE, sx_dm_vhd_footer_512_fields);
+var sx_dm_vhd_parent_locator_fields = layout([field("platform_code", "byte[4]", 4, ID), u32("platform_data_space", COUNT),
+    u32("platform_data_length", SIZE), u32("reserved", RESERVED), u64("platform_data_offset", OFFSET)]);
+var sx_dm_vhd_parent_locator = sxLayout(0x60290012, "vhd_parent_locator", BE, sx_dm_vhd_parent_locator_fields);
+var sx_dm_vhd_bat_entry_fields = layout([u32("sector_index", ID)]);
+var sx_dm_vhd_bat_entry = sxLayout(0x60290013, "vhd_bat_entry", BE, sx_dm_vhd_bat_entry_fields);
+var sx_dm_vmdk_grain_directory_entry_fields = layout([u32("grain_table_sector", ID)]);
+var sx_dm_vmdk_grain_directory_entry = sxLayout(0x60290015, "vmdk_grain_directory_entry", LE, sx_dm_vmdk_grain_directory_entry_fields);
+var sx_dm_vmdk_grain_table_entry_fields = layout([u32("grain_sector", ID)]);
+var sx_dm_vmdk_grain_table_entry = sxLayout(0x60290016, "vmdk_grain_table_entry", LE, sx_dm_vmdk_grain_table_entry_fields);
+var sx_dm_vdi_header_v1_fields = layout([u32("header_size", SIZE), u32("image_type", ID), u32("flags", FLAGS),
+    chars("description", 256, NONE), u32("block_map_offset", OFFSET), u32("data_offset", OFFSET), u32("cylinders", COUNT),
+    u32("heads", COUNT), u32("sectors", COUNT), u32("sector_size", SIZE), u32("reserved", RESERVED), u64("disk_size", SIZE),
+    u32("block_size", SIZE), u32("block_extra", SIZE), u32("blocks_in_image", COUNT), u32("blocks_allocated", COUNT),
+    field("uuid_image", "byte[16]", 16, ID), field("uuid_modify", "byte[16]", 16, ID),
+    field("uuid_linkage", "byte[16]", 16, ID), field("uuid_parent_modify", "byte[16]", 16, ID)]);
+var sx_dm_vdi_header_v1 = sxLayout(0x60290019, "vdi_header_v1", LE, sx_dm_vdi_header_v1_fields);
+var sx_dm_vdi_block_map_entry_fields = layout([u32("block_index", ID)]);
+var sx_dm_vdi_block_map_entry = sxLayout(0x6029001A, "vdi_block_map_entry", LE, sx_dm_vdi_block_map_entry_fields);
+var sx_dm_parallels_bat_sector_fields = layout([u32("sector_index", ID)]);
+var sx_dm_parallels_bat_sector = sxLayout(0x60290020, "parallels_bat_sector", LE, sx_dm_parallels_bat_sector_fields);
+var sx_dm_parallels_bat_cluster_fields = layout([u32("cluster_index", ID)]);
+var sx_dm_parallels_bat_cluster = sxLayout(0x60290021, "parallels_bat_cluster", LE, sx_dm_parallels_bat_cluster_fields);
+var sx_dm_chd_map_v12_fields = layout([u64("packed_offset_and_length", FLAGS)]);
+var sx_dm_chd_map_v12 = sxLayout(0x60290027, "chd_map_v12", BE, sx_dm_chd_map_v12_fields);
+var sx_dm_chd_map_v34_fields = layout([u64("offset_or_reference", ID), u32("crc32", CHECKSUM), u16("length_low"),
+    u8("length_high"), u8("flags", FLAGS)]);
+var sx_dm_chd_map_v34 = sxLayout(0x60290028, "chd_map_v34", BE, sx_dm_chd_map_v34_fields);
+var sx_dm_chd_map_v5_uncompressed_fields = layout([u32("hunk_index", ID)]);
+var sx_dm_chd_map_v5_uncompressed = sxLayout(0x60290029, "chd_map_v5_uncompressed", BE, sx_dm_chd_map_v5_uncompressed_fields);
+var sx_dm_ubi_erase_counter_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u8("version"),
+    field("padding1", "byte[3]", 3, RESERVED), u64("erase_counter", COUNT), u32("vid_header_offset", OFFSET),
+    u32("data_offset", OFFSET), u32("image_sequence"), field("padding2", "byte[32]", 32, RESERVED), u32("header_crc", CHECKSUM)]);
+var sx_dm_ubi_erase_counter_header = sxLayout(0x60290032, "ubi_erase_counter_header", BE, sx_dm_ubi_erase_counter_header_fields);
+var sx_dm_ubi_volume_identifier_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u8("version"),
+    u8("volume_type", ID), u8("copy_flag", FLAGS), u8("compatibility", ID), u32("volume_id", ID),
+    u32("logical_block_number", ID), field("padding1", "byte[4]", 4, RESERVED), u32("data_size", SIZE),
+    u32("used_eraseblocks", COUNT), u32("data_padding", SIZE), u32("data_crc", CHECKSUM),
+    field("padding2", "byte[4]", 4, RESERVED), u64("sequence_number"), field("padding3", "byte[12]", 12, RESERVED),
+    u32("header_crc", CHECKSUM)]);
+var sx_dm_ubi_volume_identifier_header = sxLayout(0x60290033, "ubi_volume_identifier_header", BE, sx_dm_ubi_volume_identifier_header_fields);
+var sx_dm_rdb_filesystem_header_fields = layout([field("identifier", "byte[4]", 4, SIGNATURE), u32("summed_longs", COUNT),
+    i32("checksum", CHECKSUM), u32("host_id", ID), u32("next_block", ID), u32("flags", FLAGS),
+    field("reserved1", "uint32[2]", 8, RESERVED), u32("dos_type", ID), u32("version"), u32("patch_flags", FLAGS),
+    u32("type", ID), u32("task", POINTER), u32("lock", POINTER), u32("handler", POINTER), u32("stack_size", SIZE),
+    i32("priority"), i32("startup", POINTER), i32("segment_list_block", ID), i32("global_vector")]);
+var sx_dm_rdb_filesystem_header = sxLayout(0x60290056, "rdb_filesystem_header", BE, sx_dm_rdb_filesystem_header_fields);
+var sx_dm_ndif_chunk_entry_fields = layout([field("first_sector", "uint24", 3, ID), u8("type", ID),
+    u32("data_fork_offset", OFFSET), u32("data_fork_length", SIZE)]);
+var sx_dm_ndif_chunk_entry = sxLayout(0x60290059, "ndif_chunk_entry", BE, sx_dm_ndif_chunk_entry_fields);
+var sx_dm_ndif_resource_type_count_fields = layout([u16("type_count_minus_one")]);
+var sx_dm_ndif_resource_type_count = sxLayout(0x6029005F, "ndif_resource_type_count", BE, sx_dm_ndif_resource_type_count_fields);
+function sx_dm_span(c, p, n) {
+    return p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sx_dm_read(c, p, b, n) {
+    return sx_dm_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sx_dm_u32(b, o, be) {
+    return sxGetU32At(b, o, 4, 0, be);
+}
+function sx_dm_u64(b, o, be) {
+    return sxGetU64At(b, o, 8, 0, be);
+}
+function sx_dm_u16(b, o, be) {
+    return sxGetU16At(b, o, 2, 0, be);
+}
+function sx_dm_put(c, l, p, z, n) {
+    if (!n) {
+        return true;
+    }
+    if (z > Math.floor(SX_I64_MAX / n) || !sx_dm_span(c, p, z * n)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var b = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < a + b && a < p + z * n) {
+            return true;
+        }
+    }
+    return sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sx_dm_add(c, l, p, z) {
+    return sx_dm_put(c, l, p, z, 1);
+}
+function sx_dm_table(c, l, p, z, n) {
+    if (n > 65536) {
+        n = 65536;
+    }
+    return sx_dm_put(c, l, p, z, n);
+}
+function sx_dm_crc(c, p, n, want, castagnoli, complement, zero4) {
+    var b = [];
+    var crc = 0;
+    var done = 0;
+    if (!sx_dm_span(c, p, n) || n > 16777216) {
+        return false;
+    }
+    while (done < n) {
+        var z = sxU64(n - done) > 0x1000 ? 0x1000 : sxU64(n - done);
+        if (!sx_dm_read(c, p + done, b, z)) {
+            return false;
+        }
+        if (zero4 && done === 0 && z >= 8) {
+            sxFill(b, 4, 4, 0);
+        }
+        crc = castagnoli ? sxCrc32c(crc, b, z) : sxCrc32(crc, b, z);
+        done += z;
+    }
+    return (complement ? ~crc >>> 0 : crc) === want;
+}
+function sx_diskmeta_supports(t) {
+    switch (t) {
+    case "VHDX":
+    case "VHDDYNAMIC":
+    case "VMDK":
+    case "VDI":
+    case "QEMU_ENHANCED_DISK":
+    case "PARALLELS_HDD":
+    case "CHD":
+    case "DMG":
+    case "CLOOP":
+    case "UBI":
+    case "UBIFS":
+    case "JFFS2":
+    case "YAFFS":
+    case "QNX6":
+    case "LOGFS":
+    case "APM":
+    case "RDB":
+    case "APPLE_DISK_COPY_6_NDIF_IMAGE":
+    case "ENCRYPTED_APPLE_DISK_IMAGE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_dm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sx_dm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    if (!n) {
+        return false;
+    }
+    sxQsort(c.items, 0, n, sx_dm_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sx_dm_order, true);
+    return !c.failed;
+}
+function sx_diskmeta_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "VHDX":
+        ok = sx_vhdx_build(c);
+        break;
+    case "VHDDYNAMIC":
+        ok = sx_vhddynamic_build(c);
+        break;
+    case "VMDK":
+        ok = sx_vmdk_build(c);
+        break;
+    case "VDI":
+        ok = sx_vdi_build(c);
+        break;
+    case "QEMU_ENHANCED_DISK":
+        ok = sx_qemu_enhanced_disk_build(c);
+        break;
+    case "PARALLELS_HDD":
+        ok = sx_parallels_hdd_build(c);
+        break;
+    case "CHD":
+        ok = sx_chd_build(c);
+        break;
+    case "DMG":
+        ok = sx_dmg_build(c);
+        break;
+    case "CLOOP":
+        ok = sx_cloop_build(c);
+        break;
+    case "UBI":
+        ok = sx_ubi_build(c);
+        break;
+    case "UBIFS":
+        ok = sx_ubifs_build(c);
+        break;
+    case "JFFS2":
+        ok = sx_jffs2_build(c);
+        break;
+    case "YAFFS":
+        ok = sx_yaffs_build(c);
+        break;
+    case "QNX6":
+        ok = sx_qnx6_build(c);
+        break;
+    case "LOGFS":
+        ok = sx_logfs_build(c);
+        break;
+    case "APM":
+        ok = sx_apm_build(c);
+        break;
+    case "RDB":
+        ok = sx_rdb_build(c);
+        break;
+    case "APPLE_DISK_COPY_6_NDIF_IMAGE":
+        ok = sx_apple_disk_copy_6_ndif_image_build(c);
+        break;
+    case "ENCRYPTED_APPLE_DISK_IMAGE":
+        ok = sx_encrypted_apple_disk_image_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sx_dm_finish(c);
+}
+function sx_diskmeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60290000 || id >= 0x602A0000) {
+        return true;
+    }
+    var s = null;
+    var v = r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/ || r.value.t === 12 /*XX_VAR_TYPE_STRING*/ || r.value.t === 14 /*XX_VAR_TYPE_BYTES*/ ? 0 : sxVarU64(r.value);
+    if (r.name === "timestamp" && (id === sx_dm_vhd_footer_511.id || id === sx_dm_vhd_footer_512.id)) {
+        s = "Seconds since 2000-01-01 UTC";
+    } else if (r.name === "parent_timestamp") {
+        s = "Seconds since 2000-01-01 UTC";
+    } else if (r.name === "disk_type") {
+        s = v === 2 ? "Fixed hard disk" : v === 3 ? "Dynamic hard disk" : v === 4 ? "Differencing hard disk" : null;
+    } else if (id === sx_dm_vdi_header_v1.id && r.name === "image_type") {
+        s = v === 1 ? "Dynamic" : v === 2 ? "Fixed" : v === 3 ? "Undo" : v === 4 ? "Differencing" : null;
+    } else if (id === sx_dm_vdi_block_map_entry.id) {
+        s = v === 4294967295 ? "Unallocated block" : v === 0xFFFFFFFE ? "Zero block" : "Physical block index in data area; multiply by block_size + block_extra";
+    } else if (id === sx_dm_vhd_bat_entry.id) {
+        s = v === 4294967295 ? "Unallocated block" : "File-relative sector index in 512-byte units; points to the block bitmap";
+    } else if (id === sx_dm_vmdk_grain_directory_entry.id || id === sx_dm_vmdk_grain_table_entry.id) {
+        s = "File-relative index in 512-byte sectors; zero means unallocated";
+    } else if (id === sx_dm_parallels_bat_sector.id) {
+        s = "File-relative index in 512-byte sectors; zero means unallocated";
+    } else if (id === sx_dm_parallels_bat_cluster.id) {
+        s = "File-relative index in cluster_sectors*512 bytes; zero means unallocated";
+    } else if (id === sx_dm_vhdx_bat_entry.id) {
+        s = "Bits0..2: state; bits3..19: reserved; bits20..63: file byte offset (MiB aligned); states0 not present,1 undefined,2 zero,3 unmapped,6 fully present,7 partially present";
+    } else if (id === sx_dm_chd_map_v12.id) {
+        s = "Packed 64-bit map word: low44 bits file byte offset, high20 bits stored length";
+    } else if (id === sx_dm_chd_map_v34.id && r.name === "offset_or_reference") {
+        s = "Meaning depends on flags: file byte offset, self/parent hunk index, or repeated eight-byte literal";
+    } else if (id === sx_dm_chd_map_v34.id && r.name === "length_low") {
+        s = "Low16 bits of stored byte length; combined with length_high shifted16";
+    } else if (id === sx_dm_chd_map_v34.id && r.name === "length_high") {
+        s = "High8 bits of stored byte length; not a complete byte size";
+    } else if (id === sx_dm_chd_map_v5_uncompressed.id) {
+        s = "File offset divided by hunk_bytes; zero denotes unallocated/inherited data";
+    } else if (id === sx_dm_vhd_parent_locator.id && r.name === "platform_data_space") {
+        s = "Reserved space in 512-byte sectors";
+    } else if (id === sx_dm_vhdx_metadata_table_entry.id && r.name === "offset") {
+        s = "Byte offset relative to the containing metadata region; physical stored value is not translated";
+    } else if (id === sx_dm_vhdx_parent_locator_entry.id && (r.name === "key_offset" || r.name === "value_offset")) {
+        s = "Byte offset relative to the parent-locator item";
+    } else if (r.name === "segment_shift" || r.name === "block_shift" || r.name === "write_shift") {
+        s = "Base-two logarithm of the byte size; an encoded shift, not a byte count";
+    } else if (r.name === "file_size_low") {
+        s = "Low32 bits of file size; combine with high word subject to the format's unused-high sentinel";
+    } else if (r.name === "file_size_high") {
+        s = "High32 bits of file size; 0xFFFFFFFF means unused in legacy YAFFS images";
+    } else if (r.name === "key_type_and_value") {
+        s = "High3 bits: key kind (0 inode,1 data,2 directory entry,3 xattr); low29 bits: block index or name hash";
+    } else if (id === sx_dm_ubi_volume_identifier_header.id && r.name === "volume_id") {
+        s = v === 0x7FFFEFFF ? "UBI_LAYOUT_VOLUME_ID" : null;
+    } else if (r.name === "volume_type") {
+        s = v === 1 ? "Dynamic volume" : v === 2 ? "Static volume" : null;
+    } else if (id === sx_dm_ubi_erase_counter_header.id && (r.name === "vid_header_offset" || r.name === "data_offset")) {
+        s = "Byte offset relative to the containing physical eraseblock";
+    } else if (id === sx_dm_rdb_filesystem_header.id && r.name === "startup") {
+        s = "Signed DeviceNode startup word; applied only when its patch_flags bit is set";
+    } else if (id === sx_dm_rdb_filesystem_header.id && r.name === "segment_list_block") {
+        s = "Signed filesystem load-segment block index; -1 terminates the chain";
+    } else if (id === sx_dm_rdb_filesystem_header.id && r.name === "global_vector") {
+        s = "Signed BCPL global-vector control word; -1 means no BCPL global vector, 0 requests a private vector";
+    } else if (id === sx_dm_ndif_resource_type_count.id) {
+        s = v === 0xFFFF ? "Empty type list sentinel" : "Encoded resource type count minus one";
+    } else if (id === sx_dm_ndif_chunk_entry.id && r.name === "data_fork_offset") {
+        s = "Byte offset relative to the MacBinary data fork";
+    } else if (id === sx_dm_ndif_chunk_entry.id && r.name === "type") {
+        s = v === 0 ? "Zero fill" : v === 2 ? "Raw" : v === 0x83 ? "ADC" : v === 0x80 ? "KenCode" : v === 255 ? "Terminator" : null;
+    }
+    return s === null || sxSetComment(r, s);
+}

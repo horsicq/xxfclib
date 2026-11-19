@@ -1,0 +1,73 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_media.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_media");
+include("_sx_media_alias_pix");
+include("_sx_media_astc_texture");
+include("_sx_media_avs_image");
+include("_sx_media_dds");
+include("_sx_media_farbfeld");
+include("_sx_media_font_bmfont");
+include("_sx_media_font_pcf");
+include("_sx_media_font_psf");
+include("_sx_media_font_type1_pfb");
+include("_sx_media_genomics_sff");
+include("_sx_media_hdf4");
+include("_sx_media_icns");
+include("_sx_media_ktx");
+include("_sx_media_ktx2");
+include("_sx_media_matlab_mat4");
+include("_sx_media_matlab_mat5");
+include("_sx_media_numpy_npy");
+include("_sx_media_pcx");
+include("_sx_media_photoshop_psd");
+include("_sx_media_pkm_texture");
+include("_sx_media_processing_vlw");
+include("_sx_media_pvr");
+include("_sx_media_sequencing_abif");
+include("_sx_media_sequencing_scf");
+include("_sx_media_sgi_rgb");
+include("_sx_media_sun_raster");
+include("_sx_media_tga");
+include("_sx_media_ucsc_nib");
+include("_sx_media_xwd");
+
+function fileTypes() { return ["KTX", "KTX2", "DDS", "PVR", "PHOTOSHOP_PSD", "ICNS", "FARBFELD", "TGA", "SUN_RASTER", "PCX",
+    "XWD", "SGI_RGB", "NUMPY_NPY", "MATLAB_MAT5", "HDF4", "GIMP_GBR", "GIMP_PAT", "MATLAB_MAT4", "ASTC_TEXTURE", "PKM_TEXTURE",
+    "FONT_PCF", "FONT_PSF", "FONT_BMFONT", "PROCESSING_VLW", "ALIAS_PIX", "FONT_TYPE1_PFB", "UCSC_NIB", "SEQUENCING_ABIF",
+    "SEQUENCING_SCF", "GENOMICS_SFF", "AVS_IMAGE"]; }
+
+var sx_media_layouts = [sxm_tga_header, sxm_tga_footer, sxm_pcx_header, sxm_dds_header, sxm_dds_dx10, sxm_psd_header,
+    sxm_be_length32, sxm_be_length64, sxm_psd_compression, sxm_farbfeld_header, sxm_sgi_header, sxm_be_offset32,
+    sxm_le_length32, sxm_le_offset32, sxm_sun_raster_header, sxm_avs_header, sxm_alias_pix_header, sxm_astc_header,
+    sxm_pkm_header, sxm_ktx_header_le, sxm_ktx_header_be, sxm_ktx2_header, sxm_ktx2_level, sxm_pvr_header_le,
+    sxm_pvr_metadata_le, sxm_pvr_header_be, sxm_pvr_metadata_be, sxm_gimp_gbr_header, sxm_gimp_pat_header, sxm_icns_header,
+    sxm_icns_element, sxm_xwd_header, sxm_xwd_color, sxm_psf1_header, sxm_psf2_header, sxm_pcf_header, sxm_pcf_directory,
+    sxm_pfb_segment, sxm_pfb_end, sxm_bmfont_header, sxm_bmfont_block, sxm_bmfont_info, sxm_bmfont_common, sxm_bmfont_char,
+    sxm_bmfont_kerning, sxm_vlw_header, sxm_vlw_glyph, sxm_npy_v1, sxm_npy_v2, sxm_nib_header_le, sxm_nib_header_be,
+    sxm_scf_header, sxm_abif_header, sxm_abif_directory, sxm_abif_inline_directory, sxm_sff_header, sxm_sff_read_header,
+    sxm_mat4_header_le, sxm_mat5_header_le, sxm_mat5_tag_le, sxm_mat5_small_tag_le, sxm_mat4_header_be, sxm_mat5_header_be,
+    sxm_mat5_tag_be, sxm_mat5_small_tag_be, sxm_hdf4_dd_block, sxm_hdf4_descriptor, sxm_hdf4_first_block];
+
+function structs() {
+    return sxCatalog([sxm_tga_header, sxm_tga_footer, sxm_pcx_header, sxm_dds_header, sxm_dds_dx10, sxm_psd_header,
+        sxm_be_length32, sxm_be_length64, sxm_psd_compression, sxm_farbfeld_header, sxm_sgi_header, sxm_be_offset32,
+        sxm_le_length32, sxm_le_offset32, sxm_sun_raster_header, sxm_avs_header, sxm_alias_pix_header, sxm_astc_header,
+        sxm_pkm_header, sxm_ktx_header_le, sxm_ktx_header_be, sxm_ktx2_header, sxm_ktx2_level, sxm_pvr_header_le,
+        sxm_pvr_metadata_le, sxm_pvr_header_be, sxm_pvr_metadata_be, sxm_gimp_gbr_header, sxm_gimp_pat_header, sxm_icns_header,
+        sxm_icns_element, sxm_xwd_header, sxm_xwd_color, sxm_psf1_header, sxm_psf2_header, sxm_pcf_header, sxm_pcf_directory,
+        sxm_pfb_segment, sxm_pfb_end, sxm_bmfont_header, sxm_bmfont_block, sxm_bmfont_info, sxm_bmfont_common, sxm_bmfont_char,
+        sxm_bmfont_kerning, sxm_vlw_header, sxm_vlw_glyph, sxm_npy_v1, sxm_npy_v2, sxm_nib_header_le, sxm_nib_header_be,
+        sxm_scf_header, sxm_abif_header, sxm_abif_directory, sxm_abif_inline_directory, sxm_sff_header, sxm_sff_read_header,
+        sxm_mat4_header_le, sxm_mat5_header_le, sxm_mat5_tag_le, sxm_mat5_small_tag_le, sxm_mat4_header_be, sxm_mat5_header_be,
+        sxm_mat5_tag_be, sxm_mat5_small_tag_be, sxm_hdf4_dd_block, sxm_hdf4_descriptor, sxm_hdf4_first_block], sx_media_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_media_build, false);
+}

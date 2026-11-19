@@ -1,0 +1,26 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/windows_dmp64/xx_windows_dmp64_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_dmp64_prefix_fields = layout([chars("signature", 4, SIGNATURE), chars("valid_dump", 4, SIGNATURE),
+    u32("major_version", ID), u32("minor_version", ID), u64("directory_table_base", VA), u64("pfn_database", VA),
+    u64("loaded_module_list", VA), u64("active_process_head", VA), u32("machine_type", ID), u32("processor_count", COUNT),
+    u32("bugcheck_code", ID), u32("padding", RESERVED), field("bugcheck_parameters", "uint64[4]", 32),
+    chars("version_user", 32, STRING), u64("debugger_data_block", VA)]);
+var sxexm_dmp64_prefix = sxLayout(0x602B0021, "dmp64_prefix", LE, sxexm_dmp64_prefix_fields);
+var sxexm_dmp64_type_fields = layout([u32("dump_type", ID)]);
+var sxexm_dmp64_type = sxLayout(0x602B0022, "dmp64_type", LE, sxexm_dmp64_type_fields);
+var sxexm_dmp64_required_space_fields = layout([u64("required_space", SIZE)]);
+var sxexm_dmp64_required_space = sxLayout(0x602B0023, "dmp64_required_space", LE, sxexm_dmp64_required_space_fields);
+var sxexm_dmp64_product_fields = layout([u32("secondary_state", FLAGS), u32("product_type", ID), u32("suite_mask", FLAGS)]);
+var sxexm_dmp64_product = sxLayout(0x602B0024, "dmp64_product", LE, sxexm_dmp64_product_fields);
+var sxexm_dmp64_bitmap_header_fields = layout([chars("signature", 8, SIGNATURE), bytes("unknown", 24),
+    u64("first_page_offset", OFFSET), u64("present_page_count", COUNT), u64("addressable_page_count", COUNT)]);
+var sxexm_dmp64_bitmap_header = sxLayout(0x602B0025, "dmp64_bitmap_header", LE, sxexm_dmp64_bitmap_header_fields);
+function sx_windows_dmp64_build(c) {
+    var ok = false;
+    ok = sxexm_add(c, sxexm_dmp64_prefix, 0) && sxexm_add(c, sxexm_dmp64_type, 0xF98) && sxexm_add(c, sxexm_dmp64_required_space, 0xFA0) && sxexm_add(c, sxexm_dmp64_product, 0x103C) && sxexm_add(c, sxexm_dmp64_bitmap_header, 8192);
+    return ok && sxexm_finish(c);
+}

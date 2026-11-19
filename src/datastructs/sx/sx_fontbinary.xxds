@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_fontbinary.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_fontbinary");
+include("_sx_fontbinary_font_gem_fnt");
+include("_sx_fontbinary_font_windows_fnt");
+include("_sx_fontbinary_nintendo_bcfnt");
+include("_sx_fontbinary_nintendo_bfnt");
+include("_sx_fontbinary_tex_gf");
+include("_sx_fontbinary_tex_pk");
+include("_sx_fontbinary_tex_tfm");
+include("_sx_fontbinary_tex_vf");
+
+function fileTypes() { return ["NINTENDO_BFNT", "NINTENDO_BCFNT", "FONT_WINDOWS_FNT", "TEX_TFM", "TEX_PK", "FONT_GEM_FNT",
+    "TEX_GF", "TEX_VF"]; }
+
+var sx_fontbinary_layouts = [sxfb_nintendo_font_header_be, sxfb_nintendo_font_chunk_be, sxfb_bfnt_finf, sxfb_bfnt_tglp,
+    sxfb_nintendo_cwdh_be, sxfb_nintendo_width_be, sxfb_nintendo_cmap_be, sxfb_nintendo_map_index_be,
+    sxfb_nintendo_map_count_be, sxfb_nintendo_map_pair_be, sxfb_nintendo_font_header_le, sxfb_nintendo_font_chunk_le,
+    sxfb_bcfnt_finf, sxfb_bcfnt_tglp, sxfb_nintendo_cwdh_le, sxfb_nintendo_width_le, sxfb_nintendo_cmap_le,
+    sxfb_nintendo_map_index_le, sxfb_nintendo_map_count_le, sxfb_nintendo_map_pair_le, sxfb_windows_fnt2_header,
+    sxfb_windows_fnt3_header, sxfb_windows_fnt2_glyph, sxfb_windows_fnt3_glyph, sxfb_gem_font_header_le,
+    sxfb_gem_glyph_bit_position_le, sxfb_gem_font_header_be, sxfb_gem_glyph_bit_position_be, sxfb_gem_horizontal_offsets,
+    sxfb_tfm_counts, sxfb_tfm_header, sxfb_tfm_coding_scheme, sxfb_tfm_family, sxfb_tfm_face, sxfb_tfm_character,
+    sxfb_tfm_width, sxfb_tfm_height, sxfb_tfm_depth, sxfb_tfm_italic, sxfb_tfm_kern, sxfb_tfm_parameter, sxfb_tfm_ligature_kern,
+    sxfb_tfm_extensible_recipe, sxfb_tex_font_preamble, sxfb_pk_metrics, sxfb_pk_short_glyph, sxfb_pk_extended_glyph,
+    sxfb_pk_long_glyph, sxfb_tex_opcode, sxfb_tex_special1, sxfb_tex_special2, sxfb_tex_special3, sxfb_tex_special4,
+    sxfb_tex_numeric_special, sxfb_gf_boc, sxfb_gf_boc1, sxfb_gf_paint1, sxfb_gf_skip1, sxfb_gf_paint2, sxfb_gf_skip2,
+    sxfb_gf_paint3, sxfb_gf_skip3, sxfb_gf_post, sxfb_gf_char_loc, sxfb_gf_char_loc0, sxfb_gf_postpost, sxfb_vf_metrics,
+    sxfb_vf_font_definition1, sxfb_vf_font_definition2, sxfb_vf_font_definition3, sxfb_vf_font_definition4,
+    sxfb_vf_short_packet, sxfb_vf_long_packet];
+
+function structs() {
+    return sxCatalog([sxfb_nintendo_font_header_be, sxfb_nintendo_font_chunk_be, sxfb_bfnt_finf, sxfb_bfnt_tglp,
+        sxfb_nintendo_cwdh_be, sxfb_nintendo_width_be, sxfb_nintendo_cmap_be, sxfb_nintendo_map_index_be,
+        sxfb_nintendo_map_count_be, sxfb_nintendo_map_pair_be, sxfb_nintendo_font_header_le, sxfb_nintendo_font_chunk_le,
+        sxfb_bcfnt_finf, sxfb_bcfnt_tglp, sxfb_nintendo_cwdh_le, sxfb_nintendo_width_le, sxfb_nintendo_cmap_le,
+        sxfb_nintendo_map_index_le, sxfb_nintendo_map_count_le, sxfb_nintendo_map_pair_le, sxfb_windows_fnt2_header,
+        sxfb_windows_fnt3_header, sxfb_windows_fnt2_glyph, sxfb_windows_fnt3_glyph, sxfb_gem_font_header_le,
+        sxfb_gem_glyph_bit_position_le, sxfb_gem_font_header_be, sxfb_gem_glyph_bit_position_be, sxfb_gem_horizontal_offsets,
+        sxfb_tfm_counts, sxfb_tfm_header, sxfb_tfm_coding_scheme, sxfb_tfm_family, sxfb_tfm_face, sxfb_tfm_character,
+        sxfb_tfm_width, sxfb_tfm_height, sxfb_tfm_depth, sxfb_tfm_italic, sxfb_tfm_kern, sxfb_tfm_parameter,
+        sxfb_tfm_ligature_kern, sxfb_tfm_extensible_recipe, sxfb_tex_font_preamble, sxfb_pk_metrics, sxfb_pk_short_glyph,
+        sxfb_pk_extended_glyph, sxfb_pk_long_glyph, sxfb_tex_opcode, sxfb_tex_special1, sxfb_tex_special2, sxfb_tex_special3,
+        sxfb_tex_special4, sxfb_tex_numeric_special, sxfb_gf_boc, sxfb_gf_boc1, sxfb_gf_paint1, sxfb_gf_skip1, sxfb_gf_paint2,
+        sxfb_gf_skip2, sxfb_gf_paint3, sxfb_gf_skip3, sxfb_gf_post, sxfb_gf_char_loc, sxfb_gf_char_loc0, sxfb_gf_postpost,
+        sxfb_vf_metrics, sxfb_vf_font_definition1, sxfb_vf_font_definition2, sxfb_vf_font_definition3, sxfb_vf_font_definition4,
+        sxfb_vf_short_packet, sxfb_vf_long_packet], sx_fontbinary_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_fontbinary_build, false);
+}

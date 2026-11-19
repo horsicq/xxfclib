@@ -1,0 +1,403 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_volume.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_v_dec_partition_table_header_fields = layout([u32("magic", SIGNATURE), u32("valid", FLAGS)]);
+var sx_v_dec_partition_table_header = sxLayout(0x60050001, "dec_partition_table_header", LE, sx_v_dec_partition_table_header_fields);
+var sx_v_dec_partition_entry_fields = layout([i32("block_count", COUNT), u32("start_block", OFFSET)]);
+var sx_v_dec_partition_entry = sxLayout(0x60050002, "dec_partition_entry", LE, sx_v_dec_partition_entry_fields);
+var sx_v_dragonfly_disklabel64_header_fields = layout([u32("magic", SIGNATURE), u32("crc32", CHECKSUM), u32("alignment", SIZE),
+    u32("partition_count", COUNT), field("storage_uuid", "byte[16]", 16, ID), u64("total_size", SIZE),
+    u64("boot_area_offset", OFFSET), u64("partition_area_offset", OFFSET), u64("partition_area_end", OFFSET),
+    u64("backup_label_offset", OFFSET), chars("pack_name", 64, STRING), field("reserved", "byte[64]", 64, RESERVED)]);
+var sx_v_dragonfly_disklabel64_header = sxLayout(0x60050003, "dragonfly_disklabel64_header", LE, sx_v_dragonfly_disklabel64_header_fields);
+var sx_v_dragonfly_partition64_fields = layout([u64("byte_offset", OFFSET), u64("byte_size", SIZE), u8("filesystem_type", ID),
+    field("reserved_bytes", "byte[3]", 3, RESERVED), u32("reserved_word1", RESERVED), u32("reserved_word2", RESERVED),
+    u32("reserved_word3", RESERVED), field("type_uuid", "byte[16]", 16, ID), field("storage_uuid", "byte[16]", 16, ID)]);
+var sx_v_dragonfly_partition64 = sxLayout(0x60050004, "dragonfly_partition64", LE, sx_v_dragonfly_partition64_fields);
+var sx_v_human68k_partition_header_fields = layout([u32("magic", SIGNATURE), u32("size", COUNT), u32("size2", COUNT),
+    u32("unknown")]);
+var sx_v_human68k_partition_header = sxLayout(0x6005000A, "human68k_partition_header", BE, sx_v_human68k_partition_header_fields);
+var sx_v_human68k_partition_entry_fields = layout([chars("name", 8, STRING), u32("state_and_start_block", OFFSET),
+    u32("block_count", COUNT)]);
+var sx_v_human68k_partition_entry = sxLayout(0x6005000B, "human68k_partition_entry", BE, sx_v_human68k_partition_entry_fields);
+var sx_v_xenix_partition_header_fields = layout([u16("magic", SIGNATURE)]);
+var sx_v_xenix_partition_header = sxLayout(0x6005000E, "xenix_partition_header", LE, sx_v_xenix_partition_header_fields);
+var sx_v_xenix_partition_entry_fields = layout([i32("start_1k_block", OFFSET), i32("block_count", COUNT)]);
+var sx_v_xenix_partition_entry = sxLayout(0x6005000F, "xenix_partition_entry", LE, sx_v_xenix_partition_entry_fields);
+var sx_v_minix_mbr_partition_entry_fields = layout([u8("boot_indicator", FLAGS), u8("start_head"),
+    u8("start_sector_and_cylinder_high"), u8("start_cylinder_low"), u8("type", ID), u8("end_head"),
+    u8("end_sector_and_cylinder_high"), u8("end_cylinder_low"), u32("start_lba", OFFSET), u32("sector_count", COUNT)]);
+var sx_v_minix_mbr_partition_entry = sxLayout(0x60050010, "minix_mbr_partition_entry", LE, sx_v_minix_mbr_partition_entry_fields);
+var sx_v_next_disklabel_header_fields = layout([u32("version", ID), i32("label_block", OFFSET), i32("size", COUNT),
+    chars("label", 24, STRING), u32("flags", FLAGS), u32("tag", ID)]);
+var sx_v_next_disklabel_header = sxLayout(0x60050015, "next_disklabel_header", BE, sx_v_next_disklabel_header_fields);
+var sx_v_next_disktab_fields = layout([chars("drive_name", 24, STRING), chars("drive_type", 24, STRING),
+    i32("sector_size", SIZE), i32("tracks", COUNT), i32("sectors_per_track", COUNT), i32("cylinders", COUNT), i32("rpm"),
+    i16("front_porch", COUNT), i16("back_porch", COUNT), i16("alternate_groups", COUNT), i16("alternate_group_size", COUNT),
+    i16("alternates_per_group", COUNT), i16("alternate_group_offset", OFFSET), i32("boot_block0", OFFSET),
+    i32("boot_block1", OFFSET), chars("boot_file", 24, STRING), chars("host_name", 32, STRING), u8("root_partition", ID),
+    u8("read_write_partition", ID)]);
+var sx_v_next_disktab = sxLayout(0x60050016, "next_disktab", BE, sx_v_next_disktab_fields);
+var sx_v_next_partition_entry_fields = layout([i32("start_sector", OFFSET), i32("sector_count", COUNT), i16("block_size", SIZE),
+    i16("fragment_size", SIZE), u8("optimization", ID), i16("cylinders_per_group", COUNT), i16("density"),
+    u8("minimum_free_percent"), u8("newfs", FLAGS), chars("mount_point", 16, STRING), u8("automount", FLAGS),
+    chars("filesystem_type", 8, STRING)]);
+var sx_v_next_partition_entry = sxLayout(0x60050017, "next_partition_entry", BE, sx_v_next_partition_entry_fields);
+var sx_v_next_bad_block_entry_fields = layout([i32("block", OFFSET)]);
+var sx_v_next_bad_block_entry = sxLayout(0x60050018, "next_bad_block_entry", BE, sx_v_next_bad_block_entry_fields);
+var sx_v_next_disklabel_checksum_fields = layout([u16("checksum", CHECKSUM)]);
+var sx_v_next_disklabel_checksum = sxLayout(0x60050019, "next_disklabel_checksum", BE, sx_v_next_disklabel_checksum_fields);
+var sx_v_apricot_label_header_fields = layout([chars("version", 8, STRING), u8("operating_system", ID),
+    u8("write_protected", FLAGS), u8("copy_protected", FLAGS), u8("boot_type", ID), u8("partition_count", COUNT),
+    u8("winchester", FLAGS), u16("sector_size", SIZE), u16("sectors_per_track", COUNT), u32("cylinders", COUNT),
+    u8("heads", COUNT), u8("interleave"), u16("skew"), u32("boot_location", OFFSET), u16("boot_size", COUNT),
+    u32("boot_address", VA), u16("boot_offset", OFFSET), u16("boot_segment", VA), u32("first_data_block", OFFSET),
+    u16("generation"), u16("copy_count", COUNT), u16("maximum_copies", COUNT), chars("serial_number", 8, STRING),
+    chars("part_number", 8, STRING), chars("copyright", 14, STRING)]);
+var sx_v_apricot_label_header = sxLayout(0x6005001A, "apricot_label_header", LE, sx_v_apricot_label_header_fields);
+var sx_v_acorn_disc_record_fields = layout([u8("log2_sector_size"), u8("sectors_per_track", COUNT), u8("heads", COUNT),
+    u8("density"), u8("id_length", COUNT), u8("log2_bytes_per_map_bit"), u8("skew"), u8("boot_option", ID), u8("low_sector"),
+    u8("zone_count_low", COUNT), u16("zone_spare"), u32("root", OFFSET), u32("disc_size_low"), u16("disc_id", ID),
+    chars("disc_name", 10, STRING), u32("disc_type", ID), u32("disc_size_high"), u8("flags", FLAGS),
+    u8("zone_count_high", COUNT), field("alignment_padding", "byte[2]", 2, RESERVED), u32("format_version"),
+    u32("root_size", SIZE), field("reserved", "byte[8]", 8, RESERVED)]);
+var sx_v_acorn_disc_record = sxLayout(0x6005001F, "acorn_disc_record", LE, sx_v_acorn_disc_record_fields);
+var sx_v_acorn_boot_footer_fields = layout([u8("flags", FLAGS), u16("start_cylinder", OFFSET), u8("checksum", CHECKSUM)]);
+var sx_v_acorn_boot_footer = sxLayout(0x60050020, "acorn_boot_footer", LE, sx_v_acorn_boot_footer_fields);
+var sx_v_acorn_linux_partition_entry_fields = layout([u32("magic", SIGNATURE), u32("start_sector", OFFSET),
+    u32("sector_count", COUNT)]);
+var sx_v_acorn_linux_partition_entry = sxLayout(0x60050021, "acorn_linux_partition_entry", LE, sx_v_acorn_linux_partition_entry_fields);
+var sx_v_acorn_riscix_table_header_fields = layout([u32("magic", SIGNATURE), u32("date", TIMESTAMP)]);
+var sx_v_acorn_riscix_table_header = sxLayout(0x60050022, "acorn_riscix_table_header", LE, sx_v_acorn_riscix_table_header_fields);
+var sx_v_acorn_riscix_partition_entry_fields = layout([u32("start_sector", OFFSET), u32("sector_count", COUNT), u32("one"),
+    chars("name", 16, STRING)]);
+var sx_v_acorn_riscix_partition_entry = sxLayout(0x60050023, "acorn_riscix_partition_entry", LE, sx_v_acorn_riscix_partition_entry_fields);
+var sx_v_pc98_partition_entry_fields = layout([u8("mid", ID), u8("sid", ID), field("reserved", "byte[2]", 2, RESERVED),
+    u8("ipl_sector"), u8("ipl_head"), u16("ipl_cylinder"), u8("start_sector", OFFSET), u8("start_head"), u16("start_cylinder"),
+    u8("end_sector", OFFSET), u8("end_head"), u16("end_cylinder"), chars("name", 16, STRING)]);
+var sx_v_pc98_partition_entry = sxLayout(0x60050024, "pc98_partition_entry", LE, sx_v_pc98_partition_entry_fields);
+var sx_v_pc98_boot_signature_fields = layout([u16("magic", SIGNATURE)]);
+var sx_v_pc98_boot_signature = sxLayout(0x60050025, "pc98_boot_signature", LE, sx_v_pc98_boot_signature_fields);
+var sx_v_mbr_partition_entry_fields = layout([u8("boot_indicator", FLAGS), u8("start_head"),
+    u8("start_sector_and_cylinder_high"), u8("start_cylinder_low"), u8("type", ID), u8("end_head"),
+    u8("end_sector_and_cylinder_high"), u8("end_cylinder_low"), u32("start_lba", OFFSET), u32("sector_count", COUNT)]);
+var sx_v_mbr_partition_entry = sxLayout(0x60050027, "mbr_partition_entry", LE, sx_v_mbr_partition_entry_fields);
+var sx_v_gpt_header_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("revision", ID), u32("header_size", SIZE),
+    u32("header_crc32", CHECKSUM), u32("reserved", RESERVED), u64("my_lba", OFFSET), u64("alternate_lba", OFFSET),
+    u64("first_usable_lba", OFFSET), u64("last_usable_lba", OFFSET), field("disk_guid", "byte[16]", 16, ID),
+    u64("partition_entry_lba", OFFSET), u32("partition_entry_count", COUNT), u32("partition_entry_size", SIZE),
+    u32("partition_entry_array_crc32", CHECKSUM)]);
+var sx_v_gpt_header = sxLayout(0x60050029, "gpt_header", LE, sx_v_gpt_header_fields);
+var sx_v_gpt_partition_entry_fields = layout([field("type_guid", "byte[16]", 16, ID), field("unique_guid", "byte[16]", 16, ID),
+    u64("starting_lba", OFFSET), u64("ending_lba", OFFSET), u64("attributes", FLAGS),
+    field("name_utf16le", "byte[72]", 72, STRING)]);
+var sx_v_gpt_partition_entry = sxLayout(0x6005002A, "gpt_partition_entry", LE, sx_v_gpt_partition_entry_fields);
+function sx_volume_supports(t) {
+    switch (t) {
+    case "MBR":
+    case "GPT":
+    case "DEC_DISKLABEL":
+    case "DRAGONFLY_DISKLABEL":
+    case "SGI_VOLUME_HEADER":
+    case "HUMAN68K_PARTITIONS":
+    case "RIO_KARMA_PARTITIONS":
+    case "XENIX_PARTITIONS":
+    case "MINIX_PARTITIONS":
+    case "ATARI_AHDI":
+    case "NEXT_DISKLABEL":
+    case "APRICOT_PARTITIONS":
+    case "ACORN_PARTITIONS":
+    case "PC98_PARTITIONS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_v_fits(c, o, n) {
+    return c !== null && c.size >= 0 && o <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - o);
+}
+function sx_v_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var item = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > item.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, item);
+        }
+    }
+}
+function sx_v_finish(c) {
+    var end = 0;
+    sx_v_sort(c);
+    var n = c.count;
+    for (var i = 0; i < n; i++) {
+        var off = c.items[i].offset - c.f.base_address;
+        var stop = off + c.items[i].total_size;
+        if (off > end && !sx_raw(c, end, off - end)) {
+            return false;
+        }
+        if (stop > end) {
+            end = stop;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sx_v_sort(c);
+    return !c.failed;
+}
+var sx_volume_build_offsets = [0, 2048, 7680, 8192];
+function sx_volume_build(c) {
+    var v = 0;
+    var at = 0;
+    if (c === null || c.f === null || !sx_volume_supports(c.f.file_type)) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    switch (c.f.file_type) {
+    case "MBR":
+        if (!sx_mbr_build(c)) {
+            return false;
+        }
+        break;
+    case "GPT":
+        if (!sx_gpt_build(c)) {
+            return false;
+        }
+        break;
+    case "DEC_DISKLABEL":
+        at = 15872;
+        if (!sx_add(c, sx_v_dec_partition_table_header, at + 440, 8) || !sx_table(c, sx_v_dec_partition_entry, at + 448, 8, 8)) {
+            return false;
+        }
+        break;
+    case "DRAGONFLY_DISKLABEL":
+        if ((v = sx_u32(c, 524, false)) === null || v < 1 || v > 16 || !sx_add(c, sx_v_dragonfly_disklabel64_header, 512, 200) || !sx_table(c, sx_v_dragonfly_partition64, 712, 64, v)) {
+            return false;
+        }
+        break;
+    case "SGI_VOLUME_HEADER":
+        if (!sx_sgi_volume_header_build(c)) {
+            return false;
+        }
+        break;
+    case "HUMAN68K_PARTITIONS":
+        at = 1024;
+        if (sx_v_fits(c, 2048, 512)) {
+            if ((v = sx_u32(c, 2048, true)) === null) {
+                return false;
+            }
+            if (v === 0x5836384B) {
+                at = 2048;
+            }
+        }
+        if (!sx_add(c, sx_v_human68k_partition_header, at, 16) || !sx_table(c, sx_v_human68k_partition_entry, at + 16, 16, 8)) {
+            return false;
+        }
+        break;
+    case "RIO_KARMA_PARTITIONS":
+        if (!sx_rio_karma_partitions_build(c)) {
+            return false;
+        }
+        break;
+    case "XENIX_PARTITIONS":
+        at = 21504;
+        if (!sx_add(c, sx_v_xenix_partition_header, at, 2) || !sx_table(c, sx_v_xenix_partition_entry, at + 2, 8, 16)) {
+            return false;
+        }
+        break;
+    case "MINIX_PARTITIONS":
+        if (!sx_minix_partitions_build(c)) {
+            return false;
+        }
+        break;
+    case "ATARI_AHDI":
+        if (!sx_atari_ahdi_build(c)) {
+            return false;
+        }
+        break;
+    case "NEXT_DISKLABEL":
+        var found = false;
+        for (var i = 0; i < 4; i++) {
+            if (sx_v_fits(c, (sx_volume_build_offsets[i] < 0 ? sx_volume_build_offsets[i] + SX_U64_MAX : sx_volume_build_offsets[i]), 1024)) {
+                if ((v = sx_u32(c, sx_volume_build_offsets[i], true)) === null) {
+                    return false;
+                }
+                if (v === 0x4E655854 || v === 0x646C5632 || v === 0x646C5633) {
+                    at = sx_volume_build_offsets[i];
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (!found || !sx_add(c, sx_v_next_disklabel_header, at, 44) || !sx_add(c, sx_v_next_disktab, at + 44, 146) || !sx_table(c, sx_v_next_partition_entry, at + 190, 44, 8)) {
+            return false;
+        }
+        if (v === 0x646C5633) {
+            if (!sx_add(c, sx_v_next_disklabel_checksum, at + 542, 2)) {
+                return false;
+            }
+        } else if (sx_v_fits(c, (at < 0 ? at + SX_U64_MAX : at), 7224)) {
+            if (!sx_table(c, sx_v_next_bad_block_entry, at + 542, 4, 1670) || !sx_add(c, sx_v_next_disklabel_checksum, at + 7222, 2)) {
+                return false;
+            }
+        }
+        break;
+    case "APRICOT_PARTITIONS":
+        if (!sx_apricot_partitions_build(c)) {
+            return false;
+        }
+        break;
+    case "ACORN_PARTITIONS":
+        var b = [];
+        var map;
+        if (!sx_read(c, 3520, b, 64) || !sx_add(c, sx_v_acorn_disc_record, 3520, 60) || !sx_add(c, sx_v_acorn_boot_footer, 3580, 4)) {
+            return false;
+        }
+        if (b[0] < 7 || b[0] > 13) {
+            return false;
+        }
+        map = sxGetU16(b, 64, 61, false) * (b[2] + (b[8] >> 6 & 1)) * b[1] * sxShl64(1, b[0]);
+        if (map > SX_I64_MAX || !sx_v_fits(c, map, 512)) {
+            return false;
+        }
+        at = (map >= SX_I64_MAX ? map - SX_U64_MAX : map);
+        if ((b[60] & 15) === 9) {
+            if (!sx_table(c, sx_v_acorn_linux_partition_entry, at, 12, 42)) {
+                return false;
+            }
+        } else if ((b[60] & 15) === 1 || (b[60] & 15) === 2) {
+            if (!sx_add(c, sx_v_acorn_riscix_table_header, at, 8) || !sx_table(c, sx_v_acorn_riscix_partition_entry, at + 8, 28, 8)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        break;
+    case "PC98_PARTITIONS":
+        at = sxReader(c.f).logical_sector_size;
+        if (at < 128 || at > 8192 || !sx_add(c, sx_v_pc98_boot_signature, at - 2, 2) || !sx_table(c, sx_v_pc98_partition_entry, at, 32, 8)) {
+            return false;
+        }
+        break;
+    default:
+        return false;
+    }
+    return sx_v_finish(c);
+}
+var sx_volume_comment_names = ["0", "PLATFORM_REQUIRED", "NO_BLOCK_IO_PROTOCOL", "PLATFORM_REQUIRED|NO_BLOCK_IO_PROTOCOL",
+    "LEGACY_BIOS_BOOTABLE", "PLATFORM_REQUIRED|LEGACY_BIOS_BOOTABLE", "NO_BLOCK_IO_PROTOCOL|LEGACY_BIOS_BOOTABLE",
+    "PLATFORM_REQUIRED|NO_BLOCK_IO_PROTOCOL|LEGACY_BIOS_BOOTABLE"];
+function sx_volume_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60050001 || id > 0x6005FFFF) {
+        return true;
+    }
+    var comment = null;
+    var v = sxVarU64(r.value);
+    if (id === sx_v_human68k_partition_entry.id && r.name === "state_and_start_block") {
+        comment = "High 8 bits: state; low 24 bits: starting block";
+    } else if (id === sx_v_xenix_partition_entry.id && r.name === "start_1k_block") {
+        comment = "1024-byte blocks relative to block 977";
+    } else if ((id === sx_v_mbr_partition_entry.id || id === sx_v_minix_mbr_partition_entry.id) && r.name === "boot_indicator") {
+        comment = v === 0x80 ? "Active (bootable)" : v === 0 ? "Inactive" : "Unrecognized boot indicator";
+    } else if (id === sx_v_gpt_partition_entry.id && r.name === "name_utf16le") {
+        comment = "36 UTF-16LE code units; zero-terminated partition name";
+    } else if (id === sx_v_gpt_partition_entry.id && r.name === "ending_lba") {
+        comment = "Inclusive ending LBA";
+    } else if (id === sx_v_gpt_header.id && r.name === "revision" && v === 0x10000) {
+        comment = "GPT revision 1.0";
+    } else if ((id === sx_v_mbr_partition_entry.id || id === sx_v_minix_mbr_partition_entry.id) && r.name === "type") {
+        switch (v) {
+        case 0:
+            comment = "Empty";
+            break;
+        case 1:
+            comment = "FAT12";
+            break;
+        case 4:
+            comment = "FAT16 (<32 MiB)";
+            break;
+        case 5:
+            comment = "Extended (CHS)";
+            break;
+        case 6:
+            comment = "FAT16";
+            break;
+        case 7:
+            comment = "NTFS/exFAT/HPFS";
+            break;
+        case 11:
+            comment = "FAT32 (CHS)";
+            break;
+        case 12:
+            comment = "FAT32 (LBA)";
+            break;
+        case 14:
+            comment = "FAT16 (LBA)";
+            break;
+        case 15:
+            comment = "Extended (LBA)";
+            break;
+        case 0x81:
+            comment = "Minix";
+            break;
+        case 0x82:
+            comment = "Linux swap";
+            break;
+        case 0x83:
+            comment = "Linux";
+            break;
+        case 0x85:
+            comment = "Extended (Linux)";
+            break;
+        case 0x8E:
+            comment = "Linux LVM";
+            break;
+        case 0xEE:
+            comment = "GPT protective";
+            break;
+        case 0xEF:
+            comment = "EFI System";
+            break;
+        case 0xFD:
+            comment = "Linux RAID auto";
+            break;
+        default:
+            break;
+        }
+    } else if (id === sx_v_gpt_partition_entry.id && r.name === "attributes") {
+        if (v < 8) {
+            comment = sx_volume_comment_names[v];
+        }
+    } else if (id === sx_v_acorn_disc_record.id) {
+        if (r.name === "log2_sector_size") {
+            comment = "Base-2 exponent: sector size is 1 << value bytes";
+        } else if (r.name === "log2_bytes_per_map_bit") {
+            comment = "Base-2 exponent: bytes per map bit is 1 << value";
+        } else if (r.name === "id_length") {
+            comment = "Fragment identifier length in bits";
+        } else if (r.name === "disc_size_low") {
+            comment = "Lower 32 bits of the 64-bit byte size";
+        } else if (r.name === "disc_size_high") {
+            comment = "Upper 32 bits of the 64-bit byte size";
+        }
+    } else if (id === sx_v_next_disklabel_header.id && r.name === "size") {
+        comment = "Block count";
+    } else if (id === sx_v_next_disktab.id && r.name === "alternate_group_size") {
+        comment = "Sector count";
+    } else if (id === sx_v_apricot_label_header.id && r.name === "boot_size") {
+        comment = "Sector count";
+    }
+    if (comment !== null) {
+        return sxSetComment(r, comment);
+    }
+    return true;
+}

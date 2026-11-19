@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/vtech_vz/xx_vtech_vz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_vz_header_fields = layout([chars("signature", 4, SIGNATURE), chars("name", 17, STRING), u8("file_type", ID),
+    u16("load_address", VA)]);
+var sxexm_vz_header = sxLayout(0x602B0001, "vz_header", LE, sxexm_vz_header_fields);
+function sx_vtech_vz_build(c) {
+    var ok = false;
+    ok = sxexm_add(c, sxexm_vz_header, 0);
+    return ok && sxexm_finish(c);
+}

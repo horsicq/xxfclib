@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/razmo_kefrenssoundmachine/xx_razmo_kefrenssoundmachine_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcmus_kefrens_header_fields = layout([chars("signature", 2, SIGNATURE), chars("title", 13, NONE), blob("opaque_prefix", 17)]);
+var sxcmus_kefrens_header = sxLayout(0x609E000F, "kefrens_header", BE, sxcmus_kefrens_header_fields);
+var sxcmus_kefrens_order_fields = layout([bytes("track_indexes", 4)]);
+var sxcmus_kefrens_order = sxLayout(0x609E0011, "kefrens_order", LE, sxcmus_kefrens_order_fields);
+function sxcmus_kefrens(c) {
+    if (!sxcmus_eq(c, 0, "M.", 2) || !sxcmus_span(c, 0, 512) || !sxcmus_put(c, sxcmus_kefrens_header, 0, 1) || !sxcmus_put(c, sxcmus_kefrens_sample, 32, 15)) {
+        return false;
+    }
+    var first = [];
+    if (!sxcmus_read(c, 48, first, 4)) {
+        return false;
+    }
+    var sample = sxcmus_be32(first, 0);
+    var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (sample >= 1536 && sample < limit) {
+        limit = sample;
+    }
+    var highest = 0;
+    var ended = false;
+    for (var i = 0; i < 256; i++) {
+        var p = (512 + ((4 * i) >>> 0)) >>> 0;
+        var b = [];
+        if (!sxcmus_read(c, p, b, 4)) {
+            return true;
+        }
+        if (b[0] === 255) {
+            if (!sxcmus_put(c, sxcmus_kefrens_end, p, 1)) {
+                return false;
+            }
+            ended = true;
+            break;
+        }
+        if (!sxcmus_put(c, sxcmus_kefrens_order, p, 1)) {
+            return false;
+        }
+        for (var j = 0; j < 4; j++) {
+            if (b[j] > highest) {
+                highest = b[j];
+            }
+        }
+    }
+    if (ended && limit >= 1536 && ((highest + 1) >>> 0) * 192 <= sxU64(limit - 1536)) {
+        return sxcmus_put(c, sxcmus_kefrens_cell, 1536, ((highest + 1) >>> 0) * 64);
+    }
+    return true;
+}
+function sx_razmo_kefrenssoundmachine_build(c) {
+    return sxcmus_kefrens(c);
+}

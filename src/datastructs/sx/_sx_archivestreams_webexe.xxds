@@ -1,0 +1,184 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/webexe/xx_webexe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_webexe_header_fields = layout([chars("signature", 5, SIGNATURE), chars("version", 1, NONE),
+    chars("format_marker", 1, NONE), field("zip_end_offset", "ascii_decimal[10]", 10, OFFSET),
+    field("file_size", "ascii_decimal[10]", 10, SIZE)]);
+var sxas_webexe_header = sxLayout(0x60430014, "webexe_header", LE, sxas_webexe_header_fields);
+var sxas_webexe_zip_local_fields = layout([u32("signature", SIGNATURE), u16("version_needed"), u16("flags", FLAGS),
+    u16("method"), u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u16("name_size", SIZE), u16("extra_size", SIZE)]);
+var sxas_webexe_zip_local = sxLayout(0x60430015, "webexe_zip_local", LE, sxas_webexe_zip_local_fields);
+var sxas_webexe_zip_central_fields = layout([u32("signature", SIGNATURE), u16("version_made"), u16("version_needed"),
+    u16("flags", FLAGS), u16("method"), u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u16("name_size", SIZE), u16("extra_size", SIZE), u16("comment_size", SIZE),
+    u16("starting_disk"), u16("internal_attributes", FLAGS), u32("external_attributes", FLAGS),
+    u32("local_header_offset", OFFSET)]);
+var sxas_webexe_zip_central = sxLayout(0x60430016, "webexe_zip_central", LE, sxas_webexe_zip_central_fields);
+var sxas_webexe_zip_end_fields = layout([u32("signature", SIGNATURE), u16("disk_number"), u16("directory_disk"),
+    u16("disk_entries", COUNT), u16("total_entries", COUNT), u32("directory_size", SIZE), u32("directory_offset", OFFSET),
+    u16("comment_size", SIZE)]);
+var sxas_webexe_zip_end = sxLayout(0x60430017, "webexe_zip_end", LE, sxas_webexe_zip_end_fields);
+function sxas_webexe_overlay(c) {
+    var h = [];
+    var p = [];
+    var section = [];
+    var pe;
+    var count;
+    var opt;
+    var i;
+    var end;
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (n < 2 || !sxas_read(c, 0, h, 2)) {
+        return -1;
+    }
+    if (h[0] !== 77 /*M*/ || h[1] !== 90 /*Z*/) {
+        return 0;
+    }
+    if (n < 64 || !sxas_read(c, 0, h, 64)) {
+        return -1;
+    }
+    pe = sxas_uint(h, 60, 4, false) >>> 0;
+    if (!sxas_span(c, pe, 24) || !sxas_read(c, pe, p, 24) || sxMemcmp(p, "PE\x00\x00", 4)) {
+        return -1;
+    }
+    count = sxGetU16At(p, 6, 2, 0, false);
+    opt = sxGetU16At(p, 20, 2, 0, false);
+    if (!count || count > 96 || opt < 64 || opt > 4096 || !sxas_span(c, pe + 24, opt + count * 40) || !sxas_read(c, pe + 84, h, 4)) {
+        return -1;
+    }
+    end = sxas_uint(h, 0, 4, false);
+    for (i = 0; i < count; ++i) {
+        var finish;
+        if (!sxas_read(c, pe + 24 + opt + i * 40, section, 40)) {
+            return -1;
+        }
+        finish = sxas_uint(section, 16, 4, false) + sxas_uint(section, 20, 4, false);
+        if (finish > n) {
+            return -1;
+        }
+        if (finish > end) {
+            end = finish;
+        }
+    }
+    if (!sxas_read(c, pe + 24, h, 2)) {
+        return -1;
+    }
+    var dd = sxGetU16(h, 2, 0, false) === 0x10B ? 128 : sxGetU16(h, 2, 0, false) === 0x20B ? 144 : 0;
+    if (dd && opt >= (dd + 8) >>> 0 && sxas_read(c, pe + 24 + dd, h, 8)) {
+        var cert = sxas_uint(h, 0, 4, false);
+        var bytes = sxas_uint(h, 4, 4, false);
+        if (bytes >= 8 && sxas_span(c, cert, bytes) && (cert === end || sxas_span(c, end, bytes) && cert + bytes === n)) {
+            var at = cert;
+            var prefix = cert !== end;
+            if (prefix) {
+                var first = [];
+                var last = [];
+                if (!sxas_read(c, sxU64((end >= SX_I64_MAX ? end - SX_U64_MAX : end)), first, 8) || !sxas_read(c, sxU64((cert >= SX_I64_MAX ? cert - SX_U64_MAX : cert)), last, 8) || sxMemcmp(first, last, 8)) {
+                    return (end >= SX_I64_MAX ? end - SX_U64_MAX : end);
+                }
+            }
+            while (at < cert + bytes) {
+                var size;
+                if (!sxas_read(c, sxU64((at >= SX_I64_MAX ? at - SX_U64_MAX : at)), h, 8)) {
+                    return -1;
+                }
+                size = sxas_uint(h, 0, 4, false) >>> 0;
+                if (size < 8 || !(at <= cert + bytes && size <= sxU64(cert + bytes - at)) || sxGetU16At(h, 4, 2, 0, false) !== 0x200 || sxGetU16At(h, 6, 2, 0, false) !== 2) {
+                    return -1;
+                }
+                at = sxAnd64(at + size + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+            }
+            if (at !== cert + bytes) {
+                return -1;
+            }
+            end = prefix ? end + bytes : at;
+        }
+    }
+    return end <= n ? (end >= SX_I64_MAX ? end - SX_U64_MAX : end) : -1;
+}
+function sxas_webexe(c) {
+    var at = sxas_webexe_overlay(c);
+    var b = [];
+    var end = 0;
+    var physical = 0;
+    if (at < 0 || !sxas_read(c, (at < 0 ? at + SX_U64_MAX : at), b, 27) || sxMemcmp(b, "*M2E*", 5) || b[5] < 49 /*1*/ || b[5] > 57 /*9*/ || b[6] !== 65 /*A*/) {
+        return false;
+    }
+    for (var i = 0; i < 10; i++) {
+        if (b[(7 + i) >>> 0] < 48 /*0*/ || b[(7 + i) >>> 0] > 57 /*9*/ || b[(17 + i) >>> 0] < 48 /*0*/ || b[(17 + i) >>> 0] > 57 /*9*/) {
+            return false;
+        }
+        end = sxU64(end * 10 + b[(7 + i) >>> 0] - 48 /*0*/);
+        physical = sxU64(physical * 10 + b[(17 + i) >>> 0] - 48 /*0*/);
+    }
+    if (physical !== (c.size < 0 ? c.size + SX_U64_MAX : c.size) || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || end <= (at < 0 ? at + SX_U64_MAX : at) + 27 || !sxas_add(c, sxas_webexe_header, (at < 0 ? at + SX_U64_MAX : at))) {
+        return false;
+    }
+    var p = (at < 0 ? at + SX_U64_MAX : at) + 27;
+    var n = sxU64(end - p);
+    if (n > 1024) {
+        n = 1024;
+    }
+    if (!sxas_read(c, p, b, n)) {
+        return false;
+    }
+    var found = false;
+    for (i = 0; i + 4 <= n; i++) {
+        if (4 > 0) { i = sxSeekByte(b, i, "PK\x03\x04", 0); if (!(i + 4 <= n)) break; }
+        if (!sxMemcmpAt(b, i, "PK\x03\x04", 0, 4)) {
+            p += i;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    while (p < end) {
+        if (sxU64(end - p) < 4 || !sxas_read(c, p, b, 4)) {
+            return false;
+        }
+        var sig = sxas_uint(b, 0, 4, false);
+        var hs;
+        var names;
+        var packed = 0;
+        var l;
+        if (sig === 0x04034B50) {
+            hs = 30;
+            l = sxas_webexe_zip_local;
+            if (sxU64(end - p) < hs || !sxas_read(c, p, b, hs)) {
+                return false;
+            }
+            packed = sxas_uint(b, 18, 4, false);
+            names = sxas_uint(b, 26, 2, false) + sxas_uint(b, 28, 2, false);
+        } else if (sig === 0x02014B50) {
+            hs = 46;
+            l = sxas_webexe_zip_central;
+            if (sxU64(end - p) < hs || !sxas_read(c, p, b, hs)) {
+                return false;
+            }
+            names = sxas_uint(b, 28, 2, false) + sxas_uint(b, 30, 2, false) + sxas_uint(b, 32, 2, false);
+        } else if (sig === 0x06054B50) {
+            hs = 22;
+            l = sxas_webexe_zip_end;
+            if (sxU64(end - p) < hs || !sxas_read(c, p, b, hs)) {
+                return false;
+            }
+            names = sxas_uint(b, 20, 2, false);
+        } else {
+            return false;
+        }
+        if (names > sxU64(sxU64(end - p) - hs) || packed > sxU64(sxU64(sxU64(end - p) - hs) - names) || !sxas_add(c, l, p)) {
+            return false;
+        }
+        p += hs + names + packed;
+    }
+    return true;
+}
+function sx_webexe_build(c) {
+    return sxas_webexe(c);
+}

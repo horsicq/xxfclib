@@ -1,0 +1,132 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/fmod_sample_bank/xx_fmod_sample_bank_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_fsb1_header_fields = layout([chars("magic", 4, SIGNATURE), i32("sample_count", COUNT), u32("sample_data_bytes", SIZE),
+    u32("reserved", RESERVED)]);
+var sxau_fsb1_header = sxLayout(0x602C0053, "fsb1_header", LE, sxau_fsb1_header_fields);
+var sxau_fsb1_sample_fields = layout([chars("name", 32, STRING), i32("sample_count", COUNT), u32("stored_bytes", SIZE),
+    i32("sample_rate"), blob("opaque_2c", 8), u32("mode", FLAGS), i32("loop_start_sample"), i32("loop_end_sample")]);
+var sxau_fsb1_sample = sxLayout(0x602C0054, "fsb1_sample", LE, sxau_fsb1_sample_fields);
+var sxau_fsb2_header_fields = layout([chars("magic", 4, SIGNATURE), i32("sample_count", COUNT),
+    u32("sample_header_bytes", SIZE), u32("sample_data_bytes", SIZE)]);
+var sxau_fsb2_header = sxLayout(0x602C0055, "fsb2_header", LE, sxau_fsb2_header_fields);
+var sxau_fsb34_version_fields = layout([u32("version", ID), u32("flags", FLAGS)]);
+var sxau_fsb34_version = sxLayout(0x602C0056, "fsb34_version", LE, sxau_fsb34_version_fields);
+var sxau_fsb4_hash_fields = layout([blob("hash", 8, CHECKSUM), blob("guid", 16, ID)]);
+var sxau_fsb4_hash = sxLayout(0x602C0057, "fsb4_hash", LE, sxau_fsb4_hash_fields);
+var sxau_fsb_sample_fields = layout([u16("header_size", SIZE), chars("name", 30, STRING), i32("sample_count", COUNT),
+    u32("stored_bytes", SIZE), i32("loop_start_sample"), i32("loop_end_sample"), u32("mode", FLAGS), i32("sample_rate"),
+    u16("default_volume"), i16("default_pan"), u16("default_priority"), u16("channels", COUNT)]);
+var sxau_fsb_sample = sxLayout(0x602C0058, "fsb_sample", LE, sxau_fsb_sample_fields);
+var sxau_fsb_sample_basic_fields = layout([i32("sample_count", COUNT), u32("stored_bytes", SIZE)]);
+var sxau_fsb_sample_basic = sxLayout(0x602C0059, "fsb_sample_basic", LE, sxau_fsb_sample_basic_fields);
+var sxau_fsb5_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), i32("sample_count", COUNT),
+    u32("sample_header_bytes", SIZE), u32("name_table_bytes", SIZE), u32("sample_data_bytes", SIZE), u32("codec", ID)]);
+var sxau_fsb5_header = sxLayout(0x602C005A, "fsb5_header", LE, sxau_fsb5_header_fields);
+var sxau_fsb5_sample_fields = layout([u64("packed_sample_metadata", FLAGS)]);
+var sxau_fsb5_sample = sxLayout(0x602C005B, "fsb5_sample", LE, sxau_fsb5_sample_fields);
+var sxau_fsb5_chunk_fields = layout([u32("more_size_type", FLAGS)]);
+var sxau_fsb5_chunk = sxLayout(0x602C005C, "fsb5_chunk", LE, sxau_fsb5_chunk_fields);
+var sxau_fsb5_channels_fields = layout([u8("channels", COUNT)]);
+var sxau_fsb5_channels = sxLayout(0x602C005D, "fsb5_channels", LE, sxau_fsb5_channels_fields);
+var sxau_fsb5_frequency_fields = layout([u32("sample_rate")]);
+var sxau_fsb5_frequency = sxLayout(0x602C005E, "fsb5_frequency", LE, sxau_fsb5_frequency_fields);
+var sxau_fsb5_name_offset_fields = layout([u32("name_offset", OFFSET)]);
+var sxau_fsb5_name_offset = sxLayout(0x602C005F, "fsb5_name_offset", LE, sxau_fsb5_name_offset_fields);
+function sxau_fsb(v) {
+    if (!sxau_need(v, 0, 16, v.n)) {
+        return false;
+    }
+    var ver = (v.p[3] - 48 /*0*/) >>> 0;
+    var n = sxau_u32(v.p, 4, false);
+    if (ver === 1) {
+        return sxau_row(v, sxau_fsb1_header, 0, v.n) && sxau_table(v, sxau_fsb1_sample, 16, n, v.n);
+    }
+    if (ver >= 2 && ver <= 4) {
+        if (!sxau_row(v, sxau_fsb2_header, 0, v.n)) {
+            return false;
+        }
+        var h = ver === 2 ? 16 : ver === 3 ? 24 : 48;
+        if (ver > 2 && !sxau_row(v, sxau_fsb34_version, 16, v.n)) {
+            return false;
+        }
+        if (ver === 4 && !sxau_row(v, sxau_fsb4_hash, 24, v.n)) {
+            return false;
+        }
+        var flags = ver > 2 ? sxau_u32(v.p, 20, false) : 0;
+        var bytes = sxau_u32(v.p, 8, false);
+        if (n > 1000000 || !sxau_need(v, h, bytes, v.n)) {
+            return false;
+        }
+        var at = h;
+        var end = h + bytes;
+        for (var i = 0; i < n; i++) {
+            if (i && flags & 2) {
+                if (!sxau_row(v, sxau_fsb_sample_basic, at, end)) {
+                    return false;
+                }
+                at += 8;
+            } else {
+                if (!sxau_row(v, sxau_fsb_sample, at, end)) {
+                    return false;
+                }
+                var z = sxau_u16(v.p, at, false);
+                if (z < 64 || !sxau_need(v, at, z, end)) {
+                    return false;
+                }
+                at += z;
+            }
+        }
+        return at <= end;
+    }
+    if (ver === 5) {
+        if (!sxau_row(v, sxau_fsb5_header, 0, v.n)) {
+            return false;
+        }
+        var revision = sxau_u32(v.p, 4, false);
+        n = sxau_u32(v.p, 8, false);
+        h = revision ? 60 : 64;
+        bytes = sxau_u32(v.p, 12, false);
+        var names = sxau_u32(v.p, 16, false);
+        if (revision > 1 || n > 1000000 || !sxau_need(v, h, bytes + names, v.n)) {
+            return false;
+        }
+        at = h;
+        end = h + bytes;
+        for (i = 0; i < n; i++) {
+            if (!sxau_row(v, sxau_fsb5_sample, at, end)) {
+                return false;
+            }
+            var more = (v.p[at] & 1) !== 0;
+            at += 8;
+            while (more) {
+                if (!sxau_row(v, sxau_fsb5_chunk, at, end)) {
+                    return false;
+                }
+                var m = sxau_u32(v.p, at, false);
+                z = m >>> 1 & 0xFFFFFF;
+                var type = m >>> 25;
+                more = (m & 1) !== 0;
+                at += 4;
+                if (!sxau_need(v, at, z, end)) {
+                    return false;
+                }
+                if (type === 1 && z === 1 && !sxau_row(v, sxau_fsb5_channels, at, at + z)) {
+                    return false;
+                }
+                if (type === 2 && z === 4 && !sxau_row(v, sxau_fsb5_frequency, at, at + z)) {
+                    return false;
+                }
+                at += z;
+            }
+        }
+        return !names || sxau_table(v, sxau_fsb5_name_offset, end, n, end + names);
+    }
+    return false;
+}
+function sx_fmod_sample_bank_build(v) {
+    return sxau_fsb(v);
+}

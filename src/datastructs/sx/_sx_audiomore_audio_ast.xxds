@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_ast/xx_audio_ast_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_ast_header_fields = layout([chars("magic", 4, SIGNATURE), u32("payload_size", SIZE), u16("encoding", ID),
+    u16("bits_per_sample"), u16("channels", COUNT), u16("loop_flag", FLAGS), u32("sample_rate"), u32("sample_count", COUNT),
+    u32("loop_start_sample"), u32("loop_end_sample"), u32("first_block_size", SIZE), blob("unknown_tail", 28)]);
+var sxau_ast_header = sxLayout(0x602C000E, "ast_header", BE, sxau_ast_header_fields);
+var sxau_ast_block_fields = layout([chars("magic", 4, SIGNATURE), u32("bytes_per_channel", SIZE), blob("reserved", 24, RESERVED)]);
+var sxau_ast_block = sxLayout(0x602C000F, "ast_block", BE, sxau_ast_block_fields);
+function sxau_ast(v) {
+    if (!sxau_row(v, sxau_ast_header, 0, v.n)) {
+        return false;
+    }
+    var ch = sxau_u16(v.p, 12, true);
+    var at = 64;
+    if (!ch) {
+        return false;
+    }
+    while (at < v.n) {
+        if (!sxau_row(v, sxau_ast_block, at, v.n)) {
+            return false;
+        }
+        var z = sxau_u32(v.p, at + 4, true) * ch;
+        at += 32;
+        if (!z || !sxau_need(v, at, z, v.n)) {
+            return false;
+        }
+        at += z;
+    }
+    return true;
+}
+function sx_audio_ast_build(v) {
+    return sxau_ast(v);
+}

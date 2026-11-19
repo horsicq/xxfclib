@@ -1,0 +1,465 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveextras.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_archiveextras_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60170000 || id >= 0x60180000) {
+        return true;
+    }
+    var comment = null;
+    switch (id) {
+    case 0x60170001:
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x60170002:
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x60170005:
+        if (r.name === "date_time") {
+            comment = "Packed DOS date/time words, not a Unix timestamp.";
+        }
+        break;
+    case 0x6017000A:
+        if (r.name === "modified") {
+            comment = "Encoded native modification-time word; epoch semantics are not established.";
+        }
+        if (r.name === "packed_crc32") {
+            comment = "CRC32 of encoded member bytes, not the decoded contents.";
+        }
+        break;
+    case 0x6017000C:
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x6017000F:
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x60170013:
+        if (r.name === "header_length") {
+            comment = "Physical header size is this encoded byte plus 2.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x60170016:
+        if (r.name === "legacy_size") {
+            comment = "Superseded by the following extra_size in type-1 comment blocks.";
+        }
+        break;
+    case 0x6017001A:
+        if (r.name === "modified") {
+            comment = "Encoded native modification-time word; epoch semantics are not established.";
+        }
+        if (r.name === "packed_size_low") {
+            comment = "Byte length; no high word is present in this variant.";
+        }
+        if (r.name === "unpacked_size_low") {
+            comment = "Byte length; no high word is present in this variant.";
+        }
+        break;
+    case 0x6017001B:
+        if (r.name === "modified") {
+            comment = "Encoded native modification-time word; epoch semantics are not established.";
+        }
+        if (r.name === "packed_size_low") {
+            comment = "Low 32 bits of the byte length; combine high word when LARGE flag is set.";
+        }
+        if (r.name === "unpacked_size_low") {
+            comment = "Low 32 bits of the byte length; combine high word when LARGE flag is set.";
+        }
+        if (r.name === "packed_size_high") {
+            comment = "High 32 bits of the byte length, not a complete size.";
+        }
+        if (r.name === "unpacked_size_high") {
+            comment = "High 32 bits of the byte length, not a complete size.";
+        }
+        break;
+    case 0x6017001D:
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x60170022:
+        if (r.name === "encoded_size") {
+            comment = "MSZIP block encoded length; includes its CK signature as defined by the stream framing.";
+        }
+        break;
+    case 0x60170027:
+        if (r.name === "header_length") {
+            comment = "Counted from byte 2; equals member name size plus 0xBB.";
+        }
+        if (r.name === "unpacked_size") {
+            comment = "Zero selects a stored member, whose decoded size is packed_size.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        if (r.name === "crc32_register") {
+            comment = "CRC32 register before final inversion.";
+        }
+        break;
+    case 0x6017002B:
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        if (r.name === "crc_low") {
+            comment = "Low 16 bits of CRC32; combine high word.";
+        }
+        if (r.name === "crc_high") {
+            comment = "High 16 bits of CRC32; zero disables checksum validation in this reader.";
+        }
+        break;
+    case 0x6017002F:
+        if (r.name === "writer_bytes") {
+            comment = "Uninitialized producer bytes; no date/time or other fields are inferred from them.";
+        }
+        if (r.name === "volume_word") {
+            comment = "High 16 bits identify the volume containing the data offset.";
+        }
+        if (r.name === "date") {
+            comment = "Packed DOS date bits, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            comment = "Packed DOS time bits, not a Unix timestamp.";
+        }
+        break;
+    case 0x60170031:
+        if (r.name === "last_cylinder") {
+            comment = "Zero-based final cylinder index, not a count.";
+        }
+        if (r.name === "last_head") {
+            comment = "Zero-based final head index, not a count.";
+        }
+        break;
+    case 0x60170033:
+        if (r.name === "version_method") {
+            comment = "High nibble: format generation 1..3. Low nibble: method 1..4.";
+        }
+        if (r.name === "directory_offset") {
+            comment = "Offset of the compressed directory; decoded directory entries have no physical file offsets.";
+        }
+        if (r.name === "header_checksum") {
+            comment = "Sum of the preceding 22 header bytes XOR 0x5555.";
+        }
+        break;
+    case 0x60170035:
+        if (r.name === "group_packed_size") {
+            comment = "Zero for a merged prefix member; nonzero size belongs to the entire terminating group stream.";
+        }
+        if (r.name === "date_time") {
+            comment = "Packed Amiga date/time, not a Unix timestamp.";
+        }
+        if (r.name === "header_crc32") {
+            comment = "CRC32 of header, name and comment with this field zeroed.";
+        }
+        break;
+    default:
+        break;
+    }
+    if (id === 0x60170002 && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            comment = "ARC_STORED_OLD";
+            break;
+        case 2:
+            comment = "ARC_STORED";
+            break;
+        case 3:
+            comment = "ARC_PACKED";
+            break;
+        case 4:
+            comment = "ARC_SQUEEZED";
+            break;
+        case 5:
+            comment = "ARC_CRUNCHED_5";
+            break;
+        case 6:
+            comment = "ARC_CRUNCHED_6";
+            break;
+        case 7:
+            comment = "ARC_CRUNCHED_7";
+            break;
+        case 8:
+            comment = "ARC_CRUNCHED";
+            break;
+        case 9:
+            comment = "ARC_SQUASHED";
+            break;
+        case 10:
+            comment = "ARC_CRUSHED";
+            break;
+        case 11:
+            comment = "ARC_DISTILLED";
+            break;
+        case 127:
+            comment = "ARC_COMPRESS";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x60170001 && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            comment = "ARC_STORED_OLD";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x60170003 && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            comment = "ARC_END";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x6017000A && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 1:
+            comment = "ARQ_STORED";
+            break;
+        case 2:
+            comment = "ARQ_CRUSHED";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x6017000C && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            comment = "GXL_STORED";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x6017001E && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            comment = "KWAJ_STORED";
+            break;
+        case 1:
+            comment = "KWAJ_XOR_FF";
+            break;
+        case 2:
+            comment = "KWAJ_LZSS";
+            break;
+        case 3:
+            comment = "KWAJ_LZH";
+            break;
+        case 4:
+            comment = "KWAJ_MSZIP";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x6017001D && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 21:
+            comment = "HAP_STORED";
+            break;
+        case 22:
+            comment = "HAP_PPM";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x60170024 && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            comment = "CHZ_STORED";
+            break;
+        case 1:
+            comment = "CHZ_CHARC";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x60170030 && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            comment = "ASYMETRIX_STORED";
+            break;
+        case 1:
+            comment = "ASYMETRIX_DCL";
+            break;
+        default:
+            break;
+        }
+    }
+    if (id === 0x60170035 && r.name === "method") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            comment = "AMIGA_LZX_STORED";
+            break;
+        case 2:
+            comment = "AMIGA_LZX_COMPRESSED";
+            break;
+        default:
+            break;
+        }
+    }
+    return comment === null || sxSetComment(r, comment);
+}
+function sxae16(b, b_o) {
+    return sxGetU16At(b, b_o, 2, 0, false);
+}
+function sxae32(b, b_o) {
+    return sxGetU32At(b, b_o, 4, 0, false);
+}
+function sxae_bound(c, o, n) {
+    return o >= 0 && o <= c.size && n <= (c.size - o < 0 ? c.size - o + SX_U64_MAX : c.size - o);
+}
+function sxae_data(c, o, n) {
+    return n <= SX_I64_MAX && sxae_bound(c, o, n) && sx_raw(c, o, (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxae_add(c, l, o) {
+    var n = l.fields[sxU64(l.field_count - 1)].offset + l.fields[sxU64(l.field_count - 1)].size;
+    return sx_add(c, l, o, n);
+}
+function sxae_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxae_finish(c) {
+    sxQsort(c.items, 0, c.count, sxae_order, true);
+    var count = c.count;
+    var end = 0;
+    for (var i = 0; i < count; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var n = c.items[i].total_size;
+        if (p < end || !sxae_bound(c, p, (n < 0 ? n + SX_U64_MAX : n))) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + n;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxae_order, true);
+    return !c.failed;
+}
+function sx_archiveextras_supports(type) {
+    switch (type) {
+    case "SEAARC":
+    case "BSN":
+    case "ARQ":
+    case "GXL":
+    case "RTA":
+    case "SQZ":
+    case "SQX":
+    case "HAP":
+    case "KWAJ":
+    case "CHZ":
+    case "SWAG":
+    case "ZPAK":
+    case "ASYMETRIX":
+    case "DISKEXPRESS":
+    case "AIN":
+    case "AMIGALZX":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archiveextras_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "SEAARC":
+        ok = sx_seaarc_build(c);
+        break;
+    case "BSN":
+        ok = sx_bsn_build(c);
+        break;
+    case "ARQ":
+        ok = sx_arq_build(c);
+        break;
+    case "GXL":
+        ok = sx_gxl_build(c);
+        break;
+    case "RTA":
+        ok = sx_rta_build(c);
+        break;
+    case "SQZ":
+        ok = sx_sqz_build(c);
+        break;
+    case "SQX":
+        ok = sx_sqx_build(c);
+        break;
+    case "HAP":
+        ok = sx_hap_build(c);
+        break;
+    case "KWAJ":
+        ok = sx_kwaj_build(c);
+        break;
+    case "CHZ":
+        ok = sx_chz_build(c);
+        break;
+    case "SWAG":
+        ok = sx_swag_build(c);
+        break;
+    case "ZPAK":
+        ok = sx_zpak_build(c);
+        break;
+    case "ASYMETRIX":
+        ok = sx_asymetrix_build(c);
+        break;
+    case "DISKEXPRESS":
+        ok = sx_diskexpress_build(c);
+        break;
+    case "AIN":
+        ok = sx_ain_build(c);
+        break;
+    case "AMIGALZX":
+        ok = sx_amigalzx_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sxae_finish(c);
+}

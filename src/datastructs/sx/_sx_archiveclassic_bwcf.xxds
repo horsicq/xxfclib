@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/bwcf/xx_bwcf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_bwcf_header_fields = layout([chars("signature", 4, SIGNATURE), u8("version"), chars("description", 81, NONE)]);
+var sxacl_bwcf_header = sxLayout(0x60500021, "bwcf_header", LE, sxacl_bwcf_header_fields);
+var sxacl_bwcf_name_v1_fields = layout([chars("name", 268, NONE)]);
+var sxacl_bwcf_name_v1 = sxLayout(0x60500022, "bwcf_name_v1", LE, sxacl_bwcf_name_v1_fields);
+var sxacl_bwcf_name_v2_fields = layout([chars("signature", 4, SIGNATURE), u8("version"), u8("name_size", SIZE)]);
+var sxacl_bwcf_name_v2 = sxLayout(0x60500023, "bwcf_name_v2", LE, sxacl_bwcf_name_v2_fields);
+var sxacl_bwcf_directory_size_fields = layout([u8("directory_size", SIZE)]);
+var sxacl_bwcf_directory_size = sxLayout(0x60500024, "bwcf_directory_size", LE, sxacl_bwcf_directory_size_fields);
+var sxacl_bwcf_member_fields = layout([u16("dos_time"), u16("dos_date"), i32("uncompressed_size", SIZE),
+    i32("block_size", SIZE), u32("reserved"), u8("method")]);
+var sxacl_bwcf_member = sxLayout(0x60500025, "bwcf_member", LE, sxacl_bwcf_member_fields);
+var sxacl_bwcf_block_size_fields = layout([i32("uncompressed_size", SIZE)]);
+var sxacl_bwcf_block_size = sxLayout(0x60500026, "bwcf_block_size", LE, sxacl_bwcf_block_size_fields);
+function sxacl_bwcf(c) {
+    var version = [0];
+    var p = 86;
+    if (!sxacl_word(c, 4, 1, false, version) || version[0] !== 1 && version[0] !== 2 || !sxacl_add(c, sxacl_bwcf_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (version[0] === 1) {
+            if (!sxacl_add(c, sxacl_bwcf_name_v1, p)) {
+                return false;
+            }
+            p += 268;
+        } else {
+            var n = [0];
+            if (!sxacl_word(c, p + 5, 1, false, n) || !sxacl_span(c, p + 6, n[0]) || !sxacl_add(c, sxacl_bwcf_name_v2, p)) {
+                return false;
+            }
+            p += 6 + n[0];
+            if (!sxacl_word(c, p, 1, false, n) || !sxacl_span(c, p + 1, n[0]) || !sxacl_add(c, sxacl_bwcf_directory_size, p)) {
+                return false;
+            }
+            p += 1 + n[0];
+        }
+        var z = [0];
+        if (!sxacl_word(c, p + 8, 4, false, z) || z[0] < 4 || z[0] > 2147483647 || !sxacl_span(c, p + 17, z[0]) || !sxacl_add(c, sxacl_bwcf_member, p) || !sxacl_add(c, sxacl_bwcf_block_size, p + 17)) {
+            return false;
+        }
+        p += 17 + z[0];
+    }
+    return true;
+}
+function sx_bwcf_build(c) {
+    return sxacl_bwcf(c);
+}

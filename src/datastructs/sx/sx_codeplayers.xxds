@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_codeplayers.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_codeplayers");
+include("_sx_codeplayers_bendaglish_bd");
+include("_sx_codeplayers_davidwhittaker_dw");
+include("_sx_codeplayers_walker_activisionpro");
+
+function fileTypes() { return ["DIE_MUSIC_BENDAGLISH_BD", "DIE_MUSIC_DAVIDWHITTAKER_DW", "DIE_MUSIC_WALKER_ACTIVISIONPRO"]; }
+
+var sx_codeplayers_layouts = [sxcodeplayers_bd_subsong, sxcodeplayers_bd_track_offset, sxcodeplayers_bd_sample_offset,
+    sxcodeplayers_bd_sample, sxcodeplayers_dw_speed, sxcodeplayers_dw_delay_speed, sxcodeplayers_dw_position_offset,
+    sxcodeplayers_dw_sample32, sxcodeplayers_dw_sample_data, sxcodeplayers_avp_subsong, sxcodeplayers_avp_track_offset,
+    sxcodeplayers_avp_envelope, sxcodeplayers_avp_instrument1, sxcodeplayers_avp_instrument2, sxcodeplayers_avp_instrument3,
+    sxcodeplayers_avp_sample_offset, sxcodeplayers_avp_sample];
+
+function structs() {
+    return sxCatalog([sxcodeplayers_bd_subsong, sxcodeplayers_bd_track_offset, sxcodeplayers_bd_sample_offset,
+        sxcodeplayers_bd_sample, sxcodeplayers_dw_speed, sxcodeplayers_dw_delay_speed, sxcodeplayers_dw_position_offset,
+        sxcodeplayers_dw_sample32, sxcodeplayers_dw_sample_data, sxcodeplayers_avp_subsong, sxcodeplayers_avp_track_offset,
+        sxcodeplayers_avp_envelope, sxcodeplayers_avp_instrument1, sxcodeplayers_avp_instrument2, sxcodeplayers_avp_instrument3,
+        sxcodeplayers_avp_sample_offset, sxcodeplayers_avp_sample], sx_codeplayers_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_codeplayers_build, false);
+}

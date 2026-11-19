@@ -1,0 +1,150 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_music37modern.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmd37_buzzic10_instrument_fields = layout([chars("name", 128, NONE), u8("muted"), i8("note"), i8("note_end"),
+    u8("note_length"), i8("volume"), u8("oscillator"), i8("detune"), u8("attack"), u8("decay"), u8("sustain"),
+    i8("filter_cutoff"), i8("filter_cutoff_modulation"), i8("filter_resonance"), u8("echo_delay"), u8("echo_repeats"),
+    u8("echo_damping"), i8("wrap_level"), i8("hard_level"), u8("compressor_low"), u8("compressor_high")]);
+var sxmd37_buzzic10_instrument = sxLayout(0x60AD0001, "buzzic10_instrument", LE, sxmd37_buzzic10_instrument_fields);
+var sxmd37_buzzic11_instrument_fields = layout([chars("name", 128, NONE), u8("muted"), i8("note"), i8("note_end"),
+    i8("note_length"), i8("volume"), u8("oscillator"), i8("detune"), u8("attack"), u8("decay"), u8("sustain"),
+    i8("filter_cutoff"), i8("filter_cutoff_modulation"), i8("filter_resonance"), u8("echo_delay"), u8("echo_repeats"),
+    u8("echo_damping"), i8("wrap_level"), i8("hard_level"), u8("compressor_low"), u8("compressor_high"), i8("panning"),
+    i8("resonant_filter_frequency"), i8("resonant_filter_modulation"), i8("resonant_filter_resonance")]);
+var sxmd37_buzzic11_instrument = sxLayout(0x60AD0002, "buzzic11_instrument", LE, sxmd37_buzzic11_instrument_fields);
+var sxmd37_buzzic_instrument_count_fields = layout([i32("instrument_count", COUNT)]);
+var sxmd37_buzzic_instrument_count = sxLayout(0x60AD0003, "buzzic_instrument_count", LE, sxmd37_buzzic_instrument_count_fields);
+var sxmd37_buzzic_byte_pattern_fields = layout([bytes("values", 16)]);
+var sxmd37_buzzic_byte_pattern = sxLayout(0x60AD0004, "buzzic_byte_pattern", LE, sxmd37_buzzic_byte_pattern_fields);
+var sxmd37_buzzic_bit_patterns_fields = layout([bytes("legacy_bit_patterns", 128)]);
+var sxmd37_buzzic_bit_patterns = sxLayout(0x60AD0005, "buzzic_bit_patterns", LE, sxmd37_buzzic_bit_patterns_fields);
+var sxmd37_buzzic_byte_sequence_fields = layout([bytes("pattern_indices", 128)]);
+var sxmd37_buzzic_byte_sequence = sxLayout(0x60AD0006, "buzzic_byte_sequence", LE, sxmd37_buzzic_byte_sequence_fields);
+var sxmd37_buzzic_bit_sequence_fields = layout([bytes("legacy_bit_pattern_indices", 128)]);
+var sxmd37_buzzic_bit_sequence = sxLayout(0x60AD0007, "buzzic_bit_sequence", LE, sxmd37_buzzic_bit_sequence_fields);
+var sxmd37_buzzic_song_fields = layout([i32("byte_pattern_count", COUNT), i32("bit_pattern_count", COUNT),
+    i32("byte_sequence_count", COUNT), i32("bit_sequence_count", COUNT), field("master_volume", "float", 4), i32("tempo_bpm"),
+    i32("start_sequence"), i32("end_sequence"), i32("looping")]);
+var sxmd37_buzzic_song = sxLayout(0x60AD0008, "buzzic_song", LE, sxmd37_buzzic_song_fields);
+var sxmd37_buzzic_sequence_name_fields = layout([chars("name", 64, NONE)]);
+var sxmd37_buzzic_sequence_name = sxLayout(0x60AD0009, "buzzic_sequence_name", LE, sxmd37_buzzic_sequence_name_fields);
+var sxmd37_buzzic_pattern_name_fields = layout([chars("name", 64, NONE)]);
+var sxmd37_buzzic_pattern_name = sxLayout(0x60AD000A, "buzzic_pattern_name", LE, sxmd37_buzzic_pattern_name_fields);
+function sx_music37modern_supports(t) {
+    return t === "DIE_MUSIC_STEPANOV_BUZZIC10" || t === "DIE_MUSIC_STEPANOV_BUZZIC11";
+}
+function sxmd37_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxmd37_raw(c) {
+    var b = [0];
+    return c !== null && !c.failed && !c.count && c.size > 0 && sx_read(c, 0, b, 1) && sx_raw(c, 0, c.size);
+}
+function sx_music37modern_build(c) {
+    if (c === null || c.f === null || !sx_music37modern_supports(c.f.file_type)) {
+        return false;
+    }
+    var newer = c.f.file_type === "DIE_MUSIC_STEPANOV_BUZZIC11";
+    var width = newer ? 152 : 148;
+    var insbytes = 128 * width;
+    var p = insbytes;
+    if (!sxmd37_span(c, 0, insbytes + 4 + 1024 + 128 + 8192 + 8192 + 36)) {
+        return sxmd37_raw(c);
+    }
+    if (!sx_table(c, newer ? sxmd37_buzzic11_instrument : sxmd37_buzzic10_instrument, 0, (width >= SX_I64_MAX ? width - SX_U64_MAX : width), 128) || !sx_add(c, sxmd37_buzzic_instrument_count, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 4)) {
+        return false;
+    }
+    p += 4;
+    if (!sx_table(c, sxmd37_buzzic_byte_pattern, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 16, 64)) {
+        return false;
+    }
+    p += 1024;
+    if (!sx_add(c, sxmd37_buzzic_bit_patterns, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 128)) {
+        return false;
+    }
+    p += 128;
+    if (!sx_table(c, sxmd37_buzzic_byte_sequence, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 128, 64)) {
+        return false;
+    }
+    p += 8192;
+    if (!sx_table(c, sxmd37_buzzic_bit_sequence, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 128, 64)) {
+        return false;
+    }
+    p += 8192;
+    if (!sx_add(c, sxmd37_buzzic_song, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 36)) {
+        return false;
+    }
+    p += 36;
+    var names = sxmd37_span(c, p, 4096) ? 64 : 0;
+    if (names) {
+        if (!sx_table(c, sxmd37_buzzic_sequence_name, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 64, 64)) {
+            return false;
+        }
+        p += 4096;
+    }
+    if (names && sxmd37_span(c, p, 4096)) {
+        if (!sx_table(c, sxmd37_buzzic_pattern_name, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 64, 64)) {
+            return false;
+        }
+        p += 4096;
+    }
+    return sx_raw(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), c.size - (p >= SX_I64_MAX ? p - SX_U64_MAX : p)) && !c.failed;
+}
+function sx_music37modern_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60AD0001 || id > 0x60AD000A) {
+        return true;
+    }
+    if (id === 0x60AD0008 && r.name === "master_volume") {
+        return sxSetComment(r, "Master volume as a 32-bit floating point multiplier; 1.0 represents unity gain.");
+    }
+    if (r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60AD0001 || id === 0x60AD0002) {
+        if (r.name === "oscillator") {
+            var v = sxVarU64(r.value);
+            s = v === 0 ? "Sine oscillator" : v === 1 ? "Sawtooth oscillator" : v === 2 ? "Square oscillator" : v === 3 ? "Noise oscillator" : "Unknown oscillator value";
+        } else if (r.name === "muted") {
+            s = "Nonzero mutes this instrument in the editor; inactive capacity slots are also stored.";
+        } else if (r.name === "name") {
+            s = "Instrument name in a fixed 128-byte producer buffer.";
+        } else if (r.name === "note_length") {
+            s = id === 0x60AD0001 ? "Unsigned length in hundredths of a second." : "Length in hundredths of a second; negative values select a sequence.";
+        } else if (r.name === "detune") {
+            s = "Signed pitch offset in semitones.";
+        } else if (r.name === "attack" || r.name === "decay" || r.name === "sustain") {
+            s = "Envelope boundary as a percentage of note length.";
+        } else if (r.name === "note" || r.name === "note_end") {
+            s = "Nonnegative pitch value; a negative value selects sequence (-value)-1. Zero note suppresses sound; zero ending pitch preserves the starting pitch.";
+        } else if (r.name === "volume") {
+            s = "Signed source value; nonnegative volume is in hundredths, negative values select a sequence.";
+        } else {
+            s = "Stored synthesizer parameter from the original editor; signed values preserve sequence references and modulation signs.";
+        }
+    } else if (id === 0x60AD0003) {
+        s = "Logical active instrument count; the producer always stores capacity for 128 instruments.";
+    } else if (id === 0x60AD0004) {
+        s = "Sixteen unsigned pattern values (0 to 127), independent of note or modulation use.";
+    } else if (id === 0x60AD0005 || id === 0x60AD0007) {
+        s = "Legacy bit-pattern storage explicitly saved by the producer; packed bit semantics are left uninterpreted.";
+    } else if (id === 0x60AD0006) {
+        s = "Sequence of 128 byte-pattern references; zero is empty and positive values address pattern index minus one.";
+    } else if (id === 0x60AD0008) {
+        if (r.name === "looping") {
+            s = "32-bit producer boolean: zero disables looping, one enables it.";
+        } else if (r.name === "start_sequence" || r.name === "end_sequence") {
+            s = "Zero-based play range position; ending position is inclusive.";
+        } else if (r.name === "tempo_bpm") {
+            s = "Tempo in beats per minute, stored as a full 32-bit integer.";
+        } else {
+            s = "Logical producer count; physical fixed-capacity table sizes are independent of this value.";
+        }
+    } else {
+        s = "Fixed 64-byte producer name slot, including unused capacity slots.";
+    }
+    return s === null || sxSetComment(r, s);
+}

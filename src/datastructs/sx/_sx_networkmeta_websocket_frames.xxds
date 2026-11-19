@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/websocket_frames/xx_websocket_frames_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_websocket_length16_fields = layout([u16("payload_length", SIZE)]);
+var sxnm_websocket_length16 = sxLayout(0x6026009E, "websocket_length16", BE, sxnm_websocket_length16_fields);
+var sxnm_websocket_length64_fields = layout([u64("payload_length", SIZE)]);
+var sxnm_websocket_length64 = sxLayout(0x6026009F, "websocket_length64", BE, sxnm_websocket_length64_fields);
+var sxnm_websocket_mask_fields = layout([blob("masking_key", 4)]);
+var sxnm_websocket_mask = sxLayout(0x602600A0, "websocket_mask", BE, sxnm_websocket_mask_fields);
+function sxnm_u64(p, p_o) {
+    return sxGetU64At(p, p_o, 8, 0, true);
+}
+function sxnm_websocket(v) {
+    var at = 0;
+    while (at < v.n) {
+        if (!sxnm_row(v, sxnm_websocket_frame_header, at, v.n)) {
+            return false;
+        }
+        var op = v.p[at] & 15;
+        var f = v.p[at + 1];
+        var n = f & 127;
+        at += 2;
+        if (n === 126) {
+            if (!sxnm_row(v, sxnm_websocket_length16, at, v.n)) {
+                return false;
+            }
+            n = sxnm_u16(v.p, at);
+            at += 2;
+        } else if (n === 127) {
+            if (!sxnm_row(v, sxnm_websocket_length64, at, v.n)) {
+                return false;
+            }
+            n = sxnm_u64(v.p, at);
+            at += 8;
+        }
+        if (f & 128) {
+            if (!sxnm_row(v, sxnm_websocket_mask, at, v.n)) {
+                return false;
+            }
+            at += 4;
+        }
+        if (!sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        if (!(f & 128) && op === 8 && n >= 2 && !sxnm_row(v, sxnm_websocket_close_code, at, at + n)) {
+            return false;
+        }
+        at += n;
+    }
+    return true;
+}
+function sx_websocket_frames_build(v) {
+    return sxnm_websocket(v);
+}

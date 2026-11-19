@@ -1,0 +1,175 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/harwell_boeing/xx_harwell_boeing_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_format_string_fields = layout([field("format_string", "char", 0, STRING)]);
+var sxsm_format_string = sxLayout(0x6063000F, "mesh_format_string", LE, sxsm_format_string_fields);
+var sxsm_hb_total_lines_fields = layout([field("hb_total_lines", "ascii_signed", 0, COUNT)]);
+var sxsm_hb_total_lines = sxLayout(0x60630053, "mesh_hb_total_lines", LE, sxsm_hb_total_lines_fields);
+var sxsm_hb_pointer_lines_fields = layout([field("hb_pointer_lines", "ascii_signed", 0, COUNT)]);
+var sxsm_hb_pointer_lines = sxLayout(0x60630054, "mesh_hb_pointer_lines", LE, sxsm_hb_pointer_lines_fields);
+var sxsm_hb_index_lines_fields = layout([field("hb_index_lines", "ascii_signed", 0, COUNT)]);
+var sxsm_hb_index_lines = sxLayout(0x60630055, "mesh_hb_index_lines", LE, sxsm_hb_index_lines_fields);
+var sxsm_hb_value_lines_fields = layout([field("hb_value_lines", "ascii_signed", 0, COUNT)]);
+var sxsm_hb_value_lines = sxLayout(0x60630056, "mesh_hb_value_lines", LE, sxsm_hb_value_lines_fields);
+var sxsm_hb_rhs_lines_fields = layout([field("hb_rhs_lines", "ascii_signed", 0, COUNT)]);
+var sxsm_hb_rhs_lines = sxLayout(0x60630057, "mesh_hb_rhs_lines", LE, sxsm_hb_rhs_lines_fields);
+var sxsm_matrix_rows_fields = layout([field("matrix_rows", "ascii_signed", 0, COUNT)]);
+var sxsm_matrix_rows = sxLayout(0x60630058, "mesh_matrix_rows", LE, sxsm_matrix_rows_fields);
+var sxsm_matrix_columns_fields = layout([field("matrix_columns", "ascii_signed", 0, COUNT)]);
+var sxsm_matrix_columns = sxLayout(0x60630059, "mesh_matrix_columns", LE, sxsm_matrix_columns_fields);
+var sxsm_nonzero_count_fields = layout([field("nonzero_count", "ascii_signed", 0, COUNT)]);
+var sxsm_nonzero_count = sxLayout(0x6063005A, "mesh_nonzero_count", LE, sxsm_nonzero_count_fields);
+var sxsm_elemental_values_fields = layout([field("elemental_values", "ascii_signed", 0, COUNT)]);
+var sxsm_elemental_values = sxLayout(0x6063005B, "mesh_elemental_values", LE, sxsm_elemental_values_fields);
+var sxsm_column_pointer_fields = layout([field("column_pointer", "ascii_signed", 0)]);
+var sxsm_column_pointer = sxLayout(0x6063005C, "mesh_column_pointer", LE, sxsm_column_pointer_fields);
+var sxsm_row_index_fields = layout([field("row_index", "ascii_signed", 0)]);
+var sxsm_row_index = sxLayout(0x6063005D, "mesh_row_index", LE, sxsm_row_index_fields);
+var sxsm_matrix_key_fields = layout([field("matrix_key", "char", 0, STRING)]);
+var sxsm_matrix_key = sxLayout(0x6063005E, "mesh_matrix_key", LE, sxsm_matrix_key_fields);
+var sxsm_matrix_type_fields = layout([field("matrix_type", "char", 0, STRING)]);
+var sxsm_matrix_type = sxLayout(0x6063005F, "mesh_matrix_type", LE, sxsm_matrix_type_fields);
+function sxsm_column(q, l, line, at, width) {
+    if (at > (line.z < 0 ? line.z + SX_U64_MAX : line.z) || width > sxU64((line.z < 0 ? line.z + SX_U64_MAX : line.z) - at)) {
+        return false;
+    }
+    var t = { a: line.a + at, z: width };
+    if (!sxsm_trim(q, sxCopy_sxsm_token(null, t)).z) {
+        return true;
+    }
+    return sxsm_emit(q, l, sxCopy_sxsm_token(null, t));
+}
+function sxsm_hb_format(q, t, repeat, repeat_o, width, width_o) {
+    sxCopy_sxsm_token(t, sxsm_trim(q, sxCopy_sxsm_token(null, t)));
+    if (t.z < 5 || q.b[t.a] !== 40 /*(*/) {
+        return false;
+    }
+    var p = 1;
+    var a = p;
+    while (p < t.z && q.b[t.a + p] >= 48 /*0*/ && q.b[t.a + p] <= 57 /*9*/) {
+        p++;
+    }
+    var v = [0];
+    if (!sxsm_number(q, sxCopy_sxsm_token(null, { a: t.a + a, z: p - a }), v) || v[0] > 1000 || !v[0]) {
+        return false;
+    }
+    repeat[repeat_o] = v[0] >>> 0;
+    if (p === t.z) {
+        return false;
+    }
+    p++;
+    a = p;
+    while (p < t.z && q.b[t.a + p] >= 48 /*0*/ && q.b[t.a + p] <= 57 /*9*/) {
+        p++;
+    }
+    if (!sxsm_number(q, sxCopy_sxsm_token(null, { a: t.a + a, z: p - a }), v) || !v[0] || v[0] > 96) {
+        return false;
+    }
+    width[width_o] = v[0] >>> 0;
+    return true;
+}
+function sxsm_hb(q) {
+    var line = sxNew_sxsm_token();
+    var repeats = [];
+    var widths = [];
+    var cols = [0];
+    var nnz = [0];
+    if (!sxsm_line(q, line) || line.z !== 80) {
+        return false;
+    }
+    {
+        if (!sxsm_column(q, sxsm_title, sxCopy_sxsm_token(null, line), 0, 72)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_column(q, sxsm_matrix_key, sxCopy_sxsm_token(null, line), 72, 8)) {
+            return false;
+        }
+    }
+    if (!sxsm_line(q, line) || line.z !== 56 && line.z !== 70) {
+        return false;
+    }
+    var counts = [sxsm_hb_total_lines, sxsm_hb_pointer_lines, sxsm_hb_index_lines, sxsm_hb_value_lines, sxsm_hb_rhs_lines];
+    for (var i = 0; i < Math.floor((line.z >>> 0) / 14); i++) {
+        if (!sxsm_column(q, counts[i], sxCopy_sxsm_token(null, line), (i * 14) >>> 0, 14)) {
+            return false;
+        }
+    }
+    if (!sxsm_line(q, line) || line.z !== 70) {
+        return false;
+    }
+    {
+        if (!sxsm_column(q, sxsm_matrix_type, sxCopy_sxsm_token(null, line), 0, 3)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_column(q, sxsm_matrix_rows, sxCopy_sxsm_token(null, line), 14, 14)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_column(q, sxsm_matrix_columns, sxCopy_sxsm_token(null, line), 28, 14)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_column(q, sxsm_nonzero_count, sxCopy_sxsm_token(null, line), 42, 14)) {
+            return false;
+        }
+    }
+    {
+        if (!sxsm_column(q, sxsm_elemental_values, sxCopy_sxsm_token(null, line), 56, 14)) {
+            return false;
+        }
+    }
+    if (!sxsm_number(q, sxCopy_sxsm_token(null, { a: line.a + 28, z: 14 }), cols) || !sxsm_number(q, sxCopy_sxsm_token(null, { a: line.a + 42, z: 14 }), nnz) || cols[0] > 1000000 || nnz[0] > 1000000) {
+        return false;
+    }
+    if (!sxsm_line(q, line) || line.z !== 52 && line.z !== 72) {
+        return false;
+    }
+    for (i = 0; i < 3; i++) {
+        var at = (i * 16) >>> 0;
+        var width = i === 2 ? 20 : 16;
+        if (!sxsm_column(q, sxsm_format_string, sxCopy_sxsm_token(null, line), at, width) || !sxsm_hb_format(q, sxCopy_sxsm_token(null, { a: line.a + at, z: width }), repeats, i, widths, i)) {
+            return false;
+        }
+    }
+    var values = [sxsm_column_pointer, sxsm_row_index, sxsm_scalar_value];
+    var totals = [cols[0] + 1, nnz[0], nnz[0]];
+    for (var k = 0; k < 3; k++) {
+        var done = 0;
+        var first = true;
+        while (done < totals[k]) {
+            if (q.c.count >= 24000) {
+                return true;
+            }
+            var n = (sxU64(totals[k] - done) < repeats[k] ? sxU64(totals[k] - done) : repeats[k]) >>> 0;
+            if (!sxsm_line(q, line)) {
+                return false;
+            }
+            if (k === 2 && first && widths[k] > 1 && (line.z < 0 ? line.z + SX_U64_MAX : line.z) === n * ((widths[k] - 1) >>> 0)) {
+                widths[k]--;
+            }
+            first = false;
+            if ((line.z < 0 ? line.z + SX_U64_MAX : line.z) !== n * widths[k]) {
+                return false;
+            }
+            for (i = 0; i < n; i++) {
+                if (!sxsm_column(q, values[k], sxCopy_sxsm_token(null, line), sxMul32(i, widths[k]), widths[k])) {
+                    return false;
+                }
+            }
+            done += n;
+        }
+    }
+    return true;
+}
+function sx_harwell_boeing_build(q) {
+    return sxsm_hb(q);
+}

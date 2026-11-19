@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/nrg/xx_nrg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_nrg_footer32_fields = layout([chars("signature", 4, SIGNATURE), u32("chunk_list_offset", OFFSET)]);
+var sxsl_nrg_footer32 = sxLayout(0x6033003D, "nrg_footer32", BE, sxsl_nrg_footer32_fields);
+var sxsl_nrg_dao_track32_fields = layout([chars("isrc", 12, NONE), u16("sector_size", SIZE), u8("mode", ID),
+    field("unknown", "byte[3]", 3), u32("pregap_offset", OFFSET), u32("track_offset", OFFSET), u32("end_offset", OFFSET)]);
+var sxsl_nrg_dao_track32 = sxLayout(0x6033003E, "nrg_dao_track32", BE, sxsl_nrg_dao_track32_fields);
+var sxsl_nrg_etn_track32_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE), field("unknown1", "byte[3]", 3),
+    u8("mode", ID), i32("start_lba"), field("unknown2", "byte[4]", 4)]);
+var sxsl_nrg_etn_track32 = sxLayout(0x6033003F, "nrg_etn_track32", BE, sxsl_nrg_etn_track32_fields);
+var sxsl_nrg_footer64_fields = layout([chars("signature", 4, SIGNATURE), u64("chunk_list_offset", OFFSET)]);
+var sxsl_nrg_footer64 = sxLayout(0x60330040, "nrg_footer64", BE, sxsl_nrg_footer64_fields);
+var sxsl_nrg_dao_track64_fields = layout([chars("isrc", 12, NONE), u16("sector_size", SIZE), u8("mode", ID),
+    field("unknown", "byte[3]", 3), u64("pregap_offset", OFFSET), u64("track_offset", OFFSET), u64("end_offset", OFFSET)]);
+var sxsl_nrg_dao_track64 = sxLayout(0x60330041, "nrg_dao_track64", BE, sxsl_nrg_dao_track64_fields);
+var sxsl_nrg_etn_track64_fields = layout([u64("data_offset", OFFSET), u64("data_size", SIZE), field("unknown1", "byte[3]", 3),
+    u8("mode", ID), i32("start_lba"), field("unknown2", "byte[8]", 8)]);
+var sxsl_nrg_etn_track64 = sxLayout(0x60330042, "nrg_etn_track64", BE, sxsl_nrg_etn_track64_fields);
+var sxsl_nrg_chunk_fields = layout([chars("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxsl_nrg_chunk = sxLayout(0x60330043, "nrg_chunk", BE, sxsl_nrg_chunk_fields);
+var sxsl_nrg_dao_header_fields = layout([field("size_word", "byte[4]", 4), chars("media_catalog_number", 13, NONE),
+    u8("unknown1"), u8("session_type", ID), u8("unknown2"), u8("first_track"), u8("last_track")]);
+var sxsl_nrg_dao_header = sxLayout(0x60330044, "nrg_dao_header", BE, sxsl_nrg_dao_header_fields);
+var sxsl_nrg_cuex_fields = layout([u8("adr_control", FLAGS), u8("track_bcd"), u8("index_bcd"), u8("unknown"), i32("start_lba")]);
+var sxsl_nrg_cuex = sxLayout(0x60330045, "nrg_cuex", BE, sxsl_nrg_cuex_fields);
+var sxsl_nrg_cues_fields = layout([u8("adr_control", FLAGS), u8("track_bcd"), u8("index_bcd"), u8("unknown"), u8("hour"),
+    u8("minute"), u8("second"), u8("frame")]);
+var sxsl_nrg_cues = sxLayout(0x60330046, "nrg_cues", BE, sxsl_nrg_cues_fields);
+var sxsl_nrg_session_fields = layout([u32("track_count", COUNT)]);
+var sxsl_nrg_session = sxLayout(0x60330047, "nrg_session", BE, sxsl_nrg_session_fields);
+var sxsl_nrg_media_fields = layout([u32("media_type", FLAGS)]);
+var sxsl_nrg_media = sxLayout(0x60330048, "nrg_media", BE, sxsl_nrg_media_fields);
+function sxsl_nrg(c) {
+    var b = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p;
+    if (end >= 12 && sxsl_read(c, sxU64(end - 12), b, 12) && !sxMemcmp(b, "NER5", 4)) {
+        p = sxsl_uint(b, 4, 8, true);
+        if (!sxsl_put(c, sxsl_nrg_footer64, sxU64(end - 12), 1)) {
+            return false;
+        }
+        end = sxU64(end - 12);
+    } else if (end >= 8 && sxsl_read(c, sxU64(end - 8), b, 8) && !sxMemcmp(b, "NERO", 4)) {
+        p = sxsl_uint(b, 4, 4, true);
+        if (!sxsl_put(c, sxsl_nrg_footer32, sxU64(end - 8), 1)) {
+            return false;
+        }
+        end = sxU64(end - 8);
+    } else {
+        return false;
+    }
+    for (var i = 0; i < 24000 && p < end && c.count < 24000; i++) {
+        if (sxU64(end - p) < 8 || !sxsl_read(c, p, b, 8)) {
+            break;
+        }
+        var n = sxsl_uint(b, 4, 4, true);
+        var q = p + 8;
+        if (n > sxU64(end - q) || !sxsl_put(c, sxsl_nrg_chunk, p, 1)) {
+            break;
+        }
+        var l = null;
+        var z = 0;
+        var skip = 0;
+        if (!sxMemcmp(b, "DAOX", 4) || !sxMemcmp(b, "DAOI", 4)) {
+            z = b[3] === 88 /*X*/ ? 42 : 30;
+            skip = 22;
+            l = b[3] === 88 /*X*/ ? sxsl_nrg_dao_track64 : sxsl_nrg_dao_track32;
+            if (n >= 22 && !sxsl_put(c, sxsl_nrg_dao_header, q, 1)) {
+                return false;
+            }
+        } else if (!sxMemcmp(b, "ETN2", 4) || !sxMemcmp(b, "ETNF", 4)) {
+            z = b[3] === 50 /*2*/ ? 32 : 20;
+            l = b[3] === 50 /*2*/ ? sxsl_nrg_etn_track64 : sxsl_nrg_etn_track32;
+        } else if (!sxMemcmp(b, "CUEX", 4) || !sxMemcmp(b, "CUES", 4)) {
+            z = 8;
+            l = b[3] === 88 /*X*/ ? sxsl_nrg_cuex : sxsl_nrg_cues;
+        } else if (!sxMemcmp(b, "SINF", 4) && n === 4) {
+            z = 4;
+            l = sxsl_nrg_session;
+        } else if (!sxMemcmp(b, "MTYP", 4) && n === 4) {
+            z = 4;
+            l = sxsl_nrg_media;
+        }
+        if (l !== null && n >= skip && sxU64(n - skip) % z === 0 && Math.floor(sxU64(n - skip) / z) <= 1048576 && !sxsl_put(c, l, q + skip, Math.floor(sxU64(n - skip) / z))) {
+            return false;
+        }
+        p = q + n;
+        if (!sxMemcmp(b, "END!", 4)) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_nrg_build(c) {
+    var ok = false;
+    ok = sxsl_nrg(c);
+    return ok && sxsl_finish(c);
+}

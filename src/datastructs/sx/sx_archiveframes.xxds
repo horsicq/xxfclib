@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveframes.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archiveframes");
+include("_sx_archiveframes_claylz");
+include("_sx_archiveframes_gtu");
+include("_sx_archiveframes_imp");
+include("_sx_archiveframes_irwinpac");
+include("_sx_archiveframes_jbf");
+include("_sx_archiveframes_kolibrikpack");
+include("_sx_archiveframes_lim");
+include("_sx_archiveframes_lzhcxp");
+include("_sx_archiveframes_lzwd");
+include("_sx_archiveframes_mi10");
+include("_sx_archiveframes_pakleo");
+include("_sx_archiveframes_qda");
+include("_sx_archiveframes_rid");
+include("_sx_archiveframes_tivoli");
+include("_sx_archiveframes_wintersoft");
+include("_sx_archiveframes_wpk");
+include("_sx_archiveframes_xeditpack");
+include("_sx_archiveframes_zcmp");
+include("_sx_archiveframes_zie");
+include("_sx_archiveframes_ztc");
+
+function fileTypes() { return ["LZHCXP", "LZWD", "MI10", "PAKLEO", "ZCMP", "ZTC", "GTU", "JBF", "IMP", "IRWINPAC",
+    "KOLIBRIKPACK", "LIM", "QDA", "RID", "TIVOLI", "WINTERSOFT", "WPK", "XEDITPACK", "ZIE", "CLAYLZ"]; }
+
+var sx_archiveframes_layouts = [sxafr_lzhcxp_header, sxafr_lzhcxp_block_size, sxafr_lzwd_header, sxafr_mi10_member,
+    sxafr_mi10_prefix, sxafr_pakleo_header, sxafr_pakleo_member, sxafr_zcmp_header, sxafr_zcmp_seek_word, sxafr_ztc_header,
+    sxafr_ztc_member, sxafr_ztc_check, sxafr_ztc_page_sum, sxafr_gtu_header, sxafr_gtu_record, sxafr_gtu_terminator,
+    sxafr_gtu_info, sxafr_gtu_frame, sxafr_jbf_member, sxafr_jbf_count, sxafr_imp_header, sxafr_imp_directory_block,
+    sxafr_irwinpac_header, sxafr_irwinpac_block, sxafr_kpack_header, sxafr_kpack_filter, sxafr_lim_header, sxafr_lim_chunk,
+    sxafr_lim_member, sxafr_qda_header, sxafr_qda_member, sxafr_rid_member, sxafr_rid_block, sxafr_tivoli_header,
+    sxafr_tivoli_block, sxafr_tivoli_digest, sxafr_wintersoft_header, sxafr_wintersoft_member, sxafr_wpk_header,
+    sxafr_wpk_member, sxafr_xeditpack_header, sxafr_zie_header, sxafr_clay_member, sxafr_archiveframes_dcl, sxafr_clay_prefix];
+
+function structs() {
+    return sxCatalog([sxafr_lzhcxp_header, sxafr_lzhcxp_block_size, sxafr_lzwd_header, sxafr_mi10_member, sxafr_mi10_prefix,
+        sxafr_pakleo_header, sxafr_pakleo_member, sxafr_zcmp_header, sxafr_zcmp_seek_word, sxafr_ztc_header, sxafr_ztc_member,
+        sxafr_ztc_check, sxafr_ztc_page_sum, sxafr_gtu_header, sxafr_gtu_record, sxafr_gtu_terminator, sxafr_gtu_info,
+        sxafr_gtu_frame, sxafr_jbf_member, sxafr_jbf_count, sxafr_imp_header, sxafr_imp_directory_block, sxafr_irwinpac_header,
+        sxafr_irwinpac_block, sxafr_kpack_header, sxafr_kpack_filter, sxafr_lim_header, sxafr_lim_chunk, sxafr_lim_member,
+        sxafr_qda_header, sxafr_qda_member, sxafr_rid_member, sxafr_rid_block, sxafr_tivoli_header, sxafr_tivoli_block,
+        sxafr_tivoli_digest, sxafr_wintersoft_header, sxafr_wintersoft_member, sxafr_wpk_header, sxafr_wpk_member,
+        sxafr_xeditpack_header, sxafr_zie_header, sxafr_clay_member, sxafr_archiveframes_dcl, sxafr_clay_prefix], sx_archiveframes_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archiveframes_build, false);
+}

@@ -1,0 +1,297 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/apache_arrow_file/xx_apache_arrow_file_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxq_arrow_file_header_fields = layout([chars("magic", 6, SIGNATURE), blob("padding", 2, RESERVED)]);
+var sxq_arrow_file_header = sxLayout(0x601F0001, "arrow_file_header", LE, sxq_arrow_file_header_fields);
+var sxq_arrow_file_trailer_fields = layout([i32("footer_length", SIZE), chars("magic", 6, SIGNATURE)]);
+var sxq_arrow_file_trailer = sxLayout(0x601F0002, "arrow_file_trailer", LE, sxq_arrow_file_trailer_fields);
+var sxq_arrow_message_prefix_fields = layout([i32("metadata_length", SIZE)]);
+var sxq_arrow_message_prefix = sxLayout(0x601F0003, "arrow_message_prefix", LE, sxq_arrow_message_prefix_fields);
+var sxq_arrow_continuation_prefix_fields = layout([u32("continuation", SIGNATURE), i32("metadata_length", SIZE)]);
+var sxq_arrow_continuation_prefix = sxLayout(0x601F0004, "arrow_continuation_prefix", LE, sxq_arrow_continuation_prefix_fields);
+var sxq_arrow_flatbuffer_root_fields = layout([u32("root_offset", OFFSET)]);
+var sxq_arrow_flatbuffer_root = sxLayout(0x601F0005, "arrow_flatbuffer_root", LE, sxq_arrow_flatbuffer_root_fields);
+var sxq_arrow_table_header_fields = layout([i32("vtable_displacement", OFFSET)]);
+var sxq_arrow_table_header = sxLayout(0x601F0006, "arrow_table_header", LE, sxq_arrow_table_header_fields);
+var sxq_arrow_vtable_header_fields = layout([u16("vtable_size", SIZE), u16("object_size", SIZE)]);
+var sxq_arrow_vtable_header = sxLayout(0x601F0007, "arrow_vtable_header", LE, sxq_arrow_vtable_header_fields);
+var sxq_arrow_vtable_entry_fields = layout([u16("field_offset", OFFSET)]);
+var sxq_arrow_vtable_entry = sxLayout(0x601F0008, "arrow_vtable_entry", LE, sxq_arrow_vtable_entry_fields);
+var sxq_arrow_vector_header_fields = layout([u32("element_count", COUNT)]);
+var sxq_arrow_vector_header = sxLayout(0x601F0009, "arrow_vector_header", LE, sxq_arrow_vector_header_fields);
+var sxq_arrow_vector_reference_fields = layout([u32("object_offset", OFFSET)]);
+var sxq_arrow_vector_reference = sxLayout(0x601F000A, "arrow_vector_reference", LE, sxq_arrow_vector_reference_fields);
+var sxq_arrow_string_header_fields = layout([u32("byte_length", SIZE)]);
+var sxq_arrow_string_header = sxLayout(0x601F000B, "arrow_string_header", LE, sxq_arrow_string_header_fields);
+var sxq_arrow_block_fields = layout([i64("message_offset", OFFSET), i32("metadata_length", SIZE),
+    blob("alignment_padding", 4, RESERVED), i64("body_length", SIZE)]);
+var sxq_arrow_block = sxLayout(0x601F000C, "arrow_block", LE, sxq_arrow_block_fields);
+var sxq_arrow_field_node_fields = layout([i64("length", COUNT), i64("null_count", COUNT)]);
+var sxq_arrow_field_node = sxLayout(0x601F000D, "arrow_field_node", LE, sxq_arrow_field_node_fields);
+var sxq_arrow_buffer_fields = layout([i64("body_offset", OFFSET), i64("byte_length", SIZE)]);
+var sxq_arrow_buffer = sxLayout(0x601F000E, "arrow_buffer", LE, sxq_arrow_buffer_fields);
+var sxq_arrow_footer_schema_fields = layout([u32("schema", OFFSET)]);
+var sxq_arrow_footer_schema = sxLayout(0x601F0010, "arrow_footer_schema", LE, sxq_arrow_footer_schema_fields);
+var sxq_arrow_footer_dictionaries_fields = layout([u32("dictionaries", OFFSET)]);
+var sxq_arrow_footer_dictionaries = sxLayout(0x601F0011, "arrow_footer_dictionaries", LE, sxq_arrow_footer_dictionaries_fields);
+var sxq_arrow_footer_record_batches_fields = layout([u32("record_batches", OFFSET)]);
+var sxq_arrow_footer_record_batches = sxLayout(0x601F0012, "arrow_footer_record_batches", LE, sxq_arrow_footer_record_batches_fields);
+var sxq_arrow_footer_custom_metadata_fields = layout([u32("custom_metadata", OFFSET)]);
+var sxq_arrow_footer_custom_metadata = sxLayout(0x601F0013, "arrow_footer_custom_metadata", LE, sxq_arrow_footer_custom_metadata_fields);
+var sxq_arrow_schema_endianness_fields = layout([i16("endianness", ID)]);
+var sxq_arrow_schema_endianness = sxLayout(0x601F0014, "arrow_schema_endianness", LE, sxq_arrow_schema_endianness_fields);
+var sxq_arrow_schema_fields_fields = layout([u32("fields", OFFSET)]);
+var sxq_arrow_schema_fields = sxLayout(0x601F0015, "arrow_schema_fields", LE, sxq_arrow_schema_fields_fields);
+var sxq_arrow_schema_custom_metadata_fields = layout([u32("custom_metadata", OFFSET)]);
+var sxq_arrow_schema_custom_metadata = sxLayout(0x601F0016, "arrow_schema_custom_metadata", LE, sxq_arrow_schema_custom_metadata_fields);
+var sxq_arrow_schema_features_fields = layout([u32("features", OFFSET)]);
+var sxq_arrow_schema_features = sxLayout(0x601F0017, "arrow_schema_features", LE, sxq_arrow_schema_features_fields);
+var sxq_arrow_field_name_fields = layout([u32("name", OFFSET)]);
+var sxq_arrow_field_name = sxLayout(0x601F0018, "arrow_field_name", LE, sxq_arrow_field_name_fields);
+var sxq_arrow_field_nullable_fields = layout([u8("nullable", FLAGS)]);
+var sxq_arrow_field_nullable = sxLayout(0x601F0019, "arrow_field_nullable", LE, sxq_arrow_field_nullable_fields);
+var sxq_arrow_field_type_tag_fields = layout([u8("type_tag", ID)]);
+var sxq_arrow_field_type_tag = sxLayout(0x601F001A, "arrow_field_type_tag", LE, sxq_arrow_field_type_tag_fields);
+var sxq_arrow_field_type_fields = layout([u32("type", OFFSET)]);
+var sxq_arrow_field_type = sxLayout(0x601F001B, "arrow_field_type", LE, sxq_arrow_field_type_fields);
+var sxq_arrow_field_children_fields = layout([u32("children", OFFSET)]);
+var sxq_arrow_field_children = sxLayout(0x601F001C, "arrow_field_children", LE, sxq_arrow_field_children_fields);
+var sxq_arrow_field_custom_metadata_fields = layout([u32("custom_metadata", OFFSET)]);
+var sxq_arrow_field_custom_metadata = sxLayout(0x601F001D, "arrow_field_custom_metadata", LE, sxq_arrow_field_custom_metadata_fields);
+var sxq_arrow_int_type_bit_width_fields = layout([i32("bit_width", COUNT)]);
+var sxq_arrow_int_type_bit_width = sxLayout(0x601F001E, "arrow_int_type_bit_width", LE, sxq_arrow_int_type_bit_width_fields);
+var sxq_arrow_int_type_is_signed_fields = layout([u8("is_signed", FLAGS)]);
+var sxq_arrow_int_type_is_signed = sxLayout(0x601F001F, "arrow_int_type_is_signed", LE, sxq_arrow_int_type_is_signed_fields);
+var sxq_arrow_message_header_tag_fields = layout([u8("header_tag", ID)]);
+var sxq_arrow_message_header_tag = sxLayout(0x601F0021, "arrow_message_header_tag", LE, sxq_arrow_message_header_tag_fields);
+var sxq_arrow_message_header_fields = layout([u32("header", OFFSET)]);
+var sxq_arrow_message_header = sxLayout(0x601F0022, "arrow_message_header", LE, sxq_arrow_message_header_fields);
+var sxq_arrow_message_body_length_fields = layout([i64("body_length", SIZE)]);
+var sxq_arrow_message_body_length = sxLayout(0x601F0023, "arrow_message_body_length", LE, sxq_arrow_message_body_length_fields);
+var sxq_arrow_message_custom_metadata_fields = layout([u32("custom_metadata", OFFSET)]);
+var sxq_arrow_message_custom_metadata = sxLayout(0x601F0024, "arrow_message_custom_metadata", LE, sxq_arrow_message_custom_metadata_fields);
+var sxq_arrow_record_batch_length_fields = layout([i64("length", COUNT)]);
+var sxq_arrow_record_batch_length = sxLayout(0x601F0025, "arrow_record_batch_length", LE, sxq_arrow_record_batch_length_fields);
+var sxq_arrow_record_batch_nodes_fields = layout([u32("nodes", OFFSET)]);
+var sxq_arrow_record_batch_nodes = sxLayout(0x601F0026, "arrow_record_batch_nodes", LE, sxq_arrow_record_batch_nodes_fields);
+var sxq_arrow_record_batch_buffers_fields = layout([u32("buffers", OFFSET)]);
+var sxq_arrow_record_batch_buffers = sxLayout(0x601F0027, "arrow_record_batch_buffers", LE, sxq_arrow_record_batch_buffers_fields);
+var sxq_arrow_record_batch_variadic_buffer_counts_fields = layout([u32("variadic_buffer_counts", OFFSET)]);
+var sxq_arrow_record_batch_variadic_buffer_counts = sxLayout(0x601F0028, "arrow_record_batch_variadic_buffer_counts", LE, sxq_arrow_record_batch_variadic_buffer_counts_fields);
+var sxq_arrow_footer_rows = [sxq_arrow_footer_version, sxq_arrow_footer_schema, sxq_arrow_footer_dictionaries,
+    sxq_arrow_footer_record_batches, sxq_arrow_footer_custom_metadata];
+var sxq_arrow_schema_rows = [sxq_arrow_schema_endianness, sxq_arrow_schema_fields, sxq_arrow_schema_custom_metadata, sxq_arrow_schema_features];
+var sxq_arrow_field_rows = [sxq_arrow_field_name, sxq_arrow_field_nullable, sxq_arrow_field_type_tag, sxq_arrow_field_type,
+    null, sxq_arrow_field_children, sxq_arrow_field_custom_metadata];
+var sxq_arrow_int_type_rows = [sxq_arrow_int_type_bit_width, sxq_arrow_int_type_is_signed];
+var sxq_arrow_message_rows = [sxq_arrow_message_version, sxq_arrow_message_header_tag, sxq_arrow_message_header,
+    sxq_arrow_message_body_length, sxq_arrow_message_custom_metadata];
+var sxq_arrow_record_batch_rows = [sxq_arrow_record_batch_length, sxq_arrow_record_batch_nodes, sxq_arrow_record_batch_buffers,
+    null, sxq_arrow_record_batch_variadic_buffer_counts];
+function sxq16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, false);
+}
+function sxq64(p, p_o) {
+    return sxGetU64At(p, p_o, 8, 0, false);
+}
+function sxq_table(w, l, p, n, count) {
+    return !!(!count || count <= 100000 && n && count <= Math.floor(SX_U64_MAX / n) && sxq_span(w, p, n * count) && sx_table(w.c, l, (w.base + p >= SX_I64_MAX ? w.base + p - SX_U64_MAX : w.base + p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n), count));
+}
+function sxq_a_field(w, t, id, width, out, out_o) {
+    if (!sxq_span(w, t, 4)) {
+        return false;
+    }
+    var delta = sxq32(w.b, t) | 0;
+    var vt = (t >= SX_I64_MAX ? t - SX_U64_MAX : t) - delta;
+    if (vt < 0 || !sxq_span(w, (vt < 0 ? vt + SX_U64_MAX : vt), 4)) {
+        return false;
+    }
+    var vn = sxq16(w.b, vt);
+    var on = sxq16(w.b, vt + 2);
+    if (vn < 4 || vn & 1 || on < 4 || !sxq_span(w, (vt < 0 ? vt + SX_U64_MAX : vt), vn) || !sxq_span(w, t, on)) {
+        return false;
+    }
+    out[out_o] = 0;
+    if (id * 2 + 6 > vn) {
+        return true;
+    }
+    var off = sxq16(w.b, vt + 4 + ((id * 2) >>> 0));
+    if (!off) {
+        return true;
+    }
+    if (off < 4 || off > on || width > (on - off) >>> 0) {
+        return false;
+    }
+    out[out_o] = t + off;
+    return true;
+}
+function sxq_a_ref(w, field, out) {
+    if (!field) {
+        out[0] = 0;
+        return true;
+    }
+    if (!sxq_span(w, field, 4)) {
+        return false;
+    }
+    var d = sxq32(w.b, field);
+    if (d < 4 || !sxq_span(w, field + d, 4)) {
+        return false;
+    }
+    out[0] = field + d;
+    return true;
+}
+function sxq_a_vector(w, field, width, l, child, depth) {
+    var v = [0];
+    if (!sxq_a_ref(w, field, v)) {
+        return false;
+    }
+    if (!v[0]) {
+        return true;
+    }
+    var n = sxq32(w.b, v[0]);
+    if (n > 100000 || !sxq_span(w, v[0] + 4, n * width) || !sxq_wadd(w, sxq_arrow_vector_header, v[0])) {
+        return false;
+    }
+    if (l !== null && !sxq_table(w, l, v[0] + 4, width, n)) {
+        return false;
+    }
+    if (child >= 0) {
+        for (var i = 0; i < n; i++) {
+            var at = v[0] + 4 + i * 4;
+            var p = [0];
+            if (!sxq_wadd(w, sxq_arrow_vector_reference, at) || !sxq_a_ref(w, at, p) || !sxq_a_parse(w, p[0], child >>> 0, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+var sxq_a_parse_sets = [sxq_arrow_footer_rows, sxq_arrow_schema_rows, sxq_arrow_field_rows, sxq_arrow_int_type_rows,
+    sxq_arrow_message_rows, sxq_arrow_record_batch_rows];
+var sxq_a_parse_counts = [5, 4, 7, 2, 5, 5];
+function sxq_a_parse(w, t, kind, depth) {
+    if (kind >= 6 || depth > 24 || ++w.work > 100000 || !sxq_span(w, t, 4)) {
+        return false;
+    }
+    var vt = (t >= SX_I64_MAX ? t - SX_U64_MAX : t) - (sxq32(w.b, t) | 0);
+    if (vt < 0 || !sxq_span(w, (vt < 0 ? vt + SX_U64_MAX : vt), 4)) {
+        return false;
+    }
+    var vn = sxq16(w.b, vt);
+    var fields = [0, 0, 0, 0, 0, 0, 0];
+    if (!sxq_wadd(w, sxq_arrow_table_header, t) || !sxq_wadd(w, sxq_arrow_vtable_header, (vt < 0 ? vt + SX_U64_MAX : vt)) || vn < 4 || vn & 1 || !sxq_table(w, sxq_arrow_vtable_entry, (vt < 0 ? vt + SX_U64_MAX : vt) + 4, 2, sxU64(sxDiv(vn - 4, 2)))) {
+        return false;
+    }
+    for (var i = 0; i < sxq_a_parse_counts[kind]; i++) {
+        var l = sxq_a_parse_sets[kind][i];
+        var z = l !== null ? l.fields[0].size >>> 0 : 4;
+        if (!sxq_a_field(w, t, i, z, fields, i)) {
+            return false;
+        }
+        if (fields[i] && l !== null && !sxq_wadd(w, l, fields[i])) {
+            return false;
+        }
+    }
+    var target = [0];
+    if (kind === 0) {
+        if (!sxq_a_ref(w, fields[1], target) || !target[0] || !sxq_a_parse(w, target[0], 1, (depth + 1) >>> 0)) {
+            return false;
+        }
+        return sxq_a_vector(w, fields[2], 24, sxq_arrow_block, -1, depth) && sxq_a_vector(w, fields[3], 24, sxq_arrow_block, -1, depth) && sxq_a_vector(w, fields[4], 4, null, -1, depth);
+    }
+    if (kind === 1) {
+        return sxq_a_vector(w, fields[1], 4, null, 2, depth) && sxq_a_vector(w, fields[2], 4, null, -1, depth) && sxq_a_vector(w, fields[3], 8, null, -1, depth);
+    }
+    if (kind === 2) {
+        if (!sxq_a_ref(w, fields[0], target) || !target[0]) {
+            return false;
+        }
+        var n = sxq32(w.b, target[0]);
+        if (!sxq_span(w, target[0] + 4, n + 1) || !sxq_wadd(w, sxq_arrow_string_header, target[0]) || !sxq_a_ref(w, fields[3], target) || !target[0] || !sxq_a_parse(w, target[0], 3, (depth + 1) >>> 0)) {
+            return false;
+        }
+        return !fields[4] && sxq_a_vector(w, fields[5], 4, null, -1, depth) && sxq_a_vector(w, fields[6], 4, null, -1, depth);
+    }
+    if (kind === 4) {
+        if (!fields[1] || !sxq_a_ref(w, fields[2], target) || !target[0]) {
+            return false;
+        }
+        var tag = w.b[fields[1]];
+        if (tag !== 1 && tag !== 3) {
+            return false;
+        }
+        return sxq_a_parse(w, target[0], tag === 1 ? 1 : 5, (depth + 1) >>> 0) && sxq_a_vector(w, fields[4], 4, null, -1, depth);
+    }
+    if (kind === 5) {
+        return !fields[3] && sxq_a_vector(w, fields[1], 16, sxq_arrow_field_node, -1, depth) && sxq_a_vector(w, fields[2], 16, sxq_arrow_buffer, -1, depth) && sxq_a_vector(w, fields[4], 8, null, -1, depth);
+    }
+    return true;
+}
+function sxq_a_message(c, p, expected, after) {
+    var b = [];
+    if (!sxq_file_span(c, p, 8) || !sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, 8)) {
+        return false;
+    }
+    var prefix = sxq32(b, 0) === 4294967295 ? 8 : 4;
+    var n = sxq32(b, prefix + -4);
+    if (n < 4 || n > 0x1000000 || expected && (n + prefix) >>> 0 !== expected || !sxq_add(c, prefix === 8 ? sxq_arrow_continuation_prefix : sxq_arrow_message_prefix, p)) {
+        return false;
+    }
+    var w = sxNew_sxq_window();
+    if (!sxq_window_open(w, c, p + prefix, n)) {
+        return false;
+    }
+    var root = sxq32(w.b, 0);
+    var field = [0];
+    var ok = sxq_wadd(w, sxq_arrow_flatbuffer_root, 0) && sxq_a_parse(w, root, 4, 0) && sxq_a_field(w, root, 3, 8, field, 0);
+    var body = field[0] ? sxq64(w.b, field[0]) : 0;
+    if (ok) {
+        ok = body <= SX_I64_MAX && sxq_file_span(c, p, ((n + prefix) >>> 0) + body);
+    }
+    if (ok) {
+        after[0] = p + n + prefix + body;
+    }
+    return ok;
+}
+function sxq_arrow(c) {
+    var tail = [];
+    if (c.size < 18 || !sx_read(c, c.size - 10, tail, 10)) {
+        return false;
+    }
+    var n = sxq32(tail, 0);
+    if (n < 4 || n > 0x1000000 || n > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 18) || !sxq_add(c, sxq_arrow_file_header, 0) || !sxq_add(c, sxq_arrow_file_trailer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 10))) {
+        return false;
+    }
+    var footer = sxU64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 10) - n);
+    var w = sxNew_sxq_window();
+    if (!sxq_window_open(w, c, footer, n)) {
+        return false;
+    }
+    var root = sxq32(w.b, 0);
+    var field = [0];
+    var v = [0];
+    var after = [0];
+    var ok = !!(sxq_wadd(w, sxq_arrow_flatbuffer_root, 0) && sxq_a_parse(w, root, 0, 0) && sxq_a_field(w, root, 3, 4, field, 0) && sxq_a_ref(w, field[0], v) && v[0]);
+    var count = ok ? sxq32(w.b, v[0]) : 0;
+    if (ok) {
+        ok = sxq_span(w, v[0] + 4, count * 24) && sxq_a_message(c, 8, 0, after);
+    }
+    for (var i = 0; ok && i < count; i++) {
+        var b = w.b, b_o = v[0] + 4 + i * 24;
+        var at = sxq64(b, b_o);
+        var body = sxq64(b, b_o + 16);
+        var meta = sxq32(b, b_o + 8);
+        ok = at === after[0] && meta <= 0x1000000 && sxq_a_message(c, at, meta, after) && after[0] <= footer && body === sxU64(sxU64(after[0] - at) - meta);
+    }
+    if (ok && after[0] !== footer) {
+        var eos = [];
+        ok = sxU64(footer - after[0]) === 8 && sx_read(c, (after[0] >= SX_I64_MAX ? after[0] - SX_U64_MAX : after[0]), eos, 8) && sxq32(eos, 0) === 4294967295 && !sxq32(eos, 4) && sxq_add(c, sxq_arrow_continuation_prefix, after[0]);
+    }
+    return ok;
+}
+function sx_apache_arrow_file_build(c) {
+    return sxq_arrow(c) && sxq_finish(c);
+}

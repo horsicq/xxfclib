@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/wmf/xx_wmf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_wmf_placeable_fields = layout([u32("signature", SIGNATURE), u16("handle", RESERVED), i16("left"), i16("top"),
+    i16("right"), i16("bottom"), u16("units_per_inch"), u32("reserved", RESERVED), u16("checksum", CHECKSUM)]);
+var sxnx_wmf_placeable = sxLayout(0x6032000E, "wmf_placeable", LE, sxnx_wmf_placeable_fields);
+var sxnx_wmf_header_fields = layout([u16("file_type", ID), u16("header_words"), u16("version", ID), u32("file_words"),
+    u16("object_count", COUNT), u32("maximum_record_words"), u16("parameter_count", RESERVED)]);
+var sxnx_wmf_header = sxLayout(0x6032000F, "wmf_header", LE, sxnx_wmf_header_fields);
+var sxnx_wmf_record_fields = layout([u32("record_words"), u16("function", ID)]);
+var sxnx_wmf_record = sxLayout(0x60320010, "wmf_record", LE, sxnx_wmf_record_fields);
+var sxnx_wmf_point_fields = layout([i16("x"), i16("y")]);
+var sxnx_wmf_point = sxLayout(0x60320011, "wmf_point", LE, sxnx_wmf_point_fields);
+var sxnx_wmf_coordinate_pair_fields = layout([i16("y"), i16("x")]);
+var sxnx_wmf_coordinate_pair = sxLayout(0x60320012, "wmf_coordinate_pair", LE, sxnx_wmf_coordinate_pair_fields);
+var sxnx_wmf_rectangle_fields = layout([i16("bottom"), i16("right"), i16("top"), i16("left")]);
+var sxnx_wmf_rectangle = sxLayout(0x60320013, "wmf_rectangle", LE, sxnx_wmf_rectangle_fields);
+var sxnx_wmf_poly_count_fields = layout([u16("point_count", COUNT)]);
+var sxnx_wmf_poly_count = sxLayout(0x60320014, "wmf_poly_count", LE, sxnx_wmf_poly_count_fields);
+var sxnx_wmf_mode_fields = layout([u16("mode", ID)]);
+var sxnx_wmf_mode = sxLayout(0x60320015, "wmf_mode", LE, sxnx_wmf_mode_fields);
+var sxnx_wmf_restore_fields = layout([i16("relative_level")]);
+var sxnx_wmf_restore = sxLayout(0x60320016, "wmf_restore", LE, sxnx_wmf_restore_fields);
+var sxnx_wmf_handle_fields = layout([u16("object_index", ID)]);
+var sxnx_wmf_handle = sxLayout(0x60320017, "wmf_handle", LE, sxnx_wmf_handle_fields);
+var sxnx_wmf_color_fields = layout([u32("color_ref")]);
+var sxnx_wmf_color = sxLayout(0x60320018, "wmf_color", LE, sxnx_wmf_color_fields);
+var sxnx_wmf_pen_fields = layout([u16("style", FLAGS), i16("width_x"), i16("width_y"), u32("color_ref")]);
+var sxnx_wmf_pen = sxLayout(0x60320019, "wmf_pen", LE, sxnx_wmf_pen_fields);
+var sxnx_wmf_brush_fields = layout([u16("style", ID), u32("color_ref"), u16("hatch", ID)]);
+var sxnx_wmf_brush = sxLayout(0x6032001A, "wmf_brush", LE, sxnx_wmf_brush_fields);
+function sxnx_wmf(v) {
+    if (!sxnx_row(v, sxnx_wmf_placeable, 0, v.n) || !sxnx_row(v, sxnx_wmf_header, 22, v.n)) {
+        return false;
+    }
+    var at = 40;
+    var work = 0;
+    while (at < v.n) {
+        if (++work > 4096 || !sxnx_row(v, sxnx_wmf_record, at, v.n)) {
+            return false;
+        }
+        var size = 2 * sxnx_u32(v.p, at, false);
+        var kind = sxnx_u16(v.p, at + 4, false);
+        if (size < 6 || !sxnx_need(v, at, size, v.n)) {
+            return false;
+        }
+        var p = at + 6;
+        var end = at + size;
+        var l = null;
+        if (kind === 0x324 || kind === 0x325) {
+            if (!sxnx_row(v, sxnx_wmf_poly_count, p, end) || !sxnx_table(v, sxnx_wmf_point, p + 2, sxnx_u16(v.p, p, false), end)) {
+                return false;
+            }
+        } else {
+            if (kind === 0x214 || kind === 0x213 || kind >= 0x20B && kind <= 0x20E) {
+                l = sxnx_wmf_coordinate_pair;
+            } else if (kind === 0x201 || kind === 0x209) {
+                l = sxnx_wmf_color;
+            } else if (kind === 0x41B || kind === 0x418) {
+                l = sxnx_wmf_rectangle;
+            } else if (kind === 0x12D || kind === 0x1F0) {
+                l = sxnx_wmf_handle;
+            } else if (kind === 0x127) {
+                l = sxnx_wmf_restore;
+            } else if (kind === 0x102 || kind === 0x103 || kind === 0x104 || kind === 0x106 || kind === 0x107 || kind === 0x108) {
+                l = sxnx_wmf_mode;
+            } else if (kind === 0x2FA) {
+                l = sxnx_wmf_pen;
+            } else if (kind === 0x2FC) {
+                l = sxnx_wmf_brush;
+            }
+            if (l !== null && !sxnx_row(v, l, p, end)) {
+                return false;
+            }
+        }
+        at = end;
+    }
+    return at === v.n;
+}
+function sx_wmf_build(v) {
+    return sxnx_wmf(v);
+}

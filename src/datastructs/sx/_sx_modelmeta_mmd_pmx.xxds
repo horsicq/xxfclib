@@ -1,0 +1,147 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/mmd_pmx/xx_mmd_pmx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_pmx20_header_fields = layout([chars("signature", 4, SIGNATURE), field("version", "float32", 4, ID),
+    u8("globals_size", SIZE), u8("encoding", ID), u8("additional_uv_count", COUNT), u8("vertex_index_size", SIZE),
+    u8("texture_index_size", SIZE), u8("material_index_size", SIZE), u8("bone_index_size", SIZE), u8("morph_index_size", SIZE),
+    u8("rigid_body_index_size", SIZE)]);
+var sxmo_pmx20_header = sxLayout(0x60210079, "pmx20_header", LE, sxmo_pmx20_header_fields);
+var sxmo_pmx_text_length_fields = layout([i32("byte_length", SIZE)]);
+var sxmo_pmx_text_length = sxLayout(0x6021007A, "pmx_text_length", LE, sxmo_pmx_text_length_fields);
+var sxmo_pmx_vertex_count_fields = layout([i32("vertex_count", COUNT)]);
+var sxmo_pmx_vertex_count = sxLayout(0x6021007B, "pmx_vertex_count", LE, sxmo_pmx_vertex_count_fields);
+var sxmo_pmx_face_index_count_fields = layout([i32("face_index_count", COUNT)]);
+var sxmo_pmx_face_index_count = sxLayout(0x6021007C, "pmx_face_index_count", LE, sxmo_pmx_face_index_count_fields);
+var sxmo_pmx_texture_count_fields = layout([i32("texture_count", COUNT)]);
+var sxmo_pmx_texture_count = sxLayout(0x6021007D, "pmx_texture_count", LE, sxmo_pmx_texture_count_fields);
+var sxmo_pmx_vertex_fields = layout([field("position", "float32[3]", 12), field("normal", "float32[3]", 12),
+    field("u", "float32", 4), field("v", "float32", 4)]);
+var sxmo_pmx_vertex = sxLayout(0x6021007E, "pmx_vertex", LE, sxmo_pmx_vertex_fields);
+var sxmo_pmx_additional_uv_fields = layout([field("coordinates", "float32[4]", 16)]);
+var sxmo_pmx_additional_uv = sxLayout(0x6021007F, "pmx_additional_uv", LE, sxmo_pmx_additional_uv_fields);
+var sxmo_pmx_skinning_fields = layout([u8("deform_type", ID)]);
+var sxmo_pmx_skinning = sxLayout(0x60210080, "pmx_skinning", LE, sxmo_pmx_skinning_fields);
+var sxmo_pmx_bone_index1_fields = layout([i8("bone_index", ID)]);
+var sxmo_pmx_bone_index1 = sxLayout(0x60210081, "pmx_bone_index1", LE, sxmo_pmx_bone_index1_fields);
+var sxmo_pmx_vertex_index1_fields = layout([u8("vertex_index", ID)]);
+var sxmo_pmx_vertex_index1 = sxLayout(0x60210082, "pmx_vertex_index1", LE, sxmo_pmx_vertex_index1_fields);
+var sxmo_pmx_bone_index2_fields = layout([i16("bone_index", ID)]);
+var sxmo_pmx_bone_index2 = sxLayout(0x60210083, "pmx_bone_index2", LE, sxmo_pmx_bone_index2_fields);
+var sxmo_pmx_vertex_index2_fields = layout([u16("vertex_index", ID)]);
+var sxmo_pmx_vertex_index2 = sxLayout(0x60210084, "pmx_vertex_index2", LE, sxmo_pmx_vertex_index2_fields);
+var sxmo_pmx_bone_index4_fields = layout([i32("bone_index", ID)]);
+var sxmo_pmx_bone_index4 = sxLayout(0x60210085, "pmx_bone_index4", LE, sxmo_pmx_bone_index4_fields);
+var sxmo_pmx_vertex_index4_fields = layout([u32("vertex_index", ID)]);
+var sxmo_pmx_vertex_index4 = sxLayout(0x60210086, "pmx_vertex_index4", LE, sxmo_pmx_vertex_index4_fields);
+var sxmo_pmx_weight_fields = layout([field("weight", "float32", 4)]);
+var sxmo_pmx_weight = sxLayout(0x60210087, "pmx_weight", LE, sxmo_pmx_weight_fields);
+var sxmo_pmx_edge_scale_fields = layout([field("edge_scale", "float32", 4)]);
+var sxmo_pmx_edge_scale = sxLayout(0x60210088, "pmx_edge_scale", LE, sxmo_pmx_edge_scale_fields);
+var sxmo_pmx_sdef_fields = layout([field("c", "float32[3]", 12), field("r0", "float32[3]", 12), field("r1", "float32[3]", 12)]);
+var sxmo_pmx_sdef = sxLayout(0x60210089, "pmx_sdef", LE, sxmo_pmx_sdef_fields);
+var sxmo_pmx_material_count_fields = layout([i32("material_count", COUNT)]);
+var sxmo_pmx_material_count = sxLayout(0x6021008A, "pmx_material_count", LE, sxmo_pmx_material_count_fields);
+function sxmo_pmx(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 17) || sxMemcmp(h, "PMX ", 4) || sxmo32(h, 4, false) !== 0x40000000 || h[8] !== 8 || !sxmo_add(c, sxmo_pmx20_header, 0)) {
+        return false;
+    }
+    var additional = h[10];
+    var bone = h[14];
+    var vertex = h[11];
+    if (additional > 4 || bone !== 1 && bone !== 2 && bone !== 4 || vertex !== 1 && vertex !== 2 && vertex !== 4) {
+        return true;
+    }
+    var p = [17];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    for (var i = 0; i < 4; i++) {
+        if (!sxmo_text(c, sxmo_pmx_text_length, p, end)) {
+            return !c.failed;
+        }
+    }
+    if (sxU64(end - p[0]) < 4 || !sxmo_read(c, p[0], h, 4)) {
+        return true;
+    }
+    var count = sxmo32(h, 0, false);
+    if (count > 4096) {
+        return true;
+    }
+    if (!sxmo_take(c, sxmo_pmx_vertex_count, p, end)) {
+        return false;
+    }
+    for (i = 0; i < count; i++) {
+        if (sxU64(end - p[0]) < 33 + additional * 16) {
+            return true;
+        }
+        if (!sxmo_take(c, sxmo_pmx_vertex, p, end) || !sxmo_table(c, sxmo_pmx_additional_uv, p[0], additional)) {
+            return false;
+        }
+        p[0] += (additional * 16) >>> 0;
+        if (!sxmo_read(c, p[0], h, 1)) {
+            return false;
+        }
+        var deform = h[0];
+        if (deform > 3) {
+            return true;
+        }
+        if (!sxmo_take(c, sxmo_pmx_skinning, p, end)) {
+            return false;
+        }
+        var bones = deform === 0 ? 1 : deform === 2 ? 4 : 2;
+        var weights = deform === 0 ? 0 : deform === 2 ? 4 : 1;
+        var z = (((((sxMul32(bones, bone) + ((weights * 4) >>> 0)) >>> 0) + (deform === 3 ? 36 : 0)) >>> 0) + 4) >>> 0;
+        if (z > sxU64(end - p[0])) {
+            return true;
+        }
+        var l = bone === 1 ? sxmo_pmx_bone_index1 : bone === 2 ? sxmo_pmx_bone_index2 : sxmo_pmx_bone_index4;
+        if (!sxmo_table(c, l, p[0], bones)) {
+            return false;
+        }
+        p[0] += sxMul32(bones, bone);
+        if (!sxmo_table(c, sxmo_pmx_weight, p[0], weights)) {
+            return false;
+        }
+        p[0] += (weights * 4) >>> 0;
+        if (deform === 3 && !sxmo_take(c, sxmo_pmx_sdef, p, end)) {
+            return false;
+        }
+        if (!sxmo_take(c, sxmo_pmx_edge_scale, p, end)) {
+            return false;
+        }
+    }
+    if (sxU64(end - p[0]) < 4 || !sxmo_read(c, p[0], h, 4)) {
+        return true;
+    }
+    count = sxmo32(h, 0, false);
+    if (count > 1000000 || count * vertex > sxU64(sxU64(end - p[0]) - 4)) {
+        return true;
+    }
+    if (!sxmo_take(c, sxmo_pmx_face_index_count, p, end) || !sxmo_table(c, vertex === 1 ? sxmo_pmx_vertex_index1 : vertex === 2 ? sxmo_pmx_vertex_index2 : sxmo_pmx_vertex_index4, p[0], count)) {
+        return false;
+    }
+    p[0] += count * vertex;
+    if (sxU64(end - p[0]) < 4 || !sxmo_read(c, p[0], h, 4)) {
+        return true;
+    }
+    count = sxmo32(h, 0, false);
+    if (count > 65536) {
+        return true;
+    }
+    if (!sxmo_take(c, sxmo_pmx_texture_count, p, end)) {
+        return false;
+    }
+    for (i = 0; i < count; i++) {
+        if (!sxmo_text(c, sxmo_pmx_text_length, p, end)) {
+            return !c.failed;
+        }
+    }
+    return sxU64(end - p[0]) < 4 || sxmo_add(c, sxmo_pmx_material_count, p[0]);
+}
+function sx_mmd_pmx_build(c) {
+    var ok = false;
+    ok = sxmo_pmx(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

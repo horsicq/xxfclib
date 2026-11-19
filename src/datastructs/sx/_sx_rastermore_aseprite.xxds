@@ -1,0 +1,158 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/aseprite/xx_aseprite_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_aseprite_header_fields = layout([u32("file_size", SIZE), u16("magic", SIGNATURE), u16("frames", COUNT),
+    u16("width", COUNT), u16("height", COUNT), u16("color_depth"), u32("flags", FLAGS), u16("speed_milliseconds"),
+    u32("reserved0", RESERVED), u32("reserved1", RESERVED), u8("transparent_palette_index", ID), bytes("ignored", 3, RESERVED),
+    u16("color_count", COUNT), u8("pixel_width"), u8("pixel_height"), i16("grid_x"), i16("grid_y"), u16("grid_width", COUNT),
+    u16("grid_height", COUNT), bytes("reserved2", 84, RESERVED)]);
+var sxrm_aseprite_header = sxLayout(0x601D004B, "aseprite_header", LE, sxrm_aseprite_header_fields);
+var sxrm_aseprite_frame_fields = layout([u32("frame_size", SIZE), u16("magic", SIGNATURE), u16("old_chunk_count", COUNT),
+    u16("duration_milliseconds"), bytes("reserved", 2, RESERVED), u32("chunk_count", COUNT)]);
+var sxrm_aseprite_frame = sxLayout(0x601D004C, "aseprite_frame", LE, sxrm_aseprite_frame_fields);
+var sxrm_aseprite_chunk_fields = layout([u32("chunk_size", SIZE), u16("chunk_type", ID)]);
+var sxrm_aseprite_chunk = sxLayout(0x601D004D, "aseprite_chunk", LE, sxrm_aseprite_chunk_fields);
+var sxrm_aseprite_layer_fields = layout([u16("flags", FLAGS), u16("layer_type", ID), u16("child_level"),
+    u16("default_width", COUNT), u16("default_height", COUNT), u16("blend_mode", ID), u8("opacity"),
+    bytes("reserved", 3, RESERVED), u16("name_length", SIZE)]);
+var sxrm_aseprite_layer = sxLayout(0x601D004E, "aseprite_layer", LE, sxrm_aseprite_layer_fields);
+var sxrm_aseprite_layer_uuid_fields = layout([bytes("uuid", 16, ID)]);
+var sxrm_aseprite_layer_uuid = sxLayout(0x601D004F, "aseprite_layer_uuid", LE, sxrm_aseprite_layer_uuid_fields);
+var sxrm_aseprite_cel_fields = layout([u16("layer_index", ID), i16("x"), i16("y"), u8("opacity"), u16("cel_type", ID),
+    i16("z_index"), bytes("reserved", 5, RESERVED)]);
+var sxrm_aseprite_cel = sxLayout(0x601D0050, "aseprite_cel", LE, sxrm_aseprite_cel_fields);
+var sxrm_aseprite_cel_dimensions_fields = layout([u16("width", COUNT), u16("height", COUNT)]);
+var sxrm_aseprite_cel_dimensions = sxLayout(0x601D0051, "aseprite_cel_dimensions", LE, sxrm_aseprite_cel_dimensions_fields);
+var sxrm_aseprite_linked_cel_fields = layout([u16("frame_index", ID)]);
+var sxrm_aseprite_linked_cel = sxLayout(0x601D0052, "aseprite_linked_cel", LE, sxrm_aseprite_linked_cel_fields);
+var sxrm_aseprite_palette_fields = layout([u32("palette_size", COUNT), u32("first_index", ID), u32("last_index", ID),
+    bytes("reserved", 8, RESERVED)]);
+var sxrm_aseprite_palette = sxLayout(0x601D0053, "aseprite_palette", LE, sxrm_aseprite_palette_fields);
+var sxrm_aseprite_palette_entry_fields = layout([u16("flags", FLAGS), u8("red"), u8("green"), u8("blue"), u8("alpha")]);
+var sxrm_aseprite_palette_entry = sxLayout(0x601D0054, "aseprite_palette_entry", LE, sxrm_aseprite_palette_entry_fields);
+var sxrm_aseprite_string_length_fields = layout([u16("byte_length", SIZE)]);
+var sxrm_aseprite_string_length = sxLayout(0x601D0055, "aseprite_string_length", LE, sxrm_aseprite_string_length_fields);
+var sxrm_aseprite_user_flags_fields = layout([u32("flags", FLAGS)]);
+var sxrm_aseprite_user_flags = sxLayout(0x601D0056, "aseprite_user_flags", LE, sxrm_aseprite_user_flags_fields);
+var sxrm_aseprite_rgba_fields = layout([u8("red"), u8("green"), u8("blue"), u8("alpha")]);
+var sxrm_aseprite_rgba = sxLayout(0x601D0057, "aseprite_rgba", LE, sxrm_aseprite_rgba_fields);
+function sxrm_ase_string(c, p, end) {
+    var h = [];
+    if (p[0] > end || sxU64(end - p[0]) < 2 || !sxrm_read(c, p[0], h, 0, 2)) {
+        return false;
+    }
+    var n = sxrm16(h, 0, false);
+    if (n > sxU64(sxU64(end - p[0]) - 2)) {
+        return false;
+    }
+    if (!sxrm_add(c, sxrm_aseprite_string_length, p[0])) {
+        return false;
+    }
+    p[0] += (2 + n) >>> 0;
+    return true;
+}
+function sxrm_aseprite(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 128) || sxrm16(h, 4, false) !== 0xA5E0 || !sxrm_add(c, sxrm_aseprite_header, 0)) {
+        return false;
+    }
+    var frames = sxrm16(h, 6, false);
+    var flags = sxrm32(h, 14, false);
+    var budget = 0;
+    var p = 128;
+    for (var i = 0; i < frames && i < 4096; i++) {
+        if (!sxrm_read(c, p, h, 0, 16)) {
+            break;
+        }
+        var z = sxrm32(h, 0, false);
+        var chunks = sxrm32(h, 12, false);
+        if (!chunks) {
+            chunks = sxrm16(h, 6, false);
+        }
+        if (z < 16 || !sxrm_span(c, p, z) || chunks > 4096) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_aseprite_frame, p)) {
+            return false;
+        }
+        var q = p + 16;
+        var end = p + z;
+        for (var k = 0; k < chunks && budget++ < 20000; k++) {
+            if (sxU64(end - q) < 6 || !sxrm_read(c, q, h, 0, 6)) {
+                break;
+            }
+            var n = sxrm32(h, 0, false);
+            var type = sxrm16(h, 4, false);
+            if (n < 6 || n > sxU64(end - q)) {
+                break;
+            }
+            if (!sxrm_add(c, sxrm_aseprite_chunk, q)) {
+                return false;
+            }
+            var a = q + 6;
+            var stop = q + n;
+            n = (n - 6) >>> 0;
+            if (type === 0x2004 && n >= 18) {
+                if (!sxrm_read(c, a, h, 0, 18) || !sxrm_add(c, sxrm_aseprite_layer, a)) {
+                    return false;
+                }
+                var tail = a + 18 + sxrm16(h, 16, false);
+                if (flags & 4 && tail <= stop && sxU64(stop - tail) >= 16 && !sxrm_add(c, sxrm_aseprite_layer_uuid, tail)) {
+                    return false;
+                }
+            } else if (type === 0x2005 && n >= 16) {
+                if (!sxrm_read(c, a, h, 0, 16) || !sxrm_add(c, sxrm_aseprite_cel, a)) {
+                    return false;
+                }
+                var ct = sxrm16(h, 7, false);
+                if ((ct === 0 || ct === 2) && n >= 20) {
+                    if (!sxrm_add(c, sxrm_aseprite_cel_dimensions, a + 16)) {
+                        return false;
+                    }
+                } else if (ct === 1 && n >= 18 && !sxrm_add(c, sxrm_aseprite_linked_cel, a + 16)) {
+                    return false;
+                }
+            } else if (type === 0x2019 && n >= 20) {
+                if (!sxrm_read(c, a, h, 0, 20) || !sxrm_add(c, sxrm_aseprite_palette, a)) {
+                    return false;
+                }
+                var first = sxrm32(h, 4, false);
+                var last = sxrm32(h, 8, false);
+                var r = [a + 20];
+                if (last >= first && (last - first) >>> 0 < 4096) {
+                    for (var j = 0; j <= sxU64(last - first); j++) {
+                        if (sxU64(stop - r[0]) < 6 || !sxrm_read(c, r[0], h, 0, 6)) {
+                            break;
+                        }
+                        if (!sxrm_add(c, sxrm_aseprite_palette_entry, r[0])) {
+                            return false;
+                        }
+                        r[0] += 6;
+                        if (sxrm16(h, 0, false) & 1 && !sxrm_ase_string(c, r, stop)) {
+                            break;
+                        }
+                    }
+                }
+            } else if (type === 0x2020 && n >= 4) {
+                if (!sxrm_read(c, a, h, 0, 4) || !sxrm_add(c, sxrm_aseprite_user_flags, a)) {
+                    return false;
+                }
+                var uf = sxrm32(h, 0, false);
+                r = [a + 4];
+                var good = !(uf & 1) || sxrm_ase_string(c, r, stop);
+                if (good && uf & 2 && sxU64(stop - r[0]) >= 4 && !sxrm_add(c, sxrm_aseprite_rgba, r[0])) {
+                    return false;
+                }
+            }
+            q = stop;
+        }
+        p = end;
+    }
+    return !c.failed;
+}
+function sx_aseprite_build(c) {
+    return sxrm_aseprite(c);
+}

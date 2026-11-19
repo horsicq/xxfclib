@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/dri_diskcopy/xx_dri_diskcopy_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_dri_signature_fields = layout([chars("signature", 51, SIGNATURE)]);
+var sxst_dri_signature = sxLayout(0x6037002B, "dri_signature", LE, sxst_dri_signature_fields);
+var sxst_dri_diskcopy_bpb_fields = layout([u8("expected_five", ID), u8("drive_code", ID), u16("unknown_02"),
+    u16("cylinders", COUNT), u8("unknown_06"), u16("bytes_per_sector", SIZE), u8("sectors_per_cluster", COUNT),
+    u16("reserved_sectors", COUNT), u8("fat_count", COUNT), u16("root_entries", COUNT), u16("total_sectors", COUNT),
+    u8("media_descriptor", ID), u16("sectors_per_fat", COUNT), u16("sectors_per_track", COUNT), u16("heads", COUNT),
+    u32("hidden_sectors", COUNT), u8("drive_number", ID), field("unknown_1d", "byte[8]", 8), u8("unknown_25"),
+    u16("sectors_per_track_copy", COUNT), field("unknown_28", "byte[144]", 144)]);
+var sxst_dri_diskcopy_bpb = sxLayout(0x6037002C, "dri_diskcopy_bpb", LE, sxst_dri_diskcopy_bpb_fields);
+function sxst_dri(c) {
+    if (c.size < 419) {
+        return false;
+    }
+    var p = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 419);
+    return sxst_put(c, sxst_dri_signature, p, 1) && sxst_put(c, sxst_dri_diskcopy_bpb, p + 51, 2);
+}
+function sx_dri_diskcopy_build(c) {
+    return sxst_dri(c);
+}

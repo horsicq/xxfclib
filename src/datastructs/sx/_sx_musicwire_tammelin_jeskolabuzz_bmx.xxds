@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/tammelin_jeskolabuzz_bmx/xx_tammelin_jeskolabuzz_bmx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_count16_fields = layout([u16("count", COUNT)]);
+var sxmw_count16 = sxLayout(0x60870004, "count16", LE, sxmw_count16_fields);
+var sxmw_bmx_header_fields = layout([blob("magic", 4, SIGNATURE), u32("sections", COUNT)]);
+var sxmw_bmx_header = sxLayout(0x60870009, "bmx_header", LE, sxmw_bmx_header_fields);
+var sxmw_bmx_section_fields = layout([blob("section_id", 4, ID), u32("section_offset", OFFSET), u32("section_bytes", SIZE)]);
+var sxmw_bmx_section = sxLayout(0x6087000A, "bmx_section", LE, sxmw_bmx_section_fields);
+var sxmw_bmx_sequence_fields = layout([u16("machine_index", ID), u32("event_count", COUNT), u8("position_bytes", SIZE),
+    u8("event_bytes", SIZE)]);
+var sxmw_bmx_sequence = sxLayout(0x6087000D, "bmx_sequence", LE, sxmw_bmx_sequence_fields);
+var sxmw_bmx_wave_data_fields = layout([u16("wave_index", ID), u8("encoding", ID)]);
+var sxmw_bmx_wave_data = sxLayout(0x6087000E, "bmx_wave_data", LE, sxmw_bmx_wave_data_fields);
+var sxmw_bmx_wave_bytes_fields = layout([u32("sample_bytes", SIZE)]);
+var sxmw_bmx_wave_bytes = sxLayout(0x6087000F, "bmx_wave_bytes", LE, sxmw_bmx_wave_bytes_fields);
+function sxmw_bmx(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var sections = [0];
+    var n = [0];
+    var at = [0];
+    var len = [0];
+    var p = [0];
+    var ce;
+    var x = [0];
+    var y = [0];
+    var tag = [];
+    if (!sxmw_eq(v, 0, "Buzz", 4, end) || !sxmw_u(v, 4, 4, sections, 0, end) || sections[0] > 31 || !sxmw_row(v, sxmw_bmx_header, 0, end) || !sxmw_table(v, sxmw_bmx_section, 8, sections[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < sections[0]; i++) {
+        p[0] = 8 + i * 12;
+        if (!sxmw_read(v, p[0], tag, 4, end) || !sxmw_u(v, p[0] + 4, 4, at, 0, end) || !sxmw_u(v, p[0] + 8, 4, len, 0, end) || at[0] < 8 + sections[0] * 12 || !sxmw_span(v, at[0], len[0], end)) {
+            return false;
+        }
+        p[0] = at[0];
+        ce = at[0] + len[0];
+        if (!sxMemcmp(tag, "CONN", 4)) {
+            if (!sxmw_u(v, p[0], 2, n, 0, ce) || !sxmw_take(v, sxmw_count16, p, 1, ce) || !sxmw_take(v, sxmw_bmx_connection, p, n[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SEQU", 4)) {
+            if (!sxmw_u(v, p[0] + 12, 2, n, 0, ce) || !sxmw_take(v, sxmw_bmx_sequences, p, 1, ce)) {
+                return false;
+            }
+            for (var j = 0; j < n[0]; j++) {
+                if (!sxmw_u(v, p[0] + 2, 4, len, 0, ce) || !sxmw_u(v, p[0] + 6, 1, x, 0, ce) || !sxmw_u(v, p[0] + 7, 1, y, 0, ce) || x[0] > 4 || y[0] > 4 || !x[0] || !y[0] || !sxmw_take(v, sxmw_bmx_sequence, p, 1, ce) || !sxmw_skip(v, p, len[0] * (x[0] + y[0]), ce)) {
+                    return false;
+                }
+            }
+        } else if (!sxMemcmp(tag, "WAVE", 4) || !sxMemcmp(tag, "CWAV", 4)) {
+            if (!sxmw_u(v, p[0], 2, n, 0, ce) || !sxmw_take(v, sxmw_count16, p, 1, ce)) {
+                return false;
+            }
+            for (j = 0; j < n[0]; j++) {
+                if (!sxmw_u(v, p[0] + 2, 1, x, 0, ce) || !sxmw_take(v, sxmw_bmx_wave_data, p, 1, ce)) {
+                    return false;
+                }
+                if (x[0]) {
+                    break;
+                }
+                if (!sxmw_u(v, p[0], 4, len, 0, ce) || !sxmw_take(v, sxmw_bmx_wave_bytes, p, 1, ce) || !sxmw_skip(v, p, len[0], ce)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_tammelin_jeskolabuzz_bmx_build(v) {
+    return sxmw_bmx(v);
+}

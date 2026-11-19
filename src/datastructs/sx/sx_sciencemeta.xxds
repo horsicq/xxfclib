@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencemeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_sciencemeta");
+include("_sx_sciencemeta_esri_shp");
+include("_sx_sciencemeta_freesurfer_surface");
+include("_sx_sciencemeta_garmin_fit");
+include("_sx_sciencemeta_lidar_las");
+include("_sx_sciencemeta_mountainsort_mda");
+include("_sx_sciencemeta_mrc");
+include("_sx_sciencemeta_seismic_sac");
+include("_sx_sciencemeta_seismic_seg2");
+
+function fileTypes() { return ["MRC", "LIDAR_LAS", "ESRI_SHP", "PHOTONTIMING_PTU", "PHOTONTIMING_PHU", "GARMIN_FIT",
+    "SEISMIC_SAC", "SEISMIC_SEG2", "MOUNTAINSORT_MDA", "FREESURFER_SURFACE"]; }
+
+var sx_sciencemeta_layouts = [sxsc_mrc_header_le, sxsc_mrc_header_be, sxsc_mrc_label, sxsc_shp_file_header,
+    sxsc_shp_record_header, sxsc_shp_shape_type, sxsc_shp_point, sxsc_shp_multipoint, sxsc_shp_polyline_polygon, sxsc_shp_part,
+    sxsc_shp_xy, sxsc_las12_header, sxsc_las_vlr, sxsc_las_point0, sxsc_las_point1, sxsc_las_point2, sxsc_las_point3,
+    sxsc_seg2_file_header_le, sxsc_seg2_trace_pointer_le, sxsc_seg2_trace_header_le, sxsc_seg2_string_length_le,
+    sxsc_seg2_file_header_be, sxsc_seg2_trace_pointer_be, sxsc_seg2_trace_header_be, sxsc_seg2_string_length_be,
+    sxsc_fit_file_header, sxsc_fit_crc16, sxsc_fit_record_header, sxsc_fit_definition_le, sxsc_fit_definition_be,
+    sxsc_fit_field_definition, sxsc_fit_developer_count, sxsc_fit_developer_field, sxsc_mda_header, sxsc_mda_dimension32,
+    sxsc_mda_dimension64, sxsc_picoquant_header, sxsc_picoquant_tag_empty, sxsc_picoquant_tag_bool, sxsc_picoquant_tag_integer,
+    sxsc_picoquant_tag_bitset, sxsc_picoquant_tag_color, sxsc_picoquant_tag_float, sxsc_picoquant_tag_datetime,
+    sxsc_picoquant_tag_blob, sxsc_picoquant_tag_offset, sxsc_freesurfer_signature, sxsc_freesurfer_counts,
+    sxsc_freesurfer_vertex, sxsc_freesurfer_face, sxsc_freesurfer_volume_marker, sxsc_freesurfer_volume_marker_long,
+    sxsc_sac_header_le, sxsc_sac_header_be];
+
+function structs() {
+    return sxCatalog([sxsc_mrc_header_le, sxsc_mrc_header_be, sxsc_mrc_label, sxsc_shp_file_header, sxsc_shp_record_header,
+        sxsc_shp_shape_type, sxsc_shp_point, sxsc_shp_multipoint, sxsc_shp_polyline_polygon, sxsc_shp_part, sxsc_shp_xy,
+        sxsc_las12_header, sxsc_las_vlr, sxsc_las_point0, sxsc_las_point1, sxsc_las_point2, sxsc_las_point3,
+        sxsc_seg2_file_header_le, sxsc_seg2_trace_pointer_le, sxsc_seg2_trace_header_le, sxsc_seg2_string_length_le,
+        sxsc_seg2_file_header_be, sxsc_seg2_trace_pointer_be, sxsc_seg2_trace_header_be, sxsc_seg2_string_length_be,
+        sxsc_fit_file_header, sxsc_fit_crc16, sxsc_fit_record_header, sxsc_fit_definition_le, sxsc_fit_definition_be,
+        sxsc_fit_field_definition, sxsc_fit_developer_count, sxsc_fit_developer_field, sxsc_mda_header, sxsc_mda_dimension32,
+        sxsc_mda_dimension64, sxsc_picoquant_header, sxsc_picoquant_tag_empty, sxsc_picoquant_tag_bool,
+        sxsc_picoquant_tag_integer, sxsc_picoquant_tag_bitset, sxsc_picoquant_tag_color, sxsc_picoquant_tag_float,
+        sxsc_picoquant_tag_datetime, sxsc_picoquant_tag_blob, sxsc_picoquant_tag_offset, sxsc_freesurfer_signature,
+        sxsc_freesurfer_counts, sxsc_freesurfer_vertex, sxsc_freesurfer_face, sxsc_freesurfer_volume_marker,
+        sxsc_freesurfer_volume_marker_long, sxsc_sac_header_le, sxsc_sac_header_be], sx_sciencemeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_sciencemeta_build, false);
+}

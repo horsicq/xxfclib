@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/xbox_xbe/xx_xbox_xbe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_xbe_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("digital_signature", 256, SIGNATURE),
+    u32("base_address", VA), u32("headers_size", SIZE), u32("image_size", SIZE), u32("image_header_size", SIZE),
+    u32("timestamp", TIMESTAMP), u32("certificate_address", VA), u32("section_count", COUNT),
+    u32("section_headers_address", VA), u32("initialization_flags", FLAGS), u32("encoded_entry_point", FLAGS),
+    u32("tls_address", VA), u32("stack_commit", SIZE), u32("heap_reserve", SIZE), u32("heap_commit", SIZE),
+    u32("original_base_address", VA), u32("original_image_size", SIZE), u32("original_checksum", CHECKSUM),
+    u32("original_timestamp", TIMESTAMP), u32("debug_path_address", VA), u32("debug_filename_address", VA),
+    u32("debug_unicode_filename_address", VA), u32("encoded_kernel_thunk_address", FLAGS), u32("nonkernel_import_address", VA),
+    u32("library_version_count", COUNT), u32("library_versions_address", VA), u32("kernel_library_version_address", VA),
+    u32("xapi_library_version_address", VA), u32("logo_address", VA), u32("logo_size", SIZE)]);
+var sxexm_xbe_header = sxLayout(0x602B001E, "xbe_header", LE, sxexm_xbe_header_fields);
+var sxexm_xbe_section_fields = layout([u32("flags", FLAGS), u32("virtual_address", VA), u32("virtual_size", SIZE),
+    u32("raw_offset", OFFSET), u32("raw_size", SIZE), u32("name_address", VA), u32("reference_count", COUNT),
+    u32("head_shared_reference_address", VA), u32("tail_shared_reference_address", VA), bytes("sha1", 20, CHECKSUM)]);
+var sxexm_xbe_section = sxLayout(0x602B001F, "xbe_section", LE, sxexm_xbe_section_fields);
+var sxexm_xbe_certificate_fields = layout([u32("certificate_size", SIZE), u32("timestamp", TIMESTAMP), u32("title_id", ID),
+    field("title_name", "uint16[40]", 80, STRING), field("alternate_title_ids", "uint32[16]", 64, ID),
+    u32("allowed_media", FLAGS), u32("game_region", FLAGS), u32("game_ratings", FLAGS), u32("disc_number", ID),
+    u32("version", ID), bytes("lan_key", 16), bytes("signature_key", 16), bytes("alternate_signature_keys", 256)]);
+var sxexm_xbe_certificate = sxLayout(0x602B0020, "xbe_certificate", LE, sxexm_xbe_certificate_fields);
+function sxexm_xbe(c) {
+    var b = [];
+    if (!sxexm_read(c, 0, b, 376) || !sxexm_add(c, sxexm_xbe_header, 0)) {
+        return false;
+    }
+    var base = sxexm32(b, 260, false);
+    var heads = sxexm32(b, 264, false);
+    var cert = sxexm32(b, 280, false);
+    var n = sxexm32(b, 284, false);
+    var table = sxexm32(b, 288, false);
+    if (table >= base && sxU64(table - base) <= heads && n <= 20000 && n <= Math.floor(sxU64(heads - sxU64(table - base)) / 56) && !sxexm_table(c, sxexm_xbe_section, sxU64(table - base), n)) {
+        return false;
+    }
+    if (cert >= base && sxU64(cert - base) <= heads && sxU64(heads - sxU64(cert - base)) >= 464) {
+        var z = [0];
+        if (sxexm_word(c, sxU64(cert - base), 4, false, z) && z[0] >= 464 && z[0] <= sxU64(heads - sxU64(cert - base)) && !sxexm_add(c, sxexm_xbe_certificate, sxU64(cert - base))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_xbox_xbe_build(c) {
+    var ok = false;
+    ok = sxexm_xbe(c);
+    return ok && sxexm_finish(c);
+}

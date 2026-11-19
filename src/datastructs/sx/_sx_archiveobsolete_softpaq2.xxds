@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/softpaq2/xx_softpaq2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_softpaq2_locator_fields = layout([bytes("signature", 8, SIGNATURE), bytes("unknown1", 8), i32("self_offset", OFFSET),
+    i32("directory_offset", OFFSET), i32("split_offset", OFFSET), bytes("unknown2", 9)]);
+var sxao_softpaq2_locator = sxLayout(0x6070003C, "softpaq2_locator", LE, sxao_softpaq2_locator_fields);
+var sxao_softpaq2_stored_fields = layout([chars("name", 8, NONE), u8("zero1"), chars("extension", 4, NONE), u8("zero2"),
+    i32("payload_size", SIZE), i32("payload_offset", OFFSET), u8("published")]);
+var sxao_softpaq2_stored = sxLayout(0x6070003D, "softpaq2_stored", LE, sxao_softpaq2_stored_fields);
+var sxao_softpaq2_compressed_fields = layout([chars("name", 8, NONE), u8("zero1"), chars("extension", 4, NONE), u8("zero2"),
+    u16("method"), u16("dos_time"), u16("dos_date"), u32("crc32", CHECKSUM), i32("uncompressed_size", SIZE),
+    i32("compressed_size", SIZE), u16("attributes", FLAGS), i32("payload_offset", OFFSET)]);
+var sxao_softpaq2_compressed = sxLayout(0x6070003E, "softpaq2_compressed", LE, sxao_softpaq2_compressed_fields);
+function sxao_softpaq(c) {
+    var size = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var h = [];
+    var block = [];
+    for (var base = 0; size >= 37 && base <= sxU64(size - 37); ) {
+        var amount = sxU64(sxU64(size - 36) - base) > 0x1000 ? 0x1000 : sxU64(sxU64(size - 36) - base);
+        if (!sxao_read(c, base, block, 0, amount)) {
+            return false;
+        }
+        for (var i = 0; i < amount; i++) {
+            var p = base + i;
+            if (block[i] !== 91 /*[*/) {
+                continue;
+            }
+            if (!sxao_read(c, p, h, 0, 37) || sxMemcmp(h, "[FIT]\x00\x01\x00", 8)) {
+                continue;
+            }
+            var self = sxao_uint(h, 16, 4, false);
+            var dir = sxao_uint(h, 20, 4, false);
+            var split = sxao_uint(h, 24, 4, false);
+            if (self !== p || dir > 2147483647 || split > 2147483647 || dir > split || split > size || sxU64(split - dir) % 23 || sxU64(size - split) % 38) {
+                continue;
+            }
+            if (!sxao_add(c, sxao_softpaq2_locator, p) || !sxao_table(c, sxao_softpaq2_stored, dir, 23, Math.floor(sxU64(split - dir) / 23)) || !sxao_table(c, sxao_softpaq2_compressed, split, 38, Math.floor(sxU64(size - split) / 38))) {
+                return false;
+            }
+            for (var q = split; q + 38 <= size && c.count < 20000; q += 38) {
+                var method = [0];
+                var off = [0];
+                var z = [0];
+                if (!sxao_word(c, q + 14, 2, false, method) || !sxao_word(c, q + 34, 4, false, off) || !sxao_word(c, q + 28, 4, false, z)) {
+                    return false;
+                }
+                if (method[0] === 6 && sxao_span(c, off[0], z[0]) && !sxao_dcl(c, off[0], z[0])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        base += amount;
+    }
+    return false;
+}
+function sx_softpaq2_build(c) {
+    return sxao_softpaq(c);
+}

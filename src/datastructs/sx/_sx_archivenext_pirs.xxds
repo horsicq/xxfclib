@@ -1,0 +1,136 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/pirs/xx_pirs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_stfs_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxan_stfs_signature = sxLayout(0x60770050, "stfs_signature", LE, sxan_stfs_signature_fields);
+var sxan_stfs_metadata_digest_fields = layout([bytes("sha1", 20, CHECKSUM), u32("header_size", SIZE)]);
+var sxan_stfs_metadata_digest = sxLayout(0x60770051, "stfs_metadata_digest", BE, sxan_stfs_metadata_digest_fields);
+var sxan_stfs_volume_le_fields = layout([u8("descriptor_size", SIZE), u8("reserved"), u8("block_separation", FLAGS),
+    u16("file_table_blocks"), field("first_file_table_block", "uint24", 3)]);
+var sxan_stfs_volume_le = sxLayout(0x60770052, "stfs_volume_le", LE, sxan_stfs_volume_le_fields);
+var sxan_stfs_volume_be_fields = layout([bytes("top_sha1", 20, CHECKSUM), u32("allocated_blocks"), u32("unallocated_blocks")]);
+var sxan_stfs_volume_be = sxLayout(0x60770053, "stfs_volume_be", BE, sxan_stfs_volume_be_fields);
+var sxan_stfs_data_file_count_fields = layout([u32("data_file_count", COUNT)]);
+var sxan_stfs_data_file_count = sxLayout(0x60770054, "stfs_data_file_count", BE, sxan_stfs_data_file_count_fields);
+var sxan_stfs_hash_entry_fields = layout([bytes("sha1", 20, CHECKSUM), u8("status", FLAGS), field("next_block", "uint24", 3)]);
+var sxan_stfs_hash_entry = sxLayout(0x60770055, "stfs_hash_entry", BE, sxan_stfs_hash_entry_fields);
+var sxan_stfs_file_le_fields = layout([chars("name", 40, NONE), u8("name_length_flags", FLAGS),
+    field("allocated_blocks", "uint24", 3), field("repeated_allocated_blocks", "uint24", 3), field("first_block", "uint24", 3)]);
+var sxan_stfs_file_le = sxLayout(0x60770056, "stfs_file_le", LE, sxan_stfs_file_le_fields);
+var sxan_stfs_file_be_fields = layout([u16("parent_index"), u32("payload_size", SIZE), u32("creation_time"), u32("access_time")]);
+var sxan_stfs_file_be = sxLayout(0x60770057, "stfs_file_be", BE, sxan_stfs_file_be_fields);
+function sxan_stfs_data(v, b) {
+    var p = b + sxShl64(Math.floor((b + 170) / 170), v.sex);
+    if (b >= 170) {
+        p += sxShl64(Math.floor((b + 28900) / 28900), v.sex);
+    }
+    if (b >= 28900) {
+        p += sxShl64(1, v.sex);
+    }
+    return v.first + p * 4096;
+}
+function sxan_stfs_table(v, b, level) {
+    var copies = sxShl64(1, v.sex);
+    var step0 = 170 + copies;
+    var step1 = 28900 + 171 * copies;
+    var p;
+    if (level === 2) {
+        p = step1;
+    } else if (level === 1) {
+        p = b < 28900 ? step0 : copies + Math.floor(b / 28900) * step1;
+    } else if (b < 170) {
+        p = 0;
+    } else {
+        p = Math.floor(b / 170) * step0 + sxShl64(Math.floor(b / 28900) + 1, v.sex) + (b >= 28900 ? copies : 0);
+    }
+    return v.first + p * 4096;
+}
+function sxan_stfs_bottom(c, v, block, out) {
+    var h = [];
+    var parent;
+    if (!v.level) {
+        out[0] = v.top;
+        return true;
+    }
+    if (v.level === 1) {
+        parent = v.top + Math.floor(block / 170) * 24;
+    } else {
+        var upper = v.top + Math.floor(block / 28900) * 24;
+        if (!sxan_read(c, upper, h, 24) || !sxan_add(c, sxan_stfs_hash_entry, upper)) {
+            return false;
+        }
+        var middle = sxan_stfs_table(v, block, 1) + (v.sex ? (h[20] & 64) * 64 : 0);
+        parent = middle + Math.floor(block / 170) % 170 * 24;
+    }
+    if (!sxan_read(c, parent, h, 24) || !sxan_add(c, sxan_stfs_hash_entry, parent)) {
+        return false;
+    }
+    out[0] = sxan_stfs_table(v, block, 0) + (v.sex ? (h[20] & 64) * 64 : 0);
+    return sxan_span(c, out[0], 4096);
+}
+function sxan_pirs(c) {
+    var v = sxNew_sxan_stfs();
+    var hs = [0];
+    var blocks = [0];
+    var start = [0];
+    var allocated = [0];
+    var flags = [0];
+    if (!sxan_add(c, sxan_stfs_signature, 0) || !sxan_add(c, sxan_stfs_metadata_digest, 0x32C) || !sxan_add(c, sxan_stfs_volume_le, 0x379) || !sxan_add(c, sxan_stfs_volume_be, 0x381) || !sxan_add(c, sxan_stfs_data_file_count, 0x3A9) || !sxan_word(c, 0x340, 4, true, hs) || !sxan_word(c, 0x395, 4, true, allocated) || !sxan_word(c, 0x37B, 1, false, flags) || !sxan_word(c, 0x37C, 2, false, blocks) || !sxan_word(c, 0x37E, 3, false, start)) {
+        return false;
+    }
+    if (!allocated[0] || allocated[0] > 1000000 || start[0] >= allocated[0] || blocks[0] > allocated[0]) {
+        return true;
+    }
+    v.first = sxAnd64(hs[0] + 4095, sxK(0xFFFFFFFF, 0xFFFFF000));
+    v.allocated = allocated[0] >>> 0;
+    v.sex = sxNot64(flags[0]) >>> 0 & 1;
+    v.level = allocated[0] <= 170 ? 0 : allocated[0] <= 28900 ? 1 : 2;
+    v.top = sxan_stfs_table(v, 0, v.level) + sxAnd64(flags[0], 2) * 2048;
+    if (!sxan_span(c, v.top, 4096)) {
+        return true;
+    }
+    for (var block = 0; block < v.allocated; block = (block + 170) >>> 0) {
+        var bottom = [0];
+        if (!sxan_stfs_bottom(c, v, block, bottom) || !sxan_table(c, sxan_stfs_hash_entry, bottom[0], 24, (v.allocated - block) >>> 0 < 170 ? (v.allocated - block) >>> 0 : 170)) {
+            return false;
+        }
+    }
+    block = start[0] >>> 0;
+    for (var i = 0; i < blocks[0]; i++) {
+        bottom = [0];
+        var next = [0];
+        var p;
+        if (block >= v.allocated || !sxan_stfs_bottom(c, v, block, bottom) || !sxan_word(c, bottom[0] + block % 170 * 24 + 21, 3, true, next)) {
+            return true;
+        }
+        p = sxan_stfs_data(v, block);
+        if (!sxan_span(c, p, 4096)) {
+            return true;
+        }
+        for (var j = 0; j < 64; j++) {
+            var len = [0];
+            if (!sxan_word(c, p + ((64 * j) >>> 0) + 40, 1, false, len)) {
+                return false;
+            }
+            if (!sxAnd64(len[0], 63)) {
+                continue;
+            }
+            if (sxAnd64(len[0], 63) > 40) {
+                return true;
+            }
+            if (!sxan_add(c, sxan_stfs_file_le, p + ((64 * j) >>> 0)) || !sxan_add(c, sxan_stfs_file_be, p + ((64 * j) >>> 0) + 50)) {
+                return false;
+            }
+        }
+        block = next[0] >>> 0;
+    }
+    return true;
+}
+function sx_pirs_build(c) {
+    var ok = false;
+    ok = sxan_pirs(c);
+    return !!(c.count && sxan_finish(c));
+}

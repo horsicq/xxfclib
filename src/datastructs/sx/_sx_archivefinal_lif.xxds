@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lif/xx_lif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_lif_header_fields = layout([chars("signature", 2, SIGNATURE), u16("version"), u16("positive_word"),
+    chars("name", 15, NONE), u32("file_size", SIZE), u32("method"), u32("compressed_size", SIZE), u32("reserved"),
+    u16("dos_date"), u16("dos_time")]);
+var sxaf_lif_header = sxLayout(0x603C0029, "lif_header", LE, sxaf_lif_header_fields);
+function sx_lif_build(c) {
+    return sxaf_add(c, sxaf_lif_header, 0);
+}

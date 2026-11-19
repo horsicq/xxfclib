@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_pcf/xx_font_pcf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_pcf_header_fields = layout([blob("magic", 4, SIGNATURE), u32("table_count", COUNT)]);
+var sxm_pcf_header = sxLayout(0x60060024, "pcf_header", LE, sxm_pcf_header_fields);
+var sxm_pcf_directory_fields = layout([u32("type", ID), u32("format", FLAGS), u32("size", SIZE), u32("offset", OFFSET)]);
+var sxm_pcf_directory = sxLayout(0x60060025, "pcf_directory", LE, sxm_pcf_directory_fields);
+function sxm_pcf(c, h) {
+    var count = sxGetU32(h, 8, 4, false);
+    var first = 8 + count * 16;
+    if (sxMemcmp(h, "\x01fcp", 4) || !count || count > 9 || !sx_add(c, sxm_pcf_header, 0, 8) || !sx_table(c, sxm_pcf_directory, 8, 16, count)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        var e = [];
+        var at;
+        var n;
+        var type;
+        var fmt;
+        if (!sx_read(c, 8 + i * 16, e, 16)) {
+            return false;
+        }
+        type = sxGetU32(e, 16, 0, false);
+        fmt = sxGetU32(e, 16, 4, false);
+        n = sxGetU32(e, 16, 8, false);
+        at = sxGetU32(e, 16, 12, false);
+        if (at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at) && (i + 1) >>> 0 === count && (type === 2 || type === 256) && fmt & 256 && n === 100 && sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at) === 72) {
+            n = 72;
+        }
+        if (at < first || !sxm_span(c, at, n)) {
+            return false;
+        }
+    }
+    return sxm_tail(c, first);
+}
+function sx_font_pcf_build(c, h, n) {
+    return n >= 8 && sxm_pcf(c, h);
+}

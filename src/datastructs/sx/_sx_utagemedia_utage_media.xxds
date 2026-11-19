@@ -1,0 +1,437 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ue2_games/xx_utage_media_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxutg_png_signature_fields = layout([bytes("encoded_png_signature", 8)]);
+var sxutg_png_signature = sxLayout(0x609C0001, "utage_png_signature", LE, sxutg_png_signature_fields);
+var sxutg_png_chunk_fields = layout([bytes("encoded_data_length", 4), bytes("encoded_chunk_type", 4)]);
+var sxutg_png_chunk = sxLayout(0x609C0002, "utage_png_chunk", LE, sxutg_png_chunk_fields);
+var sxutg_png_ihdr_fields = layout([bytes("encoded_width", 4), bytes("encoded_height", 4), bytes("encoded_bit_depth", 1),
+    bytes("encoded_color_type", 1), bytes("encoded_compression_method", 1), bytes("encoded_filter_method", 1),
+    bytes("encoded_interlace_method", 1)]);
+var sxutg_png_ihdr = sxLayout(0x609C0003, "utage_png_ihdr", LE, sxutg_png_ihdr_fields);
+var sxutg_png_crc_fields = layout([bytes("encoded_chunk_crc", 4)]);
+var sxutg_png_crc = sxLayout(0x609C0004, "utage_png_crc", LE, sxutg_png_crc_fields);
+var sxutg_bmp_file_fields = layout([bytes("encoded_type", 2), bytes("encoded_file_size", 4), bytes("encoded_reserved1", 2),
+    bytes("encoded_reserved2", 2), bytes("encoded_pixel_offset", 4)]);
+var sxutg_bmp_file = sxLayout(0x609C0005, "utage_bmp_file", LE, sxutg_bmp_file_fields);
+var sxutg_bmp_core_fields = layout([bytes("encoded_header_size", 4), bytes("encoded_width", 2), bytes("encoded_height", 2),
+    bytes("encoded_planes", 2), bytes("encoded_bits_per_pixel", 2)]);
+var sxutg_bmp_core = sxLayout(0x609C0006, "utage_bmp_core", LE, sxutg_bmp_core_fields);
+var sxutg_bmp_info_fields = layout([bytes("encoded_header_size", 4), bytes("encoded_width", 4), bytes("encoded_height", 4),
+    bytes("encoded_planes", 2), bytes("encoded_bits_per_pixel", 2), bytes("encoded_compression", 4),
+    bytes("encoded_image_size", 4), bytes("encoded_x_pixels_per_meter", 4), bytes("encoded_y_pixels_per_meter", 4),
+    bytes("encoded_colors_used", 4), bytes("encoded_colors_important", 4)]);
+var sxutg_bmp_info = sxLayout(0x609C0007, "utage_bmp_info", LE, sxutg_bmp_info_fields);
+var sxutg_jpeg_marker_fields = layout([bytes("encoded_marker_prefix", 1), bytes("encoded_marker_code", 1)]);
+var sxutg_jpeg_marker = sxLayout(0x609C0008, "utage_jpeg_marker", LE, sxutg_jpeg_marker_fields);
+var sxutg_jpeg_segment_fields = layout([bytes("encoded_marker_prefix", 1), bytes("encoded_marker_code", 1),
+    bytes("encoded_segment_length", 2)]);
+var sxutg_jpeg_segment = sxLayout(0x609C0009, "utage_jpeg_segment", LE, sxutg_jpeg_segment_fields);
+var sxutg_jpeg_frame_fields = layout([bytes("encoded_sample_precision", 1), bytes("encoded_height", 2),
+    bytes("encoded_width", 2), bytes("encoded_component_count", 1)]);
+var sxutg_jpeg_frame = sxLayout(0x609C000A, "utage_jpeg_frame", LE, sxutg_jpeg_frame_fields);
+var sxutg_jpeg_frame_component_fields = layout([bytes("encoded_component_id", 1), bytes("encoded_sampling_factors", 1),
+    bytes("encoded_quantization_table_id", 1)]);
+var sxutg_jpeg_frame_component = sxLayout(0x609C000B, "utage_jpeg_frame_component", LE, sxutg_jpeg_frame_component_fields);
+var sxutg_jpeg_scan_fields = layout([bytes("encoded_component_count", 1)]);
+var sxutg_jpeg_scan = sxLayout(0x609C000C, "utage_jpeg_scan", LE, sxutg_jpeg_scan_fields);
+var sxutg_jpeg_scan_component_fields = layout([bytes("encoded_component_id", 1), bytes("encoded_entropy_table_selectors", 1)]);
+var sxutg_jpeg_scan_component = sxLayout(0x609C000D, "utage_jpeg_scan_component", LE, sxutg_jpeg_scan_component_fields);
+var sxutg_jpeg_scan_parameters_fields = layout([bytes("encoded_spectral_selection_start", 1),
+    bytes("encoded_spectral_selection_end", 1), bytes("encoded_successive_approximation", 1)]);
+var sxutg_jpeg_scan_parameters = sxLayout(0x609C000E, "utage_jpeg_scan_parameters", LE, sxutg_jpeg_scan_parameters_fields);
+var sxutg_riff_webp_fields = layout([bytes("encoded_riff_id", 4), bytes("encoded_riff_size", 4), bytes("encoded_webp_id", 4)]);
+var sxutg_riff_webp = sxLayout(0x609C000F, "utage_riff_webp", LE, sxutg_riff_webp_fields);
+var sxutg_riff_chunk_fields = layout([bytes("encoded_chunk_id", 4), bytes("encoded_data_size", 4)]);
+var sxutg_riff_chunk = sxLayout(0x609C0010, "utage_riff_chunk", LE, sxutg_riff_chunk_fields);
+var sxutg_webp_vp8x_fields = layout([bytes("encoded_feature_flags", 1), bytes("encoded_reserved", 3),
+    bytes("encoded_canvas_width_minus_one", 3), bytes("encoded_canvas_height_minus_one", 3)]);
+var sxutg_webp_vp8x = sxLayout(0x609C0011, "utage_webp_vp8x", LE, sxutg_webp_vp8x_fields);
+var sxutg_webp_vp8l_fields = layout([bytes("encoded_signature", 1), bytes("encoded_dimensions_alpha_version_bits", 4)]);
+var sxutg_webp_vp8l = sxLayout(0x609C0012, "utage_webp_vp8l", LE, sxutg_webp_vp8l_fields);
+var sxutg_webp_vp8_fields = layout([bytes("encoded_frame_tag", 3), bytes("encoded_key_frame_start_code", 3),
+    bytes("encoded_width_and_scale", 2), bytes("encoded_height_and_scale", 2)]);
+var sxutg_webp_vp8 = sxLayout(0x609C0013, "utage_webp_vp8", LE, sxutg_webp_vp8_fields);
+var sxutg_ogg_page_fields = layout([bytes("encoded_capture_pattern", 4), bytes("encoded_version", 1),
+    bytes("encoded_header_type", 1), bytes("encoded_granule_position", 8), bytes("encoded_serial_number", 4),
+    bytes("encoded_page_sequence", 4), bytes("encoded_page_checksum", 4), bytes("encoded_segment_count", 1)]);
+var sxutg_ogg_page = sxLayout(0x609C0014, "utage_ogg_page", LE, sxutg_ogg_page_fields);
+var sxutg_ogg_lacing_fields = layout([bytes("encoded_lacing_value", 1)]);
+var sxutg_ogg_lacing = sxLayout(0x609C0015, "utage_ogg_lacing", LE, sxutg_ogg_lacing_fields);
+var sxutg_isobmff_box_fields = layout([bytes("encoded_box_size", 4), bytes("encoded_box_type", 4)]);
+var sxutg_isobmff_box = sxLayout(0x609C0016, "utage_isobmff_box", LE, sxutg_isobmff_box_fields);
+var sxutg_isobmff_large_box_fields = layout([bytes("encoded_box_size", 4), bytes("encoded_box_type", 4),
+    bytes("encoded_large_size", 8)]);
+var sxutg_isobmff_large_box = sxLayout(0x609C0017, "utage_isobmff_large_box", LE, sxutg_isobmff_large_box_fields);
+var sxutg_isobmff_ftyp_fields = layout([bytes("encoded_major_brand", 4), bytes("encoded_minor_version", 4)]);
+var sxutg_isobmff_ftyp = sxLayout(0x609C0018, "utage_isobmff_ftyp", LE, sxutg_isobmff_ftyp_fields);
+var sxutg_isobmff_brand_fields = layout([bytes("encoded_compatible_brand", 4)]);
+var sxutg_isobmff_brand = sxLayout(0x609C0019, "utage_isobmff_brand", LE, sxutg_isobmff_brand_fields);
+var sxutg_isobmff_uuid_fields = layout([bytes("encoded_user_type", 16)]);
+var sxutg_isobmff_uuid = sxLayout(0x609C001A, "utage_isobmff_uuid", LE, sxutg_isobmff_uuid_fields);
+function sxutg_span(v, p, n) {
+    return p <= (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) && n <= sxU64((v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) - p);
+}
+function sxutg_read(v, p, out, out_o, n) {
+    if (v.work > 16777216 || n > sxU64(16777216 - v.work) || !sxutg_span(v, p, n) || !sx_read_at(v.c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), out, out_o, n)) {
+        return false;
+    }
+    v.work += n;
+    var b = out, b_o = out_o;
+    for (var i = 0; i < n; i++) {
+        var k = sxAt(v.key, (p + i) % v.keylen) & 0xFF;
+        if (b[b_o + i] && b[b_o + i] !== k) {
+            b[b_o + i] ^= k;
+        }
+    }
+    return true;
+}
+function sxutg_le(b, b_o) {
+    return (b[b_o] | b[b_o + 1] << 8 | b[b_o + 2] << 16 | (b[b_o + 3] << 24) >>> 0) >>> 0;
+}
+function sxutg_be(b, b_o) {
+    return ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0;
+}
+function sxutg_put(v, l, p, n) {
+    return v.c.count < 20000 && sxutg_span(v, p, n) && sx_add(v.c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxutg_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    return a.offset < b.offset ? -1 : a.offset > b.offset ? 1 : 0;
+}
+function sxutg_finish(c) {
+    var n = c.count;
+    var end = 0;
+    if (!n) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxutg_order, true);
+    return !c.failed;
+}
+function sxutg_png(v) {
+    var h = [];
+    var p = 8;
+    var first = true;
+    while (sxutg_span(v, p, 12) && v.c.count < 20000) {
+        if (!sxutg_read(v, p, h, 0, 8)) {
+            return false;
+        }
+        var z = sxutg_be(h, 0);
+        if (z > 2147483647 || !sxutg_span(v, p + 8, z + 4)) {
+            return false;
+        }
+        for (var i = 4; i < 8; i++) {
+            if (!(h[i] >= 65 /*A*/ && h[i] <= 90 /*Z*/ || h[i] >= 97 /*a*/ && h[i] <= 122 /*z*/)) {
+                return false;
+            }
+        }
+        var ihdr = !sxMemcmpAt(h, 4, "IHDR", 0, 4);
+        var iend = !sxMemcmpAt(h, 4, "IEND", 0, 4);
+        if (first) {
+            if (!ihdr || z !== 13 || !sxutg_read(v, p + 8, h, 8, 13) || !sxutg_be(h, 8) || !sxutg_be(h, 12)) {
+                return false;
+            }
+            if (!sxutg_put(v, sxutg_png_signature, 0, 8)) {
+                return false;
+            }
+            first = false;
+        }
+        if (!sxutg_put(v, sxutg_png_chunk, p, 8)) {
+            return false;
+        }
+        if (ihdr && z === 13 && !sxutg_put(v, sxutg_png_ihdr, p + 8, 13)) {
+            return false;
+        }
+        if (!sxutg_put(v, sxutg_png_crc, p + 8 + z, 4)) {
+            return false;
+        }
+        p += z + 12;
+        if (iend) {
+            return true;
+        }
+    }
+    return !first;
+}
+function sxutg_bmp(v) {
+    var h = [];
+    if (!sxutg_read(v, 0, h, 0, 18)) {
+        return false;
+    }
+    var dib = sxutg_le(h, 14);
+    var pixels = sxutg_le(h, 10);
+    var z = dib === 12 ? 12 : dib >= 40 ? 40 : 0;
+    if (!z || !sxutg_span(v, 14, dib) || pixels < 14 + dib || !sxutg_span(v, pixels, 0) || !sxutg_read(v, 14, h, 0, z)) {
+        return false;
+    }
+    return sxutg_put(v, sxutg_bmp_file, 0, 14) && sxutg_put(v, dib === 12 ? sxutg_bmp_core : sxutg_bmp_info, 14, z);
+}
+function sxutg_jpeg(v) {
+    var p = 2;
+    var first = true;
+    var h = [];
+    while (sxutg_span(v, p, 2) && v.c.count < 20000) {
+        if (!sxutg_read(v, p, h, 0, 2) || h[0] !== 255 || !h[1]) {
+            return false;
+        }
+        if (h[1] === 255) {
+            p++;
+            continue;
+        }
+        var code = h[1];
+        if (code === 0xD8 || code === 0xD9 || code === 1 || code >= 0xD0 && code <= 0xD7) {
+            if (first) {
+                return false;
+            }
+            if (!sxutg_put(v, sxutg_jpeg_marker, p, 2)) {
+                return false;
+            }
+            p += 2;
+            if (code === 0xD9) {
+                return true;
+            }
+            continue;
+        }
+        if (!sxutg_read(v, p, h, 0, 4)) {
+            return false;
+        }
+        var z = h[2] << 8 | h[3];
+        if (z < 2 || !sxutg_span(v, p + 2, z)) {
+            return false;
+        }
+        if (first) {
+            if (!sxutg_put(v, sxutg_jpeg_marker, 0, 2)) {
+                return false;
+            }
+            first = false;
+        }
+        if (!sxutg_put(v, sxutg_jpeg_segment, p, 4)) {
+            return false;
+        }
+        if (code >= 0xC0 && code <= 0xCF && code !== 0xC4 && code !== 0xC8 && code !== 0xCC) {
+            if (z < 8 || !sxutg_read(v, p + 4, h, 0, 6)) {
+                return false;
+            }
+            var n = h[5];
+            if (!n || z !== (8 + ((n * 3) >>> 0)) >>> 0) {
+                return false;
+            }
+            if (!sxutg_put(v, sxutg_jpeg_frame, p + 4, 6)) {
+                return false;
+            }
+            for (var i = 0; i < n; i++) {
+                if (!sxutg_put(v, sxutg_jpeg_frame_component, p + 10 + ((3 * i) >>> 0), 3)) {
+                    return false;
+                }
+            }
+        }
+        if (code === 0xDA) {
+            if (z < 6 || !sxutg_read(v, p + 4, h, 0, 1)) {
+                return false;
+            }
+            n = h[0];
+            if (!n || z !== (6 + ((n * 2) >>> 0)) >>> 0) {
+                return false;
+            }
+            if (!sxutg_put(v, sxutg_jpeg_scan, p + 4, 1)) {
+                return false;
+            }
+            for (i = 0; i < n; i++) {
+                if (!sxutg_put(v, sxutg_jpeg_scan_component, p + 5 + ((2 * i) >>> 0), 2)) {
+                    return false;
+                }
+            }
+            if (!sxutg_put(v, sxutg_jpeg_scan_parameters, p + 5 + ((2 * n) >>> 0), 3)) {
+                return false;
+            }
+            return true;
+        }
+        p += z + 2;
+    }
+    return !first;
+}
+function sxutg_webp(v) {
+    var h = [];
+    if (!sxutg_read(v, 0, h, 0, 12)) {
+        return false;
+    }
+    var end = sxutg_le(h, 4) + 8;
+    var p = 12;
+    if (end < 20 || !sxutg_span(v, 0, end)) {
+        return false;
+    }
+    var first = true;
+    while (p < end && v.c.count < 20000) {
+        if (sxU64(end - p) < 8 || !sxutg_read(v, p, h, 0, 8)) {
+            return false;
+        }
+        var z = sxutg_le(h, 4);
+        if (z > sxU64(sxU64(end - p) - 8) || sxAnd64(z, 1) > sxU64(sxU64(sxU64(end - p) - 8) - z)) {
+            return false;
+        }
+        if (first) {
+            if (!sxutg_put(v, sxutg_riff_webp, 0, 12)) {
+                return false;
+            }
+            first = false;
+        }
+        if (!sxutg_put(v, sxutg_riff_chunk, p, 8)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "VP8X", 4) && z === 10) {
+            if (!sxutg_put(v, sxutg_webp_vp8x, p + 8, 10)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "VP8L", 4) && z >= 5) {
+            if (!sxutg_read(v, p + 8, h, 0, 5)) {
+                return false;
+            }
+            if (h[0] === 0x2F && !sxutg_put(v, sxutg_webp_vp8l, p + 8, 5)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "VP8 ", 4) && z >= 10) {
+            if (!sxutg_read(v, p + 8, h, 0, 10)) {
+                return false;
+            }
+            if (!(h[0] & 1) && h[3] === 0x9D && h[4] === 1 && h[5] === 0x2A && !sxutg_put(v, sxutg_webp_vp8, p + 8, 10)) {
+                return false;
+            }
+        }
+        p += 8 + z + sxAnd64(z, 1);
+    }
+    return !first;
+}
+function sxutg_ogg(v) {
+    var h = [];
+    var p = 0;
+    var any = false;
+    while (sxutg_span(v, p, 27) && v.c.count < 20000) {
+        if (!sxutg_read(v, p, h, 0, 27) || sxMemcmp(h, "OggS", 4) || h[4]) {
+            return false;
+        }
+        var n = h[26];
+        if (!sxutg_read(v, p + 27, h, 27, n)) {
+            return false;
+        }
+        var data = 0;
+        for (var i = 0; i < n; i++) {
+            data += h[(27 + i) >>> 0];
+        }
+        if (!sxutg_span(v, p + 27 + n, data)) {
+            return false;
+        }
+        if (!sxutg_put(v, sxutg_ogg_page, p, 27)) {
+            return false;
+        }
+        any = true;
+        for (i = 0; i < n; i++) {
+            if (!sxutg_put(v, sxutg_ogg_lacing, p + 27 + i, 1)) {
+                return false;
+            }
+        }
+        p += ((27 + n) >>> 0) + data;
+    }
+    return any;
+}
+function sxutg_mp4(v) {
+    var p = 0;
+    var h = [];
+    var first = true;
+    while (sxutg_span(v, p, 8) && v.c.count < 20000) {
+        if (!sxutg_read(v, p, h, 0, 8)) {
+            return false;
+        }
+        var z = sxutg_be(h, 0);
+        var head = 8;
+        var large = z === 1;
+        if (large) {
+            if (!sxutg_read(v, p + 8, h, 8, 8)) {
+                return false;
+            }
+            z = sxOr64(sxShl64(sxutg_be(h, 8), 32), sxutg_be(h, 12));
+            head = 16;
+        } else if (!z) {
+            z = sxU64((v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) - p);
+        }
+        var uuid = !sxMemcmpAt(h, 4, "uuid", 0, 4);
+        var ftyp = !sxMemcmpAt(h, 4, "ftyp", 0, 4);
+        if (z < (head + (uuid ? 16 : 0)) >>> 0 || !sxutg_span(v, p, z)) {
+            return false;
+        }
+        if (first && (!ftyp || z < (head + 8) >>> 0 || sxU64(sxU64(z - head) - 8) % 4)) {
+            return false;
+        }
+        if (!sxutg_put(v, large ? sxutg_isobmff_large_box : sxutg_isobmff_box, p, head)) {
+            return false;
+        }
+        first = false;
+        if (uuid) {
+            if (!sxutg_put(v, sxutg_isobmff_uuid, p + head, 16)) {
+                return false;
+            }
+            head = (head + 16) >>> 0;
+        }
+        if (ftyp && z >= (head + 8) >>> 0 && sxU64(sxU64(z - head) - 8) % 4 === 0) {
+            if (!sxutg_put(v, sxutg_isobmff_ftyp, p + head, 8)) {
+                return false;
+            }
+            for (var q = p + head + 8; q < p + z; q += 4) {
+                if (!sxutg_put(v, sxutg_isobmff_brand, q, 4)) {
+                    return false;
+                }
+            }
+        }
+        p += z;
+    }
+    return !first;
+}
+function sx_utage_media_build(c) {
+    var opt = sxExtraParam(c.f, 22 /*XX_META_ID_OPT_PASSWORD*/);
+    var key = opt !== null ? sxVarStr(opt) : null;
+    if (key === null || !sxAt(key, 0)) {
+        key = "InputOriginalKey";
+    }
+    var n = 0;
+    while (n <= 256 && sxAt(key, n)) {
+        n++;
+    }
+    if (!n || n > 256) {
+        return false;
+    }
+    var v = { c: c, key: key, keylen: n, work: 0 };
+    var h = [];
+    if (!sxutg_read(v, 0, h, 0, 32)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "\x89PNG\r\n\x1A\n", 8)) {
+        sxutg_png(v);
+    } else if (h[0] === 66 /*B*/ && h[1] === 77 /*M*/) {
+        sxutg_bmp(v);
+    } else if (h[0] === 255 && h[1] === 216 && h[2] === 255) {
+        sxutg_jpeg(v);
+    } else if (!sxMemcmp(h, "RIFF", 4) && !sxMemcmpAt(h, 8, "WEBP", 0, 4)) {
+        sxutg_webp(v);
+    } else if (!sxMemcmp(h, "OggS", 4) && !h[4]) {
+        sxutg_ogg(v);
+    } else if (!sxMemcmpAt(h, 4, "ftyp", 0, 4)) {
+        sxutg_mp4(v);
+    }
+    return sxutg_finish(c);
+}

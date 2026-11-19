@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/minolta_mrw/xx_minolta_mrw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_mrw_header_fields = layout([bytes("signature", 4, SIGNATURE), u32("metadata_size", SIZE)]);
+var sxrm_mrw_header = sxLayout(0x601D0072, "mrw_header", BE, sxrm_mrw_header_fields);
+var sxrm_mrw_chunk_fields = layout([bytes("chunk_type", 4, ID), u32("data_size", SIZE)]);
+var sxrm_mrw_chunk = sxLayout(0x601D0073, "mrw_chunk", BE, sxrm_mrw_chunk_fields);
+var sxrm_mrw_prd_fields = layout([chars("version", 8, STRING), u16("sensor_rows", COUNT), u16("sensor_columns", COUNT),
+    u16("image_height", COUNT), u16("image_width", COUNT), u8("storage_bits"), u8("valid_bits"), u8("packing", ID),
+    bytes("unknown", 4), u8("bayer_pattern", ID)]);
+var sxrm_mrw_prd = sxLayout(0x601D0074, "mrw_prd", BE, sxrm_mrw_prd_fields);
+var sxrm_mrw_white_balance_fields = layout([bytes("denominator_exponents", 4), u16("channel0_numerator"),
+    u16("channel1_numerator"), u16("channel2_numerator"), u16("channel3_numerator")]);
+var sxrm_mrw_white_balance = sxLayout(0x601D0075, "mrw_white_balance", BE, sxrm_mrw_white_balance_fields);
+var sxrm_mrw_tiff_header_le_fields = layout([chars("byte_order", 2, ID), u16("version", ID), u32("first_ifd_offset", OFFSET)]);
+var sxrm_mrw_tiff_header_le = sxLayout(0x601D0076, "mrw_tiff_header_le", LE, sxrm_mrw_tiff_header_le_fields);
+var sxrm_mrw_tiff_header_be_fields = layout([chars("byte_order", 2, ID), u16("version", ID), u32("first_ifd_offset", OFFSET)]);
+var sxrm_mrw_tiff_header_be = sxLayout(0x601D0077, "mrw_tiff_header_be", BE, sxrm_mrw_tiff_header_be_fields);
+function sxrm_mrw(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 8) || sxMemcmp(h, "\x00MRM", 4) || !sxrm_add(c, sxrm_mrw_header, 0)) {
+        return false;
+    }
+    var p = 8;
+    var end = 8 + sxrm32(h, 4, true);
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    for (var i = 0; i < 32 && p < end; i++) {
+        if (sxU64(end - p) < 8 || !sxrm_read(c, p, h, 0, 8)) {
+            break;
+        }
+        var n = sxrm32(h, 4, true);
+        if (n > sxU64(sxU64(end - p) - 8)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_mrw_chunk, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "\x00PRD", 4) && n >= 24) {
+            if (!sxrm_add(c, sxrm_mrw_prd, p + 8)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "\x00WBG", 4) && n >= 12) {
+            if (!sxrm_add(c, sxrm_mrw_white_balance, p + 8)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "\x00TTW", 4) && n >= 8) {
+            if (!sxrm_read(c, p + 8, h, 0, 8)) {
+                return false;
+            }
+            if (!sxMemcmp(h, "II*\x00", 4)) {
+                if (!sxrm_add(c, sxrm_mrw_tiff_header_le, p + 8)) {
+                    return false;
+                }
+            } else if (!sxMemcmp(h, "MM\x00*", 4) && !sxrm_add(c, sxrm_mrw_tiff_header_be, p + 8)) {
+                return false;
+            }
+        }
+        p += (8 + n) >>> 0;
+    }
+    return !c.failed;
+}
+function sx_minolta_mrw_build(c) {
+    return sxrm_mrw(c);
+}

@@ -1,0 +1,137 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/nightradio_sunvox/xx_nightradio_sunvox_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_sunvox_header_fields = layout([blob("magic", 4, SIGNATURE), u32("payload_bytes", SIZE)]);
+var sxmw_sunvox_header = sxLayout(0x60870043, "sunvox_header", LE, sxmw_sunvox_header_fields);
+var sxmw_sv_version_fields = layout([u32("version", ID)]);
+var sxmw_sv_version = sxLayout(0x60870044, "sv_version", LE, sxmw_sv_version_fields);
+var sxmw_sv_base_version_fields = layout([u32("base_version", ID)]);
+var sxmw_sv_base_version = sxLayout(0x60870045, "sv_base_version", LE, sxmw_sv_base_version_fields);
+var sxmw_sv_ticks_per_line_fields = layout([u32("ticks_per_line", COUNT)]);
+var sxmw_sv_ticks_per_line = sxLayout(0x60870047, "sv_ticks_per_line", LE, sxmw_sv_ticks_per_line_fields);
+var sxmw_sv_global_volume_fields = layout([u32("global_volume")]);
+var sxmw_sv_global_volume = sxLayout(0x6087004A, "sv_global_volume", LE, sxmw_sv_global_volume_fields);
+var sxmw_sv_module_scale_fields = layout([u32("module_scale")]);
+var sxmw_sv_module_scale = sxLayout(0x6087004B, "sv_module_scale", LE, sxmw_sv_module_scale_fields);
+var sxmw_sv_module_zoom_fields = layout([u32("module_zoom")]);
+var sxmw_sv_module_zoom = sxLayout(0x6087004C, "sv_module_zoom", LE, sxmw_sv_module_zoom_fields);
+var sxmw_sv_module_x_fields = layout([i32("module_x")]);
+var sxmw_sv_module_x = sxLayout(0x6087004D, "sv_module_x", LE, sxmw_sv_module_x_fields);
+var sxmw_sv_module_y_fields = layout([i32("module_y")]);
+var sxmw_sv_module_y = sxLayout(0x6087004E, "sv_module_y", LE, sxmw_sv_module_y_fields);
+var sxmw_sv_layer_mask_fields = layout([u32("layer_mask", FLAGS)]);
+var sxmw_sv_layer_mask = sxLayout(0x6087004F, "sv_layer_mask", LE, sxmw_sv_layer_mask_fields);
+var sxmw_sv_current_layer_fields = layout([u32("current_layer", ID)]);
+var sxmw_sv_current_layer = sxLayout(0x60870050, "sv_current_layer", LE, sxmw_sv_current_layer_fields);
+var sxmw_sv_selected_module_fields = layout([u32("selected_module", ID)]);
+var sxmw_sv_selected_module = sxLayout(0x60870053, "sv_selected_module", LE, sxmw_sv_selected_module_fields);
+var sxmw_sv_last_generator_fields = layout([u32("last_generator", ID)]);
+var sxmw_sv_last_generator = sxLayout(0x60870054, "sv_last_generator", LE, sxmw_sv_last_generator_fields);
+var sxmw_sv_tracks_fields = layout([u32("tracks", COUNT)]);
+var sxmw_sv_tracks = sxLayout(0x60870055, "sv_tracks", LE, sxmw_sv_tracks_fields);
+var sxmw_sv_lines_fields = layout([u32("lines", COUNT)]);
+var sxmw_sv_lines = sxLayout(0x60870056, "sv_lines", LE, sxmw_sv_lines_fields);
+var sxmw_sv_source_pattern_fields = layout([u32("source_pattern", ID)]);
+var sxmw_sv_source_pattern = sxLayout(0x60870057, "sv_source_pattern", LE, sxmw_sv_source_pattern_fields);
+var sxmw_sv_flags_fields = layout([u32("flags", FLAGS)]);
+var sxmw_sv_flags = sxLayout(0x60870058, "sv_flags", LE, sxmw_sv_flags_fields);
+var sxmw_sv_x_fields = layout([i32("x")]);
+var sxmw_sv_x = sxLayout(0x60870059, "sv_x", LE, sxmw_sv_x_fields);
+var sxmw_sv_y_fields = layout([i32("y")]);
+var sxmw_sv_y = sxLayout(0x6087005A, "sv_y", LE, sxmw_sv_y_fields);
+var sxmw_sv_finetune_fields = layout([i32("finetune")]);
+var sxmw_sv_finetune = sxLayout(0x6087005B, "sv_finetune", LE, sxmw_sv_finetune_fields);
+var sxmw_sv_relative_note_fields = layout([i32("relative_note")]);
+var sxmw_sv_relative_note = sxLayout(0x6087005C, "sv_relative_note", LE, sxmw_sv_relative_note_fields);
+var sxmw_sv_layer_fields = layout([i32("layer")]);
+var sxmw_sv_layer = sxLayout(0x6087005D, "sv_layer", LE, sxmw_sv_layer_fields);
+var sxmw_sv_scale_fields = layout([u32("scale")]);
+var sxmw_sv_scale = sxLayout(0x6087005E, "sv_scale", LE, sxmw_sv_scale_fields);
+var sxmw_sv_midi_in_fields = layout([u32("midi_in", FLAGS)]);
+var sxmw_sv_midi_in = sxLayout(0x6087005F, "sv_midi_in", LE, sxmw_sv_midi_in_fields);
+var sxmw_sv_midi_channel_fields = layout([u32("midi_channel", ID)]);
+var sxmw_sv_midi_channel = sxLayout(0x60870060, "sv_midi_channel", LE, sxmw_sv_midi_channel_fields);
+var sxmw_sv_midi_bank_fields = layout([i32("midi_bank", ID)]);
+var sxmw_sv_midi_bank = sxLayout(0x60870061, "sv_midi_bank", LE, sxmw_sv_midi_bank_fields);
+var sxmw_sv_midi_program_fields = layout([i32("midi_program", ID)]);
+var sxmw_sv_midi_program = sxLayout(0x60870062, "sv_midi_program", LE, sxmw_sv_midi_program_fields);
+var sxmw_sv_controller_value_fields = layout([u32("controller_value")]);
+var sxmw_sv_controller_value = sxLayout(0x60870064, "sv_controller_value", LE, sxmw_sv_controller_value_fields);
+var sxmw_sv_chunk_number_fields = layout([u32("chunk_number", ID)]);
+var sxmw_sv_chunk_number = sxLayout(0x60870065, "sv_chunk_number", LE, sxmw_sv_chunk_number_fields);
+var sxmw_sv_chunk_format_fields = layout([u32("chunk_format", FLAGS)]);
+var sxmw_sv_chunk_format = sxLayout(0x60870067, "sv_chunk_format", LE, sxmw_sv_chunk_format_fields);
+var sxmw_sv_color_fields = layout([u8("red"), u8("green"), u8("blue")]);
+var sxmw_sv_color = sxLayout(0x60870069, "sv_color", LE, sxmw_sv_color_fields);
+var sxmw_sv_note_fields = layout([u8("note"), u8("velocity"), u8("module", ID), u8("reserved", RESERVED), u8("controller", ID),
+    u8("effect", ID), u16("value")]);
+var sxmw_sv_note = sxLayout(0x6087006A, "sv_note", LE, sxmw_sv_note_fields);
+var sxmw_sv_tags = [{ tag: "VERS", layout: sxmw_sv_version }, { tag: "BVER", layout: sxmw_sv_base_version },
+    { tag: "BPM ", layout: sxmw_sv_tempo }, { tag: "SPED", layout: sxmw_sv_ticks_per_line },
+    { tag: "TGRD", layout: sxmw_sv_time_grid }, { tag: "TGD2", layout: sxmw_sv_time_grid2 },
+    { tag: "GVOL", layout: sxmw_sv_global_volume }, { tag: "MSCL", layout: sxmw_sv_module_scale },
+    { tag: "MZOO", layout: sxmw_sv_module_zoom }, { tag: "MXOF", layout: sxmw_sv_module_x },
+    { tag: "MYOF", layout: sxmw_sv_module_y }, { tag: "LMSK", layout: sxmw_sv_layer_mask },
+    { tag: "CURL", layout: sxmw_sv_current_layer }, { tag: "TIME", layout: sxmw_sv_timeline_position },
+    { tag: "REPS", layout: sxmw_sv_restart_position }, { tag: "SELS", layout: sxmw_sv_selected_module },
+    { tag: "LGEN", layout: sxmw_sv_last_generator }, { tag: "PCHN", layout: sxmw_sv_tracks },
+    { tag: "PLIN", layout: sxmw_sv_lines }, { tag: "PPAR", layout: sxmw_sv_source_pattern },
+    { tag: "PFLG", layout: sxmw_sv_flags }, { tag: "PFFF", layout: sxmw_sv_flags }, { tag: "PXXX", layout: sxmw_sv_x },
+    { tag: "PYYY", layout: sxmw_sv_y }, { tag: "SFFF", layout: sxmw_sv_flags }, { tag: "SFIN", layout: sxmw_sv_finetune },
+    { tag: "SREL", layout: sxmw_sv_relative_note }, { tag: "SXXX", layout: sxmw_sv_x }, { tag: "SYYY", layout: sxmw_sv_y },
+    { tag: "SZZZ", layout: sxmw_sv_layer }, { tag: "SSCL", layout: sxmw_sv_scale }, { tag: "SMII", layout: sxmw_sv_midi_in },
+    { tag: "SMIC", layout: sxmw_sv_midi_channel }, { tag: "SMIB", layout: sxmw_sv_midi_bank },
+    { tag: "SMIP", layout: sxmw_sv_midi_program }, { tag: "CVAL", layout: sxmw_sv_controller_value },
+    { tag: "CHNK", layout: sxmw_sv_chunk_capacity }, { tag: "CHNM", layout: sxmw_sv_chunk_number },
+    { tag: "CHFF", layout: sxmw_sv_chunk_format }, { tag: "CHFR", layout: sxmw_sv_sample_rate }];
+function sxmw_sv(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [8];
+    var n = [0];
+    var ce;
+    var tag = [];
+    if (!sxmw_eq(v, 0, "SVOX\x00\x00\x00\x00", 8, end) || !sxmw_row(v, sxmw_sunvox_header, 0, end)) {
+        return false;
+    }
+    while (p[0] < end) {
+        if (!sxmw_read(v, p[0], tag, 4, end) || !sxmw_u(v, p[0] + 4, 4, n, 0, end) || !sxmw_span(v, p[0] + 8, n[0], end) || !sxmw_take(v, sxmw_chunk_le, p, 1, end)) {
+            return false;
+        }
+        ce = p[0] + n[0];
+        if (n[0] === 4) {
+            for (var i = 0; i < 40; i++) {
+                if (!sxMemcmp(tag, sxmw_sv_tags[i].tag, 4)) {
+                    if (!sxmw_row(v, sxmw_sv_tags[i].layout, p[0], ce)) {
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+        if ((!sxMemcmp(tag, "PFGC", 4) || !sxMemcmp(tag, "PBGC", 4) || !sxMemcmp(tag, "SCOL", 4)) && n[0] === 3) {
+            if (!sxmw_row(v, sxmw_sv_color, p[0], ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "PDTA", 4) && n[0] % 8 === 0) {
+            if (!sxmw_take(v, sxmw_sv_note, p, Math.floor(n[0] / 8), ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SLNK", 4) && n[0] % 4 === 0) {
+            if (!sxmw_take(v, sxmw_sv_link_module, p, Math.floor(n[0] / 4), ce)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "NAME", 4) || !sxMemcmp(tag, "PNME", 4) || !sxMemcmp(tag, "STYP", 4) || !sxMemcmp(tag, "SMIN", 4)) {
+            if (n[0] && !sxmw_cstring(v, p, ce, n[0])) {
+                return false;
+            }
+        }
+        p[0] = ce;
+    }
+    return true;
+}
+function sx_nightradio_sunvox_build(v) {
+    return sxmw_sv(v);
+}

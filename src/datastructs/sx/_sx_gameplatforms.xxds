@@ -1,0 +1,1106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gameplatforms.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_ncch_header_fields = layout([blob("signature", 256, SIGNATURE), blob("magic", 4, SIGNATURE),
+    u32("content_media_units"), u64("partition_id", ID), chars("maker_code", 2, ID), u16("version", ID),
+    u32("seed_hash", CHECKSUM), u64("program_id", ID), blob("reserved", 16, RESERVED), blob("logo_sha256", 32, CHECKSUM),
+    chars("product_code", 16, ID), blob("extended_header_sha256", 32, CHECKSUM), u32("extended_header_size", SIZE),
+    blob("reserved2", 4, RESERVED), blob("flags", 8, FLAGS), u32("plain_offset_media_units"), u32("plain_size_media_units"),
+    u32("logo_offset_media_units"), u32("logo_size_media_units"), u32("exefs_offset_media_units"),
+    u32("exefs_size_media_units"), u32("exefs_hash_media_units"), blob("reserved3", 4, RESERVED),
+    u32("romfs_offset_media_units"), u32("romfs_size_media_units"), u32("romfs_hash_media_units"),
+    blob("reserved4", 4, RESERVED), blob("exefs_sha256", 32, CHECKSUM), blob("romfs_sha256", 32, CHECKSUM)]);
+var sxgp_ncch_header = sxLayout(0x60360026, "ncch_header", LE, sxgp_ncch_header_fields);
+var sxgp_ncch_sci_prefix_fields = layout([chars("name", 8, STRING), blob("reserved", 5, RESERVED), u8("flags", FLAGS),
+    u16("remaster_version", ID)]);
+var sxgp_ncch_sci_prefix = sxLayout(0x6036002A, "ncch_sci_prefix", LE, sxgp_ncch_sci_prefix_fields);
+var sxgp_ncch_code_segment_fields = layout([u32("address", VA), u32("page_count", COUNT), u32("code_size", SIZE)]);
+var sxgp_ncch_code_segment = sxLayout(0x6036002B, "ncch_code_segment", LE, sxgp_ncch_code_segment_fields);
+var sxgp_ncch_stack_fields = layout([u32("stack_size", SIZE)]);
+var sxgp_ncch_stack = sxLayout(0x6036002C, "ncch_stack", LE, sxgp_ncch_stack_fields);
+var sxgp_ncch_reserved_word_fields = layout([u32("reserved", RESERVED)]);
+var sxgp_ncch_reserved_word = sxLayout(0x6036002D, "ncch_reserved_word", LE, sxgp_ncch_reserved_word_fields);
+var sxgp_ncch_bss_fields = layout([u32("bss_size", SIZE)]);
+var sxgp_ncch_bss = sxLayout(0x6036002E, "ncch_bss", LE, sxgp_ncch_bss_fields);
+var sxgp_ncch_dependency_fields = layout([u64("program_id", ID)]);
+var sxgp_ncch_dependency = sxLayout(0x6036002F, "ncch_dependency", LE, sxgp_ncch_dependency_fields);
+var sxgp_ncch_sci_tail_fields = layout([u64("savedata_size", SIZE), u64("jump_id", ID), blob("reserved", 48, RESERVED)]);
+var sxgp_ncch_sci_tail = sxLayout(0x60360030, "ncch_sci_tail", LE, sxgp_ncch_sci_tail_fields);
+var sxgp_gcm_id_fields = layout([chars("game_code", 4, ID), chars("maker_code", 2, ID), u8("disc_number", ID),
+    u8("version", ID), u8("audio_streaming", FLAGS), u8("stream_buffer_size"), blob("reserved", 14, RESERVED),
+    u32("wii_magic", SIGNATURE), u32("gamecube_magic", SIGNATURE)]);
+var sxgp_gcm_id = sxLayout(0x60360090, "gcm_id", BE, sxgp_gcm_id_fields);
+function sxgp_span(v, at, n, end) {
+    return v.c.size >= 0 && end <= (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size) && at <= end && n <= sxU64(end - at);
+}
+function sxgp_read(v, at, p, n, end) {
+    return sxgp_span(v, at, n, end) && sx_read(v.c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), p, n);
+}
+function sxgp_word(v, at, n, be, out, out_o, end) {
+    var b = [];
+    if (!n || n > 8 || !sxgp_read(v, at, b, n, end)) {
+        return false;
+    }
+    var x = 0;
+    for (var i = 0; i < n; i++) {
+        x = sxOr64(x, sxShl64(b[be ? (((n - i) >>> 0) - 1) >>> 0 : i], (8 * i) >>> 0));
+    }
+    out[out_o] = x;
+    return true;
+}
+function sxgp_row(v, l, at, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (++v.work > 4000000 || !sxgp_span(v, at, z, end)) {
+        return false;
+    }
+    return v.c.count >= 24000 || sx_add(v.c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (z >= SX_I64_MAX ? z - SX_U64_MAX : z));
+}
+function sxgp_table(v, l, at, count, end) {
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!z || count > 4000000 || count > Math.floor(SX_U64_MAX / z) || !sxgp_span(v, at, count * z, end)) {
+        return false;
+    }
+    for (var i = 0; i < count && v.c.count < 24000; i++, at += z) {
+        if (!sxgp_row(v, l, at, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxgp_order(aa, bb) {
+    var a = aa;
+    var b = bb;
+    if (a.offset !== b.offset) {
+        return a.offset < b.offset ? -1 : 1;
+    }
+    return a.total_size < b.total_size ? -1 : a.total_size > b.total_size ? 1 : 0;
+}
+function sxgp_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxgp_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (at < end) {
+            continue;
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, c.items[i]);
+        end = at + z;
+    }
+    c.count = keep;
+    n = keep;
+    end = 0;
+    for (i = 0; i < n; i++) {
+        at = c.items[i].offset - c.f.base_address;
+        z = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxgp_order, true);
+    return !c.failed;
+}
+function sxgp_ncch_at(v, at, end, extended) {
+    var ex = [0];
+    if (!sxgp_row(v, sxgp_ncch_header, at, end) || !sxgp_word(v, at + 0x180, 4, false, ex, 0, end)) {
+        return false;
+    }
+    if (extended && ex[0]) {
+        var p = at + 512;
+        if (!sxgp_span(v, p, 0x800, end) || !sxgp_row(v, sxgp_ncch_sci_prefix, p, end) || !sxgp_row(v, sxgp_ncch_code_segment, p + 16, end) || !sxgp_row(v, sxgp_ncch_stack, p + 28, end) || !sxgp_row(v, sxgp_ncch_code_segment, p + 32, end) || !sxgp_row(v, sxgp_ncch_reserved_word, p + 44, end) || !sxgp_row(v, sxgp_ncch_code_segment, p + 48, end) || !sxgp_row(v, sxgp_ncch_bss, p + 60, end) || !sxgp_table(v, sxgp_ncch_dependency, p + 64, 48, end) || !sxgp_row(v, sxgp_ncch_sci_tail, p + 448, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_gameplatforms_supports(t) {
+    switch (t) {
+    case "UNITYFS":
+    case "TOTALANNIHILATION_HPI":
+    case "RAVENSOFT_RFF":
+    case "KIRIKIRI_XP3":
+    case "FROMSOFTWARE_BINDER":
+    case "NINTENDO_NCCH":
+    case "NINTENDO_NCSD":
+    case "NINTENDO_CIA":
+    case "NINTENDO_NDS":
+    case "NINTENDO_GCM":
+    case "LARIAN_LSPK":
+    case "LARIAN_LSF":
+    case "RENPY_RPA":
+    case "NINTENDO_WBFS":
+    case "SONY_PSP_PBP":
+    case "NINTENDO_N64_ROM":
+    case "NINTENDO_GB_ROM":
+    case "NINTENDO_GBA_ROM":
+    case "SEGA_MEGADRIVE_ROM":
+    case "XNA_XNB":
+    case "ZX_SPECTRUM_SZX":
+    case "NINTENDO_UNIF":
+    case "NINTENDO_FDS":
+    case "ATARI_7800_A78":
+    case "AMSTRAD_CPC_SNA":
+    case "MINECRAFT_NBT":
+    case "MSX_ROM":
+    case "SEGA_SMS_ROM":
+    case "TIC80":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_gameplatforms_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0) {
+        return false;
+    }
+    var view = { c: c, work: 0 };
+    var v = view;
+    var ok = false;
+    switch (c.f.file_type) {
+    case "UNITYFS":
+        ok = sx_unityfs_build(v);
+        break;
+    case "TOTALANNIHILATION_HPI":
+        ok = sx_totalannihilation_hpi_build(v);
+        break;
+    case "RAVENSOFT_RFF":
+        ok = sx_ravensoft_rff_build(v);
+        break;
+    case "KIRIKIRI_XP3":
+        ok = sx_kirikiri_xp3_build(v);
+        break;
+    case "FROMSOFTWARE_BINDER":
+        ok = sx_fromsoftware_binder_build(v);
+        break;
+    case "NINTENDO_NCCH":
+        ok = sx_nintendo_ncch_build(v);
+        break;
+    case "NINTENDO_NCSD":
+        ok = sx_nintendo_ncsd_build(v);
+        break;
+    case "NINTENDO_CIA":
+        ok = sx_nintendo_cia_build(v);
+        break;
+    case "NINTENDO_NDS":
+        ok = sx_nintendo_nds_build(v);
+        break;
+    case "NINTENDO_GCM":
+        ok = sx_nintendo_gcm_build(v);
+        break;
+    case "LARIAN_LSPK":
+        ok = sx_larian_lspk_build(v);
+        break;
+    case "LARIAN_LSF":
+        ok = sx_larian_lsf_build(v);
+        break;
+    case "RENPY_RPA":
+        ok = sx_renpy_rpa_build(v);
+        break;
+    case "NINTENDO_WBFS":
+        ok = sx_nintendo_wbfs_build(v);
+        break;
+    case "SONY_PSP_PBP":
+        ok = sx_sony_psp_pbp_build(v);
+        break;
+    case "NINTENDO_N64_ROM":
+        ok = sx_nintendo_n64_rom_build(v);
+        break;
+    case "NINTENDO_GB_ROM":
+        ok = sx_nintendo_gb_rom_build(v);
+        break;
+    case "NINTENDO_GBA_ROM":
+        ok = sx_nintendo_gba_rom_build(v);
+        break;
+    case "SEGA_MEGADRIVE_ROM":
+        ok = sx_sega_megadrive_rom_build(v);
+        break;
+    case "XNA_XNB":
+        ok = sx_xna_xnb_build(v);
+        break;
+    case "ZX_SPECTRUM_SZX":
+        ok = sx_zx_spectrum_szx_build(v);
+        break;
+    case "NINTENDO_UNIF":
+        ok = sx_nintendo_unif_build(v);
+        break;
+    case "NINTENDO_FDS":
+        ok = sx_nintendo_fds_build(v);
+        break;
+    case "ATARI_7800_A78":
+        ok = sx_atari_7800_a78_build(v);
+        break;
+    case "AMSTRAD_CPC_SNA":
+        ok = sx_amstrad_cpc_sna_build(v);
+        break;
+    case "MINECRAFT_NBT":
+        ok = sx_minecraft_nbt_build(v);
+        break;
+    case "MSX_ROM":
+        ok = sx_msx_rom_build(v);
+        break;
+    case "SEGA_SMS_ROM":
+        ok = sx_sega_sms_rom_build(v);
+        break;
+    case "TIC80":
+        ok = sx_tic80_build(v);
+        break;
+    default:
+        break;
+    }
+    return ok && sxgp_finish(c);
+}
+function sx_gameplatforms_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60360001 || id >= 0x60370000) {
+        return true;
+    }
+    if (r.type !== null && !sxStrncmp(r.type, "ascii_", 6) && sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    if (id === 1614151688 && r.name === "cartridge_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "ROM_ONLY");
+        case 1:
+            return sxSetComment(r, "MBC1");
+        case 2:
+            return sxSetComment(r, "MBC1_RAM");
+        case 3:
+            return sxSetComment(r, "MBC1_RAM_BATTERY");
+        case 5:
+            return sxSetComment(r, "MBC2");
+        case 6:
+            return sxSetComment(r, "MBC2_BATTERY");
+        case 8:
+            return sxSetComment(r, "ROM_RAM");
+        case 9:
+            return sxSetComment(r, "ROM_RAM_BATTERY");
+        case 15:
+            return sxSetComment(r, "MBC3_TIMER_BATTERY");
+        case 16:
+            return sxSetComment(r, "MBC3_TIMER_RAM_BATTERY");
+        case 17:
+            return sxSetComment(r, "MBC3");
+        case 18:
+            return sxSetComment(r, "MBC3_RAM");
+        case 19:
+            return sxSetComment(r, "MBC3_RAM_BATTERY");
+        case 25:
+            return sxSetComment(r, "MBC5");
+        case 26:
+            return sxSetComment(r, "MBC5_RAM");
+        case 27:
+            return sxSetComment(r, "MBC5_RAM_BATTERY");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151688 && r.name === "destination_code" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "JAPAN");
+        case 1:
+            return sxSetComment(r, "OVERSEAS");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151687 && r.name === "cgb_flag" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 128:
+            return sxSetComment(r, "CGB_COMPATIBLE");
+        case 192:
+            return sxSetComment(r, "CGB_ONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151688 && r.name === "rom_size_code" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "32 KiB");
+        case 1:
+            return sxSetComment(r, "64 KiB");
+        case 2:
+            return sxSetComment(r, "128 KiB");
+        case 3:
+            return sxSetComment(r, "256 KiB");
+        case 4:
+            return sxSetComment(r, "512 KiB");
+        case 5:
+            return sxSetComment(r, "1024 KiB");
+        case 6:
+            return sxSetComment(r, "2048 KiB");
+        case 7:
+            return sxSetComment(r, "4096 KiB");
+        case 8:
+            return sxSetComment(r, "8192 KiB");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151688 && r.name === "ram_size_code" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "NONE");
+        case 1:
+            return sxSetComment(r, "2 KiB");
+        case 2:
+            return sxSetComment(r, "8 KiB");
+        case 3:
+            return sxSetComment(r, "32 KiB");
+        case 4:
+            return sxSetComment(r, "128 KiB");
+        case 5:
+            return sxSetComment(r, "64 KiB");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151698 && r.name === "mirroring" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "HORIZONTAL");
+        case 1:
+            return sxSetComment(r, "VERTICAL");
+        case 2:
+            return sxSetComment(r, "SINGLE_SCREEN_0");
+        case 3:
+            return sxSetComment(r, "SINGLE_SCREEN_1");
+        case 4:
+            return sxSetComment(r, "FOUR_SCREEN");
+        case 5:
+            return sxSetComment(r, "MAPPER_CONTROLLED");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151701 && r.name === "file_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "PRG_RAM");
+        case 1:
+            return sxSetComment(r, "CHR_RAM");
+        case 2:
+            return sxSetComment(r, "NAMETABLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151704 && r.name === "data_format" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 4:
+            return sxSetComment(r, "BINARY");
+        case 516:
+            return sxSetComment(r, "UTF8_STRING");
+        case 1028:
+            return sxSetComment(r, "INT32");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151705 && r.name === "target_platform" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 119:
+            return sxSetComment(r, "WINDOWS");
+        case 120:
+            return sxSetComment(r, "XBOX360");
+        case 109:
+            return sxSetComment(r, "WINDOWS_PHONE");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151705 && r.name === "flags" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "UNCOMPRESSED_REACH");
+        case 1:
+            return sxSetComment(r, "UNCOMPRESSED_HIDEF");
+        case 128:
+            return sxSetComment(r, "LZX_COMPRESSED");
+        case 64:
+            return sxSetComment(r, "LZ4_COMPRESSED");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151713 && r.name === "surface_format" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "COLOR");
+        case 1:
+            return sxSetComment(r, "BGR565");
+        case 2:
+            return sxSetComment(r, "BGRA5551");
+        case 3:
+            return sxSetComment(r, "BGRA4444");
+        case 4:
+            return sxSetComment(r, "DXT1");
+        case 5:
+            return sxSetComment(r, "DXT3");
+        case 6:
+            return sxSetComment(r, "DXT5");
+        case 7:
+            return sxSetComment(r, "NORMALIZED_BYTE2");
+        case 8:
+            return sxSetComment(r, "NORMALIZED_BYTE4");
+        case 9:
+            return sxSetComment(r, "RGBA1010102");
+        case 10:
+            return sxSetComment(r, "RG32");
+        case 11:
+            return sxSetComment(r, "RGBA64");
+        case 12:
+            return sxSetComment(r, "ALPHA8");
+        case 13:
+            return sxSetComment(r, "SINGLE");
+        case 14:
+            return sxSetComment(r, "VECTOR2");
+        case 15:
+            return sxSetComment(r, "VECTOR4");
+        case 16:
+            return sxSetComment(r, "HALF_SINGLE");
+        case 17:
+            return sxSetComment(r, "HALF_VECTOR2");
+        case 18:
+            return sxSetComment(r, "HALF_VECTOR4");
+        case 19:
+            return sxSetComment(r, "HDR_BLENDABLE");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151746 && r.name === "compression" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "STORED");
+        case 1:
+            return sxSetComment(r, "LZ77");
+        case 2:
+            return sxSetComment(r, "ZLIB");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151819 && r.name === "signature_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 65540:
+            return sxSetComment(r, "RSA2048_SHA256");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151718 && r.name === "version" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "NCCH_VERSION_0");
+        case 1:
+            return sxSetComment(r, "NCCH_VERSION_1");
+        case 2:
+            return sxSetComment(r, "NCCH_VERSION_2");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151790 && r.name === "tag_id" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "TAG_End");
+        case 1:
+            return sxSetComment(r, "TAG_Byte");
+        case 2:
+            return sxSetComment(r, "TAG_Short");
+        case 3:
+            return sxSetComment(r, "TAG_Int");
+        case 4:
+            return sxSetComment(r, "TAG_Long");
+        case 5:
+            return sxSetComment(r, "TAG_Float");
+        case 6:
+            return sxSetComment(r, "TAG_Double");
+        case 7:
+            return sxSetComment(r, "TAG_Byte_Array");
+        case 8:
+            return sxSetComment(r, "TAG_String");
+        case 9:
+            return sxSetComment(r, "TAG_List");
+        case 10:
+            return sxSetComment(r, "TAG_Compound");
+        case 11:
+            return sxSetComment(r, "TAG_Int_Array");
+        case 12:
+            return sxSetComment(r, "TAG_Long_Array");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151793 && r.name === "element_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "TAG_End");
+        case 1:
+            return sxSetComment(r, "TAG_Byte");
+        case 2:
+            return sxSetComment(r, "TAG_Short");
+        case 3:
+            return sxSetComment(r, "TAG_Int");
+        case 4:
+            return sxSetComment(r, "TAG_Long");
+        case 5:
+            return sxSetComment(r, "TAG_Float");
+        case 6:
+            return sxSetComment(r, "TAG_Double");
+        case 7:
+            return sxSetComment(r, "TAG_Byte_Array");
+        case 8:
+            return sxSetComment(r, "TAG_String");
+        case 9:
+            return sxSetComment(r, "TAG_List");
+        case 10:
+            return sxSetComment(r, "TAG_Compound");
+        case 11:
+            return sxSetComment(r, "TAG_Int_Array");
+        case 12:
+            return sxSetComment(r, "TAG_Long_Array");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151800 && r.name === "machine" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "ZX_SPECTRUM_16K");
+        case 1:
+            return sxSetComment(r, "ZX_SPECTRUM_48K");
+        case 2:
+            return sxSetComment(r, "ZX_SPECTRUM_128K");
+        case 3:
+            return sxSetComment(r, "ZX_SPECTRUM_PLUS2");
+        case 4:
+            return sxSetComment(r, "ZX_SPECTRUM_PLUS2A");
+        case 5:
+            return sxSetComment(r, "ZX_SPECTRUM_PLUS3");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151816 && r.name === "machine_type" && sxVarType(r.value) >= 1 /*XX_VAR_TYPE_INT8*/ && sxVarType(r.value) <= 8 /*XX_VAR_TYPE_UINT64*/) {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            return sxSetComment(r, "CPC464");
+        case 1:
+            return sxSetComment(r, "CPC664");
+        case 2:
+            return sxSetComment(r, "CPC6128");
+        default:
+            break;
+        }
+    }
+    if (id === 1614151681 && r.name === "init_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151681 && r.name === "runtime_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151681 && r.name === "device_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151681 && r.name === "text_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151682 && r.name === "start_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151682 && r.name === "end_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151682 && r.name === "init_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151690 && r.name === "stack_pointer") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151690 && r.name === "reset_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151691 && r.name === "handler_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151692 && r.name === "rom_start") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151692 && r.name === "rom_end") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151692 && r.name === "ram_start") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151692 && r.name === "ram_end") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151692 && r.name === "sram_start") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151692 && r.name === "sram_end") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151693 && r.name === "entry_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151701 && r.name === "load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151702 && r.name === "param_sfo_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "icon0_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "icon1_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "pic0_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "pic1_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "snd0_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "data_psp_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151702 && r.name === "data_psar_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151703 && r.name === "key_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the embedded PARAM.SFO header");
+    }
+    if (id === 1614151703 && r.name === "data_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the embedded PARAM.SFO header");
+    }
+    if (id === 1614151704 && r.name === "key_offset") {
+        return sxSetComment(r, "Byte offset relative to the SFO key table");
+    }
+    if (id === 1614151704 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the SFO data table");
+    }
+    if (id === 1614151718 && r.name === "content_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "plain_offset_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "plain_size_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "logo_offset_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "logo_size_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "exefs_offset_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "exefs_size_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "exefs_hash_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "romfs_offset_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "romfs_size_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151718 && r.name === "romfs_hash_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151719 && r.name === "content_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151720 && r.name === "offset_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151720 && r.name === "size_media_units") {
+        return sxSetComment(r, "Encoded position or length in 512-byte media units; multiply by 512 for bytes");
+    }
+    if (id === 1614151723 && r.name === "address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "arm9_rom_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "arm9_entry_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "arm9_load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "arm7_rom_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "arm7_entry_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "arm7_load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "fnt_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "fat_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "arm9_overlay_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "arm7_overlay_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "banner_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "arm9_autoload_list_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "arm7_autoload_list_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151729 && r.name === "debug_rom_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151729 && r.name === "debug_load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151730 && r.name === "start_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151730 && r.name === "end_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151731 && r.name === "load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151731 && r.name === "static_init_start") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151731 && r.name === "static_init_end") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151732 && r.name === "subtable_offset") {
+        return sxSetComment(r, "Byte offset relative to the file-name table");
+    }
+    if (id === 1614151736 && r.name === "subtable_offset") {
+        return sxSetComment(r, "Byte offset relative to the file-name table");
+    }
+    if (id === 1614151742 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the uncompressed block stream; supported blocks are stored");
+    }
+    if (id === 1614151743 && r.name === "directory_end_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151743 && r.name === "root_directory_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151744 && r.name === "entries_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151745 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151745 && r.name === "record_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151746 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151747 && r.name === "directory_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151748 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151749 && r.name === "format_bits") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151749 && r.name === "bit_big_endian") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151749 && r.name === "headers_end") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151750 && r.name === "reversed_bit_order") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151750 && r.name === "headers_end") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151750 && r.name === "format_bits") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151750 && r.name === "hash_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151751 && r.name === "file_flags") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151752 && r.name === "file_flags") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151753 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151754 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151756 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151757 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151761 && r.name === "format_bits") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151761 && r.name === "bit_big_endian") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151761 && r.name === "headers_end") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151762 && r.name === "reversed_bit_order") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151762 && r.name === "headers_end") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151762 && r.name === "format_bits") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151762 && r.name === "hash_table_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151763 && r.name === "file_flags") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151764 && r.name === "file_flags") {
+        return sxSetComment(r, "Binder bit-field encoding; bit order follows this binder header");
+    }
+    if (id === 1614151765 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151766 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151768 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151769 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151773 && r.name === "index_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151777 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151779 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151780 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151787 && r.name === "index_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151802 && r.name === "sp") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151802 && r.name === "pc") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151805 && r.name === "memptr") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151814 && r.name === "sp") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151814 && r.name === "pc") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151817 && r.name === "manufacture_date_bcd") {
+        return sxSetComment(r, "Packed binary-coded decimal; original digits are preserved");
+    }
+    if (id === 1614151817 && r.name === "rewrite_date_bcd") {
+        return sxSetComment(r, "Packed binary-coded decimal; original digits are preserved");
+    }
+    if (id === 1614151817 && r.name === "rewrite_count_bcd") {
+        return sxSetComment(r, "Packed binary-coded decimal; original digits are preserved");
+    }
+    if (id === 1614151826 && r.name === "debug_monitor_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151826 && r.name === "debug_monitor_load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151827 && r.name === "dol_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151827 && r.name === "fst_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151827 && r.name === "fst_load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151827 && r.name === "user_data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151828 && r.name === "entry_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151829 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the FST string table");
+    }
+    if (id === 1614151829 && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset relative to the beginning of this file");
+    }
+    if (id === 1614151830 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the FST string table");
+    }
+    if (id === 1614151831 && r.name === "name_offset") {
+        return sxSetComment(r, "Byte offset relative to the FST string table");
+    }
+    if (id === 1614151832 && r.name === "section_offset") {
+        return sxSetComment(r, "Byte offset relative to the embedded DOL header");
+    }
+    if (id === 1614151833 && r.name === "load_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151835 && r.name === "bss_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151835 && r.name === "entry_address") {
+        return sxSetComment(r, "Target CPU memory address; not a file offset");
+    }
+    if (id === 1614151732 && r.name === "parent_id_or_directory_count") {
+        return sxSetComment(r, "Parent directory ID; the root uses a separate count layout");
+    }
+    if (id === 1614151729 && r.name === "capacity_exponent") {
+        return sxSetComment(r, "ROM capacity exponent: 128 KiB multiplied by 2 to this power");
+    }
+    if (id === 1614151729 && r.name === "secure_transfer_timeout") {
+        return sxSetComment(r, "Secure-area delay in 1/131000-second units");
+    }
+    if (id === 1614151729 && r.name === "secure_area_disable") {
+        return sxSetComment(r, "Encrypted eight-byte secure-area-disable token");
+    }
+    if (id === 1614151729 && r.name === "nand_rom_end_units") {
+        return sxSetComment(r, "NDS NAND position in 0x20000-byte units; zero means absent");
+    }
+    if (id === 1614151729 && r.name === "nand_rw_start_units") {
+        return sxSetComment(r, "NDS NAND position in 0x20000-byte units; zero means absent");
+    }
+    if (id === 1614151729 && r.name === "unknown_88") {
+        return sxSetComment(r, "Undocumented NDS word; retained without inferring an offset");
+    }
+    if (id === 1614151729 && r.name === "reserved_or_fastboot") {
+        return sxSetComment(r, "Reserved bytes or homebrew fast-boot marker");
+    }
+    if (id === 1614151731 && r.name === "compressed_size_flags") {
+        return sxSetComment(r, "Low 24 bits: compressed size in bytes; high 8 bits: flags");
+    }
+    if (id === 1614151723 && r.name === "page_count") {
+        return sxSetComment(r, "Count of 4096-byte virtual-memory pages");
+    }
+    if (id === 1614151721 && r.name === "sector_zero_offset_encoded") {
+        return sxSetComment(r, "Encoded sector-zero offset; retained in its on-disk units");
+    }
+    if (id === 1614151836 && r.name === "host_sector_shift") {
+        return sxSetComment(r, "Base-2 logarithm of the host-sector size in bytes");
+    }
+    if (id === 1614151836 && r.name === "wbfs_sector_shift") {
+        return sxSetComment(r, "Base-2 logarithm of the WBFS cluster size in bytes");
+    }
+    if (id === 1614151836 && r.name === "host_sector_count") {
+        return sxSetComment(r, "Count of host sectors; size is 2 to host_sector_shift bytes");
+    }
+    if (id === 1614151838 && r.name === "physical_cluster") {
+        return sxSetComment(r, "Physical WBFS cluster index; zero means unallocated; multiply by cluster size for bytes");
+    }
+    if (id === 1614151824 && r.name === "stream_buffer_size") {
+        return sxSetComment(r, "Encoded audio streaming buffer-size selector");
+    }
+    if (id === 1614151821 && r.name === "index_offset") {
+        return sxSetComment(r, "Index of the first covered content record; not a byte offset");
+    }
+    if (id === 1614151823 && r.name === "dependencies") {
+        return sxSetComment(r, "48 little-endian program IDs, each 64 bits");
+    }
+    if (id === 1614151814 && r.name === "memory_dump_kib") {
+        return sxSetComment(r, "Memory dump length in 1024-byte units");
+    }
+    if (id === 1614151802 && r.name === "tstates") {
+        return sxSetComment(r, "CPU T-state count within the current frame; not a wall-clock timestamp");
+    }
+    if (id === 1614151804 && r.name === "hold_interrupt_cycles") {
+        return sxSetComment(r, "Remaining CPU cycles for the interrupt hold");
+    }
+    if (id === 1614151805 && r.name === "hold_interrupt_cycles") {
+        return sxSetComment(r, "Remaining CPU cycles for the interrupt hold");
+    }
+    if (id === 1614151748 && r.name === "runtime_state") {
+        return sxSetComment(r, "Serialized runtime/cache words; no pointer interpretation assumed");
+    }
+    if (id === 1614151748 && r.name === "unknown_time_word") {
+        return sxSetComment(r, "Opaque on-disk word; epoch and interpretation not established by the native reader");
+    }
+    if (id === 1614151693 && r.name === "pi_boot_config") {
+        return sxSetComment(r, "Packed initial peripheral-interface configuration bytes");
+    }
+    if (id === 1614151693 && r.name === "clock_rate") {
+        return sxSetComment(r, "Encoded clock rate; boot code clears its low four bits");
+    }
+    if (id === 1614151693 && r.name === "manufacturer") {
+        return sxSetComment(r, "32-bit manufacturer identifier, commonly ASCII N in its low byte");
+    }
+    if (id === 1614151683 && r.name === "product_high_version") {
+        return sxSetComment(r, "High nibble: high product-code digit; low nibble: version");
+    }
+    if (id === 1614151683 && r.name === "region_size") {
+        return sxSetComment(r, "High nibble: region/platform selector; low nibble: encoded ROM size");
+    }
+    if (id === 1614151684 && r.name === "bank_type") {
+        return sxSetComment(r, "Bits 0..4: chunk type; bits 5..7: cartridge bank");
+    }
+    if (id === 1614151785 && r.name === "name_reference") {
+        return sxSetComment(r, "Packed string-table bucket/index reference");
+    }
+    if (id === 1614151786 && r.name === "name_reference") {
+        return sxSetComment(r, "Packed string-table bucket/index reference");
+    }
+    if (id === 1614151786 && r.name === "type_length") {
+        return sxSetComment(r, "Low 6 bits: value type; upper 26 bits: stored value byte size");
+    }
+    if (id === 1614151786 && r.name === "node_index") {
+        return sxSetComment(r, "Owning node index; signed sentinel values remain signed");
+    }
+    if (id === 1614151776 && r.name === "name_utf16_units") {
+        return sxSetComment(r, "Count of UTF-16 code units in the following file name");
+    }
+    return true;
+}

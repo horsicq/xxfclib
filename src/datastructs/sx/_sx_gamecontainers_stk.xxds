@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/stk/xx_stk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_size32_fields = layout([u32("bytes", SIZE)]);
+var sxgco_size32 = sxLayout(0x60400005, "size32", LE, sxgco_size32_fields);
+function sxgco_stk(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var at = [0];
+    var meta = [0];
+    var stored = [0];
+    var plain = [0];
+    var p = [32];
+    var h = [];
+    if (!sxgco_read(v, 0, h, 6, e)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "STK2.", 5)) {
+        if (!sxgco_row(v, sxgco_stk2_header, 0, e) || !sxgco_word(v, 28, 4, false, at, e) || !sxgco_row(v, sxgco_stk2_directory, at[0], e) || !sxgco_word(v, at[0], 4, false, n, e) || !sxgco_word(v, at[0] + 4, 4, false, meta, e) || meta[0] < at[0] + 8 || !sxgco_table(v, sxgco_filename_byte, at[0] + 8, sxU64(sxU64(meta[0] - at[0]) - 8), e) || !sxgco_table(v, sxgco_stk2_entry, meta[0], n[0], e)) {
+            return false;
+        }
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxgco_word(v, meta[0] + 61 * i + 40, 4, false, stored, e) || !sxgco_word(v, meta[0] + 61 * i + 44, 4, false, plain, e) || !sxgco_span(v, p[0], stored[0], at[0])) {
+                return false;
+            }
+            if (stored[0] >= 4 && stored[0] !== plain[0] && !sxgco_row(v, sxgco_size32, p[0], at[0])) {
+                return false;
+            }
+            p[0] += stored[0];
+        }
+        return p[0] === at[0];
+    }
+    if (!sxgco_row(v, sxgco_count16, 0, e) || !sxgco_word(v, 0, 2, false, n, e) || !sxgco_table(v, sxgco_stk_entry, 2, n[0], e)) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        var method = [0];
+        if (!sxgco_word(v, 2 + i * 22 + 17, 4, false, p, e) || !sxgco_word(v, 2 + i * 22 + 21, 1, false, method, e)) {
+            return false;
+        }
+        if (method[0] && !sxgco_row(v, sxgco_size32, p[0], e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_stk_build(v) {
+    return sxgco_stk(v);
+}

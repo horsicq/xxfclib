@@ -1,0 +1,18 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_dim/xx_atari_dim_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_atari_dim_header_fields = layout([u16("magic", SIGNATURE), u8("reserved0", RESERVED), u8("used_sectors_only", FLAGS),
+    u16("reserved1", RESERVED), u8("sides_minus_one"), u8("reserved2", RESERVED), u8("sectors_per_track", COUNT),
+    u8("reserved3", RESERVED), u8("first_track"), u8("reserved4", RESERVED), u8("last_track"), u8("density", ID),
+    u16("sector_size", SIZE), field("opaque_extension", "byte[16]", 16)]);
+var sxdleg_atari_dim_header = sxLayout(0x60750012, "atari_dim_header", BE, sxdleg_atari_dim_header_fields);
+function sxdleg_dim(c) {
+    var h = [];
+    return sxdleg_read(c, 0, h, 0, 32) && sxdleg16(h, 0, 1) === 0x4242 && sxdleg_put(c, sxdleg_atari_dim_header, 0, 1);
+}
+function sx_atari_dim_build(c) {
+    return sxdleg_dim(c);
+}

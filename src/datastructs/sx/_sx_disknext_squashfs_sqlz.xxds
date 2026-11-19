@@ -1,0 +1,171 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/squashfs_sqlz/xx_squashfs_sqlz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_sqlz_squashfs2_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET)]);
+var sxdn_sqlz_squashfs2_superblock_le = sxLayout(0x60780054, "sqlz_squashfs2_superblock_le", LE, sxdn_sqlz_squashfs2_superblock_le_fields);
+var sxdn_sqlz_squashfs2_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET)]);
+var sxdn_sqlz_squashfs2_superblock_be = sxLayout(0x60780055, "sqlz_squashfs2_superblock_be", BE, sxdn_sqlz_squashfs2_superblock_be_fields);
+var sxdn_sqlz_squashfs3_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET), u64("bytes_used", SIZE), u64("uid_table_offset", OFFSET),
+    u64("gid_table_offset", OFFSET), u64("inode_table_offset", OFFSET), u64("directory_table_offset", OFFSET),
+    u64("fragment_index_offset", OFFSET), u64("lookup_index_offset", OFFSET)]);
+var sxdn_sqlz_squashfs3_superblock_le = sxLayout(0x60780056, "sqlz_squashfs3_superblock_le", LE, sxdn_sqlz_squashfs3_superblock_le_fields);
+var sxdn_sqlz_squashfs3_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET), u64("bytes_used", SIZE), u64("uid_table_offset", OFFSET),
+    u64("gid_table_offset", OFFSET), u64("inode_table_offset", OFFSET), u64("directory_table_offset", OFFSET),
+    u64("fragment_index_offset", OFFSET), u64("lookup_index_offset", OFFSET)]);
+var sxdn_sqlz_squashfs3_superblock_be = sxLayout(0x60780057, "sqlz_squashfs3_superblock_be", BE, sxdn_sqlz_squashfs3_superblock_be_fields);
+var sxdn_sqlz_squashfs_metadata_header_le_fields = layout([u16("size_and_stored_flag", FLAGS)]);
+var sxdn_sqlz_squashfs_metadata_header_le = sxLayout(0x60780058, "sqlz_squashfs_metadata_header_le", LE, sxdn_sqlz_squashfs_metadata_header_le_fields);
+var sxdn_sqlz_squashfs_table_index_le_fields = layout([u64("metadata_offset", OFFSET)]);
+var sxdn_sqlz_squashfs_table_index_le = sxLayout(0x60780059, "sqlz_squashfs_table_index_le", LE, sxdn_sqlz_squashfs_table_index_le_fields);
+var sxdn_sqlz_squashfs2_fragment_index_le_fields = layout([u32("metadata_offset", OFFSET)]);
+var sxdn_sqlz_squashfs2_fragment_index_le = sxLayout(0x6078005A, "sqlz_squashfs2_fragment_index_le", LE, sxdn_sqlz_squashfs2_fragment_index_le_fields);
+var sxdn_sqlz_squashfs_identity_le_fields = layout([u32("id", ID)]);
+var sxdn_sqlz_squashfs_identity_le = sxLayout(0x6078005B, "sqlz_squashfs_identity_le", LE, sxdn_sqlz_squashfs_identity_le_fields);
+var sxdn_sqlz_squashfs_metadata_header_be_fields = layout([u16("size_and_stored_flag", FLAGS)]);
+var sxdn_sqlz_squashfs_metadata_header_be = sxLayout(0x6078005C, "sqlz_squashfs_metadata_header_be", BE, sxdn_sqlz_squashfs_metadata_header_be_fields);
+var sxdn_sqlz_squashfs_table_index_be_fields = layout([u64("metadata_offset", OFFSET)]);
+var sxdn_sqlz_squashfs_table_index_be = sxLayout(0x6078005D, "sqlz_squashfs_table_index_be", BE, sxdn_sqlz_squashfs_table_index_be_fields);
+var sxdn_sqlz_squashfs2_fragment_index_be_fields = layout([u32("metadata_offset", OFFSET)]);
+var sxdn_sqlz_squashfs2_fragment_index_be = sxLayout(0x6078005E, "sqlz_squashfs2_fragment_index_be", BE, sxdn_sqlz_squashfs2_fragment_index_be_fields);
+var sxdn_sqlz_squashfs_identity_be_fields = layout([u32("id", ID)]);
+var sxdn_sqlz_squashfs_identity_be = sxLayout(0x6078005F, "sqlz_squashfs_identity_be", BE, sxdn_sqlz_squashfs_identity_be_fields);
+function sxdn_sqlz_meta(c, p, end, be, budget) {
+    while (p < end && budget[0]) {
+        var b = [];
+        if (sxU64(end - p) < 2 || !sxdn_read(c, p, b, 2)) {
+            break;
+        }
+        var n = sxdn16(b, 0, (be ? 1 : 0)) & 32767;
+        if (!n || n > 8192 || n > sxU64(sxU64(end - p) - 2)) {
+            break;
+        }
+        if (!sxdn_put(c, be ? sxdn_sqlz_squashfs_metadata_header_be : sxdn_sqlz_squashfs_metadata_header_le, p, 1)) {
+            return false;
+        }
+        p += 2 + n;
+        budget[0]--;
+    }
+    return true;
+}
+function sxdn_sqlz_index(c, p, count, width, header, be, budget) {
+    if (!count || count > 4096 || p < header || !sxdn_span(c, p, count * width)) {
+        return true;
+    }
+    if (!sxdn_put(c, width === 4 ? be ? sxdn_sqlz_squashfs2_fragment_index_be : sxdn_sqlz_squashfs2_fragment_index_le : be ? sxdn_sqlz_squashfs_table_index_be : sxdn_sqlz_squashfs_table_index_le, p, count)) {
+        return false;
+    }
+    for (var i = 0; i < count && budget[0]; i++) {
+        var at = [0];
+        if (!sxdn_word(c, p + i * width, width, be, at)) {
+            return false;
+        }
+        if (at[0] >= header && at[0] < p && !sxdn_sqlz_meta(c, at[0], p, be, budget)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxdn_sqlz(c) {
+    var h = [];
+    if (!sxdn_read(c, 0, h, 63)) {
+        return false;
+    }
+    var be = !sxMemcmp(h, "sqlz", 4);
+    if (!be && sxMemcmp(h, "zlqs", 4)) {
+        return false;
+    }
+    var v = sxdn16(h, 28, (be ? 1 : 0));
+    var header = v === 2 ? 63 : 119;
+    if (v !== 2 && v !== 3) {
+        return false;
+    }
+    if (v === 3 && !sxdn_read(c, 0, h, 119)) {
+        return false;
+    }
+    if (!sxdn_put(c, v === 2 ? be ? sxdn_sqlz_squashfs2_superblock_be : sxdn_sqlz_squashfs2_superblock_le : be ? sxdn_sqlz_squashfs3_superblock_be : sxdn_sqlz_squashfs3_superblock_le, 0, 1)) {
+        return false;
+    }
+    var size;
+    var inode;
+    var dir;
+    var frag;
+    var lookup = SX_U64_MAX;
+    var uid;
+    var gid;
+    if (v === 2) {
+        size = sxdn32(h, 8, (be ? 1 : 0));
+        uid = sxdn32(h, 12, (be ? 1 : 0));
+        gid = sxdn32(h, 16, (be ? 1 : 0));
+        inode = sxdn32(h, 20, (be ? 1 : 0));
+        dir = sxdn32(h, 24, (be ? 1 : 0));
+        frag = sxdn32(h, 59, (be ? 1 : 0));
+    } else {
+        size = sxGetU64(h, 119, 63, be);
+        uid = sxGetU64(h, 119, 71, be);
+        gid = sxGetU64(h, 119, 79, be);
+        inode = sxGetU64(h, 119, 87, be);
+        dir = sxGetU64(h, 119, 95, be);
+        frag = sxGetU64(h, 119, 103, be);
+        lookup = sxGetU64(h, 119, 111, be);
+    }
+    if (size < header || size > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        size = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    var budget = [4096];
+    var fragments = sxdn32(h, 55, (be ? 1 : 0));
+    var ninode = sxdn32(h, 4, (be ? 1 : 0));
+    if (!sxdn_sqlz_index(c, frag, Math.floor((fragments * (v === 2 ? 8 : 16) + 8191) / 8192), v === 2 ? 4 : 8, header, be, budget)) {
+        return false;
+    }
+    if (v === 3 && !sxdn_sqlz_index(c, lookup, Math.floor((ninode * 8 + 8191) / 8192), 8, header, be, budget)) {
+        return false;
+    }
+    var starts = [uid, gid];
+    for (var i = 0; i < 2; i++) {
+        if (h[(37 + i) >>> 0] && starts[i] >= header && sxdn_span(c, starts[i], h[(37 + i) >>> 0] * 4) && !sxdn_put(c, be ? sxdn_sqlz_squashfs_identity_be : sxdn_sqlz_squashfs_identity_le, starts[i], h[(37 + i) >>> 0])) {
+            return false;
+        }
+    }
+    if (inode >= header && inode < dir && dir <= size && !sxdn_sqlz_meta(c, inode, dir, be, budget)) {
+        return false;
+    }
+    if (dir >= header && dir < size) {
+        var end = size;
+        var refs = [frag, lookup, uid, gid];
+        for (i = 0; i < 4; i++) {
+            if (refs[i] > dir && refs[i] < end) {
+                end = refs[i];
+            }
+        }
+        if (!sxdn_sqlz_meta(c, dir, end, be, budget)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_squashfs_sqlz_build(c) {
+    return sxdn_sqlz(c);
+}

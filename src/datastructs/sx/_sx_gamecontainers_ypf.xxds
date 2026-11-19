@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ypf/xx_ypf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_ypf_extra8_fields = layout([blob("extra", 8)]);
+var sxgco_ypf_extra8 = sxLayout(0x60400042, "ypf_extra8", LE, sxgco_ypf_extra8_fields);
+function sxgco_ypf(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var version = [0];
+    if (!sxgco_row(v, sxgco_ypf_header, 0, e) || !sxgco_word(v, 4, 4, false, version, e)) {
+        return false;
+    }
+    var f = v.c.f;
+    var s = sxArcCreate(f);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    var count = 0;
+    do {
+        var r = sxArcCurrent(f, s);
+        if (r === null) {
+            break;
+        }
+        if (++count > 0xFFFFF || r.header_offset < f.base_address || r.header_size < 24) {
+            ok = false;
+            break;
+        }
+        var at = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+        var n = sxU64((r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size) - 23);
+        if (!sxgco_row(v, sxgco_ypf_name, at, e) || !sxgco_table(v, sxgco_encoded_byte, at + 5, n, e) || !sxgco_row(v, sxgco_ypf_fields, at + 5 + n, e)) {
+            ok = false;
+            break;
+        }
+        at += (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size);
+        if (version[0] >= 0x1D9) {
+            ok = sxgco_row(v, sxgco_ypf_offset_high, at, e);
+        } else if (version[0] === 0xDE) {
+            ok = sxgco_row(v, sxgco_ypf_extra8, at, e);
+        }
+        if (!ok) {
+            break;
+        }
+    } while (sxArcNext(f, s));
+    sxArcFree(f, s);
+    return ok;
+}
+function sx_ypf_build(v) {
+    return sxgco_ypf(v);
+}

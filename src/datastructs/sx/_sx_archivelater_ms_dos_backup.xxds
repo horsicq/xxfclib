@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ms_dos_backup/xx_ms_dos_backup_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_dos_backup_header_fields = layout([u8("last_fragment", FLAGS), u16("sequence", ID), u16("zero", RESERVED),
+    chars("original_path", 78, STRING), u8("path_size", SIZE), bytes("reserved", 44, RESERVED)]);
+var sxal_dos_backup_header = sxLayout(0x60200048, "dos_backup_header", LE, sxal_dos_backup_header_fields);
+function sx_ms_dos_backup_build(c) {
+    return sxal_add(c, sxal_dos_backup_header, 0);
+}

@@ -1,0 +1,26 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/konami_kss/xx_konami_kss_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_kss_extended_fields = layout([u32("data_bytes", SIZE), blob("reserved", 4, RESERVED), u16("first_track", ID),
+    u16("last_track", ID), u8("psg_volume"), u8("scc_volume"), u8("msx_music_volume"), u8("msx_audio_volume")]);
+var sxmn_kss_extended = sxLayout(0x60760012, "kss_extended", LE, sxmn_kss_extended_fields);
+function sxmn_kss(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var extra = [0];
+    var z = [0];
+    var bank = [0];
+    if (!sxmn_row(v, sxmn_kss_header, 0, end) || !sxmn_word(v, 14, 1, false, extra, 0, end) || !sxmn_word(v, 6, 2, false, z, 0, end) || !sxmn_word(v, 13, 1, false, bank, 0, end) || !sxmn_span(v, 16, extra[0], end) || !sxmn_span(v, 16 + extra[0], z[0], end)) {
+        return false;
+    }
+    if (extra[0] >= 16 && !sxmn_row(v, sxmn_kss_extended, 16, end)) {
+        return false;
+    }
+    var banksize = sxAnd64(bank[0], 128) ? 8192 : 16384;
+    return sxmn_span(v, 16 + extra[0] + z[0], sxAnd64(bank[0], 127) * banksize, end);
+}
+function sx_konami_kss_build(v) {
+    return sxmn_kss(v);
+}

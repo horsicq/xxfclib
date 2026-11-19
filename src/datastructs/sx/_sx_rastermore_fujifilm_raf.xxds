@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/fujifilm_raf/xx_fujifilm_raf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_raf_header_fields = layout([chars("signature", 16, SIGNATURE), chars("format_version", 4, STRING),
+    bytes("camera_identifier", 8, ID), chars("camera_name", 32, STRING), chars("directory_version", 4, STRING),
+    bytes("unknown", 20), u32("jpeg_offset", OFFSET), u32("jpeg_size", SIZE), u32("metadata_offset", OFFSET),
+    u32("metadata_size", SIZE), u32("cfa_offset", OFFSET), u32("cfa_size", SIZE)]);
+var sxrm_raf_header = sxLayout(0x601D0064, "raf_header", BE, sxrm_raf_header_fields);
+var sxrm_raf_metadata_count_fields = layout([u32("entries", COUNT)]);
+var sxrm_raf_metadata_count = sxLayout(0x601D0065, "raf_metadata_count", BE, sxrm_raf_metadata_count_fields);
+var sxrm_raf_metadata_entry_fields = layout([u16("tag", ID), u16("data_size", SIZE)]);
+var sxrm_raf_metadata_entry = sxLayout(0x601D0066, "raf_metadata_entry", BE, sxrm_raf_metadata_entry_fields);
+var sxrm_raf_dimensions_fields = layout([u16("height", COUNT), u16("width", COUNT)]);
+var sxrm_raf_dimensions = sxLayout(0x601D0067, "raf_dimensions", BE, sxrm_raf_dimensions_fields);
+function sxrm_raf(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 108) || sxMemcmp(h, "FUJIFILMCCD-RAW ", 16) || !sxrm_add(c, sxrm_raf_header, 0)) {
+        return false;
+    }
+    var p = sxrm32(h, 92, true);
+    var z = sxrm32(h, 96, true);
+    if (p < 108 || z < 4 || !sxrm_span(c, p, z) || !sxrm_read(c, p, h, 0, 4)) {
+        return true;
+    }
+    var count = sxrm32(h, 0, true);
+    var end = p + z;
+    if (count > 1024) {
+        return true;
+    }
+    if (!sxrm_add(c, sxrm_raf_metadata_count, p)) {
+        return false;
+    }
+    p += 4;
+    for (var i = 0; i < count; i++) {
+        if (sxU64(end - p) < 4 || !sxrm_read(c, p, h, 0, 4)) {
+            break;
+        }
+        var tag = sxrm16(h, 0, true);
+        var n = sxrm16(h, 2, true);
+        if (n > sxU64(sxU64(end - p) - 4)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_raf_metadata_entry, p)) {
+            return false;
+        }
+        if (tag === 0x100 && n === 4 && !sxrm_add(c, sxrm_raf_dimensions, p + 4)) {
+            return false;
+        }
+        p += (4 + n) >>> 0;
+    }
+    return !c.failed;
+}
+function sx_fujifilm_raf_build(c) {
+    return sxrm_raf(c);
+}

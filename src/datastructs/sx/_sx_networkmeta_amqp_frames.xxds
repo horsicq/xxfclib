@@ -1,0 +1,248 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/amqp_frames/xx_amqp_frames_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_amqp_protocol_header_fields = layout([chars("magic", 4, SIGNATURE), u8("protocol_id", ID), u8("major_version", ID),
+    u8("minor_version", ID), u8("revision", ID)]);
+var sxnm_amqp_protocol_header = sxLayout(0x60260081, "amqp_protocol_header", BE, sxnm_amqp_protocol_header_fields);
+var sxnm_amqp_method_header_fields = layout([u16("class_id", ID), u16("method_id", ID)]);
+var sxnm_amqp_method_header = sxLayout(0x60260083, "amqp_method_header", BE, sxnm_amqp_method_header_fields);
+var sxnm_amqp_frame_end_fields = layout([u8("end_marker", SIGNATURE)]);
+var sxnm_amqp_frame_end = sxLayout(0x60260085, "amqp_frame_end", BE, sxnm_amqp_frame_end_fields);
+var sxnm_amqp_publish_prefix_fields = layout([u16("reserved_ticket", RESERVED)]);
+var sxnm_amqp_publish_prefix = sxLayout(0x60260086, "amqp_publish_prefix", BE, sxnm_amqp_publish_prefix_fields);
+var sxnm_amqp_publish_flags_fields = layout([u8("mandatory_and_immediate", FLAGS)]);
+var sxnm_amqp_publish_flags = sxLayout(0x60260087, "amqp_publish_flags", BE, sxnm_amqp_publish_flags_fields);
+var sxnm_amqp_close_code_fields = layout([u16("reply_code", ID)]);
+var sxnm_amqp_close_code = sxLayout(0x60260088, "amqp_close_code", BE, sxnm_amqp_close_code_fields);
+var sxnm_amqp_close_method_fields = layout([u16("class_id", ID), u16("method_id", ID)]);
+var sxnm_amqp_close_method = sxLayout(0x60260089, "amqp_close_method", BE, sxnm_amqp_close_method_fields);
+var sxnm_amqp_short_string_fields = layout([u8("byte_length", SIZE)]);
+var sxnm_amqp_short_string = sxLayout(0x6026008A, "amqp_short_string", BE, sxnm_amqp_short_string_fields);
+var sxnm_amqp_table_length_fields = layout([u32("table_length", SIZE)]);
+var sxnm_amqp_table_length = sxLayout(0x6026008B, "amqp_table_length", BE, sxnm_amqp_table_length_fields);
+var sxnm_amqp_uint8_fields = layout([u8("value")]);
+var sxnm_amqp_uint8 = sxLayout(0x6026008D, "amqp_uint8", BE, sxnm_amqp_uint8_fields);
+var sxnm_amqp_int8_fields = layout([i8("value")]);
+var sxnm_amqp_int8 = sxLayout(0x6026008E, "amqp_int8", BE, sxnm_amqp_int8_fields);
+var sxnm_amqp_uint16_fields = layout([u16("value")]);
+var sxnm_amqp_uint16 = sxLayout(0x6026008F, "amqp_uint16", BE, sxnm_amqp_uint16_fields);
+var sxnm_amqp_int16_fields = layout([i16("value")]);
+var sxnm_amqp_int16 = sxLayout(0x60260090, "amqp_int16", BE, sxnm_amqp_int16_fields);
+var sxnm_amqp_uint32_fields = layout([u32("value")]);
+var sxnm_amqp_uint32 = sxLayout(0x60260091, "amqp_uint32", BE, sxnm_amqp_uint32_fields);
+var sxnm_amqp_int32_fields = layout([i32("value")]);
+var sxnm_amqp_int32 = sxLayout(0x60260092, "amqp_int32", BE, sxnm_amqp_int32_fields);
+var sxnm_amqp_uint64_fields = layout([u64("value")]);
+var sxnm_amqp_uint64 = sxLayout(0x60260093, "amqp_uint64", BE, sxnm_amqp_uint64_fields);
+var sxnm_amqp_int64_fields = layout([i64("value")]);
+var sxnm_amqp_int64 = sxLayout(0x60260094, "amqp_int64", BE, sxnm_amqp_int64_fields);
+var sxnm_amqp_boolean_fields = layout([u8("value", FLAGS)]);
+var sxnm_amqp_boolean = sxLayout(0x60260095, "amqp_boolean", BE, sxnm_amqp_boolean_fields);
+var sxnm_amqp_long_string_fields = layout([u32("byte_length", SIZE)]);
+var sxnm_amqp_long_string = sxLayout(0x6026009A, "amqp_long_string", BE, sxnm_amqp_long_string_fields);
+var sxnm_amqp_priority_fields = layout([u8("priority")]);
+var sxnm_amqp_priority = sxLayout(0x6026009C, "amqp_priority", BE, sxnm_amqp_priority_fields);
+function sxnm_aq_short(v, at, end) {
+    if (!sxnm_row(v, sxnm_amqp_short_string, at[0], end)) {
+        return false;
+    }
+    var n = v.p[at[0]++];
+    if (!sxnm_need(v, at[0], n, end)) {
+        return false;
+    }
+    at[0] += n;
+    return true;
+}
+function sxnm_aq_value(v, at, end, depth) {
+    if (!sxnm_row(v, sxnm_amqp_field_type, at[0], end)) {
+        return false;
+    }
+    var type = v.p[at[0]++];
+    var l = null;
+    switch (type) {
+    case 116 /*t*/:
+        l = sxnm_amqp_boolean;
+        break;
+    case 98 /*b*/:
+        l = sxnm_amqp_int8;
+        break;
+    case 66 /*B*/:
+        l = sxnm_amqp_uint8;
+        break;
+    case 85 /*U*/:
+        l = sxnm_amqp_int16;
+        break;
+    case 117 /*u*/:
+        l = sxnm_amqp_uint16;
+        break;
+    case 73 /*I*/:
+        l = sxnm_amqp_int32;
+        break;
+    case 105 /*i*/:
+        l = sxnm_amqp_uint32;
+        break;
+    case 76 /*L*/:
+        l = sxnm_amqp_int64;
+        break;
+    case 108 /*l*/:
+        l = sxnm_amqp_uint64;
+        break;
+    case 102 /*f*/:
+        l = sxnm_amqp_float_bits;
+        break;
+    case 100 /*d*/:
+        l = sxnm_amqp_double_bits;
+        break;
+    case 68 /*D*/:
+        l = sxnm_amqp_decimal;
+        break;
+    case 84 /*T*/:
+        l = sxnm_amqp_timestamp;
+        break;
+    case 86 /*V*/:
+        return true;
+    case 115 /*s*/:
+        return sxnm_aq_short(v, at, end);
+    case 65 /*A*/:
+    case 70 /*F*/:
+        return sxnm_aq_table(v, at, end, (depth + 1) >>> 0, type === 65 /*A*/);
+    case 83 /*S*/:
+    case 120 /*x*/:
+        if (!sxnm_row(v, sxnm_amqp_long_string, at[0], end)) {
+            return false;
+        }
+        var n = sxnm_u32(v.p, at[0]);
+        at[0] += 4;
+        if (!sxnm_need(v, at[0], n, end)) {
+            return false;
+        }
+        at[0] += n;
+        return true;
+    default:
+        return false;
+    }
+    if (!sxnm_row(v, l, at[0], end)) {
+        return false;
+    }
+    var f = l.fields[l.field_count + -1];
+    at[0] += (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    return true;
+}
+function sxnm_aq_table(v, at, end, depth, array) {
+    if (depth > 32 || !sxnm_row(v, sxnm_amqp_table_length, at[0], end)) {
+        return false;
+    }
+    var n = sxnm_u32(v.p, at[0]);
+    at[0] += 4;
+    if (!sxnm_need(v, at[0], n, end)) {
+        return false;
+    }
+    var stop = at[0] + n;
+    while (at[0] < stop) {
+        if (!array && !sxnm_aq_short(v, at, stop)) {
+            return false;
+        }
+        if (!sxnm_aq_value(v, at, stop, depth)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxnm_amqp(v) {
+    if (!sxnm_row(v, sxnm_amqp_protocol_header, 0, v.n)) {
+        return false;
+    }
+    var at = [8];
+    while (at[0] < v.n) {
+        if (!sxnm_row(v, sxnm_amqp_frame_header, at[0], v.n)) {
+            return false;
+        }
+        var type = v.p[at[0]];
+        var n = sxnm_u32(v.p, at[0] + 3);
+        at[0] += 7;
+        if (!sxnm_need(v, at[0], n + 1, v.n)) {
+            return false;
+        }
+        var end = at[0] + n;
+        if (!sxnm_row(v, sxnm_amqp_frame_end, end, v.n)) {
+            return false;
+        }
+        if (type === 1) {
+            if (!sxnm_row(v, sxnm_amqp_method_header, at[0], end)) {
+                return false;
+            }
+            var cl = sxnm_u16(v.p, at[0]);
+            var me = sxnm_u16(v.p, at[0] + 2);
+            at[0] += 4;
+            if (cl === 20 && me === 10) {
+                if (!sxnm_aq_short(v, at, end)) {
+                    return false;
+                }
+            } else if (cl === 60 && me === 40) {
+                if (!sxnm_row(v, sxnm_amqp_publish_prefix, at[0], end)) {
+                    return false;
+                }
+                at[0] += 2;
+                if (!sxnm_aq_short(v, at, end) || !sxnm_aq_short(v, at, end) || !sxnm_row(v, sxnm_amqp_publish_flags, at[0], end)) {
+                    return false;
+                }
+                at[0]++;
+            } else if (cl === 10 && me === 50) {
+                if (!sxnm_row(v, sxnm_amqp_close_code, at[0], end)) {
+                    return false;
+                }
+                at[0] += 2;
+                if (!sxnm_aq_short(v, at, end) || !sxnm_row(v, sxnm_amqp_close_method, at[0], end)) {
+                    return false;
+                }
+                at[0] += 4;
+            } else {
+                return false;
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (type === 2) {
+            if (!sxnm_row(v, sxnm_amqp_content_header, at[0], end)) {
+                return false;
+            }
+            var flags = sxnm_u16(v.p, at[0] + 12);
+            at[0] += 14;
+            for (var bit = 15; bit >= 2; bit--) {
+                if (!((flags & (1 << bit) >>> 0) >>> 0)) {
+                    continue;
+                }
+                if (bit === 13) {
+                    if (!sxnm_aq_table(v, at, end, 0, false)) {
+                        return false;
+                    }
+                } else if (bit === 12 || bit === 11) {
+                    if (!sxnm_row(v, bit === 12 ? sxnm_amqp_delivery_mode : sxnm_amqp_priority, at[0], end)) {
+                        return false;
+                    }
+                    at[0]++;
+                } else if (bit === 6) {
+                    if (!sxnm_row(v, sxnm_amqp_timestamp, at[0], end)) {
+                        return false;
+                    }
+                    at[0] += 8;
+                } else if (!sxnm_aq_short(v, at, end)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (type !== 3 && type !== 8) {
+            return false;
+        }
+        at[0] = end + 1;
+    }
+    return true;
+}
+function sx_amqp_frames_build(v) {
+    return sxnm_amqp(v);
+}

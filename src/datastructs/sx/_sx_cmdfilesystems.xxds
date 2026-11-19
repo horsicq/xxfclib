@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_cmdfilesystems.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_cmdfilesystems_supports(type) {
+    switch (type) {
+    case "CMD_D1M":
+    case "CMD_D2M":
+    case "CMD_D4M":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_cmdfilesystems_build(c) {
+    if (c === null || c.f === null || !sx_cmdfilesystems_supports(c.f.file_type)) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    return sx_cmd_fd_build(c);
+}
+function sx_cmdfilesystems_comment(r, id) {
+    if (r === null || r.name === null || id < 0x609A0001 || id > 0x609A0006) {
+        return true;
+    }
+    if (r.name === "starting_lba") {
+        return sxSetComment(r, "Stored big-endian 24-bit start in 512-byte logical blocks. System partition entry stores zero; its computed physical origin is not substituted here.");
+    }
+    if (r.name === "length_lba") {
+        return sxSetComment(r, "Stored big-endian 24-bit length in 512-byte logical blocks.");
+    }
+    if (r.name === "name_petscii") {
+        return sxSetComment(r, "Original 16-byte PETSCII name, including A0 padding; retained as bytes without a lossy text conversion.");
+    }
+    if (r.name === "default_partition" || r.name === "default_partition_copy") {
+        return sxSetComment(r, "Stored default partition number; VICE reads byte E2 and preserves its E3 copy.");
+    }
+    if (r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    if (r.name === "partition_type") {
+        var t = "Unknown or unavailable partition type";
+        switch (sxVarU64(r.value)) {
+        case 0:
+            t = "Unused partition";
+            break;
+        case 1:
+            t = "CMD native partition";
+            break;
+        case 2:
+            t = "1541 emulation partition";
+            break;
+        case 3:
+            t = "1571 emulation partition";
+            break;
+        case 4:
+            t = "1581 emulation partition";
+            break;
+        case 255:
+            t = "System partition";
+            break;
+        }
+        return sxSetComment(r, t);
+    }
+    return sxSetComment(r, "Stored CMD FD filesystem metadata byte range. Geometry-derived values and decoded head-order positions are not inserted as members; unknown bytes remain opaque.");
+}

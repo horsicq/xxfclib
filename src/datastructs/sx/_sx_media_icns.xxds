@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/icns/xx_icns_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_icns_header_fields = layout([chars("magic", 4, SIGNATURE), u32("file_size", SIZE)]);
+var sxm_icns_header = sxLayout(0x6006001E, "icns_header", BE, sxm_icns_header_fields);
+var sxm_icns_element_fields = layout([chars("type", 4, ID), u32("element_size", SIZE)]);
+var sxm_icns_element = sxLayout(0x6006001F, "icns_element", BE, sxm_icns_element_fields);
+function sxm_icns(c, h) {
+    var at = 8;
+    var end = sxGetU32(h, 8, 4, true);
+    if (sxMemcmp(h, "icns", 4) || end < 8 || !sxm_span(c, 0, end) || !sx_add(c, sxm_icns_header, 0, 8)) {
+        return false;
+    }
+    while (at < end) {
+        var n;
+        if (sxU64(end - at) < 8 || (n = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 4, true)) === null || n < 8 || n > sxU64(end - at) || !sx_add(c, sxm_icns_element, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8) || !sxm_raw(c, at + 8, (n - 8) >>> 0)) {
+            return false;
+        }
+        at += n;
+    }
+    return sxm_tail(c, end);
+}
+function sx_icns_build(c, h, n) {
+    return n >= 8 && sxm_icns(c, h);
+}

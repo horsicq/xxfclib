@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/mxm_simplearc/xx_mxm_simplearc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_mxm_simplearc_member_fields = layout([u32("next_record_delta", OFFSET), u32("stored_size", SIZE),
+    chars("name", 16, NONE)]);
+var sxaf_mxm_simplearc_member = sxLayout(0x603C0028, "mxm_simplearc_member", BE, sxaf_mxm_simplearc_member_fields);
+function sxaf_mxm(c) {
+    var p = 0x264;
+    while (sxaf_span(c, p, 24)) {
+        var b = [];
+        if (!sxaf_read(c, p, b, 24) || !sxaf_add(c, sxaf_mxm_simplearc_member, p)) {
+            return false;
+        }
+        var next = sxaf_uint(b, 0, 4, true);
+        var n = sxaf_uint(b, 4, 4, true);
+        if (!b[8] || !next) {
+            return true;
+        }
+        if (next < 24 || n > sxU64(next - 24) || !sxaf_span(c, p, next)) {
+            return false;
+        }
+        p += next;
+    }
+    return false;
+}
+function sx_mxm_simplearc_build(c) {
+    return sxaf_mxm(c);
+}

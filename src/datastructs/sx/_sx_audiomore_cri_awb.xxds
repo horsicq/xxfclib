@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/cri_awb/xx_cri_awb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_awb_header_fields = layout([chars("magic", 4, SIGNATURE), u8("version", ID), u8("offset_width", SIZE),
+    u16("id_width", SIZE), u32("entry_count", COUNT), u16("alignment", SIZE), u16("subkey", ID)]);
+var sxau_awb_header = sxLayout(0x602C0001, "awb_header", LE, sxau_awb_header_fields);
+var sxau_awb_id16_fields = layout([u16("entry_id", ID)]);
+var sxau_awb_id16 = sxLayout(0x602C0002, "awb_id16", LE, sxau_awb_id16_fields);
+var sxau_awb_offset16_fields = layout([u16("entry_offset", OFFSET)]);
+var sxau_awb_offset16 = sxLayout(0x602C0003, "awb_offset16", LE, sxau_awb_offset16_fields);
+var sxau_awb_id32_fields = layout([u32("entry_id", ID)]);
+var sxau_awb_id32 = sxLayout(0x602C0004, "awb_id32", LE, sxau_awb_id32_fields);
+var sxau_awb_offset32_fields = layout([u32("entry_offset", OFFSET)]);
+var sxau_awb_offset32 = sxLayout(0x602C0005, "awb_offset32", LE, sxau_awb_offset32_fields);
+function sxau_awb(v) {
+    if (!sxau_row(v, sxau_awb_header, 0, v.n)) {
+        return false;
+    }
+    var ow = v.p[5];
+    var iw = sxau_u16(v.p, 6, false);
+    var n = sxau_u32(v.p, 8, false);
+    if (ow !== 2 && ow !== 4 || iw !== 2 && iw !== 4 || n > 1000000) {
+        return false;
+    }
+    return sxau_table(v, iw === 2 ? sxau_awb_id16 : sxau_awb_id32, 16, n, v.n) && sxau_table(v, ow === 2 ? sxau_awb_offset16 : sxau_awb_offset32, 16 + n * iw, n + 1, v.n);
+}
+function sx_cri_awb_build(v) {
+    return sxau_awb(v);
+}

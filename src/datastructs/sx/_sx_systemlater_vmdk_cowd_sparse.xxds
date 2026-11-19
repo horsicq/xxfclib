@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vmdk_cowd_sparse/xx_vmdk_cowd_sparse_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_cowd_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version"), u32("flags", FLAGS),
+    u32("capacity_sectors", COUNT), u32("grain_sectors", COUNT), u32("directory_sector"), u32("directory_count", COUNT),
+    u32("next_free_sector")]);
+var sxsl_cowd_header = sxLayout(0x60330049, "cowd_header", LE, sxsl_cowd_header_fields);
+var sxsl_cowd_root_fields = layout([u32("cylinder_count", COUNT), u32("head_count", COUNT), u32("sectors_per_track", COUNT),
+    field("reserved", "byte[1016]", 1016, RESERVED)]);
+var sxsl_cowd_root = sxLayout(0x6033004A, "cowd_root", LE, sxsl_cowd_root_fields);
+var sxsl_cowd_child_fields = layout([chars("parent_filename", 1024, NONE), u32("parent_generation")]);
+var sxsl_cowd_child = sxLayout(0x6033004B, "cowd_child", LE, sxsl_cowd_child_fields);
+var sxsl_cowd_tail_fields = layout([u32("generation"), chars("name", 60, NONE), chars("description", 512, NONE),
+    u32("saved_generation"), field("reserved1", "byte[8]", 8, RESERVED), u32("dirty", FLAGS),
+    field("reserved2", "byte[396]", 396, RESERVED)]);
+var sxsl_cowd_tail = sxLayout(0x6033004C, "cowd_tail", LE, sxsl_cowd_tail_fields);
+var sxsl_cowd_directory_fields = layout([u32("table_sector")]);
+var sxsl_cowd_directory = sxLayout(0x6033004D, "cowd_directory", LE, sxsl_cowd_directory_fields);
+var sxsl_cowd_grain_fields = layout([u32("grain_sector")]);
+var sxsl_cowd_grain = sxLayout(0x6033004E, "cowd_grain", LE, sxsl_cowd_grain_fields);
+function sxsl_cowd(c) {
+    var h = [];
+    if (!sxsl_read(c, 0, h, 32) || !sxsl_put(c, sxsl_cowd_header, 0, 1)) {
+        return false;
+    }
+    var gd = sxsl32(h, 20) * 512;
+    var n = sxsl32(h, 24);
+    var capacity = sxsl32(h, 12);
+    var grain = sxsl32(h, 16);
+    if (gd >= 2048 && sxsl_span(c, 32, 2016)) {
+        if (!sxsl_put(c, sxsl32(h, 8) & 1 ? sxsl_cowd_root : sxsl_cowd_child, 32, 1) || !sxsl_put(c, sxsl_cowd_tail, 1060, 1)) {
+            return false;
+        }
+    }
+    if (!grain || !capacity) {
+        return true;
+    }
+    var needed = Math.floor(sxU64(capacity + grain * 4096 - 1) / (grain * 4096));
+    if (n < needed || needed > 1048576 || gd < 32 || !sxsl_span(c, gd, needed * 4) || !sxsl_put(c, sxsl_cowd_directory, gd, needed)) {
+        return true;
+    }
+    for (var i = 0; i < needed && c.count < 24000; i++) {
+        var p = [0];
+        if (!sxsl_word(c, gd + i * 4, 4, false, p)) {
+            return false;
+        }
+        p[0] *= 512;
+        if (p[0] >= 32 && sxsl_span(c, p[0], 16384) && !sxsl_put(c, sxsl_cowd_grain, p[0], 4096)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_vmdk_cowd_sparse_build(c) {
+    var ok = false;
+    ok = sxsl_cowd(c);
+    return ok && sxsl_finish(c);
+}

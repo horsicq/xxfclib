@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_wave64/xx_audio_wave64_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_wave64_header_fields = layout([field("riff_guid", "byte[16]", 16, ID), u64("file_size", SIZE),
+    field("wave_guid", "byte[16]", 16, ID)]);
+var sx_st_wave64_header = sxLayout(0x6008001E, "wave64_header", LE, sx_st_wave64_header_fields);
+var sx_st_wave64_chunk_fields = layout([field("chunk_guid", "byte[16]", 16, ID), u64("chunk_size", SIZE)]);
+var sx_st_wave64_chunk = sxLayout(0x6008001F, "wave64_chunk", LE, sx_st_wave64_chunk_fields);
+var sx_st_wave64_format_fields = layout([u16("format_tag", ID), u16("channels", COUNT), u32("sample_rate"),
+    u32("average_bytes_per_second"), u16("block_alignment", SIZE), u16("bits_per_sample")]);
+var sx_st_wave64_format = sxLayout(0x60080020, "wave64_format", LE, sx_st_wave64_format_fields);
+var sx_st_wave64_format_extra_fields = layout([u16("extra_size", SIZE)]);
+var sx_st_wave64_format_extra = sxLayout(0x60080021, "wave64_format_extra", LE, sx_st_wave64_format_extra_fields);
+function sx_st_wave64(c) {
+    var at = 40;
+    if (!sx_add(c, sx_st_wave64_header, 0, 40)) {
+        return false;
+    }
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 24) || !sx_add(c, sx_st_wave64_chunk, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 24)) {
+            return false;
+        }
+        n = sxGetU64(h, 24, 16, false);
+        if (n < 24 || !sx_st_fits(c, at, n)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "fmt ", 4)) {
+            if (n < 40 || !sx_add(c, sx_st_wave64_format, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 24, 16)) {
+                return false;
+            }
+            if (n >= 42 && !sx_add(c, sx_st_wave64_format_extra, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 40, 2)) {
+                return false;
+            }
+        }
+        at += n;
+        if (at > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF8)) {
+            return false;
+        }
+        at = sxAnd64(at + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+    }
+    return at === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_audio_wave64_build(c) {
+    var ok = false;
+    ok = sx_st_wave64(c);
+    return ok && sx_st_finish(c);
+}

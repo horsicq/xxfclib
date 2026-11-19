@@ -1,0 +1,123 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/ubjson/xx_ubjson_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_ubjson_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_ubjson_tag = sxLayout(0x60350038, "ubjson_tag", LE, sxbl_ubjson_tag_fields);
+var sxbl_ubjson_optimized_type_fields = layout([u8("implicit_type", ID)]);
+var sxbl_ubjson_optimized_type = sxLayout(0x60350097, "ubjson_optimized_type", LE, sxbl_ubjson_optimized_type_fields);
+var sxbl_ubjson_byte_size1_fields = layout([i8("byte_size", SIZE)]);
+var sxbl_ubjson_byte_size1 = sxLayout(0x6035010D, "ubjson_byte_size1", BE, sxbl_ubjson_byte_size1_fields);
+var sxbl_ubjson_item_count1_fields = layout([i8("item_count", COUNT)]);
+var sxbl_ubjson_item_count1 = sxLayout(0x6035010E, "ubjson_item_count1", BE, sxbl_ubjson_item_count1_fields);
+var sxbl_ubjson_byte_size2_fields = layout([i16("byte_size", SIZE)]);
+var sxbl_ubjson_byte_size2 = sxLayout(0x60350110, "ubjson_byte_size2", BE, sxbl_ubjson_byte_size2_fields);
+var sxbl_ubjson_item_count2_fields = layout([i16("item_count", COUNT)]);
+var sxbl_ubjson_item_count2 = sxLayout(0x60350111, "ubjson_item_count2", BE, sxbl_ubjson_item_count2_fields);
+var sxbl_ubjson_byte_size4_fields = layout([i32("byte_size", SIZE)]);
+var sxbl_ubjson_byte_size4 = sxLayout(0x60350113, "ubjson_byte_size4", BE, sxbl_ubjson_byte_size4_fields);
+var sxbl_ubjson_item_count4_fields = layout([i32("item_count", COUNT)]);
+var sxbl_ubjson_item_count4 = sxLayout(0x60350114, "ubjson_item_count4", BE, sxbl_ubjson_item_count4_fields);
+var sxbl_ubjson_byte_size8_fields = layout([i64("byte_size", SIZE)]);
+var sxbl_ubjson_byte_size8 = sxLayout(0x60350116, "ubjson_byte_size8", BE, sxbl_ubjson_byte_size8_fields);
+var sxbl_ubjson_item_count8_fields = layout([i64("item_count", COUNT)]);
+var sxbl_ubjson_item_count8 = sxLayout(0x60350117, "ubjson_item_count8", BE, sxbl_ubjson_item_count8_fields);
+function sxbl_ubnumber(c, p, end, v, count) {
+    var t = [0];
+    if (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_ubjson_tag)) {
+        return false;
+    }
+    var z = t[0] === 105 /*i*/ || t[0] === 85 /*U*/ ? 1 : t[0] === 73 /*I*/ ? 2 : t[0] === 108 /*l*/ ? 4 : t[0] === 76 /*L*/ ? 8 : 0;
+    if (!z || !sxbl_word(c, p[0], z, true, v)) {
+        return false;
+    }
+    if (t[0] === 85 /*U*/) {
+        var x = [0];
+        return sxbl_length(c, p, end, z, true, count, x);
+    }
+    var a = [sxbl_ubjson_byte_size1, sxbl_ubjson_byte_size2, sxbl_ubjson_byte_size4, sxbl_ubjson_byte_size8, sxbl_ubjson_item_count1, sxbl_ubjson_item_count2, sxbl_ubjson_item_count4, sxbl_ubjson_item_count8];
+    var i = z === 1 ? 0 : z === 2 ? 1 : z === 4 ? 2 : 3;
+    return sxbl_emit(c, p, end, a[(i + (count ? 4 : 0)) >>> 0]);
+}
+function sxbl_ubtext(c, p, end) {
+    var n = [0];
+    return sxbl_ubnumber(c, p, end, n, false) && sxbl_skip(c, p, end, n[0]);
+}
+function sxbl_ubjson(c, p, end, depth, fixed) {
+    var t = [fixed];
+    if (depth > 32) {
+        return false;
+    }
+    if (!fixed && (!sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_ubjson_tag))) {
+        return false;
+    }
+    if (t[0] === 90 /*Z*/ || t[0] === 84 /*T*/ || t[0] === 70 /*F*/) {
+        return true;
+    }
+    if (t[0] === 105 /*i*/ || t[0] === 85 /*U*/ || t[0] === 73 /*I*/ || t[0] === 108 /*l*/ || t[0] === 76 /*L*/) {
+        return sxbl_numeric(c, p, end, t[0] === 105 /*i*/ || t[0] === 85 /*U*/ ? 1 : t[0] === 73 /*I*/ ? 2 : t[0] === 108 /*l*/ ? 4 : 8, t[0] !== 85 /*U*/, true);
+    }
+    if (t[0] === 100 /*d*/ || t[0] === 68 /*D*/) {
+        return sxbl_float(c, p, end, t[0] === 100 /*d*/ ? 4 : 8, true);
+    }
+    if (t[0] === 67 /*C*/) {
+        return sxbl_numeric(c, p, end, 1, false, true);
+    }
+    if (t[0] === 83 /*S*/ || t[0] === 72 /*H*/) {
+        return sxbl_ubtext(c, p, end);
+    }
+    if (t[0] !== 91 /*[*/ && t[0] !== 123 /*{*/) {
+        return false;
+    }
+    var next = [0];
+    var kind = [0];
+    var n = [0];
+    var counted = false;
+    if (!sxbl_byte(c, p[0], next)) {
+        return false;
+    }
+    if (next[0] === 36 /*$*/) {
+        if (!sxbl_emit(c, p, end, sxbl_ubjson_tag) || !sxbl_byte(c, p[0], kind) || !sxbl_emit(c, p, end, sxbl_ubjson_optimized_type) || !sxbl_byte(c, p[0], next)) {
+            return false;
+        }
+    }
+    if (next[0] === 35 /*#*/) {
+        if (!sxbl_emit(c, p, end, sxbl_ubjson_tag) || !sxbl_ubnumber(c, p, end, n, true) || n[0] > 20000) {
+            return false;
+        }
+        counted = true;
+    }
+    for (var i = 0; i < 20000; i++) {
+        if (counted && i === n[0]) {
+            return true;
+        }
+        if (!counted) {
+            if (!sxbl_byte(c, p[0], next)) {
+                return false;
+            }
+            if (next[0] === (t[0] === 91 /*[*/ ? 93 /*]*/ : 125 /*}*/)) {
+                return sxbl_emit(c, p, end, sxbl_ubjson_tag);
+            }
+            if (next[0] === 78 /*N*/) {
+                if (!sxbl_emit(c, p, end, sxbl_ubjson_tag)) {
+                    return false;
+                }
+                continue;
+            }
+        }
+        if (t[0] === 123 /*{*/ && !sxbl_ubtext(c, p, end)) {
+            return false;
+        }
+        if (!sxbl_ubjson(c, p, end, (depth + 1) >>> 0, kind[0])) {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_ubjson_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    return sxbl_ubjson(c, p, end, 0, 0);
+}

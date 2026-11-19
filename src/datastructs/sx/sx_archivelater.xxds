@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivelater.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivelater");
+include("_sx_archivelater_aldus");
+include("_sx_archivelater_ampk");
+include("_sx_archivelater_arx");
+include("_sx_archivelater_asar");
+include("_sx_archivelater_diskdoubler");
+include("_sx_archivelater_esp_archive");
+include("_sx_archivelater_is_stored");
+include("_sx_archivelater_lpak");
+include("_sx_archivelater_lrzip");
+include("_sx_archivelater_ms_dos_backup");
+include("_sx_archivelater_ms_dos_backup2");
+include("_sx_archivelater_packit");
+include("_sx_archivelater_pea");
+include("_sx_archivelater_ppmd");
+include("_sx_archivelater_rzip");
+include("_sx_archivelater_stuffit5");
+include("_sx_archivelater_tarx2");
+include("_sx_archivelater_uharc");
+include("_sx_archivelater_xpk_compressed_file");
+
+function fileTypes() { return ["ALDUS", "AMPK", "TARX2", "ARX", "PEA", "ASAR", "PACKIT", "DISKDOUBLER", "STUFFIT5",
+    "ESP_ARCHIVE", "MS_DOS_BACKUP", "UHARC", "MS_DOS_BACKUP2", "PPMD", "XPK_COMPRESSED_FILE", "LPAK", "LRZIP", "RZIP",
+    "IS_STORED"]; }
+
+var sx_archivelater_layouts = [sxal_aldus_header, sxal_aldus_timestamp, sxal_aldus_stream, sxal_aldus_block_size,
+    sxal_ampk_header, sxal_ampk_record, sxal_ampk_file, sxal_arx_member, sxal_arx_end, sxal_dos_packit_header,
+    sxal_dos_packit_member, sxal_dos_packit_end, sxal_asar_header, sxal_pea_header, sxal_pea_trigger_le, sxal_pea_stream_le,
+    sxal_pea_block_size_le, sxal_pea_name_size_le, sxal_pea_object_le, sxal_pea_file_size_le, sxal_pea_packed_size_le,
+    sxal_pea_last_size_le, sxal_pea_trigger_be, sxal_pea_stream_be, sxal_pea_block_size_be, sxal_pea_name_size_be,
+    sxal_pea_object_be, sxal_pea_file_size_be, sxal_pea_packed_size_be, sxal_pea_last_size_be, sxal_sit5_header, sxal_sit5_file,
+    sxal_sit5_folder, sxal_sit5_second_v1, sxal_sit5_second_v3, sxal_sit5_resource, sxal_diskdoubler_file, sxal_dda2_header,
+    sxal_dda2_packed, sxal_dda2_folder, sxal_dda2_stored, sxal_dda2_end, sxal_dda2_footer, sxal_dda2_index_word,
+    sxal_ddar_header, sxal_ddar_member, sxal_xpk_header, sxal_xpk_extension_size, sxal_xpk_chunk2, sxal_xpk_chunk4,
+    sxal_ppmd_header, sxal_lrzip_header, sxal_lrzip_chunk1, sxal_lrzip_block1, sxal_lrzip_chunk2, sxal_lrzip_block2,
+    sxal_lrzip_chunk3, sxal_lrzip_block3, sxal_lrzip_chunk4, sxal_lrzip_block4, sxal_lrzip_chunk5, sxal_lrzip_block5,
+    sxal_lrzip_chunk6, sxal_lrzip_block6, sxal_lrzip_chunk7, sxal_lrzip_block7, sxal_lrzip_chunk8, sxal_lrzip_block8,
+    sxal_lrzip_md5, sxal_rzip_header, sxal_rzip_block, sxal_dos_backup_header, sxal_dos_backup2_header,
+    sxal_dos_backup2_directory, sxal_dos_backup2_file, sxal_esp_header, sxal_lpak_header, sxal_uharc_header,
+    sxal_is_stored_signature, sxal_is_stored_marker, sxal_tarx2_signature, sxal_tarx2_marker];
+
+function structs() {
+    return sxCatalog([sxal_aldus_header, sxal_aldus_timestamp, sxal_aldus_stream, sxal_aldus_block_size, sxal_ampk_header,
+        sxal_ampk_record, sxal_ampk_file, sxal_arx_member, sxal_arx_end, sxal_dos_packit_header, sxal_dos_packit_member,
+        sxal_dos_packit_end, sxal_asar_header, sxal_pea_header, sxal_pea_trigger_le, sxal_pea_stream_le, sxal_pea_block_size_le,
+        sxal_pea_name_size_le, sxal_pea_object_le, sxal_pea_file_size_le, sxal_pea_packed_size_le, sxal_pea_last_size_le,
+        sxal_pea_trigger_be, sxal_pea_stream_be, sxal_pea_block_size_be, sxal_pea_name_size_be, sxal_pea_object_be,
+        sxal_pea_file_size_be, sxal_pea_packed_size_be, sxal_pea_last_size_be, sxal_sit5_header, sxal_sit5_file,
+        sxal_sit5_folder, sxal_sit5_second_v1, sxal_sit5_second_v3, sxal_sit5_resource, sxal_diskdoubler_file, sxal_dda2_header,
+        sxal_dda2_packed, sxal_dda2_folder, sxal_dda2_stored, sxal_dda2_end, sxal_dda2_footer, sxal_dda2_index_word,
+        sxal_ddar_header, sxal_ddar_member, sxal_xpk_header, sxal_xpk_extension_size, sxal_xpk_chunk2, sxal_xpk_chunk4,
+        sxal_ppmd_header, sxal_lrzip_header, sxal_lrzip_chunk1, sxal_lrzip_block1, sxal_lrzip_chunk2, sxal_lrzip_block2,
+        sxal_lrzip_chunk3, sxal_lrzip_block3, sxal_lrzip_chunk4, sxal_lrzip_block4, sxal_lrzip_chunk5, sxal_lrzip_block5,
+        sxal_lrzip_chunk6, sxal_lrzip_block6, sxal_lrzip_chunk7, sxal_lrzip_block7, sxal_lrzip_chunk8, sxal_lrzip_block8,
+        sxal_lrzip_md5, sxal_rzip_header, sxal_rzip_block, sxal_dos_backup_header, sxal_dos_backup2_header,
+        sxal_dos_backup2_directory, sxal_dos_backup2_file, sxal_esp_header, sxal_lpak_header, sxal_uharc_header,
+        sxal_is_stored_signature, sxal_is_stored_marker, sxal_tarx2_signature, sxal_tarx2_marker], sx_archivelater_comment, true, false);
+}
+
+function scan() {
+    return sxScan(sx_archivelater_build, false);
+}

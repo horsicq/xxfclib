@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/ecos/xx_ecos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxftl_ecos_exception_prefix_le_fields = layout([u32("cause_instruction", SIGNATURE), u32("mask_instruction", SIGNATURE)]);
+var sxftl_ecos_exception_prefix_le = sxLayout(0x60860001, "ecos_exception_prefix_le", LE, sxftl_ecos_exception_prefix_le_fields);
+var sxftl_ecos_exception_prefix_le_nop_fields = layout([u32("cause_instruction", SIGNATURE), u32("nop_instruction"),
+    u32("mask_instruction", SIGNATURE)]);
+var sxftl_ecos_exception_prefix_le_nop = sxLayout(0x60860002, "ecos_exception_prefix_le_nop", LE, sxftl_ecos_exception_prefix_le_nop_fields);
+var sxftl_ecos_exception_prefix_be_fields = layout([u32("cause_instruction", SIGNATURE), u32("mask_instruction", SIGNATURE)]);
+var sxftl_ecos_exception_prefix_be = sxLayout(0x60860003, "ecos_exception_prefix_be", BE, sxftl_ecos_exception_prefix_be_fields);
+var sxftl_ecos_exception_prefix_be_nop_fields = layout([u32("cause_instruction", SIGNATURE), u32("nop_instruction"),
+    u32("mask_instruction", SIGNATURE)]);
+var sxftl_ecos_exception_prefix_be_nop = sxLayout(0x60860004, "ecos_exception_prefix_be_nop", BE, sxftl_ecos_exception_prefix_be_nop_fields);
+var sx_ecos_build_prefixes = [[0x00, 0x68, 0x1A, 0x40, 0x00, 0x00, 0x00, 0x00, 0x7F, 0x00, 0x5A, 0x33],
+    [0x40, 0x1A, 0x68, 0x00, 0x00, 0x00, 0x00, 0x00, 0x33, 0x5A, 0x00, 0x7F],
+    [0x00, 0x68, 0x1A, 0x40, 0x7F, 0x00, 0x5A, 0x33, 0, 0, 0, 0], [0x40, 0x1A, 0x68, 0x00, 0x33, 0x5A, 0x00, 0x7F, 0, 0, 0, 0]];
+function sx_ecos_build(c) {
+    var h = [];
+    var l = null;
+    var size = 0;
+    if (c.f.file_type === "ECOS") {
+        var layouts = [sxftl_ecos_exception_prefix_le_nop, sxftl_ecos_exception_prefix_be_nop, sxftl_ecos_exception_prefix_le, sxftl_ecos_exception_prefix_be];
+        for (var i = 0; i < 4; i++) {
+            size = i < 2 ? 12 : 8;
+            if (c.size >= size && sx_read(c, 0, h, (size < 0 ? size + SX_U64_MAX : size)) && !sxMemcmp(h, sx_ecos_build_prefixes[i], (size < 0 ? size + SX_U64_MAX : size))) {
+                l = layouts[i];
+                break;
+            }
+        }
+    }
+    return l !== null && sx_add(c, l, 0, size) && sx_raw(c, size, c.size - size);
+}

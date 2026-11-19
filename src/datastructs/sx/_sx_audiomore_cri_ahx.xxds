@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/cri_ahx/xx_cri_ahx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_cri_ahx_header_fields = layout([u16("magic", SIGNATURE), u16("data_offset_minus_four", OFFSET), u8("encoding", ID),
+    u8("block_size", SIZE), u8("sample_bit_depth"), u8("channels", COUNT), u32("sample_rate"), u32("sample_count", COUNT),
+    u16("highpass_frequency"), u8("version", ID), u8("encryption_type", ID), blob("unknown", 4)]);
+var sxau_cri_ahx_header = sxLayout(0x602C0061, "cri_ahx_header", BE, sxau_cri_ahx_header_fields);
+var sxau_cri_ahx_copyright_fields = layout([chars("copyright", 6, SIGNATURE)]);
+var sxau_cri_ahx_copyright = sxLayout(0x602C0062, "cri_ahx_copyright", BE, sxau_cri_ahx_copyright_fields);
+var sxau_cri_ahx_footer_fields = layout([chars("marker", 10, SIGNATURE)]);
+var sxau_cri_ahx_footer = sxLayout(0x602C0063, "cri_ahx_footer", BE, sxau_cri_ahx_footer_fields);
+function sx_cri_ahx_build(v) {
+    var ok = false;
+    if (sxau_row(v, sxau_cri_ahx_header, 0, v.n)) {
+        var start = sxau_u16(v.p, 2, true) + 4;
+        ok = start >= 24 && sxau_row(v, sxau_cri_ahx_copyright, sxU64(start - 6), v.n);
+        if (ok && v.n >= 10 && !sxMemcmpAt(v.p, v.n + -10, "AHXE(c)CRI", 0, 10)) {
+            ok = sxau_row(v, sxau_cri_ahx_footer, sxU64(v.n - 10), v.n);
+        }
+    }
+    return ok;
+}

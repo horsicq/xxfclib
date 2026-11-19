@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/netwarepacked/xx_netwarepacked_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_netwarepacked_header_fields = layout([chars("signature", 12, SIGNATURE), chars("name", 12, NONE),
+    u8("marker", SIGNATURE), u8("version"), u8("method"), u32("uncompressed_size", SIZE)]);
+var sxasy_netwarepacked_header = sxLayout(0x60440034, "netwarepacked_header", LE, sxasy_netwarepacked_header_fields);
+function sx_netwarepacked_build(c) {
+    return sxasy_add(c, sxasy_netwarepacked_header, 0);
+}

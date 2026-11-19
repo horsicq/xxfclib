@@ -1,0 +1,145 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_cinemusic.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcine_robotham_header_fields = layout([u16("channel_count", COUNT), u16("table_1_count", COUNT),
+    u16("table_2_count", COUNT), u16("sample_count", COUNT)]);
+var sxcine_robotham_header = sxLayout(0x60AA0001, "robotham_header", BE, sxcine_robotham_header_fields);
+var sxcine_robotham_channel_start_fields = layout([u32("sequence_offset", OFFSET)]);
+var sxcine_robotham_channel_start = sxLayout(0x60AA0002, "robotham_channel_start", BE, sxcine_robotham_channel_start_fields);
+var sxcine_robotham_table_1_offset_fields = layout([u32("data_offset", OFFSET)]);
+var sxcine_robotham_table_1_offset = sxLayout(0x60AA0003, "robotham_table_1_offset", BE, sxcine_robotham_table_1_offset_fields);
+var sxcine_robotham_table_2_offset_fields = layout([u32("data_offset", OFFSET)]);
+var sxcine_robotham_table_2_offset = sxLayout(0x60AA0004, "robotham_table_2_offset", BE, sxcine_robotham_table_2_offset_fields);
+var sxcine_robotham_sample_fields = layout([u32("sample_offset", OFFSET), u16("sample_length_words"),
+    u32("repeat_offset", OFFSET), u16("repeat_length_words")]);
+var sxcine_robotham_sample = sxLayout(0x60AA0005, "robotham_sample", BE, sxcine_robotham_sample_fields);
+var sxcine_cinemaware_header_fields = layout([u32("signature", SIGNATURE), u8("sample_count", COUNT),
+    u8("sample_info_count", COUNT)]);
+var sxcine_cinemaware_header = sxLayout(0x60AA0006, "cinemaware_header", BE, sxcine_cinemaware_header_fields);
+function sx_cinemusic_supports(t) {
+    return t === "DIE_MUSIC_PAULROBOTHAM_DAT" || t === "DIE_MUSIC_CINEMAWARE_CIN";
+}
+function sxcine_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxcine_read(c, p, out, n) {
+    return sxcine_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), out, n);
+}
+function sxcine16(b, b_o) {
+    return b[b_o] << 8 | b[b_o + 1];
+}
+function sxcine32(b) {
+    return ((((b[0] << 24) >>> 0 | b[1] << 16) >>> 0 | b[2] << 8) >>> 0 | b[3]) >>> 0;
+}
+function sxcine_table(c, l, p, width, count) {
+    return !!(count && sxcine_span(c, p, width * count) && sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (width >= SX_I64_MAX ? width - SX_U64_MAX : width), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count))));
+}
+function sxcine_raw(c) {
+    var b = [0];
+    if (c.count || c.failed || c.size <= 0 || !sxcine_read(c, 0, b, 1)) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}
+function sxcine_robotham(c) {
+    var h = [];
+    var b = [];
+    if (!sxcine_span(c, 0, 8)) {
+        return sxcine_raw(c);
+    }
+    if (!sxcine_read(c, 0, h, 8)) {
+        return false;
+    }
+    var ch = sxcine16(h, 0);
+    var n1 = sxcine16(h, 2);
+    var n2 = sxcine16(h, 4);
+    var ns = sxcine16(h, 6);
+    if (!ch || ch > 4 || !n1 || n1 > 255 || !n2 || n2 > 255 || !ns || ns > 255) {
+        return sxcine_raw(c);
+    }
+    var p1 = 8 + ch * 4;
+    var p2 = p1 + n1 * 4;
+    var sp = p2 + n2 * 4;
+    var end = sp + ns * 12;
+    if (!sxcine_span(c, 0, end) || !sxcine_span(c, end, 254)) {
+        return sxcine_raw(c);
+    }
+    if (!sxcine_read(c, p2, b, 4)) {
+        return false;
+    }
+    if (sxcine32(b) !== end) {
+        return sxcine_raw(c);
+    }
+    for (var p = 8; p < sp; p += 4) {
+        if (!sxcine_read(c, p, b, 4)) {
+            return false;
+        }
+        var v = [sxcine32(b)];
+        if (!v[0] || (p < p1 ? v[0] > 65535 : !!(v[0] > 2147483647 || v[0] & 1))) {
+            return sxcine_raw(c);
+        }
+    }
+    for (p = end; p < end + 254; p++) {
+        v = [0];
+        if (!sxcine_read(c, p, v, 1)) {
+            return false;
+        }
+        if (v[0] !== 0x3F) {
+            return sxcine_raw(c);
+        }
+    }
+    return sx_add(c, sxcine_robotham_header, 0, 8) && sxcine_table(c, sxcine_robotham_channel_start, 8, 4, ch) && sxcine_table(c, sxcine_robotham_table_1_offset, p1, 4, n1) && sxcine_table(c, sxcine_robotham_table_2_offset, p2, 4, n2) && sxcine_table(c, sxcine_robotham_sample, sp, 12, ns) && sx_raw(c, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), c.size - (end >= SX_I64_MAX ? end - SX_U64_MAX : end));
+}
+function sxcine_cinemaware(c) {
+    var h = [];
+    if (!sxcine_span(c, 0, 6)) {
+        return sxcine_raw(c);
+    }
+    if (!sxcine_read(c, 0, h, 6)) {
+        return false;
+    }
+    if (sxMemcmp(h, "IBLK", 4) || !h[4] || h[4] > 0x80 || !h[5] || h[5] > 0x80) {
+        return sxcine_raw(c);
+    }
+    return sx_add(c, sxcine_cinemaware_header, 0, 6) && sx_raw(c, 6, sxI64(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 6)));
+}
+function sx_cinemusic_build(c) {
+    return c !== null && c.f !== null && sx_cinemusic_supports(c.f.file_type) && (c.f.file_type === "DIE_MUSIC_CINEMAWARE_CIN" ? sxcine_cinemaware(c) : sxcine_robotham(c)) && !c.failed;
+}
+function sx_cinemusic_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60AA0001 || id >= 0x60AB0000 || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60AA0001) {
+        if (r.name === "channel_count") {
+            s = "Number of channel-start offsets (1 to 4).";
+        } else if (r.name === "table_1_count") {
+            s = "Number of offsets in the first replay data table.";
+        } else if (r.name === "table_2_count") {
+            s = "Number of offsets in the second replay data table; its first offset equals the end of sample metadata.";
+        } else if (r.name === "sample_count") {
+            s = "Number of 12-byte external SSD sample descriptors.";
+        }
+    } else if (id === 0x60AA0002 || id === 0x60AA0003 || id === 0x60AA0004) {
+        s = "Byte offset relative to the start of this DAT file; the replay relocates this value in memory.";
+    } else if (id === 0x60AA0005) {
+        if (r.name === "sample_offset" || r.name === "repeat_offset") {
+            s = "Byte offset in the separate SSD sample file; not an offset in this DAT file.";
+        } else {
+            s = "Length in 16-bit audio words; byte length is twice the stored value.";
+        }
+    } else if (id === 0x60AA0006) {
+        if (r.name === "signature") {
+            s = "Physical IBLK tag checked by the native Cinemaware detector.";
+        } else if (r.name === "sample_count") {
+            s = "Stored sample count used by the detector to locate ASEQ at 0x16 + 0x8A times this value.";
+        } else {
+            s = "Sample-information entry count read by the original player; 0x8A-byte entries remain raw.";
+        }
+    }
+    return s === null || sxSetComment(r, s);
+}

@@ -1,0 +1,80 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/noa/xx_noa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_noa_header_fields = layout([blob("magic", 8, SIGNATURE), u32("file_id", ID), u32("reserved", RESERVED),
+    chars("description", 48, STRING)]);
+var sxgco_noa_header = sxLayout(0x60400028, "noa_header", LE, sxgco_noa_header_fields);
+var sxgco_noa_record_fields = layout([chars("tag", 8, ID), u64("body_bytes", SIZE)]);
+var sxgco_noa_record = sxLayout(0x60400029, "noa_record", LE, sxgco_noa_record_fields);
+var sxgco_noa_count_fields = layout([i32("entries", COUNT)]);
+var sxgco_noa_count = sxLayout(0x6040005E, "noa_count", LE, sxgco_noa_count_fields);
+function sxgco_noa_dir(v, p, end, depth) {
+    var length = [0];
+    var n = [0];
+    var at;
+    var attr = [0];
+    var relative = [0];
+    var extra = [0];
+    var z = [0];
+    var tag = [];
+    if (depth > 32 || !sxgco_read(v, p, tag, 8, end) || sxMemcmp(tag, "DirEntry", 8) || !sxgco_row(v, sxgco_noa_directory_record, p, end) || !sxgco_word(v, p + 8, 8, false, length, end) || length[0] > 2147483647) {
+        return false;
+    }
+    var limit = sxU64(sxU64(end - p) - 16);
+    if (length[0] < limit) {
+        limit = length[0];
+    }
+    limit += p + 16;
+    if (!sxgco_row(v, sxgco_noa_count, p + 16, limit) || !sxgco_word(v, p + 16, 4, false, n, limit)) {
+        return false;
+    }
+    if (n[0] > 2147483647) {
+        return true;
+    }
+    at = p + 20;
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxgco_row(v, sxgco_noa_entry, at, limit) || !sxgco_word(v, at + 8, 4, false, attr, limit) || !sxgco_word(v, at + 16, 8, false, relative, limit) || !sxgco_word(v, at + 32, 4, false, extra, limit)) {
+            return false;
+        }
+        at += 36;
+        if (!sxgco_span(v, at, extra[0], limit)) {
+            return false;
+        }
+        at += extra[0];
+        if (!sxgco_row(v, sxgco_name_size32, at, limit) || !sxgco_word(v, at, 4, false, z, limit) || z[0] > 0x10000 || !sxgco_table(v, sxgco_filename_byte, at + 4, z[0], limit)) {
+            return false;
+        }
+        at += 4 + z[0];
+        if (attr[0] === 0x20 || attr[0] === 0x40) {
+            break;
+        }
+        var target;
+        var valid;
+        if (sxShr64(relative[0], 63)) {
+            var back = sxNot64(relative[0]) + 1;
+            valid = back <= p;
+            target = valid ? sxU64(p - back) : 0;
+        } else {
+            valid = relative[0] <= sxU64(end - p);
+            target = valid ? p + relative[0] : 0;
+        }
+        if (valid && sxgco_span(v, target, 16, end)) {
+            if (!sxgco_row(v, sxgco_noa_record, target, end)) {
+                return false;
+            }
+            if (attr[0] === 0x10 && !sxgco_noa_dir(v, target + 16, end, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sxgco_noa(v) {
+    return sxgco_row(v, sxgco_noa_header, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size)) && sxgco_noa_dir(v, 64, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size), 0);
+}
+function sx_noa_build(v) {
+    return sxgco_noa(v);
+}

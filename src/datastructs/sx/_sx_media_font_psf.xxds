@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_psf/xx_font_psf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_psf1_header_fields = layout([u16("magic", SIGNATURE), u8("mode", FLAGS), u8("glyph_size", SIZE)]);
+var sxm_psf1_header = sxLayout(0x60060022, "psf1_header", LE, sxm_psf1_header_fields);
+var sxm_psf2_header_fields = layout([u32("magic", SIGNATURE), u32("version", ID), u32("header_size", SIZE), u32("flags", FLAGS),
+    u32("glyph_count", COUNT), u32("glyph_size", SIZE), u32("height"), u32("width")]);
+var sxm_psf2_header = sxLayout(0x60060023, "psf2_header", LE, sxm_psf2_header_fields);
+function sx_font_psf_build(c, h, n) {
+    if (n >= 4 && h[0] === 0x36 && h[1] === 4) {
+        return sxm_fixed(c, sxm_psf1_header, 4);
+    }
+    return n >= 32 && sxGetU32(h, n, 0, false) === 0x864AB572 && sxm_fixed(c, sxm_psf2_header, 32);
+}

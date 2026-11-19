@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/qnx_lmf/xx_qnx_lmf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_qnx_record_header_fields = layout([u8("record_type", ID), u8("reserved1", RESERVED), u16("data_size", SIZE),
+    u16("reserved2", RESERVED)]);
+var sxexm_qnx_record_header = sxLayout(0x602B0039, "qnx_record_header", LE, sxexm_qnx_record_header_fields);
+var sxexm_qnx_module_header_fields = layout([u16("version", ID), u16("flags", FLAGS), u16("cpu", ID), u16("fpu", ID),
+    u16("code_index", ID), u16("stack_index", ID), u16("heap_index", ID), u16("argv_index", ID),
+    field("spare2", "uint16[4]", 8, RESERVED), u32("code_offset", OFFSET), u32("stack_size", SIZE), u32("heap_size", SIZE),
+    u32("image_base", VA), field("spare3", "uint32[2]", 8, RESERVED)]);
+var sxexm_qnx_module_header = sxLayout(0x602B003A, "qnx_module_header", LE, sxexm_qnx_module_header_fields);
+var sxexm_qnx_segment_fields = layout([u32("size_and_flags", FLAGS)]);
+var sxexm_qnx_segment = sxLayout(0x602B003B, "qnx_segment", LE, sxexm_qnx_segment_fields);
+var sxexm_qnx_load_header_fields = layout([u16("segment_index", ID), u32("segment_offset", OFFSET)]);
+var sxexm_qnx_load_header = sxLayout(0x602B003C, "qnx_load_header", LE, sxexm_qnx_load_header_fields);
+var sxexm_qnx_resource_header_fields = layout([u16("resource_type", ID), field("spare", "uint16[3]", 6, RESERVED)]);
+var sxexm_qnx_resource_header = sxLayout(0x602B003D, "qnx_resource_header", LE, sxexm_qnx_resource_header_fields);
+var sxexm_qnx_read_write_end_fields = layout([u16("verification", SIGNATURE), u32("signature", SIGNATURE)]);
+var sxexm_qnx_read_write_end = sxLayout(0x602B003E, "qnx_read_write_end", LE, sxexm_qnx_read_write_end_fields);
+var sxexm_qnx_image_end_fields = layout([field("spare", "uint16[3]", 6, RESERVED)]);
+var sxexm_qnx_image_end = sxLayout(0x602B003F, "qnx_image_end", LE, sxexm_qnx_image_end_fields);
+function sxexm_qnx(c) {
+    var p = 0;
+    var h = [];
+    for (var i = 0; i < 20000 && c.count < 20000; i++) {
+        if (!sxexm_read(c, p, h, 6)) {
+            break;
+        }
+        var z = sxexm16(h, 2, false);
+        var type = h[0];
+        if (type > 8 || !sxexm_span(c, p + 6, z)) {
+            break;
+        }
+        if (!sxexm_add(c, sxexm_qnx_record_header, p)) {
+            return false;
+        }
+        var l = null;
+        if (type === 0 && z >= 48) {
+            l = sxexm_qnx_module_header;
+            if (!sxexm_table(c, sxexm_qnx_segment, p + 54, Math.floor(sxU64(z - 48) / 4))) {
+                return false;
+            }
+        } else if (type === 2 || type === 3 || type === 4 || type === 8) {
+            if (z >= 6) {
+                l = sxexm_qnx_load_header;
+            }
+        } else if (type === 6 && z >= 8) {
+            l = sxexm_qnx_resource_header;
+        } else if (type === 7 && z >= 6) {
+            l = sxexm_qnx_read_write_end;
+        } else if (type === 5 && z >= 6) {
+            l = sxexm_qnx_image_end;
+        }
+        if (l !== null && !sxexm_add(c, l, p + 6)) {
+            return false;
+        }
+        p += 6 + z;
+        if (type === 5) {
+            break;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_qnx_lmf_build(c) {
+    var ok = false;
+    ok = sxexm_qnx(c);
+    return ok && sxexm_finish(c);
+}

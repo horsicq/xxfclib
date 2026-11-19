@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/pyinstaller_one_executable/xx_pyinstaller_one_executable_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_pyinstaller_cookie24_fields = layout([bytes("magic", 8, SIGNATURE), u32("package_size", SIZE),
+    u32("toc_offset", OFFSET), u32("toc_size", SIZE), i32("python_version")]);
+var sxbx_pyinstaller_cookie24 = sxLayout(0x603000B3, "pyinstaller_cookie24", BE, sxbx_pyinstaller_cookie24_fields);
+var sxbx_pyinstaller_library_fields = layout([chars("python_library", 64, NONE)]);
+var sxbx_pyinstaller_library = sxLayout(0x603000B4, "pyinstaller_library", LE, sxbx_pyinstaller_library_fields);
+var sxbx_pyinstaller_toc_fields = layout([i32("entry_size", SIZE), u32("data_offset", OFFSET), u32("packed_size", SIZE),
+    u32("unpacked_size", SIZE), u8("compressed"), field("type", "char", 1, ID)]);
+var sxbx_pyinstaller_toc = sxLayout(0x603000B5, "pyinstaller_toc", BE, sxbx_pyinstaller_toc_fields);
+function sxbx_pyi_candidate(c, p, limit, outtable, outsize, outcookie) {
+    var b = [];
+    if (limit < p || sxU64(limit - p) < 24 || !sxbx_read(c, p, b, 24) || sxMemcmp(b, "MEI\x0C\x0B\n\x0B\x0E", 8)) {
+        return false;
+    }
+    var pkg = sxbx32(b, 8, true);
+    var off = sxbx32(b, 12, true);
+    var size = sxbx32(b, 16, true);
+    if (off + size > pkg) {
+        return false;
+    }
+    var cookie = sxU64(sxU64(pkg - off) - size);
+    if (cookie !== 24 && cookie !== 88 || cookie > sxU64(limit - p) || pkg > p + cookie || size < 19 || size > 16777216 || !sxbx_read(c, p, b, cookie)) {
+        return false;
+    }
+    var table = sxU64(p + cookie - pkg) + off;
+    var q = table;
+    var end = table + size;
+    if (end !== p) {
+        return false;
+    }
+    var count = 0;
+    while (q < end) {
+        if (++count > 20000 || sxU64(end - q) < 19 || !sxbx_read(c, q, b, 18)) {
+            return false;
+        }
+        var z = sxbx32(b, 0, true);
+        var data = sxbx32(b, 4, true);
+        var packed = sxbx32(b, 8, true);
+        if (z < 19 || z > sxU64(end - q) || data > off || packed > sxU64(off - data) || b[16] > 1) {
+            return false;
+        }
+        q += z;
+    }
+    outtable[0] = table;
+    outsize[0] = size;
+    outcookie[0] = cookie;
+    return true;
+}
+function sxbx_pyi(c) {
+    var limits = [(c.size < 0 ? c.size + SX_U64_MAX : c.size), 0];
+    var pe = [0];
+    var b = [];
+    if (sxbx_read(c, 0, b, 2) && b[0] === 77 /*M*/ && b[1] === 90 /*Z*/ && sxbx_word(c, 60, 4, false, pe) && sxbx_read(c, pe[0], b, 4) && !sxMemcmp(b, "PE\x00\x00", 4)) {
+        var magic = [0];
+        var off = [0];
+        if (sxbx_word(c, pe[0] + 24, 2, false, magic) && (magic[0] === 267 || magic[0] === 523) && sxbx_word(c, pe[0] + 24 + (magic[0] === 267 ? 128 : 144), 4, false, off) && off[0] < limits[0]) {
+            limits[1] = off[0];
+        }
+    }
+    for (var window = 0; window < 2; window++) {
+        var limit = limits[window];
+        var low = limit > (window ? 512 : 4096) ? sxU64(limit - (window ? 512 : 4096)) : 0;
+        if (limit < 24) {
+            continue;
+        }
+        for (var p = sxU64(limit - 24); ; p--) {
+            var table = [0];
+            var size = [0];
+            var cookie = [0];
+            if (sxbx_pyi_candidate(c, p, limit, table, size, cookie)) {
+                if (!sxbx_add(c, sxbx_pyinstaller_cookie24, p) || cookie[0] === 88 && !sxbx_add(c, sxbx_pyinstaller_library, p + 24)) {
+                    return false;
+                }
+                var q = table[0];
+                while (q < table[0] + size[0] && c.count < 20000) {
+                    var z = [0];
+                    if (!sxbx_word(c, q, 4, true, z) || !sxbx_add(c, sxbx_pyinstaller_toc, q)) {
+                        return false;
+                    }
+                    q += z[0];
+                }
+                return true;
+            }
+            if (p === low) {
+                break;
+            }
+        }
+    }
+    return false;
+}
+function sx_pyinstaller_one_executable_build(c) {
+    return sxbx_pyi(c);
+}

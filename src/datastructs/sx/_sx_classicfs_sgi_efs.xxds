@@ -1,0 +1,104 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/sgi_efs/xx_sgi_efs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_efs_superblock_fields = layout([i32("block_count", COUNT), i32("first_cylinder_group"),
+    i32("cylinder_group_blocks", COUNT), i16("inode_blocks_per_group", COUNT), i16("sectors_per_track", COUNT),
+    i16("heads", COUNT), i16("cylinder_group_count", COUNT), i16("dirty", FLAGS), i16("padding", RESERVED),
+    i32("last_update", TIMESTAMP), u32("magic", SIGNATURE), chars("volume_name", 6, NONE), chars("pack_name", 6, NONE),
+    i32("bitmap_size", SIZE), i32("free_blocks", COUNT), i32("free_inodes", COUNT), i32("bitmap_block"),
+    i32("replicated_superblock"), i32("last_allocated_inode"), field("reserved", "byte[20]", 20, RESERVED),
+    u32("checksum", CHECKSUM)]);
+var sxcf_efs_superblock = sxLayout(0x603D0032, "efs_superblock", BE, sxcf_efs_superblock_fields);
+var sxcf_efs_inode_header_fields = layout([u16("mode", FLAGS), i16("link_count", COUNT), u16("user_id", ID),
+    u16("group_id", ID), i32("file_size", SIZE), i32("access_time", TIMESTAMP), i32("modification_time", TIMESTAMP),
+    i32("inode_change_time", TIMESTAMP), u32("generation"), i16("extent_count", COUNT), u8("version", ID), u8("spare", RESERVED)]);
+var sxcf_efs_inode_header = sxLayout(0x603D0033, "efs_inode_header", BE, sxcf_efs_inode_header_fields);
+var sxcf_efs_extent_fields = layout([u8("magic", SIGNATURE), field("first_block", "uint24", 3), u8("block_count", COUNT),
+    field("logical_block", "uint24", 3)]);
+var sxcf_efs_extent = sxLayout(0x603D0034, "efs_extent", BE, sxcf_efs_extent_fields);
+function sxcf_efs(c) {
+    var h = [];
+    var b = [];
+    if (!sxcf_read(c, 512, h, 92) || sxcf32(h, 28, 1) !== 0x72959 && sxcf32(h, 28, 1) !== 0x7295A) {
+        return false;
+    }
+    var blocks = sxcf32(h, 0, 1);
+    var first = sxcf32(h, 4, 1);
+    var group = sxcf32(h, 8, 1);
+    var ib = sxcf16(h, 12, 1);
+    var groups = sxcf16(h, 18, 1);
+    if (!blocks || !group || !ib || !groups || ib >= group || first >= blocks || groups > Math.floor(sxU64(blocks - first) / group) || !sxcf_span(c, 0, blocks * 512) || !sxcf_put(c, sxcf_efs_superblock, 512, 1)) {
+        return false;
+    }
+    var visits = 0;
+    for (var cg = 0; cg < groups && visits < 262144 && c.count < 24000; cg++) {
+        for (var i = 0; i < ib * 4 && visits < 262144 && c.count < 24000; i++, visits++) {
+            var p = (first + cg * group) * 512 + i * 128;
+            if (!sxcf_read(c, p, b, 128) || !sxcf_put(c, sxcf_efs_inode_header, p, 1)) {
+                return false;
+            }
+            var mode = sxcf16(b, 0, 1) & 0xF000;
+            var count = sxcf16(b, 28, 1);
+            var size = sxcf32(b, 8, 1);
+            if (mode !== 0x4000 && mode !== 0x8000 && mode !== 0xA000) {
+                continue;
+            }
+            if (count <= 12) {
+                if (!sxcf_put(c, sxcf_efs_extent, p + 32, count)) {
+                    return false;
+                }
+                if (mode === 0x4000) {
+                    for (var k = 0; k < count; k++) {
+                        var e = b, e_o = 32 + ((8 * k) >>> 0);
+                        var at = sxcf24(e, e_o + 1, 1);
+                        var n = e[e_o + 4];
+                        var logical = (sxcf24(e, e_o + 5, 1) * 512) >>> 0;
+                        if (e[e_o] || at >= blocks || n > sxU64(blocks - at) || logical >= size) {
+                            continue;
+                        }
+                        n *= 512;
+                        if (n > sxU64(size - logical)) {
+                            n = sxU64(size - logical);
+                        }
+                        if (!sxcf_dir(c, at * 512, n, 5, 1, 0)) {
+                            return false;
+                        }
+                    }
+                }
+            } else {
+                var indirect = sxcf24(b, 37, 1);
+                if (!indirect || indirect > 12) {
+                    continue;
+                }
+                if (!sxcf_put(c, sxcf_efs_extent, p + 32, indirect)) {
+                    return false;
+                }
+                var remaining = count;
+                for (k = 0; k < indirect && remaining; k++) {
+                    e = b;
+                    e_o = 32 + ((8 * k) >>> 0);
+                    at = sxcf24(e, e_o + 1, 1);
+                    n = e[e_o + 4];
+                    if (e[e_o] || at >= blocks || n > sxU64(blocks - at)) {
+                        break;
+                    }
+                    var slots = n * 64;
+                    if (slots > remaining) {
+                        slots = remaining;
+                    }
+                    if (!sxcf_put(c, sxcf_efs_extent, at * 512, slots)) {
+                        return false;
+                    }
+                    remaining = sxU64(remaining - slots);
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_sgi_efs_build(c) {
+    return sxcf_efs(c);
+}

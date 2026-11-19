@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/rt11_fs/xx_rt11_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_rt11_home_block_fields = layout([field("bad_block_table", "byte[130]", 130),
+    field("reserved0", "byte[2]", 2, RESERVED), field("initialization_area", "byte[38]", 38),
+    field("backup_information", "byte[18]", 18), field("reserved1", "byte[260]", 260, RESERVED),
+    field("reserved_words", "byte[4]", 4, RESERVED), field("reserved2", "byte[14]", 14, RESERVED), u16("cluster_blocks", COUNT),
+    u16("first_directory_segment"), u16("system_version_rad50"), chars("volume_name", 12, NONE), chars("owner_name", 12, NONE),
+    chars("format_identifier", 12, SIGNATURE), u16("reserved3", RESERVED), u16("checksum", CHECKSUM)]);
+var sxcf_rt11_home_block = sxLayout(0x603D0037, "rt11_home_block", LE, sxcf_rt11_home_block_fields);
+var sxcf_rt11_directory_segment_fields = layout([u16("total_segments", COUNT), u16("next_segment"), u16("highest_segment"),
+    u16("extra_bytes_per_entry", SIZE), u16("first_data_block")]);
+var sxcf_rt11_directory_segment = sxLayout(0x603D0038, "rt11_directory_segment", LE, sxcf_rt11_directory_segment_fields);
+var sxcf_rt11_directory_entry_fields = layout([u16("status", FLAGS), u16("filename_rad50_1"), u16("filename_rad50_2"),
+    u16("extension_rad50"), u16("length_blocks", COUNT), u16("job_channel", FLAGS), u16("creation_date_encoded")]);
+var sxcf_rt11_directory_entry = sxLayout(0x603D0039, "rt11_directory_entry", LE, sxcf_rt11_directory_entry_fields);
+function sxcf_rt11(c) {
+    var h = [];
+    var b = [];
+    if (!sxcf_read(c, 512, h, 512) || sxMemcmpAt(h, 496, "DECRT11A    ", 0, 12) || !sxcf_put(c, sxcf_rt11_home_block, 512, 1)) {
+        return false;
+    }
+    var first = sxcf16(h, 468, 0);
+    var nr = 1;
+    var seen = 0;
+    for (var step = 0; nr && step < 31; step++) {
+        if (nr > 31 || (seen & (1 << ((nr - 1) >>> 0)) >>> 0) >>> 0) {
+            break;
+        }
+        seen = (seen | (1 << ((nr - 1) >>> 0)) >>> 0) >>> 0;
+        var p = (first + ((((nr - 1) >>> 0) * 2) >>> 0)) * 512;
+        if (!sxcf_read(c, p, b, 1024)) {
+            break;
+        }
+        var max = sxcf16(b, 0, 0);
+        var next = sxcf16(b, 2, 0);
+        var extra = sxcf16(b, 6, 0);
+        if (!max || max > 31 || nr > max || extra > 1000 || extra & 1 || sxcf16(b, 4, 0) > max) {
+            break;
+        }
+        if (!sxcf_put(c, sxcf_rt11_directory_segment, p, 1)) {
+            return false;
+        }
+        for (var q = 10; (((q + 14) >>> 0) + extra) >>> 0 <= 1024; q = (q + ((14 + extra) >>> 0)) >>> 0) {
+            if (!sxcf_put(c, sxcf_rt11_directory_entry, p + q, 1)) {
+                return false;
+            }
+            if (sxcf16(b, q, 0) & 0x0800) {
+                break;
+            }
+        }
+        nr = next;
+    }
+    return true;
+}
+function sx_rt11_fs_build(c) {
+    return sxcf_rt11(c);
+}

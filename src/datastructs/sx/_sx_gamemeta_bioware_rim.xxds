@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/bioware_rim/xx_bioware_rim_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_rim_header_fields = layout([chars("signature", 4, SIGNATURE), chars("version", 4, ID), u32("unknown8"),
+    u32("entry_count", COUNT), u32("table_offset", OFFSET), bytes("reserved", 100, RESERVED)]);
+var sxgm_rim_header = sxLayout(0x60270039, "rim_header", LE, sxgm_rim_header_fields);
+var sxgm_rim_entry_fields = layout([chars("resref", 16, STRING), u32("resource_type", ID), u32("resource_id", ID),
+    u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxgm_rim_entry = sxLayout(0x6027003A, "rim_entry", LE, sxgm_rim_entry_fields);
+function sx_bioware_rim_build(c) {
+    return sxgm_fixed(c, sxgm_rim_header, sxgm_rim_entry, 0, 120, 12, 4, 16, 4, false);
+}

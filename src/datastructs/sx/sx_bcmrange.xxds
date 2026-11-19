@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_bcmrange.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_bcmrange");
+
+function fileTypes() { return ["BCM"]; }
+
+var sx_bcmrange_layouts = [sxbcm_bcm80_first_block, sxbcm_bcm80_empty];
+
+function structs() {
+    return sxCatalog([sxbcm_bcm80_first_block, sxbcm_bcm80_empty], sx_bcmrange_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_bcmrange_build, false);
+}

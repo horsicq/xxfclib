@@ -1,0 +1,335 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/lisa_fs/xx_lisa_fs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_lisa_dc42_header_fields = layout([u8("name_length", SIZE), chars("name", 63, NONE), u32("data_size", SIZE),
+    u32("tag_size", SIZE), u32("data_checksum", CHECKSUM), u32("tag_checksum", CHECKSUM), u8("encoding", ID), u8("format", ID),
+    u16("magic", SIGNATURE)]);
+var sxdt_lisa_dc42_header = sxLayout(0x607A0067, "lisa_dc42_header", BE, sxdt_lisa_dc42_header_fields);
+var sxdt_lisa_microfloppy_loader_fields = layout([field("jump_instruction", "byte[4]", 4), u16("boot_id", SIGNATURE),
+    u16("loader_version", ID), i16("global_data_size", SIZE), i16("code_size", SIZE), i16("entry_offset", OFFSET),
+    i16("mddf_block")]);
+var sxdt_lisa_microfloppy_loader = sxLayout(0x607A0068, "lisa_microfloppy_loader", BE, sxdt_lisa_microfloppy_loader_fields);
+var sxdt_lisa_microfloppy_tag_fields = layout([i16("version"), i16("volume_id", ID), i16("file_id", ID), i16("relative_page"),
+    u16("forward_link_and_used_high"), u16("backward_link_and_used_low")]);
+var sxdt_lisa_microfloppy_tag = sxLayout(0x607A0069, "lisa_microfloppy_tag", BE, sxdt_lisa_microfloppy_tag_fields);
+var sxdt_lisa_mddf_fields = layout([i16("filesystem_version", ID), field("volume_id", "uint32[2]", 8, ID), i16("volume_number"),
+    chars("volume_name_pascal", 33, NONE), field("padc1", "byte[1]", 1), chars("password", 33, NONE),
+    field("padc2", "byte[1]", 1), i32("init_machine_id"), i32("master_machine_id"), u32("creation_time", TIMESTAMP),
+    u32("copy_creation_time", TIMESTAMP), u32("copy_time", TIMESTAMP), u32("scavenge_time", TIMESTAMP), i32("copy_thread"),
+    i32("firstblock"), i32("lastblock"), i32("lastfspage"), i32("block_count", COUNT), i16("block_size", SIZE),
+    i16("data_size", SIZE), i16("cluster_size"), i32("mddf_page"), i16("mddf_size", SIZE), i32("bitmap_addr"),
+    i32("bitmap_size"), i16("bitmap_bytes", SIZE), i16("bitmap_pages", COUNT), i32("slist_addr"),
+    i16("slist_entries_per_block", COUNT), i16("slist_block_count", COUNT), i16("first_file", ID), i16("empty_file", ID),
+    i16("maximum_files", COUNT), i16("hint_size", SIZE), i16("leader_offset", OFFSET), i16("leader_pages", COUNT),
+    i16("flabel_offset", OFFSET), i16("unusedi1"), i16("map_offset", OFFSET), i16("map_size"), i16("file_count", COUNT),
+    i32("freestart"), i32("unusedl1"), i32("free_page_count", COUNT), i16("rootsnum", ID), i16("rootmaxentries", COUNT),
+    i8("mountinfo", ID), i8("mountinfo_pad"), field("overmount_stamp", "uint32[2]", 8, ID), i32("pmem_id"),
+    field("pmem", "int16[32]", 64), i16("vol_scavenged", FLAGS), i16("tbt_copied", FLAGS), i16("smallmap_offset", OFFSET),
+    i16("hentry_offset", OFFSET), field("backup_volid", "uint32[2]", 8, ID), i16("file_label_size", SIZE),
+    i16("fs_overhead", COUNT), i16("result_scavenge"), i16("boot_code"), i16("boot_environ"), i32("oem_id"), i32("root_page"),
+    i16("tree_depth"), i16("node_id"), i16("vol_seq_no"), i16("volume_mounted", FLAGS)]);
+var sxdt_lisa_mddf = sxLayout(0x607A006A, "lisa_mddf", BE, sxdt_lisa_mddf_fields);
+var sxdt_lisa_sfile_entry_fields = layout([i32("hintaddr"), i32("fileaddr"), i32("filesize", SIZE), i16("version")]);
+var sxdt_lisa_sfile_entry = sxLayout(0x607A006B, "lisa_sfile_entry", BE, sxdt_lisa_sfile_entry_fields);
+var sxdt_lisa_hint_entry_fields = layout([chars("name", 33, NONE), field("name_pad", "byte[1]", 1),
+    field("UID", "uint32[2]", 8, ID), i16("version"), i8("ftype", ID), i8("ftype_pad"), u32("date_created", TIMESTAMP),
+    u32("date_accessed", TIMESTAMP), u32("date_modified", TIMESTAMP), u32("date_backup", TIMESTAMP),
+    u32("date_scavenged", TIMESTAMP), i32("machine_id"), i8("killed", FLAGS), i8("safety_on", FLAGS), i8("protected", FLAGS),
+    i8("master", FLAGS), i8("close_by_OS", FLAGS), i8("file_open", FLAGS), i16("result_scavenge"), i16("unusedi1"),
+    i16("system_type"), i16("user_type"), i16("user_subtype"), field("build_info", "int16[4]", 8), i16("file_portion"),
+    chars("password", 9, NONE), chars("password_pad", 3, NONE), i16("parent_id", ID), i16("filesystem_overhead")]);
+var sxdt_lisa_hint_entry = sxLayout(0x607A006C, "lisa_hint_entry", BE, sxdt_lisa_hint_entry_fields);
+var sxdt_lisa_filemap_header_fields = layout([i32("block_count", COUNT), i16("maximum_entries", COUNT),
+    i16("extent_count", COUNT)]);
+var sxdt_lisa_filemap_header = sxLayout(0x607A006D, "lisa_filemap_header", BE, sxdt_lisa_filemap_header_fields);
+var sxdt_lisa_filemap_extent_fields = layout([i32("first_page"), i16("page_count", COUNT)]);
+var sxdt_lisa_filemap_extent = sxLayout(0x607A006E, "lisa_filemap_extent", BE, sxdt_lisa_filemap_extent_fields);
+var sxdt_lisa_flat_catalog_entry_fields = layout([chars("name", 33, NONE), field("name_pad", "byte[1]", 1), i8("cetype", ID),
+    i8("cetype_pad"), i16("file_id", ID), i32("attributes"), i32("readpage"), i16("readoffset", OFFSET), i32("writepage"),
+    i16("writeoffset", OFFSET)]);
+var sxdt_lisa_flat_catalog_entry = sxLayout(0x607A006F, "lisa_flat_catalog_entry", BE, sxdt_lisa_flat_catalog_entry_fields);
+var sxdt_lisa_btree_key_fields = layout([u8("key_length", SIZE), i16("parent_id", ID), chars("name", 33, NONE),
+    i8("entry_type", ID), i8("stored_padding")]);
+var sxdt_lisa_btree_key = sxLayout(0x607A0070, "lisa_btree_key", BE, sxdt_lisa_btree_key_fields);
+var sxdt_lisa_btree_directory_fields = layout([i16("directory_id", ID), u32("creation_time", TIMESTAMP), i32("unused")]);
+var sxdt_lisa_btree_directory = sxLayout(0x607A0071, "lisa_btree_directory", BE, sxdt_lisa_btree_directory_fields);
+var sxdt_lisa_btree_object_fields = layout([i16("file_id", ID), u32("creation_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), i32("logical_size", SIZE), i32("physical_size", SIZE),
+    i16("filesystem_overhead", COUNT), i16("flags", FLAGS), i32("unused")]);
+var sxdt_lisa_btree_object = sxLayout(0x607A0072, "lisa_btree_object", BE, sxdt_lisa_btree_object_fields);
+var sxdt_lisa_btree_thread_fields = layout([i16("parent_id", ID), chars("name", 33, NONE),
+    field("stored_padding", "byte[1]", 1), i32("unused")]);
+var sxdt_lisa_btree_thread = sxLayout(0x607A0073, "lisa_btree_thread", BE, sxdt_lisa_btree_thread_fields);
+var sxdt_lisa_btree_footer_fields = layout([i16("record_count", COUNT), i32("previous_node"), i32("next_node"), i8("kind", ID),
+    i8("checksum", CHECKSUM)]);
+var sxdt_lisa_btree_footer = sxLayout(0x607A0074, "lisa_btree_footer", BE, sxdt_lisa_btree_footer_fields);
+var sxdt_lisa_btree_offset_fields = layout([u16("record_offset", OFFSET)]);
+var sxdt_lisa_btree_offset = sxLayout(0x607A0075, "lisa_btree_offset", BE, sxdt_lisa_btree_offset_fields);
+var sxdt_lisa_btree_child_fields = layout([i32("child_page")]);
+var sxdt_lisa_btree_child = sxLayout(0x607A0076, "lisa_btree_child", BE, sxdt_lisa_btree_child_fields);
+function sxdt_lisa_page(l, page, p, p_o) {
+    if (page >= (l.blocks - l.base) >>> 0) {
+        return false;
+    }
+    p[p_o] = 84 + ((l.base + page) >>> 0) * 512;
+    return sxdt_span(l.c, p[p_o], 512);
+}
+function sxdt_lisa_tag(l, page, t) {
+    return page < (l.blocks - l.base) >>> 0 && sxdt_read(l.c, l.tags + ((l.base + page) >>> 0) * 12, t, 0, 12);
+}
+function sxdt_lisa_filemap(l, id, sr) {
+    var page = sxdt32(sr, 0, 1);
+    var size = sxdt32(sr, 8, 1);
+    var p = [0];
+    var tag = [];
+    var h = [];
+    var mddf = [];
+    if (!sxdt_lisa_page(l, page, p, 0) || !sxdt_lisa_tag(l, page, tag) || sxdt16(tag, 4, 1) << 16 >> 16 !== (-(id | 0) | 0) || sxdt16(tag, 6, 1) || !sxdt_read(l.c, p[0], h, 0, 512)) {
+        return true;
+    }
+    var m = 84 + l.base * 512;
+    if (sxdt_read(l.c, m, mddf, 0, 280)) {
+        var hint = sxdt16(mddf, 278, 1);
+        if (hint <= 400 && !sxdt_put(l.c, sxdt_lisa_hint_entry, p[0] + hint, 1)) {
+            return false;
+        }
+    }
+    var map = 128;
+    var max = 41;
+    if (l.version === 14) {
+        var next = sxdt16(tag, 8, 1) & 2047;
+        var nt = [];
+        if (next === 2047 || !sxdt_lisa_page(l, next, p, 0) || !sxdt_lisa_tag(l, next, nt) || sxdt16(nt, 4, 1) << 16 >> 16 !== (-(id | 0) | 0) || (sxdt16(nt, 10, 1) & 2047) !== page || !sxdt_read(l.c, p[0], h, 0, 512)) {
+            return true;
+        }
+        map = 0;
+        max = 84;
+    }
+    if (!sxdt_put(l.c, sxdt_lisa_filemap_header, p[0] + map, 1)) {
+        return false;
+    }
+    var capacity = sxdt16(h, map + 4, 1);
+    var declared = sxdt16(h, map + 6, 1);
+    var count = 0;
+    if (!capacity || capacity > max || declared > capacity) {
+        return true;
+    }
+    for (; count < declared; count++) {
+        var e = h, e_o = map + 8 + ((count * 6) >>> 0);
+        var n = sxdt16(e, e_o + 4, 1);
+        var start = sxdt32(e, e_o, 1);
+        if (!n) {
+            break;
+        }
+        if (start >= (l.blocks - l.base) >>> 0 || n > (((l.blocks - l.base) >>> 0) - start) >>> 0) {
+            break;
+        }
+    }
+    if (!sxdt_put(l.c, sxdt_lisa_filemap_extent, p[0] + map + 8, count)) {
+        return false;
+    }
+    if (id === 4 && l.version !== 17) {
+        var logical = 0;
+        for (var i = 0; i < count; i++) {
+            e = h;
+            e_o = map + 8 + ((i * 6) >>> 0);
+            start = sxdt32(e, e_o, 1);
+            n = sxdt16(e, e_o + 4, 1);
+            var at = [0];
+            if (!n || !sxdt_lisa_page(l, start, at, 0) || n > (((l.blocks - l.base) >>> 0) - start) >>> 0) {
+                break;
+            }
+            var bytes = n * 512;
+            if (logical >= size) {
+                break;
+            }
+            if (bytes > sxU64(size - logical)) {
+                bytes = sxU64(size - logical);
+            }
+            var q = logical % 54 ? 54 - logical % 54 : 0;
+            for (; q + 54 <= bytes && l.c.count < 24000; q += 54) {
+                if (!sxdt_put(l.c, sxdt_lisa_flat_catalog_entry, at[0] + q, 1)) {
+                    return false;
+                }
+            }
+            logical += bytes;
+        }
+    }
+    return true;
+}
+function sxdt_lisa_node_put(l, pages, layout, at, n) {
+    var f = layout.fields[layout.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!z || at >= 2048 || n > Math.floor(((2048 - at) >>> 0) / z)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var a = at + i * z;
+        var p = pages[Math.floor(a / 512)] + a % 512;
+        var contiguous = true;
+        for (var q = 0; q < z; ) {
+            if (pages[Math.floor((a + q) / 512)] + (a + q) % 512 !== p + q) {
+                contiguous = false;
+                break;
+            }
+            var take = 512 - (a + q) % 512;
+            if (take > sxU64(z - q)) {
+                take = sxU64(z - q);
+            }
+            q += take;
+        }
+        if (contiguous && !sxdt_put(l.c, layout, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxdt_lisa_tree(l, root) {
+    var limit = (l.blocks - l.base) >>> 0;
+    var seen = sxZeros(limit);
+    var q = sxZeros(Math.floor((limit * 4) / 4));
+    if (seen === null || q === null) {
+        return false;
+    }
+    var head = 0;
+    var tail = 0;
+    var ok = true;
+    if (root < limit) {
+        seen[root] = 1;
+        q[tail++] = root;
+    }
+    while (head < tail && l.c.count < 24000) {
+        var start = q[head++];
+        var page = start;
+        var prior = 4294967295;
+        var pages = [];
+        var node = [];
+        var tag = [];
+        var valid = true;
+        for (var i = 0; i < 4; i++) {
+            if (!sxdt_lisa_page(l, page, pages, i) || !sxdt_lisa_tag(l, page, tag) || sxdt16(tag, 4, 1) !== 4 || i && (sxdt16(tag, 10, 1) & 2047) !== prior || !sxdt_read(l.c, pages[i], node, (i * 512) >>> 0, 512)) {
+                valid = false;
+                break;
+            }
+            prior = page;
+            page = sxdt16(tag, 8, 1) & 2047;
+        }
+        if (!valid) {
+            continue;
+        }
+        var count = sxdt16(node, 2036, 1);
+        var kind = node[2046];
+        if (count > 128 || kind > 1) {
+            continue;
+        }
+        if (!sxdt_lisa_node_put(l, pages, sxdt_lisa_btree_footer, 2036, 1) || !sxdt_lisa_node_put(l, pages, sxdt_lisa_btree_offset, (2036 - ((count * 2) >>> 0)) >>> 0, count)) {
+            ok = false;
+            break;
+        }
+        var next = sxdt32(node, 2042, 1);
+        if (next && next < limit && !seen[next]) {
+            seen[next] = 1;
+            q[tail++] = next;
+        }
+        if (kind) {
+            var child = sxdt32(node, 0, 1);
+            if (child < limit && !seen[child]) {
+                seen[child] = 1;
+                q[tail++] = child;
+            }
+            if (!sxdt_lisa_node_put(l, pages, sxdt_lisa_btree_child, 0, 1)) {
+                ok = false;
+                break;
+            }
+        }
+        for (i = 0; i < count; i++) {
+            var at = sxdt16(node, 2034 - ((i * 2) >>> 0), 1) + (kind ? 4 : 0);
+            var end = (2036 - ((count * 2) >>> 0)) >>> 0;
+            if (at > end || (end - at) >>> 0 < 38 || node[at] !== 36) {
+                continue;
+            }
+            var type = node[(at + 36) >>> 0];
+            var len = type === 1 ? 48 : type >= 2 && type <= 5 ? 64 : type === 8 ? 78 : 38;
+            if (len > (end - at) >>> 0) {
+                continue;
+            }
+            if (!sxdt_lisa_node_put(l, pages, sxdt_lisa_btree_key, at, 1)) {
+                ok = false;
+                break;
+            }
+            var row = type === 1 ? sxdt_lisa_btree_directory : type >= 2 && type <= 5 ? sxdt_lisa_btree_object : type === 8 ? sxdt_lisa_btree_thread : null;
+            if (row !== null && !sxdt_lisa_node_put(l, pages, row, (at + 38) >>> 0, 1)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!ok) {
+            break;
+        }
+    }
+    return ok;
+}
+function sxdt_lisa(c) {
+    var h = [];
+    var boot = [];
+    var m = [];
+    if (!sxdt_read(c, 0, h, 0, 84) || h[0] > 63 || sxdt16(h, 82, 1) !== 256) {
+        return false;
+    }
+    var l = { c: c, data: sxdt32(h, 64, 1), tags: 0, blocks: 0, base: 0, version: 0 };
+    if (!l.data || l.data % 512 || Math.floor(l.data / 512) > 1000000) {
+        return false;
+    }
+    l.blocks = Math.floor(l.data / 512) >>> 0;
+    l.tags = 84 + l.data;
+    if (sxdt32(h, 68, 1) !== l.blocks * 12 || !sxdt_span(c, l.tags, l.blocks * 12) || !sxdt_read(c, 84, boot, 0, 16) || sxdt16(boot, 4, 1) !== 43690 || sxdt16(boot, 6, 1) !== 2128) {
+        return false;
+    }
+    l.base = sxdt16(boot, 14, 1);
+    if (l.base >= l.blocks || !sxdt_read(c, 84 + l.base * 512, m, 0, 314)) {
+        return false;
+    }
+    l.version = sxdt16(m, 0, 1);
+    if (l.version !== 14 && l.version !== 15 && l.version !== 17 || sxdt16(m, 126, 1) !== 512 || !sxdt_put(c, sxdt_lisa_dc42_header, 0, 1) || !sxdt_put(c, sxdt_lisa_microfloppy_loader, 84, 1) || !sxdt_put(c, sxdt_lisa_microfloppy_tag, l.tags, l.blocks) || !sxdt_put(c, sxdt_lisa_mddf, 84 + l.base * 512, 1)) {
+        return false;
+    }
+    var packing = sxdt16(m, 152, 1);
+    var blocks = sxdt16(m, 154, 1);
+    var files = sxdt16(m, 160, 1);
+    var slist = sxdt32(m, 148, 1);
+    if (!packing || packing > 36 || !files || files > 32766 || files > sxMul32(packing, blocks) || slist >= (l.blocks - l.base) >>> 0 || blocks > (((l.blocks - l.base) >>> 0) - slist) >>> 0) {
+        return true;
+    }
+    for (var b = 0, id = 0; b < blocks && id < files && c.count < 24000; b++) {
+        var p = [0];
+        var t = [];
+        if (!sxdt_lisa_page(l, (slist + b) >>> 0, p, 0) || !sxdt_lisa_tag(l, (slist + b) >>> 0, t) || sxdt16(t, 4, 1) !== 3) {
+            break;
+        }
+        var n = (files - id) >>> 0;
+        if (n > packing) {
+            n = packing;
+        }
+        if (!sxdt_put(c, sxdt_lisa_sfile_entry, p[0], n)) {
+            return false;
+        }
+        for (var i = 0; i < n; i++, id++) {
+            var sr = [];
+            if (id < 4) {
+                continue;
+            }
+            if (!sxdt_read(c, p[0] + ((i * 14) >>> 0), sr, 0, 14) || !sxdt_lisa_filemap(l, id, sr)) {
+                return false;
+            }
+        }
+    }
+    return l.version !== 17 || sxdt_lisa_tree(l, sxdt32(m, 302, 1));
+}
+function sx_lisa_fs_build(c) {
+    var ok = false;
+    ok = sxdt_lisa(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

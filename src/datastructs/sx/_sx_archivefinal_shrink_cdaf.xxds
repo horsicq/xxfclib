@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/shrink_cdaf/xx_shrink_cdaf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_cdaf_header_fields = layout([chars("signature", 4, SIGNATURE), u32("form_size", SIZE),
+    chars("form_type", 4, SIGNATURE), chars("name_chunk", 4, SIGNATURE), u32("name_size", SIZE), chars("name", 6, NONE)]);
+var sxaf_cdaf_header = sxLayout(0x603C001E, "cdaf_header", BE, sxaf_cdaf_header_fields);
+var sxaf_cdaf_member_fields = layout([chars("tag", 4, SIGNATURE), u32("header_payload_size", SIZE), u8("opaque0"), u8("method"),
+    bytes("opaque1", 4), u32("uncompressed_size", SIZE), bytes("opaque2", 6), u16("crc16", CHECKSUM), bytes("opaque3", 2)]);
+var sxaf_cdaf_member = sxLayout(0x603C001F, "cdaf_member", BE, sxaf_cdaf_member_fields);
+var sxaf_cdaf_chunk_fields = layout([chars("tag", 4, SIGNATURE), u32("body_size", SIZE)]);
+var sxaf_cdaf_chunk = sxLayout(0x603C0020, "cdaf_chunk", BE, sxaf_cdaf_chunk_fields);
+function sxaf_cdaf(c) {
+    var p = 26;
+    if (!sxaf_add(c, sxaf_cdaf_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var hs = [0];
+        var n = [0];
+        var b = [];
+        if (!sxaf_word(c, p + 4, 4, true, hs) || hs[0] < 20 || hs[0] > 65535 || !sxaf_add(c, sxaf_cdaf_member, p)) {
+            return false;
+        }
+        hs[0] = sxU64(hs[0] - 20);
+        p += 28;
+        if (!sxaf_span(c, p, hs[0] + sxAnd64(hs[0], 1))) {
+            return false;
+        }
+        p += hs[0] + sxAnd64(hs[0], 1);
+        if (!sxaf_read(c, p, b, 4)) {
+            return false;
+        }
+        if (!sxMemcmp(b, "NOTE", 4)) {
+            if (!sxaf_word(c, p + 4, 4, true, n) || !sxaf_span(c, p + 8, n[0] + sxAnd64(n[0], 1)) || !sxaf_add(c, sxaf_cdaf_chunk, p)) {
+                return false;
+            }
+            p += 8 + n[0] + sxAnd64(n[0], 1);
+        }
+        if (!sxaf_read(c, p, b, 4) || sxMemcmp(b, "BODY", 4) || !sxaf_word(c, p + 4, 4, true, n) || !sxaf_span(c, p + 8, n[0] + sxAnd64(n[0], 1)) || !sxaf_add(c, sxaf_cdaf_chunk, p)) {
+            return false;
+        }
+        p += 8 + n[0] + sxAnd64(n[0], 1);
+    }
+    return true;
+}
+function sx_shrink_cdaf_build(c) {
+    return sxaf_cdaf(c);
+}

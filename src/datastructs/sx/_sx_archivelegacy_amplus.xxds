@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/amplus/xx_amplus_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_amplus_header_fields = layout([chars("signature", 4, SIGNATURE), u32("form_size", SIZE), chars("form_type", 4, ID)]);
+var sxag_amplus_header = sxLayout(0x60250001, "amplus_header", BE, sxag_amplus_header_fields);
+var sxag_amplus_chunk_fields = layout([chars("tag", 4, ID), u32("body_size", SIZE)]);
+var sxag_amplus_chunk = sxLayout(0x60250002, "amplus_chunk", BE, sxag_amplus_chunk_fields);
+var sxag_amplus_data_fields = layout([u16("compression", ID), u32("packed_size_hint", SIZE), u32("checksum", CHECKSUM)]);
+var sxag_amplus_data = sxLayout(0x60250003, "amplus_data", BE, sxag_amplus_data_fields);
+var sxag_amplus_file_fields = layout([chars("tag", 4, ID), u32("body_size", SIZE), u32("unpacked_size", SIZE), i32("days"),
+    i32("minutes"), i32("ticks"), u32("protection", FLAGS)]);
+var sxag_amplus_file = sxLayout(0x60250004, "amplus_file", BE, sxag_amplus_file_fields);
+function sxag_amplus(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 12) || !sxag_add(c, sxag_amplus_header, 0)) {
+        return false;
+    }
+    var p = 12;
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxag_read(c, p, b, 8)) {
+            break;
+        }
+        var n = sxag32(b, 4, true);
+        var end = p + 8 + n;
+        var at = p + 8;
+        if (!sxag_span(c, at, n)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_amplus_chunk, p)) {
+            return false;
+        }
+        var help = !sxMemcmp(b, "HELP", 4);
+        var data = !sxMemcmp(b, "DATA", 4) || !sxMemcmp(b, "PACK", 4);
+        if (help || data) {
+            if (data) {
+                if (sxU64(end - at) < 10 || !sxag_add(c, sxag_amplus_data, at)) {
+                    break;
+                }
+                at += 10;
+            }
+            if (sxU64(end - at) < 36 || !sxag_read(c, at, b, 36) || sxMemcmp(b, "FILE", 4) || sxMemcmpAt(b, 28, "NAME", 0, 4)) {
+                break;
+            }
+            if (!sxag_add(c, sxag_amplus_file, at) || !sxag_add(c, sxag_amplus_chunk, at + 28)) {
+                return false;
+            }
+            var names = sxag32(b, 32, true);
+            at += 36;
+            if (names > sxU64(end - at)) {
+                break;
+            }
+            at += names;
+            if (sxU64(end - at) < 8 || !sxag_read(c, at, b, 8) || sxag32(b, 4, true) > sxU64(sxU64(end - at) - 8)) {
+                break;
+            }
+            if (!sxag_add(c, sxag_amplus_chunk, at)) {
+                return false;
+            }
+        }
+        p = end + sxAnd64(n, 1);
+    }
+    return true;
+}
+function sx_amplus_build(c) {
+    return sxag_amplus(c);
+}

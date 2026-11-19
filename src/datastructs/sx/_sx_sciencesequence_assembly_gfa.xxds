@@ -1,0 +1,247 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/assembly_gfa/xx_assembly_gfa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_gfa_record_type_fields = layout([field("gfa_record_type", "char", 0, STRING)]);
+var sxseq_gfa_record_type = sxLayout(0x6073002B, "sequence_gfa_record_type", LE, sxseq_gfa_record_type_fields);
+var sxseq_segment_name_fields = layout([field("segment_name", "char", 0, STRING)]);
+var sxseq_segment_name = sxLayout(0x6073002C, "sequence_segment_name", LE, sxseq_segment_name_fields);
+var sxseq_path_name_fields = layout([field("path_name", "char", 0, STRING)]);
+var sxseq_path_name = sxLayout(0x6073002D, "sequence_path_name", LE, sxseq_path_name_fields);
+var sxseq_orientation_fields = layout([field("orientation", "char", 0, STRING)]);
+var sxseq_orientation = sxLayout(0x6073002E, "sequence_orientation", LE, sxseq_orientation_fields);
+var sxseq_overlap_length_fields = layout([field("overlap_length", "ascii_signed", 0, COUNT)]);
+var sxseq_overlap_length = sxLayout(0x6073002F, "sequence_overlap_length", LE, sxseq_overlap_length_fields);
+var sxseq_cigar_operation_fields = layout([field("cigar_operation", "char", 0, STRING)]);
+var sxseq_cigar_operation = sxLayout(0x60730030, "sequence_cigar_operation", LE, sxseq_cigar_operation_fields);
+var sxseq_missing_overlap_fields = layout([field("missing_overlap", "char", 0, STRING)]);
+var sxseq_missing_overlap = sxLayout(0x60730031, "sequence_missing_overlap", LE, sxseq_missing_overlap_fields);
+var sxseq_tag_name_fields = layout([field("tag_name", "char", 0, STRING)]);
+var sxseq_tag_name = sxLayout(0x60730032, "sequence_tag_name", LE, sxseq_tag_name_fields);
+var sxseq_tag_type_fields = layout([field("tag_type", "char", 0, STRING)]);
+var sxseq_tag_type = sxLayout(0x60730033, "sequence_tag_type", LE, sxseq_tag_type_fields);
+var sxseq_tag_integer_fields = layout([field("tag_integer", "ascii_signed", 0)]);
+var sxseq_tag_integer = sxLayout(0x60730034, "sequence_tag_integer", LE, sxseq_tag_integer_fields);
+var sxseq_tag_real_fields = layout([field("tag_real", "ascii_real", 0)]);
+var sxseq_tag_real = sxLayout(0x60730035, "sequence_tag_real", LE, sxseq_tag_real_fields);
+var sxseq_tag_string_fields = layout([field("tag_string", "char", 0, STRING)]);
+var sxseq_tag_string = sxLayout(0x60730036, "sequence_tag_string", LE, sxseq_tag_string_fields);
+var sxseq_tag_character_fields = layout([field("tag_character", "char", 0, STRING)]);
+var sxseq_tag_character = sxLayout(0x60730037, "sequence_tag_character", LE, sxseq_tag_character_fields);
+var sxseq_tag_hex_bytes_fields = layout([field("tag_hex_bytes", "char", 0, STRING)]);
+var sxseq_tag_hex_bytes = sxLayout(0x60730038, "sequence_tag_hex_bytes", LE, sxseq_tag_hex_bytes_fields);
+var sxseq_gfa_declared_length_fields = layout([field("gfa_declared_length", "ascii_signed", 0, COUNT)]);
+var sxseq_gfa_declared_length = sxLayout(0x60730039, "sequence_gfa_declared_length", LE, sxseq_gfa_declared_length_fields);
+function sxseq_csv(q, line, t, cap) {
+    var n = 0;
+    var p = line.a;
+    var end = p + line.z;
+    do {
+        var a = p;
+        while (p < end && q.b[p] !== 44 /*,*/) {
+            p++;
+        }
+        if (n === cap) {
+            return (cap + 1) >>> 0;
+        }
+        t[n++] = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: a, z: p - a })));
+        if (p === end) {
+            break;
+        }
+        p++;
+    } while (p <= end);
+    return n;
+}
+function sxseq_overlap(q, token) {
+    if (token.z < 2 || q.b[token.a + token.z - 1] !== 77 /*M*/) {
+        return false;
+    }
+    {
+        if (!sxseq_emit(q, sxseq_overlap_length, sxCopy_sxseq_token(null, { a: token.a, z: token.z - 1 }))) {
+            return false;
+        }
+    }
+    {
+        if (!sxseq_emit(q, sxseq_cigar_operation, sxCopy_sxseq_token(null, { a: token.a + token.z - 1, z: 1 }))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxseq_gfa_tags(q, t, t_o, n) {
+    for (var i = 0; i < n; i++) {
+        var tag = sxCopy_sxseq_token(null, t[t_o + i]);
+        if (tag.z < 6 || q.b[tag.a + 2] !== 58 /*:*/ || q.b[tag.a + 4] !== 58 /*:*/) {
+            return false;
+        }
+        var name = { a: tag.a, z: 2 };
+        var type = { a: tag.a + 3, z: 1 };
+        var value = { a: tag.a + 5, z: tag.z - 5 };
+        {
+            if (!sxseq_emit(q, sxseq_tag_name, sxCopy_sxseq_token(null, name))) {
+                return false;
+            }
+        }
+        {
+            if (!sxseq_emit(q, sxseq_tag_type, sxCopy_sxseq_token(null, type))) {
+                return false;
+            }
+        }
+        var l = null;
+        switch (q.b[type.a]) {
+        case 105 /*i*/:
+            l = sxseq_eq(q, sxCopy_sxseq_token(null, name), "LN") ? sxseq_gfa_declared_length : sxseq_tag_integer;
+            break;
+        case 102 /*f*/:
+            l = sxseq_tag_real;
+            break;
+        case 65 /*A*/:
+            l = sxseq_tag_character;
+            break;
+        case 90 /*Z*/:
+            l = sxseq_tag_string;
+            break;
+        case 72 /*H*/:
+            l = sxseq_tag_hex_bytes;
+            break;
+        default:
+            return false;
+        }
+        if (!sxseq_emit(q, l, sxCopy_sxseq_token(null, value))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxseq_gfa(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(128, sxNew_sxseq_token);
+    var parts = sxAllocN(128, sxNew_sxseq_token);
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!line.z) {
+            continue;
+        }
+        if (q.b[line.a] === 35 /*#*/) {
+            {
+                if (!sxseq_emit(q, sxseq_comment, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 128, true);
+        var tags;
+        if (!n || n > 128) {
+            return false;
+        }
+        {
+            if (!sxseq_emit(q, sxseq_gfa_record_type, sxCopy_sxseq_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "H")) {
+            tags = 1;
+        } else if (sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "S")) {
+            if (n < 3) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_segment_name, sxCopy_sxseq_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (!sxseq_chunks(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[2]))) {
+                return false;
+            }
+            tags = 3;
+        } else if (sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "L")) {
+            if (n < 6) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_segment_name, sxCopy_sxseq_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_orientation, sxCopy_sxseq_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_segment_name, sxCopy_sxseq_token(null, t[3]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_orientation, sxCopy_sxseq_token(null, t[4]))) {
+                    return false;
+                }
+            }
+            if (!sxseq_overlap(q, sxCopy_sxseq_token(null, t[5]))) {
+                return false;
+            }
+            tags = 6;
+        } else if (sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "P")) {
+            if (n < 4) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_path_name, sxCopy_sxseq_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            var count = sxseq_csv(q, sxCopy_sxseq_token(null, t[2]), parts, 128);
+            if (count > 128) {
+                return false;
+            }
+            for (var i = 0; i < count; i++) {
+                if (parts[i].z < 2) {
+                    return false;
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_segment_name, sxCopy_sxseq_token(null, { a: parts[i].a, z: parts[i].z - 1 }))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_orientation, sxCopy_sxseq_token(null, { a: parts[i].a + parts[i].z - 1, z: 1 }))) {
+                        return false;
+                    }
+                }
+            }
+            if (sxseq_eq(q, sxCopy_sxseq_token(null, t[3]), "*")) {
+                {
+                    if (!sxseq_emit(q, sxseq_missing_overlap, sxCopy_sxseq_token(null, t[3]))) {
+                        return false;
+                    }
+                }
+            } else {
+                count = sxseq_csv(q, sxCopy_sxseq_token(null, t[3]), parts, 128);
+                if (count > 128) {
+                    return false;
+                }
+                for (i = 0; i < count; i++) {
+                    if (!sxseq_overlap(q, sxCopy_sxseq_token(null, parts[i]))) {
+                        return false;
+                    }
+                }
+            }
+            tags = 4;
+        } else {
+            return false;
+        }
+        if (!sxseq_gfa_tags(q, t, tags, (n - tags) >>> 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_assembly_gfa_build(q) {
+    return sxseq_gfa(q);
+}

@@ -1,0 +1,70 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binary.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_binary");
+
+function fileTypes() { return ["BIGF", "MINIDUMP", "SPARSE", "UIMAGE", "DTB", "TRX", "SEAMA", "UEFI_FV", "UEFI_CAPSULE", "GOB",
+    "HOG", "DXBC", "LINUX_ARM64", "LINUX_ZIMAGE", "QUAKE_PAK", "DOOM_WAD", "QUAKE_WAD2", "HALFLIFE_WAD3", "BUILD_GRP",
+    "CRI_AFS", "NINTENDO_U8", "UF2", "ANDROID_DTBO", "ANDROID_VBMETA", "LLVM_BITCODE_WRAPPER", "BTSNOOP", "SPIRV",
+    "NINTENDO_3DSX", "SONY_PSX_EXE", "TENSORFLOW_TFRECORD", "NINTENDO_DOL", "BINARY_PLIST", "LINUX_BTF",
+    "SQLITE_ROLLBACK_JOURNAL", "MYSQL_BINLOG", "LEVELDB_LOG", "ROCKSDB_BLOB", "CDB_DATABASE", "BFLT", "MENUET", "PLAN9_EXEC"]; }
+
+var sx_binary_layouts = [sx_b_spirv_header_le, sx_b_spirv_instruction_le, sx_b_spirv_header_be, sx_b_spirv_instruction_be,
+    sx_b_dxbc_header, sx_b_dxbc_chunk_offset, sx_b_dxbc_chunk_header, sx_b_llvm_bitcode_wrapper, sx_b_nintendo_3dsx_header,
+    sx_b_nintendo_3dsx_relocation_header, sx_b_nintendo_3dsx_relocation, sx_b_psx_exe_header, sx_b_nintendo_dol_header,
+    sx_b_bflt_header, sx_b_bflt_relocation, sx_b_btf_header, sx_b_btf_type, sx_b_btf_integer, sx_b_btf_array, sx_b_btf_member,
+    sx_b_btf_enum, sx_b_btf_enum64, sx_b_btf_parameter, sx_b_btf_variable, sx_b_btf_datasec_entry, sx_b_btf_decl_tag,
+    sx_b_minidump_header, sx_b_minidump_directory, sx_b_menuet_header, sx_b_plan9_header_be, sx_b_plan9_entry64,
+    sx_b_menuet_header0, sx_b_menuet_header2, sx_b_leveldb_writebatch_header, sx_b_uimage_header, sx_b_uimage_component_size,
+    sx_b_dtb_header_v2, sx_b_dtb_header_v3, sx_b_dtb_header, sx_b_dtb_reservation, sx_b_dtb_token, sx_b_dtb_property_header,
+    sx_b_trx_header, sx_b_seama_header, sx_b_seama_digest, sx_b_android_sparse_header, sx_b_android_sparse_chunk,
+    sx_b_linux_arm64_header, sx_b_linux_zimage_header_le, sx_b_linux_zimage_header_be, sx_b_uefi_capsule_header,
+    sx_b_uefi_fv_header, sx_b_uefi_fv_block_map, sx_b_uf2_block_header, sx_b_uf2_block_end, sx_b_android_dtbo_header,
+    sx_b_android_dtbo_entry, sx_b_avb_vbmeta_header, sx_b_avb_descriptor, sx_b_quake_pak_header, sx_b_quake_pak_entry,
+    sx_b_wad_header, sx_b_doom_wad_entry, sx_b_quake_wad_entry, sx_b_build_grp_header, sx_b_build_grp_entry, sx_b_afs_header,
+    sx_b_afs_entry, sx_b_nintendo_u8_header_le, sx_b_nintendo_u8_file_node_le, sx_b_nintendo_u8_directory_node_le,
+    sx_b_nintendo_u8_header_be, sx_b_nintendo_u8_file_node_be, sx_b_nintendo_u8_directory_node_be, sx_b_bigf_header,
+    sx_b_bigf_directory_header, sx_b_bigf_terminal_filler, sx_b_bigf_entry, sx_b_hog_header, sx_b_hog_entry, sx_b_gob_header,
+    sx_b_gob_jk_header, sx_b_gob_directory_header, sx_b_gob_entry, sx_b_gob_jk_entry, sx_b_mysql_binlog_header,
+    sx_b_mysql_binlog_event, sx_b_sqlite_journal_header, sx_b_sqlite_journal_page_number, sx_b_sqlite_journal_checksum,
+    sx_b_leveldb_log_record, sx_b_rocksdb_blob_header, sx_b_rocksdb_blob_record, sx_b_rocksdb_blob_footer,
+    sx_b_cdb_hash_table_header, sx_b_cdb_record_header, sx_b_cdb_hash_slot, sx_b_btsnoop_header, sx_b_btsnoop_packet,
+    sx_b_tfrecord_header, sx_b_tfrecord_trailer, sx_b_binary_plist_header, sx_b_binary_plist_trailer, sx_b_binary_plist_offset1,
+    sx_b_binary_plist_offset2, sx_b_binary_plist_offset3, sx_b_binary_plist_offset4, sx_b_binary_plist_offset5,
+    sx_b_binary_plist_offset6, sx_b_binary_plist_offset7, sx_b_binary_plist_offset8];
+
+function structs() {
+    return sxCatalog([sx_b_spirv_header_le, sx_b_spirv_instruction_le, sx_b_spirv_header_be, sx_b_spirv_instruction_be,
+        sx_b_dxbc_header, sx_b_dxbc_chunk_offset, sx_b_dxbc_chunk_header, sx_b_llvm_bitcode_wrapper, sx_b_nintendo_3dsx_header,
+        sx_b_nintendo_3dsx_relocation_header, sx_b_nintendo_3dsx_relocation, sx_b_psx_exe_header, sx_b_nintendo_dol_header,
+        sx_b_bflt_header, sx_b_bflt_relocation, sx_b_btf_header, sx_b_btf_type, sx_b_btf_integer, sx_b_btf_array,
+        sx_b_btf_member, sx_b_btf_enum, sx_b_btf_enum64, sx_b_btf_parameter, sx_b_btf_variable, sx_b_btf_datasec_entry,
+        sx_b_btf_decl_tag, sx_b_minidump_header, sx_b_minidump_directory, sx_b_menuet_header, sx_b_plan9_header_be,
+        sx_b_plan9_entry64, sx_b_menuet_header0, sx_b_menuet_header2, sx_b_leveldb_writebatch_header, sx_b_uimage_header,
+        sx_b_uimage_component_size, sx_b_dtb_header_v2, sx_b_dtb_header_v3, sx_b_dtb_header, sx_b_dtb_reservation,
+        sx_b_dtb_token, sx_b_dtb_property_header, sx_b_trx_header, sx_b_seama_header, sx_b_seama_digest,
+        sx_b_android_sparse_header, sx_b_android_sparse_chunk, sx_b_linux_arm64_header, sx_b_linux_zimage_header_le,
+        sx_b_linux_zimage_header_be, sx_b_uefi_capsule_header, sx_b_uefi_fv_header, sx_b_uefi_fv_block_map,
+        sx_b_uf2_block_header, sx_b_uf2_block_end, sx_b_android_dtbo_header, sx_b_android_dtbo_entry, sx_b_avb_vbmeta_header,
+        sx_b_avb_descriptor, sx_b_quake_pak_header, sx_b_quake_pak_entry, sx_b_wad_header, sx_b_doom_wad_entry,
+        sx_b_quake_wad_entry, sx_b_build_grp_header, sx_b_build_grp_entry, sx_b_afs_header, sx_b_afs_entry,
+        sx_b_nintendo_u8_header_le, sx_b_nintendo_u8_file_node_le, sx_b_nintendo_u8_directory_node_le,
+        sx_b_nintendo_u8_header_be, sx_b_nintendo_u8_file_node_be, sx_b_nintendo_u8_directory_node_be, sx_b_bigf_header,
+        sx_b_bigf_directory_header, sx_b_bigf_terminal_filler, sx_b_bigf_entry, sx_b_hog_header, sx_b_hog_entry,
+        sx_b_gob_header, sx_b_gob_jk_header, sx_b_gob_directory_header, sx_b_gob_entry, sx_b_gob_jk_entry,
+        sx_b_mysql_binlog_header, sx_b_mysql_binlog_event, sx_b_sqlite_journal_header, sx_b_sqlite_journal_page_number,
+        sx_b_sqlite_journal_checksum, sx_b_leveldb_log_record, sx_b_rocksdb_blob_header, sx_b_rocksdb_blob_record,
+        sx_b_rocksdb_blob_footer, sx_b_cdb_hash_table_header, sx_b_cdb_record_header, sx_b_cdb_hash_slot, sx_b_btsnoop_header,
+        sx_b_btsnoop_packet, sx_b_tfrecord_header, sx_b_tfrecord_trailer, sx_b_binary_plist_header, sx_b_binary_plist_trailer,
+        sx_b_binary_plist_offset1, sx_b_binary_plist_offset2, sx_b_binary_plist_offset3, sx_b_binary_plist_offset4,
+        sx_b_binary_plist_offset5, sx_b_binary_plist_offset6, sx_b_binary_plist_offset7, sx_b_binary_plist_offset8], sx_binary_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_binary_build, false);
+}

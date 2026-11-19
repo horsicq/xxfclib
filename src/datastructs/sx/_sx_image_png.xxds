@@ -1,0 +1,104 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/png/xx_png_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxi_png_signature_fields = layout([bytes("signature", 8, SIGNATURE)]);
+var sxi_png_signature = sxLayout(0x60010001, "PNG_SIGNATURE", BE, sxi_png_signature_fields);
+var sxi_png_chunk_fields = layout([u32("length", SIZE), chars("type", 4, ID)]);
+var sxi_png_chunk = sxLayout(0x60010002, "PNG_CHUNK_HEADER", BE, sxi_png_chunk_fields);
+var sxi_png_crc_fields = layout([u32("crc", CHECKSUM)]);
+var sxi_png_crc = sxLayout(0x60010003, "PNG_CHUNK_CRC", BE, sxi_png_crc_fields);
+var sxi_png_actl_fields = layout([u32("num_frames", COUNT), u32("num_plays", COUNT)]);
+var sxi_png_actl = sxLayout(0x60010005, "PNG_acTL", BE, sxi_png_actl_fields);
+var sxi_png_fdat_fields = layout([u32("sequence_number")]);
+var sxi_png_fdat = sxLayout(0x60010007, "PNG_fdAT_HEADER", BE, sxi_png_fdat_fields);
+var sxi_png_gama_fields = layout([u32("image_gamma")]);
+var sxi_png_gama = sxLayout(0x6001000A, "PNG_gAMA", BE, sxi_png_gama_fields);
+var sxi_png_chrm_fields = layout([u32("white_point_x"), u32("white_point_y"), u32("red_x"), u32("red_y"), u32("green_x"),
+    u32("green_y"), u32("blue_x"), u32("blue_y")]);
+var sxi_png_chrm = sxLayout(0x6001000B, "PNG_cHRM", BE, sxi_png_chrm_fields);
+var sxi_png_time_fields = layout([u16("year"), u8("month"), u8("day"), u8("hour"), u8("minute"), u8("second")]);
+var sxi_png_time = sxLayout(0x6001000D, "PNG_tIME", BE, sxi_png_time_fields);
+function sx_image_png(c) {
+    var h = [];
+    var at = 8;
+    var chunks = 0;
+    var have_ihdr = false;
+    var have_idat = false;
+    if (!sx_read(c, 0, h, 8) || sxMemcmp(h, "\x89PNG\r\n\x1A\n", 8) || !sx_add(c, sxi_png_signature, 0, 8)) {
+        return false;
+    }
+    while (sx_image_range(c, at, 12) && ++chunks <= 100000) {
+        var n;
+        var data = at + 8;
+        var layout = null;
+        var fixed = 0;
+        if (!sx_read(c, at, h, 8) || (n = sx_u32(c, at, true)) === null || n > 2147483647 || !sx_image_range(c, at, n + 12)) {
+            return false;
+        }
+        if (!sx_add(c, sxi_png_chunk, at, 8)) {
+            return false;
+        }
+        if (!sxMemcmpAt(h, 4, "IHDR", 0, 4)) {
+            if (have_ihdr || chunks !== 1 || n !== 13) {
+                return false;
+            }
+            have_ihdr = true;
+            layout = sxi_png_ihdr;
+            fixed = 13;
+        } else if (!have_ihdr) {
+            return false;
+        } else if (!sxMemcmpAt(h, 4, "acTL", 0, 4)) {
+            layout = sxi_png_actl;
+            fixed = 8;
+        } else if (!sxMemcmpAt(h, 4, "fcTL", 0, 4)) {
+            layout = sxi_png_fctl;
+            fixed = 26;
+        } else if (!sxMemcmpAt(h, 4, "fdAT", 0, 4)) {
+            if (n < 4 || !sx_add(c, sxi_png_fdat, data, 4) || !sx_raw(c, data + 4, n - 4)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "pHYs", 0, 4)) {
+            layout = sxi_png_phys;
+            fixed = 9;
+        } else if (!sxMemcmpAt(h, 4, "gAMA", 0, 4)) {
+            layout = sxi_png_gama;
+            fixed = 4;
+        } else if (!sxMemcmpAt(h, 4, "cHRM", 0, 4)) {
+            layout = sxi_png_chrm;
+            fixed = 32;
+        } else if (!sxMemcmpAt(h, 4, "sRGB", 0, 4)) {
+            layout = sxi_png_srgb;
+            fixed = 1;
+        } else if (!sxMemcmpAt(h, 4, "tIME", 0, 4)) {
+            layout = sxi_png_time;
+            fixed = 7;
+        } else if (!sxMemcmpAt(h, 4, "PLTE", 0, 4)) {
+            if (!n || n > 768 || n % 3 || !sx_table(c, sxi_rgb, data, 3, Math.floor(n / 3))) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "IDAT", 0, 4)) {
+            have_idat = true;
+            if (!sx_raw(c, data, n)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "IEND", 0, 4)) {
+            return n === 0 && have_idat && sx_add(c, sxi_png_crc, data, 4);
+        } else if (!sx_raw(c, data, n)) {
+            return false;
+        }
+        if (layout !== null && (n !== fixed >>> 0 || !sx_add(c, layout, data, fixed))) {
+            return false;
+        }
+        if (!sx_add(c, sxi_png_crc, data + n, 4)) {
+            return false;
+        }
+        at += n + 12;
+    }
+    return false;
+}
+function sx_png_build(c) {
+    return sx_image_png(c);
+}

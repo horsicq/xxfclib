@@ -1,0 +1,342 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/izpack/xx_izpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiw_izpack_stream_header_fields = layout([field("stream_magic", "uint16be", 2, SIGNATURE),
+    field("stream_version", "uint16be", 2), u8("block_data_tag", ID), u8("count_block_size", SIZE),
+    field("record_count", "int32be", 4, COUNT)]);
+var sxiw_izpack_stream_header = sxLayout(0x60790002, "izpack_stream_header", LE, sxiw_izpack_stream_header_fields);
+var sxiw_java_object_tag_fields = layout([u8("object_tag", ID)]);
+var sxiw_java_object_tag = sxLayout(0x60790003, "java_object_tag", LE, sxiw_java_object_tag_fields);
+var sxiw_java_class_tag_fields = layout([u8("class_descriptor_tag", ID)]);
+var sxiw_java_class_tag = sxLayout(0x60790004, "java_class_tag", LE, sxiw_java_class_tag_fields);
+var sxiw_java_utf_length_fields = layout([field("modified_utf8_length", "uint16be", 2, SIZE)]);
+var sxiw_java_utf_length = sxLayout(0x60790005, "java_utf_length", LE, sxiw_java_utf_length_fields);
+var sxiw_java_class_metadata_fields = layout([field("serial_version_uid", "uint64be", 8, ID), u8("class_flags", FLAGS),
+    field("field_count", "uint16be", 2, COUNT)]);
+var sxiw_java_class_metadata = sxLayout(0x60790006, "java_class_metadata", LE, sxiw_java_class_metadata_fields);
+var sxiw_java_field_type_fields = layout([chars("type_code", 1, ID)]);
+var sxiw_java_field_type = sxLayout(0x60790007, "java_field_type", LE, sxiw_java_field_type_fields);
+var sxiw_java_reference_fields = layout([u8("reference_tag", ID), field("wire_handle", "uint32be", 4, ID)]);
+var sxiw_java_reference = sxLayout(0x60790008, "java_reference", LE, sxiw_java_reference_fields);
+var sxiw_java_string_fields = layout([u8("string_tag", ID), field("modified_utf8_length", "uint16be", 2, SIZE)]);
+var sxiw_java_string = sxLayout(0x60790009, "java_string", LE, sxiw_java_string_fields);
+var sxiw_java_long_string_fields = layout([u8("string_tag", ID), field("modified_utf8_length", "uint64be", 8, SIZE)]);
+var sxiw_java_long_string = sxLayout(0x6079000A, "java_long_string", LE, sxiw_java_long_string_fields);
+var sxiw_java_block_fields = layout([u8("block_tag", ID), u8("block_length", SIZE)]);
+var sxiw_java_block = sxLayout(0x6079000B, "java_block", LE, sxiw_java_block_fields);
+var sxiw_java_long_block_fields = layout([u8("block_tag", ID), field("block_length", "uint32be", 4, SIZE)]);
+var sxiw_java_long_block = sxLayout(0x6079000C, "java_long_block", LE, sxiw_java_long_block_fields);
+var sxiw_java_boolean_fields = layout([u8("boolean", FLAGS)]);
+var sxiw_java_boolean = sxLayout(0x6079000D, "java_boolean", BE, sxiw_java_boolean_fields);
+var sxiw_java_byte_fields = layout([i8("byte")]);
+var sxiw_java_byte = sxLayout(0x6079000E, "java_byte", BE, sxiw_java_byte_fields);
+var sxiw_java_char_fields = layout([field("char", "uint16be", 2)]);
+var sxiw_java_char = sxLayout(0x6079000F, "java_char", BE, sxiw_java_char_fields);
+var sxiw_java_short_fields = layout([field("short", "int16be", 2)]);
+var sxiw_java_short = sxLayout(0x60790010, "java_short", BE, sxiw_java_short_fields);
+var sxiw_java_int_fields = layout([field("int", "int32be", 4)]);
+var sxiw_java_int = sxLayout(0x60790011, "java_int", BE, sxiw_java_int_fields);
+var sxiw_java_long_fields = layout([field("long", "int64be", 8)]);
+var sxiw_java_long = sxLayout(0x60790012, "java_long", BE, sxiw_java_long_fields);
+var sxiw_java_float_fields = layout([field("float", "float", 4)]);
+var sxiw_java_float = sxLayout(0x60790013, "java_float", BE, sxiw_java_float_fields);
+var sxiw_java_double_fields = layout([field("double", "double", 8)]);
+var sxiw_java_double = sxLayout(0x60790014, "java_double", BE, sxiw_java_double_fields);
+var sxiw_java_modified_utf8_fields = layout([field("java_modified_utf8", "uint8", 0)]);
+var sxiw_java_modified_utf8 = sxLayout(0x6079004E, "java_modified_utf8", LE, sxiw_java_modified_utf8_fields);
+var sxiw_izpack_record_v1_fields = layout([field("length", "int64be", 8, SIZE)]);
+var sxiw_izpack_record_v1 = sxLayout(0x60790067, "izpack_record_v1", BE, sxiw_izpack_record_v1_fields);
+var sxiw_izpack_record_v2_fields = layout([field("length", "int64be", 8, SIZE), field("modification_time_ms", "int64be", 8),
+    field("override_or_previous_pack_number", "int32be", 4)]);
+var sxiw_izpack_record_v2 = sxLayout(0x60790068, "izpack_record_v2", BE, sxiw_izpack_record_v2_fields);
+var sxiw_izpack_record_v3_fields = layout([field("length", "int64be", 8, SIZE), field("modification_time_ms", "int64be", 8),
+    field("offset_in_previous_pack", "int64be", 8, OFFSET), field("override_or_previous_pack_number", "int32be", 4),
+    field("previous_pack_number", "int32be", 4)]);
+var sxiw_izpack_record_v3 = sxLayout(0x60790069, "izpack_record_v3", BE, sxiw_izpack_record_v3_fields);
+var sxiw_izpack_record_v4_fields = layout([u8("is_directory", FLAGS), field("length", "int64be", 8, SIZE),
+    field("modification_time_ms", "int64be", 8), field("offset_in_previous_pack", "int64be", 8, OFFSET),
+    field("override_or_previous_pack_number", "int32be", 4), field("previous_pack_number", "int32be", 4)]);
+var sxiw_izpack_record_v4 = sxLayout(0x6079006A, "izpack_record_v4", BE, sxiw_izpack_record_v4_fields);
+var sxiw_izpack_record_v5_fields = layout([u8("is_directory", FLAGS), field("length", "int64be", 8, SIZE),
+    field("modification_time_ms", "int64be", 8), field("offset_in_previous_pack", "int64be", 8, OFFSET),
+    field("override_or_previous_pack_number", "int32be", 4), field("previous_pack_number", "int32be", 4)]);
+var sxiw_izpack_record_v5 = sxLayout(0x6079006B, "izpack_record_v5", BE, sxiw_izpack_record_v5_fields);
+var sxiw_izpack_record_v6_fields = layout([u8("is_directory", FLAGS), field("length", "int64be", 8, SIZE),
+    field("modification_time_ms", "int64be", 8), field("offset_in_previous_pack", "int64be", 8, OFFSET),
+    field("override_or_previous_pack_number", "int32be", 4)]);
+var sxiw_izpack_record_v6 = sxLayout(0x6079006C, "izpack_record_v6", BE, sxiw_izpack_record_v6_fields);
+var sxiw_izpack_record_v7_fields = layout([u8("is_directory", FLAGS), field("length", "int64be", 8, SIZE),
+    field("modification_time_ms", "int64be", 8), field("offset_in_previous_pack", "int64be", 8, OFFSET),
+    field("override_or_previous_pack_number", "int32be", 4), u8("pack200", FLAGS)]);
+var sxiw_izpack_record_v7 = sxLayout(0x6079006D, "izpack_record_v7", BE, sxiw_izpack_record_v7_fields);
+var sxiw_izpack_list_count_fields = layout([field("element_count", "int32be", 4, COUNT)]);
+var sxiw_izpack_list_count = sxLayout(0x60790071, "izpack_list_count", BE, sxiw_izpack_list_count_fields);
+function sxiw_jreserve(j, index) {
+    if (j.count >= 4096) {
+        return false;
+    }
+    index[0] = j.count++;
+    return true;
+}
+function sxiw_jutf(j) {
+    var sxb1, sxr2;
+    var n = [0];
+    if (!sxiw_word(j.c, j.p, 2, true, n) || !(sxr2 = sxiw_emit(j.c, (sxb1 = [j.p]), j.end, sxiw_java_utf_length), j.p = sxb1[0], sxr2) || n[0] > sxU64(j.end - j.p) || !sxiw_text(j.c, sxiw_java_modified_utf8, j.p, n[0], false)) {
+        return false;
+    }
+    j.p += n[0];
+    return true;
+}
+function sxiw_jclass(j, depth, handle) {
+    var sxb1, sxr2, sxb3, sxr4, sxb5, sxr6, sxb7, sxr8, sxb9, sxr10;
+    var tag = [0];
+    var n = [0];
+    var h = [0];
+    if (depth > 32 || !sxiw_word(j.c, j.p, 1, false, tag)) {
+        return false;
+    }
+    if (tag[0] === 0x71) {
+        if (!sxiw_word(j.c, j.p + 1, 4, true, n) || !(sxr2 = sxiw_emit(j.c, (sxb1 = [j.p]), j.end, sxiw_java_reference), j.p = sxb1[0], sxr2) || n[0] < 0x7E0000 || sxU64(n[0] - 0x7E0000) >= j.count || !(j.h[sxU64(n[0] - 0x7E0000)].types !== null)) {
+            return false;
+        }
+        handle[0] = sxU64(n[0] - 0x7E0000) >>> 0;
+        return true;
+    }
+    if (tag[0] !== 0x72 || !(sxr4 = sxiw_emit(j.c, (sxb3 = [j.p]), j.end, sxiw_java_class_tag), j.p = sxb3[0], sxr4) || !sxiw_jutf(j) || sxU64(j.end - j.p) < 11 || !sxiw_word(j.c, j.p + 9, 2, true, n) || n[0] > 4096 || !(sxr6 = sxiw_emit(j.c, (sxb5 = [j.p]), j.end, sxiw_java_class_metadata), j.p = sxb5[0], sxr6) || !sxiw_jreserve(j, h)) {
+        return false;
+    }
+    j.h[h[0]].types = sxAlloc(n[0] ? n[0] : 1);
+    if (j.h[h[0]].types === null) {
+        return false;
+    }
+    j.h[h[0]].count = n[0] & 0xFFFF;
+    for (var i = 0; i < n[0]; i++) {
+        var t = [0];
+        if (!sxiw_word(j.c, j.p, 1, false, t) || !(sxr8 = sxiw_emit(j.c, (sxb7 = [j.p]), j.end, sxiw_java_field_type), j.p = sxb7[0], sxr8) || !sxiw_jutf(j)) {
+            return false;
+        }
+        j.h[h[0]].types[i] = t[0] & 0xFF;
+        if ((t[0] === 76 /*L*/ || t[0] === 91 /*[*/) && !sxiw_jvalue(j, (depth + 1) >>> 0)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        if (!sxiw_word(j.c, j.p, 1, false, tag) || tag[0] !== (i ? 0x70 : 0x78) || !(sxr10 = sxiw_emit(j.c, (sxb9 = [j.p]), j.end, sxiw_java_object_tag), j.p = sxb9[0], sxr10)) {
+            return false;
+        }
+    }
+    handle[0] = h[0];
+    return true;
+}
+function sxiw_jvalue(j, depth) {
+    var sxb1, sxr2, sxb3, sxr4, sxb5, sxr6, sxb7, sxr8, sxb9, sxr10, sxb11, sxr12;
+    var tag = [0];
+    var n = [0];
+    var idx = [0];
+    if (depth > 32 || j.c.count >= 20000 || !sxiw_word(j.c, j.p, 1, false, tag)) {
+        return false;
+    }
+    if (tag[0] === 0x70 || tag[0] === 0x78) {
+        return (sxr2 = sxiw_emit(j.c, (sxb1 = [j.p]), j.end, sxiw_java_object_tag), j.p = sxb1[0], sxr2);
+    }
+    if (tag[0] === 0x71) {
+        return (sxr4 = sxiw_emit(j.c, (sxb3 = [j.p]), j.end, sxiw_java_reference), j.p = sxb3[0], sxr4);
+    }
+    if (tag[0] === 0x74 || tag[0] === 0x7C) {
+        var width = tag[0] === 0x74 ? 2 : 8;
+        if (!sxiw_word(j.c, j.p + 1, width, true, n) || !(sxr6 = sxiw_emit(j.c, (sxb5 = [j.p]), j.end, tag[0] === 0x74 ? sxiw_java_string : sxiw_java_long_string), j.p = sxb5[0], sxr6) || n[0] > sxU64(j.end - j.p) || !sxiw_text(j.c, sxiw_java_modified_utf8, j.p, n[0], false) || !sxiw_jreserve(j, idx)) {
+            return false;
+        }
+        j.p += n[0];
+        return true;
+    }
+    if (tag[0] === 0x77 || tag[0] === 0x7A) {
+        if (!sxiw_word(j.c, j.p + 1, tag[0] === 0x77 ? 1 : 4, true, n) || !(sxr8 = sxiw_emit(j.c, (sxb7 = [j.p]), j.end, tag[0] === 0x77 ? sxiw_java_block : sxiw_java_long_block), j.p = sxb7[0], sxr8) || n[0] > sxU64(j.end - j.p)) {
+            return false;
+        }
+        j.p += n[0];
+        return true;
+    }
+    if (tag[0] === 0x72) {
+        return sxiw_jclass(j, (depth + 1) >>> 0, idx);
+    }
+    if (tag[0] !== 0x73 || !(sxr10 = sxiw_emit(j.c, (sxb9 = [j.p]), j.end, sxiw_java_object_tag), j.p = sxb9[0], sxr10) || !sxiw_jclass(j, (depth + 1) >>> 0, idx)) {
+        return false;
+    }
+    var reserved = [0];
+    if (!sxiw_jreserve(j, reserved)) {
+        return false;
+    }
+    for (var i = 0; i < j.h[idx[0]].count; i++) {
+        var t = j.h[idx[0]].types[i];
+        var l = null;
+        switch (t) {
+        case 66 /*B*/:
+            l = sxiw_java_byte;
+            break;
+        case 67 /*C*/:
+            l = sxiw_java_char;
+            break;
+        case 68 /*D*/:
+            l = sxiw_java_double;
+            break;
+        case 70 /*F*/:
+            l = sxiw_java_float;
+            break;
+        case 73 /*I*/:
+            l = sxiw_java_int;
+            break;
+        case 74 /*J*/:
+            l = sxiw_java_long;
+            break;
+        case 83 /*S*/:
+            l = sxiw_java_short;
+            break;
+        case 90 /*Z*/:
+            l = sxiw_java_boolean;
+            break;
+        case 76 /*L*/:
+        case 91 /*[*/:
+            if (!sxiw_jvalue(j, (depth + 1) >>> 0)) {
+                return false;
+            }
+            break;
+        default:
+            return false;
+        }
+        if (l !== null && !(sxr12 = sxiw_emit(j.c, (sxb11 = [j.p]), j.end, l), j.p = sxb11[0], sxr12)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxiw_jlist(j) {
+    var sxb1, sxr2, sxb3, sxr4, sxb5, sxr6;
+    var tag = [0];
+    var n = [0];
+    var h = [0];
+    if (!sxiw_word(j.c, j.p, 1, false, tag)) {
+        return false;
+    }
+    if (tag[0] === 0x71) {
+        return sxiw_jvalue(j, 0);
+    }
+    if (tag[0] !== 0x73 || !(sxr2 = sxiw_emit(j.c, (sxb1 = [j.p]), j.end, sxiw_java_object_tag), j.p = sxb1[0], sxr2) || !sxiw_jclass(j, 0, h) || !sxiw_jreserve(j, h) || !sxiw_word(j.c, j.p, 4, true, n) || n[0] > 4096 || !(sxr4 = sxiw_emit(j.c, (sxb3 = [j.p]), j.end, sxiw_izpack_list_count), j.p = sxb3[0], sxr4) || !sxiw_jvalue(j, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxiw_jvalue(j, 0)) {
+            return false;
+        }
+    }
+    return sxiw_word(j.c, j.p, 1, false, tag) && tag[0] === 0x78 && (sxr6 = sxiw_emit(j.c, (sxb5 = [j.p]), j.end, sxiw_java_object_tag), j.p = sxb5[0], sxr6);
+}
+function sxiw_izpack(c) {
+    var sxb1, sxr2, sxb3, sxr4, sxb5, sxr6;
+    done: {
+        var j = sxNew_sxiw_java();
+        if (j === null) {
+            return false;
+        }
+        j.c = c;
+        j.p = 10;
+        j.end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        var count = [0];
+        var uid = [0];
+        var n = [0];
+        var ok = false;
+        var version = 0;
+        if (!sxiw_add(c, sxiw_izpack_stream_header, 0) || !sxiw_word(c, 6, 4, true, count) || count[0] > 1000000 || !sxiw_word(c, 41, 8, true, uid) || !sxiw_word(c, 50, 2, true, n)) {
+            break done;
+        }
+        if (uid[0] === (0x76A523B2 * 4294967296 + 0x93A5E5C3) && n[0] === 2) {
+            version = 1;
+        } else if (uid[0] === (0x11E206A6 * 4294967296 + 0x7610577A) && n[0] === 5) {
+            version = 2;
+        } else if (uid[0] === (0x9856D67C * 4294967296 + 0xC286140E) && n[0] === 7) {
+            version = 3;
+        } else if (uid[0] === (0x99E53BC9 * 4294967296 + 0xAE638CB7) && n[0] === 8) {
+            version = 4;
+        } else if (uid[0] === (0xF46BB277 * 4294967296 + 0xB6F32403) && n[0] >= 10 && n[0] <= 12) {
+            version = ((n[0] >>> 0) - 5) >>> 0;
+        } else {
+            break done;
+        }
+        var records = [sxiw_izpack_record_v1, sxiw_izpack_record_v2, sxiw_izpack_record_v3, sxiw_izpack_record_v4, sxiw_izpack_record_v5, sxiw_izpack_record_v6, sxiw_izpack_record_v7];
+        for (var i = 0; i < count[0] && c.count < 20000; i++) {
+            var tag = [0];
+            var len = [0];
+            var previous = [SX_U64_MAX];
+            var directory = [0];
+            var pack = [0];
+            var h = [0];
+            if (!sxiw_word(c, j.p, 1, false, tag) || tag[0] !== 0x73 || !(sxr2 = sxiw_emit(c, (sxb1 = [j.p]), j.end, sxiw_java_object_tag), j.p = sxb1[0], sxr2) || !sxiw_jclass(j, 0, h) || !sxiw_jreserve(j, h)) {
+                break done;
+            }
+            var a = j.p;
+            if (version >= 4 && !sxiw_word(c, a++, 1, false, directory)) {
+                break done;
+            }
+            if (!sxiw_word(c, a, 8, true, len)) {
+                break done;
+            }
+            a += 8;
+            if (version !== 1) {
+                a += 8;
+            }
+            if (version >= 3 && !sxiw_word(c, a, 8, true, previous)) {
+                break done;
+            }
+            if (!(sxr4 = sxiw_emit(c, (sxb3 = [j.p]), j.end, records[(version - 1) >>> 0]), j.p = sxb3[0], sxr4)) {
+                break done;
+            }
+            if (version === 7 && !sxiw_word(c, sxU64(j.p - 1), 1, false, pack)) {
+                break done;
+            }
+            if (version >= 5 && !sxiw_jvalue(j, 0)) {
+                break done;
+            }
+            if (version >= 6 && !sxiw_jvalue(j, 0)) {
+                break done;
+            }
+            if (version !== 1 && !sxiw_jlist(j)) {
+                break done;
+            }
+            if (version >= 6 && !sxiw_jvalue(j, 0)) {
+                break done;
+            }
+            if (version >= 5 && !sxiw_jvalue(j, 0)) {
+                break done;
+            }
+            if (!sxiw_jvalue(j, 0)) {
+                break done;
+            }
+            if (previous[0] !== SX_U64_MAX) {
+                continue;
+            }
+            var left = pack[0] ? 4 : directory[0] ? 0 : len[0];
+            while (left) {
+                var z = [0];
+                if (!sxiw_word(c, j.p, 1, false, tag) || tag[0] !== 0x77 && tag[0] !== 0x7A || !sxiw_word(c, j.p + 1, tag[0] === 0x77 ? 1 : 4, true, z) || !z[0] || !(sxr6 = sxiw_emit(c, (sxb5 = [j.p]), j.end, tag[0] === 0x77 ? sxiw_java_block : sxiw_java_long_block), j.p = sxb5[0], sxr6) || z[0] > sxU64(j.end - j.p)) {
+                    break done;
+                }
+                j.p += z[0];
+                if (z[0] >= left) {
+                    left = 0;
+                } else {
+                    left = sxU64(left - z[0]);
+                }
+            }
+        }
+        ok = true;
+    }
+    for (i = 0; i < j.count; i++) {
+    }
+    return ok;
+}
+function sx_izpack_build(c) {
+    return sxiw_izpack(c);
+}

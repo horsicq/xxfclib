@@ -1,0 +1,98 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/amiga_ipf/xx_amiga_ipf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_ipf_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("chunk_size", SIZE), u32("header_crc", CHECKSUM)]);
+var sxdi_ipf_chunk_header = sxLayout(0x6015001C, "ipf_chunk_header", BE, sxdi_ipf_chunk_header_fields);
+var sxdi_ipf_info_fields = layout([u32("image_type", ID), u32("encoder", ID), u32("encoder_revision", ID), u32("release", ID),
+    u32("revision", ID), u32("origin", ID), u32("min_cylinder", ID), u32("max_cylinder", ID), u32("min_head", ID),
+    u32("max_head", ID), u32("creation_date"), u32("creation_time"), field("platforms", "uint32[4]", 16, ID),
+    u32("disk_number", ID), u32("user_id", ID), field("reserved", "uint32[3]", 12, RESERVED)]);
+var sxdi_ipf_info = sxLayout(0x6015001D, "ipf_info", BE, sxdi_ipf_info_fields);
+var sxdi_ipf_image_fields = layout([u32("cylinder", ID), u32("head", ID), u32("density_type", ID), u32("signal_type", ID),
+    u32("track_size_rounded"), u32("start_position_rounded"), u32("start_bit"), u32("data_bits", COUNT), u32("gap_bits", COUNT),
+    u32("track_bits", COUNT), u32("block_count", COUNT), u32("process", ID), u32("flags", FLAGS), u32("data_key", ID),
+    field("reserved", "uint32[3]", 12, RESERVED)]);
+var sxdi_ipf_image = sxLayout(0x6015001E, "ipf_image", BE, sxdi_ipf_image_fields);
+var sxdi_ipf_data_fields = layout([u32("payload_size", SIZE), u32("payload_bits", COUNT), u32("payload_crc", CHECKSUM),
+    u32("data_key", ID)]);
+var sxdi_ipf_data = sxLayout(0x6015001F, "ipf_data", BE, sxdi_ipf_data_fields);
+var sxdi_ipf_block_encoder1_fields = layout([u32("data_bits", COUNT), u32("gap_bits", COUNT), u32("decoded_block_size_rounded"),
+    u32("decoded_gap_size_rounded"), u32("encoding_type", ID), u32("flags", FLAGS), u32("gap_value", ID),
+    u32("data_offset", OFFSET)]);
+var sxdi_ipf_block_encoder1 = sxLayout(0x60150020, "ipf_block_encoder1", BE, sxdi_ipf_block_encoder1_fields);
+var sxdi_ipf_block_encoder2_fields = layout([u32("data_bits", COUNT), u32("gap_bits", COUNT), u32("gap_offset", OFFSET),
+    u32("cell_type", ID), u32("encoding_type", ID), u32("flags", FLAGS), u32("gap_value", ID), u32("data_offset", OFFSET)]);
+var sxdi_ipf_block_encoder2 = sxLayout(0x60150021, "ipf_block_encoder2", BE, sxdi_ipf_block_encoder2_fields);
+function sxdi_be32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, true);
+}
+function sxdi_ipf(c) {
+    var at = 0;
+    var encoder = 0;
+    var keys = [];
+    var counts = [];
+    var tracks = 0;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && c.count + 3 <= 32768) {
+        var h = [];
+        if (!sxdi_read(c, at, h, 12)) {
+            return at !== 0;
+        }
+        var n = sxdi_be32(h, 4);
+        if (n < 12 || !sxdi_span(c, at, n) || !at && sxMemcmp(h, "CAPS", 4)) {
+            return at !== 0;
+        }
+        if (!sx_add(c, sxdi_ipf_chunk_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 12)) {
+            return false;
+        }
+        var q = at + 12;
+        var end = at + n;
+        if (!sxMemcmp(h, "INFO", 4) && n >= 96) {
+            if (!sx_add(c, sxdi_ipf_info, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 84) || (encoder = sx_u32(c, (q >= SX_I64_MAX ? q - SX_U64_MAX : q) + 4, true)) === null) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "IMGE", 4) && n >= 80) {
+            if (!sx_add(c, sxdi_ipf_image, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 68)) {
+                return false;
+            }
+            if (tracks < 170) {
+                if ((keys[tracks] = sx_u32(c, (q >= SX_I64_MAX ? q - SX_U64_MAX : q) + 52, true)) === null || (counts[tracks] = sx_u32(c, (q >= SX_I64_MAX ? q - SX_U64_MAX : q) + 40, true)) === null) {
+                    return false;
+                }
+                tracks++;
+            }
+        } else if (!sxMemcmp(h, "DATA", 4) && n >= 28) {
+            var d = [];
+            if (!sxdi_read(c, q, d, 16) || !sx_add(c, sxdi_ipf_data, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 16)) {
+                return false;
+            }
+            var bytes = sxdi_be32(d, 0);
+            var key = sxdi_be32(d, 12);
+            if (!sxdi_span(c, end, bytes)) {
+                return true;
+            }
+            if (encoder === 1 || encoder === 2) {
+                for (var j = 0; j < tracks; j++) {
+                    if (keys[j] === key) {
+                        var blocks = counts[j];
+                        if (blocks && blocks <= 256 && blocks * 32 <= bytes && !sx_table(c, encoder === 1 ? sxdi_ipf_block_encoder1 : sxdi_ipf_block_encoder2, (end >= SX_I64_MAX ? end - SX_U64_MAX : end), 32, blocks)) {
+                            return false;
+                        }
+                        break;
+                    }
+                }
+            }
+            end += bytes;
+        }
+        at = end;
+        if (c.count >= 32768) {
+            break;
+        }
+    }
+    return at !== 0;
+}
+function sx_amiga_ipf_build(c) {
+    return sxdi_ipf(c);
+}

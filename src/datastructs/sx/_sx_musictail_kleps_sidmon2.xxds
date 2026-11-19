@@ -1,0 +1,86 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kleps_sidmon2/xx_kleps_sidmon2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_sid2_header_fields = layout([u16("midi_mode", FLAGS), u8("last_order"), u8("speed"), u16("sample_header_bytes", SIZE),
+    u32("id_bytes", SIZE), u32("song_length_bytes", SIZE), u32("position_bytes", SIZE), u32("note_transpose_bytes", SIZE),
+    u32("instrument_transpose_bytes", SIZE), u32("instrument_bytes", SIZE), u32("waveform_list_bytes", SIZE),
+    u32("arpeggio_bytes", SIZE), u32("vibrato_bytes", SIZE), u32("sample_info_bytes", SIZE), u32("track_table_bytes", SIZE),
+    u32("track_data_bytes", SIZE), blob("unused", 4), chars("magic", 28, SIGNATURE)]);
+var sxmta_sid2_header = sxLayout(0x60810073, "sid2_header", BE, sxmta_sid2_header_fields);
+var sxmta_sid2_track_number_fields = layout([u8("track", ID)]);
+var sxmta_sid2_track_number = sxLayout(0x60810074, "sid2_track_number", LE, sxmta_sid2_track_number_fields);
+var sxmta_sid2_transpose_fields = layout([i8("transpose")]);
+var sxmta_sid2_transpose = sxLayout(0x60810075, "sid2_transpose", LE, sxmta_sid2_transpose_fields);
+var sxmta_sid2_sample_fields = layout([u32("address_placeholder", VA), u16("sample_words", COUNT), u16("loop_start_words"),
+    u16("loop_words", COUNT), u16("negate_start_words"), u16("negate_end_words"), u16("negate_loop_index"),
+    u16("negate_status", FLAGS), i16("negate_speed"), i32("negate_position"), u16("negate_index"), i16("negate_enabled"),
+    blob("unused", 4), chars("name", 32, NONE)]);
+var sxmta_sid2_sample = sxLayout(0x60810078, "sid2_sample", BE, sxmta_sid2_sample_fields);
+function sxmta_sid2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [58];
+    var x = [0];
+    var n;
+    var ns = [0];
+    var total = 0;
+    var lengths = [];
+    if (!sxmta_eq(v, 58, "SIDMON II - THE MIDI VERSION", 27, end) || !sxmta_be(v, 4, 2, ns, 0, end) || ns[0] % 64 || !sxmta_row(v, sxmta_sid2_header, 0, end) || !sxmta_be(v, 6, 4, x, 0, end) || !sxmta_skip(v, p, x[0], end) || !sxmta_be(v, 10, 4, x, 0, end) || !sxmta_skip(v, p, x[0], end) || p[0] < 86) {
+        return false;
+    }
+    for (var i = 0; i < 10; i++) {
+        if (!sxmta_be(v, (14 + ((4 * i) >>> 0)) >>> 0, 4, lengths, i, end)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 10; i++) {
+        n = lengths[i];
+        if (!sxmta_span(v, p[0], n, end)) {
+            return false;
+        }
+        if (i === 0) {
+            if (!sxmta_table(v, sxmta_sid2_track_number, p[0], n, p[0] + n)) {
+                return false;
+            }
+        } else if (i === 1 || i === 2) {
+            if (!sxmta_table(v, sxmta_sid2_transpose, p[0], n, p[0] + n)) {
+                return false;
+            }
+        } else if (i === 3) {
+            if (n % 32 || !sxmta_table(v, sxmta_sid2_instrument, p[0], Math.floor(n / 32), p[0] + n)) {
+                return false;
+            }
+        } else if (i === 7) {
+            if (n !== ns[0] || n % 64 || !sxmta_table(v, sxmta_sid2_sample, p[0], Math.floor(n / 64), p[0] + n)) {
+                return false;
+            }
+            for (var j = 0; j < n; j += 64) {
+                if (!sxmta_be(v, p[0] + j + 4, 2, x, 0, end)) {
+                    return false;
+                }
+                total += x[0] * 2;
+            }
+        } else if (i === 8) {
+            if (n % 2 || !sxmta_table(v, sxmta_sid2_track_offset, p[0], Math.floor(n / 2), p[0] + n)) {
+                return false;
+            }
+            for (j = 0; j < n; j += 2) {
+                if (!sxmta_be(v, p[0] + j, 2, x, 0, end) || x[0] > lengths[9]) {
+                    return false;
+                }
+            }
+        }
+        p[0] += n;
+    }
+    if (sxAnd64(p[0], 1)) {
+        if (!sxmta_skip(v, p, 1, end)) {
+            return false;
+        }
+    }
+    return sxmta_span(v, p[0], total, end);
+}
+function sx_kleps_sidmon2_build(v) {
+    return sxmta_sid2(v);
+}

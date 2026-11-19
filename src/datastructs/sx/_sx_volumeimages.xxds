@@ -1,0 +1,3149 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_volumeimages.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_ewf1_file_header_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u8("fields_start", SIGNATURE),
+    u16("segment_number", ID), u16("fields_end", RESERVED)]);
+var sxvi_ewf1_file_header = sxLayout(0x60530007, "ewf1_file_header", LE, sxvi_ewf1_file_header_fields);
+var sxvi_ewf1_section_descriptor_fields = layout([chars("type", 16, STRING), u64("next_descriptor_offset", OFFSET),
+    u64("section_size", SIZE), field("padding", "byte[40]", 40, RESERVED), u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_section_descriptor = sxLayout(0x60530008, "ewf1_section_descriptor", LE, sxvi_ewf1_section_descriptor_fields);
+var sxvi_ewf1_volume_fields = layout([u8("media_type", ID), field("unknown0", "byte[3]", 3), u32("chunk_count", COUNT),
+    u32("sectors_per_chunk", COUNT), u32("bytes_per_sector", SIZE), u64("sector_count", COUNT), u32("cylinders", COUNT),
+    u32("heads", COUNT), u32("sectors_per_track", COUNT), u8("media_flags", FLAGS), field("unknown1", "byte[3]", 3),
+    u32("palm_start_sector"), field("unknown2", "byte[4]", 4), u32("smart_logs_distance"), u8("compression_level", ID),
+    field("unknown3", "byte[3]", 3), u32("error_granularity"), field("unknown4", "byte[4]", 4),
+    field("segment_set_identifier", "byte[16]", 16, ID), field("unknown5", "byte[963]", 963),
+    field("reserved_signature", "byte[5]", 5), u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_volume = sxLayout(0x60530009, "ewf1_volume", LE, sxvi_ewf1_volume_fields);
+var sxvi_ewf1_logical_volume_fields = layout([u8("media_type", ID), field("unknown0", "byte[3]", 3), u32("chunk_count", COUNT),
+    u32("sectors_per_chunk", COUNT), u32("bytes_per_sector", SIZE), u64("logical_sector_value"), u32("cylinders", COUNT),
+    u32("heads", COUNT), u32("sectors_per_track", COUNT), u8("media_flags", FLAGS), field("unknown1", "byte[3]", 3),
+    u32("palm_start_sector"), field("unknown2", "byte[4]", 4), u32("smart_logs_distance"), u8("compression_level", ID),
+    field("unknown3", "byte[3]", 3), u32("error_granularity"), field("unknown4", "byte[4]", 4),
+    field("segment_set_identifier", "byte[16]", 16, ID), field("unknown5", "byte[963]", 963),
+    field("reserved_signature", "byte[5]", 5), u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_logical_volume = sxLayout(0x6053000A, "ewf1_logical_volume", LE, sxvi_ewf1_logical_volume_fields);
+var sxvi_ewf1_smart_volume_fields = layout([u32("reserved0", RESERVED), u32("chunk_count", COUNT),
+    u32("sectors_per_chunk", COUNT), u32("bytes_per_sector", SIZE), u32("sector_count", COUNT),
+    field("reserved1", "byte[20]", 20, RESERVED), field("padding", "byte[45]", 45, RESERVED), chars("signature", 5, SIGNATURE),
+    u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_smart_volume = sxLayout(0x6053000B, "ewf1_smart_volume", LE, sxvi_ewf1_smart_volume_fields);
+var sxvi_ewf1_table_header_fields = layout([u32("entry_count", COUNT), field("padding0", "byte[4]", 4, RESERVED),
+    u64("base_offset", OFFSET), field("padding1", "byte[4]", 4, RESERVED), u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_table_header = sxLayout(0x6053000C, "ewf1_table_header", LE, sxvi_ewf1_table_header_fields);
+var sxvi_ewf1_chunk_entry_fields = layout([u32("offset_and_compression", FLAGS)]);
+var sxvi_ewf1_chunk_entry = sxLayout(0x6053000D, "ewf1_chunk_entry", LE, sxvi_ewf1_chunk_entry_fields);
+var sxvi_image_adler32_fields = layout([u32("adler32", CHECKSUM)]);
+var sxvi_image_adler32 = sxLayout(0x6053000E, "image_adler32", LE, sxvi_image_adler32_fields);
+var sxvi_ewf1_hash_fields = layout([field("md5", "byte[16]", 16, CHECKSUM), field("unknown", "byte[16]", 16),
+    u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_hash = sxLayout(0x6053000F, "ewf1_hash", LE, sxvi_ewf1_hash_fields);
+var sxvi_ewf1_digest_fields = layout([field("md5", "byte[16]", 16, CHECKSUM), field("sha1", "byte[20]", 20, CHECKSUM),
+    field("padding", "byte[40]", 40, RESERVED), u32("adler32", CHECKSUM)]);
+var sxvi_ewf1_digest = sxLayout(0x60530010, "ewf1_digest", LE, sxvi_ewf1_digest_fields);
+var sxvi_ewf1_ltree_header_fields = layout([field("md5", "byte[16]", 16, CHECKSUM), u64("data_size", SIZE),
+    u32("adler32", CHECKSUM), field("unknown", "byte[20]", 20)]);
+var sxvi_ewf1_ltree_header = sxLayout(0x60530011, "ewf1_ltree_header", LE, sxvi_ewf1_ltree_header_fields);
+var sxvi_ewf2_file_header_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u8("major_version", ID),
+    u8("minor_version", ID), u16("compression_method", ID), u32("segment_number", ID),
+    field("set_identifier", "byte[16]", 16, ID)]);
+var sxvi_ewf2_file_header = sxLayout(0x60530012, "ewf2_file_header", LE, sxvi_ewf2_file_header_fields);
+var sxvi_ewf2_section_descriptor_fields = layout([u32("type", ID), u32("flags", FLAGS),
+    u64("previous_descriptor_offset", OFFSET), u64("data_size", SIZE), u32("descriptor_size", SIZE), u32("padding_size", SIZE),
+    field("data_md5", "byte[16]", 16, CHECKSUM), field("reserved", "byte[12]", 12, RESERVED), u32("adler32", CHECKSUM)]);
+var sxvi_ewf2_section_descriptor = sxLayout(0x60530013, "ewf2_section_descriptor", LE, sxvi_ewf2_section_descriptor_fields);
+var sxvi_ewf2_table_header_fields = layout([u64("first_chunk_number"), u32("entry_count", COUNT), u32("reserved0", RESERVED),
+    u32("adler32", CHECKSUM), field("padding", "byte[12]", 12, RESERVED)]);
+var sxvi_ewf2_table_header = sxLayout(0x60530014, "ewf2_table_header", LE, sxvi_ewf2_table_header_fields);
+var sxvi_ewf2_chunk_entry_fields = layout([u64("offset", OFFSET), u32("stored_size", SIZE), u32("flags", FLAGS)]);
+var sxvi_ewf2_chunk_entry = sxLayout(0x60530015, "ewf2_chunk_entry", LE, sxvi_ewf2_chunk_entry_fields);
+var sxvi_ewf2_pattern_entry_fields = layout([field("fill_pattern", "byte[8]", 8), u32("stored_size", SIZE), u32("flags", FLAGS)]);
+var sxvi_ewf2_pattern_entry = sxLayout(0x60530016, "ewf2_pattern_entry", LE, sxvi_ewf2_pattern_entry_fields);
+var sxvi_ewf2_md5_fields = layout([field("md5", "byte[16]", 16, CHECKSUM), u32("adler32", CHECKSUM)]);
+var sxvi_ewf2_md5 = sxLayout(0x60530017, "ewf2_md5", LE, sxvi_ewf2_md5_fields);
+var sxvi_ewf2_sha1_fields = layout([field("sha1", "byte[20]", 20, CHECKSUM), u32("adler32", CHECKSUM)]);
+var sxvi_ewf2_sha1 = sxLayout(0x60530018, "ewf2_sha1", LE, sxvi_ewf2_sha1_fields);
+function sxvi_flags(r, value, bits, n) {
+    var out = [];
+    var used = 0;
+    var known = 0;
+    for (var i = 0; i < n; i++) {
+        known = sxOr64(known, bits[i].mask);
+        if (!sxAnd64(value, bits[i].mask)) {
+            continue;
+        }
+        var p = bits[i].name, p_o = 0;
+        var z = sxStrlenAt(p, p_o);
+        if (z + used + 24 >= 1024) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        while (sxAt(p, p_o)) {
+            out[used++] = sxAt(p, p_o++);
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var start = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var d = sxAnd64(sxShr64(unknown, shift), 15);
+            if (d || start || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", d);
+                start = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_volumeimages_comment_bits = [{ mask: 1, name: "MD_FEATURE_BITMAP_OFFSET" },
+    { mask: 2, name: "MD_FEATURE_RECOVERY_OFFSET" }, { mask: 4, name: "MD_FEATURE_RESHAPE_ACTIVE" },
+    { mask: 8, name: "MD_FEATURE_BAD_BLOCKS" }, { mask: 16, name: "MD_FEATURE_REPLACEMENT" },
+    { mask: 32, name: "MD_FEATURE_RESHAPE_BACKWARDS" }, { mask: 64, name: "MD_FEATURE_NEW_OFFSET" },
+    { mask: 128, name: "MD_FEATURE_RECOVERY_BITMAP" }, { mask: 256, name: "MD_FEATURE_CLUSTERED" },
+    { mask: 512, name: "MD_FEATURE_JOURNAL" }, { mask: 1024, name: "MD_FEATURE_PPL" },
+    { mask: 2048, name: "MD_FEATURE_MULTIPLE_PPLS" }];
+var sx_volumeimages_comment_bits_2 = [{ mask: 1, name: "MD_FEATURE_BITMAP_OFFSET" },
+    { mask: 2, name: "MD_FEATURE_RECOVERY_OFFSET" }, { mask: 4, name: "MD_FEATURE_RESHAPE_ACTIVE" },
+    { mask: 8, name: "MD_FEATURE_BAD_BLOCKS" }, { mask: 16, name: "MD_FEATURE_REPLACEMENT" },
+    { mask: 32, name: "MD_FEATURE_RESHAPE_BACKWARDS" }, { mask: 64, name: "MD_FEATURE_NEW_OFFSET" },
+    { mask: 128, name: "MD_FEATURE_RECOVERY_BITMAP" }, { mask: 256, name: "MD_FEATURE_CLUSTERED" },
+    { mask: 512, name: "MD_FEATURE_JOURNAL" }, { mask: 1024, name: "MD_FEATURE_PPL" },
+    { mask: 2048, name: "MD_FEATURE_MULTIPLE_PPLS" }];
+var sx_volumeimages_comment_bits_3 = [{ mask: 1, name: "Has data integrity hash" }, { mask: 2, name: "Encrypted" }];
+var sx_volumeimages_comment_bits_4 = [{ mask: 1, name: "PV_EXT_USED" }];
+var sx_volumeimages_comment_bits_5 = [{ mask: 1, name: "RAW_LOCN_IGNORED" }];
+var sx_volumeimages_comment_bits_6 = [{ mask: 1, name: "COMPRESSED" }, { mask: 2, name: "CHECKSUMMED" }, { mask: 4, name: "PATTERNFILL" }];
+var sx_volumeimages_comment_bits_7 = [{ mask: 1, name: "COMPRESSED" }, { mask: 2, name: "CHECKSUMMED" }, { mask: 4, name: "PATTERNFILL" }];
+var sx_volumeimages_comment_bits_8 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_9 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_10 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_11 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_12 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_13 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_14 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_15 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_16 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_17 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_18 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_19 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_20 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_21 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_22 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_23 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_24 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_25 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_26 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_27 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_28 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_29 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_30 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_31 = [{ mask: 1, name: "V_UNMNT" }, { mask: 16, name: "V_RONLY" }];
+var sx_volumeimages_comment_bits_32 = [{ mask: 1, name: "MD_DISK_FAULTY" }, { mask: 2, name: "MD_DISK_ACTIVE" },
+    { mask: 4, name: "MD_DISK_SYNC" }, { mask: 8, name: "MD_DISK_REMOVED" }, { mask: 16, name: "MD_DISK_CLUSTER_ADD" },
+    { mask: 32, name: "MD_DISK_CANDIDATE" }, { mask: 512, name: "MD_DISK_WRITEMOSTLY" },
+    { mask: 1024, name: "MD_DISK_FAILFAST" }, { mask: 262144, name: "MD_DISK_JOURNAL" }];
+var sx_volumeimages_comment_bits_33 = [{ mask: 1, name: "MD_DISK_FAULTY" }, { mask: 2, name: "MD_DISK_ACTIVE" },
+    { mask: 4, name: "MD_DISK_SYNC" }, { mask: 8, name: "MD_DISK_REMOVED" }, { mask: 16, name: "MD_DISK_CLUSTER_ADD" },
+    { mask: 32, name: "MD_DISK_CANDIDATE" }, { mask: 512, name: "MD_DISK_WRITEMOSTLY" },
+    { mask: 1024, name: "MD_DISK_FAILFAST" }, { mask: 262144, name: "MD_DISK_JOURNAL" }];
+var sx_volumeimages_comment_bits_34 = [{ mask: 1, name: "MD_SB_CLEAN" }, { mask: 2, name: "MD_SB_ERRORS" },
+    { mask: 32, name: "MD_SB_CLUSTERED" }, { mask: 256, name: "MD_SB_BITMAP_PRESENT" }];
+var sx_volumeimages_comment_bits_35 = [{ mask: 1, name: "MD_SB_CLEAN" }, { mask: 2, name: "MD_SB_ERRORS" },
+    { mask: 32, name: "MD_SB_CLUSTERED" }, { mask: 256, name: "MD_SB_BITMAP_PRESENT" }];
+var sx_volumeimages_comment_bits_36 = [{ mask: 1, name: "D_REMOVABLE" }, { mask: 2, name: "D_ECC" }, { mask: 4, name: "D_BADSECT" }];
+var sx_volumeimages_comment_bits_37 = [{ mask: 1, name: "D_REMOVABLE" }, { mask: 2, name: "D_ECC" }, { mask: 4, name: "D_BADSECT" }];
+var sx_volumeimages_comment_bits_38 = [{ mask: 1, name: "IMAGE_FILE" }, { mask: 2, name: "PHYSICAL_DEVICE" },
+    { mask: 4, name: "FASTBLOC_WRITE_BLOCKER" }, { mask: 8, name: "TABLEAU_WRITE_BLOCKER" }];
+var sx_volumeimages_comment_bits_39 = [{ mask: 1, name: "IMAGE_FILE" }, { mask: 2, name: "PHYSICAL_DEVICE" },
+    { mask: 4, name: "FASTBLOC_WRITE_BLOCKER" }, { mask: 8, name: "TABLEAU_WRITE_BLOCKER" }];
+function sx_volumeimages_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60530000 || id >= 0x60540000) {
+        return true;
+    }
+    var s = null;
+    var value_type = sxVarType(r.value);
+    var integer = value_type >= 1 /*XX_VAR_TYPE_INT8*/ && value_type <= 8 /*XX_VAR_TYPE_UINT64*/;
+    var value = integer ? sxVarU64(r.value) : 0;
+    if (id === 0x6053003D && r.name === "feature_map" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits, 12);
+    }
+    if (id === 0x6053003E && r.name === "feature_map" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_2, 12);
+    }
+    if (id === 0x60530013 && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_3, 2);
+    }
+    if (id === 0x60530004 && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_4, 1);
+    }
+    if (id === 0x60530006 && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_5, 1);
+    }
+    if (id === 0x60530015 && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_6, 3);
+    }
+    if (id === 0x60530016 && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_7, 3);
+    }
+    if (id === 0x60530044 && r.name === "partition_0_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_8, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_1_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_9, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_2_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_10, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_3_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_11, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_4_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_12, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_5_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_13, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_6_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_14, 2);
+    }
+    if (id === 0x60530044 && r.name === "partition_7_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_15, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_0_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_16, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_1_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_17, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_2_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_18, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_3_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_19, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_4_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_20, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_5_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_21, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_6_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_22, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_7_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_23, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_8_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_24, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_9_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_25, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_10_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_26, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_11_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_27, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_12_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_28, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_13_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_29, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_14_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_30, 2);
+    }
+    if (id === 0x60530045 && r.name === "partition_15_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_31, 2);
+    }
+    if (id === 0x60530042 && r.name === "state" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_32, 9);
+    }
+    if (id === 0x60530043 && r.name === "state" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_33, 9);
+    }
+    if (id === 0x60530040 && r.name === "state" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_34, 4);
+    }
+    if (id === 0x60530041 && r.name === "state" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_35, 4);
+    }
+    if (id === 0x60530039 && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_36, 3);
+    }
+    if (id === 0x6053003A && r.name === "flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_37, 3);
+    }
+    if (id === 0x60530009 && r.name === "media_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_38, 4);
+    }
+    if (id === 0x6053000A && r.name === "media_flags" && integer) {
+        return sxvi_flags(r, value, sx_volumeimages_comment_bits_39, 4);
+    }
+    if (id === 0x60530009 && r.name === "media_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Removable media");
+        case 1:
+            return sxSetComment(r, "Fixed media");
+        case 3:
+            return sxSetComment(r, "Optical media");
+        case 14:
+            return sxSetComment(r, "Logical evidence file");
+        case 16:
+            return sxSetComment(r, "Physical memory (RAM)");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053000A && r.name === "media_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Removable media");
+        case 1:
+            return sxSetComment(r, "Fixed media");
+        case 3:
+            return sxSetComment(r, "Optical media");
+        case 14:
+            return sxSetComment(r, "Logical evidence file");
+        case 16:
+            return sxSetComment(r, "Physical memory (RAM)");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530009 && r.name === "compression_level" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No compression");
+        case 1:
+            return sxSetComment(r, "Fast compression");
+        case 2:
+            return sxSetComment(r, "Best compression");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053000A && r.name === "compression_level" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No compression");
+        case 1:
+            return sxSetComment(r, "Fast compression");
+        case 2:
+            return sxSetComment(r, "Best compression");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530012 && r.name === "compression_method" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No compression");
+        case 1:
+            return sxSetComment(r, "DEFLATE (zlib)");
+        case 2:
+            return sxSetComment(r, "BZIP2");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530013 && r.name === "type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Device information");
+        case 2:
+            return sxSetComment(r, "Case data");
+        case 3:
+            return sxSetComment(r, "Sector data");
+        case 4:
+            return sxSetComment(r, "Sector table");
+        case 5:
+            return sxSetComment(r, "Error table");
+        case 6:
+            return sxSetComment(r, "Session table");
+        case 7:
+            return sxSetComment(r, "Increment data");
+        case 8:
+            return sxSetComment(r, "MD5 hash");
+        case 9:
+            return sxSetComment(r, "SHA1 hash");
+        case 10:
+            return sxSetComment(r, "Restart data");
+        case 11:
+            return sxSetComment(r, "Encryption keys");
+        case 12:
+            return sxSetComment(r, "Memory extents table");
+        case 13:
+            return sxSetComment(r, "Next segment");
+        case 14:
+            return sxSetComment(r, "Final information");
+        case 15:
+            return sxSetComment(r, "Done");
+        case 16:
+            return sxSetComment(r, "Analytical data");
+        case 32:
+            return sxSetComment(r, "Single files data");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530013 && r.name === "flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "Has data integrity hash");
+        case 2:
+            return sxSetComment(r, "Encrypted");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530015 && r.name === "flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Stored");
+        case 1:
+            return sxSetComment(r, "Compressed");
+        case 2:
+            return sxSetComment(r, "Stored with Adler32");
+        case 5:
+            return sxSetComment(r, "Compressed flag with repeated 8-byte fill pattern");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530016 && r.name === "flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Stored");
+        case 1:
+            return sxSetComment(r, "Compressed");
+        case 2:
+            return sxSetComment(r, "Stored with Adler32");
+        case 5:
+            return sxSetComment(r, "Compressed flag with repeated 8-byte fill pattern");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530004 && r.name === "flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "PV_EXT_USED");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530006 && r.name === "flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "RAW_LOCN_IGNORED");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053001B && r.name === "type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Stored block");
+        case 3:
+            return sxSetComment(r, "Zero block");
+        case 5:
+            return sxSetComment(r, "Compressed block");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053001D && r.name === "output_format" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "ISO");
+        case 1:
+            return sxSetComment(r, "BIN/CUE");
+        case 2:
+            return sxSetComment(r, "MDF/MDS");
+        case 3:
+            return sxSetComment(r, "IMG/CCD/SUB");
+        case 4:
+            return sxSetComment(r, "NRG");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530020 && r.name === "type" && integer) {
+        switch (value) {
+        case 2:
+            return sxSetComment(r, "Split-volume descriptor");
+        case 3:
+            return sxSetComment(r, "Encryption descriptor");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053001F && r.name === "lzma_filter" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No filter");
+        case 1:
+            return sxSetComment(r, "x86 BCJ");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530025 && r.name === "command" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "UNSPEC");
+        case 1:
+            return sxSetComment(r, "SUBVOL");
+        case 2:
+            return sxSetComment(r, "SNAPSHOT");
+        case 3:
+            return sxSetComment(r, "MKFILE");
+        case 4:
+            return sxSetComment(r, "MKDIR");
+        case 5:
+            return sxSetComment(r, "MKNOD");
+        case 6:
+            return sxSetComment(r, "MKFIFO");
+        case 7:
+            return sxSetComment(r, "MKSOCK");
+        case 8:
+            return sxSetComment(r, "SYMLINK");
+        case 9:
+            return sxSetComment(r, "RENAME");
+        case 10:
+            return sxSetComment(r, "LINK");
+        case 11:
+            return sxSetComment(r, "UNLINK");
+        case 12:
+            return sxSetComment(r, "RMDIR");
+        case 13:
+            return sxSetComment(r, "SET_XATTR");
+        case 14:
+            return sxSetComment(r, "REMOVE_XATTR");
+        case 15:
+            return sxSetComment(r, "WRITE");
+        case 16:
+            return sxSetComment(r, "CLONE");
+        case 17:
+            return sxSetComment(r, "TRUNCATE");
+        case 18:
+            return sxSetComment(r, "CHMOD");
+        case 19:
+            return sxSetComment(r, "CHOWN");
+        case 20:
+            return sxSetComment(r, "UTIMES");
+        case 21:
+            return sxSetComment(r, "END");
+        case 22:
+            return sxSetComment(r, "UPDATE_EXTENT");
+        case 23:
+            return sxSetComment(r, "FALLOCATE");
+        case 24:
+            return sxSetComment(r, "FILEATTR");
+        case 25:
+            return sxSetComment(r, "ENCODED_WRITE");
+        case 26:
+            return sxSetComment(r, "ENABLE_VERITY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530026 && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "UNSPEC");
+        case 1:
+            return sxSetComment(r, "UUID");
+        case 2:
+            return sxSetComment(r, "CTRANSID");
+        case 3:
+            return sxSetComment(r, "INO");
+        case 4:
+            return sxSetComment(r, "SIZE");
+        case 5:
+            return sxSetComment(r, "MODE");
+        case 6:
+            return sxSetComment(r, "UID");
+        case 7:
+            return sxSetComment(r, "GID");
+        case 8:
+            return sxSetComment(r, "RDEV");
+        case 9:
+            return sxSetComment(r, "CTIME");
+        case 10:
+            return sxSetComment(r, "MTIME");
+        case 11:
+            return sxSetComment(r, "ATIME");
+        case 12:
+            return sxSetComment(r, "OTIME");
+        case 13:
+            return sxSetComment(r, "XATTR_NAME");
+        case 14:
+            return sxSetComment(r, "XATTR_DATA");
+        case 15:
+            return sxSetComment(r, "PATH");
+        case 16:
+            return sxSetComment(r, "PATH_TO");
+        case 17:
+            return sxSetComment(r, "PATH_LINK");
+        case 18:
+            return sxSetComment(r, "FILE_OFFSET");
+        case 19:
+            return sxSetComment(r, "DATA");
+        case 20:
+            return sxSetComment(r, "CLONE_UUID");
+        case 21:
+            return sxSetComment(r, "CLONE_CTRANSID");
+        case 22:
+            return sxSetComment(r, "CLONE_PATH");
+        case 23:
+            return sxSetComment(r, "CLONE_OFFSET");
+        case 24:
+            return sxSetComment(r, "CLONE_LEN");
+        case 25:
+            return sxSetComment(r, "FALLOCATE_MODE");
+        case 26:
+            return sxSetComment(r, "FILEATTR");
+        case 27:
+            return sxSetComment(r, "UNENCODED_FILE_LEN");
+        case 28:
+            return sxSetComment(r, "UNENCODED_LEN");
+        case 29:
+            return sxSetComment(r, "UNENCODED_OFFSET");
+        case 30:
+            return sxSetComment(r, "COMPRESSION");
+        case 31:
+            return sxSetComment(r, "ENCRYPTION");
+        case 32:
+            return sxSetComment(r, "VERITY_ALGORITHM");
+        case 33:
+            return sxSetComment(r, "VERITY_BLOCK_SIZE");
+        case 34:
+            return sxSetComment(r, "VERITY_SALT_DATA");
+        case 35:
+            return sxSetComment(r, "VERITY_SIG_DATA");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530027 && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "UNSPEC");
+        case 1:
+            return sxSetComment(r, "UUID");
+        case 2:
+            return sxSetComment(r, "CTRANSID");
+        case 3:
+            return sxSetComment(r, "INO");
+        case 4:
+            return sxSetComment(r, "SIZE");
+        case 5:
+            return sxSetComment(r, "MODE");
+        case 6:
+            return sxSetComment(r, "UID");
+        case 7:
+            return sxSetComment(r, "GID");
+        case 8:
+            return sxSetComment(r, "RDEV");
+        case 9:
+            return sxSetComment(r, "CTIME");
+        case 10:
+            return sxSetComment(r, "MTIME");
+        case 11:
+            return sxSetComment(r, "ATIME");
+        case 12:
+            return sxSetComment(r, "OTIME");
+        case 13:
+            return sxSetComment(r, "XATTR_NAME");
+        case 14:
+            return sxSetComment(r, "XATTR_DATA");
+        case 15:
+            return sxSetComment(r, "PATH");
+        case 16:
+            return sxSetComment(r, "PATH_TO");
+        case 17:
+            return sxSetComment(r, "PATH_LINK");
+        case 18:
+            return sxSetComment(r, "FILE_OFFSET");
+        case 19:
+            return sxSetComment(r, "DATA");
+        case 20:
+            return sxSetComment(r, "CLONE_UUID");
+        case 21:
+            return sxSetComment(r, "CLONE_CTRANSID");
+        case 22:
+            return sxSetComment(r, "CLONE_PATH");
+        case 23:
+            return sxSetComment(r, "CLONE_OFFSET");
+        case 24:
+            return sxSetComment(r, "CLONE_LEN");
+        case 25:
+            return sxSetComment(r, "FALLOCATE_MODE");
+        case 26:
+            return sxSetComment(r, "FILEATTR");
+        case 27:
+            return sxSetComment(r, "UNENCODED_FILE_LEN");
+        case 28:
+            return sxSetComment(r, "UNENCODED_LEN");
+        case 29:
+            return sxSetComment(r, "UNENCODED_OFFSET");
+        case 30:
+            return sxSetComment(r, "COMPRESSION");
+        case 31:
+            return sxSetComment(r, "ENCRYPTION");
+        case 32:
+            return sxSetComment(r, "VERITY_ALGORITHM");
+        case 33:
+            return sxSetComment(r, "VERITY_BLOCK_SIZE");
+        case 34:
+            return sxSetComment(r, "VERITY_SALT_DATA");
+        case 35:
+            return sxSetComment(r, "VERITY_SIG_DATA");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530034 && r.name === "block_type" && integer) {
+        switch (value) {
+        case 844383300:
+            return sxSetComment(r, "DDT2");
+        case 1263288900:
+            return sxSetComment(r, "DBLK");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530031 && r.name === "data_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "User data");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530034 && r.name === "data_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "User data");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530035 && r.name === "data_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "User data");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530031 && r.name === "compression" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "None");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530035 && r.name === "compression" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "None");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003B && r.name === "filesystem_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "FS_UNUSED");
+        case 1:
+            return sxSetComment(r, "FS_SWAP");
+        case 2:
+            return sxSetComment(r, "FS_V6");
+        case 3:
+            return sxSetComment(r, "FS_V7");
+        case 4:
+            return sxSetComment(r, "FS_SYSV");
+        case 5:
+            return sxSetComment(r, "FS_V71K");
+        case 6:
+            return sxSetComment(r, "FS_V8");
+        case 7:
+            return sxSetComment(r, "FS_BSDFFS");
+        case 8:
+            return sxSetComment(r, "FS_MSDOS");
+        case 9:
+            return sxSetComment(r, "FS_BSDLFS");
+        case 10:
+            return sxSetComment(r, "FS_OTHER");
+        case 11:
+            return sxSetComment(r, "FS_HPFS");
+        case 12:
+            return sxSetComment(r, "FS_ISO9660");
+        case 13:
+            return sxSetComment(r, "FS_BOOT");
+        case 14:
+            return sxSetComment(r, "FS_VINUM");
+        case 15:
+            return sxSetComment(r, "FS_RAID");
+        case 16:
+            return sxSetComment(r, "FS_FILECORE");
+        case 17:
+            return sxSetComment(r, "FS_EXT2FS");
+        case 18:
+            return sxSetComment(r, "FS_NTFS");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003C && r.name === "filesystem_type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "FS_UNUSED");
+        case 1:
+            return sxSetComment(r, "FS_SWAP");
+        case 2:
+            return sxSetComment(r, "FS_V6");
+        case 3:
+            return sxSetComment(r, "FS_V7");
+        case 4:
+            return sxSetComment(r, "FS_SYSV");
+        case 5:
+            return sxSetComment(r, "FS_V71K");
+        case 6:
+            return sxSetComment(r, "FS_V8");
+        case 7:
+            return sxSetComment(r, "FS_BSDFFS");
+        case 8:
+            return sxSetComment(r, "FS_MSDOS");
+        case 9:
+            return sxSetComment(r, "FS_BSDLFS");
+        case 10:
+            return sxSetComment(r, "FS_OTHER");
+        case 11:
+            return sxSetComment(r, "FS_HPFS");
+        case 12:
+            return sxSetComment(r, "FS_ISO9660");
+        case 13:
+            return sxSetComment(r, "FS_BOOT");
+        case 14:
+            return sxSetComment(r, "FS_VINUM");
+        case 15:
+            return sxSetComment(r, "FS_RAID");
+        case 16:
+            return sxSetComment(r, "FS_FILECORE");
+        case 17:
+            return sxSetComment(r, "FS_EXT2FS");
+        case 18:
+            return sxSetComment(r, "FS_NTFS");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003D && r.name === "level" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "RAID0");
+        case 1:
+            return sxSetComment(r, "RAID1");
+        case 4:
+            return sxSetComment(r, "RAID4");
+        case 5:
+            return sxSetComment(r, "RAID5");
+        case 6:
+            return sxSetComment(r, "RAID6");
+        case 10:
+            return sxSetComment(r, "RAID10");
+        case SX_U64_MAX:
+            return sxSetComment(r, "Linear");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003E && r.name === "level" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "RAID0");
+        case 1:
+            return sxSetComment(r, "RAID1");
+        case 4:
+            return sxSetComment(r, "RAID4");
+        case 5:
+            return sxSetComment(r, "RAID5");
+        case 6:
+            return sxSetComment(r, "RAID6");
+        case 10:
+            return sxSetComment(r, "RAID10");
+        case SX_U64_MAX:
+            return sxSetComment(r, "Linear");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530040 && r.name === "level" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "RAID0");
+        case 1:
+            return sxSetComment(r, "RAID1");
+        case 4:
+            return sxSetComment(r, "RAID4");
+        case 5:
+            return sxSetComment(r, "RAID5");
+        case 6:
+            return sxSetComment(r, "RAID6");
+        case 10:
+            return sxSetComment(r, "RAID10");
+        case SX_U64_MAX:
+            return sxSetComment(r, "Linear");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530041 && r.name === "level" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "RAID0");
+        case 1:
+            return sxSetComment(r, "RAID1");
+        case 4:
+            return sxSetComment(r, "RAID4");
+        case 5:
+            return sxSetComment(r, "RAID5");
+        case 6:
+            return sxSetComment(r, "RAID6");
+        case 10:
+            return sxSetComment(r, "RAID10");
+        case SX_U64_MAX:
+            return sxSetComment(r, "Linear");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003D && r.name === "feature_map" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No optional features");
+        case 1:
+            return sxSetComment(r, "MD_FEATURE_BITMAP_OFFSET");
+        case 2:
+            return sxSetComment(r, "MD_FEATURE_RECOVERY_OFFSET");
+        case 4:
+            return sxSetComment(r, "MD_FEATURE_RESHAPE_ACTIVE");
+        case 8:
+            return sxSetComment(r, "MD_FEATURE_BAD_BLOCKS");
+        case 16:
+            return sxSetComment(r, "MD_FEATURE_REPLACEMENT");
+        case 32:
+            return sxSetComment(r, "MD_FEATURE_RESHAPE_BACKWARDS");
+        case 64:
+            return sxSetComment(r, "MD_FEATURE_NEW_OFFSET");
+        case 128:
+            return sxSetComment(r, "MD_FEATURE_RECOVERY_BITMAP");
+        case 256:
+            return sxSetComment(r, "MD_FEATURE_CLUSTERED");
+        case 512:
+            return sxSetComment(r, "MD_FEATURE_JOURNAL");
+        case 1024:
+            return sxSetComment(r, "MD_FEATURE_PPL");
+        case 2048:
+            return sxSetComment(r, "MD_FEATURE_MULTIPLE_PPLS");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003E && r.name === "feature_map" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No optional features");
+        case 1:
+            return sxSetComment(r, "MD_FEATURE_BITMAP_OFFSET");
+        case 2:
+            return sxSetComment(r, "MD_FEATURE_RECOVERY_OFFSET");
+        case 4:
+            return sxSetComment(r, "MD_FEATURE_RESHAPE_ACTIVE");
+        case 8:
+            return sxSetComment(r, "MD_FEATURE_BAD_BLOCKS");
+        case 16:
+            return sxSetComment(r, "MD_FEATURE_REPLACEMENT");
+        case 32:
+            return sxSetComment(r, "MD_FEATURE_RESHAPE_BACKWARDS");
+        case 64:
+            return sxSetComment(r, "MD_FEATURE_NEW_OFFSET");
+        case 128:
+            return sxSetComment(r, "MD_FEATURE_RECOVERY_BITMAP");
+        case 256:
+            return sxSetComment(r, "MD_FEATURE_CLUSTERED");
+        case 512:
+            return sxSetComment(r, "MD_FEATURE_JOURNAL");
+        case 1024:
+            return sxSetComment(r, "MD_FEATURE_PPL");
+        case 2048:
+            return sxSetComment(r, "MD_FEATURE_MULTIPLE_PPLS");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003F && r.name === "role" && integer) {
+        switch (value) {
+        case 65535:
+            return sxSetComment(r, "MD_DISK_ROLE_SPARE");
+        case 65534:
+            return sxSetComment(r, "MD_DISK_ROLE_FAULTY");
+        case 65533:
+            return sxSetComment(r, "MD_DISK_ROLE_JOURNAL");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530050 && r.name === "type" && integer) {
+        switch (value) {
+        case 50:
+            return sxSetComment(r, "Component v3");
+        case 51:
+            return sxSetComment(r, "Partition v3");
+        case 52:
+            return sxSetComment(r, "Disk v3");
+        case 53:
+            return sxSetComment(r, "Disk group v3");
+        case 68:
+            return sxSetComment(r, "Disk v4");
+        case 69:
+            return sxSetComment(r, "Disk group v4");
+        case 81:
+            return sxSetComment(r, "Volume v5");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053004E && r.name === "update_state" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "Database consistent");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530049 && r.name === "mode" && integer) {
+        switch (value) {
+        case 169:
+            return sxSetComment(r, "Audio");
+        case 170:
+            return sxSetComment(r, "Mode 1");
+        case 171:
+            return sxSetComment(r, "Mode 2");
+        case 236:
+            return sxSetComment(r, "Mode 2 Form 1");
+        case 173:
+            return sxSetComment(r, "Mode 2 Form 2 alternate");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530049 && r.name === "point" && integer) {
+        switch (value) {
+        case 160:
+            return sxSetComment(r, "First track in session");
+        case 161:
+            return sxSetComment(r, "Last track in session");
+        case 162:
+            return sxSetComment(r, "Lead-out start");
+        case 176:
+            return sxSetComment(r, "Next session information");
+        case 192:
+            return sxSetComment(r, "Lead-in information");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053005D && r.name === "read_mode" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "2048-byte sectors");
+        case 1:
+            return sxSetComment(r, "2336-byte sectors");
+        case 2:
+            return sxSetComment(r, "2352-byte sectors");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053005D && r.name === "mode" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Audio");
+        case 1:
+            return sxSetComment(r, "Mode 1");
+        case 2:
+            return sxSetComment(r, "Mode 2");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530052 && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Boot record");
+        case 1:
+            return sxSetComment(r, "Standard file structure volume descriptor");
+        case 2:
+            return sxSetComment(r, "Coded file structure volume descriptor");
+        case 255:
+            return sxSetComment(r, "Volume descriptor terminator");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530053 && r.name === "type" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "Boot record");
+        case 1:
+            return sxSetComment(r, "Standard file structure volume descriptor");
+        case 2:
+            return sxSetComment(r, "Coded file structure volume descriptor");
+        case 255:
+            return sxSetComment(r, "Volume descriptor terminator");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053005F && r.name === "compression" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "None");
+        case 1:
+            return sxSetComment(r, "Gzip");
+        case 2:
+            return sxSetComment(r, "Bzip2");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_0_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_0_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_1_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_1_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_2_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_2_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_3_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_3_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_4_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_4_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_5_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_5_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_6_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_6_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_7_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530044 && r.name === "partition_7_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_0_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_0_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_1_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_1_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_2_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_2_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_3_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_3_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_4_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_4_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_5_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_5_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_6_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_6_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_7_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_7_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_8_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_8_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_9_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_9_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_10_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_10_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_11_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_11_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_12_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_12_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_13_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_13_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_14_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_14_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_15_tag" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "V_UNASSIGNED");
+        case 1:
+            return sxSetComment(r, "V_BOOT");
+        case 2:
+            return sxSetComment(r, "V_ROOT");
+        case 3:
+            return sxSetComment(r, "V_SWAP");
+        case 4:
+            return sxSetComment(r, "V_USR");
+        case 5:
+            return sxSetComment(r, "V_BACKUP");
+        case 6:
+            return sxSetComment(r, "V_STAND");
+        case 7:
+            return sxSetComment(r, "V_VAR");
+        case 8:
+            return sxSetComment(r, "V_HOME");
+        case 9:
+            return sxSetComment(r, "V_ALTSCTR");
+        case 10:
+            return sxSetComment(r, "V_CACHE");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530045 && r.name === "partition_15_flags" && integer) {
+        switch (value) {
+        case 0:
+            return sxSetComment(r, "No flags");
+        case 1:
+            return sxSetComment(r, "V_UNMNT");
+        case 16:
+            return sxSetComment(r, "V_RONLY");
+        case 17:
+            return sxSetComment(r, "V_UNMNT | V_RONLY");
+        default:
+            break;
+        }
+    }
+    if (id === 0x60530039 && r.name === "drive_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "DTYPE_SMD");
+        case 2:
+            return sxSetComment(r, "DTYPE_MSCP");
+        case 3:
+            return sxSetComment(r, "DTYPE_DEC");
+        case 4:
+            return sxSetComment(r, "DTYPE_SCSI");
+        case 5:
+            return sxSetComment(r, "DTYPE_ESDI");
+        case 6:
+            return sxSetComment(r, "DTYPE_ST506");
+        case 7:
+            return sxSetComment(r, "DTYPE_HPIB");
+        case 8:
+            return sxSetComment(r, "DTYPE_HPFL");
+        case 10:
+            return sxSetComment(r, "DTYPE_FLOPPY");
+        case 11:
+            return sxSetComment(r, "DTYPE_CCD");
+        case 12:
+            return sxSetComment(r, "DTYPE_VINUM");
+        case 13:
+            return sxSetComment(r, "DTYPE_DOC2K");
+        case 14:
+            return sxSetComment(r, "DTYPE_RAID");
+        default:
+            break;
+        }
+    }
+    if (id === 0x6053003A && r.name === "drive_type" && integer) {
+        switch (value) {
+        case 1:
+            return sxSetComment(r, "DTYPE_SMD");
+        case 2:
+            return sxSetComment(r, "DTYPE_MSCP");
+        case 3:
+            return sxSetComment(r, "DTYPE_DEC");
+        case 4:
+            return sxSetComment(r, "DTYPE_SCSI");
+        case 5:
+            return sxSetComment(r, "DTYPE_ESDI");
+        case 6:
+            return sxSetComment(r, "DTYPE_ST506");
+        case 7:
+            return sxSetComment(r, "DTYPE_HPIB");
+        case 8:
+            return sxSetComment(r, "DTYPE_HPFL");
+        case 10:
+            return sxSetComment(r, "DTYPE_FLOPPY");
+        case 11:
+            return sxSetComment(r, "DTYPE_CCD");
+        case 12:
+            return sxSetComment(r, "DTYPE_VINUM");
+        case 13:
+            return sxSetComment(r, "DTYPE_DOC2K");
+        case 14:
+            return sxSetComment(r, "DTYPE_RAID");
+        default:
+            break;
+        }
+    }
+    switch (id) {
+    case 0x60530001:
+        if (r.name === "sector_number") {
+            s = "Label location in 512-byte sectors";
+        } else if (r.name === "crc32") {
+            s = "LVM CRC seed 0xF597A6CF over bytes20..511";
+        } else if (r.name === "pv_header_offset") {
+            s = "Byte offset from the start of this label sector";
+        }
+        break;
+    case 0x60530003:
+        if (r.name === "offset") {
+            s = "Byte offset from the physical-volume image start; all-zero pair terminates a list";
+        } else if (r.name === "size") {
+            s = "Zero size for a data area can mean all remaining bytes";
+        }
+        break;
+    case 0x60530005:
+        if (r.name === "crc32") {
+            s = "LVM CRC seed0xF597A6CF over bytes4..511";
+        } else if (r.name === "start") {
+            s = "Byte offset from physical-volume image start";
+        }
+        break;
+    case 0x60530006:
+        if (r.name === "offset") {
+            s = "Byte offset within this metadata area; text may wrap after its512-byte header";
+        } else if (r.name === "flags") {
+            s = "Bit0 RAW_LOCN_IGNORED";
+        }
+        break;
+    case 0x60530008:
+        if (r.name === "next_descriptor_offset") {
+            s = "Relative to this segment file; terminal sections point to themselves";
+        } else if (r.name === "section_size") {
+            s = "Includes76-byte descriptor; terminal sections may store0";
+        } else if (r.name === "adler32") {
+            s = "Adler32 of first72descriptor bytes";
+        }
+        break;
+    case 0x60530009:
+        if (r.name === "palm_start_sector") {
+            s = "Sector number, not a byte offset";
+        } else if (r.name === "smart_logs_distance") {
+            s = "Sector distance backwards from the end of media";
+        } else if (r.name === "error_granularity") {
+            s = "Error-block size in sectors";
+        }
+        break;
+    case 0x6053000A:
+        if (r.name === "chunk_count") {
+            s = "Commonly0 for logical evidence";
+        } else if (r.name === "logical_sector_value") {
+            s = "Logical-evidence field does not necessarily describe physical media sectors";
+        } else if (r.name === "palm_start_sector") {
+            s = "Sector number, not a byte offset";
+        } else if (r.name === "smart_logs_distance") {
+            s = "Sector distance backwards from the end of media";
+        } else if (r.name === "error_granularity") {
+            s = "Error-block size in sectors";
+        }
+        break;
+    case 0x6053000C:
+        if (r.name === "base_offset") {
+            s = "Segment-relative base for encoded chunk offsets; older writers store0";
+        }
+        break;
+    case 0x6053000D:
+        if (r.name === "offset_and_compression") {
+            s = "Bit31 means compressed; low31bits are a byte offset relative to table base";
+        }
+        break;
+    case 0x60530011:
+        if (r.name === "adler32") {
+            s = "Header Adler32 with this field zeroed";
+        }
+        break;
+    case 0x60530013:
+        if (r.name === "previous_descriptor_offset") {
+            s = "Segment-relative descriptor byte offset;0 means first section";
+        } else if (r.name === "data_size") {
+            s = "Includes alignment padding preceding this descriptor";
+        }
+        break;
+    case 0x60530014:
+        if (r.name === "first_chunk_number") {
+            s = "Logical chunk index, not a byte offset";
+        }
+        break;
+    case 0x60530015:
+        if (r.name === "offset") {
+            s = "Byte offset from segment start";
+        }
+        break;
+    case 0x60530016:
+        if (r.name === "fill_pattern") {
+            s = "Physical repeated pattern bytes, not an offset";
+        } else if (r.name === "flags") {
+            s = "Compressed and pattern-fill bits set";
+        }
+        break;
+    case 0x60530019:
+        if (r.name === "last_sector_bytes") {
+            s = "0means a complete final sector";
+        }
+        break;
+    case 0x6053001A:
+        if (r.name === "payload_size") {
+            s = "Counts bytes starting at offset8 of this header";
+        }
+        break;
+    case 0x6053001B:
+        if (r.name === "first_sector") {
+            s = "Logical sector index";
+        }
+        break;
+    case 0x6053001C:
+        if (r.name === "payload_size") {
+            s = "blms counts from header offset8; blss from offset12; uncompressed data uses original_size";
+        }
+        break;
+    case 0x6053001F:
+        if (r.name === "encoded_data_offset") {
+            s = "Low24bits are byte offset; upper bits retain format flags";
+        } else if (r.name === "chunk_size_and_flags") {
+            s = "Low12bits count16KiB units; remaining bits encode table/codec/permutation flags";
+        } else if (r.name === "table_bit_widths") {
+            s = "Bits0..2 type width; bits3..7 encoded length width";
+        }
+        break;
+    case 0x60530020:
+        if (r.name === "size") {
+            s = "Includes this8-byte header";
+        }
+        break;
+    case 0x60530022:
+        if (r.name === "header_size_words") {
+            s = "Header length in4-byte words";
+        } else if (r.name === "block_size_log2") {
+            s = "log2 uncompressed block size in bytes";
+        }
+        break;
+    case 0x60530023:
+        if (r.name === "offset") {
+            s = "Byte offset from zisofs compressed-file start";
+        }
+        break;
+    case 0x60530025:
+        if (r.name === "crc32c") {
+            s = "CRC32C seeded0 without final inversion";
+        }
+        break;
+    case 0x60530027:
+        if (r.name === "type") {
+            s = "DATA19 consumes remainder of command without a stored length";
+        }
+        break;
+    case 0x6053002B:
+        if (r.name === "offset") {
+            s = "Logical file-data byte offset, not an offset in the send-stream container";
+        }
+        break;
+    case 0x6053002F:
+        if (r.name === "seconds") {
+            s = "Unix seconds, signed64 representation";
+        } else if (r.name === "nanoseconds") {
+            s = "Fractional nanoseconds within the second";
+        }
+        break;
+    case 0x60530030:
+        if (r.name === "application") {
+            s = "UTF8 in AaruFormat version2";
+        } else if (r.name === "creation_time") {
+            s = "Windows FILETIME100ns intervals since1601-01-01UTC";
+        } else if (r.name === "last_written_time") {
+            s = "Windows FILETIME100ns intervals since1601-01-01UTC";
+        } else if (r.name === "block_alignment_shift") {
+            s = "Byte alignment is2^shift";
+        }
+        break;
+    case 0x60530031:
+        if (r.name === "table_level") {
+            s = "Zero-based hierarchy level";
+        } else if (r.name === "blocks") {
+            s = "Logical sector span including negative and overflow sectors";
+        } else if (r.name === "start") {
+            s = "Logical starting sector index, not a physical byte offset";
+        } else if (r.name === "block_alignment_shift") {
+            s = "Physical block alignment is2^shift bytes";
+        } else if (r.name === "data_shift") {
+            s = "Low data_shift bits of a DDT entry contain its sector index within the data block";
+        } else if (r.name === "table_shift") {
+            s = "Logical sectors per primary entry are2^table_shift";
+        }
+        break;
+    case 0x60530032:
+        if (r.name === "encoded_location") {
+            s = "High4bits are status; lower60bits combine shifted aligned data-block index and within-block sector index";
+        }
+        break;
+    case 0x60530036:
+        if (r.name === "argument") {
+            s = "Segment-specific argument: page codec flags or scalar value";
+        }
+        break;
+    case 0x60530037:
+        if (r.name === "segment_size") {
+            s = "Includes16-byte header, name, payload and8-byte footer";
+        }
+        break;
+    case 0x60530038:
+        if (r.name === "low") {
+            s = "Low32bits of AFF quadword, stored big endian";
+        } else if (r.name === "high") {
+            s = "High32bits of AFF quadword, stored big endian";
+        }
+        break;
+    case 0x60530039:
+        if (r.name === "rpm") {
+            s = "Revolutions per minute";
+        } else if (r.name === "interleave") {
+            s = "Physical-sector interleave ratio";
+        } else if (r.name === "track_skew") {
+            s = "Sector displacement per track";
+        } else if (r.name === "cylinder_skew") {
+            s = "Sector displacement per cylinder";
+        } else if (r.name === "drive_data") {
+            s = "Drive-specific stored words";
+        } else if (r.name === "checksum") {
+            s = "XOR of label and declared partition-table16-bit words";
+        }
+        break;
+    case 0x6053003A:
+        if (r.name === "rpm") {
+            s = "Revolutions per minute";
+        } else if (r.name === "interleave") {
+            s = "Physical-sector interleave ratio";
+        } else if (r.name === "track_skew") {
+            s = "Sector displacement per track";
+        } else if (r.name === "cylinder_skew") {
+            s = "Sector displacement per cylinder";
+        } else if (r.name === "drive_data") {
+            s = "Drive-specific stored words";
+        } else if (r.name === "checksum") {
+            s = "XOR of label and declared partition-table16-bit words";
+        }
+        break;
+    case 0x6053003B:
+        if (r.name === "start_sector") {
+            s = "Sector number relative to disk start";
+        }
+        break;
+    case 0x6053003C:
+        if (r.name === "start_sector") {
+            s = "Sector number relative to disk start";
+        }
+        break;
+    case 0x6053003D:
+        if (r.name === "creation_time_encoded") {
+            s = "Low40bits Unix seconds; high24bits microseconds";
+        } else if (r.name === "bitmap_offset") {
+            s = "Signed512-byte sector displacement from superblock; meaningful when feature bit0 is set";
+        } else if (r.name === "new_level") {
+            s = "Valid only during reshape";
+        } else if (r.name === "reshape_position") {
+            s = "Next logical array sector to reshape";
+        } else if (r.name === "new_data_offset") {
+            s = "Signed sector displacement added to data_offset during reshape";
+        } else if (r.name === "data_offset") {
+            s = "Physical component start in512-byte sectors";
+        } else if (r.name === "super_offset") {
+            s = "Physical superblock start in512-byte sectors";
+        } else if (r.name === "recovery_or_journal_offset") {
+            s = "Feature-dependent logical sector position relative to data_offset";
+        } else if (r.name === "bad_block_shift") {
+            s = "Bad-block unit is512 shifted by this value";
+        } else if (r.name === "bad_block_log_offset") {
+            s = "Signed sector displacement from this superblock";
+        } else if (r.name === "update_time_encoded") {
+            s = "Low40bits Unix seconds; high24bits microseconds";
+        } else if (r.name === "resync_offset") {
+            s = "Synchronized logical sector count orUINT64_MAX sentinel";
+        }
+        break;
+    case 0x6053003E:
+        if (r.name === "creation_time_encoded") {
+            s = "Low40bits Unix seconds; high24bits microseconds";
+        } else if (r.name === "ppl_offset") {
+            s = "Signed512-byte sector displacement from superblock";
+        } else if (r.name === "new_level") {
+            s = "Valid only during reshape";
+        } else if (r.name === "reshape_position") {
+            s = "Next logical array sector to reshape";
+        } else if (r.name === "new_data_offset") {
+            s = "Signed sector displacement added to data_offset during reshape";
+        } else if (r.name === "data_offset") {
+            s = "Physical component start in512-byte sectors";
+        } else if (r.name === "super_offset") {
+            s = "Physical superblock start in512-byte sectors";
+        } else if (r.name === "recovery_or_journal_offset") {
+            s = "Feature-dependent logical sector position relative to data_offset";
+        } else if (r.name === "bad_block_shift") {
+            s = "Bad-block unit is512 shifted by this value";
+        } else if (r.name === "bad_block_log_offset") {
+            s = "Signed sector displacement from this superblock";
+        } else if (r.name === "update_time_encoded") {
+            s = "Low40bits Unix seconds; high24bits microseconds";
+        } else if (r.name === "resync_offset") {
+            s = "Synchronized logical sector count orUINT64_MAX sentinel";
+        }
+        break;
+    case 0x6053003F:
+        if (r.name === "role") {
+            s = "Array role;0xFFFF spare,0xFFFE faulty,0xFFFD journal";
+        }
+        break;
+    case 0x60530040:
+        if (r.name === "valid_words") {
+            s = "Used32-bit words in constant section";
+        } else if (r.name === "level") {
+            s = "Signed RAID personality convention";
+        } else if (r.name === "component_kib") {
+            s = "Apparent member size in1024-byte units";
+        } else if (r.name === "events") {
+            s = "Stored as32-bit halves: low/high in little endian, high/low in big endian";
+        } else if (r.name === "checkpoint_events") {
+            s = "Stored as32-bit halves: low/high in little endian, high/low in big endian";
+        } else if (r.name === "recovery_checkpoint") {
+            s = "Sectors recovered";
+        } else if (r.name === "state_reserved") {
+            s = "Reshape extension is not defined for native-supported minor90";
+        } else if (r.name === "root_block") {
+            s = "Logical volume root block number";
+        }
+        break;
+    case 0x60530041:
+        if (r.name === "valid_words") {
+            s = "Used32-bit words in constant section";
+        } else if (r.name === "level") {
+            s = "Signed RAID personality convention";
+        } else if (r.name === "component_kib") {
+            s = "Apparent member size in1024-byte units";
+        } else if (r.name === "events") {
+            s = "Stored as32-bit halves: low/high in little endian, high/low in big endian";
+        } else if (r.name === "checkpoint_events") {
+            s = "Stored as32-bit halves: low/high in little endian, high/low in big endian";
+        } else if (r.name === "recovery_checkpoint") {
+            s = "Sectors recovered";
+        } else if (r.name === "state_reserved") {
+            s = "Reshape extension is not defined for native-supported minor90";
+        } else if (r.name === "root_block") {
+            s = "Logical volume root block number";
+        }
+        break;
+    case 0x60530044:
+        if (r.name === "partition_0_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_1_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_2_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_3_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_4_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_5_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_6_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        } else if (r.name === "partition_7_start_cylinder") {
+            s = "Starting cylinder, not a byte offset";
+        }
+        break;
+    case 0x60530045:
+        if (r.name === "partition_0_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_1_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_2_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_3_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_4_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_5_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_6_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_7_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_8_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_9_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_10_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_11_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_12_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_13_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_14_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        } else if (r.name === "partition_15_start_sector") {
+            s = "Disk-relative512-byte sector number";
+        }
+        break;
+    case 0x60530046:
+        if (r.name === "format_word") {
+            s = "Native accepts1..16; detailed revision meaning is unverified";
+        } else if (r.name === "geometry_factor_0") {
+            s = "Product of the three geometry factors gives total_sectors; physical axis is unverified";
+        } else if (r.name === "geometry_factor_1") {
+            s = "Native bounds this factor to1..255; physical axis is unverified";
+        } else if (r.name === "geometry_factor_2") {
+            s = "Native bounds this factor to1..255; physical axis is unverified";
+        }
+        break;
+    case 0x60530047:
+        if (r.name === "session_count_copy") {
+            s = "Native supported producer duplicates session count here";
+        }
+        break;
+    case 0x60530048:
+        if (r.name === "start_lba") {
+            s = "Signed logical sector position";
+        } else if (r.name === "end_lba") {
+            s = "Signed logical sector position";
+        }
+        break;
+    case 0x60530049:
+        if (r.name === "start_lba") {
+            s = "Logical sector position in companion MDF image";
+        } else if (r.name === "mdf_offset") {
+            s = "Byte offset in the companion MDF, not in this MDS descriptor";
+        }
+        break;
+    case 0x6053004C:
+        if (r.name === "logical_disk_start") {
+            s = "512-byte sectors relative to the component image";
+        } else if (r.name === "configuration_start") {
+            s = "512-byte sectors relative to the component image";
+        }
+        break;
+    case 0x6053004D:
+        if (r.name === "configuration_start") {
+            s = "Sector index relative to configuration area";
+        } else if (r.name === "log_start") {
+            s = "Sector index relative to configuration area";
+        }
+        break;
+    case 0x6053004E:
+        if (r.name === "last_vblk_sequence") {
+            s = "Exclusive VBLK slot bound; multiplied by record size";
+        } else if (r.name === "vblk_offset") {
+            s = "Byte offset relative to this VMDB header";
+        }
+        break;
+    case 0x6053004F:
+        if (r.name === "fragment_number") {
+            s = "Zero-based fragment number within group";
+        }
+        break;
+    case 0x60530050:
+        if (r.name === "declared_length") {
+            s = "Type-specific static and variable widths; not an offset from VBLK magic";
+        }
+        break;
+    case 0x60530051:
+        if (r.name === "length") {
+            s = "Byte length of following field";
+        }
+        break;
+    case 0x60530052:
+        if (r.name === "descriptor_sector_le") {
+            s = "2048-byte sector number";
+        } else if (r.name === "descriptor_sector_be") {
+            s = "Big-endian copy of descriptor sector number";
+        } else if (r.name === "path_table_locations") {
+            s = "Encoded little/big-endian path-table block locations; not followed by this provider";
+        }
+        break;
+    case 0x60530053:
+        if (r.name === "descriptor_sector_le") {
+            s = "2048-byte sector number";
+        }
+        break;
+    case 0x60530054:
+        if (r.name === "extent_block_le") {
+            s = "Logical block index relative to the volume";
+        }
+        break;
+    case 0x60530055:
+        if (r.name === "creation_time") {
+            s = "Decimal YYYYMMDDhhmmsscc; no timezone byte in High Sierra";
+        }
+        break;
+    case 0x60530056:
+        if (r.name === "descriptor_offset") {
+            s = "Offset from beginning of CDI file";
+        }
+        break;
+    case 0x60530057:
+        if (r.name === "descriptor_distance") {
+            s = "Distance backwards from end of CDI file to descriptor";
+        }
+        break;
+    case 0x6053005B:
+        if (r.name === "sectors") {
+            s = "Sector count for this index; first entry is pregap";
+        }
+        break;
+    case 0x6053005D:
+        if (r.name === "session_index") {
+            s = "Zero-based session number";
+        } else if (r.name === "track_index") {
+            s = "Zero-based track number";
+        } else if (r.name === "start_sector") {
+            s = "Logical sector position on the disc";
+        } else if (r.name === "read_mode") {
+            s = "0=2048bytes;1=2336bytes;2=2352bytes per stored sector";
+        }
+        break;
+    case 0x6053005E:
+        if (r.name === "volume_number") {
+            s = "Zero-based split volume number";
+        }
+        break;
+    case 0x6053005F:
+        if (r.name === "month") {
+            s = "Zero-based month as in struct tm";
+        } else if (r.name === "year") {
+            s = "Years since1900";
+        } else if (r.name === "timezone_offset") {
+            s = "Legacy portable_tm word; signed offset representation can be encoded in these32bits";
+        } else if (r.name === "timezone_word") {
+            s = "Legacy stored timezone word; not a portable pointer";
+        }
+        break;
+    case 0x60530061:
+        if (r.name === "additive_checksum") {
+            s = "Sum of signed8-bit header bytes modulo2^32";
+        }
+        break;
+    case 0x60530063:
+        if (r.name === "block_position") {
+            s = "Original partition block index at this checkpoint";
+        }
+        break;
+    case 0x60530064:
+        if (r.name === "additive_checksum") {
+            s = "Unsigned byte sum through MAGIC-BEGIN-TAIL";
+        }
+        break;
+    default:
+        break;
+    }
+    return s === null || sxSetComment(r, s);
+}
+function sxvi_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxvi_read(c, p, b, n) {
+    return sxvi_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxvi16(b, b_o, o) {
+    return o === 1 ? b[b_o] << 8 | b[b_o + 1] : b[b_o + 1] << 8 | b[b_o];
+}
+function sxvi32(b, b_o, o) {
+    if (o === 2) {
+        return ((sxvi16(b, b_o, 0) << 16) >>> 0 | sxvi16(b, b_o + 2, 0)) >>> 0;
+    }
+    return o === 1 ? ((sxvi16(b, b_o, 1) << 16) >>> 0 | sxvi16(b, b_o + 2, 1)) >>> 0 : ((sxvi16(b, b_o + 2, 0) << 16) >>> 0 | sxvi16(b, b_o, 0)) >>> 0;
+}
+function sxvi64(b, b_o, o) {
+    return o === 1 ? sxOr64(sxShl64(sxvi32(b, b_o, 1), 32), sxvi32(b, b_o + 4, 1)) : sxOr64(sxShl64(sxvi32(b, b_o + 4, 0), 32), sxvi32(b, b_o, 0));
+}
+function sxvi_pow(v) {
+    return !!(v && !sxAnd64(v, sxU64(v - 1)));
+}
+function sxvi_put(c, l, p, n) {
+    if (!n) {
+        return true;
+    }
+    var f = l.fields[l.field_count + -1];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    var lo = 0;
+    var hi = c.count;
+    if (n > 1048576 || n > Math.floor(SX_U64_MAX / z) || !sxvi_span(c, p, n * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        var at = (c.items[m].offset - c.f.base_address < 0 ? c.items[m].offset - c.f.base_address + SX_U64_MAX : c.items[m].offset - c.f.base_address);
+        if (at < p) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (lo && sxU64(c.items[sxU64(lo - 1)].offset - c.f.base_address) + sxU64(c.items[sxU64(lo - 1)].total_size) > p) {
+        return true;
+    }
+    if (lo < c.count && (c.items[lo].offset - c.f.base_address < 0 ? c.items[lo].offset - c.f.base_address + SX_U64_MAX : c.items[lo].offset - c.f.base_address) < p + n * z) {
+        return true;
+    }
+    var prior = c.count;
+    if (!sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n)) {
+        return false;
+    }
+    if (lo < prior) {
+        var row = sxCopy_xx_data_struct(null, c.items[prior]);
+        sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(prior - lo) * 56) / 56), sxCopy_xx_data_struct);
+        c.items[lo] = sxCopy_xx_data_struct(null, row);
+    }
+    return true;
+}
+function sxvi_adler(p, p_o, n) {
+    var a = 1;
+    var b = 0;
+    while (n--) {
+        a = ((a + p[p_o++]) >>> 0) % 65521;
+        b = ((b + a) >>> 0) % 65521;
+    }
+    return ((b << 16) >>> 0 | a) >>> 0;
+}
+function sxvi_magic(c, p, s, n) {
+    var b = [];
+    return n <= 32 && sxvi_read(c, p, b, n) && !sxMemcmp(b, s, n);
+}
+function sxvi_ewf1(c) {
+    var h = [];
+    var b = [];
+    var base = 0;
+    var p = 13;
+    var logical = c.f.file_type === "EWF_L01";
+    if (!sxvi_read(c, 0, h, 13) || (h[0] !== 69 /*E*/ && h[0] !== 76 /*L*/ || h[1] !== 86 /*V*/ || h[2] !== 70 /*F*/) || h[8] !== 1 || !sxvi_put(c, sxvi_ewf1_file_header, 0, 1)) {
+        return false;
+    }
+    for (var visited = 0; visited < 1048576 && c.count < 24000; visited++) {
+        if (!sxvi_read(c, p, h, 76) || sxvi_adler(h, 0, 72) !== sxvi32(h, 72, 0)) {
+            break;
+        }
+        var rel = sxvi64(h, 16, 0);
+        var z = sxvi64(h, 24, 0);
+        if (!sxvi_put(c, sxvi_ewf1_section_descriptor, p, 1)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "done\x00", 5)) {
+            break;
+        }
+        if (!sxMemcmp(h, "next\x00", 5)) {
+            base = p + 76;
+            if (!sxvi_read(c, base, b, 13) || b[0] !== (logical ? 76 /*L*/ : 69 /*E*/) || b[1] !== 86 /*V*/ || b[2] !== 70 /*F*/) {
+                break;
+            }
+            if (b[8] !== 1 || !sxvi_put(c, sxvi_ewf1_file_header, base, 1)) {
+                return false;
+            }
+            p = base + 13;
+            continue;
+        }
+        if (rel > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - base)) {
+            break;
+        }
+        var next = base + rel;
+        if (next <= p || sxU64(next - p) < 76) {
+            break;
+        }
+        if (!z) {
+            z = sxU64(next - p);
+        }
+        if (z < 76 || z > sxU64(next - p)) {
+            break;
+        }
+        var data = p + 76;
+        var bytes = sxU64(z - 76);
+        if (!sxMemcmp(h, "volume\x00", 7) || !sxMemcmp(h, "disk\x00", 5) || !sxMemcmp(h, "data\x00", 5)) {
+            if (bytes >= 1052) {
+                if (!sxvi_put(c, logical ? sxvi_ewf1_logical_volume : sxvi_ewf1_volume, data, 1)) {
+                    return false;
+                }
+            } else if (!logical && bytes === 94 && !sxvi_put(c, sxvi_ewf1_smart_volume, data, 1)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "table\x00", 6) || !sxMemcmp(h, "table2\x00", 7)) {
+            if (bytes >= 24 && sxvi_read(c, data, b, 24)) {
+                var n = sxvi32(b, 0, 0);
+                if (n <= 1048576 && n <= Math.floor(sxU64(bytes - 24) / 4)) {
+                    if (!sxvi_put(c, sxvi_ewf1_table_header, data, 1) || !sxvi_put(c, sxvi_ewf1_chunk_entry, data + 24, n)) {
+                        return false;
+                    }
+                    if (sxU64(sxU64(bytes - 24) - n * 4) >= 4 && !sxvi_put(c, sxvi_image_adler32, data + 24 + n * 4, 1)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxMemcmp(h, "hash\x00", 5) && bytes >= 36) {
+            if (!sxvi_put(c, sxvi_ewf1_hash, data, 1)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "digest\x00", 7) && bytes >= 80) {
+            if (!sxvi_put(c, sxvi_ewf1_digest, data, 1)) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "ltree\x00", 6) && bytes >= 48) {
+            if (!sxvi_put(c, sxvi_ewf1_ltree_header, data, 1)) {
+                return false;
+            }
+        }
+        p = next;
+    }
+    return true;
+}
+function sxvi_ewf2_descriptor(c, p, b) {
+    if (!sxvi_read(c, p, b, 64) || sxvi32(b, 24, 0) !== 64 || sxvi_adler(b, 0, 60) !== sxvi32(b, 60, 0)) {
+        return false;
+    }
+    var prev = sxvi64(b, 8, 0);
+    var n = sxvi64(b, 16, 0);
+    var type = sxvi32(b, 0, 0);
+    if (!type || type > 65535 || p < 32 || prev >= p || prev && (prev < 32 || sxU64(p - prev) < 64)) {
+        return false;
+    }
+    var start = prev ? prev + 64 : 32;
+    return start <= p && n <= sxU64(p - start) && sxvi32(b, 28, 0) <= n;
+}
+function sxvi_ewf2_row(c, p, b) {
+    var prev = sxvi64(b, 8, 0);
+    var data = prev ? prev + 64 : 32;
+    var n = sxvi64(b, 16, 0);
+    var type = sxvi32(b, 0, 0);
+    if (!sxvi_put(c, sxvi_ewf2_section_descriptor, p, 1)) {
+        return false;
+    }
+    if (sxvi32(b, 4, 0) & 2) {
+        return true;
+    }
+    var h = [];
+    if (type === 4 && n >= 32 && sxvi_read(c, data, h, 32)) {
+        var count = sxvi32(h, 8, 0);
+        if (count > 1048576 || count > Math.floor(sxU64(n - 32) / 16)) {
+            return true;
+        }
+        if (!sxvi_put(c, sxvi_ewf2_table_header, data, 1)) {
+            return false;
+        }
+        for (var i = 0; i < count && c.count < 24000; i++) {
+            var e = [];
+            if (!sxvi_read(c, data + 32 + i * 16, e, 16)) {
+                return false;
+            }
+            var f = sxvi32(e, 12, 0);
+            if (!sxvi_put(c, (f & 5) === 5 ? sxvi_ewf2_pattern_entry : sxvi_ewf2_chunk_entry, data + 32 + i * 16, 1)) {
+                return false;
+            }
+        }
+        if (sxU64(sxU64(n - 32) - count * 16) >= 4 && !sxvi_put(c, sxvi_image_adler32, data + 32 + count * 16, 1)) {
+            return false;
+        }
+    } else if (type === 8 && n >= 20) {
+        if (!sxvi_put(c, sxvi_ewf2_md5, data, 1)) {
+            return false;
+        }
+    } else if (type === 9 && n >= 24) {
+        if (!sxvi_put(c, sxvi_ewf2_sha1, data, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxvi_ewf2(c) {
+    var h = [];
+    if (!sxvi_read(c, 0, h, 32) || (c.f.file_type === "EWF2_LX01" ? sxMemcmp(h, "LEF2", 4) : sxMemcmp(h, "EVF2", 4)) || !sxvi_put(c, sxvi_ewf2_file_header, 0, 1)) {
+        return false;
+    }
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (end >= 96 && sxvi_ewf2_descriptor(c, sxU64(end - 64), h) && (sxvi32(h, 0, 0) === 13 || sxvi32(h, 0, 0) === 15)) {
+        var p = sxU64(end - 64);
+        for (var i = 0; i < 1048576 && c.count < 24000; i++) {
+            if (!sxvi_ewf2_row(c, p, h)) {
+                return false;
+            }
+            var prev = sxvi64(h, 8, 0);
+            if (!prev) {
+                break;
+            }
+            p = prev;
+            if (!sxvi_ewf2_descriptor(c, p, h)) {
+                break;
+            }
+        }
+        return true;
+    }
+    prev = 0;
+    var limit = end < 67108864 ? end : 67108864;
+    for (p = 32; p + 64 <= limit && c.count < 24000; p += 16) {
+        if (!sxvi_ewf2_descriptor(c, p, h) || sxvi64(h, 8, 0) !== prev) {
+            continue;
+        }
+        if (!sxvi_ewf2_row(c, p, h)) {
+            return false;
+        }
+        prev = p;
+        if (sxvi32(h, 0, 0) === 13 || sxvi32(h, 0, 0) === 15) {
+            break;
+        }
+        p += 48;
+    }
+    return true;
+}
+function sxvi_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxvi_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + z > end) {
+            end = p + z;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxvi_order, true);
+    return !c.failed;
+}
+function sx_volumeimages_supports(t) {
+    switch (t) {
+    case "LVM2":
+    case "MD_RAID":
+    case "WINDOWS_LDM":
+    case "BSD_DISKLABEL":
+    case "SUNVTOC":
+    case "NEXTSTEP_DISKIMAGE":
+    case "AFF":
+    case "EWF":
+    case "EWF_L01":
+    case "EWF2_EX01":
+    case "EWF2_LX01":
+    case "PARTIMAGE":
+    case "BTRFS_STREAM":
+    case "DISKJUGGLER":
+    case "MDS":
+    case "UIF":
+    case "GBI":
+    case "HSF":
+    case "AARUFORMAT":
+    case "ZISOFS":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_volumeimages_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "LVM2":
+        ok = sx_lvm2_build(c);
+        break;
+    case "MD_RAID":
+        ok = sx_md_raid_build(c);
+        break;
+    case "WINDOWS_LDM":
+        ok = sx_windows_ldm_build(c);
+        break;
+    case "BSD_DISKLABEL":
+        ok = sx_bsd_disklabel_build(c);
+        break;
+    case "SUNVTOC":
+        ok = sx_sunvtoc_build(c);
+        break;
+    case "NEXTSTEP_DISKIMAGE":
+        ok = sx_nextstep_diskimage_build(c);
+        break;
+    case "AFF":
+        ok = sx_aff_build(c);
+        break;
+    case "EWF":
+    case "EWF_L01":
+        ok = sxvi_ewf1(c);
+        break;
+    case "EWF2_EX01":
+    case "EWF2_LX01":
+        ok = sxvi_ewf2(c);
+        break;
+    case "PARTIMAGE":
+        ok = sx_partimage_build(c);
+        break;
+    case "BTRFS_STREAM":
+        ok = sx_btrfs_stream_build(c);
+        break;
+    case "DISKJUGGLER":
+        ok = sx_diskjuggler_build(c);
+        break;
+    case "MDS":
+        ok = sx_mds_build(c);
+        break;
+    case "UIF":
+        ok = sx_uif_build(c);
+        break;
+    case "GBI":
+        ok = sx_gbi_build(c);
+        break;
+    case "HSF":
+        ok = sx_hsf_build(c);
+        break;
+    case "AARUFORMAT":
+        ok = sx_aaruformat_build(c);
+        break;
+    case "ZISOFS":
+        ok = sx_zisofs_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!((ok || c.count) && c.count && !c.failed && sxvi_finish(c));
+}

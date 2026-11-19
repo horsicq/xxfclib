@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/is3/xx_is3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_is3_header_fields = layout([u32("signature", SIGNATURE), u16("version"), u16("reserved"), bytes("unknown1", 4),
+    u16("member_count", COUNT), u32("timestamp"), u32("archive_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("data_offset", OFFSET), bytes("unknown2", 11), u32("directory_offset", OFFSET), u32("directory_size", SIZE),
+    u16("directory_count", COUNT), u32("file_table_offset", OFFSET), u32("file_table_size", SIZE)]);
+var sxan_is3_header = sxLayout(0x60770001, "is3_header", LE, sxan_is3_header_fields);
+var sxan_is3_directory_fields = layout([u16("member_count", COUNT), u16("entry_size", SIZE), u16("name_size", SIZE)]);
+var sxan_is3_directory = sxLayout(0x60770002, "is3_directory", LE, sxan_is3_directory_fields);
+var sxan_is3_member_fields = layout([u8("flags", FLAGS), u16("reserved"), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u32("data_offset", OFFSET), u32("timestamp"), u32("attributes", FLAGS),
+    u16("entry_size", SIZE), u16("volume"), u16("unknown"), u8("name_size", SIZE)]);
+var sxan_is3_member = sxLayout(0x60770003, "is3_member", LE, sxan_is3_member_fields);
+var sxan_is3_payload_header_fields = layout([u32("signature", SIGNATURE), u32("version"), chars("copyright", 70, NONE),
+    u32("member_count", COUNT)]);
+var sxan_is3_payload_header = sxLayout(0x60770004, "is3_payload_header", LE, sxan_is3_payload_header_fields);
+var sxan_is3_payload_member_fields = layout([u32("data_offset", OFFSET), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u32("reserved1"), u32("reserved2"), u16("name_size", SIZE)]);
+var sxan_is3_payload_member = sxLayout(0x60770005, "is3_payload_member", LE, sxan_is3_payload_member_fields);
+var sxan_is3_second_name_fields = layout([u16("name_size", SIZE)]);
+var sxan_is3_second_name = sxLayout(0x60770006, "is3_second_name", LE, sxan_is3_second_name_fields);
+function sxan_is3(c) {
+    var magic = [0];
+    var n = [0];
+    var p = [0];
+    var end;
+    var z = [0];
+    var len = [0];
+    if (!sxan_word(c, 0, 4, false, magic)) {
+        return false;
+    }
+    if (magic[0] === 0xD879AB2A) {
+        if (!sxan_add(c, sxan_is3_payload_header, 0) || !sxan_word(c, 78, 4, false, n)) {
+            return false;
+        }
+        p[0] = 82;
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxan_add(c, sxan_is3_payload_member, p[0]) || !sxan_word(c, p[0] + 20, 2, false, len) || !sxan_named(c, p[0] + 22, len[0])) {
+                return false;
+            }
+            p[0] += 22 + len[0];
+            if (!sxan_word(c, p[0], 2, false, len) || !sxan_add(c, sxan_is3_second_name, p[0]) || !sxan_named(c, p[0] + 2, len[0])) {
+                return false;
+            }
+            p[0] += 2 + len[0];
+        }
+        return true;
+    }
+    if (!sxan_add(c, sxan_is3_header, 0) || !sxan_word(c, 41, 4, false, p) || !sxan_word(c, 45, 4, false, z) || !sxan_span(c, p[0], z[0]) || !sxan_word(c, 49, 2, false, n)) {
+        return false;
+    }
+    end = p[0] + z[0];
+    for (i = 0; i < n[0]; i++) {
+        if (p[0] > end || sxU64(end - p[0]) < 6 || !sxan_word(c, p[0] + 2, 2, false, z) || !sxan_word(c, p[0] + 4, 2, false, len) || z[0] < 6 || z[0] > sxU64(end - p[0]) || len[0] > sxU64(z[0] - 6) || !sxan_add(c, sxan_is3_directory, p[0]) || !sxan_named(c, p[0] + 6, len[0])) {
+            return false;
+        }
+        p[0] += z[0];
+    }
+    if (!sxan_word(c, 51, 4, false, p) || !sxan_word(c, 55, 4, false, z) || !sxan_span(c, p[0], z[0]) || !sxan_word(c, 12, 2, false, n)) {
+        return false;
+    }
+    end = p[0] + z[0];
+    for (i = 0; i < n[0]; i++) {
+        if (p[0] > end || sxU64(end - p[0]) < 30 || !sxan_word(c, p[0] + 23, 2, false, z) || !sxan_word(c, p[0] + 29, 1, false, len) || z[0] < 30 || z[0] > sxU64(end - p[0]) || len[0] > sxU64(z[0] - 30) || !sxan_add(c, sxan_is3_member, p[0]) || !sxan_named(c, p[0] + 30, len[0])) {
+            return false;
+        }
+        p[0] += z[0];
+    }
+    return true;
+}
+function sx_is3_build(c) {
+    var ok = false;
+    ok = sxan_is3(c);
+    return !!(c.count && sxan_finish(c));
+}

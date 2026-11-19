@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/clip_midi2/xx_clip_midi2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlog_midi_clip_header_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxlog_midi_clip_header = sxLayout(0x608C0001, "midi_clip_header", LE, sxlog_midi_clip_header_fields);
+var sxlog_midi_ump_utility_fields = layout([u8("message_type_reserved", FLAGS), u8("status_and_tick_high_bits", FLAGS),
+    u16("tick_low_bits")]);
+var sxlog_midi_ump_utility = sxLayout(0x608C0002, "midi_ump_utility", BE, sxlog_midi_ump_utility_fields);
+var sxlog_midi_ump_system_fields = layout([u8("type_and_group", FLAGS), u8("system_status", FLAGS), u8("parameter_1"),
+    u8("parameter_2")]);
+var sxlog_midi_ump_system = sxLayout(0x608C0003, "midi_ump_system", LE, sxlog_midi_ump_system_fields);
+var sxlog_midi_ump_midi1_note_fields = layout([u8("type_and_group", FLAGS), u8("status_and_channel", FLAGS), u8("note"),
+    u8("velocity")]);
+var sxlog_midi_ump_midi1_note = sxLayout(0x608C0004, "midi_ump_midi1_note", LE, sxlog_midi_ump_midi1_note_fields);
+var sxlog_midi_ump_midi1_channel_fields = layout([u8("type_and_group", FLAGS), u8("status_and_channel", FLAGS), u8("data_1"),
+    u8("data_2")]);
+var sxlog_midi_ump_midi1_channel = sxLayout(0x608C0005, "midi_ump_midi1_channel", LE, sxlog_midi_ump_midi1_channel_fields);
+var sxlog_midi_ump_midi2_note_fields = layout([u8("type_and_group", FLAGS), u8("status_and_channel", FLAGS), u8("note"),
+    u8("attribute_type", FLAGS), u16("velocity"), u16("attribute_data")]);
+var sxlog_midi_ump_midi2_note = sxLayout(0x608C0006, "midi_ump_midi2_note", BE, sxlog_midi_ump_midi2_note_fields);
+var sxlog_midi_ump_midi2_channel_fields = layout([u8("type_and_group", FLAGS), u8("status_and_channel", FLAGS),
+    u16("index_or_options"), u32("data")]);
+var sxlog_midi_ump_midi2_channel = sxLayout(0x608C0007, "midi_ump_midi2_channel", BE, sxlog_midi_ump_midi2_channel_fields);
+var sxlog_midi_ump_sysex7_fields = layout([u8("type_and_group", FLAGS), u8("status_and_byte_count", FLAGS), bytes("data", 6)]);
+var sxlog_midi_ump_sysex7 = sxLayout(0x608C0008, "midi_ump_sysex7", LE, sxlog_midi_ump_sysex7_fields);
+var sxlog_midi_ump_data128_fields = layout([u8("type_and_group", FLAGS), u8("status_and_byte_count", FLAGS), bytes("data", 14)]);
+var sxlog_midi_ump_data128 = sxLayout(0x608C0009, "midi_ump_data128", LE, sxlog_midi_ump_data128_fields);
+var sxlog_midi_ump_flex_fields = layout([u8("type_and_group", FLAGS), u8("format_address_channel", FLAGS),
+    u8("status_bank", FLAGS), u8("status", FLAGS), bytes("data", 12)]);
+var sxlog_midi_ump_flex = sxLayout(0x608C000A, "midi_ump_flex", LE, sxlog_midi_ump_flex_fields);
+var sxlog_midi_ump_stream_fields = layout([u16("type_format_status", FLAGS), bytes("message_data", 14)]);
+var sxlog_midi_ump_stream = sxLayout(0x608C000B, "midi_ump_stream", BE, sxlog_midi_ump_stream_fields);
+function sxlog_midi(c) {
+    var b = [];
+    var at = 8;
+    var work = 0;
+    if (!sx_read(c, 0, b, 8) || sxMemcmp(b, "SMF2CLIP", 8) || !sx_add(c, sxlog_midi_clip_header, 0, 8)) {
+        return false;
+    }
+    while (at < c.size && work++ < 16000) {
+        var l = null;
+        var size = 0;
+        if (c.size - at < 4) {
+            break;
+        }
+        if (!sx_read(c, at, b, 4)) {
+            return false;
+        }
+        var mt = b[0] >> 4;
+        var st = b[1] >> 4;
+        switch (mt) {
+        case 0:
+            l = sxlog_midi_ump_utility;
+            size = 4;
+            break;
+        case 1:
+            l = sxlog_midi_ump_system;
+            size = 4;
+            break;
+        case 2:
+            l = st === 8 || st === 9 ? sxlog_midi_ump_midi1_note : sxlog_midi_ump_midi1_channel;
+            size = 4;
+            break;
+        case 3:
+            l = sxlog_midi_ump_sysex7;
+            size = 8;
+            break;
+        case 4:
+            l = st === 8 || st === 9 ? sxlog_midi_ump_midi2_note : sxlog_midi_ump_midi2_channel;
+            size = 8;
+            break;
+        case 5:
+            l = sxlog_midi_ump_data128;
+            size = 16;
+            break;
+        case 13:
+            l = sxlog_midi_ump_flex;
+            size = 16;
+            break;
+        case 15:
+            l = sxlog_midi_ump_stream;
+            size = 16;
+            break;
+        default:
+            break;
+        }
+        if (l === null || size > (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at)) {
+            break;
+        }
+        if (!sx_add(c, l, at, size)) {
+            return false;
+        }
+        at += size;
+    }
+    return sx_raw(c, at, c.size - at);
+}
+function sx_clip_midi2_build(c) {
+    return sxlog_midi(c);
+}

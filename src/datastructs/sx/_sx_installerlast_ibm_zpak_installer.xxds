@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/ibm_zpak_installer/xx_ibm_zpak_installer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_ibm_zpak_sfx_header_fields = layout([chars("signature", 6, SIGNATURE), u16("version", ID)]);
+var sxil_ibm_zpak_sfx_header = sxLayout(0x60850018, "ibm_zpak_sfx_header", LE, sxil_ibm_zpak_sfx_header_fields);
+var sxil_ibm_zpak_sfx_v1_directory_fields = layout([chars("name", 102, NONE), i32("packed_size", SIZE),
+    u32("reserved", RESERVED), u16("dos_date"), u16("dos_time")]);
+var sxil_ibm_zpak_sfx_v1_directory = sxLayout(0x60850019, "ibm_zpak_sfx_v1_directory", LE, sxil_ibm_zpak_sfx_v1_directory_fields);
+var sxil_ibm_zpak_sfx_v2_record_fields = layout([u8("tag", ID), u8("unused"), i32("packed_size", SIZE),
+    field("writer_scratch", "byte[4]", 4), u16("dos_date"), u16("dos_time"), i16("name_size", SIZE)]);
+var sxil_ibm_zpak_sfx_v2_record = sxLayout(0x6085001A, "ibm_zpak_sfx_v2_record", LE, sxil_ibm_zpak_sfx_v2_record_fields);
+var sxil_ibm_zpak_sfx_v1_trailer_fields = layout([u16("file_count", COUNT), u32("header_offset", OFFSET),
+    u32("declared_file_size", SIZE), chars("product_tag", 12, NONE)]);
+var sxil_ibm_zpak_sfx_v1_trailer = sxLayout(0x6085001B, "ibm_zpak_sfx_v1_trailer", LE, sxil_ibm_zpak_sfx_v1_trailer_fields);
+var sxil_ibm_zpak_sfx_v2_trailer_fields = layout([i32("file_count", COUNT), u32("header_offset", OFFSET),
+    u32("adjusted_file_size"), chars("product_tag", 26, NONE)]);
+var sxil_ibm_zpak_sfx_v2_trailer = sxLayout(0x6085001C, "ibm_zpak_sfx_v2_trailer", LE, sxil_ibm_zpak_sfx_v2_trailer_fields);
+var sxil_installerlast_dcl_prelude_fields = layout([u8("literal_mode", ID), u8("dictionary_bits")]);
+var sxil_installerlast_dcl_prelude = sxLayout(0x6085001D, "installerlast_dcl_prelude", LE, sxil_installerlast_dcl_prelude_fields);
+function sxil_zpak(c) {
+    var total = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var b = [];
+    var count;
+    var p;
+    var version = 0;
+    var tr = 0;
+    if (total >= 38 && sxil_read(c, sxU64(total - 38), b, 38)) {
+        count = sxil32(b, 0, false);
+        p = sxil32(b, 4, false);
+        if (count && count <= 65535 && sxil_eq(c, p, "-ZPAK\x00\x02\x00", 8)) {
+            version = 2;
+            tr = sxU64(total - 38);
+        }
+    }
+    if (!version && total >= 22 && sxil_read(c, sxU64(total - 22), b, 22)) {
+        count = sxil16(b, 0, false);
+        p = sxil32(b, 2, false);
+        if (count && sxil_eq(c, p, "-ZPAK\x00\x01\x00", 8)) {
+            version = 1;
+            tr = sxU64(total - 22);
+        }
+    }
+    if (!version || !sxil_put(c, sxil_ibm_zpak_sfx_header, p, 1)) {
+        return !version;
+    }
+    if (version === 1) {
+        if (!sxil_put(c, sxil_ibm_zpak_sfx_v1_trailer, tr, 1)) {
+            return false;
+        }
+        if (count > Math.floor(tr / 114)) {
+            return true;
+        }
+        var dir = sxU64(tr - count * 114);
+        var q = p + 8;
+        if (dir < q) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_ibm_zpak_sfx_v1_directory, dir, count)) {
+            return false;
+        }
+        for (var i = 0; i < count; i++) {
+            var z = [0];
+            if (!sxil_u32(c, dir + i * 114 + 102, z) || z[0] < 3 || z[0] > sxU64(dir - q)) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_installerlast_dcl_prelude, q, 1)) {
+                return false;
+            }
+            q += z[0];
+        }
+    } else {
+        if (!sxil_put(c, sxil_ibm_zpak_sfx_v2_trailer, tr, 1)) {
+            return false;
+        }
+        q = p + 8;
+        for (i = 0; i < count && q <= tr && 16 <= sxU64(tr - q); i++) {
+            var h = [];
+            if (!sxil_read(c, q, h, 16)) {
+                return true;
+            }
+            z = [sxil32(h, 2, false)];
+            var n = sxil16(h, 14, false);
+            if (h[0] !== 10 || !n || n > 1024 || n > sxU64(sxU64(tr - q) - 16) || z[0] < 3 || z[0] > sxU64(sxU64(sxU64(tr - q) - 16) - n)) {
+                return true;
+            }
+            if (!sxil_put(c, sxil_ibm_zpak_sfx_v2_record, q, 1) || !sxil_name(c, q + 16, n) || !sxil_put(c, sxil_installerlast_dcl_prelude, q + 16 + n, 1)) {
+                return false;
+            }
+            q += 16 + n + z[0];
+        }
+    }
+    return true;
+}
+function sx_ibm_zpak_installer_build(c) {
+    return sxil_zpak(c);
+}

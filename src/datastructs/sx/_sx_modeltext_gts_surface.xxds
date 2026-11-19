@@ -1,0 +1,109 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/gts_surface/xx_gts_surface_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_edge_index_fields = layout([field("edge_index", "ascii_signed", 0)]);
+var sxmt_edge_index = sxLayout(0x6052001F, "modeltext_edge_index", LE, sxmt_edge_index_fields);
+function sxmt_gts_token(q, a, z) {
+    for (; ; ) {
+        while (q.p < q.n && sxmt_space(q.b[q.p])) {
+            q.p++;
+        }
+        if (q.p === q.n) {
+            return false;
+        }
+        if (q.b[q.p] !== 35 /*#*/ && q.b[q.p] !== 33 /*!*/) {
+            break;
+        }
+        while (q.p < q.n && q.b[q.p] !== 13 && q.b[q.p] !== 10) {
+            q.p++;
+        }
+    }
+    a[0] = q.p;
+    while (q.p < q.n && !sxmt_space(q.b[q.p]) && q.b[q.p] !== 35 /*#*/ && q.b[q.p] !== 33 /*!*/) {
+        q.p++;
+    }
+    z[0] = q.p - a[0];
+    return z[0] > 0;
+}
+function sxmt_gts_value(q, l, out) {
+    var a = [0];
+    var z = [0];
+    if (!sxmt_gts_token(q, a, z) || !sxmt_emit(q, l, a[0], z[0])) {
+        return false;
+    }
+    if (out !== null) {
+        if (q.b[a[0]] === 43 /*+*/) {
+            a[0]++;
+            z[0]--;
+        }
+        if (!sxmt_uint_token(q, a[0], z[0], out)) {
+            return false;
+        }
+    }
+    return true;
+}
+var sxmt_gts_classes = ["GtsSurface", "GtsFace", "GtsEdge", "GtsVertex"];
+function sxmt_gts(q) {
+    var nv = [0];
+    var ne = [0];
+    var nf = [0];
+    if (!sxmt_gts_value(q, sxmt_vertex_count, nv) || !sxmt_gts_value(q, sxmt_edge_count, ne) || !sxmt_gts_value(q, sxmt_face_count, nf) || nv[0] > 1000000 || ne[0] > 1000000 || nf[0] > 1000000) {
+        return false;
+    }
+    var save = q.p;
+    var a = [0];
+    var z = [0];
+    if (!sxmt_gts_token(q, a, z)) {
+        return false;
+    }
+    if (sxmt_eq(q, a[0], z[0], "GtsSurface")) {
+        for (var i = 0; i < 4; i++) {
+            if (i && !sxmt_gts_token(q, a, z)) {
+                return false;
+            }
+            if (!sxmt_eq(q, a[0], z[0], sxmt_gts_classes[i]) || !sxmt_emit(q, sxmt_object_type, a[0], z[0])) {
+                return false;
+            }
+        }
+    } else {
+        q.p = save;
+    }
+    var xyz = [sxmt_x, sxmt_y, sxmt_z];
+    for (i = 0; i < nv[0]; i++) {
+        for (var j = 0; j < 3; j++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            if (!sxmt_gts_value(q, xyz[j], null)) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < ne[0]; i++) {
+        for (j = 0; j < 2; j++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            if (!sxmt_gts_value(q, sxmt_vertex_index, null)) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < nf[0]; i++) {
+        for (j = 0; j < 3; j++) {
+            if (q.c.count >= 32000) {
+                return true;
+            }
+            if (!sxmt_gts_value(q, sxmt_edge_index, null)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_gts_surface_build(q) {
+    return sxmt_gts(q);
+}

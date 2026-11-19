@@ -1,0 +1,93 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/sunvtoc/xx_sunvtoc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_sun_sparc_label_fields = layout([chars("ascii_label", 128, STRING), u32("version", ID),
+    chars("volume_name", 8, STRING), u16("partition_count", COUNT), u16("partition_0_tag", ID), u16("partition_0_flags", FLAGS),
+    u16("partition_1_tag", ID), u16("partition_1_flags", FLAGS), u16("partition_2_tag", ID), u16("partition_2_flags", FLAGS),
+    u16("partition_3_tag", ID), u16("partition_3_flags", FLAGS), u16("partition_4_tag", ID), u16("partition_4_flags", FLAGS),
+    u16("partition_5_tag", ID), u16("partition_5_flags", FLAGS), u16("partition_6_tag", ID), u16("partition_6_flags", FLAGS),
+    u16("partition_7_tag", ID), u16("partition_7_flags", FLAGS), field("alignment_padding", "byte[2]", 2, RESERVED),
+    field("boot_info", "uint32[3]", 12), u32("sanity", SIGNATURE), field("reserved0", "uint32[10]", 40, RESERVED),
+    i32("partition_0_timestamp", TIMESTAMP), i32("partition_1_timestamp", TIMESTAMP), i32("partition_2_timestamp", TIMESTAMP),
+    i32("partition_3_timestamp", TIMESTAMP), i32("partition_4_timestamp", TIMESTAMP), i32("partition_5_timestamp", TIMESTAMP),
+    i32("partition_6_timestamp", TIMESTAMP), i32("partition_7_timestamp", TIMESTAMP), u16("write_reinstruct_sectors", COUNT),
+    u16("read_reinstruct_sectors", COUNT), field("padding", "byte[152]", 152, RESERVED), u16("rpm"),
+    u16("physical_cylinders", COUNT), u16("alternates_per_cylinder", COUNT), u16("obsolete0"), u16("obsolete1"),
+    u16("interleave"), u16("data_cylinders", COUNT), u16("alternate_cylinders", COUNT), u16("heads", COUNT),
+    u16("sectors_per_track", COUNT), u16("obsolete2"), u16("obsolete3"), u32("partition_0_start_cylinder"),
+    u32("partition_0_sector_count", COUNT), u32("partition_1_start_cylinder"), u32("partition_1_sector_count", COUNT),
+    u32("partition_2_start_cylinder"), u32("partition_2_sector_count", COUNT), u32("partition_3_start_cylinder"),
+    u32("partition_3_sector_count", COUNT), u32("partition_4_start_cylinder"), u32("partition_4_sector_count", COUNT),
+    u32("partition_5_start_cylinder"), u32("partition_5_sector_count", COUNT), u32("partition_6_start_cylinder"),
+    u32("partition_6_sector_count", COUNT), u32("partition_7_start_cylinder"), u32("partition_7_sector_count", COUNT),
+    u16("magic", SIGNATURE), u16("checksum", CHECKSUM)]);
+var sxvi_sun_sparc_label = sxLayout(0x60530044, "sun_sparc_label", BE, sxvi_sun_sparc_label_fields);
+var sxvi_sun_x86_label_fields = layout([field("boot_info", "uint32[3]", 12), u32("sanity", SIGNATURE), u32("version", ID),
+    chars("volume_name", 8, STRING), u16("sector_size", SIZE), u16("partition_count", COUNT),
+    field("reserved0", "uint32[10]", 40, RESERVED), u16("partition_0_tag", ID), u16("partition_0_flags", FLAGS),
+    u32("partition_0_start_sector"), u32("partition_0_sector_count", COUNT), u16("partition_1_tag", ID),
+    u16("partition_1_flags", FLAGS), u32("partition_1_start_sector"), u32("partition_1_sector_count", COUNT),
+    u16("partition_2_tag", ID), u16("partition_2_flags", FLAGS), u32("partition_2_start_sector"),
+    u32("partition_2_sector_count", COUNT), u16("partition_3_tag", ID), u16("partition_3_flags", FLAGS),
+    u32("partition_3_start_sector"), u32("partition_3_sector_count", COUNT), u16("partition_4_tag", ID),
+    u16("partition_4_flags", FLAGS), u32("partition_4_start_sector"), u32("partition_4_sector_count", COUNT),
+    u16("partition_5_tag", ID), u16("partition_5_flags", FLAGS), u32("partition_5_start_sector"),
+    u32("partition_5_sector_count", COUNT), u16("partition_6_tag", ID), u16("partition_6_flags", FLAGS),
+    u32("partition_6_start_sector"), u32("partition_6_sector_count", COUNT), u16("partition_7_tag", ID),
+    u16("partition_7_flags", FLAGS), u32("partition_7_start_sector"), u32("partition_7_sector_count", COUNT),
+    u16("partition_8_tag", ID), u16("partition_8_flags", FLAGS), u32("partition_8_start_sector"),
+    u32("partition_8_sector_count", COUNT), u16("partition_9_tag", ID), u16("partition_9_flags", FLAGS),
+    u32("partition_9_start_sector"), u32("partition_9_sector_count", COUNT), u16("partition_10_tag", ID),
+    u16("partition_10_flags", FLAGS), u32("partition_10_start_sector"), u32("partition_10_sector_count", COUNT),
+    u16("partition_11_tag", ID), u16("partition_11_flags", FLAGS), u32("partition_11_start_sector"),
+    u32("partition_11_sector_count", COUNT), u16("partition_12_tag", ID), u16("partition_12_flags", FLAGS),
+    u32("partition_12_start_sector"), u32("partition_12_sector_count", COUNT), u16("partition_13_tag", ID),
+    u16("partition_13_flags", FLAGS), u32("partition_13_start_sector"), u32("partition_13_sector_count", COUNT),
+    u16("partition_14_tag", ID), u16("partition_14_flags", FLAGS), u32("partition_14_start_sector"),
+    u32("partition_14_sector_count", COUNT), u16("partition_15_tag", ID), u16("partition_15_flags", FLAGS),
+    u32("partition_15_start_sector"), u32("partition_15_sector_count", COUNT), i32("partition_0_timestamp", TIMESTAMP),
+    i32("partition_1_timestamp", TIMESTAMP), i32("partition_2_timestamp", TIMESTAMP), i32("partition_3_timestamp", TIMESTAMP),
+    i32("partition_4_timestamp", TIMESTAMP), i32("partition_5_timestamp", TIMESTAMP), i32("partition_6_timestamp", TIMESTAMP),
+    i32("partition_7_timestamp", TIMESTAMP), i32("partition_8_timestamp", TIMESTAMP), i32("partition_9_timestamp", TIMESTAMP),
+    i32("partition_10_timestamp", TIMESTAMP), i32("partition_11_timestamp", TIMESTAMP),
+    i32("partition_12_timestamp", TIMESTAMP), i32("partition_13_timestamp", TIMESTAMP),
+    i32("partition_14_timestamp", TIMESTAMP), i32("partition_15_timestamp", TIMESTAMP), chars("ascii_label", 128, STRING),
+    u32("physical_cylinders", COUNT), u32("data_cylinders", COUNT), u16("alternate_cylinders", COUNT), u16("cylinder_offset"),
+    u32("heads", COUNT), u32("sectors_per_track", COUNT), u16("interleave"), u16("skew"), u16("alternates_per_cylinder", COUNT),
+    u16("rpm"), u16("write_reinstruct_sectors", COUNT), u16("read_reinstruct_sectors", COUNT),
+    field("expansion", "uint16[4]", 8, RESERVED), field("padding", "byte[12]", 12, RESERVED), u16("magic", SIGNATURE),
+    u16("checksum", CHECKSUM)]);
+var sxvi_sun_x86_label = sxLayout(0x60530045, "sun_x86_label", LE, sxvi_sun_x86_label_fields);
+function sxvi_sun(c) {
+    var b = [];
+    for (var i = 0; i < 2; i++) {
+        var p = (i * 512) >>> 0;
+        if (!sxvi_read(c, p, b, 512) || sxvi16(b, 508, i ? 0 : 1) !== 0xDABE) {
+            continue;
+        }
+        var sum = 0;
+        for (var k = 0; k < 512; k = (k + 2) >>> 0) {
+            sum ^= sxvi16(b, k, 1);
+        }
+        if (sum) {
+            continue;
+        }
+        if (!i) {
+            if (!sxvi16(b, 436, 1) || !sxvi16(b, 438, 1)) {
+                continue;
+            }
+            return sxvi_put(c, sxvi_sun_sparc_label, p, 1);
+        }
+        if (sxvi32(b, 12, 0) !== 0x600DDEEE || sxvi32(b, 16, 0) !== 1 || sxvi16(b, 28, 0) !== 512 || sxvi16(b, 30, 0) > 16) {
+            continue;
+        }
+        return sxvi_put(c, sxvi_sun_x86_label, p, 1);
+    }
+    return false;
+}
+function sx_sunvtoc_build(c) {
+    return sxvi_sun(c);
+}

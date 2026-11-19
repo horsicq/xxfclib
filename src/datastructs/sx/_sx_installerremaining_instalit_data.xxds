@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/instalit_data/xx_instalit_data_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxir_instalit(v) {
+    var f = v.c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = sxArcCreate(f);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    var previous = 0;
+    var count = 0;
+    while (s.has_record) {
+        var r = sxArcCurrent(f, s);
+        if (r === null || r.data_offset < f.base_address || r.compressed_size < 4) {
+            ok = false;
+            break;
+        }
+        var at = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+        var z = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        var mode = [0];
+        var bits = [0];
+        if (at < previous || ++count > 65536 || !sxir_span(v, at, z, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size)) || !sxir_u(v, at, 1, false, mode, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size)) || mode[0] > 1 || !sxir_u(v, at + 1, 1, false, bits, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size)) || bits[0] < 4 || bits[0] > 6 || !sxir_row(v, sxir_instalit_dcl_header, at, at + z)) {
+            ok = false;
+            break;
+        }
+        previous = at + z;
+        if (!sxArcNext(f, s)) {
+            break;
+        }
+    }
+    sxArcFree(f, s);
+    return !!(ok && count);
+}
+function sx_instalit_data_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_instalit(v);
+}

@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/alignment_clustal/xx_alignment_clustal_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_consensus_fields = layout([field("consensus", "char", 0, STRING)]);
+var sxseq_consensus = sxLayout(0x6073001C, "sequence_consensus", LE, sxseq_consensus_fields);
+function sxseq_clustal(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(4, sxNew_sxseq_token);
+    if (!sxseq_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxseq_emit(q, sxseq_signature, sxCopy_sxseq_token(null, line))) {
+            return false;
+        }
+    }
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxseq_trim(q, sxCopy_sxseq_token(null, line)).z) {
+            continue;
+        }
+        if (q.b[line.a] === 32 || q.b[line.a] === 9) {
+            {
+                if (!sxseq_emit(q, sxseq_consensus, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 4, false);
+        if (n < 2 || n > 3) {
+            return false;
+        }
+        {
+            if (!sxseq_emit(q, sxseq_identifier, sxCopy_sxseq_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (!sxseq_chunks(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[1]))) {
+            return false;
+        }
+        if (n === 3) {
+            {
+                if (!sxseq_emit(q, sxseq_residue_total, sxCopy_sxseq_token(null, t[2]))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_alignment_clustal_build(q) {
+    return sxseq_clustal(q);
+}

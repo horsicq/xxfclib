@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/qnap_nas_firmware/xx_qnap_nas_firmware_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fw_qnap_footer_fields = layout([field("magic", "byte[6]", 6, SIGNATURE), u32("encrypted_length", SIZE),
+    chars("device_id", 16, NONE), chars("file_version", 16, NONE), chars("firmware_date", 16, NONE), chars("revision", 16, NONE)]);
+var sx_fw_qnap_footer = sxLayout(0x601E0013, "qnap_footer", LE, sx_fw_qnap_footer_fields);
+function sx_qnap_nas_firmware_build(c) {
+    var ok = false;
+    ok = c.size >= 78 && sx_add(c, sx_fw_qnap_footer, c.size - 74, 74);
+    return ok && sx_fw_finish(c);
+}

@@ -1,0 +1,96 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modelmeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_modelmeta");
+include("_sx_modelmeta_autodesk_3ds");
+include("_sx_modelmeta_autodesk_fbx");
+include("_sx_modelmeta_blender_blend");
+include("_sx_modelmeta_blitz3d_b3d");
+include("_sx_modelmeta_cal3d_skeleton");
+include("_sx_modelmeta_lightwave_lwo2");
+include("_sx_modelmeta_milkshape_ms3d");
+include("_sx_modelmeta_mmd_pmx");
+include("_sx_modelmeta_nintendo_bch");
+include("_sx_modelmeta_ogre_mesh");
+include("_sx_modelmeta_ogre_skeleton");
+include("_sx_modelmeta_openctm_mesh");
+include("_sx_modelmeta_qubicle_qb");
+include("_sx_modelmeta_spring_s3o");
+include("_sx_modelmeta_stereolithography_stl");
+include("_sx_modelmeta_terragen_ter");
+
+function fileTypes() { return ["BLITZ3D_B3D", "MILKSHAPE_MS3D", "NINTENDO_BCH", "OGRE_MESH", "BLENDER_BLEND", "AUTODESK_FBX",
+    "AUTODESK_3DS", "LIGHTWAVE_LWO2", "SPRING_S3O", "STEREOLITHOGRAPHY_STL", "OPENCTM_MESH", "QUBICLE_QB", "TERRAGEN_TER",
+    "MMD_PMX", "OGRE_SKELETON", "CAL3D_SKELETON"]; }
+
+var sx_modelmeta_layouts = [sxmo_b3d_header, sxmo_b3d_chunk, sxmo_b3d_texture, sxmo_b3d_brush_count, sxmo_b3d_texture_index,
+    sxmo_b3d_brush, sxmo_b3d_node, sxmo_b3d_brush_index, sxmo_b3d_vertices, sxmo_b3d_position, sxmo_b3d_normal, sxmo_b3d_color,
+    sxmo_b3d_texture_coordinate, sxmo_b3d_triangle, sxmo_ms3d_header, sxmo_ms3d_vertex_count, sxmo_ms3d_triangle_count,
+    sxmo_ms3d_group_count, sxmo_ms3d_material_count, sxmo_ms3d_vertex, sxmo_ms3d_triangle, sxmo_ms3d_group,
+    sxmo_ms3d_triangle_index, sxmo_ms3d_material_index, sxmo_ms3d_material, sxmo_ms3d_animation, sxmo_bch21_header,
+    sxmo_bch_relocation, sxmo_ogre_mesh_header, sxmo_ogre_mesh_chunk, sxmo_ogre_mesh_animation, sxmo_ogre_submesh,
+    sxmo_ogre_index16, sxmo_ogre_vertex_count, sxmo_ogre_vertex_element, sxmo_ogre_vertex_buffer, sxmo_ogre_position,
+    sxmo_ogre_operation, sxmo_ogre_bounds, sxmo_blend_header, sxmo_blend_block32_le, sxmo_blend_block64_le,
+    sxmo_blend_dna_names_le, sxmo_blend_dna_types_le, sxmo_blend_dna_structures_le, sxmo_blend_dna_lengths_tag_le,
+    sxmo_blend_dna_type_size_le, sxmo_blend_dna_structure_le, sxmo_blend_dna_field_le, sxmo_blend_block32_be,
+    sxmo_blend_block64_be, sxmo_blend_dna_names_be, sxmo_blend_dna_types_be, sxmo_blend_dna_structures_be,
+    sxmo_blend_dna_lengths_tag_be, sxmo_blend_dna_type_size_be, sxmo_blend_dna_structure_be, sxmo_blend_dna_field_be,
+    sxmo_fbx_header, sxmo_fbx_node32, sxmo_fbx_node64, sxmo_fbx_scalar_y, sxmo_fbx_scalar_c, sxmo_fbx_scalar_i,
+    sxmo_fbx_scalar_f, sxmo_fbx_scalar_l, sxmo_fbx_scalar_d, sxmo_fbx_blob, sxmo_fbx_array, sxmo_fbx_footer_prefix,
+    sxmo_fbx_footer_tail, sxmo_3ds_chunk, sxmo_3ds_version, sxmo_3ds_vertex_count, sxmo_3ds_face_count, sxmo_3ds_uv_count,
+    sxmo_3ds_vertex, sxmo_3ds_uv, sxmo_3ds_face, sxmo_3ds_local_matrix, sxmo_lwo2_form, sxmo_lwo2_chunk, sxmo_lwo2_layer,
+    sxmo_lwo2_point, sxmo_lwo2_polygon_type, sxmo_lwo2_tag_type, sxmo_lwo2_polygon, sxmo_lwo2_index16, sxmo_lwo2_index24,
+    sxmo_lwo2_tag_index, sxmo_s3o_header, sxmo_s3o_piece, sxmo_s3o_vertex, sxmo_s3o_child, sxmo_s3o_index,
+    sxmo_stl_binary_header, sxmo_stl_binary_facet, sxmo_openctm_header, sxmo_openctm_string_length, sxmo_openctm_tag,
+    sxmo_openctm_triangle, sxmo_openctm_vertex, sxmo_openctm_normal, sxmo_openctm_uv, sxmo_openctm_attribute, sxmo_qb_header,
+    sxmo_qb_name_length, sxmo_qb_matrix, sxmo_qb_voxel, sxmo_qb_rle_marker, sxmo_qb_rle_run, sxmo_ter_header, sxmo_ter_end,
+    sxmo_ter_size, sxmo_ter_point_count, sxmo_ter_scale, sxmo_ter_radius, sxmo_ter_curvature, sxmo_ter_altitude,
+    sxmo_ter_height, sxmo_pmx20_header, sxmo_pmx_text_length, sxmo_pmx_vertex_count, sxmo_pmx_face_index_count,
+    sxmo_pmx_texture_count, sxmo_pmx_vertex, sxmo_pmx_additional_uv, sxmo_pmx_skinning, sxmo_pmx_bone_index1,
+    sxmo_pmx_vertex_index1, sxmo_pmx_bone_index2, sxmo_pmx_vertex_index2, sxmo_pmx_bone_index4, sxmo_pmx_vertex_index4,
+    sxmo_pmx_weight, sxmo_pmx_edge_scale, sxmo_pmx_sdef, sxmo_pmx_material_count, sxmo_ogre_skeleton_header,
+    sxmo_ogre_skeleton_chunk, sxmo_ogre_skeleton_bone_chunk, sxmo_ogre_skeleton_bone, sxmo_ogre_skeleton_scale,
+    sxmo_ogre_skeleton_parent, sxmo_ogre_skeleton_blend, sxmo_ogre_skeleton_duration, sxmo_ogre_skeleton_track,
+    sxmo_ogre_skeleton_keyframe, sxmo_cal3d_skeleton_header, sxmo_cal3d_bone_name, sxmo_cal3d_bone, sxmo_cal3d_child];
+
+function structs() {
+    return sxCatalog([sxmo_b3d_header, sxmo_b3d_chunk, sxmo_b3d_texture, sxmo_b3d_brush_count, sxmo_b3d_texture_index,
+        sxmo_b3d_brush, sxmo_b3d_node, sxmo_b3d_brush_index, sxmo_b3d_vertices, sxmo_b3d_position, sxmo_b3d_normal,
+        sxmo_b3d_color, sxmo_b3d_texture_coordinate, sxmo_b3d_triangle, sxmo_ms3d_header, sxmo_ms3d_vertex_count,
+        sxmo_ms3d_triangle_count, sxmo_ms3d_group_count, sxmo_ms3d_material_count, sxmo_ms3d_vertex, sxmo_ms3d_triangle,
+        sxmo_ms3d_group, sxmo_ms3d_triangle_index, sxmo_ms3d_material_index, sxmo_ms3d_material, sxmo_ms3d_animation,
+        sxmo_bch21_header, sxmo_bch_relocation, sxmo_ogre_mesh_header, sxmo_ogre_mesh_chunk, sxmo_ogre_mesh_animation,
+        sxmo_ogre_submesh, sxmo_ogre_index16, sxmo_ogre_vertex_count, sxmo_ogre_vertex_element, sxmo_ogre_vertex_buffer,
+        sxmo_ogre_position, sxmo_ogre_operation, sxmo_ogre_bounds, sxmo_blend_header, sxmo_blend_block32_le,
+        sxmo_blend_block64_le, sxmo_blend_dna_names_le, sxmo_blend_dna_types_le, sxmo_blend_dna_structures_le,
+        sxmo_blend_dna_lengths_tag_le, sxmo_blend_dna_type_size_le, sxmo_blend_dna_structure_le, sxmo_blend_dna_field_le,
+        sxmo_blend_block32_be, sxmo_blend_block64_be, sxmo_blend_dna_names_be, sxmo_blend_dna_types_be,
+        sxmo_blend_dna_structures_be, sxmo_blend_dna_lengths_tag_be, sxmo_blend_dna_type_size_be, sxmo_blend_dna_structure_be,
+        sxmo_blend_dna_field_be, sxmo_fbx_header, sxmo_fbx_node32, sxmo_fbx_node64, sxmo_fbx_scalar_y, sxmo_fbx_scalar_c,
+        sxmo_fbx_scalar_i, sxmo_fbx_scalar_f, sxmo_fbx_scalar_l, sxmo_fbx_scalar_d, sxmo_fbx_blob, sxmo_fbx_array,
+        sxmo_fbx_footer_prefix, sxmo_fbx_footer_tail, sxmo_3ds_chunk, sxmo_3ds_version, sxmo_3ds_vertex_count,
+        sxmo_3ds_face_count, sxmo_3ds_uv_count, sxmo_3ds_vertex, sxmo_3ds_uv, sxmo_3ds_face, sxmo_3ds_local_matrix,
+        sxmo_lwo2_form, sxmo_lwo2_chunk, sxmo_lwo2_layer, sxmo_lwo2_point, sxmo_lwo2_polygon_type, sxmo_lwo2_tag_type,
+        sxmo_lwo2_polygon, sxmo_lwo2_index16, sxmo_lwo2_index24, sxmo_lwo2_tag_index, sxmo_s3o_header, sxmo_s3o_piece,
+        sxmo_s3o_vertex, sxmo_s3o_child, sxmo_s3o_index, sxmo_stl_binary_header, sxmo_stl_binary_facet, sxmo_openctm_header,
+        sxmo_openctm_string_length, sxmo_openctm_tag, sxmo_openctm_triangle, sxmo_openctm_vertex, sxmo_openctm_normal,
+        sxmo_openctm_uv, sxmo_openctm_attribute, sxmo_qb_header, sxmo_qb_name_length, sxmo_qb_matrix, sxmo_qb_voxel,
+        sxmo_qb_rle_marker, sxmo_qb_rle_run, sxmo_ter_header, sxmo_ter_end, sxmo_ter_size, sxmo_ter_point_count, sxmo_ter_scale,
+        sxmo_ter_radius, sxmo_ter_curvature, sxmo_ter_altitude, sxmo_ter_height, sxmo_pmx20_header, sxmo_pmx_text_length,
+        sxmo_pmx_vertex_count, sxmo_pmx_face_index_count, sxmo_pmx_texture_count, sxmo_pmx_vertex, sxmo_pmx_additional_uv,
+        sxmo_pmx_skinning, sxmo_pmx_bone_index1, sxmo_pmx_vertex_index1, sxmo_pmx_bone_index2, sxmo_pmx_vertex_index2,
+        sxmo_pmx_bone_index4, sxmo_pmx_vertex_index4, sxmo_pmx_weight, sxmo_pmx_edge_scale, sxmo_pmx_sdef,
+        sxmo_pmx_material_count, sxmo_ogre_skeleton_header, sxmo_ogre_skeleton_chunk, sxmo_ogre_skeleton_bone_chunk,
+        sxmo_ogre_skeleton_bone, sxmo_ogre_skeleton_scale, sxmo_ogre_skeleton_parent, sxmo_ogre_skeleton_blend,
+        sxmo_ogre_skeleton_duration, sxmo_ogre_skeleton_track, sxmo_ogre_skeleton_keyframe, sxmo_cal3d_skeleton_header,
+        sxmo_cal3d_bone_name, sxmo_cal3d_bone, sxmo_cal3d_child], sx_modelmeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_modelmeta_build, false);
+}

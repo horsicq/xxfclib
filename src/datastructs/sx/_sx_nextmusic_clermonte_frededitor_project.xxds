@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/clermonte_frededitor_project/xx_clermonte_frededitor_project_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_fred_header_fields = layout([blob("signature", 12, SIGNATURE), u16("version", ID), u16("subsong_count", COUNT)]);
+var sxnextm_fred_header = sxLayout(0x608B0014, "fred_header", BE, sxnextm_fred_header_fields);
+var sxnextm_fred_track_length_fields = layout([i32("track_bytes", SIZE)]);
+var sxnextm_fred_track_length = sxLayout(0x608B0015, "fred_track_length", BE, sxnextm_fred_track_length_fields);
+var sxnextm_fred_sample_fields = layout([u16("instrument_index", ID), u16("sample_bytes", SIZE)]);
+var sxnextm_fred_sample = sxLayout(0x608B0017, "fred_sample", BE, sxnextm_fred_sample_fields);
+var sxnextm_fred_end_fields = layout([u32("end_marker", ID)]);
+var sxnextm_fred_end = sxLayout(0x608B0018, "fred_end", BE, sxnextm_fred_end_fields);
+function sxnextm_fred(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [16];
+    var n = [0];
+    var z = [0];
+    if (!sxnextm_eq(v, 0, "Fred Editor \x00\x00", 14, e) || !sxnextm_be(v, 14, 2, n, 0, e) || n[0] > 10 || !sxnextm_row(v, sxnextm_fred_header, 0, e) || !sxnextm_take(v, sxnextm_u8, p, n[0], e) || !sxnextm_take(v, sxnextm_i8, p, n[0] * 1024, e)) {
+        return false;
+    }
+    for (var i = 0; i < 128; i++) {
+        if (!sxnextm_be(v, p[0], 4, z, 0, e) || z[0] > 2147483647 || !sxnextm_take(v, sxnextm_fred_track_length, p, 1, e) || !sxnextm_skip(v, p, z[0], e)) {
+            return false;
+        }
+    }
+    if (!sxnextm_be(v, p[0], 2, n, 0, e) || !sxnextm_take(v, sxnextm_count16, p, 1, e) || !sxnextm_take(v, sxnextm_fred_instrument, p, n[0], e) || !sxnextm_be(v, p[0], 2, n, 0, e) || !sxnextm_take(v, sxnextm_count16, p, 1, e)) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (!sxnextm_be(v, p[0] + 2, 2, z, 0, e) || !sxnextm_take(v, sxnextm_fred_sample, p, 1, e) || !sxnextm_skip(v, p, z[0], e)) {
+            return false;
+        }
+    }
+    return sxnextm_eq(v, p[0], "\x124Vx", 4, e) && sxnextm_row(v, sxnextm_fred_end, p[0], e);
+}
+function sx_clermonte_frededitor_project_build(v) {
+    return sxnextm_fred(v);
+}

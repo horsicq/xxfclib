@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/tarma_installer/xx_tarma_installer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_tarma_section_fields = layout([field("unknown", "byte[16]", 16), chars("signature", 4, SIGNATURE),
+    u16("minor_version", ID), u16("major_version", ID), u64("reserved", RESERVED), u64("section_size", SIZE),
+    field("reserved2", "byte[8]", 8, RESERVED), field("database_identifier", "byte[16]", 16), u32("check_word_a"),
+    u32("check_word_b")]);
+var sxil_tarma_section = sxLayout(0x60850035, "tarma_section", LE, sxil_tarma_section_fields);
+var sxil_tarma_lzma_properties_fields = layout([u8("properties"), u32("dictionary_size", SIZE)]);
+var sxil_tarma_lzma_properties = sxLayout(0x60850036, "tarma_lzma_properties", LE, sxil_tarma_lzma_properties_fields);
+var sxil_tarma_separator_fields = layout([u32("value"), u32("complemented_value"), u64("reserved", RESERVED)]);
+var sxil_tarma_separator = sxLayout(0x60850037, "tarma_separator", LE, sxil_tarma_separator_fields);
+function sxil_tarma(c) {
+    var p = [0];
+    if (!sxil_pe(c, p)) {
+        return true;
+    }
+    for (var k = 0; k < 100000 && sxil_span(c, p[0], 72); k++) {
+        var b = [];
+        if (!sxil_read(c, p[0], b, 72)) {
+            return true;
+        }
+        if (sxMemcmpAt(b, 16, "tiz3", 0, 4)) {
+            if (sxil32(b, 0, false) === ~sxil32(b, 4, false) >>> 0 && !sxil32(b, 8, false) && !sxil32(b, 12, false)) {
+                if (!sxil_put(c, sxil_tarma_separator, p[0], 1)) {
+                    return false;
+                }
+                p[0] += 16;
+                continue;
+            }
+            return true;
+        }
+        if (!sxil_put(c, sxil_tarma_section, p[0], 1)) {
+            return false;
+        }
+        var z = sxOr64(sxil32(b, 32, false), sxShl64(sxil32(b, 36, false), 32));
+        if (z < 77 || !sxil_span(c, p[0], 77)) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_tarma_lzma_properties, p[0] + 72, 1)) {
+            return false;
+        }
+        if (!sxil_span(c, p[0], z)) {
+            return true;
+        }
+        p[0] += z;
+    }
+    return true;
+}
+function sx_tarma_installer_build(c) {
+    return sxil_tarma(c);
+}

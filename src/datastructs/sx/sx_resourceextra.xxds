@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_resourceextra.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_resourceextra");
+include("_sx_resourceextra_secondnature");
+include("_sx_resourceextra_skf");
+
+function fileTypes() { return ["SECONDNATURE", "SKF"]; }
+
+var sx_resourceextra_layouts = [sxre_secondnature_banner, sxre_secondnature_bmx_count, sxre_secondnature_ref_counts,
+    sxre_secondnature_snx_text, sxre_secondnature_snx_info, sxre_secondnature_entry, sxre_secondnature_ref_entry,
+    sxre_secondnature_banner_complemented, sxre_secondnature_bmx_count_complemented, sxre_secondnature_ref_counts_complemented,
+    sxre_secondnature_snx_text_complemented, sxre_secondnature_snx_info_complemented, sxre_secondnature_entry_complemented,
+    sxre_secondnature_ref_entry_complemented, sxre_skf_short_string_length, sxre_skf_long_string_length, sxre_skf_object_count,
+    sxre_skf_property_count, sxre_skf_property_id, sxre_skf_resource_count, sxre_skf_resource_prefix, sxre_skf_record6_count,
+    sxre_skf_optional_flag, sxre_skf_record14_count, sxre_skf_variable_record_count, sxre_skf_payload_size];
+
+function structs() {
+    return sxCatalog([sxre_secondnature_banner, sxre_secondnature_bmx_count, sxre_secondnature_ref_counts,
+        sxre_secondnature_snx_text, sxre_secondnature_snx_info, sxre_secondnature_entry, sxre_secondnature_ref_entry,
+        sxre_secondnature_banner_complemented, sxre_secondnature_bmx_count_complemented,
+        sxre_secondnature_ref_counts_complemented, sxre_secondnature_snx_text_complemented,
+        sxre_secondnature_snx_info_complemented, sxre_secondnature_entry_complemented, sxre_secondnature_ref_entry_complemented,
+        sxre_skf_short_string_length, sxre_skf_long_string_length, sxre_skf_object_count, sxre_skf_property_count,
+        sxre_skf_property_id, sxre_skf_resource_count, sxre_skf_resource_prefix, sxre_skf_record6_count, sxre_skf_optional_flag,
+        sxre_skf_record14_count, sxre_skf_variable_record_count, sxre_skf_payload_size], sx_resourceextra_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_resourceextra_build, false);
+}

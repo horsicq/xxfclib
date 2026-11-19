@@ -1,0 +1,83 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/cbor/xx_cbor_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_cbor_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_cbor_tag = sxLayout(0x60350036, "cbor_tag", LE, sxbl_cbor_tag_fields);
+var sxbl_cbor_self_describe_fields = layout([bytes("tag", 3, SIGNATURE)]);
+var sxbl_cbor_self_describe = sxLayout(0x60350092, "cbor_self_describe", LE, sxbl_cbor_self_describe_fields);
+var sxbl_cbor_half_float_fields = layout([u16("ieee754_binary16_bits")]);
+var sxbl_cbor_half_float = sxLayout(0x60350093, "cbor_half_float", BE, sxbl_cbor_half_float_fields);
+var sxbl_cbor_negative_argument1_fields = layout([u8("encoded_argument")]);
+var sxbl_cbor_negative_argument1 = sxLayout(0x6035010C, "cbor_negative_argument1", BE, sxbl_cbor_negative_argument1_fields);
+var sxbl_cbor_negative_argument2_fields = layout([u16("encoded_argument")]);
+var sxbl_cbor_negative_argument2 = sxLayout(0x6035010F, "cbor_negative_argument2", BE, sxbl_cbor_negative_argument2_fields);
+var sxbl_cbor_negative_argument4_fields = layout([u32("encoded_argument")]);
+var sxbl_cbor_negative_argument4 = sxLayout(0x60350112, "cbor_negative_argument4", BE, sxbl_cbor_negative_argument4_fields);
+var sxbl_cbor_negative_argument8_fields = layout([u64("encoded_argument")]);
+var sxbl_cbor_negative_argument8 = sxLayout(0x60350115, "cbor_negative_argument8", BE, sxbl_cbor_negative_argument8_fields);
+function sxbl_cbor(c, p, end, depth) {
+    var t = [0];
+    if (depth > 32 || !sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_cbor_tag)) {
+        return false;
+    }
+    var major = t[0] >> 5;
+    var ai = t[0] & 31;
+    var z = ai < 24 ? 0 : ai <= 27 ? (1 << ((ai - 24) >>> 0)) >>> 0 : 0;
+    var n = [ai];
+    if (ai >= 24) {
+        if (!z || !sxbl_word(c, p[0], z, true, n)) {
+            return false;
+        }
+        if (major === 7) {
+            if (ai === 25) {
+                return sxbl_emit(c, p, end, sxbl_cbor_half_float);
+            }
+            if (ai === 26 || ai === 27) {
+                return sxbl_float(c, p, end, z, true);
+            }
+        }
+        if (major === 2 || major === 3 || major === 4 || major === 5) {
+            var x = [0];
+            if (!sxbl_length(c, p, end, z, true, major >= 4, x)) {
+                return false;
+            }
+        } else if (major === 1) {
+            var a = [sxbl_cbor_negative_argument1, sxbl_cbor_negative_argument2, sxbl_cbor_negative_argument4, sxbl_cbor_negative_argument8];
+            if (!sxbl_emit(c, p, end, a[(ai - 24) >>> 0])) {
+                return false;
+            }
+        } else if (!sxbl_numeric(c, p, end, z, false, true)) {
+            return false;
+        }
+    }
+    if (major <= 1 || major === 7) {
+        return true;
+    }
+    if (major === 2 || major === 3) {
+        return sxbl_skip(c, p, end, n[0]);
+    }
+    if (major === 6) {
+        return sxbl_cbor(c, p, end, (depth + 1) >>> 0);
+    }
+    if (n[0] > 20000) {
+        return false;
+    }
+    var count = n[0] * (major === 5 ? 2 : 1);
+    for (var i = 0; i < count; i++) {
+        if (!sxbl_cbor(c, p, end, (depth + 1) >>> 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_cbor_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var ok = false;
+    p[0] = 3;
+    ok = sxbl_add(c, sxbl_cbor_self_describe, 0) && sxbl_cbor(c, p, end, 0);
+    return ok;
+}

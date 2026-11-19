@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/esp_archive/xx_esp_archive_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_esp_header_fields = layout([chars("signature", 4, SIGNATURE), u8("version", ID), u8("flags", FLAGS),
+    u32("directory_offset", OFFSET)]);
+var sxal_esp_header = sxLayout(0x6020004C, "esp_header", LE, sxal_esp_header_fields);
+function sx_esp_archive_build(c) {
+    var b = [];
+    return sxal_read(c, 0, b, 4) && !sxMemcmp(b, "ESP>", 4) && sxal_add(c, sxal_esp_header, 0);
+}

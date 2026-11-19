@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/fuchs_tracker/xx_fuchs_tracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_fuchs_event_fields = layout([u8("instrument_period_high", FLAGS), u8("period_low"), u8("instrument_effect", FLAGS),
+    u8("parameter")]);
+var sxmta_fuchs_event = sxLayout(0x6081002A, "fuchs_event", LE, sxmta_fuchs_event_fields);
+var sxmta_fuchs_header_fields = layout([chars("title", 10, NONE), u32("sample_data_bytes", SIZE)]);
+var sxmta_fuchs_header = sxLayout(0x6081006C, "fuchs_header", BE, sxmta_fuchs_header_fields);
+var sxmta_fuchs_sample_bytes_fields = layout([u16("sample_bytes", SIZE)]);
+var sxmta_fuchs_sample_bytes = sxLayout(0x6081006D, "fuchs_sample_bytes", BE, sxmta_fuchs_sample_bytes_fields);
+var sxmta_fuchs_order_count_fields = layout([u16("orders", COUNT)]);
+var sxmta_fuchs_order_count = sxLayout(0x60810070, "fuchs_order_count", BE, sxmta_fuchs_order_count_fields);
+var sxmta_fuchs_pattern_chunk_fields = layout([blob("magic", 4, SIGNATURE), u32("pattern_bytes", SIZE)]);
+var sxmta_fuchs_pattern_chunk = sxLayout(0x60810071, "fuchs_pattern_chunk", BE, sxmta_fuchs_pattern_chunk_fields);
+var sxmta_fuchs_samples_marker_fields = layout([blob("magic", 4, ID)]);
+var sxmta_fuchs_samples_marker = sxLayout(0x60810072, "fuchs_samples_marker", LE, sxmta_fuchs_samples_marker_fields);
+function sxmta_fuchs(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var n = [0];
+    var total = [0];
+    if (!sxmta_be(v, 10, 4, total, 0, end) || !sxmta_take(v, sxmta_fuchs_header, p, 1, end) || !sxmta_take(v, sxmta_fuchs_sample_bytes, p, 16, end) || !sxmta_take(v, sxmta_fuchs_volume, p, 16, end) || !sxmta_take(v, sxmta_fuchs_loop, p, 16, end) || !sxmta_take(v, sxmta_fuchs_order_count, p, 1, end) || !sxmta_take(v, sxmta_order16be, p, 40, end) || !sxmta_eq(v, p[0], "SONG", 4, end) || !sxmta_be(v, p[0] + 4, 4, n, 0, end) || n[0] % 1024 || !sxmta_take(v, sxmta_fuchs_pattern_chunk, p, 1, end) || !sxmta_take(v, sxmta_fuchs_event, p, Math.floor(n[0] / 4), end) || !sxmta_eq(v, p[0], "INST", 4, end) || !sxmta_take(v, sxmta_fuchs_samples_marker, p, 1, end)) {
+        return false;
+    }
+    return sxmta_span(v, p[0], total[0], end);
+}
+function sx_fuchs_tracker_build(v) {
+    return sxmta_fuchs(v);
+}

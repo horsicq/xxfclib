@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/meng_symphonie_symmod/xx_meng_symphonie_symmod_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_sym_header_fields = layout([blob("magic", 4, SIGNATURE), u32("version", ID)]);
+var sxmta_sym_header = sxLayout(0x6081003E, "sym_header", BE, sxmta_sym_header_fields);
+function sxmta_sym(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [8];
+    var id = [0];
+    var n = [0];
+    if (!sxmta_eq(v, 0, "SymM", 4, end) || !sxmta_row(v, sxmta_sym_header, 0, end)) {
+        return false;
+    }
+    while (p[0] < end) {
+        if (!sxmta_be(v, p[0], 4, id, 0, end)) {
+            return false;
+        }
+        var k = id[0] <= 2147483647 ? (id[0] >= SX_I64_MAX ? id[0] - SX_U64_MAX : id[0]) : (id[0] >= SX_I64_MAX ? id[0] - SX_U64_MAX : id[0]) - 4294967296;
+        if (k === -12) {
+            if (!sxmta_take(v, sxmta_sym_empty_sample, p, 1, end)) {
+                return false;
+            }
+            continue;
+        }
+        if (k >= -21 && k <= -10) {
+            if (!sxmta_be(v, p[0] + 4, 4, n, 0, end) || !sxmta_take(v, sxmta_sym_bytes, p, 1, end) || !sxmta_skip(v, p, n[0], end)) {
+                return false;
+            }
+        } else if (k >= -7 && k <= -1 || k >= 10 && k <= 12) {
+            if (!sxmta_take(v, k === -1 || k === -2 || k === -4 ? sxmta_sym_count : sxmta_sym_value, p, 1, end)) {
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_meng_symphonie_symmod_build(v) {
+    return sxmta_sym(v);
+}

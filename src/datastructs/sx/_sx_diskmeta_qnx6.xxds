@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/qnx6/xx_qnx6_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_qnx6_superblock_header_le_fields = layout([u32("magic", SIGNATURE), u32("checksum", CHECKSUM), u64("serial"),
+    u32("creation_time", TIMESTAMP), u32("access_time", TIMESTAMP), u32("flags", FLAGS), u16("version1"), u16("version2"),
+    field("volume_id", "byte[16]", 16, ID), u32("block_size", SIZE), u32("inode_count", COUNT), u32("free_inodes", COUNT),
+    u32("block_count", COUNT), u32("free_blocks", COUNT), u32("allocation_group")]);
+var sx_dm_qnx6_superblock_header_le = sxLayout(0x60290046, "qnx6_superblock_header_le", LE, sx_dm_qnx6_superblock_header_le_fields);
+var sx_dm_qnx6_root_node_le_fields = layout([u64("size", SIZE), field("block_pointers", "uint32[16]", 64, ID), u8("levels"),
+    u8("mode", FLAGS), field("spare", "byte[6]", 6, RESERVED)]);
+var sx_dm_qnx6_root_node_le = sxLayout(0x60290047, "qnx6_root_node_le", LE, sx_dm_qnx6_root_node_le_fields);
+var sx_dm_qnx6_superblock_header_be_fields = layout([u32("magic", SIGNATURE), u32("checksum", CHECKSUM), u64("serial"),
+    u32("creation_time", TIMESTAMP), u32("access_time", TIMESTAMP), u32("flags", FLAGS), u16("version1"), u16("version2"),
+    field("volume_id", "byte[16]", 16, ID), u32("block_size", SIZE), u32("inode_count", COUNT), u32("free_inodes", COUNT),
+    u32("block_count", COUNT), u32("free_blocks", COUNT), u32("allocation_group")]);
+var sx_dm_qnx6_superblock_header_be = sxLayout(0x6029004E, "qnx6_superblock_header_be", BE, sx_dm_qnx6_superblock_header_be_fields);
+var sx_dm_qnx6_root_node_be_fields = layout([u64("size", SIZE), field("block_pointers", "uint32[16]", 64, ID), u8("levels"),
+    u8("mode", FLAGS), field("spare", "byte[6]", 6, RESERVED)]);
+var sx_dm_qnx6_root_node_be = sxLayout(0x6029004F, "qnx6_root_node_be", BE, sx_dm_qnx6_root_node_be_fields);
+function sx_dm_qnx(c) {
+    var h = [];
+    var positions = [8192, 0];
+    for (var i = 0; i < 2; i++) {
+        var p = positions[i];
+        if (!sx_dm_read(c, p, h, 392)) {
+            continue;
+        }
+        var be = sx_dm_u32(h, 0, true) === 0x68191122;
+        if (sx_dm_u32(h, 0, be) !== 0x68191122) {
+            continue;
+        }
+        var bs = sx_dm_u32(h, 48, be);
+        var blocks = sx_dm_u32(h, 60, be);
+        if (bs < 512 || bs > 65536 || sxAnd64(bs, sxU64(bs - 1)) || (p + 4096) % bs || !blocks || !sx_dm_u32(h, 52, be) || !sx_dm_span(c, p + 4096, blocks * bs) || sx_dm_u64(h, 72, be) < 128 || h[144] > 4 || h[304] > 4) {
+            continue;
+        }
+        if (!sx_dm_add(c, be ? sx_dm_qnx6_superblock_header_be : sx_dm_qnx6_superblock_header_le, p, 72) || !sx_dm_table(c, be ? sx_dm_qnx6_root_node_be : sx_dm_qnx6_root_node_le, p + 72, 80, 4)) {
+            return false;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_qnx6_build(c) {
+    return sx_dm_qnx(c);
+}

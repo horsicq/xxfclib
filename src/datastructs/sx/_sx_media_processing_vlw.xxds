@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/processing_vlw/xx_processing_vlw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_vlw_header_fields = layout([u32("glyph_count", COUNT), u32("version", ID), u32("font_size"), u32("reserved", RESERVED),
+    u32("ascent"), u32("descent")]);
+var sxm_vlw_header = sxLayout(0x6006002E, "vlw_header", BE, sxm_vlw_header_fields);
+var sxm_vlw_glyph_fields = layout([u32("value", ID), u32("height"), u32("width"), i32("set_width"), i32("top_extent"),
+    i32("left_extent"), u32("reserved", RESERVED)]);
+var sxm_vlw_glyph = sxLayout(0x6006002F, "vlw_glyph", BE, sxm_vlw_glyph_fields);
+function sx_processing_vlw_build(c, h, n) {
+    var count;
+    if (n < 24 || sxGetU32(h, n, 4, true) !== 11) {
+        return false;
+    }
+    count = sxGetU32(h, n, 0, true);
+    return !!(count && count <= 4092 && sx_add(c, sxm_vlw_header, 0, 24) && sx_table(c, sxm_vlw_glyph, 24, 28, count) && sxm_tail(c, 24 + count * 28));
+}

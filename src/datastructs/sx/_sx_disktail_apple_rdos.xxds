@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_rdos/xx_apple_rdos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdt_rdos_catalog_entry_fields = layout([field("filename", "byte[24]", 24), u8("file_type", ID), u8("sectors_used", COUNT),
+    u16("load_address", VA), u16("file_size", SIZE), u16("first_logical_sector")]);
+var sxdt_rdos_catalog_entry = sxLayout(0x607A0001, "rdos_catalog_entry", LE, sxdt_rdos_catalog_entry_fields);
+function sxdt_rdos(c) {
+    var sectors = c.size === 116480 ? 13 : 16;
+    if (c.size !== 116480 && c.size !== 143360) {
+        return false;
+    }
+    return sxdt_put(c, sxdt_rdos_catalog_entry, sectors * 256, 88);
+}
+function sx_apple_rdos_build(c) {
+    var ok = false;
+    ok = sxdt_rdos(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

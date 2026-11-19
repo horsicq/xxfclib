@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/bytekiller/xx_bytekiller_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_bytekiller_header_fields = layout([u32("compressed_size", SIZE), u32("uncompressed_size", SIZE),
+    u32("xor_checksum", CHECKSUM)]);
+var sxan_bytekiller_header = sxLayout(0x6077005E, "bytekiller_header", BE, sxan_bytekiller_header_fields);
+var sxan_bytekiller_ace_header_fields = layout([chars("signature", 4, SIGNATURE), u32("stored_size", SIZE),
+    u32("uncompressed_size", SIZE), u32("xor_checksum", CHECKSUM)]);
+var sxan_bytekiller_ace_header = sxLayout(0x6077005F, "bytekiller_ace_header", BE, sxan_bytekiller_ace_header_fields);
+var sxan_bytekiller_anc_header_fields = layout([chars("signature", 4, SIGNATURE), u32("stored_size", SIZE)]);
+var sxan_bytekiller_anc_header = sxLayout(0x60770060, "bytekiller_anc_header", BE, sxan_bytekiller_anc_header_fields);
+var sxan_bytekiller_grac_header_fields = layout([chars("signature", 4, SIGNATURE), u32("unknown")]);
+var sxan_bytekiller_grac_header = sxLayout(0x60770061, "bytekiller_grac_header", BE, sxan_bytekiller_grac_header_fields);
+var sxan_bytekiller_md11_header_fields = layout([chars("signature", 4, SIGNATURE), u32("encoded_size")]);
+var sxan_bytekiller_md11_header = sxLayout(0x60770062, "bytekiller_md11_header", BE, sxan_bytekiller_md11_header_fields);
+var sxan_bytekiller_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxan_bytekiller_signature = sxLayout(0x60770063, "bytekiller_signature", LE, sxan_bytekiller_signature_fields);
+var sxan_bytekiller_footer_fields = layout([u32("xor_checksum", CHECKSUM), u32("uncompressed_size", SIZE)]);
+var sxan_bytekiller_footer = sxLayout(0x60770064, "bytekiller_footer", BE, sxan_bytekiller_footer_fields);
+function sxan_bytekiller(c) {
+    var head = [0];
+    var foot = [0];
+    var z = [0];
+    if (c.size < 12 || !sxan_word(c, 0, 4, true, head) || !sxan_word(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4), 4, true, foot)) {
+        return false;
+    }
+    switch (head[0]) {
+    case 0x41434521:
+        return sxan_add(c, sxan_bytekiller_ace_header, 0);
+    case 0x46564C30:
+        if (!sxan_word(c, 4, 4, true, z) || z[0] < 8) {
+            return false;
+        }
+        return sxan_add(c, sxan_bytekiller_anc_header, 0) && sxan_add(c, sxan_bytekiller_footer, z[0]);
+    case 0x47523230:
+        return sxan_add(c, sxan_bytekiller_grac_header, 0) && sxan_add(c, sxan_bytekiller_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8));
+    case 0x4D443130:
+        return sxan_add(c, sxan_bytekiller_signature, 0) && sxan_add(c, sxan_bytekiller_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8));
+    case 0x4D443131:
+        return sxan_add(c, sxan_bytekiller_md11_header, 0) && sxan_add(c, sxan_bytekiller_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8));
+    default:
+        if (foot[0] === 0x4A454B21) {
+            return c.size >= 16 && sxan_add(c, sxan_bytekiller_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 12)) && sxan_add(c, sxan_bytekiller_signature, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4));
+        }
+        if (!sxan_add(c, sxan_bytekiller_header, 0)) {
+            return false;
+        }
+        return foot[0] !== 0x64617461 || sxan_add(c, sxan_bytekiller_signature, head[0] + 12);
+    }
+}
+function sx_bytekiller_build(c) {
+    var ok = false;
+    ok = sxan_bytekiller(c);
+    return !!(c.count && sxan_finish(c));
+}

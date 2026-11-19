@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/idtech_iqm/xx_idtech_iqm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_iqm_header_fields = layout([chars("magic", 16, SIGNATURE), u32("version", ID), u32("file_size", SIZE),
+    u32("flags", FLAGS), u32("text_size", SIZE), u32("text_offset", OFFSET), u32("mesh_count", COUNT),
+    u32("mesh_offset", OFFSET), u32("vertex_array_count", COUNT), u32("vertex_count", COUNT),
+    u32("vertex_array_offset", OFFSET), u32("triangle_count", COUNT), u32("triangle_offset", OFFSET),
+    u32("adjacency_offset", OFFSET), u32("joint_count", COUNT), u32("joint_offset", OFFSET), u32("pose_count", COUNT),
+    u32("pose_offset", OFFSET), u32("animation_count", COUNT), u32("animation_offset", OFFSET), u32("frame_count", COUNT),
+    u32("frame_channel_count", COUNT), u32("frame_offset", OFFSET), u32("bounds_offset", OFFSET), u32("comment_size", SIZE),
+    u32("comment_offset", OFFSET), u32("extension_count", COUNT), u32("extension_offset", OFFSET)]);
+var sxmx_iqm_header = sxLayout(0x602E008B, "iqm_header", LE, sxmx_iqm_header_fields);
+var sxmx_iqm_mesh_fields = layout([u32("name_offset", OFFSET), u32("material_offset", OFFSET), u32("first_vertex", ID),
+    u32("vertex_count", COUNT), u32("first_triangle", ID), u32("triangle_count", COUNT)]);
+var sxmx_iqm_mesh = sxLayout(0x602E008C, "iqm_mesh", LE, sxmx_iqm_mesh_fields);
+var sxmx_iqm_vertex_array_fields = layout([u32("type", ID), u32("flags", FLAGS), u32("format", ID), u32("components", COUNT),
+    u32("data_offset", OFFSET)]);
+var sxmx_iqm_vertex_array = sxLayout(0x602E008D, "iqm_vertex_array", LE, sxmx_iqm_vertex_array_fields);
+var sxmx_iqm_triangle_fields = layout([u32("vertex0", ID), u32("vertex1", ID), u32("vertex2", ID)]);
+var sxmx_iqm_triangle = sxLayout(0x602E008E, "iqm_triangle", LE, sxmx_iqm_triangle_fields);
+var sxmx_iqm_adjacency_fields = layout([u32("triangle0", ID), u32("triangle1", ID), u32("triangle2", ID)]);
+var sxmx_iqm_adjacency = sxLayout(0x602E008F, "iqm_adjacency", LE, sxmx_iqm_adjacency_fields);
+var sxmx_iqm_float_fields = layout([field("component", "float", 4)]);
+var sxmx_iqm_float = sxLayout(0x602E0090, "iqm_float", LE, sxmx_iqm_float_fields);
+var sxmx_iqm_color_fields = layout([u8("red"), u8("green"), u8("blue"), u8("alpha")]);
+var sxmx_iqm_color = sxLayout(0x602E0091, "iqm_color", LE, sxmx_iqm_color_fields);
+function sxmx_iqm(v) {
+    if (!sxmx_row(v, sxmx_iqm_header, 0, v.n)) {
+        return false;
+    }
+    var meshes = sxmx_u32(v.p, 36, false);
+    var arrays = sxmx_u32(v.p, 44, false);
+    var verts = sxmx_u32(v.p, 48, false);
+    var tris = sxmx_u32(v.p, 56, false);
+    var ao = sxmx_u32(v.p, 52, false);
+    if (arrays > 7 || verts > 65536 || !sxmx_table(v, sxmx_iqm_mesh, sxmx_u32(v.p, 40, false), meshes, v.n) || !sxmx_table(v, sxmx_iqm_vertex_array, ao, arrays, v.n) || !sxmx_table(v, sxmx_iqm_triangle, sxmx_u32(v.p, 60, false), tris, v.n)) {
+        return false;
+    }
+    var adj = sxmx_u32(v.p, 64, false);
+    if (adj && !sxmx_table(v, sxmx_iqm_adjacency, adj, tris, v.n)) {
+        return false;
+    }
+    for (var i = 0; i < arrays; i++) {
+        var p = v.p, p_o = ao + i * 20;
+        var fmt = sxmx_u32(p, p_o + 8, false);
+        var components = sxmx_u32(p, p_o + 12, false);
+        var at = sxmx_u32(p, p_o + 16, false);
+        if (components > 4) {
+            return false;
+        }
+        if (fmt === 7) {
+            if (!sxmx_table(v, sxmx_iqm_float, at, verts * components, v.n)) {
+                return false;
+            }
+        } else if (fmt === 1 && components === 4) {
+            if (!sxmx_table(v, sxmx_iqm_color, at, verts, v.n)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_idtech_iqm_build(v) {
+    return sxmx_iqm(v);
+}

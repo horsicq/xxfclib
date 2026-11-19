@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/vmarc/xx_vmarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_vmarc_member_fields = layout([bytes("signature", 9, SIGNATURE), u8("unknown9"), bytes("name_ebcdic", 8, STRING),
+    bytes("type_ebcdic", 8, STRING), u16("unknown26"), u16("logical_record_size", SIZE), bytes("unknown30", 6),
+    u8("record_format", ID), u8("flags", FLAGS)]);
+var sxag_vmarc_member = sxLayout(0x6025000E, "vmarc_member", BE, sxag_vmarc_member_fields);
+var sxag_vmarc_record_fields = layout([u16("record_size", SIZE)]);
+var sxag_vmarc_record = sxLayout(0x6025000F, "vmarc_record", BE, sxag_vmarc_record_fields);
+function sxag_vmarc_stored(c, p, end) {
+    var b = [];
+    for (var i = 0; i < 20000 && p + 2 <= end; i++) {
+        if (!sxag_read(c, p, b, 2)) {
+            break;
+        }
+        var n = sxag16(b, 0, true);
+        if (n > sxU64(sxU64(end - p) - 2)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_vmarc_record, p)) {
+            return false;
+        }
+        p += (2 + n) >>> 0;
+        if (!n) {
+            break;
+        }
+    }
+    return true;
+}
+function sxag_vmarc(c) {
+    if (!sxag_add(c, sxag_vmarc_member, 0)) {
+        return false;
+    }
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    for (var i = 0; i < 1024; i++) {
+        var r = c.f.get_current_archive_record(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset >= c.f.base_address && r.data_offset >= r.header_offset && r.compressed_size >= 0) {
+            var p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+            var data = (r.data_offset - c.f.base_address < 0 ? r.data_offset - c.f.base_address + SX_U64_MAX : r.data_offset - c.f.base_address);
+            var n = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+            var b = [];
+            if (sxag_read(c, p, b, 38) && sxag_span(c, data, n)) {
+                if (!sxag_add(c, sxag_vmarc_member, p) || b[37] & 64 && !sxag_vmarc_stored(c, data, data + n)) {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, s, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sx_vmarc_build(c) {
+    return sxag_vmarc(c);
+}

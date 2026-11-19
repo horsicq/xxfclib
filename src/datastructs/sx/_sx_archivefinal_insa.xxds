@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/insa/xx_insa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_insa_version_fields = layout([u16("version")]);
+var sxaf_insa_version = sxLayout(0x603C002D, "insa_version", LE, sxaf_insa_version_fields);
+var sxaf_insa_member_fields = layout([u32("uncompressed_size", SIZE)]);
+var sxaf_insa_member = sxLayout(0x603C002E, "insa_member", LE, sxaf_insa_member_fields);
+function sxaf_insa(c) {
+    if (!sxaf_add(c, sxaf_insa_version, 0)) {
+        return false;
+    }
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    for (var i = 0; i < 1024; i++) {
+        var r = c.f.get_current_archive_record(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset >= c.f.base_address && r.header_size === 4 && r.data_offset === r.header_offset + 4 && r.compressed_size >= 0) {
+            var p = (r.header_offset - c.f.base_address < 0 ? r.header_offset - c.f.base_address + SX_U64_MAX : r.header_offset - c.f.base_address);
+            if (!sxaf_span(c, p + 4, (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size)) || !sxaf_add(c, sxaf_insa_member, p)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, s, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sx_insa_build(c) {
+    return sxaf_insa(c);
+}

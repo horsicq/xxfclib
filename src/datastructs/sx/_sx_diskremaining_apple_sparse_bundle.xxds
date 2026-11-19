@@ -1,0 +1,167 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_sparse_bundle/xx_apple_sparse_bundle_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_plist_tag_fields = layout([field("tag", "utf8", 0)]);
+var sxdr_plist_tag = sxLayout(0x607F001F, "plist_tag", LE, sxdr_plist_tag_fields);
+var sxdr_plist_key_fields = layout([field("key", "utf8", 0)]);
+var sxdr_plist_key = sxLayout(0x607F0020, "plist_key", LE, sxdr_plist_key_fields);
+var sxdr_plist_string_fields = layout([field("value", "utf8", 0)]);
+var sxdr_plist_string = sxLayout(0x607F0021, "plist_string", LE, sxdr_plist_string_fields);
+var sxdr_plist_integer_fields = layout([field("value", "ascii_signed", 0)]);
+var sxdr_plist_integer = sxLayout(0x607F0022, "plist_integer", LE, sxdr_plist_integer_fields);
+var sxdr_plist_disk_size_fields = layout([field("disk_size", "ascii_signed", 0, SIZE)]);
+var sxdr_plist_disk_size = sxLayout(0x607F0023, "plist_disk_size", LE, sxdr_plist_disk_size_fields);
+var sxdr_plist_band_size_fields = layout([field("band_size", "ascii_signed", 0, SIZE)]);
+var sxdr_plist_band_size = sxLayout(0x607F0024, "plist_band_size", LE, sxdr_plist_band_size_fields);
+var sxdr_plist_bundle_version_fields = layout([field("bundle_version", "ascii_signed", 0, ID)]);
+var sxdr_plist_bundle_version = sxLayout(0x607F0025, "plist_bundle_version", LE, sxdr_plist_bundle_version_fields);
+function sxdr_ws(x) {
+    return x === 32 || x === 9 || x === 10 || x === 13;
+}
+function sxdr_plist(c) {
+    if (c.size < 64 || c.size > 65536) {
+        return false;
+    }
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = 0;
+    var depth = 0;
+    var b = sxAlloc(n);
+    if (b === null) {
+        return false;
+    }
+    var ok = sxdr_read(c, 0, b, n);
+    var stack = sxAllocN(68, function () { return []; });
+    var key = sxZeros(40);
+    if (n >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) {
+        p = 3;
+    }
+    while (ok && p < n) {
+        if (false) {
+            ok = false;
+            break;
+        }
+        if (b[p] !== 60 /*<*/) {
+            var a = p;
+            while (p < n && b[p] !== 60 /*<*/) {
+                p++;
+            }
+            var z = p;
+            while (a < z && sxdr_ws(b[a])) {
+                a++;
+            }
+            while (z > a && sxdr_ws(b[sxU64(z - 1)])) {
+                z--;
+            }
+            if (!depth || a === z) {
+                continue;
+            }
+            var l = null;
+            var t = stack[sxU64(depth - 1)];
+            if (!sxStrcmp(t, "key")) {
+                l = sxdr_plist_key;
+                if (depth === 3) {
+                    var len = sxU64(z - a);
+                    key[0] = 0;
+                    if (len < 40) {
+                        sxMemcpy(key, 0, b, a, len);
+                        key[len] = 0;
+                    }
+                }
+            } else if (!sxStrcmp(t, "string")) {
+                l = sxdr_plist_string;
+            } else if (!sxStrcmp(t, "integer")) {
+                l = sxdr_plist_integer;
+                if (depth === 3) {
+                    if (!sxStrcmp(key, "size")) {
+                        l = sxdr_plist_disk_size;
+                    } else if (!sxStrcmp(key, "band-size")) {
+                        l = sxdr_plist_band_size;
+                    } else if (!sxStrcmp(key, "bundle-backingstore-version")) {
+                        l = sxdr_plist_bundle_version;
+                    }
+                }
+            }
+            if (l !== null && !sxdr_text(c, l, a, sxU64(z - a))) {
+                ok = false;
+                break;
+            }
+            continue;
+        }
+        a = p++;
+        if (p < n && (b[p] === 33 /*!*/ || b[p] === 63 /*?*/)) {
+            var end = b[p] === 63 /*?*/ ? "?>" : p + 2 < n && b[p + 1] === 45 /*-*/ && b[p + 2] === 45 /*-*/ ? "-->" : ">";
+            len = sxStrlen(end);
+            while (p + len <= n && sxMemcmpAt(b, p, end, 0, len)) {
+                p++;
+            }
+            if (p + len > n) {
+                ok = false;
+                break;
+            }
+            p += len;
+            continue;
+        }
+        var close = p < n && b[p] === 47;
+        if (close) {
+            p++;
+        }
+        var start = p;
+        while (p < n && (b[p] >= 97 /*a*/ && b[p] <= 122 /*z*/ || b[p] >= 65 /*A*/ && b[p] <= 90 /*Z*/ || b[p] >= 48 /*0*/ && b[p] <= 57 /*9*/ || b[p] === 45 /*-*/ || b[p] === 95 /*_*/ || b[p] === 46 /*.*/ || b[p] === 58 /*:*/)) {
+            p++;
+        }
+        len = sxU64(p - start);
+        if (!len || len >= 64) {
+            ok = false;
+            break;
+        }
+        var quote = 0;
+        var ended = false;
+        for (; p < n; p++) {
+            var x = b[p];
+            if (quote) {
+                if (x === quote) {
+                    quote = 0;
+                }
+            } else if (x === 39 /*'*/ || x === 34 /*"*/) {
+                quote = x;
+            } else if (x === 62 /*>*/) {
+                p++;
+                ended = true;
+                break;
+            } else if (x === 60 /*<*/) {
+                break;
+            }
+        }
+        if (!ended) {
+            ok = false;
+            break;
+        }
+        var empty = p >= 2 && b[sxU64(p - 2)] === 47;
+        if (!sxdr_text(c, sxdr_plist_tag, a, sxU64(p - a))) {
+            ok = false;
+            break;
+        }
+        if (close) {
+            if (!depth || sxStrlen(stack[sxU64(depth - 1)]) !== len || sxMemcmpAt(stack[sxU64(depth - 1)], 0, b, start, len)) {
+                ok = false;
+                break;
+            }
+            depth--;
+        } else if (!empty) {
+            if (depth >= 68) {
+                ok = false;
+                break;
+            }
+            sxMemcpy(stack[depth], 0, b, start, len);
+            stack[depth][len] = 0;
+            depth++;
+        }
+    }
+    return !c.failed && c.count !== 0;
+}
+function sx_apple_sparse_bundle_build(c) {
+    return sxdr_plist(c);
+}

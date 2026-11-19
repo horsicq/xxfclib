@@ -1,0 +1,159 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/genomics_genbank/xx_genomics_genbank_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_molecule_type_fields = layout([field("molecule_type", "char", 0, STRING)]);
+var sxseq_molecule_type = sxLayout(0x60730006, "sequence_molecule_type", LE, sxseq_molecule_type_fields);
+var sxseq_sequence_position_fields = layout([field("sequence_position", "ascii_signed", 0)]);
+var sxseq_sequence_position = sxLayout(0x60730019, "sequence_sequence_position", LE, sxseq_sequence_position_fields);
+function sxseq_genbank(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(64, sxNew_sxseq_token);
+    var sequence = false;
+    var features = false;
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        var trim = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, line)));
+        if (!trim.z) {
+            continue;
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, trim), "//")) {
+            {
+                if (!sxseq_emit(q, sxseq_terminator, sxCopy_sxseq_token(null, trim))) {
+                    return false;
+                }
+            }
+            sequence = features = false;
+            continue;
+        }
+        if (sequence) {
+            var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 64, false);
+            if (n < 2 || n > 64) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_sequence_position, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            for (var i = 1; i < n; i++) {
+                {
+                    if (!sxseq_emit(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[i]))) {
+                        return false;
+                    }
+                }
+            }
+            continue;
+        }
+        n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 64, false);
+        if (n && n <= 64 && sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "LOCUS")) {
+            if (n < 7) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_identifier, sxCopy_sxseq_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_sequence_length, sxCopy_sxseq_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_unit, sxCopy_sxseq_token(null, t[3]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_molecule_type, sxCopy_sxseq_token(null, t[4]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_locus_options, sxCopy_sxseq_token(null, { a: t[5].a, z: line.a + line.z - t[5].a }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, trim), "ORIGIN")) {
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, trim))) {
+                    return false;
+                }
+            }
+            sequence = true;
+            continue;
+        }
+        if (line.z < 12) {
+            return false;
+        }
+        if (features) {
+            if (line.z <= 21) {
+                return false;
+            }
+            var key = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a + 5, z: 16 })));
+            var value = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a + 21, z: line.z - 21 })));
+            if (key.z) {
+                {
+                    if (!sxseq_emit(q, sxseq_feature_key, sxCopy_sxseq_token(null, key))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_feature_location, sxCopy_sxseq_token(null, value))) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxseq_emit(q, sxseq_feature_qualifier, sxCopy_sxseq_token(null, value))) {
+                        return false;
+                    }
+                }
+            }
+            continue;
+        }
+        key = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a, z: 12 })));
+        value = sxCopy_sxseq_token(null, sxseq_trim(q, sxCopy_sxseq_token(null, { a: line.a + 12, z: line.z - 12 })));
+        {
+            if (!sxseq_emit(q, sxseq_field_key, sxCopy_sxseq_token(null, key))) {
+                return false;
+            }
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, key), "FEATURES")) {
+            features = true;
+            {
+                if (!sxseq_emit(q, sxseq_field_text, sxCopy_sxseq_token(null, value))) {
+                    return false;
+                }
+            }
+        } else if (sxseq_eq(q, sxCopy_sxseq_token(null, key), "ACCESSION")) {
+            {
+                if (!sxseq_emit(q, sxseq_accession, sxCopy_sxseq_token(null, value))) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxseq_emit(q, sxseq_field_text, sxCopy_sxseq_token(null, value))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_genomics_genbank_build(q) {
+    return sxseq_genbank(q);
+}

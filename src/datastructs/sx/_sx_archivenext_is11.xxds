@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/is11/xx_is11_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_is11_header_fields = layout([u32("signature", SIGNATURE), u32("format_version"), u8("variant"), u32("reserved")]);
+var sxan_is11_header = sxLayout(0x6077000C, "is11_header", LE, sxan_is11_header_fields);
+var sxan_is11_member_v1_fields = layout([u8("flags", FLAGS), i32("compressed_size", SIZE), i32("next_offset", OFFSET),
+    u16("reserved"), u8("name_size", SIZE)]);
+var sxan_is11_member_v1 = sxLayout(0x6077000D, "is11_member_v1", LE, sxan_is11_member_v1_fields);
+var sxan_is11_member_v3_fields = layout([u8("flags", FLAGS), i32("compressed_size", SIZE), i32("next_offset", OFFSET),
+    u16("dos_date"), u16("dos_time"), u16("reserved"), u8("name_size", SIZE)]);
+var sxan_is11_member_v3 = sxLayout(0x6077000E, "is11_member_v3", LE, sxan_is11_member_v3_fields);
+var sxan_archivenext_separator_fields = layout([u8("separator")]);
+var sxan_archivenext_separator = sxLayout(0x60770048, "archivenext_separator", LE, sxan_archivenext_separator_fields);
+function sxan_is11(c) {
+    var version = [0];
+    var p = 13;
+    var z = [0];
+    var len = [0];
+    if (!sxan_word(c, 4, 4, false, version) || !sxan_add(c, sxan_is11_header, 0)) {
+        return false;
+    }
+    var fixed = version[0] === 0x00030108 ? 16 : 12;
+    while (sxan_span(c, p, fixed)) {
+        if (!sxan_word(c, p + 1, 4, false, z) || z[0] > 2147483647 || !sxan_word(c, sxU64(p + fixed - 1), 1, false, len) || !sxan_add(c, fixed === 16 ? sxan_is11_member_v3 : sxan_is11_member_v1, p) || !sxan_named(c, p + fixed, len[0]) || !sxan_add(c, sxan_archivenext_separator, p + fixed + len[0])) {
+            return false;
+        }
+        p += fixed + len[0] + 1;
+        if (!sxan_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_is11_build(c) {
+    var ok = false;
+    ok = sxan_is11(c);
+    return !!(c.count && sxan_finish(c));
+}

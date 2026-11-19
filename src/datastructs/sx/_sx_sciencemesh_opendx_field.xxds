@@ -1,0 +1,113 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/opendx_field/xx_opendx_field_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxsm_dx(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(512, sxNew_sxsm_token);
+    var n = [0];
+    var left = [0];
+    var data = false;
+    while (sxsm_next(q, line, t[0], 512, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (data && left[0]) {
+            if (n[0] > left[0] || !sxsm_each(q, t, 0, n[0], sxsm_scalar_value)) {
+                return false;
+            }
+            left[0] = sxU64(left[0] - n[0]);
+            continue;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "origin") || sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "delta")) {
+            if (n[0] !== 4 || !sxsm_xyz(q, t[1], sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "origin") ? 1 : 3)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "object") && n[0] === 8) {
+            {
+                if (!sxsm_emit(q, sxsm_entity_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_each(q, t, 2, 3, sxsm_keyword) || !sxsm_each(q, t, 5, 3, sxsm_axis_count)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "object") && n[0] === 12) {
+            {
+                if (!sxsm_emit(q, sxsm_entity_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            for (var i = 2; i < n[0]; i++) {
+                if (i === 5) {
+                    {
+                        if (!sxsm_emit(q, sxsm_type_name, sxCopy_sxsm_token(null, t[i]))) {
+                            return false;
+                        }
+                    }
+                } else if (i === 7) {
+                    {
+                        if (!sxsm_emit(q, sxsm_dimension, sxCopy_sxsm_token(null, t[i]))) {
+                            return false;
+                        }
+                    }
+                } else if (i === 9) {
+                    {
+                        if (!sxsm_emit(q, sxsm_value_count, sxCopy_sxsm_token(null, t[i]))) {
+                            return false;
+                        }
+                    }
+                    if (!sxsm_number(q, sxCopy_sxsm_token(null, t[i]), left)) {
+                        return false;
+                    }
+                } else {
+                    {
+                        if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t[i]))) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            data = true;
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "object") && n[0] >= 4) {
+            var stop = t[(n[0] - 2) >>> 0].a;
+            {
+                if (!sxsm_emit(q, sxsm_name, sxCopy_sxsm_token(null, sxsm_trim(q, sxCopy_sxsm_token(null, { a: t[1].a, z: stop - t[1].a }))))) {
+                    return false;
+                }
+            }
+            if (!sxsm_each(q, t, n[0] + -2, 2, sxsm_keyword)) {
+                return false;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "component") && n[0] === 4) {
+            {
+                if (!sxsm_emit(q, sxsm_name, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_entity_id, sxCopy_sxsm_token(null, t[3]))) {
+                    return false;
+                }
+            }
+        } else if (!sxsm_each(q, t, 1, (n[0] - 1) >>> 0, sxsm_option_value)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_opendx_field_build(q) {
+    return sxsm_dx(q);
+}

@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_rol/xx_adlib_rol_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_rol_header_fields = layout([field("version_minor", "uint16_t", 2), field("version_major", "uint16_t", 2),
+    chars("comment", 40, STRING), field("ticks_per_beat", "uint16_t", 2), field("beats_per_measure", "uint16_t", 2),
+    field("edit_scale_y", "uint16_t", 2), field("edit_scale_x", "uint16_t", 2), field("unused1", "uint8_t[1]", 1, RESERVED),
+    field("melodic_mode", "uint8_t", 1, FLAGS), field("unused2", "uint8_t[90]", 90, RESERVED),
+    field("filler0", "uint8_t[38]", 38, RESERVED), field("filler1", "uint8_t[15]", 15, RESERVED),
+    field("basic_tempo", "float32", 4)]);
+var sxad_adlib_rol_header = sxLayout(0x600F0035, "adlib_rol_header", LE, sxad_adlib_rol_header_fields);
+var sxad_adlib_rol_tempo_count_fields = layout([field("tempo_event_count", "uint16_t", 2, COUNT)]);
+var sxad_adlib_rol_tempo_count = sxLayout(0x600F0036, "adlib_rol_tempo_count", LE, sxad_adlib_rol_tempo_count_fields);
+var sxad_adlib_rol_tempo_event_fields = layout([i16("tick"), field("tempo_multiplier", "float32", 4)]);
+var sxad_adlib_rol_tempo_event = sxLayout(0x600F0037, "adlib_rol_tempo_event", LE, sxad_adlib_rol_tempo_event_fields);
+var sxad_adlib_rol_note_header_fields = layout([field("filler", "uint8_t[15]", 15, RESERVED), i16("total_ticks")]);
+var sxad_adlib_rol_note_header = sxLayout(0x600F0038, "adlib_rol_note_header", LE, sxad_adlib_rol_note_header_fields);
+var sxad_adlib_rol_note_event_fields = layout([i16("note"), i16("duration_ticks")]);
+var sxad_adlib_rol_note_event = sxLayout(0x600F0039, "adlib_rol_note_event", LE, sxad_adlib_rol_note_event_fields);
+var sxad_adlib_rol_event_header_fields = layout([field("filler", "uint8_t[15]", 15, RESERVED),
+    field("event_count", "uint16_t", 2, COUNT)]);
+var sxad_adlib_rol_event_header = sxLayout(0x600F003A, "adlib_rol_event_header", LE, sxad_adlib_rol_event_header_fields);
+var sxad_adlib_rol_instrument_event_fields = layout([i16("tick"), chars("instrument_name", 9, STRING),
+    field("filler", "uint8_t[1]", 1, RESERVED), field("unused", "uint8_t[2]", 2, RESERVED)]);
+var sxad_adlib_rol_instrument_event = sxLayout(0x600F003B, "adlib_rol_instrument_event", LE, sxad_adlib_rol_instrument_event_fields);
+var sxad_adlib_rol_volume_event_fields = layout([i16("tick"), field("volume_multiplier", "float32", 4)]);
+var sxad_adlib_rol_volume_event = sxLayout(0x600F003C, "adlib_rol_volume_event", LE, sxad_adlib_rol_volume_event_fields);
+var sxad_adlib_rol_pitch_event_fields = layout([i16("tick"), field("pitch_variation", "float32", 4)]);
+var sxad_adlib_rol_pitch_event = sxLayout(0x600F003D, "adlib_rol_pitch_event", LE, sxad_adlib_rol_pitch_event_fields);
+function sxad_rol(c) {
+    var minor;
+    var major;
+    var count;
+    var mode = [0];
+    var at = [203];
+    if ((minor = sx_u16(c, 0, false)) === null || minor || (major = sx_u16(c, 2, false)) === null || major !== 4 || !sxad_byte(c, 53, mode) || mode[0] > 1 || (count = sx_u16(c, 201, false)) === null || count > 4096 || !sx_add(c, sxad_adlib_rol_header, 0, 201) || !sx_add(c, sxad_adlib_rol_tempo_count, 201, 2) || !sx_table(c, sxad_adlib_rol_tempo_event, at[0], 6, count)) {
+        return false;
+    }
+    at[0] += 6 * count;
+    for (var i = 0; i < (mode[0] ? 9 : 11); i++) {
+        var deadline;
+        var total = 0;
+        if ((deadline = sx_u16(c, at[0] + 15, false)) === null || deadline >= 32768 || !sxad_header(c, sxad_adlib_rol_note_header, at, 17)) {
+            return false;
+        }
+        var start = at[0];
+        var notes = 0;
+        while (total < deadline) {
+            var note;
+            var duration;
+            if ((note = sx_u16(c, at[0], false)) === null || note > 127 || (duration = sx_u16(c, at[0] + 2, false)) === null || !duration || duration > (deadline - total) >>> 0) {
+                return false;
+            }
+            total = (total + duration) >>> 0;
+            at[0] += 4;
+            notes++;
+        }
+        if (!sx_table(c, sxad_adlib_rol_note_event, start, 4, notes)) {
+            return false;
+        }
+        for (var j = 0; j < 3; j++) {
+            if ((count = sx_u16(c, at[0] + 15, false)) === null || count > 4096 || !sxad_header(c, sxad_adlib_rol_event_header, at, 17)) {
+                return false;
+            }
+            var l = j === 0 ? sxad_adlib_rol_instrument_event : j === 1 ? sxad_adlib_rol_volume_event : sxad_adlib_rol_pitch_event;
+            var size = j ? 6 : 14;
+            if (!sx_table(c, l, at[0], size, count)) {
+                return false;
+            }
+            at[0] += size * count;
+        }
+    }
+    return at[0] === c.size;
+}
+function sx_adlib_rol_build(c) {
+    return sxad_rol(c);
+}

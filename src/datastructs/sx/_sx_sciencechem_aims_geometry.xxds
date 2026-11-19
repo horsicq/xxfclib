@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/aims_geometry/xx_aims_geometry_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_relaxation_constraint_fields = layout([field("relaxation_constraint", "char", 0, STRING)]);
+var sxsch_relaxation_constraint = sxLayout(0x606100B0, "chemistry_relaxation_constraint", LE, sxsch_relaxation_constraint_fields);
+var sxsch_initial_charge_fields = layout([field("initial_charge", "ascii_real", 0)]);
+var sxsch_initial_charge = sxLayout(0x606100BC, "chemistry_initial_charge", LE, sxsch_initial_charge_fields);
+var sxsch_initial_spin_fields = layout([field("initial_spin", "ascii_real", 0)]);
+var sxsch_initial_spin = sxLayout(0x606100BD, "chemistry_initial_spin", LE, sxsch_initial_spin_fields);
+function sxsch_aims(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(8, sxNew_sxsch_token);
+    var n = [0];
+    while (sxsch_next(q, l, t[0], 8, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "lattice_vector")) {
+            if (n[0] !== 4 || !sxsch_xyz(q, t[1], 3)) {
+                return false;
+            }
+        } else if (sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "atom") || sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "atom_frac")) {
+            if (n[0] !== 5 || !sxsch_xyz(q, t[1], sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "atom") ? 0 : 2)) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_element, sxCopy_sxsch_token(null, t[4]))) {
+                    return false;
+                }
+            }
+        } else {
+            if (n[0] !== 2) {
+                return false;
+            }
+            var layout = sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "initial_charge") ? sxsch_initial_charge : sxsch_eq(q, sxCopy_sxsch_token(null, t[0]), "initial_moment") ? sxsch_initial_spin : sxsch_relaxation_constraint;
+            if (!sxsch_emit(q, layout, sxCopy_sxsch_token(null, t[1]))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_aims_geometry_build(q) {
+    return sxsch_aims(q);
+}

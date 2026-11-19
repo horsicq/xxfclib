@@ -1,0 +1,87 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_chipmusic.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_chipmusic");
+include("_sx_chipmusic_bsc_amstradcpc_soundtrakker128k");
+include("_sx_chipmusic_fuxoft_ayamadeus");
+include("_sx_chipmusic_fuxoft_aylanguage_fxm");
+include("_sx_chipmusic_jaskier_thetamusiccomposer_tm2");
+include("_sx_chipmusic_jaskier_thetamusiccomposer_tmc");
+include("_sx_chipmusic_koudelka_scalexqjetatracker");
+include("_sx_chipmusic_ksa_soundtrackerpro_stf_project_co");
+include("_sx_chipmusic_moonblaster_fm");
+include("_sx_chipmusic_moonblaster_wave");
+include("_sx_chipmusic_moonblaster_wave_mwk");
+include("_sx_chipmusic_msx_facsoundtracker_mus");
+include("_sx_chipmusic_nerdsrus_nerdtracker2_ned");
+include("_sx_chipmusic_schrijvers_moonblaster_mbm");
+include("_sx_chipmusic_shiru_1tracker");
+include("_sx_chipmusic_targhan_starkos_bin");
+include("_sx_chipmusic_targhan_starkos_sks");
+
+function fileTypes() { return ["DIE_MUSIC_SHIRU_1TRACKER", "DIE_MUSIC_FUXOFT_AYLANGUAGE_FXM", "DIE_MUSIC_MOONBLASTER_FM",
+    "DIE_MUSIC_MOONBLASTER_WAVE", "DIE_MUSIC_MOONBLASTER_WAVE_MWK", "DIE_MUSIC_MSX_FACSOUNDTRACKER_MUS",
+    "DIE_MUSIC_BSC_AMSTRADCPC_SOUNDTRAKKER128K", "DIE_MUSIC_TARGHAN_STARKOS_SKS", "DIE_MUSIC_TARGHAN_STARKOS_BIN",
+    "DIE_MUSIC_JASKIER_THETAMUSICCOMPOSER_TM2", "DIE_MUSIC_FUXOFT_AYAMADEUS", "DIE_MUSIC_SCHRIJVERS_MOONBLASTER_MBM",
+    "DIE_MUSIC_KSA_SOUNDTRACKERPRO_STF_PROJECT_CO", "DIE_MUSIC_KOUDELKA_SCALEXQJETATRACKER",
+    "DIE_MUSIC_JASKIER_THETAMUSICCOMPOSER_TMC", "DIE_MUSIC_NERDSRUS_NERDTRACKER2_NED"]; }
+
+var sx_chipmusic_layouts = [sxchip_chip_text, sxchip_chip_fxm_header, sxchip_chip_fxm_channels, sxchip_chip_ay_amadeus_header,
+    sxchip_chip_ay_song, sxchip_chip_ay_amadeus_address, sxchip_chip_stf_volume, sxchip_chip_stf_noise, sxchip_chip_stf_tone,
+    sxchip_chip_stf_sample_loop, sxchip_chip_stf_position, sxchip_chip_stf_positions_end, sxchip_chip_stf_ornament,
+    sxchip_chip_note_step, sxchip_chip_stf_settings, sxchip_chip_stf_pattern_length, sxchip_chip_stf_song,
+    sxchip_chip_stf_event, sxchip_chip_sqt_header, sxchip_chip_sqt_sample_reference, sxchip_chip_sqt_ornament_reference,
+    sxchip_chip_sqt_pattern_reference, sxchip_chip_sqt_position, sxchip_chip_sqt_loop, sxchip_chip_sqt_sample_line,
+    sxchip_chip_ned10_header, sxchip_chip_ned10_instrument, sxchip_chip_ned_order, sxchip_chip_ned10_pattern,
+    sxchip_chip_ned20_header, sxchip_chip_ned20_data, sxchip_chip_ned20_instrument, sxchip_chip_ned20_dpcm_instrument,
+    sxchip_chip_ned20_order, sxchip_chip_ned20_pattern, sxchip_chip_ned_sample_instrument, sxchip_chip_ned_sample,
+    sxchip_chip_amsdos_header, sxchip_chip_bsc128_volume, sxchip_chip_bsc128_noise, sxchip_chip_bsc128_tone,
+    sxchip_chip_bsc128_loop, sxchip_chip_bsc128_position, sxchip_chip_bsc128_name, sxchip_chip_bsc128_settings,
+    sxchip_chip_bsc128_event, sxchip_chip_sks_header, sxchip_chip_sks_position, sxchip_chip_sks_end, sxchip_chip_sks_instrument,
+    sxchip_chip_sks_special, sxchip_chip_sks_track, sxchip_chip_starkos_binary_header, sxchip_chip_atari_segment,
+    sxchip_chip_tmc_header, sxchip_chip_tm2_header, sxchip_chip_tm2_title, sxchip_chip_address_low, sxchip_chip_address_high,
+    sxchip_chip_tmc_position, sxchip_chip_tm2_position, sxchip_chip_tmc_envelope, sxchip_chip_tmc_arpeggio,
+    sxchip_chip_tmc_parameters, sxchip_chip_tm2_envelope_header, sxchip_chip_moon_signature, sxchip_chip_mbm_edit_marker,
+    sxchip_chip_mbm_header, sxchip_chip_mfm_header, sxchip_chip_mwm_header, sxchip_chip_moon_position,
+    sxchip_chip_mbm_pattern_pointer, sxchip_chip_moon_segment_pointer, sxchip_chip_moon_pattern_segment, sxchip_chip_mwm_xlfo,
+    sxchip_chip_mwk_header, sxchip_chip_mwk_patch, sxchip_chip_mwk_name, sxchip_chip_mwk_ram_tone, sxchip_chip_mwk_rom_tone,
+    sxchip_chip_msx_bload, sxchip_chip_fac_footer, sxchip_chip_fac_pro_footer, sxchip_chip_fac_row,
+    sxchip_chip_1tracker_section, sxchip_chip_1tracker_key, sxchip_chip_1tracker_engine, sxchip_chip_1tracker_title,
+    sxchip_chip_1tracker_author, sxchip_chip_1tracker_speed, sxchip_chip_1tracker_loop_start, sxchip_chip_1tracker_loop_end,
+    sxchip_chip_1tracker_measure, sxchip_chip_1tracker_pattern_format];
+
+function structs() {
+    return sxCatalog([sxchip_chip_text, sxchip_chip_fxm_header, sxchip_chip_fxm_channels, sxchip_chip_ay_amadeus_header,
+        sxchip_chip_ay_song, sxchip_chip_ay_amadeus_address, sxchip_chip_stf_volume, sxchip_chip_stf_noise,
+        sxchip_chip_stf_tone, sxchip_chip_stf_sample_loop, sxchip_chip_stf_position, sxchip_chip_stf_positions_end,
+        sxchip_chip_stf_ornament, sxchip_chip_note_step, sxchip_chip_stf_settings, sxchip_chip_stf_pattern_length,
+        sxchip_chip_stf_song, sxchip_chip_stf_event, sxchip_chip_sqt_header, sxchip_chip_sqt_sample_reference,
+        sxchip_chip_sqt_ornament_reference, sxchip_chip_sqt_pattern_reference, sxchip_chip_sqt_position, sxchip_chip_sqt_loop,
+        sxchip_chip_sqt_sample_line, sxchip_chip_ned10_header, sxchip_chip_ned10_instrument, sxchip_chip_ned_order,
+        sxchip_chip_ned10_pattern, sxchip_chip_ned20_header, sxchip_chip_ned20_data, sxchip_chip_ned20_instrument,
+        sxchip_chip_ned20_dpcm_instrument, sxchip_chip_ned20_order, sxchip_chip_ned20_pattern,
+        sxchip_chip_ned_sample_instrument, sxchip_chip_ned_sample, sxchip_chip_amsdos_header, sxchip_chip_bsc128_volume,
+        sxchip_chip_bsc128_noise, sxchip_chip_bsc128_tone, sxchip_chip_bsc128_loop, sxchip_chip_bsc128_position,
+        sxchip_chip_bsc128_name, sxchip_chip_bsc128_settings, sxchip_chip_bsc128_event, sxchip_chip_sks_header,
+        sxchip_chip_sks_position, sxchip_chip_sks_end, sxchip_chip_sks_instrument, sxchip_chip_sks_special,
+        sxchip_chip_sks_track, sxchip_chip_starkos_binary_header, sxchip_chip_atari_segment, sxchip_chip_tmc_header,
+        sxchip_chip_tm2_header, sxchip_chip_tm2_title, sxchip_chip_address_low, sxchip_chip_address_high,
+        sxchip_chip_tmc_position, sxchip_chip_tm2_position, sxchip_chip_tmc_envelope, sxchip_chip_tmc_arpeggio,
+        sxchip_chip_tmc_parameters, sxchip_chip_tm2_envelope_header, sxchip_chip_moon_signature, sxchip_chip_mbm_edit_marker,
+        sxchip_chip_mbm_header, sxchip_chip_mfm_header, sxchip_chip_mwm_header, sxchip_chip_moon_position,
+        sxchip_chip_mbm_pattern_pointer, sxchip_chip_moon_segment_pointer, sxchip_chip_moon_pattern_segment,
+        sxchip_chip_mwm_xlfo, sxchip_chip_mwk_header, sxchip_chip_mwk_patch, sxchip_chip_mwk_name, sxchip_chip_mwk_ram_tone,
+        sxchip_chip_mwk_rom_tone, sxchip_chip_msx_bload, sxchip_chip_fac_footer, sxchip_chip_fac_pro_footer,
+        sxchip_chip_fac_row, sxchip_chip_1tracker_section, sxchip_chip_1tracker_key, sxchip_chip_1tracker_engine,
+        sxchip_chip_1tracker_title, sxchip_chip_1tracker_author, sxchip_chip_1tracker_speed, sxchip_chip_1tracker_loop_start,
+        sxchip_chip_1tracker_loop_end, sxchip_chip_1tracker_measure, sxchip_chip_1tracker_pattern_format], sx_chipmusic_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_chipmusic_build, false);
+}

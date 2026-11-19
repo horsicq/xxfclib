@@ -1,0 +1,19 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cmp/xx_cmp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_cmp_header_fields = layout([u16("signature", SIGNATURE), u16("header_size", SIZE), u16("method"), bytes("opaque1", 8),
+    u16("variant"), bytes("opaque2", 24), chars("name", 15, NONE), u16("block_size", SIZE), u32("uncompressed_size", SIZE)]);
+var sxacl_cmp_header = sxLayout(0x60500027, "cmp_header", LE, sxacl_cmp_header_fields);
+function sxacl_cmp(c) {
+    var method = [0];
+    if (!sxacl_word(c, 4, 2, false, method) || !sxacl_add(c, sxacl_cmp_header, 0)) {
+        return false;
+    }
+    return method[0] !== 2 || sxacl_dcl(c, 61, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 61));
+}
+function sx_cmp_build(c) {
+    return sxacl_cmp(c);
+}

@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pakleo/xx_pakleo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_pakleo_header_fields = layout([chars("banner", 37, SIGNATURE)]);
+var sxafr_pakleo_header = sxLayout(0x60540006, "pakleo_header", LE, sxafr_pakleo_header_fields);
+var sxafr_pakleo_member_fields = layout([bytes("unused1", 2), chars("method_tag", 5, NONE), i32("compressed_size", SIZE),
+    i32("uncompressed_size", SIZE), u16("dos_time"), u16("dos_date"), bytes("unused2", 2), u32("crc32", CHECKSUM),
+    u8("name_size", SIZE)]);
+var sxafr_pakleo_member = sxLayout(0x60540007, "pakleo_member", LE, sxafr_pakleo_member_fields);
+function sxafr_pakleo(c) {
+    var p = 37;
+    if (!sxafr_add(c, sxafr_pakleo_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        if (!sxafr_read(c, p, h, 26) || h[2] !== 45 /*-*/ || h[3] !== 108 /*l*/ || h[4] !== 108 /*l*/ || h[5] < 48 /*0*/ || h[5] > 57 /*9*/ || h[6] !== 45 /*-*/) {
+            return false;
+        }
+        var z = sxafr_uint(h, 7, 4, false);
+        var n = h[25];
+        if (z > 2147483647 || !sxafr_span(c, p + 26, n) || !sxafr_add(c, sxafr_pakleo_member, p)) {
+            return false;
+        }
+        p += 26 + n;
+        if (!sxafr_span(c, p, z)) {
+            return false;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_pakleo_build(c) {
+    return sxafr_pakleo(c);
+}

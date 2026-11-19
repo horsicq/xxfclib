@@ -1,0 +1,292 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/squashfs/xx_squashfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxuf_squashfs1_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS)]);
+var sxuf_squashfs1_superblock_le = sxLayout(0x60110011, "squashfs1_superblock_le", LE, sxuf_squashfs1_superblock_le_fields);
+var sxuf_squashfs1_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS)]);
+var sxuf_squashfs1_superblock_be = sxLayout(0x60110012, "squashfs1_superblock_be", BE, sxuf_squashfs1_superblock_be_fields);
+var sxuf_squashfs2_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET)]);
+var sxuf_squashfs2_superblock_le = sxLayout(0x60110013, "squashfs2_superblock_le", LE, sxuf_squashfs2_superblock_le_fields);
+var sxuf_squashfs2_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET)]);
+var sxuf_squashfs2_superblock_be = sxLayout(0x60110014, "squashfs2_superblock_be", BE, sxuf_squashfs2_superblock_be_fields);
+var sxuf_squashfs3_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET), u64("bytes_used", SIZE), u64("uid_table_offset", OFFSET),
+    u64("gid_table_offset", OFFSET), u64("inode_table_offset", OFFSET), u64("directory_table_offset", OFFSET),
+    u64("fragment_index_offset", OFFSET), u64("lookup_index_offset", OFFSET)]);
+var sxuf_squashfs3_superblock_le = sxLayout(0x60110015, "squashfs3_superblock_le", LE, sxuf_squashfs3_superblock_le_fields);
+var sxuf_squashfs3_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("bytes_used_legacy", SIZE), u32("uid_table_offset_legacy", OFFSET), u32("gid_table_offset_legacy", OFFSET),
+    u32("inode_table_offset_legacy", OFFSET), u32("directory_table_offset_legacy", OFFSET), u16("major"), u16("minor"),
+    u16("block_size_legacy", SIZE), u16("block_log"), u8("flags", FLAGS), u8("uid_count", COUNT), u8("gid_count", COUNT),
+    i32("creation_time", TIMESTAMP), u64("root_inode_reference", FLAGS), u32("block_size", SIZE), u32("fragment_count", COUNT),
+    u32("fragment_index_offset_legacy", OFFSET), u64("bytes_used", SIZE), u64("uid_table_offset", OFFSET),
+    u64("gid_table_offset", OFFSET), u64("inode_table_offset", OFFSET), u64("directory_table_offset", OFFSET),
+    u64("fragment_index_offset", OFFSET), u64("lookup_index_offset", OFFSET)]);
+var sxuf_squashfs3_superblock_be = sxLayout(0x60110016, "squashfs3_superblock_be", BE, sxuf_squashfs3_superblock_be_fields);
+var sxuf_squashfs4_superblock_le_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("creation_time", TIMESTAMP), u32("block_size", SIZE), u32("fragment_count", COUNT), u16("compression", ID),
+    u16("block_log"), u16("flags", FLAGS), u16("id_count", COUNT), u16("major"), u16("minor"),
+    u64("root_inode_reference", FLAGS), u64("bytes_used", SIZE), u64("id_index_offset", OFFSET),
+    u64("xattr_index_offset", OFFSET), u64("inode_table_offset", OFFSET), u64("directory_table_offset", OFFSET),
+    u64("fragment_index_offset", OFFSET), u64("lookup_index_offset", OFFSET)]);
+var sxuf_squashfs4_superblock_le = sxLayout(0x60110017, "squashfs4_superblock_le", LE, sxuf_squashfs4_superblock_le_fields);
+var sxuf_squashfs4_superblock_be_fields = layout([u32("magic", SIGNATURE), u32("inode_count", COUNT),
+    u32("creation_time", TIMESTAMP), u32("block_size", SIZE), u32("fragment_count", COUNT), u16("compression", ID),
+    u16("block_log"), u16("flags", FLAGS), u16("id_count", COUNT), u16("major"), u16("minor"),
+    u64("root_inode_reference", FLAGS), u64("bytes_used", SIZE), u64("id_index_offset", OFFSET),
+    u64("xattr_index_offset", OFFSET), u64("inode_table_offset", OFFSET), u64("directory_table_offset", OFFSET),
+    u64("fragment_index_offset", OFFSET), u64("lookup_index_offset", OFFSET)]);
+var sxuf_squashfs4_superblock_be = sxLayout(0x60110018, "squashfs4_superblock_be", BE, sxuf_squashfs4_superblock_be_fields);
+var sxuf_squashfs_metadata_header_le_fields = layout([u16("size_and_stored_flag", FLAGS)]);
+var sxuf_squashfs_metadata_header_le = sxLayout(0x60110019, "squashfs_metadata_header_le", LE, sxuf_squashfs_metadata_header_le_fields);
+var sxuf_squashfs_table_index_le_fields = layout([u64("metadata_offset", OFFSET)]);
+var sxuf_squashfs_table_index_le = sxLayout(0x6011001A, "squashfs_table_index_le", LE, sxuf_squashfs_table_index_le_fields);
+var sxuf_squashfs2_fragment_index_le_fields = layout([u32("metadata_offset", OFFSET)]);
+var sxuf_squashfs2_fragment_index_le = sxLayout(0x6011001B, "squashfs2_fragment_index_le", LE, sxuf_squashfs2_fragment_index_le_fields);
+var sxuf_squashfs_identity_le_fields = layout([u32("id", ID)]);
+var sxuf_squashfs_identity_le = sxLayout(0x6011001C, "squashfs_identity_le", LE, sxuf_squashfs_identity_le_fields);
+var sxuf_squashfs_xattr_table_le_fields = layout([u64("xattr_table_offset", OFFSET), u32("xattr_id_count", COUNT),
+    u32("reserved", RESERVED)]);
+var sxuf_squashfs_xattr_table_le = sxLayout(0x6011001D, "squashfs_xattr_table_le", LE, sxuf_squashfs_xattr_table_le_fields);
+var sxuf_squashfs_metadata_header_be_fields = layout([u16("size_and_stored_flag", FLAGS)]);
+var sxuf_squashfs_metadata_header_be = sxLayout(0x6011001E, "squashfs_metadata_header_be", BE, sxuf_squashfs_metadata_header_be_fields);
+var sxuf_squashfs_table_index_be_fields = layout([u64("metadata_offset", OFFSET)]);
+var sxuf_squashfs_table_index_be = sxLayout(0x6011001F, "squashfs_table_index_be", BE, sxuf_squashfs_table_index_be_fields);
+var sxuf_squashfs2_fragment_index_be_fields = layout([u32("metadata_offset", OFFSET)]);
+var sxuf_squashfs2_fragment_index_be = sxLayout(0x60110020, "squashfs2_fragment_index_be", BE, sxuf_squashfs2_fragment_index_be_fields);
+var sxuf_squashfs_identity_be_fields = layout([u32("id", ID)]);
+var sxuf_squashfs_identity_be = sxLayout(0x60110021, "squashfs_identity_be", BE, sxuf_squashfs_identity_be_fields);
+var sxuf_squashfs_xattr_table_be_fields = layout([u64("xattr_table_offset", OFFSET), u32("xattr_id_count", COUNT),
+    u32("reserved", RESERVED)]);
+var sxuf_squashfs_xattr_table_be = sxLayout(0x60110022, "squashfs_xattr_table_be", BE, sxuf_squashfs_xattr_table_be_fields);
+function sxuf_64(p, p_o, be) {
+    return sxGetU64At(p, p_o, 8, 0, be);
+}
+function sxuf_meta(c, at, limit, be, budget) {
+    while (budget[0] && at < limit) {
+        var b = [];
+        if (sxU64(limit - at) < 2 || !sxuf_read(c, at, b, 2)) {
+            break;
+        }
+        var v = sxuf_16(b, 0, be);
+        var n = v & 32767;
+        if (!n || n > 8192 || n > sxU64(sxU64(limit - at) - 2)) {
+            break;
+        }
+        var duplicate = false;
+        var overlap = false;
+        for (var i = 0; i < c.count; i++) {
+            var p = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+            var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+            if (p === at && z === 2 && c.items[i].id === (be ? sxuf_squashfs_metadata_header_be : sxuf_squashfs_metadata_header_le).id) {
+                duplicate = true;
+                break;
+            }
+            if (at < p + z && p < at + 2 + n) {
+                overlap = true;
+                break;
+            }
+        }
+        if (overlap) {
+            break;
+        }
+        if (!duplicate && (!sx_add(c, be ? sxuf_squashfs_metadata_header_be : sxuf_squashfs_metadata_header_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2) || !sx_raw(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 2, n))) {
+            return false;
+        }
+        budget[0]--;
+        at += (2 + n) >>> 0;
+    }
+    return true;
+}
+function sxuf_sq_index(c, at, count, width, header, be, budget) {
+    if (!count || count > 4096 || at === SX_U64_MAX || !sxuf_span(c, at, count * width)) {
+        return true;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var p = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        if (at < p + (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size) && p < at + count * width) {
+            return true;
+        }
+    }
+    if (!sx_table(c, width === 4 ? be ? sxuf_squashfs2_fragment_index_be : sxuf_squashfs2_fragment_index_le : be ? sxuf_squashfs_table_index_be : sxuf_squashfs_table_index_le, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), width, count)) {
+        return false;
+    }
+    for (i = 0; i < count && budget[0]; i++) {
+        var b = [];
+        if (!sxuf_read(c, at + i * width, b, width)) {
+            return false;
+        }
+        p = width === 4 ? sxuf_32(b, 0, be) : sxuf_64(b, 0, be);
+        if (p >= header && p < at && !sxuf_meta(c, p, at, be, budget)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxuf_squash(c) {
+    var h = [];
+    if (!sxuf_read(c, 0, h, 128)) {
+        return false;
+    }
+    var m = sxuf_32(h, 0, false);
+    var be = m === 0x68737173 || m === 0x68737174;
+    if (!be && m !== 0x73717368 && m !== 0x74717368 && m !== 0x71736873 && m !== 0x68191122) {
+        return false;
+    }
+    var v = sxuf_16(h, 28, be);
+    var l;
+    var size;
+    var inodes;
+    var dirs;
+    var frag;
+    var lookup;
+    var uid;
+    var gid;
+    var fragments;
+    var ninode;
+    var nu;
+    var ng;
+    var header;
+    if (v === 1) {
+        l = be ? sxuf_squashfs1_superblock_be : sxuf_squashfs1_superblock_le;
+        header = 51;
+    } else if (v === 2) {
+        l = be ? sxuf_squashfs2_superblock_be : sxuf_squashfs2_superblock_le;
+        header = 63;
+    } else if (v === 3) {
+        l = be ? sxuf_squashfs3_superblock_be : sxuf_squashfs3_superblock_le;
+        header = 119;
+    } else if (v === 4) {
+        l = be ? sxuf_squashfs4_superblock_be : sxuf_squashfs4_superblock_le;
+        header = 96;
+    } else {
+        return false;
+    }
+    if (!sx_add(c, l, 0, header)) {
+        return false;
+    }
+    ninode = sxuf_32(h, 4, be);
+    lookup = SX_U64_MAX;
+    gid = SX_U64_MAX;
+    ng = 0;
+    if (v === 4) {
+        size = sxuf_64(h, 40, be);
+        inodes = sxuf_64(h, 64, be);
+        dirs = sxuf_64(h, 72, be);
+        frag = sxuf_64(h, 80, be);
+        lookup = sxuf_64(h, 88, be);
+        uid = sxuf_64(h, 48, be);
+        nu = sxuf_16(h, 26, be);
+        fragments = sxuf_32(h, 16, be);
+    } else if (v === 3) {
+        size = sxuf_64(h, 63, be);
+        inodes = sxuf_64(h, 87, be);
+        dirs = sxuf_64(h, 95, be);
+        frag = sxuf_64(h, 103, be);
+        lookup = sxuf_64(h, 111, be);
+        uid = sxuf_64(h, 71, be);
+        gid = sxuf_64(h, 79, be);
+        nu = h[37];
+        ng = h[38];
+        fragments = sxuf_32(h, 55, be);
+    } else {
+        size = sxuf_32(h, 8, be);
+        inodes = sxuf_32(h, 20, be);
+        dirs = sxuf_32(h, 24, be);
+        frag = v === 2 ? sxuf_32(h, 59, be) : SX_U64_MAX;
+        uid = sxuf_32(h, 12, be);
+        gid = sxuf_32(h, 16, be);
+        nu = h[37];
+        ng = h[38];
+        fragments = v === 2 ? sxuf_32(h, 55, be) : 0;
+    }
+    if (size < header || size > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        size = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    var budget = [4096];
+    if (!sxuf_sq_index(c, frag, Math.floor((fragments * (v === 2 ? 8 : 16) + 8191) / 8192), v === 2 ? 4 : 8, header, be, budget)) {
+        return false;
+    }
+    if (v >= 3 && !sxuf_sq_index(c, lookup, Math.floor((ninode * 8 + 8191) / 8192), 8, header, be, budget)) {
+        return false;
+    }
+    if (v === 4) {
+        if (!sxuf_sq_index(c, uid, Math.floor((nu * 4 + 8191) / 8192), 8, header, be, budget)) {
+            return false;
+        }
+        var x = sxuf_64(h, 56, be);
+        if (x >= header && sxuf_span(c, x, 16)) {
+            var overlap = false;
+            for (var i = 0; i < c.count; i++) {
+                var p = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+                if (x < p + (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size) && p < x + 16) {
+                    overlap = true;
+                }
+            }
+            if (!overlap && !sx_add(c, be ? sxuf_squashfs_xattr_table_be : sxuf_squashfs_xattr_table_le, (x >= SX_I64_MAX ? x - SX_U64_MAX : x), 16)) {
+                return false;
+            }
+        }
+    } else {
+        var starts = [uid, gid];
+        var counts = [nu, ng];
+        for (var k = 0; k < 2; k++) {
+            if (counts[k] && starts[k] >= header && sxuf_span(c, starts[k], counts[k] * 4)) {
+                overlap = false;
+                for (i = 0; i < c.count; i++) {
+                    p = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+                    if (starts[k] < p + (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size) && p < starts[k] + counts[k] * 4) {
+                        overlap = true;
+                    }
+                }
+                if (!overlap && !sx_table(c, be ? sxuf_squashfs_identity_be : sxuf_squashfs_identity_le, (starts[k] >= SX_I64_MAX ? starts[k] - SX_U64_MAX : starts[k]), 4, counts[k])) {
+                    return false;
+                }
+            }
+        }
+    }
+    if (inodes >= header && inodes < dirs && dirs <= size && !sxuf_meta(c, inodes, dirs, be, budget)) {
+        return false;
+    }
+    if (dirs >= header && dirs < size) {
+        var limit = size;
+        var refs = [frag, lookup, uid, gid];
+        for (i = 0; i < 4; i++) {
+            if (refs[i] > dirs && refs[i] < limit) {
+                limit = refs[i];
+            }
+        }
+        if (!sxuf_meta(c, dirs, limit, be, budget)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_squashfs_build(c) {
+    return sxuf_squash(c) && sxuf_finish(c);
+}

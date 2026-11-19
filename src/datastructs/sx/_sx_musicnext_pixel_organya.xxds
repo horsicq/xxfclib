@@ -1,0 +1,39 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/pixel_organya/xx_pixel_organya_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_org_note_fields = layout([u8("note", ID)]);
+var sxmn_org_note = sxLayout(0x6076001A, "org_note", LE, sxmn_org_note_fields);
+var sxmn_org_length_fields = layout([u8("length")]);
+var sxmn_org_length = sxLayout(0x6076001B, "org_length", LE, sxmn_org_length_fields);
+var sxmn_org_volume_fields = layout([u8("volume")]);
+var sxmn_org_volume = sxLayout(0x6076001C, "org_volume", LE, sxmn_org_volume_fields);
+var sxmn_org_pan_fields = layout([u8("pan")]);
+var sxmn_org_pan = sxLayout(0x6076001D, "org_pan", LE, sxmn_org_pan_fields);
+function sxmn_org(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 114;
+    if (!sxmn_row(v, sxmn_org_header, 0, end) || !sxmn_table(v, sxmn_org_instrument, 18, 16, end)) {
+        return false;
+    }
+    for (var i = 0; i < 16; i++) {
+        var n = [0];
+        if (!sxmn_word(v, (22 + ((6 * i) >>> 0)) >>> 0, 2, false, n, 0, end) || !sxmn_table(v, sxmn_org_position, at, n[0], end)) {
+            return false;
+        }
+        at += n[0] * 4;
+        var fields = [sxmn_org_note, sxmn_org_length, sxmn_org_volume, sxmn_org_pan];
+        for (var j = 0; j < 4; j++) {
+            if (!sxmn_table(v, fields[j], at, n[0], end)) {
+                return false;
+            }
+            at += n[0];
+        }
+    }
+    return true;
+}
+function sx_pixel_organya_build(v) {
+    return sxmn_org(v);
+}

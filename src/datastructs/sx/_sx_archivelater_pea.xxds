@@ -1,0 +1,178 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/pea/xx_pea_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_pea_header_fields = layout([u8("signature", SIGNATURE), u8("version", ID), u8("revision", ID),
+    u8("volume_control", ID), bytes("writer_data", 4), u8("byte_order_flags", FLAGS), u8("writer_data9")]);
+var sxal_pea_header = sxLayout(0x6020000E, "pea_header", LE, sxal_pea_header_fields);
+var sxal_pea_trigger_le_fields = layout([u16("zero_name_size", SIZE), chars("signature", 4, SIGNATURE)]);
+var sxal_pea_trigger_le = sxLayout(0x6020000F, "pea_trigger_le", LE, sxal_pea_trigger_le_fields);
+var sxal_pea_stream_le_fields = layout([u8("compression", ID), u8("reserved", RESERVED), u8("stream_control", ID),
+    u8("object_control", ID)]);
+var sxal_pea_stream_le = sxLayout(0x60200010, "pea_stream_le", LE, sxal_pea_stream_le_fields);
+var sxal_pea_block_size_le_fields = layout([u32("block_size", SIZE)]);
+var sxal_pea_block_size_le = sxLayout(0x60200011, "pea_block_size_le", LE, sxal_pea_block_size_le_fields);
+var sxal_pea_name_size_le_fields = layout([u16("name_size", SIZE)]);
+var sxal_pea_name_size_le = sxLayout(0x60200012, "pea_name_size_le", LE, sxal_pea_name_size_le_fields);
+var sxal_pea_object_le_fields = layout([u32("modified"), u32("attributes", FLAGS)]);
+var sxal_pea_object_le = sxLayout(0x60200013, "pea_object_le", LE, sxal_pea_object_le_fields);
+var sxal_pea_file_size_le_fields = layout([u64("unpacked_size", SIZE)]);
+var sxal_pea_file_size_le = sxLayout(0x60200014, "pea_file_size_le", LE, sxal_pea_file_size_le_fields);
+var sxal_pea_packed_size_le_fields = layout([u32("packed_size", SIZE)]);
+var sxal_pea_packed_size_le = sxLayout(0x60200015, "pea_packed_size_le", LE, sxal_pea_packed_size_le_fields);
+var sxal_pea_last_size_le_fields = layout([u32("repeated_last_block_size", SIZE)]);
+var sxal_pea_last_size_le = sxLayout(0x60200016, "pea_last_size_le", LE, sxal_pea_last_size_le_fields);
+var sxal_pea_trigger_be_fields = layout([u16("zero_name_size", SIZE), chars("signature", 4, SIGNATURE)]);
+var sxal_pea_trigger_be = sxLayout(0x60200017, "pea_trigger_be", BE, sxal_pea_trigger_be_fields);
+var sxal_pea_stream_be_fields = layout([u8("compression", ID), u8("reserved", RESERVED), u8("stream_control", ID),
+    u8("object_control", ID)]);
+var sxal_pea_stream_be = sxLayout(0x60200018, "pea_stream_be", BE, sxal_pea_stream_be_fields);
+var sxal_pea_block_size_be_fields = layout([u32("block_size", SIZE)]);
+var sxal_pea_block_size_be = sxLayout(0x60200019, "pea_block_size_be", BE, sxal_pea_block_size_be_fields);
+var sxal_pea_name_size_be_fields = layout([u16("name_size", SIZE)]);
+var sxal_pea_name_size_be = sxLayout(0x6020001A, "pea_name_size_be", BE, sxal_pea_name_size_be_fields);
+var sxal_pea_object_be_fields = layout([u32("modified"), u32("attributes", FLAGS)]);
+var sxal_pea_object_be = sxLayout(0x6020001B, "pea_object_be", BE, sxal_pea_object_be_fields);
+var sxal_pea_file_size_be_fields = layout([u64("unpacked_size", SIZE)]);
+var sxal_pea_file_size_be = sxLayout(0x6020001C, "pea_file_size_be", BE, sxal_pea_file_size_be_fields);
+var sxal_pea_packed_size_be_fields = layout([u32("packed_size", SIZE)]);
+var sxal_pea_packed_size_be = sxLayout(0x6020001D, "pea_packed_size_be", BE, sxal_pea_packed_size_be_fields);
+var sxal_pea_last_size_be_fields = layout([u32("repeated_last_block_size", SIZE)]);
+var sxal_pea_last_size_be = sxLayout(0x6020001E, "pea_last_size_be", BE, sxal_pea_last_size_be_fields);
+function sxal_pea_tag(v) {
+    if (v === 0) {
+        return 0;
+    }
+    if (v === 1 || v === 2) {
+        return 4;
+    }
+    if (v === 3) {
+        return 8;
+    }
+    if (v === 0x10) {
+        return 16;
+    }
+    if (v === 0x11 || v === 0x12) {
+        return 20;
+    }
+    if (v === 0x13 || v === 0x16 || v === 0x18) {
+        return 32;
+    }
+    if (v === 0x14 || v === 0x15 || v === 0x17 || v === 0x19) {
+        return 64;
+    }
+    return -1;
+}
+function sxal_pea(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 20) || !sxal_add(c, sxal_pea_header, 0)) {
+        return false;
+    }
+    var be = (b[8] & 128) !== 0;
+    var compression = b[16];
+    var volume = sxal_pea_tag(b[3]);
+    var stream = sxal_pea_tag(b[18]);
+    var object = sxal_pea_tag(b[19]);
+    var p = 20;
+    var block = 0;
+    if (!sxal_add(c, be ? sxal_pea_trigger_be : sxal_pea_trigger_le, 10) || !sxal_add(c, be ? sxal_pea_stream_be : sxal_pea_stream_le, 16)) {
+        return false;
+    }
+    if (stream < 0 || object < 0 || volume < 0) {
+        return true;
+    }
+    if (compression) {
+        if (!sxal_read(c, p, b, 4)) {
+            return true;
+        }
+        block = sxal32(b, 0, be);
+        if (!sxal_add(c, be ? sxal_pea_block_size_be : sxal_pea_block_size_le, p)) {
+            return false;
+        }
+        p += 4;
+        if (block < 1024 || block > 33554432) {
+            return true;
+        }
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, 2)) {
+            break;
+        }
+        var name = sxal16(b, 0, be);
+        if (!name) {
+            if (sxal_read(c, p, b, 6) && !sxMemcmpAt(b, 2, "EOA\x00", 0, 4) && !sxal_add(c, be ? sxal_pea_trigger_be : sxal_pea_trigger_le, p)) {
+                return false;
+            }
+            break;
+        }
+        if (!sxal_span(c, p + 2, (name + 8) >>> 0)) {
+            break;
+        }
+        if (!sxal_add(c, be ? sxal_pea_name_size_be : sxal_pea_name_size_le, p)) {
+            return false;
+        }
+        p += (2 + name) >>> 0;
+        if (!sxal_read(c, p, b, 8) || !sxal_add(c, be ? sxal_pea_object_be : sxal_pea_object_le, p)) {
+            return false;
+        }
+        var folder = (sxal32(b, 4, be) & 16) !== 0;
+        p += 8;
+        var n = 0;
+        if (!folder) {
+            if (!sxal_read(c, p, b, 8)) {
+                break;
+            }
+            n = sxal_uint(b, 0, 8, be);
+            if (!sxal_add(c, be ? sxal_pea_file_size_be : sxal_pea_file_size_le, p)) {
+                return false;
+            }
+            p += 8;
+        }
+        if (!compression) {
+            if (!sxal_span(c, p, n)) {
+                break;
+            }
+            p += n;
+        } else {
+            var left = n;
+            var steps = 0;
+            while (left && steps++ < 20000) {
+                if (!sxal_read(c, p, b, 4)) {
+                    return true;
+                }
+                var z = sxal32(b, 0, be);
+                var plain = left > block ? block : left;
+                if (!z || z > plain || !sxal_span(c, p + 4, z)) {
+                    return true;
+                }
+                if (!sxal_add(c, be ? sxal_pea_packed_size_be : sxal_pea_packed_size_le, p)) {
+                    return false;
+                }
+                p += 4 + z;
+                left = sxU64(left - plain);
+            }
+            if (left) {
+                return true;
+            }
+            if (n) {
+                if (!sxal_span(c, p, 4)) {
+                    break;
+                }
+                if (!sxal_add(c, be ? sxal_pea_last_size_be : sxal_pea_last_size_le, p)) {
+                    return false;
+                }
+                p += 4;
+            }
+        }
+        if (!sxal_span(c, p, (object < 0 ? object + SX_U64_MAX : object))) {
+            break;
+        }
+        p += (object < 0 ? object + SX_U64_MAX : object);
+    }
+    return true;
+}
+function sx_pea_build(c) {
+    return sxal_pea(c);
+}

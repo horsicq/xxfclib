@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/opc/xx_opc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiw_opc_banner_fields = layout([chars("signature", 8, SIGNATURE), chars("version_and_part_description", 71, STRING),
+    u8("terminator", SIGNATURE)]);
+var sxiw_opc_banner = sxLayout(0x60790021, "opc_banner", LE, sxiw_opc_banner_fields);
+function sx_opc_build(c) {
+    return sxiw_add(c, sxiw_opc_banner, 0);
+}

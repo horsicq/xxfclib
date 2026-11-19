@@ -1,0 +1,103 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// NE (16-bit OS/2 and Windows new executable). The header sits at the offset
+// stored at 0x3C of the MZ stub; table offsets in it are relative to that
+// header, except ne_nrestab which is relative to the file start. The table
+// extents are re-derived here the way the reader clips them; the overlay is
+// everything after Format.size().
+
+function fileTypes() { return ["NE"]; }
+
+function structs() {
+    return [
+        { id: 1, name: "IMAGE_DOS_HEADER", fields: [
+            u16("e_magic", SIGNATURE), u16("e_cblp", NONE, "Bytes in final 512-byte page; 0 means 512"),
+            u16("e_cp", COUNT, "512-byte pages"), u16("e_crlc", COUNT),
+            u16("e_cparhdr", COUNT, "16-byte paragraphs"), u16("e_minalloc", COUNT, "16-byte paragraphs"),
+            u16("e_maxalloc", COUNT, "16-byte paragraphs"), u16("e_ss", VA), u16("e_sp", VA), u16("e_csum", CHECKSUM),
+            u16("e_ip", VA), u16("e_cs", VA), u16("e_lfarlc", OFFSET), u16("e_ovno", ID),
+            field("e_res", "uint16[4]", 8, RESERVED), u16("e_oemid", ID), u16("e_oeminfo"),
+            field("e_res2", "uint16[10]", 20, RESERVED), u32("e_lfanew", OFFSET) ] },
+        { id: 2, name: "IMAGE_OS2_HEADER", fields: [
+            u16("ne_magic", ID), u8("ne_ver"), u8("ne_rev"), u16("ne_enttab", OFFSET), u16("ne_cbenttab", SIZE),
+            u32("ne_crc", CHECKSUM), u16("ne_flags", FLAGS), u16("ne_autodata", ID), u16("ne_heap", SIZE),
+            u16("ne_stack", SIZE), u32("ne_csip", VA), u32("ne_sssp", VA), u16("ne_cseg", COUNT), u16("ne_cmod", COUNT),
+            u16("ne_cbnrestab", SIZE), u16("ne_segtab", OFFSET), u16("ne_rsrctab", OFFSET), u16("ne_restab", OFFSET),
+            u16("ne_modtab", OFFSET), u16("ne_imptab", OFFSET), u32("ne_nrestab", OFFSET), u16("ne_cmovent", COUNT),
+            u16("ne_align", NONE, "Logical-sector alignment shift count"), u16("ne_cres", COUNT), u8("ne_exetyp", ID),
+            u8("ne_flagsothers", FLAGS), u16("ne_pretthunks", OFFSET), u16("ne_psegrefbytes", OFFSET),
+            u16("ne_swaparea"), u16("ne_expver") ] },
+        { id: 3, name: "NE_SEGMENT_TABLE", fields: [
+            u16("FileOffset", OFFSET, "Logical sectors; scale by 2^ne_align"), u16("FileSize", SIZE, encodedAsZero),
+            u16("Flags", FLAGS), u16("MinimumAllocation", SIZE, encodedAsZero) ] },
+        { id: 4, name: "NE_RESOURCE_TABLE" },
+        { id: 5, name: "NE_ENTRY_TABLE" },
+        { id: 6, name: "NE_NONRESIDENT_NAME_TABLE" }
+    ];
+}
+
+function encodedAsZero(value) { return value === 0 ? "65536 Bytes (encoded as 0)" : undefined; }
+
+// A complete NE header (64 bytes, "NE") at a format-relative offset.
+function neHeaderAt(offset) {
+    return offset + 64 <= File.size() && File.u16(offset) === 0x454E;
+}
+
+// The NE header offset: the full 0x3C pointer, else its low word only.
+function neOffset() {
+    var candidate, legacy;
+    if (!File.valid(0, 64) || File.u16(0) !== 0x5A4D) return -1;
+    candidate = File.u32(0x3C);
+    if (neHeaderAt(candidate)) return candidate;
+    legacy = candidate & 0xFFFF;
+    if (legacy !== candidate && neHeaderAt(legacy)) return legacy;
+    return -1;
+}
+
+// An occurrence that does not fit inside the file is skipped.
+function neAdd(name, offset, size, kind) {
+    var available = File.size();
+    if (offset < 0 || offset > available || size > available - offset) return;
+    Structs.add(name, offset, size, kind);
+}
+
+function scan() {
+    var available = File.size(), ne = neOffset(), rel, size, count, rsrc, restab, nres, formatSize;
+    if (ne < 0) return false;
+    neAdd("IMAGE_DOS_HEADER", 0, 64, STRUCT);
+    neAdd("IMAGE_OS2_HEADER", ne, 64, STRUCT);
+
+    rel = ne + File.u16(ne + 0x22);
+    size = File.u16(ne + 0x1C) * 8;
+    if (rel > available) size = 0;
+    else if (size > available - rel) size = available - rel;
+    count = Math.floor(size / 8);
+    if (count !== 0) Structs.table("NE_SEGMENT_TABLE", rel, 8, count, ENTRY);
+
+    rel = ne + File.u16(ne + 0x04);
+    if (rel <= available) {
+        size = File.u16(ne + 0x06);
+        if (size > available - rel) size = available - rel;
+        if (size !== 0) neAdd("NE_ENTRY_TABLE", rel, size, RAW);
+    }
+
+    rsrc = File.u16(ne + 0x24);
+    restab = File.u16(ne + 0x26);
+    rel = ne + rsrc;
+    if (rsrc !== 0 && restab > rsrc && rel < available) {
+        size = restab - rsrc;
+        if (size > available - rel) size = available - rel;
+        neAdd("NE_RESOURCE_TABLE", rel, size, RAW);
+    }
+
+    nres = File.u32(ne + 0x2C);
+    if (nres !== 0 && nres < available) {
+        size = File.u16(ne + 0x20);
+        if (size > available - nres) size = available - nres;
+        if (size !== 0) neAdd("NE_NONRESIDENT_NAME_TABLE", nres, size, RAW);
+    }
+
+    formatSize = Format.size();
+    if (formatSize > 0 && formatSize < available) Structs.raw(formatSize, available - formatSize);
+}

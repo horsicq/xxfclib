@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/inteduft/xx_inteduft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_inteduft_header_fields = layout([u32("signature", SIGNATURE), u16("member_count", COUNT)]);
+var sxasy_inteduft_header = sxLayout(0x60440016, "inteduft_header", LE, sxasy_inteduft_header_fields);
+var sxasy_inteduft_index_fields = layout([i32("member_offset", OFFSET), u8("name_size", SIZE)]);
+var sxasy_inteduft_index = sxLayout(0x60440017, "inteduft_index", LE, sxasy_inteduft_index_fields);
+var sxasy_inteduft_member_fields = layout([u16("reserved_flags"), u16("method"), u32("crc32", CHECKSUM),
+    i32("compressed_size", SIZE), i32("uncompressed_size", SIZE)]);
+var sxasy_inteduft_member = sxLayout(0x60440018, "inteduft_member", LE, sxasy_inteduft_member_fields);
+function sxasy_intedu(c) {
+    var n = [0];
+    var p = 6;
+    if (!sxasy_word(c, 4, 2, false, n) || !sxasy_add(c, sxasy_inteduft_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var h = [];
+        if (!sxasy_read(c, p, h, 5) || !sxasy_span(c, p + 5, h[4]) || !sxasy_add(c, sxasy_inteduft_index, p)) {
+            return false;
+        }
+        p += 5 + h[4];
+    }
+    var end = p;
+    p = 6;
+    for (i = 0; i < n[0]; i++) {
+        h = [];
+        var idx = [];
+        if (!sxasy_read(c, p, idx, 5)) {
+            return false;
+        }
+        var q = sxasy_uint(idx, 0, 4, false);
+        if (q < end || q > 2147483647 || !sxasy_read(c, q, h, 16) || !sxasy_span(c, q + 16, sxasy_uint(h, 8, 4, false)) || !sxasy_add(c, sxasy_inteduft_member, q)) {
+            return false;
+        }
+        p += 5 + idx[4];
+    }
+    return true;
+}
+function sx_inteduft_build(c) {
+    return sxasy_intedu(c);
+}

@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/battleisle/xx_battleisle_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_battle_tct_fields = layout([chars("magic", 4, SIGNATURE), u16("entries", COUNT), blob("unknown", 2)]);
+var sxgco_battle_tct = sxLayout(0x60400013, "battle_tct", LE, sxgco_battle_tct_fields);
+function sxgco_battle(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var h = [];
+    if (!sxgco_row(v, sxgco_offset32, 0, e) || !sxgco_word(v, 0, 4, false, at, e) || at[0] > e || sxU64(e - at[0]) % 12) {
+        return false;
+    }
+    if (sxgco_read(v, 4, h, 4, e) && !sxMemcmp(h, "TCT ", 4) && !sxgco_row(v, sxgco_battle_tct, 4, e)) {
+        return false;
+    }
+    return sxgco_table(v, sxgco_battle_entry, at[0], Math.floor(sxU64(e - at[0]) / 12), e);
+}
+function sx_battleisle_build(v) {
+    return sxgco_battle(v);
+}

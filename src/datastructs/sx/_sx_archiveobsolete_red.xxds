@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/red/xx_red_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_red_member_fields = layout([chars("signature", 2, SIGNATURE), u8("version"), u8("header_size", SIZE), u16("dos_time"),
+    u16("dos_date"), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE), u16("crc1", CHECKSUM), u16("crc2", CHECKSUM),
+    u16("fragment_number"), u16("last_fragment"), u16("method")]);
+var sxao_red_member = sxLayout(0x60700036, "red_member", LE, sxao_red_member_fields);
+var sxao_red_header_crc_fields = layout([u16("crc16", CHECKSUM)]);
+var sxao_red_header_crc = sxLayout(0x60700037, "red_header_crc", BE, sxao_red_header_crc_fields);
+var sxao_red_segment_crc_fields = layout([u16("crc16", CHECKSUM)]);
+var sxao_red_segment_crc = sxLayout(0x60700038, "red_segment_crc", BE, sxao_red_segment_crc_fields);
+function sxao_red(c) {
+    var p = 0;
+    while (sxao_span(c, p, 39)) {
+        var h = [];
+        if (!sxao_read(c, p, h, 0, 26)) {
+            return false;
+        }
+        var hs = h[3];
+        var z = sxao_uint(h, 8, 4, false);
+        var method = sxao_uint(h, 24, 2, false);
+        if (hs < 39 || !sxao_span(c, p, hs) || !sxao_add(c, sxao_red_member, p) || !sxao_text(c, sxao_archiveobsolete_name, p + 26, 12, true) || !sxao_put(c, sxao_red_header_crc, sxU64(p + hs - 2), 2, true)) {
+            return false;
+        }
+        p += hs;
+        if (!sxao_span(c, p, z)) {
+            return true;
+        }
+        if (method === 11) {
+            var q = p;
+            var remain = z;
+            while (remain) {
+                var block = remain > 4096 ? 4096 : remain;
+                if (block >= 2 && !sxao_add(c, sxao_red_segment_crc, sxU64(q + block - 2))) {
+                    return false;
+                }
+                q += block;
+                remain = sxU64(remain - block);
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_red_build(c) {
+    return sxao_red(c);
+}

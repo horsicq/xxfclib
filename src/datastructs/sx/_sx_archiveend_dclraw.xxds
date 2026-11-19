@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/dclraw/xx_dclraw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_dclraw_stream_fields = layout([u8("literal_mode", ID), u8("dictionary_selector")]);
+var sxaend_dclraw_stream = sxLayout(0x60840013, "dclraw_stream", LE, sxaend_dclraw_stream_fields);
+function sxaend_dcl(c) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    for (var i = 0; i < 20000; i++) {
+        var r = f.get_current_archive_record(f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset < f.base_address || r.compressed_size < 2 || !sxaend_span(c, (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address), (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size)) || !sxaend_add(c, sxaend_dclraw_stream, (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address))) {
+            ok = false;
+            break;
+        }
+        if (!f.archive_record_move_to_next(f, s, c.pd)) {
+            break;
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sx_dclraw_build(c) {
+    return sxaend_dcl(c);
+}

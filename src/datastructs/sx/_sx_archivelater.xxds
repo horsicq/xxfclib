@@ -1,0 +1,434 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivelater.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_archivelater_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60200000 || id >= 0x60210000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x6020004E:
+        if (r.name === "signature") {
+            text = "Three-byte UHA container signature; the entropy-coded archive stream begins at offset 4.";
+        }
+        if (r.name === "version") {
+            text = "Stored UHARC version byte: high nibble is major and low nibble is minor (for example, 0x04 is version 0.4).";
+        }
+        break;
+    case 0x6020004F:
+        if (r.name === "signature") {
+            text = "Four-byte fixed marker in the XOR-A9 stored wrapper, verified by the native reader at offsets 0 and 6.";
+        }
+        break;
+    case 0x60200050:
+        if (r.name === "marker") {
+            text = "Three-byte fixed marker verified by the native reader at offset 12. Bytes 4-5, 10-11 and 15 are left raw.";
+        }
+        break;
+    case 0x60200051:
+        if (r.name === "signature") {
+            text = "Four-byte TARX2 clear-header signature at offset 0, checked by the native transport decoder.";
+        }
+        break;
+    case 0x60200052:
+        if (r.name === "marker") {
+            text = "Four-byte TARX2 clear-header marker at offset 8, checked by the native transport decoder.";
+        }
+        break;
+    case 0x60200002:
+        if (r.name === "modified") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60200005:
+        if (r.name === "directory_count") {
+            text = "Stored count hint omits the first directory in historical writers.";
+        }
+        if (r.name === "file_count") {
+            text = "Stored count hint can be inaccurate in historical writers.";
+        }
+        if (r.name === "packed_size_hint") {
+            text = "Declared total packed-data byte count; historical writers may leave unreliable hints.";
+        }
+        break;
+    case 0x60200006:
+        if (r.name === "kind") {
+            text = "0=directory end, 1=directory start, 2=file.";
+        }
+        if (r.name === "directory_size_plus3") {
+            text = "Directory records encode their complete subtree byte size plus 3; other record kinds use zero.";
+        }
+        break;
+    case 0x60200007:
+        if (r.name === "packed_size_hint") {
+            text = "Stored files consume unpacked_size bytes regardless of this hint.";
+        }
+        if (r.name === "method") {
+            text = "0=stored, 1=LZARI, 2=LZSS, 3=LH1.";
+        }
+        if (r.name === "protection") {
+            text = "Complete big-endian Amiga protection flags; the low byte alone is not the full physical field.";
+        }
+        break;
+    case 0x60200008:
+        if (r.name === "header_size_minus2") {
+            text = "Complete member header byte size is this value plus 2.";
+        }
+        if (r.name === "packed_size") {
+            text = "Zero means stored, with unpacked_size physical payload bytes.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x6020000B:
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x6020000D:
+        if (r.name === "header_pickle_size") {
+            text = "Physical payload starts at byte 8 plus this value.";
+        }
+        if (r.name === "json_size") {
+            text = "JSON directory byte count excluding alignment padding; its members remain text.";
+        }
+        break;
+    case 0x6020000E:
+        if (r.name === "byte_order_flags") {
+            text = "Bit 7 selects big-endian size fields.";
+        }
+        break;
+    case 0x60200010:
+        if (r.name === "compression") {
+            text = "0=stored; 1..3=zlib block compression.";
+        }
+        break;
+    case 0x60200013:
+        if (r.name === "modified") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60200018:
+        if (r.name === "compression") {
+            text = "0=stored; 1..3=zlib block compression.";
+        }
+        break;
+    case 0x6020001B:
+        if (r.name === "modified") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60200020:
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        break;
+    case 0x60200021:
+        if (r.name === "created") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "modified") {
+            text = "Seconds since 1904-01-01, not Unix epoch.";
+        }
+        if (r.name === "first_child_offset") {
+            text = "0xFFFFFFFF marks a folder-end record, which has no second header or payload.";
+        }
+        break;
+    case 0x60200025:
+        if (r.name === "data_method") {
+            text = "Low 7 bits select the fork codec; high bit carries codec-specific flags.";
+        }
+        if (r.name === "resource_method") {
+            text = "Low 7 bits select the fork codec; high bit carries codec-specific flags.";
+        }
+        break;
+    case 0x6020002C:
+        if (r.name === "folder_id_or_record_offset") {
+            text = "High bit marks a folder id; otherwise this is a record byte offset. A marked folder id is followed by its record offset.";
+        }
+        break;
+    case 0x6020002E:
+        if (r.name === "data_size") {
+            text = "Ignored for folder-end records, which have no payload.";
+        }
+        if (r.name === "resource_size") {
+            text = "Ignored for folder-end records, which have no payload.";
+        }
+        break;
+    case 0x6020002F:
+        if (r.name === "packed_size_minus8") {
+            text = "Physical stream byte length is this value plus 8.";
+        }
+        if (r.name === "flags") {
+            text = "Bit 0=long chunk headers, bit 1=password, bit 2=extended header.";
+        }
+        break;
+    case 0x60200031:
+        if (r.name === "kind") {
+            text = "0=raw, 1=packed, 15=end marker.";
+        }
+        break;
+    case 0x60200032:
+        if (r.name === "kind") {
+            text = "0=raw, 1=packed, 15=end marker.";
+        }
+        break;
+    case 0x60200033:
+        if (r.name === "model_info") {
+            text = "Low 4 bits=order minus1; next 8=memory MiB minus1; high 4=variant minus A (7=H,8=I).";
+        }
+        if (r.name === "name_size_and_restore") {
+            text = "Variant I: low 14 bits=name byte length, high 2=model restore method. Variant H uses all 16 bits for length.";
+        }
+        if (r.name === "modified") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x60200036:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x60200038:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x6020003A:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x6020003C:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x6020003E:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x60200040:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x60200042:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x60200044:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the chunk stream-header base, after the chunk prefix.";
+        }
+        break;
+    case 0x60200046:
+        if (r.name === "unpacked_size_low") {
+            text = "Low 32 bits of the uncompressed byte length; combine the following high word.";
+        }
+        if (r.name === "unpacked_size_high") {
+            text = "High 32 bits of the uncompressed byte length.";
+        }
+        break;
+    case 0x60200047:
+        if (r.name === "next_block_offset") {
+            text = "Byte offset relative to the current two-stream chunk header base.";
+        }
+        break;
+    case 0x6020004A:
+        if (r.name === "next_directory_offset") {
+            text = "0xFFFFFFFF means the final directory. Other values are writer offsets/hints; the native reader visits complete directory items sequentially.";
+        }
+        break;
+    case 0x6020004B:
+        if (r.name === "data_offset") {
+            text = "Byte offset in the separate BACKUP.nnn file, not this CONTROL catalogue.";
+        }
+        if (r.name === "time") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        if (r.name === "date") {
+            text = "Packed DOS date/time, not a Unix timestamp.";
+        }
+        break;
+    case 0x6020004C:
+        if (r.name === "flags") {
+            text = "Low 3 bits select compression; bit3 applies delta filter. Directory bytes are compressed and may be XOR-scrambled.";
+        }
+        break;
+    default:
+        break;
+    }
+    if (id === 0x6020002C) {
+        var a = [];
+        var b = [];
+        var n = sxSnprintf(a, 0, 32, "0x%llX", [sxVarU64(r.value)]);
+        if (n < 0 || n >= 32) {
+            return false;
+        }
+        for (var i = 0; i <= n; i++) {
+            b[i] = a[i] & 0xFF;
+        }
+        if (!sxSetDisplay(r, b)) {
+            return false;
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxal_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxal_read(c, p, b, n) {
+    return sxal_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxal_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxal16(b, b_o, be) {
+    return sxal_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxal32(b, b_o, be) {
+    return sxal_uint(b, b_o, 4, be) >>> 0;
+}
+function sxal_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    return c.count < 20000 && p <= SX_I64_MAX && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), f.offset + f.size);
+}
+function sxal_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxal_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxal_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxal_order, true);
+    return !c.failed;
+}
+function sx_archivelater_supports(type) {
+    switch (type) {
+    case "ALDUS":
+    case "AMPK":
+    case "ARX":
+    case "PACKIT":
+    case "ASAR":
+    case "PEA":
+    case "STUFFIT5":
+    case "DISKDOUBLER":
+    case "XPK_COMPRESSED_FILE":
+    case "PPMD":
+    case "LRZIP":
+    case "RZIP":
+    case "MS_DOS_BACKUP":
+    case "MS_DOS_BACKUP2":
+    case "ESP_ARCHIVE":
+    case "LPAK":
+    case "UHARC":
+    case "IS_STORED":
+    case "TARX2":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivelater_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "ALDUS":
+        ok = sx_aldus_build(c);
+        break;
+    case "AMPK":
+        ok = sx_ampk_build(c);
+        break;
+    case "ARX":
+        ok = sx_arx_build(c);
+        break;
+    case "PACKIT":
+        ok = sx_packit_build(c);
+        break;
+    case "ASAR":
+        ok = sx_asar_build(c);
+        break;
+    case "PEA":
+        ok = sx_pea_build(c);
+        break;
+    case "STUFFIT5":
+        ok = sx_stuffit5_build(c);
+        break;
+    case "DISKDOUBLER":
+        ok = sx_diskdoubler_build(c);
+        break;
+    case "XPK_COMPRESSED_FILE":
+        ok = sx_xpk_compressed_file_build(c);
+        break;
+    case "PPMD":
+        ok = sx_ppmd_build(c);
+        break;
+    case "LRZIP":
+        ok = sx_lrzip_build(c);
+        break;
+    case "RZIP":
+        ok = sx_rzip_build(c);
+        break;
+    case "MS_DOS_BACKUP":
+        ok = sx_ms_dos_backup_build(c);
+        break;
+    case "MS_DOS_BACKUP2":
+        ok = sx_ms_dos_backup2_build(c);
+        break;
+    case "ESP_ARCHIVE":
+        ok = sx_esp_archive_build(c);
+        break;
+    case "LPAK":
+        ok = sx_lpak_build(c);
+        break;
+    case "UHARC":
+        ok = sx_uharc_build(c);
+        break;
+    case "IS_STORED":
+        ok = sx_is_stored_build(c);
+        break;
+    case "TARX2":
+        ok = sx_tarx2_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxal_finish(c);
+}

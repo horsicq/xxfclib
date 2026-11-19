@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/xwd/xx_xwd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_xwd_header_fields = layout([u32("header_size", SIZE), u32("version", ID), u32("pixmap_format", ID), u32("pixmap_depth"),
+    u32("pixmap_width"), u32("pixmap_height"), u32("x_offset"), u32("byte_order", ID), u32("bitmap_unit"),
+    u32("bitmap_bit_order", ID), u32("bitmap_pad"), u32("bits_per_pixel"), u32("bytes_per_line", SIZE), u32("visual_class", ID),
+    u32("red_mask", FLAGS), u32("green_mask", FLAGS), u32("blue_mask", FLAGS), u32("bits_per_rgb"),
+    u32("colormap_entries", COUNT), u32("color_count", COUNT), u32("window_width"), u32("window_height"), u32("window_x"),
+    u32("window_y"), u32("window_border_width")]);
+var sxm_xwd_header = sxLayout(0x60060020, "xwd_header", BE, sxm_xwd_header_fields);
+var sxm_xwd_color_fields = layout([u32("pixel"), u16("red"), u16("green"), u16("blue"), u8("flags", FLAGS), u8("pad", RESERVED)]);
+var sxm_xwd_color = sxLayout(0x60060021, "xwd_color", BE, sxm_xwd_color_fields);
+function sx_xwd_build(c, h, n) {
+    var header;
+    var count;
+    if (n < 100 || sxGetU32(h, n, 4, true) !== 7) {
+        return false;
+    }
+    header = sxGetU32(h, n, 0, true);
+    count = sxGetU32(h, n, 76, true);
+    return header >= 100 && sx_add(c, sxm_xwd_header, 0, 100) && sxm_raw(c, 100, (header - 100) >>> 0) && sx_table(c, sxm_xwd_color, header, 12, count) && sxm_tail(c, header + count * 12);
+}

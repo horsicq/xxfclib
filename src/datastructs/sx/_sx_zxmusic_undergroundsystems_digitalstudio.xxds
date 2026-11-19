@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/undergroundsystems_digitalstudio/xx_undergroundsystems_digitalstudio_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_digitalstudio_order_fields = layout([u8("loop_position")]);
+var sxzxm_digitalstudio_order = sxLayout(0x608A006E, "digitalstudio_order", LE, sxzxm_digitalstudio_order_fields);
+var sxzxm_digitalstudio_event_fields = layout([u8("note_or_command", ID), u8("sample_or_parameter")]);
+var sxzxm_digitalstudio_event = sxLayout(0x608A0071, "digitalstudio_event", LE, sxzxm_digitalstudio_event_fields);
+function sxzxm_ds(c) {
+    if (!sxzxm_put(c, sxzxm_digitalstudio_order, 0, 1)) {
+        return false;
+    }
+    if (!sxzxm_opt(c, sxzxm_zx_position, 1, 99) || !sxzxm_opt(c, sxzxm_digitalstudio_header, 100, 1) || !sxzxm_opt(c, sxzxm_digitalstudio_sample, 256, 16)) {
+        return false;
+    }
+    for (var i = 0; i < 32; i++) {
+        if (!sxzxm_opt(c, sxzxm_digitalstudio_event, (0x4200 + ((384 * i) >>> 0)) >>> 0, 192)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_undergroundsystems_digitalstudio_build(c) {
+    return sxzxm_ds(c);
+}

@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/marc/xx_marc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_marc_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), i32("entry_count", COUNT)]);
+var sxag_marc_header = sxLayout(0x6025002B, "marc_header", LE, sxag_marc_header_fields);
+var sxag_marc_entry_fields = layout([chars("name", 56, STRING), i32("data_size", SIZE), u32("unknown60"),
+    i32("data_offset", OFFSET)]);
+var sxag_marc_entry = sxLayout(0x6025002C, "marc_entry", LE, sxag_marc_entry_fields);
+function sx_marc_build(c) {
+    return sxag_fixed(c, sxag_marc_header, sxag_marc_entry, 12, 8, 4, false, 12, 0);
+}

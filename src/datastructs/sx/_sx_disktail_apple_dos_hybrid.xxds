@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_dos_hybrid/xx_apple_dos_hybrid_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxdt_hybrid(c) {
+    var v = { c: c, base: 0, size: (c.size < 0 ? c.size + SX_U64_MAX : c.size), split: 0 };
+    if (c.size !== 143360 || !sxdt_av_apple_dos(v, 16)) {
+        return false;
+    }
+    var h = [];
+    for (var i = 0; i < 2; i++) {
+        if (!sxdt_read(c, i ? 2816 : 1024, h, 0, 512)) {
+            return false;
+        }
+        if (sxdt_av_pd_header(h)) {
+            return sxdt_av_prodos(v);
+        }
+        if (!sxdt16(h, 0, 0) && sxdt16(h, 2, 0) === 6 && h[6] >= 1 && h[6] <= 7) {
+            return sxdt_av_pascal(v);
+        }
+        if (!i && h[0] === 66 /*B*/ && h[1] === 68 /*D*/) {
+            return sxdt_av_hfs(v);
+        }
+    }
+    return true;
+}
+function sx_apple_dos_hybrid_build(c) {
+    var ok = false;
+    ok = sxdt_hybrid(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

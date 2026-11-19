@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/pebble/xx_pebble_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_pebble_header_fields = layout([chars("signature", 8, SIGNATURE), u8("structure_major", ID), u8("structure_minor", ID),
+    u8("sdk_major", ID), u8("sdk_minor", ID), u8("application_major", ID), u8("application_minor", ID), u16("image_size", SIZE),
+    u32("entry_point", OFFSET), u32("image_crc32", CHECKSUM), chars("application_name", 32, STRING),
+    chars("company_name", 32, STRING), u32("icon_resource_id", ID), u32("symbol_table_address", VA), u32("flags", FLAGS),
+    u32("relocation_count", COUNT), bytes("uuid", 16, ID), u32("header_crc32", CHECKSUM)]);
+var sxexm_pebble_header = sxLayout(0x602B0018, "pebble_header", LE, sxexm_pebble_header_fields);
+var sxexm_pebble_relocation_fields = layout([u32("relocation_offset", OFFSET)]);
+var sxexm_pebble_relocation = sxLayout(0x602B0019, "pebble_relocation", LE, sxexm_pebble_relocation_fields);
+function sx_pebble_build(c) {
+    var ok = false;
+    var p = [0];
+    var n = [0];
+    ok = sxexm_add(c, sxexm_pebble_header, 0) && sxexm_word(c, 14, 2, false, p) && sxexm_word(c, 100, 4, false, n) && sxexm_table(c, sxexm_pebble_relocation, p[0], n[0]);
+    return ok && sxexm_finish(c);
+}

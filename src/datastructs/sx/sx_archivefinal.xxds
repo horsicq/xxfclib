@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivefinal.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivefinal");
+include("_sx_archivefinal_bagf");
+include("_sx_archivefinal_bga");
+include("_sx_archivefinal_dfc");
+include("_sx_archivefinal_dn");
+include("_sx_archivefinal_insa");
+include("_sx_archivefinal_ixa");
+include("_sx_archivefinal_ka");
+include("_sx_archivefinal_lif");
+include("_sx_archivefinal_lspack10");
+include("_sx_archivefinal_mxm_simplearc");
+include("_sx_archivefinal_nix_nar");
+include("_sx_archivefinal_pcompress_pack");
+include("_sx_archivefinal_phar");
+include("_sx_archivefinal_rnca");
+include("_sx_archivefinal_shrink_cdaf");
+include("_sx_archivefinal_spack");
+include("_sx_archivefinal_sq");
+include("_sx_archivefinal_squeeze1");
+include("_sx_archivefinal_squeeze2");
+include("_sx_archivefinal_stuffit_split_file");
+
+function fileTypes() { return ["SQUEEZE1", "PHAR", "SQ", "SQUEEZE2", "BAGF", "LIF", "IXA", "LSPACK10", "RNCA", "NIX_NAR",
+    "STUFFIT_SPLIT_FILE", "BGA", "DFC", "KA", "DN", "INSA", "SHRINK_CDAF", "SPACK", "PCOMPRESS_PACK", "MXM_SIMPLEARC"]; }
+
+var sx_archivefinal_layouts = [sxaf_nar_string_length, sxaf_phar_manifest_prefix, sxaf_phar_api_version,
+    sxaf_phar_manifest_flags, sxaf_phar_metadata_length, sxaf_phar_name_length, sxaf_phar_file_entry,
+    sxaf_phar_signature_footer, sxaf_stuffit_split_header, sxaf_squeeze1_header, sxaf_squeeze2_magic, sxaf_squeeze2_header,
+    sxaf_squeeze_node_count, sxaf_squeeze_tree_node, sxaf_sq_magic, sxaf_sq_calendar, sxaf_lspack10_member, sxaf_rnca_header,
+    sxaf_rnca_directory_offset, sxaf_rnca_stored_member, sxaf_rnca_compressed_member, sxaf_bagf_header, sxaf_ixa_header,
+    sxaf_ixa_entry, sxaf_bga_member, sxaf_dfc_header, sxaf_dfc_entry, sxaf_ka_header, sxaf_ka_entry, sxaf_cdaf_header,
+    sxaf_cdaf_member, sxaf_cdaf_chunk, sxaf_spack_magic, sxaf_spack_stored_member, sxaf_spack_compressed_member,
+    sxaf_spack_footer, sxaf_pcompress_magic, sxaf_pcompress_member_size, sxaf_pcompress_lh_block, sxaf_mxm_simplearc_member,
+    sxaf_lif_header, sxaf_dn_data_header, sxaf_dn_directory_header, sxaf_dn_end_marker, sxaf_insa_version, sxaf_insa_member];
+
+function structs() {
+    return sxCatalog([sxaf_nar_string_length, sxaf_phar_manifest_prefix, sxaf_phar_api_version, sxaf_phar_manifest_flags,
+        sxaf_phar_metadata_length, sxaf_phar_name_length, sxaf_phar_file_entry, sxaf_phar_signature_footer,
+        sxaf_stuffit_split_header, sxaf_squeeze1_header, sxaf_squeeze2_magic, sxaf_squeeze2_header, sxaf_squeeze_node_count,
+        sxaf_squeeze_tree_node, sxaf_sq_magic, sxaf_sq_calendar, sxaf_lspack10_member, sxaf_rnca_header,
+        sxaf_rnca_directory_offset, sxaf_rnca_stored_member, sxaf_rnca_compressed_member, sxaf_bagf_header, sxaf_ixa_header,
+        sxaf_ixa_entry, sxaf_bga_member, sxaf_dfc_header, sxaf_dfc_entry, sxaf_ka_header, sxaf_ka_entry, sxaf_cdaf_header,
+        sxaf_cdaf_member, sxaf_cdaf_chunk, sxaf_spack_magic, sxaf_spack_stored_member, sxaf_spack_compressed_member,
+        sxaf_spack_footer, sxaf_pcompress_magic, sxaf_pcompress_member_size, sxaf_pcompress_lh_block, sxaf_mxm_simplearc_member,
+        sxaf_lif_header, sxaf_dn_data_header, sxaf_dn_directory_header, sxaf_dn_end_marker, sxaf_insa_version, sxaf_insa_member], sx_archivefinal_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivefinal_build, false);
+}

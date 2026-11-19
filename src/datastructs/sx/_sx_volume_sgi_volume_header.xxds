@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/sgi_volume_header/xx_sgi_volume_header_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_v_sgi_volume_header_fields = layout([u32("magic", SIGNATURE), i16("root_partition", ID), i16("swap_partition", ID),
+    chars("boot_file", 16, STRING)]);
+var sx_v_sgi_volume_header = sxLayout(0x60050005, "sgi_volume_header", BE, sx_v_sgi_volume_header_fields);
+var sx_v_sgi_device_parameters_fields = layout([u8("skew"), u8("gap1"), u8("gap2"), u8("spares_per_cylinder", COUNT),
+    u16("cylinders_low", COUNT), u16("starting_head"), u16("tracks", COUNT), u8("command_tag_queue_depth", COUNT),
+    u8("cylinders_high", COUNT), u16("unused", RESERVED), u16("sectors_per_track", COUNT), u16("bytes_per_sector", SIZE),
+    u16("interleave"), u32("flags", FLAGS), u32("data_rate"), u32("retry_count", COUNT), u32("milliseconds_per_word"),
+    u16("extended_gap1"), u16("extended_sync"), u16("extended_read_delay"), u16("extended_gap2"), u16("extended_read_gate"),
+    u16("extended_write_continuation")]);
+var sx_v_sgi_device_parameters = sxLayout(0x60050006, "sgi_device_parameters", BE, sx_v_sgi_device_parameters_fields);
+var sx_v_sgi_volume_directory_entry_fields = layout([chars("name", 8, STRING), u32("start_block", OFFSET),
+    u32("byte_size", SIZE)]);
+var sx_v_sgi_volume_directory_entry = sxLayout(0x60050007, "sgi_volume_directory_entry", BE, sx_v_sgi_volume_directory_entry_fields);
+var sx_v_sgi_partition_entry_fields = layout([u32("block_count", COUNT), u32("start_block", OFFSET), u32("type", ID)]);
+var sx_v_sgi_partition_entry = sxLayout(0x60050008, "sgi_partition_entry", BE, sx_v_sgi_partition_entry_fields);
+var sx_v_sgi_volume_header_footer_fields = layout([u32("checksum", CHECKSUM), u32("padding", RESERVED)]);
+var sx_v_sgi_volume_header_footer = sxLayout(0x60050009, "sgi_volume_header_footer", BE, sx_v_sgi_volume_header_footer_fields);
+function sx_sgi_volume_header_build(c) {
+    if (!sx_add(c, sx_v_sgi_volume_header, 0, 24) || !sx_add(c, sx_v_sgi_device_parameters, 24, 48) || !sx_table(c, sx_v_sgi_volume_directory_entry, 72, 16, 15) || !sx_table(c, sx_v_sgi_partition_entry, 312, 12, 16) || !sx_add(c, sx_v_sgi_volume_header_footer, 504, 8)) {
+        return false;
+    }
+    return true;
+}

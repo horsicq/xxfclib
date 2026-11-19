@@ -1,0 +1,484 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_playerdata.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxplayerdata_rho_subsong_fields = layout([u32("channel_0_sequence_offset", OFFSET),
+    u32("channel_1_sequence_offset", OFFSET), u32("channel_2_sequence_offset", OFFSET)]);
+var sxplayerdata_rho_subsong = sxLayout(0x60A30001, "rho_subsong", BE, sxplayerdata_rho_subsong_fields);
+var sxplayerdata_rho_sequence_pointer_fields = layout([u32("track_offset", OFFSET)]);
+var sxplayerdata_rho_sequence_pointer = sxLayout(0x60A30002, "rho_sequence_pointer", BE, sxplayerdata_rho_sequence_pointer_fields);
+var sxplayerdata_rho_sequence_end_fields = layout([u32("end_marker")]);
+var sxplayerdata_rho_sequence_end = sxLayout(0x60A30003, "rho_sequence_end", BE, sxplayerdata_rho_sequence_end_fields);
+var sxplayerdata_jason_page_header_fields = layout([u16("format_word", SIGNATURE), i16("sample_lengths_offset", OFFSET),
+    i16("sound_index_offset", OFFSET), i16("sound_data_offset", OFFSET), i16("song_timing_offset", OFFSET),
+    i16("sound_priority_offset", OFFSET), i16("song_index_0_offset", OFFSET), i16("song_index_1_offset", OFFSET),
+    i16("song_index_2_offset", OFFSET), i16("song_index_3_offset", OFFSET), i16("song_index_4_offset", OFFSET),
+    i16("song_index_5_offset", OFFSET), i16("song_index_6_offset", OFFSET), i16("song_index_7_offset", OFFSET),
+    i16("song_data_0_offset", OFFSET), i16("song_data_1_offset", OFFSET), i16("song_data_2_offset", OFFSET),
+    i16("song_data_3_offset", OFFSET), i16("song_data_4_offset", OFFSET), i16("song_data_5_offset", OFFSET),
+    i16("song_data_6_offset", OFFSET), i16("song_data_7_offset", OFFSET), i16("track_index_offset", OFFSET),
+    i16("track_data_offset", OFFSET), u16("music_end_offset", OFFSET)]);
+var sxplayerdata_jason_page_header = sxLayout(0x60A30004, "jason_page_header", BE, sxplayerdata_jason_page_header_fields);
+var sxplayerdata_jason_sample_length_fields = layout([u32("byte_length", SIZE)]);
+var sxplayerdata_jason_sample_length = sxLayout(0x60A30005, "jason_sample_length", BE, sxplayerdata_jason_sample_length_fields);
+var sxplayerdata_jason_old_sample_offset_fields = layout([u32("sample_offset", OFFSET)]);
+var sxplayerdata_jason_old_sample_offset = sxLayout(0x60A30006, "jason_old_sample_offset", BE, sxplayerdata_jason_old_sample_offset_fields);
+var sxplayerdata_jason_old_music_end_fields = layout([u32("final_word_offset", OFFSET)]);
+var sxplayerdata_jason_old_music_end = sxLayout(0x60A30007, "jason_old_music_end", BE, sxplayerdata_jason_old_music_end_fields);
+var sxplayerdata_soede_sample_directory_fields = layout([i16("table_byte_length", SIZE), i32("table_displacement", OFFSET)]);
+var sxplayerdata_soede_sample_directory = sxLayout(0x60A30008, "soede_sample_directory", BE, sxplayerdata_soede_sample_directory_fields);
+var sxplayerdata_soede_new_sample_fields = layout([i32("sample_displacement", OFFSET), u16("length_words"),
+    blob("opaque_tail", 4)]);
+var sxplayerdata_soede_new_sample = sxLayout(0x60A30009, "soede_new_sample", BE, sxplayerdata_soede_new_sample_fields);
+var sxplayerdata_soede_old_table_base_fields = layout([i32("table_displacement", OFFSET)]);
+var sxplayerdata_soede_old_table_base = sxLayout(0x60A3000A, "soede_old_table_base", BE, sxplayerdata_soede_old_table_base_fields);
+var sxplayerdata_soede_old_sample_offset_fields = layout([i32("sample_displacement", OFFSET)]);
+var sxplayerdata_soede_old_sample_offset = sxLayout(0x60A3000B, "soede_old_sample_offset", BE, sxplayerdata_soede_old_sample_offset_fields);
+var sxplayerdata_soede_old_sample_length_fields = layout([u16("length_words")]);
+var sxplayerdata_soede_old_sample_length = sxLayout(0x60A3000C, "soede_old_sample_length", BE, sxplayerdata_soede_old_sample_length_fields);
+function sxplayerdata_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxplayerdata_read(c, p, b, n) {
+    return sxplayerdata_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxplayerdata16(b) {
+    return b[0] | b[1] << 8;
+}
+function sxplayerdata_eq(c, p, s, n) {
+    var b = [];
+    return n <= 64 && sxplayerdata_read(c, p, b, n) && !sxMemcmp(b, s, n);
+}
+function sxplayerdata_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+}
+function sxplayerdata_put(c, l, p, count) {
+    var z = sxplayerdata_width(l);
+    if (!count) {
+        return true;
+    }
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxplayerdata_span(c, p, count * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    var end = p + count * z;
+    for (var i = 0; i < c.count; i++) {
+        var rel = c.items[i].offset - c.f.base_address;
+        var n = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (rel >= 0 && p < (rel < 0 ? rel + SX_U64_MAX : rel) + n && (rel < 0 ? rel + SX_U64_MAX : rel) < end) {
+            return true;
+        }
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxplayerdata_opt(c, l, p, count) {
+    var z = sxplayerdata_width(l);
+    return (!count || !z || count > Math.floor(SX_U64_MAX / z) || !sxplayerdata_span(c, p, count * z) ? 1 : (sxplayerdata_put(c, l, p, count) ? 1 : 0)) !== 0;
+}
+function sxplayerdata_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxplayerdata_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxplayerdata_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxplayerdata_order, true);
+    return !c.failed;
+}
+function sxplayerdata_be16(b, b_o) {
+    return b[b_o] << 8 | b[b_o + 1];
+}
+function sxplayerdata_be32(b, b_o) {
+    return ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0;
+}
+function sxplayerdata_word(c, p, v) {
+    var b = [];
+    if (!sxplayerdata_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxplayerdata_be16(b, 0);
+    return true;
+}
+function sxplayerdata_signed(p, d, limit, out) {
+    if (d < 0) {
+        var n = sxU64(-(d + 1)) + 1;
+        if (n > p) {
+            return false;
+        }
+        out[0] = sxU64(p - n);
+    } else {
+        if ((d < 0 ? d + SX_U64_MAX : d) > limit || p > sxU64(limit - (d < 0 ? d + SX_U64_MAX : d))) {
+            return false;
+        }
+        out[0] = p + (d < 0 ? d + SX_U64_MAX : d);
+    }
+    return out[0] <= limit;
+}
+function sxplayerdata_find(c, start, end, value, after) {
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    for (var p = start; p <= end && sxU64(end - p) >= 2; p += 2) {
+        var v = [0];
+        if (!sxplayerdata_word(c, p, v)) {
+            return false;
+        }
+        if (v[0] === value) {
+            after[0] = p + 2;
+            return true;
+        }
+    }
+    return false;
+}
+function sxplayerdata_rho(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 65536 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 65536;
+    var base = [0];
+    var b = [];
+    var w = [0];
+    if (!sxplayerdata_eq(c, 0, "\x00@\x7F@\x00\xC0\x81\xC0", 8) || !sxplayerdata_eq(c, 56, "A\xFA\xFF\xEE", 4)) {
+        return false;
+    }
+    if (!sxplayerdata_find(c, 180, end, 0x4E75, p) || !sxplayerdata_find(c, p[0], end, 0xDFFC, p) || p[0] > end || sxU64(end - p[0]) < 4) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxplayerdata_find(c, p[0], end, 0x4E75, p) || !sxplayerdata_find(c, p[0], end, 0x7E02, p) || !sxplayerdata_word(c, p[0] + 2, w) || !sxplayerdata_signed(p[0] + 2, w[0] << 16 >> 16, end, base) || !sxplayerdata_read(c, base[0], b, 4)) {
+        return false;
+    }
+    var bytes = sxplayerdata_be32(b, 0);
+    if (!bytes || bytes % 12 || !sxplayerdata_span(c, base[0], bytes) || base[0] + bytes > end) {
+        return false;
+    }
+    if (!sxplayerdata_put(c, sxplayerdata_rho_subsong, base[0], Math.floor(bytes / 12))) {
+        return false;
+    }
+    var visited = 0;
+    for (var i = 0; i < Math.floor(bytes / 4) && visited < 65536; i++) {
+        if (!sxplayerdata_read(c, base[0] + i * 4, b, 4)) {
+            return false;
+        }
+        var rel = sxplayerdata_be32(b, 0);
+        var q = [0];
+        if (rel < bytes || !sxplayerdata_signed(base[0], (rel >= SX_I64_MAX ? rel - SX_U64_MAX : rel), end, q)) {
+            continue;
+        }
+        var n = 0;
+        var terminated = false;
+        while (q[0] <= end && n < sxU64(65536 - visited) && sxU64(end - q[0]) >= 4 && n <= Math.floor(sxU64(sxU64(end - q[0]) - 4) / 4)) {
+            if (!sxplayerdata_read(c, q[0] + n * 4, b, 4)) {
+                return false;
+            }
+            var v = sxplayerdata_be32(b, 0);
+            if (!v) {
+                terminated = true;
+                break;
+            }
+            n++;
+        }
+        visited += n + 1;
+        if (n && !sxplayerdata_put(c, sxplayerdata_rho_sequence_pointer, q[0], n)) {
+            return false;
+        }
+        if (terminated && !sxplayerdata_put(c, sxplayerdata_rho_sequence_end, q[0] + n * 4, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxplayerdata_jason(c) {
+    var b = [];
+    if (!sxplayerdata_read(c, 0, b, 50)) {
+        return false;
+    }
+    if (sxplayerdata_be16(b, 0) === 2) {
+        var end = sxplayerdata_be16(b, 48);
+        if (end < 50 || !sxplayerdata_span(c, 0, end)) {
+            return false;
+        }
+        for (var i = 2; i < 48; i = (i + 2) >>> 0) {
+            var v = sxplayerdata_be16(b, i) << 16 >> 16;
+            if (v < 50 || v & 1 || (v & 0xFFFF) >= end) {
+                return false;
+            }
+        }
+        if (!sxplayerdata_put(c, sxplayerdata_jason_page_header, 0, 1)) {
+            return false;
+        }
+        var start = sxplayerdata_be16(b, 2);
+        if (end >= start + 4 && ((end - start - 4) >>> 0) % 4 === 0) {
+            var n = Math.floor(((end - start - 4) >>> 0) / 4);
+            if (n > 32) {
+                n = 32;
+            }
+            if (n && !sxplayerdata_put(c, sxplayerdata_jason_sample_length, start, n)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (sxplayerdata_be16(b, 0) || !sxplayerdata_eq(c, 128, "\x00\x00\x00\x00\x00\x00\x0C\xBE", 8) || !sxplayerdata_eq(c, 3254, "\x00\x03\x08\xBE\x00\x03\t\xBE", 8)) {
+        return false;
+    }
+    var e = [];
+    if (!sxplayerdata_read(c, 2234, e, 4)) {
+        return false;
+    }
+    end = sxplayerdata_be32(e, 0) + 2;
+    if (end < 2236 || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    return sxplayerdata_put(c, sxplayerdata_jason_old_sample_offset, 0, 32) && sxplayerdata_put(c, sxplayerdata_jason_old_music_end, 2234, 1);
+}
+function sxplayerdata_soede(c) {
+    var h = [];
+    var b = [];
+    var size = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var init = [0];
+    var global = [0];
+    var p = [0];
+    var lea = [0];
+    var stop = [0];
+    var limit = size < 131072 ? size : 131072;
+    var v = [0];
+    if (!sxplayerdata_read(c, 0, h, 12) || sxplayerdata_be16(h, 0) !== 0x6000 || sxplayerdata_be16(h, 4) !== 0x6000 || sxplayerdata_be16(h, 8) !== 0x6000 || !sxplayerdata_signed(2, sxplayerdata_be16(h, 2) << 16 >> 16, size, init) || !init[0] || sxAnd64(init[0], 1)) {
+        return false;
+    }
+    if (!sxplayerdata_find(c, init[0], init[0] + 30, 0x47FA, lea) || !sxplayerdata_word(c, lea[0], v) || !sxplayerdata_signed(lea[0], v[0] << 16 >> 16, size, global)) {
+        return false;
+    }
+    if (!sxplayerdata_find(c, lea[0], limit, 0x4E75, stop) || stop[0] < 8) {
+        return false;
+    }
+    var newer = sxplayerdata_eq(c, sxU64(stop[0] - 8), "\x17|\x00\x00", 4);
+    var check = stop[0];
+    if (newer) {
+        if (check < 6) {
+            return false;
+        }
+        check = sxU64(check - 6);
+    }
+    if (check < 6 || !sxplayerdata_eq(c, sxU64(check - 6), "\x00\xBF\xE0\x01", 4)) {
+        return false;
+    }
+    if (!sxplayerdata_find(c, 10, limit, 0x5203, p) || !sxplayerdata_eq(c, p[0] + 10, "\x17|", 2)) {
+        return false;
+    }
+    if (newer) {
+        var meta = [0];
+        var table = [0];
+        var first = [0];
+        if (!sxplayerdata_find(c, init[0], limit, 0x41EB, p) || !sxplayerdata_read(c, p[0], b, 6) || !sxplayerdata_signed(global[0], sxplayerdata_be16(b, 4) << 16 >> 16, size, meta) || meta[0] < 2 || !sxplayerdata_read(c, sxU64(meta[0] - 2), b, 6)) {
+            return false;
+        }
+        var bytes = sxplayerdata_be16(b, 0) << 16 >> 16;
+        var delta = sxplayerdata_be32(b, 2) | 0;
+        var add = [0];
+        if (!sxplayerdata_word(c, p[0], add) || !sxplayerdata_signed(global[0], add[0] << 16 >> 16, size, first) || !sxplayerdata_signed(first[0], delta, size, table)) {
+            return false;
+        }
+        if (bytes <= 0 || bytes % 10 || !sxplayerdata_span(c, table[0], (bytes < 0 ? bytes + SX_U64_MAX : bytes))) {
+            return false;
+        }
+        if (!sxplayerdata_put(c, sxplayerdata_soede_sample_directory, sxU64(meta[0] - 2), 1)) {
+            return false;
+        }
+        return sxplayerdata_put(c, sxplayerdata_soede_new_sample, table[0], Math.floor((bytes < 0 ? bytes + SX_U64_MAX : bytes) / 10));
+    }
+    meta = [0];
+    table = [0];
+    var base = [0];
+    if (!sxplayerdata_find(c, init[0], limit, 0x3D70, p) || !sxplayerdata_find(c, p[0], limit, 0xD5F0, p) || p[0] < 18 || !sxplayerdata_word(c, sxU64(p[0] - 4), v) || !sxplayerdata_signed(global[0], v[0] << 16 >> 16, size, meta) || !sxplayerdata_read(c, meta[0], b, 4) || !sxplayerdata_signed(global[0], sxplayerdata_be32(b, 0) | 0, size, base) || !sxplayerdata_word(c, sxU64(p[0] - 18), v) || !sxplayerdata_signed(base[0], v[0] << 16 >> 16, size, table) || !sxplayerdata_span(c, table[0], 192)) {
+        return false;
+    }
+    return sxplayerdata_put(c, sxplayerdata_soede_old_table_base, meta[0], 1) && sxplayerdata_put(c, sxplayerdata_soede_old_sample_offset, table[0], 32) && sxplayerdata_put(c, sxplayerdata_soede_old_sample_length, table[0] + 128, 32);
+}
+function sx_playerdata_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_ROBHUBBARD_ST_RHO":
+    case "DIE_MUSIC_JASONPAGE":
+    case "DIE_MUSIC_SOEDE_SOUNDMASTER":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_playerdata_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_ROBHUBBARD_ST_RHO":
+        ok = sxplayerdata_rho(c);
+        break;
+    case "DIE_MUSIC_JASONPAGE":
+        ok = sxplayerdata_jason(c);
+        break;
+    case "DIE_MUSIC_SOEDE_SOUNDMASTER":
+        ok = sxplayerdata_soede(c);
+        break;
+    default:
+        return false;
+    }
+    if (c.failed) {
+        return false;
+    }
+    if (!c.count) {
+        return c.f.base_info_handled && c.f.is_valid && c.size > 0 && sx_raw(c, 0, c.size);
+    }
+    return sxplayerdata_finish(c);
+}
+function sx_playerdata_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60A30000 || id >= 0x60A40000) {
+        return true;
+    }
+    if (id === sxplayerdata_rho_subsong.id && r.name === "channel_0_sequence_offset") {
+        return sxSetComment(r, "Byte displacement relative to the anchored SongPtr table start. The first stored displacement divided by12 determines the three-channel subsong table size; no derived count is stored here.");
+    }
+    if (id === sxplayerdata_rho_subsong.id && r.name === "channel_1_sequence_offset") {
+        return sxSetComment(r, "Byte displacement relative to the anchored SongPtr table start. The first stored displacement divided by12 determines the three-channel subsong table size; no derived count is stored here.");
+    }
+    if (id === sxplayerdata_rho_subsong.id && r.name === "channel_2_sequence_offset") {
+        return sxSetComment(r, "Byte displacement relative to the anchored SongPtr table start. The first stored displacement divided by12 determines the three-channel subsong table size; no derived count is stored here.");
+    }
+    if (id === sxplayerdata_rho_sequence_pointer.id && r.name === "track_offset") {
+        return sxSetComment(r, "Byte displacement relative to the anchored SongPtr table start; referenced track bytecode remains raw.");
+    }
+    if (id === sxplayerdata_rho_sequence_end.id && r.name === "end_marker") {
+        return sxSetComment(r, "Zero longword terminates this channel sequence-pointer list.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "format_word") {
+        return sxSetComment(r, "On-disk0002 identity word. The original player modifies a high bit after relocating sample data; that runtime value is not substituted here.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "sample_lengths_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "sound_index_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "sound_data_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_timing_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "sound_priority_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_0_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_1_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_2_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_3_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_4_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_5_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_6_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_index_7_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_0_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_1_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_2_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_3_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_4_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_5_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_6_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "song_data_7_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "track_index_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "track_data_offset") {
+        return sxSetComment(r, "Signed16-bit byte displacement from the module start, as used by original ADDA.W instructions. Sound/song/track program bodies and external samples remain raw.");
+    }
+    if (id === sxplayerdata_jason_page_header.id && r.name === "music_end_offset") {
+        return sxSetComment(r, "Byte offset immediately after the stored music region, relative to the module start. The final four-byte trailer is not interpreted as a sample length.");
+    }
+    if (id === sxplayerdata_jason_sample_length.id && r.name === "byte_length") {
+        return sxSetComment(r, "Stored external sample byte length. The exporter rounds odd lengths for audio loading; the stored number is shown unchanged.");
+    }
+    if (id === sxplayerdata_jason_old_sample_offset.id && r.name === "sample_offset") {
+        return sxSetComment(r, "Byte offset into the separate sample buffer. Adjacent offsets determine lengths; the final sample has an implicit128-byte length, not a stored length field.");
+    }
+    if (id === sxplayerdata_jason_old_music_end.id && r.name === "final_word_offset") {
+        return sxSetComment(r, "Module-relative byte offset of the final two-byte music word; original loader adds2 to obtain the music byte length.");
+    }
+    if (id === sxplayerdata_soede_sample_directory.id && r.name === "table_byte_length") {
+        return sxSetComment(r, "Stored byte extent of the new-format ten-byte sample records. Original pointer arithmetic sign-extends this word; only positive complete extents are followed.");
+    }
+    if (id === sxplayerdata_soede_sample_directory.id && r.name === "table_displacement") {
+        return sxSetComment(r, "Signed byte displacement added to the globals base plus the separately anchored LEA displacement. The physical sample payload starts after table_byte_length bytes of records.");
+    }
+    if (id === sxplayerdata_soede_new_sample.id && r.name === "sample_displacement") {
+        return sxSetComment(r, "Signed byte displacement relative to the sample-data start after the sample-info table. Negative values mark unused entries; no sample payload is decoded.");
+    }
+    if (id === sxplayerdata_soede_new_sample.id && r.name === "length_words") {
+        return sxSetComment(r, "Stored length in two-byte words; zero marks an unused entry. No byte conversion is applied to the displayed value.");
+    }
+    if (id === sxplayerdata_soede_new_sample.id && r.name === "opaque_tail") {
+        return sxSetComment(r, "Four preserved bytes skipped by the retained sample-info loader; no unsupported parameter names are inferred.");
+    }
+    if (id === sxplayerdata_soede_old_table_base.id && r.name === "table_displacement") {
+        return sxSetComment(r, "Signed byte displacement from the anchored globals base to the old-format table region. Original code supplies the separate sample-info and sample-data displacements.");
+    }
+    if (id === sxplayerdata_soede_old_sample_offset.id && r.name === "sample_displacement") {
+        return sxSetComment(r, "Signed byte displacement relative to the separately anchored sample-data base. The corresponding length-word plane controls whether an entry is used.");
+    }
+    if (id === sxplayerdata_soede_old_sample_length.id && r.name === "length_words") {
+        return sxSetComment(r, "Stored length in two-byte words. Original old-format scanner treats values0 and1 as unused; no byte conversion is applied.");
+    }
+    if (r.property & 0x00000004) {
+        return sxSetComment(r, "Stored byte offset relative to the module start, unless the enclosing structure specifies another origin.");
+    }
+    if (r.property & 0x00000002) {
+        return sxSetComment(r, "Encoded target-machine memory address; the field source-file offset is shown separately.");
+    }
+    return true;
+}

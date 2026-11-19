@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apricot/xx_apricot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_apricot_image_header_fields = layout([chars("signature", 22, SIGNATURE), field("opaque_preamble", "byte[106]", 106)]);
+var sxst_apricot_image_header = sxLayout(0x6037000E, "apricot_image_header", LE, sxst_apricot_image_header_fields);
+var sxst_apricot_chunk_fields = layout([u16("kind", ID), u16("tag", SIGNATURE), u16("subtype", ID), u16("header_size", SIZE),
+    i32("data_size", SIZE), field("unknown_0c", "byte[4]", 4)]);
+var sxst_apricot_chunk = sxLayout(0x6037000F, "apricot_chunk", LE, sxst_apricot_chunk_fields);
+var sxst_apricot_run_fields = layout([u16("repeat_count", COUNT), u8("value", ID)]);
+var sxst_apricot_run = sxLayout(0x60370010, "apricot_run", LE, sxst_apricot_run_fields);
+function sxst_apricot(c) {
+    if (!sxst_put(c, sxst_apricot_image_header, 0, 1)) {
+        return false;
+    }
+    var p = 128;
+    var b = [];
+    for (var i = 0; i < 24000 && c.count < 24000; i++) {
+        if (!sxst_read(c, p, b, 16)) {
+            break;
+        }
+        var z = sxst32(b, 8);
+        var h = sxst16(b, 6);
+        if (h < 16 || z > 2147483647 || !sxst_span(c, p, h + z) || !sxst_put(c, sxst_apricot_chunk, p, 1)) {
+            break;
+        }
+        if (sxst16(b, 0) === 1 && sxst16(b, 4) === 0x3E5A && z === 3 && !sxst_put(c, sxst_apricot_run, p + h, 1)) {
+            return false;
+        }
+        p += h + z;
+    }
+    return true;
+}
+function sx_apricot_build(c) {
+    return sxst_apricot(c);
+}

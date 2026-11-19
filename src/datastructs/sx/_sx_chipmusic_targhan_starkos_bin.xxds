@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/targhan_starkos_bin/xx_targhan_starkos_bin_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxchip_starkos_bin(c) {
+    if (!sxchip_span(c, 0, 137) || !sxchip_eq(c, 128, "SK10", 4)) {
+        return false;
+    }
+    return sxchip_put(c, sxchip_chip_amsdos_header, 0, 1) && sxchip_put(c, sxchip_chip_starkos_binary_header, 128, 1);
+}
+function sx_targhan_starkos_bin_build(c) {
+    return sxchip_starkos_bin(c);
+}

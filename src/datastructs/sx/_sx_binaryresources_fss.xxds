@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/fss/xx_fss_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_fss_header_fields = layout([chars("signature", 5, SIGNATURE), u8("marker_05"), bytes("opaque_6", 1), u8("marker_07"),
+    u16("descriptor_count", COUNT), u16("record_count", COUNT), bytes("opaque_c", 2), u16("marker_0e", SIGNATURE)]);
+var sxbrs_fss_header = sxLayout(0x603E0027, "fss_header", LE, sxbrs_fss_header_fields);
+var sxbrs_fss_record_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE), u8("kind", ID),
+    chars("name", 64, STRING), bytes("opaque_49", 1)]);
+var sxbrs_fss_record = sxLayout(0x603E0028, "fss_record", LE, sxbrs_fss_record_fields);
+var sxbrs_fss_end_fields = layout([u32("file_size", SIZE), u32("reserved", RESERVED)]);
+var sxbrs_fss_end = sxLayout(0x603E0029, "fss_end", LE, sxbrs_fss_end_fields);
+function sxbrs_fss(c) {
+    var at = [0];
+    var end = c.size;
+    var d = sxbrs_num(c, 8, 2, false);
+    var n = sxbrs_num(c, 10, 2, false);
+    if (!sxbrs_eq(c, 0, "SSBOB\x01\x00\x01", 8) || d < 2 || d > 128 || n < 2 || n > 128 || sxbrs_num(c, 12, 2, false) || sxbrs_num(c, 14, 2, false) !== 65535) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_fss_header, at, end, 1)) {
+            return false;
+        }
+    }
+    {
+        if (!sxbrs_skip(at, end, sxU64(d - 1) * 12)) {
+            return false;
+        }
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_fss_record, at, end, n)) {
+            return false;
+        }
+    }
+    if (sxbrs_num(c, at[0], 4, false) !== (end < 0 ? end + SX_U64_MAX : end) || sxbrs_num(c, at[0] + 4, 4, false)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_fss_end, at, end, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_fss_build(c) {
+    return sxbrs_fss(c);
+}

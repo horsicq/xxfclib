@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/dms/xx_dms_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_dms_header_fields = layout([chars("signature", 4, SIGNATURE), field("unknown_04", "byte[6]", 6),
+    u16("general_info", FLAGS), u32("creation_time", TIMESTAMP), u16("first_track"), u16("last_track"),
+    u32("packed_size", SIZE), u32("unpacked_size", SIZE), field("unknown_1c", "byte[18]", 18), u16("creator_version"),
+    field("unknown_30", "byte[2]", 2), u16("disk_type", ID), u16("compression_mode", ID), u16("header_crc", CHECKSUM)]);
+var sxsl_dms_header = sxLayout(0x6033003B, "dms_header", BE, sxsl_dms_header_fields);
+var sxsl_dms_track_fields = layout([chars("signature", 2, SIGNATURE), u16("track_number"), u16("reserved", RESERVED),
+    u16("packed_size", SIZE), u16("intermediate_size", SIZE), u16("unpacked_size", SIZE), u8("flags", FLAGS),
+    u8("compression_mode", ID), u16("unpacked_checksum", CHECKSUM), u16("packed_crc", CHECKSUM), u16("header_crc", CHECKSUM)]);
+var sxsl_dms_track = sxLayout(0x6033003C, "dms_track", BE, sxsl_dms_track_fields);
+function sxsl_dms(c) {
+    var b = [];
+    var p = 0;
+    if (!sxsl_read(c, 0, b, 56)) {
+        return false;
+    }
+    if (sxMemcmp(b, "DMS!", 4)) {
+        if (!sxsl_read(c, 0, b, 88) || sxsl_uint(b, 0, 4, true) !== 0x3F3) {
+            return false;
+        }
+        var kind = sxsl_uint(b, 20, 4, true);
+        p = kind === 0x1605 ? 0x58C4 : kind === 0x2462 ? 0x45D0 : kind === 0x2466 ? 0x45E0 : kind === 0x3269 ? 0x537C : 0;
+        if (!p || !sxsl_read(c, p, b, 56) || sxMemcmp(b, "DMS!", 4)) {
+            return false;
+        }
+    }
+    if (!sxsl_put(c, sxsl_dms_header, p, 1)) {
+        return false;
+    }
+    p += 56;
+    for (var i = 0; i < 24000 && c.count < 24000; i++) {
+        if (!sxsl_read(c, p, b, 20) || sxMemcmp(b, "TR", 2)) {
+            break;
+        }
+        var z = sxsl_uint(b, 6, 2, true);
+        if (!sxsl_span(c, p + 20, z) || !sxsl_put(c, sxsl_dms_track, p, 1)) {
+            break;
+        }
+        p += 20 + z;
+    }
+    return true;
+}
+function sx_dms_build(c) {
+    var ok = false;
+    ok = sxsl_dms(c);
+    return ok && sxsl_finish(c);
+}

@@ -1,0 +1,113 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/mcap/xx_mcap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_mcap_magic_fields = layout([bytes("magic", 8, SIGNATURE)]);
+var sxbx_mcap_magic = sxLayout(0x6030000D, "mcap_magic", LE, sxbx_mcap_magic_fields);
+var sxbx_mcap_record_header_fields = layout([u8("opcode", ID), u64("payload_size", SIZE)]);
+var sxbx_mcap_record_header = sxLayout(0x6030000E, "mcap_record_header", LE, sxbx_mcap_record_header_fields);
+var sxbx_mcap_schema_id_fields = layout([u16("schema_id", ID)]);
+var sxbx_mcap_schema_id = sxLayout(0x6030000F, "mcap_schema_id", LE, sxbx_mcap_schema_id_fields);
+var sxbx_mcap_channel_ids_fields = layout([u16("channel_id", ID), u16("schema_id", ID)]);
+var sxbx_mcap_channel_ids = sxLayout(0x60300010, "mcap_channel_ids", LE, sxbx_mcap_channel_ids_fields);
+var sxbx_mcap_message_fields = layout([u16("channel_id", ID), u32("sequence"), u64("log_time"), u64("publish_time")]);
+var sxbx_mcap_message = sxLayout(0x60300011, "mcap_message", LE, sxbx_mcap_message_fields);
+var sxbx_mcap_attachment_times_fields = layout([u64("log_time"), u64("create_time")]);
+var sxbx_mcap_attachment_times = sxLayout(0x60300012, "mcap_attachment_times", LE, sxbx_mcap_attachment_times_fields);
+var sxbx_mcap_footer_fields = layout([u64("summary_start", OFFSET), u64("summary_offset_start", OFFSET),
+    u32("summary_crc", CHECKSUM)]);
+var sxbx_mcap_footer = sxLayout(0x60300013, "mcap_footer", LE, sxbx_mcap_footer_fields);
+var sxbx_mcap_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxbx_mcap_crc = sxLayout(0x60300014, "mcap_crc", LE, sxbx_mcap_crc_fields);
+var sxbx_mcap_map_size_fields = layout([u32("map_size", SIZE)]);
+var sxbx_mcap_map_size = sxLayout(0x60300015, "mcap_map_size", LE, sxbx_mcap_map_size_fields);
+var sxbx_mcap_string_size_fields = layout([u32("byte_size", SIZE)]);
+var sxbx_mcap_string_size = sxLayout(0x60300016, "mcap_string_size", LE, sxbx_mcap_string_size_fields);
+var sxbx_mcap_data_size_fields = layout([u32("byte_size", SIZE)]);
+var sxbx_mcap_data_size = sxLayout(0x60300017, "mcap_data_size", LE, sxbx_mcap_data_size_fields);
+var sxbx_mcap_attachment_size_fields = layout([u64("byte_size", SIZE)]);
+var sxbx_mcap_attachment_size = sxLayout(0x60300018, "mcap_attachment_size", LE, sxbx_mcap_attachment_size_fields);
+function sxbx_mcap_map(c, p, end) {
+    var z = [0];
+    if (p[0] > end || sxU64(end - p[0]) < 4 || !sxbx_word(c, p[0], 4, false, z) || z[0] > sxU64(sxU64(end - p[0]) - 4) || !sxbx_add(c, sxbx_mcap_map_size, p[0])) {
+        return false;
+    }
+    p[0] += 4;
+    var stop = p[0] + z[0];
+    for (var i = 0; p[0] < stop && i < 128; i++) {
+        if (!sxbx_counted(c, p, stop, sxbx_mcap_string_size, 4, false, 1) || !sxbx_counted(c, p, stop, sxbx_mcap_string_size, 4, false, 1)) {
+            return false;
+        }
+    }
+    return p[0] === stop;
+}
+function sxbx_mcap(c) {
+    var b = [];
+    var p = 8;
+    if (!sxbx_add(c, sxbx_mcap_magic, 0)) {
+        return false;
+    }
+    while (c.count < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (sxbx_read(c, p, b, 8) && !sxMemcmp(b, "\x89MCAP0\r\n", 8)) {
+            return sxbx_add(c, sxbx_mcap_magic, p);
+        }
+        if (!sxbx_read(c, p, b, 9)) {
+            break;
+        }
+        var z = sxbx_uint(b, 1, 8, false);
+        if (!sxbx_span(c, p + 9, z)) {
+            break;
+        }
+        if (!sxbx_add(c, sxbx_mcap_record_header, p)) {
+            return false;
+        }
+        var q = [p + 9];
+        var end = q[0] + z;
+        var keep = c.count;
+        var ok = true;
+        switch (b[0]) {
+        case 1:
+            ok = sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1);
+            break;
+        case 2:
+            ok = z === 20 && sxbx_add(c, sxbx_mcap_footer, q[0]);
+            break;
+        case 3:
+            ok = z >= 2 && sxbx_add(c, sxbx_mcap_schema_id, q[0]);
+            q[0] += 2;
+            ok = ok && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_counted(c, q, end, sxbx_mcap_data_size, 4, false, 1);
+            break;
+        case 4:
+            ok = z >= 4 && sxbx_add(c, sxbx_mcap_channel_ids, q[0]);
+            q[0] += 4;
+            ok = ok && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_mcap_map(c, q, end);
+            break;
+        case 5:
+            ok = z >= 22 && sxbx_add(c, sxbx_mcap_message, q[0]);
+            break;
+        case 9:
+            ok = z >= 16 && sxbx_add(c, sxbx_mcap_attachment_times, q[0]);
+            q[0] += 16;
+            ok = ok && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_counted(c, q, end, sxbx_mcap_attachment_size, 8, false, 1) && sxU64(end - q[0]) === 4 && sxbx_add(c, sxbx_mcap_crc, q[0]);
+            break;
+        case 12:
+            ok = sxbx_counted(c, q, end, sxbx_mcap_string_size, 4, false, 1) && sxbx_mcap_map(c, q, end);
+            break;
+        case 15:
+            ok = z === 4 && sxbx_add(c, sxbx_mcap_crc, q[0]);
+            break;
+        default:
+            break;
+        }
+        if (!ok) {
+            c.count = keep;
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_mcap_build(c) {
+    return sxbx_mcap(c);
+}

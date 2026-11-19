@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lingvoarc/xx_lingvoarc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_lingvo_header_fields = layout([chars("signature", 9, SIGNATURE), chars("version", 1, NONE),
+    bytes("marker", 6, SIGNATURE), u16("member_count", COUNT)]);
+var sxap_lingvo_header = sxLayout(0x60720003, "lingvo_header", LE, sxap_lingvo_header_fields);
+var sxap_lingvo_index_v1_fields = layout([chars("name", 46, NONE), u32("descriptor_offset", OFFSET), bytes("unknown", 4)]);
+var sxap_lingvo_index_v1 = sxLayout(0x60720004, "lingvo_index_v1", LE, sxap_lingvo_index_v1_fields);
+var sxap_lingvo_member_v1_fields = layout([chars("name", 13, NONE), u32("payload_size", SIZE), u32("dos_datetime"),
+    u16("fragment_method")]);
+var sxap_lingvo_member_v1 = sxLayout(0x60720005, "lingvo_member_v1", LE, sxap_lingvo_member_v1_fields);
+var sxap_lingvo_index_v2_fields = layout([chars("name", 101, NONE), u32("descriptor_offset", OFFSET), bytes("unknown", 4)]);
+var sxap_lingvo_index_v2 = sxLayout(0x60720006, "lingvo_index_v2", LE, sxap_lingvo_index_v2_fields);
+var sxap_lingvo_member_v2_fields = layout([chars("name", 61, NONE), u32("payload_size", SIZE), u32("dos_datetime"),
+    u16("fragment_method")]);
+var sxap_lingvo_member_v2 = sxLayout(0x60720007, "lingvo_member_v2", LE, sxap_lingvo_member_v2_fields);
+var sxap_finear_header_fields = layout([chars("signature", 6, SIGNATURE), bytes("marker", 3, SIGNATURE),
+    u32("crc16_word", CHECKSUM), u32("uncompressed_size", SIZE)]);
+var sxap_finear_header = sxLayout(0x60720008, "finear_header", LE, sxap_finear_header_fields);
+var sxap_lingvo_stream_header_fields = layout([chars("signature", 10, SIGNATURE), bytes("parameters", 16)]);
+var sxap_lingvo_stream_header = sxLayout(0x60720009, "lingvo_stream_header", LE, sxap_lingvo_stream_header_fields);
+var sxap_lingvo_code_length_fields = layout([u8("code_bits")]);
+var sxap_lingvo_code_length = sxLayout(0x6072000A, "lingvo_code_length", LE, sxap_lingvo_code_length_fields);
+function sxap_lingvo(c) {
+    var h = [];
+    if (!sxap_read(c, 0, h, 18)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "LingvoArch", 10)) {
+        return sxap_add(c, sxap_lingvo_stream_header, 0) && sxap_table(c, sxap_lingvo_code_length, 26, 1, 321);
+    }
+    var count = sxap_uint(h, 16, 2, false);
+    var is2 = (h[9] === 50 /*2*/ ? 1 : 0);
+    var width = is2 ? 109 : 54;
+    var names = is2 ? 101 : 46;
+    var desc = is2 ? 71 : 23;
+    var p = 18;
+    if (!sxap_add(c, sxap_lingvo_header, 0) || !sxap_table(c, is2 ? sxap_lingvo_index_v2 : sxap_lingvo_index_v1, p, width, count)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        var q = [0];
+        var z = [0];
+        var method = [0];
+        if (!sxap_word(c, p + i * width + names, 4, false, q) || !sxap_add(c, is2 ? sxap_lingvo_member_v2 : sxap_lingvo_member_v1, q[0]) || !sxap_word(c, sxU64(q[0] + desc - 10), 4, false, z) || !sxap_word(c, sxU64(q[0] + desc - 2), 2, false, method)) {
+            return false;
+        }
+        q[0] += desc;
+        if ((method[0] === 0 || method[0] === 6) && z[0] >= 17 && sxap_span(c, q[0], z[0]) && sxap_read(c, q[0], h, 9) && !sxMemcmp(h, "FINEAR\xDD\x88\xDD", 9) && !sxap_add(c, sxap_finear_header, q[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_lingvoarc_build(c) {
+    return sxap_lingvo(c);
+}

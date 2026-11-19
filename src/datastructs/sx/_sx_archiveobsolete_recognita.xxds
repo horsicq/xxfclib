@@ -1,0 +1,26 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/recognita/xx_recognita_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_recognita_member_fields = layout([chars("name", 13, NONE), i32("uncompressed_size", SIZE), u16("dos_time"),
+    u16("dos_date"), u32("next_header_offset", OFFSET)]);
+var sxao_recognita_member = sxLayout(0x60700026, "recognita_member", LE, sxao_recognita_member_fields);
+function sxao_recognita(c) {
+    var p = 0;
+    while (sxao_span(c, p, 25)) {
+        var next = [0];
+        if (!sxao_word(c, p + 21, 4, false, next) || !sxao_add(c, sxao_recognita_member, p) || next[0] <= p + 25 || next[0] > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return false;
+        }
+        if (!sxao_dcl(c, p + 25, sxU64(sxU64(next[0] - p) - 25))) {
+            return false;
+        }
+        p = next[0];
+    }
+    return true;
+}
+function sx_recognita_build(c) {
+    return sxao_recognita(c);
+}

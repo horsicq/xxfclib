@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/pcinstall/xx_pcinstall_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_pcinstall_header_fields = layout([bytes("zero", 13), u8("tag", SIGNATURE), u16("member_count", COUNT),
+    u32("tag2", SIGNATURE), bytes("reserved", 36)]);
+var sxan_pcinstall_header = sxLayout(0x60770013, "pcinstall_header", LE, sxan_pcinstall_header_fields);
+var sxan_pcinstall_member_fields = layout([chars("name", 20, NONE), u32("compressed_size", SIZE), u16("dos_date"),
+    u16("dos_time"), bytes("reserved", 20)]);
+var sxan_pcinstall_member = sxLayout(0x60770014, "pcinstall_member", LE, sxan_pcinstall_member_fields);
+function sxan_pcinstall(c) {
+    var n = [0];
+    var p = 56;
+    var z = [0];
+    if (!sxan_add(c, sxan_pcinstall_header, 0) || !sxan_word(c, 14, 2, false, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxan_add(c, sxan_pcinstall_member, p) || !sxan_word(c, p + 20, 4, false, z)) {
+            return false;
+        }
+        p += 48;
+        if (!sxan_span(c, p, z[0])) {
+            return true;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_pcinstall_build(c) {
+    var ok = false;
+    ok = sxan_pcinstall(c);
+    return !!(c.count && sxan_finish(c));
+}

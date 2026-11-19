@@ -1,0 +1,182 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// XZ: streams of a header, blocks (header, compressed data, padding, check),
+// an index and a footer, optionally followed by stream padding. Where the
+// streams and blocks are comes from the reader's index walk:
+//
+//   Format.table("streams") - one row per stream, offsets from the format start
+//     header                 stream header (12 bytes)
+//     index, indexSize       the index
+//     footer                 stream footer (12 bytes)
+//     padding, paddingSize   stream padding after the footer
+//     firstBlock, blockCount the stream's rows in the blocks table
+//
+//   Format.table("blocks") - one row per block of all streams
+//     header, headerSize     block header
+//     data, dataSize         compressed data
+//     padding, paddingSize   block padding
+//     check, checkSize       the block check
+//
+// The reader accepted the file only after checking the CRC32 of every block
+// header and index, so the records are decoded here without checking them
+// again.
+
+function fileTypes() { return ["XZ"]; }
+
+var FILTER_NAMES = {
+    3: "LZMA_FILTER_DELTA", 4: "LZMA_FILTER_X86", 5: "LZMA_FILTER_POWERPC", 6: "LZMA_FILTER_IA64",
+    7: "LZMA_FILTER_ARM", 8: "LZMA_FILTER_ARMTHUMB", 9: "LZMA_FILTER_SPARC", 10: "LZMA_FILTER_ARM64",
+    11: "LZMA_FILTER_RISCV", 33: "LZMA_FILTER_LZMA2" };
+var CHECK_NAMES = { 0: "LZMA_CHECK_NONE", 1: "LZMA_CHECK_CRC32", 4: "LZMA_CHECK_CRC64", 10: "LZMA_CHECK_SHA256" };
+
+function structs() {
+    return [
+        { id: 1, name: "STREAM_HEADER", fields: [
+            bytes("magic", 6, ID), u16("stream_flags", FLAGS, streamFlagsComment), u32("header_crc32", CHECKSUM) ] },
+        { id: 2, name: "BLOCK_HEADER", fields: blockHeaderFields },
+        { id: 3, name: "BLOCK_DATA" },
+        { id: 4, name: "BLOCK_PADDING" },
+        { id: 5, name: "BLOCK_CHECK", fields: function (ds) { return [ at(0, field("check", "uint8[]", ds.totalSize, CHECKSUM)) ]; } },
+        { id: 6, name: "INDEX", fields: indexFields },
+        { id: 7, name: "STREAM_FOOTER", fields: [
+            u32("footer_crc32", CHECKSUM),
+            u32("backward_size", SIZE, function (value) { return "Index size: " + bytesText((value + 1) * 4); }),
+            u16("stream_flags", FLAGS, streamFlagsComment), u16("magic", ID) ] },
+        { id: 8, name: "STREAM_PADDING" }
+    ];
+}
+
+function streamFlagsComment(value) {
+    return CHECK_NAMES[(value >> 8) & 15];
+}
+
+// A byte count as xx_str_bytes_count_to_string (base 1024) writes it.
+function bytesText(value) {
+    var divisor = 1024, unit = "KiB";
+    if (value < 1024) return value + " Bytes";
+    if (value >= 1048576) { divisor = 1048576; unit = "MiB"; }
+    if (value >= 1073741824) { divisor = 1073741824; unit = "GiB"; }
+    if (value >= 1099511627776) { divisor = 1099511627776; unit = "TiB"; }
+    return (value / divisor).toFixed(2) + " " + unit;
+}
+
+// XZ variable-length integer at `position`, read below `limit`:
+// { value, width } or null (at most 9 bytes, no trailing zero byte).
+function xzVli(position, limit) {
+    var value = 0, scale = 1, i, b;
+    for (i = 0; i < 9; i++) {
+        if (position + i >= limit) return null;
+        b = File.u8(position + i);
+        value += (b & 0x7F) * scale;
+        if ((b & 0x80) === 0) {
+            if ((i !== 0 && b === 0) || value > 9223372036854775807) return null;
+            return { value: value, width: i + 1 };
+        }
+        scale *= 128;
+    }
+    return null;
+}
+
+// A block header and an index end with the CRC-32 of everything before it.
+function crcMatches(offset, size) {
+    return File.valid(offset, size + 4) && File.crc32(offset, size) === File.u32(offset + size);
+}
+
+// A vli record: raw bytes as stored, the decoded value displayed (hex for an
+// id), a byte-count comment for a size, the filter name for a filter id.
+function vliField(name, offset, v, role) {
+    var f = { name: name, type: "vli", offset: offset, size: v.width, role: role, endian: BE }, value = v.value;
+    f.logical = function () { return value; };   // the record value is the decoded integer (uint64)
+    f.display = function () { return role & ID ? Util.hex(value) : "" + value; };
+    if (role & SIZE) f.comment = function () { return bytesText(value); };
+    else if (role & ID) f.comment = function () { return FILTER_NAMES[value]; };
+    return f;
+}
+
+function blockHeaderFields(ds) {
+    var total = ds.totalSize, base = ds.offset, limit, flags, cursor, fields, v, i, properties;
+    if (total < 8 || total > 1024 || total % 4 !== 0) return undefined;
+    if (!crcMatches(base, total - 4)) return undefined;
+    flags = File.u8(base + 1);
+    if (File.u8(base) === 0 || (File.u8(base) + 1) * 4 !== total || (flags & 0x3C)) return undefined;
+    limit = total - 4;
+    fields = [
+        u8("header_size", SIZE, function (value) { return "Header size: " + bytesText((value + 1) * 4); }),
+        u8("block_flags", FLAGS, function (value) {
+            return "FilterCount=" + ((value & 3) + 1) + (value & 0x40 ? "|CompressedSizePresent" : "") + (value & 0x80 ? "|UncompressedSizePresent" : "");
+        }) ];
+    fields = layout(fields);
+    cursor = 2;
+    if (flags & 0x40) {
+        if (!(v = xzVli(base + cursor, base + limit))) return undefined;
+        fields.push(vliField("compressed_size", cursor, v, SIZE));
+        cursor += v.width;
+    }
+    if (flags & 0x80) {
+        if (!(v = xzVli(base + cursor, base + limit))) return undefined;
+        fields.push(vliField("uncompressed_size", cursor, v, SIZE));
+        cursor += v.width;
+    }
+    for (i = 0; i <= (flags & 3); i++) {
+        if (!(v = xzVli(base + cursor, base + limit))) return undefined;
+        fields.push(vliField("filters[" + i + "].id", cursor, v, ID));
+        cursor += v.width;
+        if (!(v = xzVli(base + cursor, base + limit))) return undefined;
+        fields.push(vliField("filters[" + i + "].properties_size", cursor, v, SIZE));
+        cursor += v.width;
+        properties = v.value;
+        if (properties > 1024 || properties > limit - cursor) return undefined;
+        if (properties) {
+            fields.push(at(cursor, field("filters[" + i + "].properties", "uint8[]", properties, NONE)));
+            cursor += properties;
+        }
+    }
+    if (cursor < limit) fields.push(at(cursor, field("header_padding", "uint8[]", limit - cursor, RESERVED)));
+    for (; cursor < limit; cursor++) if (File.u8(base + cursor) !== 0) return undefined;
+    fields.push(at(limit, u32("header_crc32", CHECKSUM)));
+    return fields;
+}
+
+function indexFields(ds) {
+    var total = ds.totalSize, base = ds.offset, limit, count, cursor, fields, v, i, padding;
+    if (total < 8 || total > 64 * 1024 * 1024 || total % 4 !== 0) return undefined;
+    if (!crcMatches(base, total - 4)) return undefined;
+    limit = total - 4;
+    if (File.u8(base) !== 0) return undefined;
+    if (!(count = xzVli(base + 1, base + limit)) || count.value > 1000000) return undefined;
+    fields = [ at(0, u8("indicator", ID)), vliField("record_count", 1, count, COUNT) ];
+    cursor = 1 + count.width;
+    for (i = 0; i < count.value; i++) {
+        if (!(v = xzVli(base + cursor, base + limit)) || v.value === 0) return undefined;
+        fields.push(vliField("records[" + i + "].unpadded_size", cursor, v, SIZE));
+        cursor += v.width;
+        if (!(v = xzVli(base + cursor, base + limit))) return undefined;
+        fields.push(vliField("records[" + i + "].uncompressed_size", cursor, v, SIZE));
+        cursor += v.width;
+    }
+    padding = (4 - (cursor % 4)) % 4;
+    if (cursor + padding !== limit) return undefined;
+    for (i = cursor; i < limit; i++) if (File.u8(base + i) !== 0) return undefined;
+    if (padding) fields.push(at(cursor, field("index_padding", "uint8[]", padding, RESERVED)));
+    fields.push(at(limit, u32("index_crc32", CHECKSUM)));
+    return fields;
+}
+
+function scan() {
+    var streams = Format.table("streams"), blocks = Format.table("blocks"), s, b, stream, block;
+    for (s = 0; s < streams.length; s++) {
+        stream = streams[s];
+        Structs.add("STREAM_HEADER", stream.header, 12);
+        for (b = 0; b < stream.blockCount; b++) {
+            block = blocks[stream.firstBlock + b];
+            Structs.add("BLOCK_HEADER", block.header, block.headerSize);
+            if (block.dataSize) Structs.add("BLOCK_DATA", block.data, block.dataSize, RAW);
+            if (block.paddingSize) Structs.add("BLOCK_PADDING", block.padding, block.paddingSize, RAW);
+            if (block.checkSize) Structs.add("BLOCK_CHECK", block.check, block.checkSize);
+        }
+        Structs.add("INDEX", stream.index, stream.indexSize);
+        Structs.add("STREAM_FOOTER", stream.footer, 12, FOOTER);
+        if (stream.paddingSize) Structs.add("STREAM_PADDING", stream.padding, stream.paddingSize, RAW);
+    }
+}

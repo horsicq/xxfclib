@@ -1,0 +1,153 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binaryextra.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_binaryextra");
+include("_sx_binaryextra_adobe_acb");
+include("_sx_binaryextra_capnproto_message");
+include("_sx_binaryextra_clp");
+include("_sx_binaryextra_enigma_virtual_box");
+include("_sx_binaryextra_gguf");
+include("_sx_binaryextra_gta_img");
+include("_sx_binaryextra_jks_keystore");
+include("_sx_binaryextra_kafka_record_batch");
+include("_sx_binaryextra_kerberos_ccache");
+include("_sx_binaryextra_kerberos_keytab");
+include("_sx_binaryextra_lbrcobol");
+include("_sx_binaryextra_lmd_container");
+include("_sx_binaryextra_mcap");
+include("_sx_binaryextra_nvp");
+include("_sx_binaryextra_pam_pak");
+include("_sx_binaryextra_pfpk");
+include("_sx_binaryextra_pyinstaller_one_executable");
+include("_sx_binaryextra_pyz");
+include("_sx_binaryextra_starkit");
+include("_sx_binaryextra_vice_snapshot");
+include("_sx_binaryextra_windows_evtx");
+include("_sx_binaryextra_windows_registry_hive");
+
+function fileTypes() { return ["LBRCOBOL", "PYZ", "CLP", "STARKIT", "PYINSTALLER_ONE_EXECUTABLE", "LMD_CONTAINER",
+    "VICE_SNAPSHOT", "MCAP", "WINDOWS_REGISTRY_HIVE", "WINDOWS_EVTX", "KAFKA_RECORD_BATCH", "CAPNPROTO_MESSAGE",
+    "KERBEROS_KEYTAB", "JKS_KEYSTORE", "ADOBE_ACB", "GGUF", "KERBEROS_CCACHE", "ENIGMA_VIRTUAL_BOX", "NVP", "GTA_IMG",
+    "PAM_PAK", "PFPK"]; }
+
+var sx_binaryextra_layouts = [sxbx_clp_header, sxbx_clp_record, sxbx_lmd_header, sxbx_lmd_record_offset, sxbx_lmd_flags,
+    sxbx_lmd_name_length, sxbx_lmd_optional_value, sxbx_lmd_bitmap_size, sxbx_lmd_block_header, sxbx_vice_snapshot_header,
+    sxbx_vice_version_header, sxbx_vice_module_header, sxbx_mcap_magic, sxbx_mcap_record_header, sxbx_mcap_schema_id,
+    sxbx_mcap_channel_ids, sxbx_mcap_message, sxbx_mcap_attachment_times, sxbx_mcap_footer, sxbx_mcap_crc, sxbx_mcap_map_size,
+    sxbx_mcap_string_size, sxbx_mcap_data_size, sxbx_mcap_attachment_size, sxbx_regf_header, sxbx_regf_checksum, sxbx_regf_hbin,
+    sxbx_regf_cell, sxbx_regf_nk, sxbx_regf_sk, sxbx_regf_list, sxbx_regf_list_offset, sxbx_regf_list_hash, sxbx_regf_vk,
+    sxbx_regf_db, sxbx_evtx_header, sxbx_evtx_chunk, sxbx_evtx_string_offset, sxbx_evtx_template_offset, sxbx_evtx_record,
+    sxbx_evtx_record_trailer, sxbx_kafka_batch, sxbx_kafka_attributes, sxbx_kafka_record_size1, sxbx_kafka_record_size2,
+    sxbx_kafka_record_size3, sxbx_kafka_record_size4, sxbx_kafka_record_size5, sxbx_kafka_record_size6, sxbx_kafka_record_size7,
+    sxbx_kafka_record_size8, sxbx_kafka_record_size9, sxbx_kafka_record_size10, sxbx_kafka_timestamp_delta1,
+    sxbx_kafka_timestamp_delta2, sxbx_kafka_timestamp_delta3, sxbx_kafka_timestamp_delta4, sxbx_kafka_timestamp_delta5,
+    sxbx_kafka_timestamp_delta6, sxbx_kafka_timestamp_delta7, sxbx_kafka_timestamp_delta8, sxbx_kafka_timestamp_delta9,
+    sxbx_kafka_timestamp_delta10, sxbx_kafka_offset_delta1, sxbx_kafka_offset_delta2, sxbx_kafka_offset_delta3,
+    sxbx_kafka_offset_delta4, sxbx_kafka_offset_delta5, sxbx_kafka_offset_delta6, sxbx_kafka_offset_delta7,
+    sxbx_kafka_offset_delta8, sxbx_kafka_offset_delta9, sxbx_kafka_offset_delta10, sxbx_kafka_nullable_size1,
+    sxbx_kafka_nullable_size2, sxbx_kafka_nullable_size3, sxbx_kafka_nullable_size4, sxbx_kafka_nullable_size5,
+    sxbx_kafka_nullable_size6, sxbx_kafka_nullable_size7, sxbx_kafka_nullable_size8, sxbx_kafka_nullable_size9,
+    sxbx_kafka_nullable_size10, sxbx_kafka_header_count1, sxbx_kafka_header_count2, sxbx_kafka_header_count3,
+    sxbx_kafka_header_count4, sxbx_kafka_header_count5, sxbx_kafka_header_count6, sxbx_kafka_header_count7,
+    sxbx_kafka_header_count8, sxbx_kafka_header_count9, sxbx_kafka_header_count10, sxbx_kafka_header_key_size1,
+    sxbx_kafka_header_key_size2, sxbx_kafka_header_key_size3, sxbx_kafka_header_key_size4, sxbx_kafka_header_key_size5,
+    sxbx_kafka_header_key_size6, sxbx_kafka_header_key_size7, sxbx_kafka_header_key_size8, sxbx_kafka_header_key_size9,
+    sxbx_kafka_header_key_size10, sxbx_capnp_segment_table, sxbx_capnp_struct_pointer, sxbx_capnp_list_pointer,
+    sxbx_capnp_composite_tag, sxbx_capnp_null_pointer, sxbx_acb_header, sxbx_acb_string_length, sxbx_acb_palette,
+    sxbx_acb_color_rgb, sxbx_acb_color_cmyk, sxbx_acb_color_lab, sxbx_acb_trailer, sxbx_keytab_header, sxbx_keytab_entry_length,
+    sxbx_keytab_component_count, sxbx_keytab_string_length, sxbx_kerberos_name_type, sxbx_keytab_key, sxbx_keytab_extended_kvno,
+    sxbx_ccache_header, sxbx_ccache_tag, sxbx_ccache_time_offset, sxbx_ccache_principal, sxbx_ccache_blob_size, sxbx_ccache_key,
+    sxbx_ccache_times_flags, sxbx_ccache_list_count, sxbx_ccache_typed_blob, sxbx_jks_header, sxbx_jks_entry_tag,
+    sxbx_jks_string_size, sxbx_jks_timestamp, sxbx_jks_blob_size, sxbx_jks_certificate_count, sxbx_jks_digest, sxbx_gguf_header,
+    sxbx_gguf_string_size, sxbx_gguf_value_type, sxbx_gguf_array, sxbx_gguf_value0, sxbx_gguf_value1, sxbx_gguf_value2,
+    sxbx_gguf_value3, sxbx_gguf_value4, sxbx_gguf_value5, sxbx_gguf_value6, sxbx_gguf_value7, sxbx_gguf_value10,
+    sxbx_gguf_value11, sxbx_gguf_value12, sxbx_gguf_dimensions, sxbx_gguf_dimension, sxbx_gguf_tensor_storage, sxbx_nvp_header,
+    sxbx_nvp_directory, sxbx_nvp_record, sxbx_nvp_jpeg_size, sxbx_nvp_string_list, sxbx_lbrcobol_title,
+    sxbx_lbrcobol_directory_header, sxbx_lbrcobol_header_constants, sxbx_lbrcobol_member, sxbx_lbrcobol_member_tail,
+    sxbx_pyz_header_le, sxbx_pyz_header_be, sxbx_pyz_marshal_tag, sxbx_pyz_marshal_int32, sxbx_pyz_marshal_int64,
+    sxbx_pyz_marshal_length, sxbx_pyz_marshal_count, sxbx_pyz_marshal_short_count, sxbx_pyz_marshal_short_length,
+    sxbx_pyz_marshal_reference, sxbx_pyz_marshal_long_digits, sxbx_pyz_marshal_digit, sxbx_pyinstaller_cookie24,
+    sxbx_pyinstaller_library, sxbx_pyinstaller_toc, sxbx_starkit_header, sxbx_starkit_commit, sxbx_starkit_root_prefix,
+    sxbx_starkit_row_count1, sxbx_starkit_row_count2, sxbx_starkit_row_count3, sxbx_starkit_row_count4, sxbx_starkit_row_count5,
+    sxbx_starkit_row_count6, sxbx_starkit_row_count7, sxbx_starkit_row_count8, sxbx_starkit_row_count9,
+    sxbx_starkit_column_size1, sxbx_starkit_column_size2, sxbx_starkit_column_size3, sxbx_starkit_column_size4,
+    sxbx_starkit_column_size5, sxbx_starkit_column_size6, sxbx_starkit_column_size7, sxbx_starkit_column_size8,
+    sxbx_starkit_column_size9, sxbx_starkit_column_offset1, sxbx_starkit_column_offset2, sxbx_starkit_column_offset3,
+    sxbx_starkit_column_offset4, sxbx_starkit_column_offset5, sxbx_starkit_column_offset6, sxbx_starkit_column_offset7,
+    sxbx_starkit_column_offset8, sxbx_starkit_column_offset9, sxbx_starkit_memo_row_delta1, sxbx_starkit_memo_row_delta2,
+    sxbx_starkit_memo_row_delta3, sxbx_starkit_memo_row_delta4, sxbx_starkit_memo_row_delta5, sxbx_starkit_memo_row_delta6,
+    sxbx_starkit_memo_row_delta7, sxbx_starkit_memo_row_delta8, sxbx_starkit_memo_row_delta9, sxbx_starkit_view_tag1,
+    sxbx_starkit_view_tag2, sxbx_starkit_view_tag3, sxbx_starkit_view_tag4, sxbx_starkit_view_tag5, sxbx_starkit_view_tag6,
+    sxbx_starkit_view_tag7, sxbx_starkit_view_tag8, sxbx_starkit_view_tag9, sxbx_evb_header, sxbx_evb_table_prefix,
+    sxbx_evb_node, sxbx_evb_node_type, sxbx_evb_file_stored_size, sxbx_gta_img_header, sxbx_gta_img_entry, sxbx_pam_pak_header,
+    sxbx_pam_pak_data, sxbx_pam_pak_directory_marker, sxbx_pam_pak_index, sxbx_pfpk_header, sxbx_pfpk_name_size,
+    sxbx_pfpk_member, sxbx_pyz_marshal_offset32, sxbx_pyz_marshal_size32, sxbx_pyz_marshal_offset64, sxbx_pyz_marshal_size64,
+    sxbx_evb_file_modern, sxbx_evb_file_legacy, sxbx_evb_chunk_header, sxbx_evb_chunk_entry, sxbx_evb_ap32];
+
+function structs() {
+    return sxCatalog([sxbx_clp_header, sxbx_clp_record, sxbx_lmd_header, sxbx_lmd_record_offset, sxbx_lmd_flags,
+        sxbx_lmd_name_length, sxbx_lmd_optional_value, sxbx_lmd_bitmap_size, sxbx_lmd_block_header, sxbx_vice_snapshot_header,
+        sxbx_vice_version_header, sxbx_vice_module_header, sxbx_mcap_magic, sxbx_mcap_record_header, sxbx_mcap_schema_id,
+        sxbx_mcap_channel_ids, sxbx_mcap_message, sxbx_mcap_attachment_times, sxbx_mcap_footer, sxbx_mcap_crc,
+        sxbx_mcap_map_size, sxbx_mcap_string_size, sxbx_mcap_data_size, sxbx_mcap_attachment_size, sxbx_regf_header,
+        sxbx_regf_checksum, sxbx_regf_hbin, sxbx_regf_cell, sxbx_regf_nk, sxbx_regf_sk, sxbx_regf_list, sxbx_regf_list_offset,
+        sxbx_regf_list_hash, sxbx_regf_vk, sxbx_regf_db, sxbx_evtx_header, sxbx_evtx_chunk, sxbx_evtx_string_offset,
+        sxbx_evtx_template_offset, sxbx_evtx_record, sxbx_evtx_record_trailer, sxbx_kafka_batch, sxbx_kafka_attributes,
+        sxbx_kafka_record_size1, sxbx_kafka_record_size2, sxbx_kafka_record_size3, sxbx_kafka_record_size4,
+        sxbx_kafka_record_size5, sxbx_kafka_record_size6, sxbx_kafka_record_size7, sxbx_kafka_record_size8,
+        sxbx_kafka_record_size9, sxbx_kafka_record_size10, sxbx_kafka_timestamp_delta1, sxbx_kafka_timestamp_delta2,
+        sxbx_kafka_timestamp_delta3, sxbx_kafka_timestamp_delta4, sxbx_kafka_timestamp_delta5, sxbx_kafka_timestamp_delta6,
+        sxbx_kafka_timestamp_delta7, sxbx_kafka_timestamp_delta8, sxbx_kafka_timestamp_delta9, sxbx_kafka_timestamp_delta10,
+        sxbx_kafka_offset_delta1, sxbx_kafka_offset_delta2, sxbx_kafka_offset_delta3, sxbx_kafka_offset_delta4,
+        sxbx_kafka_offset_delta5, sxbx_kafka_offset_delta6, sxbx_kafka_offset_delta7, sxbx_kafka_offset_delta8,
+        sxbx_kafka_offset_delta9, sxbx_kafka_offset_delta10, sxbx_kafka_nullable_size1, sxbx_kafka_nullable_size2,
+        sxbx_kafka_nullable_size3, sxbx_kafka_nullable_size4, sxbx_kafka_nullable_size5, sxbx_kafka_nullable_size6,
+        sxbx_kafka_nullable_size7, sxbx_kafka_nullable_size8, sxbx_kafka_nullable_size9, sxbx_kafka_nullable_size10,
+        sxbx_kafka_header_count1, sxbx_kafka_header_count2, sxbx_kafka_header_count3, sxbx_kafka_header_count4,
+        sxbx_kafka_header_count5, sxbx_kafka_header_count6, sxbx_kafka_header_count7, sxbx_kafka_header_count8,
+        sxbx_kafka_header_count9, sxbx_kafka_header_count10, sxbx_kafka_header_key_size1, sxbx_kafka_header_key_size2,
+        sxbx_kafka_header_key_size3, sxbx_kafka_header_key_size4, sxbx_kafka_header_key_size5, sxbx_kafka_header_key_size6,
+        sxbx_kafka_header_key_size7, sxbx_kafka_header_key_size8, sxbx_kafka_header_key_size9, sxbx_kafka_header_key_size10,
+        sxbx_capnp_segment_table, sxbx_capnp_struct_pointer, sxbx_capnp_list_pointer, sxbx_capnp_composite_tag,
+        sxbx_capnp_null_pointer, sxbx_acb_header, sxbx_acb_string_length, sxbx_acb_palette, sxbx_acb_color_rgb,
+        sxbx_acb_color_cmyk, sxbx_acb_color_lab, sxbx_acb_trailer, sxbx_keytab_header, sxbx_keytab_entry_length,
+        sxbx_keytab_component_count, sxbx_keytab_string_length, sxbx_kerberos_name_type, sxbx_keytab_key,
+        sxbx_keytab_extended_kvno, sxbx_ccache_header, sxbx_ccache_tag, sxbx_ccache_time_offset, sxbx_ccache_principal,
+        sxbx_ccache_blob_size, sxbx_ccache_key, sxbx_ccache_times_flags, sxbx_ccache_list_count, sxbx_ccache_typed_blob,
+        sxbx_jks_header, sxbx_jks_entry_tag, sxbx_jks_string_size, sxbx_jks_timestamp, sxbx_jks_blob_size,
+        sxbx_jks_certificate_count, sxbx_jks_digest, sxbx_gguf_header, sxbx_gguf_string_size, sxbx_gguf_value_type,
+        sxbx_gguf_array, sxbx_gguf_value0, sxbx_gguf_value1, sxbx_gguf_value2, sxbx_gguf_value3, sxbx_gguf_value4,
+        sxbx_gguf_value5, sxbx_gguf_value6, sxbx_gguf_value7, sxbx_gguf_value10, sxbx_gguf_value11, sxbx_gguf_value12,
+        sxbx_gguf_dimensions, sxbx_gguf_dimension, sxbx_gguf_tensor_storage, sxbx_nvp_header, sxbx_nvp_directory,
+        sxbx_nvp_record, sxbx_nvp_jpeg_size, sxbx_nvp_string_list, sxbx_lbrcobol_title, sxbx_lbrcobol_directory_header,
+        sxbx_lbrcobol_header_constants, sxbx_lbrcobol_member, sxbx_lbrcobol_member_tail, sxbx_pyz_header_le, sxbx_pyz_header_be,
+        sxbx_pyz_marshal_tag, sxbx_pyz_marshal_int32, sxbx_pyz_marshal_int64, sxbx_pyz_marshal_length, sxbx_pyz_marshal_count,
+        sxbx_pyz_marshal_short_count, sxbx_pyz_marshal_short_length, sxbx_pyz_marshal_reference, sxbx_pyz_marshal_long_digits,
+        sxbx_pyz_marshal_digit, sxbx_pyinstaller_cookie24, sxbx_pyinstaller_library, sxbx_pyinstaller_toc, sxbx_starkit_header,
+        sxbx_starkit_commit, sxbx_starkit_root_prefix, sxbx_starkit_row_count1, sxbx_starkit_row_count2,
+        sxbx_starkit_row_count3, sxbx_starkit_row_count4, sxbx_starkit_row_count5, sxbx_starkit_row_count6,
+        sxbx_starkit_row_count7, sxbx_starkit_row_count8, sxbx_starkit_row_count9, sxbx_starkit_column_size1,
+        sxbx_starkit_column_size2, sxbx_starkit_column_size3, sxbx_starkit_column_size4, sxbx_starkit_column_size5,
+        sxbx_starkit_column_size6, sxbx_starkit_column_size7, sxbx_starkit_column_size8, sxbx_starkit_column_size9,
+        sxbx_starkit_column_offset1, sxbx_starkit_column_offset2, sxbx_starkit_column_offset3, sxbx_starkit_column_offset4,
+        sxbx_starkit_column_offset5, sxbx_starkit_column_offset6, sxbx_starkit_column_offset7, sxbx_starkit_column_offset8,
+        sxbx_starkit_column_offset9, sxbx_starkit_memo_row_delta1, sxbx_starkit_memo_row_delta2, sxbx_starkit_memo_row_delta3,
+        sxbx_starkit_memo_row_delta4, sxbx_starkit_memo_row_delta5, sxbx_starkit_memo_row_delta6, sxbx_starkit_memo_row_delta7,
+        sxbx_starkit_memo_row_delta8, sxbx_starkit_memo_row_delta9, sxbx_starkit_view_tag1, sxbx_starkit_view_tag2,
+        sxbx_starkit_view_tag3, sxbx_starkit_view_tag4, sxbx_starkit_view_tag5, sxbx_starkit_view_tag6, sxbx_starkit_view_tag7,
+        sxbx_starkit_view_tag8, sxbx_starkit_view_tag9, sxbx_evb_header, sxbx_evb_table_prefix, sxbx_evb_node,
+        sxbx_evb_node_type, sxbx_evb_file_stored_size, sxbx_gta_img_header, sxbx_gta_img_entry, sxbx_pam_pak_header,
+        sxbx_pam_pak_data, sxbx_pam_pak_directory_marker, sxbx_pam_pak_index, sxbx_pfpk_header, sxbx_pfpk_name_size,
+        sxbx_pfpk_member, sxbx_pyz_marshal_offset32, sxbx_pyz_marshal_size32, sxbx_pyz_marshal_offset64,
+        sxbx_pyz_marshal_size64, sxbx_evb_file_modern, sxbx_evb_file_legacy, sxbx_evb_chunk_header, sxbx_evb_chunk_entry,
+        sxbx_evb_ap32], sx_binaryextra_comment, true, true);
+}
+
+function scan() {
+    return sxScan(sx_binaryextra_build, false);
+}

@@ -1,0 +1,28 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/chieflzmulti/xx_chieflzmulti_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_chieflz_header_fields = layout([bytes("signature", 13, SIGNATURE), bytes("unknown13", 6), u32("unused19"),
+    u32("entry_count", COUNT), u32("unused27"), u32("unused31"), u32("names_size", SIZE), bytes("unknown39", 4)]);
+var sxag_chieflz_header = sxLayout(0x6025001B, "chieflz_header", LE, sxag_chieflz_header_fields);
+var sxag_chieflz_entry_fields = layout([u8("kind", ID), u16("directory_parent", ID), u16("file_parent", ID),
+    bytes("unknown5", 10), u32("packed_size", SIZE), u32("unpacked_size", SIZE), u16("time"), u16("date"),
+    u32("attributes", FLAGS), u32("complemented_crc32", CHECKSUM), u8("name_size", SIZE), bytes("unknown36", 4),
+    u8("method", ID)]);
+var sxag_chieflz_entry = sxLayout(0x6025001C, "chieflz_entry", LE, sxag_chieflz_entry_fields);
+function sxag_chief(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 43) || !sxag_add(c, sxag_chieflz_header, 0)) {
+        return false;
+    }
+    var n = sxag32(b, 23, false);
+    if (!n || n > 20000 || !sxag_span(c, 126, n * 41)) {
+        return true;
+    }
+    return sxag_table(c, sxag_chieflz_entry, 126, n);
+}
+function sx_chieflzmulti_build(c) {
+    return sxag_chief(c);
+}

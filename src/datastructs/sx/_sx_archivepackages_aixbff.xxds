@@ -1,0 +1,94 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/aixbff/xx_aixbff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_bff_volume_fields = layout([u8("record_length_words"), u8("record_type"), u16("magic", SIGNATURE),
+    u16("checksum", CHECKSUM), u16("volume_number"), i32("backup_time", TIMESTAMP), i32("since_time", TIMESTAMP),
+    i32("volume_words"), chars("disk", 16, NONE), chars("filesystem", 16, NONE), chars("user", 16, NONE), i16("dump_level"),
+    bytes("padding", 2)]);
+var sxap_bff_volume = sxLayout(0x60720033, "bff_volume", LE, sxap_bff_volume_fields);
+var sxap_bff_legacy_fields = layout([u8("record_length_words"), u8("record_type"), u16("magic", SIGNATURE),
+    u16("checksum", CHECKSUM), u16("inode"), u16("mode", FLAGS), u16("link_count", COUNT), u16("uid"), u16("gid"),
+    i32("uncompressed_size", SIZE), i32("access_time", TIMESTAMP), i32("modification_time", TIMESTAMP),
+    i32("change_time", TIMESTAMP), u16("device_major"), u16("device_minor"), u16("rdevice_major"), u16("rdevice_minor"),
+    i32("compressed_size", SIZE), i32("padding")]);
+var sxap_bff_legacy = sxLayout(0x60720034, "bff_legacy", LE, sxap_bff_legacy_fields);
+var sxap_bff_member_fields = layout([u8("record_length_words"), u8("record_type"), u16("magic", SIGNATURE),
+    u16("checksum", CHECKSUM), u16("link_count", COUNT), u32("inode"), u32("mode", FLAGS), u32("uid"), u32("gid"),
+    i32("uncompressed_size", SIZE), i32("access_time", TIMESTAMP), i32("modification_time", TIMESTAMP),
+    i32("change_time", TIMESTAMP), u32("device_major"), u32("device_minor"), u32("rdevice_major"), u32("rdevice_minor"),
+    i32("compressed_size", SIZE), i32("padding")]);
+var sxap_bff_member = sxLayout(0x60720035, "bff_member", LE, sxap_bff_member_fields);
+var sxap_bff_compact_fields = layout([u8("record_length_words"), u8("record_type"), u16("magic", SIGNATURE),
+    u16("checksum", CHECKSUM), u16("link_count", COUNT), u32("inode"), u32("mode", FLAGS), u32("uid"), u32("gid"),
+    u32("uncompressed_size", SIZE), u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP),
+    u32("change_time", TIMESTAMP), bytes("unknown", 8), u32("compressed_size", SIZE), bytes("unknown_tail", 20)]);
+var sxap_bff_compact = sxLayout(0x60720036, "bff_compact", LE, sxap_bff_compact_fields);
+var sxap_bff_security_sizes_fields = layout([u32("acl_words"), u32("pcl_words")]);
+var sxap_bff_security_sizes = sxLayout(0x60720037, "bff_security_sizes", LE, sxap_bff_security_sizes_fields);
+var sxap_bff_terminator_fields = layout([u8("record_length_words"), u8("record_type"), u16("magic", SIGNATURE)]);
+var sxap_bff_terminator = sxLayout(0x60720038, "bff_terminator", LE, sxap_bff_terminator_fields);
+function sxap_zlen(c, p, end, n) {
+    var b = [0];
+    n[0] = 0;
+    while (p < end && n[0] < 4096) {
+        if (!sxap_read(c, p++, b, 1)) {
+            return false;
+        }
+        n[0]++;
+        if (!b[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxap_bff(c) {
+    var p = 72;
+    if (!sxap_add(c, sxap_bff_volume, 0)) {
+        return false;
+    }
+    while (sxap_span(c, p, 4)) {
+        var h = [];
+        if (!sxap_read(c, p, h, 4)) {
+            return false;
+        }
+        var words = h[0];
+        var type = h[1];
+        var fixed = type === 9 ? 48 : type === 12 ? 72 : 64;
+        if (type === 7) {
+            return sxap_add(c, sxap_bff_terminator, p);
+        }
+        if (type !== 9 && type !== 11 && type !== 12 || words * 8 < fixed || !sxap_read(c, p, h, fixed) || !sxap_span(c, p, words * 8)) {
+            return false;
+        }
+        var mode = sxap_uint(h, type === 9 ? 8 : 12, type === 9 ? 2 : 4, false);
+        var name = [0];
+        var z = sxap_uint(h, type === 9 ? 40 : type === 11 ? 56 : 48, 4, false);
+        var plain = sxap_uint(h, type === 9 ? 16 : 24, 4, false);
+        var q = p + words * 8;
+        if (!sxap_add(c, type === 9 ? sxap_bff_legacy : type === 11 ? sxap_bff_member : sxap_bff_compact, p) || !sxap_zlen(c, p + fixed, q, name) || !sxap_text(c, sxap_archivepackages_name, p + fixed, name[0], false)) {
+            return false;
+        }
+        if (type === 11 && sxAnd64(mode, 0xF000) !== 0xA000) {
+            if (!sxap_span(c, q, 40) || !sxap_add(c, sxap_bff_security_sizes, q)) {
+                return false;
+            }
+            q += 40;
+        }
+        if (sxAnd64(mode, 0xF000) === 0x4000) {
+            z = 0;
+        } else if (sxAnd64(mode, 0xF000) === 0xA000 && sxap_uint(h, 2, 2, false) === 0xEA6B) {
+            z = plain;
+        }
+        if (!sxap_span(c, q, z)) {
+            return true;
+        }
+        p = sxAnd64(q + z + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+    }
+    return true;
+}
+function sx_aixbff_build(c) {
+    return sxap_bff(c);
+}

@@ -1,0 +1,94 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/alignment_stockholm/xx_alignment_stockholm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_annotation_key_fields = layout([field("annotation_key", "char", 0, STRING)]);
+var sxseq_annotation_key = sxLayout(0x6073001D, "sequence_annotation_key", LE, sxseq_annotation_key_fields);
+var sxseq_annotation_text_fields = layout([field("annotation_text", "char", 0, STRING)]);
+var sxseq_annotation_text = sxLayout(0x6073001E, "sequence_annotation_text", LE, sxseq_annotation_text_fields);
+function sxseq_stockholm(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(8, sxNew_sxseq_token);
+    if (!sxseq_line(q, line)) {
+        return false;
+    }
+    {
+        if (!sxseq_emit(q, sxseq_signature, sxCopy_sxseq_token(null, line))) {
+            return false;
+        }
+    }
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxseq_token(line, sxseq_trim(q, sxCopy_sxseq_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, line), "//")) {
+            {
+                if (!sxseq_emit(q, sxseq_terminator, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (q.b[line.a] === 35 /*#*/ && (line.z < 2 || q.b[line.a + 1] !== 61 /*=*/)) {
+            {
+                if (!sxseq_emit(q, sxseq_comment, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 8, false);
+        if (n > 8 || n < 2) {
+            return false;
+        }
+        if (q.b[line.a] === 35 /*#*/) {
+            var id = sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "#=GS") || sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "#=GR");
+            var key = id ? 2 : 1;
+            if (n <= (key + 1) >>> 0) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (id) {
+                {
+                    if (!sxseq_emit(q, sxseq_identifier, sxCopy_sxseq_token(null, t[1]))) {
+                        return false;
+                    }
+                }
+            }
+            {
+                if (!sxseq_emit(q, sxseq_annotation_key, sxCopy_sxseq_token(null, t[key]))) {
+                    return false;
+                }
+            }
+            if (!sxseq_chunks(q, sxseq_annotation_text, sxCopy_sxseq_token(null, { a: t[(key + 1) >>> 0].a, z: line.a + line.z - t[(key + 1) >>> 0].a }))) {
+                return false;
+            }
+        } else {
+            if (n !== 2) {
+                return false;
+            }
+            {
+                if (!sxseq_emit(q, sxseq_identifier, sxCopy_sxseq_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (!sxseq_chunks(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[1]))) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+function sx_alignment_stockholm_build(q) {
+    return sxseq_stockholm(q);
+}

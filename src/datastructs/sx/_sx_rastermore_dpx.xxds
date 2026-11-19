@@ -1,0 +1,112 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/dpx/xx_dpx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_dpx_file_header_be_fields = layout([u32("magic", SIGNATURE), u32("image_offset", OFFSET), chars("version", 8, STRING),
+    u32("file_size", SIZE), u32("ditto_key", ID), u32("generic_header_size", SIZE), u32("industry_header_size", SIZE),
+    u32("user_header_size", SIZE), chars("filename", 100, STRING), chars("creation_time", 24, STRING),
+    chars("creator", 100, STRING), chars("project", 200, STRING), chars("copyright", 200, STRING), u32("encryption_key", ID),
+    bytes("reserved", 104, RESERVED)]);
+var sxrm_dpx_file_header_be = sxLayout(0x601D002F, "dpx_file_header_be", BE, sxrm_dpx_file_header_be_fields);
+var sxrm_dpx_image_header_be_fields = layout([u16("orientation", ID), u16("element_count", COUNT),
+    u32("pixels_per_line", COUNT), u32("lines_per_element", COUNT)]);
+var sxrm_dpx_image_header_be = sxLayout(0x601D0030, "dpx_image_header_be", BE, sxrm_dpx_image_header_be_fields);
+var sxrm_dpx_element_be_fields = layout([u32("data_sign", ID), u32("reference_low_data"),
+    field("reference_low_quantity", "float32", 4), u32("reference_high_data"), field("reference_high_quantity", "float32", 4),
+    u8("descriptor", ID), u8("transfer_characteristic", ID), u8("colorimetric", ID), u8("bit_depth"), u16("packing", ID),
+    u16("encoding", ID), u32("data_offset", OFFSET), u32("end_of_line_padding", SIZE), u32("end_of_image_padding", SIZE),
+    chars("description", 32, STRING)]);
+var sxrm_dpx_element_be = sxLayout(0x601D0031, "dpx_element_be", BE, sxrm_dpx_element_be_fields);
+var sxrm_dpx_image_reserved_be_fields = layout([bytes("reserved", 52, RESERVED)]);
+var sxrm_dpx_image_reserved_be = sxLayout(0x601D0032, "dpx_image_reserved_be", BE, sxrm_dpx_image_reserved_be_fields);
+var sxrm_dpx_orientation_be_fields = layout([u32("x_offset"), u32("y_offset"), field("x_center", "float32", 4),
+    field("y_center", "float32", 4), u32("original_width", COUNT), u32("original_height", COUNT),
+    chars("source_filename", 100, STRING), chars("source_creation_time", 24, STRING), chars("input_device", 32, STRING),
+    chars("input_serial", 32, STRING), field("border_validity", "uint16[4]", 8), u32("pixel_aspect_horizontal"),
+    u32("pixel_aspect_vertical"), bytes("reserved", 28, RESERVED)]);
+var sxrm_dpx_orientation_be = sxLayout(0x601D0033, "dpx_orientation_be", BE, sxrm_dpx_orientation_be_fields);
+var sxrm_dpx_film_be_fields = layout([chars("manufacturer_id", 2, STRING), chars("film_type", 2, STRING),
+    chars("perforation_offset", 2, STRING), chars("prefix", 6, STRING), chars("count", 4, STRING), chars("format", 32, STRING),
+    u32("frame_position"), u32("sequence_extent", COUNT), u32("held_count", COUNT), field("frame_rate", "float32", 4),
+    field("shutter_angle", "float32", 4), chars("frame_id", 32, STRING), chars("slate", 100, STRING),
+    bytes("reserved", 56, RESERVED)]);
+var sxrm_dpx_film_be = sxLayout(0x601D0034, "dpx_film_be", BE, sxrm_dpx_film_be_fields);
+var sxrm_dpx_television_be_fields = layout([u32("time_code"), u32("user_bits", FLAGS), u8("interlace", ID),
+    u8("field_number", ID), u8("video_signal", ID), u8("padding", RESERVED), field("horizontal_sample_rate", "float32", 4),
+    field("vertical_sample_rate", "float32", 4), field("frame_rate", "float32", 4), field("time_offset", "float32", 4),
+    field("gamma", "float32", 4), field("black_level", "float32", 4), field("black_gain", "float32", 4),
+    field("break_point", "float32", 4), field("white_level", "float32", 4), field("integration_time", "float32", 4),
+    bytes("reserved", 76, RESERVED)]);
+var sxrm_dpx_television_be = sxLayout(0x601D0035, "dpx_television_be", BE, sxrm_dpx_television_be_fields);
+var sxrm_dpx_file_header_le_fields = layout([u32("magic", SIGNATURE), u32("image_offset", OFFSET), chars("version", 8, STRING),
+    u32("file_size", SIZE), u32("ditto_key", ID), u32("generic_header_size", SIZE), u32("industry_header_size", SIZE),
+    u32("user_header_size", SIZE), chars("filename", 100, STRING), chars("creation_time", 24, STRING),
+    chars("creator", 100, STRING), chars("project", 200, STRING), chars("copyright", 200, STRING), u32("encryption_key", ID),
+    bytes("reserved", 104, RESERVED)]);
+var sxrm_dpx_file_header_le = sxLayout(0x601D003D, "dpx_file_header_le", LE, sxrm_dpx_file_header_le_fields);
+var sxrm_dpx_image_header_le_fields = layout([u16("orientation", ID), u16("element_count", COUNT),
+    u32("pixels_per_line", COUNT), u32("lines_per_element", COUNT)]);
+var sxrm_dpx_image_header_le = sxLayout(0x601D003E, "dpx_image_header_le", LE, sxrm_dpx_image_header_le_fields);
+var sxrm_dpx_element_le_fields = layout([u32("data_sign", ID), u32("reference_low_data"),
+    field("reference_low_quantity", "float32", 4), u32("reference_high_data"), field("reference_high_quantity", "float32", 4),
+    u8("descriptor", ID), u8("transfer_characteristic", ID), u8("colorimetric", ID), u8("bit_depth"), u16("packing", ID),
+    u16("encoding", ID), u32("data_offset", OFFSET), u32("end_of_line_padding", SIZE), u32("end_of_image_padding", SIZE),
+    chars("description", 32, STRING)]);
+var sxrm_dpx_element_le = sxLayout(0x601D003F, "dpx_element_le", LE, sxrm_dpx_element_le_fields);
+var sxrm_dpx_image_reserved_le_fields = layout([bytes("reserved", 52, RESERVED)]);
+var sxrm_dpx_image_reserved_le = sxLayout(0x601D0040, "dpx_image_reserved_le", LE, sxrm_dpx_image_reserved_le_fields);
+var sxrm_dpx_orientation_le_fields = layout([u32("x_offset"), u32("y_offset"), field("x_center", "float32", 4),
+    field("y_center", "float32", 4), u32("original_width", COUNT), u32("original_height", COUNT),
+    chars("source_filename", 100, STRING), chars("source_creation_time", 24, STRING), chars("input_device", 32, STRING),
+    chars("input_serial", 32, STRING), field("border_validity", "uint16[4]", 8), u32("pixel_aspect_horizontal"),
+    u32("pixel_aspect_vertical"), bytes("reserved", 28, RESERVED)]);
+var sxrm_dpx_orientation_le = sxLayout(0x601D0041, "dpx_orientation_le", LE, sxrm_dpx_orientation_le_fields);
+var sxrm_dpx_film_le_fields = layout([chars("manufacturer_id", 2, STRING), chars("film_type", 2, STRING),
+    chars("perforation_offset", 2, STRING), chars("prefix", 6, STRING), chars("count", 4, STRING), chars("format", 32, STRING),
+    u32("frame_position"), u32("sequence_extent", COUNT), u32("held_count", COUNT), field("frame_rate", "float32", 4),
+    field("shutter_angle", "float32", 4), chars("frame_id", 32, STRING), chars("slate", 100, STRING),
+    bytes("reserved", 56, RESERVED)]);
+var sxrm_dpx_film_le = sxLayout(0x601D0042, "dpx_film_le", LE, sxrm_dpx_film_le_fields);
+var sxrm_dpx_television_le_fields = layout([u32("time_code"), u32("user_bits", FLAGS), u8("interlace", ID),
+    u8("field_number", ID), u8("video_signal", ID), u8("padding", RESERVED), field("horizontal_sample_rate", "float32", 4),
+    field("vertical_sample_rate", "float32", 4), field("frame_rate", "float32", 4), field("time_offset", "float32", 4),
+    field("gamma", "float32", 4), field("black_level", "float32", 4), field("black_gain", "float32", 4),
+    field("break_point", "float32", 4), field("white_level", "float32", 4), field("integration_time", "float32", 4),
+    bytes("reserved", 76, RESERVED)]);
+var sxrm_dpx_television_le = sxLayout(0x601D0043, "dpx_television_le", LE, sxrm_dpx_television_le_fields);
+function sxrm_dpx(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 36)) {
+        return false;
+    }
+    var be = !sxMemcmp(h, "SDPX", 4);
+    if (!be && sxMemcmp(h, "XPDS", 4)) {
+        return false;
+    }
+    if (!sxrm_add(c, be ? sxrm_dpx_file_header_be : sxrm_dpx_file_header_le, 0)) {
+        return false;
+    }
+    if (sxrm_span(c, 768, 12) && !sxrm_add(c, be ? sxrm_dpx_image_header_be : sxrm_dpx_image_header_le, 768)) {
+        return false;
+    }
+    if (sxrm_span(c, 780, 576) && !sxrm_table(c, be ? sxrm_dpx_element_be : sxrm_dpx_element_le, 780, 8)) {
+        return false;
+    }
+    if (sxrm_span(c, 1356, 52) && !sxrm_add(c, be ? sxrm_dpx_image_reserved_be : sxrm_dpx_image_reserved_le, 1356)) {
+        return false;
+    }
+    if (sxrm_span(c, 1408, 256) && !sxrm_add(c, be ? sxrm_dpx_orientation_be : sxrm_dpx_orientation_le, 1408)) {
+        return false;
+    }
+    if (sxrm32(h, 28, be) >= 384 && sxrm_span(c, 1664, 384)) {
+        if (!sxrm_add(c, be ? sxrm_dpx_film_be : sxrm_dpx_film_le, 1664) || !sxrm_add(c, be ? sxrm_dpx_television_be : sxrm_dpx_television_le, 1920)) {
+            return false;
+        }
+    }
+    return !c.failed;
+}
+function sx_dpx_build(c) {
+    return sxrm_dpx(c);
+}

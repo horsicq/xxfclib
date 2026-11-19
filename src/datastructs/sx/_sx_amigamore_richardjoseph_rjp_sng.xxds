@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/richardjoseph_rjp_sng/xx_richardjoseph_rjp_sng_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamore_rjp_header_fields = layout([blob("signature", 3, SIGNATURE), u8("version", ID), blob("module_marker", 4, ID)]);
+var sxamore_rjp_header = sxLayout(0x60950023, "rjp_header", LE, sxamore_rjp_header_fields);
+var sxamore_rjp_subsong_fields = layout([u8("channel0", ID), u8("channel1", ID), u8("channel2", ID), u8("channel3", ID)]);
+var sxamore_rjp_subsong = sxLayout(0x60950026, "rjp_subsong", LE, sxamore_rjp_subsong_fields);
+function sxamore_rjp(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 8;
+    var base = [];
+    var size = [];
+    if (!sxamore_eq(v, 0, "RJP", 3, e) || !sxamore_eq(v, 4, "SMOD", 4, e)) {
+        return false;
+    }
+    for (var i = 0; i < 7; i++) {
+        if (!sxamore_be(v, p, 4, size, i, e) || !sxamore_span(v, p + 4, size[i], e)) {
+            return false;
+        }
+        base[i] = p + 4;
+        p += 4 + size[i];
+    }
+    if (!sxamore_row(v, sxamore_rjp_header, 0, e)) {
+        return false;
+    }
+    for (i = 0; i < 7; i++) {
+        if (!sxamore_row(v, sxamore_rjp_section, sxU64(base[i] - 4), e)) {
+            return false;
+        }
+    }
+    if (!sxamore_table(v, sxamore_rjp_sample, base[0], Math.floor(size[0] / 32), base[0] + size[0]) || !sxamore_table(v, sxamore_rjp_subsong, base[2], Math.floor(size[2] / 4), base[2] + size[2]) || !sxamore_table(v, sxamore_rjp_position_offset, base[3], Math.floor(size[3] / 4), base[3] + size[3]) || !sxamore_table(v, sxamore_rjp_step_offset, base[4], Math.floor(size[4] / 4), base[4] + size[4])) {
+        return false;
+    }
+    return true;
+}
+function sx_richardjoseph_rjp_sng_build(v) {
+    return sxamore_rjp(v);
+}

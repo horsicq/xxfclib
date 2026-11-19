@@ -1,0 +1,161 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/jpeg2000_jp2/xx_jpeg2000_jp2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_jp2_box_fields = layout([u32("box_size", SIZE), chars("box_type", 4, ID)]);
+var sxrm_jp2_box = sxLayout(0x601D000D, "jp2_box", BE, sxrm_jp2_box_fields);
+var sxrm_jp2_extended_size_fields = layout([u64("box_size", SIZE)]);
+var sxrm_jp2_extended_size = sxLayout(0x601D000E, "jp2_extended_size", BE, sxrm_jp2_extended_size_fields);
+var sxrm_jp2_signature_fields = layout([u32("signature", SIGNATURE)]);
+var sxrm_jp2_signature = sxLayout(0x601D000F, "jp2_signature", BE, sxrm_jp2_signature_fields);
+var sxrm_jp2_file_type_fields = layout([chars("brand", 4, ID), u32("minor_version", ID)]);
+var sxrm_jp2_file_type = sxLayout(0x601D0010, "jp2_file_type", BE, sxrm_jp2_file_type_fields);
+var sxrm_jp2_compatible_brand_fields = layout([chars("brand", 4, ID)]);
+var sxrm_jp2_compatible_brand = sxLayout(0x601D0011, "jp2_compatible_brand", BE, sxrm_jp2_compatible_brand_fields);
+var sxrm_jp2_image_header_fields = layout([u32("height", COUNT), u32("width", COUNT), u16("components", COUNT),
+    u8("bits_per_component"), u8("compression_type", ID), u8("unknown_colorspace", FLAGS), u8("intellectual_property", FLAGS)]);
+var sxrm_jp2_image_header = sxLayout(0x601D0012, "jp2_image_header", BE, sxrm_jp2_image_header_fields);
+var sxrm_jp2_color_header_fields = layout([u8("method", ID), u8("precedence"), u8("approximation")]);
+var sxrm_jp2_color_header = sxLayout(0x601D0013, "jp2_color_header", BE, sxrm_jp2_color_header_fields);
+var sxrm_jp2_enumerated_color_fields = layout([u32("colorspace", ID)]);
+var sxrm_jp2_enumerated_color = sxLayout(0x601D0014, "jp2_enumerated_color", BE, sxrm_jp2_enumerated_color_fields);
+var sxrm_j2k_marker_fields = layout([u16("marker", ID)]);
+var sxrm_j2k_marker = sxLayout(0x601D0015, "j2k_marker", BE, sxrm_j2k_marker_fields);
+var sxrm_j2k_segment_length_fields = layout([u16("segment_size", SIZE)]);
+var sxrm_j2k_segment_length = sxLayout(0x601D0016, "j2k_segment_length", BE, sxrm_j2k_segment_length_fields);
+var sxrm_j2k_siz_fields = layout([u16("capabilities", FLAGS), u32("reference_grid_width", COUNT),
+    u32("reference_grid_height", COUNT), u32("image_origin_x"), u32("image_origin_y"), u32("tile_width", COUNT),
+    u32("tile_height", COUNT), u32("tile_origin_x"), u32("tile_origin_y"), u16("components", COUNT)]);
+var sxrm_j2k_siz = sxLayout(0x601D0017, "j2k_siz", BE, sxrm_j2k_siz_fields);
+var sxrm_j2k_component_fields = layout([u8("precision_and_sign"), u8("horizontal_separation"), u8("vertical_separation")]);
+var sxrm_j2k_component = sxLayout(0x601D0018, "j2k_component", BE, sxrm_j2k_component_fields);
+var sxrm_j2k_sot_fields = layout([u16("tile_index", ID), u32("tile_part_size", SIZE), u8("tile_part_index", ID),
+    u8("tile_part_count", COUNT)]);
+var sxrm_j2k_sot = sxLayout(0x601D0019, "j2k_sot", BE, sxrm_j2k_sot_fields);
+function sxrm_j2k(c, p, end) {
+    var tile_end = 0;
+    for (var step = 0; p < end && step < 20000; step++) {
+        var h = [];
+        if (sxU64(end - p) < 2 || !sxrm_read(c, p, h, 0, 2)) {
+            break;
+        }
+        var marker = sxrm16(h, 0, true);
+        if ((marker & 0xFF00) !== 0xFF00) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_j2k_marker, p)) {
+            return false;
+        }
+        p += 2;
+        if (marker === 0xFF4F) {
+            continue;
+        }
+        if (marker === 0xFFD9) {
+            break;
+        }
+        if (marker === 0xFF93) {
+            if (tile_end < p || tile_end > end) {
+                break;
+            }
+            p = tile_end;
+            continue;
+        }
+        if (sxU64(end - p) < 2 || !sxrm_read(c, p, h, 0, 2)) {
+            break;
+        }
+        var n = sxrm16(h, 0, true);
+        if (n < 2 || n > sxU64(end - p)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_j2k_segment_length, p)) {
+            return false;
+        }
+        if (marker === 0xFF51 && n >= 38) {
+            if (!sxrm_read(c, p + 2, h, 0, 36) || !sxrm_add(c, sxrm_j2k_siz, p + 2)) {
+                return false;
+            }
+            var count = sxrm16(h, 34, true);
+            if (count && count <= 16384 && count * 3 <= (n - 38) >>> 0 && !sxrm_table(c, sxrm_j2k_component, p + 38, count)) {
+                return false;
+            }
+        } else if (marker === 0xFF90 && n === 10) {
+            if (!sxrm_read(c, p + 2, h, 0, 8) || !sxrm_add(c, sxrm_j2k_sot, p + 2)) {
+                return false;
+            }
+            var z = sxrm32(h, 2, true);
+            tile_end = z && z <= sxU64(end - sxU64(p - 2)) ? sxU64(p - 2) + z : end;
+        }
+        p += n;
+    }
+    return !c.failed;
+}
+function sxrm_jp2_boxes(c, p, end, depth, budget) {
+    while (p < end && budget[0] < 20000) {
+        budget[0]++;
+        var h = [];
+        if (sxU64(end - p) < 8 || !sxrm_read(c, p, h, 0, 8)) {
+            break;
+        }
+        var n = sxrm32(h, 0, true);
+        var head = 8;
+        if (n === 1) {
+            if (sxU64(end - p) < 16 || !sxrm_read(c, p + 8, h, 8, 8)) {
+                break;
+            }
+            n = sxrm_uint(h, 8, 8, true);
+            head = 16;
+        } else if (!n) {
+            n = sxU64(end - p);
+        }
+        if (n < head || n > sxU64(end - p)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_jp2_box, p) || head === 16 && !sxrm_add(c, sxrm_jp2_extended_size, p + 8)) {
+            return false;
+        }
+        var q = p + head;
+        var z = sxU64(n - head);
+        if (!sxMemcmpAt(h, 4, "jP  ", 0, 4) && z === 4) {
+            if (!sxrm_add(c, sxrm_jp2_signature, q)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "ftyp", 0, 4) && z >= 8) {
+            if (!sxrm_add(c, sxrm_jp2_file_type, q)) {
+                return false;
+            }
+            var count = Math.floor(sxU64(z - 8) / 4);
+            if (count && count <= 20000 && !sxrm_table(c, sxrm_jp2_compatible_brand, q + 8, count)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "jp2h", 0, 4) && depth < 2) {
+            if (!sxrm_jp2_boxes(c, q, p + n, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "ihdr", 0, 4) && z >= 14) {
+            if (!sxrm_add(c, sxrm_jp2_image_header, q)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "colr", 0, 4) && z >= 3) {
+            if (!sxrm_add(c, sxrm_jp2_color_header, q) || !sxrm_read(c, q, h, 0, 1)) {
+                return false;
+            }
+            if (h[0] === 1 && z >= 7 && !sxrm_add(c, sxrm_jp2_enumerated_color, q + 3)) {
+                return false;
+            }
+        } else if (!sxMemcmpAt(h, 4, "jp2c", 0, 4)) {
+            if (!sxrm_j2k(c, q, p + n)) {
+                return false;
+            }
+        }
+        p += n;
+    }
+    return !c.failed;
+}
+function sx_jpeg2000_jp2_build(c) {
+    var ok = false;
+    var budget = [0];
+    ok = sxrm_jp2_boxes(c, 0, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0, budget);
+    return ok;
+}

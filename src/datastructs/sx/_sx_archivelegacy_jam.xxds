@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/jam/xx_jam_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_jam_header_fields = layout([chars("signature", 3, SIGNATURE)]);
+var sxag_jam_header = sxLayout(0x60250030, "jam_header", LE, sxag_jam_header_fields);
+var sxag_jam_file_count_fields = layout([i32("file_count", COUNT)]);
+var sxag_jam_file_count = sxLayout(0x60250031, "jam_file_count", LE, sxag_jam_file_count_fields);
+var sxag_jam_directory_count_fields = layout([i32("directory_count", COUNT)]);
+var sxag_jam_directory_count = sxLayout(0x60250032, "jam_directory_count", LE, sxag_jam_directory_count_fields);
+var sxag_jam_file_fields = layout([chars("name", 15, STRING), i32("data_offset", OFFSET), i32("data_size", SIZE)]);
+var sxag_jam_file = sxLayout(0x60250033, "jam_file", LE, sxag_jam_file_fields);
+var sxag_jam_directory_fields = layout([chars("name", 15, STRING), i32("node_offset", OFFSET)]);
+var sxag_jam_directory = sxLayout(0x60250034, "jam_directory", LE, sxag_jam_directory_fields);
+function sxag_jam(c) {
+    var b = [];
+    if (!sxag_add(c, sxag_jam_header, 0)) {
+        return false;
+    }
+    var queue = sxAlloc(0x1000);
+    if (queue === null) {
+        return false;
+    }
+    var head = 0;
+    var tail = 1;
+    queue[0] = 3;
+    var ok = true;
+    while (head < tail && c.count < 20000) {
+        var p = queue[head++];
+        if (!sxag_read(c, p, b, 4) || !sxag_free(c, p, 4)) {
+            continue;
+        }
+        var n = sxag32(b, 0, false);
+        if (n > 20000 || !sxag_span(c, p + 4, n * 23 + 4)) {
+            continue;
+        }
+        if (!sxag_add(c, sxag_jam_file_count, p) || n && !sxag_table(c, sxag_jam_file, p + 4, n)) {
+            ok = false;
+            break;
+        }
+        p += 4 + n * 23;
+        if (!sxag_read(c, p, b, 4)) {
+            continue;
+        }
+        n = sxag32(b, 0, false);
+        if (n > 4096 || !sxag_span(c, p + 4, n * 19)) {
+            continue;
+        }
+        if (!sxag_add(c, sxag_jam_directory_count, p) || n && !sxag_table(c, sxag_jam_directory, p + 4, n)) {
+            ok = false;
+            break;
+        }
+        p += 4;
+        for (var i = 0; i < n; i++) {
+            if (!sxag_read(c, p + i * 19, b, 19)) {
+                break;
+            }
+            var child = sxag32(b, 15, false);
+            if (child < 3 || child > 2147483647) {
+                continue;
+            }
+            var seen = false;
+            for (var j = 0; j < tail; j++) {
+                if (queue[j] === child) {
+                    seen = true;
+                }
+            }
+            if (!seen && tail < 4096) {
+                queue[tail++] = child;
+            }
+        }
+    }
+    return ok;
+}
+function sx_jam_build(c) {
+    return sxag_jam(c);
+}

@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/dcerpc_pdu/xx_dcerpc_pdu_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_dcerpc_bind_le_fields = layout([u16("maximum_transmit_fragment", SIZE), u16("maximum_receive_fragment", SIZE),
+    u32("association_group", ID), u8("context_count", COUNT), blob("reserved", 3, RESERVED)]);
+var sxnm_dcerpc_bind_le = sxLayout(0x60260065, "dcerpc_bind_le", LE, sxnm_dcerpc_bind_le_fields);
+var sxnm_dcerpc_context_le_fields = layout([u16("context_id", ID), u8("transfer_syntax_count", COUNT), u8("reserved", RESERVED),
+    blob("abstract_syntax_uuid", 16, ID), u32("abstract_syntax_version", ID)]);
+var sxnm_dcerpc_context_le = sxLayout(0x60260066, "dcerpc_context_le", LE, sxnm_dcerpc_context_le_fields);
+var sxnm_dcerpc_transfer_syntax_le_fields = layout([blob("transfer_syntax_uuid", 16, ID), u32("transfer_syntax_version", ID)]);
+var sxnm_dcerpc_transfer_syntax_le = sxLayout(0x60260067, "dcerpc_transfer_syntax_le", LE, sxnm_dcerpc_transfer_syntax_le_fields);
+var sxnm_dcerpc_bind_be_fields = layout([u16("maximum_transmit_fragment", SIZE), u16("maximum_receive_fragment", SIZE),
+    u32("association_group", ID), u8("context_count", COUNT), blob("reserved", 3, RESERVED)]);
+var sxnm_dcerpc_bind_be = sxLayout(0x6026006F, "dcerpc_bind_be", BE, sxnm_dcerpc_bind_be_fields);
+var sxnm_dcerpc_context_be_fields = layout([u16("context_id", ID), u8("transfer_syntax_count", COUNT), u8("reserved", RESERVED),
+    blob("abstract_syntax_uuid", 16, ID), u32("abstract_syntax_version", ID)]);
+var sxnm_dcerpc_context_be = sxLayout(0x60260070, "dcerpc_context_be", BE, sxnm_dcerpc_context_be_fields);
+var sxnm_dcerpc_transfer_syntax_be_fields = layout([blob("transfer_syntax_uuid", 16, ID), u32("transfer_syntax_version", ID)]);
+var sxnm_dcerpc_transfer_syntax_be = sxLayout(0x60260071, "dcerpc_transfer_syntax_be", BE, sxnm_dcerpc_transfer_syntax_be_fields);
+function sxnm_rpc(v) {
+    if (!sxnm_need(v, 0, 16, v.n)) {
+        return false;
+    }
+    var be = v.p[4] !== 16;
+    var type = v.p[2];
+    if (!sxnm_row(v, be ? sxnm_dcerpc_header_be : sxnm_dcerpc_header_le, 0, v.n) || sxGetU16At(v.p, 8, 2, 0, be) !== v.n) {
+        return false;
+    }
+    if (type === 0 || type === 2) {
+        return sxnm_row(v, type === 0 ? be ? sxnm_dcerpc_request_be : sxnm_dcerpc_request_le : be ? sxnm_dcerpc_response_be : sxnm_dcerpc_response_le, 16, v.n);
+    }
+    if (type !== 11 || !sxnm_row(v, be ? sxnm_dcerpc_bind_be : sxnm_dcerpc_bind_le, 16, v.n)) {
+        return false;
+    }
+    var count = v.p[24];
+    var at = 28;
+    for (var i = 0; i < count; i++) {
+        if (!sxnm_row(v, be ? sxnm_dcerpc_context_be : sxnm_dcerpc_context_le, at, v.n)) {
+            return false;
+        }
+        var n = v.p[at + 2];
+        at += 24;
+        for (var j = 0; j < n; j++, at += 20) {
+            if (!sxnm_row(v, be ? sxnm_dcerpc_transfer_syntax_be : sxnm_dcerpc_transfer_syntax_le, at, v.n)) {
+                return false;
+            }
+        }
+    }
+    return at === v.n;
+}
+function sx_dcerpc_pdu_build(v) {
+    return sxnm_rpc(v);
+}

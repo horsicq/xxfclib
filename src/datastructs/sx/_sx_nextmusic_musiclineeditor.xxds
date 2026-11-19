@@ -1,0 +1,155 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/musiclineeditor/xx_musiclineeditor_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_chunk_be_fields = layout([blob("chunk_id", 4, ID), u32("payload_bytes", SIZE)]);
+var sxnextm_chunk_be = sxLayout(0x608B000A, "chunk_be", BE, sxnextm_chunk_be_fields);
+var sxnextm_mle_magic_fields = layout([blob("signature", 4, SIGNATURE)]);
+var sxnextm_mle_magic = sxLayout(0x608B0055, "mle_magic", LE, sxnextm_mle_magic_fields);
+var sxnextm_mle_tune_fields = layout([chars("title", 32, NONE), u16("tempo"), u8("speed"), u8("groove"), u16("volume"),
+    u8("mixer_mode", FLAGS), u8("channels", COUNT)]);
+var sxnextm_mle_tune = sxLayout(0x608B0056, "mle_tune", BE, sxnextm_mle_tune_fields);
+var sxnextm_mle_sequence_fields = layout([u16("part_and_control", FLAGS)]);
+var sxnextm_mle_sequence = sxLayout(0x608B0057, "mle_sequence", BE, sxnextm_mle_sequence_fields);
+var sxnextm_mle_index_fields = layout([u16("index", ID)]);
+var sxnextm_mle_index = sxLayout(0x608B0058, "mle_index", BE, sxnextm_mle_index_fields);
+var sxnextm_mle_part_note_fields = layout([u8("note"), u8("instrument", ID)]);
+var sxnextm_mle_part_note = sxLayout(0x608B005A, "mle_part_note", LE, sxnextm_mle_part_note_fields);
+var sxnextm_mle_effect_fields = layout([u8("effect", ID), u8("argument")]);
+var sxnextm_mle_effect = sxLayout(0x608B005B, "mle_effect", LE, sxnextm_mle_effect_fields);
+var sxnextm_mle_arpeggio_fields = layout([i8("note_transpose"), u8("sample_index", ID), u8("effect1", ID), u8("argument1"),
+    u8("effect2", ID), u8("argument2")]);
+var sxnextm_mle_arpeggio = sxLayout(0x608B005C, "mle_arpeggio", LE, sxnextm_mle_arpeggio_fields);
+var sxnextm_mle_instrument_fields = layout([chars("title", 32, NONE), u8("sample_number", ID), u8("sample_type", ID),
+    blob("unknown0", 4), u16("sample_length"), blob("unknown1", 4), u16("sample_repeat_length"), i16("fine_tune"),
+    i16("semi_tone"), u16("sample_start"), u16("sample_end"), u16("sample_repeat_start"), u16("sample_repeat_len"),
+    u16("volume"), u8("transposable", FLAGS), u8("slide_speed"), u8("effect1", ID), u8("effect2", ID),
+    u16("envelope_attack_length"), u16("envelope_decay_length"), u16("envelope_sustain_length"), u16("envelope_release_length"),
+    u16("envelope_attack_speed"), u16("envelope_decay_speed"), u16("envelope_sustain_speed"), u16("envelope_release_speed"),
+    u16("envelope_attack_volume"), u16("envelope_decay_volume"), u16("envelope_sustain_volume"), u16("envelope_release_volume"),
+    u8("vibrato_direction", FLAGS), u8("vibrato_wave_type", ID), u16("vibrato_speed"), u16("vibrato_delay"),
+    u16("vibrato_attack_speed"), u16("vibrato_attack"), u16("vibrato_depth"), u8("tremolo_direction", FLAGS),
+    u8("tremolo_wave_type", ID), u16("tremolo_speed"), u16("tremolo_delay"), u16("tremolo_attack_speed"), u16("tremolo_attack"),
+    u16("tremolo_depth"), u16("arpeggio_table", ID), u8("arpeggio_speed"), u8("arpeggio_groove"),
+    u8("env_tra_pha_fil_bits", FLAGS), u8("transform_wave0", ID), u8("transform_wave1", ID), u8("transform_wave2", ID),
+    u8("transform_wave3", ID), u8("transform_wave4", ID), u16("transform_start"), u16("transform_repeat"),
+    u16("transform_repeat_end"), u16("transform_speed"), u16("transform_turns"), u16("transform_delay"), u16("phase_start"),
+    u16("phase_repeat"), u16("phase_repeat_end"), u16("phase_speed"), u16("phase_turns"), u16("phase_delay"),
+    u16("phase_type", ID), u8("mix_res_loo_bits", FLAGS), u8("mix_wave_number", ID), u16("mix_start"), u16("mix_repeat"),
+    u16("mix_repeat_end"), u16("mix_speed"), u16("mix_turns"), u16("mix_delay"), u16("resonance_start"),
+    u16("resonance_repeat"), u16("resonance_repeat_end"), u16("resonance_speed"), u16("resonance_turns"),
+    u16("resonance_delay"), u8("mix_res_fil_boost", FLAGS), u8("responance_amp"), u16("filter_start"), u16("filter_repeat"),
+    u16("filter_repeat_end"), u16("filter_speed"), u16("filter_turns"), u16("filter_delay"), blob("unknown2", 1),
+    u8("filter_type", ID), u16("loop_start"), u16("loop_repeat"), u16("loop_repeat_end"), u16("loop_length"),
+    u16("loop_loop_step"), u16("loop_wait"), u16("loop_delay"), u16("loop_turns")]);
+var sxnextm_mle_instrument = sxLayout(0x608B005E, "mle_instrument", BE, sxnextm_mle_instrument_fields);
+function sxnextm_mle(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [4];
+    var z = [0];
+    var id = [];
+    if (!sxnextm_eq(v, 0, "MLEDMODL", 8, e) || !sxnextm_row(v, sxnextm_mle_magic, 0, e)) {
+        return false;
+    }
+    while (p[0] < e) {
+        if (!sxnextm_read(v, p[0], id, 4, e) || !sxnextm_be(v, p[0] + 4, 4, z, 0, e) || !(sxMemcmp(id, "TUNE", 4) ? sxnextm_row(v, sxnextm_chunk_be, p[0], e) : sxnextm_row(v, sxnextm_mle_tune_chunk, p[0], e))) {
+            return false;
+        }
+        var q = [p[0] + 8];
+        var end;
+        if (!sxMemcmp(id, "SMPL", 4)) {
+            if (z[0] > (0xFFFFFFFF * 4294967296 + 0xFFFFFFF9)) {
+                return false;
+            }
+            z[0] += 6;
+        }
+        if (!sxMemcmp(id, "TUNE", 4)) {
+            var ch = [0];
+            var part = [0];
+            if (!sxnextm_u(v, q[0] + 39, 1, ch, 0, e) || !sxnextm_span(v, q[0], 40 + ch[0] * 4, e)) {
+                return false;
+            }
+            z[0] = 40 + ch[0] * 4;
+            for (var i = 0; i < ch[0]; i++) {
+                if (!sxnextm_be(v, q[0] + 40 + i * 4, 4, part, 0, e) || part[0] > sxU64(sxU64(e - q[0]) - z[0])) {
+                    return false;
+                }
+                z[0] += part[0];
+            }
+        }
+        if (!sxnextm_span(v, q[0], z[0], e)) {
+            return false;
+        }
+        end = q[0] + z[0];
+        if (!sxMemcmp(id, "TUNE", 4)) {
+            var n = [0];
+            var start;
+            if (!sxnextm_u(v, q[0] + 39, 1, n, 0, end) || !sxnextm_take(v, sxnextm_mle_tune, q, 1, end)) {
+                return false;
+            }
+            start = q[0];
+            if (!sxnextm_take(v, sxnextm_bytes32, q, n[0], end)) {
+                return false;
+            }
+            for (i = 0; i < n[0]; i++) {
+                var k = [0];
+                if (!sxnextm_be(v, start + i * 4, 4, k, 0, end) || k[0] % 2 || !sxnextm_take(v, sxnextm_mle_sequence, q, Math.floor(k[0] / 2), end)) {
+                    return false;
+                }
+            }
+        } else if (!sxMemcmp(id, "PART", 4)) {
+            if (!sxnextm_take(v, sxnextm_mle_index, q, 1, end)) {
+                return false;
+            }
+            var rows = 0;
+            while (q[0] < end) {
+                var flags = [0];
+                if (!sxnextm_u(v, q[0], 1, flags, 0, end) || !sxnextm_take(v, sxnextm_mle_part_control, q, 1, end)) {
+                    return false;
+                }
+                if (flags[0] === 255) {
+                    break;
+                }
+                if (rows++ >= 256) {
+                    return false;
+                }
+                if (sxAnd64(flags[0], 1) && !sxnextm_take(v, sxnextm_mle_part_note, q, 1, end)) {
+                    return false;
+                }
+                for (i = 1; i <= 5; i++) {
+                    if (sxAnd64(flags[0], (1 << i) >>> 0) && !sxnextm_take(v, sxnextm_mle_effect, q, 1, end)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxMemcmp(id, "ARPG", 4)) {
+            if (z[0] < 2 || sxU64(z[0] - 2) % 6 || !sxnextm_take(v, sxnextm_mle_index, q, 1, end) || !sxnextm_take(v, sxnextm_mle_arpeggio, q, Math.floor(sxU64(z[0] - 2) / 6), end)) {
+                return false;
+            }
+        } else if (!sxMemcmp(id, "INST", 4)) {
+            if (!sxnextm_row(v, sxnextm_mle_instrument, q[0], end)) {
+                return false;
+            }
+        } else if (!sxMemcmp(id, "SMPL", 4)) {
+            if (!sxnextm_row(v, sxnextm_mle_sample, q[0], end)) {
+                return false;
+            }
+        } else if (!sxMemcmp(id, "INFO", 4)) {
+            if (!sxnextm_text_emit(v, q[0], z[0], end)) {
+                return false;
+            }
+        }
+        p[0] = end;
+        if (!sxMemcmp(id, "PART", 4) && sxAnd64(p[0], 1)) {
+            if (!sxnextm_skip(v, p, 1, e)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_musiclineeditor_build(v) {
+    return sxnextm_mle(v);
+}

@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/tektronix_isf/xx_tektronix_isf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_x_increment_fields = layout([field("x_increment", "ascii_real", 0)]);
+var sxsm_x_increment = sxLayout(0x60630040, "mesh_x_increment", LE, sxsm_x_increment_fields);
+var sxsm_x_zero_fields = layout([field("x_zero", "ascii_real", 0)]);
+var sxsm_x_zero = sxLayout(0x60630041, "mesh_x_zero", LE, sxsm_x_zero_fields);
+var sxsm_point_offset_fields = layout([field("point_offset", "ascii_real", 0)]);
+var sxsm_point_offset = sxLayout(0x60630042, "mesh_point_offset", LE, sxsm_point_offset_fields);
+var sxsm_y_multiplier_fields = layout([field("y_multiplier", "ascii_real", 0)]);
+var sxsm_y_multiplier = sxLayout(0x60630043, "mesh_y_multiplier", LE, sxsm_y_multiplier_fields);
+var sxsm_y_zero_fields = layout([field("y_zero", "ascii_real", 0)]);
+var sxsm_y_zero = sxLayout(0x60630044, "mesh_y_zero", LE, sxsm_y_zero_fields);
+var sxsm_y_offset_fields = layout([field("y_offset", "ascii_real", 0)]);
+var sxsm_y_offset = sxLayout(0x60630045, "mesh_y_offset", LE, sxsm_y_offset_fields);
+var sxsm_length_digits_fields = layout([field("length_digits", "ascii_signed", 0, COUNT)]);
+var sxsm_length_digits = sxLayout(0x60630046, "mesh_length_digits", LE, sxsm_length_digits_fields);
+var sxsm_payload_bytes_fields = layout([field("payload_bytes", "ascii_signed", 0, SIZE)]);
+var sxsm_payload_bytes = sxLayout(0x60630047, "mesh_payload_bytes", LE, sxsm_payload_bytes_fields);
+function sxsm_isf(q) {
+    if (q.n < 8) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, { a: 0, z: 8 }))) {
+            return false;
+        }
+    }
+    var p = 8;
+    while (p < q.n && p < 32768) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (q.n - p >= 6 && !sxMemcmpAt(q.b, p, ":CURVE", 0, 6)) {
+            {
+                if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, { a: p, z: 6 }))) {
+                    return false;
+                }
+            }
+            p += 6;
+            while (p < q.n && q.b[p] === 32) {
+                p++;
+            }
+            if (q.n - p < 2 || q.b[p] !== 35 /*#*/) {
+                return false;
+            }
+            p++;
+            var digits = (q.b[p] - 48 /*0*/) >>> 0;
+            if (digits < 1 || digits > 9 || q.n - p - 1 < digits) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_length_digits, sxCopy_sxsm_token(null, { a: p, z: 1 }))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_payload_bytes, sxCopy_sxsm_token(null, { a: p + 1, z: digits }))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        var a = p;
+        var quote = false;
+        while (p < q.n) {
+            var c = q.b[p];
+            if (c === 34 /*"*/) {
+                quote = !quote;
+            }
+            if (!quote && c === 59 /*;*/) {
+                break;
+            }
+            p++;
+        }
+        if (p === q.n || quote) {
+            return false;
+        }
+        var line = sxCopy_sxsm_token(null, sxsm_trim(q, sxCopy_sxsm_token(null, { a: a, z: p - a })));
+        var key = sxNew_sxsm_token();
+        var value = sxNew_sxsm_token();
+        var i = 0;
+        while (i < line.z && !sxsm_space(q.b[line.a + i])) {
+            i++;
+        }
+        sxCopy_sxsm_token(key, { a: line.a, z: i });
+        sxCopy_sxsm_token(value, sxsm_trim(q, sxCopy_sxsm_token(null, { a: line.a + i, z: line.z - i })));
+        {
+            if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, key))) {
+                return false;
+            }
+        }
+        var l = sxsm_eq(q, sxCopy_sxsm_token(null, key), "BYT_NR") ? sxsm_sample_bytes : sxsm_eq(q, sxCopy_sxsm_token(null, key), "BIT_NR") ? sxsm_sample_bits : sxsm_eq(q, sxCopy_sxsm_token(null, key), "NR_PT") ? sxsm_value_count : sxsm_eq(q, sxCopy_sxsm_token(null, key), "XINCR") ? sxsm_x_increment : sxsm_eq(q, sxCopy_sxsm_token(null, key), "XZERO") ? sxsm_x_zero : sxsm_eq(q, sxCopy_sxsm_token(null, key), "PT_OFF") ? sxsm_point_offset : sxsm_eq(q, sxCopy_sxsm_token(null, key), "YMULT") ? sxsm_y_multiplier : sxsm_eq(q, sxCopy_sxsm_token(null, key), "YZERO") ? sxsm_y_zero : sxsm_eq(q, sxCopy_sxsm_token(null, key), "YOFF") ? sxsm_y_offset : sxsm_eq(q, sxCopy_sxsm_token(null, key), "XUNIT") || sxsm_eq(q, sxCopy_sxsm_token(null, key), "YUNIT") ? sxsm_units : sxsm_eq(q, sxCopy_sxsm_token(null, key), "BYT_OR") ? sxsm_endian : sxsm_eq(q, sxCopy_sxsm_token(null, key), "ENCDG") ? sxsm_encoding : sxsm_option_value;
+        if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, value))) {
+            return false;
+        }
+        p++;
+    }
+    return false;
+}
+function sx_tektronix_isf_build(q) {
+    return sxsm_isf(q);
+}

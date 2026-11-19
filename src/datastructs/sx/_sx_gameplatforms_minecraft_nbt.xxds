@@ -1,0 +1,101 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/minecraft_nbt/xx_minecraft_nbt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_nbt_tag_fields = layout([u8("tag_id", ID)]);
+var sxgp_nbt_tag = sxLayout(0x6036006E, "nbt_tag", LE, sxgp_nbt_tag_fields);
+var sxgp_nbt_string_fields = layout([u16("byte_size", SIZE)]);
+var sxgp_nbt_string = sxLayout(0x6036006F, "nbt_string", BE, sxgp_nbt_string_fields);
+var sxgp_nbt_array_fields = layout([i32("element_count", COUNT)]);
+var sxgp_nbt_array = sxLayout(0x60360070, "nbt_array", BE, sxgp_nbt_array_fields);
+var sxgp_nbt_list_fields = layout([u8("element_type", ID), i32("element_count", COUNT)]);
+var sxgp_nbt_list = sxLayout(0x60360071, "nbt_list", BE, sxgp_nbt_list_fields);
+var sxgp_nbt_byte_fields = layout([i8("value")]);
+var sxgp_nbt_byte = sxLayout(0x60360072, "nbt_byte", BE, sxgp_nbt_byte_fields);
+var sxgp_nbt_short_fields = layout([i16("value")]);
+var sxgp_nbt_short = sxLayout(0x60360073, "nbt_short", BE, sxgp_nbt_short_fields);
+var sxgp_nbt_int_fields = layout([i32("value")]);
+var sxgp_nbt_int = sxLayout(0x60360074, "nbt_int", BE, sxgp_nbt_int_fields);
+var sxgp_nbt_long_fields = layout([i64("value")]);
+var sxgp_nbt_long = sxLayout(0x60360075, "nbt_long", BE, sxgp_nbt_long_fields);
+var sxgp_nbt_float_fields = layout([field("value", "float", 4)]);
+var sxgp_nbt_float = sxLayout(0x60360076, "nbt_float", BE, sxgp_nbt_float_fields);
+var sxgp_nbt_double_fields = layout([field("value", "double", 8)]);
+var sxgp_nbt_double = sxLayout(0x60360077, "nbt_double", BE, sxgp_nbt_double_fields);
+function sxgp_nbt_text(v, p, end) {
+    var z = [0];
+    if (!sxgp_row(v, sxgp_nbt_string, p[0], end) || !sxgp_word(v, p[0], 2, true, z, 0, end) || !sxgp_span(v, p[0] + 2, z[0], end)) {
+        return false;
+    }
+    p[0] += 2 + z[0];
+    return true;
+}
+function sxgp_nbt_value(v, p, end, type, depth) {
+    if (depth > 32 || ++v.work > 4000000) {
+        return false;
+    }
+    var n = [0];
+    var kind = [0];
+    var scalars = [sxgp_nbt_byte, sxgp_nbt_short, sxgp_nbt_int, sxgp_nbt_long, sxgp_nbt_float, sxgp_nbt_double];
+    if (type >= 1 && type <= 6) {
+        var l = scalars[(type - 1) >>> 0];
+        if (!sxgp_row(v, l, p[0], end)) {
+            return false;
+        }
+        p[0] += (l.fields[0].size < 0 ? l.fields[0].size + SX_U64_MAX : l.fields[0].size);
+        return true;
+    }
+    if (type === 8) {
+        return sxgp_nbt_text(v, p, end);
+    }
+    if (type === 7 || type === 11 || type === 12) {
+        if (!sxgp_row(v, sxgp_nbt_array, p[0], end) || !sxgp_word(v, p[0], 4, true, n, 0, end) || n[0] > 1048576) {
+            return false;
+        }
+        p[0] += 4;
+        l = type === 7 ? sxgp_nbt_byte : type === 11 ? sxgp_nbt_int : sxgp_nbt_long;
+        var z = (l.fields[0].size < 0 ? l.fields[0].size + SX_U64_MAX : l.fields[0].size);
+        if (!sxgp_table(v, l, p[0], n[0], end)) {
+            return false;
+        }
+        p[0] += n[0] * z;
+        return true;
+    }
+    if (type === 9) {
+        if (!sxgp_row(v, sxgp_nbt_list, p[0], end) || !sxgp_word(v, p[0], 1, false, kind, 0, end) || !sxgp_word(v, p[0] + 1, 4, true, n, 0, end) || n[0] > 65536 || kind[0] > 12 || !kind[0] && n[0]) {
+            return false;
+        }
+        p[0] += 5;
+        for (var i = 0; i < n[0]; i++) {
+            if (!sxgp_nbt_value(v, p, end, kind[0] >>> 0, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (type === 10) {
+        for (i = 0; i <= 4096; i++) {
+            if (!sxgp_row(v, sxgp_nbt_tag, p[0], end) || !sxgp_word(v, p[0], 1, false, kind, 0, end)) {
+                return false;
+            }
+            p[0]++;
+            if (!kind[0]) {
+                return true;
+            }
+            if (i === 4096 || !sxgp_nbt_text(v, p, end) || !sxgp_nbt_value(v, p, end, kind[0] >>> 0, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+function sxgp_nbt(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [1];
+    return sxgp_row(v, sxgp_nbt_tag, 0, end) && sxgp_nbt_text(v, p, end) && sxgp_nbt_value(v, p, end, 10, 0) && p[0] === end;
+}
+function sx_minecraft_nbt_build(v) {
+    return sxgp_nbt(v);
+}

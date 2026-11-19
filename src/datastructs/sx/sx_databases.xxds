@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_databases.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_databases");
+include("_sx_databases_apache_orc");
+include("_sx_databases_dbz");
+include("_sx_databases_hadoop_sequencefile");
+include("_sx_databases_leveldb_sstable");
+include("_sx_databases_lmdb_data");
+include("_sx_databases_postgres_custom");
+include("_sx_databases_redis_rdb");
+include("_sx_databases_tps");
+
+function fileTypes() { return ["TPS", "DBZ", "APACHE_ORC", "HADOOP_SEQUENCEFILE", "LEVELDB_SSTABLE", "REDIS_RDB",
+    "POSTGRES_CUSTOM", "LMDB_DATA"]; }
+
+var sx_databases_layouts = [sxd_sequence_header, sxd_sequence_options, sxd_sequence_sync, sxd_sequence_sync_record,
+    sxd_sequence_record, sxd_sequence_text_length_0, sxd_sequence_text_length_1, sxd_sequence_text_length_2,
+    sxd_sequence_text_length_3, sxd_sequence_text_length_4, sxd_sequence_text_length_5, sxd_sequence_text_length_6,
+    sxd_sequence_text_length_7, sxd_sequence_text_length_8, sxd_postgres_header, sxd_postgres_compression_v15,
+    sxd_postgres_compression_legacy, sxd_postgres_time, sxd_postgres_string_length, sxd_postgres_toc_count,
+    sxd_postgres_toc_prefix, sxd_postgres_section, sxd_postgres_data_offset, sxd_postgres_block_header,
+    sxd_postgres_chunk_length, sxd_lmdb_meta_prefix, sxd_lmdb_database, sxd_lmdb_free_database, sxd_lmdb_meta_tail,
+    sxd_lmdb_page_header, sxd_lmdb_node_offset, sxd_lmdb_leaf_node, sxd_lmdb_branch_node, sxd_lmdb_overflow_reference,
+    sxd_lmdb_overflow_page, sxd_leveldb_block_trailer, sxd_leveldb_restart_offset, sxd_leveldb_restart_count,
+    sxd_leveldb_footer_magic, sxd_redis_header, sxd_redis_opcode, sxd_redis_trailer, sxd_redis_expire_milliseconds,
+    sxd_redis_expire_seconds, sxd_redis_frequency, sxd_redis_length_6, sxd_redis_length_14, sxd_redis_length_32,
+    sxd_redis_length_64, sxd_redis_encoded_string, sxd_redis_integer_1, sxd_redis_integer_2, sxd_redis_integer_4,
+    sxd_redis_score_length, sxd_redis_score_binary, sxd_tps_header, sxd_tps_entry, sxd_tps_terminator, sxd_dbz_header,
+    sxd_dbz_index_record, sxd_orc_header, sxd_orc_postscript_length, sxd_orc_fixed32, sxd_orc_fixed64, sxd_database_varuint_1,
+    sxd_database_varuint_2, sxd_database_varuint_3, sxd_database_varuint_4, sxd_database_varuint_5, sxd_database_varuint_6,
+    sxd_database_varuint_7, sxd_database_varuint_8, sxd_database_varuint_9, sxd_database_varuint_10,
+    sxd_database_varuint_offset_1, sxd_database_varuint_offset_2, sxd_database_varuint_offset_3, sxd_database_varuint_offset_4,
+    sxd_database_varuint_offset_5, sxd_database_varuint_offset_6, sxd_database_varuint_offset_7, sxd_database_varuint_offset_8,
+    sxd_database_varuint_offset_9, sxd_database_varuint_offset_10, sxd_database_varuint_size_1, sxd_database_varuint_size_2,
+    sxd_database_varuint_size_3, sxd_database_varuint_size_4, sxd_database_varuint_size_5, sxd_database_varuint_size_6,
+    sxd_database_varuint_size_7, sxd_database_varuint_size_8, sxd_database_varuint_size_9, sxd_database_varuint_size_10,
+    sxd_database_varuint_count_1, sxd_database_varuint_count_2, sxd_database_varuint_count_3, sxd_database_varuint_count_4,
+    sxd_database_varuint_count_5, sxd_database_varuint_count_6, sxd_database_varuint_count_7, sxd_database_varuint_count_8,
+    sxd_database_varuint_count_9, sxd_database_varuint_count_10, sxd_database_varuint_id_1, sxd_database_varuint_id_2,
+    sxd_database_varuint_id_3, sxd_database_varuint_id_4, sxd_database_varuint_id_5, sxd_database_varuint_id_6,
+    sxd_database_varuint_id_7, sxd_database_varuint_id_8, sxd_database_varuint_id_9, sxd_database_varuint_id_10,
+    sxd_orc_protobuf_key_1, sxd_orc_protobuf_key_2, sxd_orc_protobuf_key_3, sxd_orc_protobuf_key_4, sxd_orc_protobuf_key_5,
+    sxd_orc_protobuf_key_6, sxd_orc_protobuf_key_7, sxd_orc_protobuf_key_8, sxd_orc_protobuf_key_9, sxd_orc_protobuf_key_10];
+
+function structs() {
+    return sxCatalog([sxd_sequence_header, sxd_sequence_options, sxd_sequence_sync, sxd_sequence_sync_record,
+        sxd_sequence_record, sxd_sequence_text_length_0, sxd_sequence_text_length_1, sxd_sequence_text_length_2,
+        sxd_sequence_text_length_3, sxd_sequence_text_length_4, sxd_sequence_text_length_5, sxd_sequence_text_length_6,
+        sxd_sequence_text_length_7, sxd_sequence_text_length_8, sxd_postgres_header, sxd_postgres_compression_v15,
+        sxd_postgres_compression_legacy, sxd_postgres_time, sxd_postgres_string_length, sxd_postgres_toc_count,
+        sxd_postgres_toc_prefix, sxd_postgres_section, sxd_postgres_data_offset, sxd_postgres_block_header,
+        sxd_postgres_chunk_length, sxd_lmdb_meta_prefix, sxd_lmdb_database, sxd_lmdb_free_database, sxd_lmdb_meta_tail,
+        sxd_lmdb_page_header, sxd_lmdb_node_offset, sxd_lmdb_leaf_node, sxd_lmdb_branch_node, sxd_lmdb_overflow_reference,
+        sxd_lmdb_overflow_page, sxd_leveldb_block_trailer, sxd_leveldb_restart_offset, sxd_leveldb_restart_count,
+        sxd_leveldb_footer_magic, sxd_redis_header, sxd_redis_opcode, sxd_redis_trailer, sxd_redis_expire_milliseconds,
+        sxd_redis_expire_seconds, sxd_redis_frequency, sxd_redis_length_6, sxd_redis_length_14, sxd_redis_length_32,
+        sxd_redis_length_64, sxd_redis_encoded_string, sxd_redis_integer_1, sxd_redis_integer_2, sxd_redis_integer_4,
+        sxd_redis_score_length, sxd_redis_score_binary, sxd_tps_header, sxd_tps_entry, sxd_tps_terminator, sxd_dbz_header,
+        sxd_dbz_index_record, sxd_orc_header, sxd_orc_postscript_length, sxd_orc_fixed32, sxd_orc_fixed64,
+        sxd_database_varuint_1, sxd_database_varuint_2, sxd_database_varuint_3, sxd_database_varuint_4, sxd_database_varuint_5,
+        sxd_database_varuint_6, sxd_database_varuint_7, sxd_database_varuint_8, sxd_database_varuint_9, sxd_database_varuint_10,
+        sxd_database_varuint_offset_1, sxd_database_varuint_offset_2, sxd_database_varuint_offset_3,
+        sxd_database_varuint_offset_4, sxd_database_varuint_offset_5, sxd_database_varuint_offset_6,
+        sxd_database_varuint_offset_7, sxd_database_varuint_offset_8, sxd_database_varuint_offset_9,
+        sxd_database_varuint_offset_10, sxd_database_varuint_size_1, sxd_database_varuint_size_2, sxd_database_varuint_size_3,
+        sxd_database_varuint_size_4, sxd_database_varuint_size_5, sxd_database_varuint_size_6, sxd_database_varuint_size_7,
+        sxd_database_varuint_size_8, sxd_database_varuint_size_9, sxd_database_varuint_size_10, sxd_database_varuint_count_1,
+        sxd_database_varuint_count_2, sxd_database_varuint_count_3, sxd_database_varuint_count_4, sxd_database_varuint_count_5,
+        sxd_database_varuint_count_6, sxd_database_varuint_count_7, sxd_database_varuint_count_8, sxd_database_varuint_count_9,
+        sxd_database_varuint_count_10, sxd_database_varuint_id_1, sxd_database_varuint_id_2, sxd_database_varuint_id_3,
+        sxd_database_varuint_id_4, sxd_database_varuint_id_5, sxd_database_varuint_id_6, sxd_database_varuint_id_7,
+        sxd_database_varuint_id_8, sxd_database_varuint_id_9, sxd_database_varuint_id_10, sxd_orc_protobuf_key_1,
+        sxd_orc_protobuf_key_2, sxd_orc_protobuf_key_3, sxd_orc_protobuf_key_4, sxd_orc_protobuf_key_5, sxd_orc_protobuf_key_6,
+        sxd_orc_protobuf_key_7, sxd_orc_protobuf_key_8, sxd_orc_protobuf_key_9, sxd_orc_protobuf_key_10], sx_databases_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_databases_build, false);
+}

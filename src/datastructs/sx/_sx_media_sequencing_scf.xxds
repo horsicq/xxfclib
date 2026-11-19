@@ -1,0 +1,26 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/sequencing_scf/xx_sequencing_scf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_scf_header_fields = layout([chars("magic", 4, SIGNATURE), u32("samples", COUNT), u32("samples_offset", OFFSET),
+    u32("bases", COUNT), u32("left_clip"), u32("right_clip"), u32("bases_offset", OFFSET), u32("comments_size", SIZE),
+    u32("comments_offset", OFFSET), chars("version", 4, ID), u32("sample_size", SIZE), u32("code_set", ID),
+    u32("private_size", SIZE), u32("private_offset", OFFSET), field("spare", "uint32[18]", 72, RESERVED)]);
+var sxm_scf_header = sxLayout(0x60060034, "scf_header", BE, sxm_scf_header_fields);
+function sx_sequencing_scf_build(c, h, n) {
+    var samples;
+    var bases;
+    var width;
+    if (n < 128 || sxMemcmp(h, ".scf", 4)) {
+        return false;
+    }
+    samples = sxGetU32(h, n, 4, true);
+    bases = sxGetU32(h, n, 12, true);
+    width = sxGetU32(h, n, 40, true);
+    if (width !== 1 && width !== 2 || !sxm_span(c, sxGetU32(h, n, 8, true), samples * 4 * width) || !sxm_span(c, sxGetU32(h, n, 24, true), bases * 12) || !sxm_span(c, sxGetU32(h, n, 32, true), sxGetU32(h, n, 28, true)) || !sxm_span(c, sxGetU32(h, n, 52, true), sxGetU32(h, n, 48, true))) {
+        return false;
+    }
+    return sxm_fixed(c, sxm_scf_header, 128);
+}

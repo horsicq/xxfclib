@@ -1,0 +1,94 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/nwchem_input/xx_nwchem_input_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_unpaired_electrons_fields = layout([field("unpaired_electrons", "ascii_signed", 0, COUNT)]);
+var sxsch_unpaired_electrons = sxLayout(0x606100B1, "chemistry_unpaired_electrons", LE, sxsch_unpaired_electrons_fields);
+var sxsch_memory_amount_fields = layout([field("memory_amount", "ascii_signed", 0)]);
+var sxsch_memory_amount = sxLayout(0x606100B8, "chemistry_memory_amount", LE, sxsch_memory_amount_fields);
+function sxsch_nwchem(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(16, sxNew_sxsch_token);
+    var n = [0];
+    var mode = 0;
+    var lattice = 0;
+    var geometry = false;
+    var system = false;
+    while (sxsch_next(q, l, t[0], 16, n, "#")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (lattice) {
+            if (n[0] !== 3 || !sxsch_xyz(q, t[0], 3)) {
+                return false;
+            }
+            lattice--;
+            continue;
+        }
+        if (geometry && n[0] === 4 && !sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "system")) {
+            {
+                if (!sxsch_emit(q, sxsch_element, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (!sxsch_xyz(q, t[1], mode)) {
+                return false;
+            }
+            continue;
+        }
+        {
+            if (!sxsch_emit(q, sxsch_keyword, sxCopy_sxsch_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "geometry")) {
+            geometry = true;
+            mode = 0;
+            for (var i = 1; i < n[0]; i++) {
+                if (sxsch_ci(q, sxCopy_sxsch_token(null, t[i]), "au")) {
+                    mode = 1;
+                }
+                {
+                    if (!sxsch_emit(q, sxsch_option_value, sxCopy_sxsch_token(null, t[i]))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "system")) {
+            system = true;
+            if (!sxsch_each(q, t, 1, (n[0] - 1) >>> 0, sxsch_option_value)) {
+                return false;
+            }
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "lattice_vectors")) {
+            lattice = 3;
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "end")) {
+            if (system) {
+                system = false;
+            } else {
+                geometry = false;
+            }
+        } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "title")) {
+            if (n[0] > 1) {
+                {
+                    if (!sxsch_emit(q, sxsch_title, sxCopy_sxsch_token(null, { a: t[1].a, z: l.a + l.z - t[1].a }))) {
+                        return false;
+                    }
+                }
+            }
+        } else if (n[0] > 1) {
+            var layout = sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "charge") ? sxsch_charge : sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "mult") ? sxsch_multiplicity : sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "nopen") ? sxsch_unpaired_electrons : sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "maxiter") ? sxsch_iteration_count : sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "thresh") ? sxsch_threshold : sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "memory") ? sxsch_memory_amount : sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "start") || sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "permanent_dir") || sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "scratch_dir") ? sxsch_filename : sxsch_option_value;
+            if (!sxsch_emit(q, layout, sxCopy_sxsch_token(null, t[1]))) {
+                return false;
+            }
+            if (n[0] > 2 && !sxsch_each(q, t, 2, (n[0] - 2) >>> 0, sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "memory") ? sxsch_units : sxsch_option_value)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_nwchem_input_build(q) {
+    return sxsch_nwchem(q);
+}

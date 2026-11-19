@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/wiilz77/xx_wiilz77_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_imd5_header_fields = layout([blob("signature", 4, SIGNATURE), u32("content_size", SIZE), blob("reserved", 8, RESERVED),
+    blob("md5", 16, CHECKSUM)]);
+var sxl_imd5_header = sxLayout(0x600A0003, "imd5_header", BE, sxl_imd5_header_fields);
+var sxl_wii_lz77_tag_fields = layout([blob("signature", 4, SIGNATURE)]);
+var sxl_wii_lz77_tag = sxLayout(0x600A0004, "wii_lz77_tag", LE, sxl_wii_lz77_tag_fields);
+var sxl_wii_lz77_extended_size_fields = layout([u32("original_size", SIZE)]);
+var sxl_wii_lz77_extended_size = sxLayout(0x600A0006, "wii_lz77_extended_size", LE, sxl_wii_lz77_extended_size_fields);
+function sxl_wii(c) {
+    var at = 0;
+    var h = [];
+    var n;
+    if (!sx_read(c, 0, h, 4)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "IMD5", 4)) {
+        if (!sx_add(c, sxl_imd5_header, 0, 32)) {
+            return false;
+        }
+        at = 32;
+        if (!sxl_sig(c, at, "LZ77", 4)) {
+            return false;
+        }
+    }
+    if (!sx_read(c, at, h, 4)) {
+        return false;
+    }
+    if (!sxMemcmp(h, "LZ77", 4)) {
+        if (!sx_add(c, sxl_wii_lz77_tag, at, 4)) {
+            return false;
+        }
+        at += 4;
+        if (!sx_read(c, at, h, 4)) {
+            return false;
+        }
+    }
+    if (h[0] !== 0x10 && h[0] !== 0x11 || !sx_add(c, sxl_wii_lz77_header, at, 4)) {
+        return false;
+    }
+    at += 4;
+    n = h[1] | h[2] << 8 | h[3] << 16;
+    if (!n) {
+        if ((n = sx_u32(c, at, false)) === null || !sx_add(c, sxl_wii_lz77_extended_size, at, 4)) {
+            return false;
+        }
+        at += 4;
+    }
+    return n > 0 && sxl_span(c, (at < 0 ? at + SX_U64_MAX : at), 2);
+}
+function sx_wiilz77_build(c) {
+    return sxl_wii(c);
+}

@@ -1,0 +1,84 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/android_lp/xx_android_lp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_lp_geometry_fields = layout([u32("magic", SIGNATURE), u32("struct_size", SIZE), bytes("checksum", 32, CHECKSUM),
+    u32("metadata_max_size", SIZE), u32("metadata_slot_count", COUNT), u32("logical_block_size", SIZE)]);
+var sxbrs_lp_geometry = sxLayout(0x603E0003, "lp_geometry", LE, sxbrs_lp_geometry_fields);
+var sxbrs_lp_header_fields = layout([u32("magic", SIGNATURE), u16("major_version"), u16("minor_version"),
+    u32("header_size", SIZE), bytes("header_checksum", 32, CHECKSUM), u32("tables_size", SIZE),
+    bytes("tables_checksum", 32, CHECKSUM), u32("partitions_offset", OFFSET), u32("partitions_num_entries", COUNT),
+    u32("partitions_entry_size", SIZE), u32("extents_offset", OFFSET), u32("extents_num_entries", COUNT),
+    u32("extents_entry_size", SIZE), u32("groups_offset", OFFSET), u32("groups_num_entries", COUNT),
+    u32("groups_entry_size", SIZE), u32("block_devices_offset", OFFSET), u32("block_devices_num_entries", COUNT),
+    u32("block_devices_entry_size", SIZE)]);
+var sxbrs_lp_header = sxLayout(0x603E0004, "lp_header", LE, sxbrs_lp_header_fields);
+var sxbrs_lp_header_extended_fields = layout([u32("magic", SIGNATURE), u16("major_version"), u16("minor_version"),
+    u32("header_size", SIZE), bytes("header_checksum", 32, CHECKSUM), u32("tables_size", SIZE),
+    bytes("tables_checksum", 32, CHECKSUM), u32("partitions_offset", OFFSET), u32("partitions_num_entries", COUNT),
+    u32("partitions_entry_size", SIZE), u32("extents_offset", OFFSET), u32("extents_num_entries", COUNT),
+    u32("extents_entry_size", SIZE), u32("groups_offset", OFFSET), u32("groups_num_entries", COUNT),
+    u32("groups_entry_size", SIZE), u32("block_devices_offset", OFFSET), u32("block_devices_num_entries", COUNT),
+    u32("block_devices_entry_size", SIZE), u32("flags", FLAGS), bytes("reserved", 124, RESERVED)]);
+var sxbrs_lp_header_extended = sxLayout(0x603E0005, "lp_header_extended", LE, sxbrs_lp_header_extended_fields);
+var sxbrs_lp_partition_fields = layout([chars("name", 36, STRING), u32("attributes", FLAGS), u32("first_extent_index"),
+    u32("num_extents", COUNT), u32("group_index")]);
+var sxbrs_lp_partition = sxLayout(0x603E0006, "lp_partition", LE, sxbrs_lp_partition_fields);
+var sxbrs_lp_extent_fields = layout([u64("num_sectors", COUNT), u32("target_type", ID), u64("target_data"), u32("target_source")]);
+var sxbrs_lp_extent = sxLayout(0x603E0007, "lp_extent", LE, sxbrs_lp_extent_fields);
+var sxbrs_lp_group_fields = layout([chars("name", 36, STRING), u32("flags", FLAGS), u64("maximum_size", SIZE)]);
+var sxbrs_lp_group = sxLayout(0x603E0008, "lp_group", LE, sxbrs_lp_group_fields);
+var sxbrs_lp_block_device_fields = layout([u64("first_logical_sector"), u32("alignment", SIZE), u32("alignment_offset", OFFSET),
+    u64("size", SIZE), chars("partition_name", 36, STRING), u32("flags", FLAGS)]);
+var sxbrs_lp_block_device = sxLayout(0x603E0009, "lp_block_device", LE, sxbrs_lp_block_device_fields);
+function sxbrs_lp(c) {
+    if (c.size < 12416 || sxbrs_num(c, 4096, 4, false) !== 0x616C4467 || sxbrs_num(c, 4100, 4, false) !== 52 || sxbrs_num(c, 12288, 4, false) !== 0x414C5030) {
+        return false;
+    }
+    if (!sxbrs_add(c, sxbrs_lp_geometry, 4096)) {
+        return false;
+    }
+    if (sxbrs_num(c, 8192, 4, false) === 0x616C4467 && sxbrs_num(c, 8196, 4, false) === 52 && !sxbrs_add(c, sxbrs_lp_geometry, 8192)) {
+        return false;
+    }
+    var header = sxbrs_num(c, 12296, 4, false);
+    var bytes = sxbrs_num(c, 12332, 4, false);
+    if (header !== 128 && header !== 256) {
+        return false;
+    }
+    if (!sxbrs_add(c, header === 128 ? sxbrs_lp_header : sxbrs_lp_header_extended, 12288)) {
+        return false;
+    }
+    var data = 12288 + (header >= SX_I64_MAX ? header - SX_U64_MAX : header);
+    if (bytes > (c.size - data < 0 ? c.size - data + SX_U64_MAX : c.size - data)) {
+        return false;
+    }
+    var layouts = [sxbrs_lp_partition, sxbrs_lp_extent, sxbrs_lp_group, sxbrs_lp_block_device];
+    for (var i = 0; i < 4; i++) {
+        var o = sxbrs_num(c, (12368 + ((12 * i) >>> 0)) >>> 0, 4, false);
+        var count = sxbrs_num(c, (12372 + ((12 * i) >>> 0)) >>> 0, 4, false);
+        var stride = sxbrs_num(c, (12376 + ((12 * i) >>> 0)) >>> 0, 4, false);
+        var known = sxbrs_width(layouts[i]);
+        if (o > bytes || stride < known || count > Math.floor(sxU64(bytes - o) / stride)) {
+            return false;
+        }
+        if (stride === known) {
+            var at = [data + (o >= SX_I64_MAX ? o - SX_U64_MAX : o)];
+            if (!sxbrs_take(c, layouts[i], at, data + (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes), count)) {
+                return false;
+            }
+        } else {
+            for (var j = 0; j < count && j < 65536 && c.count < 32000; j++) {
+                if (!sxbrs_add(c, layouts[i], data + (o + j * stride >= SX_I64_MAX ? o + j * stride - SX_U64_MAX : o + j * stride))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return !c.failed;
+}
+function sx_android_lp_build(c) {
+    return sxbrs_lp(c);
+}

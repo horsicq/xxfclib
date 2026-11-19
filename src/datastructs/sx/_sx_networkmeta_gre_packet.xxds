@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/gre_packet/xx_gre_packet_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_gre_checksum_fields = layout([u16("checksum", CHECKSUM), u16("reserved", RESERVED)]);
+var sxnm_gre_checksum = sxLayout(0x6026004F, "gre_checksum", BE, sxnm_gre_checksum_fields);
+var sxnm_gre_key_fields = layout([u32("key", ID)]);
+var sxnm_gre_key = sxLayout(0x60260050, "gre_key", BE, sxnm_gre_key_fields);
+var sxnm_gre_sequence_fields = layout([u32("sequence_number", ID)]);
+var sxnm_gre_sequence = sxLayout(0x60260051, "gre_sequence", BE, sxnm_gre_sequence_fields);
+function sxnm_gre(v) {
+    if (!sxnm_row(v, sxnm_gre_header, 0, v.n)) {
+        return false;
+    }
+    var f = sxnm_u16(v.p, 0);
+    var at = 4;
+    if (f & 0x8000) {
+        if (!sxnm_row(v, sxnm_gre_checksum, at, v.n)) {
+            return false;
+        }
+        at += 4;
+    }
+    if (f & 0x2000) {
+        if (!sxnm_row(v, sxnm_gre_key, at, v.n)) {
+            return false;
+        }
+        at += 4;
+    }
+    if (f & 0x1000) {
+        if (!sxnm_row(v, sxnm_gre_sequence, at, v.n)) {
+            return false;
+        }
+        at += 4;
+    }
+    return sxnm_ip(v, at, v.n);
+}
+function sx_gre_packet_build(v) {
+    return sxnm_gre(v);
+}

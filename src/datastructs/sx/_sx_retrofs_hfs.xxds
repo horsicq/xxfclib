@@ -1,0 +1,178 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/hfs/xx_hfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_hfs_master_directory_fields = layout([u16("signature", SIGNATURE), u32("creation_time", TIMESTAMP),
+    u32("modification_time", TIMESTAMP), u16("attributes", FLAGS), u16("root_file_count", COUNT), u16("bitmap_start_sector"),
+    u16("allocation_search_pointer"), u16("allocation_block_count", COUNT), u32("allocation_block_size", SIZE),
+    u32("clump_size", SIZE), u16("allocation_start_sector"), u32("next_catalog_id", ID), u16("free_blocks", COUNT),
+    u8("volume_name_length", SIZE), field("volume_name_macroman", "byte[27]", 27), u32("backup_time", TIMESTAMP),
+    u16("backup_sequence"), u32("write_count", COUNT), u32("extents_clump_size", SIZE), u32("catalog_clump_size", SIZE),
+    u16("root_directory_count", COUNT), u32("file_count", COUNT), u32("directory_count", COUNT),
+    field("finder_info", "uint32[8]", 32), u16("volume_cache_or_embedded_signature"), u16("bitmap_cache_or_embedded_start"),
+    u16("control_cache_or_embedded_count"), u32("extents_file_size", SIZE),
+    field("extents_file_initial_extents", "uint16[6]", 12), u32("catalog_file_size", SIZE),
+    field("catalog_file_initial_extents", "uint16[6]", 12)]);
+var sxrfs_hfs_master_directory = sxLayout(0x6065003F, "hfs_master_directory", BE, sxrfs_hfs_master_directory_fields);
+var sxrfs_hfs_btree_node_fields = layout([u32("forward_link"), u32("backward_link"), i8("kind", ID), u8("height"),
+    u16("record_count", COUNT), u16("reserved", RESERVED)]);
+var sxrfs_hfs_btree_node = sxLayout(0x60650040, "hfs_btree_node", BE, sxrfs_hfs_btree_node_fields);
+var sxrfs_hfs_btree_header_fields = layout([u16("tree_depth", COUNT), u32("root_node"), u32("leaf_records", COUNT),
+    u32("first_leaf_node"), u32("last_leaf_node"), u16("node_size", SIZE), u16("maximum_key_length", SIZE),
+    u32("total_nodes", COUNT), u32("free_nodes", COUNT), u16("reserved16", RESERVED), u32("clump_size", SIZE),
+    u8("tree_type", ID), u8("key_compare_type", ID), u32("attributes", FLAGS), field("reserved32", "uint32[16]", 64, RESERVED)]);
+var sxrfs_hfs_btree_header = sxLayout(0x60650041, "hfs_btree_header", BE, sxrfs_hfs_btree_header_fields);
+var sxrfs_hfs_node_record_offset_fields = layout([u16("record_offset", OFFSET)]);
+var sxrfs_hfs_node_record_offset = sxLayout(0x60650042, "hfs_node_record_offset", BE, sxrfs_hfs_node_record_offset_fields);
+var sxrfs_hfs_catalog_key_prefix_fields = layout([u8("key_length", SIZE), u8("reserved", RESERVED),
+    u32("parent_catalog_id", ID), u8("name_length", SIZE)]);
+var sxrfs_hfs_catalog_key_prefix = sxLayout(0x60650043, "hfs_catalog_key_prefix", BE, sxrfs_hfs_catalog_key_prefix_fields);
+var sxrfs_hfs_extents_key_fields = layout([u8("key_length", SIZE), u8("fork_type", ID), u32("file_id", ID),
+    u16("first_allocation_block")]);
+var sxrfs_hfs_extents_key = sxLayout(0x60650044, "hfs_extents_key", BE, sxrfs_hfs_extents_key_fields);
+var sxrfs_hfs_extent_fields = layout([u16("first_allocation_block"), u16("block_count", COUNT)]);
+var sxrfs_hfs_extent = sxLayout(0x60650045, "hfs_extent", BE, sxrfs_hfs_extent_fields);
+var sxrfs_hfs_btree_child_fields = layout([u32("child_node")]);
+var sxrfs_hfs_btree_child = sxLayout(0x60650046, "hfs_btree_child", BE, sxrfs_hfs_btree_child_fields);
+var sxrfs_hfs_catalog_folder_fields = layout([i16("record_type", ID), u16("flags", FLAGS), u16("valence", COUNT),
+    u32("folder_id", ID), u32("creation_time", TIMESTAMP), u32("modification_time", TIMESTAMP), u32("backup_time", TIMESTAMP),
+    field("finder_folder_info", "byte[16]", 16), field("finder_extended_info", "byte[16]", 16),
+    field("reserved", "uint32[4]", 16, RESERVED)]);
+var sxrfs_hfs_catalog_folder = sxLayout(0x60650047, "hfs_catalog_folder", BE, sxrfs_hfs_catalog_folder_fields);
+var sxrfs_hfs_catalog_file_fields = layout([i16("record_type", ID), u8("flags", FLAGS), i8("file_type", ID),
+    u32("finder_type", ID), u32("finder_creator", ID), u16("finder_flags", FLAGS), i16("finder_vertical"),
+    i16("finder_horizontal"), i16("finder_folder"), u32("file_id", ID), u16("data_start_block"), i32("data_logical_size", SIZE),
+    i32("data_physical_size", SIZE), u16("resource_start_block"), i32("resource_logical_size", SIZE),
+    i32("resource_physical_size", SIZE), u32("creation_time", TIMESTAMP), u32("modification_time", TIMESTAMP),
+    u32("backup_time", TIMESTAMP), field("finder_extended_info", "byte[16]", 16), u16("clump_size", SIZE),
+    field("data_initial_extents", "uint16[6]", 12), field("resource_initial_extents", "uint16[6]", 12),
+    u32("reserved", RESERVED)]);
+var sxrfs_hfs_catalog_file = sxLayout(0x60650048, "hfs_catalog_file", BE, sxrfs_hfs_catalog_file_fields);
+var sxrfs_hfs_catalog_thread_fields = layout([i16("record_type", ID), field("reserved", "int32[2]", 8, RESERVED),
+    u32("parent_catalog_id", ID), u8("name_length", SIZE), field("name_macroman", "byte[31]", 31)]);
+var sxrfs_hfs_catalog_thread = sxLayout(0x60650049, "hfs_catalog_thread", BE, sxrfs_hfs_catalog_thread_fields);
+function sxrfs_hfs_pos(extent, extent_o, base, bs, logical, n, out) {
+    for (var i = 0; i < 3; i++) {
+        var first = sxrfs16(extent, extent_o + ((i * 4) >>> 0), 1);
+        var z = sxrfs16(extent, extent_o + ((i * 4) >>> 0) + 2, 1) * bs;
+        if (logical >= z) {
+            logical = sxU64(logical - z);
+            continue;
+        }
+        if (n > sxU64(z - logical)) {
+            return false;
+        }
+        out[0] = base + first * bs + logical;
+        return true;
+    }
+    return false;
+}
+function sxrfs_hfs_tree(c, extent, extent_o, base, bs, size, catalog) {
+    var p = [0];
+    var h = [];
+    if (size < 512 || !sxrfs_hfs_pos(extent, extent_o, base, bs, 0, 120, p) || !sxrfs_read(c, p[0], h, 0, 120) || h[8] !== 1) {
+        return true;
+    }
+    var node = sxrfs16(h, 32, 1);
+    var total = sxrfs32(h, 36, 1);
+    if (node < 512 || node > 32768 || !sxrfs_pow(node) || !total || total > Math.floor(size / node)) {
+        return true;
+    }
+    var b = sxAlloc(node);
+    if (b === null) {
+        return false;
+    }
+    var ok = true;
+    var bitmap = [];
+    if (!sxrfs_hfs_pos(extent, extent_o, base, bs, 248, 256, p) || !sxrfs_read(c, p[0], bitmap, 0, 256)) {
+        return true;
+    }
+    for (var i = 0; i < total && i < 2048 && c.count < 24000; i++) {
+        if (!(bitmap[Math.floor(i / 8)] & 0x80 >>> i % 8)) {
+            continue;
+        }
+        if (!sxrfs_hfs_pos(extent, extent_o, base, bs, i * node, node, p) || !sxrfs_read(c, p[0], b, 0, node)) {
+            continue;
+        }
+        var kind = b[8] << 24 >> 24;
+        var n = sxrfs16(b, 10, 1);
+        if (n > (Math.floor(((node - 14) >>> 0) / 2) - 1) >>> 0 || kind !== -1 && kind !== 0 && kind !== 1 && kind !== 2) {
+            continue;
+        }
+        if (!sxrfs_put(c, sxrfs_hfs_btree_node, p[0], 1) || !sxrfs_put(c, sxrfs_hfs_node_record_offset, sxU64(p[0] + node - ((((n + 1) >>> 0) * 2) >>> 0)), (n + 1) >>> 0)) {
+            ok = false;
+            break;
+        }
+        for (var j = 0; j < n && ok; j++) {
+            var a = sxrfs16(b, node - ((2 * ((j + 1) >>> 0)) >>> 0), 1);
+            var z = sxrfs16(b, node - ((2 * ((j + 2) >>> 0)) >>> 0), 1);
+            if (a < 14 || z < a || z > (node - ((((n + 1) >>> 0) * 2) >>> 0)) >>> 0) {
+                continue;
+            }
+            if (kind === 1) {
+                if (j === 0 && (z - a) >>> 0 >= 106 && !sxrfs_put(c, sxrfs_hfs_btree_header, p[0] + a, 1)) {
+                    ok = false;
+                }
+                continue;
+            }
+            if (kind === 2 || (z - a) >>> 0 < 2) {
+                continue;
+            }
+            var key = b[a];
+            var data = (a + (((key + 2) >>> 0 & 0xFFFFFFFE) >>> 0)) >>> 0;
+            if (data > z) {
+                continue;
+            }
+            if (catalog) {
+                if (key < 6 || b[(a + 6) >>> 0] > 31 || b[(a + 6) >>> 0] > (key - 6) >>> 0) {
+                    continue;
+                }
+                if (!sxrfs_put(c, sxrfs_hfs_catalog_key_prefix, p[0] + a, 1)) {
+                    ok = false;
+                    break;
+                }
+            } else {
+                if (key !== 7 || !sxrfs_put(c, sxrfs_hfs_extents_key, p[0] + a, 1)) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (kind === 0) {
+                if ((z - data) >>> 0 >= 4 && !sxrfs_put(c, sxrfs_hfs_btree_child, p[0] + data, 1)) {
+                    ok = false;
+                }
+            } else if (!catalog) {
+                if ((z - data) >>> 0 >= 12 && !sxrfs_put(c, sxrfs_hfs_extent, p[0] + data, 3)) {
+                    ok = false;
+                }
+            } else if ((z - data) >>> 0 >= 2) {
+                var type = sxrfs16(b, data, 1) << 16 >> 16;
+                var l = type === 0x100 ? sxrfs_hfs_catalog_folder : type === 0x200 ? sxrfs_hfs_catalog_file : type === 0x300 || type === 0x400 ? sxrfs_hfs_catalog_thread : null;
+                if (l !== null) {
+                    var f = l.fields[l.field_count + -1];
+                    if ((f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size) <= (z - data) >>> 0 && !sxrfs_put(c, l, p[0] + data, 1)) {
+                        ok = false;
+                    }
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sxrfs_hfs(c) {
+    var h = [];
+    if (!sxrfs_read(c, 1024, h, 0, 162) || sxrfs16(h, 0, 1) !== 0x4244 || !sxrfs_put(c, sxrfs_hfs_master_directory, 1024, 1)) {
+        return false;
+    }
+    var bs = sxrfs32(h, 20, 1);
+    var base = sxrfs16(h, 28, 1) * 512;
+    if (bs < 512 || bs > 16777216 || bs % 512 || !sxrfs_span(c, base, sxrfs16(h, 18, 1) * bs)) {
+        return true;
+    }
+    return sxrfs_hfs_tree(c, h, 134, base, bs, sxrfs32(h, 130, 1), false) && sxrfs_hfs_tree(c, h, 150, base, bs, sxrfs32(h, 146, 1), true);
+}
+function sx_hfs_build(c) {
+    return sxrfs_hfs(c);
+}

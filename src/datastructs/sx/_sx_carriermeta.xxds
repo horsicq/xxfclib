@@ -1,0 +1,97 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_carriermeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_cm_winimage_zip_central_header_fields = layout([u32("signature", SIGNATURE), u16("version_made_by", ID),
+    u16("version_needed", ID), u16("flags", FLAGS), u16("compression_method", ID), u16("modified_time"), u16("modified_date"),
+    u32("crc32", CHECKSUM), u32("compressed_size", SIZE), u32("uncompressed_size", SIZE), u16("filename_length", SIZE),
+    u16("extra_length", SIZE), u16("comment_length", SIZE), u16("start_disk", ID), u16("internal_attributes", FLAGS),
+    u32("external_attributes", FLAGS), u32("local_header_offset", OFFSET)]);
+var sx_cm_winimage_zip_central_header = sxLayout(0x60240005, "winimage_zip_central_header", LE, sx_cm_winimage_zip_central_header_fields);
+var sx_cm_winimage_zip_end_record_fields = layout([u32("signature", SIGNATURE), u16("disk_number", ID),
+    u16("central_directory_disk", ID), u16("entries_on_disk", COUNT), u16("entry_count", COUNT),
+    u32("central_directory_size", SIZE), u32("central_directory_offset", OFFSET), u16("comment_length", SIZE)]);
+var sx_cm_winimage_zip_end_record = sxLayout(0x60240006, "winimage_zip_end_record", LE, sx_cm_winimage_zip_end_record_fields);
+var sx_cm_winimage_zip_extra_field_fields = layout([u16("header_id", ID), u16("data_size", SIZE)]);
+var sx_cm_winimage_zip_extra_field = sxLayout(0x60240007, "winimage_zip_extra_field", LE, sx_cm_winimage_zip_extra_field_fields);
+function sx_carriermeta_supports(t) {
+    return t === "SFX_SZDD" || t === "WINIMAGE_ZIP";
+}
+function sx_cm_span(c, p, n) {
+    return p >= 0 && p <= c.size && n <= (c.size - p < 0 ? c.size - p + SX_U64_MAX : c.size - p);
+}
+function sx_cm_read(c, p, b, n) {
+    return sx_cm_span(c, p, n) && sx_read(c, p, b, n);
+}
+function sx_cm_add(c, l, p, z) {
+    if (!sx_cm_span(c, p, (z < 0 ? z + SX_U64_MAX : z))) {
+        return false;
+    }
+    if (c.count >= 20000) {
+        return true;
+    }
+    return sx_add(c, l, p, z);
+}
+function sx_cm_records(c) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return null;
+    }
+    return f.create_archive_records_reading(f, null, c.pd);
+}
+function sx_cm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sx_cm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sx_cm_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end || p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sx_cm_order, true);
+    return !c.failed;
+}
+function sx_carriermeta_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = (c.f.file_type === "SFX_SZDD" ? (sx_sfx_szdd_build(c) ? 1 : 0) : c.f.file_type === "WINIMAGE_ZIP" ? (sx_winimage_zip_build(c) ? 1 : 0) : 0) !== 0;
+    return ok && sx_cm_finish(c);
+}
+function sx_carriermeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60240000 || id >= 0x60250000) {
+        return true;
+    }
+    var s = null;
+    var v = sxVarU64(r.value);
+    if (r.name === "compression_mode") {
+        s = v === 65 /*A*/ ? "SZDD LZSS mode A" : null;
+    } else if (r.name === "original_last_character") {
+        s = "Original filename's last character, replaced by underscore by the compressor; zero if unavailable";
+    } else if (r.name === "modified_time") {
+        s = "Packed DOS time: hour bits11..15, minute bits5..10, seconds/2 bits0..4; not a Unix timestamp";
+    } else if (r.name === "modified_date") {
+        s = "Packed DOS date: year since1980 bits9..15, month bits5..8, day bits0..4; not a Unix timestamp";
+    } else if (r.name === "compression_method") {
+        s = v === 0 ? "Stored" : null;
+    } else if (id === sx_cm_winimage_zip_central_header.id && r.name === "local_header_offset") {
+        s = "Stored offset relative to the outer executable image start, not to the embedded ZIP start";
+    } else if (id === sx_cm_winimage_zip_end_record.id && r.name === "central_directory_offset") {
+        s = "Stored offset relative to the embedded ZIP start immediately after WSfx; value is not translated";
+    } else if (id === sx_cm_winimage_zip_extra_field.id && r.name === "header_id") {
+        s = v === 1 ? "ZIP64 extended information" : v === 0x5455 ? "Extended timestamp" : v === 0x000A ? "NTFS" : null;
+    }
+    return s === null || sxSetComment(r, s);
+}

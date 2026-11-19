@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/autel/xx_autel_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_autel_header_fields = layout([field("magic", "byte[8]", 8, SIGNATURE), u32("data_size", SIZE),
+    u32("header_size", SIZE), chars("copyright", 16, NONE)]);
+var sx_fm_autel_header = sxLayout(0x60220007, "autel_header", LE, sx_fm_autel_header_fields);
+function sx_autel_build(c) {
+    return sx_fm_add(c, sx_fm_autel_header, 0, 32);
+}

@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_inftool/xx_sfx_inftool_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_inftool_header_22_fields = layout([chars("signature", 3, SIGNATURE), u8("version"), u8("string_04_size", SIZE),
+    u8("inf_name_size", SIZE), u8("flag_06", FLAGS), u8("string_07_size", SIZE), field("field_08_size", "uint32le", 4, SIZE),
+    field("field_0c_size", "uint32le", 4, SIZE), u8("flag_10", FLAGS), u8("zero_11", RESERVED),
+    field("file_size", "uint32le", 4, SIZE)]);
+var sxir_inftool_header_22 = sxLayout(0x6080003A, "inftool_header_22", LE, sxir_inftool_header_22_fields);
+var sxir_inftool_header_24_fields = layout([chars("signature", 3, SIGNATURE), u8("version"), u8("string_04_size", SIZE),
+    u8("inf_name_size", SIZE), u8("flag_06", FLAGS), u8("string_07_size", SIZE), field("field_08_size", "uint32le", 4, SIZE),
+    field("field_0c_size", "uint32le", 4, SIZE), u8("flag_10", FLAGS), u8("zero_11", RESERVED), u8("flag_12", FLAGS),
+    u8("obfuscated_cabinet", FLAGS), field("file_size", "uint32le", 4, SIZE)]);
+var sxir_inftool_header_24 = sxLayout(0x6080003B, "inftool_header_24", LE, sxir_inftool_header_24_fields);
+function sxir_inftool(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var cert = [0];
+    if (!sxir_pe(v, 0, end, at, cert)) {
+        return false;
+    }
+    var legacy = sxir_eq(v, at[0], "MRI", 3, end);
+    if (!legacy) {
+        var dll = [0];
+        if (!sxir_eq(v, at[0], "MZ", 2, end) || !sxir_pe(v, at[0], end, dll, cert) || dll[0] <= at[0]) {
+            return false;
+        }
+        at[0] = dll[0];
+    }
+    var z = legacy ? 22 : 24;
+    var declared = [0];
+    if (!sxir_eq(v, at[0], "MRI\x01", 4, end) || !sxir_u(v, at[0] + (legacy ? 18 : 20), 4, false, declared, end) || declared[0] !== end || !sxir_row(v, legacy ? sxir_inftool_header_22 : sxir_inftool_header_24, at[0], end)) {
+        return false;
+    }
+    var p = at[0] + z;
+    var offsets = [4, 5, 7, 8, 12];
+    for (var i = 0; i < 5; i++) {
+        var n = [0];
+        if (!sxir_u(v, at[0] + offsets[i], i < 3 ? 1 : 4, false, n, end) || !sxir_span(v, p, n[0], end)) {
+            return false;
+        }
+        if (i < 3 && n[0] && !sxir_emit(v, sxir_installer_name, p, n[0], end)) {
+            return false;
+        }
+        p += n[0];
+    }
+    return sxir_span(v, p, 36, end);
+}
+function sx_sfx_inftool_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_inftool(v);
+}

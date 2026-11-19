@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zlwb/xx_zlwb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_zlwb_header_fields = layout([chars("signature", 4, SIGNATURE), u8("marker", SIGNATURE), u32("version"),
+    bytes("opaque1", 9), i32("member_count", COUNT), i32("directory_offset", OFFSET), bytes("opaque2", 4)]);
+var sxacl_zlwb_header = sxLayout(0x60500002, "zlwb_header", LE, sxacl_zlwb_header_fields);
+var sxacl_zlwb_blob_fields = layout([u32("unused1"), i32("compressed_size", SIZE), i32("record_size", SIZE), u32("unused2")]);
+var sxacl_zlwb_blob = sxLayout(0x60500003, "zlwb_blob", LE, sxacl_zlwb_blob_fields);
+function sxacl_zlwb(c) {
+    var n = [0];
+    var p = [0];
+    if (!sxacl_word(c, 18, 4, false, n) || n[0] > 2147483647 || !sxacl_word(c, 22, 4, false, p) || p[0] < 30 || p[0] > 2147483647 || !sxacl_add(c, sxacl_zlwb_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var b = [];
+        if (!sxacl_read(c, p[0], b, 16)) {
+            return false;
+        }
+        var z = sxacl_uint(b, 4, 4, false);
+        var plain = sxacl_uint(b, 8, 4, false);
+        if (z > 2147483647 || plain !== 272 && plain !== 552 || !sxacl_span(c, p[0] + 16, z) || !sxacl_add(c, sxacl_zlwb_blob, p[0])) {
+            return false;
+        }
+        p[0] += 16 + z;
+    }
+    return true;
+}
+function sx_zlwb_build(c) {
+    return sxacl_zlwb(c);
+}

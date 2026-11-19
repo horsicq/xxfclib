@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/flac/xx_flac_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_flac_marker_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sx_c_flac_marker = sxLayout(0x6002003C, "flac_marker", BE, sx_c_flac_marker_fields);
+var sx_c_flac_application_header_fields = layout([chars("application_id", 4, ID)]);
+var sx_c_flac_application_header = sxLayout(0x6002003F, "flac_application_header", BE, sx_c_flac_application_header_fields);
+var sx_c_flac_seekpoint_fields = layout([u64("sample_number"), u64("stream_offset", OFFSET), u16("frame_samples", COUNT)]);
+var sx_c_flac_seekpoint = sxLayout(0x60020040, "flac_seekpoint", BE, sx_c_flac_seekpoint_fields);
+function sx_c_flac(c) {
+    var h = [];
+    var at = 4;
+    var last = false;
+    var blocks = 0;
+    if (!sx_read(c, 0, h, 4) || sxMemcmp(h, "fLaC", 4) || !sx_add(c, sx_c_flac_marker, 0, 4)) {
+        return false;
+    }
+    while (!last) {
+        var n;
+        var type;
+        var width = 0;
+        if (!sx_read(c, at, h, 4)) {
+            return false;
+        }
+        type = h[0] & 127;
+        last = (h[0] & 128) !== 0;
+        n = h[1] << 16 | h[2] << 8 | h[3];
+        if (type === 127 || !blocks && type !== 0 || !sx_c_bounds(c, at + 4, n) || !sx_add(c, sx_c_flac_metadata_block_header, at, 4)) {
+            return false;
+        }
+        at += 4;
+        if (type === 0) {
+            if (n !== 34 || blocks || !sx_add(c, sx_c_flac_streaminfo, at, 34)) {
+                return false;
+            }
+            width = 34;
+        } else if (type === 2) {
+            if (n < 4 || !sx_add(c, sx_c_flac_application_header, at, 4)) {
+                return false;
+            }
+            width = 4;
+        } else if (type === 3) {
+            if (n % 18 || !sx_table(c, sx_c_flac_seekpoint, at, 18, Math.floor(n / 18))) {
+                return false;
+            }
+            width = n;
+        }
+        if (!sx_raw(c, at + width, (n - width) >>> 0)) {
+            return false;
+        }
+        at += n;
+        ++blocks;
+    }
+    return sx_raw(c, at, c.size - at);
+}
+function sx_flac_build(c) {
+    return sx_c_flac(c);
+}

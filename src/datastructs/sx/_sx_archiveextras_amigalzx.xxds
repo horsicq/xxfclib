@@ -1,0 +1,35 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/amigalzx/xx_amigalzx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_amigalzx_header_fields = layout([chars("magic", 3, SIGNATURE), bytes("flags_and_info", 7)]);
+var sxae_amigalzx_header = sxLayout(0x60170034, "amigalzx_header", LE, sxae_amigalzx_header_fields);
+var sxae_amigalzx_member_fields = layout([u8("attributes", FLAGS), u8("reserved", RESERVED), u32("unpacked_size", SIZE),
+    u32("group_packed_size", SIZE), u8("machine", ID), u8("method", ID), u8("flags", FLAGS), u8("reserved13", RESERVED),
+    u8("comment_size", SIZE), u8("extract_version"), u16("reserved16", RESERVED), u32("date_time"), u32("crc32", CHECKSUM),
+    u32("header_crc32", CHECKSUM), u8("name_size", SIZE)]);
+var sxae_amigalzx_member = sxLayout(0x60170035, "amigalzx_member", LE, sxae_amigalzx_member_fields);
+function sxae_amigalzx(c) {
+    var b = [];
+    var p = 10;
+    if (!sx_read(c, 0, b, 10) || sxMemcmp(b, "LZX", 3) || !sxae_add(c, sxae_amigalzx_header, 0)) {
+        return false;
+    }
+    for (var i = 0; p < c.size && i < 20000; i++) {
+        if (!sx_read(c, p, b, 31) || !b[30] || !sxae_add(c, sxae_amigalzx_member, p)) {
+            return false;
+        }
+        var n = 31 + b[14] + b[30];
+        var z = sxae32(b, 6);
+        if (!sxae_bound(c, p, (n < 0 ? n + SX_U64_MAX : n)) || !sxae_data(c, p + n, z)) {
+            return false;
+        }
+        p += n + z;
+    }
+    return p === c.size;
+}
+function sx_amigalzx_build(c) {
+    return sxae_amigalzx(c);
+}

@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/delek_deflemask/xx_delek_deflemask_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_order8_fields = layout([u8("pattern", ID)]);
+var sxmw_order8 = sxLayout(0x60870005, "order8", LE, sxmw_order8_fields);
+var sxmw_dmf_header_fields = layout([blob("magic", 16, SIGNATURE), u8("version", ID), u8("system", ID)]);
+var sxmw_dmf_header = sxLayout(0x60870023, "dmf_header", LE, sxmw_dmf_header_fields);
+var sxmw_dmf_instrument_count_fields = layout([u8("instruments", COUNT)]);
+var sxmw_dmf_instrument_count = sxLayout(0x60870025, "dmf_instrument_count", LE, sxmw_dmf_instrument_count_fields);
+var sxmw_dmf_fm_fields = layout([u8("algorithm"), u8("feedback"), u8("frequency_modulation"), u8("amplitude_modulation")]);
+var sxmw_dmf_fm = sxLayout(0x60870027, "dmf_fm", LE, sxmw_dmf_fm_fields);
+var sxmw_dmf_operator_fields = layout([u8("amplitude_modulation"), u8("attack"), u8("decay"), u8("multiplier"), u8("release"),
+    u8("sustain_level"), u8("total_level"), u8("detune2"), u8("rate_scaling"), u8("detune"), u8("decay2"),
+    u8("ssg_envelope", FLAGS)]);
+var sxmw_dmf_operator = sxLayout(0x60870028, "dmf_operator", LE, sxmw_dmf_operator_fields);
+function sxmw_pascal(v, p, end) {
+    var n = [0];
+    if (!sxmw_u(v, p[0], 1, n, 0, end) || !sxmw_row(v, sxmw_pascal_text_length, p[0], end)) {
+        return false;
+    }
+    p[0]++;
+    if (!sxmw_text_emit(v, p[0], n[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    return true;
+}
+function sxmw_dmf(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [18];
+    var ver = [0];
+    var system = [0];
+    var rows = [0];
+    var ch;
+    var n = [0];
+    var mode = [0];
+    if (!sxmw_eq(v, 0, ".DelekDefleMask.", 16, end) || !sxmw_u(v, 16, 1, ver, 0, end) || ver[0] !== 24 || !sxmw_u(v, 17, 1, system, 0, end) || !sxmw_row(v, sxmw_dmf_header, 0, end)) {
+        return false;
+    }
+    switch (system[0]) {
+    case 2:
+        ch = 10;
+        break;
+    case 0x42:
+    case 8:
+    case 9:
+        ch = 13;
+        break;
+    case 3:
+    case 4:
+        ch = 4;
+        break;
+    case 5:
+        ch = 6;
+        break;
+    case 6:
+        ch = 5;
+        break;
+    case 7:
+    case 0x47:
+        ch = 3;
+        break;
+    case 0x49:
+        ch = 16;
+        break;
+    default:
+        return true;
+    }
+    if (!sxmw_pascal(v, p, end) || !sxmw_pascal(v, p, end) || !sxmw_u(v, p[0] + 14, 1, rows, 0, end) || !sxmw_take(v, sxmw_dmf_timing, p, 1, end) || !sxmw_take(v, sxmw_order8, p, ch * rows[0], end) || !sxmw_u(v, p[0], 1, n, 0, end) || !sxmw_take(v, sxmw_dmf_instrument_count, p, 1, end)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxmw_pascal(v, p, end) || !sxmw_u(v, p[0], 1, mode, 0, end) || !sxmw_take(v, sxmw_dmf_instrument_mode, p, 1, end)) {
+            return false;
+        }
+        if (mode[0] !== 1) {
+            return true;
+        }
+        if (!sxmw_take(v, sxmw_dmf_fm, p, 1, end) || !sxmw_take(v, sxmw_dmf_operator, p, 4, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_delek_deflemask_build(v) {
+    return sxmw_dmf(v);
+}

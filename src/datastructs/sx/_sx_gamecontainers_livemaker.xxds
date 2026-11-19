@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/livemaker/xx_livemaker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_livemaker_header_fields = layout([chars("magic", 2, SIGNATURE), u32("version", ID), u32("entries", COUNT)]);
+var sxgco_livemaker_header = sxLayout(0x60400024, "livemaker_header", LE, sxgco_livemaker_header_fields);
+var sxgco_livemaker_scramble_fields = layout([u32("chunk_bytes", SIZE), u32("encoded_seed")]);
+var sxgco_livemaker_scramble = sxLayout(0x60400027, "livemaker_scramble", LE, sxgco_livemaker_scramble_fields);
+function sxgco_lm(v) {
+    var p = 10;
+    var n = [0];
+    var z = [0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (!sxgco_row(v, sxgco_livemaker_header, 0, e) || !sxgco_word(v, 6, 4, false, n, e) || n[0] > 0x40000) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxgco_row(v, sxgco_name_size32, p, e) || !sxgco_word(v, p, 4, false, z, e) || !z[0] || z[0] > 256 || !sxgco_table(v, sxgco_encoded_byte, p + 4, z[0], e)) {
+            return false;
+        }
+        p += 4 + z[0];
+    }
+    if (!sxgco_table(v, sxgco_livemaker_offset, p, n[0] + 1, e)) {
+        return false;
+    }
+    var offsets = p;
+    var flags = p + (n[0] + 1) * 8;
+    if (!sxgco_table(v, sxgco_livemaker_flags, flags, n[0], e)) {
+        return false;
+    }
+    var state = 0;
+    var previous = 0;
+    for (i = 0; i <= n[0]; i++) {
+        var raw = [0];
+        var flag = [0];
+        state = (((state * 5) >>> 0) + 0x75D6EE39) >>> 0;
+        var mask = state;
+        if ((state & 0x80000000) >>> 0) {
+            mask = sxOr64(mask, sxK(0xFFFFFFFF, 0x0));
+        }
+        if (!sxgco_word(v, offsets + i * 8, 8, false, raw, e)) {
+            return false;
+        }
+        raw[0] = sxXor64(raw[0], mask);
+        if (raw[0] > e || i && raw[0] < previous) {
+            return false;
+        }
+        if (i) {
+            if (!sxgco_word(v, sxU64(flags + i - 1), 1, false, flag, e)) {
+                return false;
+            }
+            if ((flag[0] === 2 || flag[0] === 3) && sxU64(raw[0] - previous) >= 8 && !sxgco_row(v, sxgco_livemaker_scramble, previous, raw[0])) {
+                return false;
+            }
+        }
+        previous = raw[0];
+    }
+    return true;
+}
+function sx_livemaker_build(v) {
+    return sxgco_lm(v);
+}

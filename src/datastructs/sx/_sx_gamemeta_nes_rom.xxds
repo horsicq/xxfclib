@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nes_rom/xx_nes_rom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_ines_header_fields = layout([chars("signature", 4, SIGNATURE), u8("prg_rom_units", COUNT), u8("chr_rom_units", COUNT),
+    u8("flags6", FLAGS), u8("flags7", FLAGS), u8("prg_ram_units", COUNT), u8("tv_system", FLAGS), u8("flags10", FLAGS),
+    u8("unused11"), bytes("reserved", 4, RESERVED)]);
+var sxgm_ines_header = sxLayout(0x60270001, "ines_header", LE, sxgm_ines_header_fields);
+var sxgm_nes2_header_fields = layout([chars("signature", 4, SIGNATURE), u8("prg_rom_units_low"), u8("chr_rom_units_low"),
+    u8("flags6", FLAGS), u8("flags7", FLAGS), u8("mapper_submapper", FLAGS), u8("rom_size_high"), u8("prg_ram_shifts"),
+    u8("chr_ram_shifts"), u8("timing", ID), u8("console_type", ID), u8("misc_rom_count"), u8("expansion_device", ID)]);
+var sxgm_nes2_header = sxLayout(0x60270002, "nes2_header", LE, sxgm_nes2_header_fields);
+function sx_nes_rom_build(c, b) {
+    return sxgm_read(c, 0, b, 16) && sxgm_add(c, (b[7] & 12) === 8 ? sxgm_nes2_header : sxgm_ines_header, 0);
+}

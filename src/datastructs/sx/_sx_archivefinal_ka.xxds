@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ka/xx_ka_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_ka_header_fields = layout([chars("signature", 11, SIGNATURE), bytes("reserved", 9), u16("member_count", COUNT)]);
+var sxaf_ka_header = sxLayout(0x603C001C, "ka_header", LE, sxaf_ka_header_fields);
+var sxaf_ka_entry_fields = layout([chars("name", 13, NONE), u32("payload_offset", OFFSET), u32("payload_size", SIZE)]);
+var sxaf_ka_entry = sxLayout(0x603C001D, "ka_entry", LE, sxaf_ka_entry_fields);
+function sx_ka_build(c) {
+    return sxaf_table(c, sxaf_ka_header, sxaf_ka_entry, 20, 2, 22, 21);
+}

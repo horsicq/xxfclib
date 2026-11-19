@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/hdf4/xx_hdf4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_hdf4_dd_block_fields = layout([u16("descriptor_count", COUNT), u32("next_block_offset", OFFSET)]);
+var sxm_hdf4_dd_block = sxLayout(0x60060042, "hdf4_dd_block", BE, sxm_hdf4_dd_block_fields);
+var sxm_hdf4_descriptor_fields = layout([u16("tag", ID), u16("reference", ID), u32("data_offset", OFFSET),
+    u32("data_length", SIZE)]);
+var sxm_hdf4_descriptor = sxLayout(0x60060043, "hdf4_descriptor", BE, sxm_hdf4_descriptor_fields);
+var sxm_hdf4_first_block_fields = layout([blob("signature", 4, SIGNATURE), u16("descriptor_count", COUNT),
+    u32("next_block_offset", OFFSET)]);
+var sxm_hdf4_first_block = sxLayout(0x60060044, "hdf4_first_block", BE, sxm_hdf4_first_block_fields);
+function sxm_hdf4(c, h) {
+    var at = 4;
+    var seen = [];
+    var blocks = 0;
+    if (sxMemcmp(h, "\x0E\x03\x13\x01", 4)) {
+        return false;
+    }
+    while (at) {
+        var count;
+        var next;
+        if (blocks === 1024) {
+            return false;
+        }
+        for (var i = 0; i < blocks; i++) {
+            if (seen[i] === at) {
+                return false;
+            }
+        }
+        seen[blocks++] = at;
+        if ((count = sx_u16(c, at, true)) === null || (next = sx_u32(c, at + 2, true)) === null || !count || count > 4096) {
+            return false;
+        }
+        if (at === 4) {
+            if (!sx_add(c, sxm_hdf4_first_block, 0, 10)) {
+                return false;
+            }
+        } else if (!sx_add(c, sxm_hdf4_dd_block, at, 6)) {
+            return false;
+        }
+        if (!sx_table(c, sxm_hdf4_descriptor, at + 6, 12, count)) {
+            return false;
+        }
+        for (i = 0; i < count; i++) {
+            var e = [];
+            var off;
+            var n;
+            if (!sx_read(c, at + 6 + i * 12, e, 12)) {
+                return false;
+            }
+            if (sxGetU16(e, 12, 0, true) === 1) {
+                continue;
+            }
+            off = sxGetU32(e, 12, 4, true);
+            n = sxGetU32(e, 12, 8, true);
+            if (!sxm_raw(c, off, n)) {
+                return false;
+            }
+        }
+        at = next;
+    }
+    return true;
+}
+function sx_hdf4_build(c, h, n) {
+    return n >= 10 && sxm_hdf4(c, h);
+}

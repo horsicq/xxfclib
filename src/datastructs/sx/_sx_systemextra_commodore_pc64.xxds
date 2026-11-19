@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/commodore_pc64/xx_commodore_pc64_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_pc64_header_fields = layout([chars("signature", 8, SIGNATURE), field("petscii_name", "byte[16]", 16),
+    u8("terminator", RESERVED), u8("record_size", SIZE)]);
+var sxse_pc64_header = sxLayout(0x602F003F, "pc64_header", LE, sxse_pc64_header_fields);
+function sx_commodore_pc64_build(c) {
+    return sxse_put(c, sxse_pc64_header, 0, 26, 1);
+}

@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pmdiskcopy/xx_pmdiskcopy_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_pmdiskcopy_header_fields = layout([chars("signature", 11, SIGNATURE), u16("bytes_per_sector", SIZE),
+    u8("sectors_per_cluster", COUNT), u16("reserved_sector_count", COUNT), u8("fat_count", COUNT),
+    u16("root_entry_count", COUNT), u16("total_sectors_16", COUNT), u8("media_descriptor", ID), u16("sectors_per_fat", COUNT),
+    u16("sectors_per_track", COUNT), u16("head_count", COUNT), u32("hidden_sectors", COUNT), u32("total_sectors_32", COUNT),
+    field("opaque_tail", "byte[11]", 11)]);
+var sxsl_pmdiskcopy_header = sxLayout(0x60330008, "pmdiskcopy_header", LE, sxsl_pmdiskcopy_header_fields);
+function sx_pmdiskcopy_build(c) {
+    var ok = false;
+    ok = sxsl_put(c, sxsl_pmdiskcopy_header, 0, 1);
+    return ok && sxsl_finish(c);
+}

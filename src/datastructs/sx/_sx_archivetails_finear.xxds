@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/finear/xx_finear_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_finear_header_fields = layout([chars("signature", 6, SIGNATURE), bytes("marker", 3), u32("crc16_word", CHECKSUM),
+    u32("uncompressed_size", SIZE)]);
+var sxat_finear_header = sxLayout(0x60640010, "finear_header", LE, sxat_finear_header_fields);
+function sx_finear_build(c) {
+    return sxat_add(c, sxat_finear_header, 0);
+}

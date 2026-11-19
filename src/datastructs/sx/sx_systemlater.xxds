@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_systemlater.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_systemlater");
+include("_sx_systemlater_amiga_ext_adf");
+include("_sx_systemlater_amiga_old_ext_adf");
+include("_sx_systemlater_anex86_hdi");
+include("_sx_systemlater_apridisk");
+include("_sx_systemlater_bochs_growing");
+include("_sx_systemlater_diskcopy42");
+include("_sx_systemlater_diskdupe");
+include("_sx_systemlater_dmk");
+include("_sx_systemlater_dms");
+include("_sx_systemlater_hdcopy");
+include("_sx_systemlater_isz");
+include("_sx_systemlater_lofi");
+include("_sx_systemlater_mame_floppy_image_mfi");
+include("_sx_systemlater_moof");
+include("_sx_systemlater_nhd");
+include("_sx_systemlater_nrg");
+include("_sx_systemlater_partclone_image");
+include("_sx_systemlater_pmdiskcopy");
+include("_sx_systemlater_qrst");
+include("_sx_systemlater_savedskf");
+include("_sx_systemlater_sdi");
+include("_sx_systemlater_spectrum_udi");
+include("_sx_systemlater_thomson_sap");
+include("_sx_systemlater_virtual98");
+include("_sx_systemlater_vmdk_cowd_sparse");
+include("_sx_systemlater_vmdk_sesparse");
+
+function fileTypes() { return ["LOFI", "DMS", "SAVEDSKF", "DISKDUPE", "PMDISKCOPY", "QRST", "HDCOPY", "NRG", "ISZ",
+    "MAME_FLOPPY_IMAGE_MFI", "MOOF", "PARTCLONE_IMAGE", "SPECTRUM_UDI", "VMDK_COWD_SPARSE", "VMDK_SESPARSE", "SDI", "NHD",
+    "VIRTUAL98", "ANEX86_HDI", "THOMSON_SAP", "DMK", "DISKCOPY42", "APRIDISK", "AMIGA_EXT_ADF", "AMIGA_OLD_EXT_ADF",
+    "BOCHS_GROWING"]; }
+
+var sx_systemlater_layouts = [sxsl_lofi_header, sxsl_lofi_index, sxsl_lofi_segment, sxsl_lofi_lzma_header, sxsl_savedskf_header,
+    sxsl_diskdupe_header, sxsl_diskdupe_track, sxsl_pmdiskcopy_header, sxsl_qrst_header, sxsl_qrst_track, sxsl_qrst_fill,
+    sxsl_qrst_encoded_size, sxsl_hdcopy_header, sxsl_hdcopy_block, sxsl_apridisk_header, sxsl_apridisk_record,
+    sxsl_diskcopy42_header, sxsl_isz_header, sxsl_isz_checksum_tail, sxsl_isz_encoded_pointer1, sxsl_isz_encoded_pointer2,
+    sxsl_isz_encoded_pointer3, sxsl_isz_encoded_pointer4, sxsl_isz_encoded_segment, sxsl_mfi_header, sxsl_mfi_track,
+    sxsl_sdi_header, sxsl_sdi_section, sxsl_nhd_header, sxsl_virtual98_header, sxsl_anex86_header, sxsl_sap_header,
+    sxsl_sap_sector, sxsl_sap_checksum, sxsl_dmk_header, sxsl_dmk_idam_pointer, sxsl_dmk_idam, sxsl_extadf_header,
+    sxsl_extadf_track, sxsl_oldextadf_header, sxsl_oldextadf_track, sxsl_udi_header, sxsl_udi_track, sxsl_udi_compressed_track,
+    sxsl_udi_checksum, sxsl_moof_header, sxsl_moof_chunk, sxsl_moof_info, sxsl_moof_track_map, sxsl_moof_track,
+    sxsl_bochs_growing_v1, sxsl_bochs_growing_v2, sxsl_bochs_catalog_entry, sxsl_bochs_bitmap_byte, sxsl_partclone_header_le,
+    sxsl_partclone_bitmap_crc_le, sxsl_partclone_header_be, sxsl_partclone_bitmap_crc_be, sxsl_dms_header, sxsl_dms_track,
+    sxsl_nrg_footer32, sxsl_nrg_dao_track32, sxsl_nrg_etn_track32, sxsl_nrg_footer64, sxsl_nrg_dao_track64,
+    sxsl_nrg_etn_track64, sxsl_nrg_chunk, sxsl_nrg_dao_header, sxsl_nrg_cuex, sxsl_nrg_cues, sxsl_nrg_session, sxsl_nrg_media,
+    sxsl_cowd_header, sxsl_cowd_root, sxsl_cowd_child, sxsl_cowd_tail, sxsl_cowd_directory, sxsl_cowd_grain,
+    sxsl_sesparse_header, sxsl_sesparse_volatile, sxsl_sesparse_directory, sxsl_sesparse_grain, sxsl_dmk_idam_doubled,
+    sxsl_partclone_bitmap_byte, sxsl_partclone_data_checksum4, sxsl_partclone_data_checksum16];
+
+function structs() {
+    return sxCatalog([sxsl_lofi_header, sxsl_lofi_index, sxsl_lofi_segment, sxsl_lofi_lzma_header, sxsl_savedskf_header,
+        sxsl_diskdupe_header, sxsl_diskdupe_track, sxsl_pmdiskcopy_header, sxsl_qrst_header, sxsl_qrst_track, sxsl_qrst_fill,
+        sxsl_qrst_encoded_size, sxsl_hdcopy_header, sxsl_hdcopy_block, sxsl_apridisk_header, sxsl_apridisk_record,
+        sxsl_diskcopy42_header, sxsl_isz_header, sxsl_isz_checksum_tail, sxsl_isz_encoded_pointer1, sxsl_isz_encoded_pointer2,
+        sxsl_isz_encoded_pointer3, sxsl_isz_encoded_pointer4, sxsl_isz_encoded_segment, sxsl_mfi_header, sxsl_mfi_track,
+        sxsl_sdi_header, sxsl_sdi_section, sxsl_nhd_header, sxsl_virtual98_header, sxsl_anex86_header, sxsl_sap_header,
+        sxsl_sap_sector, sxsl_sap_checksum, sxsl_dmk_header, sxsl_dmk_idam_pointer, sxsl_dmk_idam, sxsl_extadf_header,
+        sxsl_extadf_track, sxsl_oldextadf_header, sxsl_oldextadf_track, sxsl_udi_header, sxsl_udi_track,
+        sxsl_udi_compressed_track, sxsl_udi_checksum, sxsl_moof_header, sxsl_moof_chunk, sxsl_moof_info, sxsl_moof_track_map,
+        sxsl_moof_track, sxsl_bochs_growing_v1, sxsl_bochs_growing_v2, sxsl_bochs_catalog_entry, sxsl_bochs_bitmap_byte,
+        sxsl_partclone_header_le, sxsl_partclone_bitmap_crc_le, sxsl_partclone_header_be, sxsl_partclone_bitmap_crc_be,
+        sxsl_dms_header, sxsl_dms_track, sxsl_nrg_footer32, sxsl_nrg_dao_track32, sxsl_nrg_etn_track32, sxsl_nrg_footer64,
+        sxsl_nrg_dao_track64, sxsl_nrg_etn_track64, sxsl_nrg_chunk, sxsl_nrg_dao_header, sxsl_nrg_cuex, sxsl_nrg_cues,
+        sxsl_nrg_session, sxsl_nrg_media, sxsl_cowd_header, sxsl_cowd_root, sxsl_cowd_child, sxsl_cowd_tail,
+        sxsl_cowd_directory, sxsl_cowd_grain, sxsl_sesparse_header, sxsl_sesparse_volatile, sxsl_sesparse_directory,
+        sxsl_sesparse_grain, sxsl_dmk_idam_doubled, sxsl_partclone_bitmap_byte, sxsl_partclone_data_checksum4,
+        sxsl_partclone_data_checksum16], sx_systemlater_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_systemlater_build, false);
+}

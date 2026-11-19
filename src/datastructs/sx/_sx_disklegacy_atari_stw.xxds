@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_stw/xx_atari_stw_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_stw_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u16("version", ID), u8("side_count", COUNT),
+    u8("track_count", COUNT), u16("mfm_word_count", COUNT)]);
+var sxdleg_stw_header = sxLayout(0x6075001A, "stw_header", BE, sxdleg_stw_header_fields);
+var sxdleg_stw_track_header_fields = layout([chars("magic", 3, SIGNATURE), u8("side"), u8("cylinder")]);
+var sxdleg_stw_track_header = sxLayout(0x6075001B, "stw_track_header", BE, sxdleg_stw_track_header_fields);
+function sxdleg_stw(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 10) || sxMemcmp(h, "STW\x00", 4)) {
+        return false;
+    }
+    var sides = h[6];
+    var tracks = h[7];
+    var words = sxdleg16(h, 8, 1);
+    if (!sides || sides > 2 || !tracks || tracks > 170 || words < 128 || words > 32768 || !sxdleg_put(c, sxdleg_stw_header, 0, 1)) {
+        return false;
+    }
+    var step = 5 + words * 2;
+    for (var i = 0; i < sxMul32(sides, tracks); i++) {
+        var p = 10 + i * step;
+        if (!sxdleg_span(c, p, step)) {
+            break;
+        }
+        if (!sxdleg_put(c, sxdleg_stw_track_header, p, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_atari_stw_build(c) {
+    return sxdleg_stw(c);
+}

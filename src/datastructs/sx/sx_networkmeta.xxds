@@ -1,0 +1,118 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_networkmeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_networkmeta");
+include("_sx_networkmeta_amqp_frames");
+include("_sx_networkmeta_bgp_messages");
+include("_sx_networkmeta_dcerpc_pdu");
+include("_sx_networkmeta_dds_rtps");
+include("_sx_networkmeta_diameter_message");
+include("_sx_networkmeta_ethernet_frame");
+include("_sx_networkmeta_gre_packet");
+include("_sx_networkmeta_gtp_message");
+include("_sx_networkmeta_icmp_message");
+include("_sx_networkmeta_ip_packet");
+include("_sx_networkmeta_isakmp_message");
+include("_sx_networkmeta_l2tp_packet");
+include("_sx_networkmeta_ldp_message");
+include("_sx_networkmeta_mqtt_packets");
+include("_sx_networkmeta_netflow_datagram");
+include("_sx_networkmeta_ntlm_message");
+include("_sx_networkmeta_ospf_packet");
+include("_sx_networkmeta_pfcp_message");
+include("_sx_networkmeta_pim_message");
+include("_sx_networkmeta_pptp_message");
+include("_sx_networkmeta_rsvp_message");
+include("_sx_networkmeta_rtp_rtcp");
+include("_sx_networkmeta_sctp_packet");
+include("_sx_networkmeta_tacacs_packet");
+include("_sx_networkmeta_tls_records");
+include("_sx_networkmeta_websocket_frames");
+
+function fileTypes() { return ["MQTT_PACKETS", "AMQP_FRAMES", "WEBSOCKET_FRAMES", "TLS_RECORDS", "RTP_RTCP", "BGP_MESSAGES",
+    "OSPF_PACKET", "SCTP_PACKET", "ISAKMP_MESSAGE", "ETHERNET_FRAME", "IP_PACKET", "ICMP_MESSAGE", "DIAMETER_MESSAGE",
+    "TACACS_PACKET", "GTP_MESSAGE", "PFCP_MESSAGE", "PPTP_MESSAGE", "RSVP_MESSAGE", "DDS_RTPS", "PIM_MESSAGE", "LDP_MESSAGE",
+    "GRE_PACKET", "L2TP_PACKET", "NETFLOW_DATAGRAM", "NTLM_MESSAGE", "DCERPC_PDU"]; }
+
+var sx_networkmeta_layouts = [sxnm_ethernet_header, sxnm_ipv4_header, sxnm_ipv6_header, sxnm_ipv4_single_byte_option,
+    sxnm_ipv4_option_header, sxnm_udp_header, sxnm_icmp_echo_header, sxnm_bgp_message_header, sxnm_bgp_open,
+    sxnm_bgp_optional_parameter, sxnm_bgp_capability_header, sxnm_ospfv2_header, sxnm_ospfv2_hello, sxnm_ospfv2_neighbor,
+    sxnm_sctp_common_header, sxnm_sctp_data_chunk, sxnm_isakmp_header, sxnm_isakmp_sa_payload, sxnm_isakmp_proposal,
+    sxnm_isakmp_transform, sxnm_isakmp_basic_attribute, sxnm_isakmp_variable_attribute, sxnm_rtp_header, sxnm_rtp_csrc,
+    sxnm_rtp_extension_header, sxnm_rtp_padding_count, sxnm_rtcp_header, sxnm_rtcp_sender_info, sxnm_rtcp_receiver_info,
+    sxnm_rtcp_report_block, sxnm_rtcp_source, sxnm_rtcp_sdes_item, sxnm_rtcp_sdes_end, sxnm_rtcp_bye_reason,
+    sxnm_rtcp_app_header, sxnm_tls_record_header, sxnm_tls_handshake_header, sxnm_tls_hello_prefix, sxnm_tls_session_id_length,
+    sxnm_tls_cipher_suites_length, sxnm_tls_cipher_suite, sxnm_tls_compression_methods_length, sxnm_tls_compression_method,
+    sxnm_tls_extensions_length, sxnm_tls_extension_header, sxnm_tls_change_cipher_spec, sxnm_diameter_header,
+    sxnm_diameter_avp_header, sxnm_diameter_address_family, sxnm_diameter_vendor_id, sxnm_tacacs_header,
+    sxnm_tacacs_authentication_start, sxnm_gtpv1_header, sxnm_pfcp_node_header, sxnm_pfcp_information_element,
+    sxnm_pfcp_node_id_type, sxnm_pfcp_node_ipv4, sxnm_pfcp_node_ipv6, sxnm_pfcp_dns_label, sxnm_pfcp_recovery_time,
+    sxnm_pptp_control_header, sxnm_pptp_start_control_connection, sxnm_rsvp_header, sxnm_rsvp_object_header,
+    sxnm_rsvp_hello_instances, sxnm_pim_header, sxnm_pim_option_header, sxnm_pim_holdtime, sxnm_pim_lan_prune_delay,
+    sxnm_pim_dr_priority, sxnm_pim_generation_id, sxnm_ldp_pdu_header, sxnm_ldp_message_header, sxnm_ldp_tlv_header,
+    sxnm_ldp_common_hello, sxnm_ldp_ipv4_transport, sxnm_ldp_configuration_sequence, sxnm_gre_header, sxnm_gre_checksum,
+    sxnm_gre_key, sxnm_gre_sequence, sxnm_l2tp_control_header, sxnm_l2tp_avp_header, sxnm_l2tp_message_type,
+    sxnm_l2tp_protocol_version, sxnm_l2tp_firmware_revision, sxnm_l2tp_assigned_tunnel, sxnm_l2tp_receive_window,
+    sxnm_l2tp_framing_capabilities, sxnm_l2tp_bearer_capabilities, sxnm_netflow_v5_header, sxnm_netflow_v5_record,
+    sxnm_ntlm_negotiate, sxnm_ntlm_version, sxnm_rtps_header, sxnm_rtps_submessage_le, sxnm_rtps_timestamp_le,
+    sxnm_rtps_heartbeat_le, sxnm_rtps_data_le, sxnm_dcerpc_header_le, sxnm_dcerpc_bind_le, sxnm_dcerpc_context_le,
+    sxnm_dcerpc_transfer_syntax_le, sxnm_dcerpc_request_le, sxnm_dcerpc_response_le, sxnm_rtps_submessage_be,
+    sxnm_rtps_timestamp_be, sxnm_rtps_heartbeat_be, sxnm_rtps_data_be, sxnm_dcerpc_header_be, sxnm_dcerpc_bind_be,
+    sxnm_dcerpc_context_be, sxnm_dcerpc_transfer_syntax_be, sxnm_dcerpc_request_be, sxnm_dcerpc_response_be,
+    sxnm_rtps_destination, sxnm_rtps_cdr_encapsulation, sxnm_mqtt_control_byte, sxnm_mqtt_remaining_length_1,
+    sxnm_mqtt_remaining_length_2, sxnm_mqtt_remaining_length_3, sxnm_mqtt_remaining_length_4, sxnm_mqtt_connect,
+    sxnm_mqtt_string_length, sxnm_mqtt_connack, sxnm_mqtt_packet_id, sxnm_mqtt_requested_qos, sxnm_mqtt_suback_result,
+    sxnm_amqp_protocol_header, sxnm_amqp_frame_header, sxnm_amqp_method_header, sxnm_amqp_content_header, sxnm_amqp_frame_end,
+    sxnm_amqp_publish_prefix, sxnm_amqp_publish_flags, sxnm_amqp_close_code, sxnm_amqp_close_method, sxnm_amqp_short_string,
+    sxnm_amqp_table_length, sxnm_amqp_field_type, sxnm_amqp_uint8, sxnm_amqp_int8, sxnm_amqp_uint16, sxnm_amqp_int16,
+    sxnm_amqp_uint32, sxnm_amqp_int32, sxnm_amqp_uint64, sxnm_amqp_int64, sxnm_amqp_boolean, sxnm_amqp_float_bits,
+    sxnm_amqp_double_bits, sxnm_amqp_decimal, sxnm_amqp_timestamp, sxnm_amqp_long_string, sxnm_amqp_delivery_mode,
+    sxnm_amqp_priority, sxnm_websocket_frame_header, sxnm_websocket_length16, sxnm_websocket_length64, sxnm_websocket_mask,
+    sxnm_websocket_close_code];
+
+function structs() {
+    return sxCatalog([sxnm_ethernet_header, sxnm_ipv4_header, sxnm_ipv6_header, sxnm_ipv4_single_byte_option,
+        sxnm_ipv4_option_header, sxnm_udp_header, sxnm_icmp_echo_header, sxnm_bgp_message_header, sxnm_bgp_open,
+        sxnm_bgp_optional_parameter, sxnm_bgp_capability_header, sxnm_ospfv2_header, sxnm_ospfv2_hello, sxnm_ospfv2_neighbor,
+        sxnm_sctp_common_header, sxnm_sctp_data_chunk, sxnm_isakmp_header, sxnm_isakmp_sa_payload, sxnm_isakmp_proposal,
+        sxnm_isakmp_transform, sxnm_isakmp_basic_attribute, sxnm_isakmp_variable_attribute, sxnm_rtp_header, sxnm_rtp_csrc,
+        sxnm_rtp_extension_header, sxnm_rtp_padding_count, sxnm_rtcp_header, sxnm_rtcp_sender_info, sxnm_rtcp_receiver_info,
+        sxnm_rtcp_report_block, sxnm_rtcp_source, sxnm_rtcp_sdes_item, sxnm_rtcp_sdes_end, sxnm_rtcp_bye_reason,
+        sxnm_rtcp_app_header, sxnm_tls_record_header, sxnm_tls_handshake_header, sxnm_tls_hello_prefix,
+        sxnm_tls_session_id_length, sxnm_tls_cipher_suites_length, sxnm_tls_cipher_suite, sxnm_tls_compression_methods_length,
+        sxnm_tls_compression_method, sxnm_tls_extensions_length, sxnm_tls_extension_header, sxnm_tls_change_cipher_spec,
+        sxnm_diameter_header, sxnm_diameter_avp_header, sxnm_diameter_address_family, sxnm_diameter_vendor_id,
+        sxnm_tacacs_header, sxnm_tacacs_authentication_start, sxnm_gtpv1_header, sxnm_pfcp_node_header,
+        sxnm_pfcp_information_element, sxnm_pfcp_node_id_type, sxnm_pfcp_node_ipv4, sxnm_pfcp_node_ipv6, sxnm_pfcp_dns_label,
+        sxnm_pfcp_recovery_time, sxnm_pptp_control_header, sxnm_pptp_start_control_connection, sxnm_rsvp_header,
+        sxnm_rsvp_object_header, sxnm_rsvp_hello_instances, sxnm_pim_header, sxnm_pim_option_header, sxnm_pim_holdtime,
+        sxnm_pim_lan_prune_delay, sxnm_pim_dr_priority, sxnm_pim_generation_id, sxnm_ldp_pdu_header, sxnm_ldp_message_header,
+        sxnm_ldp_tlv_header, sxnm_ldp_common_hello, sxnm_ldp_ipv4_transport, sxnm_ldp_configuration_sequence, sxnm_gre_header,
+        sxnm_gre_checksum, sxnm_gre_key, sxnm_gre_sequence, sxnm_l2tp_control_header, sxnm_l2tp_avp_header,
+        sxnm_l2tp_message_type, sxnm_l2tp_protocol_version, sxnm_l2tp_firmware_revision, sxnm_l2tp_assigned_tunnel,
+        sxnm_l2tp_receive_window, sxnm_l2tp_framing_capabilities, sxnm_l2tp_bearer_capabilities, sxnm_netflow_v5_header,
+        sxnm_netflow_v5_record, sxnm_ntlm_negotiate, sxnm_ntlm_version, sxnm_rtps_header, sxnm_rtps_submessage_le,
+        sxnm_rtps_timestamp_le, sxnm_rtps_heartbeat_le, sxnm_rtps_data_le, sxnm_dcerpc_header_le, sxnm_dcerpc_bind_le,
+        sxnm_dcerpc_context_le, sxnm_dcerpc_transfer_syntax_le, sxnm_dcerpc_request_le, sxnm_dcerpc_response_le,
+        sxnm_rtps_submessage_be, sxnm_rtps_timestamp_be, sxnm_rtps_heartbeat_be, sxnm_rtps_data_be, sxnm_dcerpc_header_be,
+        sxnm_dcerpc_bind_be, sxnm_dcerpc_context_be, sxnm_dcerpc_transfer_syntax_be, sxnm_dcerpc_request_be,
+        sxnm_dcerpc_response_be, sxnm_rtps_destination, sxnm_rtps_cdr_encapsulation, sxnm_mqtt_control_byte,
+        sxnm_mqtt_remaining_length_1, sxnm_mqtt_remaining_length_2, sxnm_mqtt_remaining_length_3, sxnm_mqtt_remaining_length_4,
+        sxnm_mqtt_connect, sxnm_mqtt_string_length, sxnm_mqtt_connack, sxnm_mqtt_packet_id, sxnm_mqtt_requested_qos,
+        sxnm_mqtt_suback_result, sxnm_amqp_protocol_header, sxnm_amqp_frame_header, sxnm_amqp_method_header,
+        sxnm_amqp_content_header, sxnm_amqp_frame_end, sxnm_amqp_publish_prefix, sxnm_amqp_publish_flags, sxnm_amqp_close_code,
+        sxnm_amqp_close_method, sxnm_amqp_short_string, sxnm_amqp_table_length, sxnm_amqp_field_type, sxnm_amqp_uint8,
+        sxnm_amqp_int8, sxnm_amqp_uint16, sxnm_amqp_int16, sxnm_amqp_uint32, sxnm_amqp_int32, sxnm_amqp_uint64, sxnm_amqp_int64,
+        sxnm_amqp_boolean, sxnm_amqp_float_bits, sxnm_amqp_double_bits, sxnm_amqp_decimal, sxnm_amqp_timestamp,
+        sxnm_amqp_long_string, sxnm_amqp_delivery_mode, sxnm_amqp_priority, sxnm_websocket_frame_header,
+        sxnm_websocket_length16, sxnm_websocket_length64, sxnm_websocket_mask, sxnm_websocket_close_code], sx_networkmeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_networkmeta_build, false);
+}

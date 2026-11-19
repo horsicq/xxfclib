@@ -1,0 +1,74 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/atari_dos2/xx_atari_dos2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_atari_atr_header_fields = layout([u16("magic", SIGNATURE), u16("paragraphs_low"), u16("sector_size", SIZE),
+    u8("paragraphs_high"), field("reserved", "byte[8]", 8, RESERVED), u8("flags", FLAGS)]);
+var sxrfs_atari_atr_header = sxLayout(0x6065001C, "atari_atr_header", LE, sxrfs_atari_atr_header_fields);
+var sxrfs_atari_dos2_vtoc_fields = layout([u8("dos_code", ID), u16("total_available_sectors", COUNT),
+    u16("free_sectors", COUNT), field("reserved", "byte[5]", 5, RESERVED), field("free_sector_bitmap", "byte[90]", 90, FLAGS)]);
+var sxrfs_atari_dos2_vtoc = sxLayout(0x6065001D, "atari_dos2_vtoc", LE, sxrfs_atari_dos2_vtoc_fields);
+var sxrfs_atari_dos2_directory_entry_fields = layout([u8("flags", FLAGS), u16("sector_count", COUNT), u16("first_sector"),
+    field("name", "byte[8]", 8), field("extension", "byte[3]", 3)]);
+var sxrfs_atari_dos2_directory_entry = sxLayout(0x6065001E, "atari_dos2_directory_entry", LE, sxrfs_atari_dos2_directory_entry_fields);
+var sxrfs_atari_dos2_sector_trailer_fields = layout([u8("file_index_and_next_high", FLAGS), u8("next_sector_low"),
+    u8("used_bytes", SIZE)]);
+var sxrfs_atari_dos2_sector_trailer = sxLayout(0x6065001F, "atari_dos2_sector_trailer", LE, sxrfs_atari_dos2_sector_trailer_fields);
+var sxrfs_atari_dos25_extended_vtoc_fields = layout([field("primary_bitmap_mirror", "byte[84]", 84, FLAGS),
+    field("extended_free_bitmap", "byte[38]", 38, FLAGS), u16("extended_free_sectors", COUNT)]);
+var sxrfs_atari_dos25_extended_vtoc = sxLayout(0x6065004A, "atari_dos25_extended_vtoc", LE, sxrfs_atari_dos25_extended_vtoc_fields);
+function sxrfs_atari_pos(s, z) {
+    return 16 + (s <= 3 ? ((s - 1) >>> 0) * 128 : 384 + ((s - 4) >>> 0) * z);
+}
+function sxrfs_atari(c) {
+    var h = [];
+    var b = [];
+    if (!sxrfs_read(c, 0, h, 0, 16) || sxrfs16(h, 0, 0) !== 0x296) {
+        return false;
+    }
+    var z = sxrfs16(h, 4, 0);
+    var bytes = (sxrfs16(h, 2, 0) | h[6] * 0x10000) * 16;
+    if (z !== 128 && z !== 256 || !sxrfs_span(c, 16, bytes) || !sxrfs_put(c, sxrfs_atari_atr_header, 0, 1) || !sxrfs_put(c, sxrfs_atari_dos2_vtoc, sxrfs_atari_pos(360, z), 1)) {
+        return false;
+    }
+    if (bytes === 133120 && !sxrfs_put(c, sxrfs_atari_dos25_extended_vtoc, sxrfs_atari_pos(1024, z), 1)) {
+        return false;
+    }
+    for (var d = 361; d <= 368; d++) {
+        var p = sxrfs_atari_pos(d, z);
+        if (!sxrfs_read(c, p, b, 0, 128)) {
+            break;
+        }
+        for (var j = 0; j < 8; j++) {
+            var e = b, e_o = (j * 16) >>> 0;
+            if (!(e[e_o] & 0x40) || e[e_o] & 0x80) {
+                continue;
+            }
+            if (!sxrfs_put(c, sxrfs_atari_dos2_directory_entry, p + ((j * 16) >>> 0), 1)) {
+                return false;
+            }
+            var sector = sxrfs16(e, e_o + 3, 0);
+            var count = sxrfs16(e, e_o + 1, 0);
+            for (var k = 0; k < count && k < 1040 && sector; k++) {
+                if (sector > 1040) {
+                    break;
+                }
+                var at = sxU64(sxrfs_atari_pos(sector, z) + (sector <= 3 ? 128 : z) - 3);
+                var tail = [];
+                if (!sxrfs_read(c, at, tail, 0, 3)) {
+                    break;
+                }
+                if (!sxrfs_put(c, sxrfs_atari_dos2_sector_trailer, at, 1)) {
+                    return false;
+                }
+                sector = (tail[0] & 3) << 8 | tail[1];
+            }
+        }
+    }
+    return true;
+}
+function sx_atari_dos2_build(c) {
+    return sxrfs_atari(c);
+}

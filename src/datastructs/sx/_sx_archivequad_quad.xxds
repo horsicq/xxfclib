@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/quad/xx_quad_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sx_quad_build(c) {
+    var size;
+    if (c.size < 9 || (size = sx_u32(c, 0, false)) === null || size > 67108864) {
+        return false;
+    }
+    return sx_add(c, sxquad_header, 0, 4) && sx_raw(c, 4, c.size - 4);
+}

@@ -1,0 +1,101 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_disktail.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_disktail");
+include("_sx_disktail_acorn_atom_disk");
+include("_sx_disktail_act_apricot_pc_xi_raw");
+include("_sx_disktail_amdos");
+include("_sx_disktail_apple_dos_hybrid");
+include("_sx_disktail_apple_rdos");
+include("_sx_disktail_bondwell_2_disk");
+include("_sx_disktail_casio_fz_1_disk");
+include("_sx_disktail_cffa");
+include("_sx_disktail_cpm");
+include("_sx_disktail_dos_master");
+include("_sx_disktail_hxc_xml_disk_layout");
+include("_sx_disktail_lisa_fs");
+include("_sx_disktail_mac_ts");
+include("_sx_disktail_mgt");
+include("_sx_disktail_ozdos");
+include("_sx_disktail_pascal_profile_manager");
+include("_sx_disktail_plan9_partitions");
+include("_sx_disktail_rawcd");
+include("_sx_disktail_solar_fs");
+include("_sx_disktail_unidos");
+include("_sx_disktail_xva");
+
+function fileTypes() { return ["ACT_APRICOT_PC_XI_RAW", "BONDWELL_2_DISK", "CASIO_FZ_1_DISK", "RAWCD", "ACORN_ATOM_DISK", "MGT",
+    "CPM", "XVA", "HXC_XML_DISK_LAYOUT", "APPLE_RDOS", "AMDOS", "OZDOS", "UNIDOS", "CFFA", "APPLE_DOS_HYBRID", "DOS_MASTER",
+    "MAC_TS", "PASCAL_PROFILE_MANAGER", "LISA_FS", "SOLAR_FS", "PLAN9_PARTITIONS"]; }
+
+var sx_disktail_layouts = [sxdt_rdos_catalog_entry, sxdt_mac_ts_driver_descriptor, sxdt_mac_ts_map_header,
+    sxdt_mac_ts_partition, sxdt_ppm_header, sxdt_ppm_volume_entry, sxdt_ppm_volume_description, sxdt_ppm_cached_volume_name,
+    sxdt_apricot_label_prefix, sxdt_apricot_bpb, sxdt_cpm_extent8, sxdt_cpm_extent16, sxdt_atom_catalog_name_header,
+    sxdt_atom_catalog_info_header, sxdt_atom_catalog_name, sxdt_atom_catalog_info, sxdt_casio_disk_header,
+    sxdt_casio_allocation_byte, sxdt_casio_directory_entry, sxdt_casio_file_extent, sxdt_casio_file_counts,
+    sxdt_rawcd_sector_header, sxdt_rawcd_xa_subheader, sxdt_rawcd_edc, sxdt_mgt_directory_core, sxdt_mgt_sector_link,
+    sxdt_mapped_prodos_directory_links, sxdt_mapped_prodos_volume_header, sxdt_mapped_prodos_subdirectory_header,
+    sxdt_mapped_prodos_file_entry, sxdt_mapped_prodos_fork_descriptor, sxdt_mapped_prodos_index_low,
+    sxdt_mapped_prodos_index_high, sxdt_mapped_pascal_volume_header, sxdt_mapped_pascal_file_entry, sxdt_mapped_apple_dos_vtoc,
+    sxdt_mapped_apple_dos_bitmap, sxdt_mapped_apple_dos_catalog_header, sxdt_mapped_apple_dos_file_entry,
+    sxdt_mapped_apple_dos_ts_header, sxdt_mapped_apple_dos_ts_pair, sxdt_mapped_hfs_master_directory,
+    sxdt_mapped_hfs_btree_node, sxdt_mapped_hfs_btree_header, sxdt_mapped_hfs_node_record_offset,
+    sxdt_mapped_hfs_catalog_key_prefix, sxdt_mapped_hfs_extents_key, sxdt_mapped_hfs_extent, sxdt_mapped_hfs_btree_child,
+    sxdt_mapped_hfs_catalog_folder, sxdt_mapped_hfs_catalog_file, sxdt_mapped_hfs_catalog_thread, sxdt_cpm3_volume_label,
+    sxdt_cpm3_timestamp_status, sxdt_cpm3_timestamp_record, sxdt_cpm3_timestamp_tail, sxdt_cpm_deleted_entry,
+    sxdt_mgt_compatibility_tail, sxdt_mgt_disk_label, sxdt_mgt_sam_tail, sxdt_mgt_dos_file_header, sxdt_xva_tar_v7,
+    sxdt_xva_tar_ustar, sxdt_xva_sha1_text, sxdt_xva_xxhash_text, sxdt_plan9_keyword, sxdt_plan9_name, sxdt_plan9_first_sector,
+    sxdt_plan9_end_sector, sxdt_xva_xml_tag, sxdt_xva_xml_member_name, sxdt_xva_xml_value, sxdt_hxc_xml_tag,
+    sxdt_hxc_xml_attribute_name, sxdt_hxc_disk_layout_name, sxdt_hxc_sector_data, sxdt_hxc_file_size, sxdt_hxc_file_size_hex,
+    sxdt_hxc_number_of_track, sxdt_hxc_number_of_track_hex, sxdt_hxc_number_of_side, sxdt_hxc_number_of_side_hex,
+    sxdt_hxc_sector_per_track, sxdt_hxc_sector_per_track_hex, sxdt_hxc_sector_size, sxdt_hxc_sector_size_hex,
+    sxdt_hxc_start_sector_id, sxdt_hxc_start_sector_id_hex, sxdt_hxc_formatvalue, sxdt_hxc_formatvalue_hex, sxdt_hxc_data_fill,
+    sxdt_hxc_data_fill_hex, sxdt_hxc_data_offset, sxdt_hxc_data_offset_hex, sxdt_hxc_sector_id, sxdt_hxc_sector_id_hex,
+    sxdt_hxc_track_number, sxdt_hxc_track_number_hex, sxdt_hxc_side_number, sxdt_hxc_side_number_hex, sxdt_mgt_legacy_tail,
+    sxdt_solar_volume_identity, sxdt_lisa_dc42_header, sxdt_lisa_microfloppy_loader, sxdt_lisa_microfloppy_tag, sxdt_lisa_mddf,
+    sxdt_lisa_sfile_entry, sxdt_lisa_hint_entry, sxdt_lisa_filemap_header, sxdt_lisa_filemap_extent,
+    sxdt_lisa_flat_catalog_entry, sxdt_lisa_btree_key, sxdt_lisa_btree_directory, sxdt_lisa_btree_object,
+    sxdt_lisa_btree_thread, sxdt_lisa_btree_footer, sxdt_lisa_btree_offset, sxdt_lisa_btree_child, sxdt_hxc_xml_text,
+    sxdt_apricot_fat12_pair, sxdt_apricot_directory_entry];
+
+function structs() {
+    return sxCatalog([sxdt_rdos_catalog_entry, sxdt_mac_ts_driver_descriptor, sxdt_mac_ts_map_header, sxdt_mac_ts_partition,
+        sxdt_ppm_header, sxdt_ppm_volume_entry, sxdt_ppm_volume_description, sxdt_ppm_cached_volume_name,
+        sxdt_apricot_label_prefix, sxdt_apricot_bpb, sxdt_cpm_extent8, sxdt_cpm_extent16, sxdt_atom_catalog_name_header,
+        sxdt_atom_catalog_info_header, sxdt_atom_catalog_name, sxdt_atom_catalog_info, sxdt_casio_disk_header,
+        sxdt_casio_allocation_byte, sxdt_casio_directory_entry, sxdt_casio_file_extent, sxdt_casio_file_counts,
+        sxdt_rawcd_sector_header, sxdt_rawcd_xa_subheader, sxdt_rawcd_edc, sxdt_mgt_directory_core, sxdt_mgt_sector_link,
+        sxdt_mapped_prodos_directory_links, sxdt_mapped_prodos_volume_header, sxdt_mapped_prodos_subdirectory_header,
+        sxdt_mapped_prodos_file_entry, sxdt_mapped_prodos_fork_descriptor, sxdt_mapped_prodos_index_low,
+        sxdt_mapped_prodos_index_high, sxdt_mapped_pascal_volume_header, sxdt_mapped_pascal_file_entry,
+        sxdt_mapped_apple_dos_vtoc, sxdt_mapped_apple_dos_bitmap, sxdt_mapped_apple_dos_catalog_header,
+        sxdt_mapped_apple_dos_file_entry, sxdt_mapped_apple_dos_ts_header, sxdt_mapped_apple_dos_ts_pair,
+        sxdt_mapped_hfs_master_directory, sxdt_mapped_hfs_btree_node, sxdt_mapped_hfs_btree_header,
+        sxdt_mapped_hfs_node_record_offset, sxdt_mapped_hfs_catalog_key_prefix, sxdt_mapped_hfs_extents_key,
+        sxdt_mapped_hfs_extent, sxdt_mapped_hfs_btree_child, sxdt_mapped_hfs_catalog_folder, sxdt_mapped_hfs_catalog_file,
+        sxdt_mapped_hfs_catalog_thread, sxdt_cpm3_volume_label, sxdt_cpm3_timestamp_status, sxdt_cpm3_timestamp_record,
+        sxdt_cpm3_timestamp_tail, sxdt_cpm_deleted_entry, sxdt_mgt_compatibility_tail, sxdt_mgt_disk_label, sxdt_mgt_sam_tail,
+        sxdt_mgt_dos_file_header, sxdt_xva_tar_v7, sxdt_xva_tar_ustar, sxdt_xva_sha1_text, sxdt_xva_xxhash_text,
+        sxdt_plan9_keyword, sxdt_plan9_name, sxdt_plan9_first_sector, sxdt_plan9_end_sector, sxdt_xva_xml_tag,
+        sxdt_xva_xml_member_name, sxdt_xva_xml_value, sxdt_hxc_xml_tag, sxdt_hxc_xml_attribute_name, sxdt_hxc_disk_layout_name,
+        sxdt_hxc_sector_data, sxdt_hxc_file_size, sxdt_hxc_file_size_hex, sxdt_hxc_number_of_track,
+        sxdt_hxc_number_of_track_hex, sxdt_hxc_number_of_side, sxdt_hxc_number_of_side_hex, sxdt_hxc_sector_per_track,
+        sxdt_hxc_sector_per_track_hex, sxdt_hxc_sector_size, sxdt_hxc_sector_size_hex, sxdt_hxc_start_sector_id,
+        sxdt_hxc_start_sector_id_hex, sxdt_hxc_formatvalue, sxdt_hxc_formatvalue_hex, sxdt_hxc_data_fill,
+        sxdt_hxc_data_fill_hex, sxdt_hxc_data_offset, sxdt_hxc_data_offset_hex, sxdt_hxc_sector_id, sxdt_hxc_sector_id_hex,
+        sxdt_hxc_track_number, sxdt_hxc_track_number_hex, sxdt_hxc_side_number, sxdt_hxc_side_number_hex, sxdt_mgt_legacy_tail,
+        sxdt_solar_volume_identity, sxdt_lisa_dc42_header, sxdt_lisa_microfloppy_loader, sxdt_lisa_microfloppy_tag,
+        sxdt_lisa_mddf, sxdt_lisa_sfile_entry, sxdt_lisa_hint_entry, sxdt_lisa_filemap_header, sxdt_lisa_filemap_extent,
+        sxdt_lisa_flat_catalog_entry, sxdt_lisa_btree_key, sxdt_lisa_btree_directory, sxdt_lisa_btree_object,
+        sxdt_lisa_btree_thread, sxdt_lisa_btree_footer, sxdt_lisa_btree_offset, sxdt_lisa_btree_child, sxdt_hxc_xml_text,
+        sxdt_apricot_fat12_pair, sxdt_apricot_directory_entry], sx_disktail_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_disktail_build, false);
+}

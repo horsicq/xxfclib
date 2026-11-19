@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/bethesda_bsa/xx_bethesda_bsa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_bsa_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("folders_offset", OFFSET),
+    u32("archive_flags", FLAGS), u32("folder_count", COUNT), u32("file_count", COUNT), u32("folder_names_size", SIZE),
+    u32("file_names_size", SIZE), u32("file_flags", FLAGS)]);
+var sxgm_bsa_header = sxLayout(0x6027003B, "bsa_header", LE, sxgm_bsa_header_fields);
+var sxgm_bsa_folder_fields = layout([u64("name_hash", CHECKSUM), u32("file_count", COUNT), u32("block_offset", OFFSET)]);
+var sxgm_bsa_folder = sxLayout(0x6027003C, "bsa_folder", LE, sxgm_bsa_folder_fields);
+var sxgm_bsa_folder105_fields = layout([u64("name_hash", CHECKSUM), u32("file_count", COUNT), u32("unknown12"),
+    u64("block_offset", OFFSET)]);
+var sxgm_bsa_folder105 = sxLayout(0x6027003D, "bsa_folder105", LE, sxgm_bsa_folder105_fields);
+var sxgm_bsa_file_fields = layout([u64("name_hash", CHECKSUM), u32("size_flags", FLAGS), u32("data_offset", OFFSET)]);
+var sxgm_bsa_file = sxLayout(0x6027003E, "bsa_file", LE, sxgm_bsa_file_fields);
+var sxgm_game_name_length8_fields = layout([u8("name_size", SIZE)]);
+var sxgm_game_name_length8 = sxLayout(0x6027003F, "game_name_length8", LE, sxgm_game_name_length8_fields);
+function sxgm_bsa(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 36) || !sxgm_add(c, sxgm_bsa_header, 0)) {
+        return false;
+    }
+    var v = sxgm32(b, 4, false);
+    var stride = v === 105 ? 24 : 16;
+    var table = sxgm32(b, 8, false);
+    var flags = sxgm32(b, 12, false);
+    var n = sxgm32(b, 16, false);
+    if (v < 103 || v > 105 || n > 20000 || !sxgm_span(c, table, n * stride)) {
+        return true;
+    }
+    if (!sxgm_table(c, v === 105 ? sxgm_bsa_folder105 : sxgm_bsa_folder, table, n)) {
+        return false;
+    }
+    var p = table + n * stride;
+    for (var i = 0; i < n && c.count < 20000; i++) {
+        var files = [0];
+        if (!sxgm_word(c, table + i * stride + 8, 4, false, files) || files[0] > 20000) {
+            break;
+        }
+        if (sxAnd64(flags, 1)) {
+            var z = [0];
+            if (!sxgm_word(c, p, 1, false, z) || !sxgm_span(c, p + 1, z[0])) {
+                break;
+            }
+            if (!sxgm_add(c, sxgm_game_name_length8, p)) {
+                return false;
+            }
+            p += 1 + z[0];
+        }
+        if (!sxgm_span(c, p, files[0] * 16)) {
+            break;
+        }
+        if (!sxgm_table(c, sxgm_bsa_file, p, files[0])) {
+            return false;
+        }
+        if (v >= 104 && sxAnd64(flags, 0x100)) {
+            for (var j = 0; j < files[0] && c.count < 20000; j++) {
+                var e = [];
+                if (!sxgm_read(c, p + j * 16, e, 16)) {
+                    break;
+                }
+                var at = sxgm32(e, 12, false);
+                var sz = sxgm32(e, 8, false) & 0x3FFFFFFF;
+                z = [0];
+                if (sz && sxgm_word(c, at, 1, false, z) && z[0] < sz && sxgm_span(c, at, sz) && !sxgm_add(c, sxgm_game_name_length8, at)) {
+                    return false;
+                }
+            }
+        }
+        p += files[0] * 16;
+    }
+    return true;
+}
+function sx_bethesda_bsa_build(c) {
+    return sxgm_bsa(c);
+}

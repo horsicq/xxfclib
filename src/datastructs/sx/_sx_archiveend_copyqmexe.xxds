@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/copyqmexe/xx_copyqmexe_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_copyqm_tx_header_fields = layout([chars("signature", 2, SIGNATURE), u16("node_count", COUNT),
+    u16("screen_count", COUNT), u32("body_size", SIZE), u16("node_count_copy", COUNT)]);
+var sxaend_copyqm_tx_header = sxLayout(0x60840014, "copyqm_tx_header", LE, sxaend_copyqm_tx_header_fields);
+var sxaend_copyqm_tx_leaf_fields = layout([u8("leaf_marker", ID), u8("symbol")]);
+var sxaend_copyqm_tx_leaf = sxLayout(0x60840015, "copyqm_tx_leaf", LE, sxaend_copyqm_tx_leaf_fields);
+var sxaend_copyqm_tx_branch_fields = layout([u8("zero_child"), u8("one_child")]);
+var sxaend_copyqm_tx_branch = sxLayout(0x60840016, "copyqm_tx_branch", LE, sxaend_copyqm_tx_branch_fields);
+var sxaend_copyqm_tx_screen6_fields = layout([u16("line_count", COUNT), u32("data_offset", OFFSET)]);
+var sxaend_copyqm_tx_screen6 = sxLayout(0x60840017, "copyqm_tx_screen6", LE, sxaend_copyqm_tx_screen6_fields);
+var sxaend_copyqm_tx_screen8_fields = layout([u16("unknown"), u16("line_count", COUNT), u32("data_offset", OFFSET)]);
+var sxaend_copyqm_tx_screen8 = sxLayout(0x60840018, "copyqm_tx_screen8", LE, sxaend_copyqm_tx_screen8_fields);
+var sxaend_copyqm_tx_geometry_fields = layout([u16("geometry_0"), u16("geometry_1"), u16("geometry_2")]);
+var sxaend_copyqm_tx_geometry = sxLayout(0x60840019, "copyqm_tx_geometry", LE, sxaend_copyqm_tx_geometry_fields);
+var sxaend_copyqm_tx_line_fields = layout([u8("record_size", SIZE)]);
+var sxaend_copyqm_tx_line = sxLayout(0x6084001A, "copyqm_tx_line", LE, sxaend_copyqm_tx_line_fields);
+function sxaend_copyqm(c) {
+    var h = [];
+    if (!sxaend_read(c, 0, h, 64) || h[0] !== 77 /*M*/ || h[1] !== 90 /*Z*/) {
+        return false;
+    }
+    var pages = sxaend_uint(h, 4, 2, false);
+    var last = sxaend_uint(h, 2, 2, false);
+    if (!pages || last > 511) {
+        return false;
+    }
+    var start = sxU64(pages - 1) * 512 + (last ? last : 512);
+    if (!sxaend_read(c, start, h, 12) || h[0] !== 84 /*T*/ || h[1] !== 88 /*X*/) {
+        return false;
+    }
+    var nc = sxaend_uint(h, 2, 2, false);
+    var sc = sxaend_uint(h, 4, 2, false);
+    var body = sxaend_uint(h, 6, 4, false);
+    if (nc < 3 || nc > 255 || !sxAnd64(nc, 1) || !sc || sc > 1000 || !sxaend_span(c, start, 10 + body) || !sxaend_add(c, sxaend_copyqm_tx_header, start)) {
+        return false;
+    }
+    var end = start + 10 + body;
+    var dir = start + 12 + 2 * nc;
+    var data = 0;
+    var stride = 0;
+    for (var z = [6]; z[0] <= 8; z[0] = (z[0] + 2) >>> 0) {
+        var begin = dir + sc * z[0];
+        var prev = 0;
+        var valid = begin < end;
+        for (var i = 0; valid && i < sc; i++) {
+            var lines = [0];
+            var off = [0];
+            if (!sxaend_word(c, dir + i * z[0] + (z[0] === 8 ? 2 : 0), 2, false, lines) || !sxaend_word(c, dir + i * z[0] + (z[0] === 8 ? 4 : 2), 4, false, off) || !lines[0] || off[0] >= sxU64(end - begin) || i && off[0] <= prev) {
+                valid = false;
+            }
+            prev = off[0];
+        }
+        if (valid) {
+            if (stride) {
+                return false;
+            }
+            stride = z[0];
+            data = begin;
+        }
+    }
+    if (!stride) {
+        return false;
+    }
+    for (i = 0; i < nc; i++) {
+        var v = [0];
+        if (!sxaend_word(c, start + 12 + i * 2, 1, false, v) || !sxaend_add(c, v[0] ? sxaend_copyqm_tx_branch : sxaend_copyqm_tx_leaf, start + 12 + i * 2)) {
+            return false;
+        }
+    }
+    for (i = 0; i < sc; i++) {
+        var row = dir + i * stride;
+        var n = [0];
+        off = [0];
+        var limit = end;
+        if (!sxaend_add(c, stride === 6 ? sxaend_copyqm_tx_screen6 : sxaend_copyqm_tx_screen8, row) || !sxaend_word(c, row + (stride === 8 ? 2 : 0), 2, false, n) || !sxaend_word(c, row + (stride === 8 ? 4 : 2), 4, false, off)) {
+            return false;
+        }
+        if (i === 0 && off[0] === 6 && !sxaend_add(c, sxaend_copyqm_tx_geometry, data)) {
+            return false;
+        }
+        if (i + 1 < sc) {
+            var q = [0];
+            if (!sxaend_word(c, row + stride + (stride === 8 ? 4 : 2), 4, false, q)) {
+                return false;
+            }
+            limit = data + q[0];
+        }
+        var p = data + off[0];
+        for (var j = 0; j < n[0] && j < 20000; j++) {
+            z = [0];
+            if (p >= limit || !sxaend_word(c, p, 1, false, z) || z[0] < 2 || z[0] > sxU64(limit - p) || !sxaend_add(c, sxaend_copyqm_tx_line, p)) {
+                return false;
+            }
+            p += z[0];
+        }
+    }
+    return true;
+}
+function sx_copyqmexe_build(c) {
+    return sxaend_copyqm(c);
+}

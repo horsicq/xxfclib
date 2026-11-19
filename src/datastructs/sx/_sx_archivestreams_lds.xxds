@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lds/xx_lds_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_lds_header_fields = layout([chars("signature", 6, SIGNATURE), u64("directory_offset", OFFSET)]);
+var sxas_lds_header = sxLayout(0x60430011, "lds_header", LE, sxas_lds_header_fields);
+var sxas_lds_count_fields = layout([u32("member_count", COUNT)]);
+var sxas_lds_count = sxLayout(0x60430012, "lds_count", LE, sxas_lds_count_fields);
+var sxas_lds_entry_fields = layout([u64("payload_offset", OFFSET), u64("payload_size", SIZE), u32("name_size", SIZE)]);
+var sxas_lds_entry = sxLayout(0x60430013, "lds_entry", LE, sxas_lds_entry_fields);
+function sxas_lds(c) {
+    var p = [0];
+    var n = [0];
+    if (!sxas_word(c, 6, 8, false, p) || p[0] < 14 || !sxas_word(c, p[0], 4, false, n) || !sxas_add(c, sxas_lds_header, 0) || !sxas_add(c, sxas_lds_count, p[0])) {
+        return false;
+    }
+    p[0] += 4;
+    for (var i = 0; i < n[0]; i++) {
+        var z = [0];
+        if (!sxas_word(c, p[0] + 16, 4, false, z) || !sxas_span(c, p[0] + 20, z[0]) || !sxas_add(c, sxas_lds_entry, p[0])) {
+            return false;
+        }
+        p[0] += 20 + z[0];
+    }
+    return true;
+}
+function sx_lds_build(c) {
+    return sxas_lds(c);
+}

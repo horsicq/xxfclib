@@ -1,0 +1,1402 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_extendedmedia.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxem_nw_header_le_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", SIGNATURE), u16("header_size", SIZE),
+    u32("version", ID), u32("file_size", SIZE), u16("block_count", COUNT), u16("padding", RESERVED)]);
+var sxem_nw_header_le = sxLayout(0x600D0001, "nw_header_le", LE, sxem_nw_header_le_fields);
+var sxem_nw_header_be_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", SIGNATURE), u16("header_size", SIZE),
+    u32("version", ID), u32("file_size", SIZE), u16("block_count", COUNT), u16("padding", RESERVED)]);
+var sxem_nw_header_be = sxLayout(0x600D0002, "nw_header_be", BE, sxem_nw_header_be_fields);
+var sxem_nw_sized_reference_le_fields = layout([u16("type_id", ID), u16("padding", RESERVED), i32("offset", OFFSET),
+    u32("size", SIZE)]);
+var sxem_nw_sized_reference_le = sxLayout(0x600D0003, "nw_sized_reference_le", LE, sxem_nw_sized_reference_le_fields);
+var sxem_nw_sized_reference_be_fields = layout([u16("type_id", ID), u16("padding", RESERVED), i32("offset", OFFSET),
+    u32("size", SIZE)]);
+var sxem_nw_sized_reference_be = sxLayout(0x600D0004, "nw_sized_reference_be", BE, sxem_nw_sized_reference_be_fields);
+var sxem_nw_reference_le_fields = layout([u16("type_id", ID), u16("padding", RESERVED), i32("offset", OFFSET)]);
+var sxem_nw_reference_le = sxLayout(0x600D0005, "nw_reference_le", LE, sxem_nw_reference_le_fields);
+var sxem_nw_reference_be_fields = layout([u16("type_id", ID), u16("padding", RESERVED), i32("offset", OFFSET)]);
+var sxem_nw_reference_be = sxLayout(0x600D0006, "nw_reference_be", BE, sxem_nw_reference_be_fields);
+var sxem_nw_block_le_fields = layout([chars("magic", 4, ID), u32("block_size", SIZE)]);
+var sxem_nw_block_le = sxLayout(0x600D0007, "nw_block_le", LE, sxem_nw_block_le_fields);
+var sxem_nw_block_be_fields = layout([chars("magic", 4, ID), u32("block_size", SIZE)]);
+var sxem_nw_block_be = sxLayout(0x600D0008, "nw_block_be", BE, sxem_nw_block_be_fields);
+var sxem_nw_wave_info_le_fields = layout([u8("encoding"), u8("loop_flag"), u16("padding", RESERVED), u32("sample_rate_hz"),
+    u32("loop_start_sample"), u32("sample_count", COUNT), u32("reserved", RESERVED), u32("channel_count", COUNT)]);
+var sxem_nw_wave_info_le = sxLayout(0x600D0009, "nw_wave_info_le", LE, sxem_nw_wave_info_le_fields);
+var sxem_nw_wave_info_be_fields = layout([u8("encoding"), u8("loop_flag"), u16("padding", RESERVED), u32("sample_rate_hz"),
+    u32("loop_start_sample"), u32("sample_count", COUNT), u32("reserved", RESERVED), u32("channel_count", COUNT)]);
+var sxem_nw_wave_info_be = sxLayout(0x600D000A, "nw_wave_info_be", BE, sxem_nw_wave_info_be_fields);
+var sxem_nw_wave_channel_le_fields = layout([u16("sample_type_id", ID), u16("padding", RESERVED), i32("sample_offset", OFFSET),
+    u16("adpcm_type_id", ID), u16("adpcm_padding", RESERVED), i32("adpcm_offset", OFFSET), u32("reserved", RESERVED)]);
+var sxem_nw_wave_channel_le = sxLayout(0x600D000B, "nw_wave_channel_le", LE, sxem_nw_wave_channel_le_fields);
+var sxem_nw_wave_channel_be_fields = layout([u16("sample_type_id", ID), u16("padding", RESERVED), i32("sample_offset", OFFSET),
+    u16("adpcm_type_id", ID), u16("adpcm_padding", RESERVED), i32("adpcm_offset", OFFSET), u32("reserved", RESERVED)]);
+var sxem_nw_wave_channel_be = sxLayout(0x600D000C, "nw_wave_channel_be", BE, sxem_nw_wave_channel_be_fields);
+var sxem_nw_stream_info_le_fields = layout([u8("encoding"), u8("loop_flag"), u8("channel_count", COUNT),
+    u8("region_count", COUNT), u32("sample_rate_hz"), u32("loop_start_sample"), u32("sample_count", COUNT),
+    u32("block_count", COUNT), u32("block_size", SIZE), u32("samples_per_block", COUNT), u32("last_block_size", SIZE),
+    u32("last_block_samples", COUNT), u32("last_block_padded_size", SIZE), u32("seek_entry_size", SIZE),
+    u32("seek_interval_samples", COUNT), u16("sample_type_id", ID), u16("sample_padding", RESERVED),
+    i32("sample_offset", OFFSET), u16("region_info_size", SIZE), u16("region_padding", RESERVED), u16("region_type_id", ID),
+    u16("region_reference_padding", RESERVED), i32("region_offset", OFFSET)]);
+var sxem_nw_stream_info_le = sxLayout(0x600D000D, "nw_stream_info_le", LE, sxem_nw_stream_info_le_fields);
+var sxem_nw_stream_info_be_fields = layout([u8("encoding"), u8("loop_flag"), u8("channel_count", COUNT),
+    u8("region_count", COUNT), u32("sample_rate_hz"), u32("loop_start_sample"), u32("sample_count", COUNT),
+    u32("block_count", COUNT), u32("block_size", SIZE), u32("samples_per_block", COUNT), u32("last_block_size", SIZE),
+    u32("last_block_samples", COUNT), u32("last_block_padded_size", SIZE), u32("seek_entry_size", SIZE),
+    u32("seek_interval_samples", COUNT), u16("sample_type_id", ID), u16("sample_padding", RESERVED),
+    i32("sample_offset", OFFSET), u16("region_info_size", SIZE), u16("region_padding", RESERVED), u16("region_type_id", ID),
+    u16("region_reference_padding", RESERVED), i32("region_offset", OFFSET)]);
+var sxem_nw_stream_info_be = sxLayout(0x600D000E, "nw_stream_info_be", BE, sxem_nw_stream_info_be_fields);
+var sxem_bbi_header_le_fields = layout([u32("magic", SIGNATURE), u16("version"), u16("zoom_count", COUNT),
+    u64("chromosome_tree_offset", OFFSET), u64("full_data_offset", OFFSET), u64("full_index_offset", OFFSET),
+    u16("field_count", COUNT), u16("defined_field_count", COUNT), u64("auto_sql_offset", OFFSET),
+    u64("total_summary_offset", OFFSET), u32("uncompress_buffer_size", SIZE), u64("extension_offset", OFFSET)]);
+var sxem_bbi_header_le = sxLayout(0x600D000F, "bbi_header_le", LE, sxem_bbi_header_le_fields);
+var sxem_bbi_header_be_fields = layout([u32("magic", SIGNATURE), u16("version"), u16("zoom_count", COUNT),
+    u64("chromosome_tree_offset", OFFSET), u64("full_data_offset", OFFSET), u64("full_index_offset", OFFSET),
+    u16("field_count", COUNT), u16("defined_field_count", COUNT), u64("auto_sql_offset", OFFSET),
+    u64("total_summary_offset", OFFSET), u32("uncompress_buffer_size", SIZE), u64("extension_offset", OFFSET)]);
+var sxem_bbi_header_be = sxLayout(0x600D0010, "bbi_header_be", BE, sxem_bbi_header_be_fields);
+var sxem_bbi_zoom_header_le_fields = layout([u32("reduction_level"), u32("reserved", RESERVED), u64("data_offset", OFFSET),
+    u64("index_offset", OFFSET)]);
+var sxem_bbi_zoom_header_le = sxLayout(0x600D0011, "bbi_zoom_header_le", LE, sxem_bbi_zoom_header_le_fields);
+var sxem_bbi_zoom_header_be_fields = layout([u32("reduction_level"), u32("reserved", RESERVED), u64("data_offset", OFFSET),
+    u64("index_offset", OFFSET)]);
+var sxem_bbi_zoom_header_be = sxLayout(0x600D0012, "bbi_zoom_header_be", BE, sxem_bbi_zoom_header_be_fields);
+var sxem_bbi_chromosome_tree_le_fields = layout([u32("magic", SIGNATURE), u32("block_capacity", COUNT), u32("key_size", SIZE),
+    u32("value_size", SIZE), u64("item_count", COUNT), u64("reserved", RESERVED)]);
+var sxem_bbi_chromosome_tree_le = sxLayout(0x600D0013, "bbi_chromosome_tree_le", LE, sxem_bbi_chromosome_tree_le_fields);
+var sxem_bbi_chromosome_tree_be_fields = layout([u32("magic", SIGNATURE), u32("block_capacity", COUNT), u32("key_size", SIZE),
+    u32("value_size", SIZE), u64("item_count", COUNT), u64("reserved", RESERVED)]);
+var sxem_bbi_chromosome_tree_be = sxLayout(0x600D0014, "bbi_chromosome_tree_be", BE, sxem_bbi_chromosome_tree_be_fields);
+var sxem_bbi_tree_node_le_fields = layout([u8("is_leaf"), u8("reserved", RESERVED), u16("child_count", COUNT)]);
+var sxem_bbi_tree_node_le = sxLayout(0x600D0015, "bbi_tree_node_le", LE, sxem_bbi_tree_node_le_fields);
+var sxem_bbi_tree_node_be_fields = layout([u8("is_leaf"), u8("reserved", RESERVED), u16("child_count", COUNT)]);
+var sxem_bbi_tree_node_be = sxLayout(0x600D0016, "bbi_tree_node_be", BE, sxem_bbi_tree_node_be_fields);
+var sxem_bbi_chromosome_1_le_fields = layout([chars("name", 1, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_1_le = sxLayout(0x600D0017, "bbi_chromosome_1_le", LE, sxem_bbi_chromosome_1_le_fields);
+var sxem_bbi_chromosome_1_be_fields = layout([chars("name", 1, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_1_be = sxLayout(0x600D0018, "bbi_chromosome_1_be", BE, sxem_bbi_chromosome_1_be_fields);
+var sxem_bbi_chromosome_2_le_fields = layout([chars("name", 2, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_2_le = sxLayout(0x600D0019, "bbi_chromosome_2_le", LE, sxem_bbi_chromosome_2_le_fields);
+var sxem_bbi_chromosome_2_be_fields = layout([chars("name", 2, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_2_be = sxLayout(0x600D001A, "bbi_chromosome_2_be", BE, sxem_bbi_chromosome_2_be_fields);
+var sxem_bbi_chromosome_3_le_fields = layout([chars("name", 3, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_3_le = sxLayout(0x600D001B, "bbi_chromosome_3_le", LE, sxem_bbi_chromosome_3_le_fields);
+var sxem_bbi_chromosome_3_be_fields = layout([chars("name", 3, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_3_be = sxLayout(0x600D001C, "bbi_chromosome_3_be", BE, sxem_bbi_chromosome_3_be_fields);
+var sxem_bbi_chromosome_4_le_fields = layout([chars("name", 4, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_4_le = sxLayout(0x600D001D, "bbi_chromosome_4_le", LE, sxem_bbi_chromosome_4_le_fields);
+var sxem_bbi_chromosome_4_be_fields = layout([chars("name", 4, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_4_be = sxLayout(0x600D001E, "bbi_chromosome_4_be", BE, sxem_bbi_chromosome_4_be_fields);
+var sxem_bbi_chromosome_5_le_fields = layout([chars("name", 5, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_5_le = sxLayout(0x600D001F, "bbi_chromosome_5_le", LE, sxem_bbi_chromosome_5_le_fields);
+var sxem_bbi_chromosome_5_be_fields = layout([chars("name", 5, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_5_be = sxLayout(0x600D0020, "bbi_chromosome_5_be", BE, sxem_bbi_chromosome_5_be_fields);
+var sxem_bbi_chromosome_6_le_fields = layout([chars("name", 6, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_6_le = sxLayout(0x600D0021, "bbi_chromosome_6_le", LE, sxem_bbi_chromosome_6_le_fields);
+var sxem_bbi_chromosome_6_be_fields = layout([chars("name", 6, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_6_be = sxLayout(0x600D0022, "bbi_chromosome_6_be", BE, sxem_bbi_chromosome_6_be_fields);
+var sxem_bbi_chromosome_7_le_fields = layout([chars("name", 7, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_7_le = sxLayout(0x600D0023, "bbi_chromosome_7_le", LE, sxem_bbi_chromosome_7_le_fields);
+var sxem_bbi_chromosome_7_be_fields = layout([chars("name", 7, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_7_be = sxLayout(0x600D0024, "bbi_chromosome_7_be", BE, sxem_bbi_chromosome_7_be_fields);
+var sxem_bbi_chromosome_8_le_fields = layout([chars("name", 8, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_8_le = sxLayout(0x600D0025, "bbi_chromosome_8_le", LE, sxem_bbi_chromosome_8_le_fields);
+var sxem_bbi_chromosome_8_be_fields = layout([chars("name", 8, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_8_be = sxLayout(0x600D0026, "bbi_chromosome_8_be", BE, sxem_bbi_chromosome_8_be_fields);
+var sxem_bbi_chromosome_9_le_fields = layout([chars("name", 9, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_9_le = sxLayout(0x600D0027, "bbi_chromosome_9_le", LE, sxem_bbi_chromosome_9_le_fields);
+var sxem_bbi_chromosome_9_be_fields = layout([chars("name", 9, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_9_be = sxLayout(0x600D0028, "bbi_chromosome_9_be", BE, sxem_bbi_chromosome_9_be_fields);
+var sxem_bbi_chromosome_10_le_fields = layout([chars("name", 10, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_10_le = sxLayout(0x600D0029, "bbi_chromosome_10_le", LE, sxem_bbi_chromosome_10_le_fields);
+var sxem_bbi_chromosome_10_be_fields = layout([chars("name", 10, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_10_be = sxLayout(0x600D002A, "bbi_chromosome_10_be", BE, sxem_bbi_chromosome_10_be_fields);
+var sxem_bbi_chromosome_11_le_fields = layout([chars("name", 11, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_11_le = sxLayout(0x600D002B, "bbi_chromosome_11_le", LE, sxem_bbi_chromosome_11_le_fields);
+var sxem_bbi_chromosome_11_be_fields = layout([chars("name", 11, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_11_be = sxLayout(0x600D002C, "bbi_chromosome_11_be", BE, sxem_bbi_chromosome_11_be_fields);
+var sxem_bbi_chromosome_12_le_fields = layout([chars("name", 12, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_12_le = sxLayout(0x600D002D, "bbi_chromosome_12_le", LE, sxem_bbi_chromosome_12_le_fields);
+var sxem_bbi_chromosome_12_be_fields = layout([chars("name", 12, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_12_be = sxLayout(0x600D002E, "bbi_chromosome_12_be", BE, sxem_bbi_chromosome_12_be_fields);
+var sxem_bbi_chromosome_13_le_fields = layout([chars("name", 13, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_13_le = sxLayout(0x600D002F, "bbi_chromosome_13_le", LE, sxem_bbi_chromosome_13_le_fields);
+var sxem_bbi_chromosome_13_be_fields = layout([chars("name", 13, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_13_be = sxLayout(0x600D0030, "bbi_chromosome_13_be", BE, sxem_bbi_chromosome_13_be_fields);
+var sxem_bbi_chromosome_14_le_fields = layout([chars("name", 14, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_14_le = sxLayout(0x600D0031, "bbi_chromosome_14_le", LE, sxem_bbi_chromosome_14_le_fields);
+var sxem_bbi_chromosome_14_be_fields = layout([chars("name", 14, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_14_be = sxLayout(0x600D0032, "bbi_chromosome_14_be", BE, sxem_bbi_chromosome_14_be_fields);
+var sxem_bbi_chromosome_15_le_fields = layout([chars("name", 15, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_15_le = sxLayout(0x600D0033, "bbi_chromosome_15_le", LE, sxem_bbi_chromosome_15_le_fields);
+var sxem_bbi_chromosome_15_be_fields = layout([chars("name", 15, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_15_be = sxLayout(0x600D0034, "bbi_chromosome_15_be", BE, sxem_bbi_chromosome_15_be_fields);
+var sxem_bbi_chromosome_16_le_fields = layout([chars("name", 16, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_16_le = sxLayout(0x600D0035, "bbi_chromosome_16_le", LE, sxem_bbi_chromosome_16_le_fields);
+var sxem_bbi_chromosome_16_be_fields = layout([chars("name", 16, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_16_be = sxLayout(0x600D0036, "bbi_chromosome_16_be", BE, sxem_bbi_chromosome_16_be_fields);
+var sxem_bbi_chromosome_17_le_fields = layout([chars("name", 17, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_17_le = sxLayout(0x600D0037, "bbi_chromosome_17_le", LE, sxem_bbi_chromosome_17_le_fields);
+var sxem_bbi_chromosome_17_be_fields = layout([chars("name", 17, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_17_be = sxLayout(0x600D0038, "bbi_chromosome_17_be", BE, sxem_bbi_chromosome_17_be_fields);
+var sxem_bbi_chromosome_18_le_fields = layout([chars("name", 18, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_18_le = sxLayout(0x600D0039, "bbi_chromosome_18_le", LE, sxem_bbi_chromosome_18_le_fields);
+var sxem_bbi_chromosome_18_be_fields = layout([chars("name", 18, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_18_be = sxLayout(0x600D003A, "bbi_chromosome_18_be", BE, sxem_bbi_chromosome_18_be_fields);
+var sxem_bbi_chromosome_19_le_fields = layout([chars("name", 19, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_19_le = sxLayout(0x600D003B, "bbi_chromosome_19_le", LE, sxem_bbi_chromosome_19_le_fields);
+var sxem_bbi_chromosome_19_be_fields = layout([chars("name", 19, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_19_be = sxLayout(0x600D003C, "bbi_chromosome_19_be", BE, sxem_bbi_chromosome_19_be_fields);
+var sxem_bbi_chromosome_20_le_fields = layout([chars("name", 20, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_20_le = sxLayout(0x600D003D, "bbi_chromosome_20_le", LE, sxem_bbi_chromosome_20_le_fields);
+var sxem_bbi_chromosome_20_be_fields = layout([chars("name", 20, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_20_be = sxLayout(0x600D003E, "bbi_chromosome_20_be", BE, sxem_bbi_chromosome_20_be_fields);
+var sxem_bbi_chromosome_21_le_fields = layout([chars("name", 21, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_21_le = sxLayout(0x600D003F, "bbi_chromosome_21_le", LE, sxem_bbi_chromosome_21_le_fields);
+var sxem_bbi_chromosome_21_be_fields = layout([chars("name", 21, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_21_be = sxLayout(0x600D0040, "bbi_chromosome_21_be", BE, sxem_bbi_chromosome_21_be_fields);
+var sxem_bbi_chromosome_22_le_fields = layout([chars("name", 22, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_22_le = sxLayout(0x600D0041, "bbi_chromosome_22_le", LE, sxem_bbi_chromosome_22_le_fields);
+var sxem_bbi_chromosome_22_be_fields = layout([chars("name", 22, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_22_be = sxLayout(0x600D0042, "bbi_chromosome_22_be", BE, sxem_bbi_chromosome_22_be_fields);
+var sxem_bbi_chromosome_23_le_fields = layout([chars("name", 23, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_23_le = sxLayout(0x600D0043, "bbi_chromosome_23_le", LE, sxem_bbi_chromosome_23_le_fields);
+var sxem_bbi_chromosome_23_be_fields = layout([chars("name", 23, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_23_be = sxLayout(0x600D0044, "bbi_chromosome_23_be", BE, sxem_bbi_chromosome_23_be_fields);
+var sxem_bbi_chromosome_24_le_fields = layout([chars("name", 24, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_24_le = sxLayout(0x600D0045, "bbi_chromosome_24_le", LE, sxem_bbi_chromosome_24_le_fields);
+var sxem_bbi_chromosome_24_be_fields = layout([chars("name", 24, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_24_be = sxLayout(0x600D0046, "bbi_chromosome_24_be", BE, sxem_bbi_chromosome_24_be_fields);
+var sxem_bbi_chromosome_25_le_fields = layout([chars("name", 25, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_25_le = sxLayout(0x600D0047, "bbi_chromosome_25_le", LE, sxem_bbi_chromosome_25_le_fields);
+var sxem_bbi_chromosome_25_be_fields = layout([chars("name", 25, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_25_be = sxLayout(0x600D0048, "bbi_chromosome_25_be", BE, sxem_bbi_chromosome_25_be_fields);
+var sxem_bbi_chromosome_26_le_fields = layout([chars("name", 26, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_26_le = sxLayout(0x600D0049, "bbi_chromosome_26_le", LE, sxem_bbi_chromosome_26_le_fields);
+var sxem_bbi_chromosome_26_be_fields = layout([chars("name", 26, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_26_be = sxLayout(0x600D004A, "bbi_chromosome_26_be", BE, sxem_bbi_chromosome_26_be_fields);
+var sxem_bbi_chromosome_27_le_fields = layout([chars("name", 27, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_27_le = sxLayout(0x600D004B, "bbi_chromosome_27_le", LE, sxem_bbi_chromosome_27_le_fields);
+var sxem_bbi_chromosome_27_be_fields = layout([chars("name", 27, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_27_be = sxLayout(0x600D004C, "bbi_chromosome_27_be", BE, sxem_bbi_chromosome_27_be_fields);
+var sxem_bbi_chromosome_28_le_fields = layout([chars("name", 28, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_28_le = sxLayout(0x600D004D, "bbi_chromosome_28_le", LE, sxem_bbi_chromosome_28_le_fields);
+var sxem_bbi_chromosome_28_be_fields = layout([chars("name", 28, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_28_be = sxLayout(0x600D004E, "bbi_chromosome_28_be", BE, sxem_bbi_chromosome_28_be_fields);
+var sxem_bbi_chromosome_29_le_fields = layout([chars("name", 29, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_29_le = sxLayout(0x600D004F, "bbi_chromosome_29_le", LE, sxem_bbi_chromosome_29_le_fields);
+var sxem_bbi_chromosome_29_be_fields = layout([chars("name", 29, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_29_be = sxLayout(0x600D0050, "bbi_chromosome_29_be", BE, sxem_bbi_chromosome_29_be_fields);
+var sxem_bbi_chromosome_30_le_fields = layout([chars("name", 30, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_30_le = sxLayout(0x600D0051, "bbi_chromosome_30_le", LE, sxem_bbi_chromosome_30_le_fields);
+var sxem_bbi_chromosome_30_be_fields = layout([chars("name", 30, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_30_be = sxLayout(0x600D0052, "bbi_chromosome_30_be", BE, sxem_bbi_chromosome_30_be_fields);
+var sxem_bbi_chromosome_31_le_fields = layout([chars("name", 31, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_31_le = sxLayout(0x600D0053, "bbi_chromosome_31_le", LE, sxem_bbi_chromosome_31_le_fields);
+var sxem_bbi_chromosome_31_be_fields = layout([chars("name", 31, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_31_be = sxLayout(0x600D0054, "bbi_chromosome_31_be", BE, sxem_bbi_chromosome_31_be_fields);
+var sxem_bbi_chromosome_32_le_fields = layout([chars("name", 32, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_32_le = sxLayout(0x600D0055, "bbi_chromosome_32_le", LE, sxem_bbi_chromosome_32_le_fields);
+var sxem_bbi_chromosome_32_be_fields = layout([chars("name", 32, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_32_be = sxLayout(0x600D0056, "bbi_chromosome_32_be", BE, sxem_bbi_chromosome_32_be_fields);
+var sxem_bbi_chromosome_33_le_fields = layout([chars("name", 33, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_33_le = sxLayout(0x600D0057, "bbi_chromosome_33_le", LE, sxem_bbi_chromosome_33_le_fields);
+var sxem_bbi_chromosome_33_be_fields = layout([chars("name", 33, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_33_be = sxLayout(0x600D0058, "bbi_chromosome_33_be", BE, sxem_bbi_chromosome_33_be_fields);
+var sxem_bbi_chromosome_34_le_fields = layout([chars("name", 34, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_34_le = sxLayout(0x600D0059, "bbi_chromosome_34_le", LE, sxem_bbi_chromosome_34_le_fields);
+var sxem_bbi_chromosome_34_be_fields = layout([chars("name", 34, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_34_be = sxLayout(0x600D005A, "bbi_chromosome_34_be", BE, sxem_bbi_chromosome_34_be_fields);
+var sxem_bbi_chromosome_35_le_fields = layout([chars("name", 35, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_35_le = sxLayout(0x600D005B, "bbi_chromosome_35_le", LE, sxem_bbi_chromosome_35_le_fields);
+var sxem_bbi_chromosome_35_be_fields = layout([chars("name", 35, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_35_be = sxLayout(0x600D005C, "bbi_chromosome_35_be", BE, sxem_bbi_chromosome_35_be_fields);
+var sxem_bbi_chromosome_36_le_fields = layout([chars("name", 36, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_36_le = sxLayout(0x600D005D, "bbi_chromosome_36_le", LE, sxem_bbi_chromosome_36_le_fields);
+var sxem_bbi_chromosome_36_be_fields = layout([chars("name", 36, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_36_be = sxLayout(0x600D005E, "bbi_chromosome_36_be", BE, sxem_bbi_chromosome_36_be_fields);
+var sxem_bbi_chromosome_37_le_fields = layout([chars("name", 37, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_37_le = sxLayout(0x600D005F, "bbi_chromosome_37_le", LE, sxem_bbi_chromosome_37_le_fields);
+var sxem_bbi_chromosome_37_be_fields = layout([chars("name", 37, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_37_be = sxLayout(0x600D0060, "bbi_chromosome_37_be", BE, sxem_bbi_chromosome_37_be_fields);
+var sxem_bbi_chromosome_38_le_fields = layout([chars("name", 38, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_38_le = sxLayout(0x600D0061, "bbi_chromosome_38_le", LE, sxem_bbi_chromosome_38_le_fields);
+var sxem_bbi_chromosome_38_be_fields = layout([chars("name", 38, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_38_be = sxLayout(0x600D0062, "bbi_chromosome_38_be", BE, sxem_bbi_chromosome_38_be_fields);
+var sxem_bbi_chromosome_39_le_fields = layout([chars("name", 39, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_39_le = sxLayout(0x600D0063, "bbi_chromosome_39_le", LE, sxem_bbi_chromosome_39_le_fields);
+var sxem_bbi_chromosome_39_be_fields = layout([chars("name", 39, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_39_be = sxLayout(0x600D0064, "bbi_chromosome_39_be", BE, sxem_bbi_chromosome_39_be_fields);
+var sxem_bbi_chromosome_40_le_fields = layout([chars("name", 40, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_40_le = sxLayout(0x600D0065, "bbi_chromosome_40_le", LE, sxem_bbi_chromosome_40_le_fields);
+var sxem_bbi_chromosome_40_be_fields = layout([chars("name", 40, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_40_be = sxLayout(0x600D0066, "bbi_chromosome_40_be", BE, sxem_bbi_chromosome_40_be_fields);
+var sxem_bbi_chromosome_41_le_fields = layout([chars("name", 41, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_41_le = sxLayout(0x600D0067, "bbi_chromosome_41_le", LE, sxem_bbi_chromosome_41_le_fields);
+var sxem_bbi_chromosome_41_be_fields = layout([chars("name", 41, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_41_be = sxLayout(0x600D0068, "bbi_chromosome_41_be", BE, sxem_bbi_chromosome_41_be_fields);
+var sxem_bbi_chromosome_42_le_fields = layout([chars("name", 42, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_42_le = sxLayout(0x600D0069, "bbi_chromosome_42_le", LE, sxem_bbi_chromosome_42_le_fields);
+var sxem_bbi_chromosome_42_be_fields = layout([chars("name", 42, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_42_be = sxLayout(0x600D006A, "bbi_chromosome_42_be", BE, sxem_bbi_chromosome_42_be_fields);
+var sxem_bbi_chromosome_43_le_fields = layout([chars("name", 43, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_43_le = sxLayout(0x600D006B, "bbi_chromosome_43_le", LE, sxem_bbi_chromosome_43_le_fields);
+var sxem_bbi_chromosome_43_be_fields = layout([chars("name", 43, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_43_be = sxLayout(0x600D006C, "bbi_chromosome_43_be", BE, sxem_bbi_chromosome_43_be_fields);
+var sxem_bbi_chromosome_44_le_fields = layout([chars("name", 44, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_44_le = sxLayout(0x600D006D, "bbi_chromosome_44_le", LE, sxem_bbi_chromosome_44_le_fields);
+var sxem_bbi_chromosome_44_be_fields = layout([chars("name", 44, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_44_be = sxLayout(0x600D006E, "bbi_chromosome_44_be", BE, sxem_bbi_chromosome_44_be_fields);
+var sxem_bbi_chromosome_45_le_fields = layout([chars("name", 45, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_45_le = sxLayout(0x600D006F, "bbi_chromosome_45_le", LE, sxem_bbi_chromosome_45_le_fields);
+var sxem_bbi_chromosome_45_be_fields = layout([chars("name", 45, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_45_be = sxLayout(0x600D0070, "bbi_chromosome_45_be", BE, sxem_bbi_chromosome_45_be_fields);
+var sxem_bbi_chromosome_46_le_fields = layout([chars("name", 46, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_46_le = sxLayout(0x600D0071, "bbi_chromosome_46_le", LE, sxem_bbi_chromosome_46_le_fields);
+var sxem_bbi_chromosome_46_be_fields = layout([chars("name", 46, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_46_be = sxLayout(0x600D0072, "bbi_chromosome_46_be", BE, sxem_bbi_chromosome_46_be_fields);
+var sxem_bbi_chromosome_47_le_fields = layout([chars("name", 47, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_47_le = sxLayout(0x600D0073, "bbi_chromosome_47_le", LE, sxem_bbi_chromosome_47_le_fields);
+var sxem_bbi_chromosome_47_be_fields = layout([chars("name", 47, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_47_be = sxLayout(0x600D0074, "bbi_chromosome_47_be", BE, sxem_bbi_chromosome_47_be_fields);
+var sxem_bbi_chromosome_48_le_fields = layout([chars("name", 48, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_48_le = sxLayout(0x600D0075, "bbi_chromosome_48_le", LE, sxem_bbi_chromosome_48_le_fields);
+var sxem_bbi_chromosome_48_be_fields = layout([chars("name", 48, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_48_be = sxLayout(0x600D0076, "bbi_chromosome_48_be", BE, sxem_bbi_chromosome_48_be_fields);
+var sxem_bbi_chromosome_49_le_fields = layout([chars("name", 49, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_49_le = sxLayout(0x600D0077, "bbi_chromosome_49_le", LE, sxem_bbi_chromosome_49_le_fields);
+var sxem_bbi_chromosome_49_be_fields = layout([chars("name", 49, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_49_be = sxLayout(0x600D0078, "bbi_chromosome_49_be", BE, sxem_bbi_chromosome_49_be_fields);
+var sxem_bbi_chromosome_50_le_fields = layout([chars("name", 50, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_50_le = sxLayout(0x600D0079, "bbi_chromosome_50_le", LE, sxem_bbi_chromosome_50_le_fields);
+var sxem_bbi_chromosome_50_be_fields = layout([chars("name", 50, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_50_be = sxLayout(0x600D007A, "bbi_chromosome_50_be", BE, sxem_bbi_chromosome_50_be_fields);
+var sxem_bbi_chromosome_51_le_fields = layout([chars("name", 51, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_51_le = sxLayout(0x600D007B, "bbi_chromosome_51_le", LE, sxem_bbi_chromosome_51_le_fields);
+var sxem_bbi_chromosome_51_be_fields = layout([chars("name", 51, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_51_be = sxLayout(0x600D007C, "bbi_chromosome_51_be", BE, sxem_bbi_chromosome_51_be_fields);
+var sxem_bbi_chromosome_52_le_fields = layout([chars("name", 52, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_52_le = sxLayout(0x600D007D, "bbi_chromosome_52_le", LE, sxem_bbi_chromosome_52_le_fields);
+var sxem_bbi_chromosome_52_be_fields = layout([chars("name", 52, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_52_be = sxLayout(0x600D007E, "bbi_chromosome_52_be", BE, sxem_bbi_chromosome_52_be_fields);
+var sxem_bbi_chromosome_53_le_fields = layout([chars("name", 53, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_53_le = sxLayout(0x600D007F, "bbi_chromosome_53_le", LE, sxem_bbi_chromosome_53_le_fields);
+var sxem_bbi_chromosome_53_be_fields = layout([chars("name", 53, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_53_be = sxLayout(0x600D0080, "bbi_chromosome_53_be", BE, sxem_bbi_chromosome_53_be_fields);
+var sxem_bbi_chromosome_54_le_fields = layout([chars("name", 54, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_54_le = sxLayout(0x600D0081, "bbi_chromosome_54_le", LE, sxem_bbi_chromosome_54_le_fields);
+var sxem_bbi_chromosome_54_be_fields = layout([chars("name", 54, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_54_be = sxLayout(0x600D0082, "bbi_chromosome_54_be", BE, sxem_bbi_chromosome_54_be_fields);
+var sxem_bbi_chromosome_55_le_fields = layout([chars("name", 55, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_55_le = sxLayout(0x600D0083, "bbi_chromosome_55_le", LE, sxem_bbi_chromosome_55_le_fields);
+var sxem_bbi_chromosome_55_be_fields = layout([chars("name", 55, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_55_be = sxLayout(0x600D0084, "bbi_chromosome_55_be", BE, sxem_bbi_chromosome_55_be_fields);
+var sxem_bbi_chromosome_56_le_fields = layout([chars("name", 56, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_56_le = sxLayout(0x600D0085, "bbi_chromosome_56_le", LE, sxem_bbi_chromosome_56_le_fields);
+var sxem_bbi_chromosome_56_be_fields = layout([chars("name", 56, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_56_be = sxLayout(0x600D0086, "bbi_chromosome_56_be", BE, sxem_bbi_chromosome_56_be_fields);
+var sxem_bbi_chromosome_57_le_fields = layout([chars("name", 57, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_57_le = sxLayout(0x600D0087, "bbi_chromosome_57_le", LE, sxem_bbi_chromosome_57_le_fields);
+var sxem_bbi_chromosome_57_be_fields = layout([chars("name", 57, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_57_be = sxLayout(0x600D0088, "bbi_chromosome_57_be", BE, sxem_bbi_chromosome_57_be_fields);
+var sxem_bbi_chromosome_58_le_fields = layout([chars("name", 58, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_58_le = sxLayout(0x600D0089, "bbi_chromosome_58_le", LE, sxem_bbi_chromosome_58_le_fields);
+var sxem_bbi_chromosome_58_be_fields = layout([chars("name", 58, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_58_be = sxLayout(0x600D008A, "bbi_chromosome_58_be", BE, sxem_bbi_chromosome_58_be_fields);
+var sxem_bbi_chromosome_59_le_fields = layout([chars("name", 59, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_59_le = sxLayout(0x600D008B, "bbi_chromosome_59_le", LE, sxem_bbi_chromosome_59_le_fields);
+var sxem_bbi_chromosome_59_be_fields = layout([chars("name", 59, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_59_be = sxLayout(0x600D008C, "bbi_chromosome_59_be", BE, sxem_bbi_chromosome_59_be_fields);
+var sxem_bbi_chromosome_60_le_fields = layout([chars("name", 60, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_60_le = sxLayout(0x600D008D, "bbi_chromosome_60_le", LE, sxem_bbi_chromosome_60_le_fields);
+var sxem_bbi_chromosome_60_be_fields = layout([chars("name", 60, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_60_be = sxLayout(0x600D008E, "bbi_chromosome_60_be", BE, sxem_bbi_chromosome_60_be_fields);
+var sxem_bbi_chromosome_61_le_fields = layout([chars("name", 61, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_61_le = sxLayout(0x600D008F, "bbi_chromosome_61_le", LE, sxem_bbi_chromosome_61_le_fields);
+var sxem_bbi_chromosome_61_be_fields = layout([chars("name", 61, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_61_be = sxLayout(0x600D0090, "bbi_chromosome_61_be", BE, sxem_bbi_chromosome_61_be_fields);
+var sxem_bbi_chromosome_62_le_fields = layout([chars("name", 62, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_62_le = sxLayout(0x600D0091, "bbi_chromosome_62_le", LE, sxem_bbi_chromosome_62_le_fields);
+var sxem_bbi_chromosome_62_be_fields = layout([chars("name", 62, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_62_be = sxLayout(0x600D0092, "bbi_chromosome_62_be", BE, sxem_bbi_chromosome_62_be_fields);
+var sxem_bbi_chromosome_63_le_fields = layout([chars("name", 63, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_63_le = sxLayout(0x600D0093, "bbi_chromosome_63_le", LE, sxem_bbi_chromosome_63_le_fields);
+var sxem_bbi_chromosome_63_be_fields = layout([chars("name", 63, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_63_be = sxLayout(0x600D0094, "bbi_chromosome_63_be", BE, sxem_bbi_chromosome_63_be_fields);
+var sxem_bbi_chromosome_64_le_fields = layout([chars("name", 64, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_64_le = sxLayout(0x600D0095, "bbi_chromosome_64_le", LE, sxem_bbi_chromosome_64_le_fields);
+var sxem_bbi_chromosome_64_be_fields = layout([chars("name", 64, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_64_be = sxLayout(0x600D0096, "bbi_chromosome_64_be", BE, sxem_bbi_chromosome_64_be_fields);
+var sxem_bbi_chromosome_65_le_fields = layout([chars("name", 65, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_65_le = sxLayout(0x600D0097, "bbi_chromosome_65_le", LE, sxem_bbi_chromosome_65_le_fields);
+var sxem_bbi_chromosome_65_be_fields = layout([chars("name", 65, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_65_be = sxLayout(0x600D0098, "bbi_chromosome_65_be", BE, sxem_bbi_chromosome_65_be_fields);
+var sxem_bbi_chromosome_66_le_fields = layout([chars("name", 66, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_66_le = sxLayout(0x600D0099, "bbi_chromosome_66_le", LE, sxem_bbi_chromosome_66_le_fields);
+var sxem_bbi_chromosome_66_be_fields = layout([chars("name", 66, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_66_be = sxLayout(0x600D009A, "bbi_chromosome_66_be", BE, sxem_bbi_chromosome_66_be_fields);
+var sxem_bbi_chromosome_67_le_fields = layout([chars("name", 67, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_67_le = sxLayout(0x600D009B, "bbi_chromosome_67_le", LE, sxem_bbi_chromosome_67_le_fields);
+var sxem_bbi_chromosome_67_be_fields = layout([chars("name", 67, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_67_be = sxLayout(0x600D009C, "bbi_chromosome_67_be", BE, sxem_bbi_chromosome_67_be_fields);
+var sxem_bbi_chromosome_68_le_fields = layout([chars("name", 68, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_68_le = sxLayout(0x600D009D, "bbi_chromosome_68_le", LE, sxem_bbi_chromosome_68_le_fields);
+var sxem_bbi_chromosome_68_be_fields = layout([chars("name", 68, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_68_be = sxLayout(0x600D009E, "bbi_chromosome_68_be", BE, sxem_bbi_chromosome_68_be_fields);
+var sxem_bbi_chromosome_69_le_fields = layout([chars("name", 69, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_69_le = sxLayout(0x600D009F, "bbi_chromosome_69_le", LE, sxem_bbi_chromosome_69_le_fields);
+var sxem_bbi_chromosome_69_be_fields = layout([chars("name", 69, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_69_be = sxLayout(0x600D00A0, "bbi_chromosome_69_be", BE, sxem_bbi_chromosome_69_be_fields);
+var sxem_bbi_chromosome_70_le_fields = layout([chars("name", 70, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_70_le = sxLayout(0x600D00A1, "bbi_chromosome_70_le", LE, sxem_bbi_chromosome_70_le_fields);
+var sxem_bbi_chromosome_70_be_fields = layout([chars("name", 70, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_70_be = sxLayout(0x600D00A2, "bbi_chromosome_70_be", BE, sxem_bbi_chromosome_70_be_fields);
+var sxem_bbi_chromosome_71_le_fields = layout([chars("name", 71, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_71_le = sxLayout(0x600D00A3, "bbi_chromosome_71_le", LE, sxem_bbi_chromosome_71_le_fields);
+var sxem_bbi_chromosome_71_be_fields = layout([chars("name", 71, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_71_be = sxLayout(0x600D00A4, "bbi_chromosome_71_be", BE, sxem_bbi_chromosome_71_be_fields);
+var sxem_bbi_chromosome_72_le_fields = layout([chars("name", 72, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_72_le = sxLayout(0x600D00A5, "bbi_chromosome_72_le", LE, sxem_bbi_chromosome_72_le_fields);
+var sxem_bbi_chromosome_72_be_fields = layout([chars("name", 72, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_72_be = sxLayout(0x600D00A6, "bbi_chromosome_72_be", BE, sxem_bbi_chromosome_72_be_fields);
+var sxem_bbi_chromosome_73_le_fields = layout([chars("name", 73, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_73_le = sxLayout(0x600D00A7, "bbi_chromosome_73_le", LE, sxem_bbi_chromosome_73_le_fields);
+var sxem_bbi_chromosome_73_be_fields = layout([chars("name", 73, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_73_be = sxLayout(0x600D00A8, "bbi_chromosome_73_be", BE, sxem_bbi_chromosome_73_be_fields);
+var sxem_bbi_chromosome_74_le_fields = layout([chars("name", 74, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_74_le = sxLayout(0x600D00A9, "bbi_chromosome_74_le", LE, sxem_bbi_chromosome_74_le_fields);
+var sxem_bbi_chromosome_74_be_fields = layout([chars("name", 74, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_74_be = sxLayout(0x600D00AA, "bbi_chromosome_74_be", BE, sxem_bbi_chromosome_74_be_fields);
+var sxem_bbi_chromosome_75_le_fields = layout([chars("name", 75, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_75_le = sxLayout(0x600D00AB, "bbi_chromosome_75_le", LE, sxem_bbi_chromosome_75_le_fields);
+var sxem_bbi_chromosome_75_be_fields = layout([chars("name", 75, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_75_be = sxLayout(0x600D00AC, "bbi_chromosome_75_be", BE, sxem_bbi_chromosome_75_be_fields);
+var sxem_bbi_chromosome_76_le_fields = layout([chars("name", 76, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_76_le = sxLayout(0x600D00AD, "bbi_chromosome_76_le", LE, sxem_bbi_chromosome_76_le_fields);
+var sxem_bbi_chromosome_76_be_fields = layout([chars("name", 76, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_76_be = sxLayout(0x600D00AE, "bbi_chromosome_76_be", BE, sxem_bbi_chromosome_76_be_fields);
+var sxem_bbi_chromosome_77_le_fields = layout([chars("name", 77, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_77_le = sxLayout(0x600D00AF, "bbi_chromosome_77_le", LE, sxem_bbi_chromosome_77_le_fields);
+var sxem_bbi_chromosome_77_be_fields = layout([chars("name", 77, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_77_be = sxLayout(0x600D00B0, "bbi_chromosome_77_be", BE, sxem_bbi_chromosome_77_be_fields);
+var sxem_bbi_chromosome_78_le_fields = layout([chars("name", 78, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_78_le = sxLayout(0x600D00B1, "bbi_chromosome_78_le", LE, sxem_bbi_chromosome_78_le_fields);
+var sxem_bbi_chromosome_78_be_fields = layout([chars("name", 78, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_78_be = sxLayout(0x600D00B2, "bbi_chromosome_78_be", BE, sxem_bbi_chromosome_78_be_fields);
+var sxem_bbi_chromosome_79_le_fields = layout([chars("name", 79, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_79_le = sxLayout(0x600D00B3, "bbi_chromosome_79_le", LE, sxem_bbi_chromosome_79_le_fields);
+var sxem_bbi_chromosome_79_be_fields = layout([chars("name", 79, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_79_be = sxLayout(0x600D00B4, "bbi_chromosome_79_be", BE, sxem_bbi_chromosome_79_be_fields);
+var sxem_bbi_chromosome_80_le_fields = layout([chars("name", 80, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_80_le = sxLayout(0x600D00B5, "bbi_chromosome_80_le", LE, sxem_bbi_chromosome_80_le_fields);
+var sxem_bbi_chromosome_80_be_fields = layout([chars("name", 80, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_80_be = sxLayout(0x600D00B6, "bbi_chromosome_80_be", BE, sxem_bbi_chromosome_80_be_fields);
+var sxem_bbi_chromosome_81_le_fields = layout([chars("name", 81, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_81_le = sxLayout(0x600D00B7, "bbi_chromosome_81_le", LE, sxem_bbi_chromosome_81_le_fields);
+var sxem_bbi_chromosome_81_be_fields = layout([chars("name", 81, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_81_be = sxLayout(0x600D00B8, "bbi_chromosome_81_be", BE, sxem_bbi_chromosome_81_be_fields);
+var sxem_bbi_chromosome_82_le_fields = layout([chars("name", 82, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_82_le = sxLayout(0x600D00B9, "bbi_chromosome_82_le", LE, sxem_bbi_chromosome_82_le_fields);
+var sxem_bbi_chromosome_82_be_fields = layout([chars("name", 82, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_82_be = sxLayout(0x600D00BA, "bbi_chromosome_82_be", BE, sxem_bbi_chromosome_82_be_fields);
+var sxem_bbi_chromosome_83_le_fields = layout([chars("name", 83, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_83_le = sxLayout(0x600D00BB, "bbi_chromosome_83_le", LE, sxem_bbi_chromosome_83_le_fields);
+var sxem_bbi_chromosome_83_be_fields = layout([chars("name", 83, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_83_be = sxLayout(0x600D00BC, "bbi_chromosome_83_be", BE, sxem_bbi_chromosome_83_be_fields);
+var sxem_bbi_chromosome_84_le_fields = layout([chars("name", 84, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_84_le = sxLayout(0x600D00BD, "bbi_chromosome_84_le", LE, sxem_bbi_chromosome_84_le_fields);
+var sxem_bbi_chromosome_84_be_fields = layout([chars("name", 84, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_84_be = sxLayout(0x600D00BE, "bbi_chromosome_84_be", BE, sxem_bbi_chromosome_84_be_fields);
+var sxem_bbi_chromosome_85_le_fields = layout([chars("name", 85, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_85_le = sxLayout(0x600D00BF, "bbi_chromosome_85_le", LE, sxem_bbi_chromosome_85_le_fields);
+var sxem_bbi_chromosome_85_be_fields = layout([chars("name", 85, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_85_be = sxLayout(0x600D00C0, "bbi_chromosome_85_be", BE, sxem_bbi_chromosome_85_be_fields);
+var sxem_bbi_chromosome_86_le_fields = layout([chars("name", 86, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_86_le = sxLayout(0x600D00C1, "bbi_chromosome_86_le", LE, sxem_bbi_chromosome_86_le_fields);
+var sxem_bbi_chromosome_86_be_fields = layout([chars("name", 86, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_86_be = sxLayout(0x600D00C2, "bbi_chromosome_86_be", BE, sxem_bbi_chromosome_86_be_fields);
+var sxem_bbi_chromosome_87_le_fields = layout([chars("name", 87, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_87_le = sxLayout(0x600D00C3, "bbi_chromosome_87_le", LE, sxem_bbi_chromosome_87_le_fields);
+var sxem_bbi_chromosome_87_be_fields = layout([chars("name", 87, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_87_be = sxLayout(0x600D00C4, "bbi_chromosome_87_be", BE, sxem_bbi_chromosome_87_be_fields);
+var sxem_bbi_chromosome_88_le_fields = layout([chars("name", 88, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_88_le = sxLayout(0x600D00C5, "bbi_chromosome_88_le", LE, sxem_bbi_chromosome_88_le_fields);
+var sxem_bbi_chromosome_88_be_fields = layout([chars("name", 88, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_88_be = sxLayout(0x600D00C6, "bbi_chromosome_88_be", BE, sxem_bbi_chromosome_88_be_fields);
+var sxem_bbi_chromosome_89_le_fields = layout([chars("name", 89, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_89_le = sxLayout(0x600D00C7, "bbi_chromosome_89_le", LE, sxem_bbi_chromosome_89_le_fields);
+var sxem_bbi_chromosome_89_be_fields = layout([chars("name", 89, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_89_be = sxLayout(0x600D00C8, "bbi_chromosome_89_be", BE, sxem_bbi_chromosome_89_be_fields);
+var sxem_bbi_chromosome_90_le_fields = layout([chars("name", 90, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_90_le = sxLayout(0x600D00C9, "bbi_chromosome_90_le", LE, sxem_bbi_chromosome_90_le_fields);
+var sxem_bbi_chromosome_90_be_fields = layout([chars("name", 90, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_90_be = sxLayout(0x600D00CA, "bbi_chromosome_90_be", BE, sxem_bbi_chromosome_90_be_fields);
+var sxem_bbi_chromosome_91_le_fields = layout([chars("name", 91, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_91_le = sxLayout(0x600D00CB, "bbi_chromosome_91_le", LE, sxem_bbi_chromosome_91_le_fields);
+var sxem_bbi_chromosome_91_be_fields = layout([chars("name", 91, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_91_be = sxLayout(0x600D00CC, "bbi_chromosome_91_be", BE, sxem_bbi_chromosome_91_be_fields);
+var sxem_bbi_chromosome_92_le_fields = layout([chars("name", 92, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_92_le = sxLayout(0x600D00CD, "bbi_chromosome_92_le", LE, sxem_bbi_chromosome_92_le_fields);
+var sxem_bbi_chromosome_92_be_fields = layout([chars("name", 92, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_92_be = sxLayout(0x600D00CE, "bbi_chromosome_92_be", BE, sxem_bbi_chromosome_92_be_fields);
+var sxem_bbi_chromosome_93_le_fields = layout([chars("name", 93, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_93_le = sxLayout(0x600D00CF, "bbi_chromosome_93_le", LE, sxem_bbi_chromosome_93_le_fields);
+var sxem_bbi_chromosome_93_be_fields = layout([chars("name", 93, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_93_be = sxLayout(0x600D00D0, "bbi_chromosome_93_be", BE, sxem_bbi_chromosome_93_be_fields);
+var sxem_bbi_chromosome_94_le_fields = layout([chars("name", 94, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_94_le = sxLayout(0x600D00D1, "bbi_chromosome_94_le", LE, sxem_bbi_chromosome_94_le_fields);
+var sxem_bbi_chromosome_94_be_fields = layout([chars("name", 94, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_94_be = sxLayout(0x600D00D2, "bbi_chromosome_94_be", BE, sxem_bbi_chromosome_94_be_fields);
+var sxem_bbi_chromosome_95_le_fields = layout([chars("name", 95, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_95_le = sxLayout(0x600D00D3, "bbi_chromosome_95_le", LE, sxem_bbi_chromosome_95_le_fields);
+var sxem_bbi_chromosome_95_be_fields = layout([chars("name", 95, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_95_be = sxLayout(0x600D00D4, "bbi_chromosome_95_be", BE, sxem_bbi_chromosome_95_be_fields);
+var sxem_bbi_chromosome_96_le_fields = layout([chars("name", 96, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_96_le = sxLayout(0x600D00D5, "bbi_chromosome_96_le", LE, sxem_bbi_chromosome_96_le_fields);
+var sxem_bbi_chromosome_96_be_fields = layout([chars("name", 96, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_96_be = sxLayout(0x600D00D6, "bbi_chromosome_96_be", BE, sxem_bbi_chromosome_96_be_fields);
+var sxem_bbi_chromosome_97_le_fields = layout([chars("name", 97, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_97_le = sxLayout(0x600D00D7, "bbi_chromosome_97_le", LE, sxem_bbi_chromosome_97_le_fields);
+var sxem_bbi_chromosome_97_be_fields = layout([chars("name", 97, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_97_be = sxLayout(0x600D00D8, "bbi_chromosome_97_be", BE, sxem_bbi_chromosome_97_be_fields);
+var sxem_bbi_chromosome_98_le_fields = layout([chars("name", 98, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_98_le = sxLayout(0x600D00D9, "bbi_chromosome_98_le", LE, sxem_bbi_chromosome_98_le_fields);
+var sxem_bbi_chromosome_98_be_fields = layout([chars("name", 98, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_98_be = sxLayout(0x600D00DA, "bbi_chromosome_98_be", BE, sxem_bbi_chromosome_98_be_fields);
+var sxem_bbi_chromosome_99_le_fields = layout([chars("name", 99, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_99_le = sxLayout(0x600D00DB, "bbi_chromosome_99_le", LE, sxem_bbi_chromosome_99_le_fields);
+var sxem_bbi_chromosome_99_be_fields = layout([chars("name", 99, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_99_be = sxLayout(0x600D00DC, "bbi_chromosome_99_be", BE, sxem_bbi_chromosome_99_be_fields);
+var sxem_bbi_chromosome_100_le_fields = layout([chars("name", 100, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_100_le = sxLayout(0x600D00DD, "bbi_chromosome_100_le", LE, sxem_bbi_chromosome_100_le_fields);
+var sxem_bbi_chromosome_100_be_fields = layout([chars("name", 100, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_100_be = sxLayout(0x600D00DE, "bbi_chromosome_100_be", BE, sxem_bbi_chromosome_100_be_fields);
+var sxem_bbi_chromosome_101_le_fields = layout([chars("name", 101, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_101_le = sxLayout(0x600D00DF, "bbi_chromosome_101_le", LE, sxem_bbi_chromosome_101_le_fields);
+var sxem_bbi_chromosome_101_be_fields = layout([chars("name", 101, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_101_be = sxLayout(0x600D00E0, "bbi_chromosome_101_be", BE, sxem_bbi_chromosome_101_be_fields);
+var sxem_bbi_chromosome_102_le_fields = layout([chars("name", 102, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_102_le = sxLayout(0x600D00E1, "bbi_chromosome_102_le", LE, sxem_bbi_chromosome_102_le_fields);
+var sxem_bbi_chromosome_102_be_fields = layout([chars("name", 102, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_102_be = sxLayout(0x600D00E2, "bbi_chromosome_102_be", BE, sxem_bbi_chromosome_102_be_fields);
+var sxem_bbi_chromosome_103_le_fields = layout([chars("name", 103, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_103_le = sxLayout(0x600D00E3, "bbi_chromosome_103_le", LE, sxem_bbi_chromosome_103_le_fields);
+var sxem_bbi_chromosome_103_be_fields = layout([chars("name", 103, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_103_be = sxLayout(0x600D00E4, "bbi_chromosome_103_be", BE, sxem_bbi_chromosome_103_be_fields);
+var sxem_bbi_chromosome_104_le_fields = layout([chars("name", 104, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_104_le = sxLayout(0x600D00E5, "bbi_chromosome_104_le", LE, sxem_bbi_chromosome_104_le_fields);
+var sxem_bbi_chromosome_104_be_fields = layout([chars("name", 104, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_104_be = sxLayout(0x600D00E6, "bbi_chromosome_104_be", BE, sxem_bbi_chromosome_104_be_fields);
+var sxem_bbi_chromosome_105_le_fields = layout([chars("name", 105, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_105_le = sxLayout(0x600D00E7, "bbi_chromosome_105_le", LE, sxem_bbi_chromosome_105_le_fields);
+var sxem_bbi_chromosome_105_be_fields = layout([chars("name", 105, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_105_be = sxLayout(0x600D00E8, "bbi_chromosome_105_be", BE, sxem_bbi_chromosome_105_be_fields);
+var sxem_bbi_chromosome_106_le_fields = layout([chars("name", 106, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_106_le = sxLayout(0x600D00E9, "bbi_chromosome_106_le", LE, sxem_bbi_chromosome_106_le_fields);
+var sxem_bbi_chromosome_106_be_fields = layout([chars("name", 106, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_106_be = sxLayout(0x600D00EA, "bbi_chromosome_106_be", BE, sxem_bbi_chromosome_106_be_fields);
+var sxem_bbi_chromosome_107_le_fields = layout([chars("name", 107, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_107_le = sxLayout(0x600D00EB, "bbi_chromosome_107_le", LE, sxem_bbi_chromosome_107_le_fields);
+var sxem_bbi_chromosome_107_be_fields = layout([chars("name", 107, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_107_be = sxLayout(0x600D00EC, "bbi_chromosome_107_be", BE, sxem_bbi_chromosome_107_be_fields);
+var sxem_bbi_chromosome_108_le_fields = layout([chars("name", 108, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_108_le = sxLayout(0x600D00ED, "bbi_chromosome_108_le", LE, sxem_bbi_chromosome_108_le_fields);
+var sxem_bbi_chromosome_108_be_fields = layout([chars("name", 108, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_108_be = sxLayout(0x600D00EE, "bbi_chromosome_108_be", BE, sxem_bbi_chromosome_108_be_fields);
+var sxem_bbi_chromosome_109_le_fields = layout([chars("name", 109, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_109_le = sxLayout(0x600D00EF, "bbi_chromosome_109_le", LE, sxem_bbi_chromosome_109_le_fields);
+var sxem_bbi_chromosome_109_be_fields = layout([chars("name", 109, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_109_be = sxLayout(0x600D00F0, "bbi_chromosome_109_be", BE, sxem_bbi_chromosome_109_be_fields);
+var sxem_bbi_chromosome_110_le_fields = layout([chars("name", 110, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_110_le = sxLayout(0x600D00F1, "bbi_chromosome_110_le", LE, sxem_bbi_chromosome_110_le_fields);
+var sxem_bbi_chromosome_110_be_fields = layout([chars("name", 110, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_110_be = sxLayout(0x600D00F2, "bbi_chromosome_110_be", BE, sxem_bbi_chromosome_110_be_fields);
+var sxem_bbi_chromosome_111_le_fields = layout([chars("name", 111, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_111_le = sxLayout(0x600D00F3, "bbi_chromosome_111_le", LE, sxem_bbi_chromosome_111_le_fields);
+var sxem_bbi_chromosome_111_be_fields = layout([chars("name", 111, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_111_be = sxLayout(0x600D00F4, "bbi_chromosome_111_be", BE, sxem_bbi_chromosome_111_be_fields);
+var sxem_bbi_chromosome_112_le_fields = layout([chars("name", 112, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_112_le = sxLayout(0x600D00F5, "bbi_chromosome_112_le", LE, sxem_bbi_chromosome_112_le_fields);
+var sxem_bbi_chromosome_112_be_fields = layout([chars("name", 112, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_112_be = sxLayout(0x600D00F6, "bbi_chromosome_112_be", BE, sxem_bbi_chromosome_112_be_fields);
+var sxem_bbi_chromosome_113_le_fields = layout([chars("name", 113, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_113_le = sxLayout(0x600D00F7, "bbi_chromosome_113_le", LE, sxem_bbi_chromosome_113_le_fields);
+var sxem_bbi_chromosome_113_be_fields = layout([chars("name", 113, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_113_be = sxLayout(0x600D00F8, "bbi_chromosome_113_be", BE, sxem_bbi_chromosome_113_be_fields);
+var sxem_bbi_chromosome_114_le_fields = layout([chars("name", 114, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_114_le = sxLayout(0x600D00F9, "bbi_chromosome_114_le", LE, sxem_bbi_chromosome_114_le_fields);
+var sxem_bbi_chromosome_114_be_fields = layout([chars("name", 114, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_114_be = sxLayout(0x600D00FA, "bbi_chromosome_114_be", BE, sxem_bbi_chromosome_114_be_fields);
+var sxem_bbi_chromosome_115_le_fields = layout([chars("name", 115, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_115_le = sxLayout(0x600D00FB, "bbi_chromosome_115_le", LE, sxem_bbi_chromosome_115_le_fields);
+var sxem_bbi_chromosome_115_be_fields = layout([chars("name", 115, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_115_be = sxLayout(0x600D00FC, "bbi_chromosome_115_be", BE, sxem_bbi_chromosome_115_be_fields);
+var sxem_bbi_chromosome_116_le_fields = layout([chars("name", 116, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_116_le = sxLayout(0x600D00FD, "bbi_chromosome_116_le", LE, sxem_bbi_chromosome_116_le_fields);
+var sxem_bbi_chromosome_116_be_fields = layout([chars("name", 116, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_116_be = sxLayout(0x600D00FE, "bbi_chromosome_116_be", BE, sxem_bbi_chromosome_116_be_fields);
+var sxem_bbi_chromosome_117_le_fields = layout([chars("name", 117, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_117_le = sxLayout(0x600D00FF, "bbi_chromosome_117_le", LE, sxem_bbi_chromosome_117_le_fields);
+var sxem_bbi_chromosome_117_be_fields = layout([chars("name", 117, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_117_be = sxLayout(0x600D0100, "bbi_chromosome_117_be", BE, sxem_bbi_chromosome_117_be_fields);
+var sxem_bbi_chromosome_118_le_fields = layout([chars("name", 118, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_118_le = sxLayout(0x600D0101, "bbi_chromosome_118_le", LE, sxem_bbi_chromosome_118_le_fields);
+var sxem_bbi_chromosome_118_be_fields = layout([chars("name", 118, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_118_be = sxLayout(0x600D0102, "bbi_chromosome_118_be", BE, sxem_bbi_chromosome_118_be_fields);
+var sxem_bbi_chromosome_119_le_fields = layout([chars("name", 119, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_119_le = sxLayout(0x600D0103, "bbi_chromosome_119_le", LE, sxem_bbi_chromosome_119_le_fields);
+var sxem_bbi_chromosome_119_be_fields = layout([chars("name", 119, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_119_be = sxLayout(0x600D0104, "bbi_chromosome_119_be", BE, sxem_bbi_chromosome_119_be_fields);
+var sxem_bbi_chromosome_120_le_fields = layout([chars("name", 120, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_120_le = sxLayout(0x600D0105, "bbi_chromosome_120_le", LE, sxem_bbi_chromosome_120_le_fields);
+var sxem_bbi_chromosome_120_be_fields = layout([chars("name", 120, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_120_be = sxLayout(0x600D0106, "bbi_chromosome_120_be", BE, sxem_bbi_chromosome_120_be_fields);
+var sxem_bbi_chromosome_121_le_fields = layout([chars("name", 121, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_121_le = sxLayout(0x600D0107, "bbi_chromosome_121_le", LE, sxem_bbi_chromosome_121_le_fields);
+var sxem_bbi_chromosome_121_be_fields = layout([chars("name", 121, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_121_be = sxLayout(0x600D0108, "bbi_chromosome_121_be", BE, sxem_bbi_chromosome_121_be_fields);
+var sxem_bbi_chromosome_122_le_fields = layout([chars("name", 122, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_122_le = sxLayout(0x600D0109, "bbi_chromosome_122_le", LE, sxem_bbi_chromosome_122_le_fields);
+var sxem_bbi_chromosome_122_be_fields = layout([chars("name", 122, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_122_be = sxLayout(0x600D010A, "bbi_chromosome_122_be", BE, sxem_bbi_chromosome_122_be_fields);
+var sxem_bbi_chromosome_123_le_fields = layout([chars("name", 123, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_123_le = sxLayout(0x600D010B, "bbi_chromosome_123_le", LE, sxem_bbi_chromosome_123_le_fields);
+var sxem_bbi_chromosome_123_be_fields = layout([chars("name", 123, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_123_be = sxLayout(0x600D010C, "bbi_chromosome_123_be", BE, sxem_bbi_chromosome_123_be_fields);
+var sxem_bbi_chromosome_124_le_fields = layout([chars("name", 124, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_124_le = sxLayout(0x600D010D, "bbi_chromosome_124_le", LE, sxem_bbi_chromosome_124_le_fields);
+var sxem_bbi_chromosome_124_be_fields = layout([chars("name", 124, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_124_be = sxLayout(0x600D010E, "bbi_chromosome_124_be", BE, sxem_bbi_chromosome_124_be_fields);
+var sxem_bbi_chromosome_125_le_fields = layout([chars("name", 125, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_125_le = sxLayout(0x600D010F, "bbi_chromosome_125_le", LE, sxem_bbi_chromosome_125_le_fields);
+var sxem_bbi_chromosome_125_be_fields = layout([chars("name", 125, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_125_be = sxLayout(0x600D0110, "bbi_chromosome_125_be", BE, sxem_bbi_chromosome_125_be_fields);
+var sxem_bbi_chromosome_126_le_fields = layout([chars("name", 126, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_126_le = sxLayout(0x600D0111, "bbi_chromosome_126_le", LE, sxem_bbi_chromosome_126_le_fields);
+var sxem_bbi_chromosome_126_be_fields = layout([chars("name", 126, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_126_be = sxLayout(0x600D0112, "bbi_chromosome_126_be", BE, sxem_bbi_chromosome_126_be_fields);
+var sxem_bbi_chromosome_127_le_fields = layout([chars("name", 127, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_127_le = sxLayout(0x600D0113, "bbi_chromosome_127_le", LE, sxem_bbi_chromosome_127_le_fields);
+var sxem_bbi_chromosome_127_be_fields = layout([chars("name", 127, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_127_be = sxLayout(0x600D0114, "bbi_chromosome_127_be", BE, sxem_bbi_chromosome_127_be_fields);
+var sxem_bbi_chromosome_128_le_fields = layout([chars("name", 128, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_128_le = sxLayout(0x600D0115, "bbi_chromosome_128_le", LE, sxem_bbi_chromosome_128_le_fields);
+var sxem_bbi_chromosome_128_be_fields = layout([chars("name", 128, STRING), u32("chromosome_id", ID), u32("base_count", COUNT)]);
+var sxem_bbi_chromosome_128_be = sxLayout(0x600D0116, "bbi_chromosome_128_be", BE, sxem_bbi_chromosome_128_be_fields);
+var sxem_bbi_interval_tree_le_fields = layout([u32("magic", SIGNATURE), u32("block_capacity", COUNT), u64("item_count", COUNT),
+    u32("start_chromosome"), u32("start_base"), u32("end_chromosome"), u32("end_base"), u64("end_file_offset", OFFSET),
+    u32("items_per_slot", COUNT), u32("reserved", RESERVED)]);
+var sxem_bbi_interval_tree_le = sxLayout(0x600D0117, "bbi_interval_tree_le", LE, sxem_bbi_interval_tree_le_fields);
+var sxem_bbi_interval_tree_be_fields = layout([u32("magic", SIGNATURE), u32("block_capacity", COUNT), u64("item_count", COUNT),
+    u32("start_chromosome"), u32("start_base"), u32("end_chromosome"), u32("end_base"), u64("end_file_offset", OFFSET),
+    u32("items_per_slot", COUNT), u32("reserved", RESERVED)]);
+var sxem_bbi_interval_tree_be = sxLayout(0x600D0118, "bbi_interval_tree_be", BE, sxem_bbi_interval_tree_be_fields);
+var sxem_bbi_interval_leaf_le_fields = layout([u32("start_chromosome"), u32("start_base"), u32("end_chromosome"),
+    u32("end_base"), u64("data_offset", OFFSET), u64("data_size", SIZE)]);
+var sxem_bbi_interval_leaf_le = sxLayout(0x600D0119, "bbi_interval_leaf_le", LE, sxem_bbi_interval_leaf_le_fields);
+var sxem_bbi_interval_leaf_be_fields = layout([u32("start_chromosome"), u32("start_base"), u32("end_chromosome"),
+    u32("end_base"), u64("data_offset", OFFSET), u64("data_size", SIZE)]);
+var sxem_bbi_interval_leaf_be = sxLayout(0x600D011A, "bbi_interval_leaf_be", BE, sxem_bbi_interval_leaf_be_fields);
+var sxem_bbi_total_summary_le_fields = layout([u64("bases_covered", COUNT), field("minimum", "float64", 8),
+    field("maximum", "float64", 8), field("sum", "float64", 8), field("sum_squares", "float64", 8)]);
+var sxem_bbi_total_summary_le = sxLayout(0x600D011B, "bbi_total_summary_le", LE, sxem_bbi_total_summary_le_fields);
+var sxem_bbi_total_summary_be_fields = layout([u64("bases_covered", COUNT), field("minimum", "float64", 8),
+    field("maximum", "float64", 8), field("sum", "float64", 8), field("sum_squares", "float64", 8)]);
+var sxem_bbi_total_summary_be = sxLayout(0x600D011C, "bbi_total_summary_be", BE, sxem_bbi_total_summary_be_fields);
+var sxem_bbi_extension_le_fields = layout([u16("extension_size", SIZE), u16("extra_index_count", COUNT),
+    u64("extra_index_list_offset", OFFSET), bytes("reserved", 52, RESERVED)]);
+var sxem_bbi_extension_le = sxLayout(0x600D011D, "bbi_extension_le", LE, sxem_bbi_extension_le_fields);
+var sxem_bbi_extension_be_fields = layout([u16("extension_size", SIZE), u16("extra_index_count", COUNT),
+    u64("extra_index_list_offset", OFFSET), bytes("reserved", 52, RESERVED)]);
+var sxem_bbi_extension_be = sxLayout(0x600D011E, "bbi_extension_be", BE, sxem_bbi_extension_be_fields);
+var sxem_bbi_data_count_le_fields = layout([u64("record_count", COUNT)]);
+var sxem_bbi_data_count_le = sxLayout(0x600D011F, "bbi_data_count_le", LE, sxem_bbi_data_count_le_fields);
+var sxem_bbi_data_count_be_fields = layout([u64("record_count", COUNT)]);
+var sxem_bbi_data_count_be = sxLayout(0x600D0120, "bbi_data_count_be", BE, sxem_bbi_data_count_be_fields);
+var sxem_bbi_zoom_count_le_fields = layout([u32("record_count", COUNT)]);
+var sxem_bbi_zoom_count_le = sxLayout(0x600D0121, "bbi_zoom_count_le", LE, sxem_bbi_zoom_count_le_fields);
+var sxem_bbi_zoom_count_be_fields = layout([u32("record_count", COUNT)]);
+var sxem_bbi_zoom_count_be = sxLayout(0x600D0122, "bbi_zoom_count_be", BE, sxem_bbi_zoom_count_be_fields);
+var sxem_bbi_trailer_le_fields = layout([u32("magic", SIGNATURE)]);
+var sxem_bbi_trailer_le = sxLayout(0x600D0123, "bbi_trailer_le", LE, sxem_bbi_trailer_le_fields);
+var sxem_bbi_trailer_be_fields = layout([u32("magic", SIGNATURE)]);
+var sxem_bbi_trailer_be = sxLayout(0x600D0124, "bbi_trailer_be", BE, sxem_bbi_trailer_be_fields);
+var sxem_bbi_wig_section_le_fields = layout([u32("chromosome_id"), u32("start_base"), u32("end_base"), u32("step_bases"),
+    u32("span_bases"), u8("type", ID), u8("reserved", RESERVED), u16("item_count", COUNT)]);
+var sxem_bbi_wig_section_le = sxLayout(0x600D0125, "bbi_wig_section_le", LE, sxem_bbi_wig_section_le_fields);
+var sxem_bbi_wig_section_be_fields = layout([u32("chromosome_id"), u32("start_base"), u32("end_base"), u32("step_bases"),
+    u32("span_bases"), u8("type", ID), u8("reserved", RESERVED), u16("item_count", COUNT)]);
+var sxem_bbi_wig_section_be = sxLayout(0x600D0126, "bbi_wig_section_be", BE, sxem_bbi_wig_section_be_fields);
+var sxem_bbi_bedgraph_le_fields = layout([u32("start_base"), u32("end_base"), field("value", "float32", 4)]);
+var sxem_bbi_bedgraph_le = sxLayout(0x600D0127, "bbi_bedgraph_le", LE, sxem_bbi_bedgraph_le_fields);
+var sxem_bbi_bedgraph_be_fields = layout([u32("start_base"), u32("end_base"), field("value", "float32", 4)]);
+var sxem_bbi_bedgraph_be = sxLayout(0x600D0128, "bbi_bedgraph_be", BE, sxem_bbi_bedgraph_be_fields);
+var sxem_bbi_variable_step_le_fields = layout([u32("start_base"), field("value", "float32", 4)]);
+var sxem_bbi_variable_step_le = sxLayout(0x600D0129, "bbi_variable_step_le", LE, sxem_bbi_variable_step_le_fields);
+var sxem_bbi_variable_step_be_fields = layout([u32("start_base"), field("value", "float32", 4)]);
+var sxem_bbi_variable_step_be = sxLayout(0x600D012A, "bbi_variable_step_be", BE, sxem_bbi_variable_step_be_fields);
+var sxem_bbi_fixed_step_le_fields = layout([field("value", "float32", 4)]);
+var sxem_bbi_fixed_step_le = sxLayout(0x600D012B, "bbi_fixed_step_le", LE, sxem_bbi_fixed_step_le_fields);
+var sxem_bbi_fixed_step_be_fields = layout([field("value", "float32", 4)]);
+var sxem_bbi_fixed_step_be = sxLayout(0x600D012C, "bbi_fixed_step_be", BE, sxem_bbi_fixed_step_be_fields);
+var sxem_bbi_bed_record_le_fields = layout([u32("chromosome_id"), u32("start_base"), u32("end_base")]);
+var sxem_bbi_bed_record_le = sxLayout(0x600D012D, "bbi_bed_record_le", LE, sxem_bbi_bed_record_le_fields);
+var sxem_bbi_bed_record_be_fields = layout([u32("chromosome_id"), u32("start_base"), u32("end_base")]);
+var sxem_bbi_bed_record_be = sxLayout(0x600D012E, "bbi_bed_record_be", BE, sxem_bbi_bed_record_be_fields);
+var sxem_bbi_zoom_record_le_fields = layout([u32("chromosome_id"), u32("start_base"), u32("end_base"),
+    u32("valid_base_count", COUNT), field("minimum", "float32", 4), field("maximum", "float32", 4), field("sum", "float32", 4),
+    field("sum_squares", "float32", 4)]);
+var sxem_bbi_zoom_record_le = sxLayout(0x600D012F, "bbi_zoom_record_le", LE, sxem_bbi_zoom_record_le_fields);
+var sxem_bbi_zoom_record_be_fields = layout([u32("chromosome_id"), u32("start_base"), u32("end_base"),
+    u32("valid_base_count", COUNT), field("minimum", "float32", 4), field("maximum", "float32", 4), field("sum", "float32", 4),
+    field("sum_squares", "float32", 4)]);
+var sxem_bbi_zoom_record_be = sxLayout(0x600D0130, "bbi_zoom_record_be", BE, sxem_bbi_zoom_record_be_fields);
+var sxem_rstm_header_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", SIGNATURE), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT), u32("head_offset", OFFSET),
+    u32("head_size", SIZE), u32("adpc_offset", OFFSET), u32("adpc_size", SIZE), u32("data_offset", OFFSET),
+    u32("data_size", SIZE), bytes("reserved", 24, RESERVED)]);
+var sxem_rstm_header = sxLayout(0x600D0131, "rstm_header", BE, sxem_rstm_header_fields);
+var sxem_rwav_header_fields = layout([chars("magic", 4, SIGNATURE), u16("byte_order", SIGNATURE), u16("version", ID),
+    u32("file_size", SIZE), u16("header_size", SIZE), u16("block_count", COUNT), u32("info_offset", OFFSET),
+    u32("info_size", SIZE), u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxem_rwav_header = sxLayout(0x600D0132, "rwav_header", BE, sxem_rwav_header_fields);
+var sxem_revolution_reference_fields = layout([u8("reference_type", ID), bytes("padding", 3, RESERVED), u32("offset", OFFSET)]);
+var sxem_revolution_reference = sxLayout(0x600D0133, "revolution_reference", BE, sxem_revolution_reference_fields);
+var sxem_revolution_count_fields = layout([u8("record_count", COUNT), bytes("padding", 3, RESERVED)]);
+var sxem_revolution_count = sxLayout(0x600D0134, "revolution_count", BE, sxem_revolution_count_fields);
+var sxem_revolution_offset_fields = layout([u32("offset", OFFSET)]);
+var sxem_revolution_offset = sxLayout(0x600D0135, "revolution_offset", BE, sxem_revolution_offset_fields);
+var sxem_rstm_stream_info_fields = layout([u8("encoding"), u8("loop_flag"), u8("channel_count", COUNT), u8("sample_rate_high"),
+    u16("sample_rate_hz"), u16("padding", RESERVED), u32("loop_start_sample"), u32("sample_count", COUNT),
+    u32("sample_data_offset", OFFSET), u32("block_count", COUNT), u32("block_size", SIZE), u32("samples_per_block", COUNT),
+    u32("last_block_size", SIZE), u32("last_block_samples", COUNT), u32("last_block_padded_size", SIZE),
+    u32("adpc_interval_samples", COUNT), u32("adpc_entry_size", SIZE)]);
+var sxem_rstm_stream_info = sxLayout(0x600D0136, "rstm_stream_info", BE, sxem_rstm_stream_info_fields);
+var sxem_rstm_track_fields = layout([u8("channel_count", COUNT), u8("first_channel_id", ID), u8("second_channel_id", ID),
+    u8("padding", RESERVED)]);
+var sxem_rstm_track = sxLayout(0x600D0137, "rstm_track", BE, sxem_rstm_track_fields);
+var sxem_rwav_wave_info_fields = layout([u8("encoding"), u8("loop_flag"), u8("channel_count", COUNT), u8("sample_rate_high"),
+    u16("sample_rate_hz"), u8("data_location_type", ID), u8("padding", RESERVED), u32("loop_start_sample"),
+    u32("sample_count", COUNT), u32("channel_info_table_offset", OFFSET), u32("data_location_offset", OFFSET),
+    u32("reserved", RESERVED)]);
+var sxem_rwav_wave_info = sxLayout(0x600D0138, "rwav_wave_info", BE, sxem_rwav_wave_info_fields);
+var sxem_rwav_channel_fields = layout([u32("channel_data_offset", OFFSET), u32("adpcm_info_offset", OFFSET),
+    bytes("volume_front_left", 4), bytes("volume_front_right", 4), bytes("volume_back_left", 4), bytes("volume_back_right", 4),
+    u32("reserved", RESERVED)]);
+var sxem_rwav_channel = sxLayout(0x600D0139, "rwav_channel", BE, sxem_rwav_channel_fields);
+var sxem_sdat_group_entry_fields = layout([u8("type", ID), u16("load_flags", FLAGS), u8("padding", RESERVED), u32("item_id", ID)]);
+var sxem_sdat_group_entry = sxLayout(0x600D0144, "sdat_group_entry", LE, sxem_sdat_group_entry_fields);
+function sxem_span(c, at, n) {
+    return at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sxem_read(c, at, b, n) {
+    return sxem_span(c, at, n) && sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, n);
+}
+function sxem_add(c, l, at, n) {
+    if (!sxem_span(c, at, n)) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        if (c.items[i].id === l.id && c.items[i].offset - c.f.base_address === (at >= SX_I64_MAX ? at - SX_U64_MAX : at) && c.items[i].total_size === (n >= SX_I64_MAX ? n - SX_U64_MAX : n)) {
+            return true;
+        }
+    }
+    return sxem_span(c, at, n) && sx_add(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxem_table(c, l, at, stride, count) {
+    for (var i = 0; i < c.count; i++) {
+        if (c.items[i].id === l.id && c.items[i].offset - c.f.base_address === (at >= SX_I64_MAX ? at - SX_U64_MAX : at) && c.items[i].entry_size === (stride >= SX_I64_MAX ? stride - SX_U64_MAX : stride) && c.items[i].count === count) {
+            return true;
+        }
+    }
+    return !!(stride && count <= Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / stride) && sxem_span(c, at, stride * count) && sx_table(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), (stride >= SX_I64_MAX ? stride - SX_U64_MAX : stride), count));
+}
+function sxem_u32(c, at, be, v) {
+    return sxem_span(c, at, 4) && (v[0] = sx_u32(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), be)) !== null;
+}
+function sxem_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var v = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > v.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, v);
+        }
+    }
+}
+function sxem_finish(c) {
+    var end = 0;
+    var n = c.count;
+    sxem_sort(c);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxem_sort(c);
+    return !c.failed;
+}
+function sxem_nw(c) {
+    var h = [];
+    var total;
+    var at = [0, 0, 0, 0];
+    var len = [0, 0, 0, 0];
+    var count;
+    var header;
+    var first;
+    var be;
+    var wave = false;
+    var stream = false;
+    var magic;
+    switch (c.f.file_type) {
+    case "NINTENDO_BCSTM":
+        magic = "CSTM";
+        first = 0x4000;
+        break;
+    case "NINTENDO_BFSTM":
+        magic = "FSTM";
+        first = 0x4000;
+        stream = true;
+        break;
+    case "NINTENDO_BFWAV":
+        magic = "FWAV";
+        first = 0x7000;
+        wave = true;
+        break;
+    case "NINTENDO_BCWAV":
+        magic = "CWAV";
+        first = 0x7000;
+        wave = true;
+        break;
+    case "NINTENDO_BFSAR":
+        magic = "FSAR";
+        first = 0x2000;
+        break;
+    case "NINTENDO_BCSAR":
+        magic = "CSAR";
+        first = 0x2000;
+        break;
+    default:
+        return false;
+    }
+    {
+        if (!(sxem_read(c, 0, h, 20) && !sxMemcmp(h, magic, 4))) {
+            return false;
+        }
+    }
+    be = h[4] === 0xFE && h[5] === 0xFF;
+    {
+        if (!(be || h[4] === 0xFF && h[5] === 0xFE)) {
+            return false;
+        }
+    }
+    header = sxGetU16At(h, 6, 2, 0, be);
+    total = sxGetU32At(h, 12, 4, 0, be);
+    count = sxGetU16At(h, 16, 2, 0, be);
+    {
+        if (!(count >= 2 && count <= 4 && header >= 20 + 12 * count && header <= total && total <= (c.size < 0 ? c.size + SX_U64_MAX : c.size))) {
+            return false;
+        }
+    }
+    {
+        if (!(sxem_add(c, be ? sxem_nw_header_be : sxem_nw_header_le, 0, 20) && sxem_table(c, be ? sxem_nw_sized_reference_be : sxem_nw_sized_reference_le, 20, 12, count))) {
+            return false;
+        }
+    }
+    for (var i = 0; i < count; i++) {
+        var kind;
+        var p;
+        var n;
+        {
+            if (!sxem_read(c, (20 + ((12 * i) >>> 0)) >>> 0, h, 12)) {
+                return false;
+            }
+        }
+        kind = sxGetU16(h, 2, 0, be);
+        p = sxGetU32At(h, 4, 4, 0, be);
+        n = sxGetU32At(h, 8, 4, 0, be);
+        {
+            if (!(kind >= first && kind < first + 4 && p >= header && n >= 8 && p <= total && n <= (total - p) >>> 0 && !len[kind - first])) {
+                return false;
+            }
+        }
+        at[kind - first] = p;
+        len[kind - first] = n;
+        {
+            if (!(sxem_read(c, p, h, 8) && sxGetU32At(h, 4, 4, 0, be) === n && sxem_add(c, be ? sxem_nw_block_be : sxem_nw_block_le, p, 8))) {
+                return false;
+            }
+        }
+    }
+    if (wave) {
+        var channels;
+        {
+            if (!(len[0] >= 32 && len[1] >= 8 && sxem_read(c, at[0] + 8, h, 24))) {
+                return false;
+            }
+        }
+        channels = sxGetU32At(h, 20, 4, 0, be);
+        {
+            if (!(channels && channels <= 2 && 32 + channels * 8 <= len[0] && sxem_add(c, be ? sxem_nw_wave_info_be : sxem_nw_wave_info_le, at[0] + 8, 24) && sxem_table(c, be ? sxem_nw_reference_be : sxem_nw_reference_le, at[0] + 32, 8, channels))) {
+                return false;
+            }
+        }
+        for (i = 0; i < channels; i++) {
+            var off = [0];
+            {
+                if (!sxem_u32(c, at[0] + 36 + ((8 * i) >>> 0), be, off)) {
+                    return false;
+                }
+            }
+            p = 28 + off[0];
+            {
+                if (!(p >= 32 + channels * 8 && p <= len[0] && 20 <= sxU64(len[0] - p) && sxem_add(c, be ? sxem_nw_wave_channel_be : sxem_nw_wave_channel_le, at[0] + p, 20))) {
+                    return false;
+                }
+            }
+        }
+    } else if (stream) {
+        off = [0];
+        {
+            if (!(len[0] >= 32 && sxem_table(c, be ? sxem_nw_reference_be : sxem_nw_reference_le, at[0] + 8, 8, 3) && sxem_u32(c, at[0] + 12, be, off))) {
+                return false;
+            }
+        }
+        {
+            if (!(off[0] >= 24 && 8 + off[0] <= len[0] && 68 <= sxU64(((len[0] - 8) >>> 0) - off[0]) && sxem_add(c, be ? sxem_nw_stream_info_be : sxem_nw_stream_info_le, at[0] + 8 + off[0], 68))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+var sxem_chrom_layouts = [[sxem_bbi_chromosome_1_le, sxem_bbi_chromosome_1_be],
+    [sxem_bbi_chromosome_2_le, sxem_bbi_chromosome_2_be], [sxem_bbi_chromosome_3_le, sxem_bbi_chromosome_3_be],
+    [sxem_bbi_chromosome_4_le, sxem_bbi_chromosome_4_be], [sxem_bbi_chromosome_5_le, sxem_bbi_chromosome_5_be],
+    [sxem_bbi_chromosome_6_le, sxem_bbi_chromosome_6_be], [sxem_bbi_chromosome_7_le, sxem_bbi_chromosome_7_be],
+    [sxem_bbi_chromosome_8_le, sxem_bbi_chromosome_8_be], [sxem_bbi_chromosome_9_le, sxem_bbi_chromosome_9_be],
+    [sxem_bbi_chromosome_10_le, sxem_bbi_chromosome_10_be], [sxem_bbi_chromosome_11_le, sxem_bbi_chromosome_11_be],
+    [sxem_bbi_chromosome_12_le, sxem_bbi_chromosome_12_be], [sxem_bbi_chromosome_13_le, sxem_bbi_chromosome_13_be],
+    [sxem_bbi_chromosome_14_le, sxem_bbi_chromosome_14_be], [sxem_bbi_chromosome_15_le, sxem_bbi_chromosome_15_be],
+    [sxem_bbi_chromosome_16_le, sxem_bbi_chromosome_16_be], [sxem_bbi_chromosome_17_le, sxem_bbi_chromosome_17_be],
+    [sxem_bbi_chromosome_18_le, sxem_bbi_chromosome_18_be], [sxem_bbi_chromosome_19_le, sxem_bbi_chromosome_19_be],
+    [sxem_bbi_chromosome_20_le, sxem_bbi_chromosome_20_be], [sxem_bbi_chromosome_21_le, sxem_bbi_chromosome_21_be],
+    [sxem_bbi_chromosome_22_le, sxem_bbi_chromosome_22_be], [sxem_bbi_chromosome_23_le, sxem_bbi_chromosome_23_be],
+    [sxem_bbi_chromosome_24_le, sxem_bbi_chromosome_24_be], [sxem_bbi_chromosome_25_le, sxem_bbi_chromosome_25_be],
+    [sxem_bbi_chromosome_26_le, sxem_bbi_chromosome_26_be], [sxem_bbi_chromosome_27_le, sxem_bbi_chromosome_27_be],
+    [sxem_bbi_chromosome_28_le, sxem_bbi_chromosome_28_be], [sxem_bbi_chromosome_29_le, sxem_bbi_chromosome_29_be],
+    [sxem_bbi_chromosome_30_le, sxem_bbi_chromosome_30_be], [sxem_bbi_chromosome_31_le, sxem_bbi_chromosome_31_be],
+    [sxem_bbi_chromosome_32_le, sxem_bbi_chromosome_32_be], [sxem_bbi_chromosome_33_le, sxem_bbi_chromosome_33_be],
+    [sxem_bbi_chromosome_34_le, sxem_bbi_chromosome_34_be], [sxem_bbi_chromosome_35_le, sxem_bbi_chromosome_35_be],
+    [sxem_bbi_chromosome_36_le, sxem_bbi_chromosome_36_be], [sxem_bbi_chromosome_37_le, sxem_bbi_chromosome_37_be],
+    [sxem_bbi_chromosome_38_le, sxem_bbi_chromosome_38_be], [sxem_bbi_chromosome_39_le, sxem_bbi_chromosome_39_be],
+    [sxem_bbi_chromosome_40_le, sxem_bbi_chromosome_40_be], [sxem_bbi_chromosome_41_le, sxem_bbi_chromosome_41_be],
+    [sxem_bbi_chromosome_42_le, sxem_bbi_chromosome_42_be], [sxem_bbi_chromosome_43_le, sxem_bbi_chromosome_43_be],
+    [sxem_bbi_chromosome_44_le, sxem_bbi_chromosome_44_be], [sxem_bbi_chromosome_45_le, sxem_bbi_chromosome_45_be],
+    [sxem_bbi_chromosome_46_le, sxem_bbi_chromosome_46_be], [sxem_bbi_chromosome_47_le, sxem_bbi_chromosome_47_be],
+    [sxem_bbi_chromosome_48_le, sxem_bbi_chromosome_48_be], [sxem_bbi_chromosome_49_le, sxem_bbi_chromosome_49_be],
+    [sxem_bbi_chromosome_50_le, sxem_bbi_chromosome_50_be], [sxem_bbi_chromosome_51_le, sxem_bbi_chromosome_51_be],
+    [sxem_bbi_chromosome_52_le, sxem_bbi_chromosome_52_be], [sxem_bbi_chromosome_53_le, sxem_bbi_chromosome_53_be],
+    [sxem_bbi_chromosome_54_le, sxem_bbi_chromosome_54_be], [sxem_bbi_chromosome_55_le, sxem_bbi_chromosome_55_be],
+    [sxem_bbi_chromosome_56_le, sxem_bbi_chromosome_56_be], [sxem_bbi_chromosome_57_le, sxem_bbi_chromosome_57_be],
+    [sxem_bbi_chromosome_58_le, sxem_bbi_chromosome_58_be], [sxem_bbi_chromosome_59_le, sxem_bbi_chromosome_59_be],
+    [sxem_bbi_chromosome_60_le, sxem_bbi_chromosome_60_be], [sxem_bbi_chromosome_61_le, sxem_bbi_chromosome_61_be],
+    [sxem_bbi_chromosome_62_le, sxem_bbi_chromosome_62_be], [sxem_bbi_chromosome_63_le, sxem_bbi_chromosome_63_be],
+    [sxem_bbi_chromosome_64_le, sxem_bbi_chromosome_64_be], [sxem_bbi_chromosome_65_le, sxem_bbi_chromosome_65_be],
+    [sxem_bbi_chromosome_66_le, sxem_bbi_chromosome_66_be], [sxem_bbi_chromosome_67_le, sxem_bbi_chromosome_67_be],
+    [sxem_bbi_chromosome_68_le, sxem_bbi_chromosome_68_be], [sxem_bbi_chromosome_69_le, sxem_bbi_chromosome_69_be],
+    [sxem_bbi_chromosome_70_le, sxem_bbi_chromosome_70_be], [sxem_bbi_chromosome_71_le, sxem_bbi_chromosome_71_be],
+    [sxem_bbi_chromosome_72_le, sxem_bbi_chromosome_72_be], [sxem_bbi_chromosome_73_le, sxem_bbi_chromosome_73_be],
+    [sxem_bbi_chromosome_74_le, sxem_bbi_chromosome_74_be], [sxem_bbi_chromosome_75_le, sxem_bbi_chromosome_75_be],
+    [sxem_bbi_chromosome_76_le, sxem_bbi_chromosome_76_be], [sxem_bbi_chromosome_77_le, sxem_bbi_chromosome_77_be],
+    [sxem_bbi_chromosome_78_le, sxem_bbi_chromosome_78_be], [sxem_bbi_chromosome_79_le, sxem_bbi_chromosome_79_be],
+    [sxem_bbi_chromosome_80_le, sxem_bbi_chromosome_80_be], [sxem_bbi_chromosome_81_le, sxem_bbi_chromosome_81_be],
+    [sxem_bbi_chromosome_82_le, sxem_bbi_chromosome_82_be], [sxem_bbi_chromosome_83_le, sxem_bbi_chromosome_83_be],
+    [sxem_bbi_chromosome_84_le, sxem_bbi_chromosome_84_be], [sxem_bbi_chromosome_85_le, sxem_bbi_chromosome_85_be],
+    [sxem_bbi_chromosome_86_le, sxem_bbi_chromosome_86_be], [sxem_bbi_chromosome_87_le, sxem_bbi_chromosome_87_be],
+    [sxem_bbi_chromosome_88_le, sxem_bbi_chromosome_88_be], [sxem_bbi_chromosome_89_le, sxem_bbi_chromosome_89_be],
+    [sxem_bbi_chromosome_90_le, sxem_bbi_chromosome_90_be], [sxem_bbi_chromosome_91_le, sxem_bbi_chromosome_91_be],
+    [sxem_bbi_chromosome_92_le, sxem_bbi_chromosome_92_be], [sxem_bbi_chromosome_93_le, sxem_bbi_chromosome_93_be],
+    [sxem_bbi_chromosome_94_le, sxem_bbi_chromosome_94_be], [sxem_bbi_chromosome_95_le, sxem_bbi_chromosome_95_be],
+    [sxem_bbi_chromosome_96_le, sxem_bbi_chromosome_96_be], [sxem_bbi_chromosome_97_le, sxem_bbi_chromosome_97_be],
+    [sxem_bbi_chromosome_98_le, sxem_bbi_chromosome_98_be], [sxem_bbi_chromosome_99_le, sxem_bbi_chromosome_99_be],
+    [sxem_bbi_chromosome_100_le, sxem_bbi_chromosome_100_be], [sxem_bbi_chromosome_101_le, sxem_bbi_chromosome_101_be],
+    [sxem_bbi_chromosome_102_le, sxem_bbi_chromosome_102_be], [sxem_bbi_chromosome_103_le, sxem_bbi_chromosome_103_be],
+    [sxem_bbi_chromosome_104_le, sxem_bbi_chromosome_104_be], [sxem_bbi_chromosome_105_le, sxem_bbi_chromosome_105_be],
+    [sxem_bbi_chromosome_106_le, sxem_bbi_chromosome_106_be], [sxem_bbi_chromosome_107_le, sxem_bbi_chromosome_107_be],
+    [sxem_bbi_chromosome_108_le, sxem_bbi_chromosome_108_be], [sxem_bbi_chromosome_109_le, sxem_bbi_chromosome_109_be],
+    [sxem_bbi_chromosome_110_le, sxem_bbi_chromosome_110_be], [sxem_bbi_chromosome_111_le, sxem_bbi_chromosome_111_be],
+    [sxem_bbi_chromosome_112_le, sxem_bbi_chromosome_112_be], [sxem_bbi_chromosome_113_le, sxem_bbi_chromosome_113_be],
+    [sxem_bbi_chromosome_114_le, sxem_bbi_chromosome_114_be], [sxem_bbi_chromosome_115_le, sxem_bbi_chromosome_115_be],
+    [sxem_bbi_chromosome_116_le, sxem_bbi_chromosome_116_be], [sxem_bbi_chromosome_117_le, sxem_bbi_chromosome_117_be],
+    [sxem_bbi_chromosome_118_le, sxem_bbi_chromosome_118_be], [sxem_bbi_chromosome_119_le, sxem_bbi_chromosome_119_be],
+    [sxem_bbi_chromosome_120_le, sxem_bbi_chromosome_120_be], [sxem_bbi_chromosome_121_le, sxem_bbi_chromosome_121_be],
+    [sxem_bbi_chromosome_122_le, sxem_bbi_chromosome_122_be], [sxem_bbi_chromosome_123_le, sxem_bbi_chromosome_123_be],
+    [sxem_bbi_chromosome_124_le, sxem_bbi_chromosome_124_be], [sxem_bbi_chromosome_125_le, sxem_bbi_chromosome_125_be],
+    [sxem_bbi_chromosome_126_le, sxem_bbi_chromosome_126_be], [sxem_bbi_chromosome_127_le, sxem_bbi_chromosome_127_be],
+    [sxem_bbi_chromosome_128_le, sxem_bbi_chromosome_128_be]];
+function sxem_bbi_data(c, at, size, be, bed, zoom) {
+    var h = [];
+    var end;
+    var work = 0;
+    {
+        if (!sxem_span(c, at, size)) {
+            return false;
+        }
+    }
+    end = at + size;
+    if (zoom) {
+        return !!(size && size % 32 === 0 && sxem_table(c, be ? sxem_bbi_zoom_record_be : sxem_bbi_zoom_record_le, at, 32, Math.floor(size / 32)));
+    }
+    while (at < end) {
+        {
+            if (!(++work <= 65536)) {
+                return false;
+            }
+        }
+        if (bed) {
+            var p = at + 12;
+            var ch = [0];
+            {
+                if (!(sxU64(end - at) >= 13 && sxem_add(c, be ? sxem_bbi_bed_record_be : sxem_bbi_bed_record_le, at, 12))) {
+                    return false;
+                }
+            }
+            do {
+                {
+                    if (!(p < end && sxU64(p - at) <= 65548 && sxem_read(c, p++, ch, 1))) {
+                        return false;
+                    }
+                }
+            } while (ch[0]);
+            at = p;
+        } else {
+            var count;
+            var width;
+            var l;
+            {
+                if (!(sxU64(end - at) >= 24 && sxem_read(c, at, h, 24))) {
+                    return false;
+                }
+            }
+            count = sxGetU16At(h, 22, 2, 0, be);
+            switch (h[20]) {
+            case 1:
+                width = 12;
+                l = be ? sxem_bbi_bedgraph_be : sxem_bbi_bedgraph_le;
+                break;
+            case 2:
+                width = 8;
+                l = be ? sxem_bbi_variable_step_be : sxem_bbi_variable_step_le;
+                break;
+            case 3:
+                width = 4;
+                l = be ? sxem_bbi_fixed_step_be : sxem_bbi_fixed_step_le;
+                break;
+            default:
+                return false;
+            }
+            {
+                if (!(count && count <= Math.floor(sxU64(sxU64(end - at) - 24) / width) && sxem_add(c, be ? sxem_bbi_wig_section_be : sxem_bbi_wig_section_le, at, 24) && sxem_table(c, l, at + 24, width, count))) {
+                    return false;
+                }
+            }
+            at += 24 + count * width;
+        }
+    }
+    return at === end;
+}
+function sxem_bbi_index(c, index, data, limit, be, bed, zoom, compressed) {
+    var h = [];
+    var leaf = [];
+    var count;
+    var next;
+    {
+        if (!(index < limit && limit <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && sxU64(limit - index) >= 52 && sxem_read(c, index, h, 52) && sxGetU32(h, 4, 0, be) === 0x2468ACE0 && h[48] === 1)) {
+            return false;
+        }
+    }
+    count = sxGetU16At(h, 50, 2, 0, be);
+    {
+        if (!(count && count <= 1024 && count <= Math.floor(sxU64(sxU64(limit - index) - 52) / 32))) {
+            return false;
+        }
+    }
+    {
+        if (!(data < index && sxU64(index - data) >= (zoom ? 4 : 8) && sxem_add(c, zoom ? be ? sxem_bbi_zoom_count_be : sxem_bbi_zoom_count_le : be ? sxem_bbi_data_count_be : sxem_bbi_data_count_le, data, zoom ? 4 : 8))) {
+            return false;
+        }
+    }
+    {
+        if (!(sxem_add(c, be ? sxem_bbi_interval_tree_be : sxem_bbi_interval_tree_le, index, 48) && sxem_add(c, be ? sxem_bbi_tree_node_be : sxem_bbi_tree_node_le, index + 48, 4) && sxem_table(c, be ? sxem_bbi_interval_leaf_be : sxem_bbi_interval_leaf_le, index + 52, 32, count))) {
+            return false;
+        }
+    }
+    next = data + (zoom ? 4 : 8);
+    for (var i = 0; i < count; i++) {
+        var p;
+        var n;
+        {
+            if (!sxem_read(c, index + 52 + i * 32, leaf, 32)) {
+                return false;
+            }
+        }
+        p = sxGetU64At(leaf, 16, 8, 0, be);
+        n = sxGetU64At(leaf, 24, 8, 0, be);
+        {
+            if (!(p === next && p <= index && n && n <= sxU64(index - p))) {
+                return false;
+            }
+        }
+        if (!compressed) {
+            {
+                if (!sxem_bbi_data(c, p, n, be, bed, zoom)) {
+                    return false;
+                }
+            }
+        }
+        next = p + n;
+    }
+    return next === index;
+}
+function sxem_bbi(c) {
+    var h = [];
+    var t = [];
+    var bed = c.f.file_type === "UCSC_BIGBED";
+    var be;
+    var magic = bed ? 0x8789F2EB : 0x888FFC26;
+    var key;
+    var count;
+    var zooms;
+    var chrom;
+    var data;
+    var index;
+    var summary;
+    var ext;
+    var limit;
+    var compressed;
+    {
+        if (!(c.size >= 152 && sxem_read(c, 0, h, 64))) {
+            return false;
+        }
+    }
+    be = sxGetU32(h, 4, 0, true) === magic;
+    {
+        if (!(sxGetU32(h, 4, 0, be) === magic && sxGetU16At(h, 4, 2, 0, be) === 4)) {
+            return false;
+        }
+    }
+    zooms = sxGetU16At(h, 6, 2, 0, be);
+    chrom = sxGetU64At(h, 8, 8, 0, be);
+    data = sxGetU64At(h, 16, 8, 0, be);
+    index = sxGetU64At(h, 24, 8, 0, be);
+    summary = sxGetU64At(h, 44, 8, 0, be);
+    ext = sxGetU64At(h, 56, 8, 0, be);
+    compressed = sxGetU32At(h, 52, 4, 0, be) !== 0;
+    {
+        if (!(zooms <= 10 && chrom >= 64 + zooms * 24 && chrom < data && data < index && index < sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4))) {
+            return false;
+        }
+    }
+    {
+        if (!(sxem_add(c, be ? sxem_bbi_header_be : sxem_bbi_header_le, 0, 64) && sxem_table(c, be ? sxem_bbi_zoom_header_be : sxem_bbi_zoom_header_le, 64, 24, zooms))) {
+            return false;
+        }
+    }
+    if (summary) {
+        {
+            if (!(summary >= 64 + zooms * 24 && summary <= chrom && 40 <= sxU64(chrom - summary) && sxem_add(c, be ? sxem_bbi_total_summary_be : sxem_bbi_total_summary_le, summary, 40))) {
+                return false;
+            }
+        }
+    }
+    if (ext) {
+        {
+            if (!(ext >= 64 + zooms * 24 && ext <= chrom && 64 <= sxU64(chrom - ext) && sxem_add(c, be ? sxem_bbi_extension_be : sxem_bbi_extension_le, ext, 64))) {
+                return false;
+            }
+        }
+    }
+    {
+        if (!(sxem_read(c, chrom, t, 36) && sxGetU32(t, 4, 0, be) === 0x78CA8C91 && t[32] === 1)) {
+            return false;
+        }
+    }
+    key = sxGetU32At(t, 8, 4, 0, be);
+    count = sxGetU16At(t, 34, 2, 0, be);
+    {
+        if (!(key && key <= 128 && count && count <= 512 && sxU64(data - chrom) >= 36 && count * ((key + 8) >>> 0) <= sxU64(sxU64(data - chrom) - 36))) {
+            return false;
+        }
+    }
+    {
+        if (!(sxem_add(c, be ? sxem_bbi_chromosome_tree_be : sxem_bbi_chromosome_tree_le, chrom, 32) && sxem_add(c, be ? sxem_bbi_tree_node_be : sxem_bbi_tree_node_le, chrom + 32, 4) && sxem_table(c, sxem_chrom_layouts[(key - 1) >>> 0][(be ? 1 : 0)], chrom + 36, (key + 8) >>> 0, count))) {
+            return false;
+        }
+    }
+    limit = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4);
+    if (zooms) {
+        {
+            if (!sxem_read(c, 64, h, 24)) {
+                return false;
+            }
+        }
+        limit = sxGetU64At(h, 8, 8, 0, be);
+    }
+    {
+        if (!sxem_bbi_index(c, index, data, limit, be, bed, false, compressed)) {
+            return false;
+        }
+    }
+    for (var z = 0; z < zooms; z++) {
+        {
+            if (!sxem_read(c, (64 + ((24 * z) >>> 0)) >>> 0, h, 24)) {
+                return false;
+            }
+        }
+        data = sxGetU64At(h, 8, 8, 0, be);
+        index = sxGetU64At(h, 16, 8, 0, be);
+        limit = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4);
+        if ((z + 1) >>> 0 < zooms) {
+            {
+                if (!sxem_read(c, (64 + ((24 * ((z + 1) >>> 0)) >>> 0)) >>> 0, h, 24)) {
+                    return false;
+                }
+            }
+            limit = sxGetU64At(h, 8, 8, 0, be);
+        }
+        {
+            if (!sxem_bbi_index(c, index, data, limit, be, bed, true, compressed)) {
+                return false;
+            }
+        }
+    }
+    return sxem_add(c, be ? sxem_bbi_trailer_be : sxem_bbi_trailer_le, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4), 4);
+}
+function sxem_block(c, at, size, total, be, magic) {
+    var h = [];
+    return at <= total && size >= 8 && size <= sxU64(total - at) && sxem_read(c, at, h, 8) && !sxMemcmp(h, magic, 4) && sxGetU32At(h, 4, 4, 0, be) === size && sxem_add(c, be ? sxem_nw_block_be : sxem_nw_block_le, at, 8);
+}
+function sxem_revolution(c) {
+    var h = [];
+    var info = [];
+    var r = [];
+    var total;
+    var io;
+    var in_;
+    var da;
+    var dn;
+    var channels;
+    var stream = c.f.file_type === "NINTENDO_BRSTM";
+    {
+        if (!(sxem_read(c, 0, h, stream ? 64 : 32) && !sxMemcmp(h, stream ? "RSTM" : "RWAV", 4) && sxGetU16At(h, 4, 2, 0, true) === 0xFEFF)) {
+            return false;
+        }
+    }
+    total = sxGetU32At(h, 8, 4, 0, true);
+    io = sxGetU32At(h, 16, 4, 0, true);
+    in_ = sxGetU32At(h, 20, 4, 0, true);
+    da = sxGetU32At(h, stream ? 32 : 24, 4, 0, true);
+    dn = sxGetU32At(h, stream ? 36 : 28, 4, 0, true);
+    {
+        if (!(total <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && io >= (stream ? 64 : 32) && da >= (stream ? 64 : 32) && sxem_add(c, stream ? sxem_rstm_header : sxem_rwav_header, 0, stream ? 64 : 32))) {
+            return false;
+        }
+    }
+    {
+        if (!(sxem_block(c, io, in_, total, true, stream ? "HEAD" : "INFO") && sxem_block(c, da, dn, total, true, "DATA"))) {
+            return false;
+        }
+    }
+    if (stream) {
+        var rel = [];
+        var track;
+        {
+            if (!(in_ >= 32 && sxem_table(c, sxem_revolution_reference, io + 8, 8, 3))) {
+                return false;
+            }
+        }
+        for (var i = 0; i < 3; i++) {
+            {
+                if (!sxem_read(c, io + 8 + ((8 * i) >>> 0), r, 8)) {
+                    return false;
+                }
+            }
+            rel[i] = sxGetU32At(r, 4, 4, 0, true);
+            {
+                if (!(rel[i] >= 24 && rel[i] <= (in_ - 8) >>> 0)) {
+                    return false;
+                }
+            }
+        }
+        {
+            if (!(52 <= (((in_ - 8) >>> 0) - rel[0]) >>> 0 && sxem_read(c, io + 8 + rel[0], info, 52) && sxem_add(c, sxem_rstm_stream_info, io + 8 + rel[0], 52))) {
+                return false;
+            }
+        }
+        channels = info[2];
+        {
+            if (!(channels && channels <= 2)) {
+                return false;
+            }
+        }
+        {
+            if (!(12 <= (((in_ - 8) >>> 0) - rel[1]) >>> 0 && sxem_read(c, io + 12 + rel[1], r, 8) && sxem_add(c, sxem_revolution_count, io + 8 + rel[1], 4) && sxem_add(c, sxem_revolution_reference, io + 12 + rel[1], 8))) {
+                return false;
+            }
+        }
+        track = sxGetU32At(r, 4, 4, 0, true);
+        {
+            if (!(track >= 24 && track <= (in_ - 8) >>> 0 && 4 <= (((in_ - 8) >>> 0) - track) >>> 0 && sxem_add(c, sxem_rstm_track, io + 8 + track, 4))) {
+                return false;
+            }
+        }
+        {
+            if (!((4 + ((8 * channels) >>> 0)) >>> 0 <= (((in_ - 8) >>> 0) - rel[2]) >>> 0 && sxem_add(c, sxem_revolution_count, io + 8 + rel[2], 4) && sxem_table(c, sxem_revolution_reference, io + 12 + rel[2], 8, channels))) {
+                return false;
+            }
+        }
+        for (i = 0; i < channels; i++) {
+            var p = [0];
+            {
+                if (!sxem_read(c, io + 12 + rel[2] + ((8 * i) >>> 0), r, 8)) {
+                    return false;
+                }
+            }
+            p[0] = sxGetU32At(r, 4, 4, 0, true);
+            {
+                if (!(p[0] >= 24 && p[0] <= (in_ - 8) >>> 0 && 8 <= (((in_ - 8) >>> 0) - p[0]) >>> 0 && sxem_add(c, sxem_revolution_reference, io + 8 + p[0], 8))) {
+                    return false;
+                }
+            }
+        }
+        {
+            if (!(dn >= 12 && sxem_add(c, sxem_revolution_offset, da + 8, 4))) {
+                return false;
+            }
+        }
+    } else {
+        var table;
+        {
+            if (!(in_ >= 36 && sxem_read(c, io + 8, info, 28) && sxem_add(c, sxem_rwav_wave_info, io + 8, 28))) {
+                return false;
+            }
+        }
+        channels = info[2];
+        table = sxGetU32At(info, 16, 4, 0, true);
+        {
+            if (!(channels && channels <= 8 && table >= 28 && table <= (in_ - 8) >>> 0 && (4 * channels) >>> 0 <= (((in_ - 8) >>> 0) - table) >>> 0 && sxem_table(c, sxem_revolution_offset, io + 8 + table, 4, channels))) {
+                return false;
+            }
+        }
+        for (i = 0; i < channels; i++) {
+            p = [0];
+            {
+                if (!(sxem_u32(c, io + 8 + table + ((4 * i) >>> 0), true, p) && p[0] >= 28 && p[0] <= (in_ - 8) >>> 0 && 28 <= (((in_ - 8) >>> 0) - p[0]) >>> 0 && sxem_add(c, sxem_rwav_channel, io + 8 + p[0], 28))) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_extendedmedia_supports(t) {
+    switch (t) {
+    case "NINTENDO_BRSTM":
+    case "NINTENDO_BRWAV":
+    case "NINTENDO_SDAT":
+    case "NINTENDO_BCSTM":
+    case "NINTENDO_BFSTM":
+    case "NINTENDO_BFWAV":
+    case "NINTENDO_BCWAV":
+    case "NINTENDO_BFSAR":
+    case "NINTENDO_BCSAR":
+    case "UCSC_BIGWIG":
+    case "UCSC_BIGBED":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_extendedmedia_build(c) {
+    var ok = c.f.file_type === "NINTENDO_SDAT" ? sx_nintendo_sdat_build(c) : c.f.file_type === "NINTENDO_BRSTM" || c.f.file_type === "NINTENDO_BRWAV" ? sxem_revolution(c) : c.f.file_type === "UCSC_BIGWIG" || c.f.file_type === "UCSC_BIGBED" ? sxem_bbi(c) : sxem_nw(c);
+    return ok && sxem_finish(c);
+}
+var sx_extendedmedia_comment_names = ["SSEQ", "SBNK", "SWAR", "SSAR"];
+function sx_extendedmedia_comment(r, id) {
+    if (r === null || r.name === null || id < 0x600D0000 || id >= 0x600E0000) {
+        return true;
+    }
+    if (r.name === "encoding") {
+        var v = sxVarU64(r.value);
+        var s = v === 0 ? "PCM8" : v === 1 ? "PCM16" : v === 2 ? "DSP_ADPCM" : "Unknown encoding";
+        return sxSetComment(r, s);
+    }
+    if (r.name === "sample_rate_hz") {
+        return sxSetComment(r, "Samples per second (Hz)");
+    }
+    if (r.name === "sample_offset") {
+        return sxSetComment(r, "Relative to the DATA block body; -1 denotes a null reference");
+    }
+    if (r.name === "adpcm_offset") {
+        return sxSetComment(r, "Relative to the channel information structure; -1 denotes a null reference");
+    }
+    if (r.name === "region_offset") {
+        return sxSetComment(r, "Relative to the REGN block body; -1 denotes a null reference");
+    }
+    if (r.name === "base_count" || r.name === "bases_covered" || r.name === "valid_base_count") {
+        return sxSetComment(r, "Count of genomic bases, not bytes");
+    }
+    if (id === sxem_sdat_group_entry.id && r.name === "type") {
+        v = sxVarU64(r.value);
+        if (v < 4) {
+            return sxSetComment(r, sx_extendedmedia_comment_names[v]);
+        }
+    }
+    if (id === sxem_sdat_group_entry.id && r.name === "load_flags") {
+        return sxSetComment(r, "Bit 0: load SSEQ; bit 1: select SWAR IDs; bit 2: load SWAR; bit 3: load SSAR");
+    }
+    if (id === sxem_rwav_channel.id && !sxStrncmp(r.name, "volume_", 7)) {
+        return sxSetComment(r, "Encoded four-byte volume parameter; wire bytes retained without assuming numeric interpretation");
+    }
+    if (r.name === "sample_rate_high") {
+        return sxSetComment(r, "Encoded high byte of the sample rate; zero in the native-supported PCM variants");
+    }
+    if (id === sxem_rwav_wave_info.id && (r.name === "sample_count" || r.name === "loop_start_sample")) {
+        return sxSetComment(r, "PCM sample units in this reader; DSP ADPCM uses encoded nibble positions and is outside native scope");
+    }
+    if (id === sxem_rwav_wave_info.id && r.name === "channel_info_table_offset") {
+        return sxSetComment(r, "Offset relative to the WaveInfo structure (INFO block + 8)");
+    }
+    if (r.name === "data_location_offset") {
+        return sxSetComment(r, "Offset relative to the DATA block body in the supported offset-location variant");
+    }
+    if (r.name === "channel_data_offset") {
+        return sxSetComment(r, "Offset relative to WaveInfo data_location within the DATA block body");
+    }
+    if (r.name === "adpcm_info_offset") {
+        return sxSetComment(r, "Offset relative to WaveInfo; zero for the supported PCM channels");
+    }
+    if (r.name === "byte_order") {
+        return sxSetComment(r, "BOM bytes FE FF: big endian; FF FE: little endian");
+    }
+    return true;
+}

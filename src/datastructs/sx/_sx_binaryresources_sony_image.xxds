@@ -1,0 +1,24 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/sony_image/xx_sony_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_sony_image_header_fields = layout([chars("magic", 4, SIGNATURE), bytes("opaque_4", 12), u32("reserved", RESERVED),
+    u32("payload_size", SIZE), u8("continuation"), u8("field_19"), bytes("opaque_1a", 486)]);
+var sxbrs_sony_image_header = sxLayout(0x603E0030, "sony_image_header", LE, sxbrs_sony_image_header_fields);
+var sxbrs_sony_image_zlib_marker_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxbrs_sony_image_zlib_marker = sxLayout(0x603E0031, "sony_image_zlib_marker", LE, sxbrs_sony_image_zlib_marker_fields);
+var sxbrs_resource_zlib_header_fields = layout([u8("compression_method_flags", FLAGS), u8("flags", FLAGS)]);
+var sxbrs_resource_zlib_header = sxLayout(0x603E0032, "resource_zlib_header", LE, sxbrs_resource_zlib_header_fields);
+var sxbrs_resource_zlib_trailer_fields = layout([u32("adler32", CHECKSUM)]);
+var sxbrs_resource_zlib_trailer = sxLayout(0x603E0033, "resource_zlib_trailer", BE, sxbrs_resource_zlib_trailer_fields);
+function sxbrs_sony(c) {
+    if (c.size < 522 || !sxbrs_eq(c, 0, "TCJN", 4) || sxbrs_num(c, 16, 4, false) || sxbrs_num(c, 20, 4, false) !== sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 512) || sxbrs_num(c, 24, 1, false) || sxbrs_num(c, 25, 1, false) > 1 || !sxbrs_eq(c, 512, "ZLIB", 4)) {
+        return false;
+    }
+    return sxbrs_add(c, sxbrs_sony_image_header, 0) && sxbrs_add(c, sxbrs_sony_image_zlib_marker, 512) && sxbrs_add(c, sxbrs_resource_zlib_header, 516) && sxbrs_add(c, sxbrs_resource_zlib_trailer, c.size - 4);
+}
+function sx_sony_image_build(c) {
+    return sxbrs_sony(c);
+}

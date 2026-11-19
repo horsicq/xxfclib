@@ -1,0 +1,132 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/erofs/xx_erofs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmf_erofs_superblock_fields = layout([u32("magic", SIGNATURE), u32("checksum", CHECKSUM), u32("features_compat", FLAGS),
+    u8("block_size_bits"), u8("extension_slots", COUNT), u16("root_inode", ID), u64("inode_count", COUNT),
+    u64("build_time", TIMESTAMP), u32("build_nanoseconds"), u32("block_count", COUNT), u32("metadata_block"),
+    u32("xattr_block"), field("uuid", "byte[16]", 16, ID), chars("volume_name", 16, STRING), u32("features_incompat", FLAGS),
+    u16("compression_algorithms_or_lz4_distance"), u16("extra_device_count", COUNT), u16("device_table_slot"),
+    u8("directory_block_bits"), u8("xattr_prefix_count", COUNT), u32("xattr_prefix_start"), u64("packed_inode", ID),
+    field("reserved_or_extension", "byte[24]", 24)]);
+var sxmf_erofs_superblock = sxLayout(0x60420045, "erofs_superblock", LE, sxmf_erofs_superblock_fields);
+var sxmf_erofs_inode_compact_fields = layout([u16("format", FLAGS), u16("xattr_count"), u16("mode", FLAGS),
+    u16("link_count", COUNT), u32("file_size", SIZE), u32("reserved", RESERVED), u32("block_or_device_or_chunk_info"),
+    u32("inode_number", ID), u16("uid", ID), u16("gid", ID), u32("reserved2", RESERVED)]);
+var sxmf_erofs_inode_compact = sxLayout(0x60420046, "erofs_inode_compact", LE, sxmf_erofs_inode_compact_fields);
+var sxmf_erofs_inode_extended_fields = layout([u16("format", FLAGS), u16("xattr_count"), u16("mode", FLAGS),
+    u16("reserved", RESERVED), u64("file_size", SIZE), u32("block_or_device_or_chunk_info"), u32("inode_number", ID),
+    u32("uid", ID), u32("gid", ID), u64("modification_time", TIMESTAMP), u32("modification_nanoseconds"),
+    u32("link_count", COUNT), field("reserved2", "byte[16]", 16, RESERVED)]);
+var sxmf_erofs_inode_extended = sxLayout(0x60420047, "erofs_inode_extended", LE, sxmf_erofs_inode_extended_fields);
+var sxmf_erofs_directory_entry_fields = layout([u64("inode_id", ID), u16("name_offset", OFFSET), u8("type", ID),
+    u8("reserved", RESERVED)]);
+var sxmf_erofs_directory_entry = sxLayout(0x60420048, "erofs_directory_entry", LE, sxmf_erofs_directory_entry_fields);
+var sxmf_erofs_device_slot_fields = layout([chars("tag", 64, STRING), u32("block_count", COUNT), u32("mapped_block"),
+    field("reserved", "byte[56]", 56, RESERVED)]);
+var sxmf_erofs_device_slot = sxLayout(0x60420049, "erofs_device_slot", LE, sxmf_erofs_device_slot_fields);
+var sxmf_erofs_chunk_block_fields = layout([u32("block")]);
+var sxmf_erofs_chunk_block = sxLayout(0x6042004A, "erofs_chunk_block", LE, sxmf_erofs_chunk_block_fields);
+function sxmf_erofs(c) {
+    var h = [];
+    var in_ = [];
+    if (!sxmf_read(c, 1024, h, 0, 128) || sxmf32(h, 0, 0) !== 0xE0F5E1E2 || !sxmf_put(c, sxmf_erofs_superblock, 1024, 1)) {
+        return false;
+    }
+    var shift = h[12];
+    if (shift < 9 || shift > 16) {
+        return true;
+    }
+    var bs = sxShl64(1, shift);
+    var meta = sxmf32(h, 40, 0) * bs;
+    var devices = sxmf16(h, 86, 0);
+    var slots = sxmf16(h, 88, 0) * 128;
+    if (devices <= 256 && sxmf_span(c, slots, devices * 128) && !sxmf_put(c, sxmf_erofs_device_slot, slots, devices)) {
+        return false;
+    }
+    var q = sxNew_sxmf_queue();
+    var b = sxAlloc(bs);
+    if (q === null || b === null) {
+        return false;
+    }
+    var ok = true;
+    var root = sxmf16(h, 14, 0);
+    sxmf_queue_add(q, root + 1, 0, 0);
+    while (ok && q.index < q.count && c.count < 24000) {
+        var t = sxCopy_sxmf_task(null, q.items[q.index++]);
+        var nid = sxU64(t.p - 1);
+        if (nid > Math.floor((SX_U64_MAX - meta) / 32)) {
+            continue;
+        }
+        var p = meta + nid * 32;
+        if (!sxmf_read(c, p, in_, 0, 32)) {
+            continue;
+        }
+        var format = sxmf16(in_, 0, 0);
+        var layout = format >>> 1 & 7;
+        var iz = format & 1 ? 64 : 32;
+        var mode = sxmf16(in_, 4, 0);
+        if (format & 0xFFF0 || layout > 4 || !sxmf_read(c, p, in_, 0, iz)) {
+            continue;
+        }
+        if (!sxmf_put(c, iz === 64 ? sxmf_erofs_inode_extended : sxmf_erofs_inode_compact, p, 1)) {
+            ok = false;
+            break;
+        }
+        var size = iz === 64 ? sxmf64(in_, 8, 0) : sxmf32(in_, 8, 0);
+        var block = sxmf32(in_, 16, 0);
+        if (sxmf16(in_, 2, 0)) {
+            continue;
+        }
+        if (layout === 4) {
+            if (block <= 16) {
+                var chunk = sxShl64(bs, block);
+                var n = Math.floor(size / chunk) + (size % chunk !== 0 ? 1 : 0);
+                if (n <= 262144 && sxmf_span(c, p + iz, n * 4) && !sxmf_put(c, sxmf_erofs_chunk_block, p + iz, n)) {
+                    ok = false;
+                    break;
+                }
+            }
+            continue;
+        }
+        if ((mode & 61440) !== 16384 || layout !== 0 && layout !== 2 || size > 16777216) {
+            continue;
+        }
+        var whole = layout === 2 ? Math.floor(size / bs) * bs : size;
+        for (var pos = 0; pos < size && ok && c.count < 24000; pos += bs) {
+            n = sxU64(size - pos);
+            if (n > bs) {
+                n = bs;
+            }
+            var at = pos < whole ? block * bs + pos : sxU64(p + iz + pos - whole);
+            if (!sxmf_read(c, at, b, 0, n) || n < 12) {
+                break;
+            }
+            var first = sxmf16(b, 8, 0);
+            if (!first || first % 12 || first > n) {
+                break;
+            }
+            for (var j = 0; j < first; j += 12) {
+                var no = sxmf16(b, j + 8, 0);
+                var end = j + 12 < first ? sxmf16(b, j + 20, 0) : n;
+                if (no < first || end < no || end > n) {
+                    break;
+                }
+                if (!sxmf_put(c, sxmf_erofs_directory_entry, at + j, 1)) {
+                    ok = false;
+                    break;
+                }
+                var child = sxmf64(b, j, 0);
+                if (child !== SX_U64_MAX) {
+                    sxmf_queue_add(q, child + 1, 0, (t.depth + 1) >>> 0);
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_erofs_build(c) {
+    return sxmf_erofs(c);
+}

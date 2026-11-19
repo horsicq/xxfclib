@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/godot_ctex/xx_godot_ctex_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_godot_ctex_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("original_width", COUNT),
+    u32("original_height", COUNT), u32("flags", FLAGS), i32("mipmap_limit"), field("reserved", "uint32[3]", 12, RESERVED),
+    u32("data_format", ID), u16("width", COUNT), u16("height", COUNT), u32("mipmap_count", COUNT), u32("image_format", ID)]);
+var sxrm_godot_ctex_header = sxLayout(0x601D0058, "godot_ctex_header", LE, sxrm_godot_ctex_header_fields);
+function sx_godot_ctex_build(c) {
+    return sxrm_add(c, sxrm_godot_ctex_header, 0);
+}

@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/atari_7800_a78/xx_atari_7800_a78_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_a78_header_fields = layout([u8("version", ID), blob("signature", 16, SIGNATURE), chars("title", 32, STRING),
+    u32("rom_size", SIZE), u16("cartridge_type", FLAGS), u8("controller1", ID), u8("controller2", ID), u8("television", FLAGS),
+    u8("save_device", FLAGS), blob("reserved", 4, RESERVED), u8("passthrough", FLAGS), blob("reserved_tail", 36, RESERVED),
+    blob("trailer", 28, SIGNATURE)]);
+var sxgp_a78_header = sxLayout(0x6036000E, "a78_header", BE, sxgp_a78_header_fields);
+function sxgp_a78(v) {
+    return sxgp_row(v, sxgp_a78_header, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size));
+}
+function sx_atari_7800_a78_build(v) {
+    return sxgp_a78(v);
+}

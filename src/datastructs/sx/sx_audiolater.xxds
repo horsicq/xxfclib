@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_audiolater.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_audiolater");
+include("_sx_audiolater_ap4");
+include("_sx_audiolater_sfark_compressed_soundfont");
+include("_sx_audiolater_sfpack");
+
+function fileTypes() { return ["AP4", "SFPACK", "ADLIB_AMD", "ADLIB_MKJ", "ADLIB_SA2", "FAUST_FMC", "SOFTSTAR_RIX", "ADLIB_SOP",
+    "CUDFM_CFF", "CERES_MSC", "IMPLAY_MUSIC", "ADLIB_MTR", "SFARK_COMPRESSED_SOUNDFONT", "AUDIO_PVF", "AUDIO_SHOCKWAVE_SWA",
+    "HMI_MIDI", "PARSEC_DTC", "PARSEC_DMA", "PALLADIX_MUS", "PALLADIX_SND", "PALLADIX_PMA", "MDH", "SM8"]; }
+
+var sx_audiolater_layouts = [sxaul_amd_header, sxaul_amd_instrument, sxaul_amd_orders, sxaul_amd_event, sxaul_amd_empty_run,
+    sxaul_track_u16, sxaul_count_u16, sxaul_order_u8, sxaul_mkj_header, sxaul_mkj_instrument, sxaul_mkj_channel_enabled,
+    sxaul_mkj_event, sxaul_sa2_header, sxaul_sa2_instrument, sxaul_sa2_name, sxaul_sa2_names_padding, sxaul_sa2_song,
+    sxaul_sa2_arpeggio, sxaul_sa2_arpcommand, sxaul_sa2_track, sxaul_sa2_channels, sxaul_sa2_event, sxaul_fmc_header,
+    sxaul_fmc_order_padding, sxaul_fmc_instrument, sxaul_fmc_event, sxaul_rix_header, sxaul_rix_instrument, sxaul_rix_event,
+    sxaul_sop_header, sxaul_sop_channel_mode, sxaul_sop_instrument, sxaul_sop_opl2, sxaul_sop_opl4, sxaul_sop_sample,
+    sxaul_sop_track, sxaul_sop_event, sxaul_sop_duration, sxaul_cff_header, sxaul_cff_instrument, sxaul_cff_song,
+    sxaul_cff_order_tail, sxaul_cff_event, sxaul_msc_header, sxaul_msc_block, sxaul_ims_header, sxaul_ims_timbres,
+    sxaul_ims_timbre, sxaul_mtr_header, sxaul_mtr_instrument, sxaul_mtr_event, sxaul_mtr_producer, sxaul_parsec_driver_header,
+    sxaul_palladix_driver_header, sxaul_driver_entry, sxaul_driver_footer, sxaul_pma_header, sxaul_pma_channel, sxaul_pma_flags,
+    sxaul_pma_instrument, sxaul_pma_byte, sxaul_pma_word, sxaul_mdh_header, sxaul_mdh_record, sxaul_mdh_end, sxaul_sm8_header,
+    sxaul_pvf_header, sxaul_pvf_channels1, sxaul_pvf_sample_bits1, sxaul_pvf_channels2, sxaul_pvf_sample_bits2,
+    sxaul_pvf_channels3, sxaul_pvf_sample_bits3, sxaul_pvf_channels4, sxaul_pvf_sample_rate4, sxaul_pvf_sample_bits4,
+    sxaul_pvf_channels5, sxaul_pvf_sample_rate5, sxaul_pvf_sample_bits5, sxaul_pvf_channels6, sxaul_pvf_sample_rate6,
+    sxaul_pvf_sample_bits6, sxaul_pvf_channels7, sxaul_pvf_sample_rate7, sxaul_pvf_sample_bits7, sxaul_pvf_channels8,
+    sxaul_pvf_sample_rate8, sxaul_pvf_sample_bits8, sxaul_pvf_channels9, sxaul_pvf_sample_rate9, sxaul_pvf_sample_bits9,
+    sxaul_pvf_channels10, sxaul_pvf_sample_rate10, sxaul_pvf_sample_bits10, sxaul_pvf_channels11, sxaul_pvf_sample_rate11,
+    sxaul_pvf_sample_bits11, sxaul_pvf_channels12, sxaul_pvf_sample_rate12, sxaul_pvf_sample_bits12, sxaul_pvf_channels13,
+    sxaul_pvf_sample_rate13, sxaul_pvf_sample_bits13, sxaul_pvf_channels14, sxaul_pvf_sample_rate14, sxaul_pvf_sample_bits14,
+    sxaul_pvf_channels15, sxaul_pvf_sample_rate15, sxaul_pvf_sample_bits15, sxaul_pvf_channels16, sxaul_pvf_sample_rate16,
+    sxaul_pvf_sample_bits16, sxaul_pvf_channels17, sxaul_pvf_sample_rate17, sxaul_pvf_sample_bits17, sxaul_pvf_channels18,
+    sxaul_pvf_sample_rate18, sxaul_pvf_sample_bits18, sxaul_pvf_channels19, sxaul_pvf_sample_rate19, sxaul_pvf_sample_bits19,
+    sxaul_pvf_channels20, sxaul_pvf_sample_rate20, sxaul_pvf_sample_bits20, sxaul_pvf_channels21, sxaul_pvf_sample_rate21,
+    sxaul_pvf_sample_bits21, sxaul_pvf_channels22, sxaul_pvf_sample_rate22, sxaul_pvf_sample_bits22, sxaul_pvf_channels23,
+    sxaul_pvf_sample_rate23, sxaul_pvf_sample_bits23, sxaul_pvf_channels24, sxaul_pvf_sample_rate24, sxaul_pvf_sample_bits24,
+    sxaul_swa_header, sxaul_swa_frame, sxaul_hmi_header, sxaul_hmi_track_offset, sxaul_hmi_track, sxaul_sfark_header,
+    sxaul_sfark_name_byte, sxaul_sfark_text, sxaul_sfpack_header, sxaul_sfpack_chunk, sxaul_sfpack_skip, sxaul_sfpack_table,
+    sxaul_sfpack_offset, sxaul_ap4_table, sxaul_ap4_entry];
+
+function structs() {
+    return sxCatalog([sxaul_amd_header, sxaul_amd_instrument, sxaul_amd_orders, sxaul_amd_event, sxaul_amd_empty_run,
+        sxaul_track_u16, sxaul_count_u16, sxaul_order_u8, sxaul_mkj_header, sxaul_mkj_instrument, sxaul_mkj_channel_enabled,
+        sxaul_mkj_event, sxaul_sa2_header, sxaul_sa2_instrument, sxaul_sa2_name, sxaul_sa2_names_padding, sxaul_sa2_song,
+        sxaul_sa2_arpeggio, sxaul_sa2_arpcommand, sxaul_sa2_track, sxaul_sa2_channels, sxaul_sa2_event, sxaul_fmc_header,
+        sxaul_fmc_order_padding, sxaul_fmc_instrument, sxaul_fmc_event, sxaul_rix_header, sxaul_rix_instrument, sxaul_rix_event,
+        sxaul_sop_header, sxaul_sop_channel_mode, sxaul_sop_instrument, sxaul_sop_opl2, sxaul_sop_opl4, sxaul_sop_sample,
+        sxaul_sop_track, sxaul_sop_event, sxaul_sop_duration, sxaul_cff_header, sxaul_cff_instrument, sxaul_cff_song,
+        sxaul_cff_order_tail, sxaul_cff_event, sxaul_msc_header, sxaul_msc_block, sxaul_ims_header, sxaul_ims_timbres,
+        sxaul_ims_timbre, sxaul_mtr_header, sxaul_mtr_instrument, sxaul_mtr_event, sxaul_mtr_producer,
+        sxaul_parsec_driver_header, sxaul_palladix_driver_header, sxaul_driver_entry, sxaul_driver_footer, sxaul_pma_header,
+        sxaul_pma_channel, sxaul_pma_flags, sxaul_pma_instrument, sxaul_pma_byte, sxaul_pma_word, sxaul_mdh_header,
+        sxaul_mdh_record, sxaul_mdh_end, sxaul_sm8_header, sxaul_pvf_header, sxaul_pvf_channels1, sxaul_pvf_sample_bits1,
+        sxaul_pvf_channels2, sxaul_pvf_sample_bits2, sxaul_pvf_channels3, sxaul_pvf_sample_bits3, sxaul_pvf_channels4,
+        sxaul_pvf_sample_rate4, sxaul_pvf_sample_bits4, sxaul_pvf_channels5, sxaul_pvf_sample_rate5, sxaul_pvf_sample_bits5,
+        sxaul_pvf_channels6, sxaul_pvf_sample_rate6, sxaul_pvf_sample_bits6, sxaul_pvf_channels7, sxaul_pvf_sample_rate7,
+        sxaul_pvf_sample_bits7, sxaul_pvf_channels8, sxaul_pvf_sample_rate8, sxaul_pvf_sample_bits8, sxaul_pvf_channels9,
+        sxaul_pvf_sample_rate9, sxaul_pvf_sample_bits9, sxaul_pvf_channels10, sxaul_pvf_sample_rate10, sxaul_pvf_sample_bits10,
+        sxaul_pvf_channels11, sxaul_pvf_sample_rate11, sxaul_pvf_sample_bits11, sxaul_pvf_channels12, sxaul_pvf_sample_rate12,
+        sxaul_pvf_sample_bits12, sxaul_pvf_channels13, sxaul_pvf_sample_rate13, sxaul_pvf_sample_bits13, sxaul_pvf_channels14,
+        sxaul_pvf_sample_rate14, sxaul_pvf_sample_bits14, sxaul_pvf_channels15, sxaul_pvf_sample_rate15,
+        sxaul_pvf_sample_bits15, sxaul_pvf_channels16, sxaul_pvf_sample_rate16, sxaul_pvf_sample_bits16, sxaul_pvf_channels17,
+        sxaul_pvf_sample_rate17, sxaul_pvf_sample_bits17, sxaul_pvf_channels18, sxaul_pvf_sample_rate18,
+        sxaul_pvf_sample_bits18, sxaul_pvf_channels19, sxaul_pvf_sample_rate19, sxaul_pvf_sample_bits19, sxaul_pvf_channels20,
+        sxaul_pvf_sample_rate20, sxaul_pvf_sample_bits20, sxaul_pvf_channels21, sxaul_pvf_sample_rate21,
+        sxaul_pvf_sample_bits21, sxaul_pvf_channels22, sxaul_pvf_sample_rate22, sxaul_pvf_sample_bits22, sxaul_pvf_channels23,
+        sxaul_pvf_sample_rate23, sxaul_pvf_sample_bits23, sxaul_pvf_channels24, sxaul_pvf_sample_rate24,
+        sxaul_pvf_sample_bits24, sxaul_swa_header, sxaul_swa_frame, sxaul_hmi_header, sxaul_hmi_track_offset, sxaul_hmi_track,
+        sxaul_sfark_header, sxaul_sfark_name_byte, sxaul_sfark_text, sxaul_sfpack_header, sxaul_sfpack_chunk, sxaul_sfpack_skip,
+        sxaul_sfpack_table, sxaul_sfpack_offset, sxaul_ap4_table, sxaul_ap4_entry], sx_audiolater_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_audiolater_build, false);
+}

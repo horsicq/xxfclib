@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/redlimited_extremetracker/xx_redlimited_extremetracker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_extremetracker_pattern_size_fields = layout([u8("row_count", COUNT)]);
+var sxzxm_extremetracker_pattern_size = sxLayout(0x608A0073, "extremetracker_pattern_size", LE, sxzxm_extremetracker_pattern_size_fields);
+function sxzxm_et(c) {
+    if (!sxzxm_put(c, sxzxm_extremetracker_header, 0, 1)) {
+        return false;
+    }
+    if (!sxzxm_opt(c, sxzxm_zx_position, 34, 100) || !sxzxm_opt(c, sxzxm_extremetracker_pattern_size, 134, 32) || !sxzxm_opt(c, sxzxm_extremetracker_memory, 168, 5) || !sxzxm_opt(c, sxzxm_extremetracker_sample, 256, 16)) {
+        return false;
+    }
+    for (var i = 0; i < 32; i++) {
+        if (!sxzxm_opt(c, sxzxm_extremetracker_event, (512 + ((512 * i) >>> 0)) >>> 0, 256)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_redlimited_extremetracker_build(c) {
+    return sxzxm_et(c);
+}

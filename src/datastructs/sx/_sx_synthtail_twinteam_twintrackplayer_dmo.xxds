@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/twinteam_twintrackplayer_dmo/xx_twinteam_twintrackplayer_dmo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsynt_dmo_cipher_header_fields = layout([u32("initial_seed"), u16("seed_iteration_limit"), u32("seed_xor"),
+    u16("seed_check")]);
+var sxsynt_dmo_cipher_header = sxLayout(0x608E0018, "dmo_cipher_header", LE, sxsynt_dmo_cipher_header_fields);
+function sxsynt_dmo(c) {
+    var state;
+    var mix;
+    var sum = 0;
+    var rounds;
+    var check;
+    if ((state = sx_u32(c, 0, false)) === null || (rounds = sx_u16(c, 4, false)) === null || (mix = sx_u32(c, 6, false)) === null || (check = sx_u16(c, 10, false)) === null) {
+        return false;
+    }
+    for (var i = 0; i <= rounds; i++) {
+        if (!(i & 255) && c.pd !== null && false) {
+            return false;
+        }
+        state = (sxMul32(state, 0x08088405) + 1) >>> 0;
+        sum = (sum + Math.floor(state * 65535 / 0x100000000)) >>> 0;
+    }
+    state = (sxMul32((sum ^ mix) >>> 0, 0x08088405) + 1) >>> 0;
+    if (Math.floor(state * 65535 / 0x100000000) !== check) {
+        return sx_raw(c, 0, c.size);
+    }
+    return sx_add(c, sxsynt_dmo_cipher_header, 0, 12) && sx_raw(c, 12, c.size - 12);
+}
+function sx_twinteam_twintrackplayer_dmo_build(c) {
+    return sxsynt_dmo(c);
+}

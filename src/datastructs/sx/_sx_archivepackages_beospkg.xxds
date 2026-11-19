@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/beospkg/xx_beospkg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_beospkg_header_fields = layout([bytes("signature", 8, SIGNATURE)]);
+var sxap_beospkg_header = sxLayout(0x6072001D, "beospkg_header", LE, sxap_beospkg_header_fields);
+var sxap_beospkg_tag_fields = layout([chars("tag", 4, SIGNATURE), u8("reserved"), u16("payload_type")]);
+var sxap_beospkg_tag = sxLayout(0x6072001E, "beospkg_tag", LE, sxap_beospkg_tag_fields);
+var sxap_beospkg_value32_fields = layout([u32("value")]);
+var sxap_beospkg_value32 = sxLayout(0x6072001F, "beospkg_value32", BE, sxap_beospkg_value32_fields);
+var sxap_beospkg_value64_fields = layout([u64("value")]);
+var sxap_beospkg_value64 = sxLayout(0x60720020, "beospkg_value64", BE, sxap_beospkg_value64_fields);
+var sxap_beospkg_offset64_fields = layout([u64("file_offset", OFFSET)]);
+var sxap_beospkg_offset64 = sxLayout(0x60720021, "beospkg_offset64", BE, sxap_beospkg_offset64_fields);
+var sxap_beospkg_size64_fields = layout([u64("uncompressed_size", SIZE)]);
+var sxap_beospkg_size64 = sxLayout(0x60720022, "beospkg_size64", BE, sxap_beospkg_size64_fields);
+var sxap_beospkg_length_fields = layout([u32("payload_size", SIZE)]);
+var sxap_beospkg_length = sxLayout(0x60720023, "beospkg_length", BE, sxap_beospkg_length_fields);
+var sxap_beospkg_chunk_fields = layout([u64("compressed_size", SIZE), u64("uncompressed_size", SIZE), u32("method")]);
+var sxap_beospkg_chunk = sxLayout(0x60720024, "beospkg_chunk", BE, sxap_beospkg_chunk_fields);
+function sxap_beos_payload(c, p) {
+    var h = [];
+    var z = [0];
+    if (!sxap_read(c, p, h, 14) || sxMemcmp(h, "FiDa", 4) || sxMemcmpAt(h, 7, "FiMF", 0, 4) || sxap_uint(h, 12, 2, false) !== 0x300 || !sxap_word(c, p + 14, 8, true, z) || !sxap_span(c, p + 34, z[0])) {
+        return false;
+    }
+    return sxap_add(c, sxap_beospkg_tag, p) && sxap_add(c, sxap_beospkg_tag, p + 7) && sxap_add(c, sxap_beospkg_chunk, p + 14);
+}
+function sxap_beos_element(c, p, depth, tree) {
+    var h = [];
+    if (depth > 64 || !sxap_read(c, p[0], h, 7) || h[4] || !sxap_add(c, sxap_beospkg_tag, p[0])) {
+        return false;
+    }
+    p[0] += 7;
+    var type = sxap_uint(h, 5, 2, false) >>> 0;
+    var n = [0];
+    if (!type && !sxap_uint(h, 0, 4, false)) {
+        return true;
+    }
+    if (type === 0x101) {
+        if (!sxap_add(c, sxap_beospkg_value32, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+    } else if (type === 0x102) {
+        var l = !sxMemcmp(h, "COff", 4) || !sxMemcmp(h, "OffT", 4) ? sxap_beospkg_offset64 : !sxMemcmp(h, "OrgS", 4) ? sxap_beospkg_size64 : sxap_beospkg_value64;
+        if (!sxap_word(c, p[0], 8, true, n) || !sxap_add(c, l, p[0])) {
+            return false;
+        }
+        if (tree !== null && !sxMemcmp(h, "COff", 4)) {
+            tree[0] = n[0];
+        }
+        if (!sxMemcmp(h, "OffT", 4) && !sxap_beos_payload(c, n[0])) {
+            return false;
+        }
+        p[0] += 8;
+    } else if (type === 0x200 || type === 0x500) {
+        if (!sxap_word(c, p[0], 4, true, n) || !sxap_add(c, sxap_beospkg_length, p[0]) || !sxap_span(c, p[0] + 4, n[0])) {
+            return false;
+        }
+        p[0] += 4;
+        if (type === 0x200 && !sxap_text(c, sxap_archivepackages_name, p[0], n[0], false)) {
+            return false;
+        }
+        p[0] += n[0];
+    } else if (type === 0x300) {
+        if (!sxap_word(c, p[0], 8, true, n) || !sxap_add(c, sxap_beospkg_chunk, p[0]) || !sxap_span(c, p[0] + 20, n[0])) {
+            return false;
+        }
+        p[0] += 20 + n[0];
+    } else if (type === 0x400) {
+        for (var work = 0; work < 20000; work++) {
+            if (!sxap_read(c, p[0], h, 7)) {
+                return false;
+            }
+            var end = !sxap_uint(h, 0, 4, false) && !sxap_uint(h, 5, 2, false);
+            if (!sxap_beos_element(c, p, (depth + 1) >>> 0, tree)) {
+                return false;
+            }
+            if (end || tree !== null && tree[0]) {
+                break;
+            }
+        }
+    } else {
+        return false;
+    }
+    return true;
+}
+function sxap_beos(c) {
+    var p = [8];
+    var tree = [0];
+    if (!sxap_add(c, sxap_beospkg_header, 0) || !sxap_beos_element(c, p, 0, tree) || !tree[0]) {
+        return false;
+    }
+    p[0] = tree[0];
+    return sxap_beos_element(c, p, 0, null);
+}
+function sx_beospkg_build(c) {
+    return sxap_beos(c);
+}

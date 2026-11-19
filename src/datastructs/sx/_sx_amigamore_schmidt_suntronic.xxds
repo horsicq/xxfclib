@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/schmidt_suntronic/xx_schmidt_suntronic_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamore_sun_end_fields = layout([u32("end_marker", ID)]);
+var sxamore_sun_end = sxLayout(0x6095002A, "sun_end", BE, sxamore_sun_end_fields);
+function sxamore_sun(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var x = [0];
+    var base = [0];
+    var p = [0];
+    var a = [0];
+    var b = [0];
+    var c = [0];
+    var operands = [];
+    if (!sxamore_eq(v, 0, "H\xE7\xFF\xFEM\xFA", 6, e) || !sxamore_be(v, 8, 4, x, 0, e) || x[0] !== 0x4A2E0018 && x[0] !== 0x4A2E0010 || !sxamore_signed16(v, 6, 6, base, e) || base[0] < 14) {
+        return false;
+    }
+    var four_channels = x[0] === 0x4A2E0018;
+    var bound = base[0] < e ? base[0] : e;
+    if (!sxamore_find(v, p, bound, 0x43EE, 2, 2)) {
+        return false;
+    }
+    operands[0] = p[0] + 2;
+    if (!sxamore_signed16(v, p[0] + 2, base[0], a, e) || !sxamore_span(v, a[0], four_channels ? 20 : 4, e)) {
+        return false;
+    }
+    p[0] = 0;
+    for (var i = 1; i < 4; i++) {
+        if (!sxamore_find(v, p, bound, 0x45EE, 2, 2)) {
+            return false;
+        }
+        operands[i] = p[0] + 2;
+        p[0] += 2;
+    }
+    if (!sxamore_signed16(v, operands[2], base[0], b, e) || !sxamore_signed16(v, operands[3], base[0], c, e) || b[0] > c[0]) {
+        return false;
+    }
+    if (!sxamore_row(v, sxamore_signed_displacement, 6, e)) {
+        return false;
+    }
+    if (four_channels) {
+        if (!sxamore_row(v, sxamore_sun_initial_channels, a[0], e)) {
+            return false;
+        }
+    } else {
+        var done = false;
+        for (i = 0; i < 4096; i++, a[0] += 4) {
+            if (!sxamore_be(v, a[0], 4, x, 0, e)) {
+                return false;
+            }
+            if (!x[0]) {
+                if (!sxamore_row(v, sxamore_sun_end, a[0], e)) {
+                    return false;
+                }
+                done = true;
+                break;
+            }
+            if (!sxamore_row(v, sxamore_original_address, a[0], e)) {
+                return false;
+            }
+        }
+        if (!done) {
+            return false;
+        }
+    }
+    for (i = 0; i < 4; i++) {
+        if (!sxamore_row(v, sxamore_signed_displacement, operands[i], e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_schmidt_suntronic_build(v) {
+    return sxamore_sun(v);
+}

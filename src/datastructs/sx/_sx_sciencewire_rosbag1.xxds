@@ -1,0 +1,150 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/rosbag1/xx_rosbag1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_rosbag_signature_fields = layout([chars("signature", 13, SIGNATURE)]);
+var sxsw_rosbag_signature = sxLayout(0x602D0057, "rosbag_signature", LE, sxsw_rosbag_signature_fields);
+var sxsw_rosbag_header_size_fields = layout([u32("header_size", SIZE)]);
+var sxsw_rosbag_header_size = sxLayout(0x602D0058, "rosbag_header_size", LE, sxsw_rosbag_header_size_fields);
+var sxsw_rosbag_field_size_fields = layout([u32("field_size", SIZE)]);
+var sxsw_rosbag_field_size = sxLayout(0x602D0059, "rosbag_field_size", LE, sxsw_rosbag_field_size_fields);
+var sxsw_rosbag_data_size_fields = layout([u32("data_size", SIZE)]);
+var sxsw_rosbag_data_size = sxLayout(0x602D005A, "rosbag_data_size", LE, sxsw_rosbag_data_size_fields);
+var sxsw_rosbag_conn_fields = layout([u32("connection_id", ID)]);
+var sxsw_rosbag_conn = sxLayout(0x602D005C, "rosbag_conn", LE, sxsw_rosbag_conn_fields);
+var sxsw_rosbag_size_fields = layout([u32("uncompressed_size", SIZE)]);
+var sxsw_rosbag_size = sxLayout(0x602D005D, "rosbag_size", LE, sxsw_rosbag_size_fields);
+var sxsw_rosbag_count_fields = layout([u32("count", COUNT)]);
+var sxsw_rosbag_count = sxLayout(0x602D005E, "rosbag_count", LE, sxsw_rosbag_count_fields);
+var sxsw_rosbag_ver_fields = layout([u32("version", ID)]);
+var sxsw_rosbag_ver = sxLayout(0x602D005F, "rosbag_ver", LE, sxsw_rosbag_ver_fields);
+var sxsw_rosbag_index_pos_fields = layout([u64("index_offset", OFFSET)]);
+var sxsw_rosbag_index_pos = sxLayout(0x602D0060, "rosbag_index_pos", LE, sxsw_rosbag_index_pos_fields);
+var sxsw_rosbag_chunk_pos_fields = layout([u64("chunk_offset", OFFSET)]);
+var sxsw_rosbag_chunk_pos = sxLayout(0x602D0061, "rosbag_chunk_pos", LE, sxsw_rosbag_chunk_pos_fields);
+var sxsw_rosbag_conn_count_fields = layout([u32("connection_count", COUNT)]);
+var sxsw_rosbag_conn_count = sxLayout(0x602D0062, "rosbag_conn_count", LE, sxsw_rosbag_conn_count_fields);
+var sxsw_rosbag_chunk_count_fields = layout([u32("chunk_count", COUNT)]);
+var sxsw_rosbag_chunk_count = sxLayout(0x602D0063, "rosbag_chunk_count", LE, sxsw_rosbag_chunk_count_fields);
+var sxsw_rosbag_time_fields = layout([u32("seconds", TIMESTAMP), u32("nanoseconds")]);
+var sxsw_rosbag_time = sxLayout(0x602D0064, "rosbag_time", LE, sxsw_rosbag_time_fields);
+var sxsw_rosbag_index_fields = layout([u32("seconds", TIMESTAMP), u32("nanoseconds"), u32("record_offset", OFFSET)]);
+var sxsw_rosbag_index = sxLayout(0x602D0065, "rosbag_index", LE, sxsw_rosbag_index_fields);
+var sxsw_rosbag_connection_count_fields = layout([u32("connection_id", ID), u32("message_count", COUNT)]);
+var sxsw_rosbag_connection_count = sxLayout(0x602D0066, "rosbag_connection_count", LE, sxsw_rosbag_connection_count_fields);
+function sxsw_rb_fields(c, at, end, op, count) {
+    for (var i = 0; at < end; i++) {
+        var n;
+        var b = [];
+        if (i >= 16 || at > end - 4 || (n = sx_u32(c, at, false)) === null || n > (end - at - 4 < 0 ? end - at - 4 + SX_U64_MAX : end - at - 4) || !sxsw_add(c, sxsw_rosbag_field_size, at, 4)) {
+            return false;
+        }
+        at += 4;
+        var key = 0;
+        for (; key < n && key < 64; key++) {
+            if (!sx_read_at(c, at + key, b, key, 1)) {
+                return false;
+            }
+            if (b[key] === 61 /*=*/) {
+                break;
+            }
+        }
+        if (!key || key >= n || key > 63) {
+            return false;
+        }
+        b[key] = 0;
+        var value = at + key + 1;
+        var size = (((n - key) >>> 0) - 1) >>> 0;
+        var l = null;
+        var expected = 4;
+        if (!sxStrcmp(b, "op")) {
+            l = sxsw_rosbag_op;
+            expected = 1;
+            var v = [0];
+            if (size === 1 && sx_read(c, value, v, 1)) {
+                op[0] = v[0];
+            }
+        } else if (!sxStrcmp(b, "conn")) {
+            l = sxsw_rosbag_conn;
+        } else if (!sxStrcmp(b, "size")) {
+            l = sxsw_rosbag_size;
+        } else if (!sxStrcmp(b, "count")) {
+            l = sxsw_rosbag_count;
+            if (size === 4 && (count[0] = sx_u32(c, value, false)) === null) {
+                return false;
+            }
+        } else if (!sxStrcmp(b, "ver")) {
+            l = sxsw_rosbag_ver;
+        } else if (!sxStrcmp(b, "conn_count")) {
+            l = sxsw_rosbag_conn_count;
+        } else if (!sxStrcmp(b, "chunk_count")) {
+            l = sxsw_rosbag_chunk_count;
+        } else if (!sxStrcmp(b, "index_pos")) {
+            l = sxsw_rosbag_index_pos;
+            expected = 8;
+        } else if (!sxStrcmp(b, "chunk_pos")) {
+            l = sxsw_rosbag_chunk_pos;
+            expected = 8;
+        } else if (!sxStrcmp(b, "time") || !sxStrcmp(b, "start_time") || !sxStrcmp(b, "end_time")) {
+            l = sxsw_rosbag_time;
+            expected = 8;
+        }
+        if (l !== null && size === expected && !sxsw_add(c, l, value, expected)) {
+            return false;
+        }
+        at += n;
+    }
+    return at === end;
+}
+function sxsw_rb_records(c, at, end, depth) {
+    if (depth > 2) {
+        return false;
+    }
+    for (var i = 0; at < end; i++) {
+        var n;
+        var bytes;
+        var count = [0];
+        var op = [0];
+        if (i >= 8192 || at > end - 4 || !sxsw_span(c, at, 4) || (n = sx_u32(c, at, false)) === null || n > 65536 || n > (end - at - 4 < 0 ? end - at - 4 + SX_U64_MAX : end - at - 4) || !sxsw_add(c, sxsw_rosbag_header_size, at, 4)) {
+            return false;
+        }
+        at += 4;
+        if (!sxsw_rb_fields(c, at, at + n, op, count)) {
+            return false;
+        }
+        at += n;
+        if (at > end - 4 || (bytes = sx_u32(c, at, false)) === null || bytes > (end - at - 4 < 0 ? end - at - 4 + SX_U64_MAX : end - at - 4) || !sxsw_add(c, sxsw_rosbag_data_size, at, 4)) {
+            return false;
+        }
+        at += 4;
+        if (op[0] === 5) {
+            if (!sxsw_rb_records(c, at, at + bytes, (depth + 1) >>> 0)) {
+                return false;
+            }
+        } else if (op[0] === 7) {
+            var unused_op = [0];
+            var unused_count = [0];
+            if (!sxsw_rb_fields(c, at, at + bytes, unused_op, unused_count)) {
+                return false;
+            }
+        } else if (op[0] === 4) {
+            if (count[0] > 4090 || count[0] * 12 !== bytes || !sxsw_table(c, sxsw_rosbag_index, at, 12, count[0])) {
+                return false;
+            }
+        } else if (op[0] === 6) {
+            if (count[0] > 128 || count[0] * 8 !== bytes || !sxsw_table(c, sxsw_rosbag_connection_count, at, 8, count[0])) {
+                return false;
+            }
+        }
+        at += bytes;
+    }
+    return at === end;
+}
+function sxsw_rosbag(c) {
+    return sxsw_add(c, sxsw_rosbag_signature, 0, 13) && sxsw_rb_records(c, 13, c.size, 0);
+}
+function sx_rosbag1_build(c) {
+    return sxsw_rosbag(c);
+}

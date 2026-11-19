@@ -1,0 +1,87 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_nextmusic.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_nextmusic");
+include("_sx_nextmusic_beham_digitrekker_dtm");
+include("_sx_nextmusic_braintracedesign_synthesis");
+include("_sx_nextmusic_clermonte_frededitor_final");
+include("_sx_nextmusic_clermonte_frededitor_project");
+include("_sx_nextmusic_fujitsu_euphony_eup");
+include("_sx_nextmusic_gehrmann_soundcontrol_sct");
+include("_sx_nextmusic_giesen_musicasm");
+include("_sx_nextmusic_greatvalleyprod_digitalsoundstudio");
+include("_sx_nextmusic_jch_edlibtracker_raw");
+include("_sx_nextmusic_kleps_actionamicssoundtool");
+include("_sx_nextmusic_maxon_facethemusic");
+include("_sx_nextmusic_meyrignac_pumatracker");
+include("_sx_nextmusic_musiclineeditor");
+include("_sx_nextmusic_partl_voodoosupremesynthesizer");
+include("_sx_nextmusic_reiniervanvliet_sidmon1");
+include("_sx_nextmusic_urwani_soundfactory_psf");
+include("_sx_nextmusic_wilenius_fmkingtracker");
+
+function fileTypes() { return ["DIE_MUSIC_KLEPS_ACTIONAMICSSOUNDTOOL", "DIE_MUSIC_GREATVALLEYPROD_DIGITALSOUNDSTUDIO",
+    "DIE_MUSIC_BEHAM_DIGITREKKER_DTM", "DIE_MUSIC_FUJITSU_EUPHONY_EUP", "DIE_MUSIC_WILENIUS_FMKINGTRACKER",
+    "DIE_MUSIC_CLERMONTE_FREDEDITOR_PROJECT", "DIE_MUSIC_MAXON_FACETHEMUSIC", "DIE_MUSIC_GIESEN_MUSICASM",
+    "DIE_MUSIC_MUSICLINEEDITOR", "DIE_MUSIC_BRAINTRACEDESIGN_SYNTHESIS", "DIE_MUSIC_PARTL_VOODOOSUPREMESYNTHESIZER",
+    "DIE_MUSIC_JCH_EDLIBTRACKER_RAW", "DIE_MUSIC_REINIERVANVLIET_SIDMON1", "DIE_MUSIC_MEYRIGNAC_PUMATRACKER",
+    "DIE_MUSIC_GEHRMANN_SOUNDCONTROL_SCT", "DIE_MUSIC_URWANI_SOUNDFACTORY_PSF", "DIE_MUSIC_CLERMONTE_FREDEDITOR_FINAL"]; }
+
+var sx_nextmusic_layouts = [sxnextm_text, sxnextm_u8, sxnextm_i8, sxnextm_count16, sxnextm_offset16, sxnextm_bytes32,
+    sxnextm_track16, sxnextm_order8, sxnextm_chunk_le, sxnextm_chunk_be, sxnextm_ast_header, sxnextm_ast_banner,
+    sxnextm_ast_module_size, sxnextm_ast_instrument, sxnextm_ast_subsong, sxnextm_ast_sample, sxnextm_dss_header,
+    sxnextm_dss_sample, sxnextm_dss_event, sxnextm_fred_header, sxnextm_fred_track_length, sxnextm_fred_instrument,
+    sxnextm_fred_sample, sxnextm_fred_end, sxnextm_dtm_info, sxnextm_dtm_speed, sxnextm_dtm_pan, sxnextm_dtm_sample,
+    sxnextm_dtm_rows, sxnextm_dtm_pitch, sxnextm_dtm_instrument, sxnextm_dtm_volume, sxnextm_dtm_effect,
+    sxnextm_dtm_argument_high, sxnextm_dtm_argument_low, sxnextm_ftm_header, sxnextm_ftm_sample, sxnextm_ftm_script_header,
+    sxnextm_ftm_script_event, sxnextm_eup_header, sxnextm_eup_track_name, sxnextm_eup_short_name, sxnextm_eup_mute,
+    sxnextm_eup_port, sxnextm_eup_channel, sxnextm_eup_key_bias, sxnextm_eup_transpose, sxnextm_eup_filter,
+    sxnextm_eup_instrument_name, sxnextm_eup_bank_names, sxnextm_eup_application, sxnextm_eup_event_header, sxnextm_syn_header,
+    sxnextm_syn_sample_name, sxnextm_syn_instrument, sxnextm_syn_subsong, sxnextm_syn_position, sxnextm_syn_event,
+    sxnextm_d00_header, sxnextm_offset16le, sxnextm_offset32le, sxnextm_offset32be, sxnextm_d00_end, sxnextm_d00_tracks,
+    sxnextm_d00_speed, sxnextm_fmk_header, sxnextm_fmk_track_setting, sxnextm_fmk_instrument, sxnextm_fmk_pattern,
+    sxnextm_fmk_control, sxnextm_fmk_note, sxnextm_fmk_volume, sxnextm_fmk_effect, sxnextm_sct_header, sxnextm_sct_track,
+    sxnextm_sct_position, sxnextm_sct_instrument, sxnextm_sct_command, sxnextm_sct_sample, sxnextm_psf_header,
+    sxnextm_psf_channels, sxnextm_vss_footer, sxnextm_vss_song_offset, sxnextm_vss_data_offset, sxnextm_mle_magic,
+    sxnextm_mle_tune, sxnextm_mle_sequence, sxnextm_mle_index, sxnextm_mle_part_control, sxnextm_mle_part_note,
+    sxnextm_mle_effect, sxnextm_mle_arpeggio, sxnextm_mle_sample, sxnextm_mle_instrument, sxnextm_puma_header,
+    sxnextm_puma_position, sxnextm_puma_marker, sxnextm_puma_event, sxnextm_puma_command, sxnextm_ma_relative32,
+    sxnextm_ma_track_offset, sxnextm_ma_subsong, sxnextm_ma_position, sxnextm_ma_speed, sxnextm_ma_instrument,
+    sxnextm_ma_sample, sxnextm_fred_final_header, sxnextm_fred_final_subsong, sxnextm_fred_final_position,
+    sxnextm_fred_final_control, sxnextm_fred_final_instrument, sxnextm_sid1_base_offset, sxnextm_sid1_song,
+    sxnextm_sid1_sequence, sxnextm_mle_tune_chunk];
+
+function structs() {
+    return sxCatalog([sxnextm_text, sxnextm_u8, sxnextm_i8, sxnextm_count16, sxnextm_offset16, sxnextm_bytes32, sxnextm_track16,
+        sxnextm_order8, sxnextm_chunk_le, sxnextm_chunk_be, sxnextm_ast_header, sxnextm_ast_banner, sxnextm_ast_module_size,
+        sxnextm_ast_instrument, sxnextm_ast_subsong, sxnextm_ast_sample, sxnextm_dss_header, sxnextm_dss_sample,
+        sxnextm_dss_event, sxnextm_fred_header, sxnextm_fred_track_length, sxnextm_fred_instrument, sxnextm_fred_sample,
+        sxnextm_fred_end, sxnextm_dtm_info, sxnextm_dtm_speed, sxnextm_dtm_pan, sxnextm_dtm_sample, sxnextm_dtm_rows,
+        sxnextm_dtm_pitch, sxnextm_dtm_instrument, sxnextm_dtm_volume, sxnextm_dtm_effect, sxnextm_dtm_argument_high,
+        sxnextm_dtm_argument_low, sxnextm_ftm_header, sxnextm_ftm_sample, sxnextm_ftm_script_header, sxnextm_ftm_script_event,
+        sxnextm_eup_header, sxnextm_eup_track_name, sxnextm_eup_short_name, sxnextm_eup_mute, sxnextm_eup_port,
+        sxnextm_eup_channel, sxnextm_eup_key_bias, sxnextm_eup_transpose, sxnextm_eup_filter, sxnextm_eup_instrument_name,
+        sxnextm_eup_bank_names, sxnextm_eup_application, sxnextm_eup_event_header, sxnextm_syn_header, sxnextm_syn_sample_name,
+        sxnextm_syn_instrument, sxnextm_syn_subsong, sxnextm_syn_position, sxnextm_syn_event, sxnextm_d00_header,
+        sxnextm_offset16le, sxnextm_offset32le, sxnextm_offset32be, sxnextm_d00_end, sxnextm_d00_tracks, sxnextm_d00_speed,
+        sxnextm_fmk_header, sxnextm_fmk_track_setting, sxnextm_fmk_instrument, sxnextm_fmk_pattern, sxnextm_fmk_control,
+        sxnextm_fmk_note, sxnextm_fmk_volume, sxnextm_fmk_effect, sxnextm_sct_header, sxnextm_sct_track, sxnextm_sct_position,
+        sxnextm_sct_instrument, sxnextm_sct_command, sxnextm_sct_sample, sxnextm_psf_header, sxnextm_psf_channels,
+        sxnextm_vss_footer, sxnextm_vss_song_offset, sxnextm_vss_data_offset, sxnextm_mle_magic, sxnextm_mle_tune,
+        sxnextm_mle_sequence, sxnextm_mle_index, sxnextm_mle_part_control, sxnextm_mle_part_note, sxnextm_mle_effect,
+        sxnextm_mle_arpeggio, sxnextm_mle_sample, sxnextm_mle_instrument, sxnextm_puma_header, sxnextm_puma_position,
+        sxnextm_puma_marker, sxnextm_puma_event, sxnextm_puma_command, sxnextm_ma_relative32, sxnextm_ma_track_offset,
+        sxnextm_ma_subsong, sxnextm_ma_position, sxnextm_ma_speed, sxnextm_ma_instrument, sxnextm_ma_sample,
+        sxnextm_fred_final_header, sxnextm_fred_final_subsong, sxnextm_fred_final_position, sxnextm_fred_final_control,
+        sxnextm_fred_final_instrument, sxnextm_sid1_base_offset, sxnextm_sid1_song, sxnextm_sid1_sequence,
+        sxnextm_mle_tune_chunk], sx_nextmusic_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_nextmusic_build, false);
+}

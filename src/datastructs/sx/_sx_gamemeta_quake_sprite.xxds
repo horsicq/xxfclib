@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/quake_sprite/xx_quake_sprite_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_quake_sprite_header_fields = layout([chars("signature", 4, SIGNATURE), i32("version", ID), i32("sprite_type", ID),
+    field("bounding_radius", "float32", 4), i32("width", COUNT), i32("height", COUNT), i32("frame_count", COUNT),
+    field("beam_length", "float32", 4), i32("sync_type", ID)]);
+var sxgm_quake_sprite_header = sxLayout(0x6027005A, "quake_sprite_header", LE, sxgm_quake_sprite_header_fields);
+var sxgm_quake_group_count_fields = layout([i32("frame_count", COUNT)]);
+var sxgm_quake_group_count = sxLayout(0x6027005C, "quake_group_count", LE, sxgm_quake_group_count_fields);
+var sxgm_quake_interval_fields = layout([field("interval", "float32", 4)]);
+var sxgm_quake_interval = sxLayout(0x6027005D, "quake_interval", LE, sxgm_quake_interval_fields);
+var sxgm_quake_sprite_frame_fields = layout([i32("origin_x"), i32("origin_y"), i32("width", COUNT), i32("height", COUNT)]);
+var sxgm_quake_sprite_frame = sxLayout(0x6027005E, "quake_sprite_frame", LE, sxgm_quake_sprite_frame_fields);
+function sxgm_sprite(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 36) || !sxgm_add(c, sxgm_quake_sprite_header, 0)) {
+        return false;
+    }
+    var n = sxgm32(b, 24, false);
+    var p = 36;
+    if (n > 20000) {
+        return true;
+    }
+    for (var i = 0; i < n && c.count < 20000; i++) {
+        var kind = [0];
+        var frames = [1];
+        if (!sxgm_word(c, p, 4, false, kind) || kind[0] > 1) {
+            break;
+        }
+        if (!sxgm_add(c, sxgm_quake_frame_type, p)) {
+            return false;
+        }
+        p += 4;
+        if (kind[0]) {
+            if (!sxgm_word(c, p, 4, false, frames) || !frames[0] || frames[0] > 20000 || !sxgm_span(c, p + 4, frames[0] * 4)) {
+                break;
+            }
+            if (!sxgm_add(c, sxgm_quake_group_count, p) || !sxgm_table(c, sxgm_quake_interval, p + 4, frames[0])) {
+                return false;
+            }
+            p += 4 + frames[0] * 4;
+        }
+        for (var j = 0; j < frames[0]; j++) {
+            if (!sxgm_read(c, p, b, 16)) {
+                return true;
+            }
+            var w = sxgm32(b, 8, false);
+            var h = sxgm32(b, 12, false);
+            if (!w || !h || w > 16384 || h > 16384 || !sxgm_span(c, p + 16, w * h)) {
+                return true;
+            }
+            if (!sxgm_add(c, sxgm_quake_sprite_frame, p)) {
+                return false;
+            }
+            p += 16 + w * h;
+        }
+    }
+    return true;
+}
+function sx_quake_sprite_build(c) {
+    return sxgm_sprite(c);
+}

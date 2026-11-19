@@ -1,0 +1,891 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_chipmusic.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_ay_amadeus_header_fields = layout([chars("signature", 8, SIGNATURE), u8("file_version", ID),
+    u8("player_version", ID), i16("special_player_delta", OFFSET), i16("author_delta", OFFSET), i16("comment_delta", OFFSET),
+    u8("last_song_index"), u8("first_song_index"), i16("songs_delta", OFFSET)]);
+var sxchip_chip_ay_amadeus_header = sxLayout(0x608F0004, "chip_ay_amadeus_header", BE, sxchip_chip_ay_amadeus_header_fields);
+var sxchip_chip_ay_song_fields = layout([i16("name_delta", OFFSET), i16("data_delta", OFFSET)]);
+var sxchip_chip_ay_song = sxLayout(0x608F0005, "chip_ay_song", BE, sxchip_chip_ay_song_fields);
+var sxchip_chip_stf_noise_fields = layout([u8("noise_masks", FLAGS)]);
+var sxchip_chip_stf_noise = sxLayout(0x608F0008, "chip_stf_noise", LE, sxchip_chip_stf_noise_fields);
+var sxchip_chip_stf_tone_fields = layout([u16("tone_deviation_bits")]);
+var sxchip_chip_stf_tone = sxLayout(0x608F0009, "chip_stf_tone", LE, sxchip_chip_stf_tone_fields);
+var sxchip_chip_stf_sample_loop_fields = layout([u8("loop_start"), u8("loop_length", COUNT)]);
+var sxchip_chip_stf_sample_loop = sxLayout(0x608F000A, "chip_stf_sample_loop", LE, sxchip_chip_stf_sample_loop_fields);
+var sxchip_chip_stf_positions_end_fields = layout([u8("last_position_index")]);
+var sxchip_chip_stf_positions_end = sxLayout(0x608F000C, "chip_stf_positions_end", LE, sxchip_chip_stf_positions_end_fields);
+var sxchip_chip_stf_ornament_fields = layout([u8("loop_index"), u8("last_line_index")]);
+var sxchip_chip_stf_ornament = sxLayout(0x608F000D, "chip_stf_ornament", LE, sxchip_chip_stf_ornament_fields);
+var sxchip_chip_note_step_fields = layout([i8("note_delta")]);
+var sxchip_chip_note_step = sxLayout(0x608F000E, "chip_note_step", LE, sxchip_chip_note_step_fields);
+var sxchip_chip_stf_event_fields = layout([u8("note"), u8("instrument_command", FLAGS), u8("parameter")]);
+var sxchip_chip_stf_event = sxLayout(0x608F0012, "chip_stf_event", LE, sxchip_chip_stf_event_fields);
+var sxchip_chip_sqt_header_fields = layout([u16("declared_size", SIZE), u16("samples_reference", VA),
+    u16("ornaments_reference", VA), u16("patterns_reference", VA), u16("positions_reference", VA), u16("loop_reference", VA)]);
+var sxchip_chip_sqt_header = sxLayout(0x608F0013, "chip_sqt_header", LE, sxchip_chip_sqt_header_fields);
+var sxchip_chip_sqt_position_fields = layout([u8("channel_c_pattern_flags", FLAGS), u8("channel_c_transposition_level", FLAGS),
+    u8("channel_b_pattern_flags", FLAGS), u8("channel_b_transposition_level", FLAGS), u8("channel_a_pattern_flags", FLAGS),
+    u8("channel_a_transposition_level", FLAGS), u8("tempo")]);
+var sxchip_chip_sqt_position = sxLayout(0x608F0017, "chip_sqt_position", LE, sxchip_chip_sqt_position_fields);
+var sxchip_chip_sqt_sample_line_fields = layout([u8("volume_noise", FLAGS), u8("noise_masks_delta_high", FLAGS), u8("delta_low")]);
+var sxchip_chip_sqt_sample_line = sxLayout(0x608F0019, "chip_sqt_sample_line", LE, sxchip_chip_sqt_sample_line_fields);
+var sxchip_chip_ned20_dpcm_instrument_fields = layout([blob("register_map", 17)]);
+var sxchip_chip_ned20_dpcm_instrument = sxLayout(0x608F0021, "chip_ned20_dpcm_instrument", LE, sxchip_chip_ned20_dpcm_instrument_fields);
+var sxchip_chip_ned20_pattern_fields = layout([u16("pattern_offset_flags", FLAGS)]);
+var sxchip_chip_ned20_pattern = sxLayout(0x608F0023, "chip_ned20_pattern", LE, sxchip_chip_ned20_pattern_fields);
+var sxchip_chip_ned_sample_fields = layout([chars("name", 12, NONE), u32("sample_offset", OFFSET), u8("initial_amplitude"),
+    u8("loop_amplitude"), u8("encoded_length"), u8("encoded_loop_start"), u8("loop_flags", FLAGS)]);
+var sxchip_chip_ned_sample = sxLayout(0x608F0025, "chip_ned_sample", LE, sxchip_chip_ned_sample_fields);
+var sxchip_chip_amsdos_header_fields = layout([u8("user_number"), chars("file_name", 8, NONE), chars("extension", 3, NONE),
+    blob("zero_bytes", 4, RESERVED), u8("block_number"), u8("last_block_flag", FLAGS), u8("file_type", FLAGS),
+    u16("data_length", SIZE), u16("load_address", VA), u8("first_block_flag", FLAGS), u16("logical_length", SIZE),
+    u16("entry_address", VA), blob("unallocated", 36), field("real_length", "uint24", 3, SIZE), u16("checksum", CHECKSUM),
+    blob("undefined", 59)]);
+var sxchip_chip_amsdos_header = sxLayout(0x608F0026, "chip_amsdos_header", LE, sxchip_chip_amsdos_header_fields);
+var sxchip_chip_bsc128_volume_fields = layout([u8("volume_flags", FLAGS)]);
+var sxchip_chip_bsc128_volume = sxLayout(0x608F0027, "chip_bsc128_volume", LE, sxchip_chip_bsc128_volume_fields);
+var sxchip_chip_bsc128_noise_fields = layout([u8("noise_flags", FLAGS)]);
+var sxchip_chip_bsc128_noise = sxLayout(0x608F0028, "chip_bsc128_noise", LE, sxchip_chip_bsc128_noise_fields);
+var sxchip_chip_bsc128_tone_fields = layout([i16("tone_deviation")]);
+var sxchip_chip_bsc128_tone = sxLayout(0x608F0029, "chip_bsc128_tone", LE, sxchip_chip_bsc128_tone_fields);
+var sxchip_chip_bsc128_loop_fields = layout([u8("repeat_position_flags", FLAGS), u8("repeat_length_flags", FLAGS)]);
+var sxchip_chip_bsc128_loop = sxLayout(0x608F002A, "chip_bsc128_loop", LE, sxchip_chip_bsc128_loop_fields);
+var sxchip_chip_bsc128_settings_fields = layout([u8("tempo"), u8("loop_position"), u8("pattern_row_count", COUNT),
+    i8("song_transposition"), u8("position_count", COUNT)]);
+var sxchip_chip_bsc128_settings = sxLayout(0x608F002D, "chip_bsc128_settings", LE, sxchip_chip_bsc128_settings_fields);
+var sxchip_chip_bsc128_event_fields = layout([u8("note_octave", FLAGS), u8("instrument_effect", FLAGS), u8("effect_parameter")]);
+var sxchip_chip_bsc128_event = sxLayout(0x608F002E, "chip_bsc128_event", LE, sxchip_chip_bsc128_event_fields);
+var sxchip_chip_sks_header_fields = layout([chars("signature", 10, SIGNATURE), chars("author", 10, NONE),
+    chars("comment", 32, NONE), u8("sample_channel", ID), u8("loop_last_position"), u8("loop_first_position"),
+    i8("transposition"), u8("initial_speed"), u8("replay_frequency_code", ID), u8("last_position_index"), blob("unknown", 1)]);
+var sxchip_chip_sks_header = sxLayout(0x608F002F, "chip_sks_header", LE, sxchip_chip_sks_header_fields);
+var sxchip_chip_sks_position_fields = layout([u8("channel_a_track_low"), u8("channel_a_transpose_track_high", FLAGS),
+    u8("channel_b_track_low"), u8("channel_b_transpose_track_high", FLAGS), u8("channel_c_track_low"),
+    u8("channel_c_transpose_track_high", FLAGS), u8("last_row_index"), u8("special_track")]);
+var sxchip_chip_sks_position = sxLayout(0x608F0030, "chip_sks_position", LE, sxchip_chip_sks_position_fields);
+var sxchip_chip_sks_instrument_fields = layout([u16("instrument_number"), u16("record_size", SIZE),
+    u16("loop_relative_offset", OFFSET), u8("speed_modifier"), u8("retrigger_flag", FLAGS), u8("last_line_index"),
+    u8("loop_line_index"), u8("loop_flag", FLAGS), chars("name", 8, NONE)]);
+var sxchip_chip_sks_instrument = sxLayout(0x608F0032, "chip_sks_instrument", LE, sxchip_chip_sks_instrument_fields);
+var sxchip_chip_sks_special_fields = layout([u16("track_number"), u8("record_size", SIZE)]);
+var sxchip_chip_sks_special = sxLayout(0x608F0033, "chip_sks_special", LE, sxchip_chip_sks_special_fields);
+var sxchip_chip_sks_track_fields = layout([u16("track_number"), u16("record_size", SIZE)]);
+var sxchip_chip_sks_track = sxLayout(0x608F0034, "chip_sks_track", LE, sxchip_chip_sks_track_fields);
+var sxchip_chip_starkos_binary_header_fields = layout([chars("signature", 4, SIGNATURE), u16("load_address", VA),
+    u8("sample_channel", ID), u16("replay_frequency")]);
+var sxchip_chip_starkos_binary_header = sxLayout(0x608F0035, "chip_starkos_binary_header", LE, sxchip_chip_starkos_binary_header_fields);
+var sxchip_chip_atari_segment_fields = layout([u16("marker", ID), u16("load_address", VA), u16("inclusive_end_address", VA)]);
+var sxchip_chip_atari_segment = sxLayout(0x608F0036, "chip_atari_segment", LE, sxchip_chip_atari_segment_fields);
+var sxchip_chip_tmc_header_fields = layout([chars("title", 30, NONE), u8("tempo_minus_one"), u8("player_calls_per_frame", COUNT)]);
+var sxchip_chip_tmc_header = sxLayout(0x608F0037, "chip_tmc_header", LE, sxchip_chip_tmc_header_fields);
+var sxchip_chip_tm2_header_fields = layout([blob("identifier", 23, SIGNATURE), u16("memory_data_size", SIZE),
+    u8("output_mode", ID), u8("main_channels_1_4_chip", ID), u8("main_channels_5_8_chip", ID),
+    u8("extra_channels_1_4_chip", ID), u8("extra_channels_5_8_chip", ID), u8("tempo_minus_one"),
+    u8("player_calls_per_frame", COUNT)]);
+var sxchip_chip_tm2_header = sxLayout(0x608F0038, "chip_tm2_header", LE, sxchip_chip_tm2_header_fields);
+var sxchip_chip_tm2_title_fields = layout([chars("title_row_1", 32, NONE), chars("title_row_2", 32, NONE),
+    chars("title_row_3", 32, NONE)]);
+var sxchip_chip_tm2_title = sxLayout(0x608F0039, "chip_tm2_title", LE, sxchip_chip_tm2_title_fields);
+var sxchip_chip_address_low_fields = layout([u8("address_low")]);
+var sxchip_chip_address_low = sxLayout(0x608F003A, "chip_address_low", LE, sxchip_chip_address_low_fields);
+var sxchip_chip_address_high_fields = layout([u8("address_high")]);
+var sxchip_chip_address_high = sxLayout(0x608F003B, "chip_address_high", LE, sxchip_chip_address_high_fields);
+var sxchip_chip_tmc_position_fields = layout([u8("channel_8_transposition"), u8("channel_8_pattern"),
+    u8("channel_7_transposition"), u8("channel_7_pattern"), u8("channel_6_transposition"), u8("channel_6_pattern"),
+    u8("channel_5_transposition"), u8("channel_5_pattern"), u8("channel_4_transposition"), u8("channel_4_pattern"),
+    u8("channel_3_transposition"), u8("channel_3_pattern"), u8("channel_2_transposition"), u8("channel_2_pattern"),
+    u8("channel_1_transposition"), u8("channel_1_pattern")]);
+var sxchip_chip_tmc_position = sxLayout(0x608F003C, "chip_tmc_position", LE, sxchip_chip_tmc_position_fields);
+var sxchip_chip_tm2_position_fields = layout([u8("channel_8_transposition"), u8("channel_8_pattern"),
+    u8("channel_7_transposition"), u8("channel_7_pattern"), u8("channel_6_transposition"), u8("channel_6_pattern"),
+    u8("channel_5_transposition"), u8("channel_5_pattern"), u8("channel_4_transposition"), u8("channel_4_pattern"),
+    u8("channel_3_transposition"), u8("channel_3_pattern"), u8("channel_2_transposition"), u8("channel_2_pattern"),
+    u8("channel_1_transposition"), u8("channel_1_pattern"), u8("row_count_or_control")]);
+var sxchip_chip_tm2_position = sxLayout(0x608F003D, "chip_tm2_position", LE, sxchip_chip_tm2_position_fields);
+var sxchip_chip_tmc_envelope_fields = layout([u8("distortion_main_volume", FLAGS), u8("accent_extra_volume", FLAGS),
+    u8("accent_parameter")]);
+var sxchip_chip_tmc_envelope = sxLayout(0x608F003E, "chip_tmc_envelope", LE, sxchip_chip_tmc_envelope_fields);
+var sxchip_chip_tmc_arpeggio_fields = layout([u8("encoded_note_transposition")]);
+var sxchip_chip_tmc_arpeggio = sxLayout(0x608F003F, "chip_tmc_arpeggio", LE, sxchip_chip_tmc_arpeggio_fields);
+var sxchip_chip_tmc_parameters_fields = layout([u8("filter_tone"), u8("primary_audctl", FLAGS), u8("alternate_audctl", FLAGS),
+    u8("main_decay_ticks"), u8("extra_decay_ticks"), u8("effect_parameter", FLAGS), u8("effect_delay"),
+    u8("frequency_table_rate", FLAGS), u8("arpeggio_flags", FLAGS)]);
+var sxchip_chip_tmc_parameters = sxLayout(0x608F0040, "chip_tmc_parameters", LE, sxchip_chip_tmc_parameters_fields);
+var sxchip_chip_tm2_envelope_header_fields = layout([u8("envelope_byte_size", SIZE), u8("loop_byte_offset", OFFSET)]);
+var sxchip_chip_tm2_envelope_header = sxLayout(0x608F0041, "chip_tm2_envelope_header", LE, sxchip_chip_tm2_envelope_header_fields);
+var sxchip_chip_moon_signature_fields = layout([blob("magic", 4, SIGNATURE), u8("revision"), u8("mode", ID)]);
+var sxchip_chip_moon_signature = sxLayout(0x608F0042, "chip_moon_signature", LE, sxchip_chip_moon_signature_fields);
+var sxchip_chip_mbm_header_fields = layout([u8("song_last_position"), u16("identifier", ID),
+    bytes("audio_voice_registers", 144), bytes("audio_instrument_list", 16), bytes("music_instrument_volume_pairs", 32),
+    bytes("channel_chip_set", 10, FLAGS), u8("tempo"), u8("sustain"), chars("track_name", 41, NONE),
+    bytes("start_audio_instruments", 9), bytes("start_music_instruments", 9), bytes("original_instrument_registers", 48),
+    bytes("original_instrument_programs", 6), chars("sample_kit_name", 8, NONE), bytes("drum_setup_music_psg", 15),
+    bytes("drum_volumes_music", 3), field("drum_frequency_words", "uint16[9]", 18), blob("unused", 2), bytes("start_reverb", 9),
+    u8("loop_position")]);
+var sxchip_chip_mbm_header = sxLayout(0x608F0044, "chip_mbm_header", LE, sxchip_chip_mbm_header_fields);
+var sxchip_chip_mfm_header_fields = layout([u8("song_last_position"), u8("loop_position"), bytes("fm_2op_voice_registers", 264),
+    bytes("fm_4op_voice_registers", 264), bytes("fm_stereo", 18), bytes("stereo", 6), u8("tempo"), u8("hz_equalizer"),
+    u8("modulation_depth"), field("fm_detune", "int8[18]", 18), field("wave_detune", "int8[6]", 6),
+    u8("four_operator_channel_count", COUNT), field("modulation", "int8[48]", 48), bytes("fm_start_voices", 18),
+    bytes("start_waves", 6), bytes("wave_numbers", 32), bytes("wave_volumes", 32), chars("song_name", 50, NONE),
+    bytes("fm_voice_banks", 36), chars("wave_kit_name", 8, NONE)]);
+var sxchip_chip_mfm_header = sxLayout(0x608F0045, "chip_mfm_header", LE, sxchip_chip_mfm_header_fields);
+var sxchip_chip_mwm_header_fields = layout([u8("song_last_position"), u8("loop_position"), bytes("stereo", 24), u8("tempo"),
+    u8("base_frequency"), field("detune", "int8[24]", 24), field("modulation", "int8[48]", 48), bytes("start_waves", 24),
+    bytes("wave_numbers", 48), bytes("wave_volumes", 48), chars("song_name", 50, NONE), chars("wave_kit_name", 8, NONE)]);
+var sxchip_chip_mwm_header = sxLayout(0x608F0046, "chip_mwm_header", LE, sxchip_chip_mwm_header_fields);
+var sxchip_chip_moon_position_fields = layout([u8("pattern_index")]);
+var sxchip_chip_moon_position = sxLayout(0x608F0047, "chip_moon_position", LE, sxchip_chip_moon_position_fields);
+var sxchip_chip_mbm_pattern_pointer_fields = layout([u16("pattern_offset", OFFSET)]);
+var sxchip_chip_mbm_pattern_pointer = sxLayout(0x608F0048, "chip_mbm_pattern_pointer", LE, sxchip_chip_mbm_pattern_pointer_fields);
+var sxchip_chip_moon_segment_pointer_fields = layout([u16("segment_and_offset", ID)]);
+var sxchip_chip_moon_segment_pointer = sxLayout(0x608F0049, "chip_moon_segment_pointer", LE, sxchip_chip_moon_segment_pointer_fields);
+var sxchip_chip_moon_pattern_segment_fields = layout([u16("encoded_size", SIZE), u8("pattern_count", COUNT)]);
+var sxchip_chip_moon_pattern_segment = sxLayout(0x608F004A, "chip_moon_pattern_segment", LE, sxchip_chip_moon_pattern_segment_fields);
+var sxchip_chip_mwm_xlfo_fields = layout([blob("magic", 4, SIGNATURE), bytes("extra_lfo", 18)]);
+var sxchip_chip_mwm_xlfo = sxLayout(0x608F004B, "chip_mwm_xlfo", LE, sxchip_chip_mwm_xlfo_fields);
+var sxchip_chip_mwk_header_fields = layout([blob("magic", 4, SIGNATURE), u8("revision"), u8("mode", ID),
+    field("total_sample_size", "uint24", 3, SIZE), u8("wave_count", COUNT), bytes("own_tone_info", 64, FLAGS)]);
+var sxchip_chip_mwk_header = sxLayout(0x608F004C, "chip_mwk_header", LE, sxchip_chip_mwk_header_fields);
+var sxchip_chip_mwk_patch_fields = layout([u8("transpose"), u8("part0_next_patch_note"), u8("part0_tone"),
+    u8("part0_tone_note"), u8("part1_next_patch_note"), u8("part1_tone"), u8("part1_tone_note"), u8("part2_next_patch_note"),
+    u8("part2_tone"), u8("part2_tone_note"), u8("part3_next_patch_note"), u8("part3_tone"), u8("part3_tone_note"),
+    u8("part4_next_patch_note"), u8("part4_tone"), u8("part4_tone_note"), u8("part5_next_patch_note"), u8("part5_tone"),
+    u8("part5_tone_note"), u8("part6_next_patch_note"), u8("part6_tone"), u8("part6_tone_note"), u8("part7_next_patch_note"),
+    u8("part7_tone"), u8("part7_tone_note")]);
+var sxchip_chip_mwk_patch = sxLayout(0x608F004D, "chip_mwk_patch", LE, sxchip_chip_mwk_patch_fields);
+var sxchip_chip_mwk_ram_tone_fields = layout([blob("unused", 2), field("loop_address", "uint16be", 2, VA),
+    field("hardware_end", "uint16be", 2, ID), u8("lfo_vibrato", FLAGS), u8("attack_decay1", FLAGS),
+    u8("decay_level_decay2", FLAGS), u8("rate_correction_release", FLAGS), u8("amplitude_modulation", FLAGS),
+    u16("sample_length", SIZE)]);
+var sxchip_chip_mwk_ram_tone = sxLayout(0x608F004F, "chip_mwk_ram_tone", LE, sxchip_chip_mwk_ram_tone_fields);
+var sxchip_chip_mwk_rom_tone_fields = layout([blob("unused", 2), field("loop_address", "uint16be", 2, VA),
+    field("hardware_end", "uint16be", 2, ID), u8("lfo_vibrato", FLAGS), u8("attack_decay1", FLAGS),
+    u8("decay_level_decay2", FLAGS), u8("rate_correction_release", FLAGS), u8("amplitude_modulation", FLAGS),
+    u8("unused_rom_byte"), u8("rom_address_high", ID)]);
+var sxchip_chip_mwk_rom_tone = sxLayout(0x608F0050, "chip_mwk_rom_tone", LE, sxchip_chip_mwk_rom_tone_fields);
+var sxchip_chip_fac_footer_fields = layout([bytes("audio_voice_registers", 99), bytes("audio_instrument_list", 9),
+    bytes("music_original_registers", 8), bytes("music_instrument_volumes", 6), bytes("midi_drum_or_unused", 8),
+    u16("wait_frames"), chars("sample_kit_name", 8, NONE), u8("version"), u8("original_voice_number"), u8("user_id"),
+    blob("extension", 23), chars("title", 40, NONE), u8("sustain"), chars("composer", 40, NONE), u8("device", ID),
+    u8("last_track"), blob("extra", 7)]);
+var sxchip_chip_fac_footer = sxLayout(0x608F0052, "chip_fac_footer", LE, sxchip_chip_fac_footer_fields);
+var sxchip_chip_fac_pro_footer_fields = layout([bytes("audio_voice_registers", 99), bytes("audio_instrument_list", 9),
+    bytes("music_original_registers", 8), bytes("music_instrument_volumes", 6), bytes("midi_drum_or_unused", 8),
+    u16("wait_frames"), chars("sample_kit_name", 8, NONE), u8("version"), u8("original_voice_number"), u8("user_id"),
+    bytes("midi_register_numbers", 9), bytes("midi_channel_enable", 9, FLAGS), bytes("midi_transpose_packed", 5, FLAGS),
+    chars("title", 35, NONE), bytes("midi_velocity_first", 5), u8("sustain"), chars("composer", 35, NONE),
+    bytes("midi_velocity_last", 5), u8("device", ID), u8("last_track"), bytes("midi_drum_ids", 7)]);
+var sxchip_chip_fac_pro_footer = sxLayout(0x608F0053, "chip_fac_pro_footer", LE, sxchip_chip_fac_pro_footer_fields);
+var sxchip_chip_fac_row_fields = layout([u8("fm_channel_1", ID), u8("fm_channel_2", ID), u8("fm_channel_3", ID),
+    u8("fm_channel_4", ID), u8("fm_channel_5", ID), u8("fm_channel_6", ID), u8("fm_channel_7", ID), u8("fm_channel_8", ID),
+    u8("fm_channel_9", ID), u8("drum_frequency"), u8("drum_volume"), u8("drums_packed", FLAGS)]);
+var sxchip_chip_fac_row = sxLayout(0x608F0054, "chip_fac_row", LE, sxchip_chip_fac_row_fields);
+var sxchip_chip_1tracker_speed_fields = layout([field("speed", "ascii_signed", 0)]);
+var sxchip_chip_1tracker_speed = sxLayout(0x608F005A, "chip_1tracker_speed", LE, sxchip_chip_1tracker_speed_fields);
+var sxchip_chip_1tracker_loop_start_fields = layout([field("loop_start", "ascii_signed", 0)]);
+var sxchip_chip_1tracker_loop_start = sxLayout(0x608F005B, "chip_1tracker_loop_start", LE, sxchip_chip_1tracker_loop_start_fields);
+var sxchip_chip_1tracker_loop_end_fields = layout([field("loop_end", "ascii_signed", 0)]);
+var sxchip_chip_1tracker_loop_end = sxLayout(0x608F005C, "chip_1tracker_loop_end", LE, sxchip_chip_1tracker_loop_end_fields);
+var sxchip_chip_1tracker_pattern_format_fields = layout([field("pattern_format", "char", 0)]);
+var sxchip_chip_1tracker_pattern_format = sxLayout(0x608F005E, "chip_1tracker_pattern_format", LE, sxchip_chip_1tracker_pattern_format_fields);
+function sxchip_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxchip_read(c, p, b, n) {
+    return sxchip_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxchip16(b, b_o) {
+    return b[b_o] | b[b_o + 1] << 8;
+}
+function sxchip_u16(c, p, v) {
+    var b = [];
+    if (!sxchip_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxchip16(b, 0);
+    return true;
+}
+function sxchip_u8(c, p, v) {
+    return sxchip_read(c, p, v, 1);
+}
+function sxchip_eq(c, p, s, n) {
+    var b = [];
+    return n <= 64 && sxchip_read(c, p, b, n) && !sxMemcmp(b, s, n);
+}
+function sxchip_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+}
+function sxchip_put(c, l, p, count) {
+    var z = sxchip_width(l);
+    if (!count) {
+        return true;
+    }
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxchip_span(c, p, count * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    var end = p + count * z;
+    for (var i = 0; i < c.count; i++) {
+        var rel = c.items[i].offset - c.f.base_address;
+        var n = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (rel >= 0 && p < (rel < 0 ? rel + SX_U64_MAX : rel) + n && (rel < 0 ? rel + SX_U64_MAX : rel) < end) {
+            return true;
+        }
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxchip_opt(c, l, p, count) {
+    var z = sxchip_width(l);
+    return (!count || !z || count > Math.floor(SX_U64_MAX / z) || !sxchip_span(c, p, count * z) ? 1 : (sxchip_put(c, l, p, count) ? 1 : 0)) !== 0;
+}
+function sxchip_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxchip_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxchip_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxchip_order, true);
+    return !c.failed;
+}
+function sxchip_lines(c, l, p, count) {
+    return sxchip_opt(c, l, p, count);
+}
+function sxchip_tmc(c, v2) {
+    var x = [];
+    if (!sxchip_read(c, 0, x, 6) || sxchip16(x, 0) !== 65535) {
+        return false;
+    }
+    var load = sxchip16(x, 2);
+    var end = sxchip16(x, 4);
+    if (end < load) {
+        return false;
+    }
+    var limit = sxU64(end - load) + 7;
+    if (limit > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    var ins = v2 ? 128 : 64;
+    var pat = v2 ? 256 : 128;
+    var song = v2 ? 902 : 422;
+    if (limit < song) {
+        return false;
+    }
+    if (!sxchip_put(c, sxchip_chip_atari_segment, 0, 1) || !sxchip_put(c, v2 ? sxchip_chip_tm2_header : sxchip_chip_tmc_header, 6, 1)) {
+        return false;
+    }
+    if (v2 && !sxchip_put(c, sxchip_chip_tm2_title, 38, 1)) {
+        return false;
+    }
+    var il = v2 ? 134 : 38;
+    var ih = v2 ? 774 : 102;
+    var pl = v2 ? 262 : 166;
+    var ph = v2 ? 518 : 294;
+    if (!sxchip_put(c, sxchip_chip_address_low, il, ins) || !sxchip_put(c, sxchip_chip_address_high, ih, ins) || !sxchip_put(c, sxchip_chip_address_low, pl, pat) || !sxchip_put(c, sxchip_chip_address_high, ph, pat)) {
+        return false;
+    }
+    var boundary = limit;
+    var addresses = [];
+    for (var i = 0; i < ins; i++) {
+        var lo = [0];
+        var hi = [0];
+        if (!sxchip_u8(c, il + i, lo) || !sxchip_u8(c, ih + i, hi)) {
+            return false;
+        }
+        addresses[i] = lo[0] | hi[0] << 8;
+        if (addresses[i] >= load) {
+            var p = sxU64(addresses[i] - load) + 6;
+            if (p >= song && p < boundary) {
+                boundary = p;
+            }
+        }
+    }
+    for (i = 0; i < pat; i++) {
+        lo = [0];
+        hi = [0];
+        if (!sxchip_u8(c, pl + i, lo) || !sxchip_u8(c, ph + i, hi)) {
+            return false;
+        }
+        var a = lo[0] | hi[0] << 8;
+        if (a >= load) {
+            p = sxU64(a - load) + 6;
+            if (p >= song && p < boundary) {
+                boundary = p;
+            }
+        }
+    }
+    var stride = v2 ? 17 : 16;
+    var n = Math.floor(sxU64(boundary - song) / stride);
+    if (n > 4096) {
+        n = 4096;
+    }
+    if (!sxchip_put(c, v2 ? sxchip_chip_tm2_position : sxchip_chip_tmc_position, song, n)) {
+        return false;
+    }
+    for (i = 0; i < ins; i++) {
+        a = addresses[i];
+        if (!a || a < load) {
+            continue;
+        }
+        p = sxU64(a - load) + 6;
+        if (p < song || p >= limit) {
+            continue;
+        }
+        if (v2) {
+            var size = [0];
+            if (sxU64(limit - p) < 19 || !sxchip_u8(c, p + 8, size) || size[0] > sxU64(sxU64(limit - p) - 19)) {
+                continue;
+            }
+            if (!sxchip_put(c, sxchip_chip_tmc_arpeggio, p, 8) || !sxchip_put(c, sxchip_chip_tm2_envelope_header, p + 8, 1) || !sxchip_put(c, sxchip_chip_tmc_parameters, p + 10, 1) || !sxchip_put(c, sxchip_chip_tmc_envelope, p + 19, Math.floor(size[0] / 3))) {
+                return false;
+            }
+        } else {
+            if (sxU64(limit - p) < 80) {
+                continue;
+            }
+            if (!sxchip_put(c, sxchip_chip_tmc_envelope, p, 21) || !sxchip_put(c, sxchip_chip_tmc_arpeggio, p + 63, 8) || !sxchip_put(c, sxchip_chip_tmc_parameters, p + 71, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sxchip_moon(c, wave) {
+    var sig = [];
+    var h = [];
+    var orders = [];
+    if (!sxchip_read(c, 0, sig, 6) || sxMemcmp(sig, "MBMS\x10", 5)) {
+        return true;
+    }
+    var edit = wave ? sig[5] === 7 : sig[5] === 0;
+    var raw = !wave && sig[5] === 2;
+    if (!(edit || raw || (wave ? sig[5] === 8 : sig[5] === 1))) {
+        return true;
+    }
+    if (!sxchip_put(c, sxchip_chip_moon_signature, 0, 1)) {
+        return false;
+    }
+    var hp = 6 + (edit || raw ? 220 : 0);
+    var hs = wave ? 278 : 812;
+    if (!sxchip_read(c, hp, h, hs)) {
+        return true;
+    }
+    if (!sxchip_put(c, wave ? sxchip_chip_mwm_header : sxchip_chip_mfm_header, hp, 1)) {
+        return false;
+    }
+    var active = h[0] + 1;
+    var count = edit || raw ? 220 : active;
+    var op = edit || raw ? 6 : hp + hs;
+    var p = hp + hs + (edit || raw ? 0 : count);
+    if (count > 220 || active > count || !sxchip_read(c, op, orders, count)) {
+        return true;
+    }
+    if (!sxchip_put(c, sxchip_chip_moon_position, op, count)) {
+        return false;
+    }
+    if (raw) {
+        return true;
+    }
+    var high = 0;
+    for (var i = 0; i < active; i++) {
+        if (orders[i] > high) {
+            high = orders[i];
+        }
+    }
+    var pointers = !wave && edit ? 80 : (high + 1) >>> 0;
+    if (pointers > 80 || !sxchip_span(c, p, pointers * 2)) {
+        return true;
+    }
+    if (!sxchip_put(c, sxchip_chip_moon_segment_pointer, p, pointers)) {
+        return false;
+    }
+    p += pointers * 2;
+    for (var seg = 0; seg <= 3; seg++) {
+        var b = [];
+        if (!sxchip_read(c, p, b, 3)) {
+            return true;
+        }
+        if (!sxchip_put(c, sxchip_chip_moon_pattern_segment, p, 1)) {
+            return false;
+        }
+        p += 3;
+        if (!b[2] || seg === 3) {
+            break;
+        }
+        var z = sxchip16(b, 0);
+        if (!sxchip_span(c, p, z)) {
+            return true;
+        }
+        p += z;
+    }
+    if (wave && sxchip_eq(c, p, "XLFO", 4)) {
+        return sxchip_opt(c, sxchip_chip_mwm_xlfo, p, 1);
+    }
+    return true;
+}
+function sx_chipmusic_supports(type) {
+    switch (type) {
+    case "DIE_MUSIC_SHIRU_1TRACKER":
+    case "DIE_MUSIC_FUXOFT_AYLANGUAGE_FXM":
+    case "DIE_MUSIC_MOONBLASTER_FM":
+    case "DIE_MUSIC_MOONBLASTER_WAVE":
+    case "DIE_MUSIC_MOONBLASTER_WAVE_MWK":
+    case "DIE_MUSIC_MSX_FACSOUNDTRACKER_MUS":
+    case "DIE_MUSIC_BSC_AMSTRADCPC_SOUNDTRAKKER128K":
+    case "DIE_MUSIC_TARGHAN_STARKOS_SKS":
+    case "DIE_MUSIC_TARGHAN_STARKOS_BIN":
+    case "DIE_MUSIC_JASKIER_THETAMUSICCOMPOSER_TM2":
+    case "DIE_MUSIC_FUXOFT_AYAMADEUS":
+    case "DIE_MUSIC_SCHRIJVERS_MOONBLASTER_MBM":
+    case "DIE_MUSIC_KSA_SOUNDTRACKERPRO_STF_PROJECT_CO":
+    case "DIE_MUSIC_KOUDELKA_SCALEXQJETATRACKER":
+    case "DIE_MUSIC_JASKIER_THETAMUSICCOMPOSER_TMC":
+    case "DIE_MUSIC_NERDSRUS_NERDTRACKER2_NED":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_chipmusic_build(c) {
+    if (c === null || c.f === null || !sx_chipmusic_supports(c.f.file_type) || !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_SHIRU_1TRACKER":
+        ok = sx_shiru_1tracker_build(c);
+        break;
+    case "DIE_MUSIC_FUXOFT_AYLANGUAGE_FXM":
+        ok = sx_fuxoft_aylanguage_fxm_build(c);
+        break;
+    case "DIE_MUSIC_MOONBLASTER_FM":
+        ok = sx_moonblaster_fm_build(c);
+        break;
+    case "DIE_MUSIC_MOONBLASTER_WAVE":
+        ok = sx_moonblaster_wave_build(c);
+        break;
+    case "DIE_MUSIC_MOONBLASTER_WAVE_MWK":
+        ok = sx_moonblaster_wave_mwk_build(c);
+        break;
+    case "DIE_MUSIC_MSX_FACSOUNDTRACKER_MUS":
+        ok = sx_msx_facsoundtracker_mus_build(c);
+        break;
+    case "DIE_MUSIC_BSC_AMSTRADCPC_SOUNDTRAKKER128K":
+        ok = sx_bsc_amstradcpc_soundtrakker128k_build(c);
+        break;
+    case "DIE_MUSIC_TARGHAN_STARKOS_SKS":
+        ok = sx_targhan_starkos_sks_build(c);
+        break;
+    case "DIE_MUSIC_TARGHAN_STARKOS_BIN":
+        ok = sx_targhan_starkos_bin_build(c);
+        break;
+    case "DIE_MUSIC_JASKIER_THETAMUSICCOMPOSER_TM2":
+        ok = sx_jaskier_thetamusiccomposer_tm2_build(c);
+        break;
+    case "DIE_MUSIC_FUXOFT_AYAMADEUS":
+        ok = sx_fuxoft_ayamadeus_build(c);
+        break;
+    case "DIE_MUSIC_SCHRIJVERS_MOONBLASTER_MBM":
+        ok = sx_schrijvers_moonblaster_mbm_build(c);
+        break;
+    case "DIE_MUSIC_KSA_SOUNDTRACKERPRO_STF_PROJECT_CO":
+        ok = sx_ksa_soundtrackerpro_stf_project_co_build(c);
+        break;
+    case "DIE_MUSIC_KOUDELKA_SCALEXQJETATRACKER":
+        ok = sx_koudelka_scalexqjetatracker_build(c);
+        break;
+    case "DIE_MUSIC_JASKIER_THETAMUSICCOMPOSER_TMC":
+        ok = sx_jaskier_thetamusiccomposer_tmc_build(c);
+        break;
+    case "DIE_MUSIC_NERDSRUS_NERDTRACKER2_NED":
+        ok = sx_nerdsrus_nerdtracker2_ned_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && c.count > 0 && sxchip_finish(c);
+}
+function sx_chipmusic_comment(r, id) {
+    if (r === null || r.name === null || id < 0x608F0000 || id >= 0x60900000) {
+        return true;
+    }
+    if (id === sxchip_chip_ay_amadeus_header.id && r.name === "special_player_delta") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this field; zero can denote an absent optional reference.");
+    }
+    if (id === sxchip_chip_ay_amadeus_header.id && r.name === "author_delta") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this field; zero can denote an absent optional reference.");
+    }
+    if (id === sxchip_chip_ay_amadeus_header.id && r.name === "comment_delta") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this field; zero can denote an absent optional reference.");
+    }
+    if (id === sxchip_chip_ay_amadeus_header.id && r.name === "songs_delta") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this field; zero can denote an absent optional reference.");
+    }
+    if (id === sxchip_chip_ay_song.id && r.name === "name_delta") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this field.");
+    }
+    if (id === sxchip_chip_ay_song.id && r.name === "data_delta") {
+        return sxSetComment(r, "Signed byte displacement from the beginning of this field.");
+    }
+    if (id === sxchip_chip_ay_amadeus_header.id && r.name === "last_song_index") {
+        return sxSetComment(r, "Song table count minus one.");
+    }
+    if (id === sxchip_chip_stf_noise.id && r.name === "noise_masks") {
+        return sxSetComment(r, "Low5 bits are noise period; bits7/6 disable noise/tone; stored bit5 is retained.");
+    }
+    if (id === sxchip_chip_stf_tone.id && r.name === "tone_deviation_bits") {
+        return sxSetComment(r, "Low12 bits are magnitude; bit12 encodes the sign. This is not two-complement signed16.");
+    }
+    if (id === sxchip_chip_stf_sample_loop.id && r.name === "loop_start") {
+        return sxSetComment(r, "One-based sample-loop start; zero disables the loop.");
+    }
+    if (id === sxchip_chip_stf_positions_end.id && r.name === "last_position_index") {
+        return sxSetComment(r, "Number of active entries minus one within the fixed256-entry position table.");
+    }
+    if (id === sxchip_chip_stf_ornament.id && r.name === "last_line_index") {
+        return sxSetComment(r, "Inclusive last active line within the30-byte signed-step plane.");
+    }
+    if (id === sxchip_chip_stf_event.id && r.name === "instrument_command") {
+        return sxSetComment(r, "High nibble selects the instrument; low nibble holds the effect command. Stored values are not converted.");
+    }
+    if (id === sxchip_chip_sqt_header.id && r.name === "samples_reference") {
+        return sxSetComment(r, "Stored target-memory reference. File offset is reference-(samples_reference-10); pointer tables are one-based.");
+    }
+    if (id === sxchip_chip_sqt_header.id && r.name === "ornaments_reference") {
+        return sxSetComment(r, "Stored target-memory reference. File offset is reference-(samples_reference-10); pointer tables are one-based.");
+    }
+    if (id === sxchip_chip_sqt_header.id && r.name === "patterns_reference") {
+        return sxSetComment(r, "Stored target-memory reference. File offset is reference-(samples_reference-10); pointer tables are one-based.");
+    }
+    if (id === sxchip_chip_sqt_header.id && r.name === "positions_reference") {
+        return sxSetComment(r, "Stored target-memory reference. File offset is reference-(samples_reference-10); pointer tables are one-based.");
+    }
+    if (id === sxchip_chip_sqt_header.id && r.name === "loop_reference") {
+        return sxSetComment(r, "Stored target-memory reference. File offset is reference-(samples_reference-10); pointer tables are one-based.");
+    }
+    if (id === sxchip_chip_sqt_position.id && r.name === "channel_a_pattern_flags") {
+        return sxSetComment(r, "Low7 bits are a one-based pattern index; bit7 enables effects; zero pattern ends the position list.");
+    }
+    if (id === sxchip_chip_sqt_position.id && r.name === "channel_a_transposition_level") {
+        return sxSetComment(r, "Low nibble is attenuation; high nibble encodes signed transposition (0..8, then -1..-7).");
+    }
+    if (id === sxchip_chip_sqt_position.id && r.name === "channel_b_pattern_flags") {
+        return sxSetComment(r, "Low7 bits are a one-based pattern index; bit7 enables effects; zero pattern ends the position list.");
+    }
+    if (id === sxchip_chip_sqt_position.id && r.name === "channel_b_transposition_level") {
+        return sxSetComment(r, "Low nibble is attenuation; high nibble encodes signed transposition (0..8, then -1..-7).");
+    }
+    if (id === sxchip_chip_sqt_position.id && r.name === "channel_c_pattern_flags") {
+        return sxSetComment(r, "Low7 bits are a one-based pattern index; bit7 enables effects; zero pattern ends the position list.");
+    }
+    if (id === sxchip_chip_sqt_position.id && r.name === "channel_c_transposition_level") {
+        return sxSetComment(r, "Low nibble is attenuation; high nibble encodes signed transposition (0..8, then -1..-7).");
+    }
+    if (id === sxchip_chip_sqt_sample_line.id && r.name === "noise_masks_delta_high") {
+        return sxSetComment(r, "Bit7 is noise bit0; bits6/5 enable tone/noise; bit4 selects positive deviation; low4 bits are deviation magnitude bits8..11.");
+    }
+    if (id === sxchip_chip_ned20_dpcm_instrument.id && r.name === "register_map") {
+        return sxSetComment(r, "Stored17-byte packed DPCM register/note mapping; not PCM data.");
+    }
+    if (id === sxchip_chip_ned20_pattern.id && r.name === "pattern_offset_flags") {
+        return sxSetComment(r, "Low15 bits are a byte offset: version0x20 uses InfoHeader.header_size as origin; version0x21 uses the sequence-data header after the NTSC sample chunk. Bit15 is masked by the retained loader; zero denotes an absent pattern.");
+    }
+    if (id === sxchip_chip_ned_sample.id && r.name === "sample_offset") {
+        return sxSetComment(r, "Byte offset in the following NTSC sample-data block;0xFFFFFFFF denotes no sample.");
+    }
+    if (id === sxchip_chip_ned_sample.id && r.name === "encoded_length") {
+        return sxSetComment(r, "NES DPCM length-register encoding; decoded byte length is16*value+1.");
+    }
+    if (id === sxchip_chip_ned_sample.id && r.name === "encoded_loop_start") {
+        return sxSetComment(r, "Stored loop-start unit consumed by the DPCM player; retained without an unsupported byte-coordinate conversion.");
+    }
+    if (id === sxchip_chip_amsdos_header.id && r.name === "checksum") {
+        return sxSetComment(r, "16-bit unsigned sum of physical bytes0..66. Native music recognition may retain files with a bad checksum.");
+    }
+    if (id === sxchip_chip_amsdos_header.id && r.name === "file_type") {
+        return sxSetComment(r, "Bit0 protection; bits1..3 contents (0 BASIC,1 binary,2 screen,3 ASCII); high nibble version.");
+    }
+    if (id === sxchip_chip_bsc128_volume.id && r.name === "volume_flags") {
+        return sxSetComment(r, "Bit7 marks an inactive volume step; low4 bits are volume.");
+    }
+    if (id === sxchip_chip_bsc128_noise.id && r.name === "noise_flags") {
+        return sxSetComment(r, "Bit7 marks an inactive step; low5 bits are noise period.");
+    }
+    if (id === sxchip_chip_bsc128_tone.id && r.name === "tone_deviation") {
+        return sxSetComment(r, "Signed AY tone-period deviation; no frequency-Hz conversion.");
+    }
+    if (id === sxchip_chip_bsc128_loop.id && r.name === "repeat_position_flags") {
+        return sxSetComment(r, "Low5 bits select repeat position; bits7/6 are stored volume/frequency mode flags.");
+    }
+    if (id === sxchip_chip_bsc128_loop.id && r.name === "repeat_length_flags") {
+        return sxSetComment(r, "Low5 bits hold repeat length; other stored bits are retained.");
+    }
+    if (id === sxchip_chip_bsc128_settings.id && r.name === "tempo") {
+        return sxSetComment(r, "50Hz player ticks per pattern row.");
+    }
+    if (id === sxchip_chip_bsc128_event.id && r.name === "note_octave") {
+        return sxSetComment(r, "High nibble is note code; low nibble is octave+1;0xD0 resets the channel.");
+    }
+    if (id === sxchip_chip_bsc128_event.id && r.name === "instrument_effect") {
+        return sxSetComment(r, "High nibble selects instrument; low nibble is an effect opcode.");
+    }
+    if (id === sxchip_chip_sks_header.id && r.name === "last_position_index") {
+        return sxSetComment(r, "Number of eight-byte position entries minus one. The following byte is unspecified by the retained reversing notes; nonzero variants are left raw after the header.");
+    }
+    if (id === sxchip_chip_sks_header.id && r.name === "replay_frequency_code") {
+        return sxSetComment(r, "0=13Hz,1=25Hz,2=50Hz,3=100Hz,4=150Hz,5=300Hz.");
+    }
+    if (id === sxchip_chip_sks_position.id && r.name === "channel_a_transpose_track_high") {
+        return sxSetComment(r, "Bit0 is pattern-number bit8; upper7 bits encode signed transposition.");
+    }
+    if (id === sxchip_chip_sks_position.id && r.name === "channel_b_transpose_track_high") {
+        return sxSetComment(r, "Bit0 is pattern-number bit8; upper7 bits encode signed transposition.");
+    }
+    if (id === sxchip_chip_sks_position.id && r.name === "channel_c_transpose_track_high") {
+        return sxSetComment(r, "Bit0 is pattern-number bit8; upper7 bits encode signed transposition.");
+    }
+    if (id === sxchip_chip_sks_position.id && r.name === "last_row_index") {
+        return sxSetComment(r, "Number of pattern rows minus one.");
+    }
+    if (id === sxchip_chip_sks_instrument.id && r.name === "record_size") {
+        return sxSetComment(r, "Byte length begins at the record_size field, excluding the preceding instrument number.");
+    }
+    if (id === sxchip_chip_sks_instrument.id && r.name === "loop_relative_offset") {
+        return sxSetComment(r, "Stored relative loop reference from the instrument representation; no file-absolute conversion is applied.");
+    }
+    if (id === sxchip_chip_sks_instrument.id && r.name === "last_line_index") {
+        return sxSetComment(r, "Number of instrument lines minus one. Packed line commands remain raw.");
+    }
+    if (id === sxchip_chip_sks_special.id && r.name === "record_size") {
+        return sxSetComment(r, "Byte length starts at this size field and excludes the preceding two-byte track number.");
+    }
+    if (id === sxchip_chip_sks_track.id && r.name === "record_size") {
+        return sxSetComment(r, "Byte length starts at this size field and excludes the preceding two-byte track number.");
+    }
+    if (id === sxchip_chip_starkos_binary_header.id && r.name === "replay_frequency") {
+        return sxSetComment(r, "Player calls per second (13,25,50,100,150 or300Hz).");
+    }
+    if (id === sxchip_chip_atari_segment.id && r.name === "inclusive_end_address") {
+        return sxSetComment(r, "Inclusive target-memory end address; stored payload length is end-load+1.");
+    }
+    if (id === sxchip_chip_tmc_header.id && r.name === "tempo_minus_one") {
+        return sxSetComment(r, "Maintained ASAP player uses stored value+1 frame ticks per pattern row.");
+    }
+    if (id === sxchip_chip_tm2_header.id && r.name === "tempo_minus_one") {
+        return sxSetComment(r, "Maintained ASAP player uses stored value+1 player calls per pattern row.");
+    }
+    if (id === sxchip_chip_tm2_header.id && r.name === "output_mode") {
+        return sxSetComment(r, "0 mono;1..63 stereo;64..127 RMT stereo;128..255 quadro.");
+    }
+    if (id === sxchip_chip_tm2_title.id && r.name === "title_row_1") {
+        return sxSetComment(r, "Stored ATASCII row, including the first/last side-frame bytes; bytes are preserved without transcoding.");
+    }
+    if (id === sxchip_chip_tm2_title.id && r.name === "title_row_2") {
+        return sxSetComment(r, "Stored ATASCII row, including the first/last side-frame bytes; bytes are preserved without transcoding.");
+    }
+    if (id === sxchip_chip_tm2_title.id && r.name === "title_row_3") {
+        return sxSetComment(r, "Stored ATASCII row, including the first/last side-frame bytes; bytes are preserved without transcoding.");
+    }
+    if (id === sxchip_chip_address_low.id && r.name === "address_low") {
+        return sxSetComment(r, "Low8 bits of a split target-memory address; the corresponding high-byte plane is separate.");
+    }
+    if (id === sxchip_chip_address_high.id && r.name === "address_high") {
+        return sxSetComment(r, "High8 bits of a split target-memory address; this component is not a complete address.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_8_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_7_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_6_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_5_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_4_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_3_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_2_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_1_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_8_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_7_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_6_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_5_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_4_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_3_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_2_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "channel_1_transposition") {
+        return sxSetComment(r, "Encoded note transposition byte consumed in target-player arithmetic; stored value is retained.");
+    }
+    if (id === sxchip_chip_tmc_position.id && r.name === "channel_1_pattern") {
+        return sxSetComment(r, "High bit denotes a song-control/end position; an all-FF row is the normal terminator.");
+    }
+    if (id === sxchip_chip_tm2_position.id && r.name === "row_count_or_control") {
+        return sxSetComment(r, "1..64 pattern rows;0 ends song;128..255 jumps using the preceding channel1 pattern byte as target index.");
+    }
+    if (id === sxchip_chip_tmc_parameters.id && r.name === "frequency_table_rate") {
+        return sxSetComment(r, "High2 bits select frequency table; low6 bits encode effect-update interval minus one.");
+    }
+    if (id === sxchip_chip_tmc_parameters.id && r.name === "arpeggio_flags") {
+        return sxSetComment(r, "Low4 bits encode step interval minus one; bits4..6 encode arpeggio last index; bit7 enables a forward/backward cycle.");
+    }
+    if (id === sxchip_chip_tm2_envelope_header.id && r.name === "loop_byte_offset") {
+        return sxSetComment(r, "Byte offset into the following three-byte envelope-step data, not a step index.");
+    }
+    if (id === sxchip_chip_tmc_envelope.id && r.name === "distortion_main_volume") {
+        return sxSetComment(r, "High nibble is POKEY distortion; low nibble is main envelope volume.");
+    }
+    if (id === sxchip_chip_tmc_envelope.id && r.name === "accent_extra_volume") {
+        return sxSetComment(r, "High nibble selects accent/AUDCTL behavior; low nibble is extra envelope volume.");
+    }
+    if (id === sxchip_chip_mbm_header.id && r.name === "song_last_position") {
+        return sxSetComment(r, "Inclusive last position index; playback uses this stored value plus one positions.");
+    }
+    if (id === sxchip_chip_mbm_header.id && r.name === "tempo") {
+        return sxSetComment(r, "Stored player timing/control value; not an asserted beats-per-minute value.");
+    }
+    if (id === sxchip_chip_mfm_header.id && r.name === "song_last_position") {
+        return sxSetComment(r, "Inclusive last position index; playback uses this stored value plus one positions.");
+    }
+    if (id === sxchip_chip_mfm_header.id && r.name === "tempo") {
+        return sxSetComment(r, "Stored player timing/control value; not an asserted beats-per-minute value.");
+    }
+    if (id === sxchip_chip_mwm_header.id && r.name === "song_last_position") {
+        return sxSetComment(r, "Inclusive last position index; playback uses this stored value plus one positions.");
+    }
+    if (id === sxchip_chip_mwm_header.id && r.name === "tempo") {
+        return sxSetComment(r, "Stored player timing/control value; not an asserted beats-per-minute value.");
+    }
+    if (id === sxchip_chip_mbm_header.id && r.name === "drum_frequency_words") {
+        return sxSetComment(r, "Nine little-endian stored chip frequency words, arranged as three groups of three; not file addresses.");
+    }
+    if (id === sxchip_chip_mbm_header.id && r.name === "unused") {
+        return sxSetComment(r, "Two stored bytes unused by the retained loader; preserved without inferred semantics.");
+    }
+    if (id === sxchip_chip_mbm_pattern_pointer.id && r.name === "pattern_offset") {
+        return sxSetComment(r, "Stored module offset before the edit marker; edit-mode physical origin is one byte after file start. Pattern bytecode remains raw.");
+    }
+    if (id === sxchip_chip_moon_segment_pointer.id && r.name === "segment_and_offset") {
+        return sxSetComment(r, "Packed runtime reference: high two bits select a loaded segment, low fourteen bits are its byte offset. This is not an absolute file offset.");
+    }
+    if (id === sxchip_chip_moon_pattern_segment.id && r.name === "encoded_size") {
+        return sxSetComment(r, "Number of following encoded pattern bytes in this physical segment; a zero pattern count terminates the segment sequence.");
+    }
+    if (id === sxchip_chip_mwk_header.id && r.name === "own_tone_info") {
+        return sxSetComment(r, "64 tone-slot flag bytes: bit0 selects a physical tone record, bit5 suppresses embedded PCM, high bits carry chip sample/address encoding.");
+    }
+    if (id === sxchip_chip_mwk_header.id && r.name === "total_sample_size") {
+        return sxSetComment(r, "Stored three-byte sample-data size from the kit header; individual embedded lengths are checked against the physical file.");
+    }
+    if (id === sxchip_chip_mwk_patch.id && r.name === "transpose") {
+        return sxSetComment(r, "Stored one-byte boolean from the packed Z80 OWN_PATCH structure; eight three-byte note/tone parts follow.");
+    }
+    if (id === sxchip_chip_mwk_ram_tone.id && r.name === "loop_address") {
+        return sxSetComment(r, "Big-endian OPL4 loop address within the tone; target sample-memory coordinate, not a physical file offset.");
+    }
+    if (id === sxchip_chip_mwk_ram_tone.id && r.name === "hardware_end") {
+        return sxSetComment(r, "Big-endian OPL4 hardware end-address encoding; not an unencoded byte size or a physical file offset.");
+    }
+    if (id === sxchip_chip_mwk_rom_tone.id && r.name === "loop_address") {
+        return sxSetComment(r, "Big-endian OPL4 loop address within the tone; target sample-memory coordinate, not a physical file offset.");
+    }
+    if (id === sxchip_chip_mwk_rom_tone.id && r.name === "hardware_end") {
+        return sxSetComment(r, "Big-endian OPL4 hardware end-address encoding; not an unencoded byte size or a physical file offset.");
+    }
+    if (id === sxchip_chip_mwk_rom_tone.id && r.name === "rom_address_high") {
+        return sxSetComment(r, "Stored high address/format component used for a ROM-backed tone; bit5 in own_tone_info means no embedded sample payload.");
+    }
+    if (id === sxchip_chip_fac_footer.id && r.name === "wait_frames") {
+        return sxSetComment(r, "Stored frame-wait count (normally1..25); the editor tempo level is26 minus this value. Not BPM.");
+    }
+    if (id === sxchip_chip_fac_footer.id && r.name === "last_track") {
+        return sxSetComment(r, "Inclusive last track index0..83; each physical unencrypted track has16 twelve-byte rows.");
+    }
+    if (id === sxchip_chip_fac_footer.id && r.name === "device") {
+        return sxSetComment(r, "Version-dependent device selector: version2 zero meansMSX-AUDIO, while Pro zero meansMSX-MUSIC; the opposite chip is selected by nonzero.");
+    }
+    if (id === sxchip_chip_fac_footer.id && r.name === "version") {
+        return sxSetComment(r, "Stored tracker version byte:2 is version2,3 is Pro; original version1 did not reliably stamp this byte.");
+    }
+    if (id === sxchip_chip_fac_pro_footer.id && r.name === "wait_frames") {
+        return sxSetComment(r, "Stored frame-wait count (normally1..25); the editor tempo level is26 minus this value. Not BPM.");
+    }
+    if (id === sxchip_chip_fac_pro_footer.id && r.name === "last_track") {
+        return sxSetComment(r, "Inclusive last track index0..83; each physical unencrypted track has16 twelve-byte rows.");
+    }
+    if (id === sxchip_chip_fac_pro_footer.id && r.name === "device") {
+        return sxSetComment(r, "Version-dependent device selector: version2 zero meansMSX-AUDIO, while Pro zero meansMSX-MUSIC; the opposite chip is selected by nonzero.");
+    }
+    if (id === sxchip_chip_fac_pro_footer.id && r.name === "version") {
+        return sxSetComment(r, "Stored tracker version byte:2 is version2,3 is Pro; original version1 did not reliably stamp this byte.");
+    }
+    if (id === sxchip_chip_fac_row.id && r.name === "drums_packed") {
+        return sxSetComment(r, "Stored packed drum-event bits; physical rows are emitted only for unencrypted version1/2 pattern data.");
+    }
+    if (id === sxchip_chip_1tracker_speed.id && r.name === "speed") {
+        return sxSetComment(r, "Stored tracker speed setting; timing is interpreted by the named engine, not asserted BPM.");
+    }
+    if (id === sxchip_chip_1tracker_loop_start.id && r.name === "loop_start") {
+        return sxSetComment(r, "Stored song-row loop start index; not a physical file offset.");
+    }
+    if (id === sxchip_chip_1tracker_loop_end.id && r.name === "loop_end") {
+        return sxSetComment(r, "Stored song-row loop end index; not a physical file offset.");
+    }
+    if (id === sxchip_chip_1tracker_pattern_format.id && r.name === "pattern_format") {
+        return sxSetComment(r, "Stored engine pattern-format description. Engine-specific instrument/song events remain raw.");
+    }
+    if (r.property & 0x00000004) {
+        return sxSetComment(r, "Stored byte offset relative to the module start, unless the enclosing structure specifies another origin.");
+    }
+    if (r.property & 0x00000002) {
+        return sxSetComment(r, "Encoded target-machine memory address; the field source-file offset is shown separately.");
+    }
+    return true;
+}

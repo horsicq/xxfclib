@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/asymetrix/xx_asymetrix_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_asymetrix_header_fields = layout([u32("magic", SIGNATURE), u32("record_stride", SIZE), chars("set_name", 9, STRING),
+    bytes("opaque_metadata", 23), u16("volume_number", ID), u16("member_count", COUNT)]);
+var sxae_asymetrix_header = sxLayout(0x6017002E, "asymetrix_header", LE, sxae_asymetrix_header_fields);
+var sxae_asymetrix_member_fields = layout([chars("name", 13, STRING), bytes("writer_bytes", 17), u32("volume_word"),
+    u32("data_offset", OFFSET), u32("unpacked_size", SIZE), bytes("writer_bytes2", 56), u16("date"), u16("time"),
+    u16("attributes", FLAGS), u32("crc32", CHECKSUM)]);
+var sxae_asymetrix_member = sxLayout(0x6017002F, "asymetrix_member", LE, sxae_asymetrix_member_fields);
+var sxae_asymetrix_block_fields = layout([u16("method", ID), u32("packed_size", SIZE)]);
+var sxae_asymetrix_block = sxLayout(0x60170030, "asymetrix_block", LE, sxae_asymetrix_block_fields);
+function sxae_asymetrix(c) {
+    var h = [];
+    if (!sx_read(c, 0, h, 44) || sxae32(h, 0) !== 0x63132260 || sxae32(h, 4) !== 108 || !sxae_add(c, sxae_asymetrix_header, 0)) {
+        return false;
+    }
+    var vol = sxae16(h, 40);
+    var n = sxae16(h, 42);
+    if (vol !== 1) {
+        return true;
+    }
+    var end = 44 + n * 108;
+    if (n > 20000 || !sxae_bound(c, 0, (end < 0 ? end + SX_U64_MAX : end)) || !sx_table(c, sxae_asymetrix_member, 44, 108, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var b = [];
+        if (!sx_read(c, 44 + i * 108, b, 108)) {
+            return false;
+        }
+        if (sxae32(b, 30) >>> 16 !== 1) {
+            continue;
+        }
+        var p = sxae32(b, 34);
+        var limit = c.size;
+        var left = sxae32(b, 38);
+        if (p < end || p > c.size) {
+            continue;
+        }
+        for (var j = (i + 1) >>> 0; j < n; j++) {
+            var next = [];
+            if (!sx_read(c, 44 + j * 108 + 30, next, 12)) {
+                return false;
+            }
+            if (sxae32(next, 0) >>> 16 === 1) {
+                limit = sxae32(next, 4);
+                break;
+            }
+        }
+        if (limit < p || limit > c.size) {
+            continue;
+        }
+        var saved = c.count;
+        var complete = true;
+        for (var k = 0; left && k < 20000; k++) {
+            var q = [];
+            if (limit - p < 6) {
+                complete = false;
+                break;
+            }
+            if (!sx_read(c, p, q, 6)) {
+                return false;
+            }
+            var method = sxae16(q, 0);
+            var z = sxae32(q, 2);
+            var decoded = left > 4096 ? 4096 : left;
+            if (method > 1 || z > (limit - p - 6 < 0 ? limit - p - 6 + SX_U64_MAX : limit - p - 6) || method === 0 && z !== decoded) {
+                complete = false;
+                break;
+            }
+            if (!sxae_add(c, sxae_asymetrix_block, p) || !sxae_data(c, p + 6, z)) {
+                return false;
+            }
+            p += (6 + z) >>> 0;
+            left = (left - decoded) >>> 0;
+        }
+        if (left || !complete) {
+            c.count = saved;
+        }
+    }
+    return true;
+}
+function sx_asymetrix_build(c) {
+    return sxae_asymetrix(c);
+}

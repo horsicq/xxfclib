@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cfl/xx_cfl_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_cfl_header_fields = layout([chars("signature", 4, SIGNATURE), i32("directory_offset", OFFSET),
+    i32("directory_unpacked_size", SIZE)]);
+var sxag_cfl_header = sxLayout(0x60250022, "cfl_header", LE, sxag_cfl_header_fields);
+var sxag_cfl_directory_block_fields = layout([u32("method", ID), i32("packed_size", SIZE)]);
+var sxag_cfl_directory_block = sxLayout(0x60250023, "cfl_directory_block", LE, sxag_cfl_directory_block_fields);
+var sxag_cfl_directory_size_fields = layout([i32("unpacked_size", SIZE)]);
+var sxag_cfl_directory_size = sxLayout(0x60250024, "cfl_directory_size", LE, sxag_cfl_directory_size_fields);
+var sxag_cfl_entry_fields = layout([i32("unpacked_size", SIZE), i32("data_offset", OFFSET), u16("method", ID), u16("unused"),
+    u16("name_size", SIZE)]);
+var sxag_cfl_entry = sxLayout(0x60250025, "cfl_entry", LE, sxag_cfl_entry_fields);
+var sxag_cfl_member_block_fields = layout([i32("block_size", SIZE), i32("unpacked_size", SIZE)]);
+var sxag_cfl_member_block = sxLayout(0x60250026, "cfl_member_block", LE, sxag_cfl_member_block_fields);
+function sxag_cfl_member_blocks(c) {
+    if (c.f.create_archive_records_reading === null || c.f.get_current_archive_record === null || c.f.archive_record_move_to_next === null || c.f.free_archive_records_reading === null) {
+        return true;
+    }
+    var s = c.f.create_archive_records_reading(c.f, null, c.pd);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    for (var i = 0; i < 1024; i++) {
+        var r = c.f.get_current_archive_record(c.f, s);
+        if (r === null) {
+            break;
+        }
+        if (sxArcMeta(r, "compression_method", SX_U64_MAX) === 1 && r.data_offset >= c.f.base_address && r.data_offset - c.f.base_address >= 10) {
+            var p = sxU64((r.data_offset - c.f.base_address < 0 ? r.data_offset - c.f.base_address + SX_U64_MAX : r.data_offset - c.f.base_address) - 10);
+            var b = [];
+            if (sxag_read(c, p, b, 8) && !sxag_add(c, sxag_cfl_member_block, p)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!c.f.archive_record_move_to_next(c.f, s, c.pd)) {
+            break;
+        }
+    }
+    c.f.free_archive_records_reading(c.f, s);
+    return ok;
+}
+function sxag_cfl(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 12) || !sxag_add(c, sxag_cfl_header, 0)) {
+        return false;
+    }
+    var p = sxag32(b, 4, false);
+    if (p < 12 || !sxag_read(c, p, b, 8)) {
+        return true;
+    }
+    var method = sxag32(b, 0, false);
+    var n = sxag32(b, 4, false);
+    if (method > 1 || n > 2147483647 || !sxag_span(c, p + 8, n)) {
+        return true;
+    }
+    if (!sxag_add(c, sxag_cfl_directory_block, p)) {
+        return false;
+    }
+    p += 8;
+    if (method) {
+        if (n >= 4 && !sxag_add(c, sxag_cfl_directory_size, p)) {
+            return false;
+        }
+        return sxag_cfl_member_blocks(c);
+    }
+    var end = p + n;
+    for (var i = 0; i < 20000 && sxU64(end - p) >= 14; i++) {
+        if (!sxag_read(c, p, b, 14)) {
+            break;
+        }
+        var z = sxag16(b, 12, false);
+        var data = sxag32(b, 4, false);
+        var plain = sxag32(b, 0, false);
+        if (!z || z > sxU64(sxU64(end - p) - 14) || data < 12 || data > 2147483647 || plain > 2147483647) {
+            break;
+        }
+        if (!sxag_add(c, sxag_cfl_entry, p)) {
+            return false;
+        }
+        p += 14 + z;
+    }
+    return sxag_cfl_member_blocks(c);
+}
+function sx_cfl_build(c) {
+    return sxag_cfl(c);
+}

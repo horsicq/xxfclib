@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/valve_vtf/xx_valve_vtf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_vtf70_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version_major", ID), u32("version_minor", ID),
+    u32("header_size", SIZE), u16("width", COUNT), u16("height", COUNT), u32("flags", FLAGS), u16("frames", COUNT),
+    u16("first_frame", ID), bytes("padding0", 4, RESERVED), field("reflectivity_red", "float32", 4),
+    field("reflectivity_green", "float32", 4), field("reflectivity_blue", "float32", 4), bytes("padding1", 4, RESERVED),
+    field("bumpmap_scale", "float32", 4), i32("high_resolution_format", ID), u8("mipmap_count", COUNT),
+    i32("low_resolution_format", ID), u8("low_resolution_width", COUNT), u8("low_resolution_height", COUNT)]);
+var sxrm_vtf70_header = sxLayout(0x601D0001, "vtf70_header", LE, sxrm_vtf70_header_fields);
+var sxrm_vtf72_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version_major", ID), u32("version_minor", ID),
+    u32("header_size", SIZE), u16("width", COUNT), u16("height", COUNT), u32("flags", FLAGS), u16("frames", COUNT),
+    u16("first_frame", ID), bytes("padding0", 4, RESERVED), field("reflectivity_red", "float32", 4),
+    field("reflectivity_green", "float32", 4), field("reflectivity_blue", "float32", 4), bytes("padding1", 4, RESERVED),
+    field("bumpmap_scale", "float32", 4), i32("high_resolution_format", ID), u8("mipmap_count", COUNT),
+    i32("low_resolution_format", ID), u8("low_resolution_width", COUNT), u8("low_resolution_height", COUNT), u16("depth", COUNT)]);
+var sxrm_vtf72_header = sxLayout(0x601D0002, "vtf72_header", LE, sxrm_vtf72_header_fields);
+function sxrm_vtf(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 16) || sxMemcmp(h, "VTF\x00", 4) || sxrm32(h, 4, false) !== 7 || sxrm32(h, 8, false) > 2) {
+        return false;
+    }
+    return sxrm_add(c, sxrm32(h, 8, false) === 2 ? sxrm_vtf72_header : sxrm_vtf70_header, 0);
+}
+function sx_valve_vtf_build(c) {
+    return sxrm_vtf(c);
+}

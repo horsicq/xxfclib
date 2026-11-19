@@ -1,0 +1,40 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/atarist/xx_atarist_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_atarist_header_fields = layout([u16("magic", SIGNATURE), u32("text_size", SIZE), u32("data_size", SIZE),
+    u32("bss_size", SIZE), u32("symbol_size", SIZE), u32("reserved", RESERVED), u32("flags", FLAGS), u16("absolute_flag", FLAGS)]);
+var sxl_atarist_header = sxLayout(0x600A002D, "atarist_header", BE, sxl_atarist_header_fields);
+var sxl_atarist_symbol_fields = layout([chars("name", 8, STRING), u16("type", FLAGS), u32("value")]);
+var sxl_atarist_symbol = sxLayout(0x600A002E, "atarist_symbol", BE, sxl_atarist_symbol_fields);
+function sxl_atari(c) {
+    var text;
+    var data;
+    var symbols;
+    var off;
+    if (!sxl_sig(c, 0, "`\x1A", 2) || (text = sx_u32(c, 2, true)) === null || (data = sx_u32(c, 6, true)) === null || (symbols = sx_u32(c, 14, true)) === null || !sx_add(c, sxl_atarist_header, 0, 28)) {
+        return false;
+    }
+    off = 28 + text + data;
+    if (!sxl_span(c, 28, text + data) || !sxl_span(c, off, symbols)) {
+        return false;
+    }
+    if (symbols % 14) {
+        return true;
+    }
+    for (var i = 0; i < Math.floor(symbols / 14); i++) {
+        var type;
+        if ((type = sx_u16(c, (off >= SX_I64_MAX ? off - SX_U64_MAX : off) + i * 14 + 8, true)) === null) {
+            return false;
+        }
+        if (type & 0xFF) {
+            return true;
+        }
+    }
+    return sx_table(c, sxl_atarist_symbol, (off >= SX_I64_MAX ? off - SX_U64_MAX : off), 14, Math.floor(symbols / 14));
+}
+function sx_atarist_build(c) {
+    return sxl_atari(c);
+}

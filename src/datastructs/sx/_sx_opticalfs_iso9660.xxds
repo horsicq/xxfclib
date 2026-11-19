@@ -1,0 +1,211 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/iso9660/xx_iso9660_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxo_iso_path_table_l_fields = layout([u8("identifier_length", SIZE), u8("extended_attribute_blocks", COUNT),
+    u32("extent_lba"), u16("parent_directory_number")]);
+var sxo_iso_path_table_l = sxLayout(0x60130002, "iso_path_table_l", LE, sxo_iso_path_table_l_fields);
+var sxo_iso_path_table_m_fields = layout([u8("identifier_length", SIZE), u8("extended_attribute_blocks", COUNT),
+    u32("extent_lba"), u16("parent_directory_number")]);
+var sxo_iso_path_table_m = sxLayout(0x60130003, "iso_path_table_m", BE, sxo_iso_path_table_m_fields);
+var sxo_iso_primary_volume_descriptor_fields = layout([u8("descriptor_type", ID), chars("standard_identifier", 5, SIGNATURE),
+    u8("descriptor_version", ID), u8("reserved_flags", RESERVED), chars("system_identifier", 32, STRING),
+    chars("volume_identifier", 32, STRING), blob("reserved0", 8, RESERVED), u32("volume_blocks_le", COUNT),
+    field("volume_blocks_be", "uint32be", 4, COUNT), blob("reserved_escape_sequences", 32, RESERVED),
+    u16("volume_set_size_le", COUNT), field("volume_set_size_be", "uint16be", 2, COUNT), u16("volume_sequence_le"),
+    field("volume_sequence_be", "uint16be", 2), u16("logical_block_size_le", SIZE),
+    field("logical_block_size_be", "uint16be", 2, SIZE), u32("path_table_size_le", SIZE),
+    field("path_table_size_be", "uint32be", 4, SIZE), u32("l_path_table_lba"), u32("l_optional_path_table_lba"),
+    field("m_path_table_lba", "uint32be", 4), field("m_optional_path_table_lba", "uint32be", 4), u8("root_record_length", SIZE),
+    u8("root_extended_attribute_blocks", COUNT), u32("root_extent_lba_le"), field("root_extent_lba_be", "uint32be", 4),
+    u32("root_data_length_le", SIZE), field("root_data_length_be", "uint32be", 4, SIZE), u8("root_recorded_year_since_1900"),
+    u8("root_recorded_month"), u8("root_recorded_day"), u8("root_recorded_hour"), u8("root_recorded_minute"),
+    u8("root_recorded_second"), i8("root_recorded_timezone_quarters"), u8("root_flags", FLAGS),
+    u8("root_file_unit_blocks", COUNT), u8("root_interleave_gap_blocks", COUNT), u16("root_volume_sequence_le"),
+    field("root_volume_sequence_be", "uint16be", 2), u8("root_identifier_length", SIZE), u8("root_identifier"),
+    chars("volume_set_identifier", 128, STRING), chars("publisher_identifier", 128, STRING),
+    chars("data_preparer_identifier", 128, STRING), chars("application_identifier", 128, STRING),
+    chars("copyright_file_identifier", 37, STRING), chars("abstract_file_identifier", 37, STRING),
+    chars("bibliographic_file_identifier", 37, STRING), chars("creation_datetime_digits", 16, NONE),
+    i8("creation_timezone_quarters"), chars("modification_datetime_digits", 16, NONE), i8("modification_timezone_quarters"),
+    chars("expiration_datetime_digits", 16, NONE), i8("expiration_timezone_quarters"),
+    chars("effective_datetime_digits", 16, NONE), i8("effective_timezone_quarters"), u8("file_structure_version", ID),
+    u8("reserved1", RESERVED), blob("application_use", 512), blob("reserved2", 653, RESERVED)]);
+var sxo_iso_primary_volume_descriptor = sxLayout(0x60130004, "iso_primary_volume_descriptor", LE, sxo_iso_primary_volume_descriptor_fields);
+var sxo_iso_supplementary_volume_descriptor_fields = layout([u8("descriptor_type", ID),
+    chars("standard_identifier", 5, SIGNATURE), u8("descriptor_version", ID), u8("volume_flags", FLAGS),
+    bytes("system_identifier", 32), bytes("volume_identifier", 32), blob("reserved0", 8, RESERVED),
+    u32("volume_blocks_le", COUNT), field("volume_blocks_be", "uint32be", 4, COUNT), blob("escape_sequences", 32),
+    u16("volume_set_size_le", COUNT), field("volume_set_size_be", "uint16be", 2, COUNT), u16("volume_sequence_le"),
+    field("volume_sequence_be", "uint16be", 2), u16("logical_block_size_le", SIZE),
+    field("logical_block_size_be", "uint16be", 2, SIZE), u32("path_table_size_le", SIZE),
+    field("path_table_size_be", "uint32be", 4, SIZE), u32("l_path_table_lba"), u32("l_optional_path_table_lba"),
+    field("m_path_table_lba", "uint32be", 4), field("m_optional_path_table_lba", "uint32be", 4), u8("root_record_length", SIZE),
+    u8("root_extended_attribute_blocks", COUNT), u32("root_extent_lba_le"), field("root_extent_lba_be", "uint32be", 4),
+    u32("root_data_length_le", SIZE), field("root_data_length_be", "uint32be", 4, SIZE), u8("root_recorded_year_since_1900"),
+    u8("root_recorded_month"), u8("root_recorded_day"), u8("root_recorded_hour"), u8("root_recorded_minute"),
+    u8("root_recorded_second"), i8("root_recorded_timezone_quarters"), u8("root_flags", FLAGS),
+    u8("root_file_unit_blocks", COUNT), u8("root_interleave_gap_blocks", COUNT), u16("root_volume_sequence_le"),
+    field("root_volume_sequence_be", "uint16be", 2), u8("root_identifier_length", SIZE), u8("root_identifier"),
+    bytes("volume_set_identifier", 128), bytes("publisher_identifier", 128), bytes("data_preparer_identifier", 128),
+    bytes("application_identifier", 128), bytes("copyright_file_identifier", 37), bytes("abstract_file_identifier", 37),
+    bytes("bibliographic_file_identifier", 37), chars("creation_datetime_digits", 16, NONE), i8("creation_timezone_quarters"),
+    chars("modification_datetime_digits", 16, NONE), i8("modification_timezone_quarters"),
+    chars("expiration_datetime_digits", 16, NONE), i8("expiration_timezone_quarters"),
+    chars("effective_datetime_digits", 16, NONE), i8("effective_timezone_quarters"), u8("file_structure_version", ID),
+    u8("reserved1", RESERVED), blob("application_use", 512), blob("reserved2", 653, RESERVED)]);
+var sxo_iso_supplementary_volume_descriptor = sxLayout(0x60130005, "iso_supplementary_volume_descriptor", LE, sxo_iso_supplementary_volume_descriptor_fields);
+var sxo_iso_boot_record_fields = layout([u8("descriptor_type", ID), chars("standard_identifier", 5, SIGNATURE),
+    u8("descriptor_version", ID), chars("boot_system_identifier", 32, STRING), chars("boot_identifier", 32, STRING),
+    blob("boot_system_use", 1977)]);
+var sxo_iso_boot_record = sxLayout(0x60130006, "iso_boot_record", LE, sxo_iso_boot_record_fields);
+var sxo_iso_volume_partition_descriptor_fields = layout([u8("descriptor_type", ID), chars("standard_identifier", 5, SIGNATURE),
+    u8("descriptor_version", ID), u8("reserved", RESERVED), chars("system_identifier", 32, STRING),
+    chars("partition_identifier", 32, STRING), u32("partition_location_le"), field("partition_location_be", "uint32be", 4),
+    u32("partition_blocks_le", COUNT), field("partition_blocks_be", "uint32be", 4, COUNT), blob("system_use", 1960)]);
+var sxo_iso_volume_partition_descriptor = sxLayout(0x60130007, "iso_volume_partition_descriptor", LE, sxo_iso_volume_partition_descriptor_fields);
+var sxo_iso_volume_descriptor_terminator_fields = layout([u8("descriptor_type", ID), chars("standard_identifier", 5, SIGNATURE),
+    u8("descriptor_version", ID), blob("reserved", 2041, RESERVED)]);
+var sxo_iso_volume_descriptor_terminator = sxLayout(0x60130008, "iso_volume_descriptor_terminator", LE, sxo_iso_volume_descriptor_terminator_fields);
+function sxo_iso_paths(c, block, bytes, be) {
+    var at = block * 2048;
+    var end = at + bytes;
+    var entries = 0;
+    var b = [];
+    if (!block || !bytes) {
+        return true;
+    }
+    if (!sxo_can(c, at, bytes)) {
+        return false;
+    }
+    while (at < end) {
+        if (++entries > 65535 || end - at < 8 || !sx_read(c, at, b, 8) || !b[0]) {
+            return false;
+        }
+        var n = 8 + b[0] + (b[0] & 1);
+        if (n > (end - at < 0 ? end - at + SX_U64_MAX : end - at)) {
+            return false;
+        }
+        if (!sxo_add(c, be ? sxo_iso_path_table_m : sxo_iso_path_table_l, at, 8)) {
+            return false;
+        }
+        at += n;
+    }
+    return true;
+}
+function sxo_iso_build(c) {
+    done: {
+        var b = [];
+        var pvd = [];
+        var primary = false;
+        var terminated = false;
+        var ok = false;
+        var count = 1;
+        var queue = sxAllocN(0x2000, sxNew_sxo_iso_directory);
+        if (queue === null) {
+            return false;
+        }
+        for (var i = 0; i < 64; i++) {
+            var at = ((16 + i) >>> 0) * 2048;
+            var l = sxo_iso_volume_descriptor_header;
+            var n = 7;
+            if (!sx_read(c, at, b, 2048) || sxMemcmpAt(b, 1, "CD001", 0, 5) || b[6] !== 1) {
+                break done;
+            }
+            switch (b[0]) {
+            case 0:
+                l = sxo_iso_boot_record;
+                n = 2048;
+                break;
+            case 1:
+                l = sxo_iso_primary_volume_descriptor;
+                n = 2048;
+                if (!primary) {
+                    sxMemcpy(pvd, 0, b, 0, 2048);
+                    primary = true;
+                }
+                break;
+            case 2:
+                l = sxo_iso_supplementary_volume_descriptor;
+                n = 2048;
+                break;
+            case 3:
+                l = sxo_iso_volume_partition_descriptor;
+                n = 2048;
+                break;
+            case 255:
+                l = sxo_iso_volume_descriptor_terminator;
+                n = 2048;
+                terminated = true;
+                break;
+            }
+            if (!sxo_add(c, l, at, n)) {
+                break done;
+            }
+            if (terminated) {
+                break;
+            }
+        }
+        if (!primary || !terminated || sxo_u32(pvd, 80) !== sxGetU32At(pvd, 84, 4, 0, true) || sxo_u16(pvd, 128) !== 2048 || sxGetU16At(pvd, 130, 2, 0, true) !== 2048) {
+            break done;
+        }
+        if (sxo_u32(pvd, 132) !== sxGetU32At(pvd, 136, 4, 0, true)) {
+            break done;
+        }
+        for (i = 0; i < 4; i++) {
+            if (!sxo_iso_paths(c, sxGetU32At(pvd, 140 + ((i * 4) >>> 0), 4, 0, i >= 2), sxo_u32(pvd, 132), i >= 2)) {
+                break done;
+            }
+        }
+        queue[0] = sxCopy_sxo_iso_directory(null, { lba: sxo_u32(pvd, 158), size: sxo_u32(pvd, 166), depth: 0 });
+        for (var q = 0; q < count; q++) {
+            at = queue[q].lba * 2048;
+            var end = at + queue[q].size;
+            var start = at;
+            if (queue[q].depth > 64 || !queue[q].size || !sxo_can(c, at, queue[q].size)) {
+                break done;
+            }
+            while (at < end) {
+                if (!sx_read(c, at, b, 1)) {
+                    break done;
+                }
+                n = b[0];
+                if (!n) {
+                    at += 2048 - (at - start) % 2048;
+                    continue;
+                }
+                if (n < 34 || n > (end - at < 0 ? end - at + SX_U64_MAX : end - at) || n > 2048 - (at - start) % 2048 || !sx_read(c, at, b, n) || 33 + b[32] > n) {
+                    break done;
+                }
+                if (!sxo_add(c, sxo_iso_directory_record, at, 33)) {
+                    break done;
+                }
+                if (b[25] & 2 && !(b[32] === 1 && (b[33] === 0 || b[33] === 1))) {
+                    var lba = sxo_u32(b, 2);
+                    var bytes = sxo_u32(b, 10);
+                    var seen = false;
+                    for (var j = 0; j < count; j++) {
+                        if (queue[j].lba === lba && queue[j].size === bytes) {
+                            seen = true;
+                            break;
+                        }
+                    }
+                    if (!seen) {
+                        if (count >= 8192) {
+                            break done;
+                        }
+                        queue[count++] = sxCopy_sxo_iso_directory(null, { lba: lba, size: bytes, depth: (queue[q].depth + 1) >>> 0 });
+                    }
+                }
+                at += n;
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_iso9660_build(c) {
+    return sxo_iso_build(c);
+}

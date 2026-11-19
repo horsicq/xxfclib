@@ -1,0 +1,216 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_executable.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dex_code_item_fields = layout([u16("registers_size", COUNT), u16("ins_size", COUNT), u16("outs_size", COUNT),
+    u16("tries_size", COUNT), u32("debug_info_off", OFFSET), u32("insns_size", COUNT)]);
+var sx_dex_code_item_le = sxLayout(0x60030017, "dex_code_item_le", LE, sx_dex_code_item_fields);
+var sx_dex_code_item_be = sxLayout(0x60030018, "dex_code_item_be", BE, sx_dex_code_item_fields);
+var sx_dex_try_item_fields = layout([u32("start_addr", OFFSET), u16("insn_count", COUNT), u16("handler_off", OFFSET)]);
+var sx_dex_try_item_le = sxLayout(0x60030019, "dex_try_item_le", LE, sx_dex_try_item_fields);
+var sx_dex_try_item_be = sxLayout(0x6003001A, "dex_try_item_be", BE, sx_dex_try_item_fields);
+var sx_coff_file_header_fields = layout([u16("Machine", ID), u16("NumberOfSections", COUNT), u32("TimeDateStamp", TIMESTAMP),
+    u32("PointerToSymbolTable", OFFSET), u32("NumberOfSymbols", COUNT), u16("SizeOfOptionalHeader", SIZE),
+    u16("Characteristics", FLAGS)]);
+var sx_coff_file_header = sxLayout(0x60030021, "coff_file_header", LE, sx_coff_file_header_fields);
+var sx_te_header_fields = layout([u16("Signature", SIGNATURE), u16("Machine", ID), u8("NumberOfSections", COUNT),
+    u8("Subsystem", ID), u16("StrippedSize", SIZE), u32("AddressOfEntryPoint", VA), u32("BaseOfCode", VA), u64("ImageBase", VA),
+    u32("BaseReloc.VirtualAddress", VA), u32("BaseReloc.Size", SIZE), u32("Debug.VirtualAddress", VA), u32("Debug.Size", SIZE)]);
+var sx_te_header = sxLayout(0x60030022, "te_header", LE, sx_te_header_fields);
+var sx_coff_section_header_fields = layout([chars("Name", 8, STRING), u32("VirtualSize", SIZE), u32("VirtualAddress", VA),
+    u32("SizeOfRawData", SIZE), u32("PointerToRawData", OFFSET), u32("PointerToRelocations", OFFSET),
+    u32("PointerToLinenumbers", OFFSET), u16("NumberOfRelocations", COUNT), u16("NumberOfLinenumbers", COUNT),
+    u32("Characteristics", FLAGS)]);
+var sx_coff_section_header = sxLayout(0x60030023, "coff_section_header", LE, sx_coff_section_header_fields);
+var sx_coff_relocation_fields = layout([u32("VirtualAddress", VA), u32("SymbolTableIndex", ID), u16("Type", ID)]);
+var sx_coff_relocation = sxLayout(0x60030024, "coff_relocation", LE, sx_coff_relocation_fields);
+var sx_coff_line_number_fields = layout([u32("SymbolTableIndex_or_VirtualAddress"), u16("Linenumber")]);
+var sx_coff_line_number = sxLayout(0x60030025, "coff_line_number", LE, sx_coff_line_number_fields);
+var sx_coff_symbol_fields = layout([bytes("Name", 8), u32("Value"), i16("SectionNumber", ID), u16("Type", ID),
+    u8("StorageClass", ID), u8("NumberOfAuxSymbols", COUNT)]);
+var sx_coff_symbol = sxLayout(0x60030026, "coff_symbol", LE, sx_coff_symbol_fields);
+var sx_coff_string_table_fields = layout([u32("Length", SIZE)]);
+var sx_coff_string_table = sxLayout(0x60030027, "coff_string_table", LE, sx_coff_string_table_fields);
+var sx_wasm_section_header_1_fields = layout([u8("id", ID), field("payload_len", "uleb128", 1, SIZE)]);
+var sx_wasm_section_header_1 = sxLayout(0x60030029, "wasm_section_header_1", LE, sx_wasm_section_header_1_fields);
+var sx_wasm_section_header_5_fields = layout([u8("id", ID), field("payload_len", "uleb128", 5, SIZE)]);
+var sx_wasm_section_header_5 = sxLayout(0x6003002D, "wasm_section_header_5", LE, sx_wasm_section_header_5_fields);
+var sx_mz_header_fields = layout([u16("e_magic", SIGNATURE), u16("e_cblp"), u16("e_cp", COUNT), u16("e_crlc", COUNT),
+    u16("e_cparhdr"), u16("e_minalloc"), u16("e_maxalloc"), u16("e_ss", VA), u16("e_sp", VA), u16("e_csum", CHECKSUM),
+    u16("e_ip", VA), u16("e_cs", VA), u16("e_lfarlc", OFFSET), u16("e_ovno", ID)]);
+var sx_mz_header = sxLayout(0x60030100, "mz_header", LE, sx_mz_header_fields);
+function sx_executable_supports(t) {
+    return t === "MSDOS" || t === "DEX" || t === "MACHOFAT" || t === "COFF_OBJECT" || t === "TE_EXECUTABLE" || t === "WASM";
+}
+function sx_coff_build(c, te) {
+    var h = [];
+    var n;
+    var sym = 0;
+    var symbols = 0;
+    var table;
+    var adjust = 0;
+    if (!sx_read(c, 0, h, te ? 40 : 20)) {
+        return false;
+    }
+    if (te) {
+        if (sxGetU16(h, 40, 0, false) !== 0x5A56) {
+            return false;
+        }
+        n = h[4];
+        table = 40;
+        adjust = 40 - sxGetU16(h, 40, 6, false);
+    } else {
+        n = sxGetU16(h, 20, 2, false);
+        table = 20 + sxGetU16(h, 20, 16, false);
+        sym = sxGetU32(h, 20, 8, false);
+        symbols = sxGetU32(h, 20, 12, false);
+    }
+    if (!n || n > 65535 || !sx_add(c, te ? sx_te_header : sx_coff_file_header, 0, te ? 40 : 20) || !sx_table(c, sx_coff_section_header, table, 40, n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var s = [];
+        var size;
+        var off;
+        var rel;
+        var line;
+        var nr;
+        var nl;
+        if (!sx_read(c, table + i * 40, s, 40)) {
+            return false;
+        }
+        size = sxGetU32(s, 40, 16, false);
+        off = sxGetU32(s, 40, 20, false);
+        rel = sxGetU32(s, 40, 24, false);
+        line = sxGetU32(s, 40, 28, false);
+        nr = sxGetU16(s, 40, 32, false);
+        nl = sxGetU16(s, 40, 34, false);
+        if (size && off && !sx_raw(c, off + adjust, size)) {
+            return false;
+        }
+        if (!te && nr) {
+            var count = nr;
+            if (nr === 65535 && sxGetU32(s, 40, 36, false) & 0x01000000) {
+                if ((count = sx_u32(c, rel, false)) === null || count === 0) {
+                    return false;
+                }
+            }
+            if (!rel || !sx_table(c, sx_coff_relocation, rel, 10, count)) {
+                return false;
+            }
+        }
+        if (!te && nl && (!line || !sx_table(c, sx_coff_line_number, line, 6, nl))) {
+            return false;
+        }
+    }
+    if (!te && sym) {
+        var string_size;
+        if (symbols > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 18)) {
+            return false;
+        }
+        for (i = 0; i < symbols; ) {
+            var aux = [0];
+            off = sym + i * 18;
+            if (!sx_add(c, sx_coff_symbol, off, 18) || !sx_read(c, off + 17, aux, 1) || aux[0] > (((symbols - i) >>> 0) - 1) >>> 0) {
+                return false;
+            }
+            if (aux[0] && !sx_raw(c, off + 18, aux[0] * 18)) {
+                return false;
+            }
+            i = (i + (1 + aux[0])) >>> 0;
+        }
+        var strings = sym + symbols * 18;
+        if ((string_size = sx_u32(c, strings, false)) === null || string_size < 4 || !sx_add(c, sx_coff_string_table, strings, 4) || !sx_raw(c, strings + 4, (string_size - 4) >>> 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_executable_build(c) {
+    switch (c.f.file_type) {
+    case "MSDOS":
+        return sx_msdos_build(c);
+    case "DEX":
+        return sx_dex_schema_build(c);
+    case "MACHOFAT":
+        return sx_machofat_build(c);
+    case "COFF_OBJECT":
+        return sx_coff_object_build(c);
+    case "TE_EXECUTABLE":
+        return sx_te_executable_build(c);
+    case "WASM":
+        return sx_wasm_schema_build(c);
+    default:
+        return false;
+    }
+}
+var sx_executable_comment_names = ["custom", "type", "import", "function", "table", "memory", "global", "export", "start",
+    "element", "code", "data", "data_count"];
+function sx_executable_comment(r, id) {
+    var comment = null;
+    var v;
+    if (r === null || id < 0x60030000 || id >= 0x60040000) {
+        return true;
+    }
+    v = sxVarU64(r.value);
+    if (id === sx_mz_header.id && r.name !== null) {
+        if (r.name === "e_magic" && v === 0x5A4D) {
+            comment = "MZ";
+        } else if (r.name === "e_cblp") {
+            comment = "Bytes in final 512-byte page (0 means 512)";
+        } else if (r.name === "e_cp") {
+            comment = "512-byte pages in file";
+        } else if (r.name === "e_cparhdr" || r.name === "e_minalloc" || r.name === "e_maxalloc") {
+            comment = "16-byte paragraphs";
+        }
+    } else if (r.name !== null && r.name === "Machine") {
+        switch (v) {
+        case 0x14C:
+            comment = "IMAGE_FILE_MACHINE_I386";
+            break;
+        case 0x8664:
+            comment = "IMAGE_FILE_MACHINE_AMD64";
+            break;
+        case 0xAA64:
+            comment = "IMAGE_FILE_MACHINE_ARM64";
+            break;
+        case 0x1C4:
+            comment = "IMAGE_FILE_MACHINE_ARMNT";
+            break;
+        }
+    } else if (r.name !== null && r.name === "cputype") {
+        switch (v) {
+        case 7:
+            comment = "CPU_TYPE_X86";
+            break;
+        case 12:
+            comment = "CPU_TYPE_ARM";
+            break;
+        case 0x1000007:
+            comment = "CPU_TYPE_X86_64";
+            break;
+        case 0x100000C:
+            comment = "CPU_TYPE_ARM64";
+            break;
+        case 18:
+            comment = "CPU_TYPE_POWERPC";
+            break;
+        }
+    } else if (id >= sx_wasm_section_header_1.id && id <= sx_wasm_section_header_5.id && r.offset === 0) {
+        if (v < 13) {
+            comment = sx_executable_comment_names[v];
+        }
+    }
+    if (comment !== null) {
+        var w = [];
+        var i = 0;
+        for (; sxAt(comment, i) && i < 79; i++) {
+            w[i] = sxAt(comment, i) & 0xFF;
+        }
+        w[i] = 0;
+        return sxSetComment(r, w);
+    }
+    return true;
+}

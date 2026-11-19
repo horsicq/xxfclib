@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/relic_chunky/xx_relic_chunky_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_chunky_header_fields = layout([chars("magic", 16, SIGNATURE), u32("version", ID), u32("platform", ID),
+    u32("header_size", SIZE), u32("chunk_header_size", SIZE), u32("unknown")]);
+var sxmx_chunky_header = sxLayout(0x602E0038, "chunky_header", LE, sxmx_chunky_header_fields);
+var sxmx_chunky_chunk_fields = layout([chars("kind", 4, ID), chars("chunk_id", 4, ID), u32("version", ID),
+    u32("data_size", SIZE), u32("name_size", SIZE), u32("unknown1"), u32("unknown2")]);
+var sxmx_chunky_chunk = sxLayout(0x602E0039, "chunky_chunk", LE, sxmx_chunky_chunk_fields);
+function sxmx_chunky_nodes(v, at, end, depth) {
+    if (depth > 32) {
+        return false;
+    }
+    while (at < end) {
+        if (!sxmx_row(v, sxmx_chunky_chunk, at, end)) {
+            return false;
+        }
+        var size = sxmx_u32(v.p, at + 12, false);
+        var names = sxmx_u32(v.p, at + 16, false);
+        var folder = !sxMemcmpAt(v.p, at, "FOLD", 0, 4);
+        at += 28;
+        if (!sxmx_need(v, at, names + size, end)) {
+            return false;
+        }
+        at += names;
+        if (folder && !sxmx_chunky_nodes(v, at, at + size, (depth + 1) >>> 0)) {
+            return false;
+        }
+        at += size;
+    }
+    return at === end;
+}
+function sxmx_chunky(v) {
+    return sxmx_row(v, sxmx_chunky_header, 0, v.n) && sxmx_chunky_nodes(v, 36, v.n, 0);
+}
+function sx_relic_chunky_build(v) {
+    return sxmx_chunky(v);
+}

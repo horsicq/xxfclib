@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/jbig2/xx_jbig2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrm_jbig2_file_header_fields = layout([bytes("signature", 8, SIGNATURE), u8("flags", FLAGS)]);
+var sxrm_jbig2_file_header = sxLayout(0x601D0059, "jbig2_file_header", BE, sxrm_jbig2_file_header_fields);
+var sxrm_jbig2_page_count_fields = layout([u32("pages", COUNT)]);
+var sxrm_jbig2_page_count = sxLayout(0x601D005A, "jbig2_page_count", BE, sxrm_jbig2_page_count_fields);
+var sxrm_jbig2_segment_prefix_fields = layout([u32("segment_number", ID), u8("flags", FLAGS),
+    u8("reference_count_and_retention", FLAGS)]);
+var sxrm_jbig2_segment_prefix = sxLayout(0x601D005B, "jbig2_segment_prefix", BE, sxrm_jbig2_segment_prefix_fields);
+var sxrm_jbig2_reference1_fields = layout([u8("segment_number", ID)]);
+var sxrm_jbig2_reference1 = sxLayout(0x601D005C, "jbig2_reference1", BE, sxrm_jbig2_reference1_fields);
+var sxrm_jbig2_reference2_fields = layout([u16("segment_number", ID)]);
+var sxrm_jbig2_reference2 = sxLayout(0x601D005D, "jbig2_reference2", BE, sxrm_jbig2_reference2_fields);
+var sxrm_jbig2_reference4_fields = layout([u32("segment_number", ID)]);
+var sxrm_jbig2_reference4 = sxLayout(0x601D005E, "jbig2_reference4", BE, sxrm_jbig2_reference4_fields);
+var sxrm_jbig2_segment_tail1_fields = layout([u8("page_association", ID), u32("data_size", SIZE)]);
+var sxrm_jbig2_segment_tail1 = sxLayout(0x601D005F, "jbig2_segment_tail1", BE, sxrm_jbig2_segment_tail1_fields);
+var sxrm_jbig2_segment_tail4_fields = layout([u32("page_association", ID), u32("data_size", SIZE)]);
+var sxrm_jbig2_segment_tail4 = sxLayout(0x601D0060, "jbig2_segment_tail4", BE, sxrm_jbig2_segment_tail4_fields);
+var sxrm_jbig2_page_info_fields = layout([u32("width", COUNT), u32("height", COUNT), u32("x_resolution"), u32("y_resolution"),
+    u8("flags", FLAGS), u16("striping_information", FLAGS)]);
+var sxrm_jbig2_page_info = sxLayout(0x601D0061, "jbig2_page_info", BE, sxrm_jbig2_page_info_fields);
+var sxrm_jbig2_region_fields = layout([u32("width", COUNT), u32("height", COUNT), u32("x"), u32("y"), u8("flags", FLAGS)]);
+var sxrm_jbig2_region = sxLayout(0x601D0062, "jbig2_region", BE, sxrm_jbig2_region_fields);
+var sxrm_jbig2_extension_fields = layout([u32("extension_type", FLAGS)]);
+var sxrm_jbig2_extension = sxLayout(0x601D0063, "jbig2_extension", BE, sxrm_jbig2_extension_fields);
+function sxrm_jbig2(c) {
+    var h = [];
+    if (!sxrm_read(c, 0, h, 0, 9) || sxMemcmp(h, "\x97JB2\r\n\x1A\n", 8) || !sxrm_add(c, sxrm_jbig2_file_header, 0)) {
+        return false;
+    }
+    var p = 9;
+    if (!(h[8] & 2)) {
+        if (!sxrm_span(c, p, 4)) {
+            return true;
+        }
+        if (!sxrm_add(c, sxrm_jbig2_page_count, p)) {
+            return false;
+        }
+        p += 4;
+    }
+    for (var step = 0; step < 4096; step++) {
+        if (!sxrm_read(c, p, h, 0, 6)) {
+            break;
+        }
+        var id = sxrm32(h, 0, true);
+        var flags = h[4];
+        var type = flags & 63;
+        var n = h[5] >> 5;
+        var refsize = id <= 256 ? 1 : id <= 65536 ? 2 : 4;
+        var pagesize = flags & 64 ? 4 : 1;
+        if (n > 4) {
+            break;
+        }
+        var tail = p + 6 + n * refsize;
+        if (!sxrm_read(c, tail, h, 0, (pagesize + 4) >>> 0)) {
+            break;
+        }
+        var z = sxrm32(h, pagesize, true);
+        var body = tail + pagesize + 4;
+        if (!sxrm_span(c, body, z)) {
+            break;
+        }
+        if (!sxrm_add(c, sxrm_jbig2_segment_prefix, p) || !sxrm_table(c, refsize === 1 ? sxrm_jbig2_reference1 : refsize === 2 ? sxrm_jbig2_reference2 : sxrm_jbig2_reference4, p + 6, n) || !sxrm_add(c, pagesize === 1 ? sxrm_jbig2_segment_tail1 : sxrm_jbig2_segment_tail4, tail)) {
+            return false;
+        }
+        if (type === 48 && z >= 19) {
+            if (!sxrm_add(c, sxrm_jbig2_page_info, body)) {
+                return false;
+            }
+        } else if ((type === 4 || type === 6 || type === 7 || type === 20 || type === 22 || type === 23 || type === 36 || type === 38 || type === 39 || type === 40 || type === 42 || type === 43) && z >= 17) {
+            if (!sxrm_add(c, sxrm_jbig2_region, body)) {
+                return false;
+            }
+        } else if (type === 62 && z >= 4 && !sxrm_add(c, sxrm_jbig2_extension, body)) {
+            return false;
+        }
+        p = body + z;
+        if (type === 51) {
+            break;
+        }
+    }
+    return !c.failed;
+}
+function sx_jbig2_build(c) {
+    return sxrm_jbig2(c);
+}

@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/windows_ldm/xx_windows_ldm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_ldm_private_header_fields = layout([chars("magic", 8, SIGNATURE), field("unknown0", "byte[4]", 4),
+    u16("major_version", ID), u16("minor_version", ID), field("unknown1", "byte[32]", 32), chars("disk_uuid", 36, ID),
+    field("unknown2", "byte[199]", 199), u64("logical_disk_start"), u64("logical_disk_sectors", COUNT),
+    u64("configuration_start"), u64("configuration_sectors", COUNT), field("unknown3", "byte[197]", 197)]);
+var sxvi_ldm_private_header = sxLayout(0x6053004C, "ldm_private_header", BE, sxvi_ldm_private_header_fields);
+var sxvi_ldm_tocblock_fields = layout([chars("magic", 8, SIGNATURE), field("unknown0", "byte[28]", 28),
+    chars("configuration_name", 10, STRING), u64("configuration_start"), u64("configuration_sectors", COUNT),
+    field("unknown1", "byte[8]", 8), chars("log_name", 10, STRING), u64("log_start"), u64("log_sectors", COUNT),
+    field("unknown2", "byte[416]", 416)]);
+var sxvi_ldm_tocblock = sxLayout(0x6053004D, "ldm_tocblock", BE, sxvi_ldm_tocblock_fields);
+var sxvi_ldm_vmdb_header_fields = layout([chars("magic", 4, SIGNATURE), u32("last_vblk_sequence"), u32("vblk_size", SIZE),
+    u32("vblk_offset", OFFSET), u16("update_state", ID), u16("major_version", ID), u16("minor_version", ID)]);
+var sxvi_ldm_vmdb_header = sxLayout(0x6053004E, "ldm_vmdb_header", BE, sxvi_ldm_vmdb_header_fields);
+var sxvi_ldm_vblk_fragment_fields = layout([chars("magic", 4, SIGNATURE), u32("sequence", ID), u32("group", ID),
+    u16("fragment_number"), u16("fragment_count", COUNT)]);
+var sxvi_ldm_vblk_fragment = sxLayout(0x6053004F, "ldm_vblk_fragment", BE, sxvi_ldm_vblk_fragment_fields);
+var sxvi_ldm_vblk_record_header_fields = layout([field("unknown", "byte[2]", 2), u8("flags", FLAGS), u8("type", ID),
+    u32("declared_length", SIZE)]);
+var sxvi_ldm_vblk_record_header = sxLayout(0x60530050, "ldm_vblk_record_header", BE, sxvi_ldm_vblk_record_header_fields);
+var sxvi_ldm_variable_length_fields = layout([u8("length", SIZE)]);
+var sxvi_ldm_variable_length = sxLayout(0x60530051, "ldm_variable_length", LE, sxvi_ldm_variable_length_fields);
+function sxvi_ldm(c) {
+    var h = [];
+    var b = [];
+    if (!sxvi_read(c, 3072, h, 512) || sxMemcmp(h, "PRIVHEAD", 8) || sxvi16(h, 12, 1) !== 2 || !sxvi_put(c, sxvi_ldm_private_header, 3072, 1)) {
+        return false;
+    }
+    var config = sxvi64(h, 299, 1);
+    var n = sxvi64(h, 307, 1);
+    if (config > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512) || n < 32 || n > 32768 || n > sxU64(Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512) - config)) {
+        return true;
+    }
+    var base = config * 512;
+    var toc = [1, 2, 2045, 2046];
+    var ph = [1856, 2047];
+    for (var i = 0; i < 2; i++) {
+        if (ph[i] < n && sxvi_magic(c, base + ((ph[i] * 512) >>> 0), "PRIVHEAD", 8) && !sxvi_put(c, sxvi_ldm_private_header, base + ((ph[i] * 512) >>> 0), 1)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 4; i++) {
+        if (toc[i] < n && sxvi_magic(c, base + ((toc[i] * 512) >>> 0), "TOCBLOCK", 8) && !sxvi_put(c, sxvi_ldm_tocblock, base + ((toc[i] * 512) >>> 0), 1)) {
+            return false;
+        }
+    }
+    var p = base + 8704;
+    if (!sxvi_read(c, p, b, 22) || sxMemcmp(b, "VMDB", 4) || !sxvi_put(c, sxvi_ldm_vmdb_header, p, 1)) {
+        return true;
+    }
+    var last = sxvi32(b, 4, 1);
+    var z = sxvi32(b, 8, 1);
+    var start = sxvi32(b, 12, 1);
+    if (z < 32 || z > 4096 || !sxvi_pow(z) || start < 512 || start % z || last > Math.floor(sxU64(n - 17) * 512 / z) || start > last * z) {
+        return true;
+    }
+    for (var q = start; q < last * z && c.count < 24000; q += z) {
+        if (!sxvi_read(c, p + q, b, 24) || sxMemcmp(b, "VBLK", 4)) {
+            break;
+        }
+        if (!sxvi_put(c, sxvi_ldm_vblk_fragment, p + q, 1)) {
+            return false;
+        }
+        if (sxvi16(b, 12, 1) === 0 && sxvi16(b, 14, 1)) {
+            if (!sxvi_put(c, sxvi_ldm_vblk_record_header, p + q + 16, 1)) {
+                return false;
+            }
+            if (sxvi16(b, 14, 1) === 1) {
+                var v = 24;
+                for (var k = 0; k < 2; k++) {
+                    var len = [0];
+                    if (v >= z || !sxvi_read(c, p + q + v, len, 1) || len[0] > sxU64(sxU64(z - v) - 1)) {
+                        break;
+                    }
+                    if (!sxvi_put(c, sxvi_ldm_variable_length, p + q + v, 1)) {
+                        return false;
+                    }
+                    v += 1 + len[0];
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_windows_ldm_build(c) {
+    return sxvi_ldm(c);
+}

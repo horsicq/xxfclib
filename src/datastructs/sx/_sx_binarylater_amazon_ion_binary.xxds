@@ -1,0 +1,233 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/amazon_ion_binary/xx_amazon_ion_binary_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbl_ion_tag_fields = layout([u8("type_and_flags", FLAGS)]);
+var sxbl_ion_tag = sxLayout(0x6035003A, "ion_tag", LE, sxbl_ion_tag_fields);
+var sxbl_ion_version_fields = layout([u8("marker", SIGNATURE), u8("major", ID), u8("minor", ID), u8("terminator", SIGNATURE)]);
+var sxbl_ion_version = sxLayout(0x603500A4, "ion_version", LE, sxbl_ion_version_fields);
+var sxbl_ion_length1_fields = layout([field("length", "ion_varuint[1]", 1, SIZE)]);
+var sxbl_ion_length1 = sxLayout(0x603500A5, "ion_length1", LE, sxbl_ion_length1_fields);
+var sxbl_ion_field_id1_fields = layout([field("field_id", "ion_varuint[1]", 1, ID)]);
+var sxbl_ion_field_id1 = sxLayout(0x603500A6, "ion_field_id1", LE, sxbl_ion_field_id1_fields);
+var sxbl_ion_annotation_length1_fields = layout([field("annotation_length", "ion_varuint[1]", 1, SIZE)]);
+var sxbl_ion_annotation_length1 = sxLayout(0x603500A7, "ion_annotation_length1", LE, sxbl_ion_annotation_length1_fields);
+var sxbl_ion_annotation_id1_fields = layout([field("annotation_id", "ion_varuint[1]", 1, ID)]);
+var sxbl_ion_annotation_id1 = sxLayout(0x603500A8, "ion_annotation_id1", LE, sxbl_ion_annotation_id1_fields);
+var sxbl_ion_decimal_exponent1_fields = layout([field("decimal_exponent", "ion_varint[1]", 1)]);
+var sxbl_ion_decimal_exponent1 = sxLayout(0x603500A9, "ion_decimal_exponent1", LE, sxbl_ion_decimal_exponent1_fields);
+var sxbl_ion_length2_fields = layout([field("length", "ion_varuint[2]", 2, SIZE)]);
+var sxbl_ion_length2 = sxLayout(0x603500AA, "ion_length2", LE, sxbl_ion_length2_fields);
+var sxbl_ion_field_id2_fields = layout([field("field_id", "ion_varuint[2]", 2, ID)]);
+var sxbl_ion_field_id2 = sxLayout(0x603500AB, "ion_field_id2", LE, sxbl_ion_field_id2_fields);
+var sxbl_ion_annotation_length2_fields = layout([field("annotation_length", "ion_varuint[2]", 2, SIZE)]);
+var sxbl_ion_annotation_length2 = sxLayout(0x603500AC, "ion_annotation_length2", LE, sxbl_ion_annotation_length2_fields);
+var sxbl_ion_annotation_id2_fields = layout([field("annotation_id", "ion_varuint[2]", 2, ID)]);
+var sxbl_ion_annotation_id2 = sxLayout(0x603500AD, "ion_annotation_id2", LE, sxbl_ion_annotation_id2_fields);
+var sxbl_ion_decimal_exponent2_fields = layout([field("decimal_exponent", "ion_varint[2]", 2)]);
+var sxbl_ion_decimal_exponent2 = sxLayout(0x603500AE, "ion_decimal_exponent2", LE, sxbl_ion_decimal_exponent2_fields);
+var sxbl_ion_length3_fields = layout([field("length", "ion_varuint[3]", 3, SIZE)]);
+var sxbl_ion_length3 = sxLayout(0x603500AF, "ion_length3", LE, sxbl_ion_length3_fields);
+var sxbl_ion_field_id3_fields = layout([field("field_id", "ion_varuint[3]", 3, ID)]);
+var sxbl_ion_field_id3 = sxLayout(0x603500B0, "ion_field_id3", LE, sxbl_ion_field_id3_fields);
+var sxbl_ion_annotation_length3_fields = layout([field("annotation_length", "ion_varuint[3]", 3, SIZE)]);
+var sxbl_ion_annotation_length3 = sxLayout(0x603500B1, "ion_annotation_length3", LE, sxbl_ion_annotation_length3_fields);
+var sxbl_ion_annotation_id3_fields = layout([field("annotation_id", "ion_varuint[3]", 3, ID)]);
+var sxbl_ion_annotation_id3 = sxLayout(0x603500B2, "ion_annotation_id3", LE, sxbl_ion_annotation_id3_fields);
+var sxbl_ion_decimal_exponent3_fields = layout([field("decimal_exponent", "ion_varint[3]", 3)]);
+var sxbl_ion_decimal_exponent3 = sxLayout(0x603500B3, "ion_decimal_exponent3", LE, sxbl_ion_decimal_exponent3_fields);
+var sxbl_ion_length4_fields = layout([field("length", "ion_varuint[4]", 4, SIZE)]);
+var sxbl_ion_length4 = sxLayout(0x603500B4, "ion_length4", LE, sxbl_ion_length4_fields);
+var sxbl_ion_field_id4_fields = layout([field("field_id", "ion_varuint[4]", 4, ID)]);
+var sxbl_ion_field_id4 = sxLayout(0x603500B5, "ion_field_id4", LE, sxbl_ion_field_id4_fields);
+var sxbl_ion_annotation_length4_fields = layout([field("annotation_length", "ion_varuint[4]", 4, SIZE)]);
+var sxbl_ion_annotation_length4 = sxLayout(0x603500B6, "ion_annotation_length4", LE, sxbl_ion_annotation_length4_fields);
+var sxbl_ion_annotation_id4_fields = layout([field("annotation_id", "ion_varuint[4]", 4, ID)]);
+var sxbl_ion_annotation_id4 = sxLayout(0x603500B7, "ion_annotation_id4", LE, sxbl_ion_annotation_id4_fields);
+var sxbl_ion_decimal_exponent4_fields = layout([field("decimal_exponent", "ion_varint[4]", 4)]);
+var sxbl_ion_decimal_exponent4 = sxLayout(0x603500B8, "ion_decimal_exponent4", LE, sxbl_ion_decimal_exponent4_fields);
+var sxbl_ion_length5_fields = layout([field("length", "ion_varuint[5]", 5, SIZE)]);
+var sxbl_ion_length5 = sxLayout(0x603500B9, "ion_length5", LE, sxbl_ion_length5_fields);
+var sxbl_ion_field_id5_fields = layout([field("field_id", "ion_varuint[5]", 5, ID)]);
+var sxbl_ion_field_id5 = sxLayout(0x603500BA, "ion_field_id5", LE, sxbl_ion_field_id5_fields);
+var sxbl_ion_annotation_length5_fields = layout([field("annotation_length", "ion_varuint[5]", 5, SIZE)]);
+var sxbl_ion_annotation_length5 = sxLayout(0x603500BB, "ion_annotation_length5", LE, sxbl_ion_annotation_length5_fields);
+var sxbl_ion_annotation_id5_fields = layout([field("annotation_id", "ion_varuint[5]", 5, ID)]);
+var sxbl_ion_annotation_id5 = sxLayout(0x603500BC, "ion_annotation_id5", LE, sxbl_ion_annotation_id5_fields);
+var sxbl_ion_decimal_exponent5_fields = layout([field("decimal_exponent", "ion_varint[5]", 5)]);
+var sxbl_ion_decimal_exponent5 = sxLayout(0x603500BD, "ion_decimal_exponent5", LE, sxbl_ion_decimal_exponent5_fields);
+var sxbl_ion_length6_fields = layout([field("length", "ion_varuint[6]", 6, SIZE)]);
+var sxbl_ion_length6 = sxLayout(0x603500BE, "ion_length6", LE, sxbl_ion_length6_fields);
+var sxbl_ion_field_id6_fields = layout([field("field_id", "ion_varuint[6]", 6, ID)]);
+var sxbl_ion_field_id6 = sxLayout(0x603500BF, "ion_field_id6", LE, sxbl_ion_field_id6_fields);
+var sxbl_ion_annotation_length6_fields = layout([field("annotation_length", "ion_varuint[6]", 6, SIZE)]);
+var sxbl_ion_annotation_length6 = sxLayout(0x603500C0, "ion_annotation_length6", LE, sxbl_ion_annotation_length6_fields);
+var sxbl_ion_annotation_id6_fields = layout([field("annotation_id", "ion_varuint[6]", 6, ID)]);
+var sxbl_ion_annotation_id6 = sxLayout(0x603500C1, "ion_annotation_id6", LE, sxbl_ion_annotation_id6_fields);
+var sxbl_ion_decimal_exponent6_fields = layout([field("decimal_exponent", "ion_varint[6]", 6)]);
+var sxbl_ion_decimal_exponent6 = sxLayout(0x603500C2, "ion_decimal_exponent6", LE, sxbl_ion_decimal_exponent6_fields);
+var sxbl_ion_length7_fields = layout([field("length", "ion_varuint[7]", 7, SIZE)]);
+var sxbl_ion_length7 = sxLayout(0x603500C3, "ion_length7", LE, sxbl_ion_length7_fields);
+var sxbl_ion_field_id7_fields = layout([field("field_id", "ion_varuint[7]", 7, ID)]);
+var sxbl_ion_field_id7 = sxLayout(0x603500C4, "ion_field_id7", LE, sxbl_ion_field_id7_fields);
+var sxbl_ion_annotation_length7_fields = layout([field("annotation_length", "ion_varuint[7]", 7, SIZE)]);
+var sxbl_ion_annotation_length7 = sxLayout(0x603500C5, "ion_annotation_length7", LE, sxbl_ion_annotation_length7_fields);
+var sxbl_ion_annotation_id7_fields = layout([field("annotation_id", "ion_varuint[7]", 7, ID)]);
+var sxbl_ion_annotation_id7 = sxLayout(0x603500C6, "ion_annotation_id7", LE, sxbl_ion_annotation_id7_fields);
+var sxbl_ion_decimal_exponent7_fields = layout([field("decimal_exponent", "ion_varint[7]", 7)]);
+var sxbl_ion_decimal_exponent7 = sxLayout(0x603500C7, "ion_decimal_exponent7", LE, sxbl_ion_decimal_exponent7_fields);
+var sxbl_ion_length8_fields = layout([field("length", "ion_varuint[8]", 8, SIZE)]);
+var sxbl_ion_length8 = sxLayout(0x603500C8, "ion_length8", LE, sxbl_ion_length8_fields);
+var sxbl_ion_field_id8_fields = layout([field("field_id", "ion_varuint[8]", 8, ID)]);
+var sxbl_ion_field_id8 = sxLayout(0x603500C9, "ion_field_id8", LE, sxbl_ion_field_id8_fields);
+var sxbl_ion_annotation_length8_fields = layout([field("annotation_length", "ion_varuint[8]", 8, SIZE)]);
+var sxbl_ion_annotation_length8 = sxLayout(0x603500CA, "ion_annotation_length8", LE, sxbl_ion_annotation_length8_fields);
+var sxbl_ion_annotation_id8_fields = layout([field("annotation_id", "ion_varuint[8]", 8, ID)]);
+var sxbl_ion_annotation_id8 = sxLayout(0x603500CB, "ion_annotation_id8", LE, sxbl_ion_annotation_id8_fields);
+var sxbl_ion_decimal_exponent8_fields = layout([field("decimal_exponent", "ion_varint[8]", 8)]);
+var sxbl_ion_decimal_exponent8 = sxLayout(0x603500CC, "ion_decimal_exponent8", LE, sxbl_ion_decimal_exponent8_fields);
+var sxbl_ion_length9_fields = layout([field("length", "ion_varuint[9]", 9, SIZE)]);
+var sxbl_ion_length9 = sxLayout(0x603500CD, "ion_length9", LE, sxbl_ion_length9_fields);
+var sxbl_ion_field_id9_fields = layout([field("field_id", "ion_varuint[9]", 9, ID)]);
+var sxbl_ion_field_id9 = sxLayout(0x603500CE, "ion_field_id9", LE, sxbl_ion_field_id9_fields);
+var sxbl_ion_annotation_length9_fields = layout([field("annotation_length", "ion_varuint[9]", 9, SIZE)]);
+var sxbl_ion_annotation_length9 = sxLayout(0x603500CF, "ion_annotation_length9", LE, sxbl_ion_annotation_length9_fields);
+var sxbl_ion_annotation_id9_fields = layout([field("annotation_id", "ion_varuint[9]", 9, ID)]);
+var sxbl_ion_annotation_id9 = sxLayout(0x603500D0, "ion_annotation_id9", LE, sxbl_ion_annotation_id9_fields);
+var sxbl_ion_decimal_exponent9_fields = layout([field("decimal_exponent", "ion_varint[9]", 9)]);
+var sxbl_ion_decimal_exponent9 = sxLayout(0x603500D1, "ion_decimal_exponent9", LE, sxbl_ion_decimal_exponent9_fields);
+var sxbl_ion_length10_fields = layout([field("length", "ion_varuint[10]", 10, SIZE)]);
+var sxbl_ion_length10 = sxLayout(0x603500D2, "ion_length10", LE, sxbl_ion_length10_fields);
+var sxbl_ion_field_id10_fields = layout([field("field_id", "ion_varuint[10]", 10, ID)]);
+var sxbl_ion_field_id10 = sxLayout(0x603500D3, "ion_field_id10", LE, sxbl_ion_field_id10_fields);
+var sxbl_ion_annotation_length10_fields = layout([field("annotation_length", "ion_varuint[10]", 10, SIZE)]);
+var sxbl_ion_annotation_length10 = sxLayout(0x603500D4, "ion_annotation_length10", LE, sxbl_ion_annotation_length10_fields);
+var sxbl_ion_annotation_id10_fields = layout([field("annotation_id", "ion_varuint[10]", 10, ID)]);
+var sxbl_ion_annotation_id10 = sxLayout(0x603500D5, "ion_annotation_id10", LE, sxbl_ion_annotation_id10_fields);
+var sxbl_ion_decimal_exponent10_fields = layout([field("decimal_exponent", "ion_varint[10]", 10)]);
+var sxbl_ion_decimal_exponent10 = sxLayout(0x603500D6, "ion_decimal_exponent10", LE, sxbl_ion_decimal_exponent10_fields);
+var sxbl_ion_negative_magnitude1_fields = layout([u8("absolute_magnitude")]);
+var sxbl_ion_negative_magnitude1 = sxLayout(0x603500FC, "ion_negative_magnitude1", BE, sxbl_ion_negative_magnitude1_fields);
+var sxbl_ion_negative_magnitude2_fields = layout([u16("absolute_magnitude")]);
+var sxbl_ion_negative_magnitude2 = sxLayout(0x603500FE, "ion_negative_magnitude2", BE, sxbl_ion_negative_magnitude2_fields);
+var sxbl_ion_negative_magnitude3_fields = layout([field("absolute_magnitude", "uint24", 3)]);
+var sxbl_ion_negative_magnitude3 = sxLayout(0x60350100, "ion_negative_magnitude3", BE, sxbl_ion_negative_magnitude3_fields);
+var sxbl_ion_negative_magnitude4_fields = layout([u32("absolute_magnitude")]);
+var sxbl_ion_negative_magnitude4 = sxLayout(0x60350102, "ion_negative_magnitude4", BE, sxbl_ion_negative_magnitude4_fields);
+var sxbl_ion_negative_magnitude5_fields = layout([field("absolute_magnitude", "uint40", 5)]);
+var sxbl_ion_negative_magnitude5 = sxLayout(0x60350104, "ion_negative_magnitude5", BE, sxbl_ion_negative_magnitude5_fields);
+var sxbl_ion_negative_magnitude6_fields = layout([field("absolute_magnitude", "uint48", 6)]);
+var sxbl_ion_negative_magnitude6 = sxLayout(0x60350106, "ion_negative_magnitude6", BE, sxbl_ion_negative_magnitude6_fields);
+var sxbl_ion_negative_magnitude7_fields = layout([field("absolute_magnitude", "uint56", 7)]);
+var sxbl_ion_negative_magnitude7 = sxLayout(0x60350108, "ion_negative_magnitude7", BE, sxbl_ion_negative_magnitude7_fields);
+var sxbl_ion_negative_magnitude8_fields = layout([u64("absolute_magnitude")]);
+var sxbl_ion_negative_magnitude8 = sxLayout(0x6035010A, "ion_negative_magnitude8", BE, sxbl_ion_negative_magnitude8_fields);
+function sxbl_ionvar(c, p, end, role, sign, out) {
+    var v0 = [sxbl_ion_length1, sxbl_ion_length2, sxbl_ion_length3, sxbl_ion_length4, sxbl_ion_length5, sxbl_ion_length6, sxbl_ion_length7, sxbl_ion_length8, sxbl_ion_length9, sxbl_ion_length10];
+    var v1 = [sxbl_ion_field_id1, sxbl_ion_field_id2, sxbl_ion_field_id3, sxbl_ion_field_id4, sxbl_ion_field_id5, sxbl_ion_field_id6, sxbl_ion_field_id7, sxbl_ion_field_id8, sxbl_ion_field_id9, sxbl_ion_field_id10];
+    var v2 = [sxbl_ion_annotation_length1, sxbl_ion_annotation_length2, sxbl_ion_annotation_length3, sxbl_ion_annotation_length4, sxbl_ion_annotation_length5, sxbl_ion_annotation_length6, sxbl_ion_annotation_length7, sxbl_ion_annotation_length8, sxbl_ion_annotation_length9, sxbl_ion_annotation_length10];
+    var v3 = [sxbl_ion_annotation_id1, sxbl_ion_annotation_id2, sxbl_ion_annotation_id3, sxbl_ion_annotation_id4, sxbl_ion_annotation_id5, sxbl_ion_annotation_id6, sxbl_ion_annotation_id7, sxbl_ion_annotation_id8, sxbl_ion_annotation_id9, sxbl_ion_annotation_id10];
+    var v4 = [sxbl_ion_decimal_exponent1, sxbl_ion_decimal_exponent2, sxbl_ion_decimal_exponent3, sxbl_ion_decimal_exponent4, sxbl_ion_decimal_exponent5, sxbl_ion_decimal_exponent6, sxbl_ion_decimal_exponent7, sxbl_ion_decimal_exponent8, sxbl_ion_decimal_exponent9, sxbl_ion_decimal_exponent10];
+    var arrays = [v0, v1, v2, v3, v4];
+    if (role > 4) {
+        return false;
+    }
+    var at = p[0];
+    var v = 0;
+    var n = 0;
+    var b = [0];
+    do {
+        if (p[0] >= end || n === 10 || !sxbl_byte(c, p[0]++, b)) {
+            return false;
+        }
+        var bits = b[0] & (sign && !n ? 63 : 127);
+        if (v > Math.floor((SX_U64_MAX - bits) / 128)) {
+            return false;
+        }
+        v = v * 128 + bits;
+        n++;
+    } while (!(b[0] & 128));
+    if (!sxbl_add(c, arrays[role][(n - 1) >>> 0], at)) {
+        return false;
+    }
+    out[0] = v;
+    return true;
+}
+function sxbl_ion(c, p, end, depth) {
+    var t = [0];
+    if (depth > 32 || !sxbl_byte(c, p[0], t) || !sxbl_emit(c, p, end, sxbl_ion_tag)) {
+        return false;
+    }
+    var kind = t[0] >> 4;
+    var l = t[0] & 15;
+    var n = [l];
+    if (kind === 15) {
+        return false;
+    }
+    if (l === 15 || kind === 1) {
+        return true;
+    }
+    if ((l === 14 || kind === 13 && l === 1) && !sxbl_ionvar(c, p, end, 0, false, n)) {
+        return false;
+    }
+    if (p[0] > end || n[0] > sxU64(end - p[0])) {
+        return false;
+    }
+    var stop = p[0] + n[0];
+    if (kind === 11 || kind === 12 || kind === 13) {
+        while (p[0] < stop) {
+            var id = [0];
+            if (kind === 13 && !sxbl_ionvar(c, p, stop, 1, false, id)) {
+                return false;
+            }
+            if (!sxbl_ion(c, p, stop, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    if (kind === 14) {
+        var z = [0];
+        id = [0];
+        if (!sxbl_ionvar(c, p, stop, 2, false, z) || z[0] > sxU64(stop - p[0])) {
+            return false;
+        }
+        var lim = p[0] + z[0];
+        while (p[0] < lim) {
+            if (!sxbl_ionvar(c, p, lim, 3, false, id)) {
+                return false;
+            }
+        }
+        return sxbl_ion(c, p, stop, (depth + 1) >>> 0) && p[0] === stop;
+    }
+    if (kind === 4 && (n[0] === 4 || n[0] === 8)) {
+        return sxbl_float(c, p, stop, n[0] >>> 0, true);
+    }
+    if (kind === 3 && n[0] && n[0] <= 8) {
+        var a = [sxbl_ion_negative_magnitude1, sxbl_ion_negative_magnitude2, sxbl_ion_negative_magnitude3, sxbl_ion_negative_magnitude4, sxbl_ion_negative_magnitude5, sxbl_ion_negative_magnitude6, sxbl_ion_negative_magnitude7, sxbl_ion_negative_magnitude8];
+        return sxbl_emit(c, p, stop, a[sxU64(n[0] - 1)]);
+    }
+    if ((kind === 2 || kind === 7) && n[0] && n[0] <= 8) {
+        return sxbl_numeric(c, p, stop, n[0] >>> 0, false, true);
+    }
+    if (kind === 5 && n[0]) {
+        var exp = [0];
+        if (!sxbl_ionvar(c, p, stop, 4, true, exp)) {
+            return false;
+        }
+    }
+    p[0] = stop;
+    return true;
+}
+function sx_amazon_ion_binary_build(c) {
+    var p = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var ok = false;
+    ok = sxbl_emit(c, p, end, sxbl_ion_version);
+    while (p[0] < end && ok) {
+        ok = sxbl_ion(c, p, end, 0);
+    }
+    return ok;
+}

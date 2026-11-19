@@ -1,0 +1,109 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/lightwave_lwo2/xx_lightwave_lwo2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_lwo2_form_fields = layout([chars("signature", 4, SIGNATURE), u32("data_size", SIZE), chars("form_type", 4, ID)]);
+var sxmo_lwo2_form = sxLayout(0x60210051, "lwo2_form", BE, sxmo_lwo2_form_fields);
+var sxmo_lwo2_chunk_fields = layout([chars("chunk_type", 4, ID), u32("data_size", SIZE)]);
+var sxmo_lwo2_chunk = sxLayout(0x60210052, "lwo2_chunk", BE, sxmo_lwo2_chunk_fields);
+var sxmo_lwo2_layer_fields = layout([u16("number", ID), u16("flags", FLAGS), field("pivot", "float32[3]", 12)]);
+var sxmo_lwo2_layer = sxLayout(0x60210053, "lwo2_layer", BE, sxmo_lwo2_layer_fields);
+var sxmo_lwo2_point_fields = layout([field("x", "float32", 4), field("y", "float32", 4), field("z", "float32", 4)]);
+var sxmo_lwo2_point = sxLayout(0x60210054, "lwo2_point", BE, sxmo_lwo2_point_fields);
+var sxmo_lwo2_polygon_type_fields = layout([chars("polygon_type", 4, ID)]);
+var sxmo_lwo2_polygon_type = sxLayout(0x60210055, "lwo2_polygon_type", BE, sxmo_lwo2_polygon_type_fields);
+var sxmo_lwo2_tag_type_fields = layout([chars("tag_type", 4, ID)]);
+var sxmo_lwo2_tag_type = sxLayout(0x60210056, "lwo2_tag_type", BE, sxmo_lwo2_tag_type_fields);
+var sxmo_lwo2_polygon_fields = layout([u16("count_and_flags", FLAGS)]);
+var sxmo_lwo2_polygon = sxLayout(0x60210057, "lwo2_polygon", BE, sxmo_lwo2_polygon_fields);
+var sxmo_lwo2_index16_fields = layout([u16("index", ID)]);
+var sxmo_lwo2_index16 = sxLayout(0x60210058, "lwo2_index16", BE, sxmo_lwo2_index16_fields);
+var sxmo_lwo2_index24_fields = layout([u8("marker", SIGNATURE), field("index", "uint24", 3, ID)]);
+var sxmo_lwo2_index24 = sxLayout(0x60210059, "lwo2_index24", BE, sxmo_lwo2_index24_fields);
+var sxmo_lwo2_tag_index_fields = layout([u16("tag_index", ID)]);
+var sxmo_lwo2_tag_index = sxLayout(0x6021005A, "lwo2_tag_index", BE, sxmo_lwo2_tag_index_fields);
+function sxmo_lwo_index(c, p, end) {
+    var b = [0];
+    if (p[0] >= end || !sxmo_read(c, p[0], b, 1)) {
+        return false;
+    }
+    return sxmo_take(c, b[0] === 255 ? sxmo_lwo2_index24 : sxmo_lwo2_index16, p, end);
+}
+function sxmo_lwo(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 12) || sxMemcmp(h, "FORM", 4) || sxMemcmpAt(h, 8, "LWO2", 0, 4) || !sxmo_add(c, sxmo_lwo2_form, 0)) {
+        return false;
+    }
+    var p = 12;
+    var end = 8 + sxmo32(h, 4, true);
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    }
+    for (var i = 0; p < end && i < 4096; i++) {
+        if (sxU64(end - p) < 8 || !sxmo_read(c, p, h, 8)) {
+            break;
+        }
+        var z = sxmo32(h, 4, true);
+        if (z > sxU64(sxU64(end - p) - 8)) {
+            break;
+        }
+        var q = [p + 8];
+        var stop = q[0] + z;
+        if (!sxmo_add(c, sxmo_lwo2_chunk, p)) {
+            return false;
+        }
+        if (!sxMemcmp(h, "LAYR", 4) && z >= 16) {
+            if (!sxmo_add(c, sxmo_lwo2_layer, q[0])) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "PNTS", 4) && z % 12 === 0 && Math.floor(z / 12) <= 1000000) {
+            if (!sxmo_table(c, sxmo_lwo2_point, q[0], Math.floor(z / 12))) {
+                return false;
+            }
+        } else if (!sxMemcmp(h, "POLS", 4) && z >= 4) {
+            if (!sxmo_take(c, sxmo_lwo2_polygon_type, q, stop)) {
+                return false;
+            }
+            for (var j = 0; q[0] < stop && j < 4096; j++) {
+                if (sxU64(stop - q[0]) < 2 || !sxmo_read(c, q[0], h, 2)) {
+                    break;
+                }
+                var n = sxmo16(h, 0, true) & 1023;
+                if (!sxmo_take(c, sxmo_lwo2_polygon, q, stop)) {
+                    return false;
+                }
+                var ok = true;
+                for (var k = 0; k < n; k++) {
+                    if (!sxmo_lwo_index(c, q, stop)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (!ok) {
+                    break;
+                }
+            }
+        } else if (!sxMemcmp(h, "PTAG", 4) && z >= 4) {
+            if (!sxmo_take(c, sxmo_lwo2_tag_type, q, stop)) {
+                return false;
+            }
+            for (j = 0; q[0] < stop && j < 4096; j++) {
+                if (!sxmo_lwo_index(c, q, stop) || sxU64(stop - q[0]) < 2) {
+                    break;
+                }
+                if (!sxmo_take(c, sxmo_lwo2_tag_index, q, stop)) {
+                    return false;
+                }
+            }
+        }
+        p = stop + sxAnd64(z, 1);
+    }
+    return !c.failed;
+}
+function sx_lightwave_lwo2_build(c) {
+    var ok = false;
+    ok = sxmo_lwo(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

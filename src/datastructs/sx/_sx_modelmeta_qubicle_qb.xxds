@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/qubicle_qb/xx_qubicle_qb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_qb_header_fields = layout([u32("version", ID), u32("color_format", ID), u32("z_axis_orientation", ID),
+    u32("compressed", FLAGS), u32("visibility_mask_encoded", FLAGS), u32("matrix_count", COUNT)]);
+var sxmo_qb_header = sxLayout(0x6021006A, "qb_header", LE, sxmo_qb_header_fields);
+var sxmo_qb_name_length_fields = layout([u8("name_size", SIZE)]);
+var sxmo_qb_name_length = sxLayout(0x6021006B, "qb_name_length", LE, sxmo_qb_name_length_fields);
+var sxmo_qb_matrix_fields = layout([u32("size_x", COUNT), u32("size_y", COUNT), u32("size_z", COUNT), i32("position_x"),
+    i32("position_y"), i32("position_z")]);
+var sxmo_qb_matrix = sxLayout(0x6021006C, "qb_matrix", LE, sxmo_qb_matrix_fields);
+var sxmo_qb_voxel_fields = layout([u32("encoded_color", FLAGS)]);
+var sxmo_qb_voxel = sxLayout(0x6021006D, "qb_voxel", LE, sxmo_qb_voxel_fields);
+var sxmo_qb_rle_marker_fields = layout([u32("marker", ID)]);
+var sxmo_qb_rle_marker = sxLayout(0x6021006E, "qb_rle_marker", LE, sxmo_qb_rle_marker_fields);
+var sxmo_qb_rle_run_fields = layout([u32("voxel_count", COUNT), u32("encoded_color", FLAGS)]);
+var sxmo_qb_rle_run = sxLayout(0x6021006F, "qb_rle_run", LE, sxmo_qb_rle_run_fields);
+function sxmo_qb(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 24) || sxmo32(h, 0, false) !== 0x101 || !sxmo_add(c, sxmo_qb_header, 0)) {
+        return false;
+    }
+    var count = sxmo32(h, 20, false);
+    var compressed = sxmo32(h, 12, false);
+    if (count > 1024 || compressed > 1) {
+        return true;
+    }
+    var p = [24];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var budget = 0;
+    for (var i = 0; i < count; i++) {
+        if (p[0] >= end || !sxmo_read(c, p[0], h, 1)) {
+            break;
+        }
+        var z = h[0];
+        if (25 + z > sxU64(end - p[0])) {
+            break;
+        }
+        if (!sxmo_add(c, sxmo_qb_name_length, p[0])) {
+            return false;
+        }
+        p[0] += (1 + z) >>> 0;
+        if (!sxmo_read(c, p[0], h, 24) || !sxmo_add(c, sxmo_qb_matrix, p[0])) {
+            return false;
+        }
+        p[0] += 24;
+        var nx = sxmo32(h, 0, false);
+        var ny = sxmo32(h, 4, false);
+        var nz = sxmo32(h, 8, false);
+        if (!nx || !ny || !nz || nx > 16777216 || ny > Math.floor(16777216 / nx) || nz > Math.floor(16777216 / (nx * ny))) {
+            break;
+        }
+        var pixels = nx * ny * nz;
+        if (!compressed) {
+            if (pixels * 4 > sxU64(end - p[0])) {
+                break;
+            }
+            if (pixels <= 1000000 && !sxmo_table(c, sxmo_qb_voxel, p[0], pixels)) {
+                return false;
+            }
+            p[0] += pixels * 4;
+        } else {
+            var valid = true;
+            for (var slice = 0; slice < nz && valid; slice++) {
+                var filled = 0;
+                var terminal = false;
+                while (p[0] < end && budget++ < 16000) {
+                    if (sxU64(end - p[0]) < 4 || !sxmo_read(c, p[0], h, 4)) {
+                        valid = false;
+                        break;
+                    }
+                    var code = sxmo32(h, 0, false);
+                    if (code === 6) {
+                        if (!sxmo_take(c, sxmo_qb_rle_marker, p, end)) {
+                            return false;
+                        }
+                        terminal = true;
+                        break;
+                    }
+                    var run = 1;
+                    if (code === 2) {
+                        if (sxU64(end - p[0]) < 12 || !sxmo_read(c, p[0] + 4, h, 8)) {
+                            valid = false;
+                            break;
+                        }
+                        run = sxmo32(h, 0, false);
+                        if (!sxmo_take(c, sxmo_qb_rle_marker, p, end) || !sxmo_take(c, sxmo_qb_rle_run, p, end)) {
+                            return false;
+                        }
+                    } else if (!sxmo_take(c, sxmo_qb_voxel, p, end)) {
+                        return false;
+                    }
+                    if (run > sxU64(nx * ny - filled)) {
+                        valid = false;
+                        break;
+                    }
+                    filled += run;
+                }
+                if (!terminal || filled !== nx * ny) {
+                    valid = false;
+                }
+            }
+            if (!valid) {
+                break;
+            }
+        }
+    }
+    return !c.failed;
+}
+function sx_qubicle_qb_build(c) {
+    var ok = false;
+    ok = sxmo_qb(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

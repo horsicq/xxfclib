@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivequad.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxquad_header_fields = layout([i32("uncompressed_size", SIZE)]);
+var sxquad_header = sxLayout(0x60960001, "quad_header", LE, sxquad_header_fields);
+function sx_archivequad_supports(type) {
+    switch (type) {
+    case "QUAD":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archivequad_build(c) {
+    if (c === null || c.f === null || c.f.file_type !== "QUAD") {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    return sx_quad_build(c);
+}
+function sx_archivequad_comment(r, id) {
+    if (id !== sxquad_header.id) {
+        return true;
+    }
+    if (r === null || r.name === null) {
+        return false;
+    }
+    return !!(sxStrcmp(r.name, "uncompressed_size") || sxSetComment(r, "Signed nonnegative decoded byte count; original QUAD1.12 writes a four-byte little-endian int. Entropy-coded payload positions are not decoded-member coordinates."));
+}

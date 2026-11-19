@@ -1,0 +1,97 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/amiga_diskobject/xx_amiga_diskobject_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_icon_diskobject_fields = layout([u16("magic", SIGNATURE), u16("version", ID), u32("next_gadget", POINTER), i16("left"),
+    i16("top"), i16("width"), i16("height"), u16("gadget_flags", FLAGS), u16("activation", FLAGS), u16("gadget_type", FLAGS),
+    u32("gadget_render", POINTER), u32("select_render", POINTER), u32("gadget_text", POINTER), i32("mutual_exclude"),
+    u32("special_info", POINTER), u16("gadget_id", ID), u32("user_data", POINTER), u8("object_type", ID),
+    u8("padding", RESERVED), u32("default_tool", POINTER), u32("tool_types", POINTER), i32("current_x"), i32("current_y"),
+    u32("drawer_data", POINTER), u32("tool_window", POINTER), i32("stack_size", SIZE)]);
+var sxnx_icon_diskobject = sxLayout(0x60320052, "icon_diskobject", BE, sxnx_icon_diskobject_fields);
+var sxnx_icon_drawer_fields = layout([i16("left"), i16("top"), i16("width"), i16("height"), u8("detail_pen"), u8("block_pen"),
+    u32("idcmp_flags", FLAGS), u32("window_flags", FLAGS), u32("first_gadget", POINTER), u32("check_mark", POINTER),
+    u32("title", POINTER), u32("screen", POINTER), u32("bitmap", POINTER), i16("min_width"), i16("min_height"),
+    u16("max_width"), u16("max_height"), u16("window_type", ID), i32("current_x"), i32("current_y")]);
+var sxnx_icon_drawer = sxLayout(0x60320053, "icon_drawer", BE, sxnx_icon_drawer_fields);
+var sxnx_icon_image_fields = layout([i16("left"), i16("top"), i16("width"), i16("height"), i16("depth"),
+    u32("image_data", POINTER), u8("plane_pick", FLAGS), u8("plane_on_off", FLAGS), u32("next_image", POINTER)]);
+var sxnx_icon_image = sxLayout(0x60320054, "icon_image", BE, sxnx_icon_image_fields);
+var sxnx_icon_string_fields = layout([u32("string_bytes", SIZE)]);
+var sxnx_icon_string = sxLayout(0x60320055, "icon_string", BE, sxnx_icon_string_fields);
+var sxnx_icon_tooltypes_fields = layout([u32("pointer_array_bytes", SIZE)]);
+var sxnx_icon_tooltypes = sxLayout(0x60320056, "icon_tooltypes", BE, sxnx_icon_tooltypes_fields);
+var sxnx_icon_new_drawer_fields = layout([u32("flags", FLAGS), u16("view_mode", ID)]);
+var sxnx_icon_new_drawer = sxLayout(0x60320057, "icon_new_drawer", BE, sxnx_icon_new_drawer_fields);
+function sxnx_walk_icon_string(v, p) {
+    if (!sxnx_row(v, sxnx_icon_string, p[0], v.n)) {
+        return false;
+    }
+    var n = sxnx_u32(v.p, p[0], true);
+    p[0] += 4;
+    if (!sxnx_need(v, p[0], n, v.n)) {
+        return false;
+    }
+    p[0] += n;
+    return true;
+}
+function sxnx_icon(v) {
+    if (!sxnx_row(v, sxnx_icon_diskobject, 0, v.n)) {
+        return false;
+    }
+    var p = [78];
+    var drawer = sxnx_u32(v.p, 66, true) !== 0;
+    if (drawer) {
+        if (!sxnx_row(v, sxnx_icon_drawer, p[0], v.n)) {
+            return false;
+        }
+        p[0] += 56;
+    }
+    for (var i = 0; i < (sxnx_u32(v.p, 26, true) ? 2 : 1); i++) {
+        if (!sxnx_row(v, sxnx_icon_image, p[0], v.n)) {
+            return false;
+        }
+        var w = sxnx_u16(v.p, p[0] + 4, true);
+        var h = sxnx_u16(v.p, p[0] + 6, true);
+        var d = sxnx_u16(v.p, p[0] + 8, true);
+        var z = Math.floor((w + 15) / 16) * 2 * h * d;
+        p[0] += 20;
+        if (!sxnx_need(v, p[0], z, v.n)) {
+            return false;
+        }
+        p[0] += z;
+    }
+    if (sxnx_u32(v.p, 50, true) && !sxnx_walk_icon_string(v, p)) {
+        return false;
+    }
+    if (sxnx_u32(v.p, 54, true)) {
+        if (!sxnx_row(v, sxnx_icon_tooltypes, p[0], v.n)) {
+            return false;
+        }
+        var n = sxnx_u32(v.p, p[0], true);
+        p[0] += 4;
+        if (n < 4 || n > 8192 || n & 3) {
+            return false;
+        }
+        for (i = 0; i < (Math.floor(n / 4) - 1) >>> 0; i++) {
+            if (!sxnx_walk_icon_string(v, p)) {
+                return false;
+            }
+        }
+    }
+    if (sxnx_u32(v.p, 70, true) && !sxnx_walk_icon_string(v, p)) {
+        return false;
+    }
+    if (drawer && sxnx_u32(v.p, 44, true) & 255) {
+        if (!sxnx_row(v, sxnx_icon_new_drawer, p[0], v.n)) {
+            return false;
+        }
+        p[0] += 6;
+    }
+    return p[0] === v.n;
+}
+function sx_amiga_diskobject_build(v) {
+    return sxnx_icon(v);
+}

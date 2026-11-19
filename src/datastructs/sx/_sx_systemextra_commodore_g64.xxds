@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/commodore_g64/xx_commodore_g64_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_g64_header_fields = layout([chars("signature", 8, SIGNATURE), u8("version"), u8("halftrack_count", COUNT),
+    u16("maximum_track_size", SIZE)]);
+var sxse_g64_header = sxLayout(0x602F0002, "g64_header", LE, sxse_g64_header_fields);
+var sxse_g64_track_offset_fields = layout([u32("track_offset", OFFSET)]);
+var sxse_g64_track_offset = sxLayout(0x602F0003, "g64_track_offset", LE, sxse_g64_track_offset_fields);
+var sxse_g64_constant_speed_fields = layout([u32("speed_zone")]);
+var sxse_g64_constant_speed = sxLayout(0x602F0004, "g64_constant_speed", LE, sxse_g64_constant_speed_fields);
+var sxse_g64_speed_offset_fields = layout([u32("speed_map_offset", OFFSET)]);
+var sxse_g64_speed_offset = sxLayout(0x602F0005, "g64_speed_offset", LE, sxse_g64_speed_offset_fields);
+var sxse_g64_track_header_fields = layout([u16("track_size", SIZE)]);
+var sxse_g64_track_header = sxLayout(0x602F0006, "g64_track_header", LE, sxse_g64_track_header_fields);
+function sxse_g64(c) {
+    var h = [];
+    var b = [];
+    if (!sxse_read(c, 0, h, 12) || sxMemcmp(h, "GCR-1541", 8) || !h[9] || h[9] > 84 || !sxse_put(c, sxse_g64_header, 0, 12, 1)) {
+        return false;
+    }
+    var n = h[9];
+    var end = (12 + ((8 * n) >>> 0)) >>> 0;
+    if (!sxse_put(c, sxse_g64_track_offset, 12, 4, n) || !sxse_span(c, 12, (8 * n) >>> 0)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxse_read(c, (12 + ((4 * i) >>> 0)) >>> 0, b, 4)) {
+            return false;
+        }
+        var p = sxse_u32(b, 0, false);
+        if (p) {
+            var z;
+            if (p < end || (z = sx_u16(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), false)) === null || !z || !sxse_span(c, p, 2 + z) || !sxse_put(c, sxse_g64_track_header, p, 2, 1)) {
+                return false;
+            }
+        }
+        var q = (((12 + ((4 * n) >>> 0)) >>> 0) + ((4 * i) >>> 0)) >>> 0;
+        if (!sxse_read(c, q, b, 4)) {
+            return false;
+        }
+        var v = sxse_u32(b, 0, false);
+        if (!sxse_put(c, v <= 3 ? sxse_g64_constant_speed : sxse_g64_speed_offset, q, 4, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_commodore_g64_build(c) {
+    return sxse_g64(c);
+}

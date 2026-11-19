@@ -1,0 +1,94 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pce_pbi/xx_pce_pbi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_pc_pbi_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("header_size", SIZE),
+    u8("l1_index_bits"), u8("l2_index_bits"), u8("block_size_shift"), u8("reserved", RESERVED), u64("image_size", SIZE),
+    u64("l1_offset", OFFSET), u64("file_size", SIZE)]);
+var sx_pc_pbi_header = sxLayout(0x60140018, "pbi_header", BE, sx_pc_pbi_header_fields);
+var sx_pc_pbi_l1_entry_fields = layout([u64("l2_offset", OFFSET)]);
+var sx_pc_pbi_l1_entry = sxLayout(0x60140019, "pbi_l1_entry", BE, sx_pc_pbi_l1_entry_fields);
+var sx_pc_pbi_l2_entry_fields = layout([u64("data_offset", OFFSET)]);
+var sx_pc_pbi_l2_entry = sxLayout(0x6014001A, "pbi_l2_entry", BE, sx_pc_pbi_l2_entry_fields);
+function sx_pc_free(c, at, n) {
+    if (!sx_pc_span(c, at, n) || c.count >= 50000) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        var o = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (at < o + z && o < at + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_pc_pbi(c) {
+    var b = [];
+    var header = 0;
+    if (!sx_read(c, 0, b, 48)) {
+        return false;
+    }
+    if (!sxMemcmp(b, "PBIn", 4)) {
+        if (b[14] < 9 || b[14] > 24 || (c.size < 0 ? c.size + SX_U64_MAX : c.size) < sxShl64(1, b[14])) {
+            return false;
+        }
+        header = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - sxShl64(1, b[14]));
+        if (header < 48 || !sx_read(c, (header >= SX_I64_MAX ? header - SX_U64_MAX : header), b, 48) || !sx_add(c, sx_pc_pbi_header, 0, 40)) {
+            return false;
+        }
+    }
+    if (sxMemcmp(b, "PBI ", 4) || b[12] > 24 || b[13] > 24 || b[14] < 9 || b[14] > 24 || !sx_add(c, sx_pc_pbi_header, (header >= SX_I64_MAX ? header - SX_U64_MAX : header), 40)) {
+        return false;
+    }
+    var at = sxGetU64(b, 48, 24, true);
+    var n = sxShl64(1, b[12]);
+    var m = sxShl64(1, b[13]);
+    var volume = sxGetU64(b, 48, 16, true);
+    var block = sxShl64(1, b[14]);
+    if (n > 4096) {
+        n = 4096;
+    }
+    if (!sx_pc_free(c, at, n * 8)) {
+        return true;
+    }
+    if (!sx_table(c, sx_pc_pbi_l1_entry, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8, n)) {
+        return false;
+    }
+    var blocks = Math.floor(volume / block) + (volume % block !== 0 ? 1 : 0);
+    var needed = Math.floor(blocks / m) + (blocks % m !== 0 ? 1 : 0);
+    if (n > needed) {
+        n = needed;
+    }
+    for (var i = 0; i < n; i++) {
+        var ptr;
+        if ((ptr = sx_u64(c, (at + i * 8 >= SX_I64_MAX ? at + i * 8 - SX_U64_MAX : at + i * 8), true)) === null) {
+            return false;
+        }
+        var entries = m;
+        if (entries > 4096) {
+            entries = 4096;
+        }
+        if (!ptr || !sx_pc_free(c, ptr, entries * 8)) {
+            continue;
+        }
+        for (var j = 0; j < entries; j++) {
+            var value;
+            if ((value = sx_u64(c, (ptr + j * 8 >= SX_I64_MAX ? ptr + j * 8 - SX_U64_MAX : ptr + j * 8), true)) === null) {
+                return false;
+            }
+            if (c.count >= 50000) {
+                return true;
+            }
+            if (!sx_add(c, sxAnd64(value, 2) ? sx_pc_pbi_l2_fill : sx_pc_pbi_l2_entry, (ptr + j * 8 >= SX_I64_MAX ? ptr + j * 8 - SX_U64_MAX : ptr + j * 8), 8)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_pce_pbi_build(c) {
+    return sx_pc_pbi(c);
+}

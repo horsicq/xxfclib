@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/mohawk_mhk/xx_mohawk_mhk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_mhk_header_fields = layout([chars("magic", 4, SIGNATURE), u32("file_size", SIZE),
+    chars("resource_magic", 4, SIGNATURE), u16("version", ID), u16("compaction"), u32("resource_size", SIZE),
+    u32("directory_offset", OFFSET), u16("file_table_offset", OFFSET), u16("file_table_size", SIZE)]);
+var sxmx_mhk_header = sxLayout(0x602E0006, "mhk_header", BE, sxmx_mhk_header_fields);
+var sxmx_mhk_directory_fields = layout([u16("string_table_offset", OFFSET), u16("type_count", COUNT)]);
+var sxmx_mhk_directory = sxLayout(0x602E0007, "mhk_directory", BE, sxmx_mhk_directory_fields);
+var sxmx_mhk_type_fields = layout([chars("type_tag", 4, ID), u16("resource_table_offset", OFFSET),
+    u16("name_table_offset", OFFSET)]);
+var sxmx_mhk_type = sxLayout(0x602E0008, "mhk_type", BE, sxmx_mhk_type_fields);
+var sxmx_mhk_count32_fields = layout([u32("entry_count", COUNT)]);
+var sxmx_mhk_count32 = sxLayout(0x602E0009, "mhk_count32", BE, sxmx_mhk_count32_fields);
+var sxmx_mhk_count16_fields = layout([u16("entry_count", COUNT)]);
+var sxmx_mhk_count16 = sxLayout(0x602E000A, "mhk_count16", BE, sxmx_mhk_count16_fields);
+var sxmx_mhk_file_fields = layout([u32("file_offset", OFFSET), u16("size_low16"), u8("size_high8"),
+    u8("size_high3_and_flags", FLAGS), u16("unknown")]);
+var sxmx_mhk_file = sxLayout(0x602E000B, "mhk_file", BE, sxmx_mhk_file_fields);
+var sxmx_mhk_resource_fields = layout([u16("resource_id", ID), u16("file_index", ID)]);
+var sxmx_mhk_resource = sxLayout(0x602E000C, "mhk_resource", BE, sxmx_mhk_resource_fields);
+var sxmx_mhk_name_fields = layout([u16("string_offset", OFFSET), u16("file_index", ID)]);
+var sxmx_mhk_name = sxLayout(0x602E000D, "mhk_name", BE, sxmx_mhk_name_fields);
+function sxmx_mhk(v) {
+    if (!sxmx_row(v, sxmx_mhk_header, 0, v.n)) {
+        return false;
+    }
+    var base = sxmx_u32(v.p, 20, true);
+    var ft = base + sxmx_u16(v.p, 24, true);
+    if (!sxmx_row(v, sxmx_mhk_directory, base, v.n) || !sxmx_row(v, sxmx_mhk_count32, ft, v.n)) {
+        return false;
+    }
+    var n = sxmx_u32(v.p, ft, true);
+    var types = sxmx_u16(v.p, base + 2, true);
+    if (!sxmx_table(v, sxmx_mhk_file, ft + 4, n, v.n) || !sxmx_table(v, sxmx_mhk_type, base + 4, types, v.n)) {
+        return false;
+    }
+    for (var i = 0; i < types; i++) {
+        var p = v.p, p_o = base + 4 + i * 8;
+        var rt = base + sxmx_u16(p, p_o + 4, true);
+        var nt = base + sxmx_u16(p, p_o + 6, true);
+        if (!sxmx_row(v, sxmx_mhk_count16, rt, v.n) || !sxmx_row(v, sxmx_mhk_count16, nt, v.n) || !sxmx_table(v, sxmx_mhk_resource, rt + 2, sxmx_u16(v.p, rt, true), v.n) || !sxmx_table(v, sxmx_mhk_name, nt + 2, sxmx_u16(v.p, nt, true), v.n)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_mohawk_mhk_build(v) {
+    return sxmx_mhk(v);
+}

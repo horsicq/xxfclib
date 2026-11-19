@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/dcs/xx_dcs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_dcs_header_fields = layout([chars("signature", 4, SIGNATURE), u32("block_count", COUNT), u32("uncompressed_size", SIZE)]);
+var sxan_dcs_header = sxLayout(0x6077003E, "dcs_header", LE, sxan_dcs_header_fields);
+var sxan_dcs_block_fields = layout([u32("stored_size", SIZE), u32("uncompressed_size", SIZE)]);
+var sxan_dcs_block = sxLayout(0x6077003F, "dcs_block", LE, sxan_dcs_block_fields);
+function sxan_dcs(c) {
+    var n = [0];
+    var p = 12;
+    var z = [0];
+    if (!sxan_add(c, sxan_dcs_header, 0) || !sxan_word(c, 4, 4, false, n)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxan_word(c, p, 4, false, z) || z[0] < 4 || !sxan_add(c, sxan_dcs_block, p)) {
+            return false;
+        }
+        p += 8;
+        if (!sxan_span(c, p, sxU64(z[0] - 4))) {
+            return true;
+        }
+        p += sxU64(z[0] - 4);
+    }
+    return true;
+}
+function sx_dcs_build(c) {
+    var ok = false;
+    ok = sxan_dcs(c);
+    return !!(c.count && sxan_finish(c));
+}

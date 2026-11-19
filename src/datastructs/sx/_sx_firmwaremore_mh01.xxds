@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/mh01/xx_mh01_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_mh01_payload_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("iv_text_size", SIZE),
+    u32("encrypted_size", SIZE), u32("unknown")]);
+var sx_fm_mh01_payload_header = sxLayout(0x60220006, "mh01_payload_header", LE, sx_fm_mh01_payload_header_fields);
+function sx_mh01_build(c) {
+    return sx_fm_add(c, sx_fm_mh01_signature_header, 0, 16) && sx_fm_add(c, sx_fm_mh01_payload_header, 16, 16);
+}

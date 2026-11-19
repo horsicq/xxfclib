@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/jgpak/xx_jgpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_jgpak_header_fields = layout([bytes("signature", 7, SIGNATURE), i32("description_size", SIZE)]);
+var sxacl_jgpak_header = sxLayout(0x60500006, "jgpak_header", LE, sxacl_jgpak_header_fields);
+var sxacl_jgpak_version_size_fields = layout([i32("version_size", SIZE)]);
+var sxacl_jgpak_version_size = sxLayout(0x60500007, "jgpak_version_size", LE, sxacl_jgpak_version_size_fields);
+var sxacl_jgpak_count_fields = layout([u8("flag"), i32("member_count", COUNT)]);
+var sxacl_jgpak_count = sxLayout(0x60500008, "jgpak_count", LE, sxacl_jgpak_count_fields);
+var sxacl_jgpak_name_size_fields = layout([u8("name_size", SIZE)]);
+var sxacl_jgpak_name_size = sxLayout(0x60500009, "jgpak_name_size", LE, sxacl_jgpak_name_size_fields);
+var sxacl_jgpak_member_fields = layout([u16("dos_time"), u16("dos_date"), i32("uncompressed_size", SIZE),
+    i32("payload_offset", OFFSET), i32("compressed_size", SIZE), u32("crc32", CHECKSUM), bytes("unused", 4)]);
+var sxacl_jgpak_member = sxLayout(0x6050000A, "jgpak_member", LE, sxacl_jgpak_member_fields);
+function sxacl_jg(c) {
+    var z = [0];
+    var p;
+    var n = [0];
+    if (!sxacl_word(c, 7, 4, false, z) || z[0] > 2147483647 || !sxacl_span(c, 11, z[0]) || !sxacl_add(c, sxacl_jgpak_header, 0)) {
+        return false;
+    }
+    p = 11 + z[0];
+    if (!sxacl_word(c, p, 4, false, z) || z[0] > 2147483647 || !sxacl_span(c, p + 4, z[0]) || !sxacl_add(c, sxacl_jgpak_version_size, p)) {
+        return false;
+    }
+    p += 4 + z[0];
+    if (!sxacl_word(c, p + 1, 4, false, n) || n[0] > 2147483647 || !sxacl_add(c, sxacl_jgpak_count, p)) {
+        return false;
+    }
+    p += 5;
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxacl_word(c, p, 1, false, z) || !z[0] || !sxacl_span(c, p + 1, z[0] + 24) || !sxacl_add(c, sxacl_jgpak_name_size, p) || !sxacl_add(c, sxacl_jgpak_member, p + 1 + z[0])) {
+            return false;
+        }
+        p += 25 + z[0];
+    }
+    return true;
+}
+function sx_jgpak_build(c) {
+    return sxacl_jg(c);
+}

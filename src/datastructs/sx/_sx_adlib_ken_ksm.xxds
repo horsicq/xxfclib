@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/ken_ksm/xx_ken_ksm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_ksm_header_fields = layout([field("track_instruments", "uint8_t[16]", 16),
+    field("track_quantization", "uint8_t[16]", 16), field("track_channel_counts", "uint8_t[16]", 16),
+    field("reserved", "uint8_t[16]", 16, RESERVED), field("track_volumes", "uint8_t[16]", 16),
+    field("event_count", "uint16_t", 2, COUNT)]);
+var sxad_adlib_ksm_header = sxLayout(0x600F0048, "adlib_ksm_header", LE, sxad_adlib_ksm_header_fields);
+var sxad_adlib_ksm_event_fields = layout([field("packed_note_event", "uint32_t", 4, FLAGS)]);
+var sxad_adlib_ksm_event = sxLayout(0x600F0049, "adlib_ksm_event", LE, sxad_adlib_ksm_event_fields);
+function sxad_ksm(c) {
+    var count;
+    if ((count = sx_u16(c, 80, false)) === null || !count || c.size !== 82 + count * 4) {
+        return false;
+    }
+    return sx_add(c, sxad_adlib_ksm_header, 0, 82) && sx_table(c, sxad_adlib_ksm_event, 82, 4, count);
+}
+function sx_ken_ksm_build(c) {
+    return sxad_ksm(c);
+}

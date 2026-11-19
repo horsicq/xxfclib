@@ -1,0 +1,122 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/digitalillusionscreativeent_di/xx_digitalillusionscreativeent_di_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmodv_di_header_fields = layout([u16("sample_count", COUNT), u32("order_offset", OFFSET),
+    u32("pattern_data_offset", OFFSET), u32("sample_data_offset", OFFSET)]);
+var sxmodv_di_header = sxLayout(0x609B0001, "di_header", BE, sxmodv_di_header_fields);
+var sxmodv_di_pattern_offset_fields = layout([u16("pattern_offset", OFFSET)]);
+var sxmodv_di_pattern_offset = sxLayout(0x609B0003, "di_pattern_offset", BE, sxmodv_di_pattern_offset_fields);
+function sxmodv_di_pattern(v, p, limit) {
+    if (p >= limit || limit > v.end) {
+        return false;
+    }
+    for (var row = 0; row < 64; row++) {
+        var stop = false;
+        for (var ch = 0; ch < 4; ch++) {
+            var a = [0];
+            var b = [0];
+            var n;
+            if (!sxmodv_word(v, p, 1, a, 0)) {
+                return false;
+            }
+            if (a[0] === 255) {
+                if (p >= limit || !sxmodv_row(v, sxmodv_di_blank, p)) {
+                    return false;
+                }
+                p++;
+                continue;
+            }
+            n = a[0] < 128 ? 2 : 3;
+            if (p > limit || n > sxU64(limit - p) || !sxmodv_word(v, p + 1, 1, b, 0)) {
+                return false;
+            }
+            if (sxAnd64(b[0], 15) === 11 || sxAnd64(b[0], 15) === 13) {
+                stop = true;
+            }
+            if (!sxmodv_row(v, n === 2 ? sxmodv_di_event : sxmodv_di_event_value, p)) {
+                return false;
+            }
+            p += n;
+        }
+        if (stop) {
+            break;
+        }
+    }
+    return true;
+}
+function sxmodv_di(v) {
+    var ns = [0];
+    var orders = [0];
+    var patterns = [0];
+    var samples = [0];
+    var x = [0];
+    var np = 0;
+    var norder = 0;
+    var table;
+    var ends;
+    if (!sxmodv_row(v, sxmodv_di_header, 0) || !sxmodv_word(v, 0, 2, ns, 0) || ns[0] > 31 || !sxmodv_word(v, 2, 4, orders, 0) || !sxmodv_word(v, 6, 4, patterns, 0) || !sxmodv_word(v, 10, 4, samples, 0)) {
+        return false;
+    }
+    table = 14 + ns[0] * 8;
+    if (orders[0] < table || patterns[0] <= orders[0] || samples[0] <= patterns[0] || samples[0] > v.end || sxU64(patterns[0] - orders[0]) > 129 || !sxmodv_span(v, 14, ns[0] * 8)) {
+        return false;
+    }
+    for (var i = 0; i < ns[0]; i++) {
+        if (!sxmodv_row(v, sxmodv_mod_compact_sample, 14 + i * 8)) {
+            return false;
+        }
+    }
+    ends = orders[0];
+    for (; ends < patterns[0] && norder < 128; ends++, norder++) {
+        if (!sxmodv_word(v, ends, 1, x, 0)) {
+            return false;
+        }
+        if (x[0] === 255) {
+            break;
+        }
+        if (x[0] >= 128) {
+            return false;
+        }
+        if (np < x[0] + 1) {
+            np = x[0] + 1;
+        }
+        if (!sxmodv_row(v, sxmodv_mod_order, ends)) {
+            return false;
+        }
+    }
+    if (!sxmodv_word(v, ends, 1, x, 0) || x[0] !== 255 || ends + 1 !== patterns[0] || !sxmodv_row(v, sxmodv_di_orders_end, ends) || !np || np * 2 > sxU64(orders[0] - table)) {
+        return false;
+    }
+    var pointers = [];
+    for (i = 0; i < np; i++) {
+        if (!sxmodv_word(v, table + i * 2, 2, pointers, i) || !sxmodv_row(v, sxmodv_di_pattern_offset, table + i * 2)) {
+            return false;
+        }
+    }
+    for (i = 0; i < np; i++) {
+        var p = pointers[i];
+        var end = samples[0];
+        var duplicate = false;
+        for (var j = 0; j < i; j++) {
+            if (pointers[j] === p) {
+                duplicate = true;
+            }
+        }
+        if (duplicate || p < patterns[0] || p >= samples[0]) {
+            continue;
+        }
+        for (j = 0; j < np; j++) {
+            if (pointers[j] > p && pointers[j] < end) {
+                end = pointers[j];
+            }
+        }
+        sxmodv_di_pattern(v, p, end);
+    }
+    return true;
+}
+function sx_digitalillusionscreativeent_di_build(v) {
+    return sxmodv_di(v);
+}

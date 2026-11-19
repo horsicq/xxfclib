@@ -1,0 +1,171 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/nastran_bulk/xx_nastran_bulk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_coordinate_system_fields = layout([field("coordinate_system", "ascii_signed", 0, ID)]);
+var sxsm_coordinate_system = sxLayout(0x6063007C, "mesh_coordinate_system", LE, sxsm_coordinate_system_fields);
+var sxsm_displacement_coordinate_system_fields = layout([field("displacement_coordinate_system", "ascii_signed", 0, ID)]);
+var sxsm_displacement_coordinate_system = sxLayout(0x6063007D, "mesh_displacement_coordinate_system", LE, sxsm_displacement_coordinate_system_fields);
+var sxsm_permanent_constraints_fields = layout([field("permanent_constraints", "ascii_signed", 0)]);
+var sxsm_permanent_constraints = sxLayout(0x6063007E, "mesh_permanent_constraints", LE, sxsm_permanent_constraints_fields);
+var sxsm_superelement_id_fields = layout([field("superelement_id", "ascii_signed", 0, ID)]);
+var sxsm_superelement_id = sxLayout(0x6063007F, "mesh_superelement_id", LE, sxsm_superelement_id_fields);
+var sxsm_nastran_x_fields = layout([field("nastran_x", "ascii_nastran_real", 0)]);
+var sxsm_nastran_x = sxLayout(0x60630080, "mesh_nastran_x", LE, sxsm_nastran_x_fields);
+var sxsm_nastran_y_fields = layout([field("nastran_y", "ascii_nastran_real", 0)]);
+var sxsm_nastran_y = sxLayout(0x60630081, "mesh_nastran_y", LE, sxsm_nastran_y_fields);
+var sxsm_nastran_z_fields = layout([field("nastran_z", "ascii_nastran_real", 0)]);
+var sxsm_nastran_z = sxLayout(0x60630082, "mesh_nastran_z", LE, sxsm_nastran_z_fields);
+var sxsm_bar_orientation_x_fields = layout([field("bar_orientation_x", "ascii_nastran_real", 0)]);
+var sxsm_bar_orientation_x = sxLayout(0x60630083, "mesh_bar_orientation_x", LE, sxsm_bar_orientation_x_fields);
+var sxsm_bar_orientation_y_fields = layout([field("bar_orientation_y", "ascii_nastran_real", 0)]);
+var sxsm_bar_orientation_y = sxLayout(0x60630084, "mesh_bar_orientation_y", LE, sxsm_bar_orientation_y_fields);
+var sxsm_bar_orientation_z_fields = layout([field("bar_orientation_z", "ascii_nastran_real", 0)]);
+var sxsm_bar_orientation_z = sxLayout(0x60630085, "mesh_bar_orientation_z", LE, sxsm_bar_orientation_z_fields);
+function sxsm_nastran(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(24, sxNew_sxsm_token);
+    var n;
+    while (sxsm_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        var p = 0;
+        var comma = false;
+        while (p < line.z && q.b[line.a + p] !== 36 /*$*/) {
+            if (q.b[line.a + p] === 44 /*,*/) {
+                comma = true;
+            }
+            p++;
+        }
+        if (p < line.z) {
+            {
+                if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, { a: line.a + p, z: line.z - p }))) {
+                    return false;
+                }
+            }
+            line.z = p;
+        }
+        var trimmed = sxCopy_sxsm_token(null, sxsm_trim(q, sxCopy_sxsm_token(null, line)));
+        if (!trimmed.z) {
+            continue;
+        }
+        if (trimmed.z >= 5 && !sxMemcmpAt(q.b, trimmed.a, "BEGIN", 0, 5)) {
+            {
+                if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, trimmed), "ENDDATA")) {
+            {
+                if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (comma) {
+            n = sxsm_csv(q, sxCopy_sxsm_token(null, line), t, 24);
+        } else {
+            n = 0;
+            for (var at = 0; at < line.z; at += 8) {
+                if (n === 24) {
+                    return false;
+                }
+                t[n++] = sxCopy_sxsm_token(null, sxsm_trim(q, sxCopy_sxsm_token(null, { a: line.a + at, z: line.z - at < 8 ? line.z - at : 8 })));
+            }
+        }
+        while (n && !t[(n - 1) >>> 0].z) {
+            n--;
+        }
+        if (n < 2 || n > 24) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_keyword, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        var grid = sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "GRID");
+        var bar = sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "CBAR");
+        if (grid) {
+            if (n < 6) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_node_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_coordinate_system, sxCopy_sxsm_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_nastran_x, sxCopy_sxsm_token(null, t[3]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_nastran_y, sxCopy_sxsm_token(null, t[4]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_nastran_z, sxCopy_sxsm_token(null, t[5]))) {
+                    return false;
+                }
+            }
+            var extra = [sxsm_displacement_coordinate_system, sxsm_permanent_constraints, sxsm_superelement_id];
+            if (!sxsm_fields(q, t, 6, (n - 6) >>> 0, extra, 3)) {
+                return false;
+            }
+        } else {
+            if (n < 5 || bar && n !== 8) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_element_id, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsm_emit(q, sxsm_property_id, sxCopy_sxsm_token(null, t[2]))) {
+                    return false;
+                }
+            }
+            if (!sxsm_each(q, t, 3, (((n - 3) >>> 0) - (bar ? 3 : 0)) >>> 0, sxsm_node_index)) {
+                return false;
+            }
+            if (bar) {
+                if (n !== 8) {
+                    return false;
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_bar_orientation_x, sxCopy_sxsm_token(null, t[5]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_bar_orientation_y, sxCopy_sxsm_token(null, t[6]))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxsm_emit(q, sxsm_bar_orientation_z, sxCopy_sxsm_token(null, t[7]))) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_nastran_bulk_build(q) {
+    return sxsm_nastran(q);
+}

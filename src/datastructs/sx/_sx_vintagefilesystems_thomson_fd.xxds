@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/thomson_fd/xx_thomson_fd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvintage_thomson_volume_header_fields = layout([chars("volume_name", 8, NONE), bytes("unknown_volume_bytes", 248)]);
+var sxvintage_thomson_volume_header = sxLayout(0x609D0001, "thomson_volume_header", BE, sxvintage_thomson_volume_header_fields);
+var sxvintage_thomson_fat_prefix_fields = layout([u8("reserved_zero")]);
+var sxvintage_thomson_fat_prefix = sxLayout(0x609D0002, "thomson_fat_prefix", BE, sxvintage_thomson_fat_prefix_fields);
+var sxvintage_thomson_fat_entry_fields = layout([u8("allocation_value")]);
+var sxvintage_thomson_fat_entry = sxLayout(0x609D0003, "thomson_fat_entry", BE, sxvintage_thomson_fat_entry_fields);
+var sxvintage_thomson_directory_entry_fields = layout([chars("filename", 8, NONE), chars("extension", 3, NONE),
+    u8("file_type", ID), u8("format_flag", FLAGS), u8("first_block", ID), u16("last_sector_bytes", SIZE),
+    chars("comment", 8, NONE), u8("day"), u8("month"), u8("year"), bytes("unknown_tail", 5)]);
+var sxvintage_thomson_directory_entry = sxLayout(0x609D0004, "thomson_directory_entry", BE, sxvintage_thomson_directory_entry_fields);
+var sxvintage_thomson_directory_state_fields = layout([u8("entry_state")]);
+var sxvintage_thomson_directory_state = sxLayout(0x609D0005, "thomson_directory_state", BE, sxvintage_thomson_directory_state_fields);
+function sxvintage_span(c, at, size) {
+    return c !== null && c.size >= 0 && at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && size <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sxvintage_thomson_side(c, origin, accepted) {
+    var volume = [];
+    var fat = [];
+    var directory = [];
+    var at = origin + 0x14000;
+    var blocks = 80;
+    var entries = 0;
+    accepted[0] = false;
+    if (!sxvintage_span(c, at, 4096)) {
+        return true;
+    }
+    if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), volume, 256) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 256, fat, 256) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 512, directory, 3584)) {
+        return false;
+    }
+    for (var i = 0; i < 8; i++) {
+        if (volume[i] < 32 || volume[i] > 127) {
+            return true;
+        }
+    }
+    if (fat[0] || !(fat[41] === 254 || fat[41] === 251) || !(fat[42] === 254 || fat[42] === 251)) {
+        return true;
+    }
+    for (i = 81; i < 256; i++) {
+        if (fat[i]) {
+            blocks = 160;
+            break;
+        }
+    }
+    if (!sxvintage_span(c, origin, blocks * 2048)) {
+        return true;
+    }
+    for (i = (blocks + 1) >>> 0; i < 256; i++) {
+        if (fat[i]) {
+            return true;
+        }
+    }
+    for (i = 1; i <= blocks; i++) {
+        if (!(fat[i] < blocks || fat[i] >= 193 && fat[i] <= 200 || fat[i] === 251 || fat[i] === 254 || fat[i] === 255)) {
+            return true;
+        }
+    }
+    for (; entries < 112; entries++) {
+        var d = directory, d_o = (entries * 32) >>> 0;
+        if (d[d_o] === 255) {
+            entries++;
+            break;
+        }
+        if (!d[d_o]) {
+            continue;
+        }
+        for (i = 0; i < 11; i++) {
+            if (d[d_o + i] < 32 || d[d_o + i] > 127) {
+                return true;
+            }
+        }
+        if (d[d_o + 11] > 3 || d[d_o + 12] !== 0 && d[d_o + 12] !== 255 || d[d_o + 13] >= blocks || d[d_o + 14]) {
+            return true;
+        }
+    }
+    if (!sx_add(c, sxvintage_thomson_volume_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 256) || !sx_add(c, sxvintage_thomson_fat_prefix, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 256, 1) || !sx_table(c, sxvintage_thomson_fat_entry, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 257, 1, blocks)) {
+        return false;
+    }
+    for (i = 0; i < entries; i++) {
+        d = directory;
+        d_o = (i * 32) >>> 0;
+        var l = d[d_o] === 0 || d[d_o] === 255 ? sxvintage_thomson_directory_state : sxvintage_thomson_directory_entry;
+        if (!sx_add(c, l, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 512 + ((i * 32) >>> 0), l === sxvintage_thomson_directory_state ? 1 : 32)) {
+            return false;
+        }
+    }
+    accepted[0] = true;
+    return true;
+}
+function sx_thomson_fd_build(c) {
+    if (c.size !== 327680 && c.size !== 655360) {
+        return false;
+    }
+    var first = [false];
+    var second = [false];
+    if (!sxvintage_thomson_side(c, 0, first) || !sxvintage_thomson_side(c, Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 2), second)) {
+        return false;
+    }
+    if (!first[0] && !second[0]) {
+        return sx_raw(c, 0, c.size);
+    }
+    return sxvintage_finish(c);
+}

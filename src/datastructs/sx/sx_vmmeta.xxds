@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_vmmeta.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_vmmeta");
+include("_sx_vmmeta_dotnet_metadata");
+include("_sx_vmmeta_erlang_beam");
+include("_sx_vmmeta_java_class");
+include("_sx_vmmeta_lua_bytecode51");
+
+function fileTypes() { return ["DOTNET_METADATA", "JAVA_CLASS", "ERLANG_BEAM", "LUA_BYTECODE51"]; }
+
+var sx_vmmeta_layouts = [sx_vm_java_class_header, sx_vm_java_constant_utf8, sx_vm_java_constant_integer,
+    sx_vm_java_constant_float, sx_vm_java_constant_long, sx_vm_java_constant_double, sx_vm_java_constant_class,
+    sx_vm_java_constant_string, sx_vm_java_constant_method_type, sx_vm_java_constant_module, sx_vm_java_constant_package,
+    sx_vm_java_constant_fieldref, sx_vm_java_constant_methodref, sx_vm_java_constant_interface_methodref,
+    sx_vm_java_constant_name_and_type, sx_vm_java_constant_dynamic, sx_vm_java_constant_invoke_dynamic,
+    sx_vm_java_constant_method_handle, sx_vm_java_class_identity, sx_vm_java_interface, sx_vm_java_fields_count,
+    sx_vm_java_methods_count, sx_vm_java_attributes_count, sx_vm_java_field_info, sx_vm_java_method_info,
+    sx_vm_java_attribute_info, sx_vm_lua51_header, sx_vm_lua51_prototype, sx_vm_lua51_code_count, sx_vm_lua51_constants_count,
+    sx_vm_lua51_prototypes_count, sx_vm_lua51_lineinfo_count, sx_vm_lua51_locals_count, sx_vm_lua51_upvalues_count,
+    sx_vm_lua51_string32, sx_vm_lua51_string64, sx_vm_lua51_constant_tag, sx_vm_lua51_boolean, sx_vm_lua51_number_bits,
+    sx_vm_lua51_instruction, sx_vm_lua51_setlist_extra, sx_vm_lua51_lineinfo, sx_vm_lua51_local_range, sx_vm_beam_header,
+    sx_vm_beam_chunk_header, sx_vm_beam_code_header, sx_vm_beam_atom_count, sx_vm_beam_atom_length, sx_vm_beam_table_count,
+    sx_vm_beam_import, sx_vm_beam_export, sx_vm_cli_metadata_root, sx_vm_cli_storage_header, sx_vm_cli_stream_header];
+
+function structs() {
+    return sxCatalog([sx_vm_java_class_header, sx_vm_java_constant_utf8, sx_vm_java_constant_integer, sx_vm_java_constant_float,
+        sx_vm_java_constant_long, sx_vm_java_constant_double, sx_vm_java_constant_class, sx_vm_java_constant_string,
+        sx_vm_java_constant_method_type, sx_vm_java_constant_module, sx_vm_java_constant_package, sx_vm_java_constant_fieldref,
+        sx_vm_java_constant_methodref, sx_vm_java_constant_interface_methodref, sx_vm_java_constant_name_and_type,
+        sx_vm_java_constant_dynamic, sx_vm_java_constant_invoke_dynamic, sx_vm_java_constant_method_handle,
+        sx_vm_java_class_identity, sx_vm_java_interface, sx_vm_java_fields_count, sx_vm_java_methods_count,
+        sx_vm_java_attributes_count, sx_vm_java_field_info, sx_vm_java_method_info, sx_vm_java_attribute_info,
+        sx_vm_lua51_header, sx_vm_lua51_prototype, sx_vm_lua51_code_count, sx_vm_lua51_constants_count,
+        sx_vm_lua51_prototypes_count, sx_vm_lua51_lineinfo_count, sx_vm_lua51_locals_count, sx_vm_lua51_upvalues_count,
+        sx_vm_lua51_string32, sx_vm_lua51_string64, sx_vm_lua51_constant_tag, sx_vm_lua51_boolean, sx_vm_lua51_number_bits,
+        sx_vm_lua51_instruction, sx_vm_lua51_setlist_extra, sx_vm_lua51_lineinfo, sx_vm_lua51_local_range, sx_vm_beam_header,
+        sx_vm_beam_chunk_header, sx_vm_beam_code_header, sx_vm_beam_atom_count, sx_vm_beam_atom_length, sx_vm_beam_table_count,
+        sx_vm_beam_import, sx_vm_beam_export, sx_vm_cli_metadata_root, sx_vm_cli_storage_header, sx_vm_cli_stream_header], sx_vmmeta_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_vmmeta_build, false);
+}

@@ -1,0 +1,218 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/shiru_beepola/xx_shiru_beepola_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmp_beepola_header_fields = layout([chars("signature", 7, SIGNATURE), chars("version", 5, STRING)]);
+var sxmp_beepola_header = sxLayout(0x607B0035, "beepola_header", LE, sxmp_beepola_header_fields);
+var sxmp_beepola_section_fields = layout([field("section_name", "utf8", 0, STRING)]);
+var sxmp_beepola_section = sxLayout(0x607B0036, "beepola_section", LE, sxmp_beepola_section_fields);
+var sxmp_beepola_property_fields = layout([field("property_name", "utf8", 0, STRING)]);
+var sxmp_beepola_property = sxLayout(0x607B0037, "beepola_property", LE, sxmp_beepola_property_fields);
+var sxmp_beepola_property_value_fields = layout([field("property_value", "utf8", 0, STRING)]);
+var sxmp_beepola_property_value = sxLayout(0x607B0038, "beepola_property_value", LE, sxmp_beepola_property_value_fields);
+var sxmp_beepola_count_fields = layout([field("count", "ascii_decimal", 0, COUNT)]);
+var sxmp_beepola_count = sxLayout(0x607B0039, "beepola_count", LE, sxmp_beepola_count_fields);
+var sxmp_beepola_loop_index_fields = layout([field("loop_start", "ascii_decimal", 0)]);
+var sxmp_beepola_loop_index = sxLayout(0x607B003A, "beepola_loop_index", LE, sxmp_beepola_loop_index_fields);
+var sxmp_beepola_order_fields = layout([u8("pattern_index")]);
+var sxmp_beepola_order = sxLayout(0x607B003B, "beepola_order", LE, sxmp_beepola_order_fields);
+var sxmp_beepola_pattern_header_fields = layout([i32("row_count", COUNT), i32("tempo")]);
+var sxmp_beepola_pattern_header = sxLayout(0x607B003C, "beepola_pattern_header", LE, sxmp_beepola_pattern_header_fields);
+var sxmp_beepola_phaser_instrument_fields = layout([u8("multiple"), i32("detune"), u8("phase")]);
+var sxmp_beepola_phaser_instrument = sxLayout(0x607B003D, "beepola_phaser_instrument", LE, sxmp_beepola_phaser_instrument_fields);
+var sxmp_beepola_row_count_fields = layout([i32("row_count", COUNT)]);
+var sxmp_beepola_row_count = sxLayout(0x607B0042, "beepola_row_count", LE, sxmp_beepola_row_count_fields);
+var sxmp_beepola_channel_one_note_fields = layout([u8("channel_one_note")]);
+var sxmp_beepola_channel_one_note = sxLayout(0x607B0043, "beepola_channel_one_note", LE, sxmp_beepola_channel_one_note_fields);
+var sxmp_beepola_channel_two_note_fields = layout([u8("channel_two_note")]);
+var sxmp_beepola_channel_two_note = sxLayout(0x607B0044, "beepola_channel_two_note", LE, sxmp_beepola_channel_two_note_fields);
+var sxmp_beepola_drum_fields = layout([u8("drum")]);
+var sxmp_beepola_drum = sxLayout(0x607B0045, "beepola_drum", LE, sxmp_beepola_drum_fields);
+var sxmp_beepola_channel_one_sustain_fields = layout([u8("channel_one_sustain")]);
+var sxmp_beepola_channel_one_sustain = sxLayout(0x607B0046, "beepola_channel_one_sustain", LE, sxmp_beepola_channel_one_sustain_fields);
+var sxmp_beepola_channel_two_sustain_fields = layout([u8("channel_two_sustain")]);
+var sxmp_beepola_channel_two_sustain = sxLayout(0x607B0047, "beepola_channel_two_sustain", LE, sxmp_beepola_channel_two_sustain_fields);
+var sxmp_beepola_channel_one_warp_fields = layout([u8("channel_one_warp")]);
+var sxmp_beepola_channel_one_warp = sxLayout(0x607B0048, "beepola_channel_one_warp", LE, sxmp_beepola_channel_one_warp_fields);
+var sxmp_beepola_channel_two_warp_fields = layout([u8("channel_two_warp")]);
+var sxmp_beepola_channel_two_warp = sxLayout(0x607B0049, "beepola_channel_two_warp", LE, sxmp_beepola_channel_two_warp_fields);
+var sxmp_beepola_ornament_value_fields = layout([u8("ornament_value")]);
+var sxmp_beepola_ornament_value = sxLayout(0x607B004A, "beepola_ornament_value", LE, sxmp_beepola_ornament_value_fields);
+var sxmp_beepola_channel_one_glissando_fields = layout([u16("channel_one_glissando")]);
+var sxmp_beepola_channel_one_glissando = sxLayout(0x607B004B, "beepola_channel_one_glissando", LE, sxmp_beepola_channel_one_glissando_fields);
+var sxmp_beepola_channel_two_glissando_fields = layout([u16("channel_two_glissando")]);
+var sxmp_beepola_channel_two_glissando = sxLayout(0x607B004C, "beepola_channel_two_glissando", LE, sxmp_beepola_channel_two_glissando_fields);
+var sxmp_beepola_channel_one_skew_fields = layout([u16("channel_one_skew")]);
+var sxmp_beepola_channel_one_skew = sxLayout(0x607B004D, "beepola_channel_one_skew", LE, sxmp_beepola_channel_one_skew_fields);
+var sxmp_beepola_channel_two_skew_fields = layout([u16("channel_two_skew")]);
+var sxmp_beepola_channel_two_skew = sxLayout(0x607B004E, "beepola_channel_two_skew", LE, sxmp_beepola_channel_two_skew_fields);
+var sxmp_beepola_channel_one_skew_xor_fields = layout([u16("channel_one_skew_xor")]);
+var sxmp_beepola_channel_one_skew_xor = sxLayout(0x607B004F, "beepola_channel_one_skew_xor", LE, sxmp_beepola_channel_one_skew_xor_fields);
+var sxmp_beepola_channel_two_skew_xor_fields = layout([u16("channel_two_skew_xor")]);
+var sxmp_beepola_channel_two_skew_xor = sxLayout(0x607B0050, "beepola_channel_two_skew_xor", LE, sxmp_beepola_channel_two_skew_xor_fields);
+var sxmp_beepola_channel_one_arpeggio_fields = layout([u16("channel_one_arpeggio")]);
+var sxmp_beepola_channel_one_arpeggio = sxLayout(0x607B0051, "beepola_channel_one_arpeggio", LE, sxmp_beepola_channel_one_arpeggio_fields);
+var sxmp_beepola_channel_two_arpeggio_fields = layout([u16("channel_two_arpeggio")]);
+var sxmp_beepola_channel_two_arpeggio = sxLayout(0x607B0052, "beepola_channel_two_arpeggio", LE, sxmp_beepola_channel_two_arpeggio_fields);
+var sxmp_beepola_ornament_length_fields = layout([i32("length", COUNT)]);
+var sxmp_beepola_ornament_length = sxLayout(0x607B0053, "beepola_ornament_length", LE, sxmp_beepola_ornament_length_fields);
+function sxmp_beep_token(v, p, end, a, z) {
+    a[0] = p[0];
+    var b = [0];
+    while (p[0] < end && sxU64(p[0] - a[0]) < 1048576) {
+        if (!sxmp_u(v, p[0], 1, b, end)) {
+            return false;
+        }
+        p[0]++;
+        if (!b[0]) {
+            z[0] = sxU64(sxU64(p[0] - a[0]) - 1);
+            return true;
+        }
+    }
+    return false;
+}
+function sxmp_beep_prop(v, p, end, key, value, number) {
+    var a = [0];
+    var z = [0];
+    var k = sxStrlen(key);
+    var at;
+    var c = [0];
+    var n = 0;
+    if (!sxmp_beep_token(v, p, end, a, z) || z[0] <= k || !sxmp_eq(v, a[0], key, k, end) || !sxmp_u(v, a[0] + k, 1, c, end) || c[0] !== 61 /*=*/) {
+        return false;
+    }
+    at = a[0] + k + 1;
+    if (!sxmp_emit(v, sxmp_beepola_property, a[0], k, end) || !sxmp_emit(v, value, at, sxU64(sxU64(z[0] - k) - 1), end)) {
+        return false;
+    }
+    if (number !== null) {
+        if (sxU64(sxU64(z[0] - k) - 1) < 1 || sxU64(sxU64(z[0] - k) - 1) > 10) {
+            return false;
+        }
+        for (var i = at; i < a[0] + z[0]; i++) {
+            if (!sxmp_u(v, i, 1, c, end) || c[0] < 48 /*0*/ || c[0] > 57 /*9*/ || n > Math.floor(sxU64(4294967295 - sxU64(c[0] - 48 /*0*/)) / 10)) {
+                return false;
+            }
+            n = sxU64(n * 10 + c[0] - 48 /*0*/);
+        }
+        number[0] = n;
+    }
+    return true;
+}
+function sxmp_beepola(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [12];
+    var a = [0];
+    var z = [0];
+    if (!sxmp_row(v, sxmp_beepola_header, 0, e) || !sxmp_eq(v, 7, "0001\x00", 5, e)) {
+        return false;
+    }
+    while (p[0] < e && v.c.count < 24000) {
+        if (!sxmp_beep_token(v, p, e, a, z) || !sxmp_emit(v, sxmp_beepola_section, a[0], z[0], e)) {
+            return false;
+        }
+        if (z[0] === 4 && sxmp_eq(v, a[0], ":END", 4, e)) {
+            continue;
+        }
+        if (z[0] === 5 && sxmp_eq(v, a[0], ":INFO", 5, e)) {
+            while (p[0] < e) {
+                var b = [0];
+                var n = [0];
+                if (!sxmp_beep_token(v, p, e, b, n)) {
+                    return false;
+                }
+                if (n[0] === 4 && sxmp_eq(v, b[0], ":END", 4, e)) {
+                    if (!sxmp_emit(v, sxmp_beepola_section, b[0], n[0], e)) {
+                        return false;
+                    }
+                    break;
+                }
+                var k = 0;
+                var c = [0];
+                while (k < n[0]) {
+                    if (!sxmp_u(v, b[0] + k, 1, c, e)) {
+                        return false;
+                    }
+                    if (c[0] === 61 /*=*/) {
+                        break;
+                    }
+                    k++;
+                }
+                if (k === n[0]) {
+                    return false;
+                }
+                if (!sxmp_emit(v, sxmp_beepola_property, b[0], k, e) || !sxmp_emit(v, sxmp_beepola_property_value, b[0] + k + 1, sxU64(sxU64(n[0] - k) - 1), e)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (z[0] === 7 && sxmp_eq(v, a[0], ":LAYOUT", 7, e)) {
+            var loop = [0];
+            n = [0];
+            if (!sxmp_beep_prop(v, p, e, "LoopStart", sxmp_beepola_loop_index, loop) || !sxmp_beep_prop(v, p, e, "Length", sxmp_beepola_count, n) || n[0] > 256 || loop[0] > n[0] || !sxmp_table(v, sxmp_beepola_order, p[0], n[0], e)) {
+                return false;
+            }
+            p[0] += n[0];
+            continue;
+        }
+        if (z[0] === 8 && sxmp_eq(v, a[0], ":P1INSTR", 8, e)) {
+            n = [0];
+            if (!sxmp_beep_prop(v, p, e, "Length", sxmp_beepola_count, n) || n[0] > 256 || !sxmp_table(v, sxmp_beepola_phaser_instrument, p[0], n[0], e)) {
+                return false;
+            }
+            p[0] += n[0] * 6;
+            continue;
+        }
+        if (z[0] === 13 && sxmp_eq(v, a[0], ":SVGORNAMENTS", 13, e)) {
+            n = [0];
+            if (!sxmp_beep_prop(v, p, e, "OrnamentCount", sxmp_beepola_count, n) || n[0] > 256) {
+                return false;
+            }
+            for (var i = 0; i < n[0]; i++) {
+                var rows = [0];
+                if (!sxmp_row(v, sxmp_beepola_ornament_length, p[0], e) || !sxmp_u(v, p[0], 4, rows, e) || rows[0] > 256 || !sxmp_table(v, sxmp_beepola_ornament_value, p[0] + 4, rows[0], e)) {
+                    return false;
+                }
+                p[0] += 4 + rows[0];
+            }
+            continue;
+        }
+        var mode = z[0] === 12 && sxmp_eq(v, a[0], ":PATTERNDATA", 12, e) ? 1 : z[0] === 15 && sxmp_eq(v, a[0], ":SVGPATTERNDATA", 15, e) ? 2 : z[0] === 12 && sxmp_eq(v, a[0], ":SVGWARPDATA", 12, e) ? 3 : 0;
+        if (!mode) {
+            return true;
+        }
+        var count = [0];
+        if (!sxmp_beep_prop(v, p, e, "PatternCount", sxmp_beepola_count, count) || count[0] > 256) {
+            return false;
+        }
+        var plain = [sxmp_beepola_channel_one_note, sxmp_beepola_channel_two_note, sxmp_beepola_drum, sxmp_beepola_channel_one_sustain, sxmp_beepola_channel_two_sustain];
+        var svg = [sxmp_beepola_channel_one_glissando, sxmp_beepola_channel_two_glissando, sxmp_beepola_channel_one_skew, sxmp_beepola_channel_two_skew, sxmp_beepola_channel_one_skew_xor, sxmp_beepola_channel_two_skew_xor, sxmp_beepola_channel_one_arpeggio, sxmp_beepola_channel_two_arpeggio];
+        var warp = [sxmp_beepola_channel_one_warp, sxmp_beepola_channel_two_warp];
+        for (i = 0; i < count[0]; i++) {
+            rows = [0];
+            if (mode === 1 && !sxmp_beep_prop(v, p, e, "PatternName", sxmp_music_project_name, null)) {
+                return false;
+            }
+            if (!sxmp_u(v, p[0], 4, rows, e) || rows[0] > 256 || !sxmp_row(v, mode === 1 ? sxmp_beepola_pattern_header : sxmp_beepola_row_count, p[0], e)) {
+                return false;
+            }
+            p[0] += mode === 1 ? 8 : 4;
+            var cols = mode === 1 ? 5 : mode === 2 ? 8 : 2;
+            var width = mode === 2 ? 2 : 1;
+            var fields = mode === 1 ? plain : mode === 2 ? svg : warp;
+            for (var j = 0; j < cols; j++) {
+                if (!sxmp_table(v, fields[j], p[0], rows[0], e)) {
+                    return false;
+                }
+                p[0] += rows[0] * width;
+            }
+        }
+    }
+    return true;
+}
+function sx_shiru_beepola_build(v) {
+    return sxmp_beepola(v);
+}

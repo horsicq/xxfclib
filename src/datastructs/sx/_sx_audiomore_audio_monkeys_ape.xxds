@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_monkeys_ape/xx_audio_monkeys_ape_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_ape_descriptor_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID), u16("reserved", RESERVED),
+    u32("descriptor_bytes", SIZE), u32("header_bytes", SIZE), u32("seek_table_bytes", SIZE), u32("wav_header_bytes", SIZE),
+    u32("audio_data_bytes_low"), u32("audio_data_bytes_high"), u32("wav_tail_bytes", SIZE), blob("md5", 16, CHECKSUM)]);
+var sxau_ape_descriptor = sxLayout(0x602C0035, "ape_descriptor", LE, sxau_ape_descriptor_fields);
+var sxau_ape_header_fields = layout([u16("compression_level", ID), u16("format_flags", FLAGS), u32("blocks_per_frame", COUNT),
+    u32("final_frame_blocks", COUNT), u32("total_frames", COUNT), u16("bits_per_sample"), u16("channels", COUNT),
+    u32("sample_rate")]);
+var sxau_ape_header = sxLayout(0x602C0036, "ape_header", LE, sxau_ape_header_fields);
+var sxau_ape_seek_fields = layout([u32("frame_offset", OFFSET)]);
+var sxau_ape_seek = sxLayout(0x602C0037, "ape_seek", LE, sxau_ape_seek_fields);
+var sxau_ape_tag_fields = layout([chars("magic", 8, SIGNATURE), u32("version", ID), u32("tag_bytes", SIZE),
+    u32("item_count", COUNT), u32("flags", FLAGS), blob("reserved", 8, RESERVED)]);
+var sxau_ape_tag = sxLayout(0x602C0038, "ape_tag", LE, sxau_ape_tag_fields);
+var sxau_ape_tag_item_fields = layout([u32("value_bytes", SIZE), u32("flags", FLAGS)]);
+var sxau_ape_tag_item = sxLayout(0x602C0039, "ape_tag_item", LE, sxau_ape_tag_item_fields);
+function sxau_ape(v) {
+    if (!sxau_row(v, sxau_ape_descriptor, 0, v.n) || !sxau_row(v, sxau_ape_header, 52, v.n)) {
+        return false;
+    }
+    var frames = sxau_u32(v.p, 64, false);
+    if (!sxau_table(v, sxau_ape_seek, 76, frames, v.n)) {
+        return false;
+    }
+    if (v.n >= 32 && !sxMemcmpAt(v.p, v.n + -32, "APETAGEX", 0, 8)) {
+        var foot = sxU64(v.n - 32);
+        var bytes = sxau_u32(v.p, foot + 12, false);
+        var count = sxau_u32(v.p, foot + 16, false);
+        var flags = sxau_u32(v.p, foot + 20, false);
+        if (bytes < 32 || bytes > v.n || count > 1024 || !sxau_row(v, sxau_ape_tag, foot, v.n)) {
+            return false;
+        }
+        var at = sxU64(v.n - bytes);
+        if ((flags & 0x80000000) >>> 0) {
+            if (at < 32 || !sxau_row(v, sxau_ape_tag, sxU64(at - 32), at)) {
+                return false;
+            }
+        }
+        for (var i = 0; i < count; i++) {
+            if (!sxau_row(v, sxau_ape_tag_item, at, foot)) {
+                return false;
+            }
+            var z = sxau_u32(v.p, at, false);
+            at += 8;
+            var key = 0;
+            while (at < foot && v.p[at] && key < 256) {
+                at++;
+                key++;
+            }
+            if (!key || at === foot || v.p[at] || !sxau_need(v, at + 1, z, foot)) {
+                return false;
+            }
+            at += (1 + z) >>> 0;
+        }
+        if (at !== foot) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_audio_monkeys_ape_build(v) {
+    return sxau_ape(v);
+}

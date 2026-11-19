@@ -1,0 +1,85 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_musicprojects.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_musicprojects");
+include("_sx_musicprojects_bleubleu_famistudio");
+include("_sx_musicprojects_liss_famitracker_ftm");
+include("_sx_musicprojects_muller_renoise_rns0");
+include("_sx_musicprojects_muller_renoise_xrdp");
+include("_sx_musicprojects_muller_renoise_xrno");
+include("_sx_musicprojects_muller_renoise_xrnt_unp");
+include("_sx_musicprojects_muller_renoise_xrnz");
+include("_sx_musicprojects_nevo_arkostracker2");
+include("_sx_musicprojects_shiru_beepola");
+include("_sx_musicprojects_tildearrow_furnacetracker");
+include("_sx_musicprojects_tildearrow_furnacetracker_fui");
+include("_sx_musicprojects_tildearrow_furnacetracker_fuw");
+
+function fileTypes() { return ["DIE_MUSIC_NEVO_ARKOSTRACKER2", "DIE_MUSIC_SHIRU_BEEPOLA", "DIE_MUSIC_BLEUBLEU_FAMISTUDIO",
+    "DIE_MUSIC_LISS_FAMITRACKER_FTM", "DIE_MUSIC_TILDEARROW_FURNACETRACKER", "DIE_MUSIC_TILDEARROW_FURNACETRACKER_FUI",
+    "DIE_MUSIC_TILDEARROW_FURNACETRACKER_FUW", "DIE_MUSIC_MULLER_RENOISE_RNS0", "DIE_MUSIC_MULLER_RENOISE_XRDP",
+    "DIE_MUSIC_MULLER_RENOISE_XRNO", "DIE_MUSIC_MULLER_RENOISE_XRNT_UNP", "DIE_MUSIC_MULLER_RENOISE_XRNZ"]; }
+
+var sx_musicprojects_layouts = [sxmp_famistudio_file_header, sxmp_famitracker_file_header, sxmp_famitracker_block_header,
+    sxmp_famitracker_end, sxmp_famitracker_info, sxmp_famitracker_parameters_v1, sxmp_famitracker_parameters_v2,
+    sxmp_famitracker_parameters_v3, sxmp_famitracker_parameters_v4, sxmp_famitracker_parameters_v5,
+    sxmp_famitracker_parameters_v5_n163, sxmp_famitracker_parameters_v6, sxmp_famitracker_parameters_v6_n163,
+    sxmp_famitracker_parameters_v7, sxmp_famitracker_parameters_v7_n163, sxmp_famitracker_parameters_v8,
+    sxmp_famitracker_parameters_v8_n163, sxmp_famitracker_parameters_v9, sxmp_famitracker_parameters_v9_n163,
+    sxmp_famitracker_track_count, sxmp_famitracker_channel_type, sxmp_famitracker_effect_columns, sxmp_music_project_text,
+    sxmp_music_project_name, sxmp_music_project_author, sxmp_music_project_string_terminator, sxmp_renoise_legacy_text,
+    sxmp_music_project_xml_element, sxmp_music_project_xml_attribute, sxmp_music_project_xml_value,
+    sxmp_music_project_xml_version, sxmp_furnace_module_header, sxmp_furnace_instrument_header, sxmp_furnace_wavetable_header,
+    sxmp_furnace_block_header, sxmp_furnace_file_pointer, sxmp_furnace_wave_dimensions, sxmp_furnace_wave_value,
+    sxmp_furnace_instrument_prefix, sxmp_furnace_info_prefix, sxmp_furnace_chip_id, sxmp_furnace_chip_volume,
+    sxmp_furnace_chip_pan, sxmp_furnace_chip_flags, sxmp_furnace_tuning, sxmp_furnace_inf2_tuning, sxmp_furnace_inf2_chip,
+    sxmp_furnace_patchbay_count, sxmp_furnace_patchbay_connection, sxmp_furnace_patchbay_auto, sxmp_furnace_element,
+    sxmp_furnace_element_end, sxmp_beepola_header, sxmp_beepola_section, sxmp_beepola_property, sxmp_beepola_property_value,
+    sxmp_beepola_count, sxmp_beepola_loop_index, sxmp_beepola_order, sxmp_beepola_pattern_header,
+    sxmp_beepola_phaser_instrument, sxmp_renoise_legacy_header, sxmp_renoise_legacy_chunk_header, sxmp_renoise_legacy_info_v0,
+    sxmp_renoise_legacy_string_length, sxmp_beepola_row_count, sxmp_beepola_channel_one_note, sxmp_beepola_channel_two_note,
+    sxmp_beepola_drum, sxmp_beepola_channel_one_sustain, sxmp_beepola_channel_two_sustain, sxmp_beepola_channel_one_warp,
+    sxmp_beepola_channel_two_warp, sxmp_beepola_ornament_value, sxmp_beepola_channel_one_glissando,
+    sxmp_beepola_channel_two_glissando, sxmp_beepola_channel_one_skew, sxmp_beepola_channel_two_skew,
+    sxmp_beepola_channel_one_skew_xor, sxmp_beepola_channel_two_skew_xor, sxmp_beepola_channel_one_arpeggio,
+    sxmp_beepola_channel_two_arpeggio, sxmp_beepola_ornament_length, sxmp_furnace_compatibility_prefix,
+    sxmp_furnace_compatibility_reserved, sxmp_furnace_chip_reserved, sxmp_furnace_new_instrument_prefix,
+    sxmp_furnace_instrument_feature, sxmp_furnace_instrument_end];
+
+function structs() {
+    return sxCatalog([sxmp_famistudio_file_header, sxmp_famitracker_file_header, sxmp_famitracker_block_header,
+        sxmp_famitracker_end, sxmp_famitracker_info, sxmp_famitracker_parameters_v1, sxmp_famitracker_parameters_v2,
+        sxmp_famitracker_parameters_v3, sxmp_famitracker_parameters_v4, sxmp_famitracker_parameters_v5,
+        sxmp_famitracker_parameters_v5_n163, sxmp_famitracker_parameters_v6, sxmp_famitracker_parameters_v6_n163,
+        sxmp_famitracker_parameters_v7, sxmp_famitracker_parameters_v7_n163, sxmp_famitracker_parameters_v8,
+        sxmp_famitracker_parameters_v8_n163, sxmp_famitracker_parameters_v9, sxmp_famitracker_parameters_v9_n163,
+        sxmp_famitracker_track_count, sxmp_famitracker_channel_type, sxmp_famitracker_effect_columns, sxmp_music_project_text,
+        sxmp_music_project_name, sxmp_music_project_author, sxmp_music_project_string_terminator, sxmp_renoise_legacy_text,
+        sxmp_music_project_xml_element, sxmp_music_project_xml_attribute, sxmp_music_project_xml_value,
+        sxmp_music_project_xml_version, sxmp_furnace_module_header, sxmp_furnace_instrument_header,
+        sxmp_furnace_wavetable_header, sxmp_furnace_block_header, sxmp_furnace_file_pointer, sxmp_furnace_wave_dimensions,
+        sxmp_furnace_wave_value, sxmp_furnace_instrument_prefix, sxmp_furnace_info_prefix, sxmp_furnace_chip_id,
+        sxmp_furnace_chip_volume, sxmp_furnace_chip_pan, sxmp_furnace_chip_flags, sxmp_furnace_tuning, sxmp_furnace_inf2_tuning,
+        sxmp_furnace_inf2_chip, sxmp_furnace_patchbay_count, sxmp_furnace_patchbay_connection, sxmp_furnace_patchbay_auto,
+        sxmp_furnace_element, sxmp_furnace_element_end, sxmp_beepola_header, sxmp_beepola_section, sxmp_beepola_property,
+        sxmp_beepola_property_value, sxmp_beepola_count, sxmp_beepola_loop_index, sxmp_beepola_order,
+        sxmp_beepola_pattern_header, sxmp_beepola_phaser_instrument, sxmp_renoise_legacy_header,
+        sxmp_renoise_legacy_chunk_header, sxmp_renoise_legacy_info_v0, sxmp_renoise_legacy_string_length,
+        sxmp_beepola_row_count, sxmp_beepola_channel_one_note, sxmp_beepola_channel_two_note, sxmp_beepola_drum,
+        sxmp_beepola_channel_one_sustain, sxmp_beepola_channel_two_sustain, sxmp_beepola_channel_one_warp,
+        sxmp_beepola_channel_two_warp, sxmp_beepola_ornament_value, sxmp_beepola_channel_one_glissando,
+        sxmp_beepola_channel_two_glissando, sxmp_beepola_channel_one_skew, sxmp_beepola_channel_two_skew,
+        sxmp_beepola_channel_one_skew_xor, sxmp_beepola_channel_two_skew_xor, sxmp_beepola_channel_one_arpeggio,
+        sxmp_beepola_channel_two_arpeggio, sxmp_beepola_ornament_length, sxmp_furnace_compatibility_prefix,
+        sxmp_furnace_compatibility_reserved, sxmp_furnace_chip_reserved, sxmp_furnace_new_instrument_prefix,
+        sxmp_furnace_instrument_feature, sxmp_furnace_instrument_end], sx_musicprojects_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_musicprojects_build, false);
+}

@@ -1,0 +1,192 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_bdf/xx_font_bdf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_font_name_fields = layout([field("font_name", "utf8", 0, STRING)]);
+var sxmt_font_name = sxLayout(0x6052000D, "modeltext_font_name", LE, sxmt_font_name_fields);
+var sxmt_font_size_fields = layout([field("font_size", "ascii_signed", 0)]);
+var sxmt_font_size = sxLayout(0x6052002A, "modeltext_font_size", LE, sxmt_font_size_fields);
+var sxmt_resolution_x_fields = layout([field("resolution_x", "ascii_signed", 0)]);
+var sxmt_resolution_x = sxLayout(0x6052002B, "modeltext_resolution_x", LE, sxmt_resolution_x_fields);
+var sxmt_resolution_y_fields = layout([field("resolution_y", "ascii_signed", 0)]);
+var sxmt_resolution_y = sxLayout(0x6052002C, "modeltext_resolution_y", LE, sxmt_resolution_y_fields);
+var sxmt_bbox_width_fields = layout([field("bbox_width", "ascii_signed", 0)]);
+var sxmt_bbox_width = sxLayout(0x6052002D, "modeltext_bbox_width", LE, sxmt_bbox_width_fields);
+var sxmt_bbox_height_fields = layout([field("bbox_height", "ascii_signed", 0)]);
+var sxmt_bbox_height = sxLayout(0x6052002E, "modeltext_bbox_height", LE, sxmt_bbox_height_fields);
+var sxmt_bbox_x_fields = layout([field("bbox_x", "ascii_signed", 0)]);
+var sxmt_bbox_x = sxLayout(0x6052002F, "modeltext_bbox_x", LE, sxmt_bbox_x_fields);
+var sxmt_bbox_y_fields = layout([field("bbox_y", "ascii_signed", 0)]);
+var sxmt_bbox_y = sxLayout(0x60520030, "modeltext_bbox_y", LE, sxmt_bbox_y_fields);
+var sxmt_swidth_x_fields = layout([field("swidth_x", "ascii_signed", 0)]);
+var sxmt_swidth_x = sxLayout(0x60520031, "modeltext_swidth_x", LE, sxmt_swidth_x_fields);
+var sxmt_swidth_y_fields = layout([field("swidth_y", "ascii_signed", 0)]);
+var sxmt_swidth_y = sxLayout(0x60520032, "modeltext_swidth_y", LE, sxmt_swidth_y_fields);
+var sxmt_dwidth_x_fields = layout([field("dwidth_x", "ascii_signed", 0)]);
+var sxmt_dwidth_x = sxLayout(0x60520033, "modeltext_dwidth_x", LE, sxmt_dwidth_x_fields);
+var sxmt_dwidth_y_fields = layout([field("dwidth_y", "ascii_signed", 0)]);
+var sxmt_dwidth_y = sxLayout(0x60520034, "modeltext_dwidth_y", LE, sxmt_dwidth_y_fields);
+var sxmt_glyph_attributes_fields = layout([field("glyph_attributes", "ascii_hex", 0, FLAGS)]);
+var sxmt_glyph_attributes = sxLayout(0x6052005E, "modeltext_glyph_attributes", LE, sxmt_glyph_attributes_fields);
+var sxmt_bitmap_byte_fields = layout([field("bitmap_byte", "ascii_hex", 0, FLAGS)]);
+var sxmt_bitmap_byte = sxLayout(0x6052005F, "modeltext_bitmap_byte", LE, sxmt_bitmap_byte_fields);
+function sxmt_bdf(q) {
+    var a = [0];
+    var e = [0];
+    var k = [0];
+    var z = [0];
+    var bitmap = false;
+    var properties = false;
+    while (sxmt_line(q, a, e, false)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var next = q.p;
+        q.p = a[0];
+        if (!sxmt_token(q, e[0], k, z, false)) {
+            return false;
+        }
+        if (sxmt_eq(q, k[0], z[0], "COMMENT")) {
+            q.p = next;
+            continue;
+        }
+        if (bitmap && !sxmt_eq(q, k[0], z[0], "ENDCHAR")) {
+            if ((e[0] - a[0]) % 2) {
+                return false;
+            }
+            for (var i = a[0]; i < e[0]; i += 2) {
+                {
+                    if (!sxmt_emit(q, sxmt_bitmap_byte, i, 2)) {
+                        return false;
+                    }
+                }
+            }
+            q.p = next;
+            continue;
+        }
+        {
+            if (!sxmt_emit(q, sxmt_keyword, k[0], z[0])) {
+                return false;
+            }
+        }
+        if (sxmt_eq(q, k[0], z[0], "ENDCHAR")) {
+            bitmap = false;
+        } else if (sxmt_eq(q, k[0], z[0], "BITMAP")) {
+            bitmap = true;
+        } else if (sxmt_eq(q, k[0], z[0], "ENDPROPERTIES")) {
+            properties = false;
+        } else if (sxmt_eq(q, k[0], z[0], "STARTFONT")) {
+            {
+                if (!sxmt_value(q, sxmt_version, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "FONT")) {
+            if (!sxmt_remainder(q, sxmt_font_name, e[0])) {
+                return false;
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "STARTCHAR")) {
+            if (!sxmt_remainder(q, sxmt_glyph_name, e[0])) {
+                return false;
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "SIZE")) {
+            {
+                if (!sxmt_value(q, sxmt_font_size, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_resolution_x, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_resolution_y, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "FONTBOUNDINGBOX") || sxmt_eq(q, k[0], z[0], "BBX")) {
+            {
+                if (!sxmt_value(q, sxmt_bbox_width, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_bbox_height, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_bbox_x, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_bbox_y, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "SWIDTH")) {
+            {
+                if (!sxmt_value(q, sxmt_swidth_x, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_swidth_y, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "DWIDTH")) {
+            {
+                if (!sxmt_value(q, sxmt_dwidth_x, e[0], null)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxmt_value(q, sxmt_dwidth_y, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "STARTPROPERTIES")) {
+            {
+                if (!sxmt_value(q, sxmt_property_total, e[0], null)) {
+                    return false;
+                }
+            }
+            properties = true;
+        } else if (sxmt_eq(q, k[0], z[0], "CHARS")) {
+            {
+                if (!sxmt_value(q, sxmt_glyph_count, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "ENCODING")) {
+            {
+                if (!sxmt_value(q, sxmt_codepoint, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (sxmt_eq(q, k[0], z[0], "ATTRIBUTES")) {
+            {
+                if (!sxmt_value(q, sxmt_glyph_attributes, e[0], null)) {
+                    return false;
+                }
+            }
+        } else if (properties) {
+            while (q.p < e[0] && sxmt_space(q.b[q.p])) {
+                q.p++;
+            }
+            if (!sxmt_remainder(q, q.p < e[0] && q.b[q.p] === 34 /*"*/ ? sxmt_string_value : sxmt_integer_value, e[0])) {
+                return false;
+            }
+        }
+        q.p = next;
+    }
+    return !bitmap;
+}
+function sx_font_bdf_build(q) {
+    return sxmt_bdf(q);
+}

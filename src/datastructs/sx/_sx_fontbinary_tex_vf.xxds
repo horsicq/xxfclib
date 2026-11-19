@@ -1,0 +1,78 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/tex_vf/xx_tex_vf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfb_vf_metrics_fields = layout([u32("checksum", CHECKSUM), i32("design_size")]);
+var sxfb_vf_metrics = sxLayout(0x60190043, "vf_metrics", BE, sxfb_vf_metrics_fields);
+var sxfb_vf_font_definition1_fields = layout([u8("opcode", ID), u8("font_number", ID), u32("checksum", CHECKSUM), i32("scale"),
+    i32("design_size"), u8("area_length", SIZE), u8("name_length", SIZE)]);
+var sxfb_vf_font_definition1 = sxLayout(0x60190044, "vf_font_definition1", BE, sxfb_vf_font_definition1_fields);
+var sxfb_vf_font_definition2_fields = layout([u8("opcode", ID), u16("font_number", ID), u32("checksum", CHECKSUM), i32("scale"),
+    i32("design_size"), u8("area_length", SIZE), u8("name_length", SIZE)]);
+var sxfb_vf_font_definition2 = sxLayout(0x60190045, "vf_font_definition2", BE, sxfb_vf_font_definition2_fields);
+var sxfb_vf_font_definition3_fields = layout([u8("opcode", ID), field("font_number", "uint24", 3, ID),
+    u32("checksum", CHECKSUM), i32("scale"), i32("design_size"), u8("area_length", SIZE), u8("name_length", SIZE)]);
+var sxfb_vf_font_definition3 = sxLayout(0x60190046, "vf_font_definition3", BE, sxfb_vf_font_definition3_fields);
+var sxfb_vf_font_definition4_fields = layout([u8("opcode", ID), i32("font_number", ID), u32("checksum", CHECKSUM), i32("scale"),
+    i32("design_size"), u8("area_length", SIZE), u8("name_length", SIZE)]);
+var sxfb_vf_font_definition4 = sxLayout(0x60190047, "vf_font_definition4", BE, sxfb_vf_font_definition4_fields);
+var sxfb_vf_short_packet_fields = layout([u8("packet_size", SIZE), u8("character_code", ID), field("tfm_width", "uint24", 3)]);
+var sxfb_vf_short_packet = sxLayout(0x60190048, "vf_short_packet", BE, sxfb_vf_short_packet_fields);
+var sxfb_vf_long_packet_fields = layout([u8("opcode", ID), i32("packet_size", SIZE), i32("character_code", ID), i32("tfm_width")]);
+var sxfb_vf_long_packet = sxLayout(0x60190049, "vf_long_packet", BE, sxfb_vf_long_packet_fields);
+function sxfb_vf(c) {
+    var p = [0];
+    if (!sxfb_preamble(c, 202, p) || !sxfb_span(c, p[0], 8) || !sxfb_add(c, sxfb_vf_metrics, p[0])) {
+        return false;
+    }
+    p[0] += 8;
+    for (var step = 0; p[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && step < 20000; step++) {
+        var h = [];
+        if (!sxfb_read(c, p[0], h, 1)) {
+            return false;
+        }
+        var op = h[0];
+        var size = 0;
+        var payload = 0;
+        var l = null;
+        if (op <= 241) {
+            size = 5;
+            payload = op;
+            l = sxfb_vf_short_packet;
+        } else if (op === 242) {
+            size = 13;
+            if (!sxfb_read(c, p[0], h, size)) {
+                break;
+            }
+            payload = sxfb32(h, 1, true);
+            l = sxfb_vf_long_packet;
+        } else if (op <= 246) {
+            var width = (op - 242) >>> 0;
+            size = (15 + width) >>> 0;
+            if (!sxfb_read(c, p[0], h, size)) {
+                break;
+            }
+            payload = h[(width + 13) >>> 0] + h[(width + 14) >>> 0];
+            var a = [sxfb_vf_font_definition1, sxfb_vf_font_definition2, sxfb_vf_font_definition3, sxfb_vf_font_definition4];
+            l = a[(width - 1) >>> 0];
+        } else if (op === 248) {
+            size = 1;
+            l = sxfb_tex_opcode;
+        } else {
+            break;
+        }
+        if (!sxfb_span(c, p[0], size + payload)) {
+            break;
+        }
+        if (!sxfb_add(c, l, p[0])) {
+            return false;
+        }
+        p[0] += size + payload;
+    }
+    return !c.failed;
+}
+function sx_tex_vf_build(c) {
+    return sxfb_vf(c);
+}

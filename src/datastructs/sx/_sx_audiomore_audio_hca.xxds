@@ -1,0 +1,95 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/audio_hca/xx_audio_hca_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_hca_header_fields = layout([chars("magic", 4, SIGNATURE), u16("version", ID), u16("header_size", SIZE)]);
+var sxau_hca_header = sxLayout(0x602C0010, "hca_header", BE, sxau_hca_header_fields);
+var sxau_hca_format_fields = layout([chars("tag", 4, ID), u8("channels", COUNT), field("sample_rate", "uint24", 3),
+    u32("frame_count", COUNT), u16("encoder_delay_samples", COUNT), u16("encoder_padding_samples", COUNT)]);
+var sxau_hca_format = sxLayout(0x602C0011, "hca_format", BE, sxau_hca_format_fields);
+var sxau_hca_compression_fields = layout([chars("tag", 4, ID), u16("frame_size", SIZE), u8("minimum_resolution"),
+    u8("maximum_resolution"), u8("track_count", COUNT), u8("channel_configuration", ID), u8("total_bands", COUNT),
+    u8("base_bands", COUNT), u8("stereo_bands", COUNT), u8("bands_per_hfr_group", COUNT), blob("reserved", 2, RESERVED)]);
+var sxau_hca_compression = sxLayout(0x602C0012, "hca_compression", BE, sxau_hca_compression_fields);
+var sxau_hca_ath_fields = layout([chars("tag", 4, ID), u16("ath_type", ID)]);
+var sxau_hca_ath = sxLayout(0x602C0013, "hca_ath", BE, sxau_hca_ath_fields);
+var sxau_hca_loop_fields = layout([chars("tag", 4, ID), u32("start_frame"), u32("end_frame"), u16("pre_loop_samples", COUNT),
+    u16("post_loop_samples", COUNT)]);
+var sxau_hca_loop = sxLayout(0x602C0014, "hca_loop", BE, sxau_hca_loop_fields);
+var sxau_hca_cipher_fields = layout([chars("tag", 4, ID), u16("cipher_type", ID)]);
+var sxau_hca_cipher = sxLayout(0x602C0015, "hca_cipher", BE, sxau_hca_cipher_fields);
+var sxau_hca_relative_volume_fields = layout([chars("tag", 4, ID), field("volume", "float", 4)]);
+var sxau_hca_relative_volume = sxLayout(0x602C0016, "hca_relative_volume", BE, sxau_hca_relative_volume_fields);
+var sxau_hca_comment_fields = layout([chars("tag", 4, ID), u8("comment_length", SIZE)]);
+var sxau_hca_comment = sxLayout(0x602C0017, "hca_comment", BE, sxau_hca_comment_fields);
+var sxau_hca_pad_fields = layout([chars("tag", 4, ID)]);
+var sxau_hca_pad = sxLayout(0x602C0018, "hca_pad", BE, sxau_hca_pad_fields);
+var sxau_hca_checksum_fields = layout([u16("crc16", CHECKSUM)]);
+var sxau_hca_checksum = sxLayout(0x602C0019, "hca_checksum", BE, sxau_hca_checksum_fields);
+var sxau_hca_frame_sync_fields = layout([u16("sync", SIGNATURE)]);
+var sxau_hca_frame_sync = sxLayout(0x602C001A, "hca_frame_sync", BE, sxau_hca_frame_sync_fields);
+function sxau_hca(v) {
+    if (!sxau_row(v, sxau_hca_header, 0, v.n)) {
+        return false;
+    }
+    var h = sxau_u16(v.p, 6, true);
+    if (h < 42 || !sxau_need(v, 0, h, v.n) || !sxau_row(v, sxau_hca_format, 8, sxU64(h - 2)) || !sxau_row(v, sxau_hca_compression, 24, sxU64(h - 2)) || !sxau_row(v, sxau_hca_checksum, sxU64(h - 2), h)) {
+        return false;
+    }
+    var at = 40;
+    while (at < sxU64(h - 2)) {
+        if (!sxau_need(v, at, 4, sxU64(h - 2))) {
+            return false;
+        }
+        var p = v.p, p_o = at;
+        var z = 0;
+        var l = null;
+        if (!sxMemcmpAt(p, p_o, "ath\x00", 0, 4)) {
+            l = sxau_hca_ath;
+            z = 6;
+        } else if (!sxMemcmpAt(p, p_o, "loop", 0, 4)) {
+            l = sxau_hca_loop;
+            z = 16;
+        } else if (!sxMemcmpAt(p, p_o, "ciph", 0, 4)) {
+            l = sxau_hca_cipher;
+            z = 6;
+        } else if (!sxMemcmpAt(p, p_o, "rva\x00", 0, 4)) {
+            l = sxau_hca_relative_volume;
+            z = 8;
+        } else if (!sxMemcmpAt(p, p_o, "comm", 0, 4)) {
+            if (!sxau_need(v, at, 5, sxU64(h - 2))) {
+                return false;
+            }
+            l = sxau_hca_comment;
+            z = 5 + v.p[at + 4];
+        } else if (!sxMemcmpAt(p, p_o, "pad\x00", 0, 4)) {
+            if (!sxau_row(v, sxau_hca_pad, at, sxU64(h - 2))) {
+                return false;
+            }
+            at = sxU64(h - 2);
+            break;
+        } else {
+            return false;
+        }
+        if (!sxau_need(v, at, z, sxU64(h - 2)) || !sxau_row(v, l, at, sxU64(h - 2))) {
+            return false;
+        }
+        at += z;
+    }
+    var frames = sxau_u32(v.p, 16, true);
+    z = sxau_u16(v.p, 28, true);
+    if (z < 4 || frames > 1000000 || !sxau_need(v, h, frames * z, v.n)) {
+        return false;
+    }
+    for (at = h; frames; frames--, at += z) {
+        if (!sxau_row(v, sxau_hca_frame_sync, at, v.n) || !sxau_row(v, sxau_hca_checksum, sxU64(at + z - 2), v.n)) {
+            return false;
+        }
+    }
+    return at === v.n;
+}
+function sx_audio_hca_build(v) {
+    return sxau_hca(v);
+}

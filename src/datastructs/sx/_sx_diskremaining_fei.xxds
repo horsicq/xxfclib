@@ -1,0 +1,140 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/fei/xx_fei_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_fei_id_phase0_fields = layout([field("sync_bitcells", "byte[6]", 6, SIGNATURE),
+    field("address_mark_mfm_bitcells", "byte[2]", 2, ID), field("cylinder_mfm_bitcells", "byte[2]", 2),
+    field("head_mfm_bitcells", "byte[2]", 2), field("sector_mfm_bitcells", "byte[2]", 2),
+    field("size_code_mfm_bitcells", "byte[2]", 2), field("crc_high_mfm_bitcells", "byte[2]", 2, CHECKSUM),
+    field("crc_low_mfm_bitcells", "byte[2]", 2, CHECKSUM)]);
+var sxdr_fei_id_phase0 = sxLayout(0x607F0029, "fei_id_phase0", LE, sxdr_fei_id_phase0_fields);
+var sxdr_fei_id_phase1_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase1 = sxLayout(0x607F002A, "fei_id_phase1", LE, sxdr_fei_id_phase1_fields);
+var sxdr_fei_id_phase2_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase2 = sxLayout(0x607F002B, "fei_id_phase2", LE, sxdr_fei_id_phase2_fields);
+var sxdr_fei_id_phase3_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase3 = sxLayout(0x607F002C, "fei_id_phase3", LE, sxdr_fei_id_phase3_fields);
+var sxdr_fei_id_phase4_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase4 = sxLayout(0x607F002D, "fei_id_phase4", LE, sxdr_fei_id_phase4_fields);
+var sxdr_fei_id_phase5_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase5 = sxLayout(0x607F002E, "fei_id_phase5", LE, sxdr_fei_id_phase5_fields);
+var sxdr_fei_id_phase6_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase6 = sxLayout(0x607F002F, "fei_id_phase6", LE, sxdr_fei_id_phase6_fields);
+var sxdr_fei_id_phase7_fields = layout([field("sync_bitcells", "byte[7]", 7, SIGNATURE),
+    at(6, field("address_mark_mfm_bitcells", "byte[3]", 3, ID)), at(8, field("cylinder_mfm_bitcells", "byte[3]", 3)),
+    at(10, field("head_mfm_bitcells", "byte[3]", 3)), at(12, field("sector_mfm_bitcells", "byte[3]", 3)),
+    at(14, field("size_code_mfm_bitcells", "byte[3]", 3)), at(16, field("crc_high_mfm_bitcells", "byte[3]", 3, CHECKSUM)),
+    at(18, field("crc_low_mfm_bitcells", "byte[3]", 3, CHECKSUM))]);
+var sxdr_fei_id_phase7 = sxLayout(0x607F0030, "fei_id_phase7", LE, sxdr_fei_id_phase7_fields);
+function sxdr_mfmword(b, bit) {
+    var v = 0;
+    for (var k = 0; k < 16; k++) {
+        v = (v << 1 | b[Math.floor(((bit + k) >>> 0) / 8)] >> ((bit + k) >>> 0) % 8 & 1) & 0xFFFF;
+    }
+    return v;
+}
+function sxdr_mfmdata(v) {
+    var x = 0;
+    for (var k = 0; k < 8; k++) {
+        x = (x << 1 | v >> ((14 - ((k * 2) >>> 0)) >>> 0) & 1) & 0xFF;
+    }
+    return x;
+}
+function sxdr_fei_track(c, b, p, n, cyl, head, emit) {
+    if (!sxdr_read(c, p, b, n)) {
+        return false;
+    }
+    var found = false;
+    var phases = [sxdr_fei_id_phase0, sxdr_fei_id_phase1, sxdr_fei_id_phase2, sxdr_fei_id_phase3, sxdr_fei_id_phase4, sxdr_fei_id_phase5, sxdr_fei_id_phase6, sxdr_fei_id_phase7];
+    for (var bit = 0; (bit + 160) >>> 0 <= (n * 8) >>> 0; bit++) {
+        if (!(bit & 4095) && false) {
+            return false;
+        }
+        if (sxdr_mfmword(b, bit) !== 0x4489 || sxdr_mfmword(b, (bit + 16) >>> 0) !== 0x4489 || sxdr_mfmword(b, (bit + 32) >>> 0) !== 0x4489) {
+            continue;
+        }
+        var id = [0xA1, 0xA1, 0xA1, 0, 0, 0, 0, 0, 0, 0];
+        for (var j = 0; j < 7; j++) {
+            id[(j + 3) >>> 0] = sxdr_mfmdata(sxdr_mfmword(b, (((bit + 48) >>> 0) + ((j * 16) >>> 0)) >>> 0));
+        }
+        if (id[3] !== 0xFE || !id[6] || id[7] > 6 || sxdr_ccitt(id, 0, 10)) {
+            continue;
+        }
+        if (id[4] !== cyl || id[5] !== head) {
+            return false;
+        }
+        found = true;
+        if (emit && !sxdr_put(c, phases[bit % 8], p + Math.floor(bit / 8), 1)) {
+            return false;
+        }
+    }
+    return found;
+}
+function sxdr_fei(c) {
+    var b = sxAlloc(25000);
+    if (b === null) {
+        return false;
+    }
+    var bytes = 0;
+    var tracks = 0;
+    var ok = false;
+    for (var pass = 0; pass < 2; pass++) {
+        var n = pass ? 12500 : 25000;
+        if (c.size <= 0 || c.size % ((n * 2) >>> 0)) {
+            continue;
+        }
+        var t = sxU64(sxDiv(c.size, (n * 2) >>> 0));
+        if (t > 170 || !t) {
+            continue;
+        }
+        if (sxdr_fei_track(c, b, 0, n, 0, 0, false) && sxdr_fei_track(c, b, t * n, n, 0, 1, false) && sxdr_fei_track(c, b, sxU64(t - 1) * n, n, ((t >>> 0) - 1) >>> 0, 0, false) && sxdr_fei_track(c, b, sxU64(t * 2 - 1) * n, n, ((t >>> 0) - 1) >>> 0, 1, false)) {
+            bytes = n;
+            tracks = t >>> 0;
+            break;
+        }
+    }
+    if (bytes) {
+        ok = true;
+        for (var i = 0; i < (tracks * 2) >>> 0 && c.count < 24000; i++) {
+            var start = c.count;
+            var z = sxdr_fei_track(c, b, i * bytes, bytes, i % tracks, Math.floor(i / tracks), true);
+            if (!z && false) {
+                ok = false;
+                break;
+            }
+            if (!z) {
+                c.count = start;
+            }
+        }
+    }
+    return ok;
+}
+function sx_fei_build(c) {
+    return sxdr_fei(c);
+}

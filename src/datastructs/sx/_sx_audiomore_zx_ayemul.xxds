@@ -1,0 +1,71 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/zx_ayemul/xx_zx_ayemul_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_ay_header_fields = layout([chars("magic", 8, SIGNATURE), u8("file_version", ID), u8("player_version", ID),
+    i16("custom_player_relative", OFFSET), i16("author_relative", OFFSET), i16("comment_relative", OFFSET),
+    u8("track_count_minus_one"), u8("first_track", ID), i16("track_table_relative", OFFSET)]);
+var sxau_ay_header = sxLayout(0x602C004D, "ay_header", BE, sxau_ay_header_fields);
+var sxau_ay_track_index_fields = layout([i16("name_relative", OFFSET), i16("descriptor_relative", OFFSET)]);
+var sxau_ay_track_index = sxLayout(0x602C004E, "ay_track_index", BE, sxau_ay_track_index_fields);
+var sxau_ay_track_fields = layout([u8("channel_a", ID), u8("channel_b", ID), u8("channel_c", ID), u8("noise_channel", ID),
+    u16("duration_frames", COUNT), u16("fade_frames", COUNT), u8("register_hi"), u8("register_lo"),
+    i16("cpu_state_relative", OFFSET), i16("block_index_relative", OFFSET)]);
+var sxau_ay_track = sxLayout(0x602C004F, "ay_track", BE, sxau_ay_track_fields);
+var sxau_ay_cpu_state_fields = layout([u16("stack_pointer", VA), u16("init_address", VA), u16("interrupt_address", VA)]);
+var sxau_ay_cpu_state = sxLayout(0x602C0050, "ay_cpu_state", BE, sxau_ay_cpu_state_fields);
+var sxau_ay_block_fields = layout([u16("load_address", VA), u16("payload_bytes", SIZE), i16("payload_relative", OFFSET)]);
+var sxau_ay_block = sxLayout(0x602C0051, "ay_block", BE, sxau_ay_block_fields);
+var sxau_ay_blocks_end_fields = layout([u16("zero_address", SIGNATURE)]);
+var sxau_ay_blocks_end = sxLayout(0x602C0052, "ay_blocks_end", BE, sxau_ay_blocks_end_fields);
+function sxau_ayptr(v, at, z, out) {
+    if (!sxau_need(v, at, 2, v.n)) {
+        return false;
+    }
+    var n = (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + (sxau_u16(v.p, at, true) << 16 >> 16);
+    if (n < 20 || !sxau_need(v, (n < 0 ? n + SX_U64_MAX : n), z, v.n)) {
+        return false;
+    }
+    out[0] = (n < 0 ? n + SX_U64_MAX : n);
+    return true;
+}
+function sxau_ay(v) {
+    if (!sxau_row(v, sxau_ay_header, 0, v.n)) {
+        return false;
+    }
+    var table = [0];
+    var n = v.p[16] + 1;
+    if (!sxau_ayptr(v, 18, (n * 4) >>> 0, table) || !sxau_table(v, sxau_ay_track_index, table[0], n, v.n)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var desc = [0];
+        var state = [0];
+        var blocks = [0];
+        if (!sxau_ayptr(v, table[0] + ((i * 4) >>> 0) + 2, 14, desc) || !sxau_row(v, sxau_ay_track, desc[0], v.n) || !sxau_ayptr(v, desc[0] + 10, 6, state) || !sxau_row(v, sxau_ay_cpu_state, state[0], v.n) || !sxau_ayptr(v, desc[0] + 12, 2, blocks)) {
+            return false;
+        }
+        var count = 0;
+        for (; ; ) {
+            if (!sxau_need(v, blocks[0], 2, v.n)) {
+                return false;
+            }
+            if (!sxau_u16(v.p, blocks[0], true)) {
+                if (!sxau_row(v, sxau_ay_blocks_end, blocks[0], v.n)) {
+                    return false;
+                }
+                break;
+            }
+            if (count++ >= 256 || !sxau_row(v, sxau_ay_block, blocks[0], v.n)) {
+                return false;
+            }
+            blocks[0] += 6;
+        }
+    }
+    return true;
+}
+function sx_zx_ayemul_build(v) {
+    return sxau_ay(v);
+}

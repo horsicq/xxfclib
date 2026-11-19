@@ -1,0 +1,50 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/installshield_issetupstream/xx_installshield_issetupstream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_issetup_header_fields = layout([chars("signature", 14, SIGNATURE), u16("member_count", COUNT), u8("version"),
+    bytes("reserved", 29)]);
+var sxan_issetup_header = sxLayout(0x60770023, "issetup_header", LE, sxan_issetup_header_fields);
+var sxan_issetup_member_fields = layout([u32("name_size", SIZE), u32("cipher_selector"), u16("reserved1"),
+    u32("stream_size", SIZE), u64("reserved2"), u16("storage")]);
+var sxan_issetup_member = sxLayout(0x60770024, "issetup_member", LE, sxan_issetup_member_fields);
+var sxan_archivenext_utf16le_fields = layout([field("name_units", "uint16", 0)]);
+var sxan_archivenext_utf16le = sxLayout(0x60770044, "archivenext_utf16le", LE, sxan_archivenext_utf16le_fields);
+function sxan_issetup(c) {
+    var h = [];
+    var p = [0];
+    var n = [0];
+    var z = [0];
+    var len = [0];
+    if (!sxan_read(c, 0, h, 14)) {
+        return false;
+    }
+    if (sxMemcmp(h, "ISSetupStream\x00", 14) && !sxan_pe_overlay(c, p)) {
+        return false;
+    }
+    if (!sxan_add(c, sxan_issetup_header, p[0]) || !sxan_word(c, p[0] + 14, 2, false, n)) {
+        return false;
+    }
+    p[0] += 46;
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxan_word(c, p[0], 4, false, len) || !sxan_word(c, p[0] + 10, 4, false, z) || !sxan_add(c, sxan_issetup_member, p[0]) || !sxan_span(c, p[0] + 24, len[0])) {
+            return true;
+        }
+        if (!sxAnd64(len[0], 1) && !sxan_text(c, sxan_archivenext_utf16le, p[0] + 24, len[0], false)) {
+            return false;
+        }
+        p[0] += 24 + len[0];
+        if (!sxan_span(c, p[0], z[0])) {
+            return true;
+        }
+        p[0] += z[0];
+    }
+    return true;
+}
+function sx_installshield_issetupstream_build(c) {
+    var ok = false;
+    ok = sxan_issetup(c);
+    return !!(c.count && sxan_finish(c));
+}

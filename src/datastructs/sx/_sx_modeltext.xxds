@@ -1,0 +1,653 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_modeltext.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_signature_fields = layout([field("signature", "char", 0, SIGNATURE)]);
+var sxmt_signature = sxLayout(0x60520001, "modeltext_signature", LE, sxmt_signature_fields);
+var sxmt_version_fields = layout([field("version", "char", 0, STRING)]);
+var sxmt_version = sxLayout(0x60520002, "modeltext_version", LE, sxmt_version_fields);
+var sxmt_encoding_fields = layout([field("encoding", "char", 0, STRING)]);
+var sxmt_encoding = sxLayout(0x60520003, "modeltext_encoding", LE, sxmt_encoding_fields);
+var sxmt_property_name_fields = layout([field("property_name", "char", 0, STRING)]);
+var sxmt_property_name = sxLayout(0x60520005, "modeltext_property_name", LE, sxmt_property_name_fields);
+var sxmt_object_type_fields = layout([field("object_type", "char", 0, STRING)]);
+var sxmt_object_type = sxLayout(0x60520009, "modeltext_object_type", LE, sxmt_object_type_fields);
+var sxmt_keyword_fields = layout([field("keyword", "char", 0, STRING)]);
+var sxmt_keyword = sxLayout(0x6052000A, "modeltext_keyword", LE, sxmt_keyword_fields);
+var sxmt_material_name_fields = layout([field("material_name", "utf8", 0, STRING)]);
+var sxmt_material_name = sxLayout(0x6052000C, "modeltext_material_name", LE, sxmt_material_name_fields);
+var sxmt_glyph_name_fields = layout([field("glyph_name", "utf8", 0, STRING)]);
+var sxmt_glyph_name = sxLayout(0x6052000E, "modeltext_glyph_name", LE, sxmt_glyph_name_fields);
+var sxmt_channel_name_fields = layout([field("channel_name", "char", 0, STRING)]);
+var sxmt_channel_name = sxLayout(0x6052000F, "modeltext_channel_name", LE, sxmt_channel_name_fields);
+var sxmt_name_fields = layout([field("name", "utf8", 0, STRING)]);
+var sxmt_name = sxLayout(0x60520010, "modeltext_name", LE, sxmt_name_fields);
+var sxmt_string_value_fields = layout([field("string_value", "utf8", 0, STRING)]);
+var sxmt_string_value = sxLayout(0x60520011, "modeltext_string_value", LE, sxmt_string_value_fields);
+var sxmt_record_text_fields = layout([field("record_text", "utf8", 0, STRING)]);
+var sxmt_record_text = sxLayout(0x60520012, "modeltext_record_text", LE, sxmt_record_text_fields);
+var sxmt_vertex_count_fields = layout([field("vertex_count", "ascii_signed", 0, COUNT)]);
+var sxmt_vertex_count = sxLayout(0x60520013, "modeltext_vertex_count", LE, sxmt_vertex_count_fields);
+var sxmt_face_count_fields = layout([field("face_count", "ascii_signed", 0, COUNT)]);
+var sxmt_face_count = sxLayout(0x60520014, "modeltext_face_count", LE, sxmt_face_count_fields);
+var sxmt_edge_count_fields = layout([field("edge_count", "ascii_signed", 0, COUNT)]);
+var sxmt_edge_count = sxLayout(0x60520015, "modeltext_edge_count", LE, sxmt_edge_count_fields);
+var sxmt_vertex_index_fields = layout([field("vertex_index", "ascii_signed", 0)]);
+var sxmt_vertex_index = sxLayout(0x6052001C, "modeltext_vertex_index", LE, sxmt_vertex_index_fields);
+var sxmt_glyph_count_fields = layout([field("glyph_count", "ascii_signed", 0, COUNT)]);
+var sxmt_glyph_count = sxLayout(0x60520026, "modeltext_glyph_count", LE, sxmt_glyph_count_fields);
+var sxmt_property_total_fields = layout([field("property_total", "ascii_signed", 0, COUNT)]);
+var sxmt_property_total = sxLayout(0x60520027, "modeltext_property_total", LE, sxmt_property_total_fields);
+var sxmt_codepoint_fields = layout([field("codepoint", "ascii_signed", 0)]);
+var sxmt_codepoint = sxLayout(0x60520028, "modeltext_codepoint", LE, sxmt_codepoint_fields);
+var sxmt_integer_value_fields = layout([field("integer_value", "ascii_signed", 0)]);
+var sxmt_integer_value = sxLayout(0x60520035, "modeltext_integer_value", LE, sxmt_integer_value_fields);
+var sxmt_frame_count_fields = layout([field("frame_count", "ascii_signed", 0, COUNT)]);
+var sxmt_frame_count = sxLayout(0x60520036, "modeltext_frame_count", LE, sxmt_frame_count_fields);
+var sxmt_channel_count_fields = layout([field("channel_count", "ascii_signed", 0, COUNT)]);
+var sxmt_channel_count = sxLayout(0x60520037, "modeltext_channel_count", LE, sxmt_channel_count_fields);
+var sxmt_x_fields = layout([field("x", "ascii_real", 0)]);
+var sxmt_x = sxLayout(0x60520039, "modeltext_x", LE, sxmt_x_fields);
+var sxmt_y_fields = layout([field("y", "ascii_real", 0)]);
+var sxmt_y = sxLayout(0x6052003A, "modeltext_y", LE, sxmt_y_fields);
+var sxmt_z_fields = layout([field("z", "ascii_real", 0)]);
+var sxmt_z = sxLayout(0x6052003B, "modeltext_z", LE, sxmt_z_fields);
+var sxmt_u_fields = layout([field("u", "ascii_real", 0)]);
+var sxmt_u = sxLayout(0x6052003D, "modeltext_u", LE, sxmt_u_fields);
+var sxmt_v_fields = layout([field("v", "ascii_real", 0)]);
+var sxmt_v = sxLayout(0x6052003E, "modeltext_v", LE, sxmt_v_fields);
+var sxmt_red_fields = layout([field("red", "ascii_real", 0)]);
+var sxmt_red = sxLayout(0x60520042, "modeltext_red", LE, sxmt_red_fields);
+var sxmt_green_fields = layout([field("green", "ascii_real", 0)]);
+var sxmt_green = sxLayout(0x60520043, "modeltext_green", LE, sxmt_green_fields);
+var sxmt_blue_fields = layout([field("blue", "ascii_real", 0)]);
+var sxmt_blue = sxLayout(0x60520044, "modeltext_blue", LE, sxmt_blue_fields);
+var sxmt_translate_x_fields = layout([field("translate_x", "ascii_real", 0)]);
+var sxmt_translate_x = sxLayout(0x60520046, "modeltext_translate_x", LE, sxmt_translate_x_fields);
+var sxmt_translate_y_fields = layout([field("translate_y", "ascii_real", 0)]);
+var sxmt_translate_y = sxLayout(0x60520047, "modeltext_translate_y", LE, sxmt_translate_y_fields);
+var sxmt_translate_z_fields = layout([field("translate_z", "ascii_real", 0)]);
+var sxmt_translate_z = sxLayout(0x60520048, "modeltext_translate_z", LE, sxmt_translate_z_fields);
+var sxmt_real_value_fields = layout([field("real_value", "ascii_real", 0)]);
+var sxmt_real_value = sxLayout(0x6052004D, "modeltext_real_value", LE, sxmt_real_value_fields);
+var sxmt_frame_time_fields = layout([field("frame_time", "ascii_real", 0)]);
+var sxmt_frame_time = sxLayout(0x6052004E, "modeltext_frame_time", LE, sxmt_frame_time_fields);
+var sxmt_font_metric_fields = layout([field("font_metric", "ascii_real", 0)]);
+var sxmt_font_metric = sxLayout(0x6052005B, "modeltext_font_metric", LE, sxmt_font_metric_fields);
+var sxmt_motion_value_fields = layout([field("motion_value", "ascii_real", 0)]);
+var sxmt_motion_value = sxLayout(0x6052005C, "modeltext_motion_value", LE, sxmt_motion_value_fields);
+var sxmt_binary_int8_le_fields = layout([i8("value")]);
+var sxmt_binary_int8_le = sxLayout(0x60520061, "modeltext_binary_int8_le", LE, sxmt_binary_int8_le_fields);
+var sxmt_binary_uint8_le_fields = layout([u8("value")]);
+var sxmt_binary_uint8_le = sxLayout(0x60520062, "modeltext_binary_uint8_le", LE, sxmt_binary_uint8_le_fields);
+var sxmt_binary_int16_le_fields = layout([i16("value")]);
+var sxmt_binary_int16_le = sxLayout(0x60520063, "modeltext_binary_int16_le", LE, sxmt_binary_int16_le_fields);
+var sxmt_binary_uint16_le_fields = layout([u16("value")]);
+var sxmt_binary_uint16_le = sxLayout(0x60520064, "modeltext_binary_uint16_le", LE, sxmt_binary_uint16_le_fields);
+var sxmt_binary_int32_le_fields = layout([i32("value")]);
+var sxmt_binary_int32_le = sxLayout(0x60520065, "modeltext_binary_int32_le", LE, sxmt_binary_int32_le_fields);
+var sxmt_binary_uint32_le_fields = layout([u32("value")]);
+var sxmt_binary_uint32_le = sxLayout(0x60520066, "modeltext_binary_uint32_le", LE, sxmt_binary_uint32_le_fields);
+var sxmt_binary_float32_le_fields = layout([field("value", "float32", 4)]);
+var sxmt_binary_float32_le = sxLayout(0x60520067, "modeltext_binary_float32_le", LE, sxmt_binary_float32_le_fields);
+var sxmt_binary_double_le_fields = layout([field("value", "double", 8)]);
+var sxmt_binary_double_le = sxLayout(0x60520068, "modeltext_binary_double_le", LE, sxmt_binary_double_le_fields);
+var sxmt_binary_int8_be_fields = layout([i8("value")]);
+var sxmt_binary_int8_be = sxLayout(0x6052006C, "modeltext_binary_int8_be", BE, sxmt_binary_int8_be_fields);
+var sxmt_binary_uint8_be_fields = layout([u8("value")]);
+var sxmt_binary_uint8_be = sxLayout(0x6052006D, "modeltext_binary_uint8_be", BE, sxmt_binary_uint8_be_fields);
+var sxmt_binary_int16_be_fields = layout([i16("value")]);
+var sxmt_binary_int16_be = sxLayout(0x6052006E, "modeltext_binary_int16_be", BE, sxmt_binary_int16_be_fields);
+var sxmt_binary_uint16_be_fields = layout([u16("value")]);
+var sxmt_binary_uint16_be = sxLayout(0x6052006F, "modeltext_binary_uint16_be", BE, sxmt_binary_uint16_be_fields);
+var sxmt_binary_int32_be_fields = layout([i32("value")]);
+var sxmt_binary_int32_be = sxLayout(0x60520070, "modeltext_binary_int32_be", BE, sxmt_binary_int32_be_fields);
+var sxmt_binary_uint32_be_fields = layout([u32("value")]);
+var sxmt_binary_uint32_be = sxLayout(0x60520071, "modeltext_binary_uint32_be", BE, sxmt_binary_uint32_be_fields);
+var sxmt_binary_float32_be_fields = layout([field("value", "float32", 4)]);
+var sxmt_binary_float32_be = sxLayout(0x60520072, "modeltext_binary_float32_be", BE, sxmt_binary_float32_be_fields);
+var sxmt_binary_double_be_fields = layout([field("value", "double", 8)]);
+var sxmt_binary_double_be = sxLayout(0x60520073, "modeltext_binary_double_be", BE, sxmt_binary_double_be_fields);
+var sxmt_xfile_header_fields = layout([chars("magic", 4, SIGNATURE), chars("major_version", 2, NONE),
+    chars("minor_version", 2, NONE), chars("encoding", 4, STRING), chars("float_width", 4, NONE)]);
+var sxmt_xfile_header = sxLayout(0x6052007F, "modeltext_xfile_header", LE, sxmt_xfile_header_fields);
+function sx_modeltext_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    switch (id) {
+    case 0x6052005D:
+        return sxSetComment(r, "Physical hexadecimal source value; original bytes are retained.");
+    case 0x6052005E:
+        return sxSetComment(r, "Physical hexadecimal source value; original bytes are retained.");
+    case 0x6052005F:
+        return sxSetComment(r, "Physical hexadecimal source value; original bytes are retained.");
+    case 0x60520060:
+        return sxSetComment(r, "Physical hexadecimal source value; original bytes are retained.");
+    case 0x60520061:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520062:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520063:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520064:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520065:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520066:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520067:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520068:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x6052006C:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x6052006D:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x6052006E:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x6052006F:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520070:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520071:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520072:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520073:
+        return sxSetComment(r, "Binary property value in declaration order; its name and type are stored in the preceding header.");
+    case 0x60520078:
+        return sxSetComment(r, "DXF group code selects the type and semantic role of the following value.");
+    case 0x605200A4:
+        return sxSetComment(r, "Original #RRGGBB color value.");
+    default:
+        return true;
+    }
+}
+function sxmt_space(x) {
+    return x === 32 || x >= 9 && x <= 13;
+}
+function sxmt_emit(q, l, a, z) {
+    if (a < 0 || z < 0 || a > q.n || z > q.n - a) {
+        return false;
+    }
+    if (!z || q.c.count >= 32000) {
+        return true;
+    }
+    var limit = l.fields[0].size ? SX_I64_MAX : sxVariableLimit(l.fields[0].type);
+    if (z > limit) {
+        return true;
+    }
+    if (!l.fields[0].size && !sxStrcmp(l.fields[0].type, "ascii_hex")) {
+        var value = 0;
+        for (var i = 0; i < z; i++) {
+            var ch = q.b[a + i];
+            var digit = ch >= 48 /*0*/ && ch <= 57 /*9*/ ? (ch - 48 /*0*/) >>> 0 : ch >= 97 /*a*/ && ch <= 102 /*f*/ ? (((ch - 97 /*a*/) >>> 0) + 10) >>> 0 : ch >= 65 /*A*/ && ch <= 70 /*F*/ ? (((ch - 65 /*A*/) >>> 0) + 10) >>> 0 : 16;
+            if (digit >= 16 || value > Math.floor((SX_U64_MAX - digit) / 16)) {
+                return false;
+            }
+            value = value * 16 + digit;
+        }
+    }
+    return sx_add(q.c, l, a, z);
+}
+function sxmt_token(q, end, a, z, comments) {
+    if (q.p < 0 || end > q.n || q.p > end) {
+        return false;
+    }
+    for (; ; ) {
+        while (q.p < end && sxmt_space(q.b[q.p])) {
+            q.p++;
+        }
+        if (!comments || q.p === end || q.b[q.p] !== 35 /*#*/) {
+            break;
+        }
+        while (q.p < end && q.b[q.p] !== 10) {
+            q.p++;
+        }
+    }
+    if (q.p === end) {
+        return false;
+    }
+    a[0] = q.p;
+    while (q.p < end && !sxmt_space(q.b[q.p]) && (!comments || q.b[q.p] !== 35 /*#*/)) {
+        q.p++;
+    }
+    z[0] = q.p - a[0];
+    return z[0] > 0;
+}
+function sxmt_value(q, l, end, out) {
+    var a = [0];
+    var z = [0];
+    if (!sxmt_token(q, end, a, z, true) || !sxmt_emit(q, l, a[0], z[0])) {
+        return false;
+    }
+    if (out !== null) {
+        var v = 0;
+        var i = 0;
+        if (q.b[a[0]] === 43 /*+*/) {
+            i++;
+        }
+        if (i === z[0]) {
+            return false;
+        }
+        for (; i < z[0]; i++) {
+            var d = (q.b[a[0] + i] - 48 /*0*/) >>> 0;
+            if (d > 9 || v > Math.floor((SX_U64_MAX - d) / 10)) {
+                return false;
+            }
+            v = v * 10 + d;
+        }
+        out[0] = v;
+    }
+    return true;
+}
+function sxmt_line(q, a, end, comments) {
+    while (q.p < q.n) {
+        var start = q.p;
+        var stop;
+        while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+            q.p++;
+        }
+        stop = q.p;
+        if (q.p < q.n && q.b[q.p] === 13) {
+            q.p++;
+        }
+        if (q.p < q.n && q.b[q.p] === 10) {
+            q.p++;
+        }
+        if (comments) {
+            var quoted = false;
+            for (var i = start; i < stop; i++) {
+                if (q.b[i] === 92 && quoted && i + 1 < stop) {
+                    i++;
+                    continue;
+                }
+                if (q.b[i] === 34 /*"*/) {
+                    quoted = !quoted;
+                }
+                if (q.b[i] === 35 /*#*/ && !quoted) {
+                    stop = i;
+                    break;
+                }
+            }
+        }
+        while (start < stop && sxmt_space(q.b[start])) {
+            start++;
+        }
+        while (stop > start && sxmt_space(q.b[stop - 1])) {
+            stop--;
+        }
+        if (start < stop) {
+            a[0] = start;
+            end[0] = stop;
+            return true;
+        }
+    }
+    return false;
+}
+function sxmt_eq(q, a, z, s) {
+    var n = sxStrlen(s);
+    return a >= 0 && z === (n >= SX_I64_MAX ? n - SX_U64_MAX : n) && a <= q.n && z <= q.n - a && !sxMemcmpAt(q.b, a, s, 0, n);
+}
+function sxmt_table(q, l, at, width, count) {
+    if (at < 0 || at > q.n || width <= 0 || count > Math.floor((q.n - at < 0 ? q.n - at + SX_U64_MAX : q.n - at) / (width < 0 ? width + SX_U64_MAX : width))) {
+        return false;
+    }
+    if (!count || q.c.count >= 32000) {
+        return true;
+    }
+    return sx_table(q.c, l, at, width, count > 65536 ? 65536 : count);
+}
+function sxmt_many(q, l, end) {
+    while (q.p < end) {
+        var a = [0];
+        var z = [0];
+        if (!sxmt_token(q, end, a, z, true)) {
+            break;
+        }
+        if (!sxmt_emit(q, l, a[0], z[0])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxmt_uint_token(q, a, z, v) {
+    var n = 0;
+    if (z <= 0) {
+        return false;
+    }
+    for (var i = 0; i < z; i++) {
+        var d = (q.b[a + i] - 48 /*0*/) >>> 0;
+        if (d > 9 || n > Math.floor((SX_U64_MAX - d) / 10)) {
+            return false;
+        }
+        n = n * 10 + d;
+    }
+    v[0] = n;
+    return true;
+}
+function sxmt_binary_type(kind, width, be) {
+    if (kind === 73 /*I*/ && width === 1) {
+        return be ? sxmt_binary_int8_be : sxmt_binary_int8_le;
+    }
+    if (kind === 85 /*U*/ && width === 1) {
+        return be ? sxmt_binary_uint8_be : sxmt_binary_uint8_le;
+    }
+    if (kind === 73 /*I*/ && width === 2) {
+        return be ? sxmt_binary_int16_be : sxmt_binary_int16_le;
+    }
+    if (kind === 85 /*U*/ && width === 2) {
+        return be ? sxmt_binary_uint16_be : sxmt_binary_uint16_le;
+    }
+    if (kind === 73 /*I*/ && width === 4) {
+        return be ? sxmt_binary_int32_be : sxmt_binary_int32_le;
+    }
+    if (kind === 85 /*U*/ && width === 4) {
+        return be ? sxmt_binary_uint32_be : sxmt_binary_uint32_le;
+    }
+    if (kind === 70 /*F*/ && width === 4) {
+        return be ? sxmt_binary_float32_be : sxmt_binary_float32_le;
+    }
+    if (kind === 70 /*F*/ && width === 8) {
+        return be ? sxmt_binary_double_be : sxmt_binary_double_le;
+    }
+    return null;
+}
+function sxmt_remainder(q, l, end) {
+    while (q.p < end && sxmt_space(q.b[q.p])) {
+        q.p++;
+    }
+    return sxmt_emit(q, l, q.p, end - q.p);
+}
+function sxmt_quoted(q, l, end) {
+    while (q.p < end && sxmt_space(q.b[q.p])) {
+        q.p++;
+    }
+    if (q.p === end || q.b[q.p] !== 34 /*"*/) {
+        return false;
+    }
+    var start = ++q.p;
+    while (q.p < end && q.b[q.p] !== 34 /*"*/) {
+        if (q.b[q.p] === 92 && q.p + 1 < end) {
+            q.p++;
+        }
+        q.p++;
+    }
+    if (q.p === end) {
+        return false;
+    }
+    var ok = sxmt_emit(q, l, start, q.p - start);
+    q.p++;
+    return ok;
+}
+function sxmt_lex(q, type) {
+    var motion = false;
+    var expect = 0;
+    var requested = null;
+    var bang = type === "BVH_MOTION" || type === "DIRECTX_X";
+    if (type === "DIRECTX_X") {
+        {
+            if (!sxmt_emit(q, sxmt_xfile_header, 0, 16)) {
+                return false;
+            }
+        }
+        q.p = 16;
+    }
+    while (q.p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var c = q.b[q.p];
+        if (sxmt_space(c)) {
+            q.p++;
+            continue;
+        }
+        if (c === 35 /*#*/ || bang && c === 33 /*!*/ || c === 47 && q.p + 1 < q.n && q.b[q.p + 1] === 47) {
+            while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+                q.p++;
+            }
+            continue;
+        }
+        if (c === 47 && q.p + 1 < q.n && q.b[q.p + 1] === 42) {
+            q.p += 2;
+            while (q.p + 1 < q.n && (q.b[q.p] !== 42 || q.b[q.p + 1] !== 47)) {
+                q.p++;
+            }
+            if (q.p + 1 === q.n) {
+                return false;
+            }
+            q.p += 2;
+            continue;
+        }
+        if (c === 34 /*"*/) {
+            if (!sxmt_quoted(q, sxmt_name, q.n)) {
+                return false;
+            }
+            continue;
+        }
+        if (c === 123 /*{*/ || c === 125 /*}*/ || c === 40 /*(*/ || c === 41 /*)*/ || c === 59 /*;*/ || c === 44 /*,*/ || c === 58 /*:*/ || c === 91 /*[*/ || c === 93 /*]*/) {
+            q.p++;
+            continue;
+        }
+        var a = q.p;
+        var number = c >= 48 /*0*/ && c <= 57 /*9*/ || c === 43 /*+*/ || c === 45 /*-*/ || c === 46 /*.*/;
+        var real = false;
+        while (q.p < q.n) {
+            c = q.b[q.p];
+            if (type === "DIRECTX_X" && c === 47 && q.p + 1 < q.n && (q.b[q.p + 1] === 47 || q.b[q.p + 1] === 42)) {
+                break;
+            }
+            if (sxmt_space(c) || c === 123 /*{*/ || c === 125 /*}*/ || c === 40 /*(*/ || c === 41 /*)*/ || c === 59 /*;*/ || c === 44 /*,*/ || c === 58 /*:*/ || c === 91 /*[*/ || c === 93 /*]*/ || c === 34 /*"*/) {
+                break;
+            }
+            if (number && (c === 46 /*.*/ || c === 101 /*e*/ || c === 69 /*E*/)) {
+                real = true;
+            }
+            q.p++;
+        }
+        var z = q.p - a;
+        if (!z) {
+            return false;
+        }
+        if (type === "BVH_MOTION") {
+            if (sxmt_eq(q, a, z, "OFFSET")) {
+                expect = 3;
+                requested = sxmt_real_value;
+            } else if (sxmt_eq(q, a, z, "CHANNELS")) {
+                expect = 1;
+                requested = sxmt_channel_count;
+            } else if (sxmt_eq(q, a, z, "Frames")) {
+                expect = 1;
+                requested = sxmt_frame_count;
+            } else if (sxmt_eq(q, a, z, "Time")) {
+                expect = 1;
+                requested = sxmt_frame_time;
+                motion = true;
+            }
+        }
+        var l = number ? expect ? requested : motion ? sxmt_motion_value : real ? sxmt_real_value : sxmt_integer_value : sxmt_keyword;
+        if (number) {
+            var t = 0;
+            var digits = 0;
+            if (t < z && (q.b[a + t] === 43 /*+*/ || q.b[a + t] === 45 /*-*/)) {
+                t++;
+            }
+            while (t < z && q.b[a + t] >= 48 /*0*/ && q.b[a + t] <= 57 /*9*/) {
+                t++;
+                digits++;
+            }
+            if (t < z && q.b[a + t] === 46 /*.*/) {
+                t++;
+                while (t < z && q.b[a + t] >= 48 /*0*/ && q.b[a + t] <= 57 /*9*/) {
+                    t++;
+                    digits++;
+                }
+            }
+            var valid = digits > 0;
+            if (t < z && (q.b[a + t] === 101 /*e*/ || q.b[a + t] === 69 /*E*/)) {
+                t++;
+                if (t < z && (q.b[a + t] === 43 /*+*/ || q.b[a + t] === 45 /*-*/)) {
+                    t++;
+                }
+                var first = t;
+                while (t < z && q.b[a + t] >= 48 /*0*/ && q.b[a + t] <= 57 /*9*/) {
+                    t++;
+                }
+                if (t === first) {
+                    valid = false;
+                }
+            }
+            if (!valid || t !== z) {
+                l = sxmt_record_text;
+            }
+        }
+        if (type === "BVH_MOTION" && !number && (z >= 8 && sxmt_eq(q, a + z - 8, 8, "position") || z >= 8 && sxmt_eq(q, a + z - 8, 8, "rotation"))) {
+            l = sxmt_channel_name;
+        }
+        if (!sxmt_emit(q, l, a, z)) {
+            return false;
+        }
+        if (number && expect) {
+            expect--;
+        }
+    }
+    return true;
+}
+function sxmt_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxmt_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxmt_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxmt_order, true);
+    return !c.failed;
+}
+function sx_modeltext_supports(t) {
+    switch (t) {
+    case "POLYGON_PLY":
+    case "POINTCLOUD_PCD":
+    case "WAVEFRONT_OBJ":
+    case "OFF_MESH":
+    case "AC3D_MODEL":
+    case "XFIG":
+    case "AUTOCAD_DXF":
+    case "FONT_BDF":
+    case "FONT_AFM":
+    case "FONTFORGE_SFD":
+    case "GTS_SURFACE":
+    case "BVH_MOTION":
+    case "DIRECTX_X":
+    case "LIGHTWAVE_SCENE":
+    case "METASEQUOIA_MQO":
+    case "AUTODESK_ASE":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_modeltext_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 67108864) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: b, n: c.size, p: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "POLYGON_PLY":
+            ok = sx_polygon_ply_build(q);
+            break;
+        case "POINTCLOUD_PCD":
+            ok = sx_pointcloud_pcd_build(q);
+            break;
+        case "WAVEFRONT_OBJ":
+            ok = sx_wavefront_obj_build(q);
+            break;
+        case "OFF_MESH":
+            ok = sx_off_mesh_build(q);
+            break;
+        case "AC3D_MODEL":
+            ok = sx_ac3d_model_build(q);
+            break;
+        case "XFIG":
+            ok = sx_xfig_build(q);
+            break;
+        case "AUTOCAD_DXF":
+            ok = sx_autocad_dxf_build(q);
+            break;
+        case "FONT_BDF":
+            ok = sx_font_bdf_build(q);
+            break;
+        case "FONT_AFM":
+            ok = sx_font_afm_build(q);
+            break;
+        case "FONTFORGE_SFD":
+            ok = sx_fontforge_sfd_build(q);
+            break;
+        case "GTS_SURFACE":
+            ok = sx_gts_surface_build(q);
+            break;
+        case "BVH_MOTION":
+            ok = sx_bvh_motion_build(q, type);
+            break;
+        case "DIRECTX_X":
+            ok = sx_directx_x_build(q, type);
+            break;
+        case "LIGHTWAVE_SCENE":
+            ok = sx_lightwave_scene_build(q, type);
+            break;
+        case "METASEQUOIA_MQO":
+            ok = sx_metasequoia_mqo_build(q, type);
+            break;
+        case "AUTODESK_ASE":
+            ok = sx_autodesk_ase_build(q, type);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxmt_finish(c);
+}

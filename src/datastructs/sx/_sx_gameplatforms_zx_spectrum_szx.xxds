@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/zx_spectrum_szx/xx_zx_spectrum_szx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_szx_header_fields = layout([blob("signature", 4, SIGNATURE), u8("major", ID), u8("minor", ID), u8("machine", ID),
+    u8("flags", FLAGS)]);
+var sxgp_szx_header = sxLayout(0x60360078, "szx_header", LE, sxgp_szx_header_fields);
+var sxgp_szx_chunk_fields = layout([blob("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxgp_szx_chunk = sxLayout(0x60360079, "szx_chunk", LE, sxgp_szx_chunk_fields);
+var sxgp_szx_z80_fields = layout([u16("af", FLAGS), u16("bc"), u16("de"), u16("hl"), u16("af_alt", FLAGS), u16("bc_alt"),
+    u16("de_alt"), u16("hl_alt"), u16("ix"), u16("iy"), u16("sp", VA), u16("pc", VA), u8("i"), u8("r"), u8("iff1", FLAGS),
+    u8("iff2", FLAGS), u8("interrupt_mode", ID), u32("tstates")]);
+var sxgp_szx_z80 = sxLayout(0x6036007A, "szx_z80", LE, sxgp_szx_z80_fields);
+var sxgp_szx_z80_v0_tail_fields = layout([blob("reserved", 4, RESERVED)]);
+var sxgp_szx_z80_v0_tail = sxLayout(0x6036007B, "szx_z80_v0_tail", LE, sxgp_szx_z80_v0_tail_fields);
+var sxgp_szx_z80_v1_tail_fields = layout([u8("hold_interrupt_cycles"), u8("flags", FLAGS), u8("hidden_register"),
+    u8("reserved", RESERVED)]);
+var sxgp_szx_z80_v1_tail = sxLayout(0x6036007C, "szx_z80_v1_tail", LE, sxgp_szx_z80_v1_tail_fields);
+var sxgp_szx_z80_v4_tail_fields = layout([u8("hold_interrupt_cycles"), u8("flags", FLAGS), u16("memptr", VA)]);
+var sxgp_szx_z80_v4_tail = sxLayout(0x6036007D, "szx_z80_v4_tail", LE, sxgp_szx_z80_v4_tail_fields);
+var sxgp_szx_spectrum_fields = layout([u8("border", ID), u8("port_7ffd", FLAGS), u8("port_1ffd", FLAGS), u8("port_fe", FLAGS),
+    blob("reserved", 4, RESERVED)]);
+var sxgp_szx_spectrum = sxLayout(0x6036007E, "szx_spectrum", LE, sxgp_szx_spectrum_fields);
+var sxgp_szx_ram_fields = layout([u16("flags", FLAGS), u8("page_id", ID)]);
+var sxgp_szx_ram = sxLayout(0x6036007F, "szx_ram", LE, sxgp_szx_ram_fields);
+var sxgp_szx_creator_fields = layout([chars("creator", 32, STRING), u16("major", ID), u16("minor", ID)]);
+var sxgp_szx_creator = sxLayout(0x60360080, "szx_creator", LE, sxgp_szx_creator_fields);
+var sxgp_szx_joystick_fields = layout([u32("flags", FLAGS), u8("player1", ID), u8("player2", ID)]);
+var sxgp_szx_joystick = sxLayout(0x60360081, "szx_joystick", LE, sxgp_szx_joystick_fields);
+var sxgp_szx_keyboard_fields = layout([u32("flags", FLAGS)]);
+var sxgp_szx_keyboard = sxLayout(0x60360082, "szx_keyboard", LE, sxgp_szx_keyboard_fields);
+var sxgp_szx_keyboard_joystick_fields = layout([u8("joystick", ID)]);
+var sxgp_szx_keyboard_joystick = sxLayout(0x60360083, "szx_keyboard_joystick", LE, sxgp_szx_keyboard_joystick_fields);
+var sxgp_szx_printer_fields = layout([u16("flags", FLAGS)]);
+var sxgp_szx_printer = sxLayout(0x60360084, "szx_printer", LE, sxgp_szx_printer_fields);
+var sxgp_szx_ay_fields = layout([u8("flags", FLAGS), u8("selected_register", ID), u8("register_0", FLAGS),
+    u8("register_1", FLAGS), u8("register_2", FLAGS), u8("register_3", FLAGS), u8("register_4", FLAGS), u8("register_5", FLAGS),
+    u8("register_6", FLAGS), u8("register_7", FLAGS), u8("register_8", FLAGS), u8("register_9", FLAGS),
+    u8("register_10", FLAGS), u8("register_11", FLAGS), u8("register_12", FLAGS), u8("register_13", FLAGS),
+    u8("register_14", FLAGS), u8("register_15", FLAGS)]);
+var sxgp_szx_ay = sxLayout(0x60360085, "szx_ay", LE, sxgp_szx_ay_fields);
+function sxgp_szx(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 8;
+    var z = [0];
+    var minor = [0];
+    var tag = [];
+    if (!sxgp_row(v, sxgp_szx_header, 0, end) || !sxgp_word(v, 5, 1, false, minor, 0, end)) {
+        return false;
+    }
+    while (p < end) {
+        if (!sxgp_row(v, sxgp_szx_chunk, p, end) || !sxgp_read(v, p, tag, 4, end) || !sxgp_word(v, p + 4, 4, false, z, 0, end) || !sxgp_span(v, p + 8, z[0], end)) {
+            return false;
+        }
+        p += 8;
+        var stop = p + z[0];
+        var l = null;
+        if (!sxMemcmp(tag, "Z80R", 4)) {
+            if (!sxgp_row(v, sxgp_szx_z80, p, stop) || !sxgp_row(v, minor[0] === 0 ? sxgp_szx_z80_v0_tail : minor[0] < 4 ? sxgp_szx_z80_v1_tail : sxgp_szx_z80_v4_tail, p + 33, stop)) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "SPCR", 4)) {
+            l = sxgp_szx_spectrum;
+        } else if (!sxMemcmp(tag, "RAMP", 4)) {
+            l = sxgp_szx_ram;
+        } else if (!sxMemcmp(tag, "CRTR", 4)) {
+            l = sxgp_szx_creator;
+        } else if (!sxMemcmp(tag, "JOY\x00", 4)) {
+            l = sxgp_szx_joystick;
+        } else if (!sxMemcmp(tag, "ZXPR", 4)) {
+            l = sxgp_szx_printer;
+        } else if (!sxMemcmp(tag, "AY\x00\x00", 4)) {
+            l = sxgp_szx_ay;
+        } else if (!sxMemcmp(tag, "KEYB", 4)) {
+            l = sxgp_szx_keyboard;
+            if (minor[0] && !sxgp_row(v, sxgp_szx_keyboard_joystick, p + 4, stop)) {
+                return false;
+            }
+        }
+        if (l !== null && !sxgp_row(v, l, p, stop)) {
+            return false;
+        }
+        p = stop;
+    }
+    return p === end;
+}
+function sx_zx_spectrum_szx_build(v) {
+    return sxgp_szx(v);
+}

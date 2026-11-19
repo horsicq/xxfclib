@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/spectrum_udi/xx_spectrum_udi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_udi_header_fields = layout([chars("signature", 4, SIGNATURE), u32("size_without_crc", SIZE), u8("version"),
+    u8("last_cylinder"), u8("last_head"), u8("reserved", RESERVED), u32("extended_header_size", SIZE)]);
+var sxsl_udi_header = sxLayout(0x6033002A, "udi_header", LE, sxsl_udi_header_fields);
+var sxsl_udi_track_fields = layout([u8("type", ID), u16("track_size", SIZE)]);
+var sxsl_udi_track = sxLayout(0x6033002B, "udi_track", LE, sxsl_udi_track_fields);
+var sxsl_udi_compressed_track_fields = layout([u8("type", ID), u16("compressed_size_minus_one"), u8("original_type", ID),
+    u16("track_size", SIZE)]);
+var sxsl_udi_compressed_track = sxLayout(0x6033002C, "udi_compressed_track", LE, sxsl_udi_compressed_track_fields);
+var sxsl_udi_checksum_fields = layout([u32("crc32", CHECKSUM)]);
+var sxsl_udi_checksum = sxLayout(0x6033002D, "udi_checksum", LE, sxsl_udi_checksum_fields);
+function sxsl_udi(c) {
+    var h = [];
+    var b = [];
+    if (!sxsl_read(c, 0, h, 16) || !sxsl_put(c, sxsl_udi_header, 0, 1)) {
+        return false;
+    }
+    var end = sxsl32(h, 4);
+    var p = 16 + sxsl32(h, 12);
+    var n = (h[9] + 1) * (h[10] + 1);
+    if (end >= (c.size < 0 ? c.size + SX_U64_MAX : c.size) || !sxsl_span(c, end, 4) || p > end || n > 512) {
+        return true;
+    }
+    if (!sxsl_put(c, sxsl_udi_checksum, end, 1)) {
+        return false;
+    }
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        if (p > end || sxU64(end - p) < 3 || !sxsl_read(c, p, b, 3)) {
+            break;
+        }
+        var z;
+        if (b[0] === 0xF0) {
+            if (sxU64(end - p) < 6 || !sxsl_read(c, p, b, 6)) {
+                break;
+            }
+            z = 6 + sxsl16(b, 1) + 1;
+            if (z > sxU64(end - p) || !sxsl_put(c, sxsl_udi_compressed_track, p, 1)) {
+                break;
+            }
+        } else {
+            var maps = b[0] <= 1 ? 1 : b[0] === 2 || b[0] === 0x80 || b[0] === 0x81 ? 2 : b[0] === 0x82 ? 3 : 0;
+            var raw = sxsl16(b, 1);
+            if (!maps) {
+                break;
+            }
+            z = 3 + raw + Math.floor((raw + 7) / 8) * maps;
+            if (z > sxU64(end - p) || !sxsl_put(c, sxsl_udi_track, p, 1)) {
+                break;
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_spectrum_udi_build(c) {
+    var ok = false;
+    ok = sxsl_udi(c);
+    return ok && sxsl_finish(c);
+}

@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/trs_80_jv3/xx_trs_80_jv3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_jv3_sector_descriptor_fields = layout([u8("cylinder"), u8("sector_id", ID), u8("flags", FLAGS)]);
+var sxdleg_jv3_sector_descriptor = sxLayout(0x60750002, "jv3_sector_descriptor", LE, sxdleg_jv3_sector_descriptor_fields);
+var sxdleg_jv3_write_protection_fields = layout([u8("write_protection", FLAGS)]);
+var sxdleg_jv3_write_protection = sxLayout(0x60750003, "jv3_write_protection", LE, sxdleg_jv3_write_protection_fields);
+var sxdleg_jv3_used = [256, 128, 1024, 512];
+var sxdleg_jv3_unused = [512, 1024, 128, 256];
+function sxdleg_jv3(c) {
+    var h = [];
+    var p = 0;
+    for (var block = 0; block < 4 && c.count < 24000; block++) {
+        if (!sxdleg_read(c, p, h, 0, 8704)) {
+            break;
+        }
+        if (!sxdleg_put(c, sxdleg_jv3_sector_descriptor, p, 2901) || !sxdleg_put(c, sxdleg_jv3_write_protection, p + 8703, 1)) {
+            return false;
+        }
+        var next = p + 8704;
+        for (var i = 0; i < 2901; i++) {
+            var e = h, e_o = (3 * i) >>> 0;
+            var free = e[e_o] === 255 && e[e_o + 1] === 255;
+            var code = e[e_o + 2] & 3;
+            var n = free ? sxdleg_jv3_unused[code] : sxdleg_jv3_used[code];
+            if (!sxdleg_span(c, next, n)) {
+                return true;
+            }
+            next += n;
+        }
+        if (next <= p) {
+            return false;
+        }
+        p = next;
+        if (p === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            break;
+        }
+    }
+    return c.count !== 0;
+}
+function sx_trs_80_jv3_build(c) {
+    return sxdleg_jv3(c);
+}

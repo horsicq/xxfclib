@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/mscompress/xx_mscompress_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_szdd_header_fields = layout([blob("signature", 8, SIGNATURE), u8("method", ID),
+    chars("missing_filename_character", 1, STRING), u32("original_size", SIZE)]);
+var sxl_szdd_header = sxLayout(0x600A0001, "szdd_header", LE, sxl_szdd_header_fields);
+var sxl_sz_header_fields = layout([blob("signature", 7, SIGNATURE), u8("volume_marker", ID), u32("original_size", SIZE)]);
+var sxl_sz_header = sxLayout(0x600A0002, "sz_header", LE, sxl_sz_header_fields);
+function sx_mscompress_build(c) {
+    var ok = false;
+    if (sxl_sig(c, 0, "SZDD\x88\xF0'3", 8)) {
+        ok = sxl_sig(c, 8, "A", 1) && sxl_span(c, 14, 0) && sx_add(c, sxl_szdd_header, 0, 14);
+    } else {
+        ok = sxl_sig(c, 0, "SZ \x88\xF0'3\xD1", 8) && sx_add(c, sxl_sz_header, 0, 12);
+    }
+    return ok;
+}

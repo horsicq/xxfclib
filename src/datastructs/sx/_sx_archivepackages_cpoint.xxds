@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/cpoint/xx_cpoint_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxap_cpoint_setup_fields = layout([u32("tag"), u8("reserved"), u32("payload_size", SIZE), u32("reserved2")]);
+var sxap_cpoint_setup = sxLayout(0x60720025, "cpoint_setup", LE, sxap_cpoint_setup_fields);
+var sxap_cpoint_file_fields = layout([u8("kind"), u32("payload_size", SIZE), u32("name_size", SIZE), u32("metadata")]);
+var sxap_cpoint_file = sxLayout(0x60720026, "cpoint_file", LE, sxap_cpoint_file_fields);
+var sxap_cpoint_footer_fields = layout([u32("footer")]);
+var sxap_cpoint_footer = sxLayout(0x60720027, "cpoint_footer", LE, sxap_cpoint_footer_fields);
+function sxap_cpoint(c) {
+    var p = 0;
+    for (var work = 0; work < 20000 && sxap_span(c, p, 13); work++) {
+        var kind = [0];
+        var z = [0];
+        var n = [0];
+        if (!sxap_word(c, p, 1, false, kind)) {
+            return false;
+        }
+        if (kind[0] === 3) {
+            if (!sxap_word(c, p + 1, 4, false, z) || !sxap_word(c, p + 5, 4, false, n) || !sxap_add(c, sxap_cpoint_file, p) || !sxap_span(c, p + 13, n[0]) || !sxap_text(c, sxap_archivepackages_name, p + 13, n[0], false)) {
+                return false;
+            }
+            p += 13 + n[0];
+            if (!sxap_span(c, p, z[0] + 4) || !sxap_add(c, sxap_cpoint_footer, p + z[0])) {
+                return true;
+            }
+            p += z[0] + 4;
+        } else {
+            if (!sxap_word(c, p + 5, 4, false, z) || !sxap_add(c, sxap_cpoint_setup, p)) {
+                return false;
+            }
+            p += 13;
+            if (!sxap_span(c, p, z[0])) {
+                return true;
+            }
+            p += z[0];
+        }
+    }
+    return true;
+}
+function sx_cpoint_build(c) {
+    return sxap_cpoint(c);
+}

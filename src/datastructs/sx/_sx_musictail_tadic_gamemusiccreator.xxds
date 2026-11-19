@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/tadic_gamemusiccreator/xx_tadic_gamemusiccreator_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_gmc_orders_fields = layout([blob("zero", 3, RESERVED), u8("orders", COUNT)]);
+var sxmta_gmc_orders = sxLayout(0x60810027, "gmc_orders", BE, sxmta_gmc_orders_fields);
+var sxmta_gmc_event_fields = layout([u16("period"), u8("instrument_effect", FLAGS), u8("parameter")]);
+var sxmta_gmc_event = sxLayout(0x60810029, "gmc_event", BE, sxmta_gmc_event_fields);
+function sxmta_gmc(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var total = 0;
+    var x = [0];
+    var orders = [0];
+    var np = 1;
+    for (var i = 0; i < 15; i++) {
+        if (!sxmta_be(v, p[0] + 4, 2, x, 0, end) || !sxmta_take(v, sxmta_gmc_sample, p, 1, end)) {
+            return false;
+        }
+        total += 2 * x[0];
+    }
+    if (!sxmta_u(v, p[0] + 3, 1, orders, 0, end) || !orders[0] || orders[0] > 100 || !sxmta_take(v, sxmta_gmc_orders, p, 1, end)) {
+        return false;
+    }
+    for (i = 0; i < orders[0]; i++) {
+        if (!sxmta_be(v, p[0] + 2 * i, 2, x, 0, end) || x[0] % 1024) {
+            return false;
+        }
+        x[0] = Math.floor(x[0] / 1024);
+        if (x[0] !== 63 && x[0] >= np) {
+            np = x[0] + 1;
+        }
+    }
+    if (np > 64 || !sxmta_take(v, sxmta_gmc_pattern_offset, p, 100, end) || !sxmta_take(v, sxmta_gmc_event, p, np * 256, end)) {
+        return false;
+    }
+    return sxmta_span(v, p[0], total, end);
+}
+function sx_tadic_gamemusiccreator_build(v) {
+    return sxmta_gmc(v);
+}

@@ -1,0 +1,112 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/hadoop_sequencefile/xx_hadoop_sequencefile_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_sequence_header_fields = layout([chars("magic", 3, SIGNATURE), u8("version", ID)]);
+var sxd_sequence_header = sxLayout(0x601A0001, "sequence_header", LE, sxd_sequence_header_fields);
+var sxd_sequence_sync_fields = layout([bytes("sync_marker", 16, SIGNATURE)]);
+var sxd_sequence_sync = sxLayout(0x601A0003, "sequence_sync", LE, sxd_sequence_sync_fields);
+var sxd_sequence_sync_record_fields = layout([i32("sync_escape", SIGNATURE), bytes("sync_marker", 16, SIGNATURE)]);
+var sxd_sequence_sync_record = sxLayout(0x601A0004, "sequence_sync_record", BE, sxd_sequence_sync_record_fields);
+var sxd_sequence_record_fields = layout([i32("record_length", SIZE), i32("key_length", SIZE)]);
+var sxd_sequence_record = sxLayout(0x601A0005, "sequence_record", BE, sxd_sequence_record_fields);
+var sxd_sequence_text_length_0_fields = layout([u8("length", SIZE)]);
+var sxd_sequence_text_length_0 = sxLayout(0x601A0006, "sequence_text_length_0", LE, sxd_sequence_text_length_0_fields);
+var sxd_sequence_text_length_1_fields = layout([i8("marker"), field("encoded_magnitude", "uint8be", 1)]);
+var sxd_sequence_text_length_1 = sxLayout(0x601A0007, "sequence_text_length_1", LE, sxd_sequence_text_length_1_fields);
+var sxd_sequence_text_length_2_fields = layout([i8("marker"), field("encoded_magnitude", "uint16be", 2)]);
+var sxd_sequence_text_length_2 = sxLayout(0x601A0008, "sequence_text_length_2", LE, sxd_sequence_text_length_2_fields);
+var sxd_sequence_text_length_3_fields = layout([i8("marker"), field("encoded_magnitude", "uint24be", 3)]);
+var sxd_sequence_text_length_3 = sxLayout(0x601A0009, "sequence_text_length_3", LE, sxd_sequence_text_length_3_fields);
+var sxd_sequence_text_length_4_fields = layout([i8("marker"), field("encoded_magnitude", "uint32be", 4)]);
+var sxd_sequence_text_length_4 = sxLayout(0x601A000A, "sequence_text_length_4", LE, sxd_sequence_text_length_4_fields);
+var sxd_sequence_text_length_5_fields = layout([i8("marker"), field("encoded_magnitude", "uint40be", 5)]);
+var sxd_sequence_text_length_5 = sxLayout(0x601A000B, "sequence_text_length_5", LE, sxd_sequence_text_length_5_fields);
+var sxd_sequence_text_length_6_fields = layout([i8("marker"), field("encoded_magnitude", "uint48be", 6)]);
+var sxd_sequence_text_length_6 = sxLayout(0x601A000C, "sequence_text_length_6", LE, sxd_sequence_text_length_6_fields);
+var sxd_sequence_text_length_7_fields = layout([i8("marker"), field("encoded_magnitude", "uint56be", 7)]);
+var sxd_sequence_text_length_7 = sxLayout(0x601A000D, "sequence_text_length_7", LE, sxd_sequence_text_length_7_fields);
+var sxd_sequence_text_length_8_fields = layout([i8("marker"), field("encoded_magnitude", "uint64be", 8)]);
+var sxd_sequence_text_length_8 = sxLayout(0x601A000E, "sequence_text_length_8", LE, sxd_sequence_text_length_8_fields);
+var sxd_sequence_text_length_rows = [sxd_sequence_text_length_0, sxd_sequence_text_length_1, sxd_sequence_text_length_2,
+    sxd_sequence_text_length_3, sxd_sequence_text_length_4, sxd_sequence_text_length_5, sxd_sequence_text_length_6,
+    sxd_sequence_text_length_7, sxd_sequence_text_length_8];
+function sxd_sequence_text(c, b, at) {
+    if (!sxd_can(c, at[0], 1)) {
+        return false;
+    }
+    var start = at[0];
+    var n = 0;
+    var marker = b[at[0]++] << 24 >> 24;
+    var width = marker >= -112 ? 0 : (marker < -120 ? -120 - marker : -112 - marker) >>> 0;
+    if (width > 8 || !sxd_can(c, at[0], width)) {
+        return false;
+    }
+    if (!width) {
+        if (marker < 0) {
+            return false;
+        }
+        n = marker >>> 0;
+    } else {
+        for (var i = 0; i < width; i++) {
+            n = sxOr64(sxShl64(n, 8), b[at[0]++]);
+        }
+        if (marker < -120) {
+            n = sxNot64(n);
+        }
+    }
+    if (n > 65536 || !sxd_can(c, at[0], n) || !sxd_add(c, sxd_sequence_text_length_rows[width], start, (width + 1) >>> 0)) {
+        return false;
+    }
+    at[0] += n;
+    return true;
+}
+function sxd_sequence(c, b) {
+    var at = [4];
+    if (!sxd_add(c, sxd_sequence_header, 0, 4) || !sxd_sequence_text(c, b, at) || !sxd_sequence_text(c, b, at) || !sxd_can(c, at[0], 6)) {
+        return false;
+    }
+    var n = sxd_be32(b, at[0] + 2);
+    if (n > 4094 || b[at[0]] || b[at[0] + 1] || !sxd_add(c, sxd_sequence_options, at[0], 6)) {
+        return false;
+    }
+    at[0] += 6;
+    for (var i = 0; i < n; i++) {
+        if (!sxd_sequence_text(c, b, at) || !sxd_sequence_text(c, b, at)) {
+            return false;
+        }
+    }
+    if (!sxd_add(c, sxd_sequence_sync, at[0], 16)) {
+        return false;
+    }
+    at[0] += 16;
+    while (at[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxd_can(c, at[0], 4)) {
+            return false;
+        }
+        if (sxd_be32(b, at[0]) === 4294967295) {
+            if (!sxd_add(c, sxd_sequence_sync_record, at[0], 20)) {
+                return false;
+            }
+            at[0] += 20;
+            if (at[0] === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+                break;
+            }
+        }
+        if (!sxd_can(c, at[0], 8)) {
+            return false;
+        }
+        var n_2 = sxd_be32(b, at[0]);
+        var k = sxd_be32(b, at[0] + 4);
+        if (k > n_2 || !sxd_add(c, sxd_sequence_record, at[0], 8) || !sxd_can(c, at[0] + 8, n_2)) {
+            return false;
+        }
+        at[0] += (8 + n_2) >>> 0;
+    }
+    return true;
+}
+function sx_hadoop_sequencefile_build(c, b) {
+    return sxd_sequence(c, b);
+}

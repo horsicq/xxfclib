@@ -1,0 +1,157 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/rtp_rtcp/xx_rtp_rtcp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnm_rtp_csrc_fields = layout([u32("contributing_source", ID)]);
+var sxnm_rtp_csrc = sxLayout(0x60260018, "rtp_csrc", BE, sxnm_rtp_csrc_fields);
+var sxnm_rtcp_receiver_info_fields = layout([u32("synchronization_source", ID)]);
+var sxnm_rtcp_receiver_info = sxLayout(0x6026001D, "rtcp_receiver_info", BE, sxnm_rtcp_receiver_info_fields);
+var sxnm_rtcp_source_fields = layout([u32("source_identifier", ID)]);
+var sxnm_rtcp_source = sxLayout(0x6026001F, "rtcp_source", BE, sxnm_rtcp_source_fields);
+var sxnm_rtcp_sdes_end_fields = layout([u8("zero", SIGNATURE)]);
+var sxnm_rtcp_sdes_end = sxLayout(0x60260021, "rtcp_sdes_end", BE, sxnm_rtcp_sdes_end_fields);
+var sxnm_rtcp_bye_reason_fields = layout([u8("reason_length", SIZE)]);
+var sxnm_rtcp_bye_reason = sxLayout(0x60260022, "rtcp_bye_reason", BE, sxnm_rtcp_bye_reason_fields);
+var sxnm_rtcp_app_header_fields = layout([u32("source_identifier", ID), chars("name", 4, ID)]);
+var sxnm_rtcp_app_header = sxLayout(0x60260023, "rtcp_app_header", BE, sxnm_rtcp_app_header_fields);
+function sxnm_rtcp(v) {
+    var at = 0;
+    while (at < v.n) {
+        if (!sxnm_row(v, sxnm_rtcp_header, at, v.n)) {
+            return false;
+        }
+        var flags = v.p[at];
+        var type = v.p[at + 1];
+        var count = flags & 31;
+        var n = (sxnm_u16(v.p, at + 2) + 1) * 4;
+        if (n < 4 || !sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        var end = at + n;
+        var body = end;
+        var p = at + 4;
+        if (flags & 32) {
+            var pad = v.p[sxU64(end - 1)];
+            if (!pad || pad > sxU64(n - 4) || !sxnm_row(v, sxnm_rtp_padding_count, sxU64(end - 1), end)) {
+                return false;
+            }
+            body = sxU64(body - pad);
+        }
+        if (type === 200 || type === 201) {
+            var fixed = type === 200 ? 24 : 4;
+            if (!sxnm_row(v, type === 200 ? sxnm_rtcp_sender_info : sxnm_rtcp_receiver_info, p, body)) {
+                return false;
+            }
+            p += fixed;
+            for (var i = 0; i < count; i++, p += 24) {
+                if (!sxnm_row(v, sxnm_rtcp_report_block, p, body)) {
+                    return false;
+                }
+            }
+            if (p !== body) {
+                return false;
+            }
+        } else if (type === 202) {
+            for (i = 0; i < count; i++) {
+                if (!sxnm_row(v, sxnm_rtcp_source, p, body)) {
+                    return false;
+                }
+                p += 4;
+                var ended = false;
+                while (p < body) {
+                    if (!v.p[p]) {
+                        if (!sxnm_row(v, sxnm_rtcp_sdes_end, p, body)) {
+                            return false;
+                        }
+                        p++;
+                        pad = (4 - sxU64(p - at) % 4) % 4;
+                        if (!sxnm_need(v, p, pad, body)) {
+                            return false;
+                        }
+                        p += pad;
+                        ended = true;
+                        break;
+                    }
+                    if (!sxnm_row(v, sxnm_rtcp_sdes_item, p, body)) {
+                        return false;
+                    }
+                    var bytes = v.p[p + 1];
+                    p += 2;
+                    if (!sxnm_need(v, p, bytes, body)) {
+                        return false;
+                    }
+                    p += bytes;
+                }
+                if (!ended) {
+                    return false;
+                }
+            }
+            if (p !== body) {
+                return false;
+            }
+        } else if (type === 203) {
+            for (i = 0; i < count; i++, p += 4) {
+                if (!sxnm_row(v, sxnm_rtcp_source, p, body)) {
+                    return false;
+                }
+            }
+            if (p < body) {
+                if (!sxnm_row(v, sxnm_rtcp_bye_reason, p, body) || !sxnm_need(v, p + 1, v.p[p], body)) {
+                    return false;
+                }
+            }
+        } else if (type === 204) {
+            if (!sxnm_row(v, sxnm_rtcp_app_header, p, body)) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+        at = end;
+    }
+    return true;
+}
+function sxnm_rtp(v) {
+    if (!sxnm_need(v, 0, 2, v.n)) {
+        return false;
+    }
+    if (v.p[1] >= 192 && v.p[1] <= 223) {
+        return sxnm_rtcp(v);
+    }
+    if (!sxnm_row(v, sxnm_rtp_header, 0, v.n)) {
+        return false;
+    }
+    var flags = v.p[0];
+    var count = flags & 15;
+    var at = 12;
+    var end = v.n;
+    for (var i = 0; i < count; i++, at += 4) {
+        if (!sxnm_row(v, sxnm_rtp_csrc, at, end)) {
+            return false;
+        }
+    }
+    if (flags & 16) {
+        if (!sxnm_row(v, sxnm_rtp_extension_header, at, end)) {
+            return false;
+        }
+        var n = sxnm_u16(v.p, at + 2) * 4;
+        at += 4;
+        if (!sxnm_need(v, at, n, end)) {
+            return false;
+        }
+        at += n;
+    }
+    if (flags & 32) {
+        n = v.p[sxU64(end - 1)];
+        if (!n || n > sxU64(end - at) || !sxnm_row(v, sxnm_rtp_padding_count, sxU64(end - 1), end)) {
+            return false;
+        }
+        end = sxU64(end - n);
+    }
+    return at < end;
+}
+function sx_rtp_rtcp_build(v) {
+    return sxnm_rtp(v);
+}

@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/desksoft/xx_desksoft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_installer_size_fields = layout([field("size", "uint32le", 4, SIZE)]);
+var sxir_installer_size = sxLayout(0x6080000B, "installer_size", LE, sxir_installer_size_fields);
+var sxir_desksoft_header_fields = layout([chars("signature", 19, SIGNATURE)]);
+var sxir_desksoft_header = sxLayout(0x60800029, "desksoft_header", LE, sxir_desksoft_header_fields);
+var sxir_desksoft_end_fields = layout([chars("signature", 16, SIGNATURE)]);
+var sxir_desksoft_end = sxLayout(0x6080002A, "desksoft_end", LE, sxir_desksoft_end_fields);
+function sxir_desksoft(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var cert = [0];
+    if (!sxir_pe(v, 0, end, at, cert) || !sxir_eq(v, at[0], "<Setup Data Header>", 19, end) || !sxir_row(v, sxir_desksoft_header, at[0], end)) {
+        return false;
+    }
+    at[0] += 19;
+    while (at[0] < end) {
+        if (sxir_eq(v, at[0], "<Setup Data End>", 16, end)) {
+            return at[0] + 16 === end && sxir_row(v, sxir_desksoft_end, at[0], end);
+        }
+        var len = [0];
+        var n = [0];
+        if (!sxir_zstr(v, at, end, len) || !len[0] || !sxir_u(v, at[0], 4, false, n, end) || !sxir_row(v, sxir_installer_size, at[0], end) || !sxir_span(v, at[0] + 4, n[0], end)) {
+            return false;
+        }
+        at[0] += 4 + n[0];
+    }
+    return false;
+}
+function sx_desksoft_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_desksoft(v);
+}

@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/mrnz/xx_mrnz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_mrnz_header_fields = layout([chars("signature", 4, SIGNATURE), bytes("checkword", 4, SIGNATURE),
+    u32("xor_prefix_size", SIZE)]);
+var sxas_mrnz_header = sxLayout(0x60430025, "mrnz_header", LE, sxas_mrnz_header_fields);
+function sx_mrnz_build(c) {
+    return sxas_add(c, sxas_mrnz_header, 0);
+}

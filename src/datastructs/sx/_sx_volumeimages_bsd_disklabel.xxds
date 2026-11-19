@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/bsd_disklabel/xx_bsd_disklabel_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_bsd_disklabel_le_fields = layout([u32("magic", SIGNATURE), u16("drive_type", ID), u16("subtype", ID),
+    chars("type_name", 16, STRING), chars("pack_name", 16, STRING), u32("sector_size", SIZE), u32("sectors_per_track", COUNT),
+    u32("tracks_per_cylinder", COUNT), u32("cylinders", COUNT), u32("sectors_per_cylinder", COUNT),
+    u32("sectors_per_unit", COUNT), u16("spare_sectors_per_track", COUNT), u16("spare_sectors_per_cylinder", COUNT),
+    u32("alternate_cylinders", COUNT), u16("rpm"), u16("interleave"), u16("track_skew"), u16("cylinder_skew"),
+    u32("head_switch_microseconds"), u32("track_seek_microseconds"), u32("flags", FLAGS), field("drive_data", "uint32[5]", 20),
+    field("spare", "uint32[5]", 20, RESERVED), u32("magic2", SIGNATURE), u16("checksum", CHECKSUM),
+    u16("partition_count", COUNT), u32("boot_area_size", SIZE), u32("maximum_superblock_size", SIZE)]);
+var sxvi_bsd_disklabel_le = sxLayout(0x60530039, "bsd_disklabel_le", LE, sxvi_bsd_disklabel_le_fields);
+var sxvi_bsd_disklabel_be_fields = layout([u32("magic", SIGNATURE), u16("drive_type", ID), u16("subtype", ID),
+    chars("type_name", 16, STRING), chars("pack_name", 16, STRING), u32("sector_size", SIZE), u32("sectors_per_track", COUNT),
+    u32("tracks_per_cylinder", COUNT), u32("cylinders", COUNT), u32("sectors_per_cylinder", COUNT),
+    u32("sectors_per_unit", COUNT), u16("spare_sectors_per_track", COUNT), u16("spare_sectors_per_cylinder", COUNT),
+    u32("alternate_cylinders", COUNT), u16("rpm"), u16("interleave"), u16("track_skew"), u16("cylinder_skew"),
+    u32("head_switch_microseconds"), u32("track_seek_microseconds"), u32("flags", FLAGS), field("drive_data", "uint32[5]", 20),
+    field("spare", "uint32[5]", 20, RESERVED), u32("magic2", SIGNATURE), u16("checksum", CHECKSUM),
+    u16("partition_count", COUNT), u32("boot_area_size", SIZE), u32("maximum_superblock_size", SIZE)]);
+var sxvi_bsd_disklabel_be = sxLayout(0x6053003A, "bsd_disklabel_be", BE, sxvi_bsd_disklabel_be_fields);
+var sxvi_bsd_partition_le_fields = layout([u32("sector_count", COUNT), u32("start_sector"), u32("fragment_size", SIZE),
+    u8("filesystem_type", ID), u8("fragments_per_block", COUNT), u16("cylinders_per_group", COUNT)]);
+var sxvi_bsd_partition_le = sxLayout(0x6053003B, "bsd_partition_le", LE, sxvi_bsd_partition_le_fields);
+var sxvi_bsd_partition_be_fields = layout([u32("sector_count", COUNT), u32("start_sector"), u32("fragment_size", SIZE),
+    u8("filesystem_type", ID), u8("fragments_per_block", COUNT), u16("cylinders_per_group", COUNT)]);
+var sxvi_bsd_partition_be = sxLayout(0x6053003C, "bsd_partition_be", BE, sxvi_bsd_partition_be_fields);
+function sxvi_bsd(c) {
+    var h = [];
+    var b = [];
+    var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size) < 8192 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 8192;
+    for (var p = 0; p + 148 <= limit; p += 4) {
+        if (!sxvi_read(c, p, h, 4)) {
+            return false;
+        }
+        var o = sxvi32(h, 0, 0) === 0x82564557 ? 0 : sxvi32(h, 0, 1) === 0x82564557 ? 1 : 2;
+        if (o === 2 || !sxvi_read(c, p, h, 148) || sxvi32(h, 132, o) !== 0x82564557) {
+            continue;
+        }
+        var n = sxvi16(h, 138, o);
+        var bs = sxvi32(h, 40, o);
+        var sectors = sxvi32(h, 60, o);
+        if (!n || n > 64 || !sxvi_pow(bs) || bs < 128 || bs > 65536 || !sectors || sectors > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs) || !sxvi_read(c, p + 148, b, (n * 16) >>> 0)) {
+            continue;
+        }
+        var sum = 0;
+        for (var j = 0; j < 148; j = (j + 2) >>> 0) {
+            sum ^= sxvi16(h, j, o);
+        }
+        for (j = 0; j < (n * 16) >>> 0; j = (j + 2) >>> 0) {
+            sum ^= sxvi16(b, j, o);
+        }
+        if (sum) {
+            continue;
+        }
+        return sxvi_put(c, o === 1 ? sxvi_bsd_disklabel_be : sxvi_bsd_disklabel_le, p, 1) && sxvi_put(c, o === 1 ? sxvi_bsd_partition_be : sxvi_bsd_partition_le, p + 148, n);
+    }
+    return false;
+}
+function sx_bsd_disklabel_build(c) {
+    return sxvi_bsd(c);
+}

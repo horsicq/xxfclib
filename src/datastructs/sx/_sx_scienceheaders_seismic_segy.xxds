@@ -1,0 +1,67 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/seismic_segy/xx_seismic_segy_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_segy_trace_header_fields = layout([i32("trace_sequence_number_within_line"),
+    i32("trace_sequence_number_within_segy_file"), i32("original_field_record_number"),
+    i32("trace_number_within_the_original_field_record"), i32("energy_source_point_number"), i32("ensemble_number"),
+    i32("trace_number_within_the_ensemble"), i16("trace_identification_code", ID),
+    i16("number_of_vertically_summed_traces_yielding_this_trace"),
+    i16("number_of_horizontally_stacked_traces_yielding_this_trace"), i16("data_use"),
+    i32("distance_from_center_of_the_source_point_to_the_center_of_the_receiver_group"), i32("receiver_group_elevation"),
+    i32("surface_elevation_at_source"), i32("source_depth_below_surface"), i32("datum_elevation_at_receiver_group"),
+    i32("datum_elevation_at_source"), i32("water_depth_at_source"), i32("water_depth_at_group"),
+    i16("scalar_to_be_applied_to_all_elevations_and_depths"), i16("scalar_to_be_applied_to_all_coordinates"),
+    i32("source_coordinate_x"), i32("source_coordinate_y"), i32("group_coordinate_x"), i32("group_coordinate_y"),
+    i16("coordinate_units", ID), i16("weathering_velocity"), i16("subweathering_velocity"), i16("uphole_time_at_source_in_ms"),
+    i16("uphole_time_at_group_in_ms"), i16("source_static_correction_in_ms"), i16("group_static_correction_in_ms"),
+    i16("total_static_applied_in_ms"), i16("lag_time_A"), i16("lag_time_B"), i16("delay_recording_time"),
+    i16("mute_time_start_time_in_ms"), i16("mute_time_end_time_in_ms"), u16("number_of_samples_in_this_trace", COUNT),
+    u16("sample_interval_in_microseconds"), i16("gain_type_of_field_instruments"), i16("instrument_gain_constant"),
+    i16("instrument_early_or_initial_gain"), i16("correlated"), i16("sweep_frequency_at_start"), i16("sweep_frequency_at_end"),
+    i16("sweep_length_in_ms"), i16("sweep_type"), i16("sweep_trace_taper_length_at_start_in_ms"),
+    i16("sweep_trace_taper_length_at_end_in_ms"), i16("taper_type"), i16("alias_filter_frequency"), i16("alias_filter_slope"),
+    i16("notch_filter_frequency"), i16("notch_filter_slope"), i16("low_cut_frequency"), i16("high_cut_frequency"),
+    i16("low_cut_slope"), i16("high_cut_slope"), i16("year_data_recorded"), i16("day_of_year"), i16("hour_of_day"),
+    i16("minute_of_hour"), i16("second_of_minute"), i16("time_basis_code", ID), i16("trace_weighting_factor"),
+    i16("geophone_group_number_of_roll_switch_position_one"), i16("geophone_group_number_of_trace_number_one"),
+    i16("geophone_group_number_of_last_trace"), i16("gap_size"), i16("over_travel_associated_with_taper"),
+    i32("x_coordinate_of_ensemble_position_of_this_trace"), i32("y_coordinate_of_ensemble_position_of_this_trace"),
+    i32("for_3d_poststack_data_this_field_is_for_in_line_number"),
+    i32("for_3d_poststack_data_this_field_is_for_cross_line_number"), i32("shotpoint_number"),
+    i16("scalar_to_be_applied_to_the_shotpoint_number"), i16("trace_value_measurement_unit", ID),
+    i32("transduction_constant_mantissa"), i16("transduction_constant_exponent"), i16("transduction_units", ID),
+    i16("device_trace_identifier", ID), i16("scalar_to_be_applied_to_times"), i16("source_type_orientation"),
+    bytes("source_energy_direction", 6), i32("source_measurement_mantissa"), i16("source_measurement_exponent"),
+    i16("source_measurement_unit", ID), bytes("unassigned", 8, RESERVED)]);
+var sxsh_segy_trace_header = sxLayout(0x602A0031, "segy_trace_header", BE, sxsh_segy_trace_header_fields);
+var sxsh_segy_text_card_fields = layout([bytes("text_bytes", 80, STRING)]);
+var sxsh_segy_text_card = sxLayout(0x602A0032, "segy_text_card", LE, sxsh_segy_text_card_fields);
+function sxsh_segy(c) {
+    var b = [];
+    if (!sx_read(c, 3200, b, 400) || !sxsh_table(c, sxsh_segy_text_card, 0, 80, 40) || !sxsh_add(c, sxsh_segy_binary_header, 3200, 400)) {
+        return false;
+    }
+    var ext = sxsh16(b, 304, true);
+    var fmt = sxsh16(b, 24, true);
+    var width = fmt === 1 || fmt === 2 || fmt === 5 ? 4 : fmt === 3 ? 2 : fmt === 8 ? 1 : 0;
+    if (!width || ext > 16 || !sxsh_table(c, sxsh_segy_text_card, 3600, 80, (ext * 40) >>> 0)) {
+        return false;
+    }
+    var at = (3600 + ((ext * 3200) >>> 0)) >>> 0;
+    for (var i = 0; at < c.size; i++) {
+        var n;
+        if (i >= 1024 || !sxsh_span(c, at, 240) || (n = sx_u16(c, at + 114, true)) === null || !n || !sxsh_span(c, at, 240 + n * width) || !sxsh_add(c, sxsh_segy_trace_header, at, 240)) {
+            return false;
+        }
+        at += 240 + n * width;
+    }
+    return at === c.size;
+}
+function sx_seismic_segy_build(c) {
+    var ok = false;
+    ok = sxsh_segy(c);
+    return ok && sxsh_finish(c);
+}

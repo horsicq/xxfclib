@@ -1,0 +1,101 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gameremaining.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgr_ycg_header_fields = layout([field("signature", "uint32le", 4, SIGNATURE), field("width", "uint32le", 4),
+    field("height", "uint32le", 4), field("bits_per_pixel", "int32le", 4), field("compression_method", "int32le", 4, ID),
+    bytes("unknown_14", 12), field("uncompressed_size_1", "int32le", 4, SIZE), field("compressed_size_1", "int32le", 4, SIZE),
+    bytes("unknown_28", 8), field("uncompressed_size_2", "int32le", 4, SIZE), field("compressed_size_2", "int32le", 4, SIZE)]);
+var sxgr_ycg_header = sxLayout(0x607E0004, "ycg_header", LE, sxgr_ycg_header_fields);
+var sxgr_fallout2_entry_fields = layout([u8("compression_method", ID), field("uncompressed_size", "int32le", 4, SIZE),
+    field("compressed_size", "int32le", 4, SIZE), field("file_offset", "int32le", 4, OFFSET)]);
+var sxgr_fallout2_entry = sxLayout(0x607E000A, "fallout2_entry", LE, sxgr_fallout2_entry_fields);
+var sxgr_unreal_pak_entry_v1_fields = layout([field("file_offset", "uint64le", 8, OFFSET),
+    field("compressed_size", "uint64le", 8, SIZE), field("uncompressed_size", "uint64le", 8, SIZE),
+    field("compression_method", "uint32le", 4, ID), field("timestamp", "uint64le", 8), bytes("sha1", 20, CHECKSUM)]);
+var sxgr_unreal_pak_entry_v1 = sxLayout(0x607E0011, "unreal_pak_entry_v1", LE, sxgr_unreal_pak_entry_v1_fields);
+var sxgr_unreal_pak_entry_v2_fields = layout([field("file_offset", "uint64le", 8, OFFSET),
+    field("compressed_size", "uint64le", 8, SIZE), field("uncompressed_size", "uint64le", 8, SIZE),
+    field("compression_method", "uint32le", 4, ID), bytes("sha1", 20, CHECKSUM)]);
+var sxgr_unreal_pak_entry_v2 = sxLayout(0x607E0012, "unreal_pak_entry_v2", LE, sxgr_unreal_pak_entry_v2_fields);
+var sxgr_unreal_pak_entry_flags_fields = layout([u8("flags", FLAGS), field("uncompressed_block_size", "uint32le", 4, SIZE)]);
+var sxgr_unreal_pak_entry_flags = sxLayout(0x607E0015, "unreal_pak_entry_flags", LE, sxgr_unreal_pak_entry_flags_fields);
+var sxgr_gal_header_fields = layout([field("format_version", "int32le", 4), field("width", "uint32le", 4),
+    field("height", "uint32le", 4), field("bits_per_pixel", "int32le", 4), field("frame_count", "int32le", 4, COUNT),
+    u8("unknown_14"), u8("shuffled", FLAGS), u8("compression_method", ID), u8("unknown_17"),
+    field("mask", "uint32le", 4, FLAGS), field("block_width", "int32le", 4), field("block_height", "int32le", 4),
+    bytes("unknown_24", 4)]);
+var sxgr_gal_header = sxLayout(0x607E0017, "gal_header", LE, sxgr_gal_header_fields);
+function sx_gameremaining_comment(r, id) {
+    if (r === null || r.name === null || id < 0x607E0000 || id >= 0x607F0000) {
+        return true;
+    }
+    if (r.name === "encoded_xor_seed") {
+        return sxSetComment(r, "Stored seed; the payload XOR key is this word XOR 0xDEADBEEF.");
+    }
+    if (r.name === "signed_character_count") {
+        return sxSetComment(r, "Includes the terminator: positive is single-byte characters; negative is the number of UTF-16LE code units with reversed sign.");
+    }
+    if (r.name === "index_sha1") {
+        return sxSetComment(r, "SHA-1 digest of the stored index; this view displays the digest without verifying it.");
+    }
+    if (r.name === "sha1") {
+        return sxSetComment(r, "Stored SHA-1 digest for this entry; this view does not verify payload hashes.");
+    }
+    if (r.name === "start_offset" || r.name === "end_offset") {
+        return sxSetComment(r, "Compression block boundary: absolute before PAK version 5, relative to the entry header from version 5 onward.");
+    }
+    if (r.name === "file_offset" && (id === sxgr_unreal_pak_entry_v1.id || id === sxgr_unreal_pak_entry_v2.id)) {
+        return sxSetComment(r, "Index entry: physical offset of its duplicate local header. A local header stores zero here.");
+    }
+    if (r.name === "index_offset") {
+        return sxSetComment(r, "Physical byte offset from the beginning of this PAK file.");
+    }
+    if (r.name === "file_offset") {
+        return sxSetComment(r, "Physical byte offset from the beginning of this DAT file.");
+    }
+    if (r.name === "flags" && id === sxgr_unreal_pak_entry_flags.id) {
+        return sxSetComment(r, "Bit 0: encrypted; bit 1: deleted. Unknown bits are preserved.");
+    }
+    if (r.name === "compression_method") {
+        if (r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+            return true;
+        }
+        var n = sxVarU64(r.value);
+        if (id === sxgr_gal_header.id) {
+            return sxSetComment(r, n === 0 ? "ZLIB" : n === 1 ? "STORED_BLOCKS" : n === 2 ? "JPEG" : "Unknown compression method");
+        }
+        if (id === sxgr_ycg_header.id) {
+            return sxSetComment(r, n === 1 ? "Two ZLIB streams" : "Unknown compression method");
+        }
+        if (id === sxgr_fallout2_entry.id) {
+            return sxSetComment(r, n === 0 ? "STORED" : n === 1 ? "ZLIB" : "Unknown compression method");
+        }
+        if (id === sxgr_unreal_pak_entry_v1.id || id === sxgr_unreal_pak_entry_v2.id) {
+            return sxSetComment(r, n === 0 ? "STORED" : n === 1 ? "ZLIB" : n === 2 ? "GZIP" : "Unknown compression method");
+        }
+    }
+    return true;
+}
+function sx_gameremaining_supports(type) {
+    switch (type) {
+    case "BRUNS_MEDIA":
+    case "RPG_MAKER_MV":
+    case "YCG_IMAGE":
+    case "UNREAL_PAK":
+    case "FALLOUT_DAT":
+    case "LIVE_MAKER_GAL":
+    case "SMILE_GAME_PACK":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_gameremaining_build(c) {
+    if (c === null || c.f === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid || c.size <= 0) {
+        return false;
+    }
+    return sx_ue2_games_build(c);
+}

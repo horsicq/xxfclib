@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/genius/xx_genius_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxacl_genius_header_fields = layout([chars("signature", 14, SIGNATURE), u8("terminator"), u8("unused"), u16("reserved"),
+    bytes("uninitialized", 2), u32("member_count", COUNT), bytes("opaque", 8)]);
+var sxacl_genius_header = sxLayout(0x6050002E, "genius_header", LE, sxacl_genius_header_fields);
+var sxacl_genius_member_fields = layout([u64("payload_offset", OFFSET), u64("compressed_size", SIZE),
+    u64("uncompressed_size", SIZE), bytes("opaque1", 16), u64("write_time"), bytes("opaque2", 3), u8("method"),
+    u16("name_size", SIZE)]);
+var sxacl_genius_member = sxLayout(0x6050002F, "genius_member", LE, sxacl_genius_member_fields);
+var sxacl_genius_block_size_fields = layout([u32("compressed_size", SIZE)]);
+var sxacl_genius_block_size = sxLayout(0x60500030, "genius_block_size", LE, sxacl_genius_block_size_fields);
+var sxacl_genius_footer_fields = layout([u32("uncompressed_size", SIZE), u32("crc32", CHECKSUM)]);
+var sxacl_genius_footer = sxLayout(0x60500031, "genius_footer", LE, sxacl_genius_footer_fields);
+function sxacl_genius(c) {
+    var n = [0];
+    var p = 32;
+    if (!sxacl_word(c, 20, 4, false, n) || !sxacl_add(c, sxacl_genius_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var h = [];
+        if (!sxacl_read(c, p, h, 54)) {
+            return false;
+        }
+        var z = sxacl_uint(h, 8, 8, false);
+        var names = sxacl_uint(h, 52, 2, false);
+        var q = p + 54 + names;
+        if (!sxacl_span(c, p + 54, names) || !sxacl_span(c, q, z) || !sxacl_add(c, sxacl_genius_member, p)) {
+            return false;
+        }
+        if (h[51] === 1 && z >= 8) {
+            var cursor = q;
+            var end = sxU64(q + z - 8);
+            while (cursor < end) {
+                var k = [0];
+                if (sxU64(end - cursor) < 4 || !sxacl_word(c, cursor, 4, false, k) || k[0] > sxU64(sxU64(end - cursor) - 4)) {
+                    break;
+                }
+                if (!sxacl_add(c, sxacl_genius_block_size, cursor) || !sxacl_dcl(c, cursor + 4, k[0])) {
+                    return false;
+                }
+                cursor += 4 + k[0];
+            }
+            if (!sxacl_add(c, sxacl_genius_footer, end)) {
+                return false;
+            }
+        }
+        p = q + z;
+    }
+    return true;
+}
+function sx_genius_build(c) {
+    return sxacl_genius(c);
+}

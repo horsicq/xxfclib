@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/topspeed/xx_topspeed_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxao_topspeed_block_fields = layout([u16("checksum", CHECKSUM), u16("uncompressed_size", SIZE), u16("compressed_size", SIZE)]);
+var sxao_topspeed_block = sxLayout(0x6070000A, "topspeed_block", LE, sxao_topspeed_block_fields);
+function sxao_topspeed(c) {
+    var p = 0;
+    while (sxao_span(c, p, 6)) {
+        var h = [];
+        if (!sxao_read(c, p, h, 0, 6) || !sxao_add(c, sxao_topspeed_block, p)) {
+            return false;
+        }
+        var a = sxao_uint(h, 2, 2, false);
+        var b = sxao_uint(h, 4, 2, false);
+        var z = a < b ? a : b;
+        p += 6;
+        if (!sxao_span(c, p, z)) {
+            return true;
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_topspeed_build(c) {
+    return sxao_topspeed(c);
+}

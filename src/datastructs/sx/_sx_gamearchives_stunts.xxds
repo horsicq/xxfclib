@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/stunts/xx_stunts_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_stunts_escape_fields = layout([u8("escape", ID)]);
+var sxga_stunts_escape = sxLayout(0x603B0021, "stunts_escape", LE, sxga_stunts_escape_fields);
+var sxga_stunts_level_fields = layout([u8("symbols", COUNT)]);
+var sxga_stunts_level = sxLayout(0x603B0022, "stunts_level", LE, sxga_stunts_level_fields);
+var sxga_stunts_symbol_fields = layout([u8("symbol", ID)]);
+var sxga_stunts_symbol = sxLayout(0x603B0023, "stunts_symbol", LE, sxga_stunts_symbol_fields);
+function sxga_stunts(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var b = [0];
+    var at = 0;
+    var n = [0];
+    if (!sxga_word(v, 0, 1, false, b, 0, end)) {
+        return false;
+    }
+    if (sxAnd64(b[0], 128)) {
+        if (!sxga_row(v, sxga_stunts_header, 0, end)) {
+            return false;
+        }
+        at = 4;
+    }
+    if (!sxga_row(v, sxga_stunts_pass, at, end) || !sxga_word(v, at, 1, false, b, 0, end)) {
+        return false;
+    }
+    at += 4;
+    if (b[0] === 1) {
+        if (!sxga_row(v, sxga_stunts_rle, at, end) || !sxga_word(v, at + 4, 1, false, n, 0, end)) {
+            return false;
+        }
+        return sxga_table(v, sxga_stunts_escape, at + 5, sxAnd64(n[0], 127), end);
+    }
+    if (b[0] === 2) {
+        if (!sxga_row(v, sxga_stunts_vle, at, end) || !sxga_word(v, at, 1, false, n, 0, end)) {
+            return false;
+        }
+        at++;
+        n[0] = sxAnd64(n[0], 127);
+        var total = 0;
+        for (var i = 0; i < n[0]; i++) {
+            var z = [0];
+            if (!sxga_row(v, sxga_stunts_level, at + i, end) || !sxga_word(v, at + i, 1, false, z, 0, end)) {
+                return false;
+            }
+            total += z[0];
+        }
+        return sxga_table(v, sxga_stunts_symbol, at + n[0], total, end);
+    }
+    return false;
+}
+function sx_stunts_build(v) {
+    return sxga_stunts(v);
+}

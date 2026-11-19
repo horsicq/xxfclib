@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/font_windows_fnt/xx_font_windows_fnt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxfb_windows_fnt2_header_fields = layout([u16("version", ID), u32("file_size", SIZE), chars("copyright", 60, STRING),
+    u16("font_type", FLAGS), u16("point_size"), u16("vertical_resolution"), u16("horizontal_resolution"), u16("ascent"),
+    u16("internal_leading"), u16("external_leading"), u8("italic", FLAGS), u8("underline", FLAGS), u8("strikeout", FLAGS),
+    u16("weight"), u8("character_set", ID), u16("pixel_width", COUNT), u16("pixel_height", COUNT),
+    u8("pitch_and_family", FLAGS), u16("average_width", COUNT), u16("maximum_width", COUNT), u8("first_character", ID),
+    u8("last_character", ID), u8("default_character_index", ID), u8("break_character_index", ID), u16("bytes_per_row", SIZE),
+    u32("device_name_offset", OFFSET), u32("face_name_offset", OFFSET), u32("bits_pointer", POINTER),
+    u32("bits_offset", OFFSET), u8("reserved", RESERVED)]);
+var sxfb_windows_fnt2_header = sxLayout(0x60190015, "windows_fnt2_header", LE, sxfb_windows_fnt2_header_fields);
+var sxfb_windows_fnt3_header_fields = layout([u16("version", ID), u32("file_size", SIZE), chars("copyright", 60, STRING),
+    u16("font_type", FLAGS), u16("point_size"), u16("vertical_resolution"), u16("horizontal_resolution"), u16("ascent"),
+    u16("internal_leading"), u16("external_leading"), u8("italic", FLAGS), u8("underline", FLAGS), u8("strikeout", FLAGS),
+    u16("weight"), u8("character_set", ID), u16("pixel_width", COUNT), u16("pixel_height", COUNT),
+    u8("pitch_and_family", FLAGS), u16("average_width", COUNT), u16("maximum_width", COUNT), u8("first_character", ID),
+    u8("last_character", ID), u8("default_character_index", ID), u8("break_character_index", ID), u16("bytes_per_row", SIZE),
+    u32("device_name_offset", OFFSET), u32("face_name_offset", OFFSET), u32("bits_pointer", POINTER),
+    u32("bits_offset", OFFSET), u8("reserved", RESERVED), u32("flags", FLAGS), u16("a_space"), u16("b_space"), u16("c_space"),
+    u32("color_table_offset", OFFSET), field("reserved1", "uint32[4]", 16, RESERVED)]);
+var sxfb_windows_fnt3_header = sxLayout(0x60190016, "windows_fnt3_header", LE, sxfb_windows_fnt3_header_fields);
+var sxfb_windows_fnt2_glyph_fields = layout([u16("pixel_width", COUNT), u16("bitmap_offset", OFFSET)]);
+var sxfb_windows_fnt2_glyph = sxLayout(0x60190017, "windows_fnt2_glyph", LE, sxfb_windows_fnt2_glyph_fields);
+var sxfb_windows_fnt3_glyph_fields = layout([u16("pixel_width", COUNT), u32("bitmap_offset", OFFSET)]);
+var sxfb_windows_fnt3_glyph = sxLayout(0x60190018, "windows_fnt3_glyph", LE, sxfb_windows_fnt3_glyph_fields);
+function sxfb_windows(c) {
+    var h = [];
+    if (!sxfb_read(c, 0, h, 118)) {
+        return false;
+    }
+    var version = sxfb16(h, 0, false);
+    var size = version === 0x200 ? 118 : version === 0x300 ? 148 : 0;
+    if (!size || !sxfb_read(c, 0, h, size) || !sxfb_add(c, size === 118 ? sxfb_windows_fnt2_header : sxfb_windows_fnt3_header, 0)) {
+        return false;
+    }
+    if (h[96] < h[95]) {
+        return true;
+    }
+    var count = (((h[96] - h[95]) >>> 0) + 2) >>> 0;
+    var entry = size === 118 ? 4 : 6;
+    if (sxfb_span(c, size, entry * count) && !sx_table(c, size === 118 ? sxfb_windows_fnt2_glyph : sxfb_windows_fnt3_glyph, size, entry, count)) {
+        return false;
+    }
+    return true;
+}
+function sx_font_windows_fnt_build(c) {
+    return sxfb_windows(c);
+}

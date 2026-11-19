@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/visualware/xx_visualware_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_visualware_header_fields = layout([chars("signature", 12, SIGNATURE), chars("block_kind", 4, ID),
+    bytes("unknown_10", 8), field("stored_size", "uint32le", 4, SIZE)]);
+var sxir_visualware_header = sxLayout(0x6080002E, "visualware_header", LE, sxir_visualware_header_fields);
+var sxir_visualware_legacy_header_fields = layout([chars("signature", 12, SIGNATURE), chars("block_kind", 4, ID),
+    field("stored_size", "uint32le", 4, SIZE)]);
+var sxir_visualware_legacy_header = sxLayout(0x6080002F, "visualware_legacy_header", LE, sxir_visualware_legacy_header_fields);
+var sxir_visualware_legacy_data_header_fields = layout([chars("signature", 12, SIGNATURE), chars("block_kind", 4, ID),
+    field("stored_size_with_length", "uint32le", 4, SIZE), field("uncompressed_size", "uint32le", 4, SIZE)]);
+var sxir_visualware_legacy_data_header = sxLayout(0x60800030, "visualware_legacy_data_header", LE, sxir_visualware_legacy_data_header_fields);
+function sxir_visualware(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var cert = [0];
+    if (!sxir_pe(v, 0, end, at, cert)) {
+        return false;
+    }
+    var legacy = false;
+    for (var i = 0; i < 3; i++) {
+        var tag = i === 0 ? "\\]_B" : i === 1 ? "\\]_V" : "\\]_Z";
+        if (!sxir_eq(v, at[0], "JKMNPQSTVWYZ", 12, end) || !sxir_eq(v, at[0] + 12, tag, 4, end)) {
+            return false;
+        }
+        if (!i) {
+            legacy = sxir_eq(v, at[0] + 20, "\xCA\xFE\xBA\xBE", 4, end);
+        }
+        var n = [0];
+        var z = legacy ? i === 2 ? 24 : 20 : 28;
+        if (!sxir_u(v, at[0] + (legacy ? 16 : 24), 4, false, n, end)) {
+            return false;
+        }
+        if (legacy && i === 2) {
+            if (n[0] < 4) {
+                return false;
+            }
+            n[0] = sxU64(n[0] - 4);
+        }
+        if (!sxir_row(v, legacy ? i === 2 ? sxir_visualware_legacy_data_header : sxir_visualware_legacy_header : sxir_visualware_header, at[0], end) || !n[0] || !sxir_span(v, at[0] + z, n[0], end)) {
+            return false;
+        }
+        at[0] += z + n[0];
+        if (i < 2) {
+            var pad = 16 - sxAnd64(at[0], 15) & 15;
+            if (!sxir_span(v, at[0], pad, end)) {
+                return false;
+            }
+            at[0] += pad;
+        }
+    }
+    return true;
+}
+function sx_visualware_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_visualware(v);
+}

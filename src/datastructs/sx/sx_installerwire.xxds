@@ -1,0 +1,114 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_installerwire.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_installerwire");
+include("_sx_binaryextra");
+include("_sx_binaryextra_adobe_acb");
+include("_sx_binaryextra_capnproto_message");
+include("_sx_binaryextra_clp");
+include("_sx_binaryextra_enigma_virtual_box");
+include("_sx_binaryextra_gguf");
+include("_sx_binaryextra_gta_img");
+include("_sx_binaryextra_jks_keystore");
+include("_sx_binaryextra_kafka_record_batch");
+include("_sx_binaryextra_kerberos_ccache");
+include("_sx_binaryextra_kerberos_keytab");
+include("_sx_binaryextra_lbrcobol");
+include("_sx_binaryextra_lmd_container");
+include("_sx_binaryextra_mcap");
+include("_sx_binaryextra_nvp");
+include("_sx_binaryextra_pam_pak");
+include("_sx_binaryextra_pfpk");
+include("_sx_binaryextra_pyinstaller_one_executable");
+include("_sx_binaryextra_pyz");
+include("_sx_binaryextra_starkit");
+include("_sx_binaryextra_vice_snapshot");
+include("_sx_binaryextra_windows_evtx");
+include("_sx_binaryextra_windows_registry_hive");
+include("_sx_installerwire_arcadyan");
+include("_sx_installerwire_dahuazip");
+include("_sx_installerwire_is7inx");
+include("_sx_installerwire_izpack");
+include("_sx_installerwire_opc");
+include("_sx_installerwire_sis");
+include("_sx_installerwire_solarispkg");
+
+function fileTypes() { return ["IS7INX", "IZPACK", "SOLARISPKG", "OPC", "ARCADYAN", "DAHUA_ZIP", "MAKESELF", "SUN_JAVA_BINSH",
+    "INSTALLANYWHERE_UNIX", "SIS", "ASF", "AUDIBLE_AA", "BINSH_STARKIT", "BINSH_SFX"]; }
+
+var sx_installerwire_layouts = [sxiw_is7inx_header, sxiw_izpack_stream_header, sxiw_java_object_tag, sxiw_java_class_tag,
+    sxiw_java_utf_length, sxiw_java_class_metadata, sxiw_java_field_type, sxiw_java_reference, sxiw_java_string,
+    sxiw_java_long_string, sxiw_java_block, sxiw_java_long_block, sxiw_java_boolean, sxiw_java_byte, sxiw_java_char,
+    sxiw_java_short, sxiw_java_int, sxiw_java_long, sxiw_java_float, sxiw_java_double, sxiw_shell_interpreter,
+    sxiw_shell_assignment_name, sxiw_shell_assignment_value, sxiw_shell_line_count, sxiw_shell_block_index,
+    sxiw_shell_payload_size, sxiw_shell_block_size, sxiw_solaris_package_name, sxiw_solaris_part_count,
+    sxiw_solaris_block_count, sxiw_solaris_banner, sxiw_solaris_end_header, sxiw_opc_banner, sxiw_sis_uids,
+    sxiw_sis_epoc_header, sxiw_sis_epoc6_extension, sxiw_sis_installed_space, sxiw_sis_maximum_installed_space,
+    sxiw_sis_epoc6_reserved, sxiw_sis_requisite, sxiw_sis_certificate_header, sxiw_sis_language, sxiw_sis_file_record,
+    sxiw_sis_payload_length, sxiw_sis_payload_offset, sxiw_sis_uncompressed_length, sxiw_sis_mime_length, sxiw_sis_mime_offset,
+    sxiw_sis_conditional, sxiw_sis_control_type, sxiw_sisx_field, sxiw_sisx_long_field, sxiw_sisx_array_element,
+    sxiw_sisx_array_length, sxiw_sisx_array_long_length, sxiw_sisx_compressed, sxiw_aa_header, sxiw_aa_toc,
+    sxiw_aa_dictionary_count, sxiw_aa_dictionary_entry, sxiw_aa_dictionary_key, sxiw_aa_dictionary_value, sxiw_asf_object,
+    sxiw_asf_header, sxiw_asf_file_properties, sxiw_asf_stream_properties, sxiw_asf_header_extension, sxiw_asf_data_header,
+    sxiw_asf_content_lengths, sxiw_asf_descriptor_count, sxiw_asf_name_length, sxiw_asf_value_header, sxiw_asf_metadata_header,
+    sxiw_asf_bitrate, sxiw_asf_language_length, sxiw_asf_utf16_units, sxiw_asf_binary_value, sxiw_java_modified_utf8,
+    sxiw_sis_latin1, sxiw_sis_utf16, sxiw_sis_capability, sxiw_sisx_checksum, sxiw_sisx_data_index,
+    sxiw_arcadyan_lzma_fragments, sxiw_installer_zip_local, sxiw_installer_zip_central, sxiw_installer_zip_eocd,
+    sxiw_installer_zip_extra, sxiw_installer_zip_name, sxiw_installer_zip_comment, sxiw_solaris_cpio_newc,
+    sxiw_solaris_cpio_odc, sxiw_solaris_cpio_binary_le, sxiw_solaris_cpio_binary_be, sxiw_solaris_cpio_name, sxiw_aa_chapter,
+    sxiw_asf_simple_index, sxiw_asf_index_entry, sxiw_asf_value_word, sxiw_asf_value_dword, sxiw_asf_value_qword,
+    sxiw_asf_value_boolean, sxiw_izpack_record_v1, sxiw_izpack_record_v2, sxiw_izpack_record_v3, sxiw_izpack_record_v4,
+    sxiw_izpack_record_v5, sxiw_izpack_record_v6, sxiw_izpack_record_v7, sxiw_sis_localized_name_length,
+    sxiw_sis_localized_name_offset, sxiw_shell_block_count, sxiw_izpack_list_count, sxiw_shell_start_line,
+    sxiw_shell_skip_parameter];
+
+function structs() {
+    return sxCatalog([sxiw_is7inx_header, sxiw_izpack_stream_header, sxiw_java_object_tag, sxiw_java_class_tag,
+        sxiw_java_utf_length, sxiw_java_class_metadata, sxiw_java_field_type, sxiw_java_reference, sxiw_java_string,
+        sxiw_java_long_string, sxiw_java_block, sxiw_java_long_block, sxiw_java_boolean, sxiw_java_byte, sxiw_java_char,
+        sxiw_java_short, sxiw_java_int, sxiw_java_long, sxiw_java_float, sxiw_java_double, sxiw_shell_interpreter,
+        sxiw_shell_assignment_name, sxiw_shell_assignment_value, sxiw_shell_line_count, sxiw_shell_block_index,
+        sxiw_shell_payload_size, sxiw_shell_block_size, sxiw_solaris_package_name, sxiw_solaris_part_count,
+        sxiw_solaris_block_count, sxiw_solaris_banner, sxiw_solaris_end_header, sxiw_opc_banner, sxiw_sis_uids,
+        sxiw_sis_epoc_header, sxiw_sis_epoc6_extension, sxiw_sis_installed_space, sxiw_sis_maximum_installed_space,
+        sxiw_sis_epoc6_reserved, sxiw_sis_requisite, sxiw_sis_certificate_header, sxiw_sis_language, sxiw_sis_file_record,
+        sxiw_sis_payload_length, sxiw_sis_payload_offset, sxiw_sis_uncompressed_length, sxiw_sis_mime_length,
+        sxiw_sis_mime_offset, sxiw_sis_conditional, sxiw_sis_control_type, sxiw_sisx_field, sxiw_sisx_long_field,
+        sxiw_sisx_array_element, sxiw_sisx_array_length, sxiw_sisx_array_long_length, sxiw_sisx_compressed, sxiw_aa_header,
+        sxiw_aa_toc, sxiw_aa_dictionary_count, sxiw_aa_dictionary_entry, sxiw_aa_dictionary_key, sxiw_aa_dictionary_value,
+        sxiw_asf_object, sxiw_asf_header, sxiw_asf_file_properties, sxiw_asf_stream_properties, sxiw_asf_header_extension,
+        sxiw_asf_data_header, sxiw_asf_content_lengths, sxiw_asf_descriptor_count, sxiw_asf_name_length, sxiw_asf_value_header,
+        sxiw_asf_metadata_header, sxiw_asf_bitrate, sxiw_asf_language_length, sxiw_asf_utf16_units, sxiw_asf_binary_value,
+        sxiw_java_modified_utf8, sxiw_sis_latin1, sxiw_sis_utf16, sxiw_sis_capability, sxiw_sisx_checksum, sxiw_sisx_data_index,
+        sxiw_arcadyan_lzma_fragments, sxiw_installer_zip_local, sxiw_installer_zip_central, sxiw_installer_zip_eocd,
+        sxiw_installer_zip_extra, sxiw_installer_zip_name, sxiw_installer_zip_comment, sxiw_solaris_cpio_newc,
+        sxiw_solaris_cpio_odc, sxiw_solaris_cpio_binary_le, sxiw_solaris_cpio_binary_be, sxiw_solaris_cpio_name,
+        sxiw_aa_chapter, sxiw_asf_simple_index, sxiw_asf_index_entry, sxiw_asf_value_word, sxiw_asf_value_dword,
+        sxiw_asf_value_qword, sxiw_asf_value_boolean, sxiw_izpack_record_v1, sxiw_izpack_record_v2, sxiw_izpack_record_v3,
+        sxiw_izpack_record_v4, sxiw_izpack_record_v5, sxiw_izpack_record_v6, sxiw_izpack_record_v7,
+        sxiw_sis_localized_name_length, sxiw_sis_localized_name_offset, sxiw_shell_block_count, sxiw_izpack_list_count,
+        sxiw_shell_start_line, sxiw_shell_skip_parameter], sx_installerwire_comment, true, true).concat(
+        // the starkit_* layouts of the binaryextra family, with that family's comment hook
+        sxCatalog([sxbx_starkit_header, sxbx_starkit_commit, sxbx_starkit_root_prefix, sxbx_starkit_row_count1,
+            sxbx_starkit_row_count2, sxbx_starkit_row_count3, sxbx_starkit_row_count4, sxbx_starkit_row_count5,
+            sxbx_starkit_row_count6, sxbx_starkit_row_count7, sxbx_starkit_row_count8, sxbx_starkit_row_count9,
+            sxbx_starkit_column_size1, sxbx_starkit_column_size2, sxbx_starkit_column_size3, sxbx_starkit_column_size4,
+            sxbx_starkit_column_size5, sxbx_starkit_column_size6, sxbx_starkit_column_size7, sxbx_starkit_column_size8,
+            sxbx_starkit_column_size9, sxbx_starkit_column_offset1, sxbx_starkit_column_offset2, sxbx_starkit_column_offset3,
+            sxbx_starkit_column_offset4, sxbx_starkit_column_offset5, sxbx_starkit_column_offset6, sxbx_starkit_column_offset7,
+            sxbx_starkit_column_offset8, sxbx_starkit_column_offset9, sxbx_starkit_memo_row_delta1,
+            sxbx_starkit_memo_row_delta2, sxbx_starkit_memo_row_delta3, sxbx_starkit_memo_row_delta4,
+            sxbx_starkit_memo_row_delta5, sxbx_starkit_memo_row_delta6, sxbx_starkit_memo_row_delta7,
+            sxbx_starkit_memo_row_delta8, sxbx_starkit_memo_row_delta9, sxbx_starkit_view_tag1, sxbx_starkit_view_tag2,
+            sxbx_starkit_view_tag3, sxbx_starkit_view_tag4, sxbx_starkit_view_tag5, sxbx_starkit_view_tag6,
+            sxbx_starkit_view_tag7, sxbx_starkit_view_tag8, sxbx_starkit_view_tag9], sx_binaryextra_comment, true, true));
+}
+
+function scan() {
+    return sxScan(sx_installerwire_build, false);
+}

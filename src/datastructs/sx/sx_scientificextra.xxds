@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_scientificextra.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_scientificextra");
+include("_sx_scientificextra_axona_tetrode");
+include("_sx_scientificextra_crystallography_mtz");
+include("_sx_scientificextra_dsn6_density");
+include("_sx_scientificextra_dted_elevation");
+include("_sx_scientificextra_ensight_gold_geometry");
+include("_sx_scientificextra_flatgeobuf");
+include("_sx_scientificextra_inivation_aedat");
+include("_sx_scientificextra_scanalytics_iplab");
+
+function fileTypes() { return ["FLATGEOBUF", "AXONA_TETRODE", "INIVATION_AEDAT", "ENSIGHT_GOLD_GEOMETRY", "DTED_ELEVATION",
+    "DSN6_DENSITY", "CRYSTALLOGRAPHY_MTZ", "SCANALYTICS_IPLAB"]; }
+
+var sx_scientificextra_layouts = [sxscx_aedat2_event, sxscx_axona_timestamp, sxscx_axona_end, sxscx_iplab_header_le,
+    sxscx_iplab_terminator_le, sxscx_dsn6_header_le, sxscx_iplab_header_be, sxscx_iplab_terminator_be, sxscx_dsn6_header_be,
+    sxscx_brix_header, sxscx_mtz_prefix, sxscx_mtz_header_record, sxscx_ensight_header, sxscx_ensight_part,
+    sxscx_ensight_elements, sxscx_ensight_given_id, sxscx_ensight_coordinate, sxscx_ensight_connectivity, sxscx_dted_uhl,
+    sxscx_dted_dsi, sxscx_dted_acc, sxscx_dted_column_header, sxscx_dted_column_checksum, sxscx_fgb_prefix, sxscx_fgb_root,
+    sxscx_fgb_feature_size, sxscx_fgb_table_header, sxscx_fgb_vtable_header, sxscx_fgb_vtable_entry, sxscx_fgb_vector_header,
+    sxscx_fgb_string_header, sxscx_fgb_vector_reference, sxscx_fgb_geometry_end, sxscx_fgb_coordinate, sxscx_fgb_geometry_time,
+    sxscx_fgb_index_internal, sxscx_fgb_index_leaf, sxscx_fgb_header_name, sxscx_fgb_header_envelope,
+    sxscx_fgb_header_geometry_type, sxscx_fgb_header_has_z, sxscx_fgb_header_has_m, sxscx_fgb_header_has_t,
+    sxscx_fgb_header_has_tm, sxscx_fgb_header_columns, sxscx_fgb_header_features_count, sxscx_fgb_header_index_node_size,
+    sxscx_fgb_header_crs, sxscx_fgb_header_title, sxscx_fgb_header_description, sxscx_fgb_header_metadata,
+    sxscx_fgb_column_name, sxscx_fgb_column_type, sxscx_fgb_column_title, sxscx_fgb_column_description, sxscx_fgb_column_width,
+    sxscx_fgb_column_precision, sxscx_fgb_column_scale, sxscx_fgb_column_nullable, sxscx_fgb_column_unique,
+    sxscx_fgb_column_primary_key, sxscx_fgb_column_metadata, sxscx_fgb_crs_org, sxscx_fgb_crs_code, sxscx_fgb_crs_name,
+    sxscx_fgb_crs_description, sxscx_fgb_crs_wkt, sxscx_fgb_crs_code_string, sxscx_fgb_geometry_ends, sxscx_fgb_geometry_xy,
+    sxscx_fgb_geometry_z, sxscx_fgb_geometry_m, sxscx_fgb_geometry_t, sxscx_fgb_geometry_tm, sxscx_fgb_geometry_type,
+    sxscx_fgb_geometry_parts, sxscx_fgb_feature_geometry, sxscx_fgb_feature_properties, sxscx_fgb_property_0,
+    sxscx_fgb_property_1, sxscx_fgb_property_2, sxscx_fgb_property_3, sxscx_fgb_property_4, sxscx_fgb_property_5,
+    sxscx_fgb_property_6, sxscx_fgb_property_7, sxscx_fgb_property_8, sxscx_fgb_property_9, sxscx_fgb_property_10,
+    sxscx_fgb_property_11, sxscx_fgb_property_12, sxscx_fgb_property_13, sxscx_fgb_property_14];
+
+function structs() {
+    return sxCatalog([sxscx_aedat2_event, sxscx_axona_timestamp, sxscx_axona_end, sxscx_iplab_header_le,
+        sxscx_iplab_terminator_le, sxscx_dsn6_header_le, sxscx_iplab_header_be, sxscx_iplab_terminator_be, sxscx_dsn6_header_be,
+        sxscx_brix_header, sxscx_mtz_prefix, sxscx_mtz_header_record, sxscx_ensight_header, sxscx_ensight_part,
+        sxscx_ensight_elements, sxscx_ensight_given_id, sxscx_ensight_coordinate, sxscx_ensight_connectivity, sxscx_dted_uhl,
+        sxscx_dted_dsi, sxscx_dted_acc, sxscx_dted_column_header, sxscx_dted_column_checksum, sxscx_fgb_prefix, sxscx_fgb_root,
+        sxscx_fgb_feature_size, sxscx_fgb_table_header, sxscx_fgb_vtable_header, sxscx_fgb_vtable_entry,
+        sxscx_fgb_vector_header, sxscx_fgb_string_header, sxscx_fgb_vector_reference, sxscx_fgb_geometry_end,
+        sxscx_fgb_coordinate, sxscx_fgb_geometry_time, sxscx_fgb_index_internal, sxscx_fgb_index_leaf, sxscx_fgb_header_name,
+        sxscx_fgb_header_envelope, sxscx_fgb_header_geometry_type, sxscx_fgb_header_has_z, sxscx_fgb_header_has_m,
+        sxscx_fgb_header_has_t, sxscx_fgb_header_has_tm, sxscx_fgb_header_columns, sxscx_fgb_header_features_count,
+        sxscx_fgb_header_index_node_size, sxscx_fgb_header_crs, sxscx_fgb_header_title, sxscx_fgb_header_description,
+        sxscx_fgb_header_metadata, sxscx_fgb_column_name, sxscx_fgb_column_type, sxscx_fgb_column_title,
+        sxscx_fgb_column_description, sxscx_fgb_column_width, sxscx_fgb_column_precision, sxscx_fgb_column_scale,
+        sxscx_fgb_column_nullable, sxscx_fgb_column_unique, sxscx_fgb_column_primary_key, sxscx_fgb_column_metadata,
+        sxscx_fgb_crs_org, sxscx_fgb_crs_code, sxscx_fgb_crs_name, sxscx_fgb_crs_description, sxscx_fgb_crs_wkt,
+        sxscx_fgb_crs_code_string, sxscx_fgb_geometry_ends, sxscx_fgb_geometry_xy, sxscx_fgb_geometry_z, sxscx_fgb_geometry_m,
+        sxscx_fgb_geometry_t, sxscx_fgb_geometry_tm, sxscx_fgb_geometry_type, sxscx_fgb_geometry_parts,
+        sxscx_fgb_feature_geometry, sxscx_fgb_feature_properties, sxscx_fgb_property_0, sxscx_fgb_property_1,
+        sxscx_fgb_property_2, sxscx_fgb_property_3, sxscx_fgb_property_4, sxscx_fgb_property_5, sxscx_fgb_property_6,
+        sxscx_fgb_property_7, sxscx_fgb_property_8, sxscx_fgb_property_9, sxscx_fgb_property_10, sxscx_fgb_property_11,
+        sxscx_fgb_property_12, sxscx_fgb_property_13, sxscx_fgb_property_14], sx_scientificextra_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_scientificextra_build, false);
+}

@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/majiro/xx_majiro_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxga_majiro(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var version = [0];
+    var n = [0];
+    var at = [0];
+    var data = [0];
+    if (!sxga_row(v, sxga_majiro_header, 0, end) || !sxga_word(v, 10, 1, false, version, 0, end) || !sxga_word(v, 16, 4, false, n, 0, end) || !sxga_word(v, 20, 4, false, at, 0, end) || !sxga_word(v, 24, 4, false, data, 0, end) || data[0] > end) {
+        return false;
+    }
+    var l = version[0] === 49 /*1*/ ? sxga_majiro_entry1 : version[0] === 50 /*2*/ ? sxga_majiro_entry2 : sxga_majiro_entry3;
+    if (!sxga_table(v, l, 28, n[0] + (version[0] === 49 /*1*/ ? 1 : 0), end)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var start = at[0];
+        if (!sxga_cstring(v, at, data[0], 4097) || !sxga_named(v, start, sxU64(at[0] - start), data[0], false)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_majiro_build(v) {
+    return sxga_majiro(v);
+}

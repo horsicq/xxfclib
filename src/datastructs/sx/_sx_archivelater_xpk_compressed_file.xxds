@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/xpk_compressed_file/xx_xpk_compressed_file_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_xpk_header_fields = layout([chars("signature", 4, SIGNATURE), u32("packed_size_minus8"), chars("subpacker", 4, ID),
+    u32("unpacked_size", SIZE), bytes("plaintext_prefix", 16), u8("flags", FLAGS), u8("header_xor8", SIGNATURE),
+    u8("subpacker_version", ID), u8("master_version", ID)]);
+var sxal_xpk_header = sxLayout(0x6020002F, "xpk_header", BE, sxal_xpk_header_fields);
+var sxal_xpk_extension_size_fields = layout([u16("extension_size", SIZE)]);
+var sxal_xpk_extension_size = sxLayout(0x60200030, "xpk_extension_size", BE, sxal_xpk_extension_size_fields);
+var sxal_xpk_chunk2_fields = layout([u8("kind", ID), u8("header_xor8", SIGNATURE), u16("data_xor16", SIGNATURE),
+    u16("packed_size", SIZE), u16("unpacked_size", SIZE)]);
+var sxal_xpk_chunk2 = sxLayout(0x60200031, "xpk_chunk2", BE, sxal_xpk_chunk2_fields);
+var sxal_xpk_chunk4_fields = layout([u8("kind", ID), u8("header_xor8", SIGNATURE), u16("data_xor16", SIGNATURE),
+    u32("packed_size", SIZE), u32("unpacked_size", SIZE)]);
+var sxal_xpk_chunk4 = sxLayout(0x60200032, "xpk_chunk4", BE, sxal_xpk_chunk4_fields);
+function sxal_xpk(c) {
+    var b = [];
+    if (!sxal_read(c, 0, b, 36) || !sxal_add(c, sxal_xpk_header, 0)) {
+        return false;
+    }
+    var flags = b[32];
+    var head = flags & 1 ? 12 : 8;
+    var p = 36;
+    if (flags & 4) {
+        if (!sxal_read(c, p, b, 2)) {
+            return true;
+        }
+        var n = sxal16(b, 0, true);
+        if (!sxal_add(c, sxal_xpk_extension_size, p)) {
+            return false;
+        }
+        p += 2;
+        if (!sxal_span(c, p, n)) {
+            return true;
+        }
+        p += n;
+    }
+    p = sxAnd64(p + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxal_read(c, p, b, head) || b[0] !== 0 && b[0] !== 1 && b[0] !== 15) {
+            break;
+        }
+        n = sxal_uint(b, 4, head === 12 ? 4 : 2, true);
+        if (!sxal_span(c, p + head, n)) {
+            break;
+        }
+        if (!sxal_add(c, head === 12 ? sxal_xpk_chunk4 : sxal_xpk_chunk2, p)) {
+            return false;
+        }
+        if (b[0] === 15) {
+            break;
+        }
+        p = sxAnd64(p + head + n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    }
+    return true;
+}
+function sx_xpk_compressed_file_build(c) {
+    return sxal_xpk(c);
+}

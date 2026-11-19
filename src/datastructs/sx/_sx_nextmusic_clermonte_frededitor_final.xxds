@@ -1,0 +1,118 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/clermonte_frededitor_final/xx_clermonte_frededitor_final_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxnextm_fred_final(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var init = [0];
+    var p = [0];
+    var module = [0];
+    var base = [0];
+    var word = [0];
+    var inst;
+    var track;
+    var n = [0];
+    var at = [0];
+    var found = false;
+    if (e < 0xB0E) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxnextm_eq(v, (i * 4) >>> 0, "N\xFA", 2, e)) {
+            return false;
+        }
+    }
+    if (!sxnextm_rel(v, 2, 2, 2, init, e) || !sxnextm_span(v, init[0], 128, e)) {
+        return false;
+    }
+    for (i = 0; i < 4; i++) {
+        p[0] = init[0] + ((i * 2) >>> 0);
+        if (sxnextm_eq(v, p[0], "\x12:", 2, e) && sxnextm_eq(v, p[0] + 4, "\xB0\x01", 2, e)) {
+            if (!sxnextm_rel(v, p[0] + 2, 2, p[0] + 1, module, e)) {
+                return false;
+            }
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        return false;
+    }
+    found = false;
+    for (; p[0] < init[0] + 120; p[0] += 2) {
+        if (sxnextm_eq(v, p[0], "G\xFA", 2, e) && sxnextm_eq(v, p[0] + 4, "\xD7\xFA", 2, e)) {
+            if (!sxnextm_rel(v, p[0] + 2, 2, p[0] + 2, base, e)) {
+                return false;
+            }
+            found = true;
+            break;
+        }
+    }
+    if (!found || !sxnextm_row(v, sxnextm_fred_final_header, module[0], e) || !sxnextm_u(v, module[0] + 1, 1, n, 0, e) || n[0] >= 10) {
+        return false;
+    }
+    n[0]++;
+    if (!sxnextm_be(v, module[0] + 14, 4, word, 0, e) || word[0] > sxU64(e - base[0])) {
+        return false;
+    }
+    inst = base[0] + word[0];
+    if (!sxnextm_be(v, module[0] + 18, 4, word, 0, e) || word[0] > sxU64(e - base[0])) {
+        return false;
+    }
+    track = base[0] + word[0];
+    at[0] = module[0] + 22;
+    if (!sxnextm_skip(v, at, 612, e) || !sxnextm_take(v, sxnextm_fred_final_subsong, at, n[0], e)) {
+        return false;
+    }
+    var end = inst < track ? inst : track;
+    if (at[0] > end || sxU64(end - at[0]) % 2) {
+        return false;
+    }
+    while (at[0] < end) {
+        if (!sxnextm_be(v, at[0], 2, word, 0, end) || !sxnextm_take(v, sxAnd64(word[0], 0x8000) ? sxnextm_fred_final_control : sxnextm_fred_final_position, at, 1, end)) {
+            return false;
+        }
+    }
+    var sample_begin = e;
+    for (p[0] = inst; p[0] < sample_begin; ) {
+        var off = [0];
+        var type = [0];
+        var test = [0];
+        if (!sxnextm_span(v, p[0], 64, sample_begin)) {
+            break;
+        }
+        if (!sxnextm_be(v, p[0], 4, off, 0, e) || !sxnextm_be(v, p[0] + 4, 2, test, 0, e) || !sxnextm_u(v, p[0] + 39, 1, type, 0, e)) {
+            return false;
+        }
+        if (type[0] !== 255) {
+            if (!off[0]) {
+                if (test[0] === 0xFCF5) {
+                    break;
+                }
+                if (test[0] !== 65535 && type[0] !== 0) {
+                    break;
+                }
+            } else {
+                if (off[0] > sxU64(e - base[0])) {
+                    break;
+                }
+                var dest = base[0] + off[0];
+                if (dest < p[0] + 64) {
+                    break;
+                }
+                if (dest < sample_begin) {
+                    sample_begin = dest;
+                }
+            }
+        }
+        if (!sxnextm_take(v, sxnextm_fred_final_instrument, p, 1, sample_begin)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_clermonte_frededitor_final_build(v) {
+    return sxnextm_fred_final(v);
+}

@@ -1,0 +1,174 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/ivt/xx_ivt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_ivt_header_fields = layout([u32("magic", SIGNATURE), i32("directory_offset", OFFSET)]);
+var sxdm_ivt_header = sxLayout(0x6023001B, "ivt_header", LE, sxdm_ivt_header_fields);
+var sxdm_ivt_btree_header_fields = layout([u16("magic", SIGNATURE), u16("flags", FLAGS), u16("page_size", SIZE),
+    blob("unknown1", 20), u32("last_leaf_page", ID), u32("root_page", ID), blob("unknown2", 4), i32("page_count", COUNT),
+    u16("level_count", COUNT), i32("entry_count", COUNT)]);
+var sxdm_ivt_btree_header = sxLayout(0x6023001C, "ivt_btree_header", LE, sxdm_ivt_btree_header_fields);
+var sxdm_ivt_leaf_header_fields = layout([u16("unused_size", SIZE), u16("entry_count", COUNT), u32("previous_page", ID),
+    u32("next_page", ID)]);
+var sxdm_ivt_leaf_header = sxLayout(0x6023001D, "ivt_leaf_header", LE, sxdm_ivt_leaf_header_fields);
+var sxdm_ivt_index_header_fields = layout([u16("unused_size", SIZE), u16("entry_count", COUNT), u32("first_child", ID)]);
+var sxdm_ivt_index_header = sxLayout(0x6023001E, "ivt_index_header", LE, sxdm_ivt_index_header_fields);
+var sxdm_ivt_key_length_fields = layout([u8("name_length", SIZE)]);
+var sxdm_ivt_key_length = sxLayout(0x6023001F, "ivt_key_length", LE, sxdm_ivt_key_length_fields);
+var sxdm_ivt_child_pointer_fields = layout([u32("child_page", ID)]);
+var sxdm_ivt_child_pointer = sxLayout(0x60230020, "ivt_child_pointer", LE, sxdm_ivt_child_pointer_fields);
+var sxdm_ivt_entry_terminator_fields = layout([u8("zero", SIGNATURE)]);
+var sxdm_ivt_entry_terminator = sxLayout(0x60230021, "ivt_entry_terminator", LE, sxdm_ivt_entry_terminator_fields);
+var sxdm_ivt_mszip_header_fields = layout([chars("magic", 4, SIGNATURE), u32("unpacked_size", SIZE), u32("reserved", RESERVED)]);
+var sxdm_ivt_mszip_header = sxLayout(0x60230022, "ivt_mszip_header", LE, sxdm_ivt_mszip_header_fields);
+var sxdm_ivt_mszip_block_header_fields = layout([u16("unpacked_size", SIZE), u16("packed_size", SIZE),
+    chars("signature", 2, SIGNATURE)]);
+var sxdm_ivt_mszip_block_header = sxLayout(0x60230023, "ivt_mszip_block_header", LE, sxdm_ivt_mszip_block_header_fields);
+var sxdm_ivt_leb_offset_1_fields = layout([field("file_offset", "uleb128_64", 1, OFFSET)]);
+var sxdm_ivt_leb_offset_1 = sxLayout(0x60230024, "ivt_leb_offset_1", LE, sxdm_ivt_leb_offset_1_fields);
+var sxdm_ivt_leb_offset_2_fields = layout([field("file_offset", "uleb128_64", 2, OFFSET)]);
+var sxdm_ivt_leb_offset_2 = sxLayout(0x60230025, "ivt_leb_offset_2", LE, sxdm_ivt_leb_offset_2_fields);
+var sxdm_ivt_leb_offset_3_fields = layout([field("file_offset", "uleb128_64", 3, OFFSET)]);
+var sxdm_ivt_leb_offset_3 = sxLayout(0x60230026, "ivt_leb_offset_3", LE, sxdm_ivt_leb_offset_3_fields);
+var sxdm_ivt_leb_offset_4_fields = layout([field("file_offset", "uleb128_64", 4, OFFSET)]);
+var sxdm_ivt_leb_offset_4 = sxLayout(0x60230027, "ivt_leb_offset_4", LE, sxdm_ivt_leb_offset_4_fields);
+var sxdm_ivt_leb_offset_5_fields = layout([field("file_offset", "uleb128_64", 5, OFFSET)]);
+var sxdm_ivt_leb_offset_5 = sxLayout(0x60230028, "ivt_leb_offset_5", LE, sxdm_ivt_leb_offset_5_fields);
+var sxdm_ivt_leb_size_1_fields = layout([field("stream_size", "uleb128_64", 1, SIZE)]);
+var sxdm_ivt_leb_size_1 = sxLayout(0x60230029, "ivt_leb_size_1", LE, sxdm_ivt_leb_size_1_fields);
+var sxdm_ivt_leb_size_2_fields = layout([field("stream_size", "uleb128_64", 2, SIZE)]);
+var sxdm_ivt_leb_size_2 = sxLayout(0x6023002A, "ivt_leb_size_2", LE, sxdm_ivt_leb_size_2_fields);
+var sxdm_ivt_leb_size_3_fields = layout([field("stream_size", "uleb128_64", 3, SIZE)]);
+var sxdm_ivt_leb_size_3 = sxLayout(0x6023002B, "ivt_leb_size_3", LE, sxdm_ivt_leb_size_3_fields);
+var sxdm_ivt_leb_size_4_fields = layout([field("stream_size", "uleb128_64", 4, SIZE)]);
+var sxdm_ivt_leb_size_4 = sxLayout(0x6023002C, "ivt_leb_size_4", LE, sxdm_ivt_leb_size_4_fields);
+var sxdm_ivt_leb_size_5_fields = layout([field("stream_size", "uleb128_64", 5, SIZE)]);
+var sxdm_ivt_leb_size_5 = sxLayout(0x6023002D, "ivt_leb_size_5", LE, sxdm_ivt_leb_size_5_fields);
+var sxdm_ivt_leb_offset_rows = [sxdm_ivt_leb_offset_1, sxdm_ivt_leb_offset_2, sxdm_ivt_leb_offset_3, sxdm_ivt_leb_offset_4, sxdm_ivt_leb_offset_5];
+var sxdm_ivt_leb_size_rows = [sxdm_ivt_leb_size_1, sxdm_ivt_leb_size_2, sxdm_ivt_leb_size_3, sxdm_ivt_leb_size_4, sxdm_ivt_leb_size_5];
+function sxdm_ivt_leb(c, at, end, size, value) {
+    var start = at[0];
+    var v = 0;
+    var b = [0];
+    for (var i = 0; i < 5; i++) {
+        if (at[0] >= end || !sx_read(c, at[0]++, b, 1)) {
+            return false;
+        }
+        if (i === 4 && b[0] & 0xF8) {
+            return false;
+        }
+        v = (v | ((b[0] & 127) << ((7 * i) >>> 0)) >>> 0) >>> 0;
+        if (!(b[0] & 128)) {
+            value[0] = v;
+            return sxdm_add(c, size ? sxdm_ivt_leb_size_rows[i] : sxdm_ivt_leb_offset_rows[i], start, i + 1);
+        }
+    }
+    return false;
+}
+function sxdm_ivt_mszip(c, off, size) {
+    var b = [];
+    if (size < 12) {
+        return true;
+    }
+    if (!sx_read(c, off, b, 12)) {
+        return false;
+    }
+    if (sxMemcmp(b, "mszp", 4) && sxMemcmp(b, "nszp", 4) || sxdm_u32(b, 8)) {
+        return true;
+    }
+    if (!sxdm_add(c, sxdm_ivt_mszip_header, off, 12)) {
+        return false;
+    }
+    var at = off + 12;
+    var end = off + size;
+    for (var i = 0; at < end; i++) {
+        if (i >= 65536 || end - at < 6 || !sx_read(c, at, b, 6)) {
+            return true;
+        }
+        var packed = sxdm_u16(b, 2);
+        if (packed < 2 || packed > (end - at - 4 < 0 ? end - at - 4 + SX_U64_MAX : end - at - 4) || sxMemcmpAt(b, 4, "CK", 0, 2)) {
+            return true;
+        }
+        if (!sxdm_add(c, sxdm_ivt_mszip_block_header, at, 6)) {
+            return false;
+        }
+        at += 4 + packed;
+    }
+    return true;
+}
+function sxdm_ivt_page(c, pages, count, index, depth, seen) {
+    var b = [];
+    if (index >= count || seen[index] || depth > 31) {
+        return false;
+    }
+    seen[index] = 1;
+    var start = pages + index * 8192;
+    if (!sx_read(c, start, b, 12)) {
+        return false;
+    }
+    var unused = sxdm_u16(b, 0);
+    var n = sxdm_u16(b, 2);
+    if (!n || unused > 8180) {
+        return false;
+    }
+    var end = start + 8192 - unused;
+    var at = [start + (depth ? 8 : 12)];
+    if (!sxdm_add(c, depth ? sxdm_ivt_index_header : sxdm_ivt_leaf_header, start, depth ? 8 : 12)) {
+        return false;
+    }
+    if (depth && !sxdm_ivt_page(c, pages, count, sxdm_u32(b, 4), (depth - 1) >>> 0, seen)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (at[0] >= end || !sx_read(c, at[0], b, 1) || !b[0] || !sxdm_add(c, sxdm_ivt_key_length, at[0], 1)) {
+            return false;
+        }
+        var name = b[0];
+        at[0]++;
+        if (name > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+            return false;
+        }
+        at[0] += name;
+        if (depth) {
+            var child;
+            if (end - at[0] < 4 || (child = sx_u32(c, at[0], false)) === null || !sxdm_add(c, sxdm_ivt_child_pointer, at[0], 4) || !sxdm_ivt_page(c, pages, count, child, (depth - 1) >>> 0, seen)) {
+                return false;
+            }
+            at[0] += 4;
+        } else {
+            var off = [0];
+            var size = [0];
+            if (!sxdm_ivt_leb(c, at, end, false, off) || !sxdm_ivt_leb(c, at, end, true, size) || at[0] >= end || !sx_read(c, at[0], b, 1) || b[0] || !sxdm_add(c, sxdm_ivt_entry_terminator, at[0]++, 1)) {
+                return false;
+            }
+            if (size[0] && sxdm_span(c, off[0], size[0]) && !sxdm_ivt_mszip(c, off[0], size[0])) {
+                return false;
+            }
+        }
+    }
+    return at[0] === end;
+}
+function sxdm_ivt(c) {
+    var b = [];
+    var dir;
+    if ((dir = sx_u32(c, 4, false)) === null || dir > 2147483647 || !sxdm_add(c, sxdm_ivt_header, 0, 8) || !sx_read(c, dir, b, 48) || !sxdm_add(c, sxdm_ivt_btree_header, dir, 48)) {
+        return false;
+    }
+    var count = sxdm_u32(b, 38);
+    var root = sxdm_u32(b, 30);
+    var levels = sxdm_u16(b, 42);
+    if (!count || count > 65536 || !levels || levels > 32 || !sxdm_span(c, dir + 48, count * 8192)) {
+        return false;
+    }
+    var seen = sxZeros(count);
+    if (seen === null) {
+        return false;
+    }
+    var ok = sxdm_ivt_page(c, dir + 48, count, root, (levels - 1) >>> 0, seen);
+    return ok;
+}
+function sx_ivt_build(c) {
+    return sxdm_ivt(c);
+}

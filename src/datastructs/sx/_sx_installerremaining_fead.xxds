@@ -1,0 +1,31 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/fead/xx_fead_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxir_fead_outer_prefix_fields = layout([chars("signature", 6, SIGNATURE), u8("version")]);
+var sxir_fead_outer_prefix = sxLayout(0x60800019, "fead_outer_prefix", LE, sxir_fead_outer_prefix_fields);
+var sxir_fead_encoded_header_fields = layout([bytes("encoded_signature", 6, SIGNATURE), bytes("encoded_unknown_06", 4),
+    bytes("encoded_payload_size", 4), bytes("encoded_unknown_0e", 4)]);
+var sxir_fead_encoded_header = sxLayout(0x6080001A, "fead_encoded_header", LE, sxir_fead_encoded_header_fields);
+function sxir_fead(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var cert = [0];
+    if (!sxir_pe(v, 0, end, at, cert)) {
+        return false;
+    }
+    if (sxir_eq(v, at[0], "NOS_PO", 6, end)) {
+        if (!sxir_row(v, sxir_fead_outer_prefix, at[0], end)) {
+            return false;
+        }
+        at[0] += 7;
+    }
+    return sxir_row(v, sxir_fead_encoded_header, at[0], end);
+}
+function sx_fead_build(c) {
+    var view = { c: c, work: 0 };
+    var v = view;
+    return sxir_fead(v);
+}

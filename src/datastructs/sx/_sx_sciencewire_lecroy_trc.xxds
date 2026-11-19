@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/lecroy_trc/xx_lecroy_trc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_lecroy_trigger_time_le_fields = layout([field("trigger_time", "float64", 8), field("time_offset", "float64", 8)]);
+var sxsw_lecroy_trigger_time_le = sxLayout(0x602D0025, "lecroy_trigger_time_le", LE, sxsw_lecroy_trigger_time_le_fields);
+var sxsw_lecroy_ris_time_le_fields = layout([field("ris_time", "float64", 8)]);
+var sxsw_lecroy_ris_time_le = sxLayout(0x602D0026, "lecroy_ris_time_le", LE, sxsw_lecroy_ris_time_le_fields);
+var sxsw_lecroy_trigger_time_be_fields = layout([field("trigger_time", "float64", 8), field("time_offset", "float64", 8)]);
+var sxsw_lecroy_trigger_time_be = sxLayout(0x602D0029, "lecroy_trigger_time_be", BE, sxsw_lecroy_trigger_time_be_fields);
+var sxsw_lecroy_ris_time_be_fields = layout([field("ris_time", "float64", 8)]);
+var sxsw_lecroy_ris_time_be = sxLayout(0x602D002A, "lecroy_ris_time_be", BE, sxsw_lecroy_ris_time_be_fields);
+function sxsw_lecroy(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 346)) {
+        return false;
+    }
+    var be = sxsw16(b, 34, false) === 0;
+    var desc = sxsw32(b, 36, be);
+    var user = sxsw32(b, 40, be);
+    var trigger = sxsw32(b, 48, be);
+    var ris = sxsw32(b, 52, be);
+    var at = desc + user;
+    return sxsw_add(c, be ? sxsw_lecroy_descriptor_be : sxsw_lecroy_descriptor_le, 0, 346) && sxsw_table(c, be ? sxsw_lecroy_trigger_time_be : sxsw_lecroy_trigger_time_le, at, 16, Math.floor(trigger / 16)) && sxsw_table(c, be ? sxsw_lecroy_ris_time_be : sxsw_lecroy_ris_time_le, at + trigger, 8, Math.floor(ris / 8));
+}
+function sx_lecroy_trc_build(c) {
+    return sxsw_lecroy(c);
+}

@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/mythic_myp/xx_mythic_myp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_myp_header_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("signature", SIGNATURE),
+    u64("first_block_offset", OFFSET), u32("block_capacity", COUNT), u32("file_count", COUNT)]);
+var sxmx_myp_header = sxLayout(0x602E0015, "myp_header", LE, sxmx_myp_header_fields);
+var sxmx_myp_block_fields = layout([u32("entry_count", COUNT), u64("next_block_offset", OFFSET)]);
+var sxmx_myp_block = sxLayout(0x602E0016, "myp_block", LE, sxmx_myp_block_fields);
+var sxmx_myp_entry_fields = layout([u64("data_offset", OFFSET), u32("header_size", SIZE), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u64("name_hash", CHECKSUM), u32("data_hash", CHECKSUM), u16("compression", ID)]);
+var sxmx_myp_entry = sxLayout(0x602E0017, "myp_entry", LE, sxmx_myp_entry_fields);
+function sxmx_u64(p, p_o, be) {
+    return sxGetU64At(p, p_o, 8, 0, be);
+}
+function sxmx_myp(v) {
+    if (!sxmx_row(v, sxmx_myp_header, 0, v.n)) {
+        return false;
+    }
+    var at = sxmx_u64(v.p, 12, false);
+    for (var steps = 0; at; steps++) {
+        if (steps >= 1024 || at > v.n || !sxmx_row(v, sxmx_myp_block, at, v.n)) {
+            return false;
+        }
+        var n = sxmx_u32(v.p, at, false);
+        var next = sxmx_u64(v.p, at + 4, false);
+        if (!sxmx_table(v, sxmx_myp_entry, at + 12, n, v.n)) {
+            return false;
+        }
+        if (next && next < at + 12 + n * 34) {
+            return false;
+        }
+        at = next;
+    }
+    return true;
+}
+function sx_mythic_myp_build(v) {
+    return sxmx_myp(v);
+}

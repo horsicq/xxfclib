@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/lithtech_rez/xx_lithtech_rez_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmx_rez_header_fields = layout([blob("newline0", 2, SIGNATURE), chars("format_text", 60, STRING),
+    blob("newline1", 2, SIGNATURE), chars("title", 60, STRING), blob("newline_eof", 3, SIGNATURE), u32("version", ID),
+    u32("root_offset", OFFSET), u32("root_size", SIZE), u32("root_time", TIMESTAMP), u32("directory_boundary", OFFSET),
+    blob("unknown_limits", 20), u8("sorted", FLAGS)]);
+var sxmx_rez_header = sxLayout(0x602E0018, "rez_header", LE, sxmx_rez_header_fields);
+var sxmx_rez_directory_entry_fields = layout([u32("kind", ID), u32("directory_offset", OFFSET), u32("directory_size", SIZE),
+    u32("timestamp", TIMESTAMP)]);
+var sxmx_rez_directory_entry = sxLayout(0x602E0019, "rez_directory_entry", LE, sxmx_rez_directory_entry_fields);
+var sxmx_rez_resource_entry_fields = layout([u32("kind", ID), u32("file_offset", OFFSET), u32("file_size", SIZE),
+    u32("timestamp", TIMESTAMP), u32("resource_id", ID), u32("resource_type", ID), u32("key_count", COUNT)]);
+var sxmx_rez_resource_entry = sxLayout(0x602E001A, "rez_resource_entry", LE, sxmx_rez_resource_entry_fields);
+var sxmx_rez_key_fields = layout([u32("key", ID)]);
+var sxmx_rez_key = sxLayout(0x602E001B, "rez_key", LE, sxmx_rez_key_fields);
+function sxmx_rez(v) {
+    if (!sxmx_row(v, sxmx_rez_header, 0, v.n)) {
+        return false;
+    }
+    var q = sxAllocN(1024, sxNew_anon12);
+    var used = 0;
+    var count = 1;
+    q[0].at = sxmx_u32(v.p, 131, false);
+    q[0].n = sxmx_u32(v.p, 135, false);
+    while (used < count) {
+        var at = [q[used].at];
+        var n = q[used++].n;
+        if (!sxmx_need(v, at[0], n, v.n)) {
+            return false;
+        }
+        var end = at[0] + n;
+        while (at[0] < end) {
+            if (!sxmx_need(v, at[0], 16, end)) {
+                return false;
+            }
+            var kind = sxmx_u32(v.p, at[0], false);
+            var off = sxmx_u32(v.p, at[0] + 4, false);
+            var bytes = sxmx_u32(v.p, at[0] + 8, false);
+            if (kind === 1) {
+                if (count >= 1024 || !sxmx_row(v, sxmx_rez_directory_entry, at[0], end)) {
+                    return false;
+                }
+                at[0] += 16;
+                if (!sxmx_cstr(v, at, end)) {
+                    return false;
+                }
+                q[count].at = off;
+                q[count++].n = bytes;
+            } else if (kind === 0) {
+                if (!sxmx_row(v, sxmx_rez_resource_entry, at[0], end)) {
+                    return false;
+                }
+                var keys = sxmx_u32(v.p, at[0] + 24, false);
+                at[0] += 28;
+                if (!sxmx_cstr(v, at, end) || !sxmx_cstr(v, at, end) || !sxmx_table(v, sxmx_rez_key, at[0], keys, end)) {
+                    return false;
+                }
+                at[0] += keys * 4;
+            } else {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_lithtech_rez_build(v) {
+    return sxmx_rez(v);
+}

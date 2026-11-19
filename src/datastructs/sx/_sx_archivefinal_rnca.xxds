@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/rnca/xx_rnca_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_rnca_header_fields = layout([chars("signature", 4, SIGNATURE), u16("first_member_offset", OFFSET),
+    u16("directory_checkword", SIGNATURE), u16("first_member_offset_copy", OFFSET), u8("reserved")]);
+var sxaf_rnca_header = sxLayout(0x603C0012, "rnca_header", BE, sxaf_rnca_header_fields);
+var sxaf_rnca_directory_offset_fields = layout([u32("member_offset", OFFSET)]);
+var sxaf_rnca_directory_offset = sxLayout(0x603C0013, "rnca_directory_offset", BE, sxaf_rnca_directory_offset_fields);
+var sxaf_rnca_stored_member_fields = layout([chars("signature", 3, SIGNATURE), u8("method"), u32("stored_size", SIZE)]);
+var sxaf_rnca_stored_member = sxLayout(0x603C0014, "rnca_stored_member", BE, sxaf_rnca_stored_member_fields);
+var sxaf_rnca_compressed_member_fields = layout([chars("signature", 3, SIGNATURE), u8("method"), u32("uncompressed_size", SIZE),
+    u32("compressed_size", SIZE), u16("uncompressed_crc16", CHECKSUM), u16("compressed_crc16", CHECKSUM), u8("leeway"),
+    u8("chunk_count", COUNT)]);
+var sxaf_rnca_compressed_member = sxLayout(0x603C0015, "rnca_compressed_member", BE, sxaf_rnca_compressed_member_fields);
+function sxaf_rnca(c) {
+    var end = [0];
+    var p = [11];
+    if (!sxaf_word(c, 4, 2, true, end) || end[0] < 12 || !sxaf_span(c, 0, end[0]) || !sxaf_add(c, sxaf_rnca_header, 0)) {
+        return false;
+    }
+    while (p[0] < end[0]) {
+        var b = [0];
+        if (!sxaf_read(c, p[0], b, 1)) {
+            return false;
+        }
+        if (!b[0]) {
+            break;
+        }
+        if (!sxaf_zstr(c, p, end[0], 256, 0) || sxU64(end[0] - p[0]) < 4) {
+            return false;
+        }
+        var off = [0];
+        if (!sxaf_word(c, p[0], 4, true, off) || !sxaf_add(c, sxaf_rnca_directory_offset, p[0])) {
+            return false;
+        }
+        p[0] += 4;
+        var h = [];
+        if (sxaf_read(c, off[0], h, 4) && !sxMemcmp(h, "RNC", 3)) {
+            var l = h[3] ? sxaf_rnca_compressed_member : sxaf_rnca_stored_member;
+            if (!sxaf_add(c, l, off[0])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_rnca_build(c) {
+    return sxaf_rnca(c);
+}

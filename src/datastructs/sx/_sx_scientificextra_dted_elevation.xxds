@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/dted_elevation/xx_dted_elevation_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_dted_uhl_fields = layout([chars("identifier", 3, SIGNATURE), chars("version", 1, ID),
+    chars("longitude_origin", 8, STRING), chars("latitude_origin", 8, STRING),
+    field("longitude_interval", "ascii_decimal[4]", 4), field("latitude_interval", "ascii_decimal[4]", 4),
+    chars("absolute_vertical_accuracy", 4, STRING), chars("security_code", 3, STRING), chars("unique_reference", 12, STRING),
+    field("longitude_lines", "ascii_decimal[4]", 4, COUNT), field("latitude_points", "ascii_decimal[4]", 4, COUNT),
+    chars("multiple_accuracy", 1, ID), chars("reserved", 24, RESERVED)]);
+var sxscx_dted_uhl = sxLayout(0x60310013, "dted_uhl", BE, sxscx_dted_uhl_fields);
+var sxscx_dted_dsi_fields = layout([chars("identifier", 3, SIGNATURE), chars("security_code", 1, STRING),
+    chars("security_control", 2, STRING), chars("security_handling", 27, STRING), bytes("opaque_21", 26),
+    chars("series_designator", 5, STRING), chars("unique_reference", 15, STRING), bytes("opaque_4f", 8),
+    chars("data_edition", 2, STRING), chars("merge_version", 1, STRING), chars("maintenance_date", 4, STRING),
+    chars("merge_date", 4, STRING), chars("maintenance_description", 4, STRING), chars("producer", 8, STRING),
+    bytes("opaque_6e", 16), chars("product_specification", 9, STRING), chars("specification_amendment", 2, STRING),
+    chars("specification_date", 4, STRING), chars("vertical_datum", 3, STRING), chars("horizontal_datum", 5, STRING),
+    chars("digitizing_system", 10, STRING), chars("compilation_date", 4, STRING), bytes("opaque_a3", 22),
+    chars("origin_latitude", 9, STRING), chars("origin_longitude", 10, STRING), chars("southwest_latitude", 7, STRING),
+    chars("southwest_longitude", 8, STRING), chars("northwest_latitude", 7, STRING), chars("northwest_longitude", 8, STRING),
+    chars("northeast_latitude", 7, STRING), chars("northeast_longitude", 8, STRING), chars("southeast_latitude", 7, STRING),
+    chars("southeast_longitude", 8, STRING), chars("orientation", 9, STRING), chars("latitude_interval", 4, STRING),
+    chars("longitude_interval", 4, STRING), chars("latitude_points", 4, STRING), chars("longitude_lines", 4, STRING),
+    chars("partial_cell", 2, STRING), bytes("opaque_123", 357)]);
+var sxscx_dted_dsi = sxLayout(0x60310014, "dted_dsi", BE, sxscx_dted_dsi_fields);
+var sxscx_dted_acc_fields = layout([chars("identifier", 3, SIGNATURE), chars("absolute_horizontal_accuracy", 4, STRING),
+    chars("absolute_vertical_accuracy", 4, STRING), chars("relative_horizontal_accuracy", 4, STRING),
+    chars("relative_vertical_accuracy", 4, STRING), bytes("opaque_13", 36), chars("accuracy_subregions", 2, STRING),
+    bytes("opaque_39", 2643)]);
+var sxscx_dted_acc = sxLayout(0x60310015, "dted_acc", BE, sxscx_dted_acc_fields);
+var sxscx_dted_column_header_fields = layout([u8("sentinel", SIGNATURE), field("block_count", "uint24", 3, COUNT),
+    u16("longitude_count", COUNT), u16("latitude_count", COUNT)]);
+var sxscx_dted_column_header = sxLayout(0x60310016, "dted_column_header", BE, sxscx_dted_column_header_fields);
+var sxscx_dted_column_checksum_fields = layout([u32("checksum", CHECKSUM)]);
+var sxscx_dted_column_checksum = sxLayout(0x60310017, "dted_column_checksum", BE, sxscx_dted_column_checksum_fields);
+function sxscx_dted(c, b, n) {
+    var nx = [0];
+    var ny = [0];
+    var at = 3428;
+    if (n < 3428 || !sxscx_decimal(b, 47, 4, nx) || !sxscx_decimal(b, 51, 4, ny) || !nx[0] || !ny[0] || nx[0] > 3601 || ny[0] > 3601) {
+        return false;
+    }
+    if (!sxscx_add(c, sxscx_dted_uhl, 0) || !sxscx_add(c, sxscx_dted_dsi, 80) || !sxscx_add(c, sxscx_dted_acc, 728)) {
+        return false;
+    }
+    var size = 12 + ny[0] * 2;
+    for (var i = 0; i < nx[0]; i++, at += size) {
+        if (!sxscx_span(c, at, size) || !sxscx_add(c, sxscx_dted_column_header, at) || !sxscx_add(c, sxscx_dted_column_checksum, sxU64(at + size - 4))) {
+            return false;
+        }
+    }
+    return at === n;
+}
+function sx_dted_elevation_build(c, b) {
+    return sxscx_dted(c, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

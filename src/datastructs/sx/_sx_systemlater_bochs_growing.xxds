@@ -1,0 +1,61 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/bochs_growing/xx_bochs_growing_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_bochs_growing_v1_fields = layout([chars("signature", 32, SIGNATURE), chars("type", 16, ID), chars("subtype", 16, ID),
+    u32("version"), u32("header_size", SIZE), u32("catalog_count", COUNT), u32("bitmap_size", SIZE), u32("extent_size", SIZE),
+    u64("disk_size", SIZE), field("reserved", "byte[420]", 420, RESERVED)]);
+var sxsl_bochs_growing_v1 = sxLayout(0x60330033, "bochs_growing_v1", LE, sxsl_bochs_growing_v1_fields);
+var sxsl_bochs_growing_v2_fields = layout([chars("signature", 32, SIGNATURE), chars("type", 16, ID), chars("subtype", 16, ID),
+    u32("version"), u32("header_size", SIZE), u32("catalog_count", COUNT), u32("bitmap_size", SIZE), u32("extent_size", SIZE),
+    u32("reserved_timestamp"), u64("disk_size", SIZE), field("reserved", "byte[416]", 416, RESERVED)]);
+var sxsl_bochs_growing_v2 = sxLayout(0x60330034, "bochs_growing_v2", LE, sxsl_bochs_growing_v2_fields);
+var sxsl_bochs_catalog_entry_fields = layout([u32("extent_index")]);
+var sxsl_bochs_catalog_entry = sxLayout(0x60330035, "bochs_catalog_entry", LE, sxsl_bochs_catalog_entry_fields);
+var sxsl_bochs_bitmap_byte_fields = layout([u8("allocated_sector_bits", FLAGS)]);
+var sxsl_bochs_bitmap_byte = sxLayout(0x60330036, "bochs_bitmap_byte", LE, sxsl_bochs_bitmap_byte_fields);
+function sxsl_bochs(c) {
+    var h = [];
+    if (!sxsl_read(c, 0, h, 96)) {
+        return false;
+    }
+    var v = sxsl32(h, 64);
+    if (v !== 0x10000 && v !== 0x20000) {
+        return false;
+    }
+    if (!sxsl_put(c, v === 0x10000 ? sxsl_bochs_growing_v1 : sxsl_bochs_growing_v2, 0, 1)) {
+        return false;
+    }
+    var n = sxsl32(h, 72);
+    var bitmap = sxsl32(h, 76);
+    var extent = sxsl32(h, 80);
+    if (n > 1048576 || !bitmap || bitmap > 4096 || extent !== bitmap * 4096 || !sxsl_span(c, 512, n * 4) || !sxsl_put(c, sxsl_bochs_catalog_entry, 512, n)) {
+        return true;
+    }
+    var base = 512 + n * 4;
+    var slot = Math.floor((bitmap + 511) / 512) * 512 + extent;
+    for (var i = 0; i < n && c.count < 24000; i++) {
+        var index = [0];
+        if (!sxsl_word(c, 512 + 4 * i, 4, false, index)) {
+            return false;
+        }
+        if (index[0] === 4294967295) {
+            continue;
+        }
+        if (index[0] > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - base) / slot)) {
+            continue;
+        }
+        var p = base + index[0] * slot;
+        if (sxsl_span(c, p, bitmap) && !sxsl_put(c, sxsl_bochs_bitmap_byte, p, bitmap)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_bochs_growing_build(c) {
+    var ok = false;
+    ok = sxsl_bochs(c);
+    return ok && sxsl_finish(c);
+}

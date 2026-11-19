@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/msdos/xx_msdos_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_mz_extended_header_fields = layout([field("e_res", "uint16[4]", 8, RESERVED), u16("e_oemid", ID), u16("e_oeminfo"),
+    field("e_res2", "uint16[10]", 20, RESERVED), u32("e_lfanew", OFFSET)]);
+var sx_mz_extended_header = sxLayout(0x60030101, "mz_extended_header", LE, sx_mz_extended_header_fields);
+var sx_mz_relocation_fields = layout([u16("offset", OFFSET), u16("segment", VA)]);
+var sx_mz_relocation = sxLayout(0x60030102, "mz_relocation", LE, sx_mz_relocation_fields);
+function sx_mz_build(c) {
+    var h = [];
+    var header_size;
+    var reloc_offset;
+    var reloc_count;
+    var at = 28;
+    if (!sx_read(c, 0, h, 28) || sxGetU16(h, 28, 0, false) !== 0x5A4D) {
+        return false;
+    }
+    header_size = sxGetU16(h, 28, 8, false) * 16;
+    reloc_offset = sxGetU16(h, 28, 24, false);
+    reloc_count = sxGetU16(h, 28, 6, false);
+    if (header_size < 28 || header_size > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || reloc_count && (reloc_offset < 28 || reloc_offset > header_size || reloc_count > Math.floor(((header_size - reloc_offset) >>> 0) / 4))) {
+        return false;
+    }
+    if (!sx_add(c, sx_mz_header, 0, 28)) {
+        return false;
+    }
+    if (header_size >= 64 && (!reloc_count || reloc_offset >= 64)) {
+        var secondary;
+        var signature = 0;
+        var probe = sxCopy_sx_context(null, c);
+        probe.size = sxIoTotalSize(c.f.device) - c.f.base_address;
+        if ((secondary = sx_u32(c, 60, false)) === null) {
+            return false;
+        }
+        if (secondary >= 64 && secondary <= sxU64((probe.size < 0 ? probe.size + SX_U64_MAX : probe.size) - 2) && (signature = sx_u16(probe, secondary, false)) === null) {
+            return false;
+        }
+        var known = signature === 0x454E || signature === 0x454C || signature === 0x584C;
+        if (signature === 0x4550 && secondary <= sxU64((probe.size < 0 ? probe.size + SX_U64_MAX : probe.size) - 4)) {
+            var pe;
+            if ((pe = sx_u32(probe, secondary, false)) === null) {
+                return false;
+            }
+            known = pe === 0x4550;
+        }
+        if (known) {
+            if (!sx_add(c, sx_mz_extended_header, 28, 36)) {
+                return false;
+            }
+            at = 64;
+        }
+    }
+    if (reloc_count) {
+        if (!sx_raw(c, at, (reloc_offset - at) >>> 0) || !sx_table(c, sx_mz_relocation, reloc_offset, 4, reloc_count)) {
+            return false;
+        }
+        at = (reloc_offset + ((reloc_count * 4) >>> 0)) >>> 0;
+    }
+    return sx_raw(c, at, (header_size - at) >>> 0) && sx_raw(c, header_size, c.size - header_size);
+}
+function sx_msdos_build(c) {
+    return sx_mz_build(c);
+}

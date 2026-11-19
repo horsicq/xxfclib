@@ -1,0 +1,116 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/postgres_custom/xx_postgres_custom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_postgres_compression_legacy_fields = layout([u8("compression_sign"), u32("compression_magnitude")]);
+var sxd_postgres_compression_legacy = sxLayout(0x601A0011, "postgres_compression_legacy", LE, sxd_postgres_compression_legacy_fields);
+var sxd_postgres_toc_count_fields = layout([u8("count_sign"), u32("count_magnitude", COUNT)]);
+var sxd_postgres_toc_count = sxLayout(0x601A0014, "postgres_toc_count", LE, sxd_postgres_toc_count_fields);
+var sxd_postgres_toc_prefix_fields = layout([u8("dump_id_sign"), u32("dump_id_magnitude", ID), u8("has_dumper_sign"),
+    u32("has_dumper_magnitude", FLAGS)]);
+var sxd_postgres_toc_prefix = sxLayout(0x601A0015, "postgres_toc_prefix", LE, sxd_postgres_toc_prefix_fields);
+var sxd_postgres_chunk_length_fields = layout([u8("length_sign"), u32("length_magnitude", SIZE)]);
+var sxd_postgres_chunk_length = sxLayout(0x601A0019, "postgres_chunk_length", LE, sxd_postgres_chunk_length_fields);
+function sxd_pg_int(c, b, at, v, l) {
+    if (!sxd_can(c, at[0], 5) || b[at[0]] > 1 || sxd_u32(b, at[0] + 1) > 2147483647) {
+        return false;
+    }
+    v[0] = sxd_u32(b, at[0] + 1);
+    if (b[at[0]]) {
+        v[0] = (-v[0] >= SX_I64_MAX ? -v[0] - SX_U64_MAX : -v[0]);
+    }
+    if (l !== null && !sxd_add(c, l, at[0], 5)) {
+        return false;
+    }
+    at[0] += 5;
+    return true;
+}
+function sxd_pg_string(c, b, at, null_) {
+    var n = [0];
+    if (!sxd_pg_int(c, b, at, n, sxd_postgres_string_length) || n[0] < -1 || n[0] > 65536) {
+        return false;
+    }
+    null_[0] = n[0] === -1;
+    if (!null_[0]) {
+        if (!sxd_can(c, at[0], (n[0] < 0 ? n[0] + SX_U64_MAX : n[0]))) {
+            return false;
+        }
+        at[0] += (n[0] < 0 ? n[0] + SX_U64_MAX : n[0]);
+    }
+    return true;
+}
+function sxd_postgres(c, b) {
+    var at = [11];
+    var n = [0];
+    var v = [0];
+    var null_ = [false];
+    if (!sxd_add(c, sxd_postgres_header, 0, 11)) {
+        return false;
+    }
+    if (b[6] >= 15) {
+        if (!sxd_add(c, sxd_postgres_compression_v15, at[0]++, 1)) {
+            return false;
+        }
+    } else if (!sxd_pg_int(c, b, at, v, sxd_postgres_compression_legacy)) {
+        return false;
+    }
+    if (!sxd_add(c, sxd_postgres_time, at[0], 35)) {
+        return false;
+    }
+    at[0] += 35;
+    for (var i = 0; i < 3; i++) {
+        if (!sxd_pg_string(c, b, at, null_)) {
+            return false;
+        }
+    }
+    if (!sxd_pg_int(c, b, at, n, sxd_postgres_toc_count) || n[0] <= 0 || n[0] > 1024) {
+        return false;
+    }
+    for (i = 0; i < n[0]; i++) {
+        if (!sxd_add(c, sxd_postgres_toc_prefix, at[0], 10)) {
+            return false;
+        }
+        at[0] += 10;
+        for (var j = 0; j < 4; j++) {
+            if (!sxd_pg_string(c, b, at, null_)) {
+                return false;
+            }
+        }
+        if (!sxd_pg_int(c, b, at, v, sxd_postgres_section)) {
+            return false;
+        }
+        for (j = 0; j < (b[6] >= 14 ? 8 : 7); j++) {
+            if (!sxd_pg_string(c, b, at, null_)) {
+                return false;
+            }
+        }
+        var deps = 0;
+        do {
+            if (++deps > 1024 || !sxd_pg_string(c, b, at, null_)) {
+                return false;
+            }
+        } while (!null_[0]);
+        if (!sxd_add(c, sxd_postgres_data_offset, at[0], 9)) {
+            return false;
+        }
+        at[0] += 9;
+    }
+    while (at[0] < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxd_add(c, sxd_postgres_block_header, at[0], 6)) {
+            return false;
+        }
+        at[0] += 6;
+        do {
+            if (!sxd_pg_int(c, b, at, n, sxd_postgres_chunk_length) || n[0] < 0 || !sxd_can(c, at[0], (n[0] < 0 ? n[0] + SX_U64_MAX : n[0]))) {
+                return false;
+            }
+            at[0] += (n[0] < 0 ? n[0] + SX_U64_MAX : n[0]);
+        } while (n[0]);
+    }
+    return true;
+}
+function sx_postgres_custom_build(c, b) {
+    return sxd_postgres(c, b);
+}

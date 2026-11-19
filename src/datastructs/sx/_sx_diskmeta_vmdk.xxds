@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/vmdk/xx_vmdk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_vmdk_sparse_header_fields = layout([field("magic", "byte[4]", 4, SIGNATURE), u32("version"), u32("flags", FLAGS),
+    u64("capacity_sectors", COUNT), u64("grain_size_sectors", COUNT), u64("descriptor_sector", ID),
+    u64("descriptor_size_sectors", COUNT), u32("grain_table_entry_count", COUNT), u64("redundant_grain_directory_sector", ID),
+    u64("grain_directory_sector", ID), u64("overhead_sectors", COUNT), u8("unclean_shutdown", FLAGS),
+    u8("single_end_line_char"), u8("non_end_line_char"), u8("double_end_line_char1"), u8("double_end_line_char2"),
+    u16("compression_algorithm", ID), field("padding", "byte[433]", 433, RESERVED)]);
+var sx_dm_vmdk_sparse_header = sxLayout(0x60290014, "vmdk_sparse_header", LE, sx_dm_vmdk_sparse_header_fields);
+var sx_dm_vmdk_metadata_marker_fields = layout([u64("sector_count", COUNT), u32("size", SIZE), u32("type", ID)]);
+var sx_dm_vmdk_metadata_marker = sxLayout(0x60290017, "vmdk_metadata_marker", LE, sx_dm_vmdk_metadata_marker_fields);
+function sx_dm_vmdk(c) {
+    var h = [];
+    var header = 0;
+    if (!sx_dm_read(c, 0, h, 512) || sxMemcmp(h, "KDMV", 4)) {
+        return false;
+    }
+    if (!sx_dm_add(c, sx_dm_vmdk_sparse_header, 0, 512)) {
+        return false;
+    }
+    if (sx_dm_u64(h, 56, false) === SX_U64_MAX) {
+        if (c.size < 2048 || !sx_dm_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1024), h, 512) || sxMemcmp(h, "KDMV", 4)) {
+            return true;
+        }
+        header = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1024);
+        if (!sx_dm_add(c, sx_dm_vmdk_sparse_header, header, 512) || !sx_dm_add(c, sx_dm_vmdk_metadata_marker, sxU64(header - 512), 16) || !sx_dm_add(c, sx_dm_vmdk_metadata_marker, header + 512, 16)) {
+            return false;
+        }
+    }
+    var cap = sx_dm_u64(h, 12, false);
+    var grain = sx_dm_u64(h, 20, false);
+    var gtes = sx_dm_u32(h, 44, false);
+    if (!grain || !gtes || cap > 0x10000000000) {
+        return true;
+    }
+    var grains = Math.floor(cap / grain) + (cap % grain !== 0 ? 1 : 0);
+    var n = Math.floor(grains / gtes) + (grains % gtes !== 0 ? 1 : 0);
+    if (n > 65536) {
+        n = 65536;
+    }
+    for (var copy = 0; copy < 2; copy++) {
+        var sector = sx_dm_u64(h, copy ? 48 : 56, false);
+        if (!sector || sector > (0x3FFFFF * 4294967296 + 0xFFFFFFFF)) {
+            continue;
+        }
+        var p = sector * 512;
+        if (!sx_dm_span(c, p, n * 4)) {
+            continue;
+        }
+        if (!sx_dm_table(c, sx_dm_vmdk_grain_directory_entry, p, 4, n)) {
+            return false;
+        }
+        for (var i = 0; i < n && c.count < 24000; i++) {
+            var v;
+            if ((v = sx_u32(c, (p + i * 4 >= SX_I64_MAX ? p + i * 4 - SX_U64_MAX : p + i * 4), false)) === null) {
+                return false;
+            }
+            var q = v * 512;
+            var k = gtes;
+            if (k > 65536) {
+                k = 65536;
+            }
+            if (v && q >= 512 && sx_dm_span(c, q, k * 4) && !sx_dm_table(c, sx_dm_vmdk_grain_table_entry, q, 4, k)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_vmdk_build(c) {
+    return sx_dm_vmdk(c);
+}

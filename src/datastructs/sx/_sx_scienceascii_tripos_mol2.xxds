@@ -1,0 +1,123 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/tripos_mol2/xx_tripos_mol2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_molecule_type_fields = layout([field("molecule_type", "char", 0, STRING)]);
+var sxsa_molecule_type = sxLayout(0x60510012, "science_molecule_type", LE, sxsa_molecule_type_fields);
+var sxsa_charge_type_fields = layout([field("charge_type", "char", 0, STRING)]);
+var sxsa_charge_type = sxLayout(0x60510013, "science_charge_type", LE, sxsa_charge_type_fields);
+var sxsa_section_fields = layout([field("section", "char", 0, STRING)]);
+var sxsa_section = sxLayout(0x60510014, "science_section", LE, sxsa_section_fields);
+var sxsa_substructure_count_fields = layout([field("substructure_count", "ascii_signed", 0, COUNT)]);
+var sxsa_substructure_count = sxLayout(0x60510017, "science_substructure_count", LE, sxsa_substructure_count_fields);
+var sxsa_set_count_fields = layout([field("set_count", "ascii_signed", 0, COUNT)]);
+var sxsa_set_count = sxLayout(0x60510019, "science_set_count", LE, sxsa_set_count_fields);
+var sxsa_mol2_atom_id_fields = layout([field("mol2_atom_id", "ascii_signed", 0)]);
+var sxsa_mol2_atom_id = sxLayout(0x605100A5, "science_mol2_atom_id", LE, sxsa_mol2_atom_id_fields);
+var sxsa_mol2_substructure_id_fields = layout([field("mol2_substructure_id", "ascii_signed", 0)]);
+var sxsa_mol2_substructure_id = sxLayout(0x605100A6, "science_mol2_substructure_id", LE, sxsa_mol2_substructure_id_fields);
+var sxsa_mol2_bond_id_fields = layout([field("mol2_bond_id", "ascii_signed", 0)]);
+var sxsa_mol2_bond_id = sxLayout(0x605100A7, "science_mol2_bond_id", LE, sxsa_mol2_bond_id_fields);
+var sxsa_mol2_bond_origin_fields = layout([field("mol2_bond_origin", "ascii_signed", 0)]);
+var sxsa_mol2_bond_origin = sxLayout(0x605100A8, "science_mol2_bond_origin", LE, sxsa_mol2_bond_origin_fields);
+var sxsa_mol2_bond_target_fields = layout([field("mol2_bond_target", "ascii_signed", 0)]);
+var sxsa_mol2_bond_target = sxLayout(0x605100A9, "science_mol2_bond_target", LE, sxsa_mol2_bond_target_fields);
+var sxsa_mol2_root_atom_fields = layout([field("mol2_root_atom", "ascii_signed", 0)]);
+var sxsa_mol2_root_atom = sxLayout(0x605100AA, "science_mol2_root_atom", LE, sxsa_mol2_root_atom_fields);
+var sxsa_mol2_dictionary_type_fields = layout([field("mol2_dictionary_type", "ascii_signed", 0)]);
+var sxsa_mol2_dictionary_type = sxLayout(0x605100AB, "science_mol2_dictionary_type", LE, sxsa_mol2_dictionary_type_fields);
+var sxsa_mol2_inter_bonds_fields = layout([field("mol2_inter_bonds", "ascii_signed", 0)]);
+var sxsa_mol2_inter_bonds = sxLayout(0x605100AC, "science_mol2_inter_bonds", LE, sxsa_mol2_inter_bonds_fields);
+var sxsa_mol2_atom_name_fields = layout([field("mol2_atom_name", "char", 0, STRING)]);
+var sxsa_mol2_atom_name = sxLayout(0x605100AD, "science_mol2_atom_name", LE, sxsa_mol2_atom_name_fields);
+var sxsa_mol2_atom_type_fields = layout([field("mol2_atom_type", "char", 0, STRING)]);
+var sxsa_mol2_atom_type = sxLayout(0x605100AE, "science_mol2_atom_type", LE, sxsa_mol2_atom_type_fields);
+var sxsa_mol2_substructure_name_fields = layout([field("mol2_substructure_name", "char", 0, STRING)]);
+var sxsa_mol2_substructure_name = sxLayout(0x605100AF, "science_mol2_substructure_name", LE, sxsa_mol2_substructure_name_fields);
+var sxsa_mol2_bond_type_fields = layout([field("mol2_bond_type", "char", 0, STRING)]);
+var sxsa_mol2_bond_type = sxLayout(0x605100B0, "science_mol2_bond_type", LE, sxsa_mol2_bond_type_fields);
+var sxsa_mol2_substructure_type_fields = layout([field("mol2_substructure_type", "char", 0, STRING)]);
+var sxsa_mol2_substructure_type = sxLayout(0x605100B1, "science_mol2_substructure_type", LE, sxsa_mol2_substructure_type_fields);
+var sxsa_mol2_chain_fields = layout([field("mol2_chain", "char", 0, STRING)]);
+var sxsa_mol2_chain = sxLayout(0x605100B2, "science_mol2_chain", LE, sxsa_mol2_chain_fields);
+var sxsa_mol2_substructure_subtype_fields = layout([field("mol2_substructure_subtype", "char", 0, STRING)]);
+var sxsa_mol2_substructure_subtype = sxLayout(0x605100B3, "science_mol2_substructure_subtype", LE, sxsa_mol2_substructure_subtype_fields);
+var sxsa_mol2_status_fields = layout([field("mol2_status", "char", 0, STRING)]);
+var sxsa_mol2_status = sxLayout(0x605100B4, "science_mol2_status", LE, sxsa_mol2_status_fields);
+var sxsa_mol2_x_fields = layout([field("mol2_x", "ascii_real", 0)]);
+var sxsa_mol2_x = sxLayout(0x605100B5, "science_mol2_x", LE, sxsa_mol2_x_fields);
+var sxsa_mol2_y_fields = layout([field("mol2_y", "ascii_real", 0)]);
+var sxsa_mol2_y = sxLayout(0x605100B6, "science_mol2_y", LE, sxsa_mol2_y_fields);
+var sxsa_mol2_z_fields = layout([field("mol2_z", "ascii_real", 0)]);
+var sxsa_mol2_z = sxLayout(0x605100B7, "science_mol2_z", LE, sxsa_mol2_z_fields);
+var sxsa_mol2_charge_fields = layout([field("mol2_charge", "ascii_real", 0)]);
+var sxsa_mol2_charge = sxLayout(0x605100B8, "science_mol2_charge", LE, sxsa_mol2_charge_fields);
+function sxsa_mol2(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(16, sxNew_sxsa_token);
+    var phase = 0;
+    var section = 0;
+    var counts = [sxsa_atom_count, sxsa_bond_count, sxsa_substructure_count, sxsa_feature_count, sxsa_set_count];
+    var atom = [sxsa_mol2_atom_id, sxsa_mol2_atom_name, sxsa_mol2_x, sxsa_mol2_y, sxsa_mol2_z, sxsa_mol2_atom_type, sxsa_mol2_substructure_id, sxsa_mol2_substructure_name, sxsa_mol2_charge];
+    var bond = [sxsa_mol2_bond_id, sxsa_mol2_bond_origin, sxsa_mol2_bond_target, sxsa_mol2_bond_type];
+    var sub = [sxsa_mol2_substructure_id, sxsa_mol2_substructure_name, sxsa_mol2_root_atom, sxsa_mol2_substructure_type, sxsa_mol2_dictionary_type, sxsa_mol2_chain, sxsa_mol2_substructure_subtype, sxsa_mol2_inter_bonds, sxsa_mol2_status];
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        var tr = sxCopy_sxsa_token(null, sxsa_trim(q, sxCopy_sxsa_token(null, line)));
+        if (!tr.z) {
+            continue;
+        }
+        if (q.b[tr.a] === 64 /*@*/) {
+            {
+                if (!sxsa_emit(q, sxsa_section, sxCopy_sxsa_token(null, tr))) {
+                    return false;
+                }
+            }
+            section = sxsa_eq(q, sxCopy_sxsa_token(null, tr), "@<TRIPOS>MOLECULE") ? 0 : sxsa_eq(q, sxCopy_sxsa_token(null, tr), "@<TRIPOS>ATOM") ? 1 : sxsa_eq(q, sxCopy_sxsa_token(null, tr), "@<TRIPOS>BOND") ? 2 : 3;
+            continue;
+        }
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 16, false);
+        if (!section) {
+            if (phase === 0) {
+                {
+                    if (!sxsa_emit(q, sxsa_title, sxCopy_sxsa_token(null, line))) {
+                        return false;
+                    }
+                }
+            } else if (phase === 1) {
+                if (n < 2 || n > 5 || !sxsa_fields(q, t, 0, n, counts, 5)) {
+                    return false;
+                }
+            } else if (phase === 2) {
+                {
+                    if (!sxsa_emit(q, sxsa_molecule_type, sxCopy_sxsa_token(null, tr))) {
+                        return false;
+                    }
+                }
+            } else if (phase === 3) {
+                {
+                    if (!sxsa_emit(q, sxsa_charge_type, sxCopy_sxsa_token(null, tr))) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxsa_emit(q, sxsa_comment, sxCopy_sxsa_token(null, line))) {
+                        return false;
+                    }
+                }
+            }
+            phase++;
+        } else if (!sxsa_fields(q, t, 0, n, section === 1 ? atom : section === 2 ? bond : sub, section === 2 ? 4 : 9)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_tripos_mol2_build(q) {
+    return sxsa_mol2(q);
+}

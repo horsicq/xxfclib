@@ -1,0 +1,22 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/applesingle/xx_applesingle_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_applesingle_header_fields = layout([u32("magic", SIGNATURE), u32("version", ID),
+    chars("home_filesystem_or_filler", 16, NONE), u16("entry_count", COUNT)]);
+var sxar_applesingle_header = sxLayout(0x601C000C, "applesingle_header", BE, sxar_applesingle_header_fields);
+var sxar_applesingle_entry_fields = layout([u32("entry_id", ID), u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxar_applesingle_entry = sxLayout(0x601C000D, "applesingle_entry", BE, sxar_applesingle_entry_fields);
+function sxar_applesingle(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 26) || !sxar_add(c, sxar_applesingle_header, 0)) {
+        return false;
+    }
+    var n = sxar16(b, 24, true);
+    return sxar_span(c, 26, n * 12) && sx_table(c, sxar_applesingle_entry, 26, 12, n);
+}
+function sx_applesingle_build(c) {
+    return sxar_applesingle(c);
+}

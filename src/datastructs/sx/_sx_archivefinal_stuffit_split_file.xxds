@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/stuffit_split_file/xx_stuffit_split_file_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_stuffit_split_header_fields = layout([u16("signature", SIGNATURE), u16("part_number"), u8("name_size", SIZE),
+    chars("file_name", 63, NONE), chars("file_type", 4, NONE), chars("creator", 4, NONE), u16("finder_flags"),
+    u32("creation_time"), u32("modification_time"), u32("resource_fork_size", SIZE), u32("data_fork_size", SIZE),
+    bytes("segment_bookkeeping", 6)]);
+var sxaf_stuffit_split_header = sxLayout(0x603C0009, "stuffit_split_header", BE, sxaf_stuffit_split_header_fields);
+function sx_stuffit_split_file_build(c) {
+    return sxaf_add(c, sxaf_stuffit_split_header, 0);
+}

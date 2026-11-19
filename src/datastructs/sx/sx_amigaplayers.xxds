@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_amigaplayers.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_amigaplayers");
+include("_sx_amigaplayers_altar_onyxmusicfile");
+include("_sx_amigaplayers_bendaglish_sid");
+include("_sx_amigaplayers_davelowe_uncleart");
+include("_sx_amigaplayers_grouleff_earache");
+include("_sx_amigaplayers_hawlitzeck_amcomposer");
+include("_sx_amigaplayers_jmflogel");
+include("_sx_amigaplayers_mark_cooksey");
+include("_sx_amigaplayers_phipps_coredesign");
+include("_sx_amigaplayers_rainbowarts_palladixss_plx");
+include("_sx_amigaplayers_sauer_artandmagic");
+include("_sx_amigaplayers_talin_maxtrax_musicx");
+include("_sx_amigaplayers_turner_jpo");
+include("_sx_amigaplayers_vdvalk_futureplayer");
+include("_sx_amigaplayers_vdvalk_medleysound_mso");
+
+function fileTypes() { return ["DIE_MUSIC_SAUER_ARTANDMAGIC", "DIE_MUSIC_HAWLITZECK_AMCOMPOSER", "DIE_MUSIC_BENDAGLISH_SID",
+    "DIE_MUSIC_PHIPPS_COREDESIGN", "DIE_MUSIC_DAVELOWE_UNCLEART", "DIE_MUSIC_GROULEFF_EARACHE", "DIE_MUSIC_VDVALK_FUTUREPLAYER",
+    "DIE_MUSIC_JMFLOGEL", "DIE_MUSIC_TURNER_JPO", "DIE_MUSIC_MARK_COOKSEY", "DIE_MUSIC_VDVALK_MEDLEYSOUND_MSO",
+    "DIE_MUSIC_TALIN_MAXTRAX_MUSICX", "DIE_MUSIC_ALTAR_ONYXMUSICFILE", "DIE_MUSIC_RAINBOWARTS_PALLADIXSS_PLX"]; }
+
+var sx_amigaplayers_layouts = [sxamip_text, sxamip_count16, sxamip_count32, sxamip_relative32, sxamip_word_length,
+    sxamip_amc_header, sxamip_amc_sample, sxamip_mxtx_header, sxamip_mxtx_event, sxamip_mxtx_sample, sxamip_mxtx_envelope,
+    sxamip_omf_identity, sxamip_omf_position, sxamip_omf_header_tail, sxamip_omf_sample, sxamip_omf_unknown, sxamip_omf_pattern,
+    sxamip_omf_event, sxamip_omf_sample_data, sxamip_plx_header, sxamip_plx_control, sxamip_plx_instrument_offset,
+    sxamip_plx_volume, sxamip_plx_note, sxamip_plx_frequency, sxamip_plx_speed, sxamip_plx_delay, sxamip_plx_instrument,
+    sxamip_mso_header, sxamip_ea_header, sxamip_ea_pattern, sxamip_ea_position, sxamip_ea_sample, sxamip_ea_instrument,
+    sxamip_ea_magic, sxamip_hunk_header, sxamip_hunk_reloc_header, sxamip_hunk_reloc_block, sxamip_hunk_reloc_offset,
+    sxamip_hunk_zero, sxamip_hunk_end, sxamip_core_prefix, sxamip_core_sample, sxamip_future_prefix, sxamip_future_subsong,
+    sxamip_future_end, sxamip_future_song_voices, sxamip_jmf_prefix, sxamip_daglish_prefix, sxamip_lowe_prefix,
+    sxamip_lowe_sample, sxamip_art_table_operand, sxamip_art_limit_operand, sxamip_art_relocation, sxamip_art_marker,
+    sxamip_turner_address, sxamip_turner_subsong, sxamip_turner_sample_table, sxamip_turner_sample_offset,
+    sxamip_turner_sample_length, sxamip_cooksey_displacement, sxamip_cooksey_sample_offset, sxamip_cooksey_sample,
+    sxamip_cooksey_shifted_sample];
+
+function structs() {
+    return sxCatalog([sxamip_text, sxamip_count16, sxamip_count32, sxamip_relative32, sxamip_word_length, sxamip_amc_header,
+        sxamip_amc_sample, sxamip_mxtx_header, sxamip_mxtx_event, sxamip_mxtx_sample, sxamip_mxtx_envelope, sxamip_omf_identity,
+        sxamip_omf_position, sxamip_omf_header_tail, sxamip_omf_sample, sxamip_omf_unknown, sxamip_omf_pattern,
+        sxamip_omf_event, sxamip_omf_sample_data, sxamip_plx_header, sxamip_plx_control, sxamip_plx_instrument_offset,
+        sxamip_plx_volume, sxamip_plx_note, sxamip_plx_frequency, sxamip_plx_speed, sxamip_plx_delay, sxamip_plx_instrument,
+        sxamip_mso_header, sxamip_ea_header, sxamip_ea_pattern, sxamip_ea_position, sxamip_ea_sample, sxamip_ea_instrument,
+        sxamip_ea_magic, sxamip_hunk_header, sxamip_hunk_reloc_header, sxamip_hunk_reloc_block, sxamip_hunk_reloc_offset,
+        sxamip_hunk_zero, sxamip_hunk_end, sxamip_core_prefix, sxamip_core_sample, sxamip_future_prefix, sxamip_future_subsong,
+        sxamip_future_end, sxamip_future_song_voices, sxamip_jmf_prefix, sxamip_daglish_prefix, sxamip_lowe_prefix,
+        sxamip_lowe_sample, sxamip_art_table_operand, sxamip_art_limit_operand, sxamip_art_relocation, sxamip_art_marker,
+        sxamip_turner_address, sxamip_turner_subsong, sxamip_turner_sample_table, sxamip_turner_sample_offset,
+        sxamip_turner_sample_length, sxamip_cooksey_displacement, sxamip_cooksey_sample_offset, sxamip_cooksey_sample,
+        sxamip_cooksey_shifted_sample], sx_amigaplayers_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_amigaplayers_build, false);
+}

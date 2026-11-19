@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/stereolithography_stl/xx_stereolithography_stl_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_stl_binary_header_fields = layout([bytes("header", 80), u32("facet_count", COUNT)]);
+var sxmo_stl_binary_header = sxLayout(0x60210060, "stl_binary_header", LE, sxmo_stl_binary_header_fields);
+var sxmo_stl_binary_facet_fields = layout([field("normal", "float32[3]", 12), field("vertex0", "float32[3]", 12),
+    field("vertex1", "float32[3]", 12), field("vertex2", "float32[3]", 12), u16("attribute_byte_count", SIZE)]);
+var sxmo_stl_binary_facet = sxLayout(0x60210061, "stl_binary_facet", LE, sxmo_stl_binary_facet_fields);
+function sxmo_stl(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 84) || !sxmo_add(c, sxmo_stl_binary_header, 0)) {
+        return false;
+    }
+    var n = sxmo32(h, 80, false);
+    if (n <= 1000000 && sxmo_span(c, 84, n * 50) && !sxmo_table(c, sxmo_stl_binary_facet, 84, n)) {
+        return false;
+    }
+    return true;
+}
+function sx_stereolithography_stl_build(c) {
+    var ok = false;
+    ok = sxmo_stl(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

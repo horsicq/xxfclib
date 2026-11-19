@@ -1,0 +1,166 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/amiga_pfs/xx_amiga_pfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcf_pfs_root_block_fields = layout([u32("disk_type", SIGNATURE), u32("options", FLAGS), u32("datestamp"),
+    u16("creation_day"), u16("creation_minute"), u16("creation_tick"), u16("protection", FLAGS), u8("name_size", SIZE),
+    chars("name", 31, NONE), u32("last_reserved_block"), u32("first_reserved_block"), u32("free_reserved_blocks", COUNT),
+    u16("reserved_block_size", SIZE), u16("root_block_sectors", COUNT), u32("free_blocks", COUNT),
+    u32("minimum_free_blocks", COUNT), u32("allocation_word"), u32("deleted_directory_block"), u32("sector_count", COUNT),
+    u32("extension_block"), u32("unused", RESERVED)]);
+var sxcf_pfs_root_block = sxLayout(0x603D0047, "pfs_root_block", BE, sxcf_pfs_root_block_fields);
+var sxcf_pfs_root_small_indexes_fields = layout([field("bitmap_index_blocks", "uint32[5]", 20),
+    field("anode_index_blocks", "uint32[99]", 396)]);
+var sxcf_pfs_root_small_indexes = sxLayout(0x603D0048, "pfs_root_small_indexes", BE, sxcf_pfs_root_small_indexes_fields);
+var sxcf_pfs_root_large_indexes_fields = layout([field("bitmap_index_blocks", "uint32[104]", 416)]);
+var sxcf_pfs_root_large_indexes = sxLayout(0x603D0049, "pfs_root_large_indexes", BE, sxcf_pfs_root_large_indexes_fields);
+var sxcf_pfs_index_header_fields = layout([u16("identifier", SIGNATURE), u16("reserved", RESERVED), u32("datestamp"),
+    u32("sequence_number")]);
+var sxcf_pfs_index_header = sxLayout(0x603D004A, "pfs_index_header", BE, sxcf_pfs_index_header_fields);
+var sxcf_pfs_anode_header_fields = layout([u16("identifier", SIGNATURE), u16("reserved0", RESERVED), u32("datestamp"),
+    u32("sequence_number"), u32("reserved1", RESERVED)]);
+var sxcf_pfs_anode_header = sxLayout(0x603D004B, "pfs_anode_header", BE, sxcf_pfs_anode_header_fields);
+var sxcf_pfs_anode_fields = layout([u32("sector_count", COUNT), u32("first_sector"), u32("next_anode")]);
+var sxcf_pfs_anode = sxLayout(0x603D004C, "pfs_anode", BE, sxcf_pfs_anode_fields);
+var sxcf_pfs_directory_header_fields = layout([u16("identifier", SIGNATURE), u16("reserved0", RESERVED), u32("datestamp"),
+    field("reserved1", "byte[4]", 4, RESERVED), u32("anode_number"), u32("parent_anode")]);
+var sxcf_pfs_directory_header = sxLayout(0x603D004D, "pfs_directory_header", BE, sxcf_pfs_directory_header_fields);
+var sxcf_pfs_directory_entry_fields = layout([u8("record_size", SIZE), i8("type", ID), u32("anode_number"),
+    u32("file_size_low"), u16("creation_day"), u16("creation_minute"), u16("creation_tick"), u8("protection", FLAGS),
+    u8("name_size", SIZE)]);
+var sxcf_pfs_directory_entry = sxLayout(0x603D004E, "pfs_directory_entry", BE, sxcf_pfs_directory_entry_fields);
+var sxcf_pfs_extension_fields = layout([u16("identifier", SIGNATURE), u16("reserved0", RESERVED), u32("options", FLAGS),
+    u32("datestamp"), u32("version", ID), field("root_date_components", "uint16[3]", 6),
+    field("volume_date_components", "uint16[3]", 6), u32("postponed_operation", ID),
+    field("postponed_arguments", "uint32[3]", 12), u32("reserved_allocation_cursor"), u16("allocation_bit"),
+    u16("current_anode_sequence"), u16("deleted_directory_cursor"), u16("deleted_directory_size", COUNT),
+    u16("filename_size", SIZE), field("reserved1", "byte[6]", 6, RESERVED), field("super_indexes", "uint32[16]", 64),
+    u16("deleted_user_id", ID), u16("deleted_group_id", ID), u32("deleted_protection", FLAGS),
+    field("deleted_creation_date", "uint16[3]", 6), u16("reserved2", RESERVED),
+    field("deleted_directory_blocks", "uint32[32]", 128)]);
+var sxcf_pfs_extension = sxLayout(0x603D004F, "pfs_extension", BE, sxcf_pfs_extension_fields);
+function sxcf_pfs_block(g, nr, b) {
+    return nr >= g.first && nr <= g.last && Math.floor(g.unit / 512) <= (((g.last - nr) >>> 0) + 1) >>> 0 && sxcf_read(g.c, nr * 512, b, g.unit);
+}
+function sxcf_pfs_lookup_anode(g, nr, count, block, next) {
+    var b = [];
+    var per = Math.floor(((g.unit - 16) >>> 0) / 12);
+    var ip = Math.floor(((g.unit - 12) >>> 0) / 4);
+    var seq = g.options & 2 ? nr >>> 16 : Math.floor(nr / per);
+    var slot = g.options & 2 ? nr & 65535 : nr % per;
+    var which = Math.floor(seq / ip);
+    var idx = seq % ip;
+    var addr;
+    if (slot >= per || ++g.visits > 4096) {
+        return false;
+    }
+    if (g.options & 128) {
+        var super_ = Math.floor(which / ip);
+        if (super_ >= 16 || !sxcf_pfs_block(g, g.extension, b) || sxcf16(b, 0, 1) !== 0x4558) {
+            return false;
+        }
+        if (!sxcf_put(g.c, sxcf_pfs_extension, g.extension * 512, 1)) {
+            return false;
+        }
+        addr = sxcf32(b, 64 + ((super_ * 4) >>> 0), 1);
+        if (!sxcf_pfs_block(g, addr, b) || sxcf16(b, 0, 1) !== 0x5342 || sxcf32(b, 8, 1) !== super_) {
+            return false;
+        }
+        if (!sxcf_put(g.c, sxcf_pfs_index_header, addr * 512, 1) || !sxcf_put(g.c, sxcf_classic_block_number32_be, addr * 512 + 12, ip)) {
+            return false;
+        }
+        addr = sxcf32(b, 12 + ((which % ip * 4) >>> 0), 1);
+    } else {
+        if (which >= 99) {
+            return false;
+        }
+        addr = sxcf32(g.root, 116 + ((which * 4) >>> 0), 1);
+    }
+    if (!sxcf_pfs_block(g, addr, b) || sxcf16(b, 0, 1) !== 0x4942 || sxcf32(b, 8, 1) !== which) {
+        return false;
+    }
+    if (!sxcf_put(g.c, sxcf_pfs_index_header, addr * 512, 1) || !sxcf_put(g.c, sxcf_classic_block_number32_be, addr * 512 + 12, ip)) {
+        return false;
+    }
+    addr = sxcf32(b, 12 + ((idx * 4) >>> 0), 1);
+    if (!sxcf_pfs_block(g, addr, b) || sxcf16(b, 0, 1) !== 0x4142 || sxcf32(b, 8, 1) !== seq) {
+        return false;
+    }
+    if (!sxcf_put(g.c, sxcf_pfs_anode_header, addr * 512, 1) || !sxcf_put(g.c, sxcf_pfs_anode, addr * 512 + 16, per)) {
+        return false;
+    }
+    count[0] = sxcf32(b, 16 + ((12 * slot) >>> 0), 1);
+    block[0] = sxcf32(b, 20 + ((12 * slot) >>> 0), 1);
+    next[0] = sxcf32(b, 24 + ((12 * slot) >>> 0), 1);
+    return true;
+}
+function sxcf_pfs_dir(g, nr, depth) {
+    if (depth > 24) {
+        return true;
+    }
+    var b = [];
+    while (nr && g.visits < 4096 && g.c.count < 24000) {
+        var count = [0];
+        var block = [0];
+        var next = [0];
+        if (!sxcf_pfs_lookup_anode(g, nr, count, block, next) || !count[0] || count[0] > 262144 || !sxcf_span(g.c, block[0] * 512, count[0] * 512)) {
+            break;
+        }
+        for (var j = 0; (j + Math.floor(g.unit / 512)) >>> 0 <= count[0] && g.c.count < 24000; j = (j + Math.floor(g.unit / 512)) >>> 0) {
+            var p = (block[0] + j) * 512;
+            if (!sxcf_read(g.c, p, b, g.unit) || sxcf16(b, 0, 1) !== 0x4442) {
+                break;
+            }
+            if (!sxcf_put(g.c, sxcf_pfs_directory_header, p, 1)) {
+                return false;
+            }
+            for (var at = 20; at < g.unit; ) {
+                var z = b[at];
+                if (!z) {
+                    break;
+                }
+                if (z < 20 || z & 1 || z > (g.unit - at) >>> 0 || !b[(at + 17) >>> 0] || 19 + b[(at + 17) >>> 0] > z || 19 + b[(at + 17) >>> 0] + b[(((at + 18) >>> 0) + b[(at + 17) >>> 0]) >>> 0] > z) {
+                    break;
+                }
+                if (!sxcf_put(g.c, sxcf_pfs_directory_entry, p + at, 1)) {
+                    return false;
+                }
+                if (b[(at + 1) >>> 0] === 2 && !sxcf_pfs_dir(g, sxcf32(b, at + 2, 1), (depth + 1) >>> 0)) {
+                    return false;
+                }
+                at = (at + z) >>> 0;
+            }
+        }
+        if (next[0] === nr) {
+            break;
+        }
+        nr = next[0];
+    }
+    return true;
+}
+function sxcf_pfs(c) {
+    var g = sxNew_sxcf_pfs_state();
+    sxCopy_sxcf_pfs_state(g, sxNew_sxcf_pfs_state());
+    g.c = c;
+    if (!sxcf_read(c, 1024, g.root, 512)) {
+        return false;
+    }
+    var m = sxcf32(g.root, 0, 1);
+    if (m !== 0x41465301 && m !== 0x50465301 && m !== 0x50465302 && m !== 0x6D754146 && m !== 0x6D755046) {
+        return false;
+    }
+    g.options = sxcf32(g.root, 4, 1);
+    g.first = sxcf32(g.root, 56, 1);
+    g.last = sxcf32(g.root, 52, 1);
+    g.unit = sxcf16(g.root, 64, 1);
+    g.extension = sxcf32(g.root, 88, 1);
+    if (g.first > g.last || g.last >= Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 512) || g.unit < 512 || g.unit > 4096 || !sxcf_pow(g.unit) || !sxcf_put(c, sxcf_pfs_root_block, 1024, 1) || !sxcf_put(c, g.options & 128 ? sxcf_pfs_root_large_indexes : sxcf_pfs_root_small_indexes, 1120, 1)) {
+        return false;
+    }
+    return sxcf_pfs_dir(g, 5, 0);
+}
+function sx_amiga_pfs_build(c) {
+    return sxcf_pfs(c);
+}

@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/idtech_roq/xx_idtech_roq_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_st_roq_header_fields = layout([u16("signature", SIGNATURE), u32("size_marker", SIGNATURE), u16("frames_per_second")]);
+var sx_st_roq_header = sxLayout(0x6008002B, "roq_header", LE, sx_st_roq_header_fields);
+var sx_st_roq_chunk_fields = layout([u16("type", ID), u32("payload_size", SIZE), u16("argument")]);
+var sx_st_roq_chunk = sxLayout(0x6008002C, "roq_chunk", LE, sx_st_roq_chunk_fields);
+var sx_st_roq_info_fields = layout([u16("width"), u16("height"), u16("maximum_block_size"), u16("minimum_block_size")]);
+var sx_st_roq_info = sxLayout(0x6008002D, "roq_info", LE, sx_st_roq_info_fields);
+var sx_st_roq_codebook_cell_fields = layout([u8("y0"), u8("y1"), u8("y2"), u8("y3"), u8("u"), u8("v")]);
+var sx_st_roq_codebook_cell = sxLayout(0x6008002E, "roq_codebook_cell", LE, sx_st_roq_codebook_cell_fields);
+var sx_st_roq_codebook_quad_fields = layout([u8("cell0", ID), u8("cell1", ID), u8("cell2", ID), u8("cell3", ID)]);
+var sx_st_roq_codebook_quad = sxLayout(0x6008002F, "roq_codebook_quad", LE, sx_st_roq_codebook_quad_fields);
+function sx_st_roq(c) {
+    var at = 8;
+    if (!sx_add(c, sx_st_roq_header, 0, 8)) {
+        return false;
+    }
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var h = [];
+        var type;
+        var arg;
+        var n;
+        if (!sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 8) || !sx_add(c, sx_st_roq_chunk, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+            return false;
+        }
+        type = sxGetU16(h, 8, 0, false);
+        n = sxGetU32(h, 8, 2, false);
+        arg = sxGetU16(h, 8, 6, false);
+        at += 8;
+        if (!sx_st_fits(c, at, n)) {
+            return false;
+        }
+        if (type === 0x1001) {
+            if (n !== 8 || !sx_add(c, sx_st_roq_info, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+                return false;
+            }
+        } else if (type === 0x1002) {
+            var cells = arg >> 8;
+            var quads = arg & 255;
+            if (!cells) {
+                cells = 256;
+            }
+            if (!quads && n > (cells * 6) >>> 0) {
+                quads = 256;
+            }
+            if (n !== (((cells * 6) >>> 0) + ((quads * 4) >>> 0)) >>> 0 || !sx_table(c, sx_st_roq_codebook_cell, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 6, cells) || !sx_table(c, sx_st_roq_codebook_quad, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + ((cells * 6) >>> 0), 4, quads)) {
+                return false;
+            }
+        }
+        at += n;
+    }
+    return true;
+}
+function sx_idtech_roq_build(c) {
+    var ok = false;
+    ok = sx_st_roq(c);
+    return ok && sx_st_finish(c);
+}

@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/nokia_ota_bitmap/xx_nokia_ota_bitmap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_ota_bitmap_short_fields = layout([u8("infofield", FLAGS), u8("width"), u8("height"), u8("depth")]);
+var sxbrs_ota_bitmap_short = sxLayout(0x603E0001, "ota_bitmap_short", LE, sxbrs_ota_bitmap_short_fields);
+var sxbrs_ota_bitmap_extended_fields = layout([u8("infofield", FLAGS), u16("width"), u16("height"), u8("depth")]);
+var sxbrs_ota_bitmap_extended = sxLayout(0x603E0002, "ota_bitmap_extended", BE, sxbrs_ota_bitmap_extended_fields);
+function sxbrs_ota(c) {
+    var flags = sxbrs_num(c, 0, 1, false);
+    var n = sxAnd64(flags, 16) ? 6 : 4;
+    if (sxAnd64(flags, 0xFFFFFFEF) || c.size < (n >= SX_I64_MAX ? n - SX_U64_MAX : n)) {
+        return false;
+    }
+    var w = sxbrs_num(c, 1, 1, false);
+    var h = sxbrs_num(c, 2, 1, false);
+    if (sxAnd64(flags, 16)) {
+        w = sxbrs_num(c, 1, 2, true);
+        h = sxbrs_num(c, 3, 2, true);
+    }
+    if (!w || w > 8192 || !h || h > 4095 || sxbrs_num(c, sxI64(sxU64(n - 1)), 1, false) !== 1 || Math.floor((w + 7) / 8) * h !== sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - n)) {
+        return false;
+    }
+    return sxbrs_add(c, sxAnd64(flags, 16) ? sxbrs_ota_bitmap_extended : sxbrs_ota_bitmap_short, 0);
+}
+function sx_nokia_ota_bitmap_build(c) {
+    return sxbrs_ota(c);
+}

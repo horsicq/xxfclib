@@ -1,0 +1,26 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/ravensoft_rff/xx_ravensoft_rff_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_rff_header_fields = layout([blob("signature", 4, SIGNATURE), u16("version", ID), u16("reserved", RESERVED),
+    u32("directory_offset", OFFSET), u32("entry_count", COUNT), blob("reserved_tail", 16, RESERVED)]);
+var sxgp_rff_header = sxLayout(0x60360043, "rff_header", LE, sxgp_rff_header_fields);
+var sxgp_rff_entry_fields = layout([blob("runtime_state", 16), u32("data_offset", OFFSET), u32("data_size", SIZE),
+    u32("unknown_word"), u32("unknown_time_word"), u8("flags", FLAGS), chars("extension", 3, STRING), chars("name", 8, STRING),
+    u32("resource_id", ID)]);
+var sxgp_rff_entry = sxLayout(0x60360044, "rff_entry", LE, sxgp_rff_entry_fields);
+function sxgp_rff(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var ver = [0];
+    var at = [0];
+    var n = [0];
+    if (!sxgp_row(v, sxgp_rff_header, 0, end) || !sxgp_word(v, 4, 2, false, ver, 0, end) || !sxgp_word(v, 8, 4, false, at, 0, end) || !sxgp_word(v, 12, 4, false, n, 0, end)) {
+        return false;
+    }
+    return ver[0] !== 0x200 || sxgp_table(v, sxgp_rff_entry, at[0], n[0], end);
+}
+function sx_ravensoft_rff_build(v) {
+    return sxgp_rff(v);
+}

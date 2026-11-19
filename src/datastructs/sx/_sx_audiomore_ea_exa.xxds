@@ -1,0 +1,45 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/ea_exa/xx_ea_exa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_ea_block_le_fields = layout([chars("block_id", 4, ID), u32("block_size", SIZE)]);
+var sxau_ea_block_le = sxLayout(0x602C0065, "ea_block_le", LE, sxau_ea_block_le_fields);
+var sxau_ea_block_be_fields = layout([chars("block_id", 4, ID), u32("block_size", SIZE)]);
+var sxau_ea_block_be = sxLayout(0x602C006A, "ea_block_be", BE, sxau_ea_block_be_fields);
+function sxau_ea_check(v, be) {
+    var at = 0;
+    var i = 0;
+    while (at < v.n) {
+        if (++i > 4096 || !sxau_need(v, at, 8, v.n)) {
+            return false;
+        }
+        var z = sxau_u32(v.p, at + 4, be);
+        if (z < 8 || !sxau_need(v, at, z, v.n)) {
+            return false;
+        }
+        at += z;
+    }
+    return true;
+}
+function sxau_ea(v) {
+    var be = false;
+    if (!sxau_ea_check(v, false)) {
+        be = true;
+        if (!sxau_ea_check(v, true)) {
+            return false;
+        }
+    }
+    var at = 0;
+    while (at < v.n) {
+        if (!sxau_row(v, be ? sxau_ea_block_be : sxau_ea_block_le, at, v.n)) {
+            return false;
+        }
+        at += sxau_u32(v.p, at + 4, be);
+    }
+    return true;
+}
+function sx_ea_exa_build(v) {
+    return sxau_ea(v);
+}

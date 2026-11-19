@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/minix_partitions/xx_minix_partitions_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_v_minix_mbr_signature_fields = layout([u16("magic", SIGNATURE)]);
+var sx_v_minix_mbr_signature = sxLayout(0x60050011, "minix_mbr_signature", LE, sx_v_minix_mbr_signature_fields);
+function sx_minix_partitions_build(c) {
+    if (!sx_table(c, sx_v_minix_mbr_partition_entry, 446, 16, 4) || !sx_add(c, sx_v_minix_mbr_signature, 510, 2)) {
+        return false;
+    }
+    return true;
+}

@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/rpm/xx_rpm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_rpm_lead_fields = layout([blob("magic", 4, SIGNATURE), u8("major"), u8("minor"), u16("package_type", ID),
+    u16("architecture", ID), chars("name", 66, STRING), u16("operating_system", ID), u16("signature_type", ID),
+    blob("reserved", 16, RESERVED)]);
+var sx_p_rpm_lead = sxLayout(0x60070029, "rpm_lead", BE, sx_p_rpm_lead_fields);
+var sx_p_rpm_header_fields = layout([blob("magic", 3, SIGNATURE), u8("version"), u32("reserved", RESERVED),
+    u32("index_count", COUNT), u32("data_size", SIZE)]);
+var sx_p_rpm_header = sxLayout(0x6007002A, "rpm_header", BE, sx_p_rpm_header_fields);
+function sx_p_rpm_header_at(c, off) {
+    var count;
+    var size;
+    if (!sx_p_sig(c, off[0], "\x8E\xAD\xE8\x01", 4) || (count = sx_u32(c, off[0] + 8, true)) === null || !count || count > 65535 || (size = sx_u32(c, off[0] + 12, true)) === null || !sx_add(c, sx_p_rpm_header, off[0], 16)) {
+        return false;
+    }
+    off[0] += 16;
+    if (!sx_table(c, sx_p_rpm_index, off[0], 16, count)) {
+        return false;
+    }
+    var store = off[0] + count * 16;
+    if (!sx_p_span(c, (store < 0 ? store + SX_U64_MAX : store), size)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        var type;
+        var at;
+        var n;
+        if ((type = sx_u32(c, off[0] + ((16 * i) >>> 0) + 4, true)) === null || type > 9 || (at = sx_u32(c, off[0] + ((16 * i) >>> 0) + 8, true)) === null || (n = sx_u32(c, off[0] + ((16 * i) >>> 0) + 12, true)) === null || at > size) {
+            return false;
+        }
+        var unit = type === 3 ? 2 : type === 4 ? 4 : type === 5 ? 8 : 1;
+        if (type !== 0 && type !== 6 && type !== 8 && type !== 9 && n * unit > (size - at) >>> 0) {
+            return false;
+        }
+    }
+    off[0] = store + size;
+    return true;
+}
+function sx_p_rpm(c) {
+    var sig;
+    if (!sx_p_sig(c, 0, "\xED\xAB\xEE\xDB", 4) || (sig = sx_u16(c, 78, true)) === null || !sx_add(c, sx_p_rpm_lead, 0, 96)) {
+        return false;
+    }
+    var off = [96];
+    if (sig === 5) {
+        if (!sx_p_rpm_header_at(c, off)) {
+            return false;
+        }
+        off[0] = sxI64(sxAnd64(off[0] + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8)));
+    } else if (sig === 1) {
+        off[0] += 256;
+    } else if (sig) {
+        return false;
+    }
+    return sx_p_rpm_header_at(c, off);
+}
+function sx_rpm_build(c) {
+    return sx_p_rpm(c);
+}

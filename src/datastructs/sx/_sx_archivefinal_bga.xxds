@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/bga/xx_bga_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaf_bga_member_fields = layout([i32("header_checksum", CHECKSUM), chars("method", 4, NONE), u32("compressed_size", SIZE),
+    u32("uncompressed_size", SIZE), u16("dos_date"), u16("dos_time"), u8("attributes"), u8("header_type"), u16("archive_type"),
+    u16("directory_name_size", SIZE), u16("file_name_size", SIZE)]);
+var sxaf_bga_member = sxLayout(0x603C0019, "bga_member", LE, sxaf_bga_member_fields);
+function sxaf_bga(c) {
+    var p = 0;
+    while (sxaf_span(c, p, 28)) {
+        var b = [];
+        if (!sxaf_read(c, p, b, 28)) {
+            return false;
+        }
+        var n = sxaf_uint(b, 8, 4, false);
+        var names = sxaf_uint(b, 24, 2, false) + sxaf_uint(b, 26, 2, false);
+        if (!names || names > 1024 || !sxaf_span(c, p + 28, names) || sxMemcmpAt(b, 4, "GZIP", 0, 4) && sxMemcmpAt(b, 4, "BZ2\x00", 0, 4)) {
+            return false;
+        }
+        var name = [];
+        if (!sxaf_read(c, p + 28, name, names)) {
+            return false;
+        }
+        var sum = 0;
+        for (var i = 4; i < 28; i++) {
+            sum += b[i] & 128 ? b[i] - 256 : b[i];
+        }
+        for (i = 0; i < names; i++) {
+            sum += name[i] & 128 ? name[i] - 256 : name[i];
+        }
+        if (sum >>> 0 !== sxaf_uint(b, 0, 4, false) >>> 0 || !sxaf_add(c, sxaf_bga_member, p)) {
+            return false;
+        }
+        p += 28 + names;
+        if (!sxaf_span(c, p, n)) {
+            return false;
+        }
+        p += n;
+    }
+    return true;
+}
+function sx_bga_build(c) {
+    return sxaf_bga(c);
+}

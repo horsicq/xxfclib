@@ -1,0 +1,12 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pc_magazine_flp/xx_pc_magazine_flp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxst_pcmag_flp_header_fields = layout([chars("signature", 3, SIGNATURE), u16("reserved", RESERVED), u16("heads", COUNT),
+    u16("tracks_per_side", COUNT), u16("sectors_per_track", COUNT), u16("bytes_per_sector", SIZE)]);
+var sxst_pcmag_flp_header = sxLayout(0x60370016, "pcmag_flp_header", LE, sxst_pcmag_flp_header_fields);
+function sx_pc_magazine_flp_build(c) {
+    return sxst_put(c, sxst_pcmag_flp_header, 0, 1);
+}

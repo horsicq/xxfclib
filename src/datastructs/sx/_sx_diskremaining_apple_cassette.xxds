@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/apple_cassette/xx_apple_cassette_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_cassette_riff_fields = layout([chars("magic", 4, SIGNATURE), u32("riff_bytes", SIZE), chars("form_type", 4, ID)]);
+var sxdr_cassette_riff = sxLayout(0x607F001A, "cassette_riff", LE, sxdr_cassette_riff_fields);
+var sxdr_cassette_chunk_fields = layout([chars("chunk_id", 4, ID), u32("data_bytes", SIZE)]);
+var sxdr_cassette_chunk = sxLayout(0x607F001B, "cassette_chunk", LE, sxdr_cassette_chunk_fields);
+var sxdr_cassette_pcm_format_fields = layout([u16("format_tag", ID), u16("channels", COUNT), u32("sample_rate"),
+    u32("byte_rate"), u16("block_alignment", SIZE), u16("bits_per_sample")]);
+var sxdr_cassette_pcm_format = sxLayout(0x607F001C, "cassette_pcm_format", LE, sxdr_cassette_pcm_format_fields);
+var sxdr_cassette_pcm_extension_fields = layout([u16("extension_bytes", SIZE)]);
+var sxdr_cassette_pcm_extension = sxLayout(0x607F0033, "cassette_pcm_extension", LE, sxdr_cassette_pcm_extension_fields);
+function sxdr_cassette(c) {
+    var h = [];
+    if (!sxdr_read(c, 0, h, 12) || sxMemcmp(h, "RIFF", 4) || sxMemcmpAt(h, 8, "WAVE", 0, 4) || !sxdr_put(c, sxdr_cassette_riff, 0, 1)) {
+        return false;
+    }
+    var end = 8 + sxdr32(h, 4, false);
+    var p = 12;
+    if (end > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return true;
+    }
+    while (p <= end && sxU64(end - p) >= 8) {
+        if (!sxdr_read(c, p, h, 8) || !sxdr_put(c, sxdr_cassette_chunk, p, 1)) {
+            return false;
+        }
+        var n = sxdr32(h, 4, false);
+        p += 8;
+        if (n > sxU64(end - p)) {
+            break;
+        }
+        if (!sxMemcmp(h, "fmt ", 4) && n >= 16) {
+            if (!sxdr_put(c, sxdr_cassette_pcm_format, p, 1)) {
+                return false;
+            }
+            if (n === 18 && !sxdr_put(c, sxdr_cassette_pcm_extension, p + 16, 1)) {
+                return false;
+            }
+        }
+        p += n;
+        if (sxAnd64(n, 1)) {
+            if (p === end) {
+                break;
+            }
+            p++;
+        }
+    }
+    return true;
+}
+function sx_apple_cassette_build(c) {
+    return sxdr_cassette(c);
+}

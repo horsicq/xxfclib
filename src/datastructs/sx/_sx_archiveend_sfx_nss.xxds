@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sfx_nss/xx_sfx_nss_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_nss_member_fields = layout([u16("header_size", SIZE), u32("packed_size", SIZE), u32("uncompressed_size", SIZE),
+    bytes("unknown_10", 14), u16("compression", ID), bytes("unknown_26", 4), chars("signature", 8, SIGNATURE),
+    bytes("initialization_vector", 8), chars("name", 256, STRING), bytes("unknown_302", 14)]);
+var sxaend_nss_member = sxLayout(0x6084001B, "nss_member", LE, sxaend_nss_member_fields);
+function sxaend_nss(c) {
+    var h = [];
+    if (!sxaend_read(c, 0, h, 64) || h[0] !== 77 /*M*/ || h[1] !== 90 /*Z*/) {
+        return false;
+    }
+    var pages = sxaend_uint(h, 4, 2, false);
+    var last = sxaend_uint(h, 2, 2, false);
+    if (!pages || last > 511) {
+        return false;
+    }
+    var p = sxU64(pages - 1) * 512 + (last ? last : 512);
+    for (var i = 0; p < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && i < 20000; i++) {
+        var b = [];
+        if (!sxaend_read(c, p, b, 316) || sxaend_uint(b, 0, 2, false) !== 316 || sxMemcmpAt(b, 30, "CCRITTER", 0, 8) || !sxaend_add(c, sxaend_nss_member, p)) {
+            return false;
+        }
+        var z = sxaend_uint(b, 2, 4, false);
+        if (!z || !sxaend_span(c, p + 316, z)) {
+            return false;
+        }
+        p += 316 + z;
+    }
+    return true;
+}
+function sx_sfx_nss_build(c) {
+    return sxaend_nss(c);
+}

@@ -1,0 +1,178 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/autodesk_fbx/xx_autodesk_fbx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_fbx_header_fields = layout([chars("signature", 23, SIGNATURE), u32("version", ID)]);
+var sxmo_fbx_header = sxLayout(0x6021003B, "fbx_header", LE, sxmo_fbx_header_fields);
+var sxmo_fbx_node32_fields = layout([u32("end_offset", OFFSET), u32("property_count", COUNT), u32("property_list_size", SIZE),
+    u8("name_size", SIZE)]);
+var sxmo_fbx_node32 = sxLayout(0x6021003C, "fbx_node32", LE, sxmo_fbx_node32_fields);
+var sxmo_fbx_node64_fields = layout([u64("end_offset", OFFSET), u64("property_count", COUNT), u64("property_list_size", SIZE),
+    u8("name_size", SIZE)]);
+var sxmo_fbx_node64 = sxLayout(0x6021003D, "fbx_node64", LE, sxmo_fbx_node64_fields);
+var sxmo_fbx_scalar_y_fields = layout([chars("type", 1, ID), i16("value")]);
+var sxmo_fbx_scalar_y = sxLayout(0x6021003E, "fbx_scalar_y", LE, sxmo_fbx_scalar_y_fields);
+var sxmo_fbx_scalar_c_fields = layout([chars("type", 1, ID), u8("value")]);
+var sxmo_fbx_scalar_c = sxLayout(0x6021003F, "fbx_scalar_c", LE, sxmo_fbx_scalar_c_fields);
+var sxmo_fbx_scalar_i_fields = layout([chars("type", 1, ID), i32("value")]);
+var sxmo_fbx_scalar_i = sxLayout(0x60210040, "fbx_scalar_i", LE, sxmo_fbx_scalar_i_fields);
+var sxmo_fbx_scalar_f_fields = layout([chars("type", 1, ID), field("value", "float32", 4)]);
+var sxmo_fbx_scalar_f = sxLayout(0x60210041, "fbx_scalar_f", LE, sxmo_fbx_scalar_f_fields);
+var sxmo_fbx_scalar_l_fields = layout([chars("type", 1, ID), i64("value")]);
+var sxmo_fbx_scalar_l = sxLayout(0x60210042, "fbx_scalar_l", LE, sxmo_fbx_scalar_l_fields);
+var sxmo_fbx_scalar_d_fields = layout([chars("type", 1, ID), field("value", "float64", 8)]);
+var sxmo_fbx_scalar_d = sxLayout(0x60210043, "fbx_scalar_d", LE, sxmo_fbx_scalar_d_fields);
+var sxmo_fbx_blob_fields = layout([chars("type", 1, ID), u32("data_size", SIZE)]);
+var sxmo_fbx_blob = sxLayout(0x60210044, "fbx_blob", LE, sxmo_fbx_blob_fields);
+var sxmo_fbx_array_fields = layout([chars("type", 1, ID), u32("element_count", COUNT), u32("encoding", ID),
+    u32("stored_size", SIZE)]);
+var sxmo_fbx_array = sxLayout(0x60210045, "fbx_array", LE, sxmo_fbx_array_fields);
+var sxmo_fbx_footer_prefix_fields = layout([bytes("identifier", 16), u32("reserved", RESERVED)]);
+var sxmo_fbx_footer_prefix = sxLayout(0x60210046, "fbx_footer_prefix", LE, sxmo_fbx_footer_prefix_fields);
+var sxmo_fbx_footer_tail_fields = layout([u32("version", ID), bytes("reserved", 120, RESERVED),
+    bytes("signature", 16, SIGNATURE)]);
+var sxmo_fbx_footer_tail = sxLayout(0x60210047, "fbx_footer_tail", LE, sxmo_fbx_footer_tail_fields);
+function sxmo_fbx_properties(c, p, end, count) {
+    for (var i = 0; i < count && i < 16000; i++) {
+        var h = [];
+        if (p >= end || !sxmo_read(c, p, h, 1)) {
+            break;
+        }
+        var l = null;
+        var z = 0;
+        switch (h[0]) {
+        case 89 /*Y*/:
+            l = sxmo_fbx_scalar_y;
+            z = 3;
+            break;
+        case 67 /*C*/:
+            l = sxmo_fbx_scalar_c;
+            z = 2;
+            break;
+        case 73 /*I*/:
+            l = sxmo_fbx_scalar_i;
+            z = 5;
+            break;
+        case 70 /*F*/:
+            l = sxmo_fbx_scalar_f;
+            z = 5;
+            break;
+        case 76 /*L*/:
+            l = sxmo_fbx_scalar_l;
+            z = 9;
+            break;
+        case 68 /*D*/:
+            l = sxmo_fbx_scalar_d;
+            z = 9;
+            break;
+        default:
+            break;
+        }
+        if (l !== null) {
+            if (z > sxU64(end - p)) {
+                break;
+            }
+            if (!sxmo_add(c, l, p)) {
+                return false;
+            }
+            p += z;
+            continue;
+        }
+        if (h[0] === 83 /*S*/ || h[0] === 82 /*R*/) {
+            if (sxU64(end - p) < 5 || !sxmo_read(c, p, h, 5)) {
+                break;
+            }
+            var n = sxmo32(h, 1, false);
+            if (n > sxU64(sxU64(end - p) - 5)) {
+                break;
+            }
+            if (!sxmo_add(c, sxmo_fbx_blob, p)) {
+                return false;
+            }
+            p += 5 + n;
+        } else if (h[0] === 102 /*f*/ || h[0] === 100 /*d*/ || h[0] === 108 /*l*/ || h[0] === 105 /*i*/ || h[0] === 98 /*b*/ || h[0] === 99 /*c*/) {
+            if (sxU64(end - p) < 13 || !sxmo_read(c, p, h, 13)) {
+                break;
+            }
+            n = sxmo32(h, 9, false);
+            if (n > sxU64(sxU64(end - p) - 13)) {
+                break;
+            }
+            if (!sxmo_add(c, sxmo_fbx_array, p)) {
+                return false;
+            }
+            p += 13 + n;
+        } else {
+            break;
+        }
+    }
+    return !c.failed;
+}
+function sxmo_fbx_nodes(c, p, end, width, depth, budget) {
+    var z = (((width * 3) >>> 0) + 1) >>> 0;
+    while (p[0] < end && depth < 32 && budget[0] < 16000) {
+        budget[0]++;
+        var h = [];
+        if (sxU64(end - p[0]) < z || !sxmo_read(c, p[0], h, z)) {
+            break;
+        }
+        var stop = sxmo_uint(h, 0, width, false);
+        var count = sxmo_uint(h, width, width, false);
+        var props = sxmo_uint(h, (2 * width) >>> 0, width, false);
+        var name = h[(z - 1) >>> 0];
+        if (!stop && !count && !props && !name) {
+            if (!sxmo_add(c, width === 4 ? sxmo_fbx_node32 : sxmo_fbx_node64, p[0])) {
+                return false;
+            }
+            p[0] += z;
+            break;
+        }
+        if (stop <= p[0] || stop > end || sxU64(stop - p[0]) < z + name || props > sxU64(sxU64(sxU64(stop - p[0]) - z) - name)) {
+            break;
+        }
+        if (!sxmo_add(c, width === 4 ? sxmo_fbx_node32 : sxmo_fbx_node64, p[0])) {
+            return false;
+        }
+        var q = [p[0] + z + name];
+        if (!sxmo_fbx_properties(c, q[0], q[0] + props, count)) {
+            return false;
+        }
+        q[0] += props;
+        if (q[0] < stop && !sxmo_fbx_nodes(c, q, stop, width, (depth + 1) >>> 0, budget)) {
+            return false;
+        }
+        p[0] = stop;
+    }
+    return !c.failed;
+}
+function sxmo_fbx(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 27) || sxMemcmp(h, "Kaydara FBX Binary  \x00\x1A\x00", 23) || !sxmo_add(c, sxmo_fbx_header, 0)) {
+        return false;
+    }
+    var width = sxmo32(h, 23, false) >= 7500 ? 8 : 4;
+    var budget = [0];
+    var p = [27];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (!sxmo_fbx_nodes(c, p, end, width, 0, budget)) {
+        return false;
+    }
+    if (p[0] < end && sxU64(end - p[0]) >= 20) {
+        if (!sxmo_add(c, sxmo_fbx_footer_prefix, p[0])) {
+            return false;
+        }
+        p[0] += 20;
+        p[0] += 16 - sxAnd64(p[0], 15);
+        if (p[0] <= end && sxU64(end - p[0]) >= 140 && !sxmo_add(c, sxmo_fbx_footer_tail, p[0])) {
+            return false;
+        }
+    }
+    return !c.failed;
+}
+function sx_autodesk_fbx_build(c) {
+    var ok = false;
+    ok = sxmo_fbx(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

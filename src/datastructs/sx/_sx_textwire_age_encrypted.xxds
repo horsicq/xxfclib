@@ -1,0 +1,81 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/age_encrypted/xx_age_encrypted_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_recipient_type_fields = layout([field("recipient_type", "utf8", 0, STRING)]);
+var sxtw_recipient_type = sxLayout(0x6071001D, "textwire_recipient_type", LE, sxtw_recipient_type_fields);
+var sxtw_encoded_public_key_fields = layout([field("encoded_public_key", "utf8", 0, STRING)]);
+var sxtw_encoded_public_key = sxLayout(0x6071001E, "textwire_encoded_public_key", LE, sxtw_encoded_public_key_fields);
+var sxtw_encoded_wrapped_key_fields = layout([field("encoded_wrapped_key", "utf8", 0, STRING)]);
+var sxtw_encoded_wrapped_key = sxLayout(0x6071001F, "textwire_encoded_wrapped_key", LE, sxtw_encoded_wrapped_key_fields);
+var sxtw_encoded_header_mac_fields = layout([field("encoded_header_mac", "utf8", 0, STRING)]);
+var sxtw_encoded_header_mac = sxLayout(0x60710020, "textwire_encoded_header_mac", LE, sxtw_encoded_header_mac_fields);
+var sxtw_binary_nonce_fields = layout([bytes("nonce", 16)]);
+var sxtw_binary_nonce = sxLayout(0x60710046, "textwire_binary_nonce", LE, sxtw_binary_nonce_fields);
+function sxtw_age(q) {
+    var a = [0];
+    var end = [0];
+    if (!sxtw_line(q, a, end)) {
+        return false;
+    }
+    {
+        if (!sxtw_emit(q, sxtw_signature, a[0], end[0] - a[0])) {
+            return false;
+        }
+    }
+    while (sxtw_line(q, a, end)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (end[0] - a[0] >= 4 && sxtw_eq(q, a[0], 4, "--- ")) {
+            {
+                if (!sxtw_emit(q, sxtw_encoded_header_mac, a[0] + 4, end[0] - a[0] - 4)) {
+                    return false;
+                }
+            }
+            if (q.n - q.p < 16) {
+                return false;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_binary_nonce, q.p, 16)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (end[0] - a[0] < 10 || !sxtw_eq(q, a[0], 3, "-> ")) {
+            return false;
+        }
+        var p = a[0] + 3;
+        while (p < end[0] && q.b[p] !== 32) {
+            p++;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_recipient_type, a[0] + 3, p - a[0] - 3)) {
+                return false;
+            }
+        }
+        if (p === end[0]) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_encoded_public_key, p + 1, end[0] - p - 1)) {
+                return false;
+            }
+        }
+        if (!sxtw_line(q, a, end)) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_encoded_wrapped_key, a[0], end[0] - a[0])) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+function sx_age_encrypted_build(q) {
+    return sxtw_age(q);
+}

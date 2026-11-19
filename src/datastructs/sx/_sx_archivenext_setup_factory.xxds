@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/setup_factory/xx_setup_factory_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_setup_factory_header_fields = layout([bytes("signature", 8, SIGNATURE), u32("engine_count", COUNT)]);
+var sxan_setup_factory_header = sxLayout(0x60770026, "setup_factory_header", LE, sxan_setup_factory_header_fields);
+var sxan_setup_factory_engine_16_fields = layout([chars("name", 16, NONE), u32("compressed_size", SIZE), u32("crc32", CHECKSUM)]);
+var sxan_setup_factory_engine_16 = sxLayout(0x60770027, "setup_factory_engine_16", LE, sxan_setup_factory_engine_16_fields);
+var sxan_setup_factory_engine_260_fields = layout([chars("name", 260, NONE), u32("compressed_size", SIZE),
+    u32("crc32", CHECKSUM)]);
+var sxan_setup_factory_engine_260 = sxLayout(0x60770028, "setup_factory_engine_260", LE, sxan_setup_factory_engine_260_fields);
+function sxan_sf_name(h, width) {
+    var i = 0;
+    for (; i < width && h[i]; i++) {
+        if (h[i] < 32 || h[i] > 126 || h[i] === 47 || h[i] === 92 || h[i] === 58 /*:*/) {
+            return false;
+        }
+    }
+    if (!i || i === width) {
+        return false;
+    }
+    for (; i < width; i++) {
+        if (h[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxan_setup_factory(c) {
+    var p = [0];
+    var n = [0];
+    var z = [0];
+    var h = [];
+    if (!sxan_pe_overlay(c, p) || !sxan_add(c, sxan_setup_factory_header, p[0]) || !sxan_word(c, p[0] + 8, 4, false, n)) {
+        return false;
+    }
+    p[0] += 12;
+    var width = 0;
+    for (var i = 0; i < n[0]; i++) {
+        if (!width) {
+            if (sxan_read(c, p[0], h, 268) && sxan_sf_name(h, 260) && sxan_uint(h, 260, 4, false)) {
+                width = 260;
+            } else {
+                width = 16;
+            }
+        }
+        if (!sxan_word(c, p[0] + width, 4, false, z) || !z[0] || !sxan_add(c, width === 260 ? sxan_setup_factory_engine_260 : sxan_setup_factory_engine_16, p[0])) {
+            return false;
+        }
+        p[0] += (width + 8) >>> 0;
+        if (!sxan_span(c, p[0], z[0])) {
+            return true;
+        }
+        p[0] += z[0];
+    }
+    return true;
+}
+function sx_setup_factory_build(c) {
+    var ok = false;
+    ok = sxan_setup_factory(c);
+    return !!(c.count && sxan_finish(c));
+}

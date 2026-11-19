@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/chieflz/xx_chieflz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_chieflz_prefix_fields = layout([u8("signature_size", SIZE), chars("signature", 8, SIGNATURE), bytes("opaque0", 2),
+    i32("uncompressed_size", SIZE), bytes("opaque1", 4), u16("dos_date"), u16("dos_time"), bytes("opaque2", 4),
+    u32("crc32", CHECKSUM)]);
+var sxas_chieflz_prefix = sxLayout(0x6043001D, "chieflz_prefix", LE, sxas_chieflz_prefix_fields);
+var sxas_chieflz_name_size_fields = layout([u8("name_size", SIZE)]);
+var sxas_chieflz_name_size = sxLayout(0x6043001E, "chieflz_name_size", LE, sxas_chieflz_name_size_fields);
+var sxas_chieflz_method_fields = layout([u8("method")]);
+var sxas_chieflz_method = sxLayout(0x6043001F, "chieflz_method", LE, sxas_chieflz_method_fields);
+function sxas_chief(c) {
+    return sxas_span(c, 0, 257) && sxas_add(c, sxas_chieflz_prefix, 0) && sxas_add(c, sxas_chieflz_name_size, 40) && sxas_add(c, sxas_chieflz_method, 173);
+}
+function sx_chieflz_build(c) {
+    return sxas_chief(c);
+}

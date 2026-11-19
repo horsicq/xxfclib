@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/gentee_installer/xx_gentee_installer_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_gentee_locator_fields = layout([u32("payload_offset", OFFSET), u32("first_block_size", SIZE),
+    u32("first_unpacked_size", SIZE)]);
+var sxil_gentee_locator = sxLayout(0x60850038, "gentee_locator", LE, sxil_gentee_locator_fields);
+var sxil_gentee_block_size_fields = layout([u32("unpacked_size", SIZE)]);
+var sxil_gentee_block_size = sxLayout(0x60850039, "gentee_block_size", LE, sxil_gentee_block_size_fields);
+function sxil_gentee_overlay(c, out) {
+    var d = [];
+    var h = [];
+    var row = [];
+    if (!sxil_span(c, 0, 0x3FC) || !sxil_read(c, 0, d, 64) || d[0] !== 77 /*M*/ || d[1] !== 90 /*Z*/) {
+        return false;
+    }
+    var lf = sxil32(d, 60, false);
+    if (lf < 64 || lf > 0x10000 || !sxil_read(c, lf, h, 24) || sxMemcmp(h, "PE\x00\x00", 4)) {
+        return false;
+    }
+    var n = sxil16(h, 6, false);
+    var opt = sxil16(h, 20, false);
+    var tab = lf + 24 + opt;
+    var end = 0;
+    if (!n || n > 96 || !sxil_span(c, tab, (40 * n) >>> 0)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxil_read(c, tab + ((40 * i) >>> 0), row, 40)) {
+            return false;
+        }
+        var z = sxil32(row, 16, false);
+        var p = sxil32(row, 20, false);
+        if (z && p + z > end) {
+            end = p + z;
+        }
+    }
+    if (!end || !sxil_span(c, end, 12)) {
+        return false;
+    }
+    out[0] = end;
+    return true;
+}
+function sxil_gentee_header(c, p) {
+    var z = [0];
+    return sxil_u32(c, p, z) && z[0] > 0 && z[0] < 0x100000 && sxil_eq(c, p + 4, "\xABg\xA76\xFFM\xFBo", 8);
+}
+function sxil_gentee(c, r) {
+    var overlay = [0];
+    var p;
+    var off = [0];
+    if (!sxil_gentee_overlay(c, overlay)) {
+        return true;
+    }
+    p = overlay[0];
+    if (sxil_u32(c, 0x3F0, off) && off[0] >= overlay[0] && sxil_gentee_header(c, off[0])) {
+        p = off[0];
+        if (!sxil_put(c, sxil_gentee_locator, 0x3F0, 1)) {
+            return false;
+        }
+    } else if (!sxil_gentee_header(c, p)) {
+        return true;
+    }
+    if (!sxil_put(c, sxil_gentee_block_size, p, 1)) {
+        return false;
+    }
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size >= 4 && m.header !== p && !sxil_put(c, sxil_gentee_block_size, m.header, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_gentee_installer_build(c, records) {
+    return sxil_gentee(c, records);
+}

@@ -1,0 +1,67 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_textimages.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_textimages");
+include("_sx_textimages_gimp_ggr");
+include("_sx_textimages_gimp_gih");
+include("_sx_textimages_gimp_gpl");
+include("_sx_textimages_iridas_cube_lut");
+include("_sx_textimages_jasc_palette");
+include("_sx_textimages_jpeg2000_pgx");
+include("_sx_textimages_lut_cinespace_csp");
+include("_sx_textimages_lut_spi1d");
+include("_sx_textimages_lut_spi3d");
+include("_sx_textimages_mtv_image");
+include("_sx_textimages_netpbm_pfm");
+include("_sx_textimages_pnm");
+include("_sx_textimages_radiance_hdr");
+include("_sx_textimages_unifont_hex");
+include("_sx_textimages_x11_xbm");
+include("_sx_textimages_xpm");
+
+function fileTypes() { return ["PNM", "XPM", "RADIANCE_HDR", "GIMP_GIH", "NETPBM_PFM", "GIMP_GPL", "GIMP_GGR",
+    "IRIDAS_CUBE_LUT", "JASC_PALETTE", "X11_XBM", "JPEG2000_PGX", "LUT_SPI1D", "LUT_SPI3D", "LUT_CINESPACE_CSP", "MTV_IMAGE",
+    "UNIFONT_HEX"]; }
+
+var sx_textimages_layouts = [sxti_magic, sxti_version, sxti_tuple_type, sxti_byte_order, sxti_sample_sign, sxti_axis_y,
+    sxti_axis_x, sxti_lut_dimension, sxti_placement, sxti_selection, sxti_color_key, sxti_color_specification,
+    sxti_declaration_name, sxti_define_name, sxti_name, sxti_title, sxti_color_name, sxti_metadata_text, sxti_brush_name,
+    sxti_width, sxti_height, sxti_depth, sxti_maxval, sxti_precision, sxti_columns, sxti_color_count, sxti_segment_count,
+    sxti_brush_count, sxti_ncells, sxti_cellwidth, sxti_cellheight, sxti_step, sxti_dim, sxti_cols, sxti_rows, sxti_rank0,
+    sxti_characters_per_pixel, sxti_hotspot_x, sxti_hotspot_y, sxti_lut_length, sxti_components, sxti_input_components,
+    sxti_output_components, sxti_red_size, sxti_green_size, sxti_blue_size, sxti_prelut_count, sxti_red_index, sxti_green_index,
+    sxti_blue_index, sxti_declared_bytes, sxti_red, sxti_green, sxti_blue, sxti_scale, sxti_domain_min_red,
+    sxti_domain_min_green, sxti_domain_min_blue, sxti_domain_max_red, sxti_domain_max_green, sxti_domain_max_blue,
+    sxti_from_min, sxti_from_max, sxti_prelut_input, sxti_prelut_output, sxti_left, sxti_middle, sxti_right, sxti_left_red,
+    sxti_left_green, sxti_left_blue, sxti_left_alpha, sxti_right_red, sxti_right_green, sxti_right_blue, sxti_right_alpha,
+    sxti_rgb8_red, sxti_rgb8_green, sxti_rgb8_blue, sxti_sample, sxti_blending, sxti_coloring, sxti_left_color_type,
+    sxti_right_color_type, sxti_unicode_codepoint, sxti_bitmap_byte, sxti_sample_u8, sxti_sample_u16_be, sxti_sample_u16_le,
+    sxti_sample_i8, sxti_sample_i16_be, sxti_sample_i16_le, sxti_sample_float_be, sxti_sample_float_le, sxti_gih_brush_header,
+    sxti_radiance_scanline_header, sxti_radiance_run, sxti_radiance_literal];
+
+function structs() {
+    return sxCatalog([sxti_magic, sxti_version, sxti_tuple_type, sxti_byte_order, sxti_sample_sign, sxti_axis_y, sxti_axis_x,
+        sxti_lut_dimension, sxti_placement, sxti_selection, sxti_color_key, sxti_color_specification, sxti_declaration_name,
+        sxti_define_name, sxti_name, sxti_title, sxti_color_name, sxti_metadata_text, sxti_brush_name, sxti_width, sxti_height,
+        sxti_depth, sxti_maxval, sxti_precision, sxti_columns, sxti_color_count, sxti_segment_count, sxti_brush_count,
+        sxti_ncells, sxti_cellwidth, sxti_cellheight, sxti_step, sxti_dim, sxti_cols, sxti_rows, sxti_rank0,
+        sxti_characters_per_pixel, sxti_hotspot_x, sxti_hotspot_y, sxti_lut_length, sxti_components, sxti_input_components,
+        sxti_output_components, sxti_red_size, sxti_green_size, sxti_blue_size, sxti_prelut_count, sxti_red_index,
+        sxti_green_index, sxti_blue_index, sxti_declared_bytes, sxti_red, sxti_green, sxti_blue, sxti_scale,
+        sxti_domain_min_red, sxti_domain_min_green, sxti_domain_min_blue, sxti_domain_max_red, sxti_domain_max_green,
+        sxti_domain_max_blue, sxti_from_min, sxti_from_max, sxti_prelut_input, sxti_prelut_output, sxti_left, sxti_middle,
+        sxti_right, sxti_left_red, sxti_left_green, sxti_left_blue, sxti_left_alpha, sxti_right_red, sxti_right_green,
+        sxti_right_blue, sxti_right_alpha, sxti_rgb8_red, sxti_rgb8_green, sxti_rgb8_blue, sxti_sample, sxti_blending,
+        sxti_coloring, sxti_left_color_type, sxti_right_color_type, sxti_unicode_codepoint, sxti_bitmap_byte, sxti_sample_u8,
+        sxti_sample_u16_be, sxti_sample_u16_le, sxti_sample_i8, sxti_sample_i16_be, sxti_sample_i16_le, sxti_sample_float_be,
+        sxti_sample_float_le, sxti_gih_brush_header, sxti_radiance_scanline_header, sxti_radiance_run, sxti_radiance_literal], sx_textimages_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_textimages_build, false);
+}

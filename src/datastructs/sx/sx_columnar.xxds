@@ -1,0 +1,96 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_columnar.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_columnar");
+include("_sx_columnar_apache_arrow_file");
+include("_sx_columnar_apache_parquet");
+
+function fileTypes() { return ["APACHE_ARROW_FILE", "APACHE_PARQUET"]; }
+
+var sx_columnar_layouts = [sxq_arrow_file_header, sxq_arrow_file_trailer, sxq_arrow_message_prefix,
+    sxq_arrow_continuation_prefix, sxq_arrow_flatbuffer_root, sxq_arrow_table_header, sxq_arrow_vtable_header,
+    sxq_arrow_vtable_entry, sxq_arrow_vector_header, sxq_arrow_vector_reference, sxq_arrow_string_header, sxq_arrow_block,
+    sxq_arrow_field_node, sxq_arrow_buffer, sxq_arrow_footer_version, sxq_arrow_footer_schema, sxq_arrow_footer_dictionaries,
+    sxq_arrow_footer_record_batches, sxq_arrow_footer_custom_metadata, sxq_arrow_schema_endianness, sxq_arrow_schema_fields,
+    sxq_arrow_schema_custom_metadata, sxq_arrow_schema_features, sxq_arrow_field_name, sxq_arrow_field_nullable,
+    sxq_arrow_field_type_tag, sxq_arrow_field_type, sxq_arrow_field_children, sxq_arrow_field_custom_metadata,
+    sxq_arrow_int_type_bit_width, sxq_arrow_int_type_is_signed, sxq_arrow_message_version, sxq_arrow_message_header_tag,
+    sxq_arrow_message_header, sxq_arrow_message_body_length, sxq_arrow_message_custom_metadata, sxq_arrow_record_batch_length,
+    sxq_arrow_record_batch_nodes, sxq_arrow_record_batch_buffers, sxq_arrow_record_batch_variadic_buffer_counts,
+    sxq_parquet_file_header, sxq_parquet_file_trailer, sxq_thrift_field_header, sxq_thrift_list_header, sxq_thrift_map_types,
+    sxq_thrift_boolean_value, sxq_thrift_byte_value, sxq_thrift_double_bits, sxq_columnar_varuint_size_1,
+    sxq_columnar_varuint_size_2, sxq_columnar_varuint_size_3, sxq_columnar_varuint_size_4, sxq_columnar_varuint_size_5,
+    sxq_columnar_varuint_size_6, sxq_columnar_varuint_size_7, sxq_columnar_varuint_size_8, sxq_columnar_varuint_size_9,
+    sxq_columnar_varuint_size_10, sxq_columnar_varuint_count_1, sxq_columnar_varuint_count_2, sxq_columnar_varuint_count_3,
+    sxq_columnar_varuint_count_4, sxq_columnar_varuint_count_5, sxq_columnar_varuint_count_6, sxq_columnar_varuint_count_7,
+    sxq_columnar_varuint_count_8, sxq_columnar_varuint_count_9, sxq_columnar_varuint_count_10, sxq_thrift_i16_id_1,
+    sxq_thrift_i16_id_2, sxq_thrift_i16_id_3, sxq_thrift_i16_id_4, sxq_thrift_i16_id_5, sxq_thrift_i16_id_6,
+    sxq_thrift_i16_id_7, sxq_thrift_i16_id_8, sxq_thrift_i16_id_9, sxq_thrift_i16_id_10, sxq_thrift_i16_value_1,
+    sxq_thrift_i16_value_2, sxq_thrift_i16_value_3, sxq_thrift_i16_value_4, sxq_thrift_i16_value_5, sxq_thrift_i16_value_6,
+    sxq_thrift_i16_value_7, sxq_thrift_i16_value_8, sxq_thrift_i16_value_9, sxq_thrift_i16_value_10, sxq_thrift_i32_id_1,
+    sxq_thrift_i32_id_2, sxq_thrift_i32_id_3, sxq_thrift_i32_id_4, sxq_thrift_i32_id_5, sxq_thrift_i32_id_6,
+    sxq_thrift_i32_id_7, sxq_thrift_i32_id_8, sxq_thrift_i32_id_9, sxq_thrift_i32_id_10, sxq_thrift_i32_value_1,
+    sxq_thrift_i32_value_2, sxq_thrift_i32_value_3, sxq_thrift_i32_value_4, sxq_thrift_i32_value_5, sxq_thrift_i32_value_6,
+    sxq_thrift_i32_value_7, sxq_thrift_i32_value_8, sxq_thrift_i32_value_9, sxq_thrift_i32_value_10, sxq_thrift_i32_size_1,
+    sxq_thrift_i32_size_2, sxq_thrift_i32_size_3, sxq_thrift_i32_size_4, sxq_thrift_i32_size_5, sxq_thrift_i32_size_6,
+    sxq_thrift_i32_size_7, sxq_thrift_i32_size_8, sxq_thrift_i32_size_9, sxq_thrift_i32_size_10, sxq_thrift_i32_count_1,
+    sxq_thrift_i32_count_2, sxq_thrift_i32_count_3, sxq_thrift_i32_count_4, sxq_thrift_i32_count_5, sxq_thrift_i32_count_6,
+    sxq_thrift_i32_count_7, sxq_thrift_i32_count_8, sxq_thrift_i32_count_9, sxq_thrift_i32_count_10, sxq_thrift_i64_value_1,
+    sxq_thrift_i64_value_2, sxq_thrift_i64_value_3, sxq_thrift_i64_value_4, sxq_thrift_i64_value_5, sxq_thrift_i64_value_6,
+    sxq_thrift_i64_value_7, sxq_thrift_i64_value_8, sxq_thrift_i64_value_9, sxq_thrift_i64_value_10, sxq_thrift_i64_offset_1,
+    sxq_thrift_i64_offset_2, sxq_thrift_i64_offset_3, sxq_thrift_i64_offset_4, sxq_thrift_i64_offset_5, sxq_thrift_i64_offset_6,
+    sxq_thrift_i64_offset_7, sxq_thrift_i64_offset_8, sxq_thrift_i64_offset_9, sxq_thrift_i64_offset_10, sxq_thrift_i64_size_1,
+    sxq_thrift_i64_size_2, sxq_thrift_i64_size_3, sxq_thrift_i64_size_4, sxq_thrift_i64_size_5, sxq_thrift_i64_size_6,
+    sxq_thrift_i64_size_7, sxq_thrift_i64_size_8, sxq_thrift_i64_size_9, sxq_thrift_i64_size_10, sxq_thrift_i64_count_1,
+    sxq_thrift_i64_count_2, sxq_thrift_i64_count_3, sxq_thrift_i64_count_4, sxq_thrift_i64_count_5, sxq_thrift_i64_count_6,
+    sxq_thrift_i64_count_7, sxq_thrift_i64_count_8, sxq_thrift_i64_count_9, sxq_thrift_i64_count_10];
+
+function structs() {
+    return sxCatalog([sxq_arrow_file_header, sxq_arrow_file_trailer, sxq_arrow_message_prefix, sxq_arrow_continuation_prefix,
+        sxq_arrow_flatbuffer_root, sxq_arrow_table_header, sxq_arrow_vtable_header, sxq_arrow_vtable_entry,
+        sxq_arrow_vector_header, sxq_arrow_vector_reference, sxq_arrow_string_header, sxq_arrow_block, sxq_arrow_field_node,
+        sxq_arrow_buffer, sxq_arrow_footer_version, sxq_arrow_footer_schema, sxq_arrow_footer_dictionaries,
+        sxq_arrow_footer_record_batches, sxq_arrow_footer_custom_metadata, sxq_arrow_schema_endianness, sxq_arrow_schema_fields,
+        sxq_arrow_schema_custom_metadata, sxq_arrow_schema_features, sxq_arrow_field_name, sxq_arrow_field_nullable,
+        sxq_arrow_field_type_tag, sxq_arrow_field_type, sxq_arrow_field_children, sxq_arrow_field_custom_metadata,
+        sxq_arrow_int_type_bit_width, sxq_arrow_int_type_is_signed, sxq_arrow_message_version, sxq_arrow_message_header_tag,
+        sxq_arrow_message_header, sxq_arrow_message_body_length, sxq_arrow_message_custom_metadata,
+        sxq_arrow_record_batch_length, sxq_arrow_record_batch_nodes, sxq_arrow_record_batch_buffers,
+        sxq_arrow_record_batch_variadic_buffer_counts, sxq_parquet_file_header, sxq_parquet_file_trailer,
+        sxq_thrift_field_header, sxq_thrift_list_header, sxq_thrift_map_types, sxq_thrift_boolean_value, sxq_thrift_byte_value,
+        sxq_thrift_double_bits, sxq_columnar_varuint_size_1, sxq_columnar_varuint_size_2, sxq_columnar_varuint_size_3,
+        sxq_columnar_varuint_size_4, sxq_columnar_varuint_size_5, sxq_columnar_varuint_size_6, sxq_columnar_varuint_size_7,
+        sxq_columnar_varuint_size_8, sxq_columnar_varuint_size_9, sxq_columnar_varuint_size_10, sxq_columnar_varuint_count_1,
+        sxq_columnar_varuint_count_2, sxq_columnar_varuint_count_3, sxq_columnar_varuint_count_4, sxq_columnar_varuint_count_5,
+        sxq_columnar_varuint_count_6, sxq_columnar_varuint_count_7, sxq_columnar_varuint_count_8, sxq_columnar_varuint_count_9,
+        sxq_columnar_varuint_count_10, sxq_thrift_i16_id_1, sxq_thrift_i16_id_2, sxq_thrift_i16_id_3, sxq_thrift_i16_id_4,
+        sxq_thrift_i16_id_5, sxq_thrift_i16_id_6, sxq_thrift_i16_id_7, sxq_thrift_i16_id_8, sxq_thrift_i16_id_9,
+        sxq_thrift_i16_id_10, sxq_thrift_i16_value_1, sxq_thrift_i16_value_2, sxq_thrift_i16_value_3, sxq_thrift_i16_value_4,
+        sxq_thrift_i16_value_5, sxq_thrift_i16_value_6, sxq_thrift_i16_value_7, sxq_thrift_i16_value_8, sxq_thrift_i16_value_9,
+        sxq_thrift_i16_value_10, sxq_thrift_i32_id_1, sxq_thrift_i32_id_2, sxq_thrift_i32_id_3, sxq_thrift_i32_id_4,
+        sxq_thrift_i32_id_5, sxq_thrift_i32_id_6, sxq_thrift_i32_id_7, sxq_thrift_i32_id_8, sxq_thrift_i32_id_9,
+        sxq_thrift_i32_id_10, sxq_thrift_i32_value_1, sxq_thrift_i32_value_2, sxq_thrift_i32_value_3, sxq_thrift_i32_value_4,
+        sxq_thrift_i32_value_5, sxq_thrift_i32_value_6, sxq_thrift_i32_value_7, sxq_thrift_i32_value_8, sxq_thrift_i32_value_9,
+        sxq_thrift_i32_value_10, sxq_thrift_i32_size_1, sxq_thrift_i32_size_2, sxq_thrift_i32_size_3, sxq_thrift_i32_size_4,
+        sxq_thrift_i32_size_5, sxq_thrift_i32_size_6, sxq_thrift_i32_size_7, sxq_thrift_i32_size_8, sxq_thrift_i32_size_9,
+        sxq_thrift_i32_size_10, sxq_thrift_i32_count_1, sxq_thrift_i32_count_2, sxq_thrift_i32_count_3, sxq_thrift_i32_count_4,
+        sxq_thrift_i32_count_5, sxq_thrift_i32_count_6, sxq_thrift_i32_count_7, sxq_thrift_i32_count_8, sxq_thrift_i32_count_9,
+        sxq_thrift_i32_count_10, sxq_thrift_i64_value_1, sxq_thrift_i64_value_2, sxq_thrift_i64_value_3, sxq_thrift_i64_value_4,
+        sxq_thrift_i64_value_5, sxq_thrift_i64_value_6, sxq_thrift_i64_value_7, sxq_thrift_i64_value_8, sxq_thrift_i64_value_9,
+        sxq_thrift_i64_value_10, sxq_thrift_i64_offset_1, sxq_thrift_i64_offset_2, sxq_thrift_i64_offset_3,
+        sxq_thrift_i64_offset_4, sxq_thrift_i64_offset_5, sxq_thrift_i64_offset_6, sxq_thrift_i64_offset_7,
+        sxq_thrift_i64_offset_8, sxq_thrift_i64_offset_9, sxq_thrift_i64_offset_10, sxq_thrift_i64_size_1,
+        sxq_thrift_i64_size_2, sxq_thrift_i64_size_3, sxq_thrift_i64_size_4, sxq_thrift_i64_size_5, sxq_thrift_i64_size_6,
+        sxq_thrift_i64_size_7, sxq_thrift_i64_size_8, sxq_thrift_i64_size_9, sxq_thrift_i64_size_10, sxq_thrift_i64_count_1,
+        sxq_thrift_i64_count_2, sxq_thrift_i64_count_3, sxq_thrift_i64_count_4, sxq_thrift_i64_count_5, sxq_thrift_i64_count_6,
+        sxq_thrift_i64_count_7, sxq_thrift_i64_count_8, sxq_thrift_i64_count_9, sxq_thrift_i64_count_10], sx_columnar_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_columnar_build, false);
+}

@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/fdi/xx_fdi_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_fdi_header_fields = layout([chars("signature", 3, SIGNATURE), u8("write_protected", FLAGS), u16("cylinders", COUNT),
+    u16("heads", COUNT), u16("text_offset", OFFSET), u16("data_offset", OFFSET), u16("extra_header_size", SIZE)]);
+var sxdi_fdi_header = sxLayout(0x6015000F, "fdi_header", LE, sxdi_fdi_header_fields);
+var sxdi_fdi_track_header_fields = layout([u32("track_data_offset", OFFSET), u16("reserved", RESERVED),
+    u8("sector_count", COUNT)]);
+var sxdi_fdi_track_header = sxLayout(0x60150010, "fdi_track_header", LE, sxdi_fdi_track_header_fields);
+var sxdi_fdi_sector_header_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector_id", ID), u8("size_code"),
+    u8("flags", FLAGS), u16("data_offset", OFFSET)]);
+var sxdi_fdi_sector_header = sxLayout(0x60150011, "fdi_sector_header", LE, sxdi_fdi_sector_header_fields);
+function sxdi_fdi(c) {
+    var h = [];
+    if (!sxdi_read(c, 0, h, 14) || sxMemcmp(h, "FDI", 3) || !sx_add(c, sxdi_fdi_header, 0, 14)) {
+        return false;
+    }
+    var cyl = sxdi_le16(h, 4);
+    var heads = sxdi_le16(h, 6);
+    var at = 14 + sxdi_le16(h, 12);
+    var limit = sxdi_le16(h, 10);
+    var text = sxdi_le16(h, 8);
+    if (!cyl || cyl > 256 || !heads || heads > 2 || at > limit || limit > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return true;
+    }
+    if (text >= at && text < limit) {
+        limit = text;
+    }
+    for (var i = 0; i < sxMul32(cyl, heads); i++) {
+        var t = [];
+        if (at > limit || sxU64(limit - at) < 7 || !sxdi_read(c, at, t, 7)) {
+            break;
+        }
+        var bytes = 7 + t[6] * 7;
+        if (bytes > sxU64(limit - at)) {
+            break;
+        }
+        if (!sx_add(c, sxdi_fdi_track_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 7)) {
+            return false;
+        }
+        if (t[6] && !sx_table(c, sxdi_fdi_sector_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 7, 7, t[6])) {
+            return false;
+        }
+        at += bytes;
+    }
+    return true;
+}
+function sx_fdi_build(c) {
+    return sxdi_fdi(c);
+}

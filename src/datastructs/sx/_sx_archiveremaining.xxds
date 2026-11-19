@@ -1,0 +1,443 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveremaining.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_archiveremaining_name_fields = layout([field("archiveremaining_name", "char", 0, STRING)]);
+var sxarm_archiveremaining_name = sxLayout(0x607C0001, "archiveremaining_name", LE, sxarm_archiveremaining_name_fields);
+var sxarm_transport_filename_fields = layout([field("transport_filename", "char", 0, STRING)]);
+var sxarm_transport_filename = sxLayout(0x607C0009, "transport_filename", LE, sxarm_transport_filename_fields);
+var sxarm_transport_decimal_size_fields = layout([field("transport_decimal_size", "ascii_decimal", 0, SIZE)]);
+var sxarm_transport_decimal_size = sxLayout(0x607C000A, "transport_decimal_size", LE, sxarm_transport_decimal_size_fields);
+var sxarm_transport_crc_fields = layout([field("transport_crc", "ascii_hex", 0, CHECKSUM)]);
+var sxarm_transport_crc = sxLayout(0x607C000C, "transport_crc", LE, sxarm_transport_crc_fields);
+var sxarm_pax_member_fields = layout([chars("signature", 4, SIGNATURE), bytes("plaintext_prefix", 4),
+    u32("uncompressed_size", SIZE), bytes("unknown_header_bytes", 16), u16("name_size", SIZE)]);
+var sxarm_pax_member = sxLayout(0x607C0015, "pax_member", BE, sxarm_pax_member_fields);
+var sxarm_sou_voc_block_fields = layout([u8("block_type", ID), field("payload_size", "uint24", 3, SIZE)]);
+var sxarm_sou_voc_block = sxLayout(0x607C0022, "sou_voc_block", LE, sxarm_sou_voc_block_fields);
+var sxarm_rvz_disc_header_fields = layout([u32("disc_type", ID), u32("compression", ID), i32("compression_level"),
+    u32("chunk_size", SIZE), bytes("disc_image_header", 128), u32("partition_count", COUNT), u32("partition_entry_size", SIZE),
+    u64("partition_table_offset", OFFSET), bytes("partition_table_sha1", 20, CHECKSUM), u32("raw_count", COUNT),
+    u64("raw_table_offset", OFFSET), u32("raw_table_size", SIZE), u32("group_count", COUNT), u64("group_table_offset", OFFSET),
+    u32("group_table_size", SIZE), u8("compression_properties_size", SIZE)]);
+var sxarm_rvz_disc_header = sxLayout(0x607C002B, "rvz_disc_header", BE, sxarm_rvz_disc_header_fields);
+var sxarm_transport_invalid_number_fields = layout([field("transport_invalid_number", "char", 0)]);
+var sxarm_transport_invalid_number = sxLayout(0x607C0048, "transport_invalid_number", LE, sxarm_transport_invalid_number_fields);
+var sx_archiveremaining_comment_names = ["Terminator", "Sound data", "Sound data continuation", "Silence", "Marker", "Text",
+    "Repeat start", "Repeat end", "Extended sound information", "New sound data"];
+function sx_archiveremaining_comment(r, id) {
+    if (r === null || r.name === null || id < 0x607C0000 || id >= 0x607D0000) {
+        return true;
+    }
+    if (r.type !== null && !sxStrncmp(r.type, "ascii_decimal[", 14) && r.value.t === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x607C0006:
+        text = "One-based part/segment number, not a byte offset or quantity.";
+        break;
+    case 0x607C000F:
+        text = "Configured encoded characters per output line; escapes may extend the encoded line.";
+        break;
+    case 0x607C0010:
+        text = "One-based part/segment number, not a byte offset or quantity.";
+        break;
+    case 0x607C0012:
+        text = "One-based inclusive byte position in the reconstructed output, not a physical file offset.";
+        break;
+    case 0x607C0013:
+        text = "One-based inclusive byte position in the reconstructed output, not a physical file offset.";
+        break;
+    case 0x607C0015:
+        text = "Name size includes its terminating NUL. Unknown physical header bytes retained without inferred meaning; adaptive Huffman parameters/payload remain raw.";
+        break;
+    case 0x607C0016:
+        text = "Literal run length = control - 0xE0 bytes. The immediately following bytes are literals.";
+        break;
+    case 0x607C0017:
+        text = "Length=(control>>5)+2; distance=((control&31)<<8|distance_low)+1 in current decoded block; no physical file offset is stored.";
+        break;
+    case 0x607C0018:
+        text = "Length=length_code+4; source is an absolute byte position inside the current decoded block, not a stored-file offset.";
+        break;
+    case 0x607C0019:
+        text = "0xE0 ends a decoded block; a second consecutive empty block terminates the file.";
+        break;
+    case 0x607C001A:
+        text = "BALZ 1.20 stored output byte length; the range-coded body has no independent byte-aligned per-symbol headers.";
+        break;
+    case 0x607C001B:
+        text = "Original bzip 0 stream: ASCII block-size digit 1..9 multiplies 100000 bytes. Arithmetic-coded blocks and whole-file CRC are not mapped to fabricated byte fields.";
+        break;
+    case 0x607C001C:
+        text = "Freeze 2 distance-code counts: low word bits 0,1..2,3..5,6..9,10..14 hold counts for lengths 1..5; next byte stores length 6 count. Length 7/8 counts are derived.";
+        break;
+    case 0x607C001D:
+        text = "Each stored byte is XOR 0x69. Decoded tag is ASCII and decoded big-endian size includes this 8-byte header; decoded numbers are not the raw stored value.";
+        break;
+    case 0x607C001F:
+        text = "SOU VCTL/VTTL/VTLK size includes its 8-byte header.";
+        break;
+    case 0x607C0020:
+        text = "Big-endian mouth-sync timing value; time units depend on the game, not audio sample positions. 0xFFFF is the end sentinel.";
+        break;
+    case 0x607C0027:
+        text = "Repeat count encoding; 0xFFFF means endless repetition.";
+        break;
+    case 0x607C002B:
+        text = "RVZ v1 native scope is GameCube without partitions. Compression level is signed (Zstandard supports negative values).";
+        break;
+    case 0x607C002C:
+        text = "Offset refers to reconstructed ISO bytes, not this physical RVZ file.";
+        break;
+    case 0x607C002D:
+        text = "Physical payload offset=data_offset_div4*4. Size low 31 bits are stored bytes; bit 31 selects configured compression. Packed size 0 means RVZ packing is absent.";
+        break;
+    case 0x607C002E:
+        text = "Low31 bits are output byte length; bit 31 selects 68 bytes of PRNG seed instead of literal bytes.";
+        break;
+    case 0x607C002F:
+        text = "17 big-endian seed words for Dolphin RVZ lagged-Fibonacci padding generator.";
+        break;
+    case 0x607C0031:
+        text = "Each distinct physical character maps to its 0..63 position; four encoded symbols represent three bytes in reverse group order.";
+        break;
+    case 0x607C0032:
+        text = "Name length=first character-0x40. The 36 encoded symbols carry 27 decoded metadata bytes; fields that share encoded symbols are deliberately not assigned fictitious byte offsets.";
+        break;
+    case 0x607C0033:
+        text = "Four alphabet symbols encode the little-endian CRC16/XMODEM plus one padding byte; checksum covers decoded padded data.";
+        break;
+    case 0x607C003B:
+        text = "UU/XX alphabet value of this character gives decoded byte count. The following groups encode 3 bytes per 4 symbols.";
+        break;
+    case 0x607C0045:
+        text = "Contiguous stored Ascii85 digit characters; whitespace can split a decoded group. z/y/w are separate shorthand tokens.";
+        break;
+    case 0x607C0046:
+        text = "Ascii85/btoa shorthand: z=zeros, y=spaces (or legacy 0xFF), w=256x0xFF in old btoa; native validation determines legal dialect.";
+        break;
+    case 0x607C0047:
+        text = "btoa5 line check character; retained physically. Native reader ignores its value and verifies trailer checksums.";
+        break;
+    case 0x607C0048:
+        text = "Invalid or overflowing hexadecimal token; original encoded bytes retained without numeric interpretation.";
+        break;
+    default:
+        break;
+    }
+    if (id === sxarm_rvz_disc_header.id && r.name === "disc_type") {
+        if (sxVarU64(r.value) === 1) {
+            text = "GameCube";
+        } else if (sxVarU64(r.value) === 2) {
+            text = "Wii";
+        }
+    }
+    if (id === sxarm_rvz_disc_header.id && r.name === "compression") {
+        switch (sxVarU64(r.value)) {
+        case 0:
+            text = "None (stored tables and groups)";
+            break;
+        case 5:
+            text = "Zstandard";
+            break;
+        default:
+            text = "Other RVZ compression method; compressed metadata remains raw";
+            break;
+        }
+    }
+    if (id === sxarm_sou_voc_block.id && r.name === "block_type") {
+        var v = sxVarU64(r.value);
+        if (v < 10) {
+            text = sx_archiveremaining_comment_names[v];
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxarm_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxarm_read(c, p, b, n) {
+    return sxarm_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxarm_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxarm_word(c, p, n, be, v) {
+    var b = [];
+    if (!n || n > 8 || !sxarm_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxarm_uint(b, 0, n, be);
+    return true;
+}
+function sxarm_put(c, l, p, n, aliases) {
+    if (c.count >= 20000) {
+        return false;
+    }
+    if (!n) {
+        var f = l.fields[sxU64(l.field_count - 1)];
+        if (!f.size) {
+            return false;
+        }
+        n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    }
+    if (!sxarm_span(c, p, n)) {
+        return false;
+    }
+    var a = c.f.base_address + (p >= SX_I64_MAX ? p - SX_U64_MAX : p);
+    var lo = 0;
+    var hi = c.count;
+    while (lo < hi) {
+        var m = lo + Math.floor(sxU64(hi - lo) / 2);
+        if (c.items[m].offset < a) {
+            lo = m + 1;
+        } else {
+            hi = m;
+        }
+    }
+    if (!aliases && (lo < c.count && c.items[lo].offset < a + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || lo && c.items[sxU64(lo - 1)].offset + c.items[sxU64(lo - 1)].total_size > a)) {
+        return true;
+    }
+    var old = c.count;
+    if (!sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n))) {
+        return false;
+    }
+    var row = sxCopy_xx_data_struct(null, c.items[old]);
+    sxCopyN(c.items, lo + 1, c.items, lo, Math.floor((sxU64(old - lo) * 56) / 56), sxCopy_xx_data_struct);
+    c.items[lo] = sxCopy_xx_data_struct(null, row);
+    return true;
+}
+function sxarm_add(c, l, p) {
+    return sxarm_put(c, l, p, 0, false);
+}
+function sxarm_text(c, l, p, n, aliases) {
+    var max = sxVariableLimit(l.fields[sxU64(l.field_count - 1)].type);
+    return (!n || n > sxU64(max ? max : 4096) ? 1 : (sxarm_put(c, l, p, n, aliases) ? 1 : 0)) !== 0;
+}
+function sxarm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxarm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxarm_order, true);
+    return !c.failed;
+}
+function sxarm_table(c, l, p, width, n) {
+    if (!width || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || n > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p) / width)) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxarm_add(c, l, p + i * width)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxarm_line(c, p, b, cap, n, next) {
+    n[0] = 0;
+    var q = p;
+    while (q < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        var x = [0];
+        if (!sxarm_read(c, q, x, 1)) {
+            return false;
+        }
+        q++;
+        if (x[0] === 13 || x[0] === 10) {
+            if (x[0] === 13 && q < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+                var y = [0];
+                if (!sxarm_read(c, q, y, 1)) {
+                    return false;
+                }
+                if (y[0] === 10) {
+                    q++;
+                }
+            }
+            next[0] = q;
+            return true;
+        }
+        if (n[0] >= cap) {
+            return false;
+        }
+        b[n[0]++] = x[0];
+    }
+    next[0] = q;
+    return q > p;
+}
+function sxarm_eq(b, b_o, n, s) {
+    var z = sxStrlen(s);
+    if (z !== n) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var x = b[b_o + i];
+        var y = sxAt(s, i) & 0xFF;
+        if (x >= 65 /*A*/ && x <= 90 /*Z*/) {
+            x = (x + 32) >>> 0;
+        }
+        if (y >= 65 /*A*/ && y <= 90 /*Z*/) {
+            y = (y + 32) >>> 0;
+        }
+        if (x !== y) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxarm_uint_text(b, b_o, n, radix, v) {
+    v[0] = 0;
+    if (!n || n > 24) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var x = b[b_o + i];
+        var d = x >= 48 /*0*/ && x <= 57 /*9*/ ? (x - 48 /*0*/) >>> 0 : x >= 97 /*a*/ && x <= 102 /*f*/ ? (((x - 97 /*a*/) >>> 0) + 10) >>> 0 : x >= 65 /*A*/ && x <= 70 /*F*/ ? (((x - 65 /*A*/) >>> 0) + 10) >>> 0 : 255;
+        if (d >= radix || v[0] > Math.floor((SX_U64_MAX - d) / radix)) {
+            return false;
+        }
+        v[0] = v[0] * radix + d;
+    }
+    return true;
+}
+function sxarm_name(c, p, n) {
+    return sxarm_text(c, sxarm_archiveremaining_name, p, n, false);
+}
+function sxarm_numeric_text(c, l, p, b, b_o, n) {
+    var value = [0];
+    if (!sxStrncmp(l.fields[0].type, "ascii_hex", 9) && !sxarm_uint_text(b, b_o, n, 16, value)) {
+        return sxarm_text(c, sxarm_transport_invalid_number, p, n, false);
+    }
+    return sxarm_text(c, l, p, n, false);
+}
+function sxarm_callback(c, pax) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var s = f.create_archive_records_reading(f, null, c.pd);
+    if (s === null) {
+        return false;
+    }
+    var ok = true;
+    for (var i = 0; i < 20000; i++) {
+        var r = f.get_current_archive_record(f, s);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset >= f.base_address && r.header_size > 0) {
+            var p = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+            var z = (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size);
+            if (!sxarm_span(c, p, z)) {
+                ok = false;
+                break;
+            }
+            if (pax) {
+                if (z < 32 || !sxarm_add(c, sxarm_pax_member, p) || !sxarm_name(c, p + 30, sxU64(z - 30))) {
+                    ok = false;
+                    break;
+                }
+            } else if (!sxarm_name(c, p, z)) {
+                ok = false;
+                break;
+            }
+        }
+        if (!f.archive_record_move_to_next(f, s, c.pd)) {
+            break;
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sx_archiveremaining_supports(type) {
+    switch (type) {
+    case "WARC":
+    case "GLU":
+    case "PCOMMOS2":
+    case "PAX":
+    case "BTOA":
+    case "UUE":
+    case "BINSCII":
+    case "YENC_ENCODED_FILE":
+    case "BALZ":
+    case "BZIP1":
+    case "FREEZE":
+    case "RVZ":
+    case "AUDIO_SCUMM_SOU":
+    case "HE_TLKB":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_archiveremaining_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "WARC":
+        ok = sx_warc_build(c);
+        break;
+    case "GLU":
+        ok = sxarm_callback(c, false);
+        break;
+    case "PAX":
+        ok = sxarm_callback(c, true);
+        break;
+    case "PCOMMOS2":
+        ok = sx_pcommos2_build(c);
+        break;
+    case "BTOA":
+        ok = sx_btoa_build(c);
+        break;
+    case "UUE":
+        ok = sx_uue_build(c);
+        break;
+    case "BINSCII":
+        ok = sx_binscii_build(c);
+        break;
+    case "YENC_ENCODED_FILE":
+        ok = sx_yenc_encoded_file_build(c);
+        break;
+    case "BALZ":
+        ok = sx_balz_build(c);
+        break;
+    case "BZIP1":
+        ok = sx_bzip1_build(c);
+        break;
+    case "FREEZE":
+        ok = sx_freeze_build(c);
+        break;
+    case "RVZ":
+        ok = sx_rvz_build(c);
+        break;
+    case "AUDIO_SCUMM_SOU":
+        ok = sx_audio_scumm_sou_build(c);
+        break;
+    case "HE_TLKB":
+        ok = sx_he_tlkb_build(c);
+        break;
+    default:
+        return false;
+    }
+    return !!(c.count && sxarm_finish(c));
+}

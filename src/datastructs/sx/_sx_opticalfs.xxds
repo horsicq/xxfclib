@@ -1,0 +1,213 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_opticalfs.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxo_iso_directory_record_fields = layout([u8("record_length", SIZE), u8("extended_attribute_blocks", COUNT),
+    u32("extent_lba_le"), field("extent_lba_be", "uint32be", 4), u32("data_length_le", SIZE),
+    field("data_length_be", "uint32be", 4, SIZE), u8("recorded_year_since_1900"), u8("recorded_month"), u8("recorded_day"),
+    u8("recorded_hour"), u8("recorded_minute"), u8("recorded_second"), i8("recorded_timezone_quarters"), u8("flags", FLAGS),
+    u8("file_unit_blocks", COUNT), u8("interleave_gap_blocks", COUNT), u16("volume_sequence_le"),
+    field("volume_sequence_be", "uint16be", 2), u8("identifier_length", SIZE)]);
+var sxo_iso_directory_record = sxLayout(0x60130001, "iso_directory_record", LE, sxo_iso_directory_record_fields);
+var sxo_iso_volume_descriptor_header_fields = layout([u8("descriptor_type", ID), chars("standard_identifier", 5, SIGNATURE),
+    u8("descriptor_version", ID)]);
+var sxo_iso_volume_descriptor_header = sxLayout(0x60130009, "iso_volume_descriptor_header", LE, sxo_iso_volume_descriptor_header_fields);
+var sxo_hfsplus_volume_header_fields = layout([u16("signature", SIGNATURE), u16("version", ID), u32("attributes", FLAGS),
+    u32("last_mounted_version", ID), u32("journal_info_block"), u32("create_date", TIMESTAMP), u32("modify_date", TIMESTAMP),
+    u32("backup_date", TIMESTAMP), u32("checked_date", TIMESTAMP), u32("file_count", COUNT), u32("folder_count", COUNT),
+    u32("block_size", SIZE), u32("total_blocks", COUNT), u32("free_blocks", COUNT), u32("next_allocation_block"),
+    u32("resource_clump_size", SIZE), u32("data_clump_size", SIZE), u32("next_catalog_id", ID), u32("write_count", COUNT),
+    u64("encodings_bitmap", FLAGS), u32("finder_info0"), u32("finder_info1"), u32("finder_info2"), u32("finder_info3"),
+    u32("finder_info4"), u32("finder_info5"), u32("finder_info6"), u32("finder_info7"), u64("allocation_logical_size", SIZE),
+    u32("allocation_clump_size", SIZE), u32("allocation_total_blocks", COUNT), u32("allocation_extent0_start_block"),
+    u32("allocation_extent0_block_count", COUNT), u32("allocation_extent1_start_block"),
+    u32("allocation_extent1_block_count", COUNT), u32("allocation_extent2_start_block"),
+    u32("allocation_extent2_block_count", COUNT), u32("allocation_extent3_start_block"),
+    u32("allocation_extent3_block_count", COUNT), u32("allocation_extent4_start_block"),
+    u32("allocation_extent4_block_count", COUNT), u32("allocation_extent5_start_block"),
+    u32("allocation_extent5_block_count", COUNT), u32("allocation_extent6_start_block"),
+    u32("allocation_extent6_block_count", COUNT), u32("allocation_extent7_start_block"),
+    u32("allocation_extent7_block_count", COUNT), u64("extents_logical_size", SIZE), u32("extents_clump_size", SIZE),
+    u32("extents_total_blocks", COUNT), u32("extents_extent0_start_block"), u32("extents_extent0_block_count", COUNT),
+    u32("extents_extent1_start_block"), u32("extents_extent1_block_count", COUNT), u32("extents_extent2_start_block"),
+    u32("extents_extent2_block_count", COUNT), u32("extents_extent3_start_block"), u32("extents_extent3_block_count", COUNT),
+    u32("extents_extent4_start_block"), u32("extents_extent4_block_count", COUNT), u32("extents_extent5_start_block"),
+    u32("extents_extent5_block_count", COUNT), u32("extents_extent6_start_block"), u32("extents_extent6_block_count", COUNT),
+    u32("extents_extent7_start_block"), u32("extents_extent7_block_count", COUNT), u64("catalog_logical_size", SIZE),
+    u32("catalog_clump_size", SIZE), u32("catalog_total_blocks", COUNT), u32("catalog_extent0_start_block"),
+    u32("catalog_extent0_block_count", COUNT), u32("catalog_extent1_start_block"), u32("catalog_extent1_block_count", COUNT),
+    u32("catalog_extent2_start_block"), u32("catalog_extent2_block_count", COUNT), u32("catalog_extent3_start_block"),
+    u32("catalog_extent3_block_count", COUNT), u32("catalog_extent4_start_block"), u32("catalog_extent4_block_count", COUNT),
+    u32("catalog_extent5_start_block"), u32("catalog_extent5_block_count", COUNT), u32("catalog_extent6_start_block"),
+    u32("catalog_extent6_block_count", COUNT), u32("catalog_extent7_start_block"), u32("catalog_extent7_block_count", COUNT),
+    u64("attributes_logical_size", SIZE), u32("attributes_clump_size", SIZE), u32("attributes_total_blocks", COUNT),
+    u32("attributes_extent0_start_block"), u32("attributes_extent0_block_count", COUNT), u32("attributes_extent1_start_block"),
+    u32("attributes_extent1_block_count", COUNT), u32("attributes_extent2_start_block"),
+    u32("attributes_extent2_block_count", COUNT), u32("attributes_extent3_start_block"),
+    u32("attributes_extent3_block_count", COUNT), u32("attributes_extent4_start_block"),
+    u32("attributes_extent4_block_count", COUNT), u32("attributes_extent5_start_block"),
+    u32("attributes_extent5_block_count", COUNT), u32("attributes_extent6_start_block"),
+    u32("attributes_extent6_block_count", COUNT), u32("attributes_extent7_start_block"),
+    u32("attributes_extent7_block_count", COUNT), u64("startup_logical_size", SIZE), u32("startup_clump_size", SIZE),
+    u32("startup_total_blocks", COUNT), u32("startup_extent0_start_block"), u32("startup_extent0_block_count", COUNT),
+    u32("startup_extent1_start_block"), u32("startup_extent1_block_count", COUNT), u32("startup_extent2_start_block"),
+    u32("startup_extent2_block_count", COUNT), u32("startup_extent3_start_block"), u32("startup_extent3_block_count", COUNT),
+    u32("startup_extent4_start_block"), u32("startup_extent4_block_count", COUNT), u32("startup_extent5_start_block"),
+    u32("startup_extent5_block_count", COUNT), u32("startup_extent6_start_block"), u32("startup_extent6_block_count", COUNT),
+    u32("startup_extent7_start_block"), u32("startup_extent7_block_count", COUNT)]);
+var sxo_hfsplus_volume_header = sxLayout(0x6013001A, "hfsplus_volume_header", BE, sxo_hfsplus_volume_header_fields);
+var sxo_hfsplus_btree_node_descriptor_fields = layout([u32("forward_link"), u32("backward_link"), i8("kind", ID), u8("height"),
+    u16("record_count", COUNT), u16("reserved", RESERVED)]);
+var sxo_hfsplus_btree_node_descriptor = sxLayout(0x6013001B, "hfsplus_btree_node_descriptor", BE, sxo_hfsplus_btree_node_descriptor_fields);
+var sxo_hfsplus_catalog_thread_fields = layout([i16("record_type", ID), i16("reserved", RESERVED), u32("parent_id", ID),
+    u16("name_code_units", COUNT)]);
+var sxo_hfsplus_catalog_thread = sxLayout(0x60130021, "hfsplus_catalog_thread", BE, sxo_hfsplus_catalog_thread_fields);
+function sx_opticalfs_supports(t) {
+    return t === "ISO9660" || t === "UDF" || t === "HFSPLUS";
+}
+function sxo_u32(p, p_o) {
+    return sxGetU32At(p, p_o, 4, 0, false);
+}
+function sxo_u16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, false);
+}
+function sxo_can(c, at, n) {
+    return at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxo_add(c, l, at, n) {
+    if (n <= 0 || !sxo_can(c, at, (n < 0 ? n + SX_U64_MAX : n)) || at > SX_I64_MAX - c.f.base_address) {
+        return false;
+    }
+    for (var i = 0; i < c.count; i++) {
+        if (c.items[i].offset === c.f.base_address + at && c.items[i].id === l.id && c.items[i].total_size === n) {
+            return true;
+        }
+    }
+    return sx_add(c, l, at, n);
+}
+function sxo_finish(c) {
+    var count = c.count;
+    var end = 0;
+    for (var i = 1; i < count; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        var j = i;
+        while (j && c.items[sxU64(j - 1)].offset > d.offset) {
+            c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - 1)]);
+            j--;
+        }
+        c.items[j] = sxCopy_xx_data_struct(null, d);
+    }
+    for (i = 0; i < count; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var n = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + n;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    for (i = 1; i < c.count; i++) {
+        d = sxCopy_xx_data_struct(null, c.items[i]);
+        j = i;
+        while (j && c.items[sxU64(j - 1)].offset > d.offset) {
+            c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - 1)]);
+            j--;
+        }
+        c.items[j] = sxCopy_xx_data_struct(null, d);
+    }
+    return !c.failed;
+}
+function sx_opticalfs_build(c) {
+    if (c.f.handle_base_info === null || !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = (c.f.file_type === "ISO9660" ? (sx_iso9660_build(c) ? 1 : 0) : c.f.file_type === "UDF" ? (sx_udf_build(c) ? 1 : 0) : c.f.file_type === "HFSPLUS" ? (sx_hfsplus_build(c) ? 1 : 0) : 0) !== 0;
+    return !!(ok && c.count && sxo_finish(c));
+}
+function sxo_has(s, s_o, p) {
+    var n = sxStrlen(p);
+    for (; sxAt(s, s_o); s_o++) {
+        if (!sxStrncmpAt(s, s_o, p, 0, n)) {
+            return true;
+        }
+    }
+    return false;
+}
+function sx_opticalfs_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60130000 || id >= 0x60140000) {
+        return true;
+    }
+    var n = r.name;
+    var text = null;
+    var v = sxVarU64(r.value);
+    if (sxo_has(n, 0, "_lba") || sxo_has(n, 0, "_location") || sxo_has(n, 0, "logical_block") || !sxStrcmp(n, "starting_location")) {
+        text = "Logical block number; byte position depends on the volume or partition origin and logical block size";
+    }
+    if (sxo_has(n, 0, "_blocks") || sxo_has(n, 0, "logical_blocks_recorded")) {
+        text = "Logical blocks, not bytes; multiply by the logical block size";
+    }
+    if (sxo_has(n, 0, "timezone_quarters")) {
+        text = "Signed offset from UTC in 15-minute units";
+    }
+    if (sxo_has(n, 0, "type_timezone")) {
+        text = "High 4 bits: timestamp type; low 12 bits: signed UTC offset in minutes (0x801 means unspecified)";
+    }
+    if (sxo_has(n, 0, "extent_length_flags")) {
+        text = "Bits 0..29: extent length in bytes; bits 30..31: recorded, allocated/unrecorded, unallocated, or continuation";
+    }
+    if (!sxStrcmp(n, "descriptor_type")) {
+        text = v === 0 ? "BOOT_RECORD" : v === 1 ? "PRIMARY_VOLUME_DESCRIPTOR" : v === 2 ? "SUPPLEMENTARY_VOLUME_DESCRIPTOR" : v === 3 ? "VOLUME_PARTITION_DESCRIPTOR" : v === 255 ? "VOLUME_DESCRIPTOR_SET_TERMINATOR" : null;
+    }
+    if (!sxStrcmp(n, "tag_identifier")) {
+        text = v === 1 ? "PRIMARY_VOLUME_DESCRIPTOR" : v === 2 ? "ANCHOR_VOLUME_DESCRIPTOR_POINTER" : v === 5 ? "PARTITION_DESCRIPTOR" : v === 6 ? "LOGICAL_VOLUME_DESCRIPTOR" : v === 8 ? "TERMINATING_DESCRIPTOR" : v === 256 ? "FILE_SET_DESCRIPTOR" : v === 257 ? "FILE_IDENTIFIER_DESCRIPTOR" : v === 261 ? "FILE_ENTRY" : v === 266 ? "EXTENDED_FILE_ENTRY" : null;
+    }
+    if (!sxStrcmp(n, "icb_flags")) {
+        text = "Bits 0..2: short/long/extended/embedded allocation descriptors; bit 3 sorted, bit 4 non-relocatable, bit 9 contiguous, bit 12 multiple versions";
+    }
+    if (!sxStrcmp(n, "file_characteristics")) {
+        text = "Bits: 0 hidden, 1 directory, 2 deleted, 3 parent, 4 metadata";
+    }
+    if (id === sxo_iso_directory_record.id && !sxStrcmp(n, "flags") || sxo_has(n, 0, "root_flags")) {
+        text = "Bits: 0 hidden, 1 directory, 2 associated, 3 record, 4 protection, 7 multiple extents";
+    }
+    if (id < sxo_hfsplus_volume_header.id && !sxStrcmp(n, "file_type")) {
+        text = v === 4 ? "DIRECTORY" : v === 5 ? "REGULAR_FILE" : v === 12 ? "SYMBOLIC_LINK" : null;
+    }
+    if (id >= sxo_hfsplus_volume_header.id && id <= sxo_hfsplus_catalog_thread.id) {
+        if (sxo_has(n, 0, "_block") || sxo_has(n, 0, "_blocks")) {
+            text = "Allocation block units; byte position or length = value * volume block size";
+        }
+        if (sxo_has(n, 0, "_node") || !sxStrcmp(n, "forward_link") || !sxStrcmp(n, "backward_link")) {
+            text = "B-tree node number; byte position within the special file = value * node size";
+        }
+        if (!sxStrcmp(n, "total_nodes") || !sxStrcmp(n, "free_nodes")) {
+            text = "Count of B-tree nodes";
+        }
+        if (!sxStrcmp(n, "file_type") || !sxStrcmp(n, "file_creator") || !sxStrcmp(n, "last_mounted_version")) {
+            text = "Four-character code stored as a big-endian 32-bit integer";
+        }
+        if (id === sxo_hfsplus_volume_header.id && !sxStrcmp(n, "signature")) {
+            text = v === 0x482B ? "HFS_PLUS_SIGNATURE" : v === 0x4858 ? "HFSX_SIGNATURE" : null;
+        }
+        if (sxo_has(n, 0, "_date")) {
+            text = "Seconds since 1904-01-01 (HFS epoch)";
+        }
+        if (!sxStrcmp(n, "record_type")) {
+            text = v === 1 ? "HFS_PLUS_FOLDER_RECORD" : v === 2 ? "HFS_PLUS_FILE_RECORD" : v === 3 ? "HFS_PLUS_FOLDER_THREAD_RECORD" : v === 4 ? "HFS_PLUS_FILE_THREAD_RECORD" : null;
+        }
+        if (id === sxo_hfsplus_btree_node_descriptor.id && !sxStrcmp(n, "kind")) {
+            text = sxVarI64(r.value) === -1 ? "LEAF_NODE" : v === 0 ? "INDEX_NODE" : v === 1 ? "HEADER_NODE" : v === 2 ? "MAP_NODE" : null;
+        }
+        if (id === sxo_hfsplus_volume_header.id && !sxStrcmp(n, "attributes")) {
+            text = "Bit 8: unmounted cleanly; bit 9: spared blocks; bit 11: inconsistent; bit 13: journaled; bit 15: software locked";
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}

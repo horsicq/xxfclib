@@ -1,0 +1,91 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/ssh_transport/xx_ssh_transport_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdw_ssh_identification_fields = layout([field("ssh_identification", "utf8", 0, STRING)]);
+var sxdw_ssh_identification = sxLayout(0x60740045, "documentwire_ssh_identification", LE, sxdw_ssh_identification_fields);
+var sxdw_ssh_packet_header_fields = layout([field("packet_length", "uint32be", 4, SIZE), u8("padding_length", SIZE),
+    u8("message_type", ID)]);
+var sxdw_ssh_packet_header = sxLayout(0x60740046, "documentwire_ssh_packet_header", LE, sxdw_ssh_packet_header_fields);
+var sxdw_ssh_cookie_fields = layout([bytes("cookie", 16)]);
+var sxdw_ssh_cookie = sxLayout(0x60740047, "documentwire_ssh_cookie", LE, sxdw_ssh_cookie_fields);
+var sxdw_ssh_string_length_fields = layout([field("byte_length", "uint32be", 4, SIZE)]);
+var sxdw_ssh_string_length = sxLayout(0x60740048, "documentwire_ssh_string_length", LE, sxdw_ssh_string_length_fields);
+var sxdw_ssh_kex_algorithms_fields = layout([field("ssh_kex_algorithms", "utf8", 0, STRING)]);
+var sxdw_ssh_kex_algorithms = sxLayout(0x60740049, "documentwire_ssh_kex_algorithms", LE, sxdw_ssh_kex_algorithms_fields);
+var sxdw_ssh_server_host_key_algorithms_fields = layout([field("ssh_server_host_key_algorithms", "utf8", 0, STRING)]);
+var sxdw_ssh_server_host_key_algorithms = sxLayout(0x6074004A, "documentwire_ssh_server_host_key_algorithms", LE, sxdw_ssh_server_host_key_algorithms_fields);
+var sxdw_ssh_encryption_client_to_server_fields = layout([field("ssh_encryption_client_to_server", "utf8", 0, STRING)]);
+var sxdw_ssh_encryption_client_to_server = sxLayout(0x6074004B, "documentwire_ssh_encryption_client_to_server", LE, sxdw_ssh_encryption_client_to_server_fields);
+var sxdw_ssh_encryption_server_to_client_fields = layout([field("ssh_encryption_server_to_client", "utf8", 0, STRING)]);
+var sxdw_ssh_encryption_server_to_client = sxLayout(0x6074004C, "documentwire_ssh_encryption_server_to_client", LE, sxdw_ssh_encryption_server_to_client_fields);
+var sxdw_ssh_mac_client_to_server_fields = layout([field("ssh_mac_client_to_server", "utf8", 0, STRING)]);
+var sxdw_ssh_mac_client_to_server = sxLayout(0x6074004D, "documentwire_ssh_mac_client_to_server", LE, sxdw_ssh_mac_client_to_server_fields);
+var sxdw_ssh_mac_server_to_client_fields = layout([field("ssh_mac_server_to_client", "utf8", 0, STRING)]);
+var sxdw_ssh_mac_server_to_client = sxLayout(0x6074004E, "documentwire_ssh_mac_server_to_client", LE, sxdw_ssh_mac_server_to_client_fields);
+var sxdw_ssh_compression_client_to_server_fields = layout([field("ssh_compression_client_to_server", "utf8", 0, STRING)]);
+var sxdw_ssh_compression_client_to_server = sxLayout(0x6074004F, "documentwire_ssh_compression_client_to_server", LE, sxdw_ssh_compression_client_to_server_fields);
+var sxdw_ssh_compression_server_to_client_fields = layout([field("ssh_compression_server_to_client", "utf8", 0, STRING)]);
+var sxdw_ssh_compression_server_to_client = sxLayout(0x60740050, "documentwire_ssh_compression_server_to_client", LE, sxdw_ssh_compression_server_to_client_fields);
+var sxdw_ssh_languages_client_to_server_fields = layout([field("ssh_languages_client_to_server", "utf8", 0, STRING)]);
+var sxdw_ssh_languages_client_to_server = sxLayout(0x60740051, "documentwire_ssh_languages_client_to_server", LE, sxdw_ssh_languages_client_to_server_fields);
+var sxdw_ssh_languages_server_to_client_fields = layout([field("ssh_languages_server_to_client", "utf8", 0, STRING)]);
+var sxdw_ssh_languages_server_to_client = sxLayout(0x60740052, "documentwire_ssh_languages_server_to_client", LE, sxdw_ssh_languages_server_to_client_fields);
+var sxdw_ssh_kex_tail_fields = layout([u8("first_kex_packet_follows", FLAGS), field("reserved", "uint32be", 4, RESERVED)]);
+var sxdw_ssh_kex_tail = sxLayout(0x60740053, "documentwire_ssh_kex_tail", LE, sxdw_ssh_kex_tail_fields);
+function sxdw_ssh(q) {
+    var a = [0];
+    var e = [0];
+    if (!sxdw_line(q, a, e) || !sxdw_value(q, sxdw_ssh_identification, a[0], e[0] - a[0])) {
+        return false;
+    }
+    var lists = [sxdw_ssh_kex_algorithms, sxdw_ssh_server_host_key_algorithms, sxdw_ssh_encryption_client_to_server, sxdw_ssh_encryption_server_to_client, sxdw_ssh_mac_client_to_server, sxdw_ssh_mac_server_to_client, sxdw_ssh_compression_client_to_server, sxdw_ssh_compression_server_to_client, sxdw_ssh_languages_client_to_server, sxdw_ssh_languages_server_to_client];
+    while (q.p < q.n && q.c.count < 32000) {
+        var start = q.p;
+        if (q.n - start < 6) {
+            return false;
+        }
+        var n = sxGetU32At(q.b, start, 4, 0, true);
+        var pad = q.b[start + 4];
+        var type = q.b[start + 5];
+        if (n < 2 || pad >= sxU64(n - 1) || n > (q.n - start - 4 < 0 ? q.n - start - 4 + SX_U64_MAX : q.n - start - 4) || !sxdw_emit(q, sxdw_ssh_packet_header, start, 6)) {
+            return false;
+        }
+        var end = start + 4 + (n >= SX_I64_MAX ? n - SX_U64_MAX : n) - pad;
+        q.p = start + 6;
+        if (type === 20) {
+            if (end - q.p < 16 || !sxdw_emit(q, sxdw_ssh_cookie, q.p, 16)) {
+                return false;
+            }
+            q.p += 16;
+            for (var i = 0; i < 10; i++) {
+                if (end - q.p < 4) {
+                    return false;
+                }
+                var z = sxGetU32At(q.b, q.p, 4, 0, true);
+                if (!sxdw_emit(q, sxdw_ssh_string_length, q.p, 4)) {
+                    return false;
+                }
+                q.p += 4;
+                if (z > (end - q.p < 0 ? end - q.p + SX_U64_MAX : end - q.p) || !sxdw_value(q, lists[i], q.p, z)) {
+                    return false;
+                }
+                q.p += z;
+            }
+            if (end - q.p !== 5 || !sxdw_emit(q, sxdw_ssh_kex_tail, q.p, 5)) {
+                return false;
+            }
+        } else if (type === 30) {
+            if (end - q.p < 4 || !sxdw_emit(q, sxdw_ssh_string_length, q.p, 4)) {
+                return false;
+            }
+        }
+        q.p = start + 4 + (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    }
+    return true;
+}
+function sx_ssh_transport_build(q) {
+    return sxdw_ssh(q);
+}

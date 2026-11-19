@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/garmin_fit/xx_garmin_fit_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsc_fit_file_header_fields = layout([u8("header_size", SIZE), u8("protocol_version", ID), u16("profile_version", ID),
+    u32("data_size", SIZE), chars("signature", 4, SIGNATURE)]);
+var sxsc_fit_file_header = sxLayout(0x6028001A, "fit_file_header", LE, sxsc_fit_file_header_fields);
+var sxsc_fit_crc16_fields = layout([u16("crc16", CHECKSUM)]);
+var sxsc_fit_crc16 = sxLayout(0x6028001B, "fit_crc16", LE, sxsc_fit_crc16_fields);
+var sxsc_fit_record_header_fields = layout([u8("record_header", FLAGS)]);
+var sxsc_fit_record_header = sxLayout(0x6028001C, "fit_record_header", LE, sxsc_fit_record_header_fields);
+var sxsc_fit_definition_le_fields = layout([u8("reserved", RESERVED), u8("architecture", ID), u16("global_message_number", ID),
+    u8("field_count", COUNT)]);
+var sxsc_fit_definition_le = sxLayout(0x6028001D, "fit_definition_le", LE, sxsc_fit_definition_le_fields);
+var sxsc_fit_definition_be_fields = layout([u8("reserved", RESERVED), u8("architecture", ID), u16("global_message_number", ID),
+    u8("field_count", COUNT)]);
+var sxsc_fit_definition_be = sxLayout(0x6028001E, "fit_definition_be", BE, sxsc_fit_definition_be_fields);
+var sxsc_fit_developer_count_fields = layout([u8("developer_field_count", COUNT)]);
+var sxsc_fit_developer_count = sxLayout(0x60280020, "fit_developer_count", LE, sxsc_fit_developer_count_fields);
+var sxsc_fit_developer_field_fields = layout([u8("field_definition_number", ID), u8("size", SIZE),
+    u8("developer_data_index", ID)]);
+var sxsc_fit_developer_field = sxLayout(0x60280021, "fit_developer_field", LE, sxsc_fit_developer_field_fields);
+function sxsc_fit(c) {
+    var b = [];
+    var sizes = sxZeros(16);
+    if (!sx_read(c, 0, b, 12) || b[0] !== 12 && b[0] !== 14 || sxMemcmpAt(b, 8, ".FIT", 0, 4) || !sxsc_add(c, sxsc_fit_file_header, 0, 12)) {
+        return false;
+    }
+    var at = b[0];
+    var end = at + sxsc32(b, 4, false);
+    if (!sxsc_span(c, end, 2)) {
+        return false;
+    }
+    if (at === 14 && !sxsc_add(c, sxsc_fit_crc16, 12, 2)) {
+        return false;
+    }
+    for (var n = 0; at < end; n++) {
+        if (n >= 4094 || !sx_read(c, at, b, 1) || !sxsc_add(c, sxsc_fit_record_header, at, 1)) {
+            return false;
+        }
+        var code = b[0];
+        var local = code & 15;
+        at++;
+        if (code & 128) {
+            local = code >>> 5 & 3;
+            if (sizes[local] < 4 || (sizes[local] - 4) >>> 0 > (end - at < 0 ? end - at + SX_U64_MAX : end - at)) {
+                return false;
+            }
+            at += (sizes[local] - 4) >>> 0;
+        } else if (code & 64) {
+            if (end - at < 5 || !sx_read(c, at, b, 5) || b[1] > 1) {
+                return false;
+            }
+            var be = b[1] !== 0;
+            var count = b[4];
+            if (!sxsc_add(c, be ? sxsc_fit_definition_be : sxsc_fit_definition_le, at, 5)) {
+                return false;
+            }
+            at += 5;
+            var size = 0;
+            if (!count || (count * 3) >>> 0 > (end - at < 0 ? end - at + SX_U64_MAX : end - at)) {
+                return false;
+            }
+            for (var i = 0; i < count; i++) {
+                if (!sx_read(c, at, b, 3) || !b[1] || !sxsc_add(c, sxsc_fit_field_definition, at, 3)) {
+                    return false;
+                }
+                size = (size + b[1]) >>> 0;
+                at += 3;
+            }
+            if (code & 32) {
+                if (at >= end || !sx_read(c, at, b, 1) || !sxsc_add(c, sxsc_fit_developer_count, at, 1)) {
+                    return false;
+                }
+                count = b[0];
+                at++;
+                if ((count * 3) >>> 0 > (end - at < 0 ? end - at + SX_U64_MAX : end - at)) {
+                    return false;
+                }
+                for (i = 0; i < count; i++) {
+                    if (!sx_read(c, at, b, 3) || !b[1] || !sxsc_add(c, sxsc_fit_developer_field, at, 3)) {
+                        return false;
+                    }
+                    size = (size + b[1]) >>> 0;
+                    at += 3;
+                }
+            }
+            sizes[local] = size;
+        } else {
+            if (!sizes[local] || sizes[local] > (end - at < 0 ? end - at + SX_U64_MAX : end - at)) {
+                return false;
+            }
+            at += sizes[local];
+        }
+    }
+    return at === end && sxsc_add(c, sxsc_fit_crc16, end, 2);
+}
+function sx_garmin_fit_build(c) {
+    return sxsc_fit(c);
+}

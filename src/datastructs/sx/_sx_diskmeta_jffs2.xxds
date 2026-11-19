@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/jffs2/xx_jffs2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_jffs2_common_header_le_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM)]);
+var sx_dm_jffs2_common_header_le = sxLayout(0x60290040, "jffs2_common_header_le", LE, sx_dm_jffs2_common_header_le_fields);
+var sx_dm_jffs2_directory_entry_le_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("parent_inode", ID), u32("version"), u32("inode", ID), u32("modification_time", TIMESTAMP),
+    u8("name_size", SIZE), u8("type", ID), field("unused", "byte[2]", 2, RESERVED), u32("node_crc", CHECKSUM),
+    u32("name_crc", CHECKSUM)]);
+var sx_dm_jffs2_directory_entry_le = sxLayout(0x60290041, "jffs2_directory_entry_le", LE, sx_dm_jffs2_directory_entry_le_fields);
+var sx_dm_jffs2_inode_le_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("inode", ID), u32("version"), u32("mode", FLAGS), u16("uid", ID), u16("gid", ID),
+    u32("file_size", SIZE), u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP), u32("change_time", TIMESTAMP),
+    u32("file_offset", OFFSET), u32("compressed_size", SIZE), u32("decompressed_size", SIZE), u8("compression", ID),
+    u8("user_compression", ID), u16("flags", FLAGS), u32("data_crc", CHECKSUM), u32("node_crc", CHECKSUM)]);
+var sx_dm_jffs2_inode_le = sxLayout(0x60290042, "jffs2_inode_le", LE, sx_dm_jffs2_inode_le_fields);
+var sx_dm_jffs2_xattr_le_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("xid", ID), u32("version"), u8("prefix", ID), u8("name_length", SIZE),
+    u16("value_length", SIZE), u32("data_crc", CHECKSUM), u32("node_crc", CHECKSUM)]);
+var sx_dm_jffs2_xattr_le = sxLayout(0x60290043, "jffs2_xattr_le", LE, sx_dm_jffs2_xattr_le_fields);
+var sx_dm_jffs2_xref_le_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("inode", ID), u32("xid", ID), u32("sequence_number"), u32("node_crc", CHECKSUM)]);
+var sx_dm_jffs2_xref_le = sxLayout(0x60290044, "jffs2_xref_le", LE, sx_dm_jffs2_xref_le_fields);
+var sx_dm_jffs2_common_header_be_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM)]);
+var sx_dm_jffs2_common_header_be = sxLayout(0x60290048, "jffs2_common_header_be", BE, sx_dm_jffs2_common_header_be_fields);
+var sx_dm_jffs2_directory_entry_be_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("parent_inode", ID), u32("version"), u32("inode", ID), u32("modification_time", TIMESTAMP),
+    u8("name_size", SIZE), u8("type", ID), field("unused", "byte[2]", 2, RESERVED), u32("node_crc", CHECKSUM),
+    u32("name_crc", CHECKSUM)]);
+var sx_dm_jffs2_directory_entry_be = sxLayout(0x60290049, "jffs2_directory_entry_be", BE, sx_dm_jffs2_directory_entry_be_fields);
+var sx_dm_jffs2_inode_be_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("inode", ID), u32("version"), u32("mode", FLAGS), u16("uid", ID), u16("gid", ID),
+    u32("file_size", SIZE), u32("access_time", TIMESTAMP), u32("modification_time", TIMESTAMP), u32("change_time", TIMESTAMP),
+    u32("file_offset", OFFSET), u32("compressed_size", SIZE), u32("decompressed_size", SIZE), u8("compression", ID),
+    u8("user_compression", ID), u16("flags", FLAGS), u32("data_crc", CHECKSUM), u32("node_crc", CHECKSUM)]);
+var sx_dm_jffs2_inode_be = sxLayout(0x6029004A, "jffs2_inode_be", BE, sx_dm_jffs2_inode_be_fields);
+var sx_dm_jffs2_xattr_be_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("xid", ID), u32("version"), u8("prefix", ID), u8("name_length", SIZE),
+    u16("value_length", SIZE), u32("data_crc", CHECKSUM), u32("node_crc", CHECKSUM)]);
+var sx_dm_jffs2_xattr_be = sxLayout(0x6029004B, "jffs2_xattr_be", BE, sx_dm_jffs2_xattr_be_fields);
+var sx_dm_jffs2_xref_be_fields = layout([u16("magic", SIGNATURE), u16("node_type", ID), u32("total_length", SIZE),
+    u32("header_crc", CHECKSUM), u32("inode", ID), u32("xid", ID), u32("sequence_number"), u32("node_crc", CHECKSUM)]);
+var sx_dm_jffs2_xref_be = sxLayout(0x6029004C, "jffs2_xref_be", BE, sx_dm_jffs2_xref_be_fields);
+function sx_dm_jffs(c) {
+    var h = [];
+    var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (limit > 67108864) {
+        limit = 67108864;
+    }
+    for (var p = 0; p + 12 <= limit && c.count < 24000; ) {
+        if (!sx_dm_read(c, p, h, 12)) {
+            return false;
+        }
+        var be = sx_dm_u16(h, 0, true) === 0x1985;
+        var z = sx_dm_u32(h, 4, be);
+        if (sx_dm_u16(h, 0, be) !== 0x1985 || z < 12 || !sx_dm_span(c, p, z) || sx_dm_u32(h, 8, be) !== (sxCrc32(4294967295, h, 8) ^ 4294967295) >>> 0) {
+            p += 4;
+            continue;
+        }
+        var t = sx_dm_u16(h, 2, be);
+        var l = be ? sx_dm_jffs2_common_header_be : sx_dm_jffs2_common_header_le;
+        var n = 12;
+        switch ((t | 0x2000) >>> 0) {
+        case 0xE001:
+            l = be ? sx_dm_jffs2_directory_entry_be : sx_dm_jffs2_directory_entry_le;
+            n = 40;
+            break;
+        case 0xE002:
+            l = be ? sx_dm_jffs2_inode_be : sx_dm_jffs2_inode_le;
+            n = 68;
+            break;
+        case 0xE008:
+            l = be ? sx_dm_jffs2_xattr_be : sx_dm_jffs2_xattr_le;
+            n = 32;
+            break;
+        case 0xE009:
+            l = be ? sx_dm_jffs2_xref_be : sx_dm_jffs2_xref_le;
+            n = 28;
+            break;
+        }
+        if (n > z) {
+            l = be ? sx_dm_jffs2_common_header_be : sx_dm_jffs2_common_header_le;
+            n = 12;
+        }
+        if (!sx_dm_add(c, l, p, n)) {
+            return false;
+        }
+        p += sxAnd64(z + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+    }
+    return c.count !== 0;
+}
+function sx_jffs2_build(c) {
+    return sx_dm_jffs(c);
+}

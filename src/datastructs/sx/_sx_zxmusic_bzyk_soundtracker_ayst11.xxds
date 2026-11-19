@@ -1,0 +1,94 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bzyk_soundtracker_ayst11/xx_bzyk_soundtracker_ayst11_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_zx_text_fields = layout([field("text", "char", 0)]);
+var sxzxm_zx_text = sxLayout(0x608A000D, "zx_text", LE, sxzxm_zx_text_fields);
+var sxzxm_ayst11_song_data_fields = layout([u8("channel_a", ID), u8("channel_b", ID), u8("channel_c", ID),
+    u8("noise_channel", ID), blob("opaque", 4)]);
+var sxzxm_ayst11_song_data = sxLayout(0x608A0061, "ayst11_song_data", LE, sxzxm_ayst11_song_data_fields);
+var sxzxm_st1_position_fields = layout([u8("pattern_number"), i8("transposition")]);
+var sxzxm_st1_position = sxLayout(0x608A0063, "st1_position", LE, sxzxm_st1_position_fields);
+function sxzxm_string(c, p) {
+    var ch = [0];
+    var n = 0;
+    while (n < 4096 && sxzxm_u8(c, p + n, ch)) {
+        n++;
+        if (!ch[0]) {
+            if (c.count >= 24000) {
+                return true;
+            }
+            for (var i = 0; i < c.count; i++) {
+                var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+                var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+                if (p < a + z && a < p + n) {
+                    return true;
+                }
+            }
+            return sx_add(c, sxzxm_zx_text, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+        }
+    }
+    return true;
+}
+function sxzxm_delta(c, at, out) {
+    var b = [];
+    if (!sxzxm_read(c, at, b, 2)) {
+        return false;
+    }
+    var u = b[0] * 256 + b[1];
+    var d = u < 32768 ? u : u - 65536;
+    if (d < 0 && sxU64((-d >= SX_I64_MAX ? -d - SX_U64_MAX : -d)) > at) {
+        return false;
+    }
+    if (d >= 0 && at > SX_U64_MAX - (d < 0 ? d + SX_U64_MAX : d)) {
+        return false;
+    }
+    out[0] = d < 0 ? sxU64(at - sxU64((-d >= SX_I64_MAX ? -d - SX_U64_MAX : -d))) : at + (d < 0 ? d + SX_U64_MAX : d);
+    return sxzxm_span(c, out[0], 0);
+}
+function sxzxm_st1(c, p) {
+    if (!sxzxm_span(c, p, 3009)) {
+        return true;
+    }
+    if (!sxzxm_put(c, sxzxm_st1_sample, p, 15) || !sxzxm_put(c, sxzxm_st1_position, p + 1950, 256) || !sxzxm_put(c, sxzxm_st1_song_length, p + 2462, 1) || !sxzxm_put(c, sxzxm_st1_ornament_step, p + 2463, 544) || !sxzxm_put(c, sxzxm_st1_playback, p + 3007, 1)) {
+        return false;
+    }
+    return true;
+}
+function sxzxm_ayst(c) {
+    if (!sxzxm_put(c, sxzxm_ayst11_header, 0, 1)) {
+        return false;
+    }
+    var last = [0];
+    var p = [0];
+    for (var at = 12; at <= 14; at = (at + 2) >>> 0) {
+        if (sxzxm_delta(c, at, p) && !sxzxm_string(c, p[0])) {
+            return false;
+        }
+    }
+    if (!sxzxm_u8(c, 16, last) || !sxzxm_delta(c, 18, p) || !sxzxm_span(c, p[0], 4 * (last[0] + 1))) {
+        return true;
+    }
+    if (!sxzxm_put(c, sxzxm_ayst11_song, p[0], last[0] + 1)) {
+        return false;
+    }
+    for (var i = 0; i <= last[0]; i++) {
+        var name = [0];
+        var data = [0];
+        at = p[0] + ((4 * i) >>> 0);
+        if (sxzxm_delta(c, at, name) && !sxzxm_string(c, name[0])) {
+            return false;
+        }
+        if (sxzxm_delta(c, at + 2, data) && sxzxm_span(c, data[0], 8)) {
+            if (!sxzxm_put(c, sxzxm_ayst11_song_data, data[0], 1) || !sxzxm_st1(c, data[0] + 8)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_bzyk_soundtracker_ayst11_build(c) {
+    return sxzxm_ayst(c);
+}

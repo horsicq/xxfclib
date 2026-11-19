@@ -1,0 +1,26 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/trackstar/xx_trackstar_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_trackstar_track_header_fields = layout([chars("description", 46, NONE), field("reserved", "byte[82]", 82, RESERVED),
+    u8("halftrack_image", FLAGS)]);
+var sxdleg_trackstar_track_header = sxLayout(0x6075003A, "trackstar_track_header", LE, sxdleg_trackstar_track_header_fields);
+var sxdleg_trackstar_track_size_fields = layout([u16("stored_track_size", SIZE)]);
+var sxdleg_trackstar_track_size = sxLayout(0x6075003B, "trackstar_track_size", LE, sxdleg_trackstar_track_size_fields);
+function sxdleg_trackstar(c) {
+    if (c.size !== 266240 && c.size !== 532480) {
+        return false;
+    }
+    var n = sxDiv(c.size, 6656) >>> 0;
+    for (var i = 0; i < n; i++) {
+        if (!sxdleg_put(c, sxdleg_trackstar_track_header, i * 6656, 1) || !sxdleg_put(c, sxdleg_trackstar_track_size, i * 6656 + 6654, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_trackstar_build(c) {
+    return sxdleg_trackstar(c);
+}

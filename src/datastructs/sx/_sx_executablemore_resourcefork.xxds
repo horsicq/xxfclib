@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/resourcefork/xx_resourcefork_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_resource_fork_header_fields = layout([u32("data_offset", OFFSET), u32("map_offset", OFFSET), u32("data_size", SIZE),
+    u32("map_size", SIZE)]);
+var sxexm_resource_fork_header = sxLayout(0x602B0011, "resource_fork_header", BE, sxexm_resource_fork_header_fields);
+var sxexm_resource_map_header_fields = layout([u32("data_offset_copy", OFFSET), u32("map_offset_copy", OFFSET),
+    u32("data_size_copy", SIZE), u32("map_size_copy", SIZE), u32("next_map_handle", POINTER), i16("file_reference", ID),
+    u16("attributes", FLAGS), u16("type_list_offset", OFFSET), u16("name_list_offset", OFFSET)]);
+var sxexm_resource_map_header = sxLayout(0x602B0012, "resource_map_header", BE, sxexm_resource_map_header_fields);
+var sxexm_resource_type_count_fields = layout([u16("type_count_minus_one")]);
+var sxexm_resource_type_count = sxLayout(0x602B0013, "resource_type_count", BE, sxexm_resource_type_count_fields);
+var sxexm_resource_type_entry_fields = layout([chars("resource_type", 4, ID), u16("resource_count_minus_one"),
+    u16("references_offset", OFFSET)]);
+var sxexm_resource_type_entry = sxLayout(0x602B0014, "resource_type_entry", BE, sxexm_resource_type_entry_fields);
+var sxexm_resource_reference_fields = layout([i16("resource_id", ID), u16("name_offset", OFFSET), u8("attributes", FLAGS),
+    field("data_offset", "uint24", 3, OFFSET), u32("handle", POINTER)]);
+var sxexm_resource_reference = sxLayout(0x602B0015, "resource_reference", BE, sxexm_resource_reference_fields);
+var sxexm_resource_data_length_fields = layout([u32("data_size", SIZE)]);
+var sxexm_resource_data_length = sxLayout(0x602B0016, "resource_data_length", BE, sxexm_resource_data_length_fields);
+var sxexm_resource_name_length_fields = layout([u8("name_size", SIZE)]);
+var sxexm_resource_name_length = sxLayout(0x602B0017, "resource_name_length", BE, sxexm_resource_name_length_fields);
+function sxexm_resource(c) {
+    var h = [];
+    if (!sxexm_read(c, 0, h, 16) || !sxexm_add(c, sxexm_resource_fork_header, 0)) {
+        return false;
+    }
+    var data = sxexm32(h, 0, true);
+    var map = sxexm32(h, 4, true);
+    var ds = sxexm32(h, 8, true);
+    var ms = sxexm32(h, 12, true);
+    if (ms < 28 || !sxexm_span(c, map, ms) || !sxexm_span(c, data, ds) || !sxexm_read(c, map, h, 28)) {
+        return true;
+    }
+    if (!sxexm_add(c, sxexm_resource_map_header, map)) {
+        return false;
+    }
+    var t = sxexm16(h, 24, true);
+    var names = sxexm16(h, 26, true);
+    var count = [0];
+    if (t > ms || sxU64(ms - t) < 2 || !sxexm_word(c, map + t, 2, true, count)) {
+        return true;
+    }
+    if (!sxexm_add(c, sxexm_resource_type_count, map + t)) {
+        return false;
+    }
+    count[0] = count[0] === 65535 ? 0 : count[0] + 1;
+    if (count[0] > 20000 || count[0] > Math.floor(sxU64(sxU64(ms - t) - 2) / 8)) {
+        return true;
+    }
+    if (!sxexm_table(c, sxexm_resource_type_entry, map + t + 2, count[0])) {
+        return false;
+    }
+    for (var i = 0; i < count[0] && c.count < 20000; i++) {
+        if (!sxexm_read(c, map + t + 2 + i * 8, h, 8)) {
+            break;
+        }
+        var n = sxexm16(h, 4, true) + 1;
+        var p = t + sxexm16(h, 6, true);
+        if (n > 20000 || p > ms || n > Math.floor(sxU64(ms - p) / 12)) {
+            continue;
+        }
+        if (!sxexm_table(c, sxexm_resource_reference, map + p, n)) {
+            return false;
+        }
+        for (var j = 0; j < n && c.count < 20000; j++) {
+            if (!sxexm_read(c, map + p + j * 12, h, 12)) {
+                break;
+            }
+            var off = sxexm_uint(h, 5, 3, true);
+            var name = sxexm16(h, 2, true);
+            var z = [0];
+            if (off <= ds && sxU64(ds - off) >= 4 && sxexm_word(c, data + off, 4, true, z) && z[0] <= sxU64(sxU64(ds - off) - 4) && !sxexm_add(c, sxexm_resource_data_length, data + off)) {
+                return false;
+            }
+            if (name !== 65535 && names <= ms && name < sxU64(ms - names) && sxexm_word(c, map + names + name, 1, true, z) && z[0] < sxU64(sxU64(ms - names) - name) && !sxexm_add(c, sxexm_resource_name_length, map + names + name)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_resourcefork_build(c) {
+    var ok = false;
+    ok = sxexm_resource(c);
+    return ok && sxexm_finish(c);
+}

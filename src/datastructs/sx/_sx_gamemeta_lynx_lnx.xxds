@@ -1,0 +1,13 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/lynx_lnx/xx_lynx_lnx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_lynx_header_fields = layout([chars("signature", 4, SIGNATURE), u16("bank0_page_size", SIZE),
+    u16("bank1_page_size", SIZE), u16("version", ID), chars("cartridge_name", 32, STRING), chars("manufacturer", 16, STRING),
+    u8("rotation", ID), u8("audin", FLAGS), u8("eeprom", FLAGS), bytes("reserved", 3, RESERVED)]);
+var sxgm_lynx_header = sxLayout(0x60270003, "lynx_header", LE, sxgm_lynx_header_fields);
+function sx_lynx_lnx_build(c) {
+    return sxgm_add(c, sxgm_lynx_header, 0);
+}

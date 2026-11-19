@@ -1,0 +1,156 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// .NET (CLR) images (ECMA-335 II.25): a PE image with a CLR header. Reports
+// every PE structure of pe.xxds, then the CLR header, the metadata root with
+// its stream headers, the other CLR directories and the VTable fixups.
+//
+// Ids 112..117 (RESERVED_112..117 in pe.xxds) are the CLR structures
+// (XX_DOTNET_DATA_STRUCT_*, include/xxfclib/formats/executable/dotnet/xx_dotnet.h).
+
+include("pe");
+
+// include() runs after the function declarations of this script were hoisted,
+// so the fileTypes/structs/scan of pe.xxds replaced them. The DOTNET versions
+// are therefore named dn*() and installed by assignment below; fileTypes()
+// stays a declaration because the registry generator reads it textually.
+function fileTypes() { return ["DOTNET"]; }
+function dnFileTypes() { return ["DOTNET"]; }
+
+var DN_NAMES = {
+    112: "IMAGE_COR20_HEADER",
+    113: "STORAGESIGNATURE",
+    114: "STORAGEHEADER",
+    115: "STORAGESTREAM",
+    116: "IMAGE_COR_VTABLEFIXUP",
+    117: "CLR_RAW"
+};
+
+function dnStructs() {
+    var list = peStructs(), i;
+    for (i = 0; i < list.length; i++) {
+        if (DN_NAMES[list[i].id] !== undefined) {
+            list[i].name = DN_NAMES[list[i].id];
+            list[i].fields = dnRecordFields;
+        }
+    }
+    return list;
+}
+
+function dnScan() { return peScan(dnClr); }
+
+fileTypes = dnFileTypes;
+structs = dnStructs;
+scan = dnScan;
+
+function dnRawRva(c, name, rva, size) {
+    var offset;
+    if (!size) return;
+    if ((offset = peRva(rva, size)) < 0) peFail("rva outside the image");
+    peRaw(c, name, offset, size);
+}
+
+function dnMetadata(c, rva, size) {
+    var offset, versionLength, storage, streams, cursor, index, nameLength, next, streamOffset, streamSize;
+    if (!rva || size < 20 || (offset = peRva(rva, size)) < 0) return;
+    if (File.u32(offset) !== 0x424A5342) {
+        peRaw(c, "CLR_RAW", offset, size);
+        return;
+    }
+    versionLength = File.u32(offset + 12);
+    storage = peAlign(16 + versionLength, 4);
+    if (versionLength > size - 16 || storage > size - 4) {
+        peRaw(c, "CLR_RAW", offset, size);
+        return;
+    }
+    peAdd(c, "STORAGESIGNATURE", offset, 16, 16, 1, STRUCT);
+    if (versionLength) peAdd(c, "ASCII_STRING", offset + 16, 1, versionLength, versionLength, RAW);
+    peRaw(c, "RAW_DATA", offset + 16 + versionLength, storage - 16 - versionLength);
+    peAdd(c, "STORAGEHEADER", offset + storage, 4, 4, 1, STRUCT);
+    streams = File.u16(offset + storage + 2);
+    cursor = storage + 4;
+    for (index = 0; index < streams; index++) {
+        if (size - cursor < 9) break;
+        nameLength = peCString(offset + cursor + 8, size - cursor - 8);
+        if (!nameLength) break;
+        next = peAlign(cursor + 8 + nameLength, 4);
+        if (next > size) break;
+        peAdd(c, "STORAGESTREAM", offset + cursor, next - cursor, next - cursor, 1, ENTRY);
+        streamOffset = File.u32(offset + cursor);
+        streamSize = File.u32(offset + cursor + 4);
+        if (streamOffset <= size && streamSize <= size - streamOffset) peRaw(c, "CLR_RAW", offset + streamOffset, streamSize);
+        cursor = next;
+    }
+}
+
+function dnRawDirectory(c, header, field) {
+    var rva = File.u32(header + field), size = File.u32(header + field + 4);
+    if (!rva || !size || peRva(rva, size) < 0) return;
+    dnRawRva(c, "CLR_RAW", rva, size);
+}
+
+function dnClr(c) {
+    var rva = c.h.rva[14], size = c.h.size[14], offset, fixupRva, fixupSize, fixup, count, index, entry, tableRva, tableCount, stride;
+    if (!rva || !size) return;
+    if (size < 72 || (offset = peRva(rva, size)) < 0) return;
+    if (File.u32(offset) < 72) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    peAdd(c, "IMAGE_COR20_HEADER", offset, 72, 72, 1, STRUCT);
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + 72, size - 72);
+    dnMetadata(c, File.u32(offset + 8), File.u32(offset + 12));
+    dnRawDirectory(c, offset, 24);
+    dnRawDirectory(c, offset, 32);
+    dnRawDirectory(c, offset, 40);
+    dnRawDirectory(c, offset, 56);
+    dnRawDirectory(c, offset, 64);
+    fixupRva = File.u32(offset + 48);
+    fixupSize = File.u32(offset + 52);
+    if (!fixupRva || fixupSize < 8 || (fixup = peRva(fixupRva, fixupSize)) < 0) return;
+    count = Math.floor(fixupSize / 8);
+    peAdd(c, "IMAGE_COR_VTABLEFIXUP", fixup, 8, count * 8, count, ENTRY);
+    for (index = 0; index < count; index++) {
+        entry = fixup + index * 8;
+        tableRva = File.u32(entry);
+        tableCount = File.u16(entry + 4);
+        stride = (File.u16(entry + 6) & 2) ? 8 : 4;
+        if (peRva(tableRva, tableCount * stride) >= 0) dnRawRva(c, "CLR_RAW", tableRva, tableCount * stride);
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", fixup + count * 8, fixupSize - count * 8);
+}
+
+// Records of the CLR structures; everything else is a PE structure.
+function dnRecordFields(ds) {
+    var out = [];
+    if (ds.offset < 0 || ds.totalSize <= 0) return undefined;
+    switch (ds.name) {
+        case "IMAGE_COR20_HEADER": peTableFields(ds, DN_FIELDS.cor20, out); break;
+        case "STORAGESIGNATURE": peTableFields(ds, DN_FIELDS.clr_root, out); break;
+        case "STORAGEHEADER": peTableFields(ds, DN_FIELDS.clr_storage, out); break;
+        case "STORAGESTREAM":
+            peTableFields(ds, DN_FIELDS.clr_stream.concat([["StreamName", "char[]", 8, ds.totalSize > 8 ? ds.totalSize - 8 : 0, STRING]]), out);
+            break;
+        case "IMAGE_COR_VTABLEFIXUP": peTableFields(ds, DN_FIELDS.clr_vtable, out); break;
+        default: return undefined;
+    }
+    return out.length ? out : undefined;
+}
+
+// [name, type, offset, size, role] rows of the former C field tables.
+var DN_FIELDS = {
+    cor20: [["cb", "uint32", 0, 4, SIZE], ["MajorRuntimeVersion", "uint16", 4, 2, NONE], ["MinorRuntimeVersion", "uint16", 6, 2, NONE],
+        ["MetaData.VirtualAddress", "uint32", 8, 4, VA], ["MetaData.Size", "uint32", 12, 4, SIZE], ["Flags", "uint32", 16, 4, FLAGS],
+        ["EntryPointTokenOrRVA", "uint32", 20, 4, POINTER], ["Resources.VirtualAddress", "uint32", 24, 4, VA],
+        ["Resources.Size", "uint32", 28, 4, SIZE], ["StrongNameSignature.VirtualAddress", "uint32", 32, 4, VA],
+        ["StrongNameSignature.Size", "uint32", 36, 4, SIZE], ["CodeManagerTable.VirtualAddress", "uint32", 40, 4, VA],
+        ["CodeManagerTable.Size", "uint32", 44, 4, SIZE], ["VTableFixups.VirtualAddress", "uint32", 48, 4, VA],
+        ["VTableFixups.Size", "uint32", 52, 4, SIZE], ["ExportAddressTableJumps.VirtualAddress", "uint32", 56, 4, VA],
+        ["ExportAddressTableJumps.Size", "uint32", 60, 4, SIZE], ["ManagedNativeHeader.VirtualAddress", "uint32", 64, 4, VA],
+        ["ManagedNativeHeader.Size", "uint32", 68, 4, SIZE]],
+    clr_root: [["Signature", "char[4]", 0, 4, ID], ["MajorVersion", "uint16", 4, 2, NONE], ["MinorVersion", "uint16", 6, 2, NONE],
+        ["Reserved", "uint32", 8, 4, RESERVED], ["VersionLength", "uint32", 12, 4, SIZE]],
+    clr_storage: [["Flags", "uint8", 0, 1, FLAGS], ["Pad", "uint8", 1, 1, RESERVED], ["Streams", "uint16", 2, 2, COUNT]],
+    clr_stream: [["Offset", "uint32", 0, 4, OFFSET], ["Size", "uint32", 4, 4, SIZE]],
+    clr_vtable: [["RVA", "uint32", 0, 4, VA], ["Count", "uint16", 4, 2, COUNT], ["Type", "uint16", 6, 2, FLAGS]]
+};

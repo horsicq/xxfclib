@@ -1,0 +1,761 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencemeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsc_mrc_header_le_fields = layout([i32("nx", COUNT), i32("ny", COUNT), i32("nz", COUNT), i32("mode", ID), i32("nxstart"),
+    i32("nystart"), i32("nzstart"), i32("mx", COUNT), i32("my", COUNT), i32("mz", COUNT), field("cella_x", "float32", 4),
+    field("cella_y", "float32", 4), field("cella_z", "float32", 4), field("cellb_alpha", "float32", 4),
+    field("cellb_beta", "float32", 4), field("cellb_gamma", "float32", 4), i32("mapc", ID), i32("mapr", ID), i32("maps", ID),
+    field("dmin", "float32", 4), field("dmax", "float32", 4), field("dmean", "float32", 4), i32("ispg", ID),
+    i32("nsymbt", SIZE), bytes("extra1", 8), chars("exttyp", 4, ID), i32("nversion", ID), bytes("extra2", 84),
+    field("origin_x", "float32", 4), field("origin_y", "float32", 4), field("origin_z", "float32", 4),
+    chars("map", 4, SIGNATURE), bytes("machst", 4, ID), field("rms", "float32", 4), i32("nlabl", COUNT)]);
+var sxsc_mrc_header_le = sxLayout(0x60280001, "mrc_header_le", LE, sxsc_mrc_header_le_fields);
+var sxsc_mrc_header_be_fields = layout([i32("nx", COUNT), i32("ny", COUNT), i32("nz", COUNT), i32("mode", ID), i32("nxstart"),
+    i32("nystart"), i32("nzstart"), i32("mx", COUNT), i32("my", COUNT), i32("mz", COUNT), field("cella_x", "float32", 4),
+    field("cella_y", "float32", 4), field("cella_z", "float32", 4), field("cellb_alpha", "float32", 4),
+    field("cellb_beta", "float32", 4), field("cellb_gamma", "float32", 4), i32("mapc", ID), i32("mapr", ID), i32("maps", ID),
+    field("dmin", "float32", 4), field("dmax", "float32", 4), field("dmean", "float32", 4), i32("ispg", ID),
+    i32("nsymbt", SIZE), bytes("extra1", 8), chars("exttyp", 4, ID), i32("nversion", ID), bytes("extra2", 84),
+    field("origin_x", "float32", 4), field("origin_y", "float32", 4), field("origin_z", "float32", 4),
+    chars("map", 4, SIGNATURE), bytes("machst", 4, ID), field("rms", "float32", 4), i32("nlabl", COUNT)]);
+var sxsc_mrc_header_be = sxLayout(0x60280002, "mrc_header_be", BE, sxsc_mrc_header_be_fields);
+var sxsc_las12_header_fields = layout([chars("signature", 4, SIGNATURE), u16("file_source_id", ID),
+    u16("global_encoding", FLAGS), u32("project_id1", ID), u16("project_id2", ID), u16("project_id3", ID),
+    bytes("project_id4", 8, ID), u8("version_major", ID), u8("version_minor", ID), chars("system_identifier", 32, STRING),
+    chars("generating_software", 32, STRING), u16("creation_day"), u16("creation_year"), u16("header_size", SIZE),
+    u32("point_data_offset", OFFSET), u32("variable_record_count", COUNT), u8("point_data_format", ID),
+    u16("point_record_size", SIZE), u32("point_count", COUNT), field("points_by_return", "uint32[5]", 20, COUNT),
+    field("x_scale", "float64", 8), field("y_scale", "float64", 8), field("z_scale", "float64", 8),
+    field("x_offset", "float64", 8), field("y_offset", "float64", 8), field("z_offset", "float64", 8),
+    field("xmax", "float64", 8), field("xmin", "float64", 8), field("ymax", "float64", 8), field("ymin", "float64", 8),
+    field("zmax", "float64", 8), field("zmin", "float64", 8)]);
+var sxsc_las12_header = sxLayout(0x6028000C, "las12_header", LE, sxsc_las12_header_fields);
+var sxsc_seg2_trace_header_le_fields = layout([u16("signature", SIGNATURE), u16("header_size", SIZE), u32("data_size", SIZE),
+    u32("sample_count", COUNT), u8("sample_format", ID), bytes("reserved", 19, RESERVED)]);
+var sxsc_seg2_trace_header_le = sxLayout(0x60280014, "seg2_trace_header_le", LE, sxsc_seg2_trace_header_le_fields);
+var sxsc_seg2_trace_header_be_fields = layout([u16("signature", SIGNATURE), u16("header_size", SIZE), u32("data_size", SIZE),
+    u32("sample_count", COUNT), u8("sample_format", ID), bytes("reserved", 19, RESERVED)]);
+var sxsc_seg2_trace_header_be = sxLayout(0x60280018, "seg2_trace_header_be", BE, sxsc_seg2_trace_header_be_fields);
+var sxsc_fit_field_definition_fields = layout([u8("field_definition_number", ID), u8("size", SIZE), u8("base_type", ID)]);
+var sxsc_fit_field_definition = sxLayout(0x6028001F, "fit_field_definition", LE, sxsc_fit_field_definition_fields);
+var sxsc_mda_header_fields = layout([i32("data_type", ID), i32("bytes_per_entry", SIZE), i32("dimension_count")]);
+var sxsc_mda_header = sxLayout(0x60280022, "mda_header", LE, sxsc_mda_header_fields);
+var sxsc_picoquant_header_fields = layout([chars("signature", 8, SIGNATURE), chars("version", 8, STRING)]);
+var sxsc_picoquant_header = sxLayout(0x60280025, "picoquant_header", LE, sxsc_picoquant_header_fields);
+var sxsc_picoquant_tag_empty_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    u64("value", RESERVED)]);
+var sxsc_picoquant_tag_empty = sxLayout(0x60280026, "picoquant_tag_empty", LE, sxsc_picoquant_tag_empty_fields);
+var sxsc_picoquant_tag_bool_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    u64("value", FLAGS)]);
+var sxsc_picoquant_tag_bool = sxLayout(0x60280027, "picoquant_tag_bool", LE, sxsc_picoquant_tag_bool_fields);
+var sxsc_picoquant_tag_integer_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID), i64("value")]);
+var sxsc_picoquant_tag_integer = sxLayout(0x60280028, "picoquant_tag_integer", LE, sxsc_picoquant_tag_integer_fields);
+var sxsc_picoquant_tag_bitset_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    u64("value", FLAGS)]);
+var sxsc_picoquant_tag_bitset = sxLayout(0x60280029, "picoquant_tag_bitset", LE, sxsc_picoquant_tag_bitset_fields);
+var sxsc_picoquant_tag_color_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    u64("value", ID)]);
+var sxsc_picoquant_tag_color = sxLayout(0x6028002A, "picoquant_tag_color", LE, sxsc_picoquant_tag_color_fields);
+var sxsc_picoquant_tag_float_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    field("value", "float64", 8)]);
+var sxsc_picoquant_tag_float = sxLayout(0x6028002B, "picoquant_tag_float", LE, sxsc_picoquant_tag_float_fields);
+var sxsc_picoquant_tag_datetime_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    field("value", "float64", 8)]);
+var sxsc_picoquant_tag_datetime = sxLayout(0x6028002C, "picoquant_tag_datetime", LE, sxsc_picoquant_tag_datetime_fields);
+var sxsc_picoquant_tag_blob_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    u64("value", SIZE)]);
+var sxsc_picoquant_tag_blob = sxLayout(0x6028002D, "picoquant_tag_blob", LE, sxsc_picoquant_tag_blob_fields);
+var sxsc_picoquant_tag_offset_fields = layout([chars("identifier", 32, STRING), i32("index", ID), u32("type", ID),
+    i64("value", OFFSET)]);
+var sxsc_picoquant_tag_offset = sxLayout(0x6028002E, "picoquant_tag_offset", LE, sxsc_picoquant_tag_offset_fields);
+var sxsc_sac_header_le_fields = layout([field("delta", "float32", 4), field("depmin", "float32", 4),
+    field("depmax", "float32", 4), field("scale", "float32", 4), field("odelta", "float32", 4), field("b", "float32", 4),
+    field("e", "float32", 4), field("o", "float32", 4), field("a", "float32", 4), field("internal0", "float32", 4),
+    field("t0", "float32", 4), field("t1", "float32", 4), field("t2", "float32", 4), field("t3", "float32", 4),
+    field("t4", "float32", 4), field("t5", "float32", 4), field("t6", "float32", 4), field("t7", "float32", 4),
+    field("t8", "float32", 4), field("t9", "float32", 4), field("f", "float32", 4), field("resp0", "float32", 4),
+    field("resp1", "float32", 4), field("resp2", "float32", 4), field("resp3", "float32", 4), field("resp4", "float32", 4),
+    field("resp5", "float32", 4), field("resp6", "float32", 4), field("resp7", "float32", 4), field("resp8", "float32", 4),
+    field("resp9", "float32", 4), field("stla", "float32", 4), field("stlo", "float32", 4), field("stel", "float32", 4),
+    field("stdp", "float32", 4), field("evla", "float32", 4), field("evlo", "float32", 4), field("evel", "float32", 4),
+    field("evdp", "float32", 4), field("mag", "float32", 4), field("user0", "float32", 4), field("user1", "float32", 4),
+    field("user2", "float32", 4), field("user3", "float32", 4), field("user4", "float32", 4), field("user5", "float32", 4),
+    field("user6", "float32", 4), field("user7", "float32", 4), field("user8", "float32", 4), field("user9", "float32", 4),
+    field("dist", "float32", 4), field("az", "float32", 4), field("baz", "float32", 4), field("gcarc", "float32", 4),
+    field("internal1", "float32", 4), field("internal2", "float32", 4), field("depmen", "float32", 4),
+    field("cmpaz", "float32", 4), field("cmpinc", "float32", 4), field("xminimum", "float32", 4),
+    field("xmaximum", "float32", 4), field("yminimum", "float32", 4), field("ymaximum", "float32", 4),
+    field("unused6", "float32", 4), field("unused7", "float32", 4), field("unused8", "float32", 4),
+    field("unused9", "float32", 4), field("unused10", "float32", 4), field("unused11", "float32", 4),
+    field("unused12", "float32", 4), i32("nzyear"), i32("nzjday"), i32("nzhour"), i32("nzmin"), i32("nzsec"), i32("nzmsec"),
+    i32("nvhdr", ID), i32("norid", ID), i32("nevid", ID), i32("npts", COUNT), i32("internal3"), i32("nwfid", ID),
+    i32("nxsize", COUNT), i32("nysize", COUNT), i32("unused13"), i32("iftype", ID), i32("idep", ID), i32("iztype", ID),
+    i32("unused14"), i32("iinst", ID), i32("istreg", ID), i32("ievreg", ID), i32("ievtyp", ID), i32("iqual", ID),
+    i32("isynth", ID), i32("imagtyp", ID), i32("imagsrc", ID), i32("unused15"), i32("unused16"), i32("unused17"),
+    i32("unused18"), i32("unused19"), i32("unused20"), i32("unused21"), i32("unused22"), i32("leven", FLAGS),
+    i32("lpspol", FLAGS), i32("lovrok", FLAGS), i32("lcalda", FLAGS), i32("unused23"), chars("kstnm", 8, STRING),
+    chars("kevnm", 16, STRING), chars("khole", 8, STRING), chars("ko", 8, STRING), chars("ka", 8, STRING),
+    chars("kt0", 8, STRING), chars("kt1", 8, STRING), chars("kt2", 8, STRING), chars("kt3", 8, STRING), chars("kt4", 8, STRING),
+    chars("kt5", 8, STRING), chars("kt6", 8, STRING), chars("kt7", 8, STRING), chars("kt8", 8, STRING), chars("kt9", 8, STRING),
+    chars("kf", 8, STRING), chars("kuser0", 8, STRING), chars("kuser1", 8, STRING), chars("kuser2", 8, STRING),
+    chars("kcmpnm", 8, STRING), chars("knetwk", 8, STRING), chars("kdatrd", 8, STRING), chars("kinst", 8, STRING)]);
+var sxsc_sac_header_le = sxLayout(0x60280035, "sac_header_le", LE, sxsc_sac_header_le_fields);
+var sxsc_sac_header_be_fields = layout([field("delta", "float32", 4), field("depmin", "float32", 4),
+    field("depmax", "float32", 4), field("scale", "float32", 4), field("odelta", "float32", 4), field("b", "float32", 4),
+    field("e", "float32", 4), field("o", "float32", 4), field("a", "float32", 4), field("internal0", "float32", 4),
+    field("t0", "float32", 4), field("t1", "float32", 4), field("t2", "float32", 4), field("t3", "float32", 4),
+    field("t4", "float32", 4), field("t5", "float32", 4), field("t6", "float32", 4), field("t7", "float32", 4),
+    field("t8", "float32", 4), field("t9", "float32", 4), field("f", "float32", 4), field("resp0", "float32", 4),
+    field("resp1", "float32", 4), field("resp2", "float32", 4), field("resp3", "float32", 4), field("resp4", "float32", 4),
+    field("resp5", "float32", 4), field("resp6", "float32", 4), field("resp7", "float32", 4), field("resp8", "float32", 4),
+    field("resp9", "float32", 4), field("stla", "float32", 4), field("stlo", "float32", 4), field("stel", "float32", 4),
+    field("stdp", "float32", 4), field("evla", "float32", 4), field("evlo", "float32", 4), field("evel", "float32", 4),
+    field("evdp", "float32", 4), field("mag", "float32", 4), field("user0", "float32", 4), field("user1", "float32", 4),
+    field("user2", "float32", 4), field("user3", "float32", 4), field("user4", "float32", 4), field("user5", "float32", 4),
+    field("user6", "float32", 4), field("user7", "float32", 4), field("user8", "float32", 4), field("user9", "float32", 4),
+    field("dist", "float32", 4), field("az", "float32", 4), field("baz", "float32", 4), field("gcarc", "float32", 4),
+    field("internal1", "float32", 4), field("internal2", "float32", 4), field("depmen", "float32", 4),
+    field("cmpaz", "float32", 4), field("cmpinc", "float32", 4), field("xminimum", "float32", 4),
+    field("xmaximum", "float32", 4), field("yminimum", "float32", 4), field("ymaximum", "float32", 4),
+    field("unused6", "float32", 4), field("unused7", "float32", 4), field("unused8", "float32", 4),
+    field("unused9", "float32", 4), field("unused10", "float32", 4), field("unused11", "float32", 4),
+    field("unused12", "float32", 4), i32("nzyear"), i32("nzjday"), i32("nzhour"), i32("nzmin"), i32("nzsec"), i32("nzmsec"),
+    i32("nvhdr", ID), i32("norid", ID), i32("nevid", ID), i32("npts", COUNT), i32("internal3"), i32("nwfid", ID),
+    i32("nxsize", COUNT), i32("nysize", COUNT), i32("unused13"), i32("iftype", ID), i32("idep", ID), i32("iztype", ID),
+    i32("unused14"), i32("iinst", ID), i32("istreg", ID), i32("ievreg", ID), i32("ievtyp", ID), i32("iqual", ID),
+    i32("isynth", ID), i32("imagtyp", ID), i32("imagsrc", ID), i32("unused15"), i32("unused16"), i32("unused17"),
+    i32("unused18"), i32("unused19"), i32("unused20"), i32("unused21"), i32("unused22"), i32("leven", FLAGS),
+    i32("lpspol", FLAGS), i32("lovrok", FLAGS), i32("lcalda", FLAGS), i32("unused23"), chars("kstnm", 8, STRING),
+    chars("kevnm", 16, STRING), chars("khole", 8, STRING), chars("ko", 8, STRING), chars("ka", 8, STRING),
+    chars("kt0", 8, STRING), chars("kt1", 8, STRING), chars("kt2", 8, STRING), chars("kt3", 8, STRING), chars("kt4", 8, STRING),
+    chars("kt5", 8, STRING), chars("kt6", 8, STRING), chars("kt7", 8, STRING), chars("kt8", 8, STRING), chars("kt9", 8, STRING),
+    chars("kf", 8, STRING), chars("kuser0", 8, STRING), chars("kuser1", 8, STRING), chars("kuser2", 8, STRING),
+    chars("kcmpnm", 8, STRING), chars("knetwk", 8, STRING), chars("kdatrd", 8, STRING), chars("kinst", 8, STRING)]);
+var sxsc_sac_header_be = sxLayout(0x60280036, "sac_header_be", BE, sxsc_sac_header_be_fields);
+function sx_sciencemeta_static_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60280000 || id >= 0x60290000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60280001:
+        if (r.name === "mapc") {
+            text = "1=X, 2=Y, 3=Z.";
+        }
+        if (r.name === "mapr") {
+            text = "1=X, 2=Y, 3=Z.";
+        }
+        if (r.name === "maps") {
+            text = "1=X, 2=Y, 3=Z.";
+        }
+        if (r.name === "nsymbt") {
+            text = "Byte length of the extended header after the 1024-byte main header.";
+        }
+        break;
+    case 0x60280002:
+        if (r.name === "mapc") {
+            text = "1=X, 2=Y, 3=Z.";
+        }
+        if (r.name === "mapr") {
+            text = "1=X, 2=Y, 3=Z.";
+        }
+        if (r.name === "maps") {
+            text = "1=X, 2=Y, 3=Z.";
+        }
+        if (r.name === "nsymbt") {
+            text = "Byte length of the extended header after the 1024-byte main header.";
+        }
+        break;
+    case 0x60280004:
+        if (r.name === "file_length_words") {
+            text = "File length in 16-bit words; multiply by two for bytes.";
+        }
+        break;
+    case 0x60280005:
+        if (r.name === "content_length_words") {
+            text = "Payload length in 16-bit words, excluding the eight-byte record header.";
+        }
+        break;
+    case 0x6028000C:
+        if (r.name === "global_encoding") {
+            text = "Bit 0 selects adjusted standard GPS time instead of GPS week time.";
+        }
+        if (r.name === "point_data_offset") {
+            text = "Byte offset from the file base.";
+        }
+        if (r.name === "x_offset") {
+            text = "Coordinate translation, not a file offset.";
+        }
+        if (r.name === "y_offset") {
+            text = "Coordinate translation, not a file offset.";
+        }
+        if (r.name === "z_offset") {
+            text = "Coordinate translation, not a file offset.";
+        }
+        break;
+    case 0x6028000E:
+        if (r.name === "return_flags") {
+            text = "Bits 0..2 return number, 3..5 number of returns, 6 scan direction, 7 edge of flight line.";
+        }
+        if (r.name === "classification") {
+            text = "Low 5 bits classification; high bits synthetic, key-point and withheld.";
+        }
+        break;
+    case 0x6028000F:
+        if (r.name === "return_flags") {
+            text = "Bits 0..2 return number, 3..5 number of returns, 6 scan direction, 7 edge of flight line.";
+        }
+        if (r.name === "classification") {
+            text = "Low 5 bits classification; high bits synthetic, key-point and withheld.";
+        }
+        break;
+    case 0x60280010:
+        if (r.name === "return_flags") {
+            text = "Bits 0..2 return number, 3..5 number of returns, 6 scan direction, 7 edge of flight line.";
+        }
+        if (r.name === "classification") {
+            text = "Low 5 bits classification; high bits synthetic, key-point and withheld.";
+        }
+        break;
+    case 0x60280011:
+        if (r.name === "return_flags") {
+            text = "Bits 0..2 return number, 3..5 number of returns, 6 scan direction, 7 edge of flight line.";
+        }
+        if (r.name === "classification") {
+            text = "Low 5 bits classification; high bits synthetic, key-point and withheld.";
+        }
+        break;
+    case 0x60280013:
+        if (r.name === "trace_offset") {
+            text = "Byte offset from the file base.";
+        }
+        break;
+    case 0x60280015:
+        if (r.name === "record_size") {
+            text = "Includes this length field and the configured string terminator; zero ends the string block.";
+        }
+        break;
+    case 0x60280017:
+        if (r.name === "trace_offset") {
+            text = "Byte offset from the file base.";
+        }
+        break;
+    case 0x60280019:
+        if (r.name === "record_size") {
+            text = "Includes this length field and the configured string terminator; zero ends the string block.";
+        }
+        break;
+    case 0x6028001A:
+        if (r.name === "protocol_version") {
+            text = "High nibble is major; low nibble is minor.";
+        }
+        break;
+    case 0x6028001B:
+        if (r.name === "crc16") {
+            text = "FIT CRC-16 checksum.";
+        }
+        break;
+    case 0x6028001C:
+        if (r.name === "record_header") {
+            text = "Bit 7 compressed timestamp; otherwise bit 6 definition and bit 5 developer fields; low bits select local message.";
+        }
+        break;
+    case 0x6028001D:
+        if (r.name === "architecture") {
+            text = "0=little-endian, 1=big-endian.";
+        }
+        break;
+    case 0x6028001E:
+        if (r.name === "architecture") {
+            text = "0=little-endian, 1=big-endian.";
+        }
+        break;
+    case 0x60280022:
+        if (r.name === "dimension_count") {
+            text = "Negative count selects 64-bit dimension values; positive selects 32-bit.";
+        }
+        break;
+    case 0x60280026:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Empty tag value.";
+        }
+        break;
+    case 0x60280027:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Boolean tag value.";
+        }
+        break;
+    case 0x60280028:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Signed integer tag value.";
+        }
+        break;
+    case 0x60280029:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Bitset tag value.";
+        }
+        break;
+    case 0x6028002A:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Packed color tag value.";
+        }
+        break;
+    case 0x6028002B:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Floating-point tag value.";
+        }
+        break;
+    case 0x6028002C:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Date/time in days relative to 1899-12-30.";
+        }
+        break;
+    case 0x6028002D:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Byte count of the following tag payload.";
+        }
+        break;
+    case 0x6028002E:
+        if (r.name === "index") {
+            text = "-1 denotes an unindexed tag.";
+        }
+        if (r.name === "value") {
+            text = "Byte offset from the file base to histogram data.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sx_sciencemeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60280000 || id >= 0x60290000) {
+        return true;
+    }
+    if (!sx_sciencemeta_static_comment(r, id)) {
+        return false;
+    }
+    var type = sxVarType(r.value);
+    if (type === 9 /*XX_VAR_TYPE_FLOAT*/ || type === 10 /*XX_VAR_TYPE_DOUBLE*/ || type === 12 /*XX_VAR_TYPE_STRING*/ || type === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    var text = null;
+    var v = sxVarU64(r.value);
+    if ((id === sxsc_mrc_header_le.id || id === sxsc_mrc_header_be.id) && r.name === "mode") {
+        switch (v) {
+        case 0:
+            text = "MODE_INT8";
+            break;
+        case 1:
+            text = "MODE_INT16";
+            break;
+        case 2:
+            text = "MODE_FLOAT32";
+            break;
+        case 3:
+            text = "MODE_COMPLEX_INT16";
+            break;
+        case 4:
+            text = "MODE_COMPLEX_FLOAT32";
+            break;
+        case 6:
+            text = "MODE_UINT16";
+            break;
+        case 12:
+            text = "MODE_FLOAT16";
+            break;
+        case 101:
+            text = "MODE_PACKED_4BIT";
+            break;
+        }
+    } else if (r.name === "shape_type") {
+        switch (v) {
+        case 0:
+            text = "NULL_SHAPE";
+            break;
+        case 1:
+            text = "POINT";
+            break;
+        case 3:
+            text = "POLYLINE";
+            break;
+        case 5:
+            text = "POLYGON";
+            break;
+        case 8:
+            text = "MULTIPOINT";
+            break;
+        }
+    } else if (id === sxsc_las12_header.id && r.name === "point_data_format") {
+        switch (v) {
+        case 0:
+            text = "POINT_FORMAT_0";
+            break;
+        case 1:
+            text = "POINT_FORMAT_1_GPS_TIME";
+            break;
+        case 2:
+            text = "POINT_FORMAT_2_RGB";
+            break;
+        case 3:
+            text = "POINT_FORMAT_3_GPS_TIME_RGB";
+            break;
+        }
+    } else if ((id === sxsc_seg2_trace_header_le.id || id === sxsc_seg2_trace_header_be.id) && r.name === "sample_format") {
+        switch (v) {
+        case 1:
+            text = "INT16";
+            break;
+        case 2:
+            text = "INT32";
+            break;
+        case 3:
+            text = "20_BIT_FLOAT";
+            break;
+        case 4:
+            text = "IEEE_FLOAT32";
+            break;
+        case 5:
+            text = "IEEE_FLOAT64";
+            break;
+        }
+    } else if (id === sxsc_mda_header.id && r.name === "data_type") {
+        switch ((v >= SX_I64_MAX ? v - SX_U64_MAX : v)) {
+        case -2:
+            text = "MDA_UINT8";
+            break;
+        case -3:
+            text = "MDA_FLOAT32";
+            break;
+        case -4:
+            text = "MDA_INT16";
+            break;
+        case -5:
+            text = "MDA_INT32";
+            break;
+        case -6:
+            text = "MDA_UINT16";
+            break;
+        case -7:
+            text = "MDA_FLOAT64";
+            break;
+        case -8:
+            text = "MDA_UINT32";
+            break;
+        }
+    } else if (r.name === "type") {
+        switch (v) {
+        case 0xFFFF0008:
+            text = "tyEmpty8";
+            break;
+        case 0x00000008:
+            text = "tyBool8";
+            break;
+        case 0x10000008:
+            text = "tyInt8";
+            break;
+        case 0x11000008:
+            text = "tyBitSet64";
+            break;
+        case 0x12000008:
+            text = "tyColor8";
+            break;
+        case 0x20000008:
+            text = "tyFloat8";
+            break;
+        case 0x21000008:
+            text = "tyTDateTime";
+            break;
+        case 0x2001FFFF:
+            text = "tyFloat8Array";
+            break;
+        case 0x4001FFFF:
+            text = "tyAnsiString";
+            break;
+        case 0x4002FFFF:
+            text = "tyWideString";
+            break;
+        case 0xFFFFFFFF:
+            text = "tyBinaryBlob";
+            break;
+        }
+    } else if (id === sxsc_fit_field_definition.id && r.name === "base_type") {
+        switch (v) {
+        case 0:
+            text = "FIT_ENUM";
+            break;
+        case 1:
+            text = "FIT_SINT8";
+            break;
+        case 2:
+            text = "FIT_UINT8";
+            break;
+        case 0x83:
+            text = "FIT_SINT16";
+            break;
+        case 0x84:
+            text = "FIT_UINT16";
+            break;
+        case 0x85:
+            text = "FIT_SINT32";
+            break;
+        case 0x86:
+            text = "FIT_UINT32";
+            break;
+        case 7:
+            text = "FIT_STRING";
+            break;
+        case 0x88:
+            text = "FIT_FLOAT32";
+            break;
+        case 0x89:
+            text = "FIT_FLOAT64";
+            break;
+        case 10:
+            text = "FIT_UINT8Z";
+            break;
+        case 0x8B:
+            text = "FIT_UINT16Z";
+            break;
+        case 0x8C:
+            text = "FIT_UINT32Z";
+            break;
+        case 13:
+            text = "FIT_BYTE";
+            break;
+        case 0x8E:
+            text = "FIT_SINT64";
+            break;
+        case 0x8F:
+            text = "FIT_UINT64";
+            break;
+        case 0x90:
+            text = "FIT_UINT64Z";
+            break;
+        }
+    } else if (id === sxsc_sac_header_le.id || id === sxsc_sac_header_be.id) {
+        if ((v >= SX_I64_MAX ? v - SX_U64_MAX : v) === -12345 && sxVarType(r.value) !== 10 /*XX_VAR_TYPE_DOUBLE*/) {
+            text = "SAC_UNDEFINED";
+        } else if (r.name === "iftype") {
+            switch (v) {
+            case 1:
+                text = "ITIME";
+                break;
+            case 2:
+                text = "IRLIM";
+                break;
+            case 3:
+                text = "IAMPH";
+                break;
+            case 4:
+                text = "IXY";
+                break;
+            }
+        } else if (r.name === "idep") {
+            switch (v) {
+            case 5:
+                text = "IUNKN";
+                break;
+            case 6:
+                text = "IDISP";
+                break;
+            case 7:
+                text = "IVEL";
+                break;
+            case 8:
+                text = "IACC";
+                break;
+            case 50:
+                text = "IVOLTS";
+                break;
+            }
+        } else if (r.name === "leven" || r.name === "lpspol" || r.name === "lovrok" || r.name === "lcalda") {
+            if (v === 0) {
+                text = "FALSE";
+            } else if (v === 1) {
+                text = "TRUE";
+            }
+        }
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sx_sciencemeta_supports(t) {
+    switch (t) {
+    case "MRC":
+    case "ESRI_SHP":
+    case "LIDAR_LAS":
+    case "SEISMIC_SEG2":
+    case "GARMIN_FIT":
+    case "MOUNTAINSORT_MDA":
+    case "PHOTONTIMING_PTU":
+    case "PHOTONTIMING_PHU":
+    case "FREESURFER_SURFACE":
+    case "SEISMIC_SAC":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxsc16(p, p_o, be) {
+    return sxGetU16At(p, p_o, 2, 0, be);
+}
+function sxsc32(p, p_o, be) {
+    return sxGetU32At(p, p_o, 4, 0, be);
+}
+function sxsc_span(c, at, n) {
+    return c !== null && at >= 0 && at <= c.size && n <= (c.size - at < 0 ? c.size - at + SX_U64_MAX : c.size - at);
+}
+function sxsc_add(c, l, at, bytes) {
+    return c.count < 32000 && sxsc_span(c, at, (bytes < 0 ? bytes + SX_U64_MAX : bytes)) && sx_add(c, l, at, bytes);
+}
+function sxsc_table(c, l, at, bytes, count) {
+    return c.count < 32000 && bytes > 0 && count <= Math.floor(SX_I64_MAX / (bytes < 0 ? bytes + SX_U64_MAX : bytes)) && sxsc_span(c, at, (bytes < 0 ? bytes + SX_U64_MAX : bytes) * count) && sx_table(c, l, at, bytes, count);
+}
+function sxsc_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : 0;
+}
+function sxsc_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxsc_order, true);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + bytes;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsc_order, true);
+    return !c.failed;
+}
+function sxsc_pq(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 16) || !sxsc_add(c, sxsc_picoquant_header, 0, 16)) {
+        return false;
+    }
+    var at = 16;
+    for (var i = 0; i < 1024; i++) {
+        if (at > 4194256 || !sx_read(c, at, b, 48) || !sxMemchr(b, 0, 32)) {
+            return false;
+        }
+        var type = sxsc32(b, 36, false);
+        var value = sxGetU64At(b, 40, 8, 0, false);
+        var payload = 0;
+        var l = null;
+        switch (type) {
+        case 0xFFFF0008:
+            l = sxsc_picoquant_tag_empty;
+            break;
+        case 0x00000008:
+            l = sxsc_picoquant_tag_bool;
+            break;
+        case 0x10000008:
+            l = !sxStrcmp(b, "HistResDscr_DataOffset") ? sxsc_picoquant_tag_offset : sxsc_picoquant_tag_integer;
+            break;
+        case 0x11000008:
+            l = sxsc_picoquant_tag_bitset;
+            break;
+        case 0x12000008:
+            l = sxsc_picoquant_tag_color;
+            break;
+        case 0x20000008:
+            l = sxsc_picoquant_tag_float;
+            break;
+        case 0x21000008:
+            l = sxsc_picoquant_tag_datetime;
+            break;
+        case 0x2001FFFF:
+        case 0x4001FFFF:
+        case 0x4002FFFF:
+        case 0xFFFFFFFF:
+            l = sxsc_picoquant_tag_blob;
+            payload = value;
+            break;
+        default:
+            return false;
+        }
+        if (payload > 1048576 || !sxsc_span(c, at + 48, payload) || !sxsc_add(c, l, at, 48)) {
+            return false;
+        }
+        at += 48 + (payload >= SX_I64_MAX ? payload - SX_U64_MAX : payload);
+        if (!sxStrcmp(b, "Header_End")) {
+            return true;
+        }
+    }
+    return false;
+}
+function sx_sciencemeta_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "MRC":
+        ok = sx_mrc_build(c);
+        break;
+    case "ESRI_SHP":
+        ok = sx_esri_shp_build(c);
+        break;
+    case "LIDAR_LAS":
+        ok = sx_lidar_las_build(c);
+        break;
+    case "SEISMIC_SEG2":
+        ok = sx_seismic_seg2_build(c);
+        break;
+    case "GARMIN_FIT":
+        ok = sx_garmin_fit_build(c);
+        break;
+    case "MOUNTAINSORT_MDA":
+        ok = sx_mountainsort_mda_build(c);
+        break;
+    case "PHOTONTIMING_PTU":
+    case "PHOTONTIMING_PHU":
+        ok = sxsc_pq(c);
+        break;
+    case "FREESURFER_SURFACE":
+        ok = sx_freesurfer_surface_build(c);
+        break;
+    case "SEISMIC_SAC":
+        ok = sx_seismic_sac_build(c);
+        break;
+    default:
+        return false;
+    }
+    return ok && sxsc_finish(c);
+}

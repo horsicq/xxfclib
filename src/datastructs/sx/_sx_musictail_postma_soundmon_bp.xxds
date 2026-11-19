@@ -1,0 +1,69 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/postma_soundmon_bp/xx_postma_soundmon_bp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_bp_header_fields = layout([chars("title", 26, NONE), blob("magic", 3, SIGNATURE), u8("waveforms", COUNT),
+    u16("orders", COUNT)]);
+var sxmta_bp_header = sxLayout(0x60810066, "bp_header", BE, sxmta_bp_header_fields);
+var sxmta_bp_synth1_fields = layout([u8("kind", ID), u8("waveform", ID), u16("waveform_words", COUNT),
+    u8("adsr_control", FLAGS), u8("adsr_table", ID), u16("adsr_length", COUNT), u8("adsr_speed"), u8("lfo_control", FLAGS),
+    u8("lfo_table", ID), u8("lfo_depth"), u16("lfo_length", COUNT), u8("unused1"), u8("lfo_delay"), u8("lfo_speed"),
+    u8("envelope_control", FLAGS), u8("envelope_table", ID), u8("unused2"), u16("envelope_length", COUNT), u8("unused3"),
+    u8("envelope_delay"), u8("envelope_speed"), u8("volume"), blob("unused4", 6)]);
+var sxmta_bp_synth1 = sxLayout(0x60810068, "bp_synth1", BE, sxmta_bp_synth1_fields);
+var sxmta_bp_synth2_fields = layout([u8("kind", ID), u8("waveform", ID), u16("waveform_words", COUNT),
+    u8("adsr_control", FLAGS), u8("adsr_table", ID), u16("adsr_length", COUNT), u8("adsr_speed"), u8("lfo_control", FLAGS),
+    u8("lfo_table", ID), u8("lfo_depth"), u16("lfo_length", COUNT), u8("lfo_delay"), u8("lfo_speed"),
+    u8("envelope_control", FLAGS), u8("envelope_table", ID), u16("envelope_length", COUNT), u8("envelope_delay"),
+    u8("envelope_speed"), u8("effect_control", FLAGS), u8("effect_speed"), u8("effect_delay"), u8("modulation_control", FLAGS),
+    u8("modulation_table", ID), u8("modulation_speed"), u8("modulation_delay"), u8("volume"), u16("modulation_length", COUNT)]);
+var sxmta_bp_synth2 = sxLayout(0x60810069, "bp_synth2", BE, sxmta_bp_synth2_fields);
+var sxmta_bp_step_fields = layout([u16("track", ID), i8("sound_transpose"), i8("note_transpose")]);
+var sxmta_bp_step = sxLayout(0x6081006A, "bp_step", BE, sxmta_bp_step_fields);
+var sxmta_bp_event_fields = layout([i8("note"), u8("instrument_option", FLAGS), u8("parameter")]);
+var sxmta_bp_event = sxLayout(0x6081006B, "bp_event", LE, sxmta_bp_event_fields);
+function sxmta_bp(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [32];
+    var ver = [0];
+    var waves = [0];
+    var orders = [0];
+    var x = [0];
+    var total = 0;
+    var tracks = 0;
+    if (!sxmta_eq(v, 26, "V.", 2, end) || !sxmta_u(v, 28, 1, ver, 0, end) || ver[0] !== 50 /*2*/ && ver[0] !== 51 /*3*/ || !sxmta_u(v, 29, 1, waves, 0, end) || !sxmta_be(v, 30, 2, orders, 0, end) || !sxmta_row(v, sxmta_bp_header, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < 15; i++) {
+        if (!sxmta_u(v, p[0], 1, x, 0, end)) {
+            return false;
+        }
+        if (x[0] === 255) {
+            if (!sxmta_take(v, ver[0] === 50 /*2*/ ? sxmta_bp_synth1 : sxmta_bp_synth2, p, 1, end)) {
+                return false;
+            }
+        } else {
+            if (!sxmta_be(v, p[0] + 24, 2, x, 0, end) || !sxmta_take(v, sxmta_bp_sample, p, 1, end)) {
+                return false;
+            }
+            total += 2 * x[0];
+        }
+    }
+    for (i = 0; i < orders[0] * 4; i++) {
+        if (!sxmta_be(v, p[0], 2, x, 0, end) || !sxmta_take(v, sxmta_bp_step, p, 1, end)) {
+            return false;
+        }
+        if (x[0] > tracks) {
+            tracks = x[0];
+        }
+    }
+    if (!sxmta_take(v, sxmta_bp_event, p, tracks * 16, end) || !sxmta_skip(v, p, waves[0] * 64, end)) {
+        return false;
+    }
+    return sxmta_span(v, p[0], total, end);
+}
+function sx_postma_soundmon_bp_build(v) {
+    return sxmta_bp(v);
+}

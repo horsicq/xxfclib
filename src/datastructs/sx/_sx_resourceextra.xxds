@@ -1,0 +1,172 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_resourceextra.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxre_secondnature_entry_fields = layout([chars("name", 13, NONE), u32("payload_offset", OFFSET), u32("payload_size", SIZE)]);
+var sxre_secondnature_entry = sxLayout(0x603F0006, "secondnature_entry", LE, sxre_secondnature_entry_fields);
+var sxre_secondnature_entry_complemented_fields = layout([field("name", "ones_char[13]", 13),
+    field("payload_offset", "uint32_ones_le", 4, OFFSET), field("payload_size", "uint32_ones_le", 4, SIZE)]);
+var sxre_secondnature_entry_complemented = sxLayout(0x603F000D, "secondnature_entry_complemented", LE, sxre_secondnature_entry_complemented_fields);
+function sx_resourceextra_comment(r, id) {
+    if (r === null || r.name === null || id < 0x603F0000 || id >= 0x60400000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x603F0005:
+        if (r.name === "width") {
+            text = "Pixels.";
+        }
+        if (r.name === "height") {
+            text = "Pixels.";
+        }
+        break;
+    case 0x603F0006:
+        if (r.name === "name") {
+            text = "NUL terminated; original stale bytes after terminator remain in raw column.";
+        }
+        if (r.name === "payload_offset") {
+            text = "File-relative stored value; zero/all-one slots may be reference-only.";
+        }
+        if (r.name === "payload_size") {
+            text = "Stored member extent; all-one unused SNX sentinel is not a byte size.";
+        }
+        break;
+    case 0x603F0007:
+        if (r.name === "kind") {
+            text = "Native preserves the kind word without assigning an enumeration.";
+        }
+        if (r.name === "rectangle_0") {
+            text = "Screen placement rectangle word0; axis/order not established.";
+        }
+        break;
+    case 0x603F000C:
+        if (r.name === "width") {
+            text = "Pixels.";
+        }
+        if (r.name === "height") {
+            text = "Pixels.";
+        }
+        break;
+    case 0x603F000D:
+        if (r.name === "name") {
+            text = "NUL terminated; original stale bytes after terminator remain in raw column.";
+        }
+        if (r.name === "payload_offset") {
+            text = "File-relative stored value; zero/all-one slots may be reference-only.";
+        }
+        if (r.name === "payload_size") {
+            text = "Stored member extent; all-one unused SNX sentinel is not a byte size.";
+        }
+        break;
+    case 0x603F000E:
+        if (r.name === "kind") {
+            text = "Native preserves the kind word without assigning an enumeration.";
+        }
+        if (r.name === "rectangle_0") {
+            text = "Screen placement rectangle word0; axis/order not established.";
+        }
+        break;
+    case 0x603F0013:
+        if (r.name === "property_id") {
+            text = "Observed native branches:2 compound states;13 extra word;44 length-prefixed data. Other nonzero properties use a standard group.";
+        }
+        break;
+    case 0x603F0015:
+        if (r.name === "opaque_word") {
+            text = "Stored resource word; native reader does not assign semantics.";
+        }
+        break;
+    case 0x603F0016:
+        if (r.name === "record_count") {
+            text = "Count of following opaque6-byte records.";
+        }
+        break;
+    case 0x603F0017:
+        if (r.name === "present") {
+            text = "Nonzero introduces27 opaque bytes and a one-byte-length string.";
+        }
+        break;
+    case 0x603F0018:
+        if (r.name === "record_count") {
+            text = "Count of following opaque14-byte records.";
+        }
+        break;
+    case 0x603F0019:
+        if (r.name === "record_count") {
+            text = "Each row has14 opaque bytes, a4-byte size, and that many payload bytes.";
+        }
+        break;
+    default:
+        break;
+    }
+    if ((id === sxre_secondnature_entry.id || id === sxre_secondnature_entry_complemented.id) && (r.name === "payload_size" || r.name === "payload_offset") && sxVarU64(r.value) === 4294967295) {
+        text = "All-one unused SNX slot sentinel, not a byte count or address.";
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxre_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxre_read(c, p, b, n) {
+    return sxre_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxre_word(c, p, n, mask, v) {
+    var b = [];
+    if (!n || n > 4 || !sxre_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = 0;
+    for (var i = 0; i < n; i++) {
+        v[0] = sxOr64(v[0], sxShl64(mask ? ~b[i] & 0xFF : b[i], (8 * i) >>> 0));
+    }
+    return true;
+}
+function sxre_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = f.offset + f.size;
+    return c.count < 20000 && sxre_span(c, p, (n < 0 ? n + SX_U64_MAX : n)) && sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), n);
+}
+function sxre_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxre_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxre_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxre_order, true);
+    return !c.failed;
+}
+function sx_resourceextra_supports(t) {
+    switch (t) {
+    case "SECONDNATURE":
+    case "SKF":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_resourceextra_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = (c.f.file_type === "SECONDNATURE" ? (sx_secondnature_build(c) ? 1 : 0) : c.f.file_type === "SKF" ? (sx_skf_build(c) ? 1 : 0) : 0) !== 0;
+    return !!(c.count && sxre_finish(c));
+}

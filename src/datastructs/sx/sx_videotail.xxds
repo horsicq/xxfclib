@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_videotail.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_videotail");
+include("_sx_videotail_adobe_director_cxt");
+include("_sx_videotail_grasp");
+include("_sx_videotail_matroska");
+include("_sx_videotail_mp4");
+include("_sx_videotail_swf");
+
+function fileTypes() { return ["GRASP", "SWF", "MP4", "MATROSKA", "ADOBE_DIRECTOR_CXT"]; }
+
+var sx_videotail_layouts = [sxvt_grasp_header, sxvt_grasp_entry, sxvt_grasp_member_size, sxvt_swf_header, sxvt_swf_lzma_header,
+    sxvt_swf_rect1, sxvt_swf_rect2, sxvt_swf_rect3, sxvt_swf_rect4, sxvt_swf_rect5, sxvt_swf_rect6, sxvt_swf_rect7,
+    sxvt_swf_rect8, sxvt_swf_rect9, sxvt_swf_rect10, sxvt_swf_rect11, sxvt_swf_rect12, sxvt_swf_rect13, sxvt_swf_rect14,
+    sxvt_swf_rect15, sxvt_swf_rect16, sxvt_swf_rect17, sxvt_swf_movie, sxvt_swf_tag_short, sxvt_swf_tag_long, sxvt_swf_sprite,
+    sxvt_swf_background, sxvt_swf_character_id, sxvt_swf_jpeg3, sxvt_swf_jpeg4, sxvt_swf_lossless, sxvt_swf_palette_count,
+    sxvt_swf_sound, sxvt_swf_mp3_seek, sxvt_swf_stream_sound, sxvt_swf_binary, sxvt_swf_file_attributes,
+    sxvt_director_header_le, sxvt_director_chunk_le, sxvt_director_header_be, sxvt_director_chunk_be, sxvt_mp4_box,
+    sxvt_mp4_box64, sxvt_mp4_uuid, sxvt_mp4_ftyp, sxvt_mp4_brand, sxvt_mp4_mvhd_v0, sxvt_mp4_tkhd_v0, sxvt_mp4_mdhd_v0,
+    sxvt_mp4_elst_entry_v0, sxvt_mp4_mvhd_v1, sxvt_mp4_tkhd_v1, sxvt_mp4_mdhd_v1, sxvt_mp4_elst_entry_v1, sxvt_mp4_hdlr,
+    sxvt_mp4_table, sxvt_mp4_stsz, sxvt_mp4_stco, sxvt_mp4_co64, sxvt_mp4_stts, sxvt_mp4_ctts_v0, sxvt_mp4_ctts_v1,
+    sxvt_mp4_stsc, sxvt_mp4_stss, sxvt_mp4_sample_size, sxvt_mp4_sample_entry, sxvt_mp4_vmhd, sxvt_mp4_smhd, sxvt_mp4_fullbox,
+    sxvt_ebml_id1, sxvt_ebml_id2, sxvt_ebml_id3, sxvt_ebml_id4, sxvt_ebml_size1, sxvt_matroska_track1, sxvt_matroska_lace_size1,
+    sxvt_matroska_lace_delta1, sxvt_matroska_uint1, sxvt_matroska_offset1, sxvt_ebml_size2, sxvt_matroska_track2,
+    sxvt_matroska_lace_size2, sxvt_matroska_lace_delta2, sxvt_matroska_uint2, sxvt_matroska_offset2, sxvt_ebml_size3,
+    sxvt_matroska_track3, sxvt_matroska_lace_size3, sxvt_matroska_lace_delta3, sxvt_matroska_uint3, sxvt_matroska_offset3,
+    sxvt_ebml_size4, sxvt_matroska_track4, sxvt_matroska_lace_size4, sxvt_matroska_lace_delta4, sxvt_matroska_uint4,
+    sxvt_matroska_offset4, sxvt_ebml_size5, sxvt_matroska_track5, sxvt_matroska_lace_size5, sxvt_matroska_lace_delta5,
+    sxvt_matroska_uint5, sxvt_matroska_offset5, sxvt_ebml_size6, sxvt_matroska_track6, sxvt_matroska_lace_size6,
+    sxvt_matroska_lace_delta6, sxvt_matroska_uint6, sxvt_matroska_offset6, sxvt_ebml_size7, sxvt_matroska_track7,
+    sxvt_matroska_lace_size7, sxvt_matroska_lace_delta7, sxvt_matroska_uint7, sxvt_matroska_offset7, sxvt_ebml_size8,
+    sxvt_matroska_track8, sxvt_matroska_lace_size8, sxvt_matroska_lace_delta8, sxvt_matroska_uint8, sxvt_matroska_offset8,
+    sxvt_matroska_date, sxvt_matroska_float4, sxvt_matroska_float8, sxvt_matroska_crc32, sxvt_matroska_block,
+    sxvt_matroska_lace_count, sxvt_matroska_xiph_size, sxvt_director_imap_le, sxvt_director_mmap_le,
+    sxvt_director_mmap_entry_le, sxvt_director_key_le, sxvt_director_key_entry_le, sxvt_director_imap_be, sxvt_director_mmap_be,
+    sxvt_director_mmap_entry_be, sxvt_director_key_be, sxvt_director_key_entry_be, sxvt_director_cast_index];
+
+function structs() {
+    return sxCatalog([sxvt_grasp_header, sxvt_grasp_entry, sxvt_grasp_member_size, sxvt_swf_header, sxvt_swf_lzma_header,
+        sxvt_swf_rect1, sxvt_swf_rect2, sxvt_swf_rect3, sxvt_swf_rect4, sxvt_swf_rect5, sxvt_swf_rect6, sxvt_swf_rect7,
+        sxvt_swf_rect8, sxvt_swf_rect9, sxvt_swf_rect10, sxvt_swf_rect11, sxvt_swf_rect12, sxvt_swf_rect13, sxvt_swf_rect14,
+        sxvt_swf_rect15, sxvt_swf_rect16, sxvt_swf_rect17, sxvt_swf_movie, sxvt_swf_tag_short, sxvt_swf_tag_long,
+        sxvt_swf_sprite, sxvt_swf_background, sxvt_swf_character_id, sxvt_swf_jpeg3, sxvt_swf_jpeg4, sxvt_swf_lossless,
+        sxvt_swf_palette_count, sxvt_swf_sound, sxvt_swf_mp3_seek, sxvt_swf_stream_sound, sxvt_swf_binary,
+        sxvt_swf_file_attributes, sxvt_director_header_le, sxvt_director_chunk_le, sxvt_director_header_be,
+        sxvt_director_chunk_be, sxvt_mp4_box, sxvt_mp4_box64, sxvt_mp4_uuid, sxvt_mp4_ftyp, sxvt_mp4_brand, sxvt_mp4_mvhd_v0,
+        sxvt_mp4_tkhd_v0, sxvt_mp4_mdhd_v0, sxvt_mp4_elst_entry_v0, sxvt_mp4_mvhd_v1, sxvt_mp4_tkhd_v1, sxvt_mp4_mdhd_v1,
+        sxvt_mp4_elst_entry_v1, sxvt_mp4_hdlr, sxvt_mp4_table, sxvt_mp4_stsz, sxvt_mp4_stco, sxvt_mp4_co64, sxvt_mp4_stts,
+        sxvt_mp4_ctts_v0, sxvt_mp4_ctts_v1, sxvt_mp4_stsc, sxvt_mp4_stss, sxvt_mp4_sample_size, sxvt_mp4_sample_entry,
+        sxvt_mp4_vmhd, sxvt_mp4_smhd, sxvt_mp4_fullbox, sxvt_ebml_id1, sxvt_ebml_id2, sxvt_ebml_id3, sxvt_ebml_id4,
+        sxvt_ebml_size1, sxvt_matroska_track1, sxvt_matroska_lace_size1, sxvt_matroska_lace_delta1, sxvt_matroska_uint1,
+        sxvt_matroska_offset1, sxvt_ebml_size2, sxvt_matroska_track2, sxvt_matroska_lace_size2, sxvt_matroska_lace_delta2,
+        sxvt_matroska_uint2, sxvt_matroska_offset2, sxvt_ebml_size3, sxvt_matroska_track3, sxvt_matroska_lace_size3,
+        sxvt_matroska_lace_delta3, sxvt_matroska_uint3, sxvt_matroska_offset3, sxvt_ebml_size4, sxvt_matroska_track4,
+        sxvt_matroska_lace_size4, sxvt_matroska_lace_delta4, sxvt_matroska_uint4, sxvt_matroska_offset4, sxvt_ebml_size5,
+        sxvt_matroska_track5, sxvt_matroska_lace_size5, sxvt_matroska_lace_delta5, sxvt_matroska_uint5, sxvt_matroska_offset5,
+        sxvt_ebml_size6, sxvt_matroska_track6, sxvt_matroska_lace_size6, sxvt_matroska_lace_delta6, sxvt_matroska_uint6,
+        sxvt_matroska_offset6, sxvt_ebml_size7, sxvt_matroska_track7, sxvt_matroska_lace_size7, sxvt_matroska_lace_delta7,
+        sxvt_matroska_uint7, sxvt_matroska_offset7, sxvt_ebml_size8, sxvt_matroska_track8, sxvt_matroska_lace_size8,
+        sxvt_matroska_lace_delta8, sxvt_matroska_uint8, sxvt_matroska_offset8, sxvt_matroska_date, sxvt_matroska_float4,
+        sxvt_matroska_float8, sxvt_matroska_crc32, sxvt_matroska_block, sxvt_matroska_lace_count, sxvt_matroska_xiph_size,
+        sxvt_director_imap_le, sxvt_director_mmap_le, sxvt_director_mmap_entry_le, sxvt_director_key_le,
+        sxvt_director_key_entry_le, sxvt_director_imap_be, sxvt_director_mmap_be, sxvt_director_mmap_entry_be,
+        sxvt_director_key_be, sxvt_director_key_entry_be, sxvt_director_cast_index], sx_videotail_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_videotail_build, false);
+}

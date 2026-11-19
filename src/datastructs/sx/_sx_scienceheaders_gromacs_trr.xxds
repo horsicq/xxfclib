@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gromacs_trr/xx_gromacs_trr_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_trr_header_fields = layout([i32("magic", SIGNATURE), i32("version_buffer_size", SIZE),
+    i32("version_string_size", SIZE), chars("version", 12, STRING), i32("ir_size", SIZE), i32("energy_size", SIZE),
+    i32("box_size", SIZE), i32("virial_size", SIZE), i32("pressure_size", SIZE), i32("topology_size", SIZE),
+    i32("symbols_size", SIZE), i32("coordinates_size", SIZE), i32("velocities_size", SIZE), i32("forces_size", SIZE),
+    i32("atom_count", COUNT), i32("step"), i32("nre")]);
+var sxsh_trr_header = sxLayout(0x602A0018, "trr_header", BE, sxsh_trr_header_fields);
+var sxsh_trr_time32_fields = layout([field("time", "float32", 4), field("lambda", "float32", 4)]);
+var sxsh_trr_time32 = sxLayout(0x602A0019, "trr_time32", BE, sxsh_trr_time32_fields);
+var sxsh_trr_time64_fields = layout([field("time", "float64", 8), field("lambda", "float64", 8)]);
+var sxsh_trr_time64 = sxLayout(0x602A001A, "trr_time64", BE, sxsh_trr_time64_fields);
+function sxsh_trr(c) {
+    var at = 0;
+    for (var frame = 0; at < c.size; frame++) {
+        var b = [];
+        if (frame >= 512 || !sx_read(c, at, b, 76) || sxsh32(b, 0, true) !== 1993 || sxsh32(b, 4, true) !== 13 || sxsh32(b, 8, true) !== 12 || sxMemcmpAt(b, 12, "GMX_trn_file\x00", 0, 12)) {
+            return false;
+        }
+        var sizes = [];
+        var atoms = sxsh32(b, 64, true);
+        var width = 0;
+        var bytes = 0;
+        if (!atoms || atoms > 1048576) {
+            return false;
+        }
+        for (var i = 0; i < 10; i++) {
+            sizes[i] = sxsh32(b, 24 + ((i * 4) >>> 0), true);
+            bytes += sizes[i];
+        }
+        if (sizes[2]) {
+            width = Math.floor(sizes[2] / 9);
+        } else {
+            for (i = 7; i < 10 && !width; i++) {
+                if (sizes[i]) {
+                    width = Math.floor(sizes[i] / ((atoms * 3) >>> 0));
+                }
+            }
+        }
+        if (width !== 4 && width !== 8 || sizes[0] || sizes[1] || sizes[5] || sizes[6] || !sxsh_span(c, at, ((76 + ((width * 2) >>> 0)) >>> 0) + bytes) || !sxsh_add(c, sxsh_trr_header, at, 76) || !sxsh_add(c, width === 4 ? sxsh_trr_time32 : sxsh_trr_time64, at + 76, (width * 2) >>> 0)) {
+            return false;
+        }
+        for (i = 2; i <= 4; i++) {
+            if (sizes[i] && sizes[i] !== (width * 9) >>> 0) {
+                return false;
+            }
+        }
+        for (i = 7; i < 10; i++) {
+            if (sizes[i] && sizes[i] !== sxMul32((width * 3) >>> 0, atoms)) {
+                return false;
+            }
+        }
+        at += ((76 + ((width * 2) >>> 0)) >>> 0) + (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes);
+    }
+    return at > 0 && at === c.size;
+}
+function sx_gromacs_trr_build(c) {
+    var ok = false;
+    ok = sxsh_trr(c);
+    return ok && sxsh_finish(c);
+}

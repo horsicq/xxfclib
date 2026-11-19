@@ -1,0 +1,77 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/microsoft_msf/xx_microsoft_msf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_msf7_superblock_fields = layout([chars("signature", 32, SIGNATURE), u32("block_size", SIZE),
+    u32("free_block_map_block", ID), u32("block_count", COUNT), u32("directory_size", SIZE), u32("reserved", RESERVED),
+    u32("block_map_block", ID)]);
+var sxexm_msf7_superblock = sxLayout(0x602B0007, "msf7_superblock", LE, sxexm_msf7_superblock_fields);
+var sxexm_msf7_directory_block_fields = layout([u32("directory_block_index", ID)]);
+var sxexm_msf7_directory_block = sxLayout(0x602B0008, "msf7_directory_block", LE, sxexm_msf7_directory_block_fields);
+var sxexm_msf7_stream_count_fields = layout([u32("stream_count", COUNT)]);
+var sxexm_msf7_stream_count = sxLayout(0x602B0009, "msf7_stream_count", LE, sxexm_msf7_stream_count_fields);
+var sxexm_msf7_stream_size_fields = layout([u32("stream_size", SIZE)]);
+var sxexm_msf7_stream_size = sxLayout(0x602B000A, "msf7_stream_size", LE, sxexm_msf7_stream_size_fields);
+var sxexm_msf7_stream_block_fields = layout([u32("stream_block_index", ID)]);
+var sxexm_msf7_stream_block = sxLayout(0x602B000B, "msf7_stream_block", LE, sxexm_msf7_stream_block_fields);
+function sxexm_msf_word(c, map, bs, bytes, logical, l, value) {
+    var id = [0];
+    if (logical > bytes || sxU64(bytes - logical) < 4 || logical % 4 || !sxexm_word(c, map + Math.floor(logical / bs) * 4, 4, false, id) || id[0] > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
+        return false;
+    }
+    var p = id[0] * bs + logical % bs;
+    return sxexm_word(c, p, 4, false, value) && sxexm_add(c, l, p);
+}
+function sxexm_msf(c) {
+    var b = [];
+    if (!sxexm_read(c, 0, b, 56) || !sxexm_add(c, sxexm_msf7_superblock, 0)) {
+        return false;
+    }
+    var bs = sxexm32(b, 32, false);
+    var dn = sxexm32(b, 44, false);
+    var map = sxexm32(b, 52, false);
+    if (bs !== 512 && bs !== 1024 && bs !== 2048 && bs !== 4096 || dn < 4 || dn > 4194304 || map > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
+        return true;
+    }
+    map *= bs;
+    var pages = Math.floor(sxU64(dn + bs - 1) / bs);
+    if (pages * 4 > bs || !sxexm_span(c, map, pages * 4) || !sxexm_table(c, sxexm_msf7_directory_block, map, pages)) {
+        return true;
+    }
+    var count = [0];
+    if (!sxexm_msf_word(c, map, bs, dn, 0, sxexm_msf7_stream_count, count) || count[0] > 4093 || count[0] * 4 + 4 > dn) {
+        return true;
+    }
+    var at = 4 + count[0] * 4;
+    for (var i = 0; i < count[0] && c.count < 20000; i++) {
+        var z = [0];
+        if (!sxexm_msf_word(c, map, bs, dn, 4 + i * 4, sxexm_msf7_stream_size, z)) {
+            break;
+        }
+        if (z[0] === 4294967295) {
+            continue;
+        }
+        var n = Math.floor(sxU64(z[0] + bs - 1) / bs);
+        if (n > Math.floor(sxU64(dn - at) / 4)) {
+            break;
+        }
+        for (var j = 0; j < n && c.count < 20000; j++) {
+            var id = [0];
+            if (!sxexm_msf_word(c, map, bs, dn, at, sxexm_msf7_stream_block, id)) {
+                return true;
+            }
+            at += 4;
+        }
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+function sx_microsoft_msf_build(c) {
+    var ok = false;
+    ok = sxexm_msf(c);
+    return ok && sxexm_finish(c);
+}

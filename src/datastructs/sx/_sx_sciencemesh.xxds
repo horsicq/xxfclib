@@ -1,0 +1,1028 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_sciencemesh.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_signature_fields = layout([field("signature", "char", 0, STRING)]);
+var sxsm_signature = sxLayout(0x60630001, "mesh_signature", LE, sxsm_signature_fields);
+var sxsm_keyword_fields = layout([field("keyword", "char", 0, STRING)]);
+var sxsm_keyword = sxLayout(0x60630002, "mesh_keyword", LE, sxsm_keyword_fields);
+var sxsm_section_fields = layout([field("section", "char", 0, STRING)]);
+var sxsm_section = sxLayout(0x60630003, "mesh_section", LE, sxsm_section_fields);
+var sxsm_key_fields = layout([field("key", "char", 0, STRING)]);
+var sxsm_key = sxLayout(0x60630004, "mesh_key", LE, sxsm_key_fields);
+var sxsm_option_value_fields = layout([field("option_value", "char", 0, STRING)]);
+var sxsm_option_value = sxLayout(0x60630005, "mesh_option_value", LE, sxsm_option_value_fields);
+var sxsm_title_fields = layout([field("title", "utf8", 0, STRING)]);
+var sxsm_title = sxLayout(0x60630006, "mesh_title", LE, sxsm_title_fields);
+var sxsm_comment_fields = layout([field("comment", "utf8", 0, STRING)]);
+var sxsm_comment = sxLayout(0x60630007, "mesh_comment", LE, sxsm_comment_fields);
+var sxsm_name_fields = layout([field("name", "utf8", 0, STRING)]);
+var sxsm_name = sxLayout(0x60630008, "mesh_name", LE, sxsm_name_fields);
+var sxsm_text_value_fields = layout([field("text_value", "utf8", 0, STRING)]);
+var sxsm_text_value = sxLayout(0x60630009, "mesh_text_value", LE, sxsm_text_value_fields);
+var sxsm_type_name_fields = layout([field("type_name", "char", 0, STRING)]);
+var sxsm_type_name = sxLayout(0x6063000A, "mesh_type_name", LE, sxsm_type_name_fields);
+var sxsm_encoding_fields = layout([field("encoding", "char", 0, STRING)]);
+var sxsm_encoding = sxLayout(0x6063000B, "mesh_encoding", LE, sxsm_encoding_fields);
+var sxsm_endian_fields = layout([field("endian", "char", 0, STRING)]);
+var sxsm_endian = sxLayout(0x6063000C, "mesh_endian", LE, sxsm_endian_fields);
+var sxsm_units_fields = layout([field("units", "char", 0, STRING)]);
+var sxsm_units = sxLayout(0x6063000D, "mesh_units", LE, sxsm_units_fields);
+var sxsm_boolean_text_fields = layout([field("boolean_text", "char", 0, STRING)]);
+var sxsm_boolean_text = sxLayout(0x60630010, "mesh_boolean_text", LE, sxsm_boolean_text_fields);
+var sxsm_dimension_fields = layout([field("dimension", "ascii_signed", 0, COUNT)]);
+var sxsm_dimension = sxLayout(0x60630011, "mesh_dimension", LE, sxsm_dimension_fields);
+var sxsm_axis_count_fields = layout([field("axis_count", "ascii_signed", 0, COUNT)]);
+var sxsm_axis_count = sxLayout(0x60630012, "mesh_axis_count", LE, sxsm_axis_count_fields);
+var sxsm_node_count_fields = layout([field("node_count", "ascii_signed", 0, COUNT)]);
+var sxsm_node_count = sxLayout(0x60630013, "mesh_node_count", LE, sxsm_node_count_fields);
+var sxsm_element_count_fields = layout([field("element_count", "ascii_signed", 0, COUNT)]);
+var sxsm_element_count = sxLayout(0x60630014, "mesh_element_count", LE, sxsm_element_count_fields);
+var sxsm_value_count_fields = layout([field("value_count", "ascii_signed", 0, COUNT)]);
+var sxsm_value_count = sxLayout(0x60630015, "mesh_value_count", LE, sxsm_value_count_fields);
+var sxsm_component_count_fields = layout([field("component_count", "ascii_signed", 0, COUNT)]);
+var sxsm_component_count = sxLayout(0x60630016, "mesh_component_count", LE, sxsm_component_count_fields);
+var sxsm_node_id_fields = layout([field("node_id", "ascii_signed", 0, ID)]);
+var sxsm_node_id = sxLayout(0x60630019, "mesh_node_id", LE, sxsm_node_id_fields);
+var sxsm_element_id_fields = layout([field("element_id", "ascii_signed", 0, ID)]);
+var sxsm_element_id = sxLayout(0x6063001A, "mesh_element_id", LE, sxsm_element_id_fields);
+var sxsm_node_index_fields = layout([field("node_index", "ascii_signed", 0, ID)]);
+var sxsm_node_index = sxLayout(0x6063001B, "mesh_node_index", LE, sxsm_node_index_fields);
+var sxsm_property_id_fields = layout([field("property_id", "ascii_signed", 0, ID)]);
+var sxsm_property_id = sxLayout(0x6063001C, "mesh_property_id", LE, sxsm_property_id_fields);
+var sxsm_entity_id_fields = layout([field("entity_id", "ascii_signed", 0, ID)]);
+var sxsm_entity_id = sxLayout(0x6063001E, "mesh_entity_id", LE, sxsm_entity_id_fields);
+var sxsm_integer_value_fields = layout([field("integer_value", "ascii_signed", 0)]);
+var sxsm_integer_value = sxLayout(0x60630020, "mesh_integer_value", LE, sxsm_integer_value_fields);
+var sxsm_real_value_fields = layout([field("real_value", "ascii_real", 0)]);
+var sxsm_real_value = sxLayout(0x60630021, "mesh_real_value", LE, sxsm_real_value_fields);
+var sxsm_coordinate_x_fields = layout([field("coordinate_x", "ascii_real", 0)]);
+var sxsm_coordinate_x = sxLayout(0x60630022, "mesh_coordinate_x", LE, sxsm_coordinate_x_fields);
+var sxsm_coordinate_y_fields = layout([field("coordinate_y", "ascii_real", 0)]);
+var sxsm_coordinate_y = sxLayout(0x60630023, "mesh_coordinate_y", LE, sxsm_coordinate_y_fields);
+var sxsm_coordinate_z_fields = layout([field("coordinate_z", "ascii_real", 0)]);
+var sxsm_coordinate_z = sxLayout(0x60630024, "mesh_coordinate_z", LE, sxsm_coordinate_z_fields);
+var sxsm_origin_x_fields = layout([field("origin_x", "ascii_real", 0)]);
+var sxsm_origin_x = sxLayout(0x60630025, "mesh_origin_x", LE, sxsm_origin_x_fields);
+var sxsm_origin_y_fields = layout([field("origin_y", "ascii_real", 0)]);
+var sxsm_origin_y = sxLayout(0x60630026, "mesh_origin_y", LE, sxsm_origin_y_fields);
+var sxsm_origin_z_fields = layout([field("origin_z", "ascii_real", 0)]);
+var sxsm_origin_z = sxLayout(0x60630027, "mesh_origin_z", LE, sxsm_origin_z_fields);
+var sxsm_spacing_x_fields = layout([field("spacing_x", "ascii_real", 0)]);
+var sxsm_spacing_x = sxLayout(0x60630028, "mesh_spacing_x", LE, sxsm_spacing_x_fields);
+var sxsm_spacing_y_fields = layout([field("spacing_y", "ascii_real", 0)]);
+var sxsm_spacing_y = sxLayout(0x60630029, "mesh_spacing_y", LE, sxsm_spacing_y_fields);
+var sxsm_spacing_z_fields = layout([field("spacing_z", "ascii_real", 0)]);
+var sxsm_spacing_z = sxLayout(0x6063002A, "mesh_spacing_z", LE, sxsm_spacing_z_fields);
+var sxsm_delta_x_fields = layout([field("delta_x", "ascii_real", 0)]);
+var sxsm_delta_x = sxLayout(0x6063002B, "mesh_delta_x", LE, sxsm_delta_x_fields);
+var sxsm_delta_y_fields = layout([field("delta_y", "ascii_real", 0)]);
+var sxsm_delta_y = sxLayout(0x6063002C, "mesh_delta_y", LE, sxsm_delta_y_fields);
+var sxsm_delta_z_fields = layout([field("delta_z", "ascii_real", 0)]);
+var sxsm_delta_z = sxLayout(0x6063002D, "mesh_delta_z", LE, sxsm_delta_z_fields);
+var sxsm_box_min_x_fields = layout([field("box_min_x", "ascii_real", 0)]);
+var sxsm_box_min_x = sxLayout(0x6063002E, "mesh_box_min_x", LE, sxsm_box_min_x_fields);
+var sxsm_box_min_y_fields = layout([field("box_min_y", "ascii_real", 0)]);
+var sxsm_box_min_y = sxLayout(0x6063002F, "mesh_box_min_y", LE, sxsm_box_min_y_fields);
+var sxsm_box_max_x_fields = layout([field("box_max_x", "ascii_real", 0)]);
+var sxsm_box_max_x = sxLayout(0x60630031, "mesh_box_max_x", LE, sxsm_box_max_x_fields);
+var sxsm_box_max_y_fields = layout([field("box_max_y", "ascii_real", 0)]);
+var sxsm_box_max_y = sxLayout(0x60630032, "mesh_box_max_y", LE, sxsm_box_max_y_fields);
+var sxsm_scalar_value_fields = layout([field("scalar_value", "ascii_real", 0)]);
+var sxsm_scalar_value = sxLayout(0x60630036, "mesh_scalar_value", LE, sxsm_scalar_value_fields);
+var sxsm_attribute_value_fields = layout([field("attribute_value", "ascii_real", 0)]);
+var sxsm_attribute_value = sxLayout(0x60630037, "mesh_attribute_value", LE, sxsm_attribute_value_fields);
+var sxsm_sample_bytes_fields = layout([field("sample_bytes", "ascii_signed", 0, SIZE)]);
+var sxsm_sample_bytes = sxLayout(0x60630038, "mesh_sample_bytes", LE, sxsm_sample_bytes_fields);
+var sxsm_header_bytes_fields = layout([field("header_bytes", "ascii_signed", 0, SIZE)]);
+var sxsm_header_bytes = sxLayout(0x60630039, "mesh_header_bytes", LE, sxsm_header_bytes_fields);
+var sxsm_sample_bits_fields = layout([field("sample_bits", "ascii_signed", 0)]);
+var sxsm_sample_bits = sxLayout(0x6063003A, "mesh_sample_bits", LE, sxsm_sample_bits_fields);
+var sxsm_node_label_fields = layout([field("node_label", "utf8", 0, STRING)]);
+var sxsm_node_label = sxLayout(0x60630048, "mesh_node_label", LE, sxsm_node_label_fields);
+var sxsm_tree_name_fields = layout([field("tree_name", "char", 0, STRING)]);
+var sxsm_tree_name = sxLayout(0x60630049, "mesh_tree_name", LE, sxsm_tree_name_fields);
+var sxsm_taxon_count_fields = layout([field("taxon_count", "ascii_signed", 0, COUNT)]);
+var sxsm_taxon_count = sxLayout(0x6063004A, "mesh_taxon_count", LE, sxsm_taxon_count_fields);
+var sxsm_branch_length_fields = layout([field("branch_length", "ascii_real", 0)]);
+var sxsm_branch_length = sxLayout(0x6063004B, "mesh_branch_length", LE, sxsm_branch_length_fields);
+var sxsm_step_index_fields = layout([field("step_index", "ascii_signed", 0)]);
+var sxsm_step_index = sxLayout(0x60630063, "mesh_step_index", LE, sxsm_step_index_fields);
+var sxsm_simulation_time_fields = layout([field("simulation_time", "ascii_real", 0)]);
+var sxsm_simulation_time = sxLayout(0x60630064, "mesh_simulation_time", LE, sxsm_simulation_time_fields);
+var sxsm_boundary_id_fields = layout([field("boundary_id", "ascii_signed", 0, ID)]);
+var sxsm_boundary_id = sxLayout(0x60630067, "mesh_boundary_id", LE, sxsm_boundary_id_fields);
+var sxsm_red_fields = layout([field("red", "ascii_real", 0)]);
+var sxsm_red = sxLayout(0x60630070, "mesh_red", LE, sxsm_red_fields);
+var sxsm_green_fields = layout([field("green", "ascii_real", 0)]);
+var sxsm_green = sxLayout(0x60630071, "mesh_green", LE, sxsm_green_fields);
+var sxsm_blue_fields = layout([field("blue", "ascii_real", 0)]);
+var sxsm_blue = sxLayout(0x60630072, "mesh_blue", LE, sxsm_blue_fields);
+var sx_sciencemesh_comment_names = ["Gmsh unknown", "Gmsh line2", "Gmsh triangle3", "Gmsh quadrangle4", "Gmsh tetrahedron4",
+    "Gmsh hexahedron8", "Gmsh prism6", "Gmsh pyramid5", "Gmsh line3", "Gmsh triangle6", "Gmsh quadrangle9",
+    "Gmsh tetrahedron10", "Gmsh hexahedron27", "Gmsh prism18", "Gmsh pyramid14", "Gmsh point1", "Gmsh quadrangle8",
+    "Gmsh hexahedron20", "Gmsh prism15", "Gmsh pyramid13", "Gmsh triangle9 incomplete", "Gmsh triangle10",
+    "Gmsh triangle12 incomplete", "Gmsh triangle15", "Gmsh triangle15 incomplete", "Gmsh triangle21", "Gmsh line4",
+    "Gmsh line5", "Gmsh line6", "Gmsh tetrahedron20", "Gmsh tetrahedron35", "Gmsh tetrahedron56"];
+function sx_sciencemesh_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    if (id < 0x60630001 || id >= 0x60630092) {
+        return true;
+    }
+    if (r.name === null || sxVarType(r.value) === 14 /*XX_VAR_TYPE_BYTES*/) {
+        return true;
+    }
+    switch (id) {
+    case 0x60630011:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630012:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630013:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630014:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630015:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630016:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630017:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630018:
+        return sxSetComment(r, "Number of declared dimensions or entries.");
+    case 0x60630019:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x6063001A:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x6063001B:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x6063001C:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x6063001D:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x6063001E:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x6063001F:
+        return sxSetComment(r, "Physical integer identifier or connectivity index, not a file offset.");
+    case 0x60630020:
+        return sxSetComment(r, "Format-defined physical integer; interpretation follows the preceding key.");
+    case 0x60630021:
+        return sxSetComment(r, "Format-defined physical real; values remain stored without transformation.");
+    case 0x60630022:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630023:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630024:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630025:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630026:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630027:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630028:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630029:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x6063002A:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x6063002B:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x6063002C:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x6063002D:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x6063002E:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x6063002F:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630030:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630031:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630032:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630033:
+        return sxSetComment(r, "Dataset coordinate-system units; no unit conversion or implied byte offset.");
+    case 0x60630034:
+        return sxSetComment(r, "Stored scalar value in the dataset-defined units.");
+    case 0x60630035:
+        return sxSetComment(r, "Stored scalar value in the dataset-defined units.");
+    case 0x60630036:
+        return sxSetComment(r, "Stored scalar value in the dataset-defined units.");
+    case 0x60630037:
+        return sxSetComment(r, "Stored scalar value in the dataset-defined units.");
+    case 0x60630038:
+        return sxSetComment(r, "Stored length in bytes.");
+    case 0x60630039:
+        return sxSetComment(r, "Stored length in bytes.");
+    case 0x6063003A:
+        return sxSetComment(r, "Number of bits per sample; not a byte size.");
+    case 0x6063003B:
+        return sxSetComment(r, "Number of bits per sample; not a byte size.");
+    case 0x6063003C:
+        return sxSetComment(r, "ICS layout parameters including the initial bits axis.");
+    case 0x6063003D:
+        return sxSetComment(r, "One-based byte position defining the stored byte permutation.");
+    case 0x6063003E:
+        return sxSetComment(r, "ICS per-axis origin or scale in its corresponding parameter units.");
+    case 0x6063003F:
+        return sxSetComment(r, "ICS per-axis origin or scale in its corresponding parameter units.");
+    case 0x60630040:
+        return sxSetComment(r, "ISF horizontal scale/origin in declared X units.");
+    case 0x60630041:
+        return sxSetComment(r, "ISF horizontal scale/origin in declared X units.");
+    case 0x60630042:
+        return sxSetComment(r, "ISF sample-position offset, not a file byte offset.");
+    case 0x60630043:
+        return sxSetComment(r, "ISF vertical calibration in declared Y units.");
+    case 0x60630044:
+        return sxSetComment(r, "ISF vertical calibration in declared Y units.");
+    case 0x60630045:
+        return sxSetComment(r, "ISF stored sample-value offset, not a file byte offset.");
+    case 0x60630046:
+        return sxSetComment(r, "Number of decimal digits in the following IEEE488.2 byte count.");
+    case 0x60630047:
+        return sxSetComment(r, "Physical following binary payload length in bytes.");
+    case 0x60630048:
+        return sxSetComment(r, "Original Newick label, with quote/escape spelling retained.");
+    case 0x60630049:
+        return sxSetComment(r, "Original Nexus tree identifier; no label decoding or renaming.");
+    case 0x6063004A:
+        return sxSetComment(r, "Declared number of taxa.");
+    case 0x6063004B:
+        return sxSetComment(r, "Stored phylogenetic branch length; units belong to the dataset.");
+    case 0x6063004C:
+        return sxSetComment(r, "JCAMP-DX numeric format version.");
+    case 0x6063004D:
+        return sxSetComment(r, "Spectral endpoint after applying XFACTOR, in XUNITS.");
+    case 0x6063004E:
+        return sxSetComment(r, "Spectral endpoint after applying XFACTOR, in XUNITS.");
+    case 0x6063004F:
+        return sxSetComment(r, "JCAMP multiplicative factor; original data values are not rescaled.");
+    case 0x60630050:
+        return sxSetComment(r, "JCAMP multiplicative factor; original data values are not rescaled.");
+    case 0x60630051:
+        return sxSetComment(r, "Stored abscissa; multiply by XFACTOR for XUNITS.");
+    case 0x60630052:
+        return sxSetComment(r, "Stored ordinate; multiply by YFACTOR for YUNITS.");
+    case 0x60630053:
+        return sxSetComment(r, "Harwell-Boeing physical data line count.");
+    case 0x60630054:
+        return sxSetComment(r, "Harwell-Boeing physical data line count.");
+    case 0x60630055:
+        return sxSetComment(r, "Harwell-Boeing physical data line count.");
+    case 0x60630056:
+        return sxSetComment(r, "Harwell-Boeing physical data line count.");
+    case 0x60630057:
+        return sxSetComment(r, "Harwell-Boeing physical data line count.");
+    case 0x60630058:
+        return sxSetComment(r, "Matrix dimension/value count.");
+    case 0x60630059:
+        return sxSetComment(r, "Matrix dimension/value count.");
+    case 0x6063005A:
+        return sxSetComment(r, "Matrix dimension/value count.");
+    case 0x6063005B:
+        return sxSetComment(r, "Matrix dimension/value count.");
+    case 0x6063005C:
+        return sxSetComment(r, "One-based index into the matrix index/value arrays; not a file offset.");
+    case 0x6063005D:
+        return sxSetComment(r, "One-based matrix row index; not a file offset.");
+    case 0x60630060:
+        return sxSetComment(r, "Mesh format version number.");
+    case 0x60630061:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        var v = sxVarI64(r.value);
+        return (v > 0 && (v < 0 ? v + SX_U64_MAX : v) < 32 ? (sxSetComment(r, sx_sciencemesh_comment_names[v]) ? 1 : 0) : 1) !== 0;
+    case 0x60630062:
+        return sxSetComment(r, "Gmsh integer tag; meaning depends on tag position.");
+    case 0x60630063:
+        return sxSetComment(r, "Simulation step index; not a wall-clock timestamp.");
+    case 0x60630064:
+        return sxSetComment(r, "Stored simulation time in model-defined units, not a wall-clock timestamp.");
+    case 0x60630065:
+        return sxSetComment(r, "TetGen boundary marker or mesh boundary/reference label.");
+    case 0x60630066:
+        return sxSetComment(r, "Netgen physical surface/domain identifier.");
+    case 0x60630067:
+        return sxSetComment(r, "Netgen physical surface/domain identifier.");
+    case 0x60630068:
+        return sxSetComment(r, "Netgen physical surface/domain identifier.");
+    case 0x60630069:
+        return sxSetComment(r, "Netgen physical surface/domain identifier.");
+    case 0x6063006A:
+        return sxSetComment(r, "Netgen stored edge-region, geometry triangle, surface or edge identifier.");
+    case 0x6063006B:
+        return sxSetComment(r, "Netgen stored edge-region, geometry triangle, surface or edge identifier.");
+    case 0x6063006C:
+        return sxSetComment(r, "Netgen stored edge-region, geometry triangle, surface or edge identifier.");
+    case 0x6063006D:
+        return sxSetComment(r, "Netgen stored edge-region, geometry triangle, surface or edge identifier.");
+    case 0x6063006E:
+        return sxSetComment(r, "Netgen stored geometric edge parameter/distance; not a file offset or necessarily Euclidean length.");
+    case 0x6063006F:
+        return sxSetComment(r, "Netgen geometry implementation code.");
+    case 0x60630070:
+        return sxSetComment(r, "Normalized color component in0..1.");
+    case 0x60630071:
+        return sxSetComment(r, "Normalized color component in0..1.");
+    case 0x60630072:
+        return sxSetComment(r, "Normalized color component in0..1.");
+    case 0x60630073:
+        return sxSetComment(r, "Normalized color component in0..1.");
+    case 0x6063007B:
+        return sxSetComment(r, "Integer material/flag assignment, not a file offset.");
+    case 0x6063007C:
+        return sxSetComment(r, "NASTRAN coordinate system identifier; native subset requires0.");
+    case 0x6063007D:
+        return sxSetComment(r, "NASTRAN GRID CD displacement coordinate-system identifier; native subset requires0.");
+    case 0x6063007E:
+        return sxSetComment(r, "NASTRAN GRID PS permanent constraint component digits; native subset requires0.");
+    case 0x6063007F:
+        return sxSetComment(r, "NASTRAN GRID SEID superelement identifier; native subset requires0.");
+    case 0x60630080:
+        return sxSetComment(r, "NASTRAN stored real; E/D and implicit exponent spellings retain exact source bytes.");
+    case 0x60630081:
+        return sxSetComment(r, "NASTRAN stored real; E/D and implicit exponent spellings retain exact source bytes.");
+    case 0x60630082:
+        return sxSetComment(r, "NASTRAN stored real; E/D and implicit exponent spellings retain exact source bytes.");
+    case 0x60630083:
+        return sxSetComment(r, "NASTRAN stored real; E/D and implicit exponent spellings retain exact source bytes.");
+    case 0x60630084:
+        return sxSetComment(r, "NASTRAN stored real; E/D and implicit exponent spellings retain exact source bytes.");
+    case 0x60630085:
+        return sxSetComment(r, "NASTRAN stored real; E/D and implicit exponent spellings retain exact source bytes.");
+    case 0x60630086:
+        return sxSetComment(r, "Native GMV signed32 entry count.");
+    case 0x60630087:
+        return sxSetComment(r, "Native GMV signed32 entry count.");
+    case 0x60630088:
+        return sxSetComment(r, "Native GMV physical integer/index; not a file offset.");
+    case 0x60630089:
+        return sxSetComment(r, "Native GMV physical integer/index; not a file offset.");
+    case 0x6063008A:
+        return sxSetComment(r, "Native GMV physical integer/index; not a file offset.");
+    case 0x6063008B:
+        return sxSetComment(r, "Native GMV physical integer/index; not a file offset.");
+    case 0x6063008C:
+        return sxSetComment(r, "GMV association selector: 0=cell-centered, 1=node-centered.");
+    case 0x6063008D:
+        return sxSetComment(r, "Native GMV stored IEEE754 binary32; model-defined units.");
+    case 0x6063008E:
+        return sxSetComment(r, "Native GMV stored IEEE754 binary32; model-defined units.");
+    case 0x6063008F:
+        return sxSetComment(r, "Native GMV stored IEEE754 binary32; model-defined units.");
+    case 0x60630090:
+        return sxSetComment(r, "Native GMV stored IEEE754 binary32; model-defined units.");
+    case 0x60630091:
+        return sxSetComment(r, "Fixed GMV eight-byte keyword/name, padding retained.");
+    default:
+        return true;
+    }
+}
+function sxsm_space(c) {
+    return c === 32 || c === 9 || c === 13 || c === 10;
+}
+function sxsm_eq(q, t, s) {
+    var n = sxStrlen(s);
+    return t.a >= 0 && t.z === (n >= SX_I64_MAX ? n - SX_U64_MAX : n) && t.a <= q.n && t.z <= q.n - t.a && !sxMemcmpAt(q.b, t.a, s, 0, n);
+}
+function sxsm_ci(q, t, s) {
+    var n = sxStrlen(s);
+    if (t.a < 0 || t.z !== (n >= SX_I64_MAX ? n - SX_U64_MAX : n) || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        var ch = q.b[(t.a < 0 ? t.a + SX_U64_MAX : t.a) + i];
+        if (ch >= 65 /*A*/ && ch <= 90 /*Z*/) {
+            ch = (ch + 32) >>> 0;
+        }
+        if (ch !== (sxAt(s, i) & 0xFF)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsm_trim(q, t) {
+    while (t.z && sxsm_space(q.b[t.a])) {
+        t.a++;
+        t.z--;
+    }
+    while (t.z && sxsm_space(q.b[t.a + t.z - 1])) {
+        t.z--;
+    }
+    return sxCopy_sxsm_token(null, t);
+}
+function sxsm_line(q, t) {
+    if (q.p >= q.n || ++q.work > 2000000) {
+        return false;
+    }
+    t.a = q.p;
+    while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+        q.p++;
+    }
+    t.z = q.p - t.a;
+    if (q.p < q.n && q.b[q.p] === 13) {
+        q.p++;
+    }
+    if (q.p < q.n && q.b[q.p] === 10) {
+        q.p++;
+    }
+    return true;
+}
+function sxsm_split(q, line, t, cap, tabs) {
+    var n = 0;
+    var p = line.a;
+    var end = p + line.z;
+    while (p < end) {
+        if (tabs) {
+            var a = p;
+            while (p < end && q.b[p] !== 9) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxsm_token(null, { a: a, z: p - a });
+            if (p < end) {
+                p++;
+            }
+        } else {
+            while (p < end && sxsm_space(q.b[p])) {
+                p++;
+            }
+            if (p === end) {
+                break;
+            }
+            a = p;
+            while (p < end && !sxsm_space(q.b[p])) {
+                p++;
+            }
+            if (n === cap) {
+                return (cap + 1) >>> 0;
+            }
+            t[n++] = sxCopy_sxsm_token(null, { a: a, z: p - a });
+        }
+    }
+    return n;
+}
+function sxsm_emit(q, l, t) {
+    if (t.a < 0 || t.z < 0 || t.a > q.n || t.z > q.n - t.a) {
+        return false;
+    }
+    if (!t.z || q.c.count >= 24000) {
+        return true;
+    }
+    if (!l.fields[0].size && t.z > sxVariableLimit(l.fields[0].type)) {
+        return true;
+    }
+    return sx_add(q.c, l, t.a, t.z);
+}
+function sxsm_number(q, t, v) {
+    sxCopy_sxsm_token(t, sxsm_trim(q, sxCopy_sxsm_token(null, t)));
+    var n = 0;
+    var i = 0;
+    if (t.z && q.b[t.a] === 43 /*+*/) {
+        i++;
+    }
+    if (i === t.z) {
+        return false;
+    }
+    for (; i < t.z; i++) {
+        var d = (q.b[t.a + i] - 48 /*0*/) >>> 0;
+        if (d > 9 || n > Math.floor((SX_U64_MAX - d) / 10)) {
+            return false;
+        }
+        n = n * 10 + d;
+    }
+    v[0] = n;
+    return true;
+}
+function sxsm_fields(q, t, t_o, n, l, max) {
+    if (n > max) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (l[i] !== null && !sxsm_emit(q, l[i], sxCopy_sxsm_token(null, t[t_o + i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsm_next(q, line, t, cap, n, comments) {
+    while (sxsm_line(q, line)) {
+        var i = 0;
+        var quote = 0;
+        for (; i < line.z; i++) {
+            var ch = q.b[line.a + i];
+            if (quote) {
+                if (ch === quote) {
+                    quote = 0;
+                } else if (ch === 92 && i + 1 < line.z) {
+                    i++;
+                }
+                continue;
+            }
+            if (ch === 34 || ch === 39) {
+                quote = ch;
+                continue;
+            }
+            if (sxStrchr(comments, ch)) {
+                {
+                    if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, { a: line.a + i, z: line.z - i }))) {
+                        return false;
+                    }
+                }
+                line.z = i;
+                break;
+            }
+        }
+        sxCopy_sxsm_token(line, sxsm_trim(q, sxCopy_sxsm_token(null, line)));
+        if (line.z) {
+            n[0] = sxsm_split(q, sxCopy_sxsm_token(null, line), [t], cap, false);
+            return n[0] <= cap;
+        }
+    }
+    return false;
+}
+function sxsm_each(q, t, t_o, n, l) {
+    for (var i = 0; i < n; i++) {
+        if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, t[t_o + i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsm_xyz(q, t, kind) {
+    var rows = [[sxsm_coordinate_x, sxsm_coordinate_y, sxsm_coordinate_z], [sxsm_origin_x, sxsm_origin_y, sxsm_origin_z], [sxsm_spacing_x, sxsm_spacing_y, sxsm_spacing_z], [sxsm_delta_x, sxsm_delta_y, sxsm_delta_z]];
+    return kind < 4 && sxsm_fields(q, [t], 3, rows[kind], 3);
+}
+function sxsm_csv(q, line, t, cap) {
+    var n = 0;
+    var p = line.a;
+    var end = p + line.z;
+    do {
+        var a = p;
+        while (p < end && q.b[p] !== 44 /*,*/) {
+            p++;
+        }
+        if (n === cap) {
+            return (cap + 1) >>> 0;
+        }
+        t[n++] = sxCopy_sxsm_token(null, sxsm_trim(q, sxCopy_sxsm_token(null, { a: a, z: p - a })));
+        if (p === end) {
+            break;
+        }
+        p++;
+    } while (p <= end);
+    return n;
+}
+function sxsm_keyvalue(q, line, delim, key, value) {
+    var i = 0;
+    while (i < line.z && q.b[line.a + i] !== delim) {
+        i++;
+    }
+    if (i === line.z) {
+        return false;
+    }
+    sxCopy_sxsm_token(key, sxsm_trim(q, sxCopy_sxsm_token(null, { a: line.a, z: i })));
+    sxCopy_sxsm_token(value, sxsm_trim(q, sxCopy_sxsm_token(null, { a: line.a + i + 1, z: line.z - i - 1 })));
+    return key.z !== 0;
+}
+function sxsm_nrrd_meta(q, meta) {
+    var line = sxNew_sxsm_token();
+    var key = sxNew_sxsm_token();
+    var value = sxNew_sxsm_token();
+    var t = sxAllocN(32, sxNew_sxsm_token);
+    var n;
+    if (!meta) {
+        if (!sxsm_line(q, line)) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, line))) {
+                return false;
+            }
+        }
+    }
+    while (sxsm_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxsm_token(line, sxsm_trim(q, sxCopy_sxsm_token(null, line)));
+        if (!line.z) {
+            if (!meta) {
+                return true;
+            }
+            continue;
+        }
+        if (q.b[line.a] === 35 /*#*/) {
+            {
+                if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (!sxsm_keyvalue(q, sxCopy_sxsm_token(null, line), meta ? 61 /*=*/ : 58 /*:*/, key, value)) {
+            return false;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, key))) {
+                return false;
+            }
+        }
+        var l = sxsm_option_value;
+        if (sxsm_ci(q, sxCopy_sxsm_token(null, key), meta ? "ndims" : "dimension")) {
+            l = sxsm_dimension;
+        } else if (sxsm_ci(q, sxCopy_sxsm_token(null, key), meta ? "elementtype" : "type")) {
+            l = sxsm_type_name;
+        } else if (sxsm_ci(q, sxCopy_sxsm_token(null, key), "encoding")) {
+            l = sxsm_encoding;
+        } else if (sxsm_ci(q, sxCopy_sxsm_token(null, key), "endian")) {
+            l = sxsm_endian;
+        } else if (meta && (sxsm_ci(q, sxCopy_sxsm_token(null, key), "binarydata") || sxsm_ci(q, sxCopy_sxsm_token(null, key), "compresseddata") || sxsm_ci(q, sxCopy_sxsm_token(null, key), "binarydatabyteordermsb") || sxsm_ci(q, sxCopy_sxsm_token(null, key), "elementbyteordermsb"))) {
+            l = sxsm_boolean_text;
+        } else if (meta && sxsm_ci(q, sxCopy_sxsm_token(null, key), "elementnumberofchannels")) {
+            l = sxsm_component_count;
+        } else if (meta && sxsm_ci(q, sxCopy_sxsm_token(null, key), "headersize")) {
+            l = sxsm_header_bytes;
+        } else if (sxsm_ci(q, sxCopy_sxsm_token(null, key), meta ? "dimsize" : "sizes")) {
+            n = sxsm_split(q, sxCopy_sxsm_token(null, value), t, 32, false);
+            if (n > 32 || !sxsm_each(q, t, 0, n, sxsm_axis_count)) {
+                return false;
+            }
+            continue;
+        }
+        if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, value))) {
+            return false;
+        }
+        if (meta && sxsm_ci(q, sxCopy_sxsm_token(null, key), "elementdatafile")) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxsm_phylo(q, nexus) {
+    var length = false;
+    var count = false;
+    var tree = false;
+    var treeeq = false;
+    var topology = !nexus;
+    var taxa = false;
+    while (q.p < q.n) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (++q.work > 2000000) {
+            return false;
+        }
+        var ch = q.b[q.p];
+        if (sxsm_space(ch)) {
+            q.p++;
+            continue;
+        }
+        var a = q.p;
+        if (ch === 91 /*[*/) {
+            var depth = 1;
+            q.p++;
+            while (q.p < q.n && depth) {
+                ch = q.b[q.p++];
+                if (ch === 91 /*[*/ && ++depth > 64) {
+                    return false;
+                }
+                if (ch === 93 /*]*/) {
+                    depth--;
+                }
+            }
+            if (depth) {
+                return false;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, { a: a, z: q.p - a }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxStrchr("(),:;=*", ch)) {
+            if (ch === 58 /*:*/ && topology) {
+                length = true;
+            }
+            if (ch === 61 /*=*/ && treeeq) {
+                topology = true;
+                treeeq = false;
+            }
+            if (ch === 59 /*;*/ && nexus) {
+                topology = false;
+                taxa = false;
+            }
+            q.p++;
+            continue;
+        }
+        if (ch === 39 /*'*/) {
+            q.p++;
+            var closed = false;
+            while (q.p < q.n) {
+                if (q.b[q.p++] === 39 /*'*/) {
+                    if (q.p < q.n && q.b[q.p] === 39 /*'*/) {
+                        q.p++;
+                        continue;
+                    }
+                    closed = true;
+                    break;
+                }
+            }
+            if (!closed) {
+                return false;
+            }
+        } else {
+            while (q.p < q.n && !sxsm_space(q.b[q.p]) && !sxStrchr("(),:;=[]", q.b[q.p])) {
+                q.p++;
+            }
+        }
+        if (q.p === a) {
+            return false;
+        }
+        var t = { a: a, z: q.p - a };
+        var l = sxsm_node_label;
+        if (length) {
+            l = sxsm_branch_length;
+            length = false;
+        } else if (count) {
+            l = sxsm_taxon_count;
+            count = false;
+        } else if (tree) {
+            l = sxsm_tree_name;
+            tree = false;
+            treeeq = true;
+        } else if (nexus && !topology && !taxa && (sxsm_ci(q, sxCopy_sxsm_token(null, t), "#nexus") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "begin") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "taxa") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "dimensions") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "ntax") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "taxlabels") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "trees") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "tree") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "utree") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "end") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "endblock"))) {
+            l = sxsm_keyword;
+            taxa = sxsm_ci(q, sxCopy_sxsm_token(null, t), "taxlabels");
+            count = sxsm_ci(q, sxCopy_sxsm_token(null, t), "ntax");
+            tree = sxsm_ci(q, sxCopy_sxsm_token(null, t), "tree") || sxsm_ci(q, sxCopy_sxsm_token(null, t), "utree");
+        }
+        if (!sxsm_emit(q, l, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsm_lex(q, t, hash) {
+    while (q.p < q.n) {
+        if (++q.work > 2000000) {
+            return false;
+        }
+        var ch = q.b[q.p];
+        if (sxsm_space(ch)) {
+            q.p++;
+            continue;
+        }
+        var a = q.p;
+        if (hash && (ch === 35 /*#*/ || ch === 33 /*!*/) || ch === 47 && q.n - q.p >= 2 && q.b[q.p + 1] === 47) {
+            while (q.p < q.n && q.b[q.p] !== 13 && q.b[q.p] !== 10) {
+                q.p++;
+            }
+            {
+                if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, { a: a, z: q.p - a }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (ch === 47 && q.n - q.p >= 2 && q.b[q.p + 1] === 42) {
+            q.p += 2;
+            while (q.n - q.p >= 2 && (q.b[q.p] !== 42 || q.b[q.p + 1] !== 47)) {
+                q.p++;
+            }
+            if (q.n - q.p < 2) {
+                return false;
+            }
+            q.p += 2;
+            {
+                if (!sxsm_emit(q, sxsm_comment, sxCopy_sxsm_token(null, { a: a, z: q.p - a }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxStrchr("{}()[],;@", ch)) {
+            q.p++;
+            sxCopy_sxsm_token(t, { a: a, z: 1 });
+            return true;
+        }
+        if (ch === 34 /*"*/) {
+            q.p++;
+            var closed = false;
+            while (q.p < q.n) {
+                ch = q.b[q.p++];
+                if (ch === 34 /*"*/) {
+                    closed = true;
+                    break;
+                }
+                if (ch === 92 && q.p < q.n) {
+                    q.p++;
+                }
+            }
+            if (!closed) {
+                return false;
+            }
+        } else {
+            while (q.p < q.n && !sxsm_space(q.b[q.p]) && !sxStrchr("{}()[],;@", q.b[q.p])) {
+                q.p++;
+            }
+        }
+        if (q.p === a) {
+            return false;
+        }
+        sxCopy_sxsm_token(t, { a: a, z: q.p - a });
+        return true;
+    }
+    return false;
+}
+function sxsm_expect(q, s, hash) {
+    var t = sxNew_sxsm_token();
+    return sxsm_lex(q, t, hash) && sxsm_eq(q, sxCopy_sxsm_token(null, t), s);
+}
+function sxsm_one(q, l, hash) {
+    var t = sxNew_sxsm_token();
+    return sxsm_lex(q, t, hash) && sxsm_emit(q, l, sxCopy_sxsm_token(null, t));
+}
+function sxsm_many(q, l, count, hash) {
+    if (count > 1000000) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsm_one(q, l, hash)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxsm_count(q, l, v, hash) {
+    var t = sxNew_sxsm_token();
+    return sxsm_lex(q, t, hash) && sxsm_number(q, sxCopy_sxsm_token(null, t), v) && v[0] <= 1000000 && sxsm_emit(q, l, sxCopy_sxsm_token(null, t));
+}
+function sxsm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxsm_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxsm_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxsm_order, true);
+    return !c.failed;
+}
+function sx_sciencemesh_supports(type) {
+    switch (type) {
+    case "NRRD":
+    case "METAIMAGE":
+    case "VTK_LEGACY":
+    case "MICROSCOPY_ICS":
+    case "TEKTRONIX_ISF":
+    case "PHYLO_NEXUS":
+    case "PHYLO_NEWICK":
+    case "OPENDX_FIELD":
+    case "GMSH_MSH":
+    case "NETGEN_VOL":
+    case "JCAMP_DX":
+    case "SURFER_GRID":
+    case "HARWELL_BOEING":
+    case "OPENFOAM_POINTS":
+    case "MEDIT_MESH":
+    case "GOCAD_MODEL":
+    case "NASTRAN_BULK":
+    case "ABAQUS_INPUT":
+    case "GMV_MESH":
+    case "AMIRA_MESH":
+    case "TETGEN_MESH":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_sciencemesh_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 67108864) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (b === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: b, n: c.size, p: 0, work: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "NRRD":
+            ok = sx_nrrd_build(q);
+            break;
+        case "METAIMAGE":
+            ok = sx_metaimage_build(q);
+            break;
+        case "VTK_LEGACY":
+            ok = sx_vtk_legacy_build(q);
+            break;
+        case "MICROSCOPY_ICS":
+            ok = sx_microscopy_ics_build(q);
+            break;
+        case "TEKTRONIX_ISF":
+            ok = sx_tektronix_isf_build(q);
+            break;
+        case "PHYLO_NEXUS":
+            ok = sx_phylo_nexus_build(q);
+            break;
+        case "PHYLO_NEWICK":
+            ok = sx_phylo_newick_build(q);
+            break;
+        case "OPENDX_FIELD":
+            ok = sx_opendx_field_build(q);
+            break;
+        case "GMSH_MSH":
+            ok = sx_gmsh_msh_build(q);
+            break;
+        case "NETGEN_VOL":
+            ok = sx_netgen_vol_build(q);
+            break;
+        case "JCAMP_DX":
+            ok = sx_jcamp_dx_build(q);
+            break;
+        case "SURFER_GRID":
+            ok = sx_surfer_grid_build(q);
+            break;
+        case "HARWELL_BOEING":
+            ok = sx_harwell_boeing_build(q);
+            break;
+        case "OPENFOAM_POINTS":
+            ok = sx_openfoam_points_build(q);
+            break;
+        case "MEDIT_MESH":
+            ok = sx_medit_mesh_build(q);
+            break;
+        case "GOCAD_MODEL":
+            ok = sx_gocad_model_build(q);
+            break;
+        case "NASTRAN_BULK":
+            ok = sx_nastran_bulk_build(q);
+            break;
+        case "ABAQUS_INPUT":
+            ok = sx_abaqus_input_build(q);
+            break;
+        case "GMV_MESH":
+            ok = sx_gmv_mesh_build(q);
+            break;
+        case "AMIRA_MESH":
+            ok = sx_amira_mesh_build(q);
+            break;
+        case "TETGEN_MESH":
+            ok = sx_tetgen_mesh_build(q);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxsm_finish(c);
+}

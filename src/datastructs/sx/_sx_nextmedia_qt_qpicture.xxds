@@ -1,0 +1,114 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/qt_qpicture/xx_qt_qpicture_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_qpic_header_fields = layout([blob("signature", 4, SIGNATURE), u16("checksum", CHECKSUM), u16("major_version", ID),
+    u16("minor_version", ID), u8("begin_opcode", ID), u8("begin_length", SIZE), i32("left"), i32("top"), i32("width"),
+    i32("height"), u32("record_count", COUNT)]);
+var sxnx_qpic_header = sxLayout(0x60320043, "qpic_header", BE, sxnx_qpic_header_fields);
+var sxnx_qpic_record_fields = layout([u8("opcode", ID), u8("data_size", SIZE)]);
+var sxnx_qpic_record = sxLayout(0x60320044, "qpic_record", LE, sxnx_qpic_record_fields);
+var sxnx_qpic_record_long_fields = layout([u8("opcode", ID), u8("size_marker", SIGNATURE), u32("data_size", SIZE)]);
+var sxnx_qpic_record_long = sxLayout(0x60320045, "qpic_record_long", BE, sxnx_qpic_record_long_fields);
+var sxnx_qpic_point_fields = layout([field("x", "double", 8), field("y", "double", 8)]);
+var sxnx_qpic_point = sxLayout(0x60320046, "qpic_point", BE, sxnx_qpic_point_fields);
+var sxnx_qpic_rectangle_fields = layout([field("x", "double", 8), field("y", "double", 8), field("width", "double", 8),
+    field("height", "double", 8)]);
+var sxnx_qpic_rectangle = sxLayout(0x60320047, "qpic_rectangle", BE, sxnx_qpic_rectangle_fields);
+var sxnx_qpic_line_fields = layout([field("x1", "double", 8), field("y1", "double", 8), field("x2", "double", 8),
+    field("y2", "double", 8)]);
+var sxnx_qpic_line = sxLayout(0x60320048, "qpic_line", BE, sxnx_qpic_line_fields);
+var sxnx_qpic_rounding_fields = layout([i16("x_rounding"), i16("y_rounding")]);
+var sxnx_qpic_rounding = sxLayout(0x60320049, "qpic_rounding", BE, sxnx_qpic_rounding_fields);
+var sxnx_qpic_angles_fields = layout([i16("start_angle"), i16("span_angle")]);
+var sxnx_qpic_angles = sxLayout(0x6032004A, "qpic_angles", BE, sxnx_qpic_angles_fields);
+var sxnx_qpic_point_count_fields = layout([u32("point_count", COUNT)]);
+var sxnx_qpic_point_count = sxLayout(0x6032004B, "qpic_point_count", BE, sxnx_qpic_point_count_fields);
+var sxnx_qpic_fill_rule_fields = layout([u8("fill_rule", ID)]);
+var sxnx_qpic_fill_rule = sxLayout(0x6032004C, "qpic_fill_rule", LE, sxnx_qpic_fill_rule_fields);
+var sxnx_qpic_mode_fields = layout([i32("mode", ID)]);
+var sxnx_qpic_mode = sxLayout(0x6032004D, "qpic_mode", BE, sxnx_qpic_mode_fields);
+var sxnx_qpic_flags_fields = layout([u32("flags", FLAGS)]);
+var sxnx_qpic_flags = sxLayout(0x6032004E, "qpic_flags", BE, sxnx_qpic_flags_fields);
+var sxnx_qpic_raster_operation_fields = layout([i32("raster_operation", ID)]);
+var sxnx_qpic_raster_operation = sxLayout(0x6032004F, "qpic_raster_operation", BE, sxnx_qpic_raster_operation_fields);
+var sxnx_qpic_boolean_fields = layout([u8("enabled", FLAGS)]);
+var sxnx_qpic_boolean = sxLayout(0x60320050, "qpic_boolean", LE, sxnx_qpic_boolean_fields);
+var sxnx_qpic_opacity_fields = layout([field("opacity", "double", 8)]);
+var sxnx_qpic_opacity = sxLayout(0x60320051, "qpic_opacity", BE, sxnx_qpic_opacity_fields);
+function sxnx_qpic(v) {
+    if (!sxnx_row(v, sxnx_qpic_header, 0, v.n)) {
+        return false;
+    }
+    var count = sxnx_u32(v.p, 28, true);
+    if (count > 4095) {
+        return false;
+    }
+    var p = 32;
+    for (var i = 0; i < count; i++) {
+        if (!sxnx_need(v, p, 2, v.n)) {
+            return false;
+        }
+        var op = v.p[p];
+        var n = v.p[p + 1];
+        if (n === 255) {
+            if (!sxnx_row(v, sxnx_qpic_record_long, p, v.n)) {
+                return false;
+            }
+            n = sxnx_u32(v.p, p + 2, true);
+            p += 6;
+        } else {
+            if (!sxnx_row(v, sxnx_qpic_record, p, v.n)) {
+                return false;
+            }
+            p += 2;
+        }
+        if (!sxnx_need(v, p, n, v.n)) {
+            return false;
+        }
+        var end = p + n;
+        var l = null;
+        if (op === 1) {
+            l = sxnx_qpic_point;
+        } else if (op === 4) {
+            l = sxnx_qpic_line;
+        } else if (op === 5 || op === 7) {
+            l = sxnx_qpic_rectangle;
+        } else if (op === 6 || op >= 8 && op <= 10) {
+            if (!sxnx_row(v, sxnx_qpic_rectangle, p, end) || !sxnx_row(v, op === 6 ? sxnx_qpic_rounding : sxnx_qpic_angles, p + 32, end)) {
+                return false;
+            }
+        } else if (op === 12 || op === 13) {
+            if (!sxnx_row(v, sxnx_qpic_point_count, p, end)) {
+                return false;
+            }
+            var num = sxnx_u32(v.p, p, true);
+            if (!sxnx_table(v, sxnx_qpic_point, p + 4, num, end)) {
+                return false;
+            }
+            if (op === 13 && !sxnx_row(v, sxnx_qpic_fill_rule, p + 4 + num * 16, end)) {
+                return false;
+            }
+        } else if (op === 41 || op === 64) {
+            l = sxnx_qpic_mode;
+        } else if (op === 42) {
+            l = sxnx_qpic_raster_operation;
+        } else if (op === 63) {
+            l = sxnx_qpic_flags;
+        } else if (op === 65) {
+            l = sxnx_qpic_boolean;
+        } else if (op === 66) {
+            l = sxnx_qpic_opacity;
+        }
+        if (l !== null && !sxnx_row(v, l, p, end)) {
+            return false;
+        }
+        p = end;
+    }
+    return p === v.n;
+}
+function sx_qt_qpicture_build(v) {
+    return sxnx_qpic(v);
+}

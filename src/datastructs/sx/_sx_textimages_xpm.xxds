@@ -1,0 +1,116 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/xpm/xx_xpm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_color_key_fields = layout([field("color_key", "char", 0, STRING)]);
+var sxti_color_key = sxLayout(0x6041000B, "textimage_color_key", LE, sxti_color_key_fields);
+var sxti_color_specification_fields = layout([field("color_specification", "char", 0, STRING)]);
+var sxti_color_specification = sxLayout(0x6041000C, "textimage_color_specification", LE, sxti_color_specification_fields);
+var sxti_characters_per_pixel_fields = layout([field("characters_per_pixel", "ascii_signed", 0)]);
+var sxti_characters_per_pixel = sxLayout(0x60410025, "textimage_characters_per_pixel", LE, sxti_characters_per_pixel_fields);
+function sxti_xpm_string(q, a, z) {
+    while (sxti_cskip(q) && q.p < q.n) {
+        if (q.b[q.p] === 34 /*"*/) {
+            q.p++;
+            a[0] = q.p;
+            while (q.p < q.n && q.b[q.p] !== 34 /*"*/) {
+                if (q.b[q.p] === 92 || q.b[q.p] < 32) {
+                    return false;
+                }
+                q.p++;
+            }
+            if (q.p === q.n) {
+                return false;
+            }
+            z[0] = q.p - a[0];
+            q.p++;
+            return true;
+        }
+        q.p++;
+    }
+    return false;
+}
+function sxti_xpm(q) {
+    var a = [0];
+    var z = [0];
+    if (!sxti_xpm_string(q, a, z)) {
+        return false;
+    }
+    var next = q.p;
+    var end = a[0] + z[0];
+    var w = [0];
+    var h = [0];
+    var colors = [0];
+    var cpp = [0];
+    q.p = a[0];
+    {
+        if (!sxti_value(q, sxti_width, end, w)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_height, end, h)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_color_count, end, colors)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_characters_per_pixel, end, cpp)) {
+            return false;
+        }
+    }
+    while (q.p < end && sxti_space(q.b[q.p])) {
+        q.p++;
+    }
+    if (q.p < end) {
+        {
+            if (!sxti_value(q, sxti_hotspot_x, end, null)) {
+                return false;
+            }
+        }
+        {
+            if (!sxti_value(q, sxti_hotspot_y, end, null)) {
+                return false;
+            }
+        }
+    }
+    q.p = next;
+    if (!w[0] || !h[0] || w[0] > 4096 || h[0] > 4096 || !colors[0] || colors[0] > 4096 || cpp[0] !== 1 && cpp[0] !== 2) {
+        return false;
+    }
+    for (var i = 0; i < colors[0]; i++) {
+        if (!sxti_xpm_string(q, a, z) || z[0] < (cpp[0] >= SX_I64_MAX ? cpp[0] - SX_U64_MAX : cpp[0]) + 3) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_color_key, a[0], (cpp[0] >= SX_I64_MAX ? cpp[0] - SX_U64_MAX : cpp[0]))) {
+                return false;
+            }
+        }
+        var p = a[0] + (cpp[0] >= SX_I64_MAX ? cpp[0] - SX_U64_MAX : cpp[0]);
+        while (p < a[0] + z[0] && sxti_space(q.b[p])) {
+            p++;
+        }
+        if (p === a[0] + z[0] || q.b[p++] !== 99 /*c*/) {
+            return false;
+        }
+        while (p < a[0] + z[0] && sxti_space(q.b[p])) {
+            p++;
+        }
+        {
+            if (!sxti_emit(q, sxti_color_specification, p, a[0] + z[0] - p)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_xpm_build(q) {
+    return sxti_xpm(q);
+}

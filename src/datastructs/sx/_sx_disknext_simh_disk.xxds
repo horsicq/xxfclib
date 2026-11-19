@@ -1,0 +1,21 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/simh_disk/xx_simh_disk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_simh_cpm_directory_fields = layout([u8("user_or_status"), field("filename_and_flags", "byte[8]", 8),
+    field("extension_and_flags", "byte[3]", 3, FLAGS), u8("extent_low"), u8("reserved"), u8("extent_high"),
+    u8("record_count", COUNT), field("allocation_blocks", "uint16[8]", 16)]);
+var sxdn_simh_cpm_directory = sxLayout(0x6078002C, "simh_cpm_directory", LE, sxdn_simh_cpm_directory_fields);
+function sxdn_simh(c) {
+    for (var sector = 192; sector < 256; sector++) {
+        if (!sxdn_put(c, sxdn_simh_cpm_directory, sector * 137 + 3, 4)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_simh_disk_build(c) {
+    return sxdn_simh(c);
+}

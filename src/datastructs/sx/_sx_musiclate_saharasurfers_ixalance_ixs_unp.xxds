@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/saharasurfers_ixalance_ixs_unp/xx_saharasurfers_ixalance_ixs_unp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlate_ixs_header_fields = layout([u8("marker", SIGNATURE), u16("order_count", COUNT), u16("instrument_count", COUNT),
+    u16("sample_count", COUNT), u16("pattern_count", COUNT), u8("global_volume"), u8("mix_volume"), u8("speed"), u8("tempo"),
+    chars("title", 26, NONE), bytes("channel_volume", 64), bytes("channel_pan", 64)]);
+var sxlate_ixs_header = sxLayout(0x60930017, "ixs_header", LE, sxlate_ixs_header_fields);
+var sxlate_ixs_orders_fields = layout([field("pattern_index", "uint8", 0)]);
+var sxlate_ixs_orders = sxLayout(0x60930018, "ixs_orders", LE, sxlate_ixs_orders_fields);
+var sxlate_ixs_record_tag_fields = layout([chars("tag", 1, SIGNATURE)]);
+var sxlate_ixs_record_tag = sxLayout(0x60930019, "ixs_record_tag", LE, sxlate_ixs_record_tag_fields);
+var sxlate_ixs_keyboard_fields = layout([u8("note"), u8("sample")]);
+var sxlate_ixs_keyboard = sxLayout(0x6093001B, "ixs_keyboard", LE, sxlate_ixs_keyboard_fields);
+var sxlate_ixs_envelope_flags_fields = layout([u8("flags", FLAGS)]);
+var sxlate_ixs_envelope_flags = sxLayout(0x6093001C, "ixs_envelope_flags", LE, sxlate_ixs_envelope_flags_fields);
+var sxlate_ixs_envelope_fields = layout([u8("point_count", COUNT), u8("loop_begin"), u8("loop_end"), u8("sustain_begin"),
+    u8("sustain_end")]);
+var sxlate_ixs_envelope = sxLayout(0x6093001D, "ixs_envelope", LE, sxlate_ixs_envelope_fields);
+var sxlate_ixs_envelope_point_fields = layout([i8("value"), u16("tick")]);
+var sxlate_ixs_envelope_point = sxLayout(0x6093001E, "ixs_envelope_point", LE, sxlate_ixs_envelope_point_fields);
+var sxlate_ixs_sample_fields = layout([u8("global_volume"), u8("flags", FLAGS), u8("volume"), u32("sample_count", COUNT),
+    u32("loop_begin"), u32("loop_end"), u32("sustain_begin"), u32("sustain_end"), u32("c5_speed"), u8("vibrato_speed"),
+    u8("vibrato_depth"), u8("vibrato_rate"), u8("vibrato_type"), u8("default_pan"), chars("filename", 13, NONE)]);
+var sxlate_ixs_sample = sxLayout(0x6093001F, "ixs_sample", LE, sxlate_ixs_sample_fields);
+function sxlate_ixs(c) {
+    var h = [];
+    var tag = [0];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [167];
+    if (!sxlate_read(c, 0, h, 9, end) || h[0] !== 33 || !sxlate_row(c, sxlate_ixs_header, 0, 167, end)) {
+        return false;
+    }
+    var orders = sxGetU16(h, 9, 1, false);
+    var instruments = sxGetU16(h, 9, 3, false);
+    var samples = sxGetU16(h, 9, 5, false);
+    var patterns = sxGetU16(h, 9, 7, false);
+    if (!sxlate_plane(c, sxlate_ixs_orders, p, orders, end)) {
+        return false;
+    }
+    if (instruments > 1024 || samples > 1024 || patterns > 4096) {
+        return true;
+    }
+    for (var i = 0; i < instruments; i++) {
+        if (!sxlate_byte(c, p[0], tag, end) || tag[0] !== 73 /*I*/ && tag[0] !== 105 /*i*/ || !sxlate_row(c, sxlate_ixs_record_tag, p[0]++, 1, end)) {
+            return false;
+        }
+        if (tag[0] === 105 /*i*/) {
+            continue;
+        }
+        var flags = [0];
+        if (!sxlate_byte(c, p[0] + 5, flags, end) || !sxlate_row(c, sxlate_ixs_instrument, p[0], 6, end)) {
+            return false;
+        }
+        p[0] += 6;
+        if (!(flags[0] & 128) && !sxlate_table(c, sxlate_ixs_keyboard, p, 2, 119, end)) {
+            return false;
+        }
+        for (var e = 0; e < 3; e++) {
+            if (!sxlate_byte(c, p[0], flags, end) || !sxlate_row(c, sxlate_ixs_envelope_flags, p[0]++, 1, end)) {
+                return false;
+            }
+            if (flags[0]) {
+                var count = [0];
+                if (!sxlate_byte(c, p[0], count, end) || !sxlate_row(c, sxlate_ixs_envelope, p[0], 5, end)) {
+                    return false;
+                }
+                p[0] += 5;
+                if (!sxlate_table(c, sxlate_ixs_envelope_point, p, 3, count[0], end)) {
+                    return false;
+                }
+            }
+        }
+    }
+    for (i = 0; i < samples; i++) {
+        if (!sxlate_byte(c, p[0], tag, end) || tag[0] !== 83 /*S*/ && tag[0] !== 115 /*s*/ || !sxlate_row(c, sxlate_ixs_record_tag, p[0]++, 1, end)) {
+            return false;
+        }
+        if (tag[0] === 83 /*S*/) {
+            if (!sxlate_row(c, sxlate_ixs_sample, p[0], 45, end)) {
+                return false;
+            }
+            p[0] += 45;
+        }
+    }
+    for (i = 0; i < patterns; i++) {
+        if (!sxlate_byte(c, p[0], tag, end) || tag[0] !== 80 /*P*/ && tag[0] !== 112 /*p*/ || !sxlate_row(c, sxlate_ixs_record_tag, p[0]++, 1, end)) {
+            return false;
+        }
+        if (tag[0] === 80 /*P*/) {
+            var n;
+            if (!sxlate_span(c, p[0], 4, end) || (n = sx_u16(c, (p[0] >= SX_I64_MAX ? p[0] - SX_U64_MAX : p[0]), false)) === null || !sxlate_row(c, sxlate_ixs_pattern, p[0], 4, end)) {
+                return false;
+            }
+            p[0] += 4;
+            if (!sxlate_span(c, p[0], n, end)) {
+                return false;
+            }
+            p[0] += n;
+        }
+    }
+    return true;
+}
+function sx_saharasurfers_ixalance_ixs_unp_build(c) {
+    return sxlate_ixs(c);
+}

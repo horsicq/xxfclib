@@ -1,0 +1,154 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lha/xx_lha_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_crc16_fields = layout([u16("crc16", CHECKSUM)]);
+var sx_p_crc16 = sxLayout(0x60070005, "crc16", LE, sx_p_crc16_fields);
+var sx_p_lha_level0_fields = layout([u8("header_size", SIZE), u8("header_checksum", CHECKSUM), chars("method", 5, ID),
+    u32("packed_size", SIZE), u32("original_size", SIZE), u32("modified", TIMESTAMP), u8("attributes", FLAGS), u8("level", ID),
+    u8("name_size", SIZE)]);
+var sx_p_lha_level0 = sxLayout(0x6007001B, "lha_level0", LE, sx_p_lha_level0_fields);
+var sx_p_lha_level1_fields = layout([u8("header_size", SIZE), u8("header_checksum", CHECKSUM), chars("method", 5, ID),
+    u32("packed_size", SIZE), u32("original_size", SIZE), u32("modified", TIMESTAMP), u8("attributes", FLAGS), u8("level", ID),
+    u8("name_size", SIZE)]);
+var sx_p_lha_level1 = sxLayout(0x6007001C, "lha_level1", LE, sx_p_lha_level1_fields);
+var sx_p_lha_level2_fields = layout([u16("header_size", SIZE), chars("method", 5, ID), u32("packed_size", SIZE),
+    u32("original_size", SIZE), u32("modified", TIMESTAMP), u8("attributes", FLAGS), u8("level", ID), u16("crc16", CHECKSUM),
+    u8("host_os", ID)]);
+var sx_p_lha_level2 = sxLayout(0x6007001D, "lha_level2", LE, sx_p_lha_level2_fields);
+var sx_p_lha_level3_fields = layout([u16("word_size", SIZE), chars("method", 5, ID), u32("packed_size", SIZE),
+    u32("original_size", SIZE), u32("modified", TIMESTAMP), u8("attributes", FLAGS), u8("level", ID), u16("crc16", CHECKSUM),
+    u8("host_os", ID), u32("total_header_size", SIZE)]);
+var sx_p_lha_level3 = sxLayout(0x6007001E, "lha_level3", LE, sx_p_lha_level3_fields);
+var sx_p_lha_extension2_fields = layout([u16("next_size", SIZE), u8("type", ID)]);
+var sx_p_lha_extension2 = sxLayout(0x6007001F, "lha_extension2", LE, sx_p_lha_extension2_fields);
+var sx_p_lha_extension4_fields = layout([u32("next_size", SIZE), u8("type", ID)]);
+var sx_p_lha_extension4 = sxLayout(0x60070020, "lha_extension4", LE, sx_p_lha_extension4_fields);
+var sx_p_lha_os_fields = layout([u8("host_os", ID)]);
+var sx_p_lha_os = sxLayout(0x60070021, "lha_os", LE, sx_p_lha_os_fields);
+var sx_p_length32_fields = layout([u32("data_size", SIZE)]);
+var sx_p_length32 = sxLayout(0x60070022, "length32", LE, sx_p_length32_fields);
+var sx_p_lha_unix_mode_fields = layout([u16("mode", FLAGS)]);
+var sx_p_lha_unix_mode = sxLayout(0x60070050, "lha_unix_mode", LE, sx_p_lha_unix_mode_fields);
+var sx_p_lha_sizes64_fields = layout([u64("packed_size", SIZE), u64("original_size", SIZE)]);
+var sx_p_lha_sizes64 = sxLayout(0x60070051, "lha_sizes64", LE, sx_p_lha_sizes64_fields);
+function sx_p_lha(c) {
+    var off = 0;
+    while (off < c.size) {
+        var h = [];
+        var first = [0];
+        if (!sx_p_byte(c, off, first)) {
+            return false;
+        }
+        if (!first[0] && c.size - off < 22) {
+            return true;
+        }
+        if (!sx_read(c, off, h, 22) || h[2] !== 45 /*-*/ || h[6] !== 45 /*-*/) {
+            return false;
+        }
+        var level = h[20];
+        var word = 2;
+        var packed = sxGetU32(h, 22, 7, false);
+        var base;
+        var chain = -1;
+        var end;
+        var l;
+        var fixed;
+        if (level < 2) {
+            base = h[0] + 2;
+            fixed = 22;
+            l = level ? sx_p_lha_level1 : sx_p_lha_level0;
+            if (base < 24 + h[21] + (level ? 3 : 0) || !sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), (base < 0 ? base + SX_U64_MAX : base)) || !sx_add(c, sx_p_crc16, off + 22 + h[21], 2)) {
+                return false;
+            }
+            if (level) {
+                if (!sx_add(c, sx_p_lha_os, off + 24 + h[21], 1)) {
+                    return false;
+                }
+                chain = base - 2;
+            }
+        } else {
+            if (!sx_read(c, off, h, level === 3 ? 28 : 24)) {
+                return false;
+            }
+            fixed = level === 2 ? 24 : 28;
+            l = level === 2 ? sx_p_lha_level2 : sx_p_lha_level3;
+            if (level === 2) {
+                base = sxGetU16(h, 28, 0, false) + (h[23] === 75 /*K*/ ? 2 : 0);
+                chain = 24;
+            } else if (level === 3 && sxGetU16(h, 28, 0, false) === 4) {
+                base = sxGetU32(h, 28, 24, false);
+                chain = 28;
+                word = 4;
+            } else {
+                return false;
+            }
+            if (base < (fixed + word) >>> 0 || !sx_p_span(c, (off < 0 ? off + SX_U64_MAX : off), (base < 0 ? base + SX_U64_MAX : base))) {
+                return false;
+            }
+        }
+        if (!sx_add(c, l, off, fixed)) {
+            return false;
+        }
+        end = base;
+        if (chain >= 0) {
+            for (; ; ) {
+                var n = [0];
+                if (!sx_p_uint(c, off + chain, word, n)) {
+                    return false;
+                }
+                if (!n[0]) {
+                    if (!sx_add(c, word === 2 ? sx_p_length16 : sx_p_length32, off + chain, word)) {
+                        return false;
+                    }
+                    break;
+                }
+                if (n[0] < (word + 1) >>> 0 || n[0] > 2147483647) {
+                    return false;
+                }
+                if (level === 1) {
+                    if (n[0] > packed || !sx_p_span(c, (off + end < 0 ? off + end + SX_U64_MAX : off + end), n[0])) {
+                        return false;
+                    }
+                    packed = (packed - (n[0] >>> 0)) >>> 0;
+                    end += (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]);
+                } else if (n[0] > (base - chain - word < 0 ? base - chain - word + SX_U64_MAX : base - chain - word)) {
+                    return false;
+                }
+                if (!sx_add(c, word === 2 ? sx_p_lha_extension2 : sx_p_lha_extension4, off + chain, (word + 1) >>> 0)) {
+                    return false;
+                }
+                var type = [0];
+                if (!sx_p_byte(c, off + chain + word, type)) {
+                    return false;
+                }
+                var data = off + chain + word + 1;
+                var amount = sxU64(sxU64(n[0] - word) - 1);
+                if (type[0] === 0 && amount >= 2) {
+                    if (!sx_add(c, sx_p_crc16, data, 2)) {
+                        return false;
+                    }
+                } else if (type[0] === 0x50 && amount >= 2) {
+                    if (!sx_add(c, sx_p_lha_unix_mode, data, 2)) {
+                        return false;
+                    }
+                } else if (type[0] === 0x42 && amount >= 16) {
+                    if (!sx_add(c, sx_p_lha_sizes64, data, 16)) {
+                        return false;
+                    }
+                }
+                chain += (n[0] >= SX_I64_MAX ? n[0] - SX_U64_MAX : n[0]);
+            }
+        }
+        if (!sx_p_span(c, (off + end < 0 ? off + end + SX_U64_MAX : off + end), packed)) {
+            return false;
+        }
+        off += end + packed;
+    }
+    return true;
+}
+function sx_lha_build(c) {
+    return sx_p_lha(c);
+}

@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/pbo/xx_pbo_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxga_pbo(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var method = [0];
+    while (at[0] < end) {
+        var start = at[0];
+        if (!sxga_cstring(v, at, end, 4097) || !sxga_named(v, start, sxU64(at[0] - start), end, false) || !sxga_row(v, sxga_pbo_entry, at[0], end) || !sxga_word(v, at[0], 4, false, method, 0, end)) {
+            return false;
+        }
+        var empty = at[0] === start + 1;
+        at[0] += 20;
+        if (empty && method[0] === 0x56657273) {
+            for (; ; ) {
+                start = at[0];
+                if (!sxga_cstring(v, at, end, 4097) || !sxga_named(v, start, sxU64(at[0] - start), end, false)) {
+                    return false;
+                }
+                if (at[0] === start + 1) {
+                    break;
+                }
+                start = at[0];
+                if (!sxga_cstring(v, at, end, 4097) || !sxga_named(v, start, sxU64(at[0] - start), end, false)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (empty) {
+            return true;
+        }
+    }
+    return false;
+}
+function sx_pbo_build(v) {
+    return sxga_pbo(v);
+}

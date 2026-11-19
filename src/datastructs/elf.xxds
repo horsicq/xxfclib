@@ -1,0 +1,799 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// ELF (System V ABI, 32/64-bit, either byte order); ids and names are public
+// API. The reader validates the whole header, program header
+// and section header layout before the script runs (Format.size() is -1
+// otherwise), so the script re-reads those tables with the reader's rules:
+// extended counts from section 0, p_filesz clamped to the end of the file.
+//
+// Every structure uses the file byte order. Several records are logical views
+// of one stored value (st_bind, r_sym, vs_index, ...): the record keeps the raw
+// bytes and displays the derived value in decimal. Byte arrays display as
+// spaced hex, strings as at most 64 printable characters.
+
+function fileTypes() { return ["ELF32", "ELF64"]; }
+
+var ELF_NAMES = ["UNKNOWN",
+    "elf_header32", "elf_header64", "program_header32", "program_header64", "section_header32", "section_header64",
+    "symbol32", "symbol64", "rel32", "rel64", "rela32", "rela64", "relr32", "relr64", "dynamic32", "dynamic64",
+    "compression_header32", "compression_header64", "note_header", "sysv_hash_header", "sysv_hash_bucket",
+    "sysv_hash_chain", "gnu_hash_header", "gnu_hash_bloom32", "gnu_hash_bloom64", "gnu_hash_bucket", "gnu_hash_chain",
+    "group_word", "symtab_shndx", "address32", "address64", "verdef", "verdaux", "verneed", "vernaux", "versym",
+    "syminfo", "auxv32", "auxv64", "nt_file_header32", "nt_file_header64", "nt_file_entry32", "nt_file_entry64",
+    "gnu_abi_tag", "gnu_hwcap_header", "gnu_property_header", "linux_siginfo", "android_ident_prefix", "move32",
+    "move64", "lib32", "lib64", "solaris_cap32", "solaris_cap64", "solaris_capinfo32", "solaris_capinfo64",
+    "mips_reginfo32", "mips_reginfo64", "mips_options", "mips_options_hw", "mips_gptab", "mips_conflict32",
+    "mips_conflict64", "mips_abi_flags", "llvm_cgprofile", "string_data", "note_name", "note_desc", "property_data",
+    "raw_data"];
+
+// Structure ids (XX_ELF_DATA_STRUCT_*).
+var EHDR32 = 1, EHDR64 = 2, PHDR32 = 3, PHDR64 = 4, SHDR32 = 5, SHDR64 = 6, SYM32 = 7, SYM64 = 8, REL32 = 9,
+    REL64 = 10, RELA32 = 11, RELA64 = 12, RELR32 = 13, RELR64 = 14, DYN32 = 15, DYN64 = 16, CHDR32 = 17, CHDR64 = 18,
+    NHDR = 19, SYSV_HASH_HEADER = 20, SYSV_HASH_BUCKET = 21, SYSV_HASH_CHAIN = 22, GNU_HASH_HEADER = 23,
+    GNU_HASH_BLOOM32 = 24, GNU_HASH_BLOOM64 = 25, GNU_HASH_BUCKET = 26, GNU_HASH_CHAIN = 27, GROUP_WORD = 28,
+    SYMTAB_SHNDX = 29, ADDRESS32 = 30, ADDRESS64 = 31, VERDEF = 32, VERDAUX = 33, VERNEED = 34, VERNAUX = 35,
+    VERSYM = 36, SYMINFO = 37, AUXV32 = 38, AUXV64 = 39, NT_FILE_HEADER32 = 40, NT_FILE_HEADER64 = 41,
+    NT_FILE_ENTRY32 = 42, NT_FILE_ENTRY64 = 43, GNU_ABI_TAG = 44, GNU_HWCAP_HEADER = 45, GNU_PROPERTY_HEADER = 46,
+    LINUX_SIGINFO = 47, ANDROID_IDENT_PREFIX = 48, MOVE32 = 49, MOVE64 = 50, LIB32 = 51, LIB64 = 52,
+    SOLARIS_CAP32 = 53, SOLARIS_CAP64 = 54, SOLARIS_CAPINFO32 = 55, SOLARIS_CAPINFO64 = 56, MIPS_REGINFO32 = 57,
+    MIPS_REGINFO64 = 58, MIPS_OPTIONS = 59, MIPS_OPTIONS_HW = 60, MIPS_GPTAB = 61, MIPS_CONFLICT32 = 62,
+    MIPS_CONFLICT64 = 63, MIPS_ABI_FLAGS = 64, LLVM_CGPROFILE = 65, STRING_DATA = 66, NOTE_NAME = 67, NOTE_DESC = 68,
+    PROPERTY_DATA = 69, RAW_DATA_ID = 70;
+
+// Section and segment types.
+var SHT_NULL = 0, SHT_PROGBITS = 1, SHT_SYMTAB = 2, SHT_STRTAB = 3, SHT_RELA = 4, SHT_HASH = 5, SHT_DYNAMIC = 6,
+    SHT_NOTE = 7, SHT_NOBITS = 8, SHT_REL = 9, SHT_DYNSYM = 11, SHT_INIT_ARRAY = 14, SHT_FINI_ARRAY = 15,
+    SHT_PREINIT_ARRAY = 16, SHT_GROUP = 17, SHT_SYMTAB_SHNDX = 18, SHT_RELR = 19, SHT_GNU_HASH = 0x6ffffff6,
+    SHT_GNU_LIBLIST = 0x6ffffff7, SHT_GNU_VERDEF = 0x6ffffffd, SHT_GNU_VERNEED = 0x6ffffffe,
+    SHT_GNU_VERSYM = 0x6fffffff, SHT_SUNW_CAPINFO = 0x6ffffff0, SHT_SUNW_CAP = 0x6ffffff5, SHT_SUNW_MOVE = 0x6ffffffa,
+    SHT_SUNW_SYMINFO = 0x6ffffffc, SHT_MIPS_LIBLIST = 0x70000000, SHT_MIPS_CONFLICT = 0x70000002,
+    SHT_MIPS_GPTAB = 0x70000003, SHT_MIPS_REGINFO = 0x70000006, SHT_MIPS_OPTIONS = 0x7000000d,
+    SHT_MIPS_ABIFLAGS = 0x7000002a, SHT_LLVM_CALL_GRAPH_PROFILE = 0x6fff4c09;
+var PT_DYNAMIC = 2, PT_INTERP = 3, PT_NOTE = 4, PT_GNU_PROPERTY = 0x6474e553, PT_MIPS_REGINFO = 0x70000000,
+    PT_MIPS_OPTIONS = 0x70000002, PT_MIPS_ABIFLAGS = 0x70000003;
+var SHF_COMPRESSED = 0x800;
+var MAX_LINKED_RECORDS = 65536, MAX_NAME = 4096, MAX_DISPLAY = 64;
+
+// ------------------------------------------------------------------ numbers
+
+function pad4(n) { return n < 10 ? "000" + n : n < 100 ? "00" + n : n < 1000 ? "0" + n : "" + n; }
+
+// Exact decimal text of the unsigned 64-bit value hi:lo.
+function dec64(hi, lo) {
+    var parts = "", h = hi, l = lo, r, t;
+    while (h > 0 || l >= 10000) {
+        r = h % 10000;
+        h = Math.floor(h / 10000);
+        t = r * 4294967296 + l;
+        l = Math.floor(t / 10000);
+        parts = pad4(t % 10000) + parts;
+    }
+    return "" + l + parts;
+}
+
+// Exact decimal text of the signed 64-bit value hi:lo.
+function sdec64(hi, lo) {
+    if (hi < 0x80000000) return dec64(hi, lo);
+    return "-" + dec64(4294967295 - hi + (lo === 0 ? 1 : 0), lo === 0 ? 0 : 4294967296 - lo);
+}
+
+// --------------------------------------------------------------- ELF facts
+
+function elfIs64() { return File.u8(4) === 2; }
+
+function elfMachine() { return File.u16(18, Format.isBigEndian()); }
+
+// The parsed header with the reader's extended-count rules applied.
+function elfHeader() {
+    var be = Format.isBigEndian(), is64 = elfIs64(), h = { is64: is64, be: be }, s0;
+    h.osabi = File.u8(7);
+    h.machine = File.u16(18, be);
+    if (is64) {
+        h.phoff = File.u64(32, be);
+        h.shoff = File.u64(40, be);
+        h.ehsize = File.u16(52, be);
+        h.phentsize = File.u16(54, be);
+        h.phnum = File.u16(56, be);
+        h.shentsize = File.u16(58, be);
+        h.shnum = File.u16(60, be);
+        h.shstrndx = File.u16(62, be);
+    } else {
+        h.phoff = File.u32(28, be);
+        h.shoff = File.u32(32, be);
+        h.ehsize = File.u16(40, be);
+        h.phentsize = File.u16(42, be);
+        h.phnum = File.u16(44, be);
+        h.shentsize = File.u16(46, be);
+        h.shnum = File.u16(48, be);
+        h.shstrndx = File.u16(50, be);
+    }
+    if (h.shoff === 0) {
+        h.shnum = 0;
+        h.shstrndx = 0;
+    } else {
+        s0 = elfSection(h, h.shoff);
+        if (h.shnum === 0) h.shnum = s0.size;
+        if (h.phnum === 0xffff) h.phnum = s0.info;
+        if (h.shstrndx === 0xffff) h.shstrndx = s0.link;
+    }
+    return h;
+}
+
+function elfSection(h, o) {
+    var be = h.be, s = {};
+    s.name = File.u32(o, be);
+    s.type = File.u32(o + 4, be);
+    if (h.is64) {
+        s.flags = File.u64lo(o + 8, be);
+        s.offset = File.u64(o + 24, be);
+        s.size = File.u64(o + 32, be);
+        s.link = File.u32(o + 40, be);
+        s.info = File.u32(o + 44, be);
+        s.alignHi = File.u64hi(o + 48, be);
+        s.alignLo = File.u64lo(o + 48, be);
+        s.entsize = File.u64(o + 56, be);
+    } else {
+        s.flags = File.u32(o + 8, be);
+        s.offset = File.u32(o + 16, be);
+        s.size = File.u32(o + 20, be);
+        s.link = File.u32(o + 24, be);
+        s.info = File.u32(o + 28, be);
+        s.alignHi = 0;
+        s.alignLo = File.u32(o + 32, be);
+        s.entsize = File.u32(o + 36, be);
+    }
+    return s;
+}
+
+function elfSections(h) {
+    var list = [], i;
+    for (i = 0; i < h.shnum; i++) list.push(elfSection(h, h.shoff + i * h.shentsize));
+    return list;
+}
+
+function elfPrograms(h) {
+    var list = [], be = h.be, avail = File.size(), i, o, p;
+    for (i = 0; i < h.phnum; i++) {
+        o = h.phoff + i * h.phentsize;
+        p = { type: File.u32(o, be) };
+        if (h.is64) {
+            p.offset = File.u64(o + 8, be);
+            p.filesz = File.u64(o + 32, be);
+            p.alignHi = File.u64hi(o + 48, be);
+            p.alignLo = File.u64lo(o + 48, be);
+        } else {
+            p.offset = File.u32(o + 4, be);
+            p.filesz = File.u32(o + 16, be);
+            p.alignHi = 0;
+            p.alignLo = File.u32(o + 28, be);
+        }
+        if (p.filesz > avail - p.offset) p.filesz = avail - p.offset;
+        list.push(p);
+    }
+    return list;
+}
+
+// Notes accept an alignment of 4 or 8, anything else counts as 4.
+function noteAlign(hi, lo) { return hi === 0 && (lo === 4 || lo === 8) ? lo : 4; }
+
+function isMips(machine) { return machine === 8 || machine === 10; }
+
+// ---------------------------------------------------------------- appending
+
+function elfAppend(c, id, offset, entry, total, count, kind) {
+    var key;
+    if (offset < 0 || total < 0 || offset > c.size || total > c.size - offset) return false;
+    key = id + ":" + offset + ":" + total;
+    if (c.seen[key]) return true;
+    c.seen[key] = true;
+    Structs.put(id, offset, entry, total, count, kind, MAPPED);
+    return true;
+}
+
+function elfRaw(c, offset, size) {
+    if (size === 0) return true;
+    return elfAppend(c, RAW_DATA_ID, offset, 1, size, size, RAW);
+}
+
+function elfVariable(c, id, offset, size) {
+    if (size === 0) return true;
+    return elfAppend(c, id, offset, 1, size, size, RAW);
+}
+
+function elfTable(c, id, offset, size, stride, canonical) {
+    var count, covered;
+    if (size === 0) return true;
+    if (stride < canonical || stride === 0) return elfRaw(c, offset, size);
+    count = Math.floor(size / stride);
+    covered = count * stride;
+    if (count !== 0 && !elfAppend(c, id, offset, stride, covered, count, ENTRY)) return false;
+    return elfRaw(c, offset + covered, size - covered);
+}
+
+function alignUp(value, alignment) { return Math.ceil(value / alignment) * alignment; }
+
+// ------------------------------------------------------------ section kinds
+
+function sectionName(c, s) {
+    var strings, max, text;
+    if (c.h.shstrndx >= c.sections.length) return "";
+    strings = c.sections[c.h.shstrndx];
+    if (strings.type !== SHT_STRTAB || s.name >= strings.size || strings.offset + strings.size > c.size) return "";
+    max = strings.size - s.name;
+    if (max > 127) max = 127;
+    return File.cstr(strings.offset + s.name, max);
+}
+
+function stride(s, canonical) { return s.entsize !== 0 ? s.entsize : canonical; }
+
+function sysvHash(c, offset, size) {
+    var buckets, chains, end;
+    if (size < 8 || offset + size > c.size) return elfRaw(c, offset, size);
+    buckets = File.u32(offset, c.h.be);
+    chains = File.u32(offset + 4, c.h.be);
+    end = 8 + buckets * 4 + chains * 4;
+    if (end > size) return elfRaw(c, offset, size);
+    if (!elfAppend(c, SYSV_HASH_HEADER, offset, 8, 8, 1, STRUCT) ||
+        (buckets !== 0 && !elfAppend(c, SYSV_HASH_BUCKET, offset + 8, 4, buckets * 4, buckets, ENTRY)) ||
+        (chains !== 0 && !elfAppend(c, SYSV_HASH_CHAIN, offset + 8 + buckets * 4, 4, chains * 4, chains, ENTRY)))
+        return false;
+    return elfRaw(c, offset + end, size - end);
+}
+
+function gnuHash(c, offset, size) {
+    var word = c.h.is64 ? 8 : 4, buckets, bloom, bloomBytes, cursor, chainCount, chainBytes;
+    if (size < 16 || offset + size > c.size) return elfRaw(c, offset, size);
+    buckets = File.u32(offset, c.h.be);
+    bloom = File.u32(offset + 8, c.h.be);
+    bloomBytes = bloom * word;
+    cursor = 16 + bloomBytes + buckets * 4;
+    if (cursor > size) return elfRaw(c, offset, size);
+    chainCount = Math.floor((size - cursor) / 4);
+    chainBytes = chainCount * 4;
+    if (!elfAppend(c, GNU_HASH_HEADER, offset, 16, 16, 1, STRUCT) ||
+        (bloom !== 0 && !elfAppend(c, c.h.is64 ? GNU_HASH_BLOOM64 : GNU_HASH_BLOOM32, offset + 16, word, bloomBytes, bloom, ENTRY)) ||
+        (buckets !== 0 && !elfAppend(c, GNU_HASH_BUCKET, offset + 16 + bloomBytes, 4, buckets * 4, buckets, ENTRY)) ||
+        (chainCount !== 0 && !elfAppend(c, GNU_HASH_CHAIN, offset + cursor, 4, chainBytes, chainCount, ENTRY)))
+        return false;
+    return elfRaw(c, offset + cursor + chainBytes, size - cursor - chainBytes);
+}
+
+// GNU version definitions (verdef) and requirements (verneed) share one walk:
+// root records linked by a next delta, each with a chain of aux records.
+function versionChain(c, offset, size, isDef) {
+    var rootId = isDef ? VERDEF : VERNEED, auxId = isDef ? VERDAUX : VERNAUX, rootSize = isDef ? 20 : 16,
+        auxSize = isDef ? 8 : 16, cntAt = isDef ? 6 : 2, auxAt = isDef ? 12 : 8, nextAt = isDef ? 16 : 12,
+        auxNextAt = isDef ? 4 : 12, be = c.h.be, cursor = 0, roots = 0, extent = 0, root, count, auxDelta, nextDelta,
+        aux, index, auxNext;
+    while (cursor < size && roots < MAX_LINKED_RECORDS) {
+        root = cursor;
+        if (size - root < rootSize) return elfRaw(c, offset + root, size - root);
+        if (!elfAppend(c, rootId, offset + root, rootSize, rootSize, 1, ENTRY)) return false;
+        if (root + rootSize > extent) extent = root + rootSize;
+        count = File.u16(offset + root + cntAt, be);
+        auxDelta = File.u32(offset + root + auxAt, be);
+        nextDelta = File.u32(offset + root + nextAt, be);
+        if (count !== 0) {
+            if (auxDelta < rootSize || auxDelta > size - root) return elfRaw(c, offset + root, size - root);
+            aux = root + auxDelta;
+            for (index = 0; index < count; index++) {
+                if (size - aux < auxSize || !elfAppend(c, auxId, offset + aux, auxSize, auxSize, 1, ENTRY))
+                    return elfRaw(c, offset + root, size - root);
+                if (aux + auxSize > extent) extent = aux + auxSize;
+                auxNext = File.u32(offset + aux + auxNextAt, be);
+                if (index + 1 === count) break;
+                if (auxNext < auxSize || auxNext > size - aux) return elfRaw(c, offset + root, size - root);
+                aux += auxNext;
+            }
+        }
+        roots++;
+        if (nextDelta === 0) return extent <= size ? elfRaw(c, offset + extent, size - extent) : false;
+        if (nextDelta < rootSize || nextDelta > size - root) return elfRaw(c, offset + root, size - root);
+        cursor = root + nextDelta;
+    }
+    return cursor === size || roots < MAX_LINKED_RECORDS ? true : elfRaw(c, offset + cursor, size - cursor);
+}
+
+function gnuProperties(c, offset, size) {
+    var cursor = 0, alignment = c.h.is64 ? 8 : 4, dataSize, dataEnd, next;
+    while (cursor < size) {
+        if (size - cursor < 8) return elfRaw(c, offset + cursor, size - cursor);
+        dataSize = File.u32(offset + cursor + 4, c.h.be);
+        dataEnd = cursor + 8 + dataSize;
+        if (dataEnd > size) return elfRaw(c, offset + cursor, size - cursor);
+        next = alignUp(dataEnd, alignment);
+        if (next > size) return elfRaw(c, offset + cursor, size - cursor);
+        if (!elfAppend(c, GNU_PROPERTY_HEADER, offset + cursor, 8, 8, 1, ENTRY) ||
+            !elfVariable(c, PROPERTY_DATA, offset + cursor + 8, dataSize) ||
+            !elfRaw(c, offset + dataEnd, next - dataEnd))
+            return false;
+        cursor = next;
+    }
+    return true;
+}
+
+function noteDetail(c, owner, type, offset, size) {
+    var is64 = c.h.is64, word = is64 ? 8 : 4, core = owner === "CORE" || owner === "LINUX", count, entriesSize,
+        entriesOffset, entrySize;
+    if (!elfVariable(c, NOTE_DESC, offset, size)) return false;
+    if (owner === "GNU" && type === 1 && size >= 16)
+        return elfAppend(c, GNU_ABI_TAG, offset, 16, 16, 1, STRUCT) && elfRaw(c, offset + 16, size - 16);
+    if (owner === "GNU" && type === 2 && size >= 8)
+        return elfAppend(c, GNU_HWCAP_HEADER, offset, 8, 8, 1, STRUCT) && elfRaw(c, offset + 8, size - 8);
+    if (owner === "GNU" && type === 5) return gnuProperties(c, offset, size);
+    if (core && type === 6) return elfTable(c, is64 ? AUXV64 : AUXV32, offset, size, word * 2, word * 2);
+    if (core && type === 0x46494c45 && size >= word * 2) {
+        if (is64) {
+            if (File.u64hi(offset, c.h.be) !== 0) return true;
+            count = File.u64lo(offset, c.h.be);
+        } else {
+            count = File.u32(offset, c.h.be);
+        }
+        entriesOffset = word * 2;
+        entrySize = word * 3;
+        if (count > MAX_LINKED_RECORDS) return true;
+        entriesSize = count * entrySize;
+        if (entriesSize > size - entriesOffset) return true;
+        if (!elfAppend(c, is64 ? NT_FILE_HEADER64 : NT_FILE_HEADER32, offset, entriesOffset, entriesOffset, 1, STRUCT) ||
+            (count !== 0 && !elfAppend(c, is64 ? NT_FILE_ENTRY64 : NT_FILE_ENTRY32, offset + entriesOffset, entrySize, entriesSize, count, ENTRY)))
+            return false;
+        return elfVariable(c, STRING_DATA, offset + entriesOffset + entriesSize, size - entriesOffset - entriesSize);
+    }
+    if (core && type === 0x53494749 && size >= 12) return elfAppend(c, LINUX_SIGINFO, offset, 12, 12, 1, STRUCT);
+    if (owner === "Android" && type === 1 && size >= 4) return elfAppend(c, ANDROID_IDENT_PREFIX, offset, 4, 4, 1, STRUCT);
+    return true;
+}
+
+function notes(c, offset, size, alignment) {
+    var cursor = 0, be = c.h.be, nameSize, descSize, type, nameStart, nameEnd, descStart, descEnd, next, owner;
+    if (alignment !== 4 && alignment !== 8) alignment = 4;
+    while (cursor < size) {
+        if (size - cursor < 12) return elfRaw(c, offset + cursor, size - cursor);
+        nameSize = File.u32(offset + cursor, be);
+        descSize = File.u32(offset + cursor + 4, be);
+        type = File.u32(offset + cursor + 8, be);
+        nameStart = cursor + 12;
+        nameEnd = nameStart + nameSize;
+        if (nameEnd > size) return elfRaw(c, offset + cursor, size - cursor);
+        descStart = alignUp(nameEnd, alignment);
+        if (descStart > size) return elfRaw(c, offset + cursor, size - cursor);
+        descEnd = descStart + descSize;
+        if (descEnd > size) return elfRaw(c, offset + cursor, size - cursor);
+        next = alignUp(descEnd, alignment);
+        if (next > size) return elfRaw(c, offset + cursor, size - cursor);
+        if (!elfAppend(c, NHDR, offset + cursor, 12, 12, 1, STRUCT) ||
+            !elfVariable(c, NOTE_NAME, offset + nameStart, nameSize) ||
+            !elfRaw(c, offset + nameEnd, descStart - nameEnd))
+            return false;
+        owner = "";
+        if (nameSize <= MAX_NAME && File.valid(offset + nameStart, nameSize)) owner = File.cstr(offset + nameStart, nameSize < 31 ? nameSize : 31);
+        if (!noteDetail(c, owner, type, offset + descStart, descSize) || !elfRaw(c, offset + descEnd, next - descEnd))
+            return false;
+        cursor = next;
+    }
+    return true;
+}
+
+function mipsOptions(c, offset, size) {
+    var cursor = 0, is64 = c.h.is64, optionSize, kind, payload, reginfo = is64 ? 32 : 24;
+    while (cursor < size) {
+        if (size - cursor < 8) return elfRaw(c, offset + cursor, size - cursor);
+        kind = File.u8(offset + cursor);
+        optionSize = File.u8(offset + cursor + 1);
+        if (optionSize < 8 || optionSize > size - cursor) return elfRaw(c, offset + cursor, size - cursor);
+        if (!elfAppend(c, MIPS_OPTIONS, offset + cursor, 8, 8, 1, ENTRY)) return false;
+        payload = optionSize - 8;
+        if (kind === 1 && payload >= reginfo) {
+            if (!elfAppend(c, is64 ? MIPS_REGINFO64 : MIPS_REGINFO32, offset + cursor + 8, reginfo, reginfo, 1, STRUCT) ||
+                !elfRaw(c, offset + cursor + 8 + reginfo, payload - reginfo))
+                return false;
+        } else if ((kind === 4 || kind === 7 || kind === 8) && payload >= 8) {
+            if (!elfAppend(c, MIPS_OPTIONS_HW, offset + cursor + 8, 8, 8, 1, STRUCT) || !elfRaw(c, offset + cursor + 16, payload - 8))
+                return false;
+        } else if (!elfRaw(c, offset + cursor + 8, payload)) {
+            return false;
+        }
+        cursor += optionSize;
+    }
+    return true;
+}
+
+function appendSection(c, s) {
+    var is64 = c.h.is64, word = is64 ? 8 : 4, name, solaris, mips, canonical, o = s.offset, n = s.size;
+    if (n === 0 || s.type === SHT_NOBITS || s.type === SHT_NULL) return true;
+    if (o + n > c.size) return false;
+    name = sectionName(c, s);
+    solaris = c.h.osabi === 6 || name.substring(0, 6) === ".SUNW_";
+    mips = isMips(c.h.machine);
+    if ((s.flags & SHF_COMPRESSED) !== 0) {
+        canonical = is64 ? 24 : 12;
+        if (n < canonical) return elfRaw(c, o, n);
+        return elfAppend(c, is64 ? CHDR64 : CHDR32, o, canonical, canonical, 1, STRUCT) && elfRaw(c, o + canonical, n - canonical);
+    }
+    switch (s.type) {
+        case SHT_SYMTAB:
+        case SHT_DYNSYM:
+            canonical = is64 ? 24 : 16;
+            return elfTable(c, is64 ? SYM64 : SYM32, o, n, stride(s, canonical), canonical);
+        case SHT_REL:
+            canonical = is64 ? 16 : 8;
+            return elfTable(c, is64 ? REL64 : REL32, o, n, stride(s, canonical), canonical);
+        case SHT_RELA:
+            canonical = is64 ? 24 : 12;
+            return elfTable(c, is64 ? RELA64 : RELA32, o, n, stride(s, canonical), canonical);
+        case SHT_RELR:
+            return elfTable(c, is64 ? RELR64 : RELR32, o, n, stride(s, word), word);
+        case SHT_DYNAMIC:
+            canonical = is64 ? 16 : 8;
+            return elfTable(c, is64 ? DYN64 : DYN32, o, n, stride(s, canonical), canonical);
+        case SHT_NOTE: return notes(c, o, n, noteAlign(s.alignHi, s.alignLo));
+        case SHT_HASH: return sysvHash(c, o, n);
+        case SHT_GNU_HASH:
+            if (!solaris || name === ".gnu.hash") return gnuHash(c, o, n);
+            return elfRaw(c, o, n);
+        case SHT_GROUP: return elfTable(c, GROUP_WORD, o, n, 4, 4);
+        case SHT_SYMTAB_SHNDX: return elfTable(c, SYMTAB_SHNDX, o, n, 4, 4);
+        case SHT_INIT_ARRAY:
+        case SHT_FINI_ARRAY:
+        case SHT_PREINIT_ARRAY:
+            return elfTable(c, is64 ? ADDRESS64 : ADDRESS32, o, n, stride(s, word), word);
+        case SHT_GNU_VERDEF: return versionChain(c, o, n, true);
+        case SHT_GNU_VERNEED: return versionChain(c, o, n, false);
+        case SHT_GNU_VERSYM: return elfTable(c, VERSYM, o, n, stride(s, 2), 2);
+        case SHT_SUNW_CAPINFO:
+            if (solaris || name === ".SUNW_capinfo")
+                return elfTable(c, is64 ? SOLARIS_CAPINFO64 : SOLARIS_CAPINFO32, o, n, stride(s, word), word);
+            return elfRaw(c, o, n);
+        case SHT_SUNW_CAP:
+            if (name === ".SUNW_cap" || (c.h.osabi === 6 && name !== ".gnu.attributes")) {
+                canonical = word * 2;
+                return elfTable(c, is64 ? SOLARIS_CAP64 : SOLARIS_CAP32, o, n, stride(s, canonical), canonical);
+            }
+            return elfRaw(c, o, n);
+        case SHT_SUNW_MOVE:
+            canonical = is64 ? 28 : 20;
+            return elfTable(c, is64 ? MOVE64 : MOVE32, o, n, stride(s, canonical), canonical);
+        case SHT_SUNW_SYMINFO: return elfTable(c, SYMINFO, o, n, stride(s, 4), 4);
+        case SHT_GNU_LIBLIST:
+            if (!solaris || name === ".gnu.liblist") return elfTable(c, is64 ? LIB64 : LIB32, o, n, stride(s, 20), 20);
+            return elfRaw(c, o, n);
+        case SHT_MIPS_LIBLIST:
+            if (!mips) return elfRaw(c, o, n);
+            return elfTable(c, is64 ? LIB64 : LIB32, o, n, stride(s, 20), 20);
+        case SHT_MIPS_CONFLICT:
+            if (!mips) return elfRaw(c, o, n);
+            return elfTable(c, is64 ? MIPS_CONFLICT64 : MIPS_CONFLICT32, o, n, stride(s, word), word);
+        case SHT_MIPS_GPTAB:
+            if (!mips) return elfRaw(c, o, n);
+            return elfTable(c, MIPS_GPTAB, o, n, stride(s, 8), 8);
+        case SHT_MIPS_REGINFO:
+            if (!mips) return elfRaw(c, o, n);
+            canonical = is64 ? 32 : 24;
+            return elfTable(c, is64 ? MIPS_REGINFO64 : MIPS_REGINFO32, o, n, stride(s, canonical), canonical);
+        case SHT_MIPS_OPTIONS:
+            if (!mips) return elfRaw(c, o, n);
+            return mipsOptions(c, o, n);
+        case SHT_MIPS_ABIFLAGS:
+            if (!mips) return elfRaw(c, o, n);
+            return elfTable(c, MIPS_ABI_FLAGS, o, n, stride(s, 24), 24);
+        case SHT_LLVM_CALL_GRAPH_PROFILE: return elfTable(c, LLVM_CGPROFILE, o, n, stride(s, 8), 8);
+        case SHT_STRTAB: return elfVariable(c, STRING_DATA, o, n);
+        case SHT_PROGBITS:
+            if (name === ".interp") return elfVariable(c, STRING_DATA, o, n);
+            return elfRaw(c, o, n);
+        default: return elfRaw(c, o, n);
+    }
+}
+
+function sectionSourceExists(c, type, offset, size) {
+    var i, s;
+    for (i = 0; i < c.sections.length; i++) {
+        s = c.sections[i];
+        if (s.type === type && s.offset === offset && s.size === size) return true;
+    }
+    return false;
+}
+
+function appendProgram(c, p) {
+    var is64 = c.h.is64, mips = isMips(c.h.machine), i, found, canonical;
+    if (p.filesz === 0 || p.offset + p.filesz > c.size) return true;
+    if (p.type === PT_DYNAMIC && !sectionSourceExists(c, SHT_DYNAMIC, p.offset, p.filesz)) {
+        canonical = is64 ? 16 : 8;
+        return elfTable(c, is64 ? DYN64 : DYN32, p.offset, p.filesz, canonical, canonical);
+    }
+    if ((p.type === PT_NOTE || p.type === PT_GNU_PROPERTY) && !sectionSourceExists(c, SHT_NOTE, p.offset, p.filesz))
+        return notes(c, p.offset, p.filesz, noteAlign(p.alignHi, p.alignLo));
+    if (p.type === PT_INTERP) {
+        found = false;
+        for (i = 0; i < c.sections.length; i++) {
+            if (c.sections[i].offset === p.offset && c.sections[i].size === p.filesz) {
+                found = true;
+                break;
+            }
+        }
+        return found || elfVariable(c, STRING_DATA, p.offset, p.filesz);
+    }
+    if (mips && p.type === PT_MIPS_REGINFO && !sectionSourceExists(c, SHT_MIPS_REGINFO, p.offset, p.filesz)) {
+        canonical = is64 ? 32 : 24;
+        return elfTable(c, is64 ? MIPS_REGINFO64 : MIPS_REGINFO32, p.offset, p.filesz, canonical, canonical);
+    }
+    if (mips && p.type === PT_MIPS_OPTIONS && !sectionSourceExists(c, SHT_MIPS_OPTIONS, p.offset, p.filesz))
+        return mipsOptions(c, p.offset, p.filesz);
+    if (mips && p.type === PT_MIPS_ABIFLAGS && !sectionSourceExists(c, SHT_MIPS_ABIFLAGS, p.offset, p.filesz))
+        return elfTable(c, MIPS_ABI_FLAGS, p.offset, p.filesz, 24, 24);
+    return true;
+}
+
+function scan() {
+    var formatSize = Format.size(), h, c, i, programs, canonicalHeader, canonicalProgram, canonicalSection;
+    if (formatSize < 0) return false;
+    h = elfHeader();
+    c = { h: h, size: File.size(), seen: {}, sections: elfSections(h) };
+    programs = elfPrograms(h);
+    canonicalHeader = h.is64 ? 64 : 52;
+    canonicalProgram = h.is64 ? 56 : 32;
+    canonicalSection = h.is64 ? 64 : 40;
+    if (!elfAppend(c, h.is64 ? EHDR64 : EHDR32, 0, canonicalHeader, canonicalHeader, 1, STRUCT)) return false;
+    if (h.ehsize > canonicalHeader && !elfRaw(c, canonicalHeader, h.ehsize - canonicalHeader)) return false;
+    if (h.phnum !== 0 && !elfTable(c, h.is64 ? PHDR64 : PHDR32, h.phoff, h.phnum * h.phentsize, h.phentsize, canonicalProgram))
+        return false;
+    if (h.shnum !== 0 && !elfTable(c, h.is64 ? SHDR64 : SHDR32, h.shoff, h.shnum * h.shentsize, h.shentsize, canonicalSection))
+        return false;
+    for (i = 0; i < c.sections.length; i++) {
+        if (!appendSection(c, c.sections[i])) return false;
+    }
+    for (i = 0; i < programs.length; i++) {
+        if (!appendProgram(c, programs[i])) return false;
+    }
+    if (formatSize < c.size && !elfRaw(c, formatSize, c.size - formatSize)) return false;
+    return true;
+}
+
+// ------------------------------------------------------------------ records
+
+function F(name, type, offset, size, role) { return { name: name, type: type, offset: offset, size: size, role: role }; }
+
+// The C populated this record itself, without the standard comment of its role.
+function noComment(f) { f.comment = null; return f; }
+
+function ehdrFields(is64) {
+    var a = is64 ? "Elf64_Addr" : "Elf32_Addr", o = is64 ? "Elf64_Off" : "Elf32_Off", w = is64 ? 8 : 4,
+        x = is64 ? 48 : 36, list = [
+        F("e_ident_magic", "uint8[4]", 0, 4, ID), F("ei_class", "uint8", 4, 1, ID), F("ei_data", "uint8", 5, 1, ID),
+        F("ei_version", "uint8", 6, 1, ID), F("ei_osabi", "uint8", 7, 1, ID), F("ei_abiversion", "uint8", 8, 1, ID),
+        F("ei_pad", "uint8[7]", 9, 7, RESERVED), F("e_type", "uint16", 16, 2, ID), F("e_machine", "uint16", 18, 2, ID),
+        F("e_version", "uint32", 20, 4, ID), F("e_entry", a, 24, w, VA), F("e_phoff", o, 24 + w, w, OFFSET),
+        F("e_shoff", o, 24 + 2 * w, w, OFFSET), F("e_flags", "uint32", x, 4, FLAGS),
+        F("e_ehsize", "uint16", x + 4, 2, SIZE), F("e_phentsize", "uint16", x + 6, 2, SIZE),
+        F("e_phnum", "uint16", x + 8, 2, COUNT), F("e_shentsize", "uint16", x + 10, 2, SIZE),
+        F("e_shnum", "uint16", x + 12, 2, COUNT), F("e_shstrndx", "uint16", x + 14, 2, ID)];
+    return list;
+}
+
+// The C field tables, by structure id.
+function staticFields(id, machine) {
+    switch (id) {
+        case EHDR32: return ehdrFields(false);
+        case EHDR64: return ehdrFields(true);
+        case PHDR32: return [F("p_type", "uint32", 0, 4, ID), F("p_offset", "Elf32_Off", 4, 4, OFFSET),
+            F("p_vaddr", "Elf32_Addr", 8, 4, VA), F("p_paddr", "Elf32_Addr", 12, 4, VA), F("p_filesz", "uint32", 16, 4, SIZE),
+            F("p_memsz", "uint32", 20, 4, SIZE), F("p_flags", "uint32", 24, 4, FLAGS), F("p_align", "uint32", 28, 4, SIZE)];
+        case PHDR64: return [F("p_type", "uint32", 0, 4, ID), F("p_flags", "uint32", 4, 4, FLAGS),
+            F("p_offset", "Elf64_Off", 8, 8, OFFSET), F("p_vaddr", "Elf64_Addr", 16, 8, VA), F("p_paddr", "Elf64_Addr", 24, 8, VA),
+            F("p_filesz", "uint64", 32, 8, SIZE), F("p_memsz", "uint64", 40, 8, SIZE), F("p_align", "uint64", 48, 8, SIZE)];
+        case SHDR32: return [F("sh_name", "uint32", 0, 4, OFFSET), F("sh_type", "uint32", 4, 4, ID),
+            F("sh_flags", "uint32", 8, 4, FLAGS), F("sh_addr", "Elf32_Addr", 12, 4, VA), F("sh_offset", "Elf32_Off", 16, 4, OFFSET),
+            F("sh_size", "uint32", 20, 4, SIZE), F("sh_link", "uint32", 24, 4, ID), F("sh_info", "uint32", 28, 4, ID),
+            F("sh_addralign", "uint32", 32, 4, SIZE), F("sh_entsize", "uint32", 36, 4, SIZE)];
+        case SHDR64: return [F("sh_name", "uint32", 0, 4, OFFSET), F("sh_type", "uint32", 4, 4, ID),
+            F("sh_flags", "uint64", 8, 8, FLAGS), F("sh_addr", "Elf64_Addr", 16, 8, VA), F("sh_offset", "Elf64_Off", 24, 8, OFFSET),
+            F("sh_size", "uint64", 32, 8, SIZE), F("sh_link", "uint32", 40, 4, ID), F("sh_info", "uint32", 44, 4, ID),
+            F("sh_addralign", "uint64", 48, 8, SIZE), F("sh_entsize", "uint64", 56, 8, SIZE)];
+        case SYM32: return [F("st_name", "uint32", 0, 4, OFFSET), F("st_value", "Elf32_Addr", 4, 4, VA),
+            F("st_size", "uint32", 8, 4, SIZE), F("st_info", "uint8", 12, 1, FLAGS), F("st_bind", "uint8", 12, 1, ID),
+            F("st_type", "uint8", 12, 1, ID), F("st_other", "uint8", 13, 1, FLAGS), F("st_visibility", "uint8", 13, 1, ID),
+            F("st_shndx", "uint16", 14, 2, ID)];
+        case SYM64: return [F("st_name", "uint32", 0, 4, OFFSET), F("st_info", "uint8", 4, 1, FLAGS),
+            F("st_bind", "uint8", 4, 1, ID), F("st_type", "uint8", 4, 1, ID), F("st_other", "uint8", 5, 1, FLAGS),
+            F("st_visibility", "uint8", 5, 1, ID), F("st_shndx", "uint16", 6, 2, ID), F("st_value", "Elf64_Addr", 8, 8, VA),
+            F("st_size", "uint64", 16, 8, SIZE)];
+        case REL32: return [F("r_offset", "Elf32_Addr", 0, 4, VA), F("r_info", "uint32", 4, 4, FLAGS),
+            F("r_sym", "uint32", 4, 4, ID), F("r_type", "uint32", 4, 4, ID)];
+        case REL64: return [F("r_offset", "Elf64_Addr", 0, 8, VA), F("r_info", "uint64", 8, 8, FLAGS),
+            F("r_sym", "uint32", 8, 8, ID), F("r_type", "uint32", 8, 8, ID)];
+        case RELA32: return [F("r_offset", "Elf32_Addr", 0, 4, VA), F("r_info", "uint32", 4, 4, FLAGS),
+            F("r_sym", "uint32", 4, 4, ID), F("r_type", "uint32", 4, 4, ID), F("r_addend", "int32", 8, 4, NONE)];
+        case RELA64: return [F("r_offset", "Elf64_Addr", 0, 8, VA), F("r_info", "uint64", 8, 8, FLAGS),
+            F("r_sym", "uint32", 8, 8, ID), F("r_type", "uint32", 8, 8, ID), F("r_addend", "int64", 16, 8, NONE)];
+        case RELR32: return [F("r_entry", "uint32", 0, 4, FLAGS)];
+        case RELR64: return [F("r_entry", "uint64", 0, 8, FLAGS)];
+        case DYN32: return [F("d_tag", "int32", 0, 4, ID), F("d_val_or_ptr", "uint32", 4, 4, POINTER)];
+        case DYN64: return [F("d_tag", "int64", 0, 8, ID), F("d_val_or_ptr", "uint64", 8, 8, POINTER)];
+        case CHDR32: return [F("ch_type", "uint32", 0, 4, ID), F("ch_size", "uint32", 4, 4, SIZE),
+            F("ch_addralign", "uint32", 8, 4, SIZE)];
+        case CHDR64: return [F("ch_type", "uint32", 0, 4, ID), F("ch_reserved", "uint32", 4, 4, RESERVED),
+            F("ch_size", "uint64", 8, 8, SIZE), F("ch_addralign", "uint64", 16, 8, SIZE)];
+        case NHDR: return [F("n_namesz", "uint32", 0, 4, SIZE), F("n_descsz", "uint32", 4, 4, SIZE), F("n_type", "uint32", 8, 4, ID)];
+        case SYSV_HASH_HEADER: return [F("nbucket", "uint32", 0, 4, COUNT), F("nchain", "uint32", 4, 4, COUNT)];
+        case GNU_HASH_HEADER: return [F("nbuckets", "uint32", 0, 4, COUNT), F("symoffset", "uint32", 4, 4, ID),
+            F("bloom_size", "uint32", 8, 4, COUNT), F("bloom_shift", "uint32", 12, 4, COUNT)];
+        case SYSV_HASH_BUCKET:
+        case SYSV_HASH_CHAIN:
+        case GNU_HASH_BLOOM32:
+        case GNU_HASH_BUCKET:
+        case GNU_HASH_CHAIN:
+        case GROUP_WORD:
+        case SYMTAB_SHNDX: return [F("value", "uint32", 0, 4, NONE)];
+        case GNU_HASH_BLOOM64: return [F("value", "uint64", 0, 8, NONE)];
+        case ADDRESS32: return [F("address", "Elf32_Addr", 0, 4, VA)];
+        case ADDRESS64: return [F("address", "Elf64_Addr", 0, 8, VA)];
+        case VERDEF: return [F("vd_version", "uint16", 0, 2, ID), F("vd_flags", "uint16", 2, 2, FLAGS),
+            F("vd_ndx", "uint16", 4, 2, ID), F("vd_cnt", "uint16", 6, 2, COUNT), F("vd_hash", "uint32", 8, 4, ID),
+            F("vd_aux", "uint32", 12, 4, OFFSET), F("vd_next", "uint32", 16, 4, OFFSET)];
+        case VERDAUX: return [F("vda_name", "uint32", 0, 4, OFFSET), F("vda_next", "uint32", 4, 4, OFFSET)];
+        case VERNEED: return [F("vn_version", "uint16", 0, 2, ID), F("vn_cnt", "uint16", 2, 2, COUNT),
+            F("vn_file", "uint32", 4, 4, OFFSET), F("vn_aux", "uint32", 8, 4, OFFSET), F("vn_next", "uint32", 12, 4, OFFSET)];
+        case VERNAUX: return [F("vna_hash", "uint32", 0, 4, ID), F("vna_flags", "uint16", 4, 2, FLAGS),
+            F("vna_other", "uint16", 6, 2, ID), F("vna_name", "uint32", 8, 4, OFFSET), F("vna_next", "uint32", 12, 4, OFFSET)];
+        case VERSYM: return [F("vs_raw", "uint16", 0, 2, FLAGS), F("vs_index", "uint16", 0, 2, ID), F("vs_hidden", "bool", 0, 2, FLAGS)];
+        case SYMINFO: return [F("si_boundto", "uint16", 0, 2, ID), F("si_flags", "uint16", 2, 2, FLAGS)];
+        case AUXV32: return [F("a_type", "uint32", 0, 4, ID), F("a_val", "uint32", 4, 4, POINTER)];
+        case AUXV64: return [F("a_type", "uint64", 0, 8, ID), F("a_val", "uint64", 8, 8, POINTER)];
+        case NT_FILE_HEADER32: return [F("count", "uint32", 0, 4, COUNT), F("page_size", "uint32", 4, 4, SIZE)];
+        case NT_FILE_HEADER64: return [F("count", "uint64", 0, 8, COUNT), F("page_size", "uint64", 8, 8, SIZE)];
+        case NT_FILE_ENTRY32: return [F("start", "uint32", 0, 4, VA), F("end", "uint32", 4, 4, VA), F("file_ofs", "uint32", 8, 4, OFFSET)];
+        case NT_FILE_ENTRY64: return [F("start", "uint64", 0, 8, VA), F("end", "uint64", 8, 8, VA), F("file_ofs", "uint64", 16, 8, OFFSET)];
+        case GNU_ABI_TAG: return [F("os", "uint32", 0, 4, ID), F("major", "uint32", 4, 4, ID), F("minor", "uint32", 8, 4, ID),
+            F("subminor", "uint32", 12, 4, ID)];
+        case GNU_HWCAP_HEADER: return [F("num_entries", "uint32", 0, 4, COUNT), F("enabled_mask", "uint32", 4, 4, FLAGS)];
+        case GNU_PROPERTY_HEADER: return [F("pr_type", "uint32", 0, 4, ID), F("pr_datasz", "uint32", 4, 4, SIZE)];
+        case LINUX_SIGINFO:
+            if (machine === 8) return [F("si_signo", "int32", 0, 4, ID), F("si_code", "int32", 4, 4, ID), F("si_errno", "int32", 8, 4, ID)];
+            return [F("si_signo", "int32", 0, 4, ID), F("si_errno", "int32", 4, 4, ID), F("si_code", "int32", 8, 4, ID)];
+        case ANDROID_IDENT_PREFIX: return [F("api_level", "uint32", 0, 4, ID)];
+        case MOVE32: return [F("m_value", "uint64", 0, 8, NONE), F("m_info", "uint32", 8, 4, FLAGS), F("m_sym", "uint32", 8, 4, ID),
+            noComment(F("m_size", "uint8", 8, 4, SIZE)), F("m_poffset", "uint32", 12, 4, OFFSET), F("m_repeat", "uint16", 16, 2, COUNT),
+            F("m_stride", "uint16", 18, 2, SIZE)];
+        case MOVE64: return [F("m_value", "uint64", 0, 8, NONE), F("m_info", "uint64", 8, 8, FLAGS), F("m_sym", "uint64", 8, 8, ID),
+            noComment(F("m_size", "uint8", 8, 8, SIZE)), F("m_poffset", "uint64", 16, 8, OFFSET), F("m_repeat", "uint16", 24, 2, COUNT),
+            F("m_stride", "uint16", 26, 2, SIZE)];
+        case LIB32:
+        case LIB64: return [F("l_name", "uint32", 0, 4, OFFSET), F("l_time_stamp", "uint32", 4, 4, TIMESTAMP),
+            F("l_checksum", "uint32", 8, 4, ID), F("l_version", "uint32", 12, 4, ID), F("l_flags", "uint32", 16, 4, FLAGS)];
+        case SOLARIS_CAP32: return [F("c_tag", "uint32", 0, 4, ID), F("c_val_or_ptr", "uint32", 4, 4, POINTER)];
+        case SOLARIS_CAP64: return [F("c_tag", "uint64", 0, 8, ID), F("c_val_or_ptr", "uint64", 8, 8, POINTER)];
+        case SOLARIS_CAPINFO32: return [F("ci_raw", "uint32", 0, 4, FLAGS), F("ci_sym", "uint32", 0, 4, ID), F("ci_group", "uint8", 0, 4, ID)];
+        case SOLARIS_CAPINFO64: return [F("ci_raw", "uint64", 0, 8, FLAGS), F("ci_sym", "uint32", 0, 8, ID), F("ci_group", "uint32", 0, 8, ID)];
+        case MIPS_REGINFO32: return [F("ri_gprmask", "uint32", 0, 4, FLAGS), F("ri_cprmask0", "uint32", 4, 4, FLAGS),
+            F("ri_cprmask1", "uint32", 8, 4, FLAGS), F("ri_cprmask2", "uint32", 12, 4, FLAGS), F("ri_cprmask3", "uint32", 16, 4, FLAGS),
+            F("ri_gp_value", "int32", 20, 4, VA)];
+        case MIPS_REGINFO64: return [F("ri_gprmask", "uint32", 0, 4, FLAGS), F("ri_pad", "uint32", 4, 4, RESERVED),
+            F("ri_cprmask0", "uint32", 8, 4, FLAGS), F("ri_cprmask1", "uint32", 12, 4, FLAGS), F("ri_cprmask2", "uint32", 16, 4, FLAGS),
+            F("ri_cprmask3", "uint32", 20, 4, FLAGS), F("ri_gp_value", "Elf64_Addr", 24, 8, VA)];
+        case MIPS_OPTIONS: return [F("kind", "uint8", 0, 1, ID), F("size", "uint8", 1, 1, SIZE), F("section", "uint16", 2, 2, ID),
+            F("info", "uint32", 4, 4, FLAGS)];
+        case MIPS_OPTIONS_HW: return [F("hwp_flags1", "uint32", 0, 4, FLAGS), F("hwp_flags2", "uint32", 4, 4, FLAGS)];
+        case MIPS_GPTAB: return [F("gt_value", "uint32", 0, 4, NONE), F("gt_bytes_or_unused", "uint32", 4, 4, SIZE)];
+        case MIPS_CONFLICT32: return [F("c_index", "Elf32_Addr", 0, 4, ID)];
+        case MIPS_CONFLICT64: return [F("c_index", "Elf64_Addr", 0, 8, ID)];
+        case MIPS_ABI_FLAGS: return [F("version", "uint16", 0, 2, ID), F("isa_level", "uint8", 2, 1, ID), F("isa_rev", "uint8", 3, 1, ID),
+            F("gpr_size", "uint8", 4, 1, SIZE), F("cpr1_size", "uint8", 5, 1, SIZE), F("cpr2_size", "uint8", 6, 1, SIZE),
+            F("fp_abi", "uint8", 7, 1, ID), F("isa_ext", "uint32", 8, 4, FLAGS), F("ases", "uint32", 12, 4, FLAGS),
+            F("flags1", "uint32", 16, 4, FLAGS), F("flags2", "uint32", 20, 4, FLAGS)];
+        case LLVM_CGPROFILE: return [F("cgp_weight", "uint64", 0, 8, COUNT)];
+        default: return [];
+    }
+}
+
+// Unsigned value of a 1/2/4/8-byte field as exact halves.
+function fieldHalves(at, size) {
+    var be = Format.isBigEndian();
+    if (size === 1) return [0, File.u8(at)];
+    if (size === 2) return [0, File.u16(at, be)];
+    if (size === 4) return [0, File.u32(at, be)];
+    return [File.u64hi(at, be), File.u64lo(at, be)];
+}
+
+// Display of a logical field: the derived value in decimal.
+function logicalDisplay(name, is64, at, size) {
+    var v = fieldHalves(at, size), hi = v[0], lo = v[1], machine, b;
+    switch (name) {
+        case "st_bind": return "" + (lo >>> 4);
+        case "st_type": return "" + (lo & 15);
+        case "st_visibility": return "" + (lo & 3);
+        case "r_sym":
+        case "r_type":
+            if (!is64) return "" + (name === "r_sym" ? lo >>> 8 : lo & 0xff);
+            machine = elfMachine();
+            if (isMips(machine) && !Format.isBigEndian()) {
+                // MIPS64 little endian stores r_sym, then r_ssym/r_type3/r_type2/r_type bytes.
+                b = File.u32(at + 4, true);
+                return "" + (name === "r_sym" ? lo : b);
+            }
+            return "" + (name === "r_sym" ? hi : lo);
+        case "vs_index": return "" + (lo & 0x7fff);
+        case "vs_hidden": return (lo & 0x8000) !== 0 ? "1" : "0";
+        case "m_sym": return size === 8 ? dec64(hi >>> 8, (((hi & 0xff) * 16777216) + (lo >>> 8))) : "" + (lo >>> 8);
+        case "m_size": return "" + (lo & 0xff);
+        case "ci_sym": return is64 ? "" + hi : "" + (lo >>> 8);
+        case "ci_group": return is64 ? "" + lo : "" + (lo & 0xff);
+    }
+    return undefined;
+}
+
+var LOGICAL = { st_bind: 1, st_type: 1, st_visibility: 1, r_sym: 1, r_type: 1, vs_index: 1, vs_hidden: 1, m_sym: 1,
+    m_size: 1, ci_sym: 1, ci_group: 1 };
+
+function hex2(b) { var d = "0123456789ABCDEF"; return d.charAt(b >>> 4) + d.charAt(b & 15); }
+
+// Spaced hex of at most 64 bytes, " ..." when there are more.
+function bytesDisplay(at, size) {
+    var n = size > MAX_DISPLAY ? MAX_DISPLAY : size, text = "", i;
+    for (i = 0; i < n; i++) text += (i ? " " : "") + hex2(File.u8(at + i));
+    if (size > n) text += " ...";
+    return text;
+}
+
+// At most 64 characters up to the first NUL, non-printable bytes as '.'.
+function stringDisplay(at, size) {
+    var n = size > MAX_DISPLAY ? MAX_DISPLAY : size, text = "", i, b;
+    for (i = 0; i < n; i++) {
+        b = File.u8(at + i);
+        if (b === 0) break;
+        text += b >= 0x20 && b < 0x7f ? String.fromCharCode(b) : ".";
+    }
+    return text;
+}
+
+// Signed decimal of an int32/int64 field.
+function signedDisplay(at, size) {
+    var be = Format.isBigEndian();
+    if (size === 8) return sdec64(File.u64hi(at, be), File.u64lo(at, be));
+    return "" + File.i32(at, be);
+}
+
+function hookLogical(f, is64) {
+    f.display = function (v, ds) { return logicalDisplay(f.name, is64, ds.offset + f.offset, f.size); };
+}
+
+function hookBytes(f) {
+    f.display = function (v, ds) { return bytesDisplay(ds.offset + f.offset, f.size); };
+}
+
+function hookString(f) {
+    f.display = function (v, ds) { return stringDisplay(ds.offset + f.offset, f.size); };
+}
+
+function hookSigned(f) {
+    f.display = function (v, ds) { return signedDisplay(ds.offset + f.offset, f.size); };
+}
+
+function elfFields(ds) {
+    var list = staticFields(ds.id, ds.id === LINUX_SIGINFO ? elfMachine() : 0), out = [], limit, i, f,
+        is64 = elfIs64();
+    limit = ds.entrySize > 0 && ds.entrySize < ds.totalSize ? ds.entrySize : ds.totalSize;
+    for (i = 0; i < list.length; i++) {
+        f = list[i];
+        if (f.offset < 0 || f.size <= 0 || f.offset > limit || f.size > limit - f.offset) continue;
+        if (LOGICAL[f.name]) hookLogical(f, is64);
+        else if (f.type.indexOf("[") >= 0) hookBytes(f);
+        else if (f.type === "int32" || f.type === "int64") hookSigned(f);
+        out.push(f);
+    }
+    if (ds.id === STRING_DATA || ds.id === NOTE_NAME) {
+        f = F(ds.id === NOTE_NAME ? "note_name" : "string_data", "char[]", 0, ds.totalSize, STRING);
+        hookString(f);
+        out.push(f);
+    }
+    return out;
+}
+
+function structs() {
+    var list = [], id;
+    for (id = 1; id < ELF_NAMES.length; id++) {
+        if (id === NOTE_DESC || id === PROPERTY_DATA || id === RAW_DATA_ID) list.push({ id: id, name: ELF_NAMES[id], endian: FILE });
+        else list.push({ id: id, name: ELF_NAMES[id], endian: FILE, fields: elfFields });
+    }
+    return list;
+}

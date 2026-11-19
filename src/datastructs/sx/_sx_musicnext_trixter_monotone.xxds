@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/trixter_monotone/xx_trixter_monotone_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_monotone_header_fields = layout([u8("signature_length", SIZE), chars("magic", 8, SIGNATURE), u8("title_length", SIZE),
+    chars("title", 40, STRING), u8("comment_length", SIZE), chars("comment", 40, STRING), u8("version", ID),
+    u8("patterns", COUNT), u8("tracks", COUNT), u8("cell_bytes", SIZE)]);
+var sxmn_monotone_header = sxLayout(0x6076002A, "monotone_header", LE, sxmn_monotone_header_fields);
+var sxmn_monotone_order_fields = layout([u8("pattern", ID)]);
+var sxmn_monotone_order = sxLayout(0x6076002B, "monotone_order", LE, sxmn_monotone_order_fields);
+function sxmn_monotone(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var t = [0];
+    var z = [0];
+    if (!sxmn_row(v, sxmn_monotone_header, 0, end) || !sxmn_table(v, sxmn_monotone_order, 95, 256, end) || !sxmn_word(v, 92, 1, false, p, 0, end) || !sxmn_word(v, 93, 1, false, t, 0, end) || !sxmn_word(v, 94, 1, false, z, 0, end) || !p[0] || !t[0] || t[0] > 16 || !z[0]) {
+        return false;
+    }
+    var count = p[0] * t[0] * 64;
+    if (!sxmn_span(v, 351, count * z[0], end)) {
+        return false;
+    }
+    return z[0] !== 2 || sxmn_table(v, sxmn_monotone_cell, 351, count, end);
+}
+function sx_trixter_monotone_build(v) {
+    return sxmn_monotone(v);
+}

@@ -1,0 +1,112 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zpak/xx_zpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_zpak_header_fields = layout([chars("magic", 4, SIGNATURE), u16("member_count", COUNT)]);
+var sxae_zpak_header = sxLayout(0x6017002A, "zpak_header", LE, sxae_zpak_header_fields);
+var sxae_zpak_member_fields = layout([chars("name", 12, STRING), u8("padding", RESERVED), i32("data_offset", OFFSET),
+    i32("packed_size", SIZE), u16("date"), u16("time"), u16("crc_low", CHECKSUM), u16("crc_high", CHECKSUM),
+    i32("unpacked_size", SIZE)]);
+var sxae_zpak_member = sxLayout(0x6017002B, "zpak_member", LE, sxae_zpak_member_fields);
+var sxae_zpak_chunk_marker_fields = layout([u8("marker", SIGNATURE)]);
+var sxae_zpak_chunk_marker = sxLayout(0x6017002C, "zpak_chunk_marker", LE, sxae_zpak_chunk_marker_fields);
+var sxae_zpak_chunk_fields = layout([u16("encoded_size", SIZE)]);
+var sxae_zpak_chunk = sxLayout(0x6017002D, "zpak_chunk", LE, sxae_zpak_chunk_fields);
+function sxae_extent_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.start < y.start ? -1 : x.start > y.start ? 1 : x.end < y.end ? -1 : x.end > y.end ? 1 : 0;
+}
+function sxae_zpak_frame(c, p, end) {
+    if (end - p < 2) {
+        return false;
+    }
+    var ch = [0];
+    var stop = end - 1;
+    if (!sx_read(c, p, ch, 1) || ch[0] !== 0xCA || !sx_read(c, stop, ch, 1) || ch[0]) {
+        return false;
+    }
+    if (!sxae_add(c, sxae_zpak_chunk_marker, p++) || !sxae_add(c, sxae_zpak_chunk_marker, stop)) {
+        return false;
+    }
+    for (var k = 0; p < stop && k < 20000; k++) {
+        var q;
+        if (p + 2 > stop || (q = sx_u16(c, p, false)) === null || q > (stop - p - 2 < 0 ? stop - p - 2 + SX_U64_MAX : stop - p - 2) || !sxae_add(c, sxae_zpak_chunk, p)) {
+            return false;
+        }
+        p += 2;
+        if (!q) {
+            return true;
+        }
+        if (!sxae_data(c, p, q)) {
+            return false;
+        }
+        p += q;
+    }
+    return p === stop;
+}
+function sxae_zpak(c) {
+    done: {
+        var h = [];
+        if (!sx_read(c, 0, h, 6) || sxMemcmp(h, "zpak", 4) && sxMemcmp(h, "zpk2", 4)) {
+            return false;
+        }
+        var n = sxae16(h, 4);
+        var end = 6 + n * 33;
+        if (!n || n > 20000 || !sxae_bound(c, 0, (end < 0 ? end + SX_U64_MAX : end)) || !sxae_add(c, sxae_zpak_header, 0) || !sx_table(c, sxae_zpak_member, 6, 33, n)) {
+            return false;
+        }
+        var spans = sxAllocN(Math.floor((n * 16) / 16), sxNew_sxae_extent);
+        if (spans === null) {
+            return false;
+        }
+        var count = 0;
+        var ok = false;
+        for (var i = 0; i < n; i++) {
+            var b = [];
+            if (!sx_read(c, 6 + i * 33, b, 33)) {
+                break done;
+            }
+            var p = sxae32(b, 13);
+            var z = sxae32(b, 17);
+            if (p > 2147483647 || z > 2147483647 || p < end || !sxae_bound(c, p, z)) {
+                break done;
+            }
+            if (z) {
+                spans[count++] = sxCopy_sxae_extent(null, { start: p, end: p + z });
+            }
+        }
+        sxQsort(spans, 0, count, sxae_extent_order, true);
+        for (i = 0; i < count; ) {
+            var j = i + 1;
+            var stop = spans[i].end;
+            var ambiguous = false;
+            while (j < count && spans[j].start < stop) {
+                if (spans[j].start !== spans[i].start || spans[j].end !== spans[i].end) {
+                    ambiguous = true;
+                }
+                if (spans[j].end > stop) {
+                    stop = spans[j].end;
+                }
+                j++;
+            }
+            if (!ambiguous && h[3] === 107 /*k*/) {
+                var saved = c.count;
+                if (!sxae_zpak_frame(c, spans[i].start, spans[i].end)) {
+                    if (c.failed) {
+                        break done;
+                    }
+                    c.count = saved;
+                }
+            }
+            i = j;
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_zpak_build(c) {
+    return sxae_zpak(c);
+}

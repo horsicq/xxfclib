@@ -1,0 +1,160 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_hci_instalit/xx_sfx_hci_instalit_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_instalit_engine_fields = layout([u32("unpacked_crc32", CHECKSUM), u32("packed_size", SIZE)]);
+var sxiex_instalit_engine = sxLayout(0x60820014, "instalit_engine", LE, sxiex_instalit_engine_fields);
+var sxiex_instalit_footer_fields = layout([u8("marker", SIGNATURE), chars("serial_number", 12, NONE),
+    u32("script_offset", OFFSET), u32("catalog_end_offset", OFFSET), u32("packed_data_offset", OFFSET),
+    u32("catalog_offset", OFFSET)]);
+var sxiex_instalit_footer = sxLayout(0x60820015, "instalit_footer", LE, sxiex_instalit_footer_fields);
+var sxiex_instalit_catalog_prefix_fields = layout([u8("record_tag", ID), u32("data_offset", OFFSET), u8("method", ID),
+    chars("name", 13, NONE), u8("attributes", FLAGS), u32("packed_size", SIZE), u16("dos_date"), u16("dos_time")]);
+var sxiex_instalit_catalog_prefix = sxLayout(0x60820016, "instalit_catalog_prefix", LE, sxiex_instalit_catalog_prefix_fields);
+var sxiex_instalit_catalog_1c55_fields = layout([u32("unpacked_crc32", CHECKSUM), field("disk_number", "byte[3]", 3),
+    u32("unpacked_size", SIZE), field("unknown", "byte[16]", 16)]);
+var sxiex_instalit_catalog_1c55 = sxLayout(0x60820017, "instalit_catalog_1c55", LE, sxiex_instalit_catalog_1c55_fields);
+var sxiex_instalit_catalog_1c59_fields = layout([u32("unpacked_crc32", CHECKSUM), field("disk_number", "byte[3]", 3),
+    u32("unpacked_size", SIZE), field("unknown", "byte[20]", 20)]);
+var sxiex_instalit_catalog_1c59 = sxLayout(0x60820018, "instalit_catalog_1c59", LE, sxiex_instalit_catalog_1c59_fields);
+var sxiex_instalit_catalog_1a47_fields = layout([u16("unpacked_crc16", CHECKSUM), field("disk_number", "byte[3]", 3),
+    u32("unpacked_size", SIZE), field("unknown", "byte[10]", 10)]);
+var sxiex_instalit_catalog_1a47 = sxLayout(0x60820019, "instalit_catalog_1a47", LE, sxiex_instalit_catalog_1a47_fields);
+var sxiex_instalit_script_fields = layout([field("marker", "byte[9]", 9, SIGNATURE)]);
+var sxiex_instalit_script = sxLayout(0x6082001A, "instalit_script", LE, sxiex_instalit_script_fields);
+var sxiex_instalit_data_marker_fields = layout([field("marker", "byte[6]", 6, SIGNATURE)]);
+var sxiex_instalit_data_marker = sxLayout(0x6082001B, "instalit_data_marker", LE, sxiex_instalit_data_marker_fields);
+var sxiex_instalit_resource_shift_fields = layout([u16("alignment_shift")]);
+var sxiex_instalit_resource_shift = sxLayout(0x6082005C, "instalit_resource_shift", LE, sxiex_instalit_resource_shift_fields);
+var sxiex_instalit_resource_type_fields = layout([u16("type_identifier", ID), u16("resource_count", COUNT),
+    u32("reserved", RESERVED)]);
+var sxiex_instalit_resource_type = sxLayout(0x6082005D, "instalit_resource_type", LE, sxiex_instalit_resource_type_fields);
+var sxiex_instalit_resource_entry_fields = layout([u16("offset_units"), u16("length_units"), u16("flags", FLAGS),
+    u16("resource_identifier", ID), u32("reserved", RESERVED)]);
+var sxiex_instalit_resource_entry = sxLayout(0x6082005E, "instalit_resource_entry", LE, sxiex_instalit_resource_entry_fields);
+var sxiex_instalit_resource_end_fields = layout([u16("type_terminator", SIGNATURE)]);
+var sxiex_instalit_resource_end = sxLayout(0x6082005F, "instalit_resource_end", LE, sxiex_instalit_resource_end_fields);
+var sxiex_instalit_resource_name_length_fields = layout([u8("name_length", SIZE)]);
+var sxiex_instalit_resource_name_length = sxLayout(0x60820060, "instalit_resource_name_length", LE, sxiex_instalit_resource_name_length_fields);
+function sxiex_instalit_resources(c) {
+    var dos = [];
+    var ne = [];
+    var row = [];
+    if (!sxiex_read(c, 0, dos, 64) || dos[0] !== 77 /*M*/ || dos[1] !== 90 /*Z*/) {
+        return true;
+    }
+    var np = sxiex32(dos, 60, false);
+    if (!sxiex_read(c, np, ne, 40) || ne[0] !== 78 /*N*/ || ne[1] !== 69 /*E*/) {
+        return true;
+    }
+    var start = np + sxiex16(ne, 36, false);
+    var end = np + sxiex16(ne, 38, false);
+    var shift = [0];
+    if (end <= start || sxU64(end - start) < 4 || !sxiex_span(c, start, sxU64(end - start)) || !sxiex_u16(c, start, shift) || shift[0] > 15) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_instalit_resource_shift, start, 1)) {
+        return false;
+    }
+    var p = start + 2;
+    for (var types = 0; types < 1024 && sxU64(end - p) >= 2; types++) {
+        var type = [0];
+        var n;
+        if (!sxiex_u16(c, p, type)) {
+            return false;
+        }
+        if (!type[0]) {
+            if (!sxiex_put(c, sxiex_instalit_resource_end, p, 1)) {
+                return false;
+            }
+            break;
+        }
+        if (sxU64(end - p) < 8 || !sxiex_read(c, p, row, 8)) {
+            break;
+        }
+        n = sxiex16(row, 2, false);
+        if (n * 12 > sxU64(sxU64(end - p) - 8)) {
+            break;
+        }
+        if (!sxiex_put(c, sxiex_instalit_resource_type, p, 1)) {
+            return false;
+        }
+        p += 8;
+        for (var i = 0; i <= n; i++) {
+            var id = type[0];
+            if (i < n) {
+                if (!sxiex_read(c, p + i * 12, row, 12)) {
+                    return false;
+                }
+                id = sxiex16(row, 6, false);
+                if (!sxiex_put(c, sxiex_instalit_resource_entry, p + i * 12, 1)) {
+                    return false;
+                }
+            }
+            if (!(id & 0x8000) && id < sxU64(end - start)) {
+                var z = [0];
+                var q = start + id;
+                if (sxiex_read(c, q, z, 1) && z[0] <= sxU64(sxU64(end - q) - 1)) {
+                    if (!sxiex_put(c, sxiex_instalit_resource_name_length, q, 1) || !sxiex_name(c, q + 1, z[0])) {
+                        return false;
+                    }
+                }
+            }
+        }
+        p += n * 12;
+    }
+    return true;
+}
+function sxiex_instalit(c, r) {
+    if (!sxiex_instalit_resources(c)) {
+        return false;
+    }
+    var foot = [];
+    if (c.size >= 29 && sxiex_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 29), foot, 29) && foot[0] === 12) {
+        var digits = true;
+        for (var i = 1; i < 13; i++) {
+            if (foot[i] < 48 /*0*/ || foot[i] > 57 /*9*/) {
+                digits = false;
+            }
+        }
+        if (digits) {
+            if (!sxiex_put(c, sxiex_instalit_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 29), 1)) {
+                return false;
+            }
+            var p = sxiex32(foot, 21, false);
+            if (sxiex_eq(c, p, "\x05[PVL]", 6) && !sxiex_put(c, sxiex_instalit_data_marker, p, 1)) {
+                return false;
+            }
+            p = sxiex32(foot, 25, false);
+            if (sxiex_eq(c, p, "\x05[PVM]", 6) && !sxiex_put(c, sxiex_instalit_data_marker, p, 1)) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        var tag = [0];
+        if (!sxiex_read(c, m.header, tag, 1)) {
+            continue;
+        }
+        if (m.header_size === 8) {
+            if (!sxiex_put(c, sxiex_instalit_engine, m.header, 1)) {
+                return false;
+            }
+        } else if (m.header_size === 9 && sxiex_eq(c, m.header, "\x08[SCRIPT]", 9)) {
+            if (!sxiex_put(c, sxiex_instalit_script, m.header, 1)) {
+                return false;
+            }
+        } else if (tag[0] === 0x1C && (m.header_size === 55 || m.header_size === 59) || tag[0] === 0x1A && m.header_size === 47) {
+            if (!sxiex_put(c, sxiex_instalit_catalog_prefix, m.header, 1) || !sxiex_put(c, tag[0] === 0x1A ? sxiex_instalit_catalog_1a47 : m.header_size === 55 ? sxiex_instalit_catalog_1c55 : sxiex_instalit_catalog_1c59, m.header + 28, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_sfx_hci_instalit_build(c, records) {
+    return sxiex_instalit(c, records);
+}

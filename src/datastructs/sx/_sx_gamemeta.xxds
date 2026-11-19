@@ -1,0 +1,665 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gamemeta.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgm_crt_header_fields = layout([chars("signature", 16, SIGNATURE), u32("header_size", SIZE), u16("version", ID),
+    u16("hardware_type", ID), u8("exrom", FLAGS), u8("game", FLAGS), u8("hardware_subtype", ID), bytes("reserved", 5, RESERVED),
+    chars("name", 32, STRING)]);
+var sxgm_crt_header = sxLayout(0x60270004, "crt_header", BE, sxgm_crt_header_fields);
+var sxgm_crt_chip_fields = layout([chars("signature", 4, SIGNATURE), u32("packet_size", SIZE), u16("chip_type", ID),
+    u16("bank", ID), u16("load_address", VA), u16("image_size", SIZE)]);
+var sxgm_crt_chip = sxLayout(0x60270005, "crt_chip", BE, sxgm_crt_chip_fields);
+var sxgm_pfs_header_fields = layout([chars("signature", 4, SIGNATURE), u32("entry_count", COUNT), u32("strings_size", SIZE),
+    u32("reserved", RESERVED)]);
+var sxgm_pfs_header = sxLayout(0x6027002B, "pfs_header", LE, sxgm_pfs_header_fields);
+var sxgm_pfs_entry_fields = layout([u64("data_offset", OFFSET), u64("data_size", SIZE), u32("name_offset", OFFSET),
+    u32("reserved", RESERVED)]);
+var sxgm_pfs_entry = sxLayout(0x6027002C, "pfs_entry", LE, sxgm_pfs_entry_fields);
+var sxgm_hfs_entry_fields = layout([u64("data_offset", OFFSET), u64("data_size", SIZE), u32("name_offset", OFFSET),
+    u32("hashed_size", SIZE), u64("reserved", RESERVED), bytes("sha256", 32, CHECKSUM)]);
+var sxgm_hfs_entry = sxLayout(0x6027002D, "hfs_entry", LE, sxgm_hfs_entry_fields);
+var sxgm_idtech_bsp_header_fields = layout([chars("signature", 4, SIGNATURE), i32("version", ID)]);
+var sxgm_idtech_bsp_header = sxLayout(0x60270045, "idtech_bsp_header", LE, sxgm_idtech_bsp_header_fields);
+var sxgm_quake_vertex_fields = layout([u8("x"), u8("y"), u8("z"), u8("normal_index", ID)]);
+var sxgm_quake_vertex = sxLayout(0x6027004E, "quake_vertex", LE, sxgm_quake_vertex_fields);
+var sxgm_quake_frame_type_fields = layout([i32("frame_type", ID)]);
+var sxgm_quake_frame_type = sxLayout(0x6027005B, "quake_frame_type", LE, sxgm_quake_frame_type_fields);
+function sx_gamemeta_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60270000 || id >= 0x60280000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x60270001:
+        if (r.name === "prg_rom_units") {
+            text = "Number of 16 KiB PRG ROM units.";
+        }
+        if (r.name === "chr_rom_units") {
+            text = "Number of 8 KiB CHR ROM units; zero uses CHR RAM.";
+        }
+        if (r.name === "flags6") {
+            text = "Low bits: mirroring, battery, trainer, four-screen; high nibble: mapper low bits.";
+        }
+        if (r.name === "flags7") {
+            text = "High nibble: mapper high bits; low bits: console and header format.";
+        }
+        if (r.name === "prg_ram_units") {
+            text = "Number of 8 KiB PRG RAM units; zero conventionally means one unit.";
+        }
+        break;
+    case 0x60270002:
+        if (r.name === "prg_rom_units_low") {
+            text = "Low eight bits of the linear 16 KiB PRG ROM unit count; extended by rom_size_high.";
+        }
+        if (r.name === "chr_rom_units_low") {
+            text = "Low eight bits of the linear 8 KiB CHR ROM unit count; extended by rom_size_high.";
+        }
+        if (r.name === "rom_size_high") {
+            text = "Low/high nibbles extend PRG/CHR counts; value 15 selects exponent encoding, outside the native reader scope.";
+        }
+        if (r.name === "prg_ram_shifts") {
+            text = "Low/high nibbles encode volatile/nonvolatile RAM: zero means absent, otherwise 64 << nibble bytes.";
+        }
+        if (r.name === "chr_ram_shifts") {
+            text = "Low/high nibbles encode volatile/nonvolatile CHR RAM: zero means absent, otherwise 64 << nibble bytes.";
+        }
+        if (r.name === "misc_rom_count") {
+            text = "Low two bits are the miscellaneous ROM count; these variants are excluded by the native reader.";
+        }
+        break;
+    case 0x60270003:
+        if (r.name === "bank0_page_size") {
+            text = "Bank 0 consists of 256 pages of this byte size.";
+        }
+        if (r.name === "bank1_page_size") {
+            text = "Bank 1 consists of 256 pages; zero means absent.";
+        }
+        if (r.name === "rotation") {
+            text = "0=none, 1=left, 2=right.";
+        }
+        if (r.name === "audin") {
+            text = "Bit 0 enables additional AUDIN-addressed banks; excluded by the native reader.";
+        }
+        if (r.name === "eeprom") {
+            text = "Low bits select 93C46/56/66/76/86; bit 6=SD support, bit 7=eight-bit EEPROM mode.";
+        }
+        break;
+    case 0x60270005:
+        if (r.name === "packet_size") {
+            text = "Includes this 16-byte CHIP header and any packet padding; RAM chips may omit image bytes.";
+        }
+        if (r.name === "chip_type") {
+            text = "0=ROM, 1=RAM, 2=flash ROM, 3=EEPROM (broader CRT reader).";
+        }
+        break;
+    case 0x60270007:
+        if (r.name === "flags") {
+            text = "Bit 0=encrypted directory; bit 1=file_base relative to pack header.";
+        }
+        if (r.name === "file_base") {
+            text = "Payload offset origin; pack-relative when flag 1 is set, otherwise relative to the enclosing file.";
+        }
+        break;
+    case 0x60270008:
+        if (r.name === "flags") {
+            text = "Bit 0=encrypted directory; bit 1=relative base; bit 2=sparse bundle.";
+        }
+        if (r.name === "file_base") {
+            text = "Payload origin relative to this pack header.";
+        }
+        if (r.name === "directory_offset") {
+            text = "Directory count word offset relative to this pack header.";
+        }
+        break;
+    case 0x60270009:
+        if (r.name === "file_base") {
+            text = "Payload origin relative to this pack header.";
+        }
+        if (r.name === "directory_offset") {
+            text = "Directory count word offset relative to this pack header.";
+        }
+        if (r.name === "salt") {
+            text = "Version 4 encrypted sparse-bundle key derivation salt.";
+        }
+        break;
+    case 0x6027000B:
+        if (r.name === "path_size") {
+            text = "Padded UTF-8 path byte count, including its terminating NUL.";
+        }
+        break;
+    case 0x6027000C:
+        if (r.name === "data_offset") {
+            text = "Payload byte offset relative to the pack version-specific file_base.";
+        }
+        break;
+    case 0x6027000D:
+        if (r.name === "data_offset") {
+            text = "Payload byte offset relative to the pack version-specific file_base.";
+        }
+        if (r.name === "flags") {
+            text = "Bit 0=encrypted, bit 1=removal, bit 2=delta.";
+        }
+        break;
+    case 0x6027000E:
+        if (r.name === "plain_size") {
+            text = "Decoded plaintext length; ciphertext occupies the length rounded up to 16 bytes.";
+        }
+        break;
+    case 0x6027000F:
+        if (r.name === "pack_size") {
+            text = "Pack bytes preceding this 12-byte embedded-pack trailer.";
+        }
+        break;
+    case 0x60270012:
+        if (r.name === "archive_index") {
+            text = "0x7FFF means the directory file data section; other values name an external numbered archive.";
+        }
+        if (r.name === "data_offset") {
+            text = "Byte offset in the selected archive data section, not necessarily this file.";
+        }
+        break;
+    case 0x60270013:
+        if (r.name === "data_offset") {
+            text = "Offset in the selected external archive.";
+        }
+        break;
+    case 0x60270017:
+        if (r.name === "data_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        if (r.name === "nodes_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        if (r.name === "entries_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        if (r.name === "strings_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        break;
+    case 0x60270018:
+        if (r.name === "data_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        if (r.name === "nodes_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        if (r.name === "entries_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        if (r.name === "strings_offset") {
+            text = "Relative to byte 0x20 in this archive.";
+        }
+        break;
+    case 0x60270019:
+        if (r.name === "name_offset") {
+            text = "Relative to the string pool.";
+        }
+        break;
+    case 0x6027001A:
+        if (r.name === "name_offset") {
+            text = "Relative to the string pool.";
+        }
+        break;
+    case 0x6027001B:
+        if (r.name === "name_offset") {
+            text = "Byte offset relative to the string pool.";
+        }
+        if (r.name === "attributes") {
+            text = "Bit 0=file, bit 1=directory, bit 2=compressed, bit 7=Yaz0.";
+        }
+        if (r.name === "data_offset") {
+            text = "Byte offset relative to the archive data section.";
+        }
+        break;
+    case 0x6027001C:
+        if (r.name === "name_offset") {
+            text = "Byte offset relative to the string pool.";
+        }
+        if (r.name === "attributes") {
+            text = "Bit 0=file, bit 1=directory, bit 2=compressed, bit 7=Yaz0.";
+        }
+        if (r.name === "node_index") {
+            text = "Directory node index; 0xFFFFFFFF is the root parent sentinel.";
+        }
+        break;
+    case 0x6027001D:
+        if (r.name === "attributes") {
+            text = "Bit 0=file, bit 1=directory, bit 2=compressed, bit 7=Yaz0.";
+        }
+        if (r.name === "name_offset") {
+            text = "Byte offset relative to the string pool.";
+        }
+        if (r.name === "data_offset") {
+            text = "Byte offset relative to the archive data section.";
+        }
+        break;
+    case 0x6027001E:
+        if (r.name === "attributes") {
+            text = "Bit 0=file, bit 1=directory, bit 2=compressed, bit 7=Yaz0.";
+        }
+        if (r.name === "name_offset") {
+            text = "Byte offset relative to the string pool.";
+        }
+        if (r.name === "node_index") {
+            text = "Directory node index; 0xFFFFFFFF is the root parent sentinel.";
+        }
+        break;
+    case 0x60270021:
+        if (r.name === "start_offset") {
+            text = "Relative to the GMIF image payload.";
+        }
+        if (r.name === "end_offset") {
+            text = "Exclusive endpoint relative to the GMIF image payload.";
+        }
+        break;
+    case 0x60270027:
+        if (r.name === "name_attributes") {
+            text = "High byte=has name; low 24 bits=string-pool offset in four-byte units.";
+        }
+        if (r.name === "start_offset") {
+            text = "Relative to the data section.";
+        }
+        if (r.name === "end_offset") {
+            text = "Exclusive endpoint relative to the data section.";
+        }
+        break;
+    case 0x60270028:
+        if (r.name === "name_attributes") {
+            text = "High byte=has name; low 24 bits=string-pool offset in four-byte units.";
+        }
+        if (r.name === "start_offset") {
+            text = "Relative to the data section.";
+        }
+        if (r.name === "end_offset") {
+            text = "Exclusive endpoint relative to the data section.";
+        }
+        break;
+    case 0x6027002C:
+        if (r.name === "data_offset") {
+            text = "Relative to the payload area after the directory and string pool.";
+        }
+        if (r.name === "name_offset") {
+            text = "Relative to the string pool.";
+        }
+        break;
+    case 0x6027002D:
+        if (r.name === "data_offset") {
+            text = "Relative to the payload area after the directory and string pool.";
+        }
+        if (r.name === "name_offset") {
+            text = "Relative to the string pool.";
+        }
+        if (r.name === "hashed_size") {
+            text = "Length of the initial member region covered by sha256.";
+        }
+        break;
+    case 0x60270030:
+        if (r.name === "stored_length") {
+            text = "Zero encodes a full 65536-byte stored block; nonzero is the physical block byte length.";
+        }
+        break;
+    case 0x60270034:
+        if (r.name === "build_year") {
+            text = "Years since 1900.";
+        }
+        if (r.name === "build_day") {
+            text = "Zero-based day of the year.";
+        }
+        if (r.name === "description_strref") {
+            text = "String-reference index; 0xFFFFFFFF means absent.";
+        }
+        break;
+    case 0x6027003B:
+        if (r.name === "archive_flags") {
+            text = "Bit 0=folder names, bit 1=file names, bit 2=default compression; bit 8=embedded file names for v104/105.";
+        }
+        break;
+    case 0x6027003C:
+        if (r.name === "block_offset") {
+            text = "Encoded folder block offset includes the file-name-pool byte length.";
+        }
+        break;
+    case 0x6027003D:
+        if (r.name === "block_offset") {
+            text = "Encoded folder block offset includes the file-name-pool byte length.";
+        }
+        break;
+    case 0x6027003E:
+        if (r.name === "size_flags") {
+            text = "Low 30 bits=stored byte length; bit 30 toggles archive default compression; bit 31 is reserved.";
+        }
+        break;
+    case 0x60270043:
+        if (r.name === "compression") {
+            text = "0=zlib, 3=LZ4.";
+        }
+        break;
+    case 0x60270044:
+        if (r.name === "packed_size") {
+            text = "Zero denotes a stored member of unpacked_size bytes.";
+        }
+        if (r.name === "alignment") {
+            text = "Native general-file record marker 0xBAADF00D.";
+        }
+        break;
+    case 0x60270047:
+        if (r.name === "fourcc") {
+            text = "Compression identifier/uncompressed-length slot; the native reader supports zero, uncompressed records.";
+        }
+        break;
+    case 0x60270049:
+        if (r.name === "gl_command_words") {
+            text = "Number of four-byte command-stream words; not the number of commands.";
+        }
+        break;
+    case 0x6027004E:
+        if (r.name === "x") {
+            text = "Compressed coordinate; multiply by frame/model scale and add translation.";
+        }
+        if (r.name === "y") {
+            text = "Compressed coordinate; multiply by frame/model scale and add translation.";
+        }
+        if (r.name === "z") {
+            text = "Compressed coordinate; multiply by frame/model scale and add translation.";
+        }
+        break;
+    case 0x6027004F:
+        if (r.name === "vertex_count_signed") {
+            text = "Positive=triangle strip, negative=triangle fan, zero=terminator; absolute value is vertex count.";
+        }
+        break;
+    case 0x60270054:
+        if (r.name === "triangles_offset") {
+            text = "Byte offset relative to this surface header.";
+        }
+        if (r.name === "shaders_offset") {
+            text = "Byte offset relative to this surface header.";
+        }
+        if (r.name === "texcoords_offset") {
+            text = "Byte offset relative to this surface header.";
+        }
+        if (r.name === "vertices_offset") {
+            text = "Byte offset relative to this surface header.";
+        }
+        if (r.name === "end_offset") {
+            text = "Byte offset relative to this surface header.";
+        }
+        break;
+    case 0x60270058:
+        if (r.name === "x") {
+            text = "Signed fixed point coordinate, scale 1/64.";
+        }
+        if (r.name === "y") {
+            text = "Signed fixed point coordinate, scale 1/64.";
+        }
+        if (r.name === "z") {
+            text = "Signed fixed point coordinate, scale 1/64.";
+        }
+        if (r.name === "normal") {
+            text = "Two encoded eight-bit spherical angles retained as their physical signed short word.";
+        }
+        break;
+    case 0x6027005B:
+        if (r.name === "frame_type") {
+            text = "0=single frame, 1=frame group.";
+        }
+        break;
+    case 0x6027005D:
+        if (r.name === "interval") {
+            text = "Cumulative group frame interval in seconds.";
+        }
+        break;
+    case 0x60270064:
+        if (r.name === "sound_table") {
+            text = "Unused legacy sound-table slot; retained as encoded integer.";
+        }
+        if (r.name === "sound_index") {
+            text = "Unused legacy sound-index slot.";
+        }
+        if (r.name === "sound_groups") {
+            text = "Unused legacy sound-group slot.";
+        }
+        if (r.name === "sound_group_index") {
+            text = "Unused legacy sound-group-index slot.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxgm_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxgm_read(c, p, b, n) {
+    return sxgm_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxgm_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxgm16(b, b_o, be) {
+    return sxgm_uint(b, b_o, 2, be) & 0xFFFF;
+}
+function sxgm32(b, b_o, be) {
+    return sxgm_uint(b, b_o, 4, be) >>> 0;
+}
+function sxgm_free(c, p, n) {
+    for (var i = 0; i < c.count; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < at + z && at < p + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxgm_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!sxgm_span(c, p, n)) {
+        return false;
+    }
+    if (!sxgm_free(c, p, n)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxgm_table(c, l, p, n) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!n || n > 20000 || !sxgm_span(c, p, n * z)) {
+        return true;
+    }
+    if (!sxgm_free(c, p, n * z)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxgm_word(c, p, n, be, v) {
+    var b = [];
+    if (n > 8 || !sxgm_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxgm_uint(b, 0, n, be);
+    return true;
+}
+function sxgm_crt(c) {
+    var b = [];
+    if (!sxgm_read(c, 0, b, 64) || !sxgm_add(c, sxgm_crt_header, 0)) {
+        return false;
+    }
+    var p = sxgm32(b, 16, true);
+    if (p < 64) {
+        p = 64;
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxgm_read(c, p, b, 16) || sxMemcmp(b, "CHIP", 4)) {
+            break;
+        }
+        var n = sxgm32(b, 4, true);
+        if (n < 16 || !sxgm_span(c, p, n)) {
+            break;
+        }
+        if (!sxgm_add(c, sxgm_crt_chip, p)) {
+            return false;
+        }
+        p += n;
+    }
+    return true;
+}
+function sxgm_fixed(c, h, e, off, size, noff, nwidth, poff, pwidth, be) {
+    var b = [];
+    if (size > 160 || !sxgm_read(c, off, b, size) || !sxgm_add(c, h, off)) {
+        return false;
+    }
+    var n = sxgm_uint(b, noff, nwidth, be);
+    var p = pwidth ? sxgm_uint(b, poff, pwidth, be) : (off + size) >>> 0;
+    return sxgm_table(c, e, p, n);
+}
+function sxgm_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxgm_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxgm_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p < end) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxgm_order, true);
+    return !c.failed;
+}
+function sx_gamemeta_supports(type) {
+    switch (type) {
+    case "NES_ROM":
+    case "LYNX_LNX":
+    case "CRT":
+    case "COMMODORE_CRT":
+    case "GODOT_ENGINE_PCK":
+    case "VALVE_VPK":
+    case "NINTENDO_RARC":
+    case "NINTENDO_NARC":
+    case "NINTENDO_SARC":
+    case "NINTENDO_PFS0":
+    case "NINTENDO_HFS0":
+    case "SONY_PSARC":
+    case "BIOWARE_BIFF":
+    case "BIOWARE_ERF":
+    case "BIOWARE_RIM":
+    case "BETHESDA_BSA":
+    case "BETHESDA_BA2":
+    case "IDTECH_BSP":
+    case "VALVE_BSP":
+    case "IDTECH_MD2":
+    case "IDTECH_MD3":
+    case "IDTECH_QVM":
+    case "QUAKE_SPRITE":
+    case "IDTECH_MDL":
+    case "VALVE_STUDIO_MDL":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_gamemeta_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    var b = [];
+    switch (c.f.file_type) {
+    case "NES_ROM":
+        ok = sx_nes_rom_build(c, b);
+        break;
+    case "LYNX_LNX":
+        ok = sx_lynx_lnx_build(c);
+        break;
+    case "CRT":
+    case "COMMODORE_CRT":
+        ok = sxgm_crt(c);
+        break;
+    case "GODOT_ENGINE_PCK":
+        ok = sx_godot_engine_pck_build(c);
+        break;
+    case "VALVE_VPK":
+        ok = sx_valve_vpk_build(c);
+        break;
+    case "NINTENDO_RARC":
+        ok = sx_nintendo_rarc_build(c);
+        break;
+    case "NINTENDO_NARC":
+        ok = sx_nintendo_narc_build(c);
+        break;
+    case "NINTENDO_SARC":
+        ok = sx_nintendo_sarc_build(c);
+        break;
+    case "NINTENDO_PFS0":
+    case "NINTENDO_HFS0":
+        ok = sxgm_fixed(c, sxgm_pfs_header, c.f.file_type === "NINTENDO_PFS0" ? sxgm_pfs_entry : sxgm_hfs_entry, 0, 16, 4, 4, 0, 0, false);
+        break;
+    case "SONY_PSARC":
+        ok = sx_sony_psarc_build(c);
+        break;
+    case "BIOWARE_BIFF":
+        ok = sx_bioware_biff_build(c);
+        break;
+    case "BIOWARE_ERF":
+        ok = sx_bioware_erf_build(c);
+        break;
+    case "BIOWARE_RIM":
+        ok = sx_bioware_rim_build(c);
+        break;
+    case "BETHESDA_BSA":
+        ok = sx_bethesda_bsa_build(c);
+        break;
+    case "BETHESDA_BA2":
+        ok = sx_bethesda_ba2_build(c);
+        break;
+    case "IDTECH_BSP":
+        ok = sx_idtech_bsp_build(c, b);
+        break;
+    case "VALVE_BSP":
+        ok = sx_valve_bsp_build(c);
+        break;
+    case "IDTECH_MD2":
+        ok = sx_idtech_md2_build(c);
+        break;
+    case "IDTECH_MD3":
+        ok = sx_idtech_md3_build(c);
+        break;
+    case "IDTECH_QVM":
+        ok = sx_idtech_qvm_build(c);
+        break;
+    case "QUAKE_SPRITE":
+        ok = sx_quake_sprite_build(c);
+        break;
+    case "IDTECH_MDL":
+        ok = sx_idtech_mdl_build(c);
+        break;
+    case "VALVE_STUDIO_MDL":
+        ok = sx_valve_studio_mdl_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxgm_finish(c);
+}

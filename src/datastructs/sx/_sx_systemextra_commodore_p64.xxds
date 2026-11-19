@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/commodore_p64/xx_commodore_p64_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxse_p64_header_fields = layout([chars("signature", 8, SIGNATURE), u32("version"), u32("flags", FLAGS),
+    u32("chunks_size", SIZE), u32("chunks_crc32", CHECKSUM)]);
+var sxse_p64_header = sxLayout(0x602F0007, "p64_header", LE, sxse_p64_header_fields);
+var sxse_p64_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("data_size", SIZE), u32("data_crc32", CHECKSUM)]);
+var sxse_p64_chunk_header = sxLayout(0x602F0008, "p64_chunk_header", LE, sxse_p64_chunk_header_fields);
+var sxse_p64_halftrack_header_fields = layout([chars("chunk_kind", 3, ID), u8("halftrack_and_side", FLAGS),
+    u32("data_size", SIZE), u32("data_crc32", CHECKSUM), u32("pulse_count", COUNT), u32("encoded_size", SIZE)]);
+var sxse_p64_halftrack_header = sxLayout(0x602F0009, "p64_halftrack_header", LE, sxse_p64_halftrack_header_fields);
+function sxse_p64(c) {
+    var b = [];
+    if (!sxse_read(c, 0, b, 24) || sxMemcmp(b, "P64-1541", 8) || !sxse_put(c, sxse_p64_header, 0, 24, 1)) {
+        return false;
+    }
+    var end = 24 + sxse_u32(b, 16, false);
+    var p = 24;
+    if (!sxse_span(c, 24, sxU64(end - 24))) {
+        return false;
+    }
+    for (var visit = 0; p < end && visit < 4096; visit++) {
+        if (sxU64(end - p) < 12 || !sxse_read(c, p, b, 12)) {
+            return false;
+        }
+        var z = sxse_u32(b, 4, false);
+        if (z > sxU64(sxU64(end - p) - 12)) {
+            return false;
+        }
+        var ht = !sxMemcmp(b, "HTP", 3);
+        if (ht && z < 8) {
+            return false;
+        }
+        if (!sxse_put(c, ht ? sxse_p64_halftrack_header : sxse_p64_chunk_header, p, ht ? 20 : 12, 1)) {
+            return false;
+        }
+        p += 12 + z;
+    }
+    return p === end;
+}
+function sx_commodore_p64_build(c) {
+    return sxse_p64(c);
+}

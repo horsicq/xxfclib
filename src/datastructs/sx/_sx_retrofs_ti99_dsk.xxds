@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ti99_dsk/xx_ti99_dsk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_ti99_vib_fields = layout([chars("volume_name", 10, NONE), u16("sector_count", COUNT), u8("sectors_per_track", COUNT),
+    chars("signature", 3, SIGNATURE), u8("protection", FLAGS), u8("tracks_per_side", COUNT), u8("side_count", COUNT),
+    u8("density", ID), field("reserved", "byte[36]", 36, RESERVED), field("allocation_bitmap", "byte[200]", 200, FLAGS)]);
+var sxrfs_ti99_vib = sxLayout(0x60650020, "ti99_vib", BE, sxrfs_ti99_vib_fields);
+var sxrfs_ti99_directory_pointer_fields = layout([u16("file_descriptor_sector")]);
+var sxrfs_ti99_directory_pointer = sxLayout(0x60650021, "ti99_directory_pointer", BE, sxrfs_ti99_directory_pointer_fields);
+var sxrfs_ti99_file_descriptor_fields = layout([chars("name", 10, NONE), field("reserved10", "byte[2]", 2, RESERVED),
+    u8("flags", FLAGS), u8("records_per_sector", COUNT), u16("sector_count", COUNT), u8("last_sector_bytes"),
+    u8("record_length", SIZE), field("record_count", "uint16le", 2, COUNT), field("reserved20", "byte[8]", 8, RESERVED)]);
+var sxrfs_ti99_file_descriptor = sxLayout(0x60650022, "ti99_file_descriptor", BE, sxrfs_ti99_file_descriptor_fields);
+var sxrfs_ti99_cluster_fields = layout([field("packed_sector_and_end", "byte[3]", 3)]);
+var sxrfs_ti99_cluster = sxLayout(0x60650023, "ti99_cluster", LE, sxrfs_ti99_cluster_fields);
+function sxrfs_ti(c) {
+    var b = [];
+    if (!sxrfs_read(c, 0, b, 0, 256) || sxMemcmpAt(b, 13, "DSK", 0, 3) || !sxrfs_put(c, sxrfs_ti99_vib, 0, 1) || !sxrfs_put(c, sxrfs_ti99_directory_pointer, 256, 128) || !sxrfs_read(c, 256, b, 0, 256)) {
+        return false;
+    }
+    var sectors = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 256) >>> 0;
+    for (var i = 0; i < 128 && c.count < 24000; i++) {
+        var n = sxrfs16(b, (i * 2) >>> 0, 1);
+        if (!n) {
+            break;
+        }
+        if (n < 2 || n >= sectors) {
+            continue;
+        }
+        if (!sxrfs_put(c, sxrfs_ti99_file_descriptor, n * 256, 1) || !sxrfs_put(c, sxrfs_ti99_cluster, n * 256 + 28, 76)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ti99_dsk_build(c) {
+    return sxrfs_ti(c);
+}

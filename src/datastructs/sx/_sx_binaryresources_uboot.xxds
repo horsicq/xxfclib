@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/uboot/xx_uboot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_uboot_env_le_fields = layout([u32("crc32", CHECKSUM)]);
+var sxbrs_uboot_env_le = sxLayout(0x603E001F, "uboot_env_le", LE, sxbrs_uboot_env_le_fields);
+var sxbrs_uboot_redundant_env_le_fields = layout([u32("crc32", CHECKSUM), u8("flags", FLAGS)]);
+var sxbrs_uboot_redundant_env_le = sxLayout(0x603E0020, "uboot_redundant_env_le", LE, sxbrs_uboot_redundant_env_le_fields);
+var sxbrs_uboot_env_be_fields = layout([u32("crc32", CHECKSUM)]);
+var sxbrs_uboot_env_be = sxLayout(0x603E0021, "uboot_env_be", BE, sxbrs_uboot_env_be_fields);
+var sxbrs_uboot_redundant_env_be_fields = layout([u32("crc32", CHECKSUM), u8("flags", FLAGS)]);
+var sxbrs_uboot_redundant_env_be = sxLayout(0x603E0022, "uboot_redundant_env_be", BE, sxbrs_uboot_redundant_env_be_fields);
+var sxbrs_uboot_key_byte_fields = layout([chars("character", 1, STRING)]);
+var sxbrs_uboot_key_byte = sxLayout(0x603E0023, "uboot_key_byte", LE, sxbrs_uboot_key_byte_fields);
+var sxbrs_uboot_value_byte_fields = layout([chars("character", 1, STRING)]);
+var sxbrs_uboot_value_byte = sxLayout(0x603E0024, "uboot_value_byte", LE, sxbrs_uboot_value_byte_fields);
+var sxbrs_uboot_separator_fields = layout([u8("separator")]);
+var sxbrs_uboot_separator = sxLayout(0x603E0025, "uboot_separator", LE, sxbrs_uboot_separator_fields);
+var sxbrs_uboot_terminator_fields = layout([u8("terminator")]);
+var sxbrs_uboot_terminator = sxLayout(0x603E0026, "uboot_terminator", LE, sxbrs_uboot_terminator_fields);
+function sxbrs_uboot(c) {
+    if (c.size < 256 || c.size > 1048576) {
+        return false;
+    }
+    var chunk = [];
+    var want = sxbrs_num(c, 0, 4, false) >>> 0;
+    var prefix = 0;
+    var be = false;
+    for (var h = 4; h <= 5 && !prefix; h++) {
+        var crc = 0;
+        for (var at = [h]; at[0] < c.size; ) {
+            var n = (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]) > 0x1000 ? 0x1000 : (c.size - at[0] < 0 ? c.size - at[0] + SX_U64_MAX : c.size - at[0]);
+            if (!sx_read(c, at[0], chunk, n)) {
+                return false;
+            }
+            crc = sxCrc32(crc, chunk, n);
+            at[0] += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+        }
+        if (crc === want) {
+            prefix = h;
+            be = false;
+        } else if (crc === sxbrs_num(c, 0, 4, true) >>> 0) {
+            prefix = h;
+            be = true;
+        }
+    }
+    if (!prefix) {
+        return false;
+    }
+    var header = prefix === 4 ? be ? sxbrs_uboot_env_be : sxbrs_uboot_env_le : be ? sxbrs_uboot_redundant_env_be : sxbrs_uboot_redundant_env_le;
+    if (!sxbrs_add(c, header, 0)) {
+        return false;
+    }
+    at = [prefix];
+    var end = c.size;
+    var count = 0;
+    while (at[0] < end && sxbrs_num(c, at[0], 1, false)) {
+        var key = at[0];
+        while (at[0] < end && sxbrs_num(c, at[0], 1, false) && sxbrs_num(c, at[0], 1, false) !== 61 /*=*/) {
+            if (at[0] - key >= 128) {
+                return false;
+            }
+            at[0]++;
+        }
+        if (at[0] === key || at[0] === end || sxbrs_num(c, at[0], 1, false) !== 61 /*=*/ || ++count > 4096) {
+            return false;
+        }
+        var p = [key];
+        if (!sxbrs_take(c, sxbrs_uboot_key_byte, p, at[0], (at[0] - key < 0 ? at[0] - key + SX_U64_MAX : at[0] - key))) {
+            return false;
+        }
+        {
+            if (!sxbrs_take(c, sxbrs_uboot_separator, at, end, 1)) {
+                return false;
+            }
+        }
+        var value = at[0];
+        while (at[0] < end && sxbrs_num(c, at[0], 1, false)) {
+            if (at[0] - value >= 32768) {
+                return false;
+            }
+            at[0]++;
+        }
+        p[0] = value;
+        if (!sxbrs_take(c, sxbrs_uboot_value_byte, p, at[0], (at[0] - value < 0 ? at[0] - value + SX_U64_MAX : at[0] - value))) {
+            return false;
+        }
+        {
+            if (!sxbrs_take(c, sxbrs_uboot_terminator, at, end, 1)) {
+                return false;
+            }
+        }
+    }
+    if (!count || at[0] >= end) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_uboot_terminator, at, end, 1)) {
+            return false;
+        }
+    }
+    return !c.failed;
+}
+function sx_uboot_build(c) {
+    return sxbrs_uboot(c);
+}

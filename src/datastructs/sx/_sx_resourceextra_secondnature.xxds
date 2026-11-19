@@ -1,0 +1,101 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/secondnature/xx_secondnature_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxre_secondnature_banner_fields = layout([chars("banner", 28, SIGNATURE), chars("kind", 3, NONE), u8("terminator")]);
+var sxre_secondnature_banner = sxLayout(0x603F0001, "secondnature_banner", LE, sxre_secondnature_banner_fields);
+var sxre_secondnature_bmx_count_fields = layout([u16("member_count", COUNT)]);
+var sxre_secondnature_bmx_count = sxLayout(0x603F0002, "secondnature_bmx_count", LE, sxre_secondnature_bmx_count_fields);
+var sxre_secondnature_ref_counts_fields = layout([u16("text_member_count", COUNT), u16("image_member_count", COUNT)]);
+var sxre_secondnature_ref_counts = sxLayout(0x603F0003, "secondnature_ref_counts", LE, sxre_secondnature_ref_counts_fields);
+var sxre_secondnature_snx_text_fields = layout([chars("title", 64, NONE), chars("caption", 128, NONE),
+    chars("description", 128, NONE)]);
+var sxre_secondnature_snx_text = sxLayout(0x603F0004, "secondnature_snx_text", LE, sxre_secondnature_snx_text_fields);
+var sxre_secondnature_snx_info_fields = layout([u16("sequence_id"), u16("width"), u16("height")]);
+var sxre_secondnature_snx_info = sxLayout(0x603F0005, "secondnature_snx_info", LE, sxre_secondnature_snx_info_fields);
+var sxre_secondnature_ref_entry_fields = layout([chars("name", 13, NONE), u16("kind"), u32("payload_offset", OFFSET),
+    u32("payload_size", SIZE), u16("rectangle_0"), u16("rectangle_1"), u16("rectangle_2"), u16("rectangle_3")]);
+var sxre_secondnature_ref_entry = sxLayout(0x603F0007, "secondnature_ref_entry", LE, sxre_secondnature_ref_entry_fields);
+var sxre_secondnature_banner_complemented_fields = layout([field("banner", "ones_char[28]", 28, SIGNATURE),
+    field("kind", "ones_char[3]", 3), field("terminator", "uint8_ones", 1)]);
+var sxre_secondnature_banner_complemented = sxLayout(0x603F0008, "secondnature_banner_complemented", LE, sxre_secondnature_banner_complemented_fields);
+var sxre_secondnature_bmx_count_complemented_fields = layout([field("member_count", "uint16_ones_le", 2, COUNT)]);
+var sxre_secondnature_bmx_count_complemented = sxLayout(0x603F0009, "secondnature_bmx_count_complemented", LE, sxre_secondnature_bmx_count_complemented_fields);
+var sxre_secondnature_ref_counts_complemented_fields = layout([field("text_member_count", "uint16_ones_le", 2, COUNT),
+    field("image_member_count", "uint16_ones_le", 2, COUNT)]);
+var sxre_secondnature_ref_counts_complemented = sxLayout(0x603F000A, "secondnature_ref_counts_complemented", LE, sxre_secondnature_ref_counts_complemented_fields);
+var sxre_secondnature_snx_text_complemented_fields = layout([field("title", "ones_char[64]", 64),
+    field("caption", "ones_char[128]", 128), field("description", "ones_char[128]", 128)]);
+var sxre_secondnature_snx_text_complemented = sxLayout(0x603F000B, "secondnature_snx_text_complemented", LE, sxre_secondnature_snx_text_complemented_fields);
+var sxre_secondnature_snx_info_complemented_fields = layout([field("sequence_id", "uint16_ones_le", 2),
+    field("width", "uint16_ones_le", 2), field("height", "uint16_ones_le", 2)]);
+var sxre_secondnature_snx_info_complemented = sxLayout(0x603F000C, "secondnature_snx_info_complemented", LE, sxre_secondnature_snx_info_complemented_fields);
+var sxre_secondnature_ref_entry_complemented_fields = layout([field("name", "ones_char[13]", 13),
+    field("kind", "uint16_ones_le", 2), field("payload_offset", "uint32_ones_le", 4, OFFSET),
+    field("payload_size", "uint32_ones_le", 4, SIZE), field("rectangle_0", "uint16_ones_le", 2),
+    field("rectangle_1", "uint16_ones_le", 2), field("rectangle_2", "uint16_ones_le", 2),
+    field("rectangle_3", "uint16_ones_le", 2)]);
+var sxre_secondnature_ref_entry_complemented = sxLayout(0x603F000E, "secondnature_ref_entry_complemented", LE, sxre_secondnature_ref_entry_complemented_fields);
+function sxre_secondnature(c) {
+    var b = [];
+    if (!sxre_read(c, 0, b, 32)) {
+        return false;
+    }
+    var mask = b[0] !== 83 /*S*/;
+    if (mask) {
+        for (var i = 0; i < 32; i++) {
+            b[i] = ~b[i] & 0xFF;
+        }
+    }
+    if (sxMemcmp(b, "Second Nature Software Inc. ", 28) || b[31]) {
+        return false;
+    }
+    var count = [0];
+    var p;
+    var z;
+    var entry;
+    if (!sxre_add(c, mask ? sxre_secondnature_banner_complemented : sxre_secondnature_banner, 0)) {
+        return false;
+    }
+    if (!sxMemcmpAt(b, 28, "BMX", 0, 3)) {
+        if (!sxre_word(c, 32, 2, mask, count) || count[0] < 1 || count[0] > 4096 || !sxre_add(c, mask ? sxre_secondnature_bmx_count_complemented : sxre_secondnature_bmx_count, 32)) {
+            return false;
+        }
+        p = 34;
+        z = 21;
+        entry = mask ? sxre_secondnature_entry_complemented : sxre_secondnature_entry;
+    } else if (!sxMemcmpAt(b, 28, "REF", 0, 3)) {
+        var a = [0];
+        var v = [0];
+        if (!sxre_word(c, 32, 2, mask, a) || !sxre_word(c, 34, 2, mask, v) || a[0] > 64 || v[0] > 64 || !(count[0] = a[0] + v[0]) || count[0] > 64 || !sxre_add(c, mask ? sxre_secondnature_ref_counts_complemented : sxre_secondnature_ref_counts, 32)) {
+            return false;
+        }
+        p = 36;
+        z = 31;
+        entry = mask ? sxre_secondnature_ref_entry_complemented : sxre_secondnature_ref_entry;
+    } else if (!sxMemcmpAt(b, 28, "SNX", 0, 3)) {
+        if (!sxre_add(c, mask ? sxre_secondnature_snx_text_complemented : sxre_secondnature_snx_text, 32) || !sxre_add(c, mask ? sxre_secondnature_snx_info_complemented : sxre_secondnature_snx_info, 352)) {
+            return false;
+        }
+        p = 358;
+        z = 21;
+        count[0] = 3;
+        entry = mask ? sxre_secondnature_entry_complemented : sxre_secondnature_entry;
+    } else {
+        return false;
+    }
+    if (!sxre_span(c, p, count[0] * z)) {
+        return false;
+    }
+    for (i = 0; i < count[0]; i++) {
+        if (!sxre_add(c, entry, p + i * z)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_secondnature_build(c) {
+    return sxre_secondnature(c);
+}

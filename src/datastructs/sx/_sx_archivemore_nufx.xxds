@@ -1,0 +1,75 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/nufx/xx_nufx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_nufx_master_fields = layout([bytes("magic", 6, SIGNATURE), u16("master_crc16", CHECKSUM), u32("record_count", COUNT),
+    u8("created_second"), u8("created_minute"), u8("created_hour"), u8("created_year_since_1900"), u8("created_day_zero_based"),
+    u8("created_month_zero_based"), u8("created_reserved", RESERVED), u8("created_weekday", ID), u8("modified_second"),
+    u8("modified_minute"), u8("modified_hour"), u8("modified_year_since_1900"), u8("modified_day_zero_based"),
+    u8("modified_month_zero_based"), u8("modified_reserved", RESERVED), u8("modified_weekday", ID), u16("version", ID),
+    bytes("reserved30", 8, RESERVED), u32("archive_size", SIZE), bytes("reserved42", 6, RESERVED)]);
+var sxar_nufx_master = sxLayout(0x601C0012, "nufx_master", LE, sxar_nufx_master_fields);
+var sxar_nufx_record_fields = layout([bytes("magic", 4, SIGNATURE), u16("header_crc16", CHECKSUM), u16("attribute_size", SIZE),
+    u16("version", ID), u32("thread_count", COUNT), u16("filesystem_id", ID), u16("filesystem_info"), u32("access", FLAGS),
+    u32("file_type", ID), u32("auxiliary_type_or_block_count"), u16("storage_type_or_block_size"), u8("created_second"),
+    u8("created_minute"), u8("created_hour"), u8("created_year_since_1900"), u8("created_day_zero_based"),
+    u8("created_month_zero_based"), u8("created_reserved", RESERVED), u8("created_weekday", ID), u8("modified_second"),
+    u8("modified_minute"), u8("modified_hour"), u8("modified_year_since_1900"), u8("modified_day_zero_based"),
+    u8("modified_month_zero_based"), u8("modified_reserved", RESERVED), u8("modified_weekday", ID), u8("archived_second"),
+    u8("archived_minute"), u8("archived_hour"), u8("archived_year_since_1900"), u8("archived_day_zero_based"),
+    u8("archived_month_zero_based"), u8("archived_reserved", RESERVED), u8("archived_weekday", ID)]);
+var sxar_nufx_record = sxLayout(0x601C0013, "nufx_record", LE, sxar_nufx_record_fields);
+var sxar_nufx_option_size_fields = layout([u16("option_size", SIZE)]);
+var sxar_nufx_option_size = sxLayout(0x601C0014, "nufx_option_size", LE, sxar_nufx_option_size_fields);
+var sxar_nufx_name_size_fields = layout([u16("name_size", SIZE)]);
+var sxar_nufx_name_size = sxLayout(0x601C0015, "nufx_name_size", LE, sxar_nufx_name_size_fields);
+var sxar_nufx_thread_fields = layout([u16("thread_class", ID), u16("method", ID), u16("thread_kind", ID),
+    u16("thread_crc16", CHECKSUM), u32("unpacked_size", SIZE), u32("packed_size", SIZE)]);
+var sxar_nufx_thread = sxLayout(0x601C0016, "nufx_thread", LE, sxar_nufx_thread_fields);
+function sxar_nufx(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 48) || !sxar_add(c, sxar_nufx_master, 0)) {
+        return false;
+    }
+    var n = sxar32(b, 8, false);
+    var p = 48;
+    if (n > 20000) {
+        return true;
+    }
+    for (var i = 0; i < n; i++) {
+        if (!sxar_read(c, p, b, 0, 56)) {
+            break;
+        }
+        var size = sxar16(b, 6, false);
+        var v = sxar16(b, 8, false);
+        var name;
+        var threads = sxar32(b, 10, false);
+        if (size < (v ? 60 : 58) || size > 4096 || threads > 20000 || !sxar_span(c, p, size)) {
+            break;
+        }
+        if ((name = sx_u16(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p) + size - 2, false)) === null || !sxar_span(c, p + size, name + threads * 16)) {
+            break;
+        }
+        if (!sxar_add(c, sxar_nufx_record, p) || v && !sxar_add(c, sxar_nufx_option_size, p + 56) || !sxar_add(c, sxar_nufx_name_size, sxU64(p + size - 2))) {
+            return false;
+        }
+        var table = p + size + name;
+        if (threads && !sx_table(c, sxar_nufx_thread, (table >= SX_I64_MAX ? table - SX_U64_MAX : table), 16, threads)) {
+            return false;
+        }
+        p = table + threads * 16;
+        for (var j = 0; j < threads; j++) {
+            var z;
+            if ((z = sx_u32(c, (table + j * 16 + 12 >= SX_I64_MAX ? table + j * 16 + 12 - SX_U64_MAX : table + j * 16 + 12), false)) === null || !sxar_span(c, p, z)) {
+                return true;
+            }
+            p += z;
+        }
+    }
+    return true;
+}
+function sx_nufx_build(c) {
+    return sxar_nufx(c);
+}

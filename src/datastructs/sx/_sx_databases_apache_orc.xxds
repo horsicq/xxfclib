@@ -1,0 +1,281 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/apache_orc/xx_apache_orc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_orc_header_fields = layout([chars("magic", 3, SIGNATURE)]);
+var sxd_orc_header = sxLayout(0x601A003D, "orc_header", LE, sxd_orc_header_fields);
+var sxd_orc_postscript_length_fields = layout([u8("postscript_length", SIZE)]);
+var sxd_orc_postscript_length = sxLayout(0x601A003E, "orc_postscript_length", LE, sxd_orc_postscript_length_fields);
+var sxd_orc_fixed32_fields = layout([u32("value")]);
+var sxd_orc_fixed32 = sxLayout(0x601A003F, "orc_fixed32", LE, sxd_orc_fixed32_fields);
+var sxd_orc_fixed64_fields = layout([u64("value")]);
+var sxd_orc_fixed64 = sxLayout(0x601A0040, "orc_fixed64", LE, sxd_orc_fixed64_fields);
+var sxd_database_varuint_1_fields = layout([field("value", "uleb128_64", 1)]);
+var sxd_database_varuint_1 = sxLayout(0x601A0041, "database_varuint_1", LE, sxd_database_varuint_1_fields);
+var sxd_database_varuint_2_fields = layout([field("value", "uleb128_64", 2)]);
+var sxd_database_varuint_2 = sxLayout(0x601A0042, "database_varuint_2", LE, sxd_database_varuint_2_fields);
+var sxd_database_varuint_3_fields = layout([field("value", "uleb128_64", 3)]);
+var sxd_database_varuint_3 = sxLayout(0x601A0043, "database_varuint_3", LE, sxd_database_varuint_3_fields);
+var sxd_database_varuint_4_fields = layout([field("value", "uleb128_64", 4)]);
+var sxd_database_varuint_4 = sxLayout(0x601A0044, "database_varuint_4", LE, sxd_database_varuint_4_fields);
+var sxd_database_varuint_5_fields = layout([field("value", "uleb128_64", 5)]);
+var sxd_database_varuint_5 = sxLayout(0x601A0045, "database_varuint_5", LE, sxd_database_varuint_5_fields);
+var sxd_database_varuint_6_fields = layout([field("value", "uleb128_64", 6)]);
+var sxd_database_varuint_6 = sxLayout(0x601A0046, "database_varuint_6", LE, sxd_database_varuint_6_fields);
+var sxd_database_varuint_7_fields = layout([field("value", "uleb128_64", 7)]);
+var sxd_database_varuint_7 = sxLayout(0x601A0047, "database_varuint_7", LE, sxd_database_varuint_7_fields);
+var sxd_database_varuint_8_fields = layout([field("value", "uleb128_64", 8)]);
+var sxd_database_varuint_8 = sxLayout(0x601A0048, "database_varuint_8", LE, sxd_database_varuint_8_fields);
+var sxd_database_varuint_9_fields = layout([field("value", "uleb128_64", 9)]);
+var sxd_database_varuint_9 = sxLayout(0x601A0049, "database_varuint_9", LE, sxd_database_varuint_9_fields);
+var sxd_database_varuint_10_fields = layout([field("value", "uleb128_64", 10)]);
+var sxd_database_varuint_10 = sxLayout(0x601A004A, "database_varuint_10", LE, sxd_database_varuint_10_fields);
+var sxd_database_varuint_count_1_fields = layout([field("item_count", "uleb128_64", 1, COUNT)]);
+var sxd_database_varuint_count_1 = sxLayout(0x601A005F, "database_varuint_count_1", LE, sxd_database_varuint_count_1_fields);
+var sxd_database_varuint_count_2_fields = layout([field("item_count", "uleb128_64", 2, COUNT)]);
+var sxd_database_varuint_count_2 = sxLayout(0x601A0060, "database_varuint_count_2", LE, sxd_database_varuint_count_2_fields);
+var sxd_database_varuint_count_3_fields = layout([field("item_count", "uleb128_64", 3, COUNT)]);
+var sxd_database_varuint_count_3 = sxLayout(0x601A0061, "database_varuint_count_3", LE, sxd_database_varuint_count_3_fields);
+var sxd_database_varuint_count_4_fields = layout([field("item_count", "uleb128_64", 4, COUNT)]);
+var sxd_database_varuint_count_4 = sxLayout(0x601A0062, "database_varuint_count_4", LE, sxd_database_varuint_count_4_fields);
+var sxd_database_varuint_count_5_fields = layout([field("item_count", "uleb128_64", 5, COUNT)]);
+var sxd_database_varuint_count_5 = sxLayout(0x601A0063, "database_varuint_count_5", LE, sxd_database_varuint_count_5_fields);
+var sxd_database_varuint_count_6_fields = layout([field("item_count", "uleb128_64", 6, COUNT)]);
+var sxd_database_varuint_count_6 = sxLayout(0x601A0064, "database_varuint_count_6", LE, sxd_database_varuint_count_6_fields);
+var sxd_database_varuint_count_7_fields = layout([field("item_count", "uleb128_64", 7, COUNT)]);
+var sxd_database_varuint_count_7 = sxLayout(0x601A0065, "database_varuint_count_7", LE, sxd_database_varuint_count_7_fields);
+var sxd_database_varuint_count_8_fields = layout([field("item_count", "uleb128_64", 8, COUNT)]);
+var sxd_database_varuint_count_8 = sxLayout(0x601A0066, "database_varuint_count_8", LE, sxd_database_varuint_count_8_fields);
+var sxd_database_varuint_count_9_fields = layout([field("item_count", "uleb128_64", 9, COUNT)]);
+var sxd_database_varuint_count_9 = sxLayout(0x601A0067, "database_varuint_count_9", LE, sxd_database_varuint_count_9_fields);
+var sxd_database_varuint_count_10_fields = layout([field("item_count", "uleb128_64", 10, COUNT)]);
+var sxd_database_varuint_count_10 = sxLayout(0x601A0068, "database_varuint_count_10", LE, sxd_database_varuint_count_10_fields);
+var sxd_database_varuint_id_1_fields = layout([field("identifier", "uleb128_64", 1, ID)]);
+var sxd_database_varuint_id_1 = sxLayout(0x601A0069, "database_varuint_id_1", LE, sxd_database_varuint_id_1_fields);
+var sxd_database_varuint_id_2_fields = layout([field("identifier", "uleb128_64", 2, ID)]);
+var sxd_database_varuint_id_2 = sxLayout(0x601A006A, "database_varuint_id_2", LE, sxd_database_varuint_id_2_fields);
+var sxd_database_varuint_id_3_fields = layout([field("identifier", "uleb128_64", 3, ID)]);
+var sxd_database_varuint_id_3 = sxLayout(0x601A006B, "database_varuint_id_3", LE, sxd_database_varuint_id_3_fields);
+var sxd_database_varuint_id_4_fields = layout([field("identifier", "uleb128_64", 4, ID)]);
+var sxd_database_varuint_id_4 = sxLayout(0x601A006C, "database_varuint_id_4", LE, sxd_database_varuint_id_4_fields);
+var sxd_database_varuint_id_5_fields = layout([field("identifier", "uleb128_64", 5, ID)]);
+var sxd_database_varuint_id_5 = sxLayout(0x601A006D, "database_varuint_id_5", LE, sxd_database_varuint_id_5_fields);
+var sxd_database_varuint_id_6_fields = layout([field("identifier", "uleb128_64", 6, ID)]);
+var sxd_database_varuint_id_6 = sxLayout(0x601A006E, "database_varuint_id_6", LE, sxd_database_varuint_id_6_fields);
+var sxd_database_varuint_id_7_fields = layout([field("identifier", "uleb128_64", 7, ID)]);
+var sxd_database_varuint_id_7 = sxLayout(0x601A006F, "database_varuint_id_7", LE, sxd_database_varuint_id_7_fields);
+var sxd_database_varuint_id_8_fields = layout([field("identifier", "uleb128_64", 8, ID)]);
+var sxd_database_varuint_id_8 = sxLayout(0x601A0070, "database_varuint_id_8", LE, sxd_database_varuint_id_8_fields);
+var sxd_database_varuint_id_9_fields = layout([field("identifier", "uleb128_64", 9, ID)]);
+var sxd_database_varuint_id_9 = sxLayout(0x601A0071, "database_varuint_id_9", LE, sxd_database_varuint_id_9_fields);
+var sxd_database_varuint_id_10_fields = layout([field("identifier", "uleb128_64", 10, ID)]);
+var sxd_database_varuint_id_10 = sxLayout(0x601A0072, "database_varuint_id_10", LE, sxd_database_varuint_id_10_fields);
+var sxd_orc_protobuf_key_1_fields = layout([field("field_number_and_wire_type", "uleb128_64", 1, ID)]);
+var sxd_orc_protobuf_key_1 = sxLayout(0x601A0073, "orc_protobuf_key_1", LE, sxd_orc_protobuf_key_1_fields);
+var sxd_orc_protobuf_key_2_fields = layout([field("field_number_and_wire_type", "uleb128_64", 2, ID)]);
+var sxd_orc_protobuf_key_2 = sxLayout(0x601A0074, "orc_protobuf_key_2", LE, sxd_orc_protobuf_key_2_fields);
+var sxd_orc_protobuf_key_3_fields = layout([field("field_number_and_wire_type", "uleb128_64", 3, ID)]);
+var sxd_orc_protobuf_key_3 = sxLayout(0x601A0075, "orc_protobuf_key_3", LE, sxd_orc_protobuf_key_3_fields);
+var sxd_orc_protobuf_key_4_fields = layout([field("field_number_and_wire_type", "uleb128_64", 4, ID)]);
+var sxd_orc_protobuf_key_4 = sxLayout(0x601A0076, "orc_protobuf_key_4", LE, sxd_orc_protobuf_key_4_fields);
+var sxd_orc_protobuf_key_5_fields = layout([field("field_number_and_wire_type", "uleb128_64", 5, ID)]);
+var sxd_orc_protobuf_key_5 = sxLayout(0x601A0077, "orc_protobuf_key_5", LE, sxd_orc_protobuf_key_5_fields);
+var sxd_orc_protobuf_key_6_fields = layout([field("field_number_and_wire_type", "uleb128_64", 6, ID)]);
+var sxd_orc_protobuf_key_6 = sxLayout(0x601A0078, "orc_protobuf_key_6", LE, sxd_orc_protobuf_key_6_fields);
+var sxd_orc_protobuf_key_7_fields = layout([field("field_number_and_wire_type", "uleb128_64", 7, ID)]);
+var sxd_orc_protobuf_key_7 = sxLayout(0x601A0079, "orc_protobuf_key_7", LE, sxd_orc_protobuf_key_7_fields);
+var sxd_orc_protobuf_key_8_fields = layout([field("field_number_and_wire_type", "uleb128_64", 8, ID)]);
+var sxd_orc_protobuf_key_8 = sxLayout(0x601A007A, "orc_protobuf_key_8", LE, sxd_orc_protobuf_key_8_fields);
+var sxd_orc_protobuf_key_9_fields = layout([field("field_number_and_wire_type", "uleb128_64", 9, ID)]);
+var sxd_orc_protobuf_key_9 = sxLayout(0x601A007B, "orc_protobuf_key_9", LE, sxd_orc_protobuf_key_9_fields);
+var sxd_orc_protobuf_key_10_fields = layout([field("field_number_and_wire_type", "uleb128_64", 10, ID)]);
+var sxd_orc_protobuf_key_10 = sxLayout(0x601A007C, "orc_protobuf_key_10", LE, sxd_orc_protobuf_key_10_fields);
+var sxd_database_varuint_rows = [sxd_database_varuint_1, sxd_database_varuint_2, sxd_database_varuint_3, sxd_database_varuint_4,
+    sxd_database_varuint_5, sxd_database_varuint_6, sxd_database_varuint_7, sxd_database_varuint_8, sxd_database_varuint_9,
+    sxd_database_varuint_10];
+var sxd_database_varuint_count_rows = [sxd_database_varuint_count_1, sxd_database_varuint_count_2, sxd_database_varuint_count_3,
+    sxd_database_varuint_count_4, sxd_database_varuint_count_5, sxd_database_varuint_count_6, sxd_database_varuint_count_7,
+    sxd_database_varuint_count_8, sxd_database_varuint_count_9, sxd_database_varuint_count_10];
+var sxd_database_varuint_id_rows = [sxd_database_varuint_id_1, sxd_database_varuint_id_2, sxd_database_varuint_id_3,
+    sxd_database_varuint_id_4, sxd_database_varuint_id_5, sxd_database_varuint_id_6, sxd_database_varuint_id_7,
+    sxd_database_varuint_id_8, sxd_database_varuint_id_9, sxd_database_varuint_id_10];
+var sxd_orc_protobuf_key_rows = [sxd_orc_protobuf_key_1, sxd_orc_protobuf_key_2, sxd_orc_protobuf_key_3, sxd_orc_protobuf_key_4,
+    sxd_orc_protobuf_key_5, sxd_orc_protobuf_key_6, sxd_orc_protobuf_key_7, sxd_orc_protobuf_key_8, sxd_orc_protobuf_key_9,
+    sxd_orc_protobuf_key_10];
+function sxd_proto_next(c, b, at, end, f, emit, kind) {
+    var sxb1, sxr2, sxb3, sxr4;
+    var key = [0];
+    if (!sxd_var(c, b, at, end, key, 0, emit ? sxd_orc_protobuf_key_rows : null) || !sxShr64(key[0], 3) || sxShr64(key[0], 3) > 0x1FFFFFFF) {
+        return false;
+    }
+    f.tag = sxShr64(key[0], 3);
+    f.wire = sxAnd64(key[0], 7);
+    f.at = at[0];
+    f.size = 0;
+    f.value = 0;
+    if (!f.wire) {
+        var rows = sxd_database_varuint_rows;
+        if (kind === 1 && (f.tag === 1 || f.tag === 3 || f.tag === 5 || f.tag === 7) || kind === 2 && (f.tag === 1 || f.tag === 2) || kind === 3 && f.tag >= 2 && f.tag <= 4 || kind === 6 && f.tag === 3 || kind === 9 && f.tag === 11) {
+            rows = sxd_database_varuint_size_rows;
+        }
+        if (kind === 2 && (f.tag === 6 || f.tag === 8) || kind === 3 && f.tag === 5 || kind === 4 && f.tag === 4 || kind === 7 && f.tag === 2 || kind === 9 && f.tag === 1) {
+            rows = sxd_database_varuint_count_rows;
+        }
+        if (kind === 3 && f.tag === 1) {
+            rows = sxd_database_varuint_offset_rows;
+        }
+        if (kind === 1 && (f.tag === 2 || f.tag === 6) || kind === 2 && (f.tag === 9 || f.tag === 11) || kind === 4 && f.tag === 1 || kind === 6 && (f.tag === 1 || f.tag === 2) || kind === 7 && (f.tag === 1 || f.tag === 3)) {
+            rows = sxd_database_varuint_id_rows;
+        }
+        return (sxr2 = sxd_var(c, b, at, end, (sxb1 = [f.value]), emit ? rows : null), f.value = sxb1[0], sxr2);
+    }
+    if (f.wire === 2) {
+        if (!(sxr4 = sxd_var(c, b, at, end, (sxb3 = [f.size]), emit ? sxd_database_varuint_size_rows : null), f.size = sxb3[0], sxr4)) {
+            return false;
+        }
+        f.at = at[0];
+    } else if (f.wire === 1) {
+        f.size = 8;
+    } else if (f.wire === 5) {
+        f.size = 4;
+    } else {
+        return false;
+    }
+    if (at[0] > end || f.size > sxU64(end - at[0]) || !sxd_can(c, at[0], f.size)) {
+        return false;
+    }
+    if (emit && (f.wire === 1 || f.wire === 5) && !sxd_add(c, f.wire === 1 ? sxd_orc_fixed64 : sxd_orc_fixed32, at[0], f.size)) {
+        return false;
+    }
+    at[0] += f.size;
+    return true;
+}
+function sxd_orc_proto(c, b, at, end, kind, depth) {
+    at = [at];
+    if (depth > 16 || end > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || at[0] > end) {
+        return false;
+    }
+    var work = 0;
+    while (at[0] < end) {
+        var f = sxNew_sxd_proto();
+        if (++work > 100000 || !sxd_proto_next(c, b, at, end, f, true, kind)) {
+            return false;
+        }
+        if (f.wire !== 2) {
+            continue;
+        }
+        var child = 0;
+        var packed = false;
+        if (kind === 1 && f.tag === 4) {
+            packed = true;
+        }
+        if (kind === 2) {
+            if (f.tag === 3) {
+                child = 3;
+            } else if (f.tag === 4) {
+                child = 4;
+            } else if (f.tag === 5) {
+                child = 8;
+            } else if (f.tag === 7) {
+                child = 9;
+            }
+        }
+        if (kind === 4) {
+            if (f.tag === 2) {
+                packed = true;
+            } else if (f.tag === 7) {
+                child = 8;
+            }
+        }
+        if (kind === 5) {
+            if (f.tag === 1) {
+                child = 6;
+            } else if (f.tag === 2) {
+                child = 7;
+            }
+        }
+        if (kind === 10 && f.tag === 1) {
+            child = 11;
+        }
+        if (kind === 11 && f.tag === 1) {
+            child = 9;
+        }
+        if (child && !sxd_orc_proto(c, b, f.at, f.at + f.size, child, (depth + 1) >>> 0)) {
+            return false;
+        }
+        if (packed) {
+            var p = [f.at];
+            var v = [0];
+            while (p[0] < f.at + f.size) {
+                if (!sxd_var(c, b, p, f.at + f.size, v, 0, sxd_database_varuint_rows)) {
+                    return false;
+                }
+            }
+        }
+    }
+    return at[0] === end;
+}
+function sxd_orc(c, b) {
+    if (c.size < 4) {
+        return false;
+    }
+    var n = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var ps = b[sxU64(n - 1)];
+    if (!ps || ps > sxU64(n - 4)) {
+        return false;
+    }
+    var p = [sxU64(sxU64(n - 1) - ps)];
+    var end = sxU64(n - 1);
+    var fl = 0;
+    var ml = 0;
+    while (p[0] < end) {
+        var f = sxNew_sxd_proto();
+        if (!sxd_proto_next(c, b, p, end, f, false, 0)) {
+            return false;
+        }
+        if (f.tag === 1) {
+            fl = f.value;
+        } else if (f.tag === 5) {
+            ml = f.value;
+        }
+    }
+    if (fl > sxU64(sxU64(n - ps) - 4) || ml > sxU64(sxU64(sxU64(n - ps) - 4) - fl)) {
+        return false;
+    }
+    var footer = sxU64(sxU64(sxU64(n - 1) - ps) - fl);
+    var meta = sxU64(footer - ml);
+    if (!sxd_add(c, sxd_orc_header, 0, 3) || !sxd_add(c, sxd_orc_postscript_length, sxU64(n - 1), 1) || !sxd_orc_proto(c, b, sxU64(sxU64(n - 1) - ps), sxU64(n - 1), 1, 0) || !sxd_orc_proto(c, b, footer, footer + fl, 2, 0) || !sxd_orc_proto(c, b, meta, footer, 10, 0)) {
+        return false;
+    }
+    p[0] = footer;
+    while (p[0] < footer + fl) {
+        f = sxNew_sxd_proto();
+        if (!sxd_proto_next(c, b, p, footer + fl, f, false, 0)) {
+            return false;
+        }
+        if (f.tag === 3 && f.wire === 2) {
+            var q = [f.at];
+            var v = [0, 0, 0, 0, 0];
+            while (q[0] < f.at + f.size) {
+                var x = sxNew_sxd_proto();
+                if (!sxd_proto_next(c, b, q, f.at + f.size, x, false, 0) || x.wire || x.tag < 1 || x.tag > 5) {
+                    return false;
+                }
+                v[sxU64(x.tag - 1)] = x.value;
+            }
+            if (v[0] > meta || v[1] > sxU64(meta - v[0]) || v[2] > sxU64(sxU64(meta - v[0]) - v[1]) || v[3] > sxU64(sxU64(sxU64(meta - v[0]) - v[1]) - v[2])) {
+                return false;
+            }
+            var sf = v[0] + v[1] + v[2];
+            if (!sxd_orc_proto(c, b, sf, sf + v[3], 5, 0)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_apache_orc_build(c, b) {
+    return sxd_orc(c, b);
+}

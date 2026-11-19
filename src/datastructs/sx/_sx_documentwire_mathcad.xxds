@@ -1,0 +1,143 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/mathcad/xx_mathcad_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdw_mathcad_header_fields = layout([chars("signature", 15, SIGNATURE)]);
+var sxdw_mathcad_header = sxLayout(0x60740001, "documentwire_mathcad_header", LE, sxdw_mathcad_header_fields);
+var sxdw_mathcad_literal_bit0_fields = layout([field("literal_flag", "msb_bits[0,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[1,8]", 2))]);
+var sxdw_mathcad_literal_bit0 = sxLayout(0x60740002, "documentwire_mathcad_literal_bit0", LE, sxdw_mathcad_literal_bit0_fields);
+var sxdw_mathcad_match_bit0_fields = layout([field("literal_flag", "msb_bits[0,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[1,12]", 2)), at(1, field("length_code", "msb_bits[5,4]", 2))]);
+var sxdw_mathcad_match_bit0 = sxLayout(0x60740003, "documentwire_mathcad_match_bit0", LE, sxdw_mathcad_match_bit0_fields);
+var sxdw_mathcad_end_bit0_fields = layout([field("literal_flag", "msb_bits[0,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[1,12]", 2))]);
+var sxdw_mathcad_end_bit0 = sxLayout(0x60740004, "documentwire_mathcad_end_bit0", LE, sxdw_mathcad_end_bit0_fields);
+var sxdw_mathcad_literal_bit1_fields = layout([field("literal_flag", "msb_bits[1,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[2,8]", 2))]);
+var sxdw_mathcad_literal_bit1 = sxLayout(0x60740005, "documentwire_mathcad_literal_bit1", LE, sxdw_mathcad_literal_bit1_fields);
+var sxdw_mathcad_match_bit1_fields = layout([field("literal_flag", "msb_bits[1,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[2,12]", 2)), at(1, field("length_code", "msb_bits[6,4]", 2))]);
+var sxdw_mathcad_match_bit1 = sxLayout(0x60740006, "documentwire_mathcad_match_bit1", LE, sxdw_mathcad_match_bit1_fields);
+var sxdw_mathcad_end_bit1_fields = layout([field("literal_flag", "msb_bits[1,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[2,12]", 2))]);
+var sxdw_mathcad_end_bit1 = sxLayout(0x60740007, "documentwire_mathcad_end_bit1", LE, sxdw_mathcad_end_bit1_fields);
+var sxdw_mathcad_literal_bit2_fields = layout([field("literal_flag", "msb_bits[2,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[3,8]", 2))]);
+var sxdw_mathcad_literal_bit2 = sxLayout(0x60740008, "documentwire_mathcad_literal_bit2", LE, sxdw_mathcad_literal_bit2_fields);
+var sxdw_mathcad_match_bit2_fields = layout([field("literal_flag", "msb_bits[2,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[3,12]", 2)), at(1, field("length_code", "msb_bits[7,4]", 2))]);
+var sxdw_mathcad_match_bit2 = sxLayout(0x60740009, "documentwire_mathcad_match_bit2", LE, sxdw_mathcad_match_bit2_fields);
+var sxdw_mathcad_end_bit2_fields = layout([field("literal_flag", "msb_bits[2,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[3,12]", 2))]);
+var sxdw_mathcad_end_bit2 = sxLayout(0x6074000A, "documentwire_mathcad_end_bit2", LE, sxdw_mathcad_end_bit2_fields);
+var sxdw_mathcad_literal_bit3_fields = layout([field("literal_flag", "msb_bits[3,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[4,8]", 2))]);
+var sxdw_mathcad_literal_bit3 = sxLayout(0x6074000B, "documentwire_mathcad_literal_bit3", LE, sxdw_mathcad_literal_bit3_fields);
+var sxdw_mathcad_match_bit3_fields = layout([field("literal_flag", "msb_bits[3,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[4,12]", 2)), field("length_code", "msb_bits[0,4]", 1)]);
+var sxdw_mathcad_match_bit3 = sxLayout(0x6074000C, "documentwire_mathcad_match_bit3", LE, sxdw_mathcad_match_bit3_fields);
+var sxdw_mathcad_end_bit3_fields = layout([field("literal_flag", "msb_bits[3,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[4,12]", 2))]);
+var sxdw_mathcad_end_bit3 = sxLayout(0x6074000D, "documentwire_mathcad_end_bit3", LE, sxdw_mathcad_end_bit3_fields);
+var sxdw_mathcad_literal_bit4_fields = layout([field("literal_flag", "msb_bits[4,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[5,8]", 2))]);
+var sxdw_mathcad_literal_bit4 = sxLayout(0x6074000E, "documentwire_mathcad_literal_bit4", LE, sxdw_mathcad_literal_bit4_fields);
+var sxdw_mathcad_match_bit4_fields = layout([field("literal_flag", "msb_bits[4,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[5,12]", 3)), at(2, field("length_code", "msb_bits[1,4]", 1))]);
+var sxdw_mathcad_match_bit4 = sxLayout(0x6074000F, "documentwire_mathcad_match_bit4", LE, sxdw_mathcad_match_bit4_fields);
+var sxdw_mathcad_end_bit4_fields = layout([field("literal_flag", "msb_bits[4,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[5,12]", 3))]);
+var sxdw_mathcad_end_bit4 = sxLayout(0x60740010, "documentwire_mathcad_end_bit4", LE, sxdw_mathcad_end_bit4_fields);
+var sxdw_mathcad_literal_bit5_fields = layout([field("literal_flag", "msb_bits[5,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[6,8]", 2))]);
+var sxdw_mathcad_literal_bit5 = sxLayout(0x60740011, "documentwire_mathcad_literal_bit5", LE, sxdw_mathcad_literal_bit5_fields);
+var sxdw_mathcad_match_bit5_fields = layout([field("literal_flag", "msb_bits[5,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[6,12]", 3)), at(2, field("length_code", "msb_bits[2,4]", 1))]);
+var sxdw_mathcad_match_bit5 = sxLayout(0x60740012, "documentwire_mathcad_match_bit5", LE, sxdw_mathcad_match_bit5_fields);
+var sxdw_mathcad_end_bit5_fields = layout([field("literal_flag", "msb_bits[5,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[6,12]", 3))]);
+var sxdw_mathcad_end_bit5 = sxLayout(0x60740013, "documentwire_mathcad_end_bit5", LE, sxdw_mathcad_end_bit5_fields);
+var sxdw_mathcad_literal_bit6_fields = layout([field("literal_flag", "msb_bits[6,1]", 1, FLAGS),
+    at(0, field("literal_byte", "msb_bits[7,8]", 2))]);
+var sxdw_mathcad_literal_bit6 = sxLayout(0x60740014, "documentwire_mathcad_literal_bit6", LE, sxdw_mathcad_literal_bit6_fields);
+var sxdw_mathcad_match_bit6_fields = layout([field("literal_flag", "msb_bits[6,1]", 1, FLAGS),
+    at(0, field("ring_position", "msb_bits[7,12]", 3)), at(2, field("length_code", "msb_bits[3,4]", 1))]);
+var sxdw_mathcad_match_bit6 = sxLayout(0x60740015, "documentwire_mathcad_match_bit6", LE, sxdw_mathcad_match_bit6_fields);
+var sxdw_mathcad_end_bit6_fields = layout([field("literal_flag", "msb_bits[6,1]", 1, FLAGS),
+    at(0, field("end_position", "msb_bits[7,12]", 3))]);
+var sxdw_mathcad_end_bit6 = sxLayout(0x60740016, "documentwire_mathcad_end_bit6", LE, sxdw_mathcad_end_bit6_fields);
+var sxdw_mathcad_literal_bit7_fields = layout([field("literal_flag", "msb_bits[7,1]", 1, FLAGS),
+    field("literal_byte", "msb_bits[0,8]", 1)]);
+var sxdw_mathcad_literal_bit7 = sxLayout(0x60740017, "documentwire_mathcad_literal_bit7", LE, sxdw_mathcad_literal_bit7_fields);
+var sxdw_mathcad_match_bit7_fields = layout([field("literal_flag", "msb_bits[7,1]", 1, FLAGS),
+    field("ring_position", "msb_bits[0,12]", 2), at(2, field("length_code", "msb_bits[4,4]", 1))]);
+var sxdw_mathcad_match_bit7 = sxLayout(0x60740018, "documentwire_mathcad_match_bit7", LE, sxdw_mathcad_match_bit7_fields);
+var sxdw_mathcad_end_bit7_fields = layout([field("literal_flag", "msb_bits[7,1]", 1, FLAGS),
+    field("end_position", "msb_bits[0,12]", 2)]);
+var sxdw_mathcad_end_bit7 = sxLayout(0x60740019, "documentwire_mathcad_end_bit7", LE, sxdw_mathcad_end_bit7_fields);
+function sxdw_take_bits(q, bit, width, v) {
+    if (bit[0] > (q.n < 0 ? q.n + SX_U64_MAX : q.n) * 8 || width > sxU64((q.n < 0 ? q.n + SX_U64_MAX : q.n) * 8 - bit[0])) {
+        return false;
+    }
+    v[0] = 0;
+    for (var i = 0; i < width; i++) {
+        var b = bit[0]++;
+        v[0] = sxOr64(sxShl64(v[0], 1), q.b[Math.floor(b / 8)] >> 7 - b % 8 & 1);
+    }
+    return true;
+}
+function sxdw_mathcad(q) {
+    if (q.n < 16 || sxMemcmp(q.b, ".MCDCOMPRESSION", 15) || !sxdw_emit(q, sxdw_mathcad_header, 0, 15)) {
+        return false;
+    }
+    var literal = [sxdw_mathcad_literal_bit0, sxdw_mathcad_literal_bit1, sxdw_mathcad_literal_bit2, sxdw_mathcad_literal_bit3, sxdw_mathcad_literal_bit4, sxdw_mathcad_literal_bit5, sxdw_mathcad_literal_bit6, sxdw_mathcad_literal_bit7];
+    var match = [sxdw_mathcad_match_bit0, sxdw_mathcad_match_bit1, sxdw_mathcad_match_bit2, sxdw_mathcad_match_bit3, sxdw_mathcad_match_bit4, sxdw_mathcad_match_bit5, sxdw_mathcad_match_bit6, sxdw_mathcad_match_bit7];
+    var stop = [sxdw_mathcad_end_bit0, sxdw_mathcad_end_bit1, sxdw_mathcad_end_bit2, sxdw_mathcad_end_bit3, sxdw_mathcad_end_bit4, sxdw_mathcad_end_bit5, sxdw_mathcad_end_bit6, sxdw_mathcad_end_bit7];
+    var bit = [120];
+    while (q.c.count < 32000) {
+        if (false) {
+            return false;
+        }
+        var start = bit[0];
+        var flag = [0];
+        var pos = [0];
+        var n = [0];
+        var l;
+        var ended = false;
+        if (!sxdw_take_bits(q, bit, 1, flag)) {
+            break;
+        }
+        if (flag[0]) {
+            if (!sxdw_take_bits(q, bit, 8, n)) {
+                break;
+            }
+            l = literal[start % 8];
+        } else {
+            if (!sxdw_take_bits(q, bit, 12, pos)) {
+                break;
+            }
+            if (!pos[0]) {
+                l = stop[start % 8];
+                ended = true;
+            } else {
+                if (!sxdw_take_bits(q, bit, 4, n)) {
+                    break;
+                }
+                l = match[start % 8];
+            }
+        }
+        if (!sxdw_emit(q, l, Math.floor(start / 8), sxI64(sxU64(Math.floor((bit[0] + 7) / 8) - Math.floor(start / 8))))) {
+            return false;
+        }
+        if (ended) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_mathcad_build(q) {
+    return sxdw_mathcad(q);
+}

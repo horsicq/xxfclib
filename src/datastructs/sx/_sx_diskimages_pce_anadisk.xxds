@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/pce_anadisk/xx_pce_anadisk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_anadisk_sector_header_fields = layout([u8("physical_cylinder", ID), u8("physical_head", ID),
+    u8("logical_cylinder", ID), u8("logical_head", ID), u8("sector_id", ID), u8("size_code"), u16("stored_size", SIZE)]);
+var sxdi_anadisk_sector_header = sxLayout(0x60150001, "anadisk_sector_header", LE, sxdi_anadisk_sector_header_fields);
+function sxdi_ana(c) {
+    var at = 0;
+    var count = 0;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && count < 65536) {
+        var h = [];
+        if (!sxdi_read(c, at, h, 8)) {
+            return count !== 0;
+        }
+        var n = sxdi_le16(h, 6);
+        if (!sxdi_span(c, at + 8, n)) {
+            return count !== 0;
+        }
+        if (!sx_add(c, sxdi_anadisk_sector_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+            return false;
+        }
+        count++;
+        at += (8 + n) >>> 0;
+    }
+    return count !== 0;
+}
+function sx_pce_anadisk_build(c) {
+    return sxdi_ana(c);
+}

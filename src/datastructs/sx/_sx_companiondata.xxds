@@ -1,0 +1,244 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_companiondata.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxcdata_hippel_sample_directory_fields = layout([u16("data_offset", OFFSET), u16("span_control"), blob("opaque_control", 4)]);
+var sxcdata_hippel_sample_directory = sxLayout(0x60A90001, "hippel_sample_directory", BE, sxcdata_hippel_sample_directory_fields);
+var sxcdata_zound_header_fields = layout([u8("last_saved_position"), u8("last_saved_pattern"), u8("restart_position"),
+    u8("end_position"), u8("speed")]);
+var sxcdata_zound_header = sxLayout(0x60A90002, "zound_header", LE, sxcdata_zound_header_fields);
+var sxcdata_zound_sample_slot_fields = layout([blob("saved_state", 4), chars("name_prefix", 32, NONE),
+    blob("opaque_name_tail", 8), i8("transpose"), blob("opaque_byte", 1), u16("length_words"), u16("repeat_words"),
+    u16("loop_start_words"), blob("opaque_tail", 2)]);
+var sxcdata_zound_sample_slot = sxLayout(0x60A90003, "zound_sample_slot", BE, sxcdata_zound_sample_slot_fields);
+var sxcdata_zound_position_channel_fields = layout([u8("pattern_index"), i8("volume_adjustment"), u8("sample_index_addend"),
+    u8("note_addend")]);
+var sxcdata_zound_position_channel = sxLayout(0x60A90004, "zound_position_channel", LE, sxcdata_zound_position_channel_fields);
+var sxcdata_zound_external_path_fields = layout([chars("sample_path", 101, NONE)]);
+var sxcdata_zound_external_path = sxLayout(0x60A90005, "zound_external_path", LE, sxcdata_zound_external_path_fields);
+function sxcdata_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxcdata_read(c, p, b, n) {
+    return sxcdata_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxcdata16(b) {
+    return b[0] | b[1] << 8;
+}
+function sxcdata_eq(c, p, s, n) {
+    var b = [];
+    return n <= 64 && sxcdata_read(c, p, b, n) && !sxMemcmp(b, s, n);
+}
+function sxcdata_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+}
+function sxcdata_put(c, l, p, count) {
+    var z = sxcdata_width(l);
+    if (!count) {
+        return true;
+    }
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxcdata_span(c, p, count * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    var end = p + count * z;
+    for (var i = 0; i < c.count; i++) {
+        var rel = c.items[i].offset - c.f.base_address;
+        var n = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (rel >= 0 && p < (rel < 0 ? rel + SX_U64_MAX : rel) + n && (rel < 0 ? rel + SX_U64_MAX : rel) < end) {
+            return true;
+        }
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxcdata_opt(c, l, p, count) {
+    var z = sxcdata_width(l);
+    return (!count || !z || count > Math.floor(SX_U64_MAX / z) || !sxcdata_span(c, p, count * z) ? 1 : (sxcdata_put(c, l, p, count) ? 1 : 0)) !== 0;
+}
+function sxcdata_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxcdata_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxcdata_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxcdata_order, true);
+    return !c.failed;
+}
+function sxcdata_be16(b) {
+    return b[0] << 8 | b[1];
+}
+function sxcdata_be32(b) {
+    return ((((b[0] << 24) >>> 0 | b[1] << 16) >>> 0 | b[2] << 8) >>> 0 | b[3]) >>> 0;
+}
+function sxcdata_word(c, p, v) {
+    var b = [];
+    if (!sxcdata_read(c, p, b, 2)) {
+        return false;
+    }
+    v[0] = sxcdata_be16(b);
+    return true;
+}
+function sxcdata_hippel(c) {
+    var b = [];
+    var first;
+    var previous = 0;
+    var count = 0;
+    if (!sxcdata_span(c, 0, 128) || !sxcdata_read(c, 0, b, 8)) {
+        return false;
+    }
+    first = sxcdata_be16(b);
+    if (first < 128 || first % 8 || !sxcdata_span(c, 0, first)) {
+        return false;
+    }
+    for (var p = 0; p + 8 <= first; p += 8) {
+        if (!sxcdata_read(c, p, b, 8)) {
+            return false;
+        }
+        var v = sxcdata_be16(b);
+        if (!v) {
+            count = Math.floor(p / 8) + 1;
+            break;
+        }
+        if (v < first || v < previous || v > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return false;
+        }
+        previous = v;
+    }
+    if (count < 9) {
+        return false;
+    }
+    return sxcdata_put(c, sxcdata_hippel_sample_directory, 0, count);
+}
+function sxcdata_zound(c) {
+    var b = [];
+    if (!sxcdata_read(c, 0, b, 5)) {
+        return false;
+    }
+    var positions = b[0] + 1;
+    var patterns = b[1] + 1;
+    var path = 869 + positions * 16 + patterns * 128;
+    if (!sxcdata_span(c, 0, path) || !(sxcdata_eq(c, path, "Samples", 7) || sxcdata_eq(c, path, "samples", 7) || sxcdata_span(c, path, 4) && sxcdata_read(c, path, b, 4) && b[0] === 100 /*d*/ && b[1] === 102 /*f*/ && b[2] >= 48 /*0*/ && b[2] <= 57 /*9*/ && b[3] === 58 /*:*/)) {
+        return false;
+    }
+    if (!sxcdata_put(c, sxcdata_zound_header, 0, 1) || !sxcdata_put(c, sxcdata_zound_sample_slot, 5, 16) || !sxcdata_put(c, sxcdata_zound_position_channel, 869, positions * 4)) {
+        return false;
+    }
+    return sxcdata_opt(c, sxcdata_zound_external_path, path, 1);
+}
+function sx_companiondata_supports(t) {
+    return t === "DIE_MUSIC_HIPPEL_ATARIST_SMPSET" || t === "DIE_MUSIC_AJ_ZOUNDMONITOR";
+}
+function sx_companiondata_build(c) {
+    var ok = false;
+    switch (c.f.file_type) {
+    case "DIE_MUSIC_HIPPEL_ATARIST_SMPSET":
+        ok = sxcdata_hippel(c);
+        break;
+    case "DIE_MUSIC_AJ_ZOUNDMONITOR":
+        ok = sxcdata_zound(c);
+        break;
+    default:
+        return false;
+    }
+    if (c.failed) {
+        return false;
+    }
+    if (!c.count) {
+        return c.f.base_info_handled && c.f.is_valid && c.size > 0 && sx_raw(c, 0, c.size);
+    }
+    return sxcdata_finish(c);
+}
+function sx_companiondata_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60A90000 || id >= 0x60AA0000) {
+        return true;
+    }
+    if (id === sxcdata_hippel_sample_directory.id && r.name === "data_offset") {
+        return sxSetComment(r, "Byte offset from the beginning of the separate sample-set file. A zero offset ends the directory; the last nonzero boundary can mark the end of the sample data. No external song pointer is substituted.");
+    }
+    if (id === sxcdata_hippel_sample_directory.id && r.name === "span_control") {
+        return sxSetComment(r, "Stored control word: zero selects a span ending at the next directory offset; 0x0010 selects a sixteen-byte sample and self-loop. Other original-player values act as an end offset, but are outside the native-recognized first sixteen rows. No derived byte length is displayed.");
+    }
+    if (id === sxcdata_hippel_sample_directory.id && r.name === "opaque_control") {
+        return sxSetComment(r, "Four preserved control bytes whose meaning is not established by the retained loader. Native recognition checks either 01000000 or 00000000 with the corresponding preceding word; no invented fields are assigned.");
+    }
+    if (id === sxcdata_zound_header.id && r.name === "last_saved_position") {
+        return sxSetComment(r, "Stored count minus one for the physical position table. Each position contains four four-byte channel records; inactive saved positions remain visible.");
+    }
+    if (id === sxcdata_zound_header.id && r.name === "last_saved_pattern") {
+        return sxSetComment(r, "Stored count minus one for the physical pattern region. Each pattern has thirty-two four-byte packed rows; pattern bodies remain raw.");
+    }
+    if (id === sxcdata_zound_header.id && r.name === "restart_position") {
+        return sxSetComment(r, "Zero-based position selected when the replay position reaches end_position.");
+    }
+    if (id === sxcdata_zound_header.id && r.name === "end_position") {
+        return sxSetComment(r, "Stored end-position index compared after incrementing the replay position; it is an exclusive bound in the retained player, not a converted count.");
+    }
+    if (id === sxcdata_zound_header.id && r.name === "speed") {
+        return sxSetComment(r, "Stored player tick delay used with the original 50 Hz playback loop. The value is displayed unchanged; no inferred beats-per-minute conversion.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "saved_state") {
+        return sxSetComment(r, "Four saved bytes replaced in memory by the loaded external sample address. Their original serialized meaning is unproven, so they remain bytes.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "name_prefix") {
+        return sxSetComment(r, "First thirty-two bytes of the external sample name, matching the retained sample-information export width. The loader reads a NUL-terminated name beginning here; later bytes are preserved separately.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "opaque_name_tail") {
+        return sxSetComment(r, "Eight preserved bytes before the transpose parameter; no assumption is made that they extend the exported thirty-two-byte name.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "transpose") {
+        return sxSetComment(r, "Signed eight-bit sample pitch adjustment, sign-extended by the original player.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "length_words") {
+        return sxSetComment(r, "Stored external sample length in two-byte words. No byte conversion or replacement from an external FORM file is applied.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "repeat_words") {
+        return sxSetComment(r, "Stored repeat length in two-byte words, copied to the audio length register for looping.");
+    }
+    if (id === sxcdata_zound_sample_slot.id && r.name === "loop_start_words") {
+        return sxSetComment(r, "Stored loop-start displacement in two-byte words from the external sample beginning. The player doubles it only at playback; this is not a file-relative offset.");
+    }
+    if (id === sxcdata_zound_position_channel.id && r.name === "pattern_index") {
+        return sxSetComment(r, "Zero-based index of a saved 128-byte pattern; the packed pattern body is not interpreted here.");
+    }
+    if (id === sxcdata_zound_position_channel.id && r.name === "volume_adjustment") {
+        return sxSetComment(r, "Signed eight-bit adjustment added to volume and clamped by the player to 0 through 64.");
+    }
+    if (id === sxcdata_zound_position_channel.id && r.name === "sample_index_addend") {
+        return sxSetComment(r, "Stored byte added to the pattern sample index. The original ADD.B operation is preserved without assigning a signed interpretation.");
+    }
+    if (id === sxcdata_zound_position_channel.id && r.name === "note_addend") {
+        return sxSetComment(r, "Stored byte added to the pattern note. The original ADD.B operation is preserved without assigning a signed interpretation.");
+    }
+    if (id === sxcdata_zound_external_path.id && r.name === "sample_path") {
+        return sxSetComment(r, "Physical 101-byte path region following the complete saved order and pattern regions. External sample files are not reconstructed or given offsets in this module.");
+    }
+    if (r.property & 0x00000004) {
+        return sxSetComment(r, "Stored byte offset relative to the module start, unless the enclosing structure specifies another origin.");
+    }
+    if (r.property & 0x00000002) {
+        return sxSetComment(r, "Encoded target-machine memory address; the field source-file offset is shown separately.");
+    }
+    return true;
+}

@@ -1,0 +1,86 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/gamess_input/xx_gamess_input_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsch_nuclear_charge_fields = layout([field("nuclear_charge", "ascii_real", 0)]);
+var sxsch_nuclear_charge = sxLayout(0x606100BE, "chemistry_nuclear_charge", LE, sxsch_nuclear_charge_fields);
+var sxsch_symmetry_name_fields = layout([field("symmetry_name", "char", 0, STRING)]);
+var sxsch_symmetry_name = sxLayout(0x606100BF, "chemistry_symmetry_name", LE, sxsch_symmetry_name_fields);
+function sxsch_gamess(q) {
+    var l = sxNew_sxsch_token();
+    var t = sxAllocN(16, sxNew_sxsch_token);
+    var n = [0];
+    var section = 0;
+    while (sxsch_next(q, l, t[0], 16, n, "!")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (q.b[t[0].a] === 36 /*$*/) {
+            {
+                if (!sxsch_emit(q, sxsch_section, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "$data")) {
+                section = 2;
+                if (!sxsch_line(q, l)) {
+                    return false;
+                }
+                {
+                    if (!sxsch_emit(q, sxsch_title, sxCopy_sxsch_token(null, l))) {
+                        return false;
+                    }
+                }
+                if (!sxsch_next(q, l, t[0], 16, n, "!") || n[0] !== 1) {
+                    return false;
+                }
+                {
+                    if (!sxsch_emit(q, sxsch_symmetry_name, sxCopy_sxsch_token(null, t[0]))) {
+                        return false;
+                    }
+                }
+            } else if (sxsch_ci(q, sxCopy_sxsch_token(null, t[0]), "$end")) {
+                section = 0;
+            } else {
+                section = 1;
+            }
+        } else if (section === 2) {
+            if (n[0] !== 5) {
+                return false;
+            }
+            {
+                if (!sxsch_emit(q, sxsch_element, sxCopy_sxsch_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsch_emit(q, sxsch_nuclear_charge, sxCopy_sxsch_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            if (!sxsch_xyz(q, t[2], 0)) {
+                return false;
+            }
+        } else if (section === 1) {
+            for (var j = 0; j < n[0]; j++) {
+                var key = sxNew_sxsch_token();
+                var value = sxNew_sxsch_token();
+                if (!sxsch_assignment(q, sxCopy_sxsch_token(null, t[j]), key, value)) {
+                    return false;
+                }
+                var layout = sxsch_ci(q, sxCopy_sxsch_token(null, key), "mult") ? sxsch_multiplicity : sxsch_ci(q, sxCopy_sxsch_token(null, key), "icharg") ? sxsch_charge : sxsch_ci(q, sxCopy_sxsch_token(null, key), "ngauss") || sxsch_ci(q, sxCopy_sxsch_token(null, key), "ndfunc") || sxsch_ci(q, sxCopy_sxsch_token(null, key), "npfunc") ? sxsch_integer_value : sxsch_ci(q, sxCopy_sxsch_token(null, key), "units") ? sxsch_units : sxsch_ci(q, sxCopy_sxsch_token(null, key), "gbasis") ? sxsch_basis_name : sxsch_ci(q, sxCopy_sxsch_token(null, key), "scftyp") ? sxsch_method_name : sxsch_ci(q, sxCopy_sxsch_token(null, key), "runtyp") ? sxsch_calculation_kind : sxsch_option_value;
+                if (!sxsch_option(q, sxCopy_sxsch_token(null, key), sxCopy_sxsch_token(null, value), layout)) {
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_gamess_input_build(q) {
+    return sxsch_gamess(q);
+}

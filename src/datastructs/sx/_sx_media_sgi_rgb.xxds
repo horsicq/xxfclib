@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/sgi_rgb/xx_sgi_rgb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_be_offset32_fields = layout([u32("offset", OFFSET)]);
+var sxm_be_offset32 = sxLayout(0x6006000C, "be_offset32", BE, sxm_be_offset32_fields);
+function sx_sgi_rgb_build(c, h, n) {
+    var at = 512;
+    var rows;
+    if (n < 108 || sxGetU16(h, n, 0, true) !== 474 || !sx_add(c, sxm_sgi_header, 0, 512)) {
+        return false;
+    }
+    if (h[2] === 1) {
+        rows = sxGetU16(h, n, 8, true) * sxGetU16(h, n, 10, true);
+        if (!rows || !sx_table(c, sxm_be_offset32, 512, 4, rows) || !sx_table(c, sxm_be_length32, 512 + (rows >= SX_I64_MAX ? rows - SX_U64_MAX : rows) * 4, 4, rows)) {
+            return false;
+        }
+        for (var i = 0; i < rows; i++) {
+            var off;
+            var z;
+            if ((off = sx_u32(c, 512 + (i >= SX_I64_MAX ? i - SX_U64_MAX : i) * 4, true)) === null || (z = sx_u32(c, 512 + (rows + i >= SX_I64_MAX ? rows + i - SX_U64_MAX : rows + i) * 4, true)) === null || !sxm_span(c, off, z)) {
+                return false;
+            }
+        }
+        at += rows * 8;
+    }
+    return sxm_tail(c, at);
+}

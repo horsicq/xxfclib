@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/cgc/xx_cgc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_cgc_header_le_fields = layout([chars("magic", 4, SIGNATURE), u8("elf_class", ID), u8("endian", ID),
+    u8("elf_version", ID), u8("osabi", ID), u8("abi_version", ID), bytes("padding", 7, RESERVED), u16("file_type", ID),
+    u16("machine", ID), u32("version", ID), u32("entry_point", VA), u32("program_headers_offset", OFFSET),
+    u32("section_headers_offset", OFFSET), u32("flags", FLAGS), u16("header_size", SIZE), u16("program_header_size", SIZE),
+    u16("program_header_count", COUNT), u16("section_header_size", SIZE), u16("section_header_count", COUNT),
+    u16("section_names_index", ID)]);
+var sxexm_cgc_header_le = sxLayout(0x602B0026, "cgc_header_le", LE, sxexm_cgc_header_le_fields);
+var sxexm_cgc_header_be_fields = layout([chars("magic", 4, SIGNATURE), u8("elf_class", ID), u8("endian", ID),
+    u8("elf_version", ID), u8("osabi", ID), u8("abi_version", ID), bytes("padding", 7, RESERVED), u16("file_type", ID),
+    u16("machine", ID), u32("version", ID), u32("entry_point", VA), u32("program_headers_offset", OFFSET),
+    u32("section_headers_offset", OFFSET), u32("flags", FLAGS), u16("header_size", SIZE), u16("program_header_size", SIZE),
+    u16("program_header_count", COUNT), u16("section_header_size", SIZE), u16("section_header_count", COUNT),
+    u16("section_names_index", ID)]);
+var sxexm_cgc_header_be = sxLayout(0x602B0027, "cgc_header_be", BE, sxexm_cgc_header_be_fields);
+var sxexm_cgc_program_header_le_fields = layout([u32("type", ID), u32("file_offset", OFFSET), u32("virtual_address", VA),
+    u32("physical_address", VA), u32("file_size", SIZE), u32("memory_size", SIZE), u32("flags", FLAGS), u32("alignment", SIZE)]);
+var sxexm_cgc_program_header_le = sxLayout(0x602B0028, "cgc_program_header_le", LE, sxexm_cgc_program_header_le_fields);
+var sxexm_cgc_program_header_be_fields = layout([u32("type", ID), u32("file_offset", OFFSET), u32("virtual_address", VA),
+    u32("physical_address", VA), u32("file_size", SIZE), u32("memory_size", SIZE), u32("flags", FLAGS), u32("alignment", SIZE)]);
+var sxexm_cgc_program_header_be = sxLayout(0x602B0029, "cgc_program_header_be", BE, sxexm_cgc_program_header_be_fields);
+var sxexm_cgc_section_header_le_fields = layout([u32("name_offset", OFFSET), u32("type", ID), u32("flags", FLAGS),
+    u32("address", VA), u32("file_offset", OFFSET), u32("file_size", SIZE), u32("link", ID), u32("info"),
+    u32("alignment", SIZE), u32("entry_size", SIZE)]);
+var sxexm_cgc_section_header_le = sxLayout(0x602B002A, "cgc_section_header_le", LE, sxexm_cgc_section_header_le_fields);
+var sxexm_cgc_section_header_be_fields = layout([u32("name_offset", OFFSET), u32("type", ID), u32("flags", FLAGS),
+    u32("address", VA), u32("file_offset", OFFSET), u32("file_size", SIZE), u32("link", ID), u32("info"),
+    u32("alignment", SIZE), u32("entry_size", SIZE)]);
+var sxexm_cgc_section_header_be = sxLayout(0x602B002B, "cgc_section_header_be", BE, sxexm_cgc_section_header_be_fields);
+function sxexm_cgc(c) {
+    var h = [];
+    if (!sxexm_read(c, 0, h, 52)) {
+        return false;
+    }
+    var be = h[5] === 2;
+    if (!sxexm_add(c, be ? sxexm_cgc_header_be : sxexm_cgc_header_le, 0)) {
+        return false;
+    }
+    for (var t = 0; t < 2; t++) {
+        var p = sxexm32(h, t ? 32 : 28, be);
+        var stride = sxexm16(h, t ? 46 : 42, be);
+        var n = sxexm16(h, t ? 48 : 44, be);
+        var minimum = t ? 40 : 32;
+        if (n > 20000 || stride < minimum || !sxexm_span(c, p, n * stride)) {
+            continue;
+        }
+        var l = t ? be ? sxexm_cgc_section_header_be : sxexm_cgc_section_header_le : be ? sxexm_cgc_program_header_be : sxexm_cgc_program_header_le;
+        for (var i = 0; i < n && c.count < 20000; i++) {
+            if (!sxexm_add(c, l, p + i * stride)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_cgc_build(c) {
+    var ok = false;
+    ok = sxexm_cgc(c);
+    return ok && sxexm_finish(c);
+}

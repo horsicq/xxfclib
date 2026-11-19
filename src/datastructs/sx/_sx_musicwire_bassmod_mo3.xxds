@@ -1,0 +1,27 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bassmod_mo3/xx_bassmod_mo3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmw_mo3_header_fields = layout([blob("magic", 3, SIGNATURE), u8("version", ID), u32("decoded_music_bytes", SIZE)]);
+var sxmw_mo3_header = sxLayout(0x60870015, "mo3_header", LE, sxmw_mo3_header_fields);
+var sxmw_mo3_packed_length_fields = layout([u32("packed_music_bytes", SIZE)]);
+var sxmw_mo3_packed_length = sxLayout(0x60870016, "mo3_packed_length", LE, sxmw_mo3_packed_length_fields);
+function sxmw_mo3(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var ver = [0];
+    var n = [0];
+    if (!sxmw_eq(v, 0, "MO3", 3, end) || !sxmw_u(v, 3, 1, ver, 0, end) || ver[0] > 5 || !sxmw_u(v, 4, 4, n, 0, end) || n[0] <= 422 || n[0] >= 0x20000000 || !sxmw_row(v, sxmw_mo3_header, 0, end)) {
+        return false;
+    }
+    if (ver[0] === 5) {
+        if (!sxmw_u(v, 8, 4, n, 0, end) || !sxmw_span(v, 12, n[0], end) || !sxmw_row(v, sxmw_mo3_packed_length, 8, end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_bassmod_mo3_build(v) {
+    return sxmw_mo3(v);
+}

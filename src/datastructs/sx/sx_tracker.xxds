@@ -1,0 +1,57 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_tracker.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_tracker");
+
+function fileTypes() { return ["TRACKER_XM", "TRACKER_S3M", "TRACKER_IT", "TRACKER_MTM", "TRACKER_ULT", "TRACKER_OKT",
+    "TRACKER_DIGI", "TRACKER_MOD", "TRACKER_FAR", "TRACKER_MDL", "TRACKER_GDM", "TRACKER_DBM", "TRACKER_MED", "TRACKER_IMF",
+    "TRACKER_AMF", "ASYLUM_AMF", "TRACKER_SOUNDFX"]; }
+
+var sx_tracker_layouts = [sxt_tracker_order_u8, sxt_tracker_order_u16be, sxt_tracker_track_index, sxt_tracker_offset_u32le,
+    sxt_tracker_offset_u32be, sxt_tracker_paragraph, sxt_tracker_length_u32be, sxt_tracker_loop_start_u32be,
+    sxt_tracker_loop_length_u32be, sxt_tracker_volume, sxt_tracker_finetune, sxt_tracker_pan4, sxt_tracker_count_u8,
+    sxt_tracker_count_u16le, sxt_tracker_count_u16be, sxt_tracker_length_u16le, sxt_tracker_chunk_be, sxt_tracker_title20,
+    sxt_tracker_title30, sxt_tracker_title32, sxt_tracker_title44, sxt_mod_sample, sxt_mod_orders, sxt_mod_signature,
+    sxt_mod_event, sxt_xm_header, sxt_xm_pattern_header, sxt_xm_instrument_header, sxt_xm_instrument_sampled_header,
+    sxt_xm_keymap, sxt_tracker_envelope_point, sxt_xm_envelope_control, sxt_xm_sample, sxt_s3m_header, sxt_s3m_channel,
+    sxt_s3m_panning, sxt_s3m_sample, sxt_it_header, sxt_it_channel_pan, sxt_it_sample, sxt_it_pattern_header, sxt_mtm_header,
+    sxt_mtm_sample, sxt_mtm_event, sxt_ult_header, sxt_ult_sample, sxt_ult_counts, sxt_okt_signature, sxt_okt_channel,
+    sxt_okt_sample, sxt_okt_speed, sxt_okt_event, sxt_digi_header, sxt_digi_pattern_header, sxt_far_header,
+    sxt_far_order_counts, sxt_far_pattern_header, sxt_far_sample_bitmap, sxt_far_sample, sxt_far_event, sxt_gdm_header,
+    sxt_gdm_sample, sxt_dbm_header, sxt_dbm_info, sxt_dbm_song, sxt_dbm_instrument, sxt_dbm_pattern_header,
+    sxt_dbm_sample_header, sxt_mdl_header, sxt_mdl_chunk, sxt_mdl_info, sxt_mdl_pattern_header, sxt_mdl_instrument,
+    sxt_mdl_subinstrument, sxt_mdl_sample, sxt_mdl_envelope, sxt_med_header, sxt_med_sample_settings, sxt_med_song,
+    sxt_med_pattern0_header, sxt_med_pattern1_header, sxt_med_sample_header, sxt_med_expansion, sxt_imf_header, sxt_imf_channel,
+    sxt_imf_instrument, sxt_imf_envelope_control, sxt_imf_instrument_tail, sxt_imf_sample, sxt_imf_pattern_header,
+    sxt_amf_header, sxt_amf_instrument, sxt_amf_track_header, sxt_amf_event, sxt_asylum_header, sxt_asylum_instrument,
+    sxt_asylum_event, sxt_soundfx_header, sxt_soundfx_instrument];
+
+function structs() {
+    return sxCatalog([sxt_tracker_order_u8, sxt_tracker_order_u16be, sxt_tracker_track_index, sxt_tracker_offset_u32le,
+        sxt_tracker_offset_u32be, sxt_tracker_paragraph, sxt_tracker_length_u32be, sxt_tracker_loop_start_u32be,
+        sxt_tracker_loop_length_u32be, sxt_tracker_volume, sxt_tracker_finetune, sxt_tracker_pan4, sxt_tracker_count_u8,
+        sxt_tracker_count_u16le, sxt_tracker_count_u16be, sxt_tracker_length_u16le, sxt_tracker_chunk_be, sxt_tracker_title20,
+        sxt_tracker_title30, sxt_tracker_title32, sxt_tracker_title44, sxt_mod_sample, sxt_mod_orders, sxt_mod_signature,
+        sxt_mod_event, sxt_xm_header, sxt_xm_pattern_header, sxt_xm_instrument_header, sxt_xm_instrument_sampled_header,
+        sxt_xm_keymap, sxt_tracker_envelope_point, sxt_xm_envelope_control, sxt_xm_sample, sxt_s3m_header, sxt_s3m_channel,
+        sxt_s3m_panning, sxt_s3m_sample, sxt_it_header, sxt_it_channel_pan, sxt_it_sample, sxt_it_pattern_header,
+        sxt_mtm_header, sxt_mtm_sample, sxt_mtm_event, sxt_ult_header, sxt_ult_sample, sxt_ult_counts, sxt_okt_signature,
+        sxt_okt_channel, sxt_okt_sample, sxt_okt_speed, sxt_okt_event, sxt_digi_header, sxt_digi_pattern_header, sxt_far_header,
+        sxt_far_order_counts, sxt_far_pattern_header, sxt_far_sample_bitmap, sxt_far_sample, sxt_far_event, sxt_gdm_header,
+        sxt_gdm_sample, sxt_dbm_header, sxt_dbm_info, sxt_dbm_song, sxt_dbm_instrument, sxt_dbm_pattern_header,
+        sxt_dbm_sample_header, sxt_mdl_header, sxt_mdl_chunk, sxt_mdl_info, sxt_mdl_pattern_header, sxt_mdl_instrument,
+        sxt_mdl_subinstrument, sxt_mdl_sample, sxt_mdl_envelope, sxt_med_header, sxt_med_sample_settings, sxt_med_song,
+        sxt_med_pattern0_header, sxt_med_pattern1_header, sxt_med_sample_header, sxt_med_expansion, sxt_imf_header,
+        sxt_imf_channel, sxt_imf_instrument, sxt_imf_envelope_control, sxt_imf_instrument_tail, sxt_imf_sample,
+        sxt_imf_pattern_header, sxt_amf_header, sxt_amf_instrument, sxt_amf_track_header, sxt_amf_event, sxt_asylum_header,
+        sxt_asylum_instrument, sxt_asylum_event, sxt_soundfx_header, sxt_soundfx_instrument], sx_tracker_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_tracker_build, false);
+}

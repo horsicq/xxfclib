@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/bsc_amstradcpc_soundtrakker128k/xx_bsc_amstradcpc_soundtrakker128k_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_bsc128_position_fields = layout([u8("pattern_index")]);
+var sxchip_chip_bsc128_position = sxLayout(0x608F002B, "chip_bsc128_position", LE, sxchip_chip_bsc128_position_fields);
+var sxchip_chip_bsc128_name_fields = layout([chars("name", 8, NONE)]);
+var sxchip_chip_bsc128_name = sxLayout(0x608F002C, "chip_bsc128_name", LE, sxchip_chip_bsc128_name_fields);
+function sxchip_bsc128(c) {
+    var b = 128;
+    if (!sxchip_span(c, 0, b + 0xB80)) {
+        return false;
+    }
+    if (!sxchip_put(c, sxchip_chip_amsdos_header, 0, 1)) {
+        return false;
+    }
+    for (var i = 0; i < 16; i++) {
+        var p = b + ((130 * i) >>> 0);
+        if (!sxchip_put(c, sxchip_chip_bsc128_volume, p, 32) || !sxchip_put(c, sxchip_chip_bsc128_noise, p + 32, 32) || !sxchip_put(c, sxchip_chip_bsc128_tone, p + 64, 32) || !sxchip_put(c, sxchip_chip_bsc128_loop, p + 128, 1)) {
+            return false;
+        }
+    }
+    if (!sxchip_put(c, sxchip_chip_note_step, b + 0x820, 512) || !sxchip_put(c, sxchip_chip_bsc128_position, b + 0xA30, 96) || !sxchip_put(c, sxchip_chip_bsc128_name, b + 0xA90, 1) || !sxchip_put(c, sxchip_chip_bsc128_name, b + 0xA98, 16) || !sxchip_put(c, sxchip_chip_note_step, b + 0xB18, 96) || !sxchip_put(c, sxchip_chip_bsc128_settings, b + 0xB7B, 1)) {
+        return false;
+    }
+    var count = [0];
+    var rows = [0];
+    if (!sxchip_u8(c, b + 0xB7F, count) || !sxchip_u8(c, b + 0xB7D, rows) || count[0] > 96 || !rows[0]) {
+        return true;
+    }
+    var max = 0;
+    for (i = 0; i < count[0]; i++) {
+        var n = [0];
+        if (!sxchip_u8(c, b + 0xA30 + i, n)) {
+            return true;
+        }
+        if (n[0] > max) {
+            max = n[0];
+        }
+    }
+    var patterns = max + 1;
+    if (patterns > 96) {
+        return true;
+    }
+    return sxchip_opt(c, sxchip_chip_bsc128_event, b + 0xB80, patterns * rows[0] * 3);
+}
+function sx_bsc_amstradcpc_soundtrakker128k_build(c) {
+    return sxchip_bsc128(c);
+}

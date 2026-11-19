@@ -1,0 +1,124 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/cri_usm/xx_cri_usm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_usm_chunk_fields = layout([blob("chunk_id", 4, ID), u32("data_size", SIZE), u16("payload_offset", OFFSET),
+    u16("padding_size", SIZE), u8("channel", ID), u8("reserved", RESERVED), u16("payload_type", ID), u32("frame_time"),
+    u32("frame_rate"), u32("reserved1", RESERVED), u32("reserved2", RESERVED)]);
+var sxnx_usm_chunk = sxLayout(0x603200A6, "usm_chunk", BE, sxnx_usm_chunk_fields);
+var sxnx_usm_utf_header_fields = layout([blob("signature", 4, SIGNATURE), u32("data_size", SIZE), u16("version", ID),
+    u16("rows_offset", OFFSET), u32("strings_offset", OFFSET), u32("data_offset", OFFSET), u32("table_name_offset", OFFSET),
+    u16("column_count", COUNT), u16("row_size", SIZE), u32("row_count", COUNT)]);
+var sxnx_usm_utf_header = sxLayout(0x603200A7, "usm_utf_header", BE, sxnx_usm_utf_header_fields);
+var sxnx_usm_utf_column_fields = layout([u8("storage_and_type", FLAGS), u32("name_offset", OFFSET)]);
+var sxnx_usm_utf_column = sxLayout(0x603200A8, "usm_utf_column", BE, sxnx_usm_utf_column_fields);
+var sxnx_usm_utf_value_u8_fields = layout([u8("value")]);
+var sxnx_usm_utf_value_u8 = sxLayout(0x603200A9, "usm_utf_value_u8", BE, sxnx_usm_utf_value_u8_fields);
+var sxnx_usm_utf_value_i8_fields = layout([i8("value")]);
+var sxnx_usm_utf_value_i8 = sxLayout(0x603200AA, "usm_utf_value_i8", BE, sxnx_usm_utf_value_i8_fields);
+var sxnx_usm_utf_value_u16_fields = layout([u16("value")]);
+var sxnx_usm_utf_value_u16 = sxLayout(0x603200AB, "usm_utf_value_u16", BE, sxnx_usm_utf_value_u16_fields);
+var sxnx_usm_utf_value_i16_fields = layout([i16("value")]);
+var sxnx_usm_utf_value_i16 = sxLayout(0x603200AC, "usm_utf_value_i16", BE, sxnx_usm_utf_value_i16_fields);
+var sxnx_usm_utf_value_u32_fields = layout([u32("value")]);
+var sxnx_usm_utf_value_u32 = sxLayout(0x603200AD, "usm_utf_value_u32", BE, sxnx_usm_utf_value_u32_fields);
+var sxnx_usm_utf_value_i32_fields = layout([i32("value")]);
+var sxnx_usm_utf_value_i32 = sxLayout(0x603200AE, "usm_utf_value_i32", BE, sxnx_usm_utf_value_i32_fields);
+var sxnx_usm_utf_value_u64_fields = layout([u64("value")]);
+var sxnx_usm_utf_value_u64 = sxLayout(0x603200AF, "usm_utf_value_u64", BE, sxnx_usm_utf_value_u64_fields);
+var sxnx_usm_utf_value_i64_fields = layout([i64("value")]);
+var sxnx_usm_utf_value_i64 = sxLayout(0x603200B0, "usm_utf_value_i64", BE, sxnx_usm_utf_value_i64_fields);
+var sxnx_usm_utf_value_f32_fields = layout([field("value", "float", 4)]);
+var sxnx_usm_utf_value_f32 = sxLayout(0x603200B1, "usm_utf_value_f32", BE, sxnx_usm_utf_value_f32_fields);
+var sxnx_usm_utf_value_f64_fields = layout([field("value", "double", 8)]);
+var sxnx_usm_utf_value_f64 = sxLayout(0x603200B2, "usm_utf_value_f64", BE, sxnx_usm_utf_value_f64_fields);
+var sxnx_usm_utf_string_fields = layout([u32("string_offset", OFFSET)]);
+var sxnx_usm_utf_string = sxLayout(0x603200B3, "usm_utf_string", BE, sxnx_usm_utf_string_fields);
+var sxnx_usm_utf_data_fields = layout([u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxnx_usm_utf_data = sxLayout(0x603200B4, "usm_utf_data", BE, sxnx_usm_utf_data_fields);
+var sxnx_usm_utf_guid_fields = layout([blob("guid", 16, ID)]);
+var sxnx_usm_utf_guid = sxLayout(0x603200B5, "usm_utf_guid", LE, sxnx_usm_utf_guid_fields);
+function sxnx_usm_utf(v, base, end) {
+    if (!sxnx_row(v, sxnx_usm_utf_header, base, end)) {
+        return false;
+    }
+    var sz = 8 + sxnx_u32(v.p, base + 4, true);
+    if (!sxnx_need(v, base, sz, end)) {
+        return false;
+    }
+    end = base + sz;
+    var rows = base + 8 + sxnx_u16(v.p, base + 10, true);
+    var strings = base + 8 + sxnx_u32(v.p, base + 12, true);
+    var p = base + 32;
+    var count = sxnx_u16(v.p, base + 24, true);
+    var width = sxnx_u16(v.p, base + 26, true);
+    var nr = sxnx_u32(v.p, base + 28, true);
+    if (count > 128 || nr > 1024 || rows > strings || strings > end || !sxnx_need(v, rows, width * nr, strings)) {
+        return false;
+    }
+    var types = [sxnx_usm_utf_value_u8, sxnx_usm_utf_value_i8, sxnx_usm_utf_value_u16, sxnx_usm_utf_value_i16, sxnx_usm_utf_value_u32, sxnx_usm_utf_value_i32, sxnx_usm_utf_value_u64, sxnx_usm_utf_value_i64, sxnx_usm_utf_value_f32, sxnx_usm_utf_value_f64, sxnx_usm_utf_string, sxnx_usm_utf_data, sxnx_usm_utf_guid];
+    var colsize = [1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 4, 8, 16];
+    var kind = [];
+    var flags = [];
+    var offset = [];
+    var rw = 0;
+    for (var i = 0; i < count; i++) {
+        if (!sxnx_row(v, sxnx_usm_utf_column, p, rows)) {
+            return false;
+        }
+        kind[i] = v.p[p] & 15;
+        flags[i] = v.p[p] & 0xF0;
+        offset[i] = rw;
+        p += 5;
+        if (kind[i] > 12) {
+            return false;
+        }
+        if (flags[i] & 0x20) {
+            if (!sxnx_row(v, types[kind[i]], p, rows)) {
+                return false;
+            }
+            p += colsize[kind[i]];
+        }
+        if (flags[i] & 0x40) {
+            if (rw > width || colsize[kind[i]] > (width - rw) >>> 0) {
+                return false;
+            }
+            rw = (rw + colsize[kind[i]]) >>> 0;
+        }
+    }
+    for (var j = 0; j < nr; j++) {
+        for (i = 0; i < count; i++) {
+            if (flags[i] & 0x40 && !sxnx_row(v, types[kind[i]], rows + j * width + offset[i], strings)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sxnx_usm(v) {
+    var p = 0;
+    var count = 0;
+    while (p < v.n) {
+        if (++count > 4096 || !sxnx_row(v, sxnx_usm_chunk, p, v.n)) {
+            return false;
+        }
+        var size = 8 + sxnx_u32(v.p, p + 4, true);
+        var offset = sxnx_u16(v.p, p + 8, true);
+        var pad = sxnx_u16(v.p, p + 10, true);
+        var type = sxnx_u16(v.p, p + 14, true);
+        if (size < 32 || !sxnx_need(v, p, size, v.n) || (offset + 8) >>> 0 > size || pad > sxU64(sxU64(size - offset) - 8)) {
+            return false;
+        }
+        var end = p + size;
+        if ((type === 1 || type === 3) && !sxnx_usm_utf(v, p + 8 + offset, sxU64(end - pad))) {
+            return false;
+        }
+        p = end;
+    }
+    return true;
+}
+function sx_cri_usm_build(v) {
+    return sxnx_usm(v);
+}

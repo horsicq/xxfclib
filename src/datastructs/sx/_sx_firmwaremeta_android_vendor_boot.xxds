@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/android_vendor_boot/xx_android_vendor_boot_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fw_android_vendor_boot_v3_fields = layout([field("magic", "byte[8]", 8, SIGNATURE), u32("header_version", ID),
+    u32("page_size", SIZE), u32("kernel_addr", VA), u32("ramdisk_addr", VA), u32("vendor_ramdisk_size", SIZE),
+    chars("cmdline", 2048, NONE), u32("tags_addr", VA), chars("name", 16, NONE), u32("header_size", SIZE),
+    u32("dtb_size", SIZE), u64("dtb_addr", VA)]);
+var sx_fw_android_vendor_boot_v3 = sxLayout(0x601E0007, "android_vendor_boot_v3", LE, sx_fw_android_vendor_boot_v3_fields);
+var sx_fw_android_vendor_boot_v4_extra_fields = layout([u32("vendor_ramdisk_table_size", SIZE),
+    u32("vendor_ramdisk_table_entry_num", COUNT), u32("vendor_ramdisk_table_entry_size", SIZE), u32("bootconfig_size", SIZE)]);
+var sx_fw_android_vendor_boot_v4_extra = sxLayout(0x601E0008, "android_vendor_boot_v4_extra", LE, sx_fw_android_vendor_boot_v4_extra_fields);
+function sx_fw_vendor(c) {
+    var h = [];
+    if (!sx_read(c, 0, h, 2112)) {
+        return false;
+    }
+    var v = sxGetU32(h, 2112, 8, false);
+    var page = sxGetU32(h, 2112, 12, false);
+    if (v !== 3 && v !== 4 || page < 512 || page > 65536 || (page & (page - 1) >>> 0) >>> 0 || !sx_add(c, sx_fw_android_vendor_boot_v3, 0, 2112)) {
+        return false;
+    }
+    if (v === 3) {
+        return true;
+    }
+    if (!sx_read_at(c, 2112, h, 2112, 16) || !sx_add(c, sx_fw_android_vendor_boot_v4_extra, 2112, 16)) {
+        return false;
+    }
+    var n = sxGetU32(h, 2128, 2116, false);
+    var width = sxGetU32(h, 2128, 2120, false);
+    var at = sxAnd64((((2128 + page) >>> 0) - 1) >>> 0, sxNot64(sxU64(page - 1)));
+    at += sxAnd64(sxU64(sxGetU32(h, 2128, 24, false) + page - 1), sxNot64(sxU64(page - 1)));
+    at += sxAnd64(sxU64(sxGetU32(h, 2128, 2100, false) + page - 1), sxNot64(sxU64(page - 1)));
+    return n <= 65533 && (!n || width === 108) && sx_table(c, sx_fw_android_vendor_ramdisk_entry, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 108, n);
+}
+function sx_android_vendor_boot_build(c) {
+    var ok = false;
+    ok = sx_fw_vendor(c);
+    return ok && sx_fw_finish(c);
+}

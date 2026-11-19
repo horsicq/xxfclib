@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/font/unifont_hex/xx_unifont_hex_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_unicode_codepoint_fields = layout([field("unicode_codepoint", "ascii_hex", 0, ID)]);
+var sxti_unicode_codepoint = sxLayout(0x60410055, "textimage_unicode_codepoint", LE, sxti_unicode_codepoint_fields);
+function sxti_unifont(q) {
+    var a = [0];
+    var end = [0];
+    var lines = 0;
+    while (sxti_line(q, a, end, false)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var colon = a[0];
+        while (colon < end[0] && q.b[colon] !== 58 /*:*/) {
+            colon++;
+        }
+        if (colon - a[0] < 4 || colon - a[0] > 6 || end[0] - colon - 1 !== 32 && end[0] - colon - 1 !== 64) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_unicode_codepoint, a[0], colon - a[0])) {
+                return false;
+            }
+        }
+        for (var i = colon + 1; i < end[0]; i += 2) {
+            {
+                if (!sxti_emit(q, sxti_bitmap_byte, i, 2)) {
+                    return false;
+                }
+            }
+        }
+        lines++;
+    }
+    return lines > 0;
+}
+function sx_unifont_hex_build(q) {
+    return sxti_unifont(q);
+}

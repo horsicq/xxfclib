@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/isz/xx_isz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_isz_header_fields = layout([chars("signature", 4, SIGNATURE), u8("header_size", SIZE), u8("version"),
+    u32("volume_serial", ID), u16("sector_size", SIZE), u32("sector_count", COUNT), u8("encryption", ID),
+    u64("volume_size", SIZE), u32("chunk_count", COUNT), u32("chunk_size", SIZE), u8("pointer_size", SIZE), u8("volume_number"),
+    u32("pointer_table_offset", OFFSET), u32("segment_table_offset", OFFSET), u32("data_offset", OFFSET),
+    u8("reserved", RESERVED)]);
+var sxsl_isz_header = sxLayout(0x60330012, "isz_header", LE, sxsl_isz_header_fields);
+var sxsl_isz_checksum_tail_fields = layout([u32("checksum1", CHECKSUM), u32("data_size", SIZE), u32("unknown"),
+    u32("checksum2", CHECKSUM)]);
+var sxsl_isz_checksum_tail = sxLayout(0x60330013, "isz_checksum_tail", LE, sxsl_isz_checksum_tail_fields);
+var sxsl_isz_encoded_pointer1_fields = layout([field("encoded_size_and_type", "byte[1]", 1)]);
+var sxsl_isz_encoded_pointer1 = sxLayout(0x60330014, "isz_encoded_pointer1", LE, sxsl_isz_encoded_pointer1_fields);
+var sxsl_isz_encoded_pointer2_fields = layout([field("encoded_size_and_type", "byte[2]", 2)]);
+var sxsl_isz_encoded_pointer2 = sxLayout(0x60330015, "isz_encoded_pointer2", LE, sxsl_isz_encoded_pointer2_fields);
+var sxsl_isz_encoded_pointer3_fields = layout([field("encoded_size_and_type", "byte[3]", 3)]);
+var sxsl_isz_encoded_pointer3 = sxLayout(0x60330016, "isz_encoded_pointer3", LE, sxsl_isz_encoded_pointer3_fields);
+var sxsl_isz_encoded_pointer4_fields = layout([field("encoded_size_and_type", "byte[4]", 4)]);
+var sxsl_isz_encoded_pointer4 = sxLayout(0x60330017, "isz_encoded_pointer4", LE, sxsl_isz_encoded_pointer4_fields);
+var sxsl_isz_encoded_segment_fields = layout([field("encoded_volume_size", "byte[8]", 8),
+    field("encoded_chunk_count", "byte[4]", 4), field("encoded_first_chunk", "byte[4]", 4),
+    field("encoded_data_offset", "byte[4]", 4), field("encoded_last_chunk_continuation", "byte[4]", 4)]);
+var sxsl_isz_encoded_segment = sxLayout(0x60330018, "isz_encoded_segment", LE, sxsl_isz_encoded_segment_fields);
+function sxsl_isz(c) {
+    var h = [];
+    var b = [];
+    if (!sxsl_read(c, 0, h, 48) || !sxsl_put(c, sxsl_isz_header, 0, 1)) {
+        return false;
+    }
+    if (h[4] >= 64 && sxsl_span(c, 48, 16) && !sxsl_put(c, sxsl_isz_checksum_tail, 48, 1)) {
+        return false;
+    }
+    var p = sxsl32(h, 35);
+    var n = sxsl32(h, 25);
+    var w = h[33];
+    var ls = [sxsl_isz_encoded_pointer1, sxsl_isz_encoded_pointer2, sxsl_isz_encoded_pointer3, sxsl_isz_encoded_pointer4];
+    if (p >= h[4] && w >= 1 && w <= 4 && n <= 1048576 && sxsl_span(c, p, n * w) && !sxsl_put(c, ls[(w - 1) >>> 0], p, n)) {
+        return false;
+    }
+    p = sxsl32(h, 39);
+    if (p >= h[4]) {
+        for (var i = 0; i < 1024 && c.count < 24000; i++) {
+            if (!sxsl_read(c, p, b, 24)) {
+                break;
+            }
+            if (!sxsl_put(c, sxsl_isz_encoded_segment, p, 1)) {
+                return false;
+            }
+            for (var j = 0; j < 24; j++) {
+                b[j] ^= ~sxAt("IsZ!", j % 4) & 0xFF;
+            }
+            if (!sxsl_uint(b, 0, 8, false)) {
+                break;
+            }
+            p += 24;
+        }
+    }
+    return true;
+}
+function sx_isz_build(c) {
+    var ok = false;
+    ok = sxsl_isz(c);
+    return ok && sxsl_finish(c);
+}

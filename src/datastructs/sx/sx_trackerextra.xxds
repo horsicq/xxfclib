@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_trackerextra.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_trackerextra");
+
+function fileTypes() { return ["TRACKER_STM", "TRACKER_669", "TRACKER_LIQUID", "TRACKER_DMF", "TRACKER_PTM", "TRACKER_AMS",
+    "TRACKER_EMOD", "TRACKER_MT2", "TRACKER_PSM", "TRACKER_DTT", "TRACKER_STX", "TRACKER_DTM", "TRACKER_FUNK",
+    "TRACKER_ARCHIMEDES", "TRACKER_COCONIZER", "TRACKER_REAL", "TRACKER_MEGATRACKER", "AMOS_MUSIC_BANK", "MAD_TRACKER"]; }
+
+var sx_trackerextra_layouts = [sxtx_count_u8le, sxtx_length_u8le, sxtx_order_u8le, sxtx_count_u16le, sxtx_length_u16le,
+    sxtx_order_u16le, sxtx_count_u16be, sxtx_order_u16be, sxtx_count_u32le, sxtx_length_u32le, sxtx_paragraph_u16,
+    sxtx_offset_u32, sxtx_pan_u8, sxtx_volume_u8, sxtx_chunk_le, sxtx_chunk_be, sxtx_stm_header, sxtx_stm_sample,
+    sxtx_stm_event, sxtx_stm_short_event, sxtx_c669_header, sxtx_c669_speed, sxtx_c669_last_row, sxtx_c669_sample,
+    sxtx_c669_event, sxtx_liq_header, sxtx_liq_pattern, sxtx_liq_empty_instrument, sxtx_liq_sample, sxtx_dmf_header,
+    sxtx_dmf_sequence, sxtx_dmf_patterns, sxtx_dmf_pattern, sxtx_dmf_sample, sxtx_dmf_end, sxtx_ptm_header, sxtx_ptm_sample,
+    sxtx_ams_header, sxtx_ams_sample, sxtx_emod_header, sxtx_emod_info, sxtx_emod_sample, sxtx_emod_pattern_count,
+    sxtx_emod_pattern, sxtx_emod_event, sxtx_mt2_header, sxtx_mt2_drum_size, sxtx_mt2_extra_size, sxtx_mt2_pattern,
+    sxtx_mt2_event, sxtx_mt2_slot, sxtx_psm_header, sxtx_psm_format, sxtx_psm_pattern, sxtx_psm_song, sxtx_psm_sample,
+    sxtx_psm_date, sxtx_psm_opcode, sxtx_psm_play, sxtx_psm_range, sxtx_psm_jump_loop, sxtx_psm_jump, sxtx_psm_channel_value,
+    sxtx_psm_value, sxtx_psm_sample_map, sxtx_psm_panning, sxtx_dtt_header, sxtx_dtt_sample, sxtx_dtt_event,
+    sxtx_dtt_event_extra, sxtx_stx_header, sxtx_stx_sample, sxtx_stx_order, sxtx_stx_channels, sxtx_dtm_info, sxtx_dtm_sequence,
+    sxtx_dtm_pattern_info, sxtx_dtm_sample, sxtx_dtm_pattern, sxtx_mod_event, sxtx_dtm_event, sxtx_funk_header,
+    sxtx_funk_sample, sxtx_funk_event, sxtx_musx_name, sxtx_musx_tracker, sxtx_musx_volume, sxtx_musx_loop_offset,
+    sxtx_musx_event, sxtx_coco_header, sxtx_coco_sample, sxtx_rtm_object, sxtx_rtm_song, sxtx_rtm_pan, sxtx_rtm_extra_size,
+    sxtx_rtm_original_name, sxtx_rtm_pattern, sxtx_rtm_instrument, sxtx_rtm_keymap, sxtx_rtm_envelope_point,
+    sxtx_rtm_envelope_tail, sxtx_rtm_instrument_tail, sxtx_rtm_instrument_v112, sxtx_rtm_sample, sxtx_mgt_header, sxtx_mgt_song,
+    sxtx_mgt_pan, sxtx_mgt_offset, sxtx_mgt_sample, sxtx_abk_header, sxtx_abk_sample, sxtx_abk_song_index, sxtx_abk_song,
+    sxtx_abk_pattern_offset, sxtx_mad_header, sxtx_mad_instrument, sxtx_mad_song, sxtx_mad_event];
+
+function structs() {
+    return sxCatalog([sxtx_count_u8le, sxtx_length_u8le, sxtx_order_u8le, sxtx_count_u16le, sxtx_length_u16le, sxtx_order_u16le,
+        sxtx_count_u16be, sxtx_order_u16be, sxtx_count_u32le, sxtx_length_u32le, sxtx_paragraph_u16, sxtx_offset_u32,
+        sxtx_pan_u8, sxtx_volume_u8, sxtx_chunk_le, sxtx_chunk_be, sxtx_stm_header, sxtx_stm_sample, sxtx_stm_event,
+        sxtx_stm_short_event, sxtx_c669_header, sxtx_c669_speed, sxtx_c669_last_row, sxtx_c669_sample, sxtx_c669_event,
+        sxtx_liq_header, sxtx_liq_pattern, sxtx_liq_empty_instrument, sxtx_liq_sample, sxtx_dmf_header, sxtx_dmf_sequence,
+        sxtx_dmf_patterns, sxtx_dmf_pattern, sxtx_dmf_sample, sxtx_dmf_end, sxtx_ptm_header, sxtx_ptm_sample, sxtx_ams_header,
+        sxtx_ams_sample, sxtx_emod_header, sxtx_emod_info, sxtx_emod_sample, sxtx_emod_pattern_count, sxtx_emod_pattern,
+        sxtx_emod_event, sxtx_mt2_header, sxtx_mt2_drum_size, sxtx_mt2_extra_size, sxtx_mt2_pattern, sxtx_mt2_event,
+        sxtx_mt2_slot, sxtx_psm_header, sxtx_psm_format, sxtx_psm_pattern, sxtx_psm_song, sxtx_psm_sample, sxtx_psm_date,
+        sxtx_psm_opcode, sxtx_psm_play, sxtx_psm_range, sxtx_psm_jump_loop, sxtx_psm_jump, sxtx_psm_channel_value,
+        sxtx_psm_value, sxtx_psm_sample_map, sxtx_psm_panning, sxtx_dtt_header, sxtx_dtt_sample, sxtx_dtt_event,
+        sxtx_dtt_event_extra, sxtx_stx_header, sxtx_stx_sample, sxtx_stx_order, sxtx_stx_channels, sxtx_dtm_info,
+        sxtx_dtm_sequence, sxtx_dtm_pattern_info, sxtx_dtm_sample, sxtx_dtm_pattern, sxtx_mod_event, sxtx_dtm_event,
+        sxtx_funk_header, sxtx_funk_sample, sxtx_funk_event, sxtx_musx_name, sxtx_musx_tracker, sxtx_musx_volume,
+        sxtx_musx_loop_offset, sxtx_musx_event, sxtx_coco_header, sxtx_coco_sample, sxtx_rtm_object, sxtx_rtm_song,
+        sxtx_rtm_pan, sxtx_rtm_extra_size, sxtx_rtm_original_name, sxtx_rtm_pattern, sxtx_rtm_instrument, sxtx_rtm_keymap,
+        sxtx_rtm_envelope_point, sxtx_rtm_envelope_tail, sxtx_rtm_instrument_tail, sxtx_rtm_instrument_v112, sxtx_rtm_sample,
+        sxtx_mgt_header, sxtx_mgt_song, sxtx_mgt_pan, sxtx_mgt_offset, sxtx_mgt_sample, sxtx_abk_header, sxtx_abk_sample,
+        sxtx_abk_song_index, sxtx_abk_song, sxtx_abk_pattern_offset, sxtx_mad_header, sxtx_mad_instrument, sxtx_mad_song,
+        sxtx_mad_event], sx_trackerextra_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_trackerextra_build, false);
+}

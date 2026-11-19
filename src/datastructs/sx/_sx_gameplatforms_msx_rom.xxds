@@ -1,0 +1,20 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/msx_rom/xx_msx_rom_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_msx_rom_header_fields = layout([blob("signature", 2, SIGNATURE), u16("init_address", VA), u16("runtime_address", VA),
+    u16("device_address", VA), u16("text_address", VA), blob("reserved", 6, RESERVED)]);
+var sxgp_msx_rom_header = sxLayout(0x60360001, "msx_rom_header", LE, sxgp_msx_rom_header_fields);
+var sxgp_msx_binary_header_fields = layout([u8("signature", SIGNATURE), u16("start_address", VA), u16("end_address", VA),
+    u16("init_address", VA)]);
+var sxgp_msx_binary_header = sxLayout(0x60360002, "msx_binary_header", LE, sxgp_msx_binary_header_fields);
+function sxgp_msx(v) {
+    var magic = [0];
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgp_word(v, 0, 1, false, magic, 0, end) && sxgp_row(v, magic[0] === 254 ? sxgp_msx_binary_header : sxgp_msx_rom_header, 0, end);
+}
+function sx_msx_rom_build(v) {
+    return sxgp_msx(v);
+}

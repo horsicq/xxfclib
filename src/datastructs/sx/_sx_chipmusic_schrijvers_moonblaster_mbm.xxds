@@ -1,0 +1,47 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/schrijvers_moonblaster_mbm/xx_schrijvers_moonblaster_mbm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxchip_chip_mbm_edit_marker_fields = layout([u8("edit_marker", SIGNATURE)]);
+var sxchip_chip_mbm_edit_marker = sxLayout(0x608F0043, "chip_mbm_edit_marker", LE, sxchip_chip_mbm_edit_marker_fields);
+function sxchip_mbm(c) {
+    var first = [0];
+    var h = [];
+    var orders = [];
+    if (!sxchip_u8(c, 0, first)) {
+        return true;
+    }
+    var start = first[0] === 255 ? 1 : 0;
+    var p = start + 376;
+    var edit = start !== 0;
+    if (!sxchip_read(c, start, h, 376)) {
+        return true;
+    }
+    if (edit && !sxchip_put(c, sxchip_chip_mbm_edit_marker, 0, 1)) {
+        return false;
+    }
+    if (!sxchip_put(c, sxchip_chip_mbm_header, start, 1)) {
+        return false;
+    }
+    var active = h[0] + 1;
+    var count = edit ? 201 : active;
+    if (count > 220 || active > count || !sxchip_read(c, p, orders, count)) {
+        return true;
+    }
+    if (!sxchip_put(c, sxchip_chip_moon_position, p, count)) {
+        return false;
+    }
+    p += count;
+    var high = 0;
+    for (var i = 0; i < active; i++) {
+        if (orders[i] > high) {
+            high = orders[i];
+        }
+    }
+    return (high > 0 && high <= 80 ? (sxchip_opt(c, sxchip_chip_mbm_pattern_pointer, p, high) ? 1 : 0) : 1) !== 0;
+}
+function sx_schrijvers_moonblaster_mbm_build(c) {
+    return sxchip_mbm(c);
+}

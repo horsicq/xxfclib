@@ -1,0 +1,64 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_gcm/xx_nintendo_gcm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_gcm_title_fields = layout([chars("title", 992, STRING)]);
+var sxgp_gcm_title = sxLayout(0x60360091, "gcm_title", LE, sxgp_gcm_title_fields);
+var sxgp_gcm_debug_fields = layout([u32("debug_monitor_offset", OFFSET), u32("debug_monitor_load_address", VA),
+    blob("reserved", 24, RESERVED)]);
+var sxgp_gcm_debug = sxLayout(0x60360092, "gcm_debug", BE, sxgp_gcm_debug_fields);
+var sxgp_gcm_boot_fields = layout([u32("dol_offset", OFFSET), u32("fst_offset", OFFSET), u32("fst_size", SIZE),
+    u32("fst_maximum_size", SIZE), u32("fst_load_address", VA), u32("user_data_offset", OFFSET), u32("user_data_size", SIZE),
+    u32("reserved", RESERVED)]);
+var sxgp_gcm_boot = sxLayout(0x60360093, "gcm_boot", BE, sxgp_gcm_boot_fields);
+var sxgp_gcm_apploader_fields = layout([chars("date", 16, STRING), u32("entry_address", VA), u32("code_size", SIZE),
+    u32("trailer_size", SIZE), u32("reserved", RESERVED)]);
+var sxgp_gcm_apploader = sxLayout(0x60360094, "gcm_apploader", BE, sxgp_gcm_apploader_fields);
+var sxgp_gcm_fst_file_fields = layout([u8("is_directory", FLAGS), field("name_offset", "uint24", 3, OFFSET),
+    u32("data_offset", OFFSET), u32("data_size", SIZE)]);
+var sxgp_gcm_fst_file = sxLayout(0x60360095, "gcm_fst_file", BE, sxgp_gcm_fst_file_fields);
+var sxgp_gcm_fst_directory_fields = layout([u8("is_directory", FLAGS), field("name_offset", "uint24", 3, OFFSET),
+    u32("parent_index", ID), u32("next_entry_index", ID)]);
+var sxgp_gcm_fst_directory = sxLayout(0x60360096, "gcm_fst_directory", BE, sxgp_gcm_fst_directory_fields);
+var sxgp_gcm_fst_root_fields = layout([u8("is_directory", FLAGS), field("name_offset", "uint24", 3, OFFSET),
+    u32("parent_index", ID), u32("entry_count", COUNT)]);
+var sxgp_gcm_fst_root = sxLayout(0x60360097, "gcm_fst_root", BE, sxgp_gcm_fst_root_fields);
+var sxgp_gcm_dol_offset_fields = layout([u32("section_offset", OFFSET)]);
+var sxgp_gcm_dol_offset = sxLayout(0x60360098, "gcm_dol_offset", BE, sxgp_gcm_dol_offset_fields);
+var sxgp_gcm_dol_address_fields = layout([u32("load_address", VA)]);
+var sxgp_gcm_dol_address = sxLayout(0x60360099, "gcm_dol_address", BE, sxgp_gcm_dol_address_fields);
+var sxgp_gcm_dol_size_fields = layout([u32("section_size", SIZE)]);
+var sxgp_gcm_dol_size = sxLayout(0x6036009A, "gcm_dol_size", BE, sxgp_gcm_dol_size_fields);
+var sxgp_gcm_dol_tail_fields = layout([u32("bss_address", VA), u32("bss_size", SIZE), u32("entry_address", VA),
+    blob("reserved", 28, RESERVED)]);
+var sxgp_gcm_dol_tail = sxLayout(0x6036009B, "gcm_dol_tail", BE, sxgp_gcm_dol_tail_fields);
+function sxgp_gcm(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var dol = [0];
+    var fst = [0];
+    var fs = [0];
+    var n = [0];
+    if (!sxgp_row(v, sxgp_gcm_id, 0, end) || !sxgp_row(v, sxgp_gcm_title, 32, end) || !sxgp_row(v, sxgp_gcm_debug, 0x400, end) || !sxgp_row(v, sxgp_gcm_boot, 0x420, end) || !sxgp_row(v, sxgp_gcm_apploader, 0x2440, end) || !sxgp_word(v, 0x420, 4, true, dol, 0, end) || !sxgp_word(v, 0x424, 4, true, fst, 0, end) || !sxgp_word(v, 0x428, 4, true, fs, 0, end) || !sxgp_span(v, fst[0], fs[0], end)) {
+        return false;
+    }
+    if (!sxgp_table(v, sxgp_gcm_dol_offset, dol[0], 18, end) || !sxgp_table(v, sxgp_gcm_dol_address, dol[0] + 72, 18, end) || !sxgp_table(v, sxgp_gcm_dol_size, dol[0] + 144, 18, end) || !sxgp_row(v, sxgp_gcm_dol_tail, dol[0] + 216, end)) {
+        return false;
+    }
+    var stop = fst[0] + fs[0];
+    if (!sxgp_row(v, sxgp_gcm_fst_root, fst[0], stop) || !sxgp_word(v, fst[0] + 8, 4, true, n, 0, stop) || !n[0] || n[0] > 4094 || !sxgp_span(v, fst[0], n[0] * 12, stop)) {
+        return false;
+    }
+    for (var i = 1; i < n[0]; i++) {
+        var at = fst[0] + i * 12;
+        var kind = [0];
+        if (!sxgp_word(v, at, 1, false, kind, 0, stop) || !sxgp_row(v, kind[0] ? sxgp_gcm_fst_directory : sxgp_gcm_fst_file, at, stop)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_nintendo_gcm_build(v) {
+    return sxgp_gcm(v);
+}

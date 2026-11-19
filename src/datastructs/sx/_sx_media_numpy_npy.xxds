@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/numpy_npy/xx_numpy_npy_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxm_npy_v1_fields = layout([blob("magic", 6, SIGNATURE), u8("major", ID), u8("minor", ID), u16("header_length", SIZE)]);
+var sxm_npy_v1 = sxLayout(0x60060030, "npy_v1", LE, sxm_npy_v1_fields);
+var sxm_npy_v2_fields = layout([blob("magic", 6, SIGNATURE), u8("major", ID), u8("minor", ID), u32("header_length", SIZE)]);
+var sxm_npy_v2 = sxLayout(0x60060031, "npy_v2", LE, sxm_npy_v2_fields);
+function sx_numpy_npy_build(c, h, n) {
+    var prefix;
+    var len;
+    if (n < 10 || sxMemcmp(h, "\x93NUMPY", 6) || h[6] < 1 || h[6] > 3 || h[7]) {
+        return false;
+    }
+    prefix = h[6] === 1 ? 10 : 12;
+    if (n < prefix) {
+        return false;
+    }
+    len = prefix === 10 ? sxGetU16(h, n, 8, false) : sxGetU32(h, n, 8, false);
+    return sxm_span(c, prefix, len) && sxm_fixed(c, prefix === 10 ? sxm_npy_v1 : sxm_npy_v2, prefix);
+}

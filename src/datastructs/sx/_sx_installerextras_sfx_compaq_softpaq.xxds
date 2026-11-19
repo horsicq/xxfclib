@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_compaq_softpaq/xx_sfx_compaq_softpaq_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_softpaq_fit1_fields = layout([chars("name", 12, NONE), u8("reserved", RESERVED), i32("file_size", SIZE),
+    i32("file_offset", OFFSET)]);
+var sxiex_softpaq_fit1 = sxLayout(0x6082002E, "softpaq_fit1", LE, sxiex_softpaq_fit1_fields);
+var sxiex_softpaq_fit2_fields = layout([chars("name", 12, NONE), u8("reserved", RESERVED), i32("file_size", SIZE),
+    i32("file_offset", OFFSET), u16("dos_date"), u16("dos_time")]);
+var sxiex_softpaq_fit2 = sxLayout(0x6082002F, "softpaq_fit2", LE, sxiex_softpaq_fit2_fields);
+function sxiex_softpaq(c, r) {
+    var first = SX_U64_MAX;
+    var last = 0;
+    var stride = 0;
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size !== 21 && m.header_size !== 25) {
+            continue;
+        }
+        if (!sxiex_put(c, m.header_size === 21 ? sxiex_softpaq_fit1 : sxiex_softpaq_fit2, m.header, 1)) {
+            return false;
+        }
+        if (m.header < first) {
+            first = m.header;
+        }
+        if (m.header + m.header_size > last) {
+            last = m.header + m.header_size;
+        }
+        stride = m.header_size;
+    }
+    if (stride && first >= stride && sxiex_eq(c, sxU64(first - stride), "US_PCU.DOS", 10) && !sxiex_put(c, stride === 21 ? sxiex_softpaq_fit1 : sxiex_softpaq_fit2, sxU64(first - stride), 1)) {
+        return false;
+    }
+    if (stride && sxiex_span(c, last, stride) && sxiex_eq(c, last, stride === 21 ? "FIT001" : "FIT002", 6) && !sxiex_put(c, stride === 21 ? sxiex_softpaq_fit1 : sxiex_softpaq_fit2, last, 1)) {
+        return false;
+    }
+    return true;
+}
+function sx_sfx_compaq_softpaq_build(c, records) {
+    return sxiex_softpaq(c, records);
+}

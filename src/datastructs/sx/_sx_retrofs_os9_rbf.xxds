@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/os9_rbf/xx_os9_rbf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxrfs_os9_disk_descriptor_fields = layout([field("total_sectors", "uint24", 3, COUNT), u8("track_sector_count", COUNT),
+    u16("bitmap_bytes", SIZE), u16("sectors_per_cluster", COUNT), field("root_fd_sector", "uint24", 3), u16("owner", ID),
+    u8("attributes", FLAGS), u16("disk_id", ID), u8("format", FLAGS), u16("sectors_per_track", COUNT),
+    field("reserved19", "byte[2]", 2, RESERVED), field("bootstrap_sector", "uint24", 3), u16("bootstrap_bytes", SIZE),
+    field("creation_ymdhm", "byte[5]", 5), field("volume_name", "byte[32]", 32)]);
+var sxrfs_os9_disk_descriptor = sxLayout(0x60650024, "os9_disk_descriptor", BE, sxrfs_os9_disk_descriptor_fields);
+var sxrfs_os9_path_options_fields = layout([u8("device_class", ID), u8("drive"), u8("step_rate"), u8("device_type", FLAGS),
+    u8("density", FLAGS), u16("cylinders", COUNT), u8("sides", COUNT), u8("verify_disable", FLAGS),
+    u16("sectors_per_track", COUNT), u16("track0_sectors", COUNT), u8("interleave"), u8("segment_allocation_size"),
+    u8("dma_mode", FLAGS), u16("record_extension"), u8("sector_track_offsets"), u8("file_attributes", FLAGS),
+    field("file_descriptor_sector", "uint24", 3), field("directory_descriptor_sector", "uint24", 3),
+    u32("directory_entry_offset", OFFSET), u16("device_table_address", VA)]);
+var sxrfs_os9_path_options = sxLayout(0x60650025, "os9_path_options", BE, sxrfs_os9_path_options_fields);
+var sxrfs_os9_file_descriptor_fields = layout([u8("attributes", FLAGS), u16("owner", ID),
+    field("modification_ymdhm", "byte[5]", 5), u8("link_count", COUNT), u32("byte_size", SIZE),
+    field("creation_ymd", "byte[3]", 3)]);
+var sxrfs_os9_file_descriptor = sxLayout(0x60650026, "os9_file_descriptor", BE, sxrfs_os9_file_descriptor_fields);
+var sxrfs_os9_segment_fields = layout([field("first_sector", "uint24", 3), u16("sector_count", COUNT)]);
+var sxrfs_os9_segment = sxLayout(0x60650027, "os9_segment", BE, sxrfs_os9_segment_fields);
+var sxrfs_os9_directory_entry_fields = layout([field("name", "byte[29]", 29), field("file_descriptor_sector", "uint24", 3)]);
+var sxrfs_os9_directory_entry = sxLayout(0x60650028, "os9_directory_entry", BE, sxrfs_os9_directory_entry_fields);
+function sxrfs_os9(c) {
+    var h = [];
+    if (!sxrfs_read(c, 0, h, 0, 256)) {
+        return false;
+    }
+    var sectors = sxrfs24(h, 0, true);
+    var root = sxrfs24(h, 8, true);
+    var cluster = sxrfs16(h, 6, 1);
+    if (sectors < 8 || sectors > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 256) || root >= sectors || !cluster || cluster > 32 || !sxrfs_pow(cluster) || !sxrfs_put(c, sxrfs_os9_disk_descriptor, 0, 1) || !sxrfs_put(c, sxrfs_os9_path_options, 63, 1)) {
+        return false;
+    }
+    var q = sxZeros(0x1000);
+    if (q === null) {
+        return false;
+    }
+    var n = 1;
+    var i = 0;
+    q[0] = root;
+    var ok = true;
+    while (i < n && c.count < 24000) {
+        var fd = q[i++];
+        var p = fd * 256;
+        if (!sxrfs_read(c, p, h, 0, 256)) {
+            continue;
+        }
+        if (!sxrfs_put(c, sxrfs_os9_file_descriptor, p, 1) || !sxrfs_put(c, sxrfs_os9_segment, p + 16, 48)) {
+            ok = false;
+            break;
+        }
+        if (!(h[0] & 0x80)) {
+            continue;
+        }
+        var remain = sxrfs32(h, 9, 1);
+        for (var seg = 0; seg < 48 && remain && ok; seg++) {
+            var start = sxrfs24(h, 16 + ((seg * 5) >>> 0), true);
+            var count = sxrfs16(h, 19 + ((seg * 5) >>> 0), 1);
+            if (!count || start >= sectors || count > (sectors - start) >>> 0) {
+                break;
+            }
+            var bytes = count * 256;
+            if (bytes > remain) {
+                bytes = remain;
+            }
+            remain = sxU64(remain - bytes);
+            if (bytes > 16777216) {
+                break;
+            }
+            for (var off = 0; off + 32 <= bytes && c.count < 24000; off += 32) {
+                var e = [];
+                var at = start * 256 + off;
+                if (!sxrfs_read(c, at, e, 0, 32)) {
+                    ok = false;
+                    break;
+                }
+                if (!e[0]) {
+                    continue;
+                }
+                if (!sxrfs_put(c, sxrfs_os9_directory_entry, at, 1)) {
+                    ok = false;
+                    break;
+                }
+                var child = sxrfs24(e, 29, true);
+                var found = false;
+                for (var j = 0; j < n; j++) {
+                    if (q[j] === child) {
+                        found = true;
+                    }
+                }
+                if (child > 0 && child < sectors && !found && n < 4096) {
+                    q[n++] = child;
+                }
+            }
+        }
+    }
+    return ok;
+}
+function sx_os9_rbf_build(c) {
+    return sxrfs_os9(c);
+}

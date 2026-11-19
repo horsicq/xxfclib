@@ -1,0 +1,269 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_pcmusicmore.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxpcmore_pcmore_text_fields = layout([field("text", "char", 0)]);
+var sxpcmore_pcmore_text = sxLayout(0x60990001, "pcmore_text", LE, sxpcmore_pcmore_text_fields);
+var sxpcmore_webfoot_dmf_panning_fields = layout([field("panning", "int8[32]", 32)]);
+var sxpcmore_webfoot_dmf_panning = sxLayout(0x60990003, "webfoot_dmf_panning", LE, sxpcmore_webfoot_dmf_panning_fields);
+var sxpcmore_webfoot_dmf_track_reference_fields = layout([u16("logical_track_index")]);
+var sxpcmore_webfoot_dmf_track_reference = sxLayout(0x60990006, "webfoot_dmf_track_reference", LE, sxpcmore_webfoot_dmf_track_reference_fields);
+var sxpcmore_webfoot_dmf_sample_fields = layout([u8("sample_type", ID), blob("name_remnant", 1), u32("sample_data_index"),
+    u32("sample_value_count", COUNT), u16("sample_rate"), u8("volume"), u32("loop_start"), field("loop_end", "uint24le", 3)]);
+var sxpcmore_webfoot_dmf_sample = sxLayout(0x60990007, "webfoot_dmf_sample", LE, sxpcmore_webfoot_dmf_sample_fields);
+var sxpcmore_webfoot_dmf_track_map_fields = layout([u16("physical_track_index")]);
+var sxpcmore_webfoot_dmf_track_map = sxLayout(0x60990008, "webfoot_dmf_track_map", LE, sxpcmore_webfoot_dmf_track_map_fields);
+var sxpcmore_webfoot_dmf_track_fields = layout([u16("event_count", COUNT), u8("track_type", ID)]);
+var sxpcmore_webfoot_dmf_track = sxLayout(0x60990009, "webfoot_dmf_track", LE, sxpcmore_webfoot_dmf_track_fields);
+var sxpcmore_webfoot_dmf_event_fields = layout([u8("row_or_control"), u8("command", ID), u8("parameter")]);
+var sxpcmore_webfoot_dmf_event = sxLayout(0x6099000A, "webfoot_dmf_event", LE, sxpcmore_webfoot_dmf_event_fields);
+var sxpcmore_ixs_compressed_header_fields = layout([chars("signature", 4, SIGNATURE), u32("decoded_it_header_offset", OFFSET),
+    i32("decoded_sample_table_offset", OFFSET), u32("decoded_synth_table_offset", OFFSET), u32("packed_byte_length", SIZE),
+    field("output_gain", "float32", 4), chars("title", 32, NONE)]);
+var sxpcmore_ixs_compressed_header = sxLayout(0x6099000B, "ixs_compressed_header", LE, sxpcmore_ixs_compressed_header_fields);
+var sxpcmore_mdc_header_fields = layout([chars("signature", 4, SIGNATURE), blob("opaque_version_words", 4),
+    u32("declared_file_byte_length", SIZE), blob("opaque_word", 4), u32("track_table_offset", OFFSET),
+    u32("comment_offset", OFFSET), blob("opaque_settings", 20), u16("midi_resolution"), blob("opaque_tail", 18)]);
+var sxpcmore_mdc_header = sxLayout(0x6099000C, "mdc_header", BE, sxpcmore_mdc_header_fields);
+var sxpcmore_mdc_track_fields = layout([u32("track_data_offset", OFFSET), u8("track_id", ID), u8("midi_channel"),
+    blob("opaque_tail", 2)]);
+var sxpcmore_mdc_track = sxLayout(0x6099000E, "mdc_track", BE, sxpcmore_mdc_track_fields);
+var sxpcmore_mtc_chunk_fields = layout([chars("chunk_id", 4, ID), u32("payload_byte_length", SIZE)]);
+var sxpcmore_mtc_chunk = sxLayout(0x6099000F, "mtc_chunk", BE, sxpcmore_mtc_chunk_fields);
+var sxpcmore_skm_chunk_fields = layout([u16("record_id", ID), u16("tag", ID), u32("payload_byte_length", SIZE)]);
+var sxpcmore_skm_chunk = sxLayout(0x60990010, "skm_chunk", LE, sxpcmore_skm_chunk_fields);
+var sxpcmore_skm_file_payload_fields = layout([chars("signature", 5, SIGNATURE), u32("serialized_version", ID)]);
+var sxpcmore_skm_file_payload = sxLayout(0x60990011, "skm_file_payload", LE, sxpcmore_skm_file_payload_fields);
+var sxpcmore_skm_song_timing_fields = layout([u8("initial_bpm"), u8("initial_speed"), u8("channel_count", COUNT),
+    blob("opaque_zero", 1), u32("serialized_version", ID)]);
+var sxpcmore_skm_song_timing = sxLayout(0x60990012, "skm_song_timing", LE, sxpcmore_skm_song_timing_fields);
+var sxpcmore_skm_message_fields = layout([field("message_and_padding", "char", 0)]);
+var sxpcmore_skm_message = sxLayout(0x60990014, "skm_message", LE, sxpcmore_skm_message_fields);
+var sxpcmore_skm_orders_fields = layout([u8("channel_count", COUNT), bytes("order_pattern_ids", 256), u8("song_length", COUNT),
+    u8("repeat_position")]);
+var sxpcmore_skm_orders = sxLayout(0x60990015, "skm_orders", LE, sxpcmore_skm_orders_fields);
+var sxpcmore_skm_pattern_fields = layout([u8("pattern_id", ID), u16("row_count", COUNT)]);
+var sxpcmore_skm_pattern = sxLayout(0x60990016, "skm_pattern", LE, sxpcmore_skm_pattern_fields);
+var sxpcmore_skm_track_chunk_fields = layout([u8("record_id", ID), u8("tag", ID), u16("payload_byte_length", SIZE)]);
+var sxpcmore_skm_track_chunk = sxLayout(0x60990017, "skm_track_chunk", LE, sxpcmore_skm_track_chunk_fields);
+var sxpcmore_mvx_connection_fields = layout([u8("source_machine"), u8("target_machine"), u8("volume")]);
+var sxpcmore_mvx_connection = sxLayout(0x6099001D, "mvx_connection", LE, sxpcmore_mvx_connection_fields);
+function sxpcmore_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxpcmore_read(c, p, b, n) {
+    return sxpcmore_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxpcmore16(b, b_o) {
+    return b[b_o] | b[b_o + 1] << 8;
+}
+function sxpcmore_u8(c, p, v) {
+    return sxpcmore_read(c, p, v, 1);
+}
+function sxpcmore_width(l) {
+    var f = l.fields[l.field_count + -1];
+    return (f.offset < 0 ? f.offset + SX_U64_MAX : f.offset) + (f.size < 0 ? f.size + SX_U64_MAX : f.size);
+}
+function sxpcmore_put(c, l, p, count) {
+    var z = sxpcmore_width(l);
+    if (!count) {
+        return true;
+    }
+    if (!z || count > Math.floor(SX_U64_MAX / z) || !sxpcmore_span(c, p, count * z)) {
+        return false;
+    }
+    if (c.count >= 24000) {
+        return true;
+    }
+    var end = p + count * z;
+    for (var i = 0; i < c.count; i++) {
+        var rel = c.items[i].offset - c.f.base_address;
+        var n = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (rel >= 0 && p < (rel < 0 ? rel + SX_U64_MAX : rel) + n && (rel < 0 ? rel + SX_U64_MAX : rel) < end) {
+            return true;
+        }
+    }
+    return count === 1 ? sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z)) : sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), sxU64((count >= SX_I64_MAX ? count - SX_U64_MAX : count)));
+}
+function sxpcmore_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : (x.offset > y.offset ? 1 : 0);
+}
+function sxpcmore_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxpcmore_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        var z = c.items[i].total_size;
+        if (p < end || z <= 0 || p > c.size || z > c.size - p) {
+            return false;
+        }
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        end = p + z;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxpcmore_order, true);
+    return !c.failed;
+}
+function sxpcmore_be32(b, b_o) {
+    return ((((b[b_o] << 24) >>> 0 | b[b_o + 1] << 16) >>> 0 | b[b_o + 2] << 8) >>> 0 | b[b_o + 3]) >>> 0;
+}
+function sx_pcmusicmore_supports(t) {
+    switch (t) {
+    case "DIE_MUSIC_WEBFOOT_DSMIAMFHACK":
+    case "DIE_MUSIC_SAHARASURFERS_IXALANCE_CO":
+    case "DIE_MUSIC_CULCHAN_MDC":
+    case "DIE_MUSIC_MULTITRACKCONTAINER":
+    case "DIE_MUSIC_BAKTERY_SKALETRACKER_SKM":
+    case "DIE_MUSIC_GARGAJ_MVX_MVM":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_pcmusicmore_build(c) {
+    if (c.f.file_type === "DIE_MUSIC_WEBFOOT_DSMIAMFHACK") {
+        return sx_webfoot_dsmiamfhack_build(c);
+    }
+    if (c.f.file_type === "DIE_MUSIC_SAHARASURFERS_IXALANCE_CO") {
+        return sx_saharasurfers_ixalance_co_build(c);
+    }
+    if (c.f.file_type === "DIE_MUSIC_CULCHAN_MDC") {
+        return sx_culchan_mdc_build(c);
+    }
+    if (c.f.file_type === "DIE_MUSIC_MULTITRACKCONTAINER") {
+        return sx_multitrackcontainer_build(c);
+    }
+    if (c.f.file_type === "DIE_MUSIC_BAKTERY_SKALETRACKER_SKM") {
+        return sx_baktery_skaletracker_skm_build(c);
+    }
+    if (c.f.file_type === "DIE_MUSIC_GARGAJ_MVX_MVM") {
+        return sx_gargaj_mvx_mvm_build(c);
+    }
+    return false;
+}
+function sx_pcmusicmore_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60990000 || id >= 0x609A0000) {
+        return true;
+    }
+    if (id === sxpcmore_webfoot_dmf_panning.id && r.name === "panning") {
+        return sxSetComment(r, "Signed channel pan values, normally -64 through64; value100 selects surround. All32 saved slots are preserved.");
+    }
+    if (id === sxpcmore_webfoot_dmf_track_reference.id && r.name === "logical_track_index") {
+        return sxSetComment(r, "Stored track reference into the logical track map; zero selects an empty track.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "name_remnant") {
+        return sxSetComment(r, "One residual byte from the original sample name, retained by the compact writer; no complete text name is stored.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "sample_data_index") {
+        return sxSetComment(r, "One-based sample-data identity/order, not a source-file byte offset; multiple headers may share sample data.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "sample_value_count") {
+        return sxSetComment(r, "Number of8-bit mono delta-PCM sample values; encoded audio remains raw.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "loop_start") {
+        return sxSetComment(r, "Stored sample-value position; loop_end is exclusive and the compact record stores only its low24 bits.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "loop_end") {
+        return sxSetComment(r, "Stored sample-value position; loop_end is exclusive and the compact record stores only its low24 bits.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "sample_rate") {
+        return sxSetComment(r, "Stored C-4/C-5 reference sample playback frequency, in hertz; the maintained loader uses it directly as its C-5 speed.");
+    }
+    if (id === sxpcmore_webfoot_dmf_sample.id && r.name === "volume") {
+        return sxSetComment(r, "Stored linear volume, normally0..64; the physical value is not rescaled.");
+    }
+    if (id === sxpcmore_webfoot_dmf_track_map.id && r.name === "physical_track_index") {
+        return sxSetComment(r, "One-based packed-track identity; zero selects an empty track, and duplicate identities share the same physical record.");
+    }
+    if (id === sxpcmore_webfoot_dmf_track.id && r.name === "event_count") {
+        return sxSetComment(r, "Number of physical three-byte event records following this header.");
+    }
+    if (id === sxpcmore_webfoot_dmf_event.id && r.name === "row_or_control") {
+        return sxSetComment(r, "Stored row index or control byte; the packed track command stream is preserved without playback conversion.");
+    }
+    if (id === sxpcmore_ixs_compressed_header.id && r.name === "decoded_it_header_offset") {
+        return sxSetComment(r, "Stored byte offset relative to the beginning of the decompressed IXS buffer; this is not an offset into the physical compressed source file.");
+    }
+    if (id === sxpcmore_ixs_compressed_header.id && r.name === "decoded_sample_table_offset") {
+        return sxSetComment(r, "Stored signed32-bit displacement relative to the decompressed IXS buffer, as loaded by the retained player; this is not a physical compressed-source offset and is never followed here.");
+    }
+    if (id === sxpcmore_ixs_compressed_header.id && r.name === "decoded_synth_table_offset") {
+        return sxSetComment(r, "Stored byte offset relative to the beginning of the decompressed IXS buffer; this is not an offset into the physical compressed source file.");
+    }
+    if (id === sxpcmore_ixs_compressed_header.id && r.name === "output_gain") {
+        return sxSetComment(r, "Original player multiplies final audio by this IEEE754 output-volume value; the physical float is retained unchanged.");
+    }
+    if (id === sxpcmore_ixs_compressed_header.id && r.name === "packed_byte_length") {
+        return sxSetComment(r, "Byte length of the zlib-compressed body immediately after the56-byte physical header; the body remains raw.");
+    }
+    if (id === sxpcmore_mdc_header.id && r.name === "opaque_version_words") {
+        return sxSetComment(r, "Native identification expects bytes00080040; no independent field names are established for these stored words.");
+    }
+    if (id === sxpcmore_mdc_header.id && r.name === "midi_resolution") {
+        return sxSetComment(r, "Stored MIDI ticks per quarter note, read by the maintained MDC converter.");
+    }
+    if (id === sxpcmore_mdc_track.id && r.name === "track_data_offset") {
+        return sxSetComment(r, "Stored byte displacement relative to the track-count word at track_table_offset; not relative to this entry or the whole module.");
+    }
+    if (id === sxpcmore_mdc_track.id && r.name === "midi_channel") {
+        return sxSetComment(r, "Stored MIDI channel identifier; the converter applies its own output-channel mapping.");
+    }
+    if (id === sxpcmore_mtc_chunk.id && r.name === "payload_byte_length") {
+        return sxSetComment(r, "Payload bytes excluding the8-byte header and the optional one-byte padding used for two-byte alignment.");
+    }
+    if (id === sxpcmore_mtc_chunk.id && r.name === "chunk_id") {
+        return sxSetComment(r, "MTC1 contains global metadata and TRCK chunks; TRCK contains DATA and metadata. Other payloads remain raw unless their literal text grammar is known.");
+    }
+    if (id === sxpcmore_skm_chunk.id && r.name === "record_id") {
+        return sxSetComment(r, "Stored record representation/version identifier; meaning is local to the enclosing list.");
+    }
+    if (id === sxpcmore_skm_chunk.id && r.name === "tag") {
+        return sxSetComment(r, "Stored section or nested-record tag;0xFFFF terminates a full-width chunk list.");
+    }
+    if (id === sxpcmore_skm_file_payload.id && r.name === "serialized_version") {
+        return sxSetComment(r, "Stored writer version multiplied by10000; later0.80/0.81 application saves may still contain7600. It does not select instrument layout.");
+    }
+    if (id === sxpcmore_skm_message.id && r.name === "message_and_padding") {
+        return sxSetComment(r, "Physical message region including trailing NUL padding, bounded by the final8-byte timing trailer; no fixed ten-byte footer is assumed.");
+    }
+    if (id === sxpcmore_skm_song_timing.id && r.name === "opaque_zero") {
+        return sxSetComment(r, "Byte observed zero in the retained authentic application saves; no independent semantic meaning is asserted.");
+    }
+    if (id === sxpcmore_skm_orders.id && r.name === "order_pattern_ids") {
+        return sxSetComment(r, "All256 saved pattern-ID slots; entries beyond song_length may contain inactive saved state.");
+    }
+    if (id === sxpcmore_skm_orders.id && r.name === "repeat_position") {
+        return sxSetComment(r, "Stored zero-based order-list restart position, not a byte offset.");
+    }
+    if (id === sxpcmore_skm_pattern.id && r.name === "row_count") {
+        return sxSetComment(r, "Little-endian row count, including256 encoded as0001; event bytes are kept raw.");
+    }
+    if (id === sxpcmore_skm_track_chunk.id && r.name === "tag") {
+        return sxSetComment(r, "Tag1 holds a channel-index byte and encoded events;0xFF ends the half-width track list.");
+    }
+    if (id === sxpcmore_mvx_connection.id && r.name === "source_machine") {
+        return sxSetComment(r, "Stored machine-graph source identifier; the native format rule accepts the endpoint equal to machine_count.");
+    }
+    if (id === sxpcmore_mvx_connection.id && r.name === "target_machine") {
+        return sxSetComment(r, "Stored machine-graph target identifier; deeper machine synthesis state remains raw.");
+    }
+    if (id === sxpcmore_mvx_connection.id && r.name === "volume") {
+        return sxSetComment(r, "Stored connection-volume byte; no gain normalization is asserted without original serializer evidence.");
+    }
+    if (r.property & 0x00000004) {
+        return sxSetComment(r, "Stored byte offset relative to the module start, unless the enclosing structure specifies another origin.");
+    }
+    if (r.property & 0x00000002) {
+        return sxSetComment(r, "Encoded target-machine memory address; the field source-file offset is shown separately.");
+    }
+    return true;
+}

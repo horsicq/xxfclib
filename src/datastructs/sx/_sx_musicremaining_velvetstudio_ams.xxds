@@ -1,0 +1,134 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/velvetstudio_ams/xx_velvetstudio_ams_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_ams2_magic_fields = layout([blob("magic", 7, SIGNATURE), u8("title_bytes", SIZE)]);
+var sxmr_ams2_magic = sxLayout(0x607D0001, "ams2_magic", LE, sxmr_ams2_magic_fields);
+var sxmr_ams2_header_fields = layout([u8("minor", ID), u8("major", ID), u8("instruments", COUNT), u16("patterns", COUNT),
+    u16("orders", COUNT)]);
+var sxmr_ams2_header = sxLayout(0x607D0002, "ams2_header", LE, sxmr_ams2_header_fields);
+var sxmr_ams2_timing20_fields = layout([u8("tempo"), u8("speed"), u8("flags", FLAGS)]);
+var sxmr_ams2_timing20 = sxLayout(0x607D0003, "ams2_timing20", LE, sxmr_ams2_timing20_fields);
+var sxmr_pascal_text_length_fields = layout([u8("text_bytes", SIZE)]);
+var sxmr_pascal_text_length = sxLayout(0x607D0005, "pascal_text_length", LE, sxmr_pascal_text_length_fields);
+var sxmr_ams2_sample_count_fields = layout([u8("samples", COUNT)]);
+var sxmr_ams2_sample_count = sxLayout(0x607D0008, "ams2_sample_count", LE, sxmr_ams2_sample_count_fields);
+var sxmr_ams2_note_sample_fields = layout([u8("sample_index", ID)]);
+var sxmr_ams2_note_sample = sxLayout(0x607D0009, "ams2_note_sample", LE, sxmr_ams2_note_sample_fields);
+var sxmr_ams2_envelope_fields = layout([u8("speed"), u8("sustain_point"), u8("loop_start_point"), u8("loop_end_point"),
+    u8("points", COUNT)]);
+var sxmr_ams2_envelope = sxLayout(0x607D000A, "ams2_envelope", LE, sxmr_ams2_envelope_fields);
+var sxmr_ams2_instrument_fields = layout([u8("shadow_instrument", ID), u16("vibrato_fadeout", FLAGS),
+    u16("envelope_flags", FLAGS)]);
+var sxmr_ams2_instrument = sxLayout(0x607D000C, "ams2_instrument", LE, sxmr_ams2_instrument_fields);
+var sxmr_order16_fields = layout([u16("pattern", ID)]);
+var sxmr_order16 = sxLayout(0x607D000F, "order16", LE, sxmr_order16_fields);
+var sxmr_ams2_pattern_fields = layout([u32("packed_bytes", SIZE), u8("rows_minus_one"), u8("channels_commands", FLAGS)]);
+var sxmr_ams2_pattern = sxLayout(0x607D0010, "ams2_pattern", LE, sxmr_ams2_pattern_fields);
+function sxmr_pascal(v, p, end) {
+    var n = [0];
+    if (!sxmr_u(v, p[0], 1, n, end) || !sxmr_row(v, sxmr_pascal_text_length, p[0], end)) {
+        return false;
+    }
+    p[0]++;
+    if (!sxmr_text_emit(v, p[0], n[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    return true;
+}
+function sxmr_ams(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [8];
+    var n = [0];
+    var minor = [0];
+    var major = [0];
+    var ins = [0];
+    var pats = [0];
+    var ords = [0];
+    var x;
+    var samples = [0];
+    if (!sxmr_eq(v, 0, "AMShdr\x1A", 7, end) || !sxmr_u(v, 7, 1, n, end) || n[0] > 30 || !sxmr_row(v, sxmr_ams2_magic, 0, end) || !sxmr_text_emit(v, p[0], n[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    if (!sxmr_u(v, p[0], 1, minor, end) || !sxmr_u(v, p[0] + 1, 1, major, end) || major[0] !== 2 || minor[0] > 2 || !sxmr_u(v, p[0] + 2, 1, ins, end) || !sxmr_u(v, p[0] + 3, 2, pats, end) || !sxmr_u(v, p[0] + 5, 2, ords, end) || !sxmr_row(v, sxmr_ams2_header, p[0], end)) {
+        return false;
+    }
+    p[0] += 7;
+    if (minor[0] === 2) {
+        if (!sxmr_row(v, sxmr_ams2_timing22, p[0], end)) {
+            return false;
+        }
+        p[0] += 8;
+    } else {
+        if (!sxmr_row(v, sxmr_ams2_timing20, p[0], end)) {
+            return false;
+        }
+        p[0] += 3;
+    }
+    for (var i = 0; i < ins[0]; i++) {
+        if (!sxmr_pascal(v, p, end) || !sxmr_u(v, p[0], 1, samples, end) || !sxmr_row(v, sxmr_ams2_sample_count, p[0], end)) {
+            return false;
+        }
+        p[0]++;
+        if (!samples[0]) {
+            continue;
+        }
+        n[0] = minor[0] ? 120 : 96;
+        if (!sxmr_table(v, sxmr_ams2_note_sample, p[0], n[0], end)) {
+            return false;
+        }
+        p[0] += n[0];
+        for (var j = 0; j < 3; j++) {
+            if (!sxmr_u(v, p[0] + 4, 1, n, end) || !sxmr_row(v, sxmr_ams2_envelope, p[0], end)) {
+                return false;
+            }
+            p[0] += 5;
+            if (!sxmr_table(v, sxmr_ams2_envelope_point, p[0], n[0], end)) {
+                return false;
+            }
+            p[0] += n[0] * 3;
+        }
+        if (!sxmr_row(v, sxmr_ams2_instrument, p[0], end)) {
+            return false;
+        }
+        p[0] += 5;
+        for (j = 0; j < samples[0]; j++) {
+            if (!sxmr_pascal(v, p, end) || !sxmr_row(v, sxmr_ams2_sample, p[0], end)) {
+                return false;
+            }
+            p[0] += 20;
+        }
+    }
+    for (j = 0; j < 33; j++) {
+        if (!sxmr_pascal(v, p, end)) {
+            return false;
+        }
+    }
+    if (!sxmr_u(v, p[0], 4, n, end) || n[0] < 11 || !sxmr_span(v, p[0], n[0], end) || !sxmr_row(v, sxmr_ams2_description, p[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    if (!sxmr_table(v, sxmr_order16, p[0], ords[0], end)) {
+        return false;
+    }
+    p[0] += 2 * ords[0];
+    for (i = 0; i < pats[0]; i++) {
+        if (!sxmr_u(v, p[0], 4, n, end) || n[0] < 3 || !sxmr_span(v, p[0] + 4, n[0], end) || !sxmr_row(v, sxmr_ams2_pattern, p[0], end)) {
+            return false;
+        }
+        x = p[0] + 4 + n[0];
+        p[0] += 6;
+        if (!sxmr_pascal(v, p, x)) {
+            return false;
+        }
+        p[0] = x;
+    }
+    return true;
+}
+function sx_velvetstudio_ams_build(v) {
+    return sxmr_ams(v);
+}

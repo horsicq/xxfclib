@@ -1,0 +1,127 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/uue/xx_uue_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarm_uue_begin_fields = layout([chars("marker", 5, SIGNATURE)]);
+var sxarm_uue_begin = sxLayout(0x607C0034, "uue_begin", LE, sxarm_uue_begin_fields);
+var sxarm_uue_mode_1_fields = layout([field("permissions", "ascii_octal_padded[1]", 1, FLAGS)]);
+var sxarm_uue_mode_1 = sxLayout(0x607C0035, "uue_mode_1", LE, sxarm_uue_mode_1_fields);
+var sxarm_uue_mode_2_fields = layout([field("permissions", "ascii_octal_padded[2]", 2, FLAGS)]);
+var sxarm_uue_mode_2 = sxLayout(0x607C0036, "uue_mode_2", LE, sxarm_uue_mode_2_fields);
+var sxarm_uue_mode_3_fields = layout([field("permissions", "ascii_octal_padded[3]", 3, FLAGS)]);
+var sxarm_uue_mode_3 = sxLayout(0x607C0037, "uue_mode_3", LE, sxarm_uue_mode_3_fields);
+var sxarm_uue_mode_4_fields = layout([field("permissions", "ascii_octal_padded[4]", 4, FLAGS)]);
+var sxarm_uue_mode_4 = sxLayout(0x607C0038, "uue_mode_4", LE, sxarm_uue_mode_4_fields);
+var sxarm_uue_mode_5_fields = layout([field("permissions", "ascii_octal_padded[5]", 5, FLAGS)]);
+var sxarm_uue_mode_5 = sxLayout(0x607C0039, "uue_mode_5", LE, sxarm_uue_mode_5_fields);
+var sxarm_uue_mode_6_fields = layout([field("permissions", "ascii_octal_padded[6]", 6, FLAGS)]);
+var sxarm_uue_mode_6 = sxLayout(0x607C003A, "uue_mode_6", LE, sxarm_uue_mode_6_fields);
+var sxarm_uue_line_fields = layout([chars("encoded_decoded_length", 1, NONE)]);
+var sxarm_uue_line = sxLayout(0x607C003B, "uue_line", LE, sxarm_uue_line_fields);
+var sxarm_uue_end_fields = layout([chars("marker", 3, ID)]);
+var sxarm_uue_end = sxLayout(0x607C003C, "uue_end", LE, sxarm_uue_end_fields);
+function sxarm_uue(c) {
+    var f = c.f;
+    if (f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+        return false;
+    }
+    var st = f.create_archive_records_reading(f, null, c.pd);
+    if (st === null) {
+        return false;
+    }
+    var ok = true;
+    var b = [];
+    var n = [0];
+    var next = [0];
+    for (var i = 0; i < 20000; i++) {
+        var r = f.get_current_archive_record(f, st);
+        if (r === null) {
+            break;
+        }
+        if (r.header_offset < f.base_address || r.data_offset < f.base_address || r.header_size < 0 || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var p = (r.header_offset - f.base_address < 0 ? r.header_offset - f.base_address + SX_U64_MAX : r.header_offset - f.base_address);
+        var data = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+        var z = (r.compressed_size < 0 ? r.compressed_size + SX_U64_MAX : r.compressed_size);
+        if (!sxarm_span(c, p, (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size)) || !sxarm_span(c, data, z) || !sxarm_line(c, p, b, 0x1000, n, next) || n[0] < 8 || sxMemcmp(b, "begin ", 6)) {
+            ok = false;
+            break;
+        }
+        var q = 6;
+        var a = q;
+        while (q < n[0] && b[q] >= 48 /*0*/ && b[q] <= 55 /*7*/) {
+            q++;
+        }
+        var digits = sxU64(q - a);
+        var modes = [sxarm_uue_mode_1, sxarm_uue_mode_2, sxarm_uue_mode_3, sxarm_uue_mode_4, sxarm_uue_mode_5, sxarm_uue_mode_6];
+        if (digits < 1 || digits > 6 || q === n[0] || b[q] !== 32 || !sxarm_add(c, sxarm_uue_begin, p) || !sxarm_add(c, modes[sxU64(digits - 1)], p + a)) {
+            ok = false;
+            break;
+        }
+        q++;
+        var name_end = n[0];
+        while (name_end > q && (b[sxU64(name_end - 1)] === 32 || b[sxU64(name_end - 1)] === 9)) {
+            name_end--;
+        }
+        if (!sxarm_text(c, sxarm_transport_filename, p + q, sxU64(name_end - q), false)) {
+            ok = false;
+            break;
+        }
+        p = data;
+        while (p < data + z) {
+            if (!sxarm_line(c, p, b, 0x1000, n, next) || next[0] > data + z) {
+                ok = false;
+                break;
+            }
+            if (n[0] && !sxarm_add(c, sxarm_uue_line, p)) {
+                ok = false;
+                break;
+            }
+            p = next[0];
+        }
+        if (!ok) {
+            break;
+        }
+        var method = sxArcMeta(r, "compression_method", 0) >>> 0;
+        var zero = false;
+        for (var j = 0; j < 258 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); j++) {
+            if (!sxarm_line(c, p, b, 0x1000, n, next)) {
+                break;
+            }
+            if (n[0] >= 3 && !sxMemcmp(b, "end", 3)) {
+                var k = 3;
+                while (k < n[0] && (b[k] === 32 || b[k] === 9)) {
+                    k++;
+                }
+                if (k === n[0]) {
+                    ok = sxarm_add(c, sxarm_uue_end, p);
+                    break;
+                }
+            }
+            if (!zero && n[0] >= 1 && (method ? b[0] === 43 /*+*/ : b[0] === 32 || b[0] === 96 /*`*/)) {
+                ok = sxarm_add(c, sxarm_uue_line, p);
+                zero = true;
+            } else if (!n[0]) {
+                zero = true;
+            } else {
+                break;
+            }
+            if (!ok) {
+                break;
+            }
+            p = next[0];
+        }
+        if (!ok || !f.archive_record_move_to_next(f, st, c.pd)) {
+            break;
+        }
+    }
+    f.free_archive_records_reading(f, st);
+    return ok;
+}
+function sx_uue_build(c) {
+    return sxarm_uue(c);
+}

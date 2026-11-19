@@ -1,0 +1,95 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/audials/xx_audials_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_audials_count_fields = layout([field("member_count", "ascii_decimal", 0, COUNT)]);
+var sxan_audials_count = sxLayout(0x60770040, "audials_count", LE, sxan_audials_count_fields);
+var sxan_audials_offset_fields = layout([field("data_offset", "ascii_decimal", 0, OFFSET)]);
+var sxan_audials_offset = sxLayout(0x60770041, "audials_offset", LE, sxan_audials_offset_fields);
+var sxan_audials_size_fields = layout([field("payload_size", "ascii_decimal", 0, SIZE)]);
+var sxan_audials_size = sxLayout(0x60770042, "audials_size", LE, sxan_audials_size_fields);
+function sxan_line(c, p, end) {
+    var b = [0];
+    end[0] = p;
+    for (var i = 0; i < 8192; i++) {
+        if (!sxan_read(c, end[0], b, 1)) {
+            return false;
+        }
+        if (b[0] === 13) {
+            var next = [0];
+            if (!sxan_read(c, end[0] + 1, next, 1) || next[0] !== 10) {
+                return false;
+            }
+            return true;
+        }
+        if (b[0] < 32 && b[0] !== 9) {
+            return false;
+        }
+        end[0]++;
+    }
+    return false;
+}
+function sxan_audials(c) {
+    var p = 0;
+    var end = [0];
+    var n = 0;
+    if (!sxan_line(c, p, end) || end[0] <= 12 || sxU64(end[0] - 12) > 20) {
+        return false;
+    }
+    var digits = [];
+    if (!sxan_read(c, 12, digits, sxU64(end[0] - 12))) {
+        return false;
+    }
+    for (var i = 0; i < sxU64(end[0] - 12); i++) {
+        if (digits[i] === 32) {
+            continue;
+        }
+        if (digits[i] < 48 /*0*/ || digits[i] > 57 /*9*/ || n > 65536) {
+            return false;
+        }
+        n = sxU64(n * 10 + digits[i] - 48 /*0*/);
+    }
+    if (!sxan_text(c, sxan_audials_count, 12, sxU64(end[0] - 12), false)) {
+        return false;
+    }
+    p = end[0] + 2;
+    for (i = 0; i < n; i++) {
+        var tab1 = p;
+        var tab2;
+        var b = [0];
+        if (!sxan_line(c, p, end)) {
+            return false;
+        }
+        while (tab1 < end[0]) {
+            if (!sxan_read(c, tab1, b, 1)) {
+                return false;
+            }
+            if (b[0] === 9) {
+                break;
+            }
+            tab1++;
+        }
+        tab2 = tab1 + 1;
+        while (tab2 < end[0]) {
+            if (!sxan_read(c, tab2, b, 1)) {
+                return false;
+            }
+            if (b[0] === 9) {
+                break;
+            }
+            tab2++;
+        }
+        if (tab1 >= end[0] || tab2 >= end[0] || !sxan_named(c, p, sxU64(tab1 - p)) || !sxan_text(c, sxan_audials_offset, tab1 + 1, sxU64(sxU64(tab2 - tab1) - 1), false) || !sxan_text(c, sxan_audials_size, tab2 + 1, sxU64(sxU64(end[0] - tab2) - 1), false)) {
+            return false;
+        }
+        p = end[0] + 2;
+    }
+    return true;
+}
+function sx_audials_build(c) {
+    var ok = false;
+    ok = sxan_audials(c);
+    return !!(c.count && sxan_finish(c));
+}

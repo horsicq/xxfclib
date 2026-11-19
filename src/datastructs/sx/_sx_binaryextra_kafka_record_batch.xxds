@@ -1,0 +1,231 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/kafka_record_batch/xx_kafka_record_batch_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_kafka_batch_fields = layout([i64("base_offset"), i32("batch_length", SIZE), i32("partition_leader_epoch"),
+    i8("magic", SIGNATURE), u32("crc32c", CHECKSUM), i16("attributes", FLAGS), i32("last_offset_delta"), i64("base_timestamp"),
+    i64("max_timestamp"), i64("producer_id", ID), i16("producer_epoch"), i32("base_sequence"), i32("record_count", COUNT)]);
+var sxbx_kafka_batch = sxLayout(0x6030002A, "kafka_batch", BE, sxbx_kafka_batch_fields);
+var sxbx_kafka_attributes_fields = layout([i8("attributes", FLAGS)]);
+var sxbx_kafka_attributes = sxLayout(0x6030002B, "kafka_attributes", LE, sxbx_kafka_attributes_fields);
+var sxbx_kafka_record_size1_fields = layout([field("record_size", "zigzag32", 1, SIZE)]);
+var sxbx_kafka_record_size1 = sxLayout(0x6030002C, "kafka_record_size1", LE, sxbx_kafka_record_size1_fields);
+var sxbx_kafka_record_size2_fields = layout([field("record_size", "zigzag32", 2, SIZE)]);
+var sxbx_kafka_record_size2 = sxLayout(0x6030002D, "kafka_record_size2", LE, sxbx_kafka_record_size2_fields);
+var sxbx_kafka_record_size3_fields = layout([field("record_size", "zigzag32", 3, SIZE)]);
+var sxbx_kafka_record_size3 = sxLayout(0x6030002E, "kafka_record_size3", LE, sxbx_kafka_record_size3_fields);
+var sxbx_kafka_record_size4_fields = layout([field("record_size", "zigzag32", 4, SIZE)]);
+var sxbx_kafka_record_size4 = sxLayout(0x6030002F, "kafka_record_size4", LE, sxbx_kafka_record_size4_fields);
+var sxbx_kafka_record_size5_fields = layout([field("record_size", "zigzag32", 5, SIZE)]);
+var sxbx_kafka_record_size5 = sxLayout(0x60300030, "kafka_record_size5", LE, sxbx_kafka_record_size5_fields);
+var sxbx_kafka_record_size6_fields = layout([field("record_size", "zigzag32", 6, SIZE)]);
+var sxbx_kafka_record_size6 = sxLayout(0x60300031, "kafka_record_size6", LE, sxbx_kafka_record_size6_fields);
+var sxbx_kafka_record_size7_fields = layout([field("record_size", "zigzag32", 7, SIZE)]);
+var sxbx_kafka_record_size7 = sxLayout(0x60300032, "kafka_record_size7", LE, sxbx_kafka_record_size7_fields);
+var sxbx_kafka_record_size8_fields = layout([field("record_size", "zigzag32", 8, SIZE)]);
+var sxbx_kafka_record_size8 = sxLayout(0x60300033, "kafka_record_size8", LE, sxbx_kafka_record_size8_fields);
+var sxbx_kafka_record_size9_fields = layout([field("record_size", "zigzag32", 9, SIZE)]);
+var sxbx_kafka_record_size9 = sxLayout(0x60300034, "kafka_record_size9", LE, sxbx_kafka_record_size9_fields);
+var sxbx_kafka_record_size10_fields = layout([field("record_size", "zigzag32", 10, SIZE)]);
+var sxbx_kafka_record_size10 = sxLayout(0x60300035, "kafka_record_size10", LE, sxbx_kafka_record_size10_fields);
+var sxbx_kafka_timestamp_delta1_fields = layout([field("timestamp_delta", "zigzag64", 1)]);
+var sxbx_kafka_timestamp_delta1 = sxLayout(0x60300036, "kafka_timestamp_delta1", LE, sxbx_kafka_timestamp_delta1_fields);
+var sxbx_kafka_timestamp_delta2_fields = layout([field("timestamp_delta", "zigzag64", 2)]);
+var sxbx_kafka_timestamp_delta2 = sxLayout(0x60300037, "kafka_timestamp_delta2", LE, sxbx_kafka_timestamp_delta2_fields);
+var sxbx_kafka_timestamp_delta3_fields = layout([field("timestamp_delta", "zigzag64", 3)]);
+var sxbx_kafka_timestamp_delta3 = sxLayout(0x60300038, "kafka_timestamp_delta3", LE, sxbx_kafka_timestamp_delta3_fields);
+var sxbx_kafka_timestamp_delta4_fields = layout([field("timestamp_delta", "zigzag64", 4)]);
+var sxbx_kafka_timestamp_delta4 = sxLayout(0x60300039, "kafka_timestamp_delta4", LE, sxbx_kafka_timestamp_delta4_fields);
+var sxbx_kafka_timestamp_delta5_fields = layout([field("timestamp_delta", "zigzag64", 5)]);
+var sxbx_kafka_timestamp_delta5 = sxLayout(0x6030003A, "kafka_timestamp_delta5", LE, sxbx_kafka_timestamp_delta5_fields);
+var sxbx_kafka_timestamp_delta6_fields = layout([field("timestamp_delta", "zigzag64", 6)]);
+var sxbx_kafka_timestamp_delta6 = sxLayout(0x6030003B, "kafka_timestamp_delta6", LE, sxbx_kafka_timestamp_delta6_fields);
+var sxbx_kafka_timestamp_delta7_fields = layout([field("timestamp_delta", "zigzag64", 7)]);
+var sxbx_kafka_timestamp_delta7 = sxLayout(0x6030003C, "kafka_timestamp_delta7", LE, sxbx_kafka_timestamp_delta7_fields);
+var sxbx_kafka_timestamp_delta8_fields = layout([field("timestamp_delta", "zigzag64", 8)]);
+var sxbx_kafka_timestamp_delta8 = sxLayout(0x6030003D, "kafka_timestamp_delta8", LE, sxbx_kafka_timestamp_delta8_fields);
+var sxbx_kafka_timestamp_delta9_fields = layout([field("timestamp_delta", "zigzag64", 9)]);
+var sxbx_kafka_timestamp_delta9 = sxLayout(0x6030003E, "kafka_timestamp_delta9", LE, sxbx_kafka_timestamp_delta9_fields);
+var sxbx_kafka_timestamp_delta10_fields = layout([field("timestamp_delta", "zigzag64", 10)]);
+var sxbx_kafka_timestamp_delta10 = sxLayout(0x6030003F, "kafka_timestamp_delta10", LE, sxbx_kafka_timestamp_delta10_fields);
+var sxbx_kafka_offset_delta1_fields = layout([field("offset_delta", "zigzag32", 1)]);
+var sxbx_kafka_offset_delta1 = sxLayout(0x60300040, "kafka_offset_delta1", LE, sxbx_kafka_offset_delta1_fields);
+var sxbx_kafka_offset_delta2_fields = layout([field("offset_delta", "zigzag32", 2)]);
+var sxbx_kafka_offset_delta2 = sxLayout(0x60300041, "kafka_offset_delta2", LE, sxbx_kafka_offset_delta2_fields);
+var sxbx_kafka_offset_delta3_fields = layout([field("offset_delta", "zigzag32", 3)]);
+var sxbx_kafka_offset_delta3 = sxLayout(0x60300042, "kafka_offset_delta3", LE, sxbx_kafka_offset_delta3_fields);
+var sxbx_kafka_offset_delta4_fields = layout([field("offset_delta", "zigzag32", 4)]);
+var sxbx_kafka_offset_delta4 = sxLayout(0x60300043, "kafka_offset_delta4", LE, sxbx_kafka_offset_delta4_fields);
+var sxbx_kafka_offset_delta5_fields = layout([field("offset_delta", "zigzag32", 5)]);
+var sxbx_kafka_offset_delta5 = sxLayout(0x60300044, "kafka_offset_delta5", LE, sxbx_kafka_offset_delta5_fields);
+var sxbx_kafka_offset_delta6_fields = layout([field("offset_delta", "zigzag32", 6)]);
+var sxbx_kafka_offset_delta6 = sxLayout(0x60300045, "kafka_offset_delta6", LE, sxbx_kafka_offset_delta6_fields);
+var sxbx_kafka_offset_delta7_fields = layout([field("offset_delta", "zigzag32", 7)]);
+var sxbx_kafka_offset_delta7 = sxLayout(0x60300046, "kafka_offset_delta7", LE, sxbx_kafka_offset_delta7_fields);
+var sxbx_kafka_offset_delta8_fields = layout([field("offset_delta", "zigzag32", 8)]);
+var sxbx_kafka_offset_delta8 = sxLayout(0x60300047, "kafka_offset_delta8", LE, sxbx_kafka_offset_delta8_fields);
+var sxbx_kafka_offset_delta9_fields = layout([field("offset_delta", "zigzag32", 9)]);
+var sxbx_kafka_offset_delta9 = sxLayout(0x60300048, "kafka_offset_delta9", LE, sxbx_kafka_offset_delta9_fields);
+var sxbx_kafka_offset_delta10_fields = layout([field("offset_delta", "zigzag32", 10)]);
+var sxbx_kafka_offset_delta10 = sxLayout(0x60300049, "kafka_offset_delta10", LE, sxbx_kafka_offset_delta10_fields);
+var sxbx_kafka_nullable_size1_fields = layout([field("nullable_size", "zigzag32", 1)]);
+var sxbx_kafka_nullable_size1 = sxLayout(0x6030004A, "kafka_nullable_size1", LE, sxbx_kafka_nullable_size1_fields);
+var sxbx_kafka_nullable_size2_fields = layout([field("nullable_size", "zigzag32", 2)]);
+var sxbx_kafka_nullable_size2 = sxLayout(0x6030004B, "kafka_nullable_size2", LE, sxbx_kafka_nullable_size2_fields);
+var sxbx_kafka_nullable_size3_fields = layout([field("nullable_size", "zigzag32", 3)]);
+var sxbx_kafka_nullable_size3 = sxLayout(0x6030004C, "kafka_nullable_size3", LE, sxbx_kafka_nullable_size3_fields);
+var sxbx_kafka_nullable_size4_fields = layout([field("nullable_size", "zigzag32", 4)]);
+var sxbx_kafka_nullable_size4 = sxLayout(0x6030004D, "kafka_nullable_size4", LE, sxbx_kafka_nullable_size4_fields);
+var sxbx_kafka_nullable_size5_fields = layout([field("nullable_size", "zigzag32", 5)]);
+var sxbx_kafka_nullable_size5 = sxLayout(0x6030004E, "kafka_nullable_size5", LE, sxbx_kafka_nullable_size5_fields);
+var sxbx_kafka_nullable_size6_fields = layout([field("nullable_size", "zigzag32", 6)]);
+var sxbx_kafka_nullable_size6 = sxLayout(0x6030004F, "kafka_nullable_size6", LE, sxbx_kafka_nullable_size6_fields);
+var sxbx_kafka_nullable_size7_fields = layout([field("nullable_size", "zigzag32", 7)]);
+var sxbx_kafka_nullable_size7 = sxLayout(0x60300050, "kafka_nullable_size7", LE, sxbx_kafka_nullable_size7_fields);
+var sxbx_kafka_nullable_size8_fields = layout([field("nullable_size", "zigzag32", 8)]);
+var sxbx_kafka_nullable_size8 = sxLayout(0x60300051, "kafka_nullable_size8", LE, sxbx_kafka_nullable_size8_fields);
+var sxbx_kafka_nullable_size9_fields = layout([field("nullable_size", "zigzag32", 9)]);
+var sxbx_kafka_nullable_size9 = sxLayout(0x60300052, "kafka_nullable_size9", LE, sxbx_kafka_nullable_size9_fields);
+var sxbx_kafka_nullable_size10_fields = layout([field("nullable_size", "zigzag32", 10)]);
+var sxbx_kafka_nullable_size10 = sxLayout(0x60300053, "kafka_nullable_size10", LE, sxbx_kafka_nullable_size10_fields);
+var sxbx_kafka_header_count1_fields = layout([field("header_count", "zigzag32", 1, COUNT)]);
+var sxbx_kafka_header_count1 = sxLayout(0x60300054, "kafka_header_count1", LE, sxbx_kafka_header_count1_fields);
+var sxbx_kafka_header_count2_fields = layout([field("header_count", "zigzag32", 2, COUNT)]);
+var sxbx_kafka_header_count2 = sxLayout(0x60300055, "kafka_header_count2", LE, sxbx_kafka_header_count2_fields);
+var sxbx_kafka_header_count3_fields = layout([field("header_count", "zigzag32", 3, COUNT)]);
+var sxbx_kafka_header_count3 = sxLayout(0x60300056, "kafka_header_count3", LE, sxbx_kafka_header_count3_fields);
+var sxbx_kafka_header_count4_fields = layout([field("header_count", "zigzag32", 4, COUNT)]);
+var sxbx_kafka_header_count4 = sxLayout(0x60300057, "kafka_header_count4", LE, sxbx_kafka_header_count4_fields);
+var sxbx_kafka_header_count5_fields = layout([field("header_count", "zigzag32", 5, COUNT)]);
+var sxbx_kafka_header_count5 = sxLayout(0x60300058, "kafka_header_count5", LE, sxbx_kafka_header_count5_fields);
+var sxbx_kafka_header_count6_fields = layout([field("header_count", "zigzag32", 6, COUNT)]);
+var sxbx_kafka_header_count6 = sxLayout(0x60300059, "kafka_header_count6", LE, sxbx_kafka_header_count6_fields);
+var sxbx_kafka_header_count7_fields = layout([field("header_count", "zigzag32", 7, COUNT)]);
+var sxbx_kafka_header_count7 = sxLayout(0x6030005A, "kafka_header_count7", LE, sxbx_kafka_header_count7_fields);
+var sxbx_kafka_header_count8_fields = layout([field("header_count", "zigzag32", 8, COUNT)]);
+var sxbx_kafka_header_count8 = sxLayout(0x6030005B, "kafka_header_count8", LE, sxbx_kafka_header_count8_fields);
+var sxbx_kafka_header_count9_fields = layout([field("header_count", "zigzag32", 9, COUNT)]);
+var sxbx_kafka_header_count9 = sxLayout(0x6030005C, "kafka_header_count9", LE, sxbx_kafka_header_count9_fields);
+var sxbx_kafka_header_count10_fields = layout([field("header_count", "zigzag32", 10, COUNT)]);
+var sxbx_kafka_header_count10 = sxLayout(0x6030005D, "kafka_header_count10", LE, sxbx_kafka_header_count10_fields);
+var sxbx_kafka_header_key_size1_fields = layout([field("header_key_size", "zigzag32", 1, SIZE)]);
+var sxbx_kafka_header_key_size1 = sxLayout(0x6030005E, "kafka_header_key_size1", LE, sxbx_kafka_header_key_size1_fields);
+var sxbx_kafka_header_key_size2_fields = layout([field("header_key_size", "zigzag32", 2, SIZE)]);
+var sxbx_kafka_header_key_size2 = sxLayout(0x6030005F, "kafka_header_key_size2", LE, sxbx_kafka_header_key_size2_fields);
+var sxbx_kafka_header_key_size3_fields = layout([field("header_key_size", "zigzag32", 3, SIZE)]);
+var sxbx_kafka_header_key_size3 = sxLayout(0x60300060, "kafka_header_key_size3", LE, sxbx_kafka_header_key_size3_fields);
+var sxbx_kafka_header_key_size4_fields = layout([field("header_key_size", "zigzag32", 4, SIZE)]);
+var sxbx_kafka_header_key_size4 = sxLayout(0x60300061, "kafka_header_key_size4", LE, sxbx_kafka_header_key_size4_fields);
+var sxbx_kafka_header_key_size5_fields = layout([field("header_key_size", "zigzag32", 5, SIZE)]);
+var sxbx_kafka_header_key_size5 = sxLayout(0x60300062, "kafka_header_key_size5", LE, sxbx_kafka_header_key_size5_fields);
+var sxbx_kafka_header_key_size6_fields = layout([field("header_key_size", "zigzag32", 6, SIZE)]);
+var sxbx_kafka_header_key_size6 = sxLayout(0x60300063, "kafka_header_key_size6", LE, sxbx_kafka_header_key_size6_fields);
+var sxbx_kafka_header_key_size7_fields = layout([field("header_key_size", "zigzag32", 7, SIZE)]);
+var sxbx_kafka_header_key_size7 = sxLayout(0x60300064, "kafka_header_key_size7", LE, sxbx_kafka_header_key_size7_fields);
+var sxbx_kafka_header_key_size8_fields = layout([field("header_key_size", "zigzag32", 8, SIZE)]);
+var sxbx_kafka_header_key_size8 = sxLayout(0x60300065, "kafka_header_key_size8", LE, sxbx_kafka_header_key_size8_fields);
+var sxbx_kafka_header_key_size9_fields = layout([field("header_key_size", "zigzag32", 9, SIZE)]);
+var sxbx_kafka_header_key_size9 = sxLayout(0x60300066, "kafka_header_key_size9", LE, sxbx_kafka_header_key_size9_fields);
+var sxbx_kafka_header_key_size10_fields = layout([field("header_key_size", "zigzag32", 10, SIZE)]);
+var sxbx_kafka_header_key_size10 = sxLayout(0x60300067, "kafka_header_key_size10", LE, sxbx_kafka_header_key_size10_fields);
+var sxbx_kafka_record_size = [sxbx_kafka_record_size1, sxbx_kafka_record_size2, sxbx_kafka_record_size3,
+    sxbx_kafka_record_size4, sxbx_kafka_record_size5, sxbx_kafka_record_size6, sxbx_kafka_record_size7, sxbx_kafka_record_size8,
+    sxbx_kafka_record_size9, sxbx_kafka_record_size10];
+var sxbx_kafka_timestamp_delta = [sxbx_kafka_timestamp_delta1, sxbx_kafka_timestamp_delta2, sxbx_kafka_timestamp_delta3,
+    sxbx_kafka_timestamp_delta4, sxbx_kafka_timestamp_delta5, sxbx_kafka_timestamp_delta6, sxbx_kafka_timestamp_delta7,
+    sxbx_kafka_timestamp_delta8, sxbx_kafka_timestamp_delta9, sxbx_kafka_timestamp_delta10];
+var sxbx_kafka_offset_delta = [sxbx_kafka_offset_delta1, sxbx_kafka_offset_delta2, sxbx_kafka_offset_delta3,
+    sxbx_kafka_offset_delta4, sxbx_kafka_offset_delta5, sxbx_kafka_offset_delta6, sxbx_kafka_offset_delta7,
+    sxbx_kafka_offset_delta8, sxbx_kafka_offset_delta9, sxbx_kafka_offset_delta10];
+var sxbx_kafka_nullable_size = [sxbx_kafka_nullable_size1, sxbx_kafka_nullable_size2, sxbx_kafka_nullable_size3,
+    sxbx_kafka_nullable_size4, sxbx_kafka_nullable_size5, sxbx_kafka_nullable_size6, sxbx_kafka_nullable_size7,
+    sxbx_kafka_nullable_size8, sxbx_kafka_nullable_size9, sxbx_kafka_nullable_size10];
+var sxbx_kafka_header_count = [sxbx_kafka_header_count1, sxbx_kafka_header_count2, sxbx_kafka_header_count3,
+    sxbx_kafka_header_count4, sxbx_kafka_header_count5, sxbx_kafka_header_count6, sxbx_kafka_header_count7,
+    sxbx_kafka_header_count8, sxbx_kafka_header_count9, sxbx_kafka_header_count10];
+var sxbx_kafka_header_key_size = [sxbx_kafka_header_key_size1, sxbx_kafka_header_key_size2, sxbx_kafka_header_key_size3,
+    sxbx_kafka_header_key_size4, sxbx_kafka_header_key_size5, sxbx_kafka_header_key_size6, sxbx_kafka_header_key_size7,
+    sxbx_kafka_header_key_size8, sxbx_kafka_header_key_size9, sxbx_kafka_header_key_size10];
+function sxbx_zig(c, p, end, ls, out) {
+    var u = 0;
+    var start = p[0];
+    for (var i = 0; i < 10; i++) {
+        var v = [0];
+        if (p[0] >= end || !sxbx_word(c, p[0]++, 1, false, v) || i === 9 && sxAnd64(v[0], 254)) {
+            return false;
+        }
+        u = sxOr64(u, sxShl64(sxAnd64(v[0], 127), (i * 7) >>> 0));
+        if (!sxAnd64(v[0], 128)) {
+            out[0] = sxI64(sxXor64(sxShr64(u, 1), -sxAnd64(u, 1)));
+            return sxbx_add(c, ls[i], start);
+        }
+    }
+    return false;
+}
+function sxbx_kafka_blob(c, p, end, key) {
+    var z = [0];
+    if (!sxbx_zig(c, p, end, key ? sxbx_kafka_header_key_size : sxbx_kafka_nullable_size, z) || z[0] < (key ? 0 : -1) || z[0] > 2147483647) {
+        return false;
+    }
+    if (z[0] < 0) {
+        return true;
+    }
+    if ((z[0] < 0 ? z[0] + SX_U64_MAX : z[0]) > sxU64(end - p[0])) {
+        return false;
+    }
+    p[0] += (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]);
+    return true;
+}
+function sxbx_kafka(c) {
+    var p = 0;
+    var b = [];
+    for (var batch = 0; batch < 20000 && c.count < 20000; batch++) {
+        if (!sxbx_read(c, p, b, 61) || b[16] !== 2) {
+            break;
+        }
+        var length = sxbx32(b, 8, true) | 0;
+        var count = sxbx32(b, 57, true) | 0;
+        if (length < 49 || count < 0 || count > 2048 || !sxbx_span(c, p, (length < 0 ? length + SX_U64_MAX : length) + 12)) {
+            break;
+        }
+        if (!sxbx_add(c, sxbx_kafka_batch, p)) {
+            return false;
+        }
+        var q = [p + 61];
+        var end = p + 12 + (length < 0 ? length + SX_U64_MAX : length);
+        for (var i = 0; i < count && q[0] < end && c.count < 20000; i++) {
+            var old = c.count;
+            var z = [0];
+            var delta = [0];
+            var headers = [0];
+            var rec = q[0];
+            if (!sxbx_zig(c, q, end, sxbx_kafka_record_size, z) || z[0] < 6 || z[0] > 2147483647 || (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]) > sxU64(end - q[0])) {
+                c.count = old;
+                break;
+            }
+            var stop = q[0] + (z[0] < 0 ? z[0] + SX_U64_MAX : z[0]);
+            if (!sxbx_add(c, sxbx_kafka_attributes, q[0]++) || !sxbx_zig(c, q, stop, sxbx_kafka_timestamp_delta, delta) || !sxbx_zig(c, q, stop, sxbx_kafka_offset_delta, delta) || delta[0] < 0 || delta[0] > 2147483647 || !sxbx_kafka_blob(c, q, stop, false) || !sxbx_kafka_blob(c, q, stop, false) || !sxbx_zig(c, q, stop, sxbx_kafka_header_count, headers) || headers[0] < 0 || headers[0] > 256) {
+                c.count = old;
+                break;
+            }
+            var ok = true;
+            for (var j = 0; j < headers[0]; j++) {
+                if (!sxbx_kafka_blob(c, q, stop, true) || !sxbx_kafka_blob(c, q, stop, false)) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok || q[0] !== stop || q[0] <= rec) {
+                c.count = old;
+                break;
+            }
+        }
+        p = end;
+    }
+    return c.count > 0;
+}
+function sx_kafka_record_batch_build(c) {
+    return sxbx_kafka(c);
+}

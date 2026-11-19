@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/hap/xx_hap_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxae_hap_header_fields = layout([chars("magic", 4, SIGNATURE), bytes("reserved", 11, RESERVED)]);
+var sxae_hap_header = sxLayout(0x6017001C, "hap_header", LE, sxae_hap_header_fields);
+var sxae_hap_member_fields = layout([chars("magic", 4, SIGNATURE), i32("packed_size", SIZE), u32("crc32", CHECKSUM),
+    bytes("unknown", 4), u8("flags", FLAGS), u8("unknown17"), u16("time"), u16("date"), i32("unpacked_size", SIZE),
+    chars("name", 13, STRING), u8("method", ID)]);
+var sxae_hap_member = sxLayout(0x6017001D, "hap_member", LE, sxae_hap_member_fields);
+function sxae_hap(c) {
+    var b = [];
+    var p = 15;
+    if (!sx_read(c, 0, b, 15) || sxae32(b, 0) !== 0x46483391 || !sxae_add(c, sxae_hap_header, 0)) {
+        return false;
+    }
+    for (var i = 0; p < c.size && i < 20000; i++) {
+        if (!sx_read(c, p, b, 40) || sxae32(b, 0) !== 0x574A688E || !sxae_add(c, sxae_hap_member, p)) {
+            return false;
+        }
+        var n = sxae32(b, 4);
+        if (n > 2147483647 || !sxae_data(c, p + 40, n)) {
+            return false;
+        }
+        p += (40 + n) >>> 0;
+    }
+    return p === c.size;
+}
+function sx_hap_build(c) {
+    return sxae_hap(c);
+}

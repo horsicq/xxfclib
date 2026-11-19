@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/axona_tetrode/xx_axona_tetrode_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_axona_timestamp_fields = layout([i32("timestamp")]);
+var sxscx_axona_timestamp = sxLayout(0x60310002, "axona_timestamp", BE, sxscx_axona_timestamp_fields);
+var sxscx_axona_end_fields = layout([chars("marker", 12, SIGNATURE)]);
+var sxscx_axona_end = sxLayout(0x60310003, "axona_end", LE, sxscx_axona_end_fields);
+function sxscx_axona(c, b, n) {
+    var at = 0;
+    var head = 0;
+    var samples = [0];
+    var count = [0];
+    var channels = [0];
+    while (at < n && at < 65536) {
+        if (sxU64(n - at) >= 10 && !sxMemcmpAt(b, at, "data_start", 0, 10)) {
+            head = at + 10;
+            break;
+        }
+        var end = at;
+        while (end < n && b[end] !== 10) {
+            end++;
+        }
+        if (end === n) {
+            return false;
+        }
+        var keys = ["num_spikes ", "num_chans ", "samples_per_spike "];
+        var out = [count, channels, samples];
+        for (var i = 0; i < 3; i++) {
+            var z = sxStrlen(keys[i]);
+            if (sxU64(end - at) >= z && !sxMemcmpAt(b, at, keys[i], 0, z) && !sxscx_decimal(b, at + z, sxU64(sxU64(end - at) - z), out[i])) {
+                return false;
+            }
+        }
+        at = end + 1;
+    }
+    if (!head || !count[0] || count[0] > 261760 || channels[0] !== 4 || !samples[0] || samples[0] > 1024) {
+        return false;
+    }
+    var width = 4 + samples[0];
+    var bytes = count[0] * 4 * width;
+    if (!sxscx_span(c, head, bytes + 12) || head + bytes + 12 !== n) {
+        return false;
+    }
+    for (i = 0; i < count[0] * 4 && c.count < 32000; i++) {
+        if (!sxscx_add(c, sxscx_axona_timestamp, head + i * width)) {
+            return false;
+        }
+    }
+    return sxscx_add(c, sxscx_axona_end, head + bytes);
+}
+function sx_axona_tetrode_build(c, b) {
+    return sxscx_axona(c, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

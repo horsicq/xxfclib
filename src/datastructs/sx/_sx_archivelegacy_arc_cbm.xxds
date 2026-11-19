@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/arc_cbm/xx_arc_cbm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_arc_cbm_member_fields = layout([u8("version", ID), u8("method", ID), u16("checksum", CHECKSUM),
+    field("unpacked_size", "uint24", 3, SIZE), u16("block_count", COUNT), chars("file_type", 1, ID), u8("name_size", SIZE)]);
+var sxag_arc_cbm_member = sxLayout(0x6025000C, "arc_cbm_member", LE, sxag_arc_cbm_member_fields);
+var sxag_arc_cbm_v2_fields = layout([u8("record_length", SIZE), u16("date")]);
+var sxag_arc_cbm_v2 = sxLayout(0x6025000D, "arc_cbm_v2", LE, sxag_arc_cbm_v2_fields);
+function sxag_cbm(c) {
+    var b = [];
+    var p = 0;
+    if (!sxag_read(c, 0, b, 11)) {
+        return false;
+    }
+    if ((c.size < 0 ? c.size + SX_U64_MAX : c.size) > 265 && b[6] === 0x9E && b[7] === 40 /*(*/) {
+        var line = sxag16(b, 4, false);
+        if (line < 7 || line > 4096) {
+            return false;
+        }
+        p = ((line - 6) >>> 0) * 254;
+        if (line === 15 && b[8] === 55 /*7*/) {
+            p--;
+        }
+    }
+    for (var i = 0; i < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); i++) {
+        if (!sxag_read(c, p, b, 11) || b[0] !== 1 && b[0] !== 2) {
+            break;
+        }
+        var version = b[0];
+        var name = b[10];
+        var n = sxag16(b, 7, false) * 254;
+        var h = (((11 + name) >>> 0) + (version === 2 ? 3 : 0)) >>> 0;
+        if (!name || name > 16 || n < h || !sxag_span(c, p, n)) {
+            break;
+        }
+        if (!sxag_add(c, sxag_arc_cbm_member, p)) {
+            return false;
+        }
+        if (version === 2 && !sxag_add(c, sxag_arc_cbm_v2, p + 11 + name)) {
+            return false;
+        }
+        p += n;
+    }
+    return c.count !== 0;
+}
+function sx_arc_cbm_build(c) {
+    return sxag_cbm(c);
+}

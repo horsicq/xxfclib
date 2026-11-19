@@ -1,0 +1,117 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/genomics_sam/xx_genomics_sam_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsa_reference_length_fields = layout([field("reference_length", "ascii_signed", 0, COUNT)]);
+var sxsa_reference_length = sxLayout(0x6051001F, "science_reference_length", LE, sxsa_reference_length_fields);
+var sxsa_mapping_quality_fields = layout([field("mapping_quality", "ascii_signed", 0)]);
+var sxsa_mapping_quality = sxLayout(0x60510030, "science_mapping_quality", LE, sxsa_mapping_quality_fields);
+var sxsa_sam_query_name_fields = layout([field("sam_query_name", "char", 0, STRING)]);
+var sxsa_sam_query_name = sxLayout(0x6051003D, "science_sam_query_name", LE, sxsa_sam_query_name_fields);
+var sxsa_sam_reference_fields = layout([field("sam_reference", "char", 0, STRING)]);
+var sxsa_sam_reference = sxLayout(0x6051003E, "science_sam_reference", LE, sxsa_sam_reference_fields);
+var sxsa_sam_cigar_fields = layout([field("sam_cigar", "char", 0, STRING)]);
+var sxsa_sam_cigar = sxLayout(0x6051003F, "science_sam_cigar", LE, sxsa_sam_cigar_fields);
+var sxsa_sam_mate_reference_fields = layout([field("sam_mate_reference", "char", 0, STRING)]);
+var sxsa_sam_mate_reference = sxLayout(0x60510040, "science_sam_mate_reference", LE, sxsa_sam_mate_reference_fields);
+var sxsa_sam_tag_fields = layout([field("sam_tag", "char", 0, STRING)]);
+var sxsa_sam_tag = sxLayout(0x60510041, "science_sam_tag", LE, sxsa_sam_tag_fields);
+var sxsa_sam_tag_type_fields = layout([field("sam_tag_type", "char", 0, STRING)]);
+var sxsa_sam_tag_type = sxLayout(0x60510042, "science_sam_tag_type", LE, sxsa_sam_tag_type_fields);
+var sxsa_sam_text_value_fields = layout([field("sam_text_value", "char", 0, STRING)]);
+var sxsa_sam_text_value = sxLayout(0x60510043, "science_sam_text_value", LE, sxsa_sam_text_value_fields);
+var sxsa_sam_hex_value_fields = layout([field("sam_hex_value", "char", 0, STRING)]);
+var sxsa_sam_hex_value = sxLayout(0x60510044, "science_sam_hex_value", LE, sxsa_sam_hex_value_fields);
+var sxsa_sam_flag_fields = layout([field("sam_flag", "ascii_signed", 0, FLAGS)]);
+var sxsa_sam_flag = sxLayout(0x60510045, "science_sam_flag", LE, sxsa_sam_flag_fields);
+var sxsa_sam_template_length_fields = layout([field("sam_template_length", "ascii_signed", 0)]);
+var sxsa_sam_template_length = sxLayout(0x60510046, "science_sam_template_length", LE, sxsa_sam_template_length_fields);
+var sxsa_sam_integer_value_fields = layout([field("sam_integer_value", "ascii_signed", 0)]);
+var sxsa_sam_integer_value = sxLayout(0x60510047, "science_sam_integer_value", LE, sxsa_sam_integer_value_fields);
+var sxsa_sam_real_value_fields = layout([field("sam_real_value", "ascii_real", 0)]);
+var sxsa_sam_real_value = sxLayout(0x60510048, "science_sam_real_value", LE, sxsa_sam_real_value_fields);
+function sxsa_sam(q) {
+    var line = sxNew_sxsa_token();
+    var t = sxAllocN(150, sxNew_sxsa_token);
+    var cols = [sxsa_sam_query_name, sxsa_sam_flag, sxsa_sam_reference, sxsa_position_1, sxsa_mapping_quality, sxsa_sam_cigar, sxsa_sam_mate_reference, sxsa_position_1, sxsa_sam_template_length, sxsa_sequence, sxsa_quality];
+    while (sxsa_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        var n = sxsa_split(q, sxCopy_sxsa_token(null, line), t, 150, true);
+        if (!n || n > 150) {
+            return false;
+        }
+        if (q.b[line.a] === 64 /*@*/) {
+            {
+                if (!sxsa_emit(q, sxsa_record_type, sxCopy_sxsa_token(null, t[0]))) {
+                    return false;
+                }
+            }
+            for (var i = 1; i < n; i++) {
+                if (sxsa_eq(q, sxCopy_sxsa_token(null, t[0]), "@CO")) {
+                    {
+                        if (!sxsa_emit(q, sxsa_comment, sxCopy_sxsa_token(null, t[i]))) {
+                            return false;
+                        }
+                    }
+                    continue;
+                }
+                if (t[i].z < 4) {
+                    return false;
+                }
+                {
+                    if (!sxsa_emit(q, sxsa_sam_tag, sxCopy_sxsa_token(null, { a: t[i].a, z: 2 }))) {
+                        return false;
+                    }
+                }
+                var l = sxsa_eq(q, sxCopy_sxsa_token(null, { a: t[i].a, z: 2 }), "LN") ? sxsa_reference_length : sxsa_sam_text_value;
+                if (!sxsa_emit(q, l, sxCopy_sxsa_token(null, { a: t[i].a + 3, z: t[i].z - 3 }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (n < 11 || !sxsa_fields(q, t, 0, 11, cols, 11)) {
+            return false;
+        }
+        for (i = 11; i < n; i++) {
+            if (t[i].z < 6) {
+                return false;
+            }
+            {
+                if (!sxsa_emit(q, sxsa_sam_tag, sxCopy_sxsa_token(null, { a: t[i].a, z: 2 }))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxsa_emit(q, sxsa_sam_tag_type, sxCopy_sxsa_token(null, { a: t[i].a + 3, z: 1 }))) {
+                    return false;
+                }
+            }
+            var ty = q.b[t[i].a + 3];
+            var v = { a: t[i].a + 5, z: t[i].z - 5 };
+            if (ty === 66 /*B*/) {
+                if (v.z < 3) {
+                    return false;
+                }
+                {
+                    if (!sxsa_emit(q, sxsa_sam_tag_type, sxCopy_sxsa_token(null, { a: v.a, z: 1 }))) {
+                        return false;
+                    }
+                }
+                if (!sxsa_csv(q, sxCopy_sxsa_token(null, { a: v.a + 2, z: v.z - 2 }), q.b[v.a] === 102 /*f*/ ? sxsa_sam_real_value : sxsa_sam_integer_value)) {
+                    return false;
+                }
+            } else if (!sxsa_emit(q, ty === 105 /*i*/ ? sxsa_sam_integer_value : ty === 102 /*f*/ ? sxsa_sam_real_value : ty === 72 /*H*/ ? sxsa_sam_hex_value : sxsa_sam_text_value, sxCopy_sxsa_token(null, v))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_genomics_sam_build(q) {
+    return sxsa_sam(q);
+}

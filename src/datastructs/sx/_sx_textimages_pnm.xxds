@@ -1,0 +1,199 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/pnm/xx_pnm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_tuple_type_fields = layout([field("tuple_type", "char", 0, STRING)]);
+var sxti_tuple_type = sxLayout(0x60410003, "textimage_tuple_type", LE, sxti_tuple_type_fields);
+var sxti_depth_fields = layout([field("depth", "ascii_signed", 0)]);
+var sxti_depth = sxLayout(0x60410016, "textimage_depth", LE, sxti_depth_fields);
+var sxti_maxval_fields = layout([field("maxval", "ascii_signed", 0)]);
+var sxti_maxval = sxLayout(0x60410017, "textimage_maxval", LE, sxti_maxval_fields);
+var sxti_sample_fields = layout([field("sample", "ascii_signed", 0)]);
+var sxti_sample = sxLayout(0x60410050, "textimage_sample", LE, sxti_sample_fields);
+function sxti_delimiter(q) {
+    if (q.p >= q.n || !sxti_space(q.b[q.p])) {
+        return false;
+    }
+    var x = q.b[q.p++];
+    if (x === 13 && q.p < q.n && q.b[q.p] === 10) {
+        q.p++;
+    }
+    return true;
+}
+function sxti_pnm(q) {
+    var images = 0;
+    while (q.p < q.n && q.c.count < 32000) {
+        while (q.p < q.n && sxti_space(q.b[q.p])) {
+            q.p++;
+        }
+        if (q.p === q.n) {
+            break;
+        }
+        if (q.n - q.p < 3 || q.b[q.p] !== 80 /*P*/ || ++images > 1024) {
+            return false;
+        }
+        var kind = (q.b[q.p + 1] - 48 /*0*/) >>> 0;
+        if (kind < 1 || kind > 7) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_magic, q.p, 2)) {
+                return false;
+            }
+        }
+        q.p += 2;
+        var w = [0];
+        var h = [0];
+        var depth = [kind === 3 || kind === 6 ? 3 : 1];
+        var max = [1];
+        if (kind === 7) {
+            if (!sxti_delimiter(q)) {
+                return false;
+            }
+            var a = [0];
+            var end = [0];
+            var ended = false;
+            while (sxti_line(q, a, end, true)) {
+                var next = q.p;
+                q.p = a[0];
+                var key = [0];
+                var z = [0];
+                if (!sxti_token(q, end[0], key, z, false)) {
+                    return false;
+                }
+                if (sxti_eq(q, key[0], z[0], "ENDHDR")) {
+                    ended = true;
+                    q.p = next;
+                    break;
+                }
+                var l = null;
+                var out = null;
+                if (sxti_eq(q, key[0], z[0], "WIDTH")) {
+                    l = sxti_width;
+                    out = w;
+                } else if (sxti_eq(q, key[0], z[0], "HEIGHT")) {
+                    l = sxti_height;
+                    out = h;
+                } else if (sxti_eq(q, key[0], z[0], "DEPTH")) {
+                    l = sxti_depth;
+                    out = depth;
+                } else if (sxti_eq(q, key[0], z[0], "MAXVAL")) {
+                    l = sxti_maxval;
+                    out = max;
+                } else if (sxti_eq(q, key[0], z[0], "TUPLTYPE")) {
+                    while (q.p < end[0] && sxti_space(q.b[q.p])) {
+                        q.p++;
+                    }
+                    {
+                        if (!sxti_emit(q, sxti_tuple_type, q.p, end[0] - q.p)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    return false;
+                }
+                if (l !== null && !sxti_value(q, l, end[0], out)) {
+                    return false;
+                }
+                q.p = next;
+            }
+            if (!ended) {
+                return false;
+            }
+        } else {
+            {
+                if (!sxti_value(q, sxti_width, q.n, w)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxti_value(q, sxti_height, q.n, h)) {
+                    return false;
+                }
+            }
+            if (kind !== 1 && kind !== 4) {
+                {
+                    if (!sxti_value(q, sxti_maxval, q.n, max)) {
+                        return false;
+                    }
+                }
+            }
+            if (!sxti_delimiter(q)) {
+                return false;
+            }
+        }
+        if (!w[0] || !h[0] || !depth[0] || depth[0] > 16 || !max[0] || max[0] > 65535 || w[0] > Math.floor(16777216 / depth[0]) || h[0] > Math.floor(Math.floor(16777216 / depth[0]) / w[0])) {
+            return false;
+        }
+        var count = w[0] * h[0] * depth[0];
+        if (kind < 4) {
+            for (var i = 0; i < count; i++) {
+                if (q.c.count >= 32000) {
+                    return true;
+                }
+                if (kind === 1) {
+                    while (q.p < q.n) {
+                        if (sxti_space(q.b[q.p])) {
+                            q.p++;
+                        } else if (q.b[q.p] === 35 /*#*/) {
+                            while (q.p < q.n && q.b[q.p] !== 10) {
+                                q.p++;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    if (q.p === q.n || q.b[q.p] !== 48 /*0*/ && q.b[q.p] !== 49 /*1*/) {
+                        return false;
+                    }
+                    {
+                        if (!sxti_emit(q, sxti_sample, q.p, 1)) {
+                            return false;
+                        }
+                    }
+                    q.p++;
+                } else {
+                    var sample = [0];
+                    {
+                        if (!sxti_value(q, sxti_sample, q.n, sample)) {
+                            return false;
+                        }
+                    }
+                    if (sample[0] > max[0]) {
+                        return false;
+                    }
+                }
+            }
+            if (!sxti_delimiter(q)) {
+                return false;
+            }
+        } else {
+            var width = max[0] > 255 ? 2 : 1;
+            var bytes = kind === 4 ? Math.floor((w[0] + 7) / 8) * h[0] : count * width;
+            if (bytes > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p)) {
+                return false;
+            }
+            if (kind !== 4 && !sxti_table(q, width === 2 ? sxti_sample_u16_be : sxti_sample_u8, q.p, (width >= SX_I64_MAX ? width - SX_U64_MAX : width), count)) {
+                return false;
+            }
+            q.p += (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes);
+        }
+        while (q.p < q.n) {
+            if (sxti_space(q.b[q.p])) {
+                q.p++;
+            } else if (q.b[q.p] === 35 /*#*/) {
+                while (q.p < q.n && q.b[q.p] !== 10) {
+                    q.p++;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    return images > 0;
+}
+function sx_pnm_build(q) {
+    return sxti_pnm(q);
+}

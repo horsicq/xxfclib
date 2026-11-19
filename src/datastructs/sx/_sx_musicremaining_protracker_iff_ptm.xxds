@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/protracker_iff_ptm/xx_protracker_iff_ptm_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_pt36_header_fields = layout([blob("magic", 4, SIGNATURE), u32("form_bytes", SIZE), blob("form_type", 4, ID)]);
+var sxmr_pt36_header = sxLayout(0x607D0048, "pt36_header", BE, sxmr_pt36_header_fields);
+var sxmr_pt36_info_fields = layout([chars("name", 32, NONE), u16("samples", COUNT), u16("orders", COUNT),
+    u16("patterns", COUNT), u16("volume"), u16("tempo"), u16("flags", FLAGS), u16("day"), u16("month"), u16("year"),
+    u16("hour"), u16("minute"), u16("second"), u16("play_hours"), u16("play_minutes"), u16("play_seconds"),
+    u16("play_milliseconds")]);
+var sxmr_pt36_info = sxLayout(0x607D004A, "pt36_info", BE, sxmr_pt36_info_fields);
+function sxmr_pt36(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 12;
+    var n = [0];
+    var first = 4;
+    var id = [];
+    if (!sxmr_eq(v, 0, "FORM", 4, end) || !sxmr_eq(v, 8, "MODL", 4, end) || !sxmr_row(v, sxmr_pt36_header, 0, end)) {
+        return false;
+    }
+    while (p < end) {
+        if (!sxmr_read(v, p, id, 4, end) || !sxmr_be(v, p + 4, 4, n, end) || n[0] < 8 + first || !sxmr_row(v, sxmr_pt36_chunk, p, end)) {
+            return false;
+        }
+        n[0] = sxU64(n[0] - (8 + first));
+        first = 0;
+        p += 8;
+        if (!sxmr_span(v, p, n[0], end)) {
+            return false;
+        }
+        if (!sxMemcmp(id, "INFO", 4) && n[0] >= 64) {
+            if (!sxmr_row(v, sxmr_pt36_info, p, end)) {
+                return false;
+            }
+        } else if (!sxMemcmp(id, "VERS", 4) && n[0] > 4) {
+            if (!sxmr_text_emit(v, p + 4, sxU64(n[0] - 4), end)) {
+                return false;
+            }
+        } else if (!sxMemcmp(id, "CMNT", 4)) {
+            if (!sxmr_text_emit(v, p, n[0], end)) {
+                return false;
+            }
+        }
+        p += n[0];
+    }
+    return true;
+}
+function sx_protracker_iff_ptm_build(v) {
+    return sxmr_pt36(v);
+}

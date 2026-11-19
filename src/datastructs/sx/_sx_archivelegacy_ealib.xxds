@@ -1,0 +1,53 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ealib/xx_ealib_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_ealib_header_fields = layout([chars("signature", 5, SIGNATURE), u16("entry_count", COUNT)]);
+var sxag_ealib_header = sxLayout(0x60250038, "ealib_header", LE, sxag_ealib_header_fields);
+var sxag_ealib_entry_fields = layout([chars("name", 13, STRING), u8("method", ID), i32("data_offset", OFFSET)]);
+var sxag_ealib_entry = sxLayout(0x60250039, "ealib_entry", LE, sxag_ealib_entry_fields);
+var sxag_ealib_packed_size_fields = layout([u32("unpacked_size", SIZE)]);
+var sxag_ealib_packed_size = sxLayout(0x6025003A, "ealib_packed_size", LE, sxag_ealib_packed_size_fields);
+function sxag_ealib(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 7) || !sxag_add(c, sxag_ealib_header, 0)) {
+        return false;
+    }
+    var n = sxag16(b, 5, false);
+    if (!n || n >= 20000 || !sxag_span(c, 7, (n + 1) * 18)) {
+        return true;
+    }
+    if (!sxag_table(c, sxag_ealib_entry, 7, n + 1)) {
+        return false;
+    }
+    var directory_end = 7 + (n + 1) * 18;
+    for (var i = 0; i < n; i++) {
+        if (!sxag_read(c, 7 + i * 18, b, 18)) {
+            break;
+        }
+        var p = sxag32(b, 14, false);
+        if (p < directory_end || p > 2147483647 || b[13] !== 1 && b[13] !== 4) {
+            continue;
+        }
+        var method = b[13];
+        if (!sxag_read(c, 7 + (i + 1) * 18, b, 18)) {
+            break;
+        }
+        var end = sxag32(b, 14, false);
+        if (end < p || sxU64(end - p) < 4 || !sxag_span(c, p, sxU64(end - p))) {
+            continue;
+        }
+        if (!sxag_add(c, sxag_ealib_packed_size, p)) {
+            return false;
+        }
+        if (method === 4 && sxU64(end - p) >= 6 && !sxag_add(c, sxag_archivelegacy_dcl, p + 4)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_ealib_build(c) {
+    return sxag_ealib(c);
+}

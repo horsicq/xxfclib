@@ -1,0 +1,66 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/lidar_las/xx_lidar_las_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsc_las_vlr_fields = layout([u16("reserved", RESERVED), chars("user_id", 16, STRING), u16("record_id", ID),
+    u16("payload_size", SIZE), chars("description", 32, STRING)]);
+var sxsc_las_vlr = sxLayout(0x6028000D, "las_vlr", LE, sxsc_las_vlr_fields);
+var sxsc_las_point0_fields = layout([i32("x"), i32("y"), i32("z"), u16("intensity"), u8("return_flags", FLAGS),
+    u8("classification", FLAGS), i8("scan_angle_rank"), u8("user_data"), u16("point_source_id", ID)]);
+var sxsc_las_point0 = sxLayout(0x6028000E, "las_point0", LE, sxsc_las_point0_fields);
+var sxsc_las_point1_fields = layout([i32("x"), i32("y"), i32("z"), u16("intensity"), u8("return_flags", FLAGS),
+    u8("classification", FLAGS), i8("scan_angle_rank"), u8("user_data"), u16("point_source_id", ID),
+    field("gps_time", "float64", 8)]);
+var sxsc_las_point1 = sxLayout(0x6028000F, "las_point1", LE, sxsc_las_point1_fields);
+var sxsc_las_point2_fields = layout([i32("x"), i32("y"), i32("z"), u16("intensity"), u8("return_flags", FLAGS),
+    u8("classification", FLAGS), i8("scan_angle_rank"), u8("user_data"), u16("point_source_id", ID), u16("red"), u16("green"),
+    u16("blue")]);
+var sxsc_las_point2 = sxLayout(0x60280010, "las_point2", LE, sxsc_las_point2_fields);
+var sxsc_las_point3_fields = layout([i32("x"), i32("y"), i32("z"), u16("intensity"), u8("return_flags", FLAGS),
+    u8("classification", FLAGS), i8("scan_angle_rank"), u8("user_data"), u16("point_source_id", ID),
+    field("gps_time", "float64", 8), u16("red"), u16("green"), u16("blue")]);
+var sxsc_las_point3 = sxLayout(0x60280011, "las_point3", LE, sxsc_las_point3_fields);
+function sxsc_las(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 227) || sxMemcmp(b, "LASF", 4) || b[24] !== 1 || b[25] !== 2 || !sxsc_add(c, sxsc_las12_header, 0, 227)) {
+        return false;
+    }
+    var data = sxsc32(b, 96, false);
+    var vlrs = sxsc32(b, 100, false);
+    var count = sxsc32(b, 107, false);
+    var fmt = b[104];
+    var width = sxsc16(b, 105, false);
+    var at = sxsc16(b, 94, false);
+    var ls = [sxsc_las_point0, sxsc_las_point1, sxsc_las_point2, sxsc_las_point3];
+    var widths = [20, 28, 26, 34];
+    if (at < 227 || data < (at < 0 ? at + SX_U64_MAX : at) || vlrs > 1024 || fmt > 3 || width < widths[fmt] || count > 1000000 || !sxsc_span(c, data, width * count)) {
+        return false;
+    }
+    for (var i = 0; i < vlrs; i++) {
+        if (sxU64(data - (at < 0 ? at + SX_U64_MAX : at)) < 54 || !sx_read(c, at, b, 54) || !sxsc_add(c, sxsc_las_vlr, at, 54)) {
+            return false;
+        }
+        var n = 54 + sxsc16(b, 20, false);
+        if (n > sxU64(data - (at < 0 ? at + SX_U64_MAX : at))) {
+            return false;
+        }
+        at += (n >= SX_I64_MAX ? n - SX_U64_MAX : n);
+    }
+    if (width === widths[fmt]) {
+        return sxsc_table(c, ls[fmt], data, width, count);
+    }
+    if (count > 16000) {
+        return true;
+    }
+    for (i = 0; i < count; i++) {
+        if (!sxsc_add(c, ls[fmt], data + i * width, widths[fmt])) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_lidar_las_build(c) {
+    return sxsc_las(c);
+}

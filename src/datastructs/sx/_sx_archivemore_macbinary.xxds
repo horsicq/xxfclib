@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/macbinary/xx_macbinary_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxar_macbinary1_header_fields = layout([u8("old_version", ID), u8("name_size", SIZE), chars("name", 63, STRING),
+    chars("file_type", 4, ID), chars("creator", 4, ID), u8("finder_flags_high", FLAGS), u8("zero74", RESERVED),
+    i16("window_vertical"), i16("window_horizontal"), u16("folder_id", ID), u8("protected_flag", FLAGS), u8("zero82", RESERVED),
+    u32("data_fork_size", SIZE), u32("resource_fork_size", SIZE), u32("created"), u32("modified"), bytes("unused_tail", 29)]);
+var sxar_macbinary1_header = sxLayout(0x601C000E, "macbinary1_header", BE, sxar_macbinary1_header_fields);
+var sxar_macbinary2_header_fields = layout([u8("old_version", ID), u8("name_size", SIZE), chars("name", 63, STRING),
+    chars("file_type", 4, ID), chars("creator", 4, ID), u8("finder_flags_high", FLAGS), u8("zero74", RESERVED),
+    i16("window_vertical"), i16("window_horizontal"), u16("folder_id", ID), u8("protected_flag", FLAGS), u8("zero82", RESERVED),
+    u32("data_fork_size", SIZE), u32("resource_fork_size", SIZE), u32("created"), u32("modified"), u16("comment_size", SIZE),
+    u8("finder_flags_low", FLAGS), bytes("unused_signature_area", 14), u32("total_unpacked_size", SIZE),
+    u16("secondary_header_size", SIZE), u8("writer_version", ID), u8("minimum_version", ID), u16("header_crc16", CHECKSUM),
+    u16("reserved_tail", RESERVED)]);
+var sxar_macbinary2_header = sxLayout(0x601C000F, "macbinary2_header", BE, sxar_macbinary2_header_fields);
+var sxar_macbinary3_header_fields = layout([u8("old_version", ID), u8("name_size", SIZE), chars("name", 63, STRING),
+    chars("file_type", 4, ID), chars("creator", 4, ID), u8("finder_flags_high", FLAGS), u8("zero74", RESERVED),
+    i16("window_vertical"), i16("window_horizontal"), u16("folder_id", ID), u8("protected_flag", FLAGS), u8("zero82", RESERVED),
+    u32("data_fork_size", SIZE), u32("resource_fork_size", SIZE), u32("created"), u32("modified"), u16("comment_size", SIZE),
+    u8("finder_flags_low", FLAGS), chars("signature", 4, SIGNATURE), u8("script", ID), u8("extended_finder_flags", FLAGS),
+    bytes("reserved", 8, RESERVED), u32("total_unpacked_size", SIZE), u16("secondary_header_size", SIZE),
+    u8("writer_version", ID), u8("minimum_version", ID), u16("header_crc16", CHECKSUM), u16("reserved_tail", RESERVED)]);
+var sxar_macbinary3_header = sxLayout(0x601C0010, "macbinary3_header", BE, sxar_macbinary3_header_fields);
+function sxar_macbinary(c) {
+    var b = [];
+    if (!sxar_read(c, 0, b, 0, 128)) {
+        return false;
+    }
+    var l = b[122] === 130 && !sxMemcmpAt(b, 102, "mBIN", 0, 4) ? sxar_macbinary3_header : b[122] >= 129 ? sxar_macbinary2_header : sxar_macbinary1_header;
+    return sxar_add(c, l, 0);
+}
+function sx_macbinary_build(c) {
+    return sxar_macbinary(c);
+}

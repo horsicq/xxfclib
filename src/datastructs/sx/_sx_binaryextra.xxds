@@ -1,0 +1,956 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binaryextra.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxbx_metakit_comment(r) {
+    var n = [0];
+    var b = sxVarBytes(r.value, function (sxn) { n[0] = sxn; });
+    if (b === null || !n[0] || n[0] > 9) {
+        return true;
+    }
+    var v = 0;
+    for (var i = 0; i < n[0]; i++) {
+        if (((b[i] & 128) !== 0) !== (i + 1 === n[0])) {
+            return sxSetComment(r, "Invalid Metakit varint framing; encoded bytes preserved");
+        }
+        v = sxOr64(sxShl64(v, 7), b[i] & 127);
+    }
+    var hex = r.name === "column_offset";
+    var a = [];
+    var out = [];
+    var z = sxSnprintf(a, 0, 40, hex ? "0x%llX" : "%llu", [v]);
+    if (z < 0 || z >= 40) {
+        return false;
+    }
+    for (i = 0; i <= z; i++) {
+        out[i] = a[i] & 0xFF;
+    }
+    sxVarSetU64(r.value, v);
+    return sxSetDisplay(r, out) && sxSetComment(r, hex ? "Decoded Metakit varint; byte offset relative to the embedded Metakit datafile." : "Decoded Metakit MSB-first seven-bit groups; high bit marks the final physical byte.");
+}
+function sx_binaryextra_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60300000 || id >= 0x60310000) {
+        return true;
+    }
+    var text = null;
+    switch (id) {
+    case 0x603000B9:
+        return sxbx_metakit_comment(r);
+    case 0x603000BA:
+        return sxbx_metakit_comment(r);
+    case 0x603000BB:
+        return sxbx_metakit_comment(r);
+    case 0x603000BC:
+        return sxbx_metakit_comment(r);
+    case 0x603000BD:
+        return sxbx_metakit_comment(r);
+    case 0x603000BE:
+        return sxbx_metakit_comment(r);
+    case 0x603000BF:
+        return sxbx_metakit_comment(r);
+    case 0x603000C0:
+        return sxbx_metakit_comment(r);
+    case 0x603000C1:
+        return sxbx_metakit_comment(r);
+    case 0x603000C2:
+        return sxbx_metakit_comment(r);
+    case 0x603000C3:
+        return sxbx_metakit_comment(r);
+    case 0x603000C4:
+        return sxbx_metakit_comment(r);
+    case 0x603000C5:
+        return sxbx_metakit_comment(r);
+    case 0x603000C6:
+        return sxbx_metakit_comment(r);
+    case 0x603000C7:
+        return sxbx_metakit_comment(r);
+    case 0x603000C8:
+        return sxbx_metakit_comment(r);
+    case 0x603000C9:
+        return sxbx_metakit_comment(r);
+    case 0x603000CA:
+        return sxbx_metakit_comment(r);
+    case 0x603000CB:
+        return sxbx_metakit_comment(r);
+    case 0x603000CC:
+        return sxbx_metakit_comment(r);
+    case 0x603000CD:
+        return sxbx_metakit_comment(r);
+    case 0x603000CE:
+        return sxbx_metakit_comment(r);
+    case 0x603000CF:
+        return sxbx_metakit_comment(r);
+    case 0x603000D0:
+        return sxbx_metakit_comment(r);
+    case 0x603000D1:
+        return sxbx_metakit_comment(r);
+    case 0x603000D2:
+        return sxbx_metakit_comment(r);
+    case 0x603000D3:
+        return sxbx_metakit_comment(r);
+    case 0x603000D4:
+        return sxbx_metakit_comment(r);
+    case 0x603000D5:
+        return sxbx_metakit_comment(r);
+    case 0x603000D6:
+        return sxbx_metakit_comment(r);
+    case 0x603000D7:
+        return sxbx_metakit_comment(r);
+    case 0x603000D8:
+        return sxbx_metakit_comment(r);
+    case 0x603000D9:
+        return sxbx_metakit_comment(r);
+    case 0x603000DA:
+        return sxbx_metakit_comment(r);
+    case 0x603000DB:
+        return sxbx_metakit_comment(r);
+    case 0x603000DC:
+        return sxbx_metakit_comment(r);
+    case 0x603000DD:
+        return sxbx_metakit_comment(r);
+    case 0x603000DE:
+        return sxbx_metakit_comment(r);
+    case 0x603000DF:
+        return sxbx_metakit_comment(r);
+    case 0x603000E0:
+        return sxbx_metakit_comment(r);
+    case 0x603000E1:
+        return sxbx_metakit_comment(r);
+    case 0x603000E2:
+        return sxbx_metakit_comment(r);
+    case 0x603000E3:
+        return sxbx_metakit_comment(r);
+    case 0x603000E4:
+        return sxbx_metakit_comment(r);
+    case 0x603000E5:
+        return sxbx_metakit_comment(r);
+    case 0x60300002:
+        if (r.name === "format_name_or_reserved") {
+            text = "Physical 79-byte record tail; encoding and meaning vary by clipboard writer.";
+        }
+        break;
+    case 0x60300005:
+        if (r.name === "flags") {
+            text = "Bit0 compressed bitmap; bit1 name present; bit2 optional value present; bit3 bitmap record.";
+        }
+        break;
+    case 0x60300009:
+        if (r.name === "block_size") {
+            text = "Byte count after this four-byte length, including the method byte.";
+        }
+        if (r.name === "method") {
+            text = "0x80 stored bytes; 0x40 encoded LMD bitmap block.";
+        }
+        break;
+    case 0x6030000C:
+        if (r.name === "module_size") {
+            text = "Includes the 22-byte module header.";
+        }
+        break;
+    case 0x60300011:
+        if (r.name === "log_time") {
+            text = "Nanoseconds since Unix epoch.";
+        }
+        if (r.name === "publish_time") {
+            text = "Nanoseconds since Unix epoch.";
+        }
+        break;
+    case 0x60300012:
+        if (r.name === "log_time") {
+            text = "Nanoseconds since Unix epoch.";
+        }
+        if (r.name === "create_time") {
+            text = "Nanoseconds since Unix epoch.";
+        }
+        break;
+    case 0x60300019:
+        if (r.name === "last_written") {
+            text = "Windows FILETIME, 100-nanosecond intervals since 1601 UTC.";
+        }
+        if (r.name === "root_cell_offset") {
+            text = "Relative to the hive-bin data area at file offset 0x1000.";
+        }
+        if (r.name === "clustering_factor") {
+            text = "Underlying logical sector size divided by 512.";
+        }
+        if (r.name === "filename") {
+            text = "Physical UTF-16LE filename fragment; not necessarily terminated.";
+        }
+        break;
+    case 0x6030001B:
+        if (r.name === "bin_offset") {
+            text = "Relative to the hive-bin data area at file offset 0x1000.";
+        }
+        if (r.name === "timestamp") {
+            text = "Optional FILETIME in the first bin; later bins may contain stale data.";
+        }
+        break;
+    case 0x6030001C:
+        if (r.name === "signed_cell_size") {
+            text = "Absolute magnitude is the total cell byte count; negative means allocated and positive means free.";
+        }
+        break;
+    case 0x6030001D:
+        if (r.name === "parent_offset") {
+            text = "Cell offset relative to the hive-bin area; 0xFFFFFFFF is an absent-reference sentinel.";
+        }
+        if (r.name === "subkey_list_offset") {
+            text = "Cell offset relative to the hive-bin area; 0xFFFFFFFF is an absent-reference sentinel.";
+        }
+        if (r.name === "volatile_list_offset") {
+            text = "Cell offset relative to the hive-bin area; 0xFFFFFFFF is an absent-reference sentinel.";
+        }
+        if (r.name === "values_offset") {
+            text = "Cell offset relative to the hive-bin area; 0xFFFFFFFF is an absent-reference sentinel.";
+        }
+        if (r.name === "security_offset") {
+            text = "Cell offset relative to the hive-bin area; 0xFFFFFFFF is an absent-reference sentinel.";
+        }
+        if (r.name === "class_offset") {
+            text = "Cell offset relative to the hive-bin area; 0xFFFFFFFF is an absent-reference sentinel.";
+        }
+        break;
+    case 0x60300020:
+        if (r.name === "cell_offset") {
+            text = "Relative to the hive-bin data area.";
+        }
+        break;
+    case 0x60300021:
+        if (r.name === "cell_offset") {
+            text = "Relative to the hive-bin data area.";
+        }
+        if (r.name === "name_hash_or_hint") {
+            text = "lh: name hash; lf: first four compressed-name bytes.";
+        }
+        break;
+    case 0x60300022:
+        if (r.name === "data_size_flags") {
+            text = "High bit selects inline data; low 31 bits are the encoded byte count.";
+        }
+        if (r.name === "data_offset_or_inline") {
+            text = "Hive-bin-relative cell offset, or up to four inline data bytes when data_size_flags has bit31 set.";
+        }
+        break;
+    case 0x60300025:
+        if (r.name === "last_record_offset") {
+            text = "Relative to this chunk.";
+        }
+        if (r.name === "free_space_offset") {
+            text = "Relative to this chunk.";
+        }
+        break;
+    case 0x60300026:
+        if (r.name === "string_offset") {
+            text = "Relative to this chunk; zero means unused.";
+        }
+        break;
+    case 0x60300027:
+        if (r.name === "template_offset") {
+            text = "Relative to this chunk; zero means unused.";
+        }
+        break;
+    case 0x60300028:
+        if (r.name === "timestamp") {
+            text = "Windows FILETIME, 100-nanosecond intervals since 1601 UTC.";
+        }
+        break;
+    case 0x6030002A:
+        if (r.name === "base_offset") {
+            text = "Logical Kafka log offset, not a physical byte offset.";
+        }
+        if (r.name === "batch_length") {
+            text = "Bytes after the first 12 bytes of this batch.";
+        }
+        if (r.name === "last_offset_delta") {
+            text = "Logical record-offset delta, not a byte offset.";
+        }
+        if (r.name === "base_timestamp") {
+            text = "Milliseconds since Unix epoch.";
+        }
+        if (r.name === "max_timestamp") {
+            text = "Milliseconds since Unix epoch.";
+        }
+        break;
+    case 0x6030002C:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x6030002D:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x6030002E:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x6030002F:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300030:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300031:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300032:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300033:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300034:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300035:
+        if (r.name === "record_size") {
+            text = "Record bytes after this encoded length.";
+        }
+        break;
+    case 0x60300036:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x60300037:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x60300038:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x60300039:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x6030003A:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x6030003B:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x6030003C:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x6030003D:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x6030003E:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x6030003F:
+        if (r.name === "timestamp_delta") {
+            text = "Signed delta from the batch base timestamp.";
+        }
+        break;
+    case 0x60300040:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300041:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300042:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300043:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300044:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300045:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300046:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300047:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300048:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x60300049:
+        if (r.name === "offset_delta") {
+            text = "Logical log-offset delta, not a byte offset.";
+        }
+        break;
+    case 0x6030004A:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x6030004B:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x6030004C:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x6030004D:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x6030004E:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x6030004F:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x60300050:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x60300051:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x60300052:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x60300053:
+        if (r.name === "nullable_size") {
+            text = "Byte count; -1 denotes a null value.";
+        }
+        break;
+    case 0x60300054:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x60300055:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x60300056:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x60300057:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x60300058:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x60300059:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x6030005A:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x6030005B:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x6030005C:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x6030005D:
+        if (r.name === "header_count") {
+            text = "Number of record headers.";
+        }
+        break;
+    case 0x6030005E:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x6030005F:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300060:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300061:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300062:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300063:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300064:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300065:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300066:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300067:
+        if (r.name === "header_key_size") {
+            text = "Header-key byte count.";
+        }
+        break;
+    case 0x60300068:
+        if (r.name === "segment_count_minus_one") {
+            text = "Stored segment count minus one. Native reader supports one unpacked segment.";
+        }
+        if (r.name === "segment_words") {
+            text = "Number of 64-bit words in the segment.";
+        }
+        break;
+    case 0x60300069:
+        if (r.name === "offset_and_kind") {
+            text = "Low2bits=0; upper30bits are a signed word displacement from the word after this pointer.";
+        }
+        if (r.name === "data_word_count") {
+            text = "Number of 64-bit words in the struct data section.";
+        }
+        break;
+    case 0x6030006A:
+        if (r.name === "offset_and_kind") {
+            text = "Low2bits=1; upper30bits are a signed word displacement.";
+        }
+        if (r.name === "count_and_element_size") {
+            text = "Low3bits are element-size code; upper29bits are element count, or word count for inline-composite lists.";
+        }
+        break;
+    case 0x6030006B:
+        if (r.name === "element_count_and_kind") {
+            text = "Low2bits=0; upper30bits are the element count.";
+        }
+        break;
+    case 0x6030006F:
+        if (r.name === "color_space") {
+            text = "0 RGB; 2 CMYK; 7 Lab.";
+        }
+        break;
+    case 0x60300070:
+        if (r.name === "component_0") {
+            text = "Physical encoded color channel; Lab channels use the ACB byte encoding.";
+        }
+        break;
+    case 0x60300071:
+        if (r.name === "component_0") {
+            text = "Physical encoded color channel; Lab channels use the ACB byte encoding.";
+        }
+        break;
+    case 0x60300072:
+        if (r.name === "component_0") {
+            text = "Physical encoded color channel; Lab channels use the ACB byte encoding.";
+        }
+        break;
+    case 0x60300075:
+        if (r.name === "signed_entry_size") {
+            text = "Positive: entry byte count after this word; negative: deleted slot of the absolute byte count; zero: end marker.";
+        }
+        break;
+    case 0x60300079:
+        if (r.name === "timestamp") {
+            text = "Seconds since Unix epoch.";
+        }
+        break;
+    case 0x60300081:
+        if (r.name === "auth_time") {
+            text = "Seconds since Unix epoch.";
+        }
+        if (r.name === "start_time") {
+            text = "Seconds since Unix epoch.";
+        }
+        if (r.name === "end_time") {
+            text = "Seconds since Unix epoch.";
+        }
+        if (r.name === "renew_until") {
+            text = "Seconds since Unix epoch.";
+        }
+        break;
+    case 0x60300085:
+        if (r.name === "tag") {
+            text = "1 private key with certificate chain; 2 trusted certificate.";
+        }
+        break;
+    case 0x60300087:
+        if (r.name === "timestamp") {
+            text = "Signed Java long: milliseconds since Unix epoch.";
+        }
+        break;
+    case 0x6030009C:
+        if (r.name === "data_offset") {
+            text = "Relative to the aligned tensor-data area, not the start of the file.";
+        }
+        break;
+    case 0x6030009F:
+        if (r.name === "size_and_flags") {
+            text = "Low31bits are record payload byte count; top bit is preserved as an encoded flag.";
+        }
+        break;
+    case 0x603000A3:
+        if (r.name === "block_size") {
+            text = "Encoded block size; native payload coordinates use 128-byte blocks.";
+        }
+        break;
+    case 0x603000A5:
+        if (r.name === "payload_block") {
+            text = "Multiply by 128 for the file-relative byte offset.";
+        }
+        if (r.name === "dos_time") {
+            text = "Packed DOS time.";
+        }
+        if (r.name === "dos_date") {
+            text = "Packed DOS date.";
+        }
+        break;
+    case 0x603000A9:
+        if (r.name === "type_and_reference") {
+            text = "Low7bits are the Python marshal type code; highbit reserves a reference slot.";
+        }
+        break;
+    case 0x603000B3:
+        if (r.name === "toc_offset") {
+            text = "Relative to the package start, derived from the cookie end minus package_size.";
+        }
+        break;
+    case 0x603000B5:
+        if (r.name === "entry_size") {
+            text = "Includes this fixed18-byte prefix and padded NUL-terminated name.";
+        }
+        if (r.name === "data_offset") {
+            text = "Relative to the CArchive package start.";
+        }
+        break;
+    case 0x603000B7:
+        if (r.name === "footer_offset") {
+            text = "Relative to the embedded Metakit container.";
+        }
+        if (r.name === "root_size_and_tag") {
+            text = "Highbit is the commit tag; low31bits are the root descriptor byte count.";
+        }
+        if (r.name === "root_offset") {
+            text = "Relative to the embedded Metakit container.";
+        }
+        break;
+    case 0x603000B8:
+        if (r.name === "schema_size_and_tag") {
+            text = "Highbit terminates this encoded length; low7bits are schema string size.";
+        }
+        break;
+    case 0x603000E9:
+        if (r.name === "type") {
+            text = "2 file; 3 directory.";
+        }
+        break;
+    case 0x603000EC:
+        if (r.name === "sector_offset") {
+            text = "Multiply by 2048 for the file-relative byte offset.";
+        }
+        if (r.name === "sector_count") {
+            text = "Number of 2048-byte sectors.";
+        }
+        break;
+    case 0x603000EF:
+        if (r.name === "size_marker") {
+            text = "0xC0000000 marks a directory; not a byte size.";
+        }
+        if (r.name === "offset_marker") {
+            text = "0xFFFFFFFF marks a directory; not a file offset.";
+        }
+        break;
+    case 0x603000F0:
+        if (r.name === "name_offset") {
+            text = "Relative to the string table after both entry arrays.";
+        }
+        break;
+    default:
+        break;
+    }
+    return text === null || sxSetComment(r, text);
+}
+function sxbx_span(c, p, n) {
+    return c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxbx_read(c, p, b, n) {
+    return sxbx_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), b, n);
+}
+function sxbx_uint(b, b_o, n, be) {
+    var v = 0;
+    for (var i = 0; i < n; i++) {
+        v = sxOr64(v, sxShl64(b[b_o + i], (8 * (be ? (((n - 1) >>> 0) - i) >>> 0 : i)) >>> 0));
+    }
+    return v;
+}
+function sxbx32(b, b_o, be) {
+    return sxbx_uint(b, b_o, 4, be) >>> 0;
+}
+function sxbx_free(c, p, n) {
+    for (var i = 0; i < c.count; i++) {
+        var at = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+        var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+        if (p < at + z && at < p + n) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxbx_add(c, l, p) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var n = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!sxbx_span(c, p, n)) {
+        return false;
+    }
+    if (!sxbx_free(c, p, n)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_add(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+}
+function sxbx_table(c, l, p, n) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var z = (f.offset + f.size < 0 ? f.offset + f.size + SX_U64_MAX : f.offset + f.size);
+    if (!n || n > 20000 || !sxbx_span(c, p, n * z)) {
+        return true;
+    }
+    if (!sxbx_free(c, p, n * z)) {
+        return true;
+    }
+    return c.count >= 20000 || sx_table(c, l, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (z >= SX_I64_MAX ? z - SX_U64_MAX : z), n);
+}
+function sxbx_word(c, p, n, be, v) {
+    var b = [];
+    if (n > 8 || !sxbx_read(c, p, b, n)) {
+        return false;
+    }
+    v[0] = sxbx_uint(b, 0, n, be);
+    return true;
+}
+function sxbx_counted(c, p, end, l, width, be, multiplier) {
+    var z = [0];
+    if (p[0] > end || width > sxU64(end - p[0]) || !sxbx_word(c, p[0], width, be, z) || z[0] > Math.floor(sxU64(sxU64(end - p[0]) - width) / multiplier) || !sxbx_add(c, l, p[0])) {
+        return false;
+    }
+    p[0] += width + z[0] * multiplier;
+    return true;
+}
+function sxbx_zero_string(c, p, end, width) {
+    for (var i = 0; i < 4096; i++) {
+        var v = [0];
+        if (p[0] > end || width > sxU64(end - p[0]) || !sxbx_word(c, p[0], width, false, v)) {
+            return false;
+        }
+        p[0] += width;
+        if (!v[0]) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxbx_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : 0;
+}
+function sxbx_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sxQsort(c.items, 0, n, sxbx_order, true);
+    for (var i = 0; i < n; i++) {
+        var p = c.items[i].offset - c.f.base_address;
+        if (p > end && !sx_raw(c, end, p - end)) {
+            return false;
+        }
+        if (p + c.items[i].total_size > end) {
+            end = p + c.items[i].total_size;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxbx_order, true);
+    return !c.failed;
+}
+function sx_binaryextra_supports(t) {
+    switch (t) {
+    case "CLP":
+    case "LMD_CONTAINER":
+    case "VICE_SNAPSHOT":
+    case "MCAP":
+    case "WINDOWS_REGISTRY_HIVE":
+    case "WINDOWS_EVTX":
+    case "KAFKA_RECORD_BATCH":
+    case "CAPNPROTO_MESSAGE":
+    case "ADOBE_ACB":
+    case "KERBEROS_KEYTAB":
+    case "KERBEROS_CCACHE":
+    case "JKS_KEYSTORE":
+    case "GGUF":
+    case "NVP":
+    case "LBRCOBOL":
+    case "PYZ":
+    case "PYINSTALLER_ONE_EXECUTABLE":
+    case "STARKIT":
+    case "ENIGMA_VIRTUAL_BOX":
+    case "GTA_IMG":
+    case "PAM_PAK":
+    case "PFPK":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_binaryextra_build(c) {
+    if (c === null || c.f === null || c.size < 0 || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok = false;
+    switch (c.f.file_type) {
+    case "CLP":
+        ok = sx_clp_build(c);
+        break;
+    case "LMD_CONTAINER":
+        ok = sx_lmd_container_build(c);
+        break;
+    case "VICE_SNAPSHOT":
+        ok = sx_vice_snapshot_build(c);
+        break;
+    case "MCAP":
+        ok = sx_mcap_build(c);
+        break;
+    case "WINDOWS_REGISTRY_HIVE":
+        ok = sx_windows_registry_hive_build(c);
+        break;
+    case "WINDOWS_EVTX":
+        ok = sx_windows_evtx_build(c);
+        break;
+    case "KAFKA_RECORD_BATCH":
+        ok = sx_kafka_record_batch_build(c);
+        break;
+    case "CAPNPROTO_MESSAGE":
+        ok = sx_capnproto_message_build(c);
+        break;
+    case "ADOBE_ACB":
+        ok = sx_adobe_acb_build(c);
+        break;
+    case "KERBEROS_KEYTAB":
+        ok = sx_kerberos_keytab_build(c);
+        break;
+    case "KERBEROS_CCACHE":
+        ok = sx_kerberos_ccache_build(c);
+        break;
+    case "JKS_KEYSTORE":
+        ok = sx_jks_keystore_build(c);
+        break;
+    case "GGUF":
+        ok = sx_gguf_build(c);
+        break;
+    case "NVP":
+        ok = sx_nvp_build(c);
+        break;
+    case "LBRCOBOL":
+        ok = sx_lbrcobol_build(c);
+        break;
+    case "PYZ":
+        ok = sx_pyz_build(c);
+        break;
+    case "PYINSTALLER_ONE_EXECUTABLE":
+        ok = sx_pyinstaller_one_executable_build(c);
+        break;
+    case "STARKIT":
+        ok = sx_starkit_build(c);
+        break;
+    case "ENIGMA_VIRTUAL_BOX":
+        ok = sx_enigma_virtual_box_build(c);
+        break;
+    case "GTA_IMG":
+        ok = sx_gta_img_build(c);
+        break;
+    case "PAM_PAK":
+        ok = sx_pam_pak_build(c);
+        break;
+    case "PFPK":
+        ok = sx_pfpk_build(c);
+        break;
+    default:
+        break;
+    }
+    return ok && sxbx_finish(c);
+}

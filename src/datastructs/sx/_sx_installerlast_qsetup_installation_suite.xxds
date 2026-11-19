@@ -1,0 +1,46 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/qsetup_installation_suite/xx_qsetup_installation_suite_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_qsetup_length_fields = layout([u32("string_size", SIZE)]);
+var sxil_qsetup_length = sxLayout(0x60850032, "qsetup_length", LE, sxil_qsetup_length_fields);
+var sxil_qsetup_record_fields = layout([u32("packed_size", SIZE)]);
+var sxil_qsetup_record = sxLayout(0x60850033, "qsetup_record", LE, sxil_qsetup_record_fields);
+var sxil_qsetup_trailer_fields = layout([field("unknown1", "byte[4]", 4), u32("container_offset", OFFSET),
+    u32("record_count", COUNT), u32("signature", SIGNATURE), field("unknown2", "byte[54]", 54), u32("trailer_size", SIZE)]);
+var sxil_qsetup_trailer = sxLayout(0x60850034, "qsetup_trailer", LE, sxil_qsetup_trailer_fields);
+function sxil_qsetup(c) {
+    var p = [0];
+    if (!sxil_pe(c, p)) {
+        return true;
+    }
+    for (var k = 0; k < 2; k++) {
+        var n = [0];
+        if (!sxil_u32(c, p[0], n) || n[0] > 4096 || !sxil_span(c, p[0] + 4, n[0])) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_qsetup_length, p[0], 1) || !sxil_name(c, p[0] + 4, n[0])) {
+            return false;
+        }
+        p[0] += 4 + n[0];
+    }
+    for (k = 0; k < 100000 && sxil_span(c, p[0], 4); k++) {
+        n = [0];
+        if (sxil_span(c, p[0], 74) && sxil_eq(c, p[0] + 12, "\x1D,;J", 4)) {
+            return sxil_put(c, sxil_qsetup_trailer, p[0], 1);
+        }
+        if (!sxil_u32(c, p[0], n) || !n[0] || !sxil_span(c, p[0] + 4, n[0])) {
+            return true;
+        }
+        if (!sxil_put(c, sxil_qsetup_record, p[0], 1)) {
+            return false;
+        }
+        p[0] += 4 + n[0];
+    }
+    return true;
+}
+function sx_qsetup_installation_suite_build(c) {
+    return sxil_qsetup(c);
+}

@@ -1,0 +1,106 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/chd/xx_chd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_chd_header_v1_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("header_length", SIZE),
+    u32("version"), u32("flags", FLAGS), u32("compression", ID), u32("sectors_per_hunk", COUNT), u32("hunk_count", COUNT),
+    u32("cylinders", COUNT), u32("heads", COUNT), u32("sectors", COUNT), field("md5", "byte[16]", 16, CHECKSUM),
+    field("parent_md5", "byte[16]", 16, CHECKSUM)]);
+var sx_dm_chd_header_v1 = sxLayout(0x60290022, "chd_header_v1", BE, sx_dm_chd_header_v1_fields);
+var sx_dm_chd_header_v2_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("header_length", SIZE),
+    u32("version"), u32("flags", FLAGS), u32("compression", ID), u32("sectors_per_hunk", COUNT), u32("hunk_count", COUNT),
+    u32("cylinders", COUNT), u32("heads", COUNT), u32("sectors", COUNT), field("md5", "byte[16]", 16, CHECKSUM),
+    field("parent_md5", "byte[16]", 16, CHECKSUM), u32("sector_bytes", SIZE)]);
+var sx_dm_chd_header_v2 = sxLayout(0x60290023, "chd_header_v2", BE, sx_dm_chd_header_v2_fields);
+var sx_dm_chd_header_v3_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("header_length", SIZE),
+    u32("version"), u32("flags", FLAGS), u32("compression", ID), u32("hunk_count", COUNT), u64("logical_bytes", SIZE),
+    u64("metadata_offset", OFFSET), field("md5", "byte[16]", 16, CHECKSUM), field("parent_md5", "byte[16]", 16, CHECKSUM),
+    u32("hunk_bytes", SIZE), field("sha1", "byte[20]", 20, CHECKSUM), field("parent_sha1", "byte[20]", 20, CHECKSUM)]);
+var sx_dm_chd_header_v3 = sxLayout(0x60290024, "chd_header_v3", BE, sx_dm_chd_header_v3_fields);
+var sx_dm_chd_header_v4_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("header_length", SIZE),
+    u32("version"), u32("flags", FLAGS), u32("compression", ID), u32("hunk_count", COUNT), u64("logical_bytes", SIZE),
+    u64("metadata_offset", OFFSET), u32("hunk_bytes", SIZE), field("sha1", "byte[20]", 20, CHECKSUM),
+    field("parent_sha1", "byte[20]", 20, CHECKSUM), field("raw_sha1", "byte[20]", 20, CHECKSUM)]);
+var sx_dm_chd_header_v4 = sxLayout(0x60290025, "chd_header_v4", BE, sx_dm_chd_header_v4_fields);
+var sx_dm_chd_header_v5_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("header_length", SIZE),
+    u32("version"), field("compressors", "uint32[4]", 16, ID), u64("logical_bytes", SIZE), u64("map_offset", OFFSET),
+    u64("metadata_offset", OFFSET), u32("hunk_bytes", SIZE), u32("unit_bytes", SIZE),
+    field("raw_sha1", "byte[20]", 20, CHECKSUM), field("sha1", "byte[20]", 20, CHECKSUM),
+    field("parent_sha1", "byte[20]", 20, CHECKSUM)]);
+var sx_dm_chd_header_v5 = sxLayout(0x60290026, "chd_header_v5", BE, sx_dm_chd_header_v5_fields);
+var sx_dm_chd_map_v5_compressed_header_fields = layout([u32("compressed_length", SIZE),
+    field("first_data_offset", "uint48", 6, OFFSET), u16("crc16", CHECKSUM), u8("length_bits"), u8("hunk_bits"),
+    u8("parent_unit_bits"), u8("reserved", RESERVED)]);
+var sx_dm_chd_map_v5_compressed_header = sxLayout(0x6029002A, "chd_map_v5_compressed_header", BE, sx_dm_chd_map_v5_compressed_header_fields);
+var sx_dm_chd_metadata_header_fields = layout([field("tag", "byte[4]", 4, ID), u8("flags", FLAGS),
+    field("length", "uint24", 3, SIZE), u64("next_offset", OFFSET)]);
+var sx_dm_chd_metadata_header = sxLayout(0x6029002B, "chd_metadata_header", BE, sx_dm_chd_metadata_header_fields);
+var sx_dm_chd_sizes = [0, 76, 80, 120, 108, 124];
+function sx_dm_chd(c) {
+    var h = [];
+    if (!sx_dm_read(c, 0, h, 16) || sxMemcmp(h, "MComprHD", 8)) {
+        return false;
+    }
+    var v = sx_dm_u32(h, 12, true);
+    var z = sx_dm_u32(h, 8, true);
+    var l = v === 1 ? sx_dm_chd_header_v1 : v === 2 ? sx_dm_chd_header_v2 : v === 3 ? sx_dm_chd_header_v3 : v === 4 ? sx_dm_chd_header_v4 : v === 5 ? sx_dm_chd_header_v5 : null;
+    if (l === null || z !== sx_dm_chd_sizes[v] || !sx_dm_read(c, 0, h, z) || !sx_dm_add(c, l, 0, z)) {
+        return false;
+    }
+    var map = z;
+    var meta = 0;
+    var count = 0;
+    var ml = null;
+    var stride = 0;
+    if (v <= 2) {
+        count = sx_dm_u32(h, 28, true);
+        ml = sx_dm_chd_map_v12;
+        stride = 8;
+    } else if (v <= 4) {
+        count = sx_dm_u32(h, 24, true);
+        meta = sx_dm_u64(h, 36, true);
+        ml = sx_dm_chd_map_v34;
+        stride = 16;
+    } else {
+        var hb = sx_dm_u32(h, 56, true);
+        var logical = sx_dm_u64(h, 32, true);
+        map = sx_dm_u64(h, 40, true);
+        meta = sx_dm_u64(h, 48, true);
+        count = hb ? Math.floor(logical / hb) + (logical % hb !== 0 ? 1 : 0) : 0;
+        if (sx_dm_u32(h, 16, true)) {
+            if (sx_dm_span(c, map, 16) && !sx_dm_add(c, sx_dm_chd_map_v5_compressed_header, map, 16)) {
+                return false;
+            }
+        } else {
+            ml = sx_dm_chd_map_v5_uncompressed;
+            stride = 4;
+        }
+    }
+    if (ml !== null && count <= Math.floor(SX_U64_MAX / stride) && sx_dm_span(c, map, count * stride) && !sx_dm_table(c, ml, map, stride, count)) {
+        return false;
+    }
+    for (var i = 0; meta && i < 4096; i++) {
+        if (!sx_dm_read(c, meta, h, 16)) {
+            break;
+        }
+        var len = sx_dm_u32(h, 4, true) & 0xFFFFFF;
+        var next = sx_dm_u64(h, 8, true);
+        if (!sx_dm_span(c, meta, 16 + len)) {
+            break;
+        }
+        var before = c.count;
+        if (!sx_dm_add(c, sx_dm_chd_metadata_header, meta, 16)) {
+            return false;
+        }
+        if (c.count === before || next === meta) {
+            break;
+        }
+        meta = next;
+    }
+    return true;
+}
+function sx_chd_build(c) {
+    return sx_dm_chd(c);
+}

@@ -1,0 +1,241 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/ibmspack/xx_ibmspack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarwire_ibmspack_tag_fields = layout([u8("stream_tag", ID)]);
+var sxarwire_ibmspack_tag = sxLayout(0x608D0003, "ibmspack_tag", LE, sxarwire_ibmspack_tag_fields);
+var sxarwire_fls_first_class_bit0_fields = layout([field("first_class", "msb_bits[0,3]", 1, ID)]);
+var sxarwire_fls_first_class_bit0 = sxLayout(0x608D0080, "fls_first_class_bit0", LE, sxarwire_fls_first_class_bit0_fields);
+var sxarwire_fls_first_class_bit1_fields = layout([field("first_class", "msb_bits[1,3]", 1, ID)]);
+var sxarwire_fls_first_class_bit1 = sxLayout(0x608D0081, "fls_first_class_bit1", LE, sxarwire_fls_first_class_bit1_fields);
+var sxarwire_fls_first_class_bit2_fields = layout([field("first_class", "msb_bits[2,3]", 1, ID)]);
+var sxarwire_fls_first_class_bit2 = sxLayout(0x608D0082, "fls_first_class_bit2", LE, sxarwire_fls_first_class_bit2_fields);
+var sxarwire_fls_first_class_bit3_fields = layout([field("first_class", "msb_bits[3,3]", 1, ID)]);
+var sxarwire_fls_first_class_bit3 = sxLayout(0x608D0083, "fls_first_class_bit3", LE, sxarwire_fls_first_class_bit3_fields);
+var sxarwire_fls_first_class_bit4_fields = layout([field("first_class", "msb_bits[4,3]", 1, ID)]);
+var sxarwire_fls_first_class_bit4 = sxLayout(0x608D0084, "fls_first_class_bit4", LE, sxarwire_fls_first_class_bit4_fields);
+var sxarwire_fls_first_class_bit5_fields = layout([field("first_class", "msb_bits[5,3]", 1, ID)]);
+var sxarwire_fls_first_class_bit5 = sxLayout(0x608D0085, "fls_first_class_bit5", LE, sxarwire_fls_first_class_bit5_fields);
+var sxarwire_fls_first_class_bit6_fields = layout([field("first_class", "msb_bits[6,3]", 2, ID)]);
+var sxarwire_fls_first_class_bit6 = sxLayout(0x608D0086, "fls_first_class_bit6", LE, sxarwire_fls_first_class_bit6_fields);
+var sxarwire_fls_first_class_bit7_fields = layout([field("first_class", "msb_bits[7,3]", 2, ID)]);
+var sxarwire_fls_first_class_bit7 = sxLayout(0x608D0087, "fls_first_class_bit7", LE, sxarwire_fls_first_class_bit7_fields);
+var sxarwire_fls_second_class_bit0_fields = layout([field("second_class", "msb_bits[0,3]", 1, ID)]);
+var sxarwire_fls_second_class_bit0 = sxLayout(0x608D0088, "fls_second_class_bit0", LE, sxarwire_fls_second_class_bit0_fields);
+var sxarwire_fls_second_class_bit1_fields = layout([field("second_class", "msb_bits[1,3]", 1, ID)]);
+var sxarwire_fls_second_class_bit1 = sxLayout(0x608D0089, "fls_second_class_bit1", LE, sxarwire_fls_second_class_bit1_fields);
+var sxarwire_fls_second_class_bit2_fields = layout([field("second_class", "msb_bits[2,3]", 1, ID)]);
+var sxarwire_fls_second_class_bit2 = sxLayout(0x608D008A, "fls_second_class_bit2", LE, sxarwire_fls_second_class_bit2_fields);
+var sxarwire_fls_second_class_bit3_fields = layout([field("second_class", "msb_bits[3,3]", 1, ID)]);
+var sxarwire_fls_second_class_bit3 = sxLayout(0x608D008B, "fls_second_class_bit3", LE, sxarwire_fls_second_class_bit3_fields);
+var sxarwire_fls_second_class_bit4_fields = layout([field("second_class", "msb_bits[4,3]", 1, ID)]);
+var sxarwire_fls_second_class_bit4 = sxLayout(0x608D008C, "fls_second_class_bit4", LE, sxarwire_fls_second_class_bit4_fields);
+var sxarwire_fls_second_class_bit5_fields = layout([field("second_class", "msb_bits[5,3]", 1, ID)]);
+var sxarwire_fls_second_class_bit5 = sxLayout(0x608D008D, "fls_second_class_bit5", LE, sxarwire_fls_second_class_bit5_fields);
+var sxarwire_fls_second_class_bit6_fields = layout([field("second_class", "msb_bits[6,3]", 2, ID)]);
+var sxarwire_fls_second_class_bit6 = sxLayout(0x608D008E, "fls_second_class_bit6", LE, sxarwire_fls_second_class_bit6_fields);
+var sxarwire_fls_second_class_bit7_fields = layout([field("second_class", "msb_bits[7,3]", 2, ID)]);
+var sxarwire_fls_second_class_bit7 = sxLayout(0x608D008F, "fls_second_class_bit7", LE, sxarwire_fls_second_class_bit7_fields);
+var sxarwire_fls_selector_prefix_bit0_fields = layout([field("selector_prefix", "msb_bits[0,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit0 = sxLayout(0x608D0090, "fls_selector_prefix_bit0", LE, sxarwire_fls_selector_prefix_bit0_fields);
+var sxarwire_fls_selector_prefix_bit1_fields = layout([field("selector_prefix", "msb_bits[1,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit1 = sxLayout(0x608D0091, "fls_selector_prefix_bit1", LE, sxarwire_fls_selector_prefix_bit1_fields);
+var sxarwire_fls_selector_prefix_bit2_fields = layout([field("selector_prefix", "msb_bits[2,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit2 = sxLayout(0x608D0092, "fls_selector_prefix_bit2", LE, sxarwire_fls_selector_prefix_bit2_fields);
+var sxarwire_fls_selector_prefix_bit3_fields = layout([field("selector_prefix", "msb_bits[3,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit3 = sxLayout(0x608D0093, "fls_selector_prefix_bit3", LE, sxarwire_fls_selector_prefix_bit3_fields);
+var sxarwire_fls_selector_prefix_bit4_fields = layout([field("selector_prefix", "msb_bits[4,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit4 = sxLayout(0x608D0094, "fls_selector_prefix_bit4", LE, sxarwire_fls_selector_prefix_bit4_fields);
+var sxarwire_fls_selector_prefix_bit5_fields = layout([field("selector_prefix", "msb_bits[5,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit5 = sxLayout(0x608D0095, "fls_selector_prefix_bit5", LE, sxarwire_fls_selector_prefix_bit5_fields);
+var sxarwire_fls_selector_prefix_bit6_fields = layout([field("selector_prefix", "msb_bits[6,2]", 1)]);
+var sxarwire_fls_selector_prefix_bit6 = sxLayout(0x608D0096, "fls_selector_prefix_bit6", LE, sxarwire_fls_selector_prefix_bit6_fields);
+var sxarwire_fls_selector_prefix_bit7_fields = layout([field("selector_prefix", "msb_bits[7,2]", 2)]);
+var sxarwire_fls_selector_prefix_bit7 = sxLayout(0x608D0097, "fls_selector_prefix_bit7", LE, sxarwire_fls_selector_prefix_bit7_fields);
+var sxarwire_fls_selector_extension_bit0_fields = layout([field("selector_extension", "msb_bits[0,1]", 1)]);
+var sxarwire_fls_selector_extension_bit0 = sxLayout(0x608D0098, "fls_selector_extension_bit0", LE, sxarwire_fls_selector_extension_bit0_fields);
+var sxarwire_fls_selector_extension_bit1_fields = layout([field("selector_extension", "msb_bits[1,1]", 1)]);
+var sxarwire_fls_selector_extension_bit1 = sxLayout(0x608D0099, "fls_selector_extension_bit1", LE, sxarwire_fls_selector_extension_bit1_fields);
+var sxarwire_fls_selector_extension_bit2_fields = layout([field("selector_extension", "msb_bits[2,1]", 1)]);
+var sxarwire_fls_selector_extension_bit2 = sxLayout(0x608D009A, "fls_selector_extension_bit2", LE, sxarwire_fls_selector_extension_bit2_fields);
+var sxarwire_fls_selector_extension_bit3_fields = layout([field("selector_extension", "msb_bits[3,1]", 1)]);
+var sxarwire_fls_selector_extension_bit3 = sxLayout(0x608D009B, "fls_selector_extension_bit3", LE, sxarwire_fls_selector_extension_bit3_fields);
+var sxarwire_fls_selector_extension_bit4_fields = layout([field("selector_extension", "msb_bits[4,1]", 1)]);
+var sxarwire_fls_selector_extension_bit4 = sxLayout(0x608D009C, "fls_selector_extension_bit4", LE, sxarwire_fls_selector_extension_bit4_fields);
+var sxarwire_fls_selector_extension_bit5_fields = layout([field("selector_extension", "msb_bits[5,1]", 1)]);
+var sxarwire_fls_selector_extension_bit5 = sxLayout(0x608D009D, "fls_selector_extension_bit5", LE, sxarwire_fls_selector_extension_bit5_fields);
+var sxarwire_fls_selector_extension_bit6_fields = layout([field("selector_extension", "msb_bits[6,1]", 1)]);
+var sxarwire_fls_selector_extension_bit6 = sxLayout(0x608D009E, "fls_selector_extension_bit6", LE, sxarwire_fls_selector_extension_bit6_fields);
+var sxarwire_fls_selector_extension_bit7_fields = layout([field("selector_extension", "msb_bits[7,1]", 1)]);
+var sxarwire_fls_selector_extension_bit7 = sxLayout(0x608D009F, "fls_selector_extension_bit7", LE, sxarwire_fls_selector_extension_bit7_fields);
+var sxarwire_fls_code6_bit0_fields = layout([field("class_code", "msb_bits[0,6]", 1)]);
+var sxarwire_fls_code6_bit0 = sxLayout(0x608D00A0, "fls_code6_bit0", LE, sxarwire_fls_code6_bit0_fields);
+var sxarwire_fls_code6_bit1_fields = layout([field("class_code", "msb_bits[1,6]", 1)]);
+var sxarwire_fls_code6_bit1 = sxLayout(0x608D00A1, "fls_code6_bit1", LE, sxarwire_fls_code6_bit1_fields);
+var sxarwire_fls_code6_bit2_fields = layout([field("class_code", "msb_bits[2,6]", 1)]);
+var sxarwire_fls_code6_bit2 = sxLayout(0x608D00A2, "fls_code6_bit2", LE, sxarwire_fls_code6_bit2_fields);
+var sxarwire_fls_code6_bit3_fields = layout([field("class_code", "msb_bits[3,6]", 2)]);
+var sxarwire_fls_code6_bit3 = sxLayout(0x608D00A3, "fls_code6_bit3", LE, sxarwire_fls_code6_bit3_fields);
+var sxarwire_fls_code6_bit4_fields = layout([field("class_code", "msb_bits[4,6]", 2)]);
+var sxarwire_fls_code6_bit4 = sxLayout(0x608D00A4, "fls_code6_bit4", LE, sxarwire_fls_code6_bit4_fields);
+var sxarwire_fls_code6_bit5_fields = layout([field("class_code", "msb_bits[5,6]", 2)]);
+var sxarwire_fls_code6_bit5 = sxLayout(0x608D00A5, "fls_code6_bit5", LE, sxarwire_fls_code6_bit5_fields);
+var sxarwire_fls_code6_bit6_fields = layout([field("class_code", "msb_bits[6,6]", 2)]);
+var sxarwire_fls_code6_bit6 = sxLayout(0x608D00A6, "fls_code6_bit6", LE, sxarwire_fls_code6_bit6_fields);
+var sxarwire_fls_code6_bit7_fields = layout([field("class_code", "msb_bits[7,6]", 2)]);
+var sxarwire_fls_code6_bit7 = sxLayout(0x608D00A7, "fls_code6_bit7", LE, sxarwire_fls_code6_bit7_fields);
+var sxarwire_fls_code7_bit0_fields = layout([field("class_code", "msb_bits[0,7]", 1)]);
+var sxarwire_fls_code7_bit0 = sxLayout(0x608D00A8, "fls_code7_bit0", LE, sxarwire_fls_code7_bit0_fields);
+var sxarwire_fls_code7_bit1_fields = layout([field("class_code", "msb_bits[1,7]", 1)]);
+var sxarwire_fls_code7_bit1 = sxLayout(0x608D00A9, "fls_code7_bit1", LE, sxarwire_fls_code7_bit1_fields);
+var sxarwire_fls_code7_bit2_fields = layout([field("class_code", "msb_bits[2,7]", 2)]);
+var sxarwire_fls_code7_bit2 = sxLayout(0x608D00AA, "fls_code7_bit2", LE, sxarwire_fls_code7_bit2_fields);
+var sxarwire_fls_code7_bit3_fields = layout([field("class_code", "msb_bits[3,7]", 2)]);
+var sxarwire_fls_code7_bit3 = sxLayout(0x608D00AB, "fls_code7_bit3", LE, sxarwire_fls_code7_bit3_fields);
+var sxarwire_fls_code7_bit4_fields = layout([field("class_code", "msb_bits[4,7]", 2)]);
+var sxarwire_fls_code7_bit4 = sxLayout(0x608D00AC, "fls_code7_bit4", LE, sxarwire_fls_code7_bit4_fields);
+var sxarwire_fls_code7_bit5_fields = layout([field("class_code", "msb_bits[5,7]", 2)]);
+var sxarwire_fls_code7_bit5 = sxLayout(0x608D00AD, "fls_code7_bit5", LE, sxarwire_fls_code7_bit5_fields);
+var sxarwire_fls_code7_bit6_fields = layout([field("class_code", "msb_bits[6,7]", 2)]);
+var sxarwire_fls_code7_bit6 = sxLayout(0x608D00AE, "fls_code7_bit6", LE, sxarwire_fls_code7_bit6_fields);
+var sxarwire_fls_code7_bit7_fields = layout([field("class_code", "msb_bits[7,7]", 2)]);
+var sxarwire_fls_code7_bit7 = sxLayout(0x608D00AF, "fls_code7_bit7", LE, sxarwire_fls_code7_bit7_fields);
+var sxarwire_fls_code8_bit0_fields = layout([field("class_code", "msb_bits[0,8]", 1)]);
+var sxarwire_fls_code8_bit0 = sxLayout(0x608D00B0, "fls_code8_bit0", LE, sxarwire_fls_code8_bit0_fields);
+var sxarwire_fls_code8_bit1_fields = layout([field("class_code", "msb_bits[1,8]", 2)]);
+var sxarwire_fls_code8_bit1 = sxLayout(0x608D00B1, "fls_code8_bit1", LE, sxarwire_fls_code8_bit1_fields);
+var sxarwire_fls_code8_bit2_fields = layout([field("class_code", "msb_bits[2,8]", 2)]);
+var sxarwire_fls_code8_bit2 = sxLayout(0x608D00B2, "fls_code8_bit2", LE, sxarwire_fls_code8_bit2_fields);
+var sxarwire_fls_code8_bit3_fields = layout([field("class_code", "msb_bits[3,8]", 2)]);
+var sxarwire_fls_code8_bit3 = sxLayout(0x608D00B3, "fls_code8_bit3", LE, sxarwire_fls_code8_bit3_fields);
+var sxarwire_fls_code8_bit4_fields = layout([field("class_code", "msb_bits[4,8]", 2)]);
+var sxarwire_fls_code8_bit4 = sxLayout(0x608D00B4, "fls_code8_bit4", LE, sxarwire_fls_code8_bit4_fields);
+var sxarwire_fls_code8_bit5_fields = layout([field("class_code", "msb_bits[5,8]", 2)]);
+var sxarwire_fls_code8_bit5 = sxLayout(0x608D00B5, "fls_code8_bit5", LE, sxarwire_fls_code8_bit5_fields);
+var sxarwire_fls_code8_bit6_fields = layout([field("class_code", "msb_bits[6,8]", 2)]);
+var sxarwire_fls_code8_bit6 = sxLayout(0x608D00B6, "fls_code8_bit6", LE, sxarwire_fls_code8_bit6_fields);
+var sxarwire_fls_code8_bit7_fields = layout([field("class_code", "msb_bits[7,8]", 2)]);
+var sxarwire_fls_code8_bit7 = sxLayout(0x608D00B7, "fls_code8_bit7", LE, sxarwire_fls_code8_bit7_fields);
+var sxarwire_fls_code10_bit0_fields = layout([field("class_code", "msb_bits[0,10]", 2)]);
+var sxarwire_fls_code10_bit0 = sxLayout(0x608D00B8, "fls_code10_bit0", LE, sxarwire_fls_code10_bit0_fields);
+var sxarwire_fls_code10_bit1_fields = layout([field("class_code", "msb_bits[1,10]", 2)]);
+var sxarwire_fls_code10_bit1 = sxLayout(0x608D00B9, "fls_code10_bit1", LE, sxarwire_fls_code10_bit1_fields);
+var sxarwire_fls_code10_bit2_fields = layout([field("class_code", "msb_bits[2,10]", 2)]);
+var sxarwire_fls_code10_bit2 = sxLayout(0x608D00BA, "fls_code10_bit2", LE, sxarwire_fls_code10_bit2_fields);
+var sxarwire_fls_code10_bit3_fields = layout([field("class_code", "msb_bits[3,10]", 2)]);
+var sxarwire_fls_code10_bit3 = sxLayout(0x608D00BB, "fls_code10_bit3", LE, sxarwire_fls_code10_bit3_fields);
+var sxarwire_fls_code10_bit4_fields = layout([field("class_code", "msb_bits[4,10]", 2)]);
+var sxarwire_fls_code10_bit4 = sxLayout(0x608D00BC, "fls_code10_bit4", LE, sxarwire_fls_code10_bit4_fields);
+var sxarwire_fls_code10_bit5_fields = layout([field("class_code", "msb_bits[5,10]", 2)]);
+var sxarwire_fls_code10_bit5 = sxLayout(0x608D00BD, "fls_code10_bit5", LE, sxarwire_fls_code10_bit5_fields);
+var sxarwire_fls_code10_bit6_fields = layout([field("class_code", "msb_bits[6,10]", 2)]);
+var sxarwire_fls_code10_bit6 = sxLayout(0x608D00BE, "fls_code10_bit6", LE, sxarwire_fls_code10_bit6_fields);
+var sxarwire_fls_code10_bit7_fields = layout([field("class_code", "msb_bits[7,10]", 3)]);
+var sxarwire_fls_code10_bit7 = sxLayout(0x608D00BF, "fls_code10_bit7", LE, sxarwire_fls_code10_bit7_fields);
+var sxarwire_fls_code12_bit0_fields = layout([field("class_code", "msb_bits[0,12]", 2)]);
+var sxarwire_fls_code12_bit0 = sxLayout(0x608D00C0, "fls_code12_bit0", LE, sxarwire_fls_code12_bit0_fields);
+var sxarwire_fls_code12_bit1_fields = layout([field("class_code", "msb_bits[1,12]", 2)]);
+var sxarwire_fls_code12_bit1 = sxLayout(0x608D00C1, "fls_code12_bit1", LE, sxarwire_fls_code12_bit1_fields);
+var sxarwire_fls_code12_bit2_fields = layout([field("class_code", "msb_bits[2,12]", 2)]);
+var sxarwire_fls_code12_bit2 = sxLayout(0x608D00C2, "fls_code12_bit2", LE, sxarwire_fls_code12_bit2_fields);
+var sxarwire_fls_code12_bit3_fields = layout([field("class_code", "msb_bits[3,12]", 2)]);
+var sxarwire_fls_code12_bit3 = sxLayout(0x608D00C3, "fls_code12_bit3", LE, sxarwire_fls_code12_bit3_fields);
+var sxarwire_fls_code12_bit4_fields = layout([field("class_code", "msb_bits[4,12]", 2)]);
+var sxarwire_fls_code12_bit4 = sxLayout(0x608D00C4, "fls_code12_bit4", LE, sxarwire_fls_code12_bit4_fields);
+var sxarwire_fls_code12_bit5_fields = layout([field("class_code", "msb_bits[5,12]", 3)]);
+var sxarwire_fls_code12_bit5 = sxLayout(0x608D00C5, "fls_code12_bit5", LE, sxarwire_fls_code12_bit5_fields);
+var sxarwire_fls_code12_bit6_fields = layout([field("class_code", "msb_bits[6,12]", 3)]);
+var sxarwire_fls_code12_bit6 = sxLayout(0x608D00C6, "fls_code12_bit6", LE, sxarwire_fls_code12_bit6_fields);
+var sxarwire_fls_code12_bit7_fields = layout([field("class_code", "msb_bits[7,12]", 3)]);
+var sxarwire_fls_code12_bit7 = sxLayout(0x608D00C7, "fls_code12_bit7", LE, sxarwire_fls_code12_bit7_fields);
+var sxarwire_set_fls_first_class = [sxarwire_fls_first_class_bit0, sxarwire_fls_first_class_bit1, sxarwire_fls_first_class_bit2,
+    sxarwire_fls_first_class_bit3, sxarwire_fls_first_class_bit4, sxarwire_fls_first_class_bit5, sxarwire_fls_first_class_bit6,
+    sxarwire_fls_first_class_bit7];
+var sxarwire_set_fls_second_class = [sxarwire_fls_second_class_bit0, sxarwire_fls_second_class_bit1,
+    sxarwire_fls_second_class_bit2, sxarwire_fls_second_class_bit3, sxarwire_fls_second_class_bit4,
+    sxarwire_fls_second_class_bit5, sxarwire_fls_second_class_bit6, sxarwire_fls_second_class_bit7];
+var sxarwire_set_fls_selector_prefix = [sxarwire_fls_selector_prefix_bit0, sxarwire_fls_selector_prefix_bit1,
+    sxarwire_fls_selector_prefix_bit2, sxarwire_fls_selector_prefix_bit3, sxarwire_fls_selector_prefix_bit4,
+    sxarwire_fls_selector_prefix_bit5, sxarwire_fls_selector_prefix_bit6, sxarwire_fls_selector_prefix_bit7];
+var sxarwire_set_fls_selector_extension = [sxarwire_fls_selector_extension_bit0, sxarwire_fls_selector_extension_bit1,
+    sxarwire_fls_selector_extension_bit2, sxarwire_fls_selector_extension_bit3, sxarwire_fls_selector_extension_bit4,
+    sxarwire_fls_selector_extension_bit5, sxarwire_fls_selector_extension_bit6, sxarwire_fls_selector_extension_bit7];
+var sxarwire_set_fls_code6 = [sxarwire_fls_code6_bit0, sxarwire_fls_code6_bit1, sxarwire_fls_code6_bit2,
+    sxarwire_fls_code6_bit3, sxarwire_fls_code6_bit4, sxarwire_fls_code6_bit5, sxarwire_fls_code6_bit6, sxarwire_fls_code6_bit7];
+var sxarwire_set_fls_code7 = [sxarwire_fls_code7_bit0, sxarwire_fls_code7_bit1, sxarwire_fls_code7_bit2,
+    sxarwire_fls_code7_bit3, sxarwire_fls_code7_bit4, sxarwire_fls_code7_bit5, sxarwire_fls_code7_bit6, sxarwire_fls_code7_bit7];
+var sxarwire_set_fls_code8 = [sxarwire_fls_code8_bit0, sxarwire_fls_code8_bit1, sxarwire_fls_code8_bit2,
+    sxarwire_fls_code8_bit3, sxarwire_fls_code8_bit4, sxarwire_fls_code8_bit5, sxarwire_fls_code8_bit6, sxarwire_fls_code8_bit7];
+var sxarwire_set_fls_code10 = [sxarwire_fls_code10_bit0, sxarwire_fls_code10_bit1, sxarwire_fls_code10_bit2,
+    sxarwire_fls_code10_bit3, sxarwire_fls_code10_bit4, sxarwire_fls_code10_bit5, sxarwire_fls_code10_bit6,
+    sxarwire_fls_code10_bit7];
+var sxarwire_set_fls_code12 = [sxarwire_fls_code12_bit0, sxarwire_fls_code12_bit1, sxarwire_fls_code12_bit2,
+    sxarwire_fls_code12_bit3, sxarwire_fls_code12_bit4, sxarwire_fls_code12_bit5, sxarwire_fls_code12_bit6,
+    sxarwire_fls_code12_bit7];
+function sxarwire_fls_set(n) {
+    switch (n) {
+    case 6:
+        return sxarwire_set_fls_code6;
+    case 7:
+        return sxarwire_set_fls_code7;
+    case 8:
+        return sxarwire_set_fls_code8;
+    case 10:
+        return sxarwire_set_fls_code10;
+    case 12:
+        return sxarwire_set_fls_code12;
+    default:
+        return null;
+    }
+}
+var sxarwire_fls_widths = [7, 6, 7, 8, 10, 12];
+var sxarwire_fls_bases = [0, 128, 192, 320, 576, 1600];
+function sxarwire_fls(c) {
+    var order = [0, 0, 0, 0, 0, 0];
+    var counter = 499;
+    if (!sxarwire_put(c, sxarwire_ibmspack_tag, 0)) {
+        return false;
+    }
+    var b = { c: c, bit: 8, lsb: false, cached_at: 0, cached: 0, have: false };
+    while (c.count < 20000) {
+        var a = [0];
+        var z = [0];
+        var v = [0];
+        if (++counter === 500) {
+            if (!sxarwire_field(b, sxarwire_set_fls_first_class, 3, a) || !sxarwire_field(b, sxarwire_set_fls_second_class, 3, z) || a[0] >= 6 || z[0] >= 6 || a[0] === z[0]) {
+                return false;
+            }
+            order[0] = a[0] >>> 0;
+            order[1] = z[0] >>> 0;
+            var out = 2;
+            for (var i = 0; i < 6; i++) {
+                if (i !== a[0] && i !== z[0]) {
+                    order[out++] = i;
+                }
+            }
+            counter = 0;
+        }
+        if (!sxarwire_field(b, sxarwire_set_fls_selector_prefix, 2, a)) {
+            return false;
+        }
+        if (a[0] >= 2) {
+            if (!sxarwire_field(b, sxarwire_set_fls_selector_extension, 1, z)) {
+                return false;
+            }
+            a[0] = sxU64(2 * a[0] - 2) + z[0];
+        }
+        var cl = order[a[0]];
+        if (!sxarwire_field(b, sxarwire_fls_set(sxarwire_fls_widths[cl]), sxarwire_fls_widths[cl], v)) {
+            return false;
+        }
+        if (v[0] + sxarwire_fls_bases[cl] === 5695) {
+            return true;
+        }
+    }
+    return true;
+}
+function sx_ibmspack_build(c) {
+    return sxarwire_fls(c);
+}

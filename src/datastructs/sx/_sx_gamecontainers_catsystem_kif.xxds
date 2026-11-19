@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/catsystem_kif/xx_catsystem_kif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_kif_header_fields = layout([chars("magic", 4, SIGNATURE), u32("entries", COUNT)]);
+var sxgco_kif_header = sxLayout(0x60400038, "kif_header", LE, sxgco_kif_header_fields);
+function sxgco_kif(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    if (!sxgco_row(v, sxgco_kif_header, 0, e) || !sxgco_word(v, 4, 4, false, n, e) || n[0] > 0xFFFFF) {
+        return false;
+    }
+    var name = [];
+    if (sxgco_read(v, 8, name, 11, e) && !sxMemcmp(name, "__key__.dat", 11)) {
+        return true;
+    }
+    var f = v.c.f;
+    var s = sxArcCreate(f);
+    if (s === null) {
+        return false;
+    }
+    var r = sxArcCurrent(f, s);
+    var size = r !== null ? r.header_size : 0;
+    sxArcFree(f, s);
+    if (size !== 40 && size !== 72) {
+        return false;
+    }
+    return sxgco_table(v, size === 40 ? sxgco_kif_entry32 : sxgco_kif_entry64, 8, n[0], e);
+}
+function sx_catsystem_kif_build(v) {
+    return sxgco_kif(v);
+}

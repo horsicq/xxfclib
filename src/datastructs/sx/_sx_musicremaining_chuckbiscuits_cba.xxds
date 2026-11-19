@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/chuckbiscuits_cba/xx_chuckbiscuits_cba_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_pan_position_fields = layout([u8("pan")]);
+var sxmr_pan_position = sxLayout(0x607D0012, "pan_position", LE, sxmr_pan_position_fields);
+var sxmr_cba_event_fields = layout([u8("instrument", ID), u8("note"), u8("volume"), u8("effect", ID), u8("parameter")]);
+var sxmr_cba_event = sxLayout(0x607D0015, "cba_event", LE, sxmr_cba_event_fields);
+function sxmr_cba(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var msg = [0];
+    var ch = [0];
+    var last = [0];
+    var ns = [0];
+    var x = [0];
+    var p = 332;
+    var total = 0;
+    if (!sxmr_eq(v, 0, "CBA\xF9", 4, end) || !sxmr_u(v, 36, 1, x, end) || x[0] !== 26 || !sxmr_u(v, 37, 2, msg, end) || !sxmr_u(v, 39, 1, ch, end) || !ch[0] || ch[0] > 32 || !sxmr_u(v, 40, 1, last, end) || !sxmr_u(v, 42, 1, ns, end) || !sxmr_row(v, sxmr_cba_header, 0, end) || !sxmr_table(v, sxmr_pan_position, 45, 32, end) || !sxmr_table(v, sxmr_order8, 77, 255, end)) {
+        return false;
+    }
+    for (var i = 0; i < ns[0]; i++, p += 48) {
+        if (!sxmr_u(v, p + 36, 4, x, end) || !sxmr_row(v, sxmr_cba_sample, p, end) || x[0] > SX_U64_MAX - total) {
+            return false;
+        }
+        total += x[0];
+    }
+    x[0] = (last[0] + 1) * 64 * ch[0];
+    if (!sxmr_table(v, sxmr_cba_event, p, x[0], end)) {
+        return false;
+    }
+    p += x[0] * 5;
+    if (!sxmr_span(v, p, total, end)) {
+        return false;
+    }
+    p += total;
+    return sxmr_text_emit(v, p, msg[0], end);
+}
+function sx_chuckbiscuits_cba_build(v) {
+    return sxmr_cba(v);
+}

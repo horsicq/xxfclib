@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/perform/xx_perform_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_perform_header_fields = layout([chars("signature", 34, SIGNATURE), u16("plaintext_crc16", CHECKSUM)]);
+var sxdm_perform_header = sxLayout(0x6023000D, "perform_header", LE, sxdm_perform_header_fields);
+function sx_perform_build(c) {
+    return sxdm_add(c, sxdm_perform_header, 0, 36);
+}

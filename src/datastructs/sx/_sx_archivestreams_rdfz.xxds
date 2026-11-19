@@ -1,0 +1,44 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/rdfz/xx_rdfz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxas_rdfz_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version"), chars("method", 4, NONE),
+    u32("packed_index_size", SIZE), u32("unpacked_index_size", SIZE)]);
+var sxas_rdfz_header = sxLayout(0x60430007, "rdfz_header", LE, sxas_rdfz_header_fields);
+var sxas_rdfz_count_fields = layout([u32("member_count", COUNT)]);
+var sxas_rdfz_count = sxLayout(0x60430008, "rdfz_count", LE, sxas_rdfz_count_fields);
+var sxas_rdfz_entry_fields = layout([u32("payload_offset", OFFSET), u32("stored_size", SIZE), u32("extension_index"),
+    u32("name_index"), u32("method")]);
+var sxas_rdfz_entry = sxLayout(0x60430009, "rdfz_entry", LE, sxas_rdfz_entry_fields);
+var sxas_rdfz_member_size_fields = layout([u32("uncompressed_size", SIZE)]);
+var sxas_rdfz_member_size = sxLayout(0x6043000A, "rdfz_member_size", LE, sxas_rdfz_member_size_fields);
+function sxas_rdfz(c) {
+    var packed = [0];
+    var n = [0];
+    if (!sxas_word(c, 12, 4, false, packed) || packed[0] < 4 || !sxas_span(c, 20, packed[0]) || !sxas_add(c, sxas_rdfz_header, 0) || !sxas_word(c, 16 + packed[0], 4, false, n) || !sxas_add(c, sxas_rdfz_count, 16 + packed[0]) || !sxas_span(c, 20 + packed[0], n[0] * 20)) {
+        return false;
+    }
+    var table = 20 + packed[0];
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxas_add(c, sxas_rdfz_entry, table + 20 * i)) {
+            return false;
+        }
+    }
+    for (i = 0; i < n[0]; i++) {
+        var b = [];
+        if (!sxas_read(c, table + 20 * i, b, 20)) {
+            return false;
+        }
+        var p = sxas_uint(b, 0, 4, false);
+        var z = sxas_uint(b, 4, 4, false);
+        if (sxas_uint(b, 16, 4, false) === 1 && z >= 4 && p >= table + 20 * n[0] && sxas_span(c, p, z) && !sxas_add(c, sxas_rdfz_member_size, p)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_rdfz_build(c) {
+    return sxas_rdfz(c);
+}

@@ -1,0 +1,1392 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_tracker.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxt_tracker_order_u8_fields = layout([u8("pattern")]);
+var sxt_tracker_order_u8 = sxLayout(0x600E0001, "tracker_order_u8", LE, sxt_tracker_order_u8_fields);
+var sxt_tracker_order_u16be_fields = layout([u16("pattern")]);
+var sxt_tracker_order_u16be = sxLayout(0x600E0002, "tracker_order_u16be", BE, sxt_tracker_order_u16be_fields);
+var sxt_tracker_track_index_fields = layout([u16("track")]);
+var sxt_tracker_track_index = sxLayout(0x600E0003, "tracker_track_index", LE, sxt_tracker_track_index_fields);
+var sxt_tracker_offset_u32le_fields = layout([u32("offset", OFFSET)]);
+var sxt_tracker_offset_u32le = sxLayout(0x600E0004, "tracker_offset_u32le", LE, sxt_tracker_offset_u32le_fields);
+var sxt_tracker_offset_u32be_fields = layout([u32("offset", OFFSET)]);
+var sxt_tracker_offset_u32be = sxLayout(0x600E0005, "tracker_offset_u32be", BE, sxt_tracker_offset_u32be_fields);
+var sxt_tracker_paragraph_fields = layout([u16("paragraph")]);
+var sxt_tracker_paragraph = sxLayout(0x600E0006, "tracker_paragraph", LE, sxt_tracker_paragraph_fields);
+var sxt_tracker_length_u32be_fields = layout([u32("length", SIZE)]);
+var sxt_tracker_length_u32be = sxLayout(0x600E0007, "tracker_length_u32be", BE, sxt_tracker_length_u32be_fields);
+var sxt_tracker_loop_start_u32be_fields = layout([u32("loop_start", OFFSET)]);
+var sxt_tracker_loop_start_u32be = sxLayout(0x600E0008, "tracker_loop_start_u32be", BE, sxt_tracker_loop_start_u32be_fields);
+var sxt_tracker_loop_length_u32be_fields = layout([u32("loop_length", SIZE)]);
+var sxt_tracker_loop_length_u32be = sxLayout(0x600E0009, "tracker_loop_length_u32be", BE, sxt_tracker_loop_length_u32be_fields);
+var sxt_tracker_volume_fields = layout([u8("volume")]);
+var sxt_tracker_volume = sxLayout(0x600E000A, "tracker_volume", LE, sxt_tracker_volume_fields);
+var sxt_tracker_finetune_fields = layout([i8("finetune")]);
+var sxt_tracker_finetune = sxLayout(0x600E000B, "tracker_finetune", LE, sxt_tracker_finetune_fields);
+var sxt_tracker_pan4_fields = layout([u8("panning")]);
+var sxt_tracker_pan4 = sxLayout(0x600E000C, "tracker_pan4", LE, sxt_tracker_pan4_fields);
+var sxt_tracker_count_u8_fields = layout([u8("count", COUNT)]);
+var sxt_tracker_count_u8 = sxLayout(0x600E000D, "tracker_count_u8", LE, sxt_tracker_count_u8_fields);
+var sxt_tracker_count_u16le_fields = layout([u16("count", COUNT)]);
+var sxt_tracker_count_u16le = sxLayout(0x600E000E, "tracker_count_u16le", LE, sxt_tracker_count_u16le_fields);
+var sxt_tracker_count_u16be_fields = layout([u16("count", COUNT)]);
+var sxt_tracker_count_u16be = sxLayout(0x600E000F, "tracker_count_u16be", BE, sxt_tracker_count_u16be_fields);
+var sxt_tracker_length_u16le_fields = layout([u16("length", SIZE)]);
+var sxt_tracker_length_u16le = sxLayout(0x600E0010, "tracker_length_u16le", LE, sxt_tracker_length_u16le_fields);
+var sxt_tracker_chunk_be_fields = layout([chars("tag", 4, SIGNATURE), u32("size", SIZE)]);
+var sxt_tracker_chunk_be = sxLayout(0x600E0011, "tracker_chunk_be", BE, sxt_tracker_chunk_be_fields);
+var sxt_tracker_title20_fields = layout([chars("title", 20, STRING)]);
+var sxt_tracker_title20 = sxLayout(0x600E0012, "tracker_title20", LE, sxt_tracker_title20_fields);
+var sxt_tracker_title30_fields = layout([chars("title", 30, STRING)]);
+var sxt_tracker_title30 = sxLayout(0x600E0013, "tracker_title30", LE, sxt_tracker_title30_fields);
+var sxt_tracker_title32_fields = layout([chars("title", 32, STRING)]);
+var sxt_tracker_title32 = sxLayout(0x600E0014, "tracker_title32", LE, sxt_tracker_title32_fields);
+var sxt_tracker_title44_fields = layout([chars("title", 44, STRING)]);
+var sxt_tracker_title44 = sxLayout(0x600E0015, "tracker_title44", LE, sxt_tracker_title44_fields);
+var sxt_mod_sample_fields = layout([chars("name", 22, STRING), u16("length_words"), u8("finetune_nibble"), u8("volume"),
+    u16("loop_start_words"), u16("loop_length_words")]);
+var sxt_mod_sample = sxLayout(0x600E0016, "mod_sample", BE, sxt_mod_sample_fields);
+var sxt_mod_orders_fields = layout([u8("order_count", COUNT), u8("restart"), bytes("orders", 128)]);
+var sxt_mod_orders = sxLayout(0x600E0017, "mod_orders", LE, sxt_mod_orders_fields);
+var sxt_mod_signature_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxt_mod_signature = sxLayout(0x600E0018, "mod_signature", LE, sxt_mod_signature_fields);
+var sxt_mod_event_fields = layout([u8("sample_high_period_high", FLAGS), u8("period_low"), u8("sample_low_effect", FLAGS),
+    u8("effect_parameter")]);
+var sxt_mod_event = sxLayout(0x600E0019, "mod_event", BE, sxt_mod_event_fields);
+var sxt_xm_header_fields = layout([chars("signature", 17, SIGNATURE), chars("title", 20, STRING), u8("marker", SIGNATURE),
+    chars("tracker", 20, STRING), u16("version", ID), u32("header_size", SIZE), u16("order_count", COUNT), u16("restart"),
+    u16("channel_count", COUNT), u16("pattern_count", COUNT), u16("instrument_count", COUNT), u16("frequency_flags", FLAGS),
+    u16("speed"), u16("bpm")]);
+var sxt_xm_header = sxLayout(0x600E001A, "xm_header", LE, sxt_xm_header_fields);
+var sxt_xm_pattern_header_fields = layout([u32("header_size", SIZE), u8("packing_type", ID), u16("row_count", COUNT),
+    u16("packed_size", SIZE)]);
+var sxt_xm_pattern_header = sxLayout(0x600E001B, "xm_pattern_header", LE, sxt_xm_pattern_header_fields);
+var sxt_xm_instrument_header_fields = layout([u32("header_size", SIZE), chars("name", 22, STRING), u8("instrument_type", ID),
+    u16("sample_count", COUNT)]);
+var sxt_xm_instrument_header = sxLayout(0x600E001C, "xm_instrument_header", LE, sxt_xm_instrument_header_fields);
+var sxt_xm_instrument_sampled_header_fields = layout([u32("header_size", SIZE), chars("name", 22, STRING),
+    u8("instrument_type", ID), u16("sample_count", COUNT), u32("sample_header_size", SIZE)]);
+var sxt_xm_instrument_sampled_header = sxLayout(0x600E001D, "xm_instrument_sampled_header", LE, sxt_xm_instrument_sampled_header_fields);
+var sxt_xm_keymap_fields = layout([bytes("sample_for_note", 96)]);
+var sxt_xm_keymap = sxLayout(0x600E001E, "xm_keymap", LE, sxt_xm_keymap_fields);
+var sxt_tracker_envelope_point_fields = layout([u16("position"), u16("value")]);
+var sxt_tracker_envelope_point = sxLayout(0x600E001F, "tracker_envelope_point", LE, sxt_tracker_envelope_point_fields);
+var sxt_xm_envelope_control_fields = layout([u8("volume_point_count", COUNT), u8("panning_point_count", COUNT),
+    u8("volume_sustain"), u8("volume_loop_start"), u8("volume_loop_end"), u8("panning_sustain"), u8("panning_loop_start"),
+    u8("panning_loop_end"), u8("volume_flags", FLAGS), u8("panning_flags", FLAGS), u8("vibrato_type", ID), u8("vibrato_sweep"),
+    u8("vibrato_depth"), u8("vibrato_rate"), u16("volume_fadeout"), blob("reserved", 22, RESERVED)]);
+var sxt_xm_envelope_control = sxLayout(0x600E0020, "xm_envelope_control", LE, sxt_xm_envelope_control_fields);
+var sxt_xm_sample_fields = layout([u32("length", SIZE), u32("loop_start", OFFSET), u32("loop_length", SIZE), u8("volume"),
+    i8("finetune"), u8("flags", FLAGS), u8("panning"), i8("relative_note"), u8("reserved", RESERVED), chars("name", 22, STRING)]);
+var sxt_xm_sample = sxLayout(0x600E0021, "xm_sample", LE, sxt_xm_sample_fields);
+var sxt_s3m_header_fields = layout([chars("title", 28, STRING), u8("marker", SIGNATURE), u8("file_type", ID),
+    u16("reserved0", RESERVED), u16("order_count", COUNT), u16("sample_count", COUNT), u16("pattern_count", COUNT),
+    u16("flags", FLAGS), u16("tracker_version", ID), u16("sample_format", ID), chars("signature", 4, SIGNATURE),
+    u8("global_volume"), u8("speed"), u8("bpm"), u8("master_volume", FLAGS), u8("ultraclick"), u8("default_panning", ID),
+    blob("reserved1", 8, RESERVED), u16("special")]);
+var sxt_s3m_header = sxLayout(0x600E0022, "s3m_header", LE, sxt_s3m_header_fields);
+var sxt_s3m_channel_fields = layout([u8("channel", FLAGS)]);
+var sxt_s3m_channel = sxLayout(0x600E0023, "s3m_channel", LE, sxt_s3m_channel_fields);
+var sxt_s3m_panning_fields = layout([u8("panning", FLAGS)]);
+var sxt_s3m_panning = sxLayout(0x600E0024, "s3m_panning", LE, sxt_s3m_panning_fields);
+var sxt_s3m_sample_fields = layout([u8("sample_type", ID), chars("filename", 12, STRING), u8("data_paragraph_high"),
+    u16("data_paragraph_low"), u32("length_frames", COUNT), u32("loop_start_frames"), u32("loop_end_frames"), u8("volume"),
+    u8("reserved0", RESERVED), u8("packing", ID), u8("flags", FLAGS), u32("c2_frequency"), blob("reserved1", 12, RESERVED),
+    chars("name", 28, STRING), chars("signature", 4, SIGNATURE)]);
+var sxt_s3m_sample = sxLayout(0x600E0025, "s3m_sample", LE, sxt_s3m_sample_fields);
+var sxt_it_header_fields = layout([chars("signature", 4, SIGNATURE), chars("title", 26, STRING), u8("highlight_minor"),
+    u8("highlight_major"), u16("order_count", COUNT), u16("instrument_count", COUNT), u16("sample_count", COUNT),
+    u16("pattern_count", COUNT), u16("created_version", ID), u16("compatible_version", ID), u16("flags", FLAGS),
+    u16("special", FLAGS), u8("global_volume"), u8("mix_volume"), u8("speed"), u8("bpm"), u8("pan_separation"),
+    u8("pitch_wheel_depth"), u16("message_length", SIZE), u32("message_offset", OFFSET), u32("reserved", RESERVED)]);
+var sxt_it_header = sxLayout(0x600E0026, "it_header", LE, sxt_it_header_fields);
+var sxt_it_channel_pan_fields = layout([u8("panning", FLAGS)]);
+var sxt_it_channel_pan = sxLayout(0x600E0027, "it_channel_pan", LE, sxt_it_channel_pan_fields);
+var sxt_it_sample_fields = layout([chars("signature", 4, SIGNATURE), chars("filename", 12, STRING), u8("reserved", RESERVED),
+    u8("global_volume"), u8("flags", FLAGS), u8("default_volume"), chars("name", 26, STRING), u8("conversion", FLAGS),
+    u8("default_pan", FLAGS), u32("length_frames", COUNT), u32("loop_start_frames"), u32("loop_end_frames"),
+    u32("c5_frequency"), u32("sustain_start_frames"), u32("sustain_end_frames"), u32("sample_offset", OFFSET),
+    u8("vibrato_speed"), u8("vibrato_depth"), u8("vibrato_rate"), u8("vibrato_waveform", ID)]);
+var sxt_it_sample = sxLayout(0x600E0028, "it_sample", LE, sxt_it_sample_fields);
+var sxt_it_pattern_header_fields = layout([u16("packed_size", SIZE), u16("row_count", COUNT), u32("reserved", RESERVED)]);
+var sxt_it_pattern_header = sxLayout(0x600E0029, "it_pattern_header", LE, sxt_it_pattern_header_fields);
+var sxt_mtm_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version", ID), chars("title", 20, STRING),
+    u16("track_count", COUNT), u8("last_pattern"), u8("last_order"), u16("comment_size", SIZE), u8("sample_count", COUNT),
+    u8("attributes", FLAGS), u8("rows_per_track", COUNT), u8("channel_count", COUNT)]);
+var sxt_mtm_header = sxLayout(0x600E002A, "mtm_header", LE, sxt_mtm_header_fields);
+var sxt_mtm_sample_fields = layout([chars("name", 22, STRING), u32("length", SIZE), u32("loop_start", OFFSET),
+    u32("loop_end", OFFSET), u8("finetune_nibble"), u8("volume"), u8("attributes", FLAGS)]);
+var sxt_mtm_sample = sxLayout(0x600E002B, "mtm_sample", LE, sxt_mtm_sample_fields);
+var sxt_mtm_event_fields = layout([u8("note_instrument_high", FLAGS), u8("instrument_low_effect", FLAGS), u8("effect_parameter")]);
+var sxt_mtm_event = sxLayout(0x600E002C, "mtm_event", LE, sxt_mtm_event_fields);
+var sxt_ult_header_fields = layout([chars("signature", 15, SIGNATURE), chars("title", 32, STRING),
+    u8("comment_line_count", COUNT)]);
+var sxt_ult_header = sxLayout(0x600E002D, "ult_header", LE, sxt_ult_header_fields);
+var sxt_ult_sample_fields = layout([chars("name", 32, STRING), chars("filename", 12, STRING), u32("loop_start_frames"),
+    u32("loop_end_frames"), u32("sample_start_frames"), u32("sample_end_frames"), u8("volume"), u8("flags", FLAGS),
+    u16("c2_frequency"), i16("finetune")]);
+var sxt_ult_sample = sxLayout(0x600E002E, "ult_sample", LE, sxt_ult_sample_fields);
+var sxt_ult_counts_fields = layout([u8("channels_minus_one"), u8("patterns_minus_one")]);
+var sxt_ult_counts = sxLayout(0x600E002F, "ult_counts", LE, sxt_ult_counts_fields);
+var sxt_okt_signature_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxt_okt_signature = sxLayout(0x600E0030, "okt_signature", LE, sxt_okt_signature_fields);
+var sxt_okt_channel_fields = layout([u16("channel_mode", ID)]);
+var sxt_okt_channel = sxLayout(0x600E0031, "okt_channel", BE, sxt_okt_channel_fields);
+var sxt_okt_sample_fields = layout([chars("name", 20, STRING), u32("length", SIZE), u16("loop_start_words"),
+    u16("loop_length_words"), u16("volume"), u16("sample_mode", ID)]);
+var sxt_okt_sample = sxLayout(0x600E0032, "okt_sample", BE, sxt_okt_sample_fields);
+var sxt_okt_speed_fields = layout([u16("speed")]);
+var sxt_okt_speed = sxLayout(0x600E0033, "okt_speed", BE, sxt_okt_speed_fields);
+var sxt_okt_event_fields = layout([u8("note"), u8("instrument"), u8("effect", ID), u8("effect_parameter")]);
+var sxt_okt_event = sxLayout(0x600E0034, "okt_event", LE, sxt_okt_event_fields);
+var sxt_digi_header_fields = layout([chars("signature", 20, SIGNATURE), chars("version_string", 4, STRING), u8("version", ID),
+    u8("channel_count", COUNT), u8("packed_patterns", FLAGS), blob("unknown", 19), u8("last_pattern"), u8("last_order")]);
+var sxt_digi_header = sxLayout(0x600E0035, "digi_header", LE, sxt_digi_header_fields);
+var sxt_digi_pattern_header_fields = layout([u16("packed_size", SIZE), bytes("channel_masks", 64, FLAGS)]);
+var sxt_digi_pattern_header = sxLayout(0x600E0036, "digi_pattern_header", BE, sxt_digi_pattern_header_fields);
+var sxt_far_header_fields = layout([chars("signature", 4, SIGNATURE), chars("title", 40, STRING), bytes("marker", 3, SIGNATURE),
+    u16("header_size", SIZE), u8("version", ID), bytes("channel_enabled", 16, FLAGS), blob("editor_state", 9), u8("tempo"),
+    bytes("channel_panning", 16), blob("editor_grid_mode", 4), u16("comment_size", SIZE)]);
+var sxt_far_header = sxLayout(0x600E0037, "far_header", LE, sxt_far_header_fields);
+var sxt_far_order_counts_fields = layout([u8("stored_patterns", COUNT), u8("order_count", COUNT), u8("restart")]);
+var sxt_far_order_counts = sxLayout(0x600E0038, "far_order_counts", LE, sxt_far_order_counts_fields);
+var sxt_far_pattern_header_fields = layout([u8("break_row"), u8("tempo")]);
+var sxt_far_pattern_header = sxLayout(0x600E0039, "far_pattern_header", LE, sxt_far_pattern_header_fields);
+var sxt_far_sample_bitmap_fields = layout([bytes("sample_bitmap", 8, FLAGS)]);
+var sxt_far_sample_bitmap = sxLayout(0x600E003A, "far_sample_bitmap", LE, sxt_far_sample_bitmap_fields);
+var sxt_far_sample_fields = layout([chars("name", 32, STRING), u32("length", SIZE), u8("finetune"), u8("volume"),
+    u32("loop_start", OFFSET), u32("loop_end", OFFSET), u8("sample_type", ID), u8("loop_flags", FLAGS)]);
+var sxt_far_sample = sxLayout(0x600E003B, "far_sample", LE, sxt_far_sample_fields);
+var sxt_far_event_fields = layout([u8("note"), u8("instrument"), u8("volume"), u8("effect", FLAGS)]);
+var sxt_far_event = sxLayout(0x600E003C, "far_event", LE, sxt_far_event_fields);
+var sxt_gdm_header_fields = layout([chars("signature", 4, SIGNATURE), chars("title", 32, STRING), chars("author", 32, STRING),
+    bytes("marker", 3, SIGNATURE), chars("signature2", 4, SIGNATURE), u8("major", ID), u8("minor", ID), u16("tracker_id", ID),
+    u8("tracker_major", ID), u8("tracker_minor", ID), bytes("channel_panning", 32), u8("global_volume"), u8("speed"), u8("bpm"),
+    u16("original_format", ID), u32("orders_offset", OFFSET), u8("orders_minus_one"), u32("patterns_offset", OFFSET),
+    u8("patterns_minus_one"), u32("instruments_offset", OFFSET), u32("samples_offset", OFFSET), u8("samples_minus_one"),
+    blob("unsupported_extension", 20)]);
+var sxt_gdm_header = sxLayout(0x600E003D, "gdm_header", LE, sxt_gdm_header_fields);
+var sxt_gdm_sample_fields = layout([chars("name", 32, STRING), chars("filename", 12, STRING), u8("ems_handle"),
+    u32("length", SIZE), u32("loop_start_frames"), u32("loop_end_plus_one_frames"), u8("flags", FLAGS), u16("c4_frequency"),
+    u8("volume"), u8("panning")]);
+var sxt_gdm_sample = sxLayout(0x600E003E, "gdm_sample", LE, sxt_gdm_sample_fields);
+var sxt_dbm_header_fields = layout([chars("signature", 4, SIGNATURE), u8("major", ID), u8("minor", ID),
+    u16("reserved", RESERVED)]);
+var sxt_dbm_header = sxLayout(0x600E003F, "dbm_header", BE, sxt_dbm_header_fields);
+var sxt_dbm_info_fields = layout([u16("instrument_count", COUNT), u16("sample_count", COUNT), u16("song_count", COUNT),
+    u16("pattern_count", COUNT), u16("channel_count", COUNT)]);
+var sxt_dbm_info = sxLayout(0x600E0040, "dbm_info", BE, sxt_dbm_info_fields);
+var sxt_dbm_song_fields = layout([chars("name", 44, STRING), u16("order_count", COUNT)]);
+var sxt_dbm_song = sxLayout(0x600E0041, "dbm_song", BE, sxt_dbm_song_fields);
+var sxt_dbm_instrument_fields = layout([chars("name", 30, STRING), u16("sample_number"), u16("volume"), u32("c3_frequency"),
+    u32("loop_start_frames"), u32("loop_length_frames"), i16("panning"), u16("flags", FLAGS)]);
+var sxt_dbm_instrument = sxLayout(0x600E0042, "dbm_instrument", BE, sxt_dbm_instrument_fields);
+var sxt_dbm_pattern_header_fields = layout([u16("row_count", COUNT), u32("packed_size", SIZE)]);
+var sxt_dbm_pattern_header = sxLayout(0x600E0043, "dbm_pattern_header", BE, sxt_dbm_pattern_header_fields);
+var sxt_dbm_sample_header_fields = layout([u32("sample_format", FLAGS), u32("frame_count", COUNT)]);
+var sxt_dbm_sample_header = sxLayout(0x600E0044, "dbm_sample_header", BE, sxt_dbm_sample_header_fields);
+var sxt_mdl_header_fields = layout([chars("signature", 4, SIGNATURE), u8("version", ID)]);
+var sxt_mdl_header = sxLayout(0x600E0045, "mdl_header", LE, sxt_mdl_header_fields);
+var sxt_mdl_chunk_fields = layout([chars("tag", 2, SIGNATURE), u32("size", SIZE)]);
+var sxt_mdl_chunk = sxLayout(0x600E0046, "mdl_chunk", LE, sxt_mdl_chunk_fields);
+var sxt_mdl_info_fields = layout([chars("title", 32, STRING), chars("composer", 20, STRING), u16("order_count", COUNT),
+    u16("restart"), u8("global_volume"), u8("speed"), u8("bpm"), bytes("channel_panning", 32, FLAGS)]);
+var sxt_mdl_info = sxLayout(0x600E0047, "mdl_info", LE, sxt_mdl_info_fields);
+var sxt_mdl_pattern_header_fields = layout([u8("channel_count", COUNT), u8("rows_minus_one"), chars("name", 16, STRING)]);
+var sxt_mdl_pattern_header = sxLayout(0x600E0048, "mdl_pattern_header", LE, sxt_mdl_pattern_header_fields);
+var sxt_mdl_instrument_fields = layout([u8("instrument_number"), u8("sample_count", COUNT), chars("name", 32, STRING)]);
+var sxt_mdl_instrument = sxLayout(0x600E0049, "mdl_instrument", LE, sxt_mdl_instrument_fields);
+var sxt_mdl_subinstrument_fields = layout([u8("sample_number"), u8("last_note"), u8("volume"), u8("volume_envelope", FLAGS),
+    u8("panning"), u8("panning_envelope", FLAGS), u16("fadeout"), u8("vibrato_speed"), u8("vibrato_depth"), u8("vibrato_sweep"),
+    u8("vibrato_waveform", ID), u8("reserved", RESERVED), u8("pitch_envelope", FLAGS)]);
+var sxt_mdl_subinstrument = sxLayout(0x600E004A, "mdl_subinstrument", LE, sxt_mdl_subinstrument_fields);
+var sxt_mdl_sample_fields = layout([u8("sample_number"), chars("name", 32, STRING), chars("filename", 8, STRING),
+    u32("c4_frequency"), u32("length", SIZE), u32("loop_start", OFFSET), u32("loop_length", SIZE), u8("volume"),
+    u8("flags", FLAGS)]);
+var sxt_mdl_sample = sxLayout(0x600E004B, "mdl_sample", LE, sxt_mdl_sample_fields);
+var sxt_mdl_envelope_fields = layout([u8("envelope_number"), bytes("points", 30), u8("sustain_flags", FLAGS),
+    u8("loop_points", FLAGS)]);
+var sxt_mdl_envelope = sxLayout(0x600E004C, "mdl_envelope", LE, sxt_mdl_envelope_fields);
+var sxt_med_header_fields = layout([chars("signature", 4, SIGNATURE), u32("module_size", SIZE), u32("song_offset", OFFSET),
+    u16("player_section"), u16("player_sequence"), u32("pattern_table_offset", OFFSET), u8("mmd_flags", FLAGS),
+    bytes("reserved0", 3, RESERVED), u32("sample_table_offset", OFFSET), u32("reserved1", RESERVED),
+    u32("expansion_offset", OFFSET), u32("reserved2", RESERVED), u16("player_state"), u16("player_block"), u16("player_line"),
+    u16("player_sequence_number"), i16("active_line"), u8("counter"), u8("extra_songs_minus_one")]);
+var sxt_med_header = sxLayout(0x600E004D, "med_header", BE, sxt_med_header_fields);
+var sxt_med_sample_settings_fields = layout([u16("repeat_start_words"), u16("repeat_length_words"), u8("midi_channel"),
+    u8("midi_preset"), u8("volume"), i8("transpose")]);
+var sxt_med_sample_settings = sxLayout(0x600E004E, "med_sample_settings", BE, sxt_med_sample_settings_fields);
+var sxt_med_song_fields = layout([u16("pattern_count", COUNT), u16("order_count", COUNT), bytes("orders", 256),
+    u16("default_tempo"), i8("transpose"), u8("flags", FLAGS), u8("flags2", FLAGS), u8("speed"), bytes("track_volumes", 16),
+    u8("master_volume"), u8("sample_count", COUNT)]);
+var sxt_med_song = sxLayout(0x600E004F, "med_song", BE, sxt_med_song_fields);
+var sxt_med_pattern0_header_fields = layout([u8("channel_count", COUNT), u8("rows_minus_one")]);
+var sxt_med_pattern0_header = sxLayout(0x600E0050, "med_pattern0_header", BE, sxt_med_pattern0_header_fields);
+var sxt_med_pattern1_header_fields = layout([u16("channel_count", COUNT), u16("rows_minus_one"),
+    u32("block_info_offset", OFFSET)]);
+var sxt_med_pattern1_header = sxLayout(0x600E0051, "med_pattern1_header", BE, sxt_med_pattern1_header_fields);
+var sxt_med_sample_header_fields = layout([u32("length", SIZE), i16("sample_type", ID)]);
+var sxt_med_sample_header = sxLayout(0x600E0052, "med_sample_header", BE, sxt_med_sample_header_fields);
+var sxt_med_expansion_fields = layout([u32("next_module_offset", OFFSET), u32("instrument_extensions_offset", OFFSET),
+    u16("instrument_extension_count", COUNT), u16("instrument_extension_size", SIZE), u32("annotation_offset", OFFSET),
+    u32("annotation_size", SIZE), u32("instrument_names_offset", OFFSET), u16("instrument_name_count", COUNT),
+    u16("instrument_name_size", SIZE), u32("jump_mask", FLAGS), u32("rgb_table_offset", OFFSET), bytes("channel_split", 4),
+    u32("notation_offset", OFFSET), u32("song_name_offset", OFFSET), u32("song_name_size", SIZE), u32("dumps_offset", OFFSET),
+    u32("info_offset", OFFSET), u32("rexx_offset", OFFSET), u32("command3x_offset", OFFSET), blob("reserved", 12, RESERVED)]);
+var sxt_med_expansion = sxLayout(0x600E0053, "med_expansion", BE, sxt_med_expansion_fields);
+var sxt_imf_header_fields = layout([chars("title", 32, STRING), u16("order_count", COUNT), u16("pattern_count", COUNT),
+    u16("instrument_count", COUNT), u16("flags", FLAGS), blob("reserved0", 8, RESERVED), u8("speed"), u8("bpm"),
+    u8("master_volume"), u8("amplification"), blob("reserved1", 8, RESERVED), chars("signature", 4, SIGNATURE)]);
+var sxt_imf_header = sxLayout(0x600E0054, "imf_header", LE, sxt_imf_header_fields);
+var sxt_imf_channel_fields = layout([chars("name", 12, STRING), u8("chorus"), u8("reverb"), u8("panning"), u8("status", ID)]);
+var sxt_imf_channel = sxLayout(0x600E0055, "imf_channel", LE, sxt_imf_channel_fields);
+var sxt_imf_instrument_fields = layout([chars("name", 32, STRING), bytes("sample_map", 120), blob("reserved", 8, RESERVED)]);
+var sxt_imf_instrument = sxLayout(0x600E0056, "imf_instrument", LE, sxt_imf_instrument_fields);
+var sxt_imf_envelope_control_fields = layout([u8("point_count", COUNT), u8("sustain"), u8("loop_start"), u8("loop_end"),
+    u8("flags", FLAGS), bytes("reserved", 3, RESERVED)]);
+var sxt_imf_envelope_control = sxLayout(0x600E0057, "imf_envelope_control", LE, sxt_imf_envelope_control_fields);
+var sxt_imf_instrument_tail_fields = layout([u16("fadeout"), u16("sample_count", COUNT), chars("signature", 4, SIGNATURE)]);
+var sxt_imf_instrument_tail = sxLayout(0x600E0058, "imf_instrument_tail", LE, sxt_imf_instrument_tail_fields);
+var sxt_imf_sample_fields = layout([chars("filename", 13, STRING), bytes("reserved0", 3, RESERVED), u32("length", SIZE),
+    u32("loop_start", OFFSET), u32("loop_end", OFFSET), u32("sample_rate"), u8("volume"), u8("panning"),
+    blob("reserved1", 14, RESERVED), u8("flags", FLAGS), blob("reserved2", 5, RESERVED), u16("ems_handle", RESERVED),
+    u32("dram_address", RESERVED), chars("signature", 4, SIGNATURE)]);
+var sxt_imf_sample = sxLayout(0x600E0059, "imf_sample", LE, sxt_imf_sample_fields);
+var sxt_imf_pattern_header_fields = layout([u16("packed_size", SIZE), u16("row_count", COUNT)]);
+var sxt_imf_pattern_header = sxLayout(0x600E005A, "imf_pattern_header", LE, sxt_imf_pattern_header_fields);
+var sxt_amf_header_fields = layout([chars("signature", 3, SIGNATURE), u8("version", ID), chars("title", 32, STRING),
+    u8("instrument_count", COUNT), u8("order_count", COUNT), u16("track_count", COUNT), u8("channel_count", COUNT),
+    bytes("panning", 32), u8("bpm"), u8("speed")]);
+var sxt_amf_header = sxLayout(0x600E005B, "amf_header", LE, sxt_amf_header_fields);
+var sxt_amf_instrument_fields = layout([u8("sample_type", ID), chars("name", 32, STRING), chars("filename", 13, STRING),
+    u32("sample_index"), u32("length", SIZE), u16("c2_frequency"), u8("volume"), u32("loop_start", OFFSET),
+    u32("loop_end", OFFSET)]);
+var sxt_amf_instrument = sxLayout(0x600E005C, "amf_instrument", LE, sxt_amf_instrument_fields);
+var sxt_amf_track_header_fields = layout([u16("event_count", COUNT), u8("unknown")]);
+var sxt_amf_track_header = sxLayout(0x600E005D, "amf_track_header", LE, sxt_amf_track_header_fields);
+var sxt_amf_event_fields = layout([u8("row"), u8("event_type", ID), u8("parameter")]);
+var sxt_amf_event = sxLayout(0x600E005E, "amf_event", LE, sxt_amf_event_fields);
+var sxt_asylum_header_fields = layout([chars("signature", 32, SIGNATURE), u8("speed"), u8("bpm"), u8("instrument_count", COUNT),
+    u8("pattern_count", COUNT), u8("order_count", COUNT), u8("restart")]);
+var sxt_asylum_header = sxLayout(0x600E005F, "asylum_header", LE, sxt_asylum_header_fields);
+var sxt_asylum_instrument_fields = layout([chars("name", 22, STRING), u8("finetune_nibble"), u8("volume"), i8("transpose"),
+    u32("length", SIZE), u32("loop_start", OFFSET), u32("loop_length", SIZE)]);
+var sxt_asylum_instrument = sxLayout(0x600E0060, "asylum_instrument", LE, sxt_asylum_instrument_fields);
+var sxt_asylum_event_fields = layout([u8("note"), u8("instrument"), u8("effect", ID), u8("parameter")]);
+var sxt_asylum_event = sxLayout(0x600E0061, "asylum_event", LE, sxt_asylum_event_fields);
+var sxt_soundfx_header_fields = layout([chars("signature", 4, SIGNATURE), u16("delay"), blob("reserved", 14, RESERVED)]);
+var sxt_soundfx_header = sxLayout(0x600E0062, "soundfx_header", BE, sxt_soundfx_header_fields);
+var sxt_soundfx_instrument_fields = layout([chars("name", 22, STRING), u16("length_words"), u8("finetune_nibble"), u8("volume"),
+    u16("loop_start", OFFSET), u16("loop_length_words")]);
+var sxt_soundfx_instrument = sxLayout(0x600E0063, "soundfx_instrument", BE, sxt_soundfx_instrument_fields);
+function sx_tracker_supports(type) {
+    switch (type) {
+    case "TRACKER_XM":
+    case "TRACKER_S3M":
+    case "TRACKER_IT":
+    case "TRACKER_MTM":
+    case "TRACKER_ULT":
+    case "TRACKER_OKT":
+    case "TRACKER_DIGI":
+    case "TRACKER_MOD":
+    case "TRACKER_FAR":
+    case "TRACKER_MDL":
+    case "TRACKER_GDM":
+    case "TRACKER_DBM":
+    case "TRACKER_MED":
+    case "TRACKER_IMF":
+    case "TRACKER_AMF":
+    case "ASYLUM_AMF":
+    case "TRACKER_SOUNDFX":
+        return true;
+    default:
+        return false;
+    }
+}
+function sxt_num(c, at, width, be) {
+    var b = [];
+    if (!width || width > 4 || !sx_read(c, at, b, width)) {
+        c.failed = true;
+        return 0;
+    }
+    var v = 0;
+    for (var i = 0; i < width; i++) {
+        v = (v | (b[i] << ((8 * (be ? (((width - 1) >>> 0) - i) >>> 0 : i)) >>> 0)) >>> 0) >>> 0;
+    }
+    return v;
+}
+function sxt_take(c, l, at, end, count) {
+    var f = l.fields[sxU64(l.field_count - 1)];
+    var width = f.offset + f.size;
+    if (at[0] < 0 || end < at[0] || count > Math.floor((end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) / (width < 0 ? width + SX_U64_MAX : width))) {
+        return false;
+    }
+    if (!sx_table(c, l, at[0], width, count)) {
+        return false;
+    }
+    at[0] += (count >= SX_I64_MAX ? count - SX_U64_MAX : count) * width;
+    return true;
+}
+function sxt_prefix(s, s_o, p) {
+    return !sxStrncmpAt(s, s_o, p, 0, sxStrlen(p));
+}
+function sxt_suffix(s, s_o, p) {
+    var a = sxStrlenAt(s, s_o);
+    var b = sxStrlen(p);
+    return a >= b && !sxStrcmpAt(s, s_o + a - b, p, 0);
+}
+function sxt_wcontains(s, s_o, p) {
+    var n = sxStrlen(p);
+    for (; sxAt(s, s_o); s_o++) {
+        if (!sxStrncmpAt(s, s_o, p, 0, n)) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxt_component(c, name, name_o, off, size) {
+    var at = [off];
+    var end = off + size;
+    var n;
+    var m;
+    var type = c.f.file_type;
+    switch (type) {
+    case "TRACKER_XM":
+        if (!sxStrcmpAt(name, name_o, "xm-descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_xm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]))) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_xm_pattern_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_suffix(name, name_o, "descriptor.bin")) {
+            {
+                if (!sxt_take(c, sxt_xm_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "instrument-") && sxt_suffix(name, name_o, ".bin") && !sxt_suffix(name, name_o, "delta.bin")) {
+            if (size === 29) {
+                {
+                    if (!sxt_take(c, sxt_xm_instrument_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else if (size === 263) {
+                {
+                    if (!sxt_take(c, sxt_xm_instrument_sampled_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxt_take(c, sxt_xm_keymap, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxt_take(c, sxt_tracker_envelope_point, at, end, 24)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxt_take(c, sxt_xm_envelope_control, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+        break;
+    case "TRACKER_S3M":
+        if (!sxStrcmpAt(name, name_o, "s3m-descriptor.bin", 0)) {
+            n = sxt_num(c, 32, 2, false);
+            m = (sxt_num(c, 34, 2, false) + sxt_num(c, 36, 2, false)) >>> 0;
+            {
+                if (!sxt_take(c, sxt_s3m_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_s3m_channel, at, end, 32)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_paragraph, at, end, m)) {
+                    return false;
+                }
+            }
+            if (sxt_num(c, 53, 1, false) === 252) {
+                {
+                    if (!sxt_take(c, sxt_s3m_panning, at, end, 32)) {
+                        return false;
+                    }
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxt_suffix(name, name_o, "descriptor.bin")) {
+            {
+                if (!sxt_take(c, sxt_s3m_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_tracker_length_u16le, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_IT":
+        if (!sxStrcmpAt(name, name_o, "it-descriptor.bin", 0)) {
+            n = sxt_num(c, 32, 2, false);
+            m = (sxt_num(c, 36, 2, false) + sxt_num(c, 38, 2, false)) >>> 0;
+            {
+                if (!sxt_take(c, sxt_it_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_it_channel_pan, at, end, 64)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_volume, at, end, 64)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, n)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_offset_u32le, at, end, m)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxt_suffix(name, name_o, "descriptor.bin")) {
+            {
+                if (!sxt_take(c, sxt_it_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_it_pattern_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_MTM":
+        if (!sxStrcmpAt(name, name_o, "mtm-descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_mtm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_pan4, at, end, 32)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_mtm_sample, at, end, sxt_num(c, 30, 1, false))) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, 128)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (!sxStrcmpAt(name, name_o, "pattern-tracks.bin", 0)) {
+            if (size % 2) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_track_index, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "track-")) {
+            if (size % 3) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_mtm_event, at, end, sxU64(sxDiv(size, 3)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_ULT":
+        if (!sxStrcmpAt(name, name_o, "ult-descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_ult_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            at[0] += 32 * sxt_num(c, 47, 1, false);
+            {
+                if (!sxt_take(c, sxt_tracker_count_u8, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxt_suffix(name, name_o, "descriptor.bin")) {
+            {
+                if (!sxt_take(c, sxt_ult_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "orders-panning.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, 256)) {
+                    return false;
+                }
+            }
+            n = (sxt_num(c, at[0], 1, false) + 1) >>> 0;
+            {
+                if (!sxt_take(c, sxt_ult_counts, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_pan4, at, end, n)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        }
+        break;
+    case "TRACKER_OKT":
+        if (!sxStrcmpAt(name, name_o, "okt-magic.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_okt_signature, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        }
+        {
+            if (!sxt_take(c, sxt_tracker_chunk_be, at, end, 1)) {
+                return false;
+            }
+        }
+        if (!sxStrcmpAt(name, name_o, "cmod.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_okt_channel, at, end, 4)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "samp.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_okt_sample, at, end, 36)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "spee.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_okt_speed, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "slen.bin", 0) || !sxStrcmpAt(name, name_o, "plen.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_count_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "patt.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]))) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_tracker_count_u16be, at, end, 1)) {
+                    return false;
+                }
+            }
+            if ((end - at[0]) % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_okt_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_DIGI":
+        if (!sxStrcmpAt(name, name_o, "headers.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_digi_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, 128)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_length_u32be, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_loop_start_u32be, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_loop_length_u32be, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_volume, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_finetune, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_title32, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_title30, at, end, 31)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (!sxStrcmpAt(name, name_o, "pattern.bin", 0)) {
+            if (sxt_num(c, 26, 1, false)) {
+                {
+                    if (!sxt_take(c, sxt_digi_pattern_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+            }
+            if ((end - at[0]) % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_mod_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_MOD":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_title20, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_mod_sample, at, end, 31)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_mod_orders, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_mod_signature, at, end, 1)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_mod_event, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_FAR":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_far_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            at[0] += sxt_num(c, 96, 2, false);
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, 256)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_far_order_counts, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_length_u16le, at, end, 256)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_far_pattern_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            if ((end - at[0]) % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_far_event, at, end, sxU64(sxDiv(end - at[0], 4)))) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "sample-bitmap.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_far_sample_bitmap, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "instrument-")) {
+            {
+                if (!sxt_take(c, sxt_far_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_GDM":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_gdm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "orders.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, (size < 0 ? size + SX_U64_MAX : size))) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "instruments.bin", 0)) {
+            if (size % 62) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_gdm_sample, at, end, sxU64(sxDiv(size, 62)))) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_tracker_length_u16le, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_DBM":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_dbm_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            break;
+        }
+        {
+            if (!sxt_take(c, sxt_tracker_chunk_be, at, end, 1)) {
+                return false;
+            }
+        }
+        if (!sxStrcmpAt(name, name_o, "chunk-NAME.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_title44, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-INFO.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_dbm_info, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-SONG.bin", 0)) {
+            n = sxt_num(c, at[0] + 44, 2, true);
+            {
+                if (!sxt_take(c, sxt_dbm_song, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u16be, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-INST.bin", 0)) {
+            if ((end - at[0]) % 50) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_dbm_instrument, at, end, sxU64(sxDiv(end - at[0], 50)))) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-PATT.bin", 0)) {
+            while (at[0] < end) {
+                n = sxt_num(c, at[0] + 2, 4, true);
+                {
+                    if (!sxt_take(c, sxt_dbm_pattern_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (n > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                    return false;
+                }
+                at[0] += n;
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-SMPL.bin", 0)) {
+            while (at[0] < end) {
+                n = sxt_num(c, at[0], 4, true);
+                m = sxt_num(c, at[0] + 4, 4, true);
+                {
+                    if (!sxt_take(c, sxt_dbm_sample_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (!n || m > Math.floor((end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0]) / n)) {
+                    return false;
+                }
+                at[0] += n * m;
+            }
+        }
+        break;
+    case "TRACKER_MDL":
+        {
+            if (!sxt_take(c, sxt_mdl_chunk, at, end, 1)) {
+                return false;
+            }
+        }
+        if (!sxStrcmpAt(name, name_o, "chunk-IN.bin", 0)) {
+            n = sxt_num(c, at[0] + 52, 2, false);
+            {
+                if (!sxt_take(c, sxt_mdl_info, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-PA.bin", 0)) {
+            n = sxt_num(c, at[0], 1, false);
+            {
+                if (!sxt_take(c, sxt_tracker_count_u8, at, end, 1)) {
+                    return false;
+                }
+            }
+            for (var i = 0; i < n; i++) {
+                m = sxt_num(c, at[0], 1, false);
+                {
+                    if (!sxt_take(c, sxt_mdl_pattern_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxt_take(c, sxt_tracker_track_index, at, end, m)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-TR.bin", 0)) {
+            n = sxt_num(c, at[0], 2, false);
+            {
+                if (!sxt_take(c, sxt_tracker_count_u16le, at, end, 1)) {
+                    return false;
+                }
+            }
+            for (i = 0; i < n; i++) {
+                m = sxt_num(c, at[0], 2, false);
+                {
+                    if (!sxt_take(c, sxt_tracker_length_u16le, at, end, 1)) {
+                        return false;
+                    }
+                }
+                if (m > (end - at[0] < 0 ? end - at[0] + SX_U64_MAX : end - at[0])) {
+                    return false;
+                }
+                at[0] += m;
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-II.bin", 0)) {
+            n = sxt_num(c, at[0], 1, false);
+            {
+                if (!sxt_take(c, sxt_tracker_count_u8, at, end, 1)) {
+                    return false;
+                }
+            }
+            for (i = 0; i < n; i++) {
+                m = sxt_num(c, at[0] + 1, 1, false);
+                {
+                    if (!sxt_take(c, sxt_mdl_instrument, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxt_take(c, sxt_mdl_subinstrument, at, end, m)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-IS.bin", 0)) {
+            n = sxt_num(c, at[0], 1, false);
+            {
+                if (!sxt_take(c, sxt_tracker_count_u8, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_mdl_sample, at, end, n)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "chunk-VE.bin", 0) || !sxStrcmpAt(name, name_o, "chunk-PE.bin", 0) || !sxStrcmpAt(name, name_o, "chunk-FE.bin", 0)) {
+            n = sxt_num(c, at[0], 1, false);
+            {
+                if (!sxt_take(c, sxt_tracker_count_u8, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_mdl_envelope, at, end, n)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_MED":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_med_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "song.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_med_sample_settings, at, end, 63)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_med_song, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "pattern-pointers.bin", 0) || !sxStrcmpAt(name, name_o, "sample-pointers.bin", 0)) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_offset_u32be, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            if (sxt_num(c, 3, 1, false) === 49 /*1*/) {
+                {
+                    if (!sxt_take(c, sxt_med_pattern1_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxt_take(c, sxt_med_pattern0_header, at, end, 1)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "sample-")) {
+            {
+                if (!sxt_take(c, sxt_med_sample_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "expansion.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_med_expansion, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_IMF":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_imf_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_imf_channel, at, end, 32)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, 256)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "pattern-")) {
+            {
+                if (!sxt_take(c, sxt_imf_pattern_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "instrument-")) {
+            {
+                if (!sxt_take(c, sxt_imf_instrument, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_envelope_point, at, end, 48)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_imf_envelope_control, at, end, 3)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_imf_instrument_tail, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (sxt_suffix(name, name_o, "header.bin")) {
+            {
+                if (!sxt_take(c, sxt_imf_sample, at, end, 1)) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_AMF":
+        if (!sxStrcmpAt(name, name_o, "descriptor.bin", 0)) {
+            {
+                if (!sxt_take(c, sxt_amf_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "orders.bin", 0)) {
+            n = sxt_num(c, 37, 1, false);
+            m = sxt_num(c, 40, 1, false);
+            for (i = 0; i < n; i++) {
+                {
+                    if (!sxt_take(c, sxt_tracker_count_u16le, at, end, 1)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxt_take(c, sxt_tracker_track_index, at, end, m)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "instruments.bin", 0)) {
+            if (size % 65) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_amf_instrument, at, end, sxU64(sxDiv(size, 65)))) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "track-map.bin", 0)) {
+            if (size % 2) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_track_index, at, end, sxU64(sxDiv(size, 2)))) {
+                    return false;
+                }
+            }
+        } else if (sxt_prefix(name, name_o, "track-")) {
+            n = sxt_num(c, at[0], 2, false);
+            {
+                if (!sxt_take(c, sxt_amf_track_header, at, end, 1)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxt_take(c, sxt_amf_event, at, end, n)) {
+                    return false;
+                }
+            }
+            if (at[0] !== end) {
+                return false;
+            }
+        }
+        break;
+    case "ASYLUM_AMF":
+        if (!sxStrcmpAt(name, name_o, "descriptor.amf", 0)) {
+            {
+                if (!sxt_take(c, sxt_asylum_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "orders.amf", 0)) {
+            {
+                if (!sxt_take(c, sxt_tracker_order_u8, at, end, 256)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "instruments.amf", 0)) {
+            {
+                if (!sxt_take(c, sxt_asylum_instrument, at, end, 64)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "pattern.amf", 0)) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_asylum_event, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    case "TRACKER_SOUNDFX":
+        if (!sxStrcmpAt(name, name_o, "sample-lengths.sfx", 0)) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_tracker_length_u32be, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "descriptor.sfx", 0)) {
+            {
+                if (!sxt_take(c, sxt_soundfx_header, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "instruments.sfx", 0)) {
+            if (size % 30) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_soundfx_instrument, at, end, sxU64(sxDiv(size, 30)))) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "orders.sfx", 0)) {
+            {
+                if (!sxt_take(c, sxt_mod_orders, at, end, 1)) {
+                    return false;
+                }
+            }
+        } else if (!sxStrcmpAt(name, name_o, "pattern.sfx", 0)) {
+            if (size % 4) {
+                return false;
+            }
+            {
+                if (!sxt_take(c, sxt_mod_event, at, end, sxU64(sxDiv(size, 4)))) {
+                    return false;
+                }
+            }
+        }
+        break;
+    default:
+        return false;
+    }
+    return !c.failed;
+}
+function sxt_finish(c) {
+    var count = c.count;
+    var end = 0;
+    for (var i = 1; i < count; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        var j = i;
+        while (j && c.items[sxU64(j - 1)].offset > d.offset) {
+            c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - 1)]);
+            j--;
+        }
+        c.items[j] = sxCopy_xx_data_struct(null, d);
+    }
+    for (i = 0; i < count; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var n = c.items[i].total_size;
+        if (at < end) {
+            return false;
+        }
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + n;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    for (i = 1; i < c.count; i++) {
+        d = sxCopy_xx_data_struct(null, c.items[i]);
+        j = i;
+        while (j && c.items[sxU64(j - 1)].offset > d.offset) {
+            c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - 1)]);
+            j--;
+        }
+        c.items[j] = sxCopy_xx_data_struct(null, d);
+    }
+    return !c.failed;
+}
+function sx_tracker_build(c) {
+    var s;
+    var ok = true;
+    var walked = 0;
+    if (c.size < 1 || c.size > 268435456 || c.f.create_archive_records_reading === null) {
+        return false;
+    }
+    s = sxArcCreate(c.f);
+    if (s === null) {
+        return false;
+    }
+    if (c.f.file_type === "TRACKER_MDL" && !sx_add(c, sxt_mdl_header, 0, 5)) {
+        ok = false;
+    }
+    while (ok && s.has_record) {
+        var r = sxArcCurrent(c.f, s);
+        var name = r !== null ? sxArcName(r) : null;
+        if (++walked > 4096 || r === null || name === null || sxStrlen(name) < 5 || sxAt(name, 4) !== 45 /*-*/ || r.data_offset < c.f.base_address || r.compressed_size < 0) {
+            ok = false;
+            break;
+        }
+        var at = r.data_offset - c.f.base_address;
+        var n = r.compressed_size;
+        if (!sx_range(c, at, (n < 0 ? n + SX_U64_MAX : n)) || !sxt_component(c, name, 5, at, n)) {
+            ok = false;
+            break;
+        }
+        if (!sxArcNext(c.f, s)) {
+            break;
+        }
+    }
+    if (walked !== (s.total_records < 0 ? s.total_records + SX_U64_MAX : s.total_records)) {
+        ok = false;
+    }
+    sxArcFree(c.f, s);
+    return ok && c.count > 0 && sxt_finish(c);
+}
+function sx_tracker_comment(r, id) {
+    if (r === null || r.name === null || id < 0x600E0000 || id >= 0x600F0000) {
+        return true;
+    }
+    var n = r.name;
+    var text = null;
+    var v = sxVarU64(r.value);
+    if (sxt_wcontains(n, 0, "_words")) {
+        text = "16-bit word units; byte count or offset = value * 2";
+    } else if (sxt_wcontains(n, 0, "_frames")) {
+        text = "Sample frames; byte extent also depends on channel count and sample width";
+    } else if (sxt_wcontains(n, 0, "minus_one") || !sxStrcmp(n, "last_pattern") || !sxStrcmp(n, "last_order")) {
+        text = "Stored as count minus one";
+    } else if (id === sxt_tracker_paragraph.id) {
+        text = "16-byte paragraph index; file byte offset = value * 16";
+    }
+    if (id === sxt_s3m_sample.id && (!sxStrcmp(n, "data_paragraph_high") || !sxStrcmp(n, "data_paragraph_low"))) {
+        text = "File offset = ((high << 16) | low) * 16";
+    } else if (!sxStrcmp(n, "finetune_nibble")) {
+        text = "Low four bits encode signed finetune -8..7";
+    } else if (id === sxt_xm_header.id && !sxStrcmp(n, "frequency_flags")) {
+        text = v ? "LINEAR_FREQUENCIES" : "AMIGA_FREQUENCIES";
+    } else if (id === sxt_xm_sample.id && !sxStrcmp(n, "flags")) {
+        text = "Bits 0..1: no/forward/ping-pong loop; bit 4: 16-bit sample";
+    } else if (id === sxt_s3m_sample.id && !sxStrcmp(n, "flags")) {
+        text = "Bit 0: loop; bit 1: stereo; bit 2: 16-bit sample";
+    } else if (id === sxt_s3m_header.id && !sxStrcmp(n, "sample_format")) {
+        text = v === 1 ? "SIGNED_PCM" : v === 2 ? "UNSIGNED_PCM" : null;
+    } else if (id === sxt_s3m_channel.id) {
+        text = "0..7: left PCM; 8..15: right PCM; 255: disabled";
+    } else if (id === sxt_s3m_panning.id) {
+        text = "Low nibble: panning; bit 5: use this panning value";
+    } else if (id === sxt_it_sample.id && !sxStrcmp(n, "flags")) {
+        text = "Bits: 0 present, 1 16-bit, 2 stereo, 3 compressed, 4 loop, 5 sustain, 6/7 ping-pong";
+    } else if (id === sxt_dbm_sample_header.id && !sxStrcmp(n, "sample_format")) {
+        text = v === 1 ? "PCM8" : v === 2 ? "PCM16_BIG_ENDIAN" : v === 4 ? "PCM32_BIG_ENDIAN" : null;
+    } else if (id === sxt_imf_channel.id && !sxStrcmp(n, "status")) {
+        text = v === 0 ? "ENABLED" : v === 1 ? "MUTED" : v === 2 ? "DISABLED" : null;
+    } else if (id === sxt_imf_header.id && !sxStrcmp(n, "flags")) {
+        text = sxAnd64(v, 1) ? "LINEAR_FREQUENCIES" : "AMIGA_FREQUENCIES";
+    } else if (id === sxt_imf_sample.id && !sxStrcmp(n, "flags")) {
+        text = "Bit 0: loop; bit 1: bidirectional; bit 2: 16-bit; bit 3: default pan";
+    } else if (id === sxt_amf_track_header.id && !sxStrcmp(n, "unknown")) {
+        text = "Unknown third header byte, ignored by native DSMI reader; not part of event count";
+    } else if (id === sxt_gdm_sample.id && !sxStrcmp(n, "loop_end_plus_one_frames")) {
+        text = "Stored loop end is one beyond the effective frame end";
+    } else if (id === sxt_mod_event.id) {
+        if (!sxStrcmp(n, "sample_high_period_high")) {
+            text = "High nibble: sample high bits; low nibble: period high bits";
+        } else if (!sxStrcmp(n, "sample_low_effect")) {
+            text = "High nibble: sample low bits; low nibble: effect command";
+        }
+    } else if (id === sxt_xm_envelope_control.id && sxt_wcontains(n, 0, "_flags")) {
+        text = "Bit 0: enabled; bit 1: sustain; bit 2: loop";
+    }
+    return text === null || sxSetComment(r, text);
+}

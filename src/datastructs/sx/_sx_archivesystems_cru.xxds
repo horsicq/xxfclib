@@ -1,0 +1,29 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/cru/xx_cru_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxasy_cru_header_fields = layout([chars("signature", 8, SIGNATURE), chars("separator", 1, NONE), u8("minor_version"),
+    bytes("guard", 3, SIGNATURE), bytes("opaque", 3), u16("directory_count", COUNT), u16("member_count", COUNT),
+    u16("reserved"), u32("directory_offset", OFFSET)]);
+var sxasy_cru_header = sxLayout(0x6044000A, "cru_header", LE, sxasy_cru_header_fields);
+var sxasy_cru_entry_fields = layout([u8("directory_index"), u8("opaque1"), u16("dos_time"), u16("dos_date"),
+    u32("stored_size", SIZE), chars("name", 12, NONE), bytes("opaque2", 2)]);
+var sxasy_cru_entry = sxLayout(0x6044000B, "cru_entry", LE, sxasy_cru_entry_fields);
+function sxasy_cru(c) {
+    var n = [0];
+    var p = [0];
+    if (!sxasy_word(c, 18, 2, false, n) || !sxasy_word(c, 22, 4, false, p) || !sxasy_span(c, p[0], n[0] * 24) || !sxasy_add(c, sxasy_cru_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (!sxasy_add(c, sxasy_cru_entry, p[0] + i * 24)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_cru_build(c) {
+    return sxasy_cru(c);
+}

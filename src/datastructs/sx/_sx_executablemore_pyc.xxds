@@ -1,0 +1,32 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/pyc/xx_pyc_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_pyc_header8_fields = layout([u16("magic", SIGNATURE), u16("newline", SIGNATURE), u32("timestamp", TIMESTAMP)]);
+var sxexm_pyc_header8 = sxLayout(0x602B0003, "pyc_header8", LE, sxexm_pyc_header8_fields);
+var sxexm_pyc_header12_fields = layout([u16("magic", SIGNATURE), u16("newline", SIGNATURE), u32("timestamp", TIMESTAMP),
+    u32("source_size", SIZE)]);
+var sxexm_pyc_header12 = sxLayout(0x602B0004, "pyc_header12", LE, sxexm_pyc_header12_fields);
+var sxexm_pyc_header16_timestamp_fields = layout([u16("magic", SIGNATURE), u16("newline", SIGNATURE), u32("flags", FLAGS),
+    u32("timestamp", TIMESTAMP), u32("source_size", SIZE)]);
+var sxexm_pyc_header16_timestamp = sxLayout(0x602B0005, "pyc_header16_timestamp", LE, sxexm_pyc_header16_timestamp_fields);
+var sxexm_pyc_header16_hash_fields = layout([u16("magic", SIGNATURE), u16("newline", SIGNATURE), u32("flags", FLAGS),
+    bytes("source_hash", 8, CHECKSUM)]);
+var sxexm_pyc_header16_hash = sxLayout(0x602B0006, "pyc_header16_hash", LE, sxexm_pyc_header16_hash_fields);
+function sxexm_pyc(c) {
+    var h = [];
+    if (!sxexm_read(c, 0, h, 8)) {
+        return false;
+    }
+    var magic = sxexm16(h, 0, false);
+    var size = magic >= 3000 && magic < 5000 ? magic >= 3392 ? 16 : magic >= 3210 ? 12 : 8 : 8;
+    var l = size === 8 ? sxexm_pyc_header8 : size === 12 ? sxexm_pyc_header12 : sxexm32(h, 4, false) & 1 ? sxexm_pyc_header16_hash : sxexm_pyc_header16_timestamp;
+    return sxexm_add(c, l, 0);
+}
+function sx_pyc_build(c) {
+    var ok = false;
+    ok = sxexm_pyc(c);
+    return ok && sxexm_finish(c);
+}

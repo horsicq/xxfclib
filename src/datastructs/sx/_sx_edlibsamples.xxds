@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_edlibsamples.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxe38_prefix_fields = layout([blob("signature", 6, SIGNATURE), u8("block_type", ID)]);
+var sxe38_prefix = sxLayout(0x60B00001, "edlib_s01_header", LE, sxe38_prefix_fields);
+var sxe38_voc_fields = layout([blob("signature", 20, SIGNATURE), u16("first_block_offset", OFFSET), u16("version"),
+    u16("version_checksum", CHECKSUM)]);
+var sxe38_voc = sxLayout(0x60B00002, "edlib_voc_header", LE, sxe38_voc_fields);
+var sxe38_sound_fields = layout([u8("type", ID), field("payload_size", "uint24", 3, SIZE), u8("time_constant"), u8("codec", ID)]);
+var sxe38_sound = sxLayout(0x60B00003, "edlib_voc_sound_header", LE, sxe38_sound_fields);
+function sx_edlibsamples_supports(t) {
+    return t === "DIE_MUSIC_JCH_EDLIB_S01";
+}
+function sxe38_span(c, p, n) {
+    return c !== null && c.size >= 0 && p <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+}
+function sxe38_read(c, p, out, n) {
+    return sxe38_span(c, p, n) && sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), out, n);
+}
+function sxe38_raw_all(c) {
+    var sentinel = [0];
+    if (c === null || c.count || c.failed || c.size <= 0 || !sxe38_read(c, 0, sentinel, 1)) {
+        return false;
+    }
+    return sx_raw(c, 0, c.size);
+}
+function sxe38_raw_tail(c, p) {
+    var sentinel = [0];
+    if (c === null || c.failed || p > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    if (p === (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return c.count > 0;
+    }
+    if (!sxe38_read(c, p, sentinel, 1)) {
+        return false;
+    }
+    return sx_raw(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), c.size - (p >= SX_I64_MAX ? p - SX_U64_MAX : p));
+}
+function sx_edlibsamples_build(c) {
+    var h = [];
+    if (c === null || c.f === null || !sx_edlibsamples_supports(c.f.file_type) || c.failed) {
+        return false;
+    }
+    if (!sxe38_span(c, 0, 96)) {
+        return sxe38_raw_all(c);
+    }
+    if (!sxe38_read(c, 0, h, 96)) {
+        return false;
+    }
+    if (sxMemcmp(h, "JCH&\x02f\x01", 7) || sxMemcmpAt(h, 64, "Creative Voice File\x1A", 0, 20) || h[84] !== 26 || h[85] || h[86] !== 10 || h[87] !== 1 || h[88] !== 0x29 || h[89] !== 0x11 || h[90] !== 1 || h[94] !== 0xC3 || h[95]) {
+        return sxe38_raw_all(c);
+    }
+    var length = h[91] | h[92] * 256 | h[93] * 0x10000;
+    if (length < 2) {
+        return sxe38_raw_all(c);
+    }
+    return sx_add(c, sxe38_prefix, 0, 7) && sx_raw(c, 7, 57) && sx_add(c, sxe38_voc, 64, 26) && sx_add(c, sxe38_sound, 90, 6) && sxe38_raw_tail(c, 96) && !c.failed;
+}
+function sx_edlibsamples_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60B00001 || id > 0x60B00003 || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var s = null;
+    if (id === 0x60B00001) {
+        s = r.name === "signature" ? "JCH signature followed by the author's 26/02/66 birth-date detection bytes." : "1: sample-data block in original S01 files; JCH's player documentation assigns block type 0 to music data.";
+    } else if (id === 0x60B00002) {
+        if (r.name === "signature") {
+            s = "Creative Voice File signature and 0x1A terminator.";
+        } else if (r.name === "first_block_offset") {
+            s = "Byte offset relative to the embedded VOC descriptor at S01 offset 0x40; native S01 files store 0x1A.";
+        } else if (r.name === "version") {
+            s = "Creative VOC version: high byte is major, low byte is minor; native S01 stores 0x010A (1.10).";
+        } else {
+            s = "Creative VOC version checksum: (~version + 0x1234) modulo 65536.";
+        }
+    } else {
+        if (r.name === "type") {
+            s = "VOC_SOUND_DATA (1): first Creative VOC sound-data block.";
+        } else if (r.name === "payload_size") {
+            s = "Stored little-endian 24-bit sound-block payload byte length, including the time-constant and codec bytes. This does not validate the remaining S01 sample data.";
+        } else if (r.name === "time_constant") {
+            s = "Creative VOC time constant; the sample-rate formula is 1000000 / (256 - time_constant) Hz.";
+        } else {
+            s = "0: 8-bit unsigned PCM. Encoded sample bytes remain raw.";
+        }
+    }
+    return s === null || sxSetComment(r, s);
+}

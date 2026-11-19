@@ -1,0 +1,109 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/casio_fzf/xx_casio_fzf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsb_casio_fz_bank_fields = layout([u16("area_count", COUNT), bytes("high_key", 64), bytes("low_key", 64),
+    bytes("high_velocity", 64), bytes("low_velocity", 64), bytes("original_key", 64), bytes("midi_channel", 64),
+    bytes("generator_mask", 64, FLAGS), bytes("volume", 64), field("voice_number", "uint16[64]", 128), chars("name", 12, NONE),
+    field("name_padding", "byte[2]", 2, RESERVED)]);
+var sxsb_casio_fz_bank = sxLayout(0x603A0010, "casio_fz_bank", LE, sxsb_casio_fz_bank_fields);
+var sxsb_casio_fz_voice_fields = layout([u32("wave_start", VA), u32("wave_end", VA), u32("generator_start", VA),
+    u32("generator_end", VA), u16("sounding_mode", FLAGS), u8("sustain_loop"), u8("end_loop"),
+    field("loop_start_encoded", "uint32[8]", 32, FLAGS), field("loop_end_encoded", "uint32[8]", 32, FLAGS),
+    field("loop_crossfade_encoded", "uint16[8]", 16), field("loop_time_encoded", "uint16[8]", 16), i16("pitch_detune"),
+    u8("filter_offset"), u8("filter_q_offset"), u8("amplitude_sustain_point"), u8("amplitude_end_point"),
+    bytes("amplitude_rate", 8, FLAGS), bytes("amplitude_stop", 8), u8("filter_sustain_point"), u8("filter_end_point"),
+    bytes("filter_rate", 8, FLAGS), bytes("filter_stop", 8), u16("lfo_delay_encoded"), u8("lfo_waveform", FLAGS),
+    u8("lfo_attack"), u8("lfo_rate_encoded"), u8("lfo_pitch_depth"), u8("lfo_amplitude_depth"), u8("lfo_filter_depth"),
+    u8("lfo_q_depth"), i8("velocity_q_follow"), i8("amplitude_keyboard_follow"), i8("amplitude_note_rate_scale"),
+    i8("filter_keyboard_follow"), i8("filter_note_rate_scale"), i8("velocity_amplitude_follow"),
+    i8("velocity_amplitude_rate_scale"), i8("velocity_filter_follow"), i8("velocity_filter_rate_scale"), u8("high_key"),
+    u8("low_key"), u8("original_key"), u8("sample_rate_code", ID), chars("name", 12, NONE),
+    field("name_padding", "byte[2]", 2, RESERVED)]);
+var sxsb_casio_fz_voice = sxLayout(0x603A0011, "casio_fz_voice", LE, sxsb_casio_fz_voice_fields);
+var sxsb_casio_fz_effect_fields = layout([u8("pitch_bend_depth"), u8("unused_master_volume"), u8("unused_sustain_switch"),
+    u8("modulation_lfo_pitch"), u8("modulation_lfo_amplitude"), u8("modulation_lfo_filter"), u8("modulation_lfo_q"),
+    u8("modulation_filter"), u8("modulation_amplitude"), u8("modulation_q"), u8("foot_lfo_pitch"), u8("foot_lfo_amplitude"),
+    u8("foot_lfo_filter"), u8("foot_lfo_q"), u8("foot_amplitude"), u8("foot_filter"), u8("foot_q"), u8("aftertouch_lfo_pitch"),
+    u8("aftertouch_lfo_amplitude"), u8("aftertouch_lfo_filter"), u8("aftertouch_lfo_q"), u8("aftertouch_amplitude"),
+    u8("aftertouch_filter"), u8("aftertouch_q")]);
+var sxsb_casio_fz_effect = sxLayout(0x603A0012, "casio_fz_effect", LE, sxsb_casio_fz_effect_fields);
+var sxsb_casio_fzf_dump_workspace_fields = layout([field("opaque_00", "byte[5]", 5), u8("dump_type", ID), u8("opaque_06"),
+    u8("bank_count", COUNT), u16("voice_count", COUNT), u16("content_blocks", COUNT), u16("waveform_blocks", COUNT),
+    field("opaque_0e", "byte[10]", 10)]);
+var sxsb_casio_fzf_dump_workspace = sxLayout(0x603A0013, "casio_fzf_dump_workspace", LE, sxsb_casio_fzf_dump_workspace_fields);
+function sxsb_casio(c) {
+    var h = [];
+    var b = [];
+    var v = [];
+    if (c.size < 3072 || sxI64(sxAnd64(c.size, 1023)) || !sxsb_read(c, 1000, h, 24)) {
+        return false;
+    }
+    var banks = 1;
+    var voices = 0;
+    var wave = sxsb16(h, 12);
+    var declared = !!(h[7] || h[8] || wave);
+    var referenced = sxFill([], 0, 64, false);
+    if (declared) {
+        banks = h[7];
+        voices = h[8];
+        if (h[5] !== 0 && h[5] !== 2 || h[6] || !banks || banks > 8 || !voices || voices > 64 || !wave || h[5] === 2 && banks !== 1 || ((((banks + Math.floor(((voices + 3) >>> 0) / 4)) >>> 0) + wave) >>> 0) * 1024 !== (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            return false;
+        }
+    }
+    for (var k = 0; k < banks; k++) {
+        if (!sxsb_read(c, k * 1024, b, 656)) {
+            return false;
+        }
+        var areas = sxsb16(b, 0);
+        if (!areas || areas > 64) {
+            return false;
+        }
+        for (var i = 0; i < areas; i++) {
+            var id = sxsb16(b, 514 + ((2 * i) >>> 0));
+            if (id >= (declared ? voices : 64)) {
+                return false;
+            }
+            referenced[id] = true;
+            if (!declared && (id + 1) >>> 0 > voices) {
+                voices = (id + 1) >>> 0;
+            }
+        }
+    }
+    var audio = ((banks + Math.floor(((voices + 3) >>> 0) / 4)) >>> 0) * 1024;
+    if (audio >= (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    for (k = 0; k < banks; k++) {
+        if (!sxsb_put(c, sxsb_casio_fz_bank, k * 1024, 1)) {
+            return false;
+        }
+    }
+    if (declared && (!sxsb_put(c, sxsb_casio_fzf_dump_workspace, 1000, 1) || !h[5] && !sxsb_put(c, sxsb_casio_fz_effect, 960, 1))) {
+        return false;
+    }
+    for (i = 0; i < voices; i++) {
+        if (declared || referenced[i]) {
+            var p = banks * 1024 + ((i * 256) >>> 0);
+            if (!sxsb_read(c, p, v, 192)) {
+                return false;
+            }
+            var a = sxsb32(v, 0);
+            var z = sxsb32(v, 4);
+            var g = sxsb32(v, 8);
+            var e = sxsb32(v, 12);
+            if (a > g || g > e || e > z || z > Math.floor(sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - audio) / 2)) {
+                continue;
+            }
+            if (!sxsb_put(c, sxsb_casio_fz_voice, p, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_casio_fzf_build(c) {
+    return sxsb_casio(c);
+}

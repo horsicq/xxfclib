@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/microdrive/xx_microdrive_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_microdrive_header_fields = layout([u16("magic", SIGNATURE), u16("cylinder_count", COUNT), u16("reserved0", RESERVED),
+    u16("heads_per_cylinder", COUNT), u16("sectors_per_track", COUNT), u16("reserved1", RESERVED),
+    u8("first_partition_count", COUNT), u8("second_partition_count", COUNT), field("reserved2", "byte[10]", 10, RESERVED),
+    u16("iigs_rom_version", ID), field("reserved3", "byte[6]", 6, RESERVED)]);
+var sxdleg_microdrive_header = sxLayout(0x60750046, "microdrive_header", LE, sxdleg_microdrive_header_fields);
+var sxdleg_microdrive_start_fields = layout([u32("start_lba")]);
+var sxdleg_microdrive_start = sxLayout(0x60750047, "microdrive_start", LE, sxdleg_microdrive_start_fields);
+var sxdleg_microdrive_size_fields = layout([field("block_count", "uint24", 3, COUNT), u8("drive_switch", FLAGS)]);
+var sxdleg_microdrive_size = sxLayout(0x60750048, "microdrive_size", LE, sxdleg_microdrive_size_fields);
+function sxdleg_micro(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 32) || sxdleg16(h, 0, 0) !== 0xCCCA || h[12] > 8 || h[13] > 8 || !h[12] && !h[13] || !sxdleg_put(c, sxdleg_microdrive_header, 0, 1)) {
+        return false;
+    }
+    return sxdleg_put(c, sxdleg_microdrive_start, 32, h[12]) && sxdleg_put(c, sxdleg_microdrive_size, 64, h[12]) && sxdleg_put(c, sxdleg_microdrive_start, 128, h[13]) && sxdleg_put(c, sxdleg_microdrive_size, 160, h[13]);
+}
+function sx_microdrive_build(c) {
+    return sxdleg_micro(c);
+}

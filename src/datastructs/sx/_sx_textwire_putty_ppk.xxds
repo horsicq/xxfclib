@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/putty_ppk/xx_putty_ppk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxtw_algorithm_fields = layout([field("algorithm", "utf8", 0, STRING)]);
+var sxtw_algorithm = sxLayout(0x6071000F, "textwire_algorithm", LE, sxtw_algorithm_fields);
+var sxtw_mac_text_fields = layout([field("mac_text", "utf8", 0, STRING)]);
+var sxtw_mac_text = sxLayout(0x60710014, "textwire_mac_text", LE, sxtw_mac_text_fields);
+var sxtw_line_count_fields = layout([field("line_count", "ascii_signed", 0, COUNT)]);
+var sxtw_line_count = sxLayout(0x6071002B, "textwire_line_count", LE, sxtw_line_count_fields);
+function sxtw_ppk(q) {
+    var a = [0];
+    var end = [0];
+    var encoded = [0];
+    while (sxtw_line(q, a, end)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (encoded[0]) {
+            {
+                if (!sxtw_emit(q, sxtw_base64_text, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            encoded[0]--;
+            continue;
+        }
+        if (end[0] - a[0] > 21 && sxtw_eq(q, a[0], 20, "PuTTY-User-Key-File-")) {
+            {
+                if (!sxtw_emit(q, sxtw_signature, a[0], 20)) {
+                    return false;
+                }
+            }
+            {
+                if (!sxtw_emit(q, sxtw_version, a[0] + 20, 1)) {
+                    return false;
+                }
+            }
+            var p = a[0] + 21;
+            while (p < end[0] && (q.b[p] === 58 /*:*/ || q.b[p] === 32)) {
+                p++;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_algorithm, p, end[0] - p)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        var c = a[0];
+        while (c < end[0] && q.b[c] !== 58 /*:*/) {
+            c++;
+        }
+        if (c === end[0]) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_field_name, a[0], c - a[0])) {
+                return false;
+            }
+        }
+        var v = [c + 1];
+        sxtw_trim(q, v, end);
+        if (sxtw_eq(q, a[0], c - a[0], "Public-Lines") || sxtw_eq(q, a[0], c - a[0], "Private-Lines")) {
+            if (!sxtw_number(q, v[0], end[0] - v[0], 10, encoded) || encoded[0] > 1024) {
+                return false;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_line_count, v[0], end[0] - v[0])) {
+                    return false;
+                }
+            }
+        } else if (sxtw_eq(q, a[0], c - a[0], "Private-MAC")) {
+            {
+                if (!sxtw_emit(q, sxtw_mac_text, v[0], end[0] - v[0])) {
+                    return false;
+                }
+            }
+        } else if (sxtw_eq(q, a[0], c - a[0], "Encryption")) {
+            {
+                if (!sxtw_emit(q, sxtw_encryption, v[0], end[0] - v[0])) {
+                    return false;
+                }
+            }
+        } else {
+            {
+                if (!sxtw_emit(q, sxtw_field_value, v[0], end[0] - v[0])) {
+                    return false;
+                }
+            }
+        }
+    }
+    return encoded[0] === 0;
+}
+function sx_putty_ppk_build(q) {
+    return sxtw_ppk(q);
+}

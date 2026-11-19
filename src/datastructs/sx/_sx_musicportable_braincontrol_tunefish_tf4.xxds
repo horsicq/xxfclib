@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/braincontrol_tunefish_tf4/xx_braincontrol_tunefish_tf4_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxportable_tf4_song_header_fields = layout([u16("instrument_count", COUNT), u16("tempo_bpm")]);
+var sxportable_tf4_song_header = sxLayout(0x60910010, "tf4_song_header", LE, sxportable_tf4_song_header_fields);
+var sxportable_tf4_event_count_fields = layout([u16("event_count", COUNT)]);
+var sxportable_tf4_event_count = sxLayout(0x60910011, "tf4_event_count", LE, sxportable_tf4_event_count_fields);
+var sxportable_tf4_tag_fields = layout([chars("tag", 4, SIGNATURE)]);
+var sxportable_tf4_tag = sxLayout(0x60910012, "tf4_tag", LE, sxportable_tf4_tag_fields);
+var sxportable_tf4_note_plane_fields = layout([field("note", "uint8", 0)]);
+var sxportable_tf4_note_plane = sxLayout(0x60910015, "tf4_note_plane", LE, sxportable_tf4_note_plane_fields);
+var sxportable_tf4_velocity_plane_fields = layout([field("velocity", "uint8", 0)]);
+var sxportable_tf4_velocity_plane = sxLayout(0x60910016, "tf4_velocity_plane", LE, sxportable_tf4_velocity_plane_fields);
+function sxportable_tf4(c) {
+    var count;
+    var events = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [4];
+    var tag = [];
+    if ((count = sx_u16(c, 0, false)) === null || count > 32 || !sxportable_row(c, sxportable_tf4_song_header, 0, 4, end)) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if ((events[i] = sx_u16(c, (p[0] >= SX_I64_MAX ? p[0] - SX_U64_MAX : p[0]), false)) === null || !sxportable_row(c, sxportable_tf4_event_count, p[0], 2, end)) {
+            return false;
+        }
+        p[0] += 2;
+    }
+    if (!sxportable_read(c, p[0], tag, 4, end) || sxMemcmp(tag, "INST", 4) || !sxportable_row(c, sxportable_tf4_tag, p[0], 4, end)) {
+        return false;
+    }
+    p[0] += 4;
+    if (!sxportable_span(c, p[0], count * 112, end) || !sx_table(c, sxportable_tf4_instrument, (p[0] >= SX_I64_MAX ? p[0] - SX_U64_MAX : p[0]), 112, count)) {
+        return false;
+    }
+    p[0] += count * 112;
+    if (!sxportable_read(c, p[0], tag, 4, end) || sxMemcmp(tag, "SONG", 4) || !sxportable_row(c, sxportable_tf4_tag, p[0], 4, end)) {
+        return false;
+    }
+    p[0] += 4;
+    for (i = 0; i < count; i++) {
+        var n = events[i];
+        var shown = n > 16384 ? 16384 : n;
+        if (!sxportable_span(c, p[0], n * 2, end) || !sx_table(c, sxportable_tf4_row_delta, (p[0] >= SX_I64_MAX ? p[0] - SX_U64_MAX : p[0]), 2, shown)) {
+            return false;
+        }
+        p[0] += n * 2;
+        if (!sxportable_plane(c, sxportable_tf4_note_plane, p, n, end) || !sxportable_plane(c, sxportable_tf4_velocity_plane, p, n, end)) {
+            return false;
+        }
+    }
+    return sxportable_read(c, p[0], tag, 4, end) && !sxMemcmp(tag, "ENDS", 4) && sxportable_row(c, sxportable_tf4_tag, p[0], 4, end);
+}
+function sx_braincontrol_tunefish_tf4_build(c) {
+    return sxportable_tf4(c);
+}

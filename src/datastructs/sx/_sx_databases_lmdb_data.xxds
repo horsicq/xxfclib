@@ -1,0 +1,94 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/lmdb_data/xx_lmdb_data_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxd_lmdb_meta_tail_fields = layout([u64("last_page"), u64("transaction_id", ID)]);
+var sxd_lmdb_meta_tail = sxLayout(0x601A001D, "lmdb_meta_tail", LE, sxd_lmdb_meta_tail_fields);
+var sxd_lmdb_node_offset_fields = layout([u16("node_offset", OFFSET)]);
+var sxd_lmdb_node_offset = sxLayout(0x601A001F, "lmdb_node_offset", LE, sxd_lmdb_node_offset_fields);
+var sxd_lmdb_branch_node_fields = layout([u32("child_page_low"), u16("child_page_high"), u16("key_size", SIZE)]);
+var sxd_lmdb_branch_node = sxLayout(0x601A0021, "lmdb_branch_node", LE, sxd_lmdb_branch_node_fields);
+var sxd_lmdb_overflow_reference_fields = layout([u64("overflow_page")]);
+var sxd_lmdb_overflow_reference = sxLayout(0x601A0022, "lmdb_overflow_reference", LE, sxd_lmdb_overflow_reference_fields);
+function sxd_u16(p, p_o) {
+    return sxGetU16At(p, p_o, 2, 0, false);
+}
+function sxd_u64(p, p_o) {
+    return sxGetU64At(p, p_o, 8, 0, false);
+}
+function sxd_lmdb(c, b) {
+    if (!sxd_can(c, 0, 152)) {
+        return false;
+    }
+    var unit = sxd_u32(b, 40);
+    if (unit < 512 || unit > 32768 || (unit & (unit - 1) >>> 0) >>> 0 || !sxd_can(c, unit, 152)) {
+        return false;
+    }
+    for (var i = 0; i < 2; i++) {
+        var at = i * unit;
+        if (!sxd_add(c, sxd_lmdb_meta_prefix, at, 40) || !sxd_add(c, sxd_lmdb_free_database, at + 40, 48) || !sxd_add(c, sxd_lmdb_database, at + 88, 48) || !sxd_add(c, sxd_lmdb_meta_tail, at + 136, 16)) {
+            return false;
+        }
+    }
+    var meta = b, meta_o = (sxd_u64(b, 144) > sxd_u64(b, unit + 144) ? 0 : unit);
+    var last = sxd_u64(meta, meta_o + 136);
+    if (last > 16383 || last >= Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / unit)) {
+        return false;
+    }
+    for (var p = 2; p <= last; p++) {
+        at = p * unit;
+        if (!sxd_can(c, at, unit)) {
+            return false;
+        }
+        var h = b, h_o = at;
+        var flags = sxd_u16(h, h_o + 10);
+        if (flags === 4) {
+            var pages = sxd_u32(h, h_o + 12);
+            if (!pages || pages > sxU64(last - p) + 1 || !sxd_add(c, sxd_lmdb_overflow_page, at, 16)) {
+                return false;
+            }
+            p += (pages - 1) >>> 0;
+            continue;
+        }
+        if (flags !== 1 && flags !== 2) {
+            return false;
+        }
+        var lower = sxd_u16(h, h_o + 12);
+        var upper = sxd_u16(h, h_o + 14);
+        if (lower < 16 || lower > upper || upper > unit || lower & 1 || upper & 1) {
+            return false;
+        }
+        var n = sxDiv(lower - 16, 2) >>> 0;
+        if (!sxd_add(c, sxd_lmdb_page_header, at, 16) || !sxd_table(c, sxd_lmdb_node_offset, at + 16, 2, n)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            var off = sxd_u16(h, h_o + 16 + ((2 * i) >>> 0));
+            if (off < upper || off > (unit - 8) >>> 0) {
+                return false;
+            }
+            var node = h, node_o = h_o + off;
+            var k = sxd_u16(node, node_o + 6);
+            var bytes = sxd_u32(node, node_o);
+            if (k > (((unit - off) >>> 0) - 8) >>> 0 || !sxd_add(c, flags === 1 ? sxd_lmdb_branch_node : sxd_lmdb_leaf_node, at + off, 8)) {
+                return false;
+            }
+            if (flags === 2) {
+                var nf = sxd_u16(node, node_o + 4);
+                if (nf === 1) {
+                    if (!sxd_add(c, sxd_lmdb_overflow_reference, at + off + 8 + k, 8)) {
+                        return false;
+                    }
+                } else if (nf || bytes > (((((unit - off) >>> 0) - 8) >>> 0) - k) >>> 0) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+function sx_lmdb_data_build(c, b) {
+    return sxd_lmdb(c, b);
+}

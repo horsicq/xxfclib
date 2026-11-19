@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/oraclesqueeze/xx_oraclesqueeze_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_oracle_squeeze_header_fields = layout([blob("signature", 2, SIGNATURE), u32("original_size", SIZE),
+    u16("checksum", CHECKSUM)]);
+var sxl_oracle_squeeze_header = sxLayout(0x600A0009, "oracle_squeeze_header", LE, sxl_oracle_squeeze_header_fields);
+var sxl_squeeze_tree_header_fields = layout([u16("node_count", COUNT)]);
+var sxl_squeeze_tree_header = sxLayout(0x600A000A, "squeeze_tree_header", LE, sxl_squeeze_tree_header_fields);
+function sxl_squeeze(c) {
+    var at = [0];
+    var nodes;
+    var n;
+    if (!sxl_sig(c, 0, "v\xFF", 2) || (n = sx_u32(c, 2, false)) === null || !n || !sx_add(c, sxl_oracle_squeeze_header, 0, 8) || !sxl_name(c, 8, c.size < 264 ? c.size : 264, at) || (nodes = sx_u16(c, at[0], false)) === null || !nodes || nodes > 256) {
+        return false;
+    }
+    if (!sx_add(c, sxl_squeeze_tree_header, at[0], 2) || !sx_table(c, sxl_squeeze_tree_node, at[0] + 2, 4, nodes) || !sxl_span(c, (at[0] + 2 < 0 ? at[0] + 2 + SX_U64_MAX : at[0] + 2) + nodes * 4, 1)) {
+        return false;
+    }
+    for (var i = 0; i < nodes * 2; i = i + 1 & 0xFFFF) {
+        var v;
+        if ((v = sx_u16(c, at[0] + 2 + i * 2, false)) === null) {
+            return false;
+        }
+        var x = v & 0x8000 ? v - 65536 : v;
+        if (x >= nodes || x < -257) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_oraclesqueeze_build(c) {
+    return sxl_squeeze(c);
+}

@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/vxworks/xx_vxworks_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_vxworks_symbol_le_fields = layout([u32("name_pointer", POINTER), u32("value", VA), u32("type", FLAGS), u32("group")]);
+var sxbrs_vxworks_symbol_le = sxLayout(0x603E0017, "vxworks_symbol_le", LE, sxbrs_vxworks_symbol_le_fields);
+var sxbrs_vxworks_symbol_be_fields = layout([u32("name_pointer", POINTER), u32("value", VA), u32("type", FLAGS), u32("group")]);
+var sxbrs_vxworks_symbol_be = sxLayout(0x603E0018, "vxworks_symbol_be", BE, sxbrs_vxworks_symbol_be_fields);
+function sxbrs_vxworks(c) {
+    var be = sxbrs_num(c, 9, 1, false) === 0;
+    var count = 0;
+    while (count < Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / 16) && count < 4000000) {
+        var at = [(count * 16 >= SX_I64_MAX ? count * 16 - SX_U64_MAX : count * 16)];
+        var type = sxbrs_num(c, at[0] + 8, 4, be);
+        if (!sxbrs_num(c, at[0], 4, be) || !sxbrs_num(c, at[0] + 4, 4, be) || type !== 0x500 && type !== 0x700 && type !== 0x900) {
+            break;
+        }
+        count++;
+        if (false) {
+            return false;
+        }
+    }
+    if (count < 250) {
+        return false;
+    }
+    at = [0];
+    return sxbrs_take(c, be ? sxbrs_vxworks_symbol_be : sxbrs_vxworks_symbol_le, at, c.size, count);
+}
+function sx_vxworks_build(c) {
+    return sxbrs_vxworks(c);
+}

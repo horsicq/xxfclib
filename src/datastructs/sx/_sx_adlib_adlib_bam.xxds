@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_bam/xx_adlib_bam_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_bam_header_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxad_adlib_bam_header = sxLayout(0x600F0019, "adlib_bam_header", LE, sxad_adlib_bam_header_fields);
+var sxad_adlib_bam_command_fields = layout([field("command_channel", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bam_command = sxLayout(0x600F001A, "adlib_bam_command", LE, sxad_adlib_bam_command_fields);
+var sxad_adlib_bam_note_fields = layout([field("command_channel", "uint8_t", 1, FLAGS), field("note", "uint8_t", 1)]);
+var sxad_adlib_bam_note = sxLayout(0x600F001B, "adlib_bam_note", LE, sxad_adlib_bam_note_fields);
+var sxad_adlib_bam_instrument_fields = layout([field("command_channel", "uint8_t", 1, FLAGS),
+    field("modulator_characteristics", "uint8_t", 1, FLAGS), field("carrier_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level", "uint8_t", 1, FLAGS), field("carrier_scale_level", "uint8_t", 1, FLAGS),
+    field("modulator_attack_decay", "uint8_t", 1, FLAGS), field("carrier_attack_decay", "uint8_t", 1, FLAGS),
+    field("modulator_sustain_release", "uint8_t", 1, FLAGS), field("carrier_sustain_release", "uint8_t", 1, FLAGS),
+    field("modulator_waveform", "uint8_t", 1, FLAGS), field("carrier_waveform", "uint8_t", 1, FLAGS),
+    field("feedback_connection", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bam_instrument = sxLayout(0x600F001C, "adlib_bam_instrument", LE, sxad_adlib_bam_instrument_fields);
+var sxad_adlib_bam_jump_fields = layout([field("command_label", "uint8_t", 1, FLAGS), field("repeat_mode", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bam_jump = sxLayout(0x600F001D, "adlib_bam_jump", LE, sxad_adlib_bam_jump_fields);
+function sxad_bam(c) {
+    if (!sxad_tag(c, 0, "CBMF", 4) || !sx_add(c, sxad_adlib_bam_header, 0, 4)) {
+        return false;
+    }
+    var at = [4];
+    var labels = 1;
+    while (at[0] < c.size) {
+        var v = [0];
+        if (!sxad_byte(c, at[0], v)) {
+            return false;
+        }
+        var l = sxad_adlib_bam_command;
+        var width = 1;
+        if (v[0] < 128) {
+            var op = v[0] & 240;
+            var ch = v[0] & 15;
+            if (!op) {
+                return sxad_header(c, l, at, 1) && at[0] === c.size;
+            }
+            if (op === 16) {
+                var note = [0];
+                if (ch >= 9 || !sxad_byte(c, at[0] + 1, note) || note[0] >= 128) {
+                    return false;
+                }
+                l = sxad_adlib_bam_note;
+                width = 2;
+            } else if (op === 32) {
+                if (ch >= 9) {
+                    return false;
+                }
+            } else if (op === 48) {
+                if (ch >= 9) {
+                    return false;
+                }
+                l = sxad_adlib_bam_instrument;
+                width = 12;
+            } else if (op === 80) {
+                labels |= (1 << ch) >>> 0 & 0xFFFF;
+            } else if (op === 96) {
+                if (!(labels & (1 << ch) >>> 0)) {
+                    return false;
+                }
+                l = sxad_adlib_bam_jump;
+                width = 2;
+            } else if (op !== 112 || ch) {
+                return false;
+            }
+        }
+        if (!sxad_header(c, l, at, width)) {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_adlib_bam_build(c) {
+    return sxad_bam(c);
+}

@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/unixpack/xx_unixpack_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_p_unix_pack_header_fields = layout([blob("signature", 2, SIGNATURE), u32("original_size", SIZE)]);
+var sx_p_unix_pack_header = sxLayout(0x6007003D, "unix_pack_header", BE, sx_p_unix_pack_header_fields);
+var sx_p_pack_tree_fields = layout([u8("maximum_code_length", COUNT)]);
+var sx_p_pack_tree = sxLayout(0x60070058, "pack_tree", BE, sx_p_pack_tree_fields);
+var sx_p_pack_literal_fields = layout([u8("literal", ID)]);
+var sx_p_pack_literal = sxLayout(0x6007005A, "pack_literal", BE, sx_p_pack_literal_fields);
+var sx_p_pack_old_tree_fields = layout([u16("entry_count", COUNT)]);
+var sx_p_pack_old_tree = sxLayout(0x6007005C, "pack_old_tree", LE, sx_p_pack_old_tree_fields);
+var sx_p_pack_old_node_fields = layout([u8("value")]);
+var sx_p_pack_old_node = sxLayout(0x6007005D, "pack_old_node", LE, sx_p_pack_old_node_fields);
+var sx_p_pack_old_wide_node_fields = layout([u8("marker", SIGNATURE), u16("value")]);
+var sx_p_pack_old_wide_node = sxLayout(0x6007005E, "pack_old_wide_node", LE, sx_p_pack_old_wide_node_fields);
+function sx_unixpack_build(c) {
+    var b = [];
+    var ok = false;
+    ok = sx_read(c, 0, b, 6) && b[0] === 0x1F && (b[1] === 0x1E || b[1] === 0x1F) && sx_add(c, b[1] === 0x1E ? sx_p_unix_pack_header : sx_p_unix_pack_old_header, 0, 6);
+    if (ok && b[1] === 0x1E) {
+        var depth = [0];
+        var counts = [];
+        ok = sx_p_byte(c, 6, depth) && depth[0] > 0 && depth[0] <= 24 && sx_read(c, 7, counts, depth[0]) && counts[depth[0] - 1] <= 253 && sx_add(c, sx_p_pack_tree, 6, 1) && sx_table(c, sx_p_pack_level, 7, 1, depth[0]);
+        var literals = 1;
+        if (ok) {
+            for (var i = 0; i < depth[0]; i++) {
+                literals = (literals + counts[i]) >>> 0;
+            }
+            ok = literals <= 256 && sx_table(c, sx_p_pack_literal, 7 + depth[0], 1, literals);
+        }
+    } else if (ok) {
+        var count;
+        ok = (count = sx_u16(c, 6, false)) !== null && count >= 2 && count < 1024 && sx_add(c, sx_p_pack_old_tree, 6, 2);
+        var off = 8;
+        for (i = 0; ok && i < count; i++) {
+            var marker = [0];
+            ok = sx_p_byte(c, off, marker);
+            if (ok) {
+                var size = marker[0] === 255 ? 3 : 1;
+                ok = sx_add(c, marker[0] === 255 ? sx_p_pack_old_wide_node : sx_p_pack_old_node, off, size);
+                off += size;
+            }
+        }
+    }
+    return ok;
+}

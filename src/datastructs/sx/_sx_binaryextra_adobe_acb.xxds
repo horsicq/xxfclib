@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/adobe_acb/xx_adobe_acb_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_acb_header_fields = layout([chars("signature", 4, SIGNATURE), u16("version"), u16("book_id", ID)]);
+var sxbx_acb_header = sxLayout(0x6030006D, "acb_header", BE, sxbx_acb_header_fields);
+var sxbx_acb_string_length_fields = layout([u32("utf16_unit_count", COUNT)]);
+var sxbx_acb_string_length = sxLayout(0x6030006E, "acb_string_length", BE, sxbx_acb_string_length_fields);
+var sxbx_acb_palette_fields = layout([u16("color_count", COUNT), u16("colors_per_page", COUNT), u16("page_offset"),
+    u16("color_space", ID)]);
+var sxbx_acb_palette = sxLayout(0x6030006F, "acb_palette", BE, sxbx_acb_palette_fields);
+var sxbx_acb_color_rgb_fields = layout([chars("code", 6, NONE), u8("component_0"), u8("component_1"), u8("component_2")]);
+var sxbx_acb_color_rgb = sxLayout(0x60300070, "acb_color_rgb", LE, sxbx_acb_color_rgb_fields);
+var sxbx_acb_color_cmyk_fields = layout([chars("code", 6, NONE), u8("component_0"), u8("component_1"), u8("component_2"),
+    u8("component_3")]);
+var sxbx_acb_color_cmyk = sxLayout(0x60300071, "acb_color_cmyk", LE, sxbx_acb_color_cmyk_fields);
+var sxbx_acb_color_lab_fields = layout([chars("code", 6, NONE), u8("component_0"), u8("component_1"), u8("component_2")]);
+var sxbx_acb_color_lab = sxLayout(0x60300072, "acb_color_lab", LE, sxbx_acb_color_lab_fields);
+var sxbx_acb_trailer_fields = layout([chars("mode", 8, ID)]);
+var sxbx_acb_trailer = sxLayout(0x60300073, "acb_trailer", LE, sxbx_acb_trailer_fields);
+function sxbx_acb(c) {
+    var p = [8];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var n = [0];
+    var space = [0];
+    if (!sxbx_add(c, sxbx_acb_header, 0)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        if (!sxbx_counted(c, p, end, sxbx_acb_string_length, 4, true, 2)) {
+            return true;
+        }
+    }
+    if (!sxbx_word(c, p[0], 2, true, n) || !sxbx_word(c, p[0] + 6, 2, true, space) || !sxbx_add(c, sxbx_acb_palette, p[0]) || n[0] > 4094 || space[0] !== 0 && space[0] !== 2 && space[0] !== 7) {
+        return true;
+    }
+    p[0] += 8;
+    var width = space[0] === 2 ? 10 : 9;
+    var l = space[0] === 2 ? sxbx_acb_color_cmyk : space[0] === 7 ? sxbx_acb_color_lab : sxbx_acb_color_rgb;
+    for (i = 0; i < n[0]; i++) {
+        if (!sxbx_counted(c, p, end, sxbx_acb_string_length, 4, true, 2) || p[0] > end || width > sxU64(end - p[0]) || !sxbx_add(c, l, p[0])) {
+            return true;
+        }
+        p[0] += width;
+    }
+    if (sxU64(end - p[0]) === 8 && !sxbx_add(c, sxbx_acb_trailer, p[0])) {
+        return false;
+    }
+    return true;
+}
+function sx_adobe_acb_build(c) {
+    return sxbx_acb(c);
+}

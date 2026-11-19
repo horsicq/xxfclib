@@ -1,0 +1,30 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/sds_sfx/xx_sds_sfx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxaend_sds_sfx_member_fields = layout([chars("name", 20, STRING), u32("packed_size", SIZE), u32("uncompressed_size", SIZE),
+    u16("data_checksum", CHECKSUM)]);
+var sxaend_sds_sfx_member = sxLayout(0x60840003, "sds_sfx_member", BE, sxaend_sds_sfx_member_fields);
+function sxaend_sds(c) {
+    var p = 0x41C;
+    for (var i = 0; i < 20000; i++) {
+        var h = [];
+        if (!sxaend_read(c, p, h, 30) || !sxaend_add(c, sxaend_sds_sfx_member, p)) {
+            return false;
+        }
+        if (!h[0]) {
+            return true;
+        }
+        var z = sxaend_uint(h, 20, 4, true);
+        if (!sxaend_span(c, p + 30, z)) {
+            return false;
+        }
+        p += 30 + z;
+    }
+    return true;
+}
+function sx_sds_sfx_build(c) {
+    return sxaend_sds(c);
+}

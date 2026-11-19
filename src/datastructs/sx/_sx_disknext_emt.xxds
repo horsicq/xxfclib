@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/emt/xx_emt_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdn_emt_header_fields = layout([field("marker", "byte[3]", 3, SIGNATURE), field("producer_ebcdic", "byte[4]", 4),
+    field("version_digits_ebcdic", "byte[6]", 6), field("text_ebcdic", "byte[51]", 51),
+    field("product_banner_ebcdic", "byte[16]", 16), field("unknown", "byte[8]", 8), u8("marker_1", SIGNATURE),
+    field("unknown2", "byte[3]", 3), u32("marker_2", SIGNATURE)]);
+var sxdn_emt_header = sxLayout(0x60780001, "emt_header", LE, sxdn_emt_header_fields);
+function sx_emt_build(c) {
+    return sxdn_put(c, sxdn_emt_header, 0, 1);
+}

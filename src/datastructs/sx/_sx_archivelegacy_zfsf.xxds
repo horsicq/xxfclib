@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zfsf/xx_zfsf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxag_zfsf_header_fields = layout([chars("signature", 4, SIGNATURE), u32("version", ID), u32("constant8"),
+    i32("group_capacity", COUNT), i32("entry_count", COUNT), u32("unknown20"), u32("first_group_offset", OFFSET)]);
+var sxag_zfsf_header = sxLayout(0x60250016, "zfsf_header", LE, sxag_zfsf_header_fields);
+var sxag_zfsf_group_fields = layout([u32("next_group_offset", OFFSET)]);
+var sxag_zfsf_group = sxLayout(0x60250017, "zfsf_group", LE, sxag_zfsf_group_fields);
+var sxag_zfsf_entry_fields = layout([chars("name", 16, STRING), i32("data_offset", OFFSET), u32("unknown20"),
+    i32("data_size", SIZE), bytes("unknown28", 8)]);
+var sxag_zfsf_entry = sxLayout(0x60250018, "zfsf_entry", LE, sxag_zfsf_entry_fields);
+function sxag_zfsf(c) {
+    var b = [];
+    if (!sxag_read(c, 0, b, 28) || !sxag_add(c, sxag_zfsf_header, 0)) {
+        return false;
+    }
+    var cap = sxag32(b, 12, false);
+    var left = sxag32(b, 16, false);
+    var p = sxag32(b, 24, false);
+    if (!cap || cap > 2147483647 || left > 2147483647) {
+        return true;
+    }
+    for (var i = 0; left && i < 1024; i++) {
+        var n = left < cap ? left : cap;
+        if (p < 28 || n > 20000 || !sxag_span(c, p, 4 + n * 36) || !sxag_free(c, p, 4 + n * 36) || !sxag_read(c, p, b, 4)) {
+            break;
+        }
+        var next = sxag32(b, 0, false);
+        if (!sxag_add(c, sxag_zfsf_group, p) || !sxag_table(c, sxag_zfsf_entry, p + 4, n)) {
+            return false;
+        }
+        left = sxU64(left - n);
+        p = next;
+    }
+    return true;
+}
+function sx_zfsf_build(c) {
+    return sxag_zfsf(c);
+}

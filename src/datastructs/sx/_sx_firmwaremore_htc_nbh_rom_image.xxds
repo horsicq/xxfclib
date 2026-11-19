@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/htc_nbh_rom_image/xx_htc_nbh_rom_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_htc_nbh_header_fields = layout([field("magic", "byte[7]", 7, SIGNATURE), field("initial_signature", "byte[16]", 16)]);
+var sx_fm_htc_nbh_header = sxLayout(0x60220011, "htc_nbh_header", LE, sx_fm_htc_nbh_header_fields);
+var sx_fm_htc_dbh_prefix_fields = layout([field("magic", "uint32[8]", 32, SIGNATURE), chars("device_name", 32, NONE)]);
+var sx_fm_htc_dbh_prefix = sxLayout(0x60220013, "htc_dbh_prefix", LE, sx_fm_htc_dbh_prefix_fields);
+var sx_fm_htc_dbh_section_size_fields = layout([u32("section_size", SIZE)]);
+var sx_fm_htc_dbh_section_size = sxLayout(0x60220016, "htc_dbh_section_size", LE, sx_fm_htc_dbh_section_size_fields);
+var sx_fm_htc_dbh_identity_fields = layout([chars("cid", 32, NONE), chars("version", 16, NONE), chars("language", 16, NONE)]);
+var sx_fm_htc_dbh_identity = sxLayout(0x60220017, "htc_dbh_identity", LE, sx_fm_htc_dbh_identity_fields);
+function sx_fm_dbh(c, at) {
+    return sx_fm_add(c, sx_fm_htc_dbh_prefix, at, 64) && sx_fm_table(c, sx_fm_htc_dbh_section_type, at + 64, 4, 32) && sx_fm_table(c, sx_fm_htc_dbh_section_offset, at + 192, 4, 32) && sx_fm_table(c, sx_fm_htc_dbh_section_size, at + 320, 4, 32) && sx_fm_add(c, sx_fm_htc_dbh_identity, at + 448, 64);
+}
+function sx_fm_nbh(c) {
+    if (!sx_fm_add(c, sx_fm_htc_nbh_header, 0, 23)) {
+        return false;
+    }
+    var at = 23;
+    var logical = 0;
+    var count = 0;
+    while (at + 9 <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && count < 65500) {
+        var h = [];
+        if (!sx_fm_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 9)) {
+            return false;
+        }
+        var data = sxGetU32(h, 9, 0, false);
+        var sig = sxGetU32(h, 9, 4, false);
+        if (h[8] > 2 || sig > 65536) {
+            break;
+        }
+        if (!sx_fm_add(c, sx_fm_htc_nbh_block_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 9)) {
+            return false;
+        }
+        if (logical === 0 && data >= 512 && sx_fm_span(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 9, 512)) {
+            var m = [];
+            var valid = sx_fm_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 9, m, 32);
+            for (var i = 0; i < 8 && valid; i++) {
+                if (sxGetU32(m, 32, (i * 4) >>> 0, false) !== (sxAt("HTCIMAGE", i) & 0xFF)) {
+                    valid = false;
+                }
+            }
+            if (valid && !sx_fm_dbh(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at) + 9)) {
+                return false;
+            }
+        }
+        var next = at + 9 + data + sig;
+        count++;
+        if (next > (c.size < 0 ? c.size + SX_U64_MAX : c.size) || h[8] === 2) {
+            break;
+        }
+        logical += data;
+        at = next;
+    }
+    return !c.failed;
+}
+function sx_htc_nbh_rom_image_build(c) {
+    return sx_fm_nbh(c);
+}

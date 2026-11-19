@@ -1,0 +1,62 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archiveremaining.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archiveremaining");
+include("_sx_archiveremaining_audio_scumm_sou");
+include("_sx_archiveremaining_balz");
+include("_sx_archiveremaining_binscii");
+include("_sx_archiveremaining_btoa");
+include("_sx_archiveremaining_bzip1");
+include("_sx_archiveremaining_freeze");
+include("_sx_archiveremaining_he_tlkb");
+include("_sx_archiveremaining_pcommos2");
+include("_sx_archiveremaining_rvz");
+include("_sx_archiveremaining_uue");
+include("_sx_archiveremaining_warc");
+include("_sx_archiveremaining_yenc_encoded_file");
+
+function fileTypes() { return ["WARC", "GLU", "PCOMMOS2", "PAX", "BTOA", "UUE", "BINSCII", "YENC_ENCODED_FILE", "BZIP1",
+    "FREEZE", "AUDIO_SCUMM_SOU", "RVZ", "BALZ", "HE_TLKB"]; }
+
+var sx_archiveremaining_layouts = [sxarm_archiveremaining_name, sxarm_warc_version, sxarm_warc_field_name,
+    sxarm_warc_field_value, sxarm_warc_content_length, sxarm_warc_segment_number, sxarm_warc_segment_total_length,
+    sxarm_warc_digest, sxarm_transport_filename, sxarm_transport_decimal_size, sxarm_transport_hex_size, sxarm_transport_crc,
+    sxarm_transport_attribute_name, sxarm_transport_attribute_value, sxarm_yenc_line_width, sxarm_yenc_part_number,
+    sxarm_yenc_total_parts, sxarm_yenc_begin_position, sxarm_yenc_end_position, sxarm_btoa_line_width, sxarm_pax_member,
+    sxarm_pcomm_literal, sxarm_pcomm_near_match, sxarm_pcomm_far_match, sxarm_pcomm_block_end, sxarm_balz_header,
+    sxarm_bzip1_header, sxarm_freeze2_header, sxarm_he_tlkb_chunk, sxarm_sou_header, sxarm_sou_chunk, sxarm_sou_mouth_sync,
+    sxarm_sou_voc_header, sxarm_sou_voc_block, sxarm_sou_voc_end, sxarm_sou_voc_sound, sxarm_sou_voc_silence,
+    sxarm_sou_voc_marker, sxarm_sou_voc_repeat, sxarm_sou_voc_extended, sxarm_sou_voc_new_sound, sxarm_rvz_file_header,
+    sxarm_rvz_disc_header, sxarm_rvz_raw_entry, sxarm_rvz_group_entry, sxarm_rvz_packing_run, sxarm_rvz_prng_seed,
+    sxarm_binscii_signature, sxarm_binscii_alphabet, sxarm_binscii_header, sxarm_binscii_data_crc, sxarm_uue_begin,
+    sxarm_uue_mode_1, sxarm_uue_mode_2, sxarm_uue_mode_3, sxarm_uue_mode_4, sxarm_uue_mode_5, sxarm_uue_mode_6, sxarm_uue_line,
+    sxarm_uue_end, sxarm_yenc_begin, sxarm_yenc_part, sxarm_yenc_end, sxarm_btoa_begin, sxarm_btoa5_begin, sxarm_btoa_end,
+    sxarm_ascii85_begin, sxarm_ascii85_end, sxarm_ascii85_group, sxarm_ascii85_shorthand, sxarm_btoa_line_check,
+    sxarm_transport_invalid_number];
+
+function structs() {
+    return sxCatalog([sxarm_archiveremaining_name, sxarm_warc_version, sxarm_warc_field_name, sxarm_warc_field_value,
+        sxarm_warc_content_length, sxarm_warc_segment_number, sxarm_warc_segment_total_length, sxarm_warc_digest,
+        sxarm_transport_filename, sxarm_transport_decimal_size, sxarm_transport_hex_size, sxarm_transport_crc,
+        sxarm_transport_attribute_name, sxarm_transport_attribute_value, sxarm_yenc_line_width, sxarm_yenc_part_number,
+        sxarm_yenc_total_parts, sxarm_yenc_begin_position, sxarm_yenc_end_position, sxarm_btoa_line_width, sxarm_pax_member,
+        sxarm_pcomm_literal, sxarm_pcomm_near_match, sxarm_pcomm_far_match, sxarm_pcomm_block_end, sxarm_balz_header,
+        sxarm_bzip1_header, sxarm_freeze2_header, sxarm_he_tlkb_chunk, sxarm_sou_header, sxarm_sou_chunk, sxarm_sou_mouth_sync,
+        sxarm_sou_voc_header, sxarm_sou_voc_block, sxarm_sou_voc_end, sxarm_sou_voc_sound, sxarm_sou_voc_silence,
+        sxarm_sou_voc_marker, sxarm_sou_voc_repeat, sxarm_sou_voc_extended, sxarm_sou_voc_new_sound, sxarm_rvz_file_header,
+        sxarm_rvz_disc_header, sxarm_rvz_raw_entry, sxarm_rvz_group_entry, sxarm_rvz_packing_run, sxarm_rvz_prng_seed,
+        sxarm_binscii_signature, sxarm_binscii_alphabet, sxarm_binscii_header, sxarm_binscii_data_crc, sxarm_uue_begin,
+        sxarm_uue_mode_1, sxarm_uue_mode_2, sxarm_uue_mode_3, sxarm_uue_mode_4, sxarm_uue_mode_5, sxarm_uue_mode_6,
+        sxarm_uue_line, sxarm_uue_end, sxarm_yenc_begin, sxarm_yenc_part, sxarm_yenc_end, sxarm_btoa_begin, sxarm_btoa5_begin,
+        sxarm_btoa_end, sxarm_ascii85_begin, sxarm_ascii85_end, sxarm_ascii85_group, sxarm_ascii85_shorthand,
+        sxarm_btoa_line_check, sxarm_transport_invalid_number], sx_archiveremaining_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archiveremaining_build, false);
+}

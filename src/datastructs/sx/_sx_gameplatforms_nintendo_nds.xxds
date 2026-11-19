@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_nds/xx_nintendo_nds_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_nds_header_fields = layout([chars("title", 12, STRING), chars("game_code", 4, ID), chars("maker_code", 2, ID),
+    u8("unit_code", ID), u8("device_type", ID), u8("capacity_exponent"), blob("reserved", 7, RESERVED), u8("dsi_flags", FLAGS),
+    u8("region", ID), u8("version", ID), u8("autostart", FLAGS), u32("arm9_rom_offset", OFFSET), u32("arm9_entry_address", VA),
+    u32("arm9_load_address", VA), u32("arm9_size", SIZE), u32("arm7_rom_offset", OFFSET), u32("arm7_entry_address", VA),
+    u32("arm7_load_address", VA), u32("arm7_size", SIZE), u32("fnt_offset", OFFSET), u32("fnt_size", SIZE),
+    u32("fat_offset", OFFSET), u32("fat_size", SIZE), u32("arm9_overlay_offset", OFFSET), u32("arm9_overlay_size", SIZE),
+    u32("arm7_overlay_offset", OFFSET), u32("arm7_overlay_size", SIZE), u32("rom_control_normal", FLAGS),
+    u32("rom_control_secure", FLAGS), u32("banner_offset", OFFSET), u16("secure_area_crc", CHECKSUM),
+    u16("secure_transfer_timeout"), u32("arm9_autoload_list_address", VA), u32("arm7_autoload_list_address", VA),
+    blob("secure_area_disable", 8, FLAGS), u32("rom_size", SIZE), u32("header_size", SIZE), u32("unknown_88"),
+    blob("reserved2", 8, RESERVED), u16("nand_rom_end_units"), u16("nand_rw_start_units"), blob("reserved3a", 24, RESERVED),
+    blob("reserved_or_fastboot", 16), blob("logo", 156, SIGNATURE), u16("logo_crc", CHECKSUM), u16("header_crc", CHECKSUM),
+    u32("debug_rom_offset", OFFSET), u32("debug_size", SIZE), u32("debug_load_address", VA), blob("reserved3", 20, RESERVED)]);
+var sxgp_nds_header = sxLayout(0x60360031, "nds_header", LE, sxgp_nds_header_fields);
+var sxgp_nds_fat_fields = layout([u32("start_offset", OFFSET), u32("end_offset", OFFSET)]);
+var sxgp_nds_fat = sxLayout(0x60360032, "nds_fat", LE, sxgp_nds_fat_fields);
+var sxgp_nds_overlay_fields = layout([u32("overlay_id", ID), u32("load_address", VA), u32("ram_size", SIZE),
+    u32("bss_size", SIZE), u32("static_init_start", VA), u32("static_init_end", VA), u32("file_id", ID),
+    u32("compressed_size_flags", FLAGS)]);
+var sxgp_nds_overlay = sxLayout(0x60360033, "nds_overlay", LE, sxgp_nds_overlay_fields);
+var sxgp_nds_directory_fields = layout([u32("subtable_offset", OFFSET), u16("first_file_id", ID),
+    u16("parent_id_or_directory_count")]);
+var sxgp_nds_directory = sxLayout(0x60360034, "nds_directory", LE, sxgp_nds_directory_fields);
+var sxgp_nds_name_fields = layout([u8("directory_flag_name_length", FLAGS)]);
+var sxgp_nds_name = sxLayout(0x60360035, "nds_name", LE, sxgp_nds_name_fields);
+var sxgp_nds_subdirectory_fields = layout([u16("directory_id", ID)]);
+var sxgp_nds_subdirectory = sxLayout(0x60360036, "nds_subdirectory", LE, sxgp_nds_subdirectory_fields);
+var sxgp_nds_root_directory_fields = layout([u32("subtable_offset", OFFSET), u16("first_file_id", ID),
+    u16("directory_count", COUNT)]);
+var sxgp_nds_root_directory = sxLayout(0x60360038, "nds_root_directory", LE, sxgp_nds_root_directory_fields);
+function sxgp_nds(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var fnt;
+    var fns;
+    var fat;
+    var fas;
+    var dirs = [0];
+    var h = [];
+    if (!sxgp_row(v, sxgp_nds_header, 0, end) || !sxgp_read(v, 0, h, 384, end)) {
+        return false;
+    }
+    fnt = sxGetU32At(h, 64, 4, 0, false);
+    fns = sxGetU32At(h, 68, 4, 0, false);
+    fat = sxGetU32At(h, 72, 4, 0, false);
+    fas = sxGetU32At(h, 76, 4, 0, false);
+    if (fas % 8 || !sxgp_span(v, fnt, fns, end) || !sxgp_table(v, sxgp_nds_fat, fat, Math.floor(fas / 8), end)) {
+        return false;
+    }
+    if (fns) {
+        var stop = fnt + fns;
+        if (!sxgp_word(v, fnt + 6, 2, false, dirs, 0, stop) || !dirs[0] || dirs[0] > 4096 || !sxgp_row(v, sxgp_nds_root_directory, fnt, stop) || !sxgp_table(v, sxgp_nds_directory, fnt + 8, sxU64(dirs[0] - 1), stop)) {
+            return false;
+        }
+        for (var i = 0; i < dirs[0]; i++) {
+            var p = [0];
+            var q;
+            if (!sxgp_word(v, fnt + i * 8, 4, false, p, 0, stop) || p[0] >= fns) {
+                return false;
+            }
+            p[0] += fnt;
+            for (q = 0; q < 4096; q++) {
+                var ch = [0];
+                if (!sxgp_row(v, sxgp_nds_name, p[0], stop) || !sxgp_word(v, p[0]++, 1, false, ch, 0, stop)) {
+                    return false;
+                }
+                if (!ch[0]) {
+                    break;
+                }
+                if (!sxAnd64(ch[0], 127) || !sxgp_span(v, p[0], sxAnd64(ch[0], 127) + (sxAnd64(ch[0], 128) ? 2 : 0), stop)) {
+                    return false;
+                }
+                p[0] += sxAnd64(ch[0], 127);
+                if (sxAnd64(ch[0], 128)) {
+                    if (!sxgp_row(v, sxgp_nds_subdirectory, p[0], stop)) {
+                        return false;
+                    }
+                    p[0] += 2;
+                }
+            }
+            if (q === 4096) {
+                return false;
+            }
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        var at = sxGetU32At(h, 80 + ((i * 8) >>> 0), 4, 0, false);
+        var z = sxGetU32At(h, 84 + ((i * 8) >>> 0), 4, 0, false);
+        if (z % 32 || !sxgp_table(v, sxgp_nds_overlay, at, Math.floor(z / 32), end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_nintendo_nds_build(v) {
+    return sxgp_nds(v);
+}

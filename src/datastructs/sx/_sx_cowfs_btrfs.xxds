@@ -1,0 +1,236 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/btrfs/xx_btrfs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxc_btrfs_device_item_fields = layout([u64("device_id", ID), u64("total_bytes", SIZE), u64("bytes_used", SIZE),
+    u32("io_alignment", SIZE), u32("io_width", SIZE), u32("sector_size", SIZE), u64("type", FLAGS), u64("generation"),
+    u64("start_offset", OFFSET), u32("device_group"), u8("seek_speed"), u8("bandwidth"), bytes("device_uuid", 16),
+    bytes("filesystem_uuid", 16)]);
+var sxc_btrfs_device_item = sxLayout(0x60180015, "btrfs_device_item", LE, sxc_btrfs_device_item_fields);
+var sxc_btrfs_superblock_tail_fields = layout([chars("label", 256, STRING), u64("cache_generation"),
+    u64("uuid_tree_generation"), bytes("metadata_uuid", 16), u64("global_root_count", COUNT),
+    u64("remap_root_logical_address", VA), u64("remap_root_generation"), u8("remap_root_level"), blob("reserved", 199, RESERVED)]);
+var sxc_btrfs_superblock_tail = sxLayout(0x60180016, "btrfs_superblock_tail", LE, sxc_btrfs_superblock_tail_fields);
+var sxc_btrfs_root_backup_fields = layout([u64("tree_root_logical_address", VA), u64("tree_root_generation"),
+    u64("chunk_root_logical_address", VA), u64("chunk_root_generation"), u64("extent_root_logical_address", VA),
+    u64("extent_root_generation"), u64("filesystem_root_logical_address", VA), u64("filesystem_root_generation"),
+    u64("device_root_logical_address", VA), u64("device_root_generation"), u64("checksum_root_logical_address", VA),
+    u64("checksum_root_generation"), u64("total_bytes", SIZE), u64("bytes_used", SIZE), u64("device_count", COUNT),
+    u64("reserved64_0", RESERVED), u64("reserved64_1", RESERVED), u64("reserved64_2", RESERVED), u64("reserved64_3", RESERVED),
+    u8("tree_root_level"), u8("chunk_root_level"), u8("extent_root_level"), u8("filesystem_root_level"),
+    u8("device_root_level"), u8("checksum_root_level"), bytes("reserved8", 10, RESERVED)]);
+var sxc_btrfs_root_backup = sxLayout(0x60180017, "btrfs_root_backup", LE, sxc_btrfs_root_backup_fields);
+var sxc_btrfs_superblock_padding_fields = layout([blob("padding", 565, RESERVED)]);
+var sxc_btrfs_superblock_padding = sxLayout(0x60180018, "btrfs_superblock_padding", LE, sxc_btrfs_superblock_padding_fields);
+var sxc_btrfs_stripe_fields = layout([u64("device_id", ID), u64("physical_offset", OFFSET), bytes("device_uuid", 16)]);
+var sxc_btrfs_stripe = sxLayout(0x6018001B, "btrfs_stripe", LE, sxc_btrfs_stripe_fields);
+var sxc_btrfs_tree_header_fields = layout([bytes("checksum", 32, CHECKSUM), bytes("fsid", 16), u64("logical_address", VA),
+    u64("flags", FLAGS), bytes("chunk_tree_uuid", 16), u64("generation"), u64("owner_object_id", ID), u32("item_count", COUNT),
+    u8("level")]);
+var sxc_btrfs_tree_header = sxLayout(0x6018001C, "btrfs_tree_header", LE, sxc_btrfs_tree_header_fields);
+function sxc_crc32c(p, p_o, n) {
+    var crc = 4294967295;
+    for (var i = 0; i < n; i++) {
+        crc = (crc ^ p[p_o + i]) >>> 0;
+        for (var j = 0; j < 8; j++) {
+            crc = (crc >>> 1 ^ (crc & 1 ? 0x82F63B78 : 0)) >>> 0;
+        }
+    }
+    return ~crc >>> 0;
+}
+function sxc_bt_chunk(c, at, p, p_o, available, logical, device, maps) {
+    if (available < 48) {
+        return false;
+    }
+    var n = sxc_u16(p, p_o + 44);
+    if (!n || n > Math.floor(((available - 48) >>> 0) / 32)) {
+        return false;
+    }
+    if (!sxc_add(c, sxc_btrfs_chunk, at, 48) || !sxc_table(c, sxc_btrfs_stripe, at + 48, 32, n)) {
+        return false;
+    }
+    var length = sxc_u64(p, p_o);
+    if (maps !== null && length && logical <= SX_U64_MAX - length && !sxAnd64(sxc_u64(p, p_o + 24), 456)) {
+        for (var i = 0; i < n; i = i + 1 & 0xFFFF) {
+            if (sxc_u64(p, p_o + 48 + i * 32) === device) {
+                var row = 0;
+                while (row < maps.count && maps.rows[row].logical !== logical) {
+                    row++;
+                }
+                if (row === maps.count) {
+                    if (row >= 128) {
+                        return false;
+                    }
+                    maps.count++;
+                }
+                maps.rows[row] = sxCopy_sxc_bt_mapping(null, { logical: logical, length: length, physical: sxc_u64(p, p_o + 56 + i * 32) });
+                break;
+            }
+        }
+    }
+    return true;
+}
+function sxc_bt_physical(c, maps, logical, size, at) {
+    for (var i = 0; i < maps.count; i++) {
+        var m = maps.rows[i];
+        if (logical < m.logical || sxU64(logical - m.logical) >= m.length) {
+            continue;
+        }
+        var delta = sxU64(logical - m.logical);
+        if (size > sxU64(m.length - delta) || m.physical > SX_U64_MAX - delta || m.physical + delta > SX_I64_MAX) {
+            return false;
+        }
+        at[0] = (m.physical + delta >= SX_I64_MAX ? m.physical + delta - SX_U64_MAX : m.physical + delta);
+        return sxc_can(c, at[0], size);
+    }
+    return false;
+}
+function sxc_bt_super_valid(c, at, b) {
+    if (!sxc_can(c, at, 4096) || !sx_read(c, at, b, 4096) || sxMemcmpAt(b, 64, "_BHRfS_M", 0, 8) || sxc_u64(b, 48) !== (at < 0 ? at + SX_U64_MAX : at)) {
+        return false;
+    }
+    var unit = sxc_u32(b, 144);
+    var node = sxc_u32(b, 148);
+    if (node < 4096 || node > 65536 || (node & (node - 1) >>> 0) >>> 0 || unit < 512 || unit > node || (unit & (unit - 1) >>> 0) >>> 0 || sxc_u32(b, 160) > 2048 || !sxc_u64(b, 136) || b[198] > 64 || b[199] > 64) {
+        return false;
+    }
+    return sxc_u16(b, 196) !== 0 || sxc_u32(b, 0) === sxc_crc32c(b, 32, 4064);
+}
+function sxc_bt_super(c, at, b, maps) {
+    if (!sxc_add(c, sxc_btrfs_superblock_header, at, 201) || !sxc_add(c, sxc_btrfs_device_item, at + 201, 98) || !sxc_add(c, sxc_btrfs_superblock_tail, at + 299, 512) || !sxc_table(c, sxc_btrfs_root_backup, at + 2859, 168, 4) || !sxc_add(c, sxc_btrfs_superblock_padding, at + 3531, 565)) {
+        return false;
+    }
+    var bytes = sxc_u32(b, 160);
+    var pos = 811;
+    var end = (811 + bytes) >>> 0;
+    while ((end - pos) >>> 0 >= 65) {
+        var p = b, p_o = pos;
+        var n = sxc_u16(p, p_o + 17 + 44);
+        if (p[p_o + 8] !== 228 || sxc_u64(p, p_o) !== 256 || !n || n > Math.floor(((((end - pos) >>> 0) - 65) >>> 0) / 32)) {
+            break;
+        }
+        if (!sxc_add(c, sxc_btrfs_disk_key, at + pos, 17) || !sxc_bt_chunk(c, at + pos + 17, p, p_o + 17, (((end - pos) >>> 0) - 17) >>> 0, sxc_u64(p, p_o + 9), sxc_u64(b, 201), maps)) {
+            return false;
+        }
+        pos = (pos + (65 + n * 32)) >>> 0;
+    }
+    return true;
+}
+function sxc_bt_tree(c, f, maps) {
+    done: {
+        var unit = f.node_size;
+        var b = sxAlloc(unit);
+        var queue = sxAllocN(0x1000, sxNew_sxc_bt_work);
+        var count = 0;
+        var ok = false;
+        if (b === null || queue === null) {
+            break done;
+        }
+        var roots = [f.chunk_root, f.root_tree, f.fs_tree_root];
+        var q = 0;
+        for (var phase = 0; phase < 2; phase++) {
+            for (var i = phase ? 1 : 0; i < (phase ? 3 : 1); i++) {
+                if (roots[i]) {
+                    var seen = false;
+                    for (var j = 0; j < count; j++) {
+                        if (queue[j].logical === roots[i]) {
+                            seen = true;
+                        }
+                    }
+                    if (!seen) {
+                        if (count >= 4096) {
+                            break done;
+                        }
+                        queue[count++] = sxCopy_sxc_bt_work(null, { logical: roots[i], depth: 0 });
+                    }
+                }
+            }
+            for (; q < count; q++) {
+                if (queue[q].depth > 64) {
+                    break done;
+                }
+                var at = [0];
+                var logical = queue[q].logical;
+                if (!sxc_bt_physical(c, maps, logical, unit, at) || !sx_read(c, at[0], b, unit)) {
+                    continue;
+                }
+                if (sxc_u32(b, 0) !== sxc_crc32c(b, 32, (unit - 32) >>> 0) || sxc_u64(b, 48) !== logical || sxMemcmpAt(b, 32, sxBytes(f.fsid), 0, 16) && sxMemcmpAt(b, 32, sxBytes(f.metadata_uuid), 0, 16)) {
+                    continue;
+                }
+                var n = sxc_u32(b, 96);
+                var entry = b[100] ? 33 : 25;
+                if (b[100] > 64 || n > Math.floor(((unit - 101) >>> 0) / entry)) {
+                    continue;
+                }
+                var good = true;
+                for (i = 0; i < n && !b[100]; i++) {
+                    var p = b, p_o = 101 + ((i * 25) >>> 0);
+                    var pos = sxc_u32(p, p_o + 17);
+                    var size = sxc_u32(p, p_o + 21);
+                    if (pos > (unit - 101) >>> 0 || size > (((unit - 101) >>> 0) - pos) >>> 0 || pos < (n * 25) >>> 0) {
+                        good = false;
+                        break;
+                    }
+                }
+                if (!good) {
+                    continue;
+                }
+                if (!sxc_add(c, sxc_btrfs_tree_header, at[0], 101) || n && !sxc_table(c, b[100] ? sxc_btrfs_key_pointer : sxc_btrfs_leaf_item, at[0] + 101, entry, n)) {
+                    break done;
+                }
+                for (i = 0; i < n; i++) {
+                    p = b;
+                    p_o = 101 + sxMul32(i, entry);
+                    if (b[100]) {
+                        var child = sxc_u64(p, p_o + 17);
+                        seen = false;
+                        for (j = 0; j < count; j++) {
+                            if (queue[j].logical === child) {
+                                seen = true;
+                            }
+                        }
+                        if (!seen) {
+                            if (count >= 4096) {
+                                break done;
+                            }
+                            queue[count++] = sxCopy_sxc_bt_work(null, { logical: child, depth: (queue[q].depth + 1) >>> 0 });
+                        }
+                    } else if (p[p_o + 8] === 228 && sxc_u64(p, p_o) === 256) {
+                        pos = (101 + sxc_u32(p, p_o + 17)) >>> 0;
+                        size = sxc_u32(p, p_o + 21);
+                        if (size >= 48) {
+                            var stripes = sxc_u16(b, pos + 44);
+                            if (stripes && stripes <= Math.floor(((size - 48) >>> 0) / 32) && !sxc_bt_chunk(c, at[0] + pos, b, pos, size, sxc_u64(p, p_o + 9), f.devid, maps)) {
+                                break done;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sxc_btrfs_build(c) {
+    var f = sxReader(c.f);
+    var at = f.super_offset - c.f.base_address;
+    var b = [];
+    var maps = sxNew_sxc_bt_maps();
+    sxCopy_sxc_bt_maps(maps, sxNew_sxc_bt_maps());
+    if (!sxc_bt_super_valid(c, at, b) || !sxc_bt_super(c, at, b, maps)) {
+        return false;
+    }
+    var mirrors = [0x10000, 0x4000000, 0x4000000000];
+    for (var i = 0; i < 3; i++) {
+        if (mirrors[i] !== at && sxc_bt_super_valid(c, mirrors[i], b) && (b[32] === sxBytes(f.fsid)[0] && !sxMemcmpAt(b, 32, sxBytes(f.fsid), 0, 16)) && !sxc_bt_super(c, mirrors[i], b, null)) {
+            return false;
+        }
+    }
+    return f.csum_type !== 0 || sxc_bt_tree(c, f, maps);
+}
+function sx_btrfs_build(c) {
+    return sxc_btrfs_build(c);
+}

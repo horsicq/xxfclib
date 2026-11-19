@@ -1,0 +1,147 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/ubifs/xx_ubifs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_ubifs_common_header_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED)]);
+var sx_dm_ubifs_common_header = sxLayout(0x60290035, "ubifs_common_header", LE, sx_dm_ubifs_common_header_fields);
+var sx_dm_ubifs_superblock_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    field("padding1", "byte[2]", 2, RESERVED), u8("key_hash", ID), u8("key_format", ID), u32("flags", FLAGS),
+    u32("min_io_size", SIZE), u32("leb_size", SIZE), u32("leb_count", COUNT), u32("max_leb_count", COUNT),
+    u64("max_bud_bytes", SIZE), u32("log_lebs", COUNT), u32("lpt_lebs", COUNT), u32("orphan_lebs", COUNT),
+    u32("journal_head_count", COUNT), u32("fanout", COUNT), u32("lsave_count", COUNT), u32("format_version"),
+    u16("default_compression", ID), field("padding2", "byte[2]", 2, RESERVED), u32("reserve_pool_uid", ID),
+    u32("reserve_pool_gid", ID), u64("reserve_pool_size", SIZE), u32("time_granularity_ns"), field("uuid", "byte[16]", 16, ID),
+    u32("ro_compat_version"), field("hmac", "byte[64]", 64, SIGNATURE),
+    field("hmac_well_known_message", "byte[64]", 64, SIGNATURE), u16("hash_algorithm", ID),
+    field("master_node_hash", "byte[64]", 64, CHECKSUM), field("padding3", "byte[3774]", 3774, RESERVED)]);
+var sx_dm_ubifs_superblock = sxLayout(0x60290036, "ubifs_superblock", LE, sx_dm_ubifs_superblock_fields);
+var sx_dm_ubifs_master_node_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u64("highest_inode_number", ID), u64("commit_number"), u32("flags", FLAGS), u32("log_lnum", ID), u32("root_lnum", ID),
+    u32("root_offset", OFFSET), u32("root_length", SIZE), u32("gc_lnum", ID), u32("index_head_lnum", ID),
+    u32("index_head_offset", OFFSET), u64("index_size", SIZE), u64("total_free", SIZE), u64("total_dirty", SIZE),
+    u64("total_used", SIZE), u64("total_dead", SIZE), u64("total_dark", SIZE), u32("lpt_lnum", ID), u32("lpt_offset", OFFSET),
+    u32("nhead_lnum", ID), u32("nhead_offset", OFFSET), u32("ltab_lnum", ID), u32("ltab_offset", OFFSET), u32("lsave_lnum", ID),
+    u32("lsave_offset", OFFSET), u32("lscan_lnum", ID), u32("empty_lebs", COUNT), u32("index_lebs", COUNT),
+    u32("leb_count", COUNT), field("root_index_hash", "byte[64]", 64, CHECKSUM), field("lpt_hash", "byte[64]", 64, CHECKSUM),
+    field("hmac", "byte[64]", 64, SIGNATURE), field("padding1", "byte[152]", 152, RESERVED)]);
+var sx_dm_ubifs_master_node = sxLayout(0x60290037, "ubifs_master_node", LE, sx_dm_ubifs_master_node_fields);
+var sx_dm_ubifs_index_header_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u16("child_count", COUNT), u16("level")]);
+var sx_dm_ubifs_index_header = sxLayout(0x60290038, "ubifs_index_header", LE, sx_dm_ubifs_index_header_fields);
+var sx_dm_ubifs_index_branch_fields = layout([u32("logical_block_number", ID), u32("offset", OFFSET), u32("length", SIZE),
+    u32("key_inode", ID), u32("key_type_and_value", FLAGS)]);
+var sx_dm_ubifs_index_branch = sxLayout(0x60290039, "ubifs_index_branch", LE, sx_dm_ubifs_index_branch_fields);
+var sx_dm_ubifs_inode_node_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u32("key_inode", ID), u32("key_type_and_value", FLAGS), field("key_padding", "byte[8]", 8, RESERVED),
+    u64("creation_sequence_number"), u64("size", SIZE), i64("access_time_seconds", TIMESTAMP),
+    i64("change_time_seconds", TIMESTAMP), i64("modification_time_seconds", TIMESTAMP), u32("access_time_nanoseconds"),
+    u32("change_time_nanoseconds"), u32("modification_time_nanoseconds"), u32("link_count", COUNT), u32("uid", ID),
+    u32("gid", ID), u32("mode", FLAGS), u32("flags", FLAGS), u32("data_length", SIZE), u32("xattr_count", COUNT),
+    u32("xattr_size", SIZE), field("padding1", "byte[4]", 4, RESERVED), u32("xattr_names_length", SIZE),
+    u16("compression_type", ID), field("padding2", "byte[26]", 26, RESERVED)]);
+var sx_dm_ubifs_inode_node = sxLayout(0x6029003A, "ubifs_inode_node", LE, sx_dm_ubifs_inode_node_fields);
+var sx_dm_ubifs_directory_entry_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u32("key_inode", ID), u32("key_type_and_value", FLAGS), field("key_padding", "byte[8]", 8, RESERVED),
+    u64("inode_number", ID), u8("padding1", RESERVED), u8("type", ID), u16("name_length", SIZE), u32("cookie", ID)]);
+var sx_dm_ubifs_directory_entry = sxLayout(0x6029003B, "ubifs_directory_entry", LE, sx_dm_ubifs_directory_entry_fields);
+var sx_dm_ubifs_data_node_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u32("key_inode", ID), u32("key_type_and_value", FLAGS), field("key_padding", "byte[8]", 8, RESERVED),
+    u32("uncompressed_size", SIZE), u16("compression_type", ID), u16("compressed_size", SIZE)]);
+var sx_dm_ubifs_data_node = sxLayout(0x6029003C, "ubifs_data_node", LE, sx_dm_ubifs_data_node_fields);
+var sx_dm_ubifs_padding_node_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u32("padding_length", SIZE)]);
+var sx_dm_ubifs_padding_node = sxLayout(0x6029003D, "ubifs_padding_node", LE, sx_dm_ubifs_padding_node_fields);
+var sx_dm_ubifs_commit_start_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u64("commit_number")]);
+var sx_dm_ubifs_commit_start = sxLayout(0x6029003E, "ubifs_commit_start", LE, sx_dm_ubifs_commit_start_fields);
+var sx_dm_ubifs_reference_node_fields = layout([u32("magic", SIGNATURE), u32("crc", CHECKSUM), u64("sequence_number"),
+    u32("length", SIZE), u8("node_type", ID), u8("group_type", ID), field("padding", "byte[2]", 2, RESERVED),
+    u32("logical_block_number", ID), u32("offset", OFFSET), u32("journal_head", ID), field("padding1", "byte[28]", 28, RESERVED)]);
+var sx_dm_ubifs_reference_node = sxLayout(0x6029003F, "ubifs_reference_node", LE, sx_dm_ubifs_reference_node_fields);
+function sx_dm_ubifs(c) {
+    var h = [];
+    var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    if (limit > 67108864) {
+        limit = 67108864;
+    }
+    for (var p = 0; p + 24 <= limit && c.count < 24000; ) {
+        if (!sx_dm_read(c, p, h, 24)) {
+            return false;
+        }
+        var z = sx_dm_u32(h, 16, false);
+        if (sx_dm_u32(h, 0, false) !== 0x06101831 || z < 24 || z > 16777216 || !sx_dm_span(c, p, z) || !sx_dm_crc(c, p + 8, sxU64(z - 8), sx_dm_u32(h, 4, false), false, true, false)) {
+            p += 8;
+            continue;
+        }
+        var l = sx_dm_ubifs_common_header;
+        var n = 24;
+        switch (h[20]) {
+        case 0:
+            l = sx_dm_ubifs_inode_node;
+            n = 160;
+            break;
+        case 1:
+            l = sx_dm_ubifs_data_node;
+            n = 48;
+            break;
+        case 2:
+        case 3:
+            l = sx_dm_ubifs_directory_entry;
+            n = 56;
+            break;
+        case 5:
+            l = sx_dm_ubifs_padding_node;
+            n = 28;
+            break;
+        case 6:
+            l = sx_dm_ubifs_superblock;
+            n = 4096;
+            break;
+        case 7:
+            l = sx_dm_ubifs_master_node;
+            n = 512;
+            break;
+        case 8:
+            l = sx_dm_ubifs_reference_node;
+            n = 64;
+            break;
+        case 9:
+            l = sx_dm_ubifs_index_header;
+            n = 28;
+            break;
+        case 10:
+            l = sx_dm_ubifs_commit_start;
+            n = 32;
+            break;
+        }
+        if (n > z) {
+            l = sx_dm_ubifs_common_header;
+            n = 24;
+        }
+        if (!sx_dm_add(c, l, p, n)) {
+            return false;
+        }
+        if (l === sx_dm_ubifs_index_header && sx_dm_read(c, p, h, 28)) {
+            var count = sx_dm_u16(h, 24, false);
+            if (count <= Math.floor(sxU64(z - 28) / 20) && !sx_dm_table(c, sx_dm_ubifs_index_branch, p + 28, 20, count)) {
+                return false;
+            }
+        }
+        p += sxAnd64(z + 7, sxK(0xFFFFFFFF, 0xFFFFFFF8));
+    }
+    return c.count !== 0;
+}
+function sx_ubifs_build(c) {
+    return sx_dm_ubifs(c);
+}

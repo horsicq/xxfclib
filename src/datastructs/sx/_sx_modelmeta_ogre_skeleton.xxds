@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/ogre_skeleton/xx_ogre_skeleton_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_ogre_skeleton_header_fields = layout([u16("signature", SIGNATURE), chars("serializer_version", 19, STRING)]);
+var sxmo_ogre_skeleton_header = sxLayout(0x6021008B, "ogre_skeleton_header", LE, sxmo_ogre_skeleton_header_fields);
+var sxmo_ogre_skeleton_chunk_fields = layout([u16("chunk_type", ID), u32("chunk_size", SIZE)]);
+var sxmo_ogre_skeleton_chunk = sxLayout(0x6021008C, "ogre_skeleton_chunk", LE, sxmo_ogre_skeleton_chunk_fields);
+var sxmo_ogre_skeleton_bone_chunk_fields = layout([u16("chunk_type", ID), u32("fixed_size", SIZE)]);
+var sxmo_ogre_skeleton_bone_chunk = sxLayout(0x6021008D, "ogre_skeleton_bone_chunk", LE, sxmo_ogre_skeleton_bone_chunk_fields);
+var sxmo_ogre_skeleton_bone_fields = layout([u16("handle", ID), field("position", "float32[3]", 12),
+    field("orientation_xyzw", "float32[4]", 16)]);
+var sxmo_ogre_skeleton_bone = sxLayout(0x6021008E, "ogre_skeleton_bone", LE, sxmo_ogre_skeleton_bone_fields);
+var sxmo_ogre_skeleton_scale_fields = layout([field("scale", "float32[3]", 12)]);
+var sxmo_ogre_skeleton_scale = sxLayout(0x6021008F, "ogre_skeleton_scale", LE, sxmo_ogre_skeleton_scale_fields);
+var sxmo_ogre_skeleton_parent_fields = layout([u16("child", ID), u16("parent", ID)]);
+var sxmo_ogre_skeleton_parent = sxLayout(0x60210090, "ogre_skeleton_parent", LE, sxmo_ogre_skeleton_parent_fields);
+var sxmo_ogre_skeleton_blend_fields = layout([u16("blend_mode", ID)]);
+var sxmo_ogre_skeleton_blend = sxLayout(0x60210091, "ogre_skeleton_blend", LE, sxmo_ogre_skeleton_blend_fields);
+var sxmo_ogre_skeleton_duration_fields = layout([field("duration", "float32", 4)]);
+var sxmo_ogre_skeleton_duration = sxLayout(0x60210092, "ogre_skeleton_duration", LE, sxmo_ogre_skeleton_duration_fields);
+var sxmo_ogre_skeleton_track_fields = layout([u16("bone_handle", ID)]);
+var sxmo_ogre_skeleton_track = sxLayout(0x60210093, "ogre_skeleton_track", LE, sxmo_ogre_skeleton_track_fields);
+var sxmo_ogre_skeleton_keyframe_fields = layout([field("time", "float32", 4), field("rotation_xyzw", "float32[4]", 16),
+    field("translation", "float32[3]", 12)]);
+var sxmo_ogre_skeleton_keyframe = sxLayout(0x60210094, "ogre_skeleton_keyframe", LE, sxmo_ogre_skeleton_keyframe_fields);
+function sxmo_skeleton_chunks(c, p, end, depth, budget) {
+    while (p < end && depth < 3 && budget[0] < 16000) {
+        budget[0]++;
+        var h = [];
+        if (sxU64(end - p) < 6 || !sxmo_read(c, p, h, 6)) {
+            break;
+        }
+        var tag = sxmo16(h, 0, false);
+        var n = sxmo32(h, 2, false);
+        var q = [p + 6];
+        if (n < 6) {
+            break;
+        }
+        if (tag === 0x2000) {
+            if (n !== 36 && n !== 48) {
+                break;
+            }
+            if (!sxmo_string(c, q, end, 10) || sxU64(n - 6) > sxU64(end - q[0])) {
+                break;
+            }
+            if (!sxmo_add(c, sxmo_ogre_skeleton_bone_chunk, p) || !sxmo_take(c, sxmo_ogre_skeleton_bone, q, end)) {
+                return false;
+            }
+            if (n === 48 && !sxmo_take(c, sxmo_ogre_skeleton_scale, q, end)) {
+                return false;
+            }
+            p = q[0];
+            continue;
+        }
+        if (n > sxU64(end - p)) {
+            break;
+        }
+        var stop = p + n;
+        if (!sxmo_add(c, sxmo_ogre_skeleton_chunk, p)) {
+            return false;
+        }
+        if (tag === 0x1010 && n === 8) {
+            if (!sxmo_add(c, sxmo_ogre_skeleton_blend, q[0])) {
+                return false;
+            }
+        } else if (tag === 0x3000 && n === 10) {
+            if (!sxmo_add(c, sxmo_ogre_skeleton_parent, q[0])) {
+                return false;
+            }
+        } else if (tag === 0x4000 && sxmo_string(c, q, stop, 10) && sxU64(stop - q[0]) >= 4) {
+            if (!sxmo_take(c, sxmo_ogre_skeleton_duration, q, stop) || !sxmo_skeleton_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (tag === 0x4100 && sxU64(stop - q[0]) >= 2) {
+            if (!sxmo_take(c, sxmo_ogre_skeleton_track, q, stop) || !sxmo_skeleton_chunks(c, q[0], stop, (depth + 1) >>> 0, budget)) {
+                return false;
+            }
+        } else if (tag === 0x4110 && (n === 38 || n === 50)) {
+            if (!sxmo_take(c, sxmo_ogre_skeleton_keyframe, q, stop) || n === 50 && !sxmo_take(c, sxmo_ogre_skeleton_scale, q, stop)) {
+                return false;
+            }
+        }
+        p = stop;
+    }
+    return !c.failed;
+}
+function sxmo_skeleton(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 21) || sxmo16(h, 0, false) !== 0x1000 || !sxmo_add(c, sxmo_ogre_skeleton_header, 0)) {
+        return false;
+    }
+    var budget = [0];
+    return sxmo_skeleton_chunks(c, 21, (c.size < 0 ? c.size + SX_U64_MAX : c.size), 0, budget);
+}
+function sx_ogre_skeleton_build(c) {
+    var ok = false;
+    ok = sxmo_skeleton(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

@@ -1,0 +1,11 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lpak/xx_lpak_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxal_lpak_header_fields = layout([chars("signature", 4, SIGNATURE), u32("unpacked_size", SIZE)]);
+var sxal_lpak_header = sxLayout(0x6020004D, "lpak_header", BE, sxal_lpak_header_fields);
+function sx_lpak_build(c) {
+    return sxal_add(c, sxal_lpak_header, 0);
+}

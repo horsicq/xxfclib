@@ -1,0 +1,100 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_vectortext.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_vectortext");
+include("_sx_vectortext_collada_dae");
+include("_sx_vectortext_excellon_drill");
+include("_sx_vectortext_gerber_rs274x");
+include("_sx_vectortext_hpgl_plot");
+include("_sx_vectortext_iges_model");
+include("_sx_vectortext_imagemagick_miff");
+include("_sx_vectortext_imagemagick_mvg");
+include("_sx_vectortext_jedec_fuse");
+include("_sx_vectortext_mapinfo_mif");
+include("_sx_vectortext_motif_uil");
+include("_sx_vectortext_nasa_vicar");
+include("_sx_vectortext_ogc_wkt");
+include("_sx_vectortext_opengex_model");
+include("_sx_vectortext_openusd_usda");
+include("_sx_vectortext_renderman_rib");
+include("_sx_vectortext_step_part21");
+include("_sx_vectortext_tiled_tmx");
+include("_sx_vectortext_ufo_glif");
+include("_sx_vectortext_usgs_dem");
+include("_sx_vectortext_vrml_scene");
+
+function fileTypes() { return ["HPGL_PLOT", "TILED_TMX", "OGC_WKT", "STEP_PART21", "GERBER_RS274X", "EXCELLON_DRILL",
+    "VRML_SCENE", "RENDERMAN_RIB", "OPENGEX_MODEL", "USGS_DEM", "MAPINFO_MIF", "COLLADA_DAE", "JEDEC_FUSE", "IMAGEMAGICK_MIFF",
+    "NASA_VICAR", "IMAGEMAGICK_MVG", "MOTIF_UIL", "IGES_MODEL", "OPENUSD_USDA", "UFO_GLIF"]; }
+
+var sx_vectortext_layouts = [sxvtx_signature, sxvtx_version, sxvtx_keyword, sxvtx_name, sxvtx_string_value, sxvtx_record_text,
+    sxvtx_xml_element, sxvtx_xml_attribute, sxvtx_encoding, sxvtx_class_name, sxvtx_units, sxvtx_organization,
+    sxvtx_pixel_format, sxvtx_pixel_byte_order, sxvtx_pixel_real_format, sxvtx_reference_name, sxvtx_width, sxvtx_height,
+    sxvtx_depth, sxvtx_channels, sxvtx_color_count, sxvtx_map_width, sxvtx_map_height, sxvtx_tile_width, sxvtx_tile_height,
+    sxvtx_tile_count, sxvtx_first_gid, sxvtx_global_tile_id, sxvtx_layer_id, sxvtx_index_value, sxvtx_input_offset,
+    sxvtx_input_stride, sxvtx_dimension, sxvtx_line_count, sxvtx_sample_count, sxvtx_band_count, sxvtx_n1, sxvtx_n2, sxvtx_n3,
+    sxvtx_n4, sxvtx_binary_prefix_bytes, sxvtx_binary_header_records, sxvtx_record_bytes, sxvtx_label_bytes, sxvtx_buffer_bytes,
+    sxvtx_format_version, sxvtx_fuse_count, sxvtx_pin_count, sxvtx_fuse_index, sxvtx_default_fuse, sxvtx_security_fuse,
+    sxvtx_entity_type, sxvtx_directory_reference, sxvtx_parameter_reference, sxvtx_level, sxvtx_line_font_pattern,
+    sxvtx_line_weight, sxvtx_color_number, sxvtx_form_number, sxvtx_profile_count, sxvtx_row_count, sxvtx_column_number,
+    sxvtx_elevation_sample, sxvtx_dem_level, sxvtx_elevation_pattern, sxvtx_reference_system, sxvtx_zone, sxvtx_ground_unit,
+    sxvtx_elevation_unit, sxvtx_polygon_side_count, sxvtx_accuracy_code, sxvtx_tool_number, sxvtx_aperture_number,
+    sxvtx_command_code, sxvtx_x, sxvtx_y, sxvtx_rotation, sxvtx_line_width, sxvtx_real_value, sxvtx_coordinate_value,
+    sxvtx_alpha_trait, sxvtx_color_space, sxvtx_compression, sxvtx_page_geometry, sxvtx_rendering_intent, sxvtx_channel_mask,
+    sxvtx_gamma, sxvtx_red_primary_x, sxvtx_red_primary_y, sxvtx_green_primary_x, sxvtx_green_primary_y, sxvtx_blue_primary_x,
+    sxvtx_blue_primary_y, sxvtx_white_point_x, sxvtx_white_point_y, sxvtx_element_count, sxvtx_set_index, sxvtx_visible,
+    sxvtx_next_layer_id, sxvtx_next_object_id, sxvtx_spacing, sxvtx_margin, sxvtx_infinite, sxvtx_format_minor,
+    sxvtx_unit_meter, sxvtx_opacity, sxvtx_advance_width, sxvtx_advance_height, sxvtx_x_scale, sxvtx_y_scale, sxvtx_xy_scale,
+    sxvtx_yx_scale, sxvtx_integer_value, sxvtx_entity_reference, sxvtx_encoded_x, sxvtx_encoded_y, sxvtx_radius, sxvtx_diameter,
+    sxvtx_pen_number, sxvtx_zero_suppression, sxvtx_label_terminator, sxvtx_x_integer_digits, sxvtx_x_fraction_digits,
+    sxvtx_y_integer_digits, sxvtx_y_fraction_digits, sxvtx_vertex_count, sxvtx_d_code, sxvtx_aperture_width,
+    sxvtx_aperture_height, sxvtx_hole_diameter, sxvtx_coordinate_notation, sxvtx_polarity, sxvtx_aperture_shape,
+    sxvtx_row_number, sxvtx_column_count, sxvtx_structure_reference, sxvtx_view_reference, sxvtx_transform_reference,
+    sxvtx_label_display_reference, sxvtx_parameter_line_count, sxvtx_entity_subscript, sxvtx_section_record_count,
+    sxvtx_eol_label, sxvtx_quality, sxvtx_meta_channel_count, sxvtx_dem_x, sxvtx_dem_y, sxvtx_dem_coordinate_value,
+    sxvtx_dem_minimum_elevation, sxvtx_dem_maximum_elevation, sxvtx_dem_rotation, sxvtx_dem_x_resolution,
+    sxvtx_dem_y_resolution, sxvtx_dem_z_resolution, sxvtx_dem_elevation_datum, sxvtx_dem_projection_parameter,
+    sxvtx_iges_status, sxvtx_checksum, sxvtx_transmission_checksum, sxvtx_unicode_hex, sxvtx_rgb_hex, sxvtx_fuse_bits,
+    sxvtx_jedec_stx, sxvtx_jedec_etx, sxvtx_iges_record_label];
+
+function structs() {
+    return sxCatalog([sxvtx_signature, sxvtx_version, sxvtx_keyword, sxvtx_name, sxvtx_string_value, sxvtx_record_text,
+        sxvtx_xml_element, sxvtx_xml_attribute, sxvtx_encoding, sxvtx_class_name, sxvtx_units, sxvtx_organization,
+        sxvtx_pixel_format, sxvtx_pixel_byte_order, sxvtx_pixel_real_format, sxvtx_reference_name, sxvtx_width, sxvtx_height,
+        sxvtx_depth, sxvtx_channels, sxvtx_color_count, sxvtx_map_width, sxvtx_map_height, sxvtx_tile_width, sxvtx_tile_height,
+        sxvtx_tile_count, sxvtx_first_gid, sxvtx_global_tile_id, sxvtx_layer_id, sxvtx_index_value, sxvtx_input_offset,
+        sxvtx_input_stride, sxvtx_dimension, sxvtx_line_count, sxvtx_sample_count, sxvtx_band_count, sxvtx_n1, sxvtx_n2,
+        sxvtx_n3, sxvtx_n4, sxvtx_binary_prefix_bytes, sxvtx_binary_header_records, sxvtx_record_bytes, sxvtx_label_bytes,
+        sxvtx_buffer_bytes, sxvtx_format_version, sxvtx_fuse_count, sxvtx_pin_count, sxvtx_fuse_index, sxvtx_default_fuse,
+        sxvtx_security_fuse, sxvtx_entity_type, sxvtx_directory_reference, sxvtx_parameter_reference, sxvtx_level,
+        sxvtx_line_font_pattern, sxvtx_line_weight, sxvtx_color_number, sxvtx_form_number, sxvtx_profile_count, sxvtx_row_count,
+        sxvtx_column_number, sxvtx_elevation_sample, sxvtx_dem_level, sxvtx_elevation_pattern, sxvtx_reference_system,
+        sxvtx_zone, sxvtx_ground_unit, sxvtx_elevation_unit, sxvtx_polygon_side_count, sxvtx_accuracy_code, sxvtx_tool_number,
+        sxvtx_aperture_number, sxvtx_command_code, sxvtx_x, sxvtx_y, sxvtx_rotation, sxvtx_line_width, sxvtx_real_value,
+        sxvtx_coordinate_value, sxvtx_alpha_trait, sxvtx_color_space, sxvtx_compression, sxvtx_page_geometry,
+        sxvtx_rendering_intent, sxvtx_channel_mask, sxvtx_gamma, sxvtx_red_primary_x, sxvtx_red_primary_y,
+        sxvtx_green_primary_x, sxvtx_green_primary_y, sxvtx_blue_primary_x, sxvtx_blue_primary_y, sxvtx_white_point_x,
+        sxvtx_white_point_y, sxvtx_element_count, sxvtx_set_index, sxvtx_visible, sxvtx_next_layer_id, sxvtx_next_object_id,
+        sxvtx_spacing, sxvtx_margin, sxvtx_infinite, sxvtx_format_minor, sxvtx_unit_meter, sxvtx_opacity, sxvtx_advance_width,
+        sxvtx_advance_height, sxvtx_x_scale, sxvtx_y_scale, sxvtx_xy_scale, sxvtx_yx_scale, sxvtx_integer_value,
+        sxvtx_entity_reference, sxvtx_encoded_x, sxvtx_encoded_y, sxvtx_radius, sxvtx_diameter, sxvtx_pen_number,
+        sxvtx_zero_suppression, sxvtx_label_terminator, sxvtx_x_integer_digits, sxvtx_x_fraction_digits, sxvtx_y_integer_digits,
+        sxvtx_y_fraction_digits, sxvtx_vertex_count, sxvtx_d_code, sxvtx_aperture_width, sxvtx_aperture_height,
+        sxvtx_hole_diameter, sxvtx_coordinate_notation, sxvtx_polarity, sxvtx_aperture_shape, sxvtx_row_number,
+        sxvtx_column_count, sxvtx_structure_reference, sxvtx_view_reference, sxvtx_transform_reference,
+        sxvtx_label_display_reference, sxvtx_parameter_line_count, sxvtx_entity_subscript, sxvtx_section_record_count,
+        sxvtx_eol_label, sxvtx_quality, sxvtx_meta_channel_count, sxvtx_dem_x, sxvtx_dem_y, sxvtx_dem_coordinate_value,
+        sxvtx_dem_minimum_elevation, sxvtx_dem_maximum_elevation, sxvtx_dem_rotation, sxvtx_dem_x_resolution,
+        sxvtx_dem_y_resolution, sxvtx_dem_z_resolution, sxvtx_dem_elevation_datum, sxvtx_dem_projection_parameter,
+        sxvtx_iges_status, sxvtx_checksum, sxvtx_transmission_checksum, sxvtx_unicode_hex, sxvtx_rgb_hex, sxvtx_fuse_bits,
+        sxvtx_jedec_stx, sxvtx_jedec_etx, sxvtx_iges_record_label], sx_vectortext_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_vectortext_build, false);
+}

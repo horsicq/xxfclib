@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/d_link_alpha_encimg_v2/xx_d_link_alpha_encimg_v2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_fm_alpha_encimg_header_prefix_fields = layout([chars("signature", 32, SIGNATURE), u32("magic1", SIGNATURE),
+    u32("magic2", SIGNATURE), chars("version", 16, NONE), chars("model", 16, NONE), u32("flags0", FLAGS), u32("flags1", FLAGS),
+    u32("reserve0", RESERVED), u32("reserve1", RESERVED), chars("build_number", 16, NONE)]);
+var sx_fm_alpha_encimg_header_prefix = sxLayout(0x6022000A, "alpha_encimg_header_prefix", FILE, sx_fm_alpha_encimg_header_prefix_fields);
+var sx_fm_alpha_encimg_header_suffix_fields = layout([chars("device_name", 32, NONE), field("digest", "byte[16]", 16, CHECKSUM)]);
+var sx_fm_alpha_encimg_header_suffix = sxLayout(0x6022000D, "alpha_encimg_header_suffix", LE, sx_fm_alpha_encimg_header_suffix_fields);
+function sx_fm_alpha(c) {
+    var le = [0];
+    var be = [0];
+    if (!sx_fm_u32(c, 104, false, le) || !sx_fm_u32(c, 104, true, be)) {
+        return false;
+    }
+    return sx_fm_add(c, sx_fm_alpha_encimg_header_prefix, 0, 104) && sx_fm_add(c, le[0] <= be[0] ? sx_fm_alpha_encimg_payload_le : sx_fm_alpha_encimg_payload_be, 104, 8) && sx_fm_add(c, sx_fm_alpha_encimg_header_suffix, 112, 48);
+}
+function sx_d_link_alpha_encimg_v2_build(c) {
+    return sx_fm_alpha(c);
+}

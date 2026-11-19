@@ -1,0 +1,105 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/mark_cooksey/xx_mark_cooksey_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxamip_find_word(v, p, wanted, end) {
+    for (; p[0] + 2 <= end; p[0] += 2) {
+        var x = [0];
+        if (!sxamip_be(v, p[0], 2, x, 0, end)) {
+            return false;
+        }
+        if (x[0] === wanted) {
+            return true;
+        }
+    }
+    return false;
+}
+function sxamip_cooksey(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var lim = e < 1048576 ? e : 1048576;
+    var p;
+    var sub = [0];
+    var subend = [0];
+    var info = [0];
+    var samples = [0];
+    if (!sxamip_eq(v, 0, "\xD0@\xD0@N\xFB", 6, e)) {
+        return false;
+    }
+    for (var i = 8; i <= 20; i = (i + 4) >>> 0) {
+        if (!sxamip_eq(v, i, "`\x00", 2, e)) {
+            return false;
+        }
+    }
+    p = sxamip_eq(v, 40, "C\xFA", 2, e) ? 40 : 150;
+    if (!sxamip_eq(v, p, "C\xFA", 2, e)) {
+        return false;
+    }
+    p += 2;
+    if (!sxamip_signed16_target(v, p, p, sub, e) || !sxamip_row(v, sxamip_cooksey_displacement, p, e)) {
+        return false;
+    }
+    var scan = [p];
+    if (!sxamip_find_word(v, scan, 0x43FA, lim)) {
+        return false;
+    }
+    scan[0] += 2;
+    if (!sxamip_signed16_target(v, scan[0], scan[0], subend, e) || subend[0] < sub[0] || sxU64(subend[0] - sub[0]) % 16 || !sxamip_row(v, sxamip_cooksey_displacement, scan[0], e) || !sxamip_span(v, sub[0], sxU64(subend[0] - sub[0]), e)) {
+        return false;
+    }
+    p = scan[0];
+    for (; ; ) {
+        if (!sxamip_span(v, p, 6, lim)) {
+            return false;
+        }
+        if (sxamip_eq(v, p, "\x00\x00A\xFA", 4, lim)) {
+            break;
+        }
+        p += 2;
+    }
+    p += 4;
+    if (!sxamip_signed16_target(v, p, p, info, e) || !sxamip_row(v, sxamip_cooksey_displacement, p, e)) {
+        return false;
+    }
+    scan[0] = p;
+    if (!sxamip_find_word(v, scan, 0x43FA, lim)) {
+        return false;
+    }
+    scan[0] += 2;
+    if (!sxamip_signed16_target(v, scan[0], scan[0], samples, e) || !sxamip_row(v, sxamip_cooksey_displacement, scan[0], e)) {
+        return false;
+    }
+    var first = [0];
+    if (!sxamip_be(v, info[0], 2, first, 0, e) || sxAnd64(first[0], 1) || !first[0] || first[0] >= 32768 || Math.floor(first[0] / 2) > 4096 || !sxamip_span(v, info[0], first[0], e)) {
+        return false;
+    }
+    for (i = 0; i < Math.floor(first[0] / 2); i++) {
+        var at = info[0] + i * 2;
+        var row = [0];
+        var x = [0];
+        var z = [0];
+        if (!sxamip_signed16_target(v, at, at, row, e) || !sxamip_row(v, sxamip_cooksey_sample_offset, at, e)) {
+            return false;
+        }
+        if (!sxamip_be(v, row[0], 4, x, 0, e)) {
+            return false;
+        }
+        if (x[0]) {
+            if (!sxamip_be(v, row[0] + 16, 2, z, 0, e) || !sxamip_row(v, sxamip_cooksey_sample, row[0], e)) {
+                return false;
+            }
+        } else {
+            if (!sxamip_be(v, row[0] + 4, 4, x, 0, e) || !sxamip_be(v, row[0] + 18, 2, z, 0, e) || !sxamip_row(v, sxamip_cooksey_shifted_sample, row[0], e)) {
+                return false;
+            }
+        }
+        if (x[0] > sxU64(e - samples[0]) || !sxamip_span(v, samples[0] + x[0], z[0] * 2, e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_mark_cooksey_build(v) {
+    return sxamip_cooksey(v);
+}

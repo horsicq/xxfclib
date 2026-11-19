@@ -1,0 +1,92 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/milkshape_ms3d/xx_milkshape_ms3d_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmo_ms3d_header_fields = layout([chars("signature", 10, SIGNATURE), i32("version", ID)]);
+var sxmo_ms3d_header = sxLayout(0x6021000F, "ms3d_header", LE, sxmo_ms3d_header_fields);
+var sxmo_ms3d_vertex_count_fields = layout([u16("vertex_count", COUNT)]);
+var sxmo_ms3d_vertex_count = sxLayout(0x60210010, "ms3d_vertex_count", LE, sxmo_ms3d_vertex_count_fields);
+var sxmo_ms3d_triangle_count_fields = layout([u16("triangle_count", COUNT)]);
+var sxmo_ms3d_triangle_count = sxLayout(0x60210011, "ms3d_triangle_count", LE, sxmo_ms3d_triangle_count_fields);
+var sxmo_ms3d_group_count_fields = layout([u16("group_count", COUNT)]);
+var sxmo_ms3d_group_count = sxLayout(0x60210012, "ms3d_group_count", LE, sxmo_ms3d_group_count_fields);
+var sxmo_ms3d_material_count_fields = layout([u16("material_count", COUNT)]);
+var sxmo_ms3d_material_count = sxLayout(0x60210013, "ms3d_material_count", LE, sxmo_ms3d_material_count_fields);
+var sxmo_ms3d_vertex_fields = layout([u8("flags", FLAGS), field("position", "float32[3]", 12), i8("bone_index", ID),
+    u8("reference_count", COUNT)]);
+var sxmo_ms3d_vertex = sxLayout(0x60210014, "ms3d_vertex", LE, sxmo_ms3d_vertex_fields);
+var sxmo_ms3d_triangle_fields = layout([u16("flags", FLAGS), field("vertex_indices", "uint16[3]", 6, ID),
+    field("vertex_normals", "float32[9]", 36), field("texture_s", "float32[3]", 12), field("texture_t", "float32[3]", 12),
+    u8("smoothing_group", ID), u8("group_index", ID)]);
+var sxmo_ms3d_triangle = sxLayout(0x60210015, "ms3d_triangle", LE, sxmo_ms3d_triangle_fields);
+var sxmo_ms3d_group_fields = layout([u8("flags", FLAGS), chars("name", 32, STRING), u16("triangle_count", COUNT)]);
+var sxmo_ms3d_group = sxLayout(0x60210016, "ms3d_group", LE, sxmo_ms3d_group_fields);
+var sxmo_ms3d_triangle_index_fields = layout([u16("triangle_index", ID)]);
+var sxmo_ms3d_triangle_index = sxLayout(0x60210017, "ms3d_triangle_index", LE, sxmo_ms3d_triangle_index_fields);
+var sxmo_ms3d_material_index_fields = layout([i8("material_index", ID)]);
+var sxmo_ms3d_material_index = sxLayout(0x60210018, "ms3d_material_index", LE, sxmo_ms3d_material_index_fields);
+var sxmo_ms3d_material_fields = layout([chars("name", 32, STRING), field("ambient", "float32[4]", 16),
+    field("diffuse", "float32[4]", 16), field("specular", "float32[4]", 16), field("emissive", "float32[4]", 16),
+    field("shininess", "float32", 4), field("transparency", "float32", 4), u8("mode", FLAGS), chars("texture", 128, STRING),
+    chars("alpha_map", 128, STRING)]);
+var sxmo_ms3d_material = sxLayout(0x60210019, "ms3d_material", LE, sxmo_ms3d_material_fields);
+var sxmo_ms3d_animation_fields = layout([field("frames_per_second", "float32", 4), field("current_time", "float32", 4),
+    i32("total_frames", COUNT), u16("joint_count", COUNT)]);
+var sxmo_ms3d_animation = sxLayout(0x6021001A, "ms3d_animation", LE, sxmo_ms3d_animation_fields);
+function sxmo_ms3d(c) {
+    var h = [];
+    if (!sxmo_read(c, 0, h, 14) || sxMemcmp(h, "MS3D000000", 10) || !sxmo_add(c, sxmo_ms3d_header, 0)) {
+        return false;
+    }
+    var p = [14];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var counts = [sxmo_ms3d_vertex_count, sxmo_ms3d_triangle_count, sxmo_ms3d_group_count, sxmo_ms3d_material_count];
+    for (var kind = 0; kind < 4; kind++) {
+        if (sxU64(end - p[0]) < 2 || !sxmo_read(c, p[0], h, 2)) {
+            return true;
+        }
+        var n = sxmo16(h, 0, false);
+        if (!sxmo_take(c, counts[kind], p, end)) {
+            return false;
+        }
+        if (kind === 2) {
+            if (n > 128) {
+                return true;
+            }
+            for (var i = 0; i < n; i++) {
+                if (sxU64(end - p[0]) < 35 || !sxmo_read(c, p[0], h, 35)) {
+                    return true;
+                }
+                var tris = sxmo16(h, 33, false);
+                if (tris * 2 + 36 > sxU64(end - p[0])) {
+                    return true;
+                }
+                if (!sxmo_take(c, sxmo_ms3d_group, p, end) || !sxmo_table(c, sxmo_ms3d_triangle_index, p[0], tris)) {
+                    return false;
+                }
+                p[0] += (tris * 2) >>> 0;
+                if (!sxmo_take(c, sxmo_ms3d_material_index, p, end)) {
+                    return false;
+                }
+            }
+        } else {
+            var l = kind === 0 ? sxmo_ms3d_vertex : kind === 1 ? sxmo_ms3d_triangle : sxmo_ms3d_material;
+            var z = kind === 0 ? 15 : kind === 1 ? 70 : 361;
+            if (n * z > sxU64(end - p[0])) {
+                return true;
+            }
+            if (!sxmo_table(c, l, p[0], n)) {
+                return false;
+            }
+            p[0] += n * z;
+        }
+    }
+    return sxU64(end - p[0]) < 14 || sxmo_add(c, sxmo_ms3d_animation, p[0]);
+}
+function sx_milkshape_ms3d_build(c) {
+    var ok = false;
+    ok = sxmo_ms3d(c);
+    return ok && c.count > 0 && sxmo_finish(c);
+}

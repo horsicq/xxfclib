@@ -1,0 +1,84 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/charmm_dcd/xx_charmm_dcd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsh_dcd_header_le_fields = layout([i32("record_size", SIZE), chars("signature", 4, SIGNATURE), i32("frame_count", COUNT),
+    i32("first_step"), i32("step_interval"), field("control_words", "int32[5]", 20), i32("fixed_atom_count", COUNT),
+    field("delta", "float32", 4), i32("unit_cell_flag", FLAGS), i32("four_dimensions_flag", FLAGS),
+    field("reserved", "int32[7]", 28, RESERVED), i32("charmm_version", ID), i32("trailing_record_size", SIZE)]);
+var sxsh_dcd_header_le = sxLayout(0x602A000D, "dcd_header_le", LE, sxsh_dcd_header_le_fields);
+var sxsh_dcd_record_size_le_fields = layout([i32("record_size", SIZE)]);
+var sxsh_dcd_record_size_le = sxLayout(0x602A000E, "dcd_record_size_le", LE, sxsh_dcd_record_size_le_fields);
+var sxsh_dcd_title_count_le_fields = layout([i32("title_count", COUNT)]);
+var sxsh_dcd_title_count_le = sxLayout(0x602A000F, "dcd_title_count_le", LE, sxsh_dcd_title_count_le_fields);
+var sxsh_dcd_atom_count_le_fields = layout([i32("atom_count", COUNT)]);
+var sxsh_dcd_atom_count_le = sxLayout(0x602A0010, "dcd_atom_count_le", LE, sxsh_dcd_atom_count_le_fields);
+var sxsh_dcd_cell_le_fields = layout([field("a", "float64", 8), field("gamma", "float64", 8), field("b", "float64", 8),
+    field("beta", "float64", 8), field("alpha", "float64", 8), field("c", "float64", 8)]);
+var sxsh_dcd_cell_le = sxLayout(0x602A0011, "dcd_cell_le", LE, sxsh_dcd_cell_le_fields);
+var sxsh_dcd_header_be_fields = layout([i32("record_size", SIZE), chars("signature", 4, SIGNATURE), i32("frame_count", COUNT),
+    i32("first_step"), i32("step_interval"), field("control_words", "int32[5]", 20), i32("fixed_atom_count", COUNT),
+    field("delta", "float32", 4), i32("unit_cell_flag", FLAGS), i32("four_dimensions_flag", FLAGS),
+    field("reserved", "int32[7]", 28, RESERVED), i32("charmm_version", ID), i32("trailing_record_size", SIZE)]);
+var sxsh_dcd_header_be = sxLayout(0x602A0012, "dcd_header_be", BE, sxsh_dcd_header_be_fields);
+var sxsh_dcd_record_size_be_fields = layout([i32("record_size", SIZE)]);
+var sxsh_dcd_record_size_be = sxLayout(0x602A0013, "dcd_record_size_be", BE, sxsh_dcd_record_size_be_fields);
+var sxsh_dcd_title_count_be_fields = layout([i32("title_count", COUNT)]);
+var sxsh_dcd_title_count_be = sxLayout(0x602A0014, "dcd_title_count_be", BE, sxsh_dcd_title_count_be_fields);
+var sxsh_dcd_atom_count_be_fields = layout([i32("atom_count", COUNT)]);
+var sxsh_dcd_atom_count_be = sxLayout(0x602A0015, "dcd_atom_count_be", BE, sxsh_dcd_atom_count_be_fields);
+var sxsh_dcd_cell_be_fields = layout([field("a", "float64", 8), field("gamma", "float64", 8), field("b", "float64", 8),
+    field("beta", "float64", 8), field("alpha", "float64", 8), field("c", "float64", 8)]);
+var sxsh_dcd_cell_be = sxLayout(0x602A0016, "dcd_cell_be", BE, sxsh_dcd_cell_be_fields);
+var sxsh_dcd_title_fields = layout([chars("title", 80, STRING)]);
+var sxsh_dcd_title = sxLayout(0x602A0017, "dcd_title", LE, sxsh_dcd_title_fields);
+function sxsh_dcd_record(c, at, be, wanted, payload) {
+    var n;
+    var tail;
+    var p = at[0];
+    if ((n = sx_u32(c, p, be)) === null || n !== wanted || !sxsh_span(c, p, n + 8) || (tail = sx_u32(c, p + 4 + n, be)) === null || tail !== n || !sxsh_add(c, be ? sxsh_dcd_record_size_be : sxsh_dcd_record_size_le, p, 4) || !sxsh_add(c, be ? sxsh_dcd_record_size_be : sxsh_dcd_record_size_le, p + 4 + n, 4)) {
+        return false;
+    }
+    if (payload !== null && !sxsh_add(c, payload, p + 4, n)) {
+        return false;
+    }
+    at[0] = p + 8 + n;
+    return true;
+}
+function sxsh_dcd(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 92) || sxMemcmpAt(b, 4, "CORD", 0, 4)) {
+        return false;
+    }
+    var be = sxsh32(b, 0, true) === 84;
+    var frames = sxsh32(b, 8, be);
+    var cell = sxsh32(b, 48, be);
+    var title;
+    var count;
+    var atoms;
+    var at = [92];
+    if (sxsh32(b, 0, be) !== 84 || !frames || frames > 1024 || cell > 1 || !sxsh_add(c, be ? sxsh_dcd_header_be : sxsh_dcd_header_le, 0, 92) || (title = sx_u32(c, at[0], be)) === null || title < 84 || title > 2564 || (count = sx_u32(c, at[0] + 4, be)) === null || count !== Math.floor(((title - 4) >>> 0) / 80) || title !== (4 + ((count * 80) >>> 0)) >>> 0) {
+        return false;
+    }
+    if (!sxsh_add(c, be ? sxsh_dcd_title_count_be : sxsh_dcd_title_count_le, at[0] + 4, 4) || !sxsh_table(c, sxsh_dcd_title, at[0] + 8, 80, count) || !sxsh_dcd_record(c, at, be, title, null) || (atoms = sx_u32(c, at[0] + 4, be)) === null || !atoms || atoms > 1048576 || !sxsh_dcd_record(c, at, be, 4, be ? sxsh_dcd_atom_count_be : sxsh_dcd_atom_count_le)) {
+        return false;
+    }
+    for (var i = 0; i < frames; i++) {
+        if (cell && !sxsh_dcd_record(c, at, be, 48, be ? sxsh_dcd_cell_be : sxsh_dcd_cell_le)) {
+            return false;
+        }
+        for (var j = 0; j < 3; j++) {
+            if (!sxsh_dcd_record(c, at, be, (atoms * 4) >>> 0, null)) {
+                return false;
+            }
+        }
+    }
+    return at[0] === c.size;
+}
+function sx_charmm_dcd_build(c) {
+    var ok = false;
+    ok = sxsh_dcd(c);
+    return ok && sxsh_finish(c);
+}

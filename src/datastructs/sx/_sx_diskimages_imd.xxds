@@ -1,0 +1,118 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/imd/xx_imd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdi_imd_track_header_fields = layout([u8("mode", ID), u8("cylinder", ID), u8("head_and_maps", FLAGS),
+    u8("sector_count", COUNT), u8("sector_size_code")]);
+var sxdi_imd_track_header = sxLayout(0x60150009, "imd_track_header", LE, sxdi_imd_track_header_fields);
+var sxdi_imd_sector_id_fields = layout([u8("sector_id", ID)]);
+var sxdi_imd_sector_id = sxLayout(0x6015000A, "imd_sector_id", LE, sxdi_imd_sector_id_fields);
+var sxdi_imd_cylinder_map_fields = layout([u8("cylinder_id", ID)]);
+var sxdi_imd_cylinder_map = sxLayout(0x6015000B, "imd_cylinder_map", LE, sxdi_imd_cylinder_map_fields);
+var sxdi_imd_head_map_fields = layout([u8("head_id", ID)]);
+var sxdi_imd_head_map = sxLayout(0x6015000C, "imd_head_map", LE, sxdi_imd_head_map_fields);
+var sxdi_imd_size_map_fields = layout([u16("sector_size", SIZE)]);
+var sxdi_imd_size_map = sxLayout(0x6015000D, "imd_size_map", LE, sxdi_imd_size_map_fields);
+var sxdi_imd_sector_status_fields = layout([u8("status", ID)]);
+var sxdi_imd_sector_status = sxLayout(0x6015000E, "imd_sector_status", LE, sxdi_imd_sector_status_fields);
+function sxdi_imd(c) {
+    var b = [];
+    var n = c.size < 1024 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 1024;
+    var at = 0;
+    var tracks = 0;
+    var sectors = 0;
+    if (n < 4 || !sxdi_read(c, 0, b, n) || sxMemcmp(b, "IMD ", 4)) {
+        return false;
+    }
+    while (at < n && b[at] !== 0x1A) {
+        at++;
+    }
+    if (at === n) {
+        return false;
+    }
+    at++;
+    while (at < (c.size < 0 ? c.size + SX_U64_MAX : c.size) && tracks < 4096 && sectors < 32768) {
+        var h = [];
+        var sizes = 0;
+        var fixed = 0;
+        if (!sxdi_read(c, at, h, 5) || h[0] > 6 && h[0] !== 9 || !h[3] || h[2] & 0x3E || h[4] > 6 && h[4] !== 255) {
+            return tracks !== 0;
+        }
+        var prefix = 5 + h[3] * (1 + ((h[2] & 128) !== 0 ? 1 : 0) + ((h[2] & 64) !== 0 ? 1 : 0) + (h[4] === 255 ? 2 : 0));
+        if (!sxdi_span(c, at, prefix)) {
+            return tracks !== 0;
+        }
+        if (!sx_add(c, sxdi_imd_track_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 5)) {
+            return false;
+        }
+        tracks++;
+        at += 5;
+        if (!sx_table(c, sxdi_imd_sector_id, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1, h[3])) {
+            return false;
+        }
+        at += h[3];
+        if (h[2] & 128) {
+            if (!sx_table(c, sxdi_imd_cylinder_map, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1, h[3])) {
+                return false;
+            }
+            at += h[3];
+        }
+        if (h[2] & 64) {
+            if (!sx_table(c, sxdi_imd_head_map, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1, h[3])) {
+                return false;
+            }
+            at += h[3];
+        }
+        if (h[4] === 255) {
+            sizes = at;
+            if (!sx_table(c, sxdi_imd_size_map, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 2, h[3])) {
+                return false;
+            }
+            at += h[3] * 2;
+        } else {
+            fixed = (128 << h[4]) >>> 0;
+        }
+        for (var j = 0; j < h[3] && sectors < 32768; j++) {
+            var status = [0];
+            var z = 0;
+            var len = fixed;
+            if (sizes) {
+                if ((z = sx_u16(c, sxI64(sizes + ((j * 2) >>> 0)), false)) === null) {
+                    return false;
+                }
+                len = z;
+            }
+            if (!len || len > 8192 || !sxdi_read(c, at, status, 1) || status[0] > 8) {
+                return true;
+            }
+            if (!sx_add(c, sxdi_imd_sector_status, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1)) {
+                return false;
+            }
+            at++;
+            sectors++;
+            if (!status[0]) {
+                continue;
+            }
+            if (!(status[0] & 1)) {
+                if (!sxdi_span(c, at, 1)) {
+                    return true;
+                }
+                if (!sx_add(c, sxdi_disk_fill_byte, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 1)) {
+                    return false;
+                }
+                at++;
+            } else {
+                if (!sxdi_span(c, at, len)) {
+                    return true;
+                }
+                at += len;
+            }
+        }
+    }
+    return tracks !== 0;
+}
+function sx_imd_build(c) {
+    return sxdi_imd(c);
+}

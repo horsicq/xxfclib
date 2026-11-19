@@ -1,0 +1,34 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_gameremaining.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_gameremaining");
+include("_sx_gameremaining_ue2_games");
+
+function fileTypes() { return ["BRUNS_MEDIA", "RPG_MAKER_MV", "YCG_IMAGE", "UNREAL_PAK", "FALLOUT_DAT", "LIVE_MAKER_GAL",
+    "SMILE_GAME_PACK"]; }
+
+var sx_gameremaining_layouts = [sxgr_bruns_een_header, sxgr_rpgmv_header, sxgr_smile_game_header, sxgr_ycg_header,
+    sxgr_fallout2_footer, sxgr_fallout2_directory, sxgr_fallout2_name_length, sxgr_game_name_length, sxgr_game_name,
+    sxgr_fallout2_entry, sxgr_unreal_pak_footer_v1, sxgr_unreal_pak_footer_v4, sxgr_unreal_pak_footer_v7,
+    sxgr_unreal_pak_string_length, sxgr_unreal_pak_string, sxgr_unreal_pak_directory_count, sxgr_unreal_pak_entry_v1,
+    sxgr_unreal_pak_entry_v2, sxgr_unreal_pak_block_count, sxgr_unreal_pak_block, sxgr_unreal_pak_entry_flags,
+    sxgr_gal_envelope, sxgr_gal_header, sxgr_gal_frame, sxgr_gal_palette_entry, sxgr_gal_layer, sxgr_gal_layer_lock,
+    sxgr_gal_layer_size, sxgr_gal_alpha_size];
+
+function structs() {
+    return sxCatalog([sxgr_bruns_een_header, sxgr_rpgmv_header, sxgr_smile_game_header, sxgr_ycg_header, sxgr_fallout2_footer,
+        sxgr_fallout2_directory, sxgr_fallout2_name_length, sxgr_game_name_length, sxgr_game_name, sxgr_fallout2_entry,
+        sxgr_unreal_pak_footer_v1, sxgr_unreal_pak_footer_v4, sxgr_unreal_pak_footer_v7, sxgr_unreal_pak_string_length,
+        sxgr_unreal_pak_string, sxgr_unreal_pak_directory_count, sxgr_unreal_pak_entry_v1, sxgr_unreal_pak_entry_v2,
+        sxgr_unreal_pak_block_count, sxgr_unreal_pak_block, sxgr_unreal_pak_entry_flags, sxgr_gal_envelope, sxgr_gal_header,
+        sxgr_gal_frame, sxgr_gal_palette_entry, sxgr_gal_layer, sxgr_gal_layer_lock, sxgr_gal_layer_size, sxgr_gal_alpha_size], sx_gameremaining_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_gameremaining_build, false);
+}

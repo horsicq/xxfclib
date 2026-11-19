@@ -1,0 +1,122 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/alignment_maf/xx_alignment_maf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxseq_maf_scoring_fields = layout([field("maf_scoring", "char", 0, STRING)]);
+var sxseq_maf_scoring = sxLayout(0x60730021, "sequence_maf_scoring", LE, sxseq_maf_scoring_fields);
+var sxseq_alignment_score_fields = layout([field("alignment_score", "ascii_real", 0)]);
+var sxseq_alignment_score = sxLayout(0x60730022, "sequence_alignment_score", LE, sxseq_alignment_score_fields);
+var sxseq_maf_start_fields = layout([field("maf_start", "ascii_signed", 0)]);
+var sxseq_maf_start = sxLayout(0x60730023, "sequence_maf_start", LE, sxseq_maf_start_fields);
+var sxseq_maf_size_fields = layout([field("maf_size", "ascii_signed", 0, COUNT)]);
+var sxseq_maf_size = sxLayout(0x60730024, "sequence_maf_size", LE, sxseq_maf_size_fields);
+var sxseq_source_length_fields = layout([field("source_length", "ascii_signed", 0, COUNT)]);
+var sxseq_source_length = sxLayout(0x60730025, "sequence_source_length", LE, sxseq_source_length_fields);
+var sxseq_version_fields = layout([field("version", "char", 0, STRING)]);
+var sxseq_version = sxLayout(0x6073003A, "sequence_version", LE, sxseq_version_fields);
+function sxseq_fields(q, t, t_o, n, l, max) {
+    if (n > max) {
+        return false;
+    }
+    for (var i = 0; i < n; i++) {
+        if (l[i] !== null && !sxseq_emit(q, l[i], sxCopy_sxseq_token(null, t[t_o + i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxseq_maf(q) {
+    var line = sxNew_sxseq_token();
+    var t = sxAllocN(8, sxNew_sxseq_token);
+    if (!sxseq_line(q, line)) {
+        return false;
+    }
+    var n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 8, false);
+    if (n < 2 || n > 3) {
+        return false;
+    }
+    {
+        if (!sxseq_emit(q, sxseq_signature, sxCopy_sxseq_token(null, t[0]))) {
+            return false;
+        }
+    }
+    {
+        if (!sxseq_emit(q, sxseq_version, sxCopy_sxseq_token(null, t[1]))) {
+            return false;
+        }
+    }
+    if (n === 3) {
+        if (t[2].z <= 8) {
+            return false;
+        }
+        {
+            if (!sxseq_emit(q, sxseq_field_key, sxCopy_sxseq_token(null, { a: t[2].a, z: 7 }))) {
+                return false;
+            }
+        }
+        {
+            if (!sxseq_emit(q, sxseq_maf_scoring, sxCopy_sxseq_token(null, { a: t[2].a + 8, z: t[2].z - 8 }))) {
+                return false;
+            }
+        }
+    }
+    while (sxseq_line(q, line)) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        sxCopy_sxseq_token(line, sxseq_trim(q, sxCopy_sxseq_token(null, line)));
+        if (!line.z) {
+            continue;
+        }
+        if (q.b[line.a] === 35 /*#*/) {
+            {
+                if (!sxseq_emit(q, sxseq_comment, sxCopy_sxseq_token(null, line))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        n = sxseq_split(q, sxCopy_sxseq_token(null, line), t, 8, false);
+        if (!n || n > 8) {
+            return false;
+        }
+        {
+            if (!sxseq_emit(q, sxseq_keyword, sxCopy_sxseq_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "a")) {
+            if (n === 2) {
+                if (t[1].z <= 6) {
+                    return false;
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_field_key, sxCopy_sxseq_token(null, { a: t[1].a, z: 5 }))) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxseq_emit(q, sxseq_alignment_score, sxCopy_sxseq_token(null, { a: t[1].a + 6, z: t[1].z - 6 }))) {
+                        return false;
+                    }
+                }
+            } else if (n !== 1) {
+                return false;
+            }
+        } else {
+            if (n !== 7 || !sxseq_eq(q, sxCopy_sxseq_token(null, t[0]), "s")) {
+                return false;
+            }
+            var l = [sxseq_identifier, sxseq_maf_start, sxseq_maf_size, sxseq_strand, sxseq_source_length];
+            if (!sxseq_fields(q, t, 1, 5, l, 5) || !sxseq_chunks(q, sxseq_sequence_text, sxCopy_sxseq_token(null, t[6]))) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_alignment_maf_build(q) {
+    return sxseq_maf(q);
+}

@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzhcxp/xx_lzhcxp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_lzhcxp_header_fields = layout([chars("signature", 2, SIGNATURE)]);
+var sxafr_lzhcxp_header = sxLayout(0x60540001, "lzhcxp_header", LE, sxafr_lzhcxp_header_fields);
+var sxafr_lzhcxp_block_size_fields = layout([u8("compressed_size", SIZE)]);
+var sxafr_lzhcxp_block_size = sxLayout(0x60540002, "lzhcxp_block_size", LE, sxafr_lzhcxp_block_size_fields);
+function sxafr_lzhcxp(c) {
+    var p = 2;
+    var z = [0];
+    if (!sxafr_add(c, sxafr_lzhcxp_header, 0)) {
+        return false;
+    }
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxafr_word(c, p, 1, false, z) || !sxafr_add(c, sxafr_lzhcxp_block_size, p++)) {
+            return false;
+        }
+        if (!z[0]) {
+            return true;
+        }
+        if (!sxafr_span(c, p, z[0])) {
+            return false;
+        }
+        p += z[0];
+    }
+    return true;
+}
+function sx_lzhcxp_build(c) {
+    return sxafr_lzhcxp(c);
+}

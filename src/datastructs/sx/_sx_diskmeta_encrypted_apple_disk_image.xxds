@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/encrypted_apple_disk_image/xx_encrypted_apple_disk_image_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dm_encrypted_dmg_v2_header_fields = layout([field("signature", "byte[8]", 8, SIGNATURE), u32("version"),
+    u32("block_iv_length", SIZE), u32("block_mode", ID), u32("block_algorithm", ID), u32("key_bits"),
+    u32("iv_key_algorithm", ID), u32("iv_key_bits"), field("uuid", "byte[16]", 16, ID), u32("block_size", SIZE),
+    u64("plaintext_length", SIZE), u64("data_offset", OFFSET), u32("key_count", COUNT)]);
+var sx_dm_encrypted_dmg_v2_header = sxLayout(0x6029002F, "encrypted_dmg_v2_header", BE, sx_dm_encrypted_dmg_v2_header_fields);
+var sx_dm_encrypted_dmg_key_pointer_fields = layout([u32("type", ID), u64("offset", OFFSET), u64("size", SIZE)]);
+var sx_dm_encrypted_dmg_key_pointer = sxLayout(0x60290030, "encrypted_dmg_key_pointer", BE, sx_dm_encrypted_dmg_key_pointer_fields);
+var sx_dm_encrypted_dmg_v1_trailer_fields = layout([field("unknown_prefix", "byte[48]", 48), u32("kdf_iterations", COUNT),
+    u32("salt_length", SIZE), field("salt", "byte[48]", 48), field("unknown1", "byte[32]", 32),
+    u32("wrapped_aes_key_length", SIZE), field("wrapped_aes_key", "byte[296]", 296), u32("wrapped_hmac_key_length", SIZE),
+    field("wrapped_hmac_key", "byte[300]", 300), u32("integrity_key_length", SIZE), field("integrity_key", "byte[48]", 48),
+    field("unknown2", "byte[476]", 476), field("signature", "byte[8]", 8, SIGNATURE)]);
+var sx_dm_encrypted_dmg_v1_trailer = sxLayout(0x60290031, "encrypted_dmg_v1_trailer", BE, sx_dm_encrypted_dmg_v1_trailer_fields);
+function sx_dm_encrypted(c) {
+    var h = [];
+    if (sx_dm_read(c, 0, h, 76) && !sxMemcmp(h, "encrcdsa", 8)) {
+        if (!sx_dm_add(c, sx_dm_encrypted_dmg_v2_header, 0, 76)) {
+            return false;
+        }
+        var n = sx_dm_u32(h, 72, true);
+        return n > 32 || !sx_dm_span(c, 76, n * 20) || sx_dm_table(c, sx_dm_encrypted_dmg_key_pointer, 76, 20, n);
+    }
+    return c.size >= 1276 && sx_dm_add(c, sx_dm_encrypted_dmg_v1_trailer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 1276), 1276);
+}
+function sx_encrypted_apple_disk_image_build(c) {
+    return sx_dm_encrypted(c);
+}

@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/sas_xport/xx_sas_xport_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsw_xport_header_record_fields = layout([chars("prefix", 20, SIGNATURE), chars("record_name", 8, ID),
+    chars("suffix", 20, SIGNATURE), field("field1", "ascii_decimal[5]", 5), field("field2", "ascii_decimal[5]", 5),
+    field("field3", "ascii_decimal[5]", 5), field("field4", "ascii_decimal[5]", 5), field("field5", "ascii_decimal[5]", 5),
+    field("field6", "ascii_decimal[5]", 5), chars("padding", 2, RESERVED)]);
+var sxsw_xport_header_record = sxLayout(0x602D0003, "xport_header_record", LE, sxsw_xport_header_record_fields);
+var sxsw_xport_namestr_fields = layout([u16("type", ID), u16("hash_function", RESERVED), u16("length", SIZE),
+    u16("variable_number", ID), chars("name", 8, STRING), chars("label", 40, STRING), chars("format", 8, STRING),
+    u16("format_width"), u16("format_decimals"), u16("justification", ID), chars("reserved1", 2, RESERVED),
+    chars("informat", 8, STRING), u16("informat_width"), u16("informat_decimals"), u32("observation_offset", OFFSET),
+    bytes("reserved2", 52, RESERVED)]);
+var sxsw_xport_namestr = sxLayout(0x602D0004, "xport_namestr", BE, sxsw_xport_namestr_fields);
+function sxsw_xport(c) {
+    var b = [];
+    var count = [0];
+    var at;
+    if (!sx_read(c, 560, b, 80) || !sxsw_text_integer(b, 54, 4, count) || count[0] < 1 || count[0] > 4096) {
+        return false;
+    }
+    var headers = [0, 240, 320, 560];
+    for (var i = 0; i < 4; i++) {
+        if (!sxsw_add(c, sxsw_xport_header_record, headers[i], 80)) {
+            return false;
+        }
+    }
+    at = sxDiv(640 + count[0] * 140 + 79, 80) * 80;
+    return sxsw_table(c, sxsw_xport_namestr, 640, 140, (count[0] < 0 ? count[0] + SX_U64_MAX : count[0])) && sxsw_add(c, sxsw_xport_header_record, at, 80);
+}
+function sx_sas_xport_build(c) {
+    return sxsw_xport(c);
+}

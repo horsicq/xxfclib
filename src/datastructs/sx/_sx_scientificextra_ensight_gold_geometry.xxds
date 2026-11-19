@@ -1,0 +1,87 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/ensight_gold_geometry/xx_ensight_gold_geometry_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_ensight_header_fields = layout([chars("encoding", 80, SIGNATURE), chars("description1", 80, STRING),
+    chars("description2", 80, STRING), chars("node_id_mode", 80, ID), chars("element_id_mode", 80, ID)]);
+var sxscx_ensight_header = sxLayout(0x6031000D, "ensight_header", LE, sxscx_ensight_header_fields);
+var sxscx_ensight_part_fields = layout([chars("part_marker", 80, SIGNATURE), i32("part_id", ID),
+    chars("description", 80, STRING), chars("coordinates_marker", 80, SIGNATURE), i32("node_count", COUNT)]);
+var sxscx_ensight_part = sxLayout(0x6031000E, "ensight_part", LE, sxscx_ensight_part_fields);
+var sxscx_ensight_elements_fields = layout([chars("element_type", 80, ID), i32("element_count", COUNT)]);
+var sxscx_ensight_elements = sxLayout(0x6031000F, "ensight_elements", LE, sxscx_ensight_elements_fields);
+var sxscx_ensight_given_id_fields = layout([i32("identifier", ID)]);
+var sxscx_ensight_given_id = sxLayout(0x60310010, "ensight_given_id", LE, sxscx_ensight_given_id_fields);
+var sxscx_ensight_coordinate_fields = layout([field("coordinate", "float32", 4)]);
+var sxscx_ensight_coordinate = sxLayout(0x60310011, "ensight_coordinate", LE, sxscx_ensight_coordinate_fields);
+var sxscx_ensight_connectivity_fields = layout([i32("local_node_index")]);
+var sxscx_ensight_connectivity = sxLayout(0x60310012, "ensight_connectivity", LE, sxscx_ensight_connectivity_fields);
+var sxscx_ensight_names = ["point", "bar2", "tria3", "quad4", "tetra4", "pyramid5", "penta6", "hexa8"];
+var sxscx_ensight_widths = [1, 2, 3, 4, 4, 5, 6, 8];
+function sxscx_ensight(c, b, n) {
+    if (n < 400 || !sxscx_add(c, sxscx_ensight_header, 0)) {
+        return false;
+    }
+    var nodeids = !sxMemcmpAt(b, 240, "node id given", 0, 13);
+    var elementids = !sxMemcmpAt(b, 320, "element id given", 0, 16);
+    var at = 400;
+    for (var part = 0; at < n && part < 1000; part++) {
+        if (!sxscx_span(c, at, 248) || !sxscx_add(c, sxscx_ensight_part, at)) {
+            return false;
+        }
+        var nodes = sxscx32(b, at + 244, false);
+        at += 248;
+        if (!nodes || nodes > 1000000) {
+            return false;
+        }
+        if (nodeids) {
+            if (!sxscx_table(c, sxscx_ensight_given_id, at, nodes)) {
+                return false;
+            }
+            at += nodes * 4;
+        }
+        if (!sxscx_table(c, sxscx_ensight_coordinate, at, nodes * 3)) {
+            return false;
+        }
+        at += nodes * 12;
+        while (at < n) {
+            if (!sxscx_span(c, at, 80)) {
+                return false;
+            }
+            if (!sxMemcmpAt(b, at, "part", 0, 4)) {
+                break;
+            }
+            var arity = 0;
+            for (var i = 0; i < 8; i++) {
+                if (!sxMemcmpAt(b, at, sxscx_ensight_names[i], 0, sxStrlen(sxscx_ensight_names[i]))) {
+                    arity = sxscx_ensight_widths[i];
+                    break;
+                }
+            }
+            if (!arity || !sxscx_span(c, at, 84) || !sxscx_add(c, sxscx_ensight_elements, at)) {
+                return false;
+            }
+            var count = sxscx32(b, at + 80, false);
+            if (!count || count > 1000000) {
+                return false;
+            }
+            at += 84;
+            if (elementids) {
+                if (!sxscx_table(c, sxscx_ensight_given_id, at, count)) {
+                    return false;
+                }
+                at += count * 4;
+            }
+            if (!sxscx_table(c, sxscx_ensight_connectivity, at, count * arity)) {
+                return false;
+            }
+            at += count * arity * 4;
+        }
+    }
+    return at === n;
+}
+function sx_ensight_gold_geometry_build(c, b) {
+    return sxscx_ensight(c, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

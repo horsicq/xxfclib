@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/vgm_log/xx_vgm_log_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxau_vgm_header_fields = layout([chars("magic", 4, SIGNATURE), u32("eof_offset", OFFSET), u32("version", ID),
+    u32("sn76489_clock"), u32("ym2413_clock"), u32("gd3_offset", OFFSET), u32("total_samples", COUNT),
+    u32("loop_offset", OFFSET), u32("loop_samples", COUNT), u32("rate"), u16("sn76489_feedback", FLAGS),
+    u8("sn76489_shift_width"), u8("sn76489_flags", FLAGS), u32("ym2612_clock"), u32("ym2151_clock"), u32("data_offset", OFFSET),
+    u32("sega_pcm_clock"), u32("sega_pcm_interface", FLAGS)]);
+var sxau_vgm_header = sxLayout(0x602C001F, "vgm_header", LE, sxau_vgm_header_fields);
+var sxau_vgm_gd3_fields = layout([chars("magic", 4, SIGNATURE), u32("version", ID), u32("text_bytes", SIZE)]);
+var sxau_vgm_gd3 = sxLayout(0x602C0020, "vgm_gd3", LE, sxau_vgm_gd3_fields);
+var sxau_vgm_command_fields = layout([u8("opcode", ID)]);
+var sxau_vgm_command = sxLayout(0x602C0021, "vgm_command", LE, sxau_vgm_command_fields);
+var sxau_vgm_register8_fields = layout([u8("opcode", ID), u8("value", FLAGS)]);
+var sxau_vgm_register8 = sxLayout(0x602C0022, "vgm_register8", LE, sxau_vgm_register8_fields);
+var sxau_vgm_register16_fields = layout([u8("opcode", ID), u8("register", ID), u8("value", FLAGS)]);
+var sxau_vgm_register16 = sxLayout(0x602C0023, "vgm_register16", LE, sxau_vgm_register16_fields);
+var sxau_vgm_wait_fields = layout([u8("opcode", ID), u16("wait_samples", COUNT)]);
+var sxau_vgm_wait = sxLayout(0x602C0024, "vgm_wait", LE, sxau_vgm_wait_fields);
+var sxau_vgm_data_block_fields = layout([u8("opcode", ID), u8("compatibility", SIGNATURE), u8("block_type", ID),
+    u32("data_bytes", SIZE)]);
+var sxau_vgm_data_block = sxLayout(0x602C0025, "vgm_data_block", LE, sxau_vgm_data_block_fields);
+var sxau_vgm_pcm_seek_fields = layout([u8("opcode", ID), u32("pcm_bank_offset", OFFSET)]);
+var sxau_vgm_pcm_seek = sxLayout(0x602C0026, "vgm_pcm_seek", LE, sxau_vgm_pcm_seek_fields);
+var sxau_vgm_dac_setup_fields = layout([u8("opcode", ID), u8("stream_id", ID), u8("chip_type", ID), u8("port", ID),
+    u8("command", ID)]);
+var sxau_vgm_dac_setup = sxLayout(0x602C0027, "vgm_dac_setup", LE, sxau_vgm_dac_setup_fields);
+var sxau_vgm_dac_data_fields = layout([u8("opcode", ID), u8("stream_id", ID), u8("data_bank", ID), u8("step_size", SIZE),
+    u8("step_base", OFFSET)]);
+var sxau_vgm_dac_data = sxLayout(0x602C0028, "vgm_dac_data", LE, sxau_vgm_dac_data_fields);
+var sxau_vgm_dac_frequency_fields = layout([u8("opcode", ID), u8("stream_id", ID), u32("frequency")]);
+var sxau_vgm_dac_frequency = sxLayout(0x602C0029, "vgm_dac_frequency", LE, sxau_vgm_dac_frequency_fields);
+var sxau_vgm_dac_start_fields = layout([u8("opcode", ID), u8("stream_id", ID), u32("data_start_offset", OFFSET),
+    u8("length_mode", FLAGS), u32("data_length")]);
+var sxau_vgm_dac_start = sxLayout(0x602C002A, "vgm_dac_start", LE, sxau_vgm_dac_start_fields);
+var sxau_vgm_dac_stop_fields = layout([u8("opcode", ID), u8("stream_id", ID)]);
+var sxau_vgm_dac_stop = sxLayout(0x602C002B, "vgm_dac_stop", LE, sxau_vgm_dac_stop_fields);
+var sxau_vgm_dac_fast_start_fields = layout([u8("opcode", ID), u8("stream_id", ID), u16("block_id", ID), u8("flags", FLAGS)]);
+var sxau_vgm_dac_fast_start = sxLayout(0x602C002C, "vgm_dac_fast_start", LE, sxau_vgm_dac_fast_start_fields);
+var sxau_vgm_a = [sxau_vgm_dac_setup, sxau_vgm_dac_data, sxau_vgm_dac_frequency, sxau_vgm_dac_start, sxau_vgm_dac_stop,
+    sxau_vgm_dac_fast_start];
+var sxau_vgm_lens = [5, 5, 6, 11, 2, 5];
+function sxau_vgm(v) {
+    if (!sxau_row(v, sxau_vgm_header, 0, v.n)) {
+        return false;
+    }
+    var ver = sxau_u32(v.p, 8, false);
+    var rel = sxau_u32(v.p, 52, false);
+    var at = ver >= 0x150 && rel ? 52 + rel : 64;
+    var gd3 = sxau_u32(v.p, 20, false);
+    if (gd3) {
+        gd3 += 20;
+        if (!sxau_row(v, sxau_vgm_gd3, gd3, v.n) || !sxau_need(v, gd3 + 12, sxau_u32(v.p, gd3 + 8, false), v.n)) {
+            return false;
+        }
+    }
+    var end = gd3 ? gd3 : v.n;
+    if (at < 64 || at >= end) {
+        return false;
+    }
+    while (at < end) {
+        var op = v.p[at];
+        var l = sxau_vgm_command;
+        var z = 1;
+        if (op === 0x4F || op === 0x50) {
+            l = sxau_vgm_register8;
+            z = 2;
+        } else if (op >= 0x51 && op <= 0x5F) {
+            l = sxau_vgm_register16;
+            z = 3;
+        } else if (op === 0x61) {
+            l = sxau_vgm_wait;
+            z = 3;
+        } else if (op === 0x67) {
+            l = sxau_vgm_data_block;
+            z = 7;
+        } else if (op === 0xE0) {
+            l = sxau_vgm_pcm_seek;
+            z = 5;
+        } else if (op >= 0x90 && op <= 0x95) {
+            l = sxau_vgm_a[(op - 0x90) >>> 0];
+            z = sxau_vgm_lens[(op - 0x90) >>> 0];
+        } else if (!(op === 0x62 || op === 0x63 || op === 0x66 || op >= 0x70 && op <= 0x8F)) {
+            return false;
+        }
+        if (!sxau_row(v, l, at, end)) {
+            return false;
+        }
+        if (op === 0x67) {
+            var bytes = sxau_u32(v.p, at + 3, false);
+            if (!sxau_need(v, at + 7, bytes, end)) {
+                return false;
+            }
+            z += bytes;
+        }
+        at += z;
+        if (op === 0x66) {
+            return at === end;
+        }
+    }
+    return false;
+}
+function sx_vgm_log_build(v) {
+    return sxau_vgm(v);
+}

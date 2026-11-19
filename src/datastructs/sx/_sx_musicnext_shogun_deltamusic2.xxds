@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/shogun_deltamusic2/xx_shogun_deltamusic2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmn_d2_marker_fields = layout([chars("magic", 4, SIGNATURE)]);
+var sxmn_d2_marker = sxLayout(0x60760067, "d2_marker", LE, sxmn_d2_marker_fields);
+var sxmn_d2_arpeggio_fields = layout([i8("semitones")]);
+var sxmn_d2_arpeggio = sxLayout(0x60760068, "d2_arpeggio", LE, sxmn_d2_arpeggio_fields);
+var sxmn_d2_track_header_fields = layout([u16("restart_bytes", OFFSET), u16("track_bytes", SIZE)]);
+var sxmn_d2_track_header = sxLayout(0x60760069, "d2_track_header", BE, sxmn_d2_track_header_fields);
+var sxmn_d2_track_fields = layout([u8("pattern", ID), i8("transpose")]);
+var sxmn_d2_track = sxLayout(0x6076006A, "d2_track", LE, sxmn_d2_track_fields);
+var sxmn_d2_pattern_size_fields = layout([u32("patterns_bytes", SIZE)]);
+var sxmn_d2_pattern_size = sxLayout(0x6076006B, "d2_pattern_size", BE, sxmn_d2_pattern_size_fields);
+var sxmn_d2_pattern_fields = layout([u8("note", ID), u8("sample", ID), u8("effect", ID), u8("parameter")]);
+var sxmn_d2_pattern = sxLayout(0x6076006C, "d2_pattern", LE, sxmn_d2_pattern_fields);
+function sxmn_d2(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = 4058;
+    var total = 0;
+    if (!sxmn_row(v, sxmn_d2_marker, 3014, end) || !sxmn_table(v, sxmn_d2_arpeggio, 3018, 1024, end) || !sxmn_table(v, sxmn_d2_track_header, 4042, 4, end)) {
+        return false;
+    }
+    for (var i = 0; i < 4; i++) {
+        var z = [0];
+        if (!sxmn_word(v, (4044 + ((4 * i) >>> 0)) >>> 0, 2, true, z, 0, end) || z[0] % 2) {
+            return false;
+        }
+        total += z[0];
+    }
+    if (!sxmn_table(v, sxmn_d2_track, at, Math.floor(total / 2), end)) {
+        return false;
+    }
+    at += total;
+    z = [0];
+    if (!sxmn_row(v, sxmn_d2_pattern_size, at, end) || !sxmn_word(v, at, 4, true, z, 0, end) || z[0] % 4 || !sxmn_table(v, sxmn_d2_pattern, at + 4, Math.floor(z[0] / 4), end)) {
+        return false;
+    }
+    at += 4 + z[0];
+    if (!sxmn_table(v, sxmn_d2_instrument_offset, at, 128, end)) {
+        return false;
+    }
+    var base = at + 256;
+    var sentinel = [0];
+    var seen = sxZeros(129);
+    var n = 1;
+    if (!sxmn_word(v, at + 254, 2, true, sentinel, 0, end)) {
+        return false;
+    }
+    for (i = 0; i < 128; i++) {
+        var rel = [0];
+        if (!sxmn_word(v, at + ((2 * i) >>> 0), 2, true, rel, 0, end)) {
+            return false;
+        }
+        if (rel[0] === sentinel[0]) {
+            continue;
+        }
+        var found = false;
+        for (var j = 0; j < n; j++) {
+            if (seen[j] === rel[0]) {
+                found = true;
+            }
+        }
+        if (!found) {
+            seen[n++] = rel[0];
+        }
+    }
+    for (i = 0; i < n; i++) {
+        if (!sxmn_row(v, sxmn_d2_instrument, base + seen[i], end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_shogun_deltamusic2_build(v) {
+    return sxmn_d2(v);
+}

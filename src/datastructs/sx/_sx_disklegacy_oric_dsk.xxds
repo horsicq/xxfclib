@@ -1,0 +1,23 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/oric_dsk/xx_oric_dsk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdleg_oric_sector_header_fields = layout([chars("magic", 8, SIGNATURE), u32("side_count", COUNT),
+    u32("cylinder_count", COUNT), u32("sectors_per_track", COUNT), field("opaque_header", "byte[236]", 236)]);
+var sxdleg_oric_sector_header = sxLayout(0x6075002F, "oric_sector_header", LE, sxdleg_oric_sector_header_fields);
+var sxdleg_oric_mfm_header_fields = layout([chars("magic", 8, SIGNATURE), u32("side_count", COUNT),
+    u32("cylinder_count", COUNT), u32("geometry_order", ID), field("opaque_header", "byte[236]", 236)]);
+var sxdleg_oric_mfm_header = sxLayout(0x60750030, "oric_mfm_header", LE, sxdleg_oric_mfm_header_fields);
+function sxdleg_oric(c) {
+    var h = [];
+    if (!sxdleg_read(c, 0, h, 0, 8)) {
+        return false;
+    }
+    var l = !sxMemcmp(h, "ORICDISK", 8) ? sxdleg_oric_sector_header : !sxMemcmp(h, "MFM_DISK", 8) ? sxdleg_oric_mfm_header : null;
+    return l !== null && sxdleg_put(c, l, 0, 1);
+}
+function sx_oric_dsk_build(c) {
+    return sxdleg_oric(c);
+}

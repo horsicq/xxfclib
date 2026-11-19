@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_binaryresources.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_binaryresources");
+include("_sx_binaryresources_android_lp");
+include("_sx_binaryresources_evd");
+include("_sx_binaryresources_fss");
+include("_sx_binaryresources_mwave");
+include("_sx_binaryresources_nokia_ota_bitmap");
+include("_sx_binaryresources_pcxlib");
+include("_sx_binaryresources_px");
+include("_sx_binaryresources_qnxbase");
+include("_sx_binaryresources_sony_image");
+include("_sx_binaryresources_torque_dts");
+include("_sx_binaryresources_uboot");
+include("_sx_binaryresources_vxworks");
+
+function fileTypes() { return ["QNXBASE", "VXWORKS", "MWAVE", "PCXLIB", "UBOOT_ENV", "TORQUE_DTS", "NOKIA_OTA_BITMAP", "FSS",
+    "ANDROID_LP", "PX", "EVD", "SONY_IMAGE"]; }
+
+var sx_binaryresources_layouts = [sxbrs_ota_bitmap_short, sxbrs_ota_bitmap_extended, sxbrs_lp_geometry, sxbrs_lp_header,
+    sxbrs_lp_header_extended, sxbrs_lp_partition, sxbrs_lp_extent, sxbrs_lp_group, sxbrs_lp_block_device, sxbrs_dts_header,
+    sxbrs_dts_counts, sxbrs_dts_bounds, sxbrs_dts_node, sxbrs_dts_subshape_first, sxbrs_dts_subshape_count, sxbrs_dts_rotation,
+    sxbrs_dts_translation, sxbrs_dts_guard32, sxbrs_dts_guard16, sxbrs_dts_guard8, sxbrs_dts_name_byte, sxbrs_dts_footer,
+    sxbrs_vxworks_symbol_le, sxbrs_vxworks_symbol_be, sxbrs_mwave_header, sxbrs_pcxlib_header, sxbrs_pcxlib_member,
+    sxbrs_qnx_startup_prefix, sxbrs_qnx_startup_header, sxbrs_qnx_block, sxbrs_uboot_env_le, sxbrs_uboot_redundant_env_le,
+    sxbrs_uboot_env_be, sxbrs_uboot_redundant_env_be, sxbrs_uboot_key_byte, sxbrs_uboot_value_byte, sxbrs_uboot_separator,
+    sxbrs_uboot_terminator, sxbrs_fss_header, sxbrs_fss_record, sxbrs_fss_end, sxbrs_px_header, sxbrs_px_block, sxbrs_px_count,
+    sxbrs_px_record, sxbrs_evd_header, sxbrs_evd_record, sxbrs_sony_image_header, sxbrs_sony_image_zlib_marker,
+    sxbrs_resource_zlib_header, sxbrs_resource_zlib_trailer];
+
+function structs() {
+    return sxCatalog([sxbrs_ota_bitmap_short, sxbrs_ota_bitmap_extended, sxbrs_lp_geometry, sxbrs_lp_header,
+        sxbrs_lp_header_extended, sxbrs_lp_partition, sxbrs_lp_extent, sxbrs_lp_group, sxbrs_lp_block_device, sxbrs_dts_header,
+        sxbrs_dts_counts, sxbrs_dts_bounds, sxbrs_dts_node, sxbrs_dts_subshape_first, sxbrs_dts_subshape_count,
+        sxbrs_dts_rotation, sxbrs_dts_translation, sxbrs_dts_guard32, sxbrs_dts_guard16, sxbrs_dts_guard8, sxbrs_dts_name_byte,
+        sxbrs_dts_footer, sxbrs_vxworks_symbol_le, sxbrs_vxworks_symbol_be, sxbrs_mwave_header, sxbrs_pcxlib_header,
+        sxbrs_pcxlib_member, sxbrs_qnx_startup_prefix, sxbrs_qnx_startup_header, sxbrs_qnx_block, sxbrs_uboot_env_le,
+        sxbrs_uboot_redundant_env_le, sxbrs_uboot_env_be, sxbrs_uboot_redundant_env_be, sxbrs_uboot_key_byte,
+        sxbrs_uboot_value_byte, sxbrs_uboot_separator, sxbrs_uboot_terminator, sxbrs_fss_header, sxbrs_fss_record,
+        sxbrs_fss_end, sxbrs_px_header, sxbrs_px_block, sxbrs_px_count, sxbrs_px_record, sxbrs_evd_header, sxbrs_evd_record,
+        sxbrs_sony_image_header, sxbrs_sony_image_zlib_marker, sxbrs_resource_zlib_header, sxbrs_resource_zlib_trailer], sx_binaryresources_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_binaryresources_build, false);
+}

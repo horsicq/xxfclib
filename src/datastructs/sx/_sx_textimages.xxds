@@ -1,0 +1,924 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_textimages.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxti_magic_fields = layout([field("magic", "char", 0, SIGNATURE)]);
+var sxti_magic = sxLayout(0x60410001, "textimage_magic", LE, sxti_magic_fields);
+var sxti_version_fields = layout([field("version", "char", 0, STRING)]);
+var sxti_version = sxLayout(0x60410002, "textimage_version", LE, sxti_version_fields);
+var sxti_byte_order_fields = layout([field("byte_order", "char", 0, STRING)]);
+var sxti_byte_order = sxLayout(0x60410004, "textimage_byte_order", LE, sxti_byte_order_fields);
+var sxti_sample_sign_fields = layout([field("sample_sign", "char", 0, STRING)]);
+var sxti_sample_sign = sxLayout(0x60410005, "textimage_sample_sign", LE, sxti_sample_sign_fields);
+var sxti_lut_dimension_fields = layout([field("lut_dimension", "char", 0, STRING)]);
+var sxti_lut_dimension = sxLayout(0x60410008, "textimage_lut_dimension", LE, sxti_lut_dimension_fields);
+var sxti_define_name_fields = layout([field("define_name", "char", 0, STRING)]);
+var sxti_define_name = sxLayout(0x6041000E, "textimage_define_name", LE, sxti_define_name_fields);
+var sxti_name_fields = layout([field("name", "utf8", 0, STRING)]);
+var sxti_name = sxLayout(0x6041000F, "textimage_name", LE, sxti_name_fields);
+var sxti_title_fields = layout([field("title", "utf8", 0, STRING)]);
+var sxti_title = sxLayout(0x60410010, "textimage_title", LE, sxti_title_fields);
+var sxti_color_name_fields = layout([field("color_name", "utf8", 0, STRING)]);
+var sxti_color_name = sxLayout(0x60410011, "textimage_color_name", LE, sxti_color_name_fields);
+var sxti_metadata_text_fields = layout([field("metadata_text", "utf8", 0, STRING)]);
+var sxti_metadata_text = sxLayout(0x60410012, "textimage_metadata_text", LE, sxti_metadata_text_fields);
+var sxti_width_fields = layout([field("width", "ascii_signed", 0)]);
+var sxti_width = sxLayout(0x60410014, "textimage_width", LE, sxti_width_fields);
+var sxti_height_fields = layout([field("height", "ascii_signed", 0)]);
+var sxti_height = sxLayout(0x60410015, "textimage_height", LE, sxti_height_fields);
+var sxti_precision_fields = layout([field("precision", "ascii_signed", 0)]);
+var sxti_precision = sxLayout(0x60410018, "textimage_precision", LE, sxti_precision_fields);
+var sxti_columns_fields = layout([field("columns", "ascii_signed", 0)]);
+var sxti_columns = sxLayout(0x60410019, "textimage_columns", LE, sxti_columns_fields);
+var sxti_color_count_fields = layout([field("color_count", "ascii_signed", 0, COUNT)]);
+var sxti_color_count = sxLayout(0x6041001A, "textimage_color_count", LE, sxti_color_count_fields);
+var sxti_segment_count_fields = layout([field("segment_count", "ascii_signed", 0, COUNT)]);
+var sxti_segment_count = sxLayout(0x6041001B, "textimage_segment_count", LE, sxti_segment_count_fields);
+var sxti_hotspot_x_fields = layout([field("hotspot_x", "ascii_signed", 0)]);
+var sxti_hotspot_x = sxLayout(0x60410026, "textimage_hotspot_x", LE, sxti_hotspot_x_fields);
+var sxti_hotspot_y_fields = layout([field("hotspot_y", "ascii_signed", 0)]);
+var sxti_hotspot_y = sxLayout(0x60410027, "textimage_hotspot_y", LE, sxti_hotspot_y_fields);
+var sxti_lut_length_fields = layout([field("lut_length", "ascii_signed", 0, COUNT)]);
+var sxti_lut_length = sxLayout(0x60410028, "textimage_lut_length", LE, sxti_lut_length_fields);
+var sxti_components_fields = layout([field("components", "ascii_signed", 0, COUNT)]);
+var sxti_components = sxLayout(0x60410029, "textimage_components", LE, sxti_components_fields);
+var sxti_input_components_fields = layout([field("input_components", "ascii_signed", 0)]);
+var sxti_input_components = sxLayout(0x6041002A, "textimage_input_components", LE, sxti_input_components_fields);
+var sxti_output_components_fields = layout([field("output_components", "ascii_signed", 0)]);
+var sxti_output_components = sxLayout(0x6041002B, "textimage_output_components", LE, sxti_output_components_fields);
+var sxti_red_size_fields = layout([field("red_size", "ascii_signed", 0)]);
+var sxti_red_size = sxLayout(0x6041002C, "textimage_red_size", LE, sxti_red_size_fields);
+var sxti_green_size_fields = layout([field("green_size", "ascii_signed", 0)]);
+var sxti_green_size = sxLayout(0x6041002D, "textimage_green_size", LE, sxti_green_size_fields);
+var sxti_blue_size_fields = layout([field("blue_size", "ascii_signed", 0)]);
+var sxti_blue_size = sxLayout(0x6041002E, "textimage_blue_size", LE, sxti_blue_size_fields);
+var sxti_prelut_count_fields = layout([field("prelut_count", "ascii_signed", 0, COUNT)]);
+var sxti_prelut_count = sxLayout(0x6041002F, "textimage_prelut_count", LE, sxti_prelut_count_fields);
+var sxti_red_index_fields = layout([field("red_index", "ascii_signed", 0)]);
+var sxti_red_index = sxLayout(0x60410030, "textimage_red_index", LE, sxti_red_index_fields);
+var sxti_green_index_fields = layout([field("green_index", "ascii_signed", 0)]);
+var sxti_green_index = sxLayout(0x60410031, "textimage_green_index", LE, sxti_green_index_fields);
+var sxti_blue_index_fields = layout([field("blue_index", "ascii_signed", 0)]);
+var sxti_blue_index = sxLayout(0x60410032, "textimage_blue_index", LE, sxti_blue_index_fields);
+var sxti_red_fields = layout([field("red", "ascii_real", 0)]);
+var sxti_red = sxLayout(0x60410034, "textimage_red", LE, sxti_red_fields);
+var sxti_green_fields = layout([field("green", "ascii_real", 0)]);
+var sxti_green = sxLayout(0x60410035, "textimage_green", LE, sxti_green_fields);
+var sxti_blue_fields = layout([field("blue", "ascii_real", 0)]);
+var sxti_blue = sxLayout(0x60410036, "textimage_blue", LE, sxti_blue_fields);
+var sxti_scale_fields = layout([field("scale", "ascii_real", 0)]);
+var sxti_scale = sxLayout(0x60410037, "textimage_scale", LE, sxti_scale_fields);
+var sxti_domain_min_red_fields = layout([field("domain_min_red", "ascii_real", 0)]);
+var sxti_domain_min_red = sxLayout(0x60410038, "textimage_domain_min_red", LE, sxti_domain_min_red_fields);
+var sxti_domain_min_green_fields = layout([field("domain_min_green", "ascii_real", 0)]);
+var sxti_domain_min_green = sxLayout(0x60410039, "textimage_domain_min_green", LE, sxti_domain_min_green_fields);
+var sxti_domain_min_blue_fields = layout([field("domain_min_blue", "ascii_real", 0)]);
+var sxti_domain_min_blue = sxLayout(0x6041003A, "textimage_domain_min_blue", LE, sxti_domain_min_blue_fields);
+var sxti_domain_max_red_fields = layout([field("domain_max_red", "ascii_real", 0)]);
+var sxti_domain_max_red = sxLayout(0x6041003B, "textimage_domain_max_red", LE, sxti_domain_max_red_fields);
+var sxti_domain_max_green_fields = layout([field("domain_max_green", "ascii_real", 0)]);
+var sxti_domain_max_green = sxLayout(0x6041003C, "textimage_domain_max_green", LE, sxti_domain_max_green_fields);
+var sxti_domain_max_blue_fields = layout([field("domain_max_blue", "ascii_real", 0)]);
+var sxti_domain_max_blue = sxLayout(0x6041003D, "textimage_domain_max_blue", LE, sxti_domain_max_blue_fields);
+var sxti_from_min_fields = layout([field("from_min", "ascii_real", 0)]);
+var sxti_from_min = sxLayout(0x6041003E, "textimage_from_min", LE, sxti_from_min_fields);
+var sxti_from_max_fields = layout([field("from_max", "ascii_real", 0)]);
+var sxti_from_max = sxLayout(0x6041003F, "textimage_from_max", LE, sxti_from_max_fields);
+var sxti_prelut_input_fields = layout([field("prelut_input", "ascii_real", 0)]);
+var sxti_prelut_input = sxLayout(0x60410040, "textimage_prelut_input", LE, sxti_prelut_input_fields);
+var sxti_prelut_output_fields = layout([field("prelut_output", "ascii_real", 0)]);
+var sxti_prelut_output = sxLayout(0x60410041, "textimage_prelut_output", LE, sxti_prelut_output_fields);
+var sxti_left_fields = layout([field("left", "ascii_real", 0)]);
+var sxti_left = sxLayout(0x60410042, "textimage_left", LE, sxti_left_fields);
+var sxti_middle_fields = layout([field("middle", "ascii_real", 0)]);
+var sxti_middle = sxLayout(0x60410043, "textimage_middle", LE, sxti_middle_fields);
+var sxti_right_fields = layout([field("right", "ascii_real", 0)]);
+var sxti_right = sxLayout(0x60410044, "textimage_right", LE, sxti_right_fields);
+var sxti_left_red_fields = layout([field("left_red", "ascii_real", 0)]);
+var sxti_left_red = sxLayout(0x60410045, "textimage_left_red", LE, sxti_left_red_fields);
+var sxti_left_green_fields = layout([field("left_green", "ascii_real", 0)]);
+var sxti_left_green = sxLayout(0x60410046, "textimage_left_green", LE, sxti_left_green_fields);
+var sxti_left_blue_fields = layout([field("left_blue", "ascii_real", 0)]);
+var sxti_left_blue = sxLayout(0x60410047, "textimage_left_blue", LE, sxti_left_blue_fields);
+var sxti_left_alpha_fields = layout([field("left_alpha", "ascii_real", 0)]);
+var sxti_left_alpha = sxLayout(0x60410048, "textimage_left_alpha", LE, sxti_left_alpha_fields);
+var sxti_right_red_fields = layout([field("right_red", "ascii_real", 0)]);
+var sxti_right_red = sxLayout(0x60410049, "textimage_right_red", LE, sxti_right_red_fields);
+var sxti_right_green_fields = layout([field("right_green", "ascii_real", 0)]);
+var sxti_right_green = sxLayout(0x6041004A, "textimage_right_green", LE, sxti_right_green_fields);
+var sxti_right_blue_fields = layout([field("right_blue", "ascii_real", 0)]);
+var sxti_right_blue = sxLayout(0x6041004B, "textimage_right_blue", LE, sxti_right_blue_fields);
+var sxti_right_alpha_fields = layout([field("right_alpha", "ascii_real", 0)]);
+var sxti_right_alpha = sxLayout(0x6041004C, "textimage_right_alpha", LE, sxti_right_alpha_fields);
+var sxti_rgb8_red_fields = layout([field("rgb8_red", "ascii_signed", 0)]);
+var sxti_rgb8_red = sxLayout(0x6041004D, "textimage_rgb8_red", LE, sxti_rgb8_red_fields);
+var sxti_rgb8_green_fields = layout([field("rgb8_green", "ascii_signed", 0)]);
+var sxti_rgb8_green = sxLayout(0x6041004E, "textimage_rgb8_green", LE, sxti_rgb8_green_fields);
+var sxti_rgb8_blue_fields = layout([field("rgb8_blue", "ascii_signed", 0)]);
+var sxti_rgb8_blue = sxLayout(0x6041004F, "textimage_rgb8_blue", LE, sxti_rgb8_blue_fields);
+var sxti_blending_fields = layout([field("blending", "ascii_signed", 0, ID)]);
+var sxti_blending = sxLayout(0x60410051, "textimage_blending", LE, sxti_blending_fields);
+var sxti_coloring_fields = layout([field("coloring", "ascii_signed", 0, ID)]);
+var sxti_coloring = sxLayout(0x60410052, "textimage_coloring", LE, sxti_coloring_fields);
+var sxti_left_color_type_fields = layout([field("left_color_type", "ascii_signed", 0, ID)]);
+var sxti_left_color_type = sxLayout(0x60410053, "textimage_left_color_type", LE, sxti_left_color_type_fields);
+var sxti_right_color_type_fields = layout([field("right_color_type", "ascii_signed", 0, ID)]);
+var sxti_right_color_type = sxLayout(0x60410054, "textimage_right_color_type", LE, sxti_right_color_type_fields);
+var sxti_bitmap_byte_fields = layout([field("bitmap_byte", "ascii_hex", 0, FLAGS)]);
+var sxti_bitmap_byte = sxLayout(0x60410056, "textimage_bitmap_byte", LE, sxti_bitmap_byte_fields);
+var sxti_sample_u8_fields = layout([u8("sample")]);
+var sxti_sample_u8 = sxLayout(0x60410057, "textimage_sample_u8", LE, sxti_sample_u8_fields);
+var sxti_sample_u16_be_fields = layout([u16("sample")]);
+var sxti_sample_u16_be = sxLayout(0x60410058, "textimage_sample_u16_be", BE, sxti_sample_u16_be_fields);
+var sxti_sample_u16_le_fields = layout([u16("sample")]);
+var sxti_sample_u16_le = sxLayout(0x60410059, "textimage_sample_u16_le", LE, sxti_sample_u16_le_fields);
+var sxti_sample_i8_fields = layout([i8("sample")]);
+var sxti_sample_i8 = sxLayout(0x6041005A, "textimage_sample_i8", LE, sxti_sample_i8_fields);
+var sxti_sample_i16_be_fields = layout([i16("sample")]);
+var sxti_sample_i16_be = sxLayout(0x6041005B, "textimage_sample_i16_be", BE, sxti_sample_i16_be_fields);
+var sxti_sample_i16_le_fields = layout([i16("sample")]);
+var sxti_sample_i16_le = sxLayout(0x6041005C, "textimage_sample_i16_le", LE, sxti_sample_i16_le_fields);
+var sxti_sample_float_be_fields = layout([field("sample", "float32", 4)]);
+var sxti_sample_float_be = sxLayout(0x6041005D, "textimage_sample_float_be", BE, sxti_sample_float_be_fields);
+var sxti_sample_float_le_fields = layout([field("sample", "float32", 4)]);
+var sxti_sample_float_le = sxLayout(0x6041005E, "textimage_sample_float_le", LE, sxti_sample_float_le_fields);
+var sx_textimages_comment_names = ["LINEAR", "CURVED", "SINE", "SPHERE_INCREASING", "SPHERE_DECREASING", "STEP"];
+var sx_textimages_comment_names_2 = ["RGB", "HSV_COUNTERCLOCKWISE", "HSV_CLOCKWISE"];
+var sx_textimages_comment_names_3 = ["FIXED", "FOREGROUND", "FOREGROUND_TRANSPARENT", "BACKGROUND", "BACKGROUND_TRANSPARENT"];
+var sx_textimages_comment_names_4 = ["FIXED", "FOREGROUND", "FOREGROUND_TRANSPARENT", "BACKGROUND", "BACKGROUND_TRANSPARENT"];
+function sx_textimages_comment(r, id) {
+    if (r === null) {
+        return false;
+    }
+    switch (id) {
+    case 0x60410037:
+        return sxSetComment(r, "PFM scale: negative selects little endian; positive selects big endian. Magnitude is the sample scale.");
+    case 0x60410055:
+        return sxSetComment(r, "Unicode scalar value; hexadecimal source text is preserved.");
+    case 0x60410056:
+        return sxSetComment(r, "Original physical ASCII hexadecimal bitmap byte; bit order is defined by the parent format.");
+    case 0x60410061:
+        return sxSetComment(r, "run_code minus128 is the repeated sample count.");
+    case 0x60410062:
+        return sxSetComment(r, "The following sample_count bytes are literal channel values.");
+    case 0x60410051:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        var v = sxVarI64(r.value);
+        return (v >= 0 && (v < 0 ? v + SX_U64_MAX : v) < 6 ? (sxSetComment(r, sx_textimages_comment_names[v]) ? 1 : 0) : 1) !== 0;
+    case 0x60410052:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        v = sxVarI64(r.value);
+        return (v >= 0 && (v < 0 ? v + SX_U64_MAX : v) < 3 ? (sxSetComment(r, sx_textimages_comment_names_2[v]) ? 1 : 0) : 1) !== 0;
+    case 0x60410053:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        v = sxVarI64(r.value);
+        return (v >= 0 && (v < 0 ? v + SX_U64_MAX : v) < 5 ? (sxSetComment(r, sx_textimages_comment_names_3[v]) ? 1 : 0) : 1) !== 0;
+    case 0x60410054:
+        if (sxVarType(r.value) !== 4 /*XX_VAR_TYPE_INT64*/) {
+            return true;
+        }
+        v = sxVarI64(r.value);
+        return (v >= 0 && (v < 0 ? v + SX_U64_MAX : v) < 5 ? (sxSetComment(r, sx_textimages_comment_names_4[v]) ? 1 : 0) : 1) !== 0;
+    default:
+        return true;
+    }
+}
+function sxti_space(x) {
+    return x === 32 || x >= 9 && x <= 13;
+}
+function sxti_emit(q, l, a, z) {
+    if (a < 0 || z < 0 || a > q.n || z > q.n - a) {
+        return false;
+    }
+    if (!z || q.c.count >= 32000) {
+        return true;
+    }
+    var limit = l.fields[0].size ? SX_I64_MAX : sxVariableLimit(l.fields[0].type);
+    if (z > limit) {
+        return true;
+    }
+    if (!l.fields[0].size && !sxStrcmp(l.fields[0].type, "ascii_hex")) {
+        var value = 0;
+        for (var i = 0; i < z; i++) {
+            var ch = q.b[a + i];
+            var digit = ch >= 48 /*0*/ && ch <= 57 /*9*/ ? (ch - 48 /*0*/) >>> 0 : ch >= 97 /*a*/ && ch <= 102 /*f*/ ? (((ch - 97 /*a*/) >>> 0) + 10) >>> 0 : ch >= 65 /*A*/ && ch <= 70 /*F*/ ? (((ch - 65 /*A*/) >>> 0) + 10) >>> 0 : 16;
+            if (digit >= 16 || value > Math.floor((SX_U64_MAX - digit) / 16)) {
+                return false;
+            }
+            value = value * 16 + digit;
+        }
+    }
+    return sx_add(q.c, l, a, z);
+}
+function sxti_token(q, end, a, z, comments) {
+    if (q.p < 0 || end > q.n || q.p > end) {
+        return false;
+    }
+    for (; ; ) {
+        while (q.p < end && sxti_space(q.b[q.p])) {
+            q.p++;
+        }
+        if (!comments || q.p === end || q.b[q.p] !== 35 /*#*/) {
+            break;
+        }
+        while (q.p < end && q.b[q.p] !== 10) {
+            q.p++;
+        }
+    }
+    if (q.p === end) {
+        return false;
+    }
+    a[0] = q.p;
+    while (q.p < end && !sxti_space(q.b[q.p]) && (!comments || q.b[q.p] !== 35 /*#*/)) {
+        q.p++;
+    }
+    z[0] = q.p - a[0];
+    return z[0] > 0;
+}
+function sxti_value(q, l, end, out) {
+    var a = [0];
+    var z = [0];
+    if (!sxti_token(q, end, a, z, true) || !sxti_emit(q, l, a[0], z[0])) {
+        return false;
+    }
+    if (out !== null) {
+        var v = 0;
+        var i = 0;
+        if (q.b[a[0]] === 43 /*+*/) {
+            i++;
+        }
+        if (i === z[0]) {
+            return false;
+        }
+        for (; i < z[0]; i++) {
+            var d = (q.b[a[0] + i] - 48 /*0*/) >>> 0;
+            if (d > 9 || v > Math.floor((SX_U64_MAX - d) / 10)) {
+                return false;
+            }
+            v = v * 10 + d;
+        }
+        out[0] = v;
+    }
+    return true;
+}
+function sxti_line(q, a, end, comments) {
+    while (q.p < q.n) {
+        var start = q.p;
+        var stop;
+        while (q.p < q.n && q.b[q.p] !== 10 && q.b[q.p] !== 13) {
+            q.p++;
+        }
+        stop = q.p;
+        if (q.p < q.n && q.b[q.p] === 13) {
+            q.p++;
+        }
+        if (q.p < q.n && q.b[q.p] === 10) {
+            q.p++;
+        }
+        if (comments) {
+            var quoted = false;
+            for (var i = start; i < stop; i++) {
+                if (q.b[i] === 92 && quoted && i + 1 < stop) {
+                    i++;
+                    continue;
+                }
+                if (q.b[i] === 34 /*"*/) {
+                    quoted = !quoted;
+                }
+                if (q.b[i] === 35 /*#*/ && !quoted) {
+                    stop = i;
+                    break;
+                }
+            }
+        }
+        while (start < stop && sxti_space(q.b[start])) {
+            start++;
+        }
+        while (stop > start && sxti_space(q.b[stop - 1])) {
+            stop--;
+        }
+        if (start < stop) {
+            a[0] = start;
+            end[0] = stop;
+            return true;
+        }
+    }
+    return false;
+}
+function sxti_eq(q, a, z, s) {
+    var n = sxStrlen(s);
+    return a >= 0 && z === (n >= SX_I64_MAX ? n - SX_U64_MAX : n) && a <= q.n && z <= q.n - a && !sxMemcmpAt(q.b, a, s, 0, n);
+}
+function sxti_values(q, a, end, layouts, count) {
+    var save = q.p;
+    q.p = a;
+    var ok = true;
+    for (var i = 0; i < count; i++) {
+        if (!sxti_value(q, layouts[i], end, null)) {
+            ok = false;
+            break;
+        }
+    }
+    q.p = save;
+    return ok;
+}
+function sxti_table(q, l, at, width, count) {
+    if (at < 0 || at > q.n || width <= 0 || count > Math.floor((q.n - at < 0 ? q.n - at + SX_U64_MAX : q.n - at) / (width < 0 ? width + SX_U64_MAX : width))) {
+        return false;
+    }
+    if (!count || q.c.count >= 32000) {
+        return true;
+    }
+    return sx_table(q.c, l, at, width, count > 65536 ? 65536 : count);
+}
+function sxti_simple_image(q, type) {
+    var a = [0];
+    var end = [0];
+    var w = [0];
+    var h = [0];
+    var prec = [8];
+    var be = false;
+    var sign = false;
+    var channels = 1;
+    if (type === "NETPBM_PFM") {
+        if (q.n < 3) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_magic, 0, 2)) {
+                return false;
+            }
+        }
+        channels = q.b[1] === 70 /*F*/ ? 3 : 1;
+        q.p = 3;
+        if (!sxti_line(q, a, end, false)) {
+            return false;
+        }
+        var next = q.p;
+        q.p = a[0];
+        {
+            if (!sxti_value(q, sxti_width, end[0], w)) {
+                return false;
+            }
+        }
+        {
+            if (!sxti_value(q, sxti_height, end[0], h)) {
+                return false;
+            }
+        }
+        q.p = next;
+        if (!sxti_line(q, a, end, false)) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_scale, a[0], end[0] - a[0])) {
+                return false;
+            }
+        }
+        be = q.b[a[0]] !== 45 /*-*/;
+        if (!w[0] || !h[0] || w[0] > Math.floor(16777216 / channels) || h[0] > Math.floor(Math.floor(16777216 / channels) / w[0])) {
+            return false;
+        }
+        return sxti_table(q, be ? sxti_sample_float_be : sxti_sample_float_le, q.p, 4, w[0] * h[0] * channels);
+    }
+    if (!sxti_line(q, a, end, false)) {
+        return false;
+    }
+    next = q.p;
+    q.p = a[0];
+    if (type === "JPEG2000_PGX") {
+        {
+            if (!sxti_value(q, sxti_magic, end[0], null)) {
+                return false;
+            }
+        }
+        var start = [0];
+        var z = [0];
+        if (!sxti_token(q, end[0], start, z, false)) {
+            return false;
+        }
+        {
+            if (!sxti_emit(q, sxti_byte_order, start[0], z[0])) {
+                return false;
+            }
+        }
+        be = sxti_eq(q, start[0], z[0], "ML");
+        while (q.p < end[0] && sxti_space(q.b[q.p])) {
+            q.p++;
+        }
+        if (q.p === end[0]) {
+            return false;
+        }
+        sign = q.b[q.p] === 45 /*-*/;
+        {
+            if (!sxti_emit(q, sxti_sample_sign, q.p, 1)) {
+                return false;
+            }
+        }
+        q.p++;
+        {
+            if (!sxti_value(q, sxti_precision, end[0], prec)) {
+                return false;
+            }
+        }
+    } else {
+        channels = 3;
+    }
+    {
+        if (!sxti_value(q, sxti_width, end[0], w)) {
+            return false;
+        }
+    }
+    {
+        if (!sxti_value(q, sxti_height, end[0], h)) {
+            return false;
+        }
+    }
+    q.p = next;
+    if (!w[0] || !h[0] || w[0] > Math.floor(16777216 / channels) || h[0] > Math.floor(Math.floor(16777216 / channels) / w[0]) || !prec[0] || prec[0] > 16) {
+        return false;
+    }
+    var width = prec[0] > 8 ? 2 : 1;
+    var l = width === 1 ? sign ? sxti_sample_i8 : sxti_sample_u8 : sign ? be ? sxti_sample_i16_be : sxti_sample_i16_le : be ? sxti_sample_u16_be : sxti_sample_u16_le;
+    return sxti_table(q, l, q.p, width, w[0] * h[0] * channels);
+}
+function sxti_palette(q, type) {
+    var a = [0];
+    var end = [0];
+    var gradient = type === "GIMP_GGR";
+    var jasc = type === "JASC_PALETTE";
+    var header = 0;
+    var rgb = [sxti_rgb8_red, sxti_rgb8_green, sxti_rgb8_blue];
+    var segment = [sxti_left, sxti_middle, sxti_right, sxti_left_red, sxti_left_green, sxti_left_blue, sxti_left_alpha, sxti_right_red, sxti_right_green, sxti_right_blue, sxti_right_alpha, sxti_blending, sxti_coloring, sxti_left_color_type, sxti_right_color_type];
+    while (sxti_line(q, a, end, false)) {
+        if (q.b[a[0]] === 35 /*#*/) {
+            continue;
+        }
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        if (!header) {
+            {
+                if (!sxti_emit(q, sxti_magic, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            header++;
+            continue;
+        }
+        if (end[0] - a[0] >= 5 && sxti_eq(q, a[0], 5, "Name:")) {
+            a[0] += 5;
+            while (a[0] < end[0] && sxti_space(q.b[a[0]])) {
+                a[0]++;
+            }
+            {
+                if (!sxti_emit(q, sxti_name, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (!gradient && !jasc && end[0] - a[0] >= 8 && sxti_eq(q, a[0], 8, "Columns:")) {
+            a[0] += 8;
+            while (a[0] < end[0] && sxti_space(q.b[a[0]])) {
+                a[0]++;
+            }
+            {
+                if (!sxti_emit(q, sxti_columns, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (jasc && header === 1) {
+            {
+                if (!sxti_emit(q, sxti_version, a[0], end[0] - a[0])) {
+                    return false;
+                }
+            }
+            header++;
+            continue;
+        }
+        if (gradient && header === 1 || jasc && header === 2) {
+            {
+                if (!sxti_emit(q, sxti_segment_count, a[0], gradient ? end[0] - a[0] : 0)) {
+                    return false;
+                }
+            }
+            if (jasc) {
+                {
+                    if (!sxti_emit(q, sxti_color_count, a[0], end[0] - a[0])) {
+                        return false;
+                    }
+                }
+            }
+            header++;
+            continue;
+        }
+        var next = q.p;
+        q.p = a[0];
+        var n = gradient ? 13 : 3;
+        for (var i = 0; i < n; i++) {
+            if (!sxti_value(q, gradient ? segment[i] : rgb[i], end[0], null)) {
+                return false;
+            }
+        }
+        while (q.p < end[0] && sxti_space(q.b[q.p])) {
+            q.p++;
+        }
+        if (gradient) {
+            if (q.p < end[0] && q.b[q.p] !== 35 /*#*/) {
+                for (i = 13; i < 15; i++) {
+                    if (!sxti_value(q, segment[i], end[0], null)) {
+                        return false;
+                    }
+                }
+            }
+        } else if (!jasc && q.p < end[0]) {
+            {
+                if (!sxti_emit(q, sxti_color_name, q.p, end[0] - q.p)) {
+                    return false;
+                }
+            }
+        }
+        q.p = next;
+    }
+    return header > 0;
+}
+function sxti_lut(q, type) {
+    var rgb = [sxti_red, sxti_green, sxti_blue];
+    var domains = [sxti_domain_min_red, sxti_domain_min_green, sxti_domain_min_blue, sxti_domain_max_red, sxti_domain_max_green, sxti_domain_max_blue];
+    var sizes = [sxti_red_size, sxti_green_size, sxti_blue_size];
+    var spirow = [sxti_red_index, sxti_green_index, sxti_blue_index, sxti_red, sxti_green, sxti_blue];
+    var a = [0];
+    var end = [0];
+    var line = 0;
+    var components = 3;
+    var data = false;
+    var metadata = false;
+    var csp_phase = 0;
+    while (sxti_line(q, a, end, !metadata)) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var next = q.p;
+        q.p = a[0];
+        var key = [0];
+        var z = [0];
+        if (!sxti_token(q, end[0], key, z, false)) {
+            return false;
+        }
+        if (type === "IRIDAS_CUBE_LUT") {
+            if (!data && sxti_eq(q, key[0], z[0], "TITLE")) {
+                while (q.p < end[0] && sxti_space(q.b[q.p])) {
+                    q.p++;
+                }
+                if (end[0] - q.p < 2 || q.b[q.p] !== 34 /*"*/ || q.b[end[0] - 1] !== 34 /*"*/) {
+                    return false;
+                }
+                {
+                    if (!sxti_emit(q, sxti_title, q.p + 1, end[0] - q.p - 2)) {
+                        return false;
+                    }
+                }
+            } else if (!data && (sxti_eq(q, key[0], z[0], "DOMAIN_MIN") || sxti_eq(q, key[0], z[0], "DOMAIN_MAX"))) {
+                var first = sxti_eq(q, key[0], z[0], "DOMAIN_MIN") ? 0 : 3;
+                for (var i = 0; i < 3; i++) {
+                    if (!sxti_value(q, domains[(first + i) >>> 0], end[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (!data && (sxti_eq(q, key[0], z[0], "LUT_1D_SIZE") || sxti_eq(q, key[0], z[0], "LUT_3D_SIZE"))) {
+                {
+                    if (!sxti_emit(q, sxti_lut_dimension, key[0] + 4, 2)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxti_value(q, sxti_lut_length, end[0], null)) {
+                        return false;
+                    }
+                }
+            } else {
+                data = true;
+                if (!sxti_values(q, a[0], end[0], rgb, 3)) {
+                    return false;
+                }
+            }
+        } else if (type === "LUT_SPI1D") {
+            if (!data && sxti_eq(q, key[0], z[0], "Version")) {
+                {
+                    if (!sxti_value(q, sxti_version, end[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (!data && sxti_eq(q, key[0], z[0], "From")) {
+                {
+                    if (!sxti_value(q, sxti_from_min, end[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxti_value(q, sxti_from_max, end[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (!data && sxti_eq(q, key[0], z[0], "Length")) {
+                {
+                    if (!sxti_value(q, sxti_lut_length, end[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (!data && sxti_eq(q, key[0], z[0], "Components")) {
+                var n = [0];
+                {
+                    if (!sxti_value(q, sxti_components, end[0], n)) {
+                        return false;
+                    }
+                }
+                if (!n[0] || n[0] > 3) {
+                    return false;
+                }
+                components = n[0] >>> 0;
+            } else if (sxti_eq(q, key[0], z[0], "{")) {
+                data = true;
+            } else if (!sxti_eq(q, key[0], z[0], "}")) {
+                if (!data || !sxti_values(q, a[0], end[0], rgb, components)) {
+                    return false;
+                }
+            }
+        } else if (type === "LUT_SPI3D") {
+            if (line === 0) {
+                {
+                    if (!sxti_emit(q, sxti_magic, key[0], z[0])) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxti_value(q, sxti_version, end[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (line === 1) {
+                q.p = a[0];
+                {
+                    if (!sxti_value(q, sxti_input_components, end[0], null)) {
+                        return false;
+                    }
+                }
+                {
+                    if (!sxti_value(q, sxti_output_components, end[0], null)) {
+                        return false;
+                    }
+                }
+            } else if (line === 2) {
+                if (!sxti_values(q, a[0], end[0], sizes, 3)) {
+                    return false;
+                }
+            } else if (!sxti_values(q, a[0], end[0], spirow, 6)) {
+                return false;
+            }
+        } else {
+            if (line === 0) {
+                {
+                    if (!sxti_emit(q, sxti_magic, key[0], z[0])) {
+                        return false;
+                    }
+                }
+            } else if (line === 1) {
+                {
+                    if (!sxti_emit(q, sxti_lut_dimension, key[0], z[0])) {
+                        return false;
+                    }
+                }
+                components = sxti_eq(q, key[0], z[0], "3D") ? 3 : 1;
+            } else if (metadata) {
+                if (sxti_eq(q, a[0], end[0] - a[0], "END METADATA")) {
+                    metadata = false;
+                } else {
+                    {
+                        if (!sxti_emit(q, sxti_metadata_text, a[0], end[0] - a[0])) {
+                            return false;
+                        }
+                    }
+                }
+            } else if (csp_phase === 0 && sxti_eq(q, a[0], end[0] - a[0], "BEGIN METADATA")) {
+                metadata = true;
+            } else if (csp_phase < 9) {
+                q.p = a[0];
+                if (csp_phase % 3 === 0) {
+                    {
+                        if (!sxti_value(q, sxti_prelut_count, end[0], null)) {
+                            return false;
+                        }
+                    }
+                } else {
+                    while (q.p < end[0]) {
+                        var at = [0];
+                        var len = [0];
+                        if (!sxti_token(q, end[0], at, len, true)) {
+                            break;
+                        }
+                        if (!sxti_emit(q, csp_phase % 3 === 1 ? sxti_prelut_input : sxti_prelut_output, at[0], len[0])) {
+                            return false;
+                        }
+                    }
+                }
+                csp_phase++;
+            } else if (csp_phase === 9) {
+                if (components === 3) {
+                    if (!sxti_values(q, a[0], end[0], sizes, 3)) {
+                        return false;
+                    }
+                } else {
+                    q.p = a[0];
+                    {
+                        if (!sxti_value(q, sxti_lut_length, end[0], null)) {
+                            return false;
+                        }
+                    }
+                }
+                csp_phase++;
+            } else if (!sxti_values(q, a[0], end[0], rgb, 3)) {
+                return false;
+            }
+        }
+        q.p = next;
+        line++;
+    }
+    return line > 0 && !metadata;
+}
+function sxti_cskip(q) {
+    while (q.p < q.n) {
+        if (false) {
+            return false;
+        }
+        if (sxti_space(q.b[q.p])) {
+            q.p++;
+            continue;
+        }
+        if (q.n - q.p >= 2 && q.b[q.p] === 47 && q.b[q.p + 1] === 42) {
+            q.p += 2;
+            while (q.n - q.p >= 2 && (q.b[q.p] !== 42 || q.b[q.p + 1] !== 47)) {
+                q.p++;
+            }
+            if (q.n - q.p < 2) {
+                return false;
+            }
+            q.p += 2;
+            continue;
+        }
+        if (q.n - q.p >= 2 && q.b[q.p] === 47 && q.b[q.p + 1] === 47) {
+            q.p += 2;
+            while (q.p < q.n && q.b[q.p] !== 10) {
+                q.p++;
+            }
+            continue;
+        }
+        break;
+    }
+    return true;
+}
+function sxti_order(a, b) {
+    var x = a;
+    var y = b;
+    return x.offset < y.offset ? -1 : x.offset > y.offset ? 1 : x.total_size < y.total_size ? -1 : x.total_size > y.total_size ? 1 : x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+}
+function sxti_finish(c) {
+    var n = c.count;
+    var keep = 0;
+    if (!n) {
+        return false;
+    }
+    var end = 0;
+    sxQsort(c.items, 0, n, sxti_order, true);
+    for (var i = 0; i < n; i++) {
+        var d = sxCopy_xx_data_struct(null, c.items[i]);
+        if (keep) {
+            var p = c.items[sxU64(keep - 1)];
+            if (d.offset === p.offset && d.total_size === p.total_size && d.entry_size === p.entry_size && d.count === p.count && d.id === p.id) {
+                continue;
+            }
+        }
+        c.items[keep++] = sxCopy_xx_data_struct(null, d);
+    }
+    c.count = n = keep;
+    for (i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        var bytes = c.items[i].total_size;
+        if (at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        if (at + bytes > end) {
+            end = at + bytes;
+        }
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sxQsort(c.items, 0, c.count, sxti_order, true);
+    return !c.failed;
+}
+function sx_textimages_supports(type) {
+    switch (type) {
+    case "PNM":
+    case "RADIANCE_HDR":
+    case "NETPBM_PFM":
+    case "JPEG2000_PGX":
+    case "MTV_IMAGE":
+    case "GIMP_GIH":
+    case "GIMP_GPL":
+    case "GIMP_GGR":
+    case "JASC_PALETTE":
+    case "IRIDAS_CUBE_LUT":
+    case "LUT_SPI1D":
+    case "LUT_SPI3D":
+    case "LUT_CINESPACE_CSP":
+    case "UNIFONT_HEX":
+    case "XPM":
+    case "X11_XBM":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_textimages_build(c) {
+    if (c === null || c.f === null || c.size < 1 || c.size > 67108864) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var bytes = sxAlloc((c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    if (bytes === null) {
+        return false;
+    }
+    var ok = sx_read(c, 0, bytes, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+    var cursor = { c: c, b: bytes, n: c.size, p: 0 };
+    var q = cursor;
+    var type = c.f.file_type;
+    if (ok) {
+        switch (type) {
+        case "PNM":
+            ok = sx_pnm_build(q);
+            break;
+        case "RADIANCE_HDR":
+            ok = sx_radiance_hdr_build(q);
+            break;
+        case "NETPBM_PFM":
+            ok = sx_netpbm_pfm_build(q, type);
+            break;
+        case "JPEG2000_PGX":
+            ok = sx_jpeg2000_pgx_build(q, type);
+            break;
+        case "MTV_IMAGE":
+            ok = sx_mtv_image_build(q, type);
+            break;
+        case "GIMP_GIH":
+            ok = sx_gimp_gih_build(q);
+            break;
+        case "GIMP_GPL":
+            ok = sx_gimp_gpl_build(q, type);
+            break;
+        case "GIMP_GGR":
+            ok = sx_gimp_ggr_build(q, type);
+            break;
+        case "JASC_PALETTE":
+            ok = sx_jasc_palette_build(q, type);
+            break;
+        case "IRIDAS_CUBE_LUT":
+            ok = sx_iridas_cube_lut_build(q, type);
+            break;
+        case "LUT_SPI1D":
+            ok = sx_lut_spi1d_build(q, type);
+            break;
+        case "LUT_SPI3D":
+            ok = sx_lut_spi3d_build(q, type);
+            break;
+        case "LUT_CINESPACE_CSP":
+            ok = sx_lut_cinespace_csp_build(q, type);
+            break;
+        case "UNIFONT_HEX":
+            ok = sx_unifont_hex_build(q);
+            break;
+        case "XPM":
+            ok = sx_xpm_build(q);
+            break;
+        case "X11_XBM":
+            ok = sx_x11_xbm_build(q);
+            break;
+        default:
+            ok = false;
+            break;
+        }
+    }
+    return ok && sxti_finish(c);
+}

@@ -1,0 +1,82 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/stepanov_buzzic2/xx_stepanov_buzzic2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlate_buzz2_counts_fields = layout([i32("pattern_count", COUNT), i32("sequence_count", COUNT)]);
+var sxlate_buzz2_counts = sxLayout(0x60930002, "buzz2_counts", LE, sxlate_buzz2_counts_fields);
+var sxlate_buzz2_capacities_fields = layout([i32("pattern_capacity", COUNT), i32("sequence_capacity", COUNT),
+    i32("sequence_length", COUNT)]);
+var sxlate_buzz2_capacities = sxLayout(0x60930003, "buzz2_capacities", LE, sxlate_buzz2_capacities_fields);
+var sxlate_buzz2_pattern_fields = layout([bytes("note", 16)]);
+var sxlate_buzz2_pattern = sxLayout(0x60930004, "buzz2_pattern", LE, sxlate_buzz2_pattern_fields);
+var sxlate_buzz2_sequence_fields = layout([field("pattern_index", "uint8", 0)]);
+var sxlate_buzz2_sequence = sxLayout(0x60930005, "buzz2_sequence", LE, sxlate_buzz2_sequence_fields);
+var sxlate_buzz2_name_fields = layout([chars("name", 64, NONE)]);
+var sxlate_buzz2_name = sxLayout(0x60930006, "buzz2_name", LE, sxlate_buzz2_name_fields);
+var sxlate_buzz2_instrument_count_fields = layout([i32("instrument_count", COUNT)]);
+var sxlate_buzz2_instrument_count = sxLayout(0x60930007, "buzz2_instrument_count", LE, sxlate_buzz2_instrument_count_fields);
+var sxlate_buzz2_connection_fields = layout([i32("source_operation"), i32("destination_operation"), i32("input_index")]);
+var sxlate_buzz2_connection = sxLayout(0x60930009, "buzz2_connection", LE, sxlate_buzz2_connection_fields);
+var sxlate_buzz2_instrument_tail_fields = layout([i32("connection_count", COUNT), bytes("program", 1024),
+    i32("program_bytes", SIZE), bytes("unused", 128)]);
+var sxlate_buzz2_instrument_tail = sxLayout(0x6093000A, "buzz2_instrument_tail", LE, sxlate_buzz2_instrument_tail_fields);
+function sxlate_buzz2(c) {
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [156];
+    var h = [];
+    var patterns = [64];
+    var sequences = [64];
+    var length = [128];
+    var instruments = [0];
+    if (!sxlate_read(c, 0, h, 8, end) || sxMemcmp(h, "buz2", 4) || sxGetU16(h, 8, 4, false) !== 2 || !sxlate_row(c, sxlate_buzz2_header, 0, 156, end) || !sxlate_row(c, sxlate_buzz2_counts, p[0], 8, end)) {
+        return false;
+    }
+    p[0] += 8;
+    if (sxGetU16(h, 8, 6, false)) {
+        if (!sxlate_row(c, sxlate_buzz2_capacities, p[0], 12, end) || !sxlate_u32(c, p[0], patterns, 0, end) || !sxlate_u32(c, p[0] + 4, sequences, 0, end) || !sxlate_u32(c, p[0] + 8, length, 0, end)) {
+            return false;
+        }
+        p[0] += 12;
+    }
+    if (patterns[0] > 1024 || sequences[0] > 1024 || !length[0] || length[0] > 4096) {
+        return true;
+    }
+    if (!sxlate_table(c, sxlate_buzz2_pattern, p, 16, patterns[0], end)) {
+        return false;
+    }
+    for (var i = 0; i < sequences[0]; i++) {
+        if (!sxlate_plane(c, sxlate_buzz2_sequence, p, length[0], end)) {
+            return false;
+        }
+    }
+    if (!sxlate_table(c, sxlate_buzz2_name, p, 64, 128, end) || !sxlate_u32(c, p[0], instruments, 0, end) || !sxlate_row(c, sxlate_buzz2_instrument_count, p[0], 4, end)) {
+        return false;
+    }
+    p[0] += 4;
+    if (instruments[0] > 128) {
+        return true;
+    }
+    for (i = 0; i < instruments[0]; i++) {
+        var operations = [0];
+        if (!sxlate_u32(c, p[0] + 388, operations, 0, end) || !sxlate_row(c, sxlate_buzz2_instrument, p[0], 392, end)) {
+            return false;
+        }
+        p[0] += 392;
+        if (!sxlate_table(c, sxlate_buzz2_connection, p, 12, 640, end) || !sxlate_row(c, sxlate_buzz2_instrument_tail, p[0], 1160, end)) {
+            return false;
+        }
+        p[0] += 1160;
+        if (operations[0] > 64) {
+            return true;
+        }
+        if (!sxlate_table(c, sxlate_buzz2_operation, p, 552, operations[0], end)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_stepanov_buzzic2_build(c) {
+    return sxlate_buzz2(c);
+}

@@ -1,0 +1,36 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/greatvalleyprod_digitalsoundstudio/xx_greatvalleyprod_digitalsoundstudio_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_dss_header_fields = layout([blob("signature", 4, SIGNATURE), blob("unknown", 4), u8("tempo"), u8("speed")]);
+var sxnextm_dss_header = sxLayout(0x608B0011, "dss_header", LE, sxnextm_dss_header_fields);
+var sxnextm_dss_event_fields = layout([u8("sample_and_period_high", FLAGS), u8("period_low"), u8("effect", ID),
+    u8("effect_argument")]);
+var sxnextm_dss_event = sxLayout(0x608B0013, "dss_event", LE, sxnextm_dss_event_fields);
+function sxnextm_dss(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [10];
+    var n = [0];
+    var mx = 0;
+    if (!sxnextm_eq(v, 0, "MMU2", 4, e) || !sxnextm_row(v, sxnextm_dss_header, 0, e) || !sxnextm_take(v, sxnextm_dss_sample, p, 31, e) || !sxnextm_be(v, p[0], 2, n, 0, e) || n[0] > 128 || !sxnextm_take(v, sxnextm_count16, p, 1, e)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        var x = [0];
+        if (!sxnextm_u(v, p[0] + i, 1, x, 0, e)) {
+            return false;
+        }
+        if (x[0] > mx) {
+            mx = x[0];
+        }
+    }
+    if (!sxnextm_take(v, sxnextm_order8, p, 128, e)) {
+        return false;
+    }
+    return !n[0] || sxnextm_table(v, sxnextm_dss_event, p[0], (mx + 1) * 256, e);
+}
+function sx_greatvalleyprod_digitalsoundstudio_build(v) {
+    return sxnextm_dss(v);
+}

@@ -1,0 +1,390 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_pcedisks.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_pc_pfdc_v0_sector_fields = layout([u8("physical_cylinder", ID), u8("physical_head", ID), u8("logical_cylinder", ID),
+    u8("logical_head", ID), u8("logical_sector", ID), u8("flags", FLAGS), u16("sector_size", SIZE), u32("data_rate")]);
+var sx_pc_pfdc_v0_sector = sxLayout(0x60140003, "pfdc_v0_sector", BE, sx_pc_pfdc_v0_sector_fields);
+var sx_pc_pfdc_v1_sector_fields = layout([u8("sector_marker", SIGNATURE), u8("physical_cylinder", ID), u8("physical_head", ID),
+    u8("logical_cylinder", ID), u8("logical_head", ID), u8("logical_sector", ID), u16("sector_size", SIZE), u8("encoding", ID),
+    field("data_rate", "uint24", 3), u32("flags", FLAGS)]);
+var sx_pc_pfdc_v1_sector = sxLayout(0x60140004, "pfdc_v1_sector", BE, sx_pc_pfdc_v1_sector_fields);
+var sx_pc_pfdc_v2_sector_fields = layout([u8("flags", FLAGS), u8("physical_cylinder", ID), u8("physical_head", ID),
+    u8("logical_cylinder", ID), u8("logical_head", ID), u8("logical_sector", ID), u16("sector_size", SIZE), u8("encoding", ID),
+    field("data_rate", "uint24", 3)]);
+var sx_pc_pfdc_v2_sector = sxLayout(0x60140005, "pfdc_v2_sector", BE, sx_pc_pfdc_v2_sector_fields);
+var sx_pc_pfdc_v4_sector_fields = layout([u16("physical_cylinder", ID), u16("physical_head", ID), u16("logical_cylinder", ID),
+    u16("logical_head", ID), u16("logical_sector", ID), u16("sector_size", SIZE), u8("size_code_or_gcr_format", ID),
+    u8("filler", ID), u16("flags", FLAGS), u16("encoding", ID)]);
+var sx_pc_pfdc_v4_sector = sxLayout(0x60140006, "pfdc_v4_sector", BE, sx_pc_pfdc_v4_sector_fields);
+var sx_pc_pce_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("payload_size", SIZE)]);
+var sx_pc_pce_chunk_header = sxLayout(0x60140008, "pce_chunk_header", BE, sx_pc_pce_chunk_header_fields);
+var sx_pc_pce_chunk_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sx_pc_pce_chunk_crc = sxLayout(0x60140009, "pce_chunk_crc", BE, sx_pc_pce_chunk_crc_fields);
+var sx_pc_pce_version_fields = layout([u32("version", ID)]);
+var sx_pc_pce_version = sxLayout(0x6014000B, "pce_version", BE, sx_pc_pce_version_fields);
+var sx_pc_pfdc_version_fields = layout([u16("version_major", ID), u16("version_minor", ID)]);
+var sx_pc_pfdc_version = sxLayout(0x6014000C, "pfdc_version", BE, sx_pc_pfdc_version_fields);
+var sx_pc_pri_track_fields = layout([u32("cylinder", ID), u32("head", ID), u32("bit_count", COUNT), u32("clock_hz")]);
+var sx_pc_pri_track = sxLayout(0x6014000E, "pri_track", BE, sx_pc_pri_track_fields);
+var sx_pc_pfi_track_fields = layout([u32("cylinder", ID), u32("head", ID), u32("clock_hz")]);
+var sx_pc_pfi_track = sxLayout(0x6014000F, "pfi_track", BE, sx_pc_pfi_track_fields);
+var sx_pc_pfi_index_fields = layout([u32("clock_position")]);
+var sx_pc_pfi_index = sxLayout(0x60140010, "pfi_index", BE, sx_pc_pfi_index_fields);
+var sx_pc_pbit_header_fields = layout([u32("version", ID), u32("reserved", RESERVED)]);
+var sx_pc_pbit_header = sxLayout(0x60140011, "pbit_header", BE, sx_pc_pbit_header_fields);
+var sx_pc_pbit_track_fields = layout([u32("cylinder", ID), u32("head", ID), u32("bit_count", COUNT), u32("clock_hz"),
+    u32("reserved", RESERVED)]);
+var sx_pc_pbit_track = sxLayout(0x60140012, "pbit_track", BE, sx_pc_pbit_track_fields);
+var sx_pc_psi_header_fields = layout([u16("version", ID), u16("encoding", ID)]);
+var sx_pc_psi_header = sxLayout(0x60140013, "psi_header", BE, sx_pc_psi_header_fields);
+var sx_pc_psi_sector_fields = layout([u16("cylinder", ID), u8("head", ID), u8("sector", ID), u16("sector_size", SIZE),
+    u8("flags", FLAGS), u8("filler", ID)]);
+var sx_pc_psi_sector = sxLayout(0x60140014, "psi_sector", BE, sx_pc_psi_sector_fields);
+var sx_pc_psi_ibm_sector_fields = layout([u8("cylinder", ID), u8("head", ID), u8("sector", ID), u8("size_shift"),
+    u8("flags", FLAGS), u8("density", ID)]);
+var sx_pc_psi_ibm_sector = sxLayout(0x60140015, "psi_ibm_sector", BE, sx_pc_psi_ibm_sector_fields);
+var sx_pc_psi_bit_position_fields = layout([u32("bit_position")]);
+var sx_pc_psi_bit_position = sxLayout(0x60140016, "psi_bit_position", BE, sx_pc_psi_bit_position_fields);
+var sx_pc_psi_read_time_fields = layout([u32("bit_cell_count", COUNT)]);
+var sx_pc_psi_read_time = sxLayout(0x60140017, "psi_read_time", BE, sx_pc_psi_read_time_fields);
+var sx_pc_pbi_l2_fill_fields = layout([u32("fill_pattern", ID), u32("flags", FLAGS)]);
+var sx_pc_pbi_l2_fill = sxLayout(0x6014001B, "pbi_l2_fill", BE, sx_pc_pbi_l2_fill_fields);
+function sx_pcedisks_supports(type) {
+    switch (type) {
+    case "PCE_PFDC_V0":
+    case "PCE_PFDC_V1":
+    case "PCE_PFDC_V2":
+    case "PCE_PFDC_V4":
+    case "PCE_PRI":
+    case "PCE_PFI":
+    case "PCE_PSI":
+    case "PCE_PBIT":
+    case "PCE_PBI":
+        return true;
+    default:
+        return false;
+    }
+}
+function sx_pc_span(c, at, n) {
+    return at <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) && n <= sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - at);
+}
+function sx_pc_sort(c) {
+    for (var gap = Math.floor(c.count / 2); gap; gap = Math.floor(gap / 2)) {
+        for (var i = gap; i < c.count; i++) {
+            var d = sxCopy_xx_data_struct(null, c.items[i]);
+            var j = i;
+            while (j >= gap && c.items[sxU64(j - gap)].offset > d.offset) {
+                c.items[j] = sxCopy_xx_data_struct(null, c.items[sxU64(j - gap)]);
+                j = sxU64(j - gap);
+            }
+            c.items[j] = sxCopy_xx_data_struct(null, d);
+        }
+    }
+}
+function sx_pc_finish(c) {
+    var n = c.count;
+    var end = 0;
+    sx_pc_sort(c);
+    for (var i = 0; i < n; i++) {
+        var at = c.items[i].offset - c.f.base_address;
+        if (at < end || at > end && !sx_raw(c, end, at - end)) {
+            return false;
+        }
+        end = at + c.items[i].total_size;
+    }
+    if (end < c.size && !sx_raw(c, end, c.size - end)) {
+        return false;
+    }
+    sx_pc_sort(c);
+    return !c.failed;
+}
+function sx_pc_chunks(c) {
+    var at = 0;
+    var type = c.f.file_type;
+    for (var n = 0; n < 8192 && at < (c.size < 0 ? c.size + SX_U64_MAX : c.size); n++) {
+        var h = [];
+        if (!sx_pc_span(c, at, 12) || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), h, 8)) {
+            return false;
+        }
+        var size = sxGetU32(h, 8, 4, true);
+        var q = at + 8;
+        var l = null;
+        var z = 0;
+        if (!sx_pc_span(c, q, size + 4) || !sx_add(c, sx_pc_pce_chunk_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8) || !sx_add(c, sx_pc_pce_chunk_crc, (q + size >= SX_I64_MAX ? q + size - SX_U64_MAX : q + size), 4)) {
+            return false;
+        }
+        if (at === 0) {
+            if (type === "PCE_PBIT") {
+                l = sx_pc_pbit_header;
+                z = 8;
+            } else if (type === "PCE_PSI") {
+                l = sx_pc_psi_header;
+                z = 4;
+            } else if (type === "PCE_PFDC_V4") {
+                l = sx_pc_pfdc_version;
+                z = 4;
+            } else {
+                l = sx_pc_pce_version;
+                z = 4;
+            }
+        } else if (!sxMemcmp(h, "SECT", 4)) {
+            if (type === "PCE_PFDC_V4") {
+                l = sx_pc_pfdc_v4_sector;
+                z = 18;
+            } else if (type === "PCE_PSI") {
+                l = sx_pc_psi_sector;
+                z = 8;
+            }
+        } else if (!sxMemcmp(h, "TRAK", 4)) {
+            if (type === "PCE_PRI") {
+                l = sx_pc_pri_track;
+                z = 16;
+            } else if (type === "PCE_PFI") {
+                l = sx_pc_pfi_track;
+                z = 12;
+            } else if (type === "PCE_PBIT") {
+                l = sx_pc_pbit_track;
+                z = 20;
+            }
+        } else if (type === "PCE_PFI" && !sxMemcmp(h, "INDX", 4)) {
+            if (size % 4 || Math.floor(size / 4) > 4096) {
+                return false;
+            }
+            if (size && !sx_table(c, sx_pc_pfi_index, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 4, Math.floor(size / 4))) {
+                return false;
+            }
+        } else if (type === "PCE_PSI") {
+            if (!sxMemcmp(h, "IBMF", 4) || !sxMemcmp(h, "IBMM", 4)) {
+                l = sx_pc_psi_ibm_sector;
+                z = 6;
+            } else if (!sxMemcmp(h, "OFFS", 4)) {
+                l = sx_pc_psi_bit_position;
+                z = 4;
+            } else if (!sxMemcmp(h, "TIME", 4)) {
+                l = sx_pc_psi_read_time;
+                z = 4;
+            }
+        }
+        if (l !== null && (size < z || !sx_add(c, l, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), z))) {
+            return false;
+        }
+        at = q + size + 4;
+    }
+    return at === (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+}
+function sx_pcedisks_build(c) {
+    if (c === null || !c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var ok;
+    switch (c.f.file_type) {
+    case "PCE_PFDC_V0":
+    case "PCE_PFDC_V1":
+    case "PCE_PFDC_V2":
+        ok = sx_pce_pfdc_build(c);
+        break;
+    case "PCE_PBI":
+        ok = sx_pce_pbi_build(c);
+        break;
+    default:
+        ok = sx_pc_chunks(c);
+        break;
+    }
+    return ok && sx_pc_finish(c);
+}
+function sx_pc_flags(r, flags, count) {
+    var out = [];
+    var used = 0;
+    var value = sxVarU64(r.value);
+    var known = 0;
+    for (var i = 0; i < count; i++) {
+        known = sxOr64(known, flags[i].mask);
+        if (!sxAnd64(value, flags[i].mask)) {
+            continue;
+        }
+        if (used + 32 >= 256) {
+            return false;
+        }
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        var p = flags[i].name, p_o = 0;
+        while (sxAt(p, p_o) && used + 24 < 256) {
+            out[used++] = sxAt(p, p_o++);
+        }
+        if (sxAt(p, p_o)) {
+            return false;
+        }
+    }
+    var unknown = sxAnd64(value, sxNot64(known));
+    if (unknown) {
+        if (used) {
+            out[used++] = 124 /*|*/;
+        }
+        out[used++] = 48 /*0*/;
+        out[used++] = 120 /*x*/;
+        var started = false;
+        for (var shift = 60; shift >= 0; shift -= 4) {
+            var digit = sxAnd64(sxShr64(unknown, shift), 15);
+            if (digit || started || !shift) {
+                out[used++] = sxAt("0123456789ABCDEF", digit);
+                started = true;
+            }
+        }
+    }
+    if (!used) {
+        out[used++] = 48 /*0*/;
+    }
+    out[used] = 0;
+    return sxSetComment(r, out);
+}
+var sx_pcedisks_comment_v0 = [{ mask: 1, name: "FM" }, { mask: 2, name: "MFM" }, { mask: 4, name: "CRC_ID" },
+    { mask: 8, name: "CRC_DATA" }, { mask: 16, name: "DEL_DAM" }, { mask: 128, name: "COMPRESSED" }];
+var sx_pcedisks_comment_v1 = [{ mask: 1, name: "ALTERNATE" }, { mask: 4, name: "CRC_ID" }, { mask: 8, name: "CRC_DATA" },
+    { mask: 16, name: "DEL_DAM" }, { mask: 128, name: "COMPRESSED" }];
+var sx_pcedisks_comment_v2 = [{ mask: 1, name: "CRC_ID" }, { mask: 2, name: "CRC_DATA" }, { mask: 4, name: "DEL_DAM" },
+    { mask: 8, name: "NO_DAM" }, { mask: 64, name: "ALTERNATE" }, { mask: 128, name: "COMPRESSED" }];
+var sx_pcedisks_comment_v4 = [{ mask: 1, name: "CRC_ID" }, { mask: 2, name: "CRC_DATA" }, { mask: 4, name: "DEL_DAM" },
+    { mask: 8, name: "NO_DAM" }, { mask: 0x4000, name: "ALTERNATE" }, { mask: 0x8000, name: "COMPRESSED" }];
+var sx_pcedisks_comment_psi = [{ mask: 1, name: "COMPRESSED" }, { mask: 2, name: "ALTERNATE" }, { mask: 4, name: "CRC_DATA" }];
+var sx_pcedisks_comment_ibm = [{ mask: 1, name: "CRC_ID" }, { mask: 2, name: "CRC_DATA" }, { mask: 4, name: "DEL_DAM" }, { mask: 8, name: "NO_DAM" }];
+var sx_pcedisks_comment_pbi = [{ mask: 2, name: "FILL" }];
+function sx_pcedisks_comment(r, id) {
+    if (r === null || r.name === null || id < 0x60140000 || id >= 0x60150000) {
+        return true;
+    }
+    var name = r.name;
+    var comment = null;
+    if (!sxStrcmp(name, "flags")) {
+        if (id === sx_pc_pfdc_v0_sector.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_v0, 6);
+        }
+        if (id === sx_pc_pfdc_v1_sector.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_v1, 5);
+        }
+        if (id === sx_pc_pfdc_v2_sector.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_v2, 6);
+        }
+        if (id === sx_pc_pfdc_v4_sector.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_v4, 6);
+        }
+        if (id === sx_pc_psi_sector.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_psi, 3);
+        }
+        if (id === sx_pc_psi_ibm_sector.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_ibm, 4);
+        }
+        if (id === sx_pc_pbi_l2_fill.id) {
+            return sx_pc_flags(r, sx_pcedisks_comment_pbi, 1);
+        }
+    }
+    if (!sxStrcmp(name, "data_rate")) {
+        comment = "Bits per second";
+    } else if (!sxStrcmp(name, "clock_hz")) {
+        comment = "Clock frequency in Hz";
+    } else if (!sxStrcmp(name, "clock_position")) {
+        comment = "Original index position in track clock ticks; not sorted or deduplicated";
+    } else if (!sxStrcmp(name, "bit_count")) {
+        comment = "Stored track length in bits; final byte may contain padding";
+    } else if (!sxStrcmp(name, "bit_position")) {
+        comment = "Bit position in the track; not a byte offset";
+    } else if (!sxStrcmp(name, "bit_cell_count")) {
+        comment = "Sector read time in bit cells";
+    } else if (!sxStrcmp(name, "size_shift")) {
+        comment = "Decoded sector byte size is 128 << value";
+    } else if (!sxStrcmp(name, "size_code_or_gcr_format")) {
+        comment = "FM/MFM: encoded size; GCR: format byte, selected by encoding";
+    } else if (!sxStrcmp(name, "filler")) {
+        comment = "Byte repeated when the compressed-sector flag is set; no virtual expanded bytes are assigned physical offsets";
+    } else if (!sxStrcmp(name, "crc32")) {
+        comment = "CRC of stored chunk header and payload, excluding this checksum";
+    } else if (!sxStrcmp(name, "file_crc32")) {
+        comment = "PFDC2 CRC of all preceding file bytes (initial remainder 0xFFFFFFFF)";
+    } else if (!sxStrcmp(name, "l1_index_bits") || !sxStrcmp(name, "l2_index_bits")) {
+        comment = "Table entry count = 1 << value";
+    } else if (!sxStrcmp(name, "block_size_shift")) {
+        comment = "Block size in bytes = 1 << value";
+    } else if (!sxStrcmp(name, "l2_offset") || !sxStrcmp(name, "data_offset")) {
+        comment = "Physical file byte offset; zero represents an unallocated zero-filled region";
+    } else if (id === sx_pc_pbi_l2_fill.id) {
+        comment = "Fill entry: high 32 bits hold the repeated byte pattern; low word is 2";
+    } else if (!sxStrcmp(name, "encoding")) {
+        var v = sxVarU64(r.value);
+        if (id === sx_pc_pfdc_v1_sector.id || id === sx_pc_pfdc_v2_sector.id) {
+            switch (v) {
+            case 0:
+                comment = "UNKNOWN";
+                break;
+            case 1:
+                comment = "FM";
+                break;
+            case 2:
+                comment = "MFM";
+                break;
+            case 3:
+                if (id === sx_pc_pfdc_v2_sector.id) {
+                    comment = "GCR";
+                }
+                break;
+            default:
+                break;
+            }
+        } else if (id === sx_pc_pfdc_v4_sector.id) {
+            switch (v) {
+            case 0:
+                comment = "UNKNOWN";
+                break;
+            case 1:
+                comment = "FM_DD";
+                break;
+            case 0x8001:
+                comment = "FM_HD";
+                break;
+            case 2:
+                comment = "MFM_DD";
+                break;
+            case 0x8002:
+                comment = "MFM_HD";
+                break;
+            case 0x4002:
+                comment = "MFM_ED";
+                break;
+            case 3:
+                comment = "GCR";
+                break;
+            default:
+                break;
+            }
+        } else {
+            switch (v) {
+            case 0:
+                comment = "UNKNOWN";
+                break;
+            case 0x100:
+                comment = "FM_DD";
+                break;
+            case 0x101:
+                comment = "FM_HD";
+                break;
+            case 0x200:
+                comment = "MFM_DD";
+                break;
+            case 0x201:
+                comment = "MFM_HD";
+                break;
+            case 0x202:
+                comment = "MFM_ED";
+                break;
+            case 0x300:
+                comment = "GCR";
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    return comment === null || sxSetComment(r, comment);
+}

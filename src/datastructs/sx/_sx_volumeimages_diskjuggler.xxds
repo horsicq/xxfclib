@@ -1,0 +1,90 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/diskjuggler/xx_diskjuggler_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxvi_cdi_footer_v2_fields = layout([u32("version", ID), u32("descriptor_offset", OFFSET)]);
+var sxvi_cdi_footer_v2 = sxLayout(0x60530056, "cdi_footer_v2", LE, sxvi_cdi_footer_v2_fields);
+var sxvi_cdi_footer_v35_fields = layout([u32("version", ID), u32("descriptor_distance", SIZE)]);
+var sxvi_cdi_footer_v35 = sxLayout(0x60530057, "cdi_footer_v35", LE, sxvi_cdi_footer_v35_fields);
+var sxvi_cdi_descriptor_header_fields = layout([u16("session_count", COUNT)]);
+var sxvi_cdi_descriptor_header = sxLayout(0x60530058, "cdi_descriptor_header", LE, sxvi_cdi_descriptor_header_fields);
+var sxvi_cdi_track_prefix_fields = layout([field("markers", "byte[20]", 20, SIGNATURE), field("unknown", "byte[4]", 4),
+    u8("filename_length", SIZE)]);
+var sxvi_cdi_track_prefix = sxLayout(0x60530059, "cdi_track_prefix", LE, sxvi_cdi_track_prefix_fields);
+var sxvi_cdi_index_count_fields = layout([u16("count", COUNT)]);
+var sxvi_cdi_index_count = sxLayout(0x6053005A, "cdi_index_count", LE, sxvi_cdi_index_count_fields);
+var sxvi_cdi_index_fields = layout([u32("sectors", COUNT)]);
+var sxvi_cdi_index = sxLayout(0x6053005B, "cdi_index", LE, sxvi_cdi_index_fields);
+var sxvi_cdi_cdtext_count_fields = layout([u32("count", COUNT)]);
+var sxvi_cdi_cdtext_count = sxLayout(0x6053005C, "cdi_cdtext_count", LE, sxvi_cdi_cdtext_count_fields);
+var sxvi_cdi_track_geometry_fields = layout([field("unknown0", "byte[2]", 2), u32("mode", ID), field("unknown1", "byte[4]", 4),
+    u32("session_index"), u32("track_index"), u32("start_sector"), u32("sector_count", COUNT),
+    field("unknown2", "byte[16]", 16), u32("read_mode", ID)]);
+var sxvi_cdi_track_geometry = sxLayout(0x6053005D, "cdi_track_geometry", LE, sxvi_cdi_track_geometry_fields);
+var sxvi_cdi_mark = [0, 0, 1, 0, 0, 0, 255, 255, 255, 255];
+function sxvi_cdi(c) {
+    var f = [];
+    if (c.size < 16 || !sxvi_read(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8), f, 8)) {
+        return false;
+    }
+    var version = sxvi32(f, 0, 0);
+    var off = sxvi32(f, 4, 0);
+    var end = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 8);
+    if (version < 0x80000004 || version > 0x80000006) {
+        return false;
+    }
+    var p = version === 0x80000006 ? off <= (c.size < 0 ? c.size + SX_U64_MAX : c.size) ? sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - off) : SX_U64_MAX : off;
+    if (p >= end || sxU64(end - p) < 2 || sxU64(end - p) > 16777216) {
+        return false;
+    }
+    if (!sxvi_put(c, version === 0x80000006 ? sxvi_cdi_footer_v35 : sxvi_cdi_footer_v2, end, 1) || !sxvi_put(c, sxvi_cdi_descriptor_header, p, 1)) {
+        return false;
+    }
+    var n = sxU64(end - p);
+    var h = sxAlloc(n);
+    if (h === null) {
+        return false;
+    }
+    if (!sxvi_read(c, p, h, n)) {
+        return false;
+    }
+    var ok = true;
+    var sessions = sxvi16(h, 0, 0);
+    for (var at = 2; at + 25 <= n && c.count < 24000; at++) {
+        if (sxMemcmpAt(h, at, sxvi_cdi_mark, 0, 10) || sxMemcmpAt(h, at + 10, sxvi_cdi_mark, 0, 10)) {
+            continue;
+        }
+        var names = h[at + 24];
+        var ic = at + 56 + names;
+        if (ic > n || sxU64(n - ic) < 2) {
+            continue;
+        }
+        var indices = sxvi16(h, ic, 0);
+        if (indices > 64 || (indices * 4) >>> 0 > sxU64(sxU64(n - ic) - 2)) {
+            continue;
+        }
+        var tc = ic + 2 + ((indices * 4) >>> 0);
+        if (sxU64(n - tc) < 4) {
+            continue;
+        }
+        var text = sxvi32(h, tc, 0);
+        if (text > 4096 || text * 18 > sxU64(sxU64(n - tc) - 4)) {
+            continue;
+        }
+        var fixed = tc + 4 + text * 18;
+        if (sxU64(n - fixed) < 46 || h[fixed + 2] > 2 || sxvi32(h, fixed + 42, 0) > 2 || sxvi32(h, fixed + 10, 0) >= sessions || sxvi32(h, fixed + 14, 0) > 999) {
+            continue;
+        }
+        if (!sxvi_put(c, sxvi_cdi_track_prefix, p + at, 1) || !sxvi_put(c, sxvi_cdi_index_count, p + ic, 1) || !sxvi_put(c, sxvi_cdi_index, p + ic + 2, indices) || !sxvi_put(c, sxvi_cdi_cdtext_count, p + tc, 1) || !sxvi_put(c, sxvi_cdi_track_geometry, p + fixed, 1)) {
+            ok = false;
+            break;
+        }
+        at += 19;
+    }
+    return ok;
+}
+function sx_diskjuggler_build(c) {
+    return sxvi_cdi(c);
+}

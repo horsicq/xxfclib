@@ -1,0 +1,33 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/lzpis2/xx_lzpis2_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxl_lzpis2_header_fields = layout([blob("signature", 6, SIGNATURE)]);
+var sxl_lzpis2_header = sxLayout(0x600A0019, "lzpis2_header", LE, sxl_lzpis2_header_fields);
+var sxl_lzpis2_chunk_fields = layout([u16("original_size", SIZE), u16("packed_size", SIZE)]);
+var sxl_lzpis2_chunk = sxLayout(0x600A001A, "lzpis2_chunk", LE, sxl_lzpis2_chunk_fields);
+function sxl_pis(c) {
+    var at = 6;
+    var total = 0;
+    if (!sxl_sig(c, 0, "LZPIS2", 6) || !sx_add(c, sxl_lzpis2_header, 0, 6) || at === c.size) {
+        return false;
+    }
+    while (at < c.size) {
+        var n;
+        var z;
+        if ((n = sx_u16(c, at, false)) === null || (z = sx_u16(c, at + 2, false)) === null || !n || n > 4096 || !z || !sxl_span(c, (at + 4 < 0 ? at + 4 + SX_U64_MAX : at + 4), z) || !sx_add(c, sxl_lzpis2_chunk, at, 4)) {
+            return false;
+        }
+        total += n;
+        if (total > 0x40000000) {
+            return false;
+        }
+        at += 4 + z;
+    }
+    return true;
+}
+function sx_lzpis2_build(c) {
+    return sxl_pis(c);
+}

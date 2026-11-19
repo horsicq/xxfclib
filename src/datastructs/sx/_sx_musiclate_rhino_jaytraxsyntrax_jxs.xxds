@@ -1,0 +1,102 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/rhino_jaytraxsyntrax_jxs/xx_rhino_jaytraxsyntrax_jxs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxlate_jxs_header_fields = layout([i16("version"), i16("reserved_0"), i32("pattern_count", COUNT),
+    i32("subsong_count", COUNT), i32("instrument_count", COUNT), bytes("reserved", 36)]);
+var sxlate_jxs_header = sxLayout(0x6093000C, "jxs_header", LE, sxlate_jxs_header_fields);
+var sxlate_jxs_order_fields = layout([i16("pattern_index"), i16("pattern_length", COUNT)]);
+var sxlate_jxs_order = sxLayout(0x6093000E, "jxs_order", LE, sxlate_jxs_order_fields);
+var sxlate_jxs_event_fields = layout([u8("source_note"), u8("destination_note"), u8("instrument"), i8("parameter"), u8("script")]);
+var sxlate_jxs_event = sxLayout(0x6093000F, "jxs_event", LE, sxlate_jxs_event_fields);
+var sxlate_jxs_pattern_name_size_fields = layout([i32("name_bytes", SIZE)]);
+var sxlate_jxs_pattern_name_size = sxLayout(0x60930010, "jxs_pattern_name_size", LE, sxlate_jxs_pattern_name_size_fields);
+var sxlate_jxs_pattern_name_fields = layout([field("name", "char", 0)]);
+var sxlate_jxs_pattern_name = sxLayout(0x60930011, "jxs_pattern_name", LE, sxlate_jxs_pattern_name_fields);
+var sxlate_jxs_instrument_fields = layout([i16("version"), chars("name", 32, NONE), i16("waveform"), i16("wavelength"),
+    i16("master_volume"), i16("am_wave"), i16("am_speed"), i16("am_loop_point"), i16("fine_tune"), i16("fm_wave"),
+    i16("fm_speed"), i16("fm_loop_point"), i16("fm_delay"), i16("arpeggio"), field("reset_wave", "int8[16]", 16),
+    i16("pan_wave"), i16("pan_speed"), i16("pan_loop_point"), bytes("reserved", 12)]);
+var sxlate_jxs_instrument = sxLayout(0x60930012, "jxs_instrument", LE, sxlate_jxs_instrument_fields);
+var sxlate_jxs_effect_fields = layout([i32("destination_effect"), i32("source_effect_1"), i32("source_effect_2"),
+    i32("oscillator_effect"), i32("effect_variable_1"), i32("effect_variable_2"), i32("effect_speed"), i32("oscillator_speed"),
+    i32("effect_type"), i8("oscillator_flag"), i8("reset_effect"), i16("reserved")]);
+var sxlate_jxs_effect = sxLayout(0x60930013, "jxs_effect", LE, sxlate_jxs_effect_fields);
+var sxlate_jxs_wave_fields = layout([field("sample", "int16le[256]", 512)]);
+var sxlate_jxs_wave = sxLayout(0x60930015, "jxs_wave", LE, sxlate_jxs_wave_fields);
+var sxlate_jxs_arpeggio_fields = layout([bytes("step", 16)]);
+var sxlate_jxs_arpeggio = sxLayout(0x60930016, "jxs_arpeggio", LE, sxlate_jxs_arpeggio_fields);
+function sxlate_jxs(c) {
+    var h = [];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var p = [52];
+    var patterns;
+    var songs;
+    var instruments;
+    if (!sxlate_read(c, 0, h, 16, end)) {
+        return false;
+    }
+    var version = sxGetU16(h, 16, 0, false);
+    if (version < 3456 || version > 3457 || !sxlate_row(c, sxlate_jxs_header, 0, 52, end)) {
+        return false;
+    }
+    patterns = sxGetU32(h, 16, 4, false);
+    songs = sxGetU32(h, 16, 8, false);
+    instruments = sxGetU32(h, 16, 12, false);
+    if (patterns > 4096 || songs > 256 || instruments > 256) {
+        return true;
+    }
+    for (var i = 0; i < songs; i++) {
+        if (!sxlate_row(c, sxlate_jxs_subsong, p[0], 180, end)) {
+            return false;
+        }
+        p[0] += 180;
+        if (!sxlate_table(c, sxlate_jxs_order, p, 4, 4096, end)) {
+            return false;
+        }
+    }
+    if (!sxlate_table(c, sxlate_jxs_event, p, 5, patterns * 64, end)) {
+        return false;
+    }
+    for (i = 0; i < patterns; i++) {
+        var n = [0];
+        if (!sxlate_u32(c, p[0], n, 0, end) || !sxlate_row(c, sxlate_jxs_pattern_name_size, p[0], 4, end)) {
+            return false;
+        }
+        p[0] += 4;
+        if (n[0] > 4096) {
+            return true;
+        }
+        if (n[0] && !sxlate_row(c, sxlate_jxs_pattern_name, p[0], n[0], end)) {
+            return false;
+        }
+        p[0] += n[0];
+    }
+    for (i = 0; i < instruments; i++) {
+        var pointer = [0];
+        n = [0];
+        if (!sxlate_u32(c, p[0] + 512, pointer, 0, end) || !sxlate_u32(c, p[0] + 516, n, 0, end) || !sxlate_row(c, sxlate_jxs_instrument, p[0], 92, end)) {
+            return false;
+        }
+        p[0] += 92;
+        if (!sxlate_table(c, sxlate_jxs_effect, p, 40, 4, end) || !sxlate_row(c, sxlate_jxs_sample_info, p[0], 268, end)) {
+            return false;
+        }
+        p[0] += 268;
+        if (!sxlate_table(c, sxlate_jxs_wave, p, 512, 16, end)) {
+            return false;
+        }
+        if (pointer[0]) {
+            if (!sxlate_span(c, p[0], n[0], end)) {
+                return false;
+            }
+            p[0] += n[0];
+        }
+    }
+    return sxlate_table(c, sxlate_jxs_arpeggio, p, 16, 16, end);
+}
+function sx_rhino_jaytraxsyntrax_jxs_build(c) {
+    return sxlate_jxs(c);
+}

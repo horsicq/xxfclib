@@ -1,0 +1,37 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/lave_digitalmusicmaker/xx_lave_digitalmusicmaker_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxzxm_dmm_header_fields = layout([u16("bank_0_end_address", VA), u16("bank_1_end_address", VA),
+    u16("bank_2_end_address", VA), u16("bank_3_end_address", VA), u16("bank_4_end_address", VA), u16("bank_5_end_address", VA),
+    u8("pattern_line_count", COUNT), u8("padding", RESERVED)]);
+var sxzxm_dmm_header = sxLayout(0x608A0054, "dmm_header", LE, sxzxm_dmm_header_fields);
+var sxzxm_dmm_mixing_fields = layout([u8("note_command", FLAGS), u8("sample_parameter", FLAGS), u8("effect"), u8("period")]);
+var sxzxm_dmm_mixing = sxLayout(0x608A0056, "dmm_mixing", LE, sxzxm_dmm_mixing_fields);
+var sxzxm_dmm_sample_fields = layout([chars("name", 9, NONE), u16("start_address", VA), u8("bank", ID),
+    u16("limit_address", VA), u16("loop_address", VA)]);
+var sxzxm_dmm_sample = sxLayout(0x608A0057, "dmm_sample", LE, sxzxm_dmm_sample_fields);
+var sxzxm_dmm_event_fields = layout([u8("note_command", FLAGS), u8("sample_parameter", FLAGS), u8("effect")]);
+var sxzxm_dmm_event = sxLayout(0x608A0058, "dmm_event", LE, sxzxm_dmm_event_fields);
+function sxzxm_dmm(c) {
+    var rows = [0];
+    if (!sxzxm_put(c, sxzxm_dmm_header, 0, 1)) {
+        return false;
+    }
+    if (!sxzxm_opt(c, sxzxm_zx_position, 14, 50) || !sxzxm_opt(c, sxzxm_dmm_playback, 64, 1) || !sxzxm_opt(c, sxzxm_dmm_mixing, 69, 5) || !sxzxm_opt(c, sxzxm_dmm_sample, 90, 16)) {
+        return false;
+    }
+    if (sxzxm_u8(c, 12, rows) && (rows[0] === 24 || rows[0] === 32 || rows[0] === 48 || rows[0] === 64)) {
+        for (var i = 0; i < 24; i++) {
+            if (!sxzxm_opt(c, sxzxm_dmm_event, 350 + i * rows[0] * 9, rows[0] * 3)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_lave_digitalmusicmaker_build(c) {
+    return sxzxm_dmm(c);
+}

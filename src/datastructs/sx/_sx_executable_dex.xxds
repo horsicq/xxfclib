@@ -1,0 +1,120 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/dex/xx_dex_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_dex_header_fields = layout([chars("magic", 8, SIGNATURE), u32("checksum", CHECKSUM), bytes("signature", 20),
+    u32("file_size", SIZE), u32("header_size", SIZE), u32("endian_tag", ID), u32("link_size", SIZE), u32("link_off", OFFSET),
+    u32("map_off", OFFSET), u32("string_ids_size", COUNT), u32("string_ids_off", OFFSET), u32("type_ids_size", COUNT),
+    u32("type_ids_off", OFFSET), u32("proto_ids_size", COUNT), u32("proto_ids_off", OFFSET), u32("field_ids_size", COUNT),
+    u32("field_ids_off", OFFSET), u32("method_ids_size", COUNT), u32("method_ids_off", OFFSET), u32("class_defs_size", COUNT),
+    u32("class_defs_off", OFFSET), u32("data_size", SIZE), u32("data_off", OFFSET)]);
+var sx_dex_header_le = sxLayout(0x60030001, "dex_header_le", LE, sx_dex_header_fields);
+var sx_dex_header_be = sxLayout(0x60030002, "dex_header_be", BE, sx_dex_header_fields);
+var sx_dex_map_list_fields = layout([u32("size", COUNT)]);
+var sx_dex_map_list_le = sxLayout(0x60030003, "dex_map_list_le", LE, sx_dex_map_list_fields);
+var sx_dex_map_list_be = sxLayout(0x60030004, "dex_map_list_be", BE, sx_dex_map_list_fields);
+var sx_dex_map_item_fields = layout([u16("type", ID), u16("unused", RESERVED), u32("size", COUNT), u32("offset", OFFSET)]);
+var sx_dex_map_item_le = sxLayout(0x60030005, "dex_map_item_le", LE, sx_dex_map_item_fields);
+var sx_dex_map_item_be = sxLayout(0x60030006, "dex_map_item_be", BE, sx_dex_map_item_fields);
+var sx_dex_string_id_item_fields = layout([u32("string_data_off", OFFSET)]);
+var sx_dex_string_id_item_le = sxLayout(0x60030007, "dex_string_id_item_le", LE, sx_dex_string_id_item_fields);
+var sx_dex_string_id_item_be = sxLayout(0x60030008, "dex_string_id_item_be", BE, sx_dex_string_id_item_fields);
+var sx_dex_type_id_item_fields = layout([u32("descriptor_idx", ID)]);
+var sx_dex_type_id_item_le = sxLayout(0x60030009, "dex_type_id_item_le", LE, sx_dex_type_id_item_fields);
+var sx_dex_type_id_item_be = sxLayout(0x6003000A, "dex_type_id_item_be", BE, sx_dex_type_id_item_fields);
+var sx_dex_proto_id_item_fields = layout([u32("shorty_idx", ID), u32("return_type_idx", ID), u32("parameters_off", OFFSET)]);
+var sx_dex_proto_id_item_le = sxLayout(0x6003000B, "dex_proto_id_item_le", LE, sx_dex_proto_id_item_fields);
+var sx_dex_proto_id_item_be = sxLayout(0x6003000C, "dex_proto_id_item_be", BE, sx_dex_proto_id_item_fields);
+var sx_dex_field_id_item_fields = layout([u16("class_idx", ID), u16("type_idx", ID), u32("name_idx", ID)]);
+var sx_dex_field_id_item_le = sxLayout(0x6003000D, "dex_field_id_item_le", LE, sx_dex_field_id_item_fields);
+var sx_dex_field_id_item_be = sxLayout(0x6003000E, "dex_field_id_item_be", BE, sx_dex_field_id_item_fields);
+var sx_dex_method_id_item_fields = layout([u16("class_idx", ID), u16("proto_idx", ID), u32("name_idx", ID)]);
+var sx_dex_method_id_item_le = sxLayout(0x6003000F, "dex_method_id_item_le", LE, sx_dex_method_id_item_fields);
+var sx_dex_method_id_item_be = sxLayout(0x60030010, "dex_method_id_item_be", BE, sx_dex_method_id_item_fields);
+var sx_dex_class_def_item_fields = layout([u32("class_idx", ID), u32("access_flags", FLAGS), u32("superclass_idx", ID),
+    u32("interfaces_off", OFFSET), u32("source_file_idx", ID), u32("annotations_off", OFFSET), u32("class_data_off", OFFSET),
+    u32("static_values_off", OFFSET)]);
+var sx_dex_class_def_item_le = sxLayout(0x60030011, "dex_class_def_item_le", LE, sx_dex_class_def_item_fields);
+var sx_dex_class_def_item_be = sxLayout(0x60030012, "dex_class_def_item_be", BE, sx_dex_class_def_item_fields);
+var sx_dex_call_site_id_item_fields = layout([u32("call_site_off", OFFSET)]);
+var sx_dex_call_site_id_item_le = sxLayout(0x60030013, "dex_call_site_id_item_le", LE, sx_dex_call_site_id_item_fields);
+var sx_dex_call_site_id_item_be = sxLayout(0x60030014, "dex_call_site_id_item_be", BE, sx_dex_call_site_id_item_fields);
+var sx_dex_method_handle_item_fields = layout([u16("method_handle_type", ID), u16("unused1", RESERVED),
+    u16("field_or_method_id", ID), u16("unused2", RESERVED)]);
+var sx_dex_method_handle_item_le = sxLayout(0x60030015, "dex_method_handle_item_le", LE, sx_dex_method_handle_item_fields);
+var sx_dex_method_handle_item_be = sxLayout(0x60030016, "dex_method_handle_item_be", BE, sx_dex_method_handle_item_fields);
+function sx_dex_build(c) {
+    var h = [];
+    var map;
+    var filesize;
+    var header;
+    var n;
+    var be;
+    var fixed = [];
+    var widths = [4, 4, 12, 8, 8, 32];
+    if (!sx_read(c, 0, h, 112) || sxMemcmp(h, "dex\n", 4)) {
+        return false;
+    }
+    if (sxGetU32(h, 112, 40, false) === 0x12345678) {
+        be = false;
+    } else if (sxGetU32(h, 112, 40, false) === 0x78563412) {
+        be = true;
+    } else {
+        return false;
+    }
+    filesize = sxGetU32(h, 112, 32, be);
+    header = sxGetU32(h, 112, 36, be);
+    if (header !== 112 || filesize < 112 || filesize > (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        return false;
+    }
+    c.size = filesize;
+    if (!sx_add(c, be ? sx_dex_header_be : sx_dex_header_le, 0, 112)) {
+        return false;
+    }
+    fixed[0] = be ? sx_dex_string_id_item_be : sx_dex_string_id_item_le;
+    fixed[1] = be ? sx_dex_type_id_item_be : sx_dex_type_id_item_le;
+    fixed[2] = be ? sx_dex_proto_id_item_be : sx_dex_proto_id_item_le;
+    fixed[3] = be ? sx_dex_field_id_item_be : sx_dex_field_id_item_le;
+    fixed[4] = be ? sx_dex_method_id_item_be : sx_dex_method_id_item_le;
+    fixed[5] = be ? sx_dex_class_def_item_be : sx_dex_class_def_item_le;
+    for (var i = 0; i < 6; i++) {
+        n = sxGetU32(h, 112, (56 + ((i * 8) >>> 0)) >>> 0, be);
+        var off = sxGetU32(h, 112, (60 + ((i * 8) >>> 0)) >>> 0, be);
+        if (n && (!off || !sx_table(c, fixed[i], off, widths[i], n))) {
+            return false;
+        }
+    }
+    map = sxGetU32(h, 112, 52, be);
+    if (map) {
+        if ((n = sx_u32(c, map, be)) === null || n > 65536 || !sx_add(c, be ? sx_dex_map_list_be : sx_dex_map_list_le, map, 4) || !sx_table(c, be ? sx_dex_map_item_be : sx_dex_map_item_le, map + 4, 12, n)) {
+            return false;
+        }
+        for (i = 0; i < n; i++) {
+            var entry = [];
+            var type;
+            var count;
+            if (!sx_read(c, map + 4 + i * 12, entry, 12)) {
+                return false;
+            }
+            type = sxGetU16(entry, 12, 0, be);
+            count = sxGetU32(entry, 12, 4, be);
+            off = sxGetU32(entry, 12, 8, be);
+            if (type === 7 && !sx_table(c, be ? sx_dex_call_site_id_item_be : sx_dex_call_site_id_item_le, off, 4, count)) {
+                return false;
+            }
+            if (type === 8 && !sx_table(c, be ? sx_dex_method_handle_item_be : sx_dex_method_handle_item_le, off, 8, count)) {
+                return false;
+            }
+        }
+    }
+    n = sxGetU32(h, 112, 104, be);
+    if (n && !sx_raw(c, sxGetU32(h, 112, 108, be), n)) {
+        return false;
+    }
+    return true;
+}
+function sx_dex_schema_build(c) {
+    return sx_dex_build(c);
+}

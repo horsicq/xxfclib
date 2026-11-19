@@ -1,0 +1,97 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/android_binary_xml/xx_android_binary_xml_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_am_android_chunk_header_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE)]);
+var sx_am_android_chunk_header = sxLayout(0x601B0001, "android_chunk_header", LE, sx_am_android_chunk_header_fields);
+var sx_am_android_xml_node_fields = layout([u16("type", ID), u16("header_size", SIZE), u32("chunk_size", SIZE),
+    u32("line_number"), u32("comment_index", ID)]);
+var sx_am_android_xml_node = sxLayout(0x601B0004, "android_xml_node", LE, sx_am_android_xml_node_fields);
+var sx_am_android_xml_namespace_fields = layout([u32("prefix_index", ID), u32("uri_index", ID)]);
+var sx_am_android_xml_namespace = sxLayout(0x601B0005, "android_xml_namespace", LE, sx_am_android_xml_namespace_fields);
+var sx_am_android_xml_start_element_fields = layout([u32("namespace_index", ID), u32("name_index", ID),
+    u16("attribute_start", OFFSET), u16("attribute_size", SIZE), u16("attribute_count", COUNT), u16("id_index", ID),
+    u16("class_index", ID), u16("style_index", ID)]);
+var sx_am_android_xml_start_element = sxLayout(0x601B0006, "android_xml_start_element", LE, sx_am_android_xml_start_element_fields);
+var sx_am_android_xml_end_element_fields = layout([u32("namespace_index", ID), u32("name_index", ID)]);
+var sx_am_android_xml_end_element = sxLayout(0x601B0007, "android_xml_end_element", LE, sx_am_android_xml_end_element_fields);
+var sx_am_android_xml_attribute_fields = layout([u32("namespace_index", ID), u32("name_index", ID), u32("raw_value_index", ID),
+    u16("value_size", SIZE), u8("reserved", RESERVED), u8("data_type", ID), u32("data")]);
+var sx_am_android_xml_attribute = sxLayout(0x601B0008, "android_xml_attribute", LE, sx_am_android_xml_attribute_fields);
+var sx_am_android_xml_cdata_fields = layout([u32("data_index", ID), u16("value_size", SIZE), u8("reserved", RESERVED),
+    u8("data_type", ID), u32("data")]);
+var sx_am_android_xml_cdata = sxLayout(0x601B0009, "android_xml_cdata", LE, sx_am_android_xml_cdata_fields);
+var sx_am_android_resource_id_fields = layout([u32("resource_id", ID)]);
+var sx_am_android_resource_id = sxLayout(0x601B000A, "android_resource_id", LE, sx_am_android_resource_id_fields);
+function sx_am_xml(c, root) {
+    if (root.type !== 3 || !sx_add(c, sx_am_android_chunk_header, 0, 8)) {
+        return false;
+    }
+    var at = root.header;
+    var nodes = 0;
+    while (at < root.end) {
+        var q = sxNew_sx_am_chunk_info();
+        if (++nodes > 100000 || !sx_am_chunk(c, at, root.end, q)) {
+            return false;
+        }
+        var ext = at + q.header;
+        if (q.type === 1) {
+            if (!sx_am_pool(c, q)) {
+                return false;
+            }
+        } else if (q.type === 384) {
+            var n = Math.floor(sxU64(q.end - ext) / 4);
+            if (q.header !== 8 || sxU64(q.end - ext) % 4 || n > 65536 || !sx_add(c, sx_am_android_chunk_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8) || !sx_table(c, sx_am_android_resource_id, (ext >= SX_I64_MAX ? ext - SX_U64_MAX : ext), 4, n)) {
+                return false;
+            }
+        } else {
+            if (q.header < 16 || !sx_add(c, sx_am_android_xml_node, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 16)) {
+                return false;
+            }
+            if (q.type === 256 || q.type === 257) {
+                if (sxU64(q.end - ext) < 8 || !sx_add(c, sx_am_android_xml_namespace, (ext >= SX_I64_MAX ? ext - SX_U64_MAX : ext), 8)) {
+                    return false;
+                }
+            } else if (q.type === 259) {
+                if (sxU64(q.end - ext) < 8 || !sx_add(c, sx_am_android_xml_end_element, (ext >= SX_I64_MAX ? ext - SX_U64_MAX : ext), 8)) {
+                    return false;
+                }
+            } else if (q.type === 260) {
+                if (sxU64(q.end - ext) < 12 || !sx_add(c, sx_am_android_xml_cdata, (ext >= SX_I64_MAX ? ext - SX_U64_MAX : ext), 12)) {
+                    return false;
+                }
+            } else if (q.type === 258) {
+                var b = [];
+                if (sxU64(q.end - ext) < 20 || !sx_read(c, (ext >= SX_I64_MAX ? ext - SX_U64_MAX : ext), b, 20) || !sx_add(c, sx_am_android_xml_start_element, (ext >= SX_I64_MAX ? ext - SX_U64_MAX : ext), 20)) {
+                    return false;
+                }
+                var start = sxGetU16(b, 20, 8, false);
+                var width = sxGetU16(b, 20, 10, false);
+                n = sxGetU16(b, 20, 12, false);
+                if (start < 20 || width < 20 || n > 2048 || start > sxU64(q.end - ext) || n * width > sxU64(sxU64(q.end - ext) - start)) {
+                    return false;
+                }
+                if (width === 20) {
+                    if (!sx_table(c, sx_am_android_xml_attribute, (ext + start >= SX_I64_MAX ? ext + start - SX_U64_MAX : ext + start), 20, n)) {
+                        return false;
+                    }
+                } else {
+                    for (var i = 0; i < n; i = i + 1 & 0xFFFF) {
+                        if (!sx_add(c, sx_am_android_xml_attribute, (ext + start + i * width >= SX_I64_MAX ? ext + start + i * width - SX_U64_MAX : ext + start + i * width), 20)) {
+                            return false;
+                        }
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+        at = q.end;
+    }
+    return at === root.end;
+}
+function sx_android_binary_xml_build(c, root) {
+    return sx_am_xml(c, root);
+}

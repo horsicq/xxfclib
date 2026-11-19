@@ -1,0 +1,108 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/adlib_bmf/xx_adlib_bmf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxad_adlib_bmf_signature_fields = layout([chars("signature_version", 6, SIGNATURE)]);
+var sxad_adlib_bmf_signature = sxLayout(0x600F001E, "adlib_bmf_signature", LE, sxad_adlib_bmf_signature_fields);
+var sxad_adlib_bmf_settings_fields = layout([field("speed", "uint8_t", 1), field("instrument_mask", "uint32_t", 4, FLAGS)]);
+var sxad_adlib_bmf_settings = sxLayout(0x600F001F, "adlib_bmf_settings", BE, sxad_adlib_bmf_settings_fields);
+var sxad_adlib_bmf_instrument_fields = layout([chars("name", 11, STRING),
+    field("modulator_characteristics", "uint8_t", 1, FLAGS), field("carrier_characteristics", "uint8_t", 1, FLAGS),
+    field("modulator_scale_level", "uint8_t", 1, FLAGS), field("carrier_scale_level", "uint8_t", 1, FLAGS),
+    field("modulator_attack_decay", "uint8_t", 1, FLAGS), field("carrier_attack_decay", "uint8_t", 1, FLAGS),
+    field("modulator_sustain_release", "uint8_t", 1, FLAGS), field("carrier_sustain_release", "uint8_t", 1, FLAGS),
+    field("frequency_low", "uint8_t", 1, FLAGS), field("frequency_high_key", "uint8_t", 1, FLAGS),
+    field("feedback_connection", "uint8_t", 1, FLAGS), field("modulator_waveform", "uint8_t", 1, FLAGS),
+    field("carrier_waveform", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bmf_instrument = sxLayout(0x600F0020, "adlib_bmf_instrument", LE, sxad_adlib_bmf_instrument_fields);
+var sxad_adlib_bmf_stream_flags_fields = layout([field("channel_mask", "uint32_t", 4, FLAGS)]);
+var sxad_adlib_bmf_stream_flags = sxLayout(0x600F0021, "adlib_bmf_stream_flags", BE, sxad_adlib_bmf_stream_flags_fields);
+var sxad_adlib_bmf_note_or_control_fields = layout([field("note_or_control", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bmf_note_or_control = sxLayout(0x600F0022, "adlib_bmf_note_or_control", LE, sxad_adlib_bmf_note_or_control_fields);
+var sxad_adlib_bmf_loop_fields = layout([field("command", "uint8_t", 1, ID), field("repeat_count_encoded", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bmf_loop = sxLayout(0x600F0023, "adlib_bmf_loop", LE, sxad_adlib_bmf_loop_fields);
+var sxad_adlib_bmf_note_delay_fields = layout([field("note_flags", "uint8_t", 1, FLAGS),
+    field("delay_flags", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bmf_note_delay = sxLayout(0x600F0024, "adlib_bmf_note_delay", LE, sxad_adlib_bmf_note_delay_fields);
+var sxad_adlib_bmf_note_command_fields = layout([field("note_flags", "uint8_t", 1, FLAGS), field("command", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bmf_note_command = sxLayout(0x600F0025, "adlib_bmf_note_command", LE, sxad_adlib_bmf_note_command_fields);
+var sxad_adlib_bmf_note_delay_command_fields = layout([field("note_flags", "uint8_t", 1, FLAGS),
+    field("delay_flags", "uint8_t", 1, FLAGS), field("command", "uint8_t", 1, FLAGS)]);
+var sxad_adlib_bmf_note_delay_command = sxLayout(0x600F0026, "adlib_bmf_note_delay_command", LE, sxad_adlib_bmf_note_delay_command_fields);
+function sxad_bmf(c) {
+    var at = [6];
+    var mask;
+    var speed = [0];
+    if (!sxad_tag(c, 0, "BMF1.1", 6) || !sx_add(c, sxad_adlib_bmf_signature, 0, 6) || !sxad_zraw(c, at, 4096) || !sxad_zraw(c, at, 4096) || !sxad_byte(c, at[0], speed) || !speed[0] || (mask = sx_u32(c, at[0] + 1, true)) === null || !sxad_header(c, sxad_adlib_bmf_settings, at, 5)) {
+        return false;
+    }
+    for (var i = 0; i < 32; i++) {
+        if ((mask & 0x80000000 >>> i) >>> 0) {
+            if (!sxad_header(c, sxad_adlib_bmf_instrument, at, 24)) {
+                return false;
+            }
+        }
+    }
+    if ((mask = sx_u32(c, at[0], true)) === null || !mask || mask & 0x007FFFFF || !sxad_header(c, sxad_adlib_bmf_stream_flags, at, 4)) {
+        return false;
+    }
+    for (i = 0; i < 9; i++) {
+        if ((mask & 0x80000000 >>> i) >>> 0) {
+            var loop = false;
+            var ended = false;
+            for (var events = 0; events < 1024 && !ended; events++) {
+                var v = [0];
+                var q = [0];
+                var size = 1;
+                var l = sxad_adlib_bmf_note_or_control;
+                if (!sxad_byte(c, at[0], v)) {
+                    return false;
+                }
+                if (v[0] === 254) {
+                    ended = true;
+                } else if (v[0] === 252) {
+                    loop = true;
+                    size = 2;
+                    l = sxad_adlib_bmf_loop;
+                } else if (v[0] === 125) {
+                    if (!loop) {
+                        return false;
+                    }
+                } else if (v[0] & 128) {
+                    if (!sxad_byte(c, at[0] + 1, q)) {
+                        return false;
+                    }
+                    if (q[0] & 128) {
+                        size = 2;
+                        l = sxad_adlib_bmf_note_delay;
+                        if (q[0] & 64) {
+                            if (!sxad_byte(c, at[0] + 2, q) || q[0] < 32 || q[0] >= 128) {
+                                return false;
+                            }
+                            size = 3;
+                            l = sxad_adlib_bmf_note_delay_command;
+                        }
+                    } else {
+                        if (q[0] < 32) {
+                            return false;
+                        }
+                        size = 2;
+                        l = sxad_adlib_bmf_note_command;
+                    }
+                }
+                if (!sxad_header(c, l, at, size)) {
+                    return false;
+                }
+            }
+            if (!ended) {
+                return false;
+            }
+        }
+    }
+    return at[0] === c.size;
+}
+function sx_adlib_bmf_build(c) {
+    return sxad_bmf(c);
+}

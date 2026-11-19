@@ -1,0 +1,55 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/kirikiri_xp3/xx_kirikiri_xp3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_xp3_header_fields = layout([blob("signature", 11, SIGNATURE), u64("index_offset", OFFSET)]);
+var sxgp_xp3_header = sxLayout(0x6036005D, "xp3_header", LE, sxgp_xp3_header_fields);
+var sxgp_xp3_index_fields = layout([u8("flags", FLAGS), u64("index_size", SIZE)]);
+var sxgp_xp3_index = sxLayout(0x6036005E, "xp3_index", LE, sxgp_xp3_index_fields);
+var sxgp_xp3_chunk_fields = layout([blob("chunk_id", 4, ID), u64("data_size", SIZE)]);
+var sxgp_xp3_chunk = sxLayout(0x6036005F, "xp3_chunk", LE, sxgp_xp3_chunk_fields);
+var sxgp_xp3_info_fields = layout([u32("flags", FLAGS), u64("original_size", SIZE), u64("archived_size", SIZE),
+    u16("name_utf16_units", COUNT)]);
+var sxgp_xp3_info = sxLayout(0x60360060, "xp3_info", LE, sxgp_xp3_info_fields);
+var sxgp_xp3_segment_fields = layout([u32("flags", FLAGS), u64("data_offset", OFFSET), u64("original_size", SIZE),
+    u64("archived_size", SIZE)]);
+var sxgp_xp3_segment = sxLayout(0x60360061, "xp3_segment", LE, sxgp_xp3_segment_fields);
+var sxgp_xp3_checksum_fields = layout([u32("adler32", CHECKSUM)]);
+var sxgp_xp3_checksum = sxLayout(0x60360062, "xp3_checksum", LE, sxgp_xp3_checksum_fields);
+function sxgp_xp3(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var z = [0];
+    var stop;
+    var tag = [];
+    if (!sxgp_row(v, sxgp_xp3_header, 0, end) || !sxgp_word(v, 11, 8, false, p, 0, end) || !sxgp_row(v, sxgp_xp3_index, p[0], end) || !sxgp_word(v, p[0] + 1, 8, false, z, 0, end) || !sxgp_span(v, p[0] + 9, z[0], end)) {
+        return false;
+    }
+    p[0] += 9;
+    stop = p[0] + z[0];
+    while (p[0] < stop) {
+        var fend;
+        if (!sxgp_row(v, sxgp_xp3_chunk, p[0], stop) || !sxgp_word(v, p[0] + 4, 8, false, z, 0, stop) || !sxgp_span(v, p[0] + 12, z[0], stop)) {
+            return false;
+        }
+        p[0] += 12;
+        fend = p[0] + z[0];
+        while (p[0] < fend) {
+            if (!sxgp_row(v, sxgp_xp3_chunk, p[0], fend) || !sxgp_read(v, p[0], tag, 4, fend) || !sxgp_word(v, p[0] + 4, 8, false, z, 0, fend) || !sxgp_span(v, p[0] + 12, z[0], fend)) {
+                return false;
+            }
+            p[0] += 12;
+            var l = !sxMemcmp(tag, "info", 4) ? sxgp_xp3_info : !sxMemcmp(tag, "segm", 4) ? sxgp_xp3_segment : !sxMemcmp(tag, "adlr", 4) ? sxgp_xp3_checksum : null;
+            if (l !== null && !sxgp_row(v, l, p[0], p[0] + z[0])) {
+                return false;
+            }
+            p[0] += z[0];
+        }
+    }
+    return p[0] === stop;
+}
+function sx_kirikiri_xp3_build(v) {
+    return sxgp_xp3(v);
+}

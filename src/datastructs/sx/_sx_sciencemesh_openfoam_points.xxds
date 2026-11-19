@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/openfoam_points/xx_openfoam_points_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxsm_foam(q) {
+    var t = sxNew_sxsm_token();
+    var key = sxNew_sxsm_token();
+    var value = sxNew_sxsm_token();
+    if (!sxsm_lex(q, t, false)) {
+        return false;
+    }
+    {
+        if (!sxsm_emit(q, sxsm_signature, sxCopy_sxsm_token(null, t))) {
+            return false;
+        }
+    }
+    if (!sxsm_expect(q, "{", false)) {
+        return false;
+    }
+    while (sxsm_lex(q, key, false)) {
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, key), "}")) {
+            break;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, key))) {
+                return false;
+            }
+        }
+        if (!sxsm_lex(q, value, false) || !sxsm_emit(q, sxsm_eq(q, sxCopy_sxsm_token(null, key), "version") ? sxsm_real_value : sxsm_option_value, sxCopy_sxsm_token(null, value)) || !sxsm_expect(q, ";", false)) {
+            return false;
+        }
+    }
+    var n = [0];
+    if (!sxsm_count(q, sxsm_node_count, n, false) || !sxsm_expect(q, "(", false)) {
+        return false;
+    }
+    for (var i = 0; i < n[0]; i++) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        if (!sxsm_expect(q, "(", false) || !sxsm_one(q, sxsm_coordinate_x, false) || !sxsm_one(q, sxsm_coordinate_y, false) || !sxsm_one(q, sxsm_coordinate_z, false) || !sxsm_expect(q, ")", false)) {
+            return false;
+        }
+    }
+    return sxsm_expect(q, ")", false);
+}
+function sx_openfoam_points_build(q) {
+    return sxsm_foam(q);
+}

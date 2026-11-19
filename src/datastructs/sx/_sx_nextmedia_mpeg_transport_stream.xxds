@@ -1,0 +1,188 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/video/mpeg_transport_stream/xx_mpeg_transport_stream_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnx_ts_header_fields = layout([u8("sync", SIGNATURE), u16("flags_pid", FLAGS), u8("scrambling_adaptation_counter", FLAGS)]);
+var sxnx_ts_header = sxLayout(0x603200FC, "ts_header", BE, sxnx_ts_header_fields);
+var sxnx_ts_adaptation_size_fields = layout([u8("data_bytes", SIZE)]);
+var sxnx_ts_adaptation_size = sxLayout(0x603200FD, "ts_adaptation_size", LE, sxnx_ts_adaptation_size_fields);
+var sxnx_ts_adaptation_flags_fields = layout([u8("flags", FLAGS)]);
+var sxnx_ts_adaptation_flags = sxLayout(0x603200FE, "ts_adaptation_flags", LE, sxnx_ts_adaptation_flags_fields);
+var sxnx_ts_clock_fields = layout([u32("base_high"), u8("base_low_reserved_extension_high", FLAGS), u8("extension_low")]);
+var sxnx_ts_clock = sxLayout(0x603200FF, "ts_clock", BE, sxnx_ts_clock_fields);
+var sxnx_ts_splice_fields = layout([i8("countdown")]);
+var sxnx_ts_splice = sxLayout(0x60320100, "ts_splice", LE, sxnx_ts_splice_fields);
+var sxnx_ts_private_size_fields = layout([u8("data_bytes", SIZE)]);
+var sxnx_ts_private_size = sxLayout(0x60320101, "ts_private_size", LE, sxnx_ts_private_size_fields);
+var sxnx_ts_pointer_fields = layout([u8("pointer_bytes", SIZE)]);
+var sxnx_ts_pointer = sxLayout(0x60320102, "ts_pointer", LE, sxnx_ts_pointer_fields);
+var sxnx_ts_section_fields = layout([u8("table_id", ID), u16("flags_section_length", FLAGS), u16("table_id_extension", ID),
+    u8("version_current_next", FLAGS), u8("section_number", ID), u8("last_section_number", ID)]);
+var sxnx_ts_section = sxLayout(0x60320103, "ts_section", BE, sxnx_ts_section_fields);
+var sxnx_ts_pat_program_fields = layout([u16("program_number", ID), u16("reserved_pid", FLAGS)]);
+var sxnx_ts_pat_program = sxLayout(0x60320104, "ts_pat_program", BE, sxnx_ts_pat_program_fields);
+var sxnx_ts_pmt_fields = layout([u16("reserved_pcr_pid", FLAGS), u16("reserved_program_info_length", FLAGS)]);
+var sxnx_ts_pmt = sxLayout(0x60320105, "ts_pmt", BE, sxnx_ts_pmt_fields);
+var sxnx_ts_pmt_stream_fields = layout([u8("stream_type", ID), u16("reserved_elementary_pid", FLAGS),
+    u16("reserved_info_length", FLAGS)]);
+var sxnx_ts_pmt_stream = sxLayout(0x60320106, "ts_pmt_stream", BE, sxnx_ts_pmt_stream_fields);
+var sxnx_ts_sdt_fields = layout([u16("original_network_id", ID), u8("reserved", RESERVED)]);
+var sxnx_ts_sdt = sxLayout(0x60320107, "ts_sdt", BE, sxnx_ts_sdt_fields);
+var sxnx_ts_sdt_service_fields = layout([u16("service_id", ID), u8("eit_flags", FLAGS),
+    u16("running_free_ca_descriptor_length", FLAGS)]);
+var sxnx_ts_sdt_service = sxLayout(0x60320108, "ts_sdt_service", BE, sxnx_ts_sdt_service_fields);
+var sxnx_ts_descriptor_fields = layout([u8("tag", ID), u8("data_bytes", SIZE)]);
+var sxnx_ts_descriptor = sxLayout(0x60320109, "ts_descriptor", LE, sxnx_ts_descriptor_fields);
+function sxnx_ts_descriptors(v, p, end) {
+    while (p < end) {
+        if (!sxnx_row(v, sxnx_ts_descriptor, p, end)) {
+            return false;
+        }
+        var n = v.p[p + 1];
+        p += 2;
+        if (!sxnx_need(v, p, n, end)) {
+            return false;
+        }
+        p += n;
+    }
+    return true;
+}
+function sxnx_ts(v) {
+    if (v.n % 188 || Math.floor(v.n / 188) > 4096) {
+        return false;
+    }
+    var pmt = 8191;
+    for (var at = 0; at < v.n; at += 188) {
+        var end = at + 188;
+        var p = at + 4;
+        if (!sxnx_row(v, sxnx_ts_header, at, end)) {
+            return false;
+        }
+        var pid = sxnx_u16(v.p, at + 1, true) & 8191;
+        var control = v.p[at + 3] >> 4 & 3;
+        var start = (v.p[at + 1] & 64) !== 0;
+        if (control & 2) {
+            if (!sxnx_row(v, sxnx_ts_adaptation_size, p, end)) {
+                return false;
+            }
+            var z = v.p[p++];
+            if (!sxnx_need(v, p, z, end)) {
+                return false;
+            }
+            var ae = p + z;
+            if (z) {
+                if (!sxnx_row(v, sxnx_ts_adaptation_flags, p, ae)) {
+                    return false;
+                }
+                var flags = v.p[p++];
+                if (flags & 16) {
+                    if (!sxnx_row(v, sxnx_ts_clock, p, ae)) {
+                        return false;
+                    }
+                    p += 6;
+                }
+                if (flags & 8) {
+                    if (!sxnx_row(v, sxnx_ts_clock, p, ae)) {
+                        return false;
+                    }
+                    p += 6;
+                }
+                if (flags & 4) {
+                    if (!sxnx_row(v, sxnx_ts_splice, p, ae)) {
+                        return false;
+                    }
+                    p++;
+                }
+                if (flags & 2) {
+                    if (!sxnx_row(v, sxnx_ts_private_size, p, ae)) {
+                        return false;
+                    }
+                    var n = v.p[p++];
+                    if (!sxnx_need(v, p, n, ae)) {
+                        return false;
+                    }
+                    p += n;
+                }
+            }
+            p = ae;
+        }
+        if (!(control & 1) || p >= end) {
+            continue;
+        }
+        if (start && (pid === 0 || pid === 17 || pid === pmt)) {
+            if (!sxnx_row(v, sxnx_ts_pointer, p, end)) {
+                return false;
+            }
+            var pointer = v.p[p++];
+            if (!sxnx_need(v, p, pointer, end)) {
+                return false;
+            }
+            p += pointer;
+            if (!sxnx_row(v, sxnx_ts_section, p, end)) {
+                return false;
+            }
+            z = sxnx_u16(v.p, p + 1, true) & 4095;
+            if (z < 9 || !sxnx_need(v, p, (3 + z) >>> 0, end)) {
+                return false;
+            }
+            var finish = p + 3 + z;
+            var q = p + 8;
+            if (!sxnx_row(v, sxnx_mpeg_crc, sxU64(finish - 4), finish)) {
+                return false;
+            }
+            if (pid === 0) {
+                if (!sxnx_row(v, sxnx_ts_pat_program, q, sxU64(finish - 4))) {
+                    return false;
+                }
+                pmt = sxnx_u16(v.p, q + 2, true) & 8191;
+            } else if (pid === 17) {
+                if (!sxnx_row(v, sxnx_ts_sdt, q, sxU64(finish - 4))) {
+                    return false;
+                }
+                q += 3;
+                while (q < sxU64(finish - 4)) {
+                    if (!sxnx_row(v, sxnx_ts_sdt_service, q, sxU64(finish - 4))) {
+                        return false;
+                    }
+                    n = sxnx_u16(v.p, q + 3, true) & 4095;
+                    q += 5;
+                    if (!sxnx_need(v, q, n, sxU64(finish - 4)) || !sxnx_ts_descriptors(v, q, q + n)) {
+                        return false;
+                    }
+                    q += n;
+                }
+            } else {
+                if (!sxnx_row(v, sxnx_ts_pmt, q, sxU64(finish - 4))) {
+                    return false;
+                }
+                n = sxnx_u16(v.p, q + 2, true) & 4095;
+                q += 4;
+                if (!sxnx_need(v, q, n, sxU64(finish - 4)) || !sxnx_ts_descriptors(v, q, q + n)) {
+                    return false;
+                }
+                q += n;
+                while (q < sxU64(finish - 4)) {
+                    if (!sxnx_row(v, sxnx_ts_pmt_stream, q, sxU64(finish - 4))) {
+                        return false;
+                    }
+                    n = sxnx_u16(v.p, q + 3, true) & 4095;
+                    q += 5;
+                    if (!sxnx_need(v, q, n, sxU64(finish - 4)) || !sxnx_ts_descriptors(v, q, q + n)) {
+                        return false;
+                    }
+                    q += n;
+                }
+            }
+        } else if (start && pid !== 8191) {
+            if (!sxnx_row(v, sxnx_mpeg_packet, p, end) || !sxnx_pes(v, p + 6, end)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_mpeg_transport_stream_build(v) {
+    return sxnx_ts(v);
+}

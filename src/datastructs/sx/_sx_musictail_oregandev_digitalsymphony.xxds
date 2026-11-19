@@ -1,0 +1,118 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/oregandev_digitalsymphony/xx_oregandev_digitalsymphony_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_pascal_text_length_fields = layout([u8("text_bytes", SIZE)]);
+var sxmta_pascal_text_length = sxLayout(0x60810002, "pascal_text_length", LE, sxmta_pascal_text_length_fields);
+var sxmta_order16le_fields = layout([u16("pattern", ID)]);
+var sxmta_order16le = sxLayout(0x60810006, "order16le", LE, sxmta_order16le_fields);
+var sxmta_dsym_header_fields = layout([blob("magic", 8, SIGNATURE), u8("version", ID), u8("channels", COUNT),
+    u16("orders", COUNT), u16("tracks", COUNT), field("info_bytes", "uint24", 3, SIZE)]);
+var sxmta_dsym_header = sxLayout(0x60810037, "dsym_header", LE, sxmta_dsym_header_fields);
+var sxmta_dsym_sample_words_fields = layout([field("sample_words", "uint24", 3, COUNT)]);
+var sxmta_dsym_sample_words = sxLayout(0x60810039, "dsym_sample_words", LE, sxmta_dsym_sample_words_fields);
+var sxmta_dsym_commands_fields = layout([blob("allowed_commands", 8, FLAGS)]);
+var sxmta_dsym_commands = sxLayout(0x6081003A, "dsym_commands", LE, sxmta_dsym_commands_fields);
+var sxmta_dsym_sample_fields = layout([field("loop_start_words", "uint24", 3), field("loop_words", "uint24", 3, COUNT),
+    u8("volume"), u8("finetune")]);
+var sxmta_dsym_sample = sxLayout(0x6081003C, "dsym_sample", LE, sxmta_dsym_sample_fields);
+var sxmta_dsym_event_fields = layout([u8("note_instrument_low", FLAGS), u8("instrument_effect_low", FLAGS),
+    u8("effect_parameter_low", FLAGS), u8("parameter_high")]);
+var sxmta_dsym_event = sxLayout(0x6081003D, "dsym_event", LE, sxmta_dsym_event_fields);
+function sxmta_pascal(v, p, end) {
+    var n = [0];
+    if (!sxmta_u(v, p[0], 1, n, 0, end) || !sxmta_row(v, sxmta_pascal_text_length, p[0], end)) {
+        return false;
+    }
+    p[0]++;
+    if (!sxmta_text_emit(v, p[0], n[0], end)) {
+        return false;
+    }
+    p[0] += n[0];
+    return true;
+}
+function sxmta_dsym(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [17];
+    var orders = [0];
+    var tracks = [0];
+    var ch = [0];
+    var x = [0];
+    var len = [];
+    var flags = [];
+    if (!sxmta_eq(v, 0, "\x02\x01\x13\x13\x14\x12\x01\x0B", 8, end) || !sxmta_u(v, 9, 1, ch, 0, end) || !ch[0] || ch[0] > 8 || !sxmta_u(v, 10, 2, orders, 0, end) || !sxmta_u(v, 12, 2, tracks, 0, end) || !sxmta_row(v, sxmta_dsym_header, 0, end)) {
+        return false;
+    }
+    for (var i = 0; i < 63; i++) {
+        if (!sxmta_u(v, p[0], 1, flags, i, end) || !sxmta_take(v, sxmta_dsym_sample_flags, p, 1, end)) {
+            return false;
+        }
+        len[i] = 0;
+        if (!sxAnd64(flags[i], 128)) {
+            if (!sxmta_u(v, p[0], 3, len, i, end) || !sxmta_take(v, sxmta_dsym_sample_words, p, 1, end)) {
+                return false;
+            }
+            len[i] *= 2;
+        }
+    }
+    if (!sxmta_pascal(v, p, end) || !sxmta_take(v, sxmta_dsym_commands, p, 1, end)) {
+        return false;
+    }
+    if (orders[0]) {
+        if (!sxmta_u(v, p[0], 1, x, 0, end) || !sxmta_take(v, sxmta_dsym_packing, p, 1, end)) {
+            return false;
+        }
+        if (x[0]) {
+            return true;
+        }
+        if (!sxmta_take(v, sxmta_order16le, p, orders[0] * ch[0], end)) {
+            return false;
+        }
+    }
+    for (i = 0; i < tracks[0]; ) {
+        var n = sxU64(tracks[0] - i);
+        if (n > 2000) {
+            n = 2000;
+        }
+        if (!sxmta_u(v, p[0], 1, x, 0, end) || !sxmta_take(v, sxmta_dsym_packing, p, 1, end)) {
+            return false;
+        }
+        if (x[0]) {
+            return true;
+        }
+        if (!sxmta_take(v, sxmta_dsym_event, p, n * 64, end)) {
+            return false;
+        }
+        i += n;
+    }
+    for (i = 0; i < 63; i++) {
+        x[0] = sxAnd64(flags[i], 63);
+        if (!sxmta_text_emit(v, p[0], x[0], end)) {
+            return false;
+        }
+        p[0] += x[0];
+        if (sxAnd64(flags[i], 128)) {
+            continue;
+        }
+        if (!sxmta_take(v, sxmta_dsym_sample, p, 1, end)) {
+            return false;
+        }
+        if (len[i]) {
+            if (!sxmta_u(v, p[0], 1, x, 0, end) || !sxmta_take(v, sxmta_dsym_packing, p, 1, end)) {
+                return false;
+            }
+            if (x[0]) {
+                return true;
+            }
+            if (!sxmta_skip(v, p, len[i], end)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_oregandev_digitalsymphony_build(v) {
+    return sxmta_dsym(v);
+}

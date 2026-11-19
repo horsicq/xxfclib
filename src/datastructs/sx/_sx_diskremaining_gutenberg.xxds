@@ -1,0 +1,105 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/gutenberg/xx_gutenberg_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdr_gutenberg_link_fields = layout([u8("previous_track_flags", FLAGS), u8("previous_sector_flags", FLAGS),
+    u8("current_track_flags", FLAGS), u8("current_sector_flags", FLAGS), u8("next_track_flags", FLAGS),
+    u8("next_sector_flags", FLAGS)]);
+var sxdr_gutenberg_link = sxLayout(0x607F0017, "gutenberg_link", LE, sxdr_gutenberg_link_fields);
+var sxdr_gutenberg_volume_fields = layout([field("volume_name_high_ascii", "byte[9]", 9), u8("carriage_return", ID)]);
+var sxdr_gutenberg_volume = sxLayout(0x607F0018, "gutenberg_volume", LE, sxdr_gutenberg_volume_fields);
+var sxdr_gutenberg_entry_fields = layout([field("name_high_ascii", "byte[12]", 12), u8("first_track_flags", FLAGS),
+    u8("first_sector_flags", FLAGS), u8("type_high_ascii", ID), u8("carriage_return", ID)]);
+var sxdr_gutenberg_entry = sxLayout(0x607F0019, "gutenberg_entry", LE, sxdr_gutenberg_entry_fields);
+function sxdr_gb_index(t, s) {
+    t &= 127;
+    s &= 127;
+    if (t === 64) {
+        t = 0;
+    }
+    if (s === 64) {
+        s = 0;
+    }
+    return t < 35 && s < 16 ? t * 16 + s : 560;
+}
+var sxdr_gb_offset_skew = [0, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 15];
+function sxdr_gb_offset(i, po) {
+    return Math.floor(i / 16) * 4096 + (po ? sxdr_gb_offset_skew[i % 16] : i % 16) * 256;
+}
+function sxdr_gb_chain(c, first, po, list, count) {
+    var seen = sxZeros(560);
+    var h = [];
+    var curr = first;
+    var prev = 560;
+    count[0] = 0;
+    for (var k = 0; k < 560; k++) {
+        if (curr >= 560 || seen[curr] || !sxdr_read(c, sxdr_gb_offset(curr, po), h, 6) || sxdr_gb_index(h[2], h[3]) !== curr || ((h[3] & 128) !== 0) !== (k === 0) || k && sxdr_gb_index(h[0], h[1]) !== prev) {
+            return false;
+        }
+        seen[curr] = 1;
+        list[count[0]++] = curr & 0xFFFF;
+        var next = sxdr_gb_index(h[4], h[5]);
+        if (h[4] & 128) {
+            return next === first;
+        }
+        prev = curr;
+        curr = next;
+    }
+    return false;
+}
+function sxdr_gutenberg(c) {
+    if (c.size !== 0x23000) {
+        return false;
+    }
+    var dirs = [];
+    var files = [];
+    var root = [];
+    var d = [];
+    var any = false;
+    for (var order = 0; order < 2; order++) {
+        var po = order !== 0;
+        var nd = [0];
+        if (!sxdr_read(c, sxdr_gb_offset(279, po), root, 256) || root[15] !== 0x8D || sxMemcmpAt(root, 16, "\xC4\xC9\xD2", 0, 3) || !sxdr_gb_chain(c, 279, po, dirs, nd)) {
+            continue;
+        }
+        any = true;
+        for (var i = 0; i < nd[0]; i++) {
+            var p = sxdr_gb_offset(dirs[i], po);
+            if (!sxdr_read(c, p, d, 256)) {
+                return false;
+            }
+            if (sxMemcmpAt(d, 6, root, 6, 9) || d[15] !== 0x8D) {
+                continue;
+            }
+            if (!sxdr_put(c, sxdr_gutenberg_link, p, 1) || !sxdr_put(c, sxdr_gutenberg_volume, p + 6, 1)) {
+                return false;
+            }
+            for (var j = 0; j < 15; j++) {
+                var e = d, e_o = 16 + ((j * 16) >>> 0);
+                if (!e[e_o] || e[e_o] === 0xA0) {
+                    continue;
+                }
+                var type = e[e_o + 14] & 127;
+                var first = sxdr_gb_index(e[e_o + 12], e[e_o + 13]);
+                var nf = [0];
+                if (e[e_o + 15] !== 0x8D || type !== 32 && type !== 76 /*L*/ && type !== 77 /*M*/ && type !== 80 /*P*/ || !sxdr_gb_chain(c, first, po, files, nf)) {
+                    continue;
+                }
+                if (!sxdr_put(c, sxdr_gutenberg_entry, p + 16 + ((j * 16) >>> 0), 1)) {
+                    return false;
+                }
+                for (var k = 0; k < nf[0]; k++) {
+                    if (!sxdr_put(c, sxdr_gutenberg_link, sxdr_gb_offset(files[k], po), 1)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    return any;
+}
+function sx_gutenberg_build(c) {
+    return sxdr_gutenberg(c);
+}

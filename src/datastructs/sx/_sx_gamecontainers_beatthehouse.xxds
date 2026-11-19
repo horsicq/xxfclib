@@ -1,0 +1,14 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/beatthehouse/xx_beatthehouse_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_bth_header_fields = layout([chars("magic", 3, SIGNATURE), u8("payload_kind", ID), u32("decoded_bytes", SIZE)]);
+var sxgco_bth_header = sxLayout(0x60400012, "bth_header", LE, sxgco_bth_header_fields);
+function sxgco_house(v) {
+    return sxgco_row(v, sxgco_bth_header, 0, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size));
+}
+function sx_beatthehouse_build(v) {
+    return sxgco_house(v);
+}

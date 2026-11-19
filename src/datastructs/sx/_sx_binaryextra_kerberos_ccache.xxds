@@ -1,0 +1,99 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/kerberos_ccache/xx_kerberos_ccache_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_ccache_header_fields = layout([u8("major"), u8("minor"), u16("header_size", SIZE)]);
+var sxbx_ccache_header = sxLayout(0x6030007B, "ccache_header", BE, sxbx_ccache_header_fields);
+var sxbx_ccache_tag_fields = layout([u16("tag", ID), u16("tag_size", SIZE)]);
+var sxbx_ccache_tag = sxLayout(0x6030007C, "ccache_tag", BE, sxbx_ccache_tag_fields);
+var sxbx_ccache_time_offset_fields = layout([i32("seconds"), i32("microseconds")]);
+var sxbx_ccache_time_offset = sxLayout(0x6030007D, "ccache_time_offset", BE, sxbx_ccache_time_offset_fields);
+var sxbx_ccache_principal_fields = layout([u32("name_type", ID), u32("component_count", COUNT)]);
+var sxbx_ccache_principal = sxLayout(0x6030007E, "ccache_principal", BE, sxbx_ccache_principal_fields);
+var sxbx_ccache_blob_size_fields = layout([u32("byte_size", SIZE)]);
+var sxbx_ccache_blob_size = sxLayout(0x6030007F, "ccache_blob_size", BE, sxbx_ccache_blob_size_fields);
+var sxbx_ccache_key_fields = layout([u16("enctype", ID), u32("key_size", SIZE)]);
+var sxbx_ccache_key = sxLayout(0x60300080, "ccache_key", BE, sxbx_ccache_key_fields);
+var sxbx_ccache_times_flags_fields = layout([u32("auth_time"), u32("start_time"), u32("end_time"), u32("renew_until"),
+    u8("is_skey"), u32("ticket_flags", FLAGS)]);
+var sxbx_ccache_times_flags = sxLayout(0x60300081, "ccache_times_flags", BE, sxbx_ccache_times_flags_fields);
+var sxbx_ccache_list_count_fields = layout([u32("entry_count", COUNT)]);
+var sxbx_ccache_list_count = sxLayout(0x60300082, "ccache_list_count", BE, sxbx_ccache_list_count_fields);
+var sxbx_ccache_typed_blob_fields = layout([u16("type", ID), u32("byte_size", SIZE)]);
+var sxbx_ccache_typed_blob = sxLayout(0x60300083, "ccache_typed_blob", BE, sxbx_ccache_typed_blob_fields);
+function sxbx_cc_principal(c, p, end) {
+    var n = [0];
+    if (p[0] > end || sxU64(end - p[0]) < 8 || !sxbx_word(c, p[0] + 4, 4, true, n) || !n[0] || n[0] > 32 || !sxbx_add(c, sxbx_ccache_principal, p[0])) {
+        return false;
+    }
+    p[0] += 8;
+    for (var i = 0; i <= n[0]; i++) {
+        if (!sxbx_counted(c, p, end, sxbx_ccache_blob_size, 4, true, 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sxbx_ccache(c) {
+    var p = [4];
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    var z = [0];
+    if (!sxbx_add(c, sxbx_ccache_header, 0) || !sxbx_word(c, 2, 2, true, z) || z[0] > sxU64(end - 4)) {
+        return false;
+    }
+    var stop = p[0] + z[0];
+    while (p[0] < stop && c.count < 20000) {
+        var tag = [0];
+        if (sxU64(stop - p[0]) < 4 || !sxbx_word(c, p[0], 2, true, tag) || !sxbx_word(c, p[0] + 2, 2, true, z) || z[0] > sxU64(sxU64(stop - p[0]) - 4) || !sxbx_add(c, sxbx_ccache_tag, p[0])) {
+            break;
+        }
+        p[0] += 4;
+        if (tag[0] === 1 && z[0] === 8 && !sxbx_add(c, sxbx_ccache_time_offset, p[0])) {
+            return false;
+        }
+        p[0] += z[0];
+    }
+    p[0] = stop;
+    if (!sxbx_cc_principal(c, p, end)) {
+        return true;
+    }
+    for (var entries = 0; p[0] < end && entries < 512 && c.count < 20000; entries++) {
+        var keep = c.count;
+        if (!sxbx_cc_principal(c, p, end) || !sxbx_cc_principal(c, p, end) || sxU64(end - p[0]) < 6 || !sxbx_word(c, p[0] + 2, 4, true, z) || z[0] > sxU64(sxU64(end - p[0]) - 6) || !sxbx_add(c, sxbx_ccache_key, p[0])) {
+            c.count = keep;
+            break;
+        }
+        p[0] += 6 + z[0];
+        if (sxU64(end - p[0]) < 21 || !sxbx_add(c, sxbx_ccache_times_flags, p[0])) {
+            c.count = keep;
+            break;
+        }
+        p[0] += 21;
+        var ok = true;
+        for (var l = 0; l < 2 && ok; l++) {
+            var count = [0];
+            if (sxU64(end - p[0]) < 4 || !sxbx_word(c, p[0], 4, true, count) || count[0] > 128 || !sxbx_add(c, sxbx_ccache_list_count, p[0])) {
+                ok = false;
+                break;
+            }
+            p[0] += 4;
+            for (var i = 0; i < count[0]; i++) {
+                if (sxU64(end - p[0]) < 6 || !sxbx_word(c, p[0] + 2, 4, true, z) || z[0] > sxU64(sxU64(end - p[0]) - 6) || !sxbx_add(c, sxbx_ccache_typed_blob, p[0])) {
+                    ok = false;
+                    break;
+                }
+                p[0] += 6 + z[0];
+            }
+        }
+        if (!ok || !sxbx_counted(c, p, end, sxbx_ccache_blob_size, 4, true, 1) || !sxbx_counted(c, p, end, sxbx_ccache_blob_size, 4, true, 1)) {
+            c.count = keep;
+            break;
+        }
+    }
+    return true;
+}
+function sx_kerberos_ccache_build(c) {
+    return sxbx_ccache(c);
+}

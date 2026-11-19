@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/tran_cdfm_composer670/xx_tran_cdfm_composer670_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmta_c67_header_fields = layout([u8("speed"), u8("restart_order")]);
+var sxmta_c67_header = sxLayout(0x60810031, "c67_header", LE, sxmta_c67_header_fields);
+var sxmta_c67_name_fields = layout([chars("name", 13, NONE)]);
+var sxmta_c67_name = sxLayout(0x60810032, "c67_name", LE, sxmta_c67_name_fields);
+var sxmta_c67_fm_instrument_fields = layout([u8("feedback_connection", FLAGS), u8("modulator_characteristics", FLAGS),
+    u8("modulator_level", FLAGS), u8("modulator_attack_decay", FLAGS), u8("modulator_sustain_release", FLAGS),
+    u8("modulator_waveform", ID), u8("carrier_characteristics", FLAGS), u8("carrier_level", FLAGS),
+    u8("carrier_attack_decay", FLAGS), u8("carrier_sustain_release", FLAGS), u8("carrier_waveform", ID)]);
+var sxmta_c67_fm_instrument = sxLayout(0x60810034, "c67_fm_instrument", LE, sxmta_c67_fm_instrument_fields);
+var sxmta_c67_pattern_bytes_fields = layout([u32("pattern_bytes", SIZE)]);
+var sxmta_c67_pattern_bytes = sxLayout(0x60810036, "c67_pattern_bytes", LE, sxmta_c67_pattern_bytes_fields);
+function sxmta_c67(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [0];
+    var x = [0];
+    var n = [0];
+    var total = 0;
+    var max = 2978;
+    if (!sxmta_take(v, sxmta_c67_header, p, 1, end) || !sxmta_take(v, sxmta_c67_name, p, 32, end)) {
+        return false;
+    }
+    for (var i = 0; i < 32; i++) {
+        if (!sxmta_u(v, p[0] + 4, 4, x, 0, end) || !sxmta_take(v, sxmta_c67_sample, p, 1, end)) {
+            return false;
+        }
+        total += x[0];
+    }
+    if (!sxmta_take(v, sxmta_c67_name, p, 32, end) || !sxmta_take(v, sxmta_c67_fm_instrument, p, 32, end) || !sxmta_take(v, sxmta_order8, p, 256, end) || !sxmta_take(v, sxmta_c67_pattern_offset, p, 128, end) || !sxmta_take(v, sxmta_c67_pattern_bytes, p, 128, end)) {
+        return false;
+    }
+    for (i = 0; i < 128; i++) {
+        if (!sxmta_u(v, (1954 + ((i * 4) >>> 0)) >>> 0, 4, x, 0, end) || !sxmta_u(v, (2466 + ((i * 4) >>> 0)) >>> 0, 4, n, 0, end) || !sxmta_span(v, 2978 + x[0], n[0], end)) {
+            return false;
+        }
+        if (2978 + x[0] + n[0] > max) {
+            max = 2978 + x[0] + n[0];
+        }
+    }
+    return sxmta_span(v, max, total, end);
+}
+function sx_tran_cdfm_composer670_build(v) {
+    return sxmta_c67(v);
+}

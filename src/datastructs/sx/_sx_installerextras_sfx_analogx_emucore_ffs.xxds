@@ -1,0 +1,65 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/sfx_analogx_emucore_ffs/xx_sfx_analogx_emucore_ffs_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxiex_ffs_header_fields = layout([chars("signature", 4, SIGNATURE), u32("file_count", COUNT),
+    u32("complemented_file_count"), u32("flags", FLAGS)]);
+var sxiex_ffs_header = sxLayout(0x60820006, "ffs_header", LE, sxiex_ffs_header_fields);
+var sxiex_ffs_index_fields = layout([u32("filename_crc32", CHECKSUM), u32("record_offset", OFFSET)]);
+var sxiex_ffs_index = sxLayout(0x60820007, "ffs_index", LE, sxiex_ffs_index_fields);
+var sxiex_ffs_member_fields = layout([u32("filename_crc32", CHECKSUM), u32("payload_size", SIZE)]);
+var sxiex_ffs_member = sxLayout(0x60820008, "ffs_member", LE, sxiex_ffs_member_fields);
+var sxiex_ffs_cmp1_fields = layout([chars("signature", 4, SIGNATURE), u32("encoded_unpacked_size", SIZE)]);
+var sxiex_ffs_cmp1 = sxLayout(0x60820009, "ffs_cmp1", LE, sxiex_ffs_cmp1_fields);
+var sxiex_ffs_cmp2_fields = layout([chars("signature", 4, SIGNATURE), u32("encoded_unpacked_size")]);
+var sxiex_ffs_cmp2 = sxLayout(0x6082000A, "ffs_cmp2", LE, sxiex_ffs_cmp2_fields);
+var sxiex_ffs_footer_fields = layout([u32("archive_offset", OFFSET)]);
+var sxiex_ffs_footer = sxLayout(0x6082000B, "ffs_footer", LE, sxiex_ffs_footer_fields);
+function sxiex_ffs(c, r) {
+    var p = 0;
+    var h = [];
+    var tail = [0];
+    if (!sxiex_eq(c, 0, "FFS!", 4)) {
+        if (c.size < 4 || !sxiex_u32(c, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4), tail)) {
+            return true;
+        }
+        p = tail[0];
+        if (!sxiex_eq(c, p, "FFS!", 4)) {
+            return true;
+        }
+        if (!sxiex_put(c, sxiex_ffs_footer, sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - 4), 1)) {
+            return false;
+        }
+    }
+    if (!sxiex_read(c, p, h, 16)) {
+        return true;
+    }
+    var n = sxiex32(h, 4, false);
+    if (n !== ~sxiex32(h, 8, false) >>> 0 || !sxiex_span(c, p + 16, n * 8)) {
+        return true;
+    }
+    if (!sxiex_put(c, sxiex_ffs_header, p, 1) || !sxiex_put(c, sxiex_ffs_index, p + 16, n)) {
+        return false;
+    }
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        if (m.header_size === 8 && !sxiex_put(c, sxiex_ffs_member, m.header, 1)) {
+            return false;
+        }
+        if (m.packed >= 8) {
+            if (sxiex_eq(c, m.data, "FFC!", 4)) {
+                if (!sxiex_put(c, sxiex_ffs_cmp1, m.data, 1)) {
+                    return false;
+                }
+            } else if (sxiex_eq(c, m.data, "FFC@", 4) && !sxiex_put(c, sxiex_ffs_cmp2, m.data, 1)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_sfx_analogx_emucore_ffs_build(c, records) {
+    return sxiex_ffs(c, records);
+}

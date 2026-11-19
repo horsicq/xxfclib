@@ -1,0 +1,76 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/kajapon_professionalmd_m/xx_kajapon_professionalmd_m_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxpcm_string(c, p) {
+    var ch = [0];
+    var n = 0;
+    while (n < 4096 && sxpcm_u8(c, p + n, ch)) {
+        n++;
+        if (!ch[0]) {
+            if (c.count >= 24000) {
+                return true;
+            }
+            for (var i = 0; i < c.count; i++) {
+                var a = (c.items[i].offset - c.f.base_address < 0 ? c.items[i].offset - c.f.base_address + SX_U64_MAX : c.items[i].offset - c.f.base_address);
+                var z = (c.items[i].total_size < 0 ? c.items[i].total_size + SX_U64_MAX : c.items[i].total_size);
+                if (p < a + z && a < p + n) {
+                    return true;
+                }
+            }
+            return sx_add(c, sxpcm_pc_text, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), (n >= SX_I64_MAX ? n - SX_U64_MAX : n));
+        }
+    }
+    return true;
+}
+function sxpcm_pmd(c) {
+    var first = [0];
+    var p = [0];
+    if (!sxpcm_u16(c, 1, first) || first[0] !== 0x18 && first[0] !== 0x1A || !sxpcm_put(c, sxpcm_pmd_header, 0, 1)) {
+        return false;
+    }
+    if (first[0] !== 0x1A) {
+        return true;
+    }
+    if (!sxpcm_u16(c, 25, p) || !sxpcm_put(c, sxpcm_pmd_program_pointer, 25, 1)) {
+        return true;
+    }
+    if (p[0] < 4) {
+        return true;
+    }
+    var q = sxU64(p[0] - 3);
+    var m = [];
+    if (!sxpcm_read(c, q, m, 4) || m[2] !== 0x40 && (m[2] < 0x41 || m[3] !== 0xFE)) {
+        return true;
+    }
+    if (!sxpcm_put(c, sxpcm_pmd_memo_header, q, 1)) {
+        return false;
+    }
+    q = 1 + sxpcm16(m, 0);
+    var end = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+    for (var i = 0; i < 256 && q <= end && sxU64(end - q) >= 2; i++, q += 2) {
+        var off = [0];
+        if (!sxpcm_u16(c, q, off) || !sxpcm_put(c, sxpcm_pmd_memo_pointer, q, 1)) {
+            return true;
+        }
+        if (!off[0]) {
+            break;
+        }
+        var target = off[0] + 1;
+        if (target <= q + 1 || target >= (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+            break;
+        }
+        if (target < end) {
+            end = target;
+        }
+        if (!sxpcm_string(c, target)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_kajapon_professionalmd_m_build(c) {
+    return sxpcm_pmd(c);
+}

@@ -1,0 +1,63 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_archivesystems.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_archivesystems");
+include("_sx_archivesystems_arcv2");
+include("_sx_archivesystems_arcv4");
+include("_sx_archivesystems_cru");
+include("_sx_archivesystems_fld");
+include("_sx_archivesystems_igf1");
+include("_sx_archivesystems_igf2");
+include("_sx_archivesystems_inteduft");
+include("_sx_archivesystems_jm93");
+include("_sx_archivesystems_miz");
+include("_sx_archivesystems_mva");
+include("_sx_archivesystems_netware2");
+include("_sx_archivesystems_netwarepacked");
+include("_sx_archivesystems_povlablzh");
+include("_sx_archivesystems_powerboardbbs");
+include("_sx_archivesystems_qip1");
+include("_sx_archivesystems_quarterdeckqp");
+include("_sx_archivesystems_rcf");
+include("_sx_archivesystems_riversoft");
+include("_sx_archivesystems_tgcf");
+include("_sx_archivesystems_trc");
+
+function fileTypes() { return ["ARCV4", "ARCV2", "CRU", "POWERBOARDBBS", "FLD", "IGF1", "IGF2", "INTEDUFT", "JM93", "MIZ",
+    "MVA", "POVLABLZH", "QIP1", "QUARTERDECKQP", "RCF", "RIVERSOFT", "TGCF", "TRC", "NETWAREPACKED", "NETWARE2"]; }
+
+var sx_archivesystems_layouts = [sxasy_arcv2_header, sxasy_arcv2_block, sxasy_arcv2_attributes, sxasy_arcv4_header,
+    sxasy_arcv4_record, sxasy_arcv4_tag_size, sxasy_arcv4_name_size, sxasy_arcv4_attributes, sxasy_arcv4_data, sxasy_cru_header,
+    sxasy_cru_entry, sxasy_powerbbs_name, sxasy_powerbbs_size1, sxasy_powerbbs_size2, sxasy_powerbbs_size4, sxasy_fld_member,
+    sxasy_igf1_header, sxasy_igf2_header, sxasy_igf2_member56, sxasy_igf2_member44, sxasy_igf2_end, sxasy_inteduft_header,
+    sxasy_inteduft_index, sxasy_inteduft_member, sxasy_jm93_header, sxasy_miz_header, sxasy_miz_member, sxasy_mva_header,
+    sxasy_mva_member, sxasy_povlab_header, sxasy_povlab_attributes, sxasy_povlab_extension_size, sxasy_povlab_extension_type,
+    sxasy_qip1_member, sxasy_qp_header, sxasy_qp_index, sxasy_qp_path, sxasy_qp_member, sxasy_rcf_header, sxasy_rcf_entry,
+    sxasy_rcf_count, sxasy_riversoft_header, sxasy_riversoft_entry, sxasy_tgcf_header, sxasy_tgcf_list_offset, sxasy_tgcf_crc,
+    sxasy_tgcf_member_prefix, sxasy_tgcf_member_attributes, sxasy_tgcf_member_flag, sxasy_tgcf_payload_offset, sxasy_trc_header,
+    sxasy_netwarepacked_header, sxasy_netware2_record, sxasy_netware2_metadata, sxasy_netware2_packed, sxasy_archivesystems_dcl,
+    sxasy_miz_footer];
+
+function structs() {
+    return sxCatalog([sxasy_arcv2_header, sxasy_arcv2_block, sxasy_arcv2_attributes, sxasy_arcv4_header, sxasy_arcv4_record,
+        sxasy_arcv4_tag_size, sxasy_arcv4_name_size, sxasy_arcv4_attributes, sxasy_arcv4_data, sxasy_cru_header,
+        sxasy_cru_entry, sxasy_powerbbs_name, sxasy_powerbbs_size1, sxasy_powerbbs_size2, sxasy_powerbbs_size4,
+        sxasy_fld_member, sxasy_igf1_header, sxasy_igf2_header, sxasy_igf2_member56, sxasy_igf2_member44, sxasy_igf2_end,
+        sxasy_inteduft_header, sxasy_inteduft_index, sxasy_inteduft_member, sxasy_jm93_header, sxasy_miz_header,
+        sxasy_miz_member, sxasy_mva_header, sxasy_mva_member, sxasy_povlab_header, sxasy_povlab_attributes,
+        sxasy_povlab_extension_size, sxasy_povlab_extension_type, sxasy_qip1_member, sxasy_qp_header, sxasy_qp_index,
+        sxasy_qp_path, sxasy_qp_member, sxasy_rcf_header, sxasy_rcf_entry, sxasy_rcf_count, sxasy_riversoft_header,
+        sxasy_riversoft_entry, sxasy_tgcf_header, sxasy_tgcf_list_offset, sxasy_tgcf_crc, sxasy_tgcf_member_prefix,
+        sxasy_tgcf_member_attributes, sxasy_tgcf_member_flag, sxasy_tgcf_payload_offset, sxasy_trc_header,
+        sxasy_netwarepacked_header, sxasy_netware2_record, sxasy_netware2_metadata, sxasy_netware2_packed,
+        sxasy_archivesystems_dcl, sxasy_miz_footer], sx_archivesystems_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_archivesystems_build, false);
+}

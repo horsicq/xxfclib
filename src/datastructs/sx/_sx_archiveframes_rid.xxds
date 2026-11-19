@@ -1,0 +1,51 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/rid/xx_rid_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxafr_rid_member_fields = layout([u16("tag"), bytes("reserved", 19), u8("attributes", FLAGS), u16("dos_time"),
+    u16("dos_date"), u32("uncompressed_size", SIZE), chars("name", 13, NONE)]);
+var sxafr_rid_member = sxLayout(0x60540020, "rid_member", LE, sxafr_rid_member_fields);
+var sxafr_rid_block_fields = layout([u16("compressed_size", SIZE), u8("type")]);
+var sxafr_rid_block = sxLayout(0x60540021, "rid_block", LE, sxafr_rid_block_fields);
+var sxafr_archiveframes_dcl_fields = layout([u8("literal_mode"), u8("dictionary_bits")]);
+var sxafr_archiveframes_dcl = sxLayout(0x6054002C, "archiveframes_dcl", LE, sxafr_archiveframes_dcl_fields);
+function sxafr_dcl(c, p, n) {
+    var h = [];
+    return (n < 2 || !sxafr_read(c, p, h, 2) || h[0] > 1 || h[1] < 4 || h[1] > 6 ? 1 : (sxafr_add(c, sxafr_archiveframes_dcl, p) ? 1 : 0)) !== 0;
+}
+function sxafr_rid(c) {
+    var p = 0;
+    while (p < (c.size < 0 ? c.size + SX_U64_MAX : c.size)) {
+        if (!sxafr_add(c, sxafr_rid_member, p)) {
+            return false;
+        }
+        p += 43;
+        for (; ; ) {
+            var h = [];
+            if (!sxafr_read(c, p, h, 3)) {
+                return false;
+            }
+            var z = sxafr_uint(h, 0, 2, false);
+            if (h[2] !== 0 && h[2] !== 1 && h[2] !== 255 || !sxafr_span(c, p + 3, z) || !sxafr_add(c, sxafr_rid_block, p)) {
+                return false;
+            }
+            p += 3;
+            if (h[2] === 255) {
+                if (z) {
+                    return false;
+                }
+                break;
+            }
+            if (h[2] === 1 && !sxafr_dcl(c, p, z)) {
+                return false;
+            }
+            p += z;
+        }
+    }
+    return true;
+}
+function sx_rid_build(c) {
+    return sxafr_rid(c);
+}

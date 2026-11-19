@@ -1,0 +1,15 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/nhd/xx_nhd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsl_nhd_header_fields = layout([chars("signature", 16, SIGNATURE), chars("comment", 256, NONE), u32("header_size", SIZE),
+    u32("cylinder_count", COUNT), u16("head_count", COUNT), u16("sectors_per_track", COUNT), u16("sector_size", SIZE),
+    field("reserved", "byte[226]", 226, RESERVED)]);
+var sxsl_nhd_header = sxLayout(0x6033001D, "nhd_header", LE, sxsl_nhd_header_fields);
+function sx_nhd_build(c) {
+    var ok = false;
+    ok = sxsl_put(c, sxsl_nhd_header, 0, 1);
+    return ok && sxsl_finish(c);
+}

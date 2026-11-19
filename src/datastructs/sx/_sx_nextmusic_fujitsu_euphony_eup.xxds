@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/fujitsu_euphony_eup/xx_fujitsu_euphony_eup_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_eup_header_fields = layout([chars("title", 32, NONE), chars("artist", 8, NONE), blob("unknown", 44)]);
+var sxnextm_eup_header = sxLayout(0x608B0028, "eup_header", LE, sxnextm_eup_header_fields);
+var sxnextm_eup_track_name_fields = layout([chars("name", 16, NONE)]);
+var sxnextm_eup_track_name = sxLayout(0x608B0029, "eup_track_name", LE, sxnextm_eup_track_name_fields);
+var sxnextm_eup_short_name_fields = layout([chars("name", 8, NONE)]);
+var sxnextm_eup_short_name = sxLayout(0x608B002A, "eup_short_name", LE, sxnextm_eup_short_name_fields);
+var sxnextm_eup_mute_fields = layout([u8("mute", FLAGS)]);
+var sxnextm_eup_mute = sxLayout(0x608B002B, "eup_mute", LE, sxnextm_eup_mute_fields);
+var sxnextm_eup_port_fields = layout([u8("port", ID)]);
+var sxnextm_eup_port = sxLayout(0x608B002C, "eup_port", LE, sxnextm_eup_port_fields);
+var sxnextm_eup_channel_fields = layout([u8("midi_channel", ID)]);
+var sxnextm_eup_channel = sxLayout(0x608B002D, "eup_channel", LE, sxnextm_eup_channel_fields);
+var sxnextm_eup_key_bias_fields = layout([i8("key_bias")]);
+var sxnextm_eup_key_bias = sxLayout(0x608B002E, "eup_key_bias", LE, sxnextm_eup_key_bias_fields);
+var sxnextm_eup_transpose_fields = layout([i8("transpose")]);
+var sxnextm_eup_transpose = sxLayout(0x608B002F, "eup_transpose", LE, sxnextm_eup_transpose_fields);
+var sxnextm_eup_filter_fields = layout([blob("filter_bytes", 7)]);
+var sxnextm_eup_filter = sxLayout(0x608B0030, "eup_filter", LE, sxnextm_eup_filter_fields);
+var sxnextm_eup_instrument_name_fields = layout([chars("name", 4, NONE)]);
+var sxnextm_eup_instrument_name = sxLayout(0x608B0031, "eup_instrument_name", LE, sxnextm_eup_instrument_name_fields);
+var sxnextm_eup_bank_names_fields = layout([chars("fm_bank_name", 8, NONE), chars("pcm_bank_name", 8, NONE)]);
+var sxnextm_eup_bank_names = sxLayout(0x608B0032, "eup_bank_names", LE, sxnextm_eup_bank_names_fields);
+var sxnextm_eup_application_fields = layout([chars("application_name", 8, NONE), chars("application_version", 2, NONE)]);
+var sxnextm_eup_application = sxLayout(0x608B0033, "eup_application", LE, sxnextm_eup_application_fields);
+function sxnextm_eup(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = [84];
+    if (e < 2060 || !sxnextm_row(v, sxnextm_eup_header, 0, e) || !sxnextm_take(v, sxnextm_eup_track_name, p, 32, e) || !sxnextm_take(v, sxnextm_eup_short_name, p, 32, e) || !sxnextm_take(v, sxnextm_eup_mute, p, 32, e) || !sxnextm_take(v, sxnextm_eup_port, p, 32, e) || !sxnextm_take(v, sxnextm_eup_channel, p, 32, e) || !sxnextm_take(v, sxnextm_eup_key_bias, p, 32, e) || !sxnextm_take(v, sxnextm_eup_transpose, p, 32, e) || !sxnextm_take(v, sxnextm_eup_filter, p, 32, e) || !sxnextm_take(v, sxnextm_eup_instrument_name, p, 128, e) || !sxnextm_take(v, sxnextm_eup_channel, p, 14, e) || !sxnextm_take(v, sxnextm_eup_bank_names, p, 1, e)) {
+        return false;
+    }
+    return p[0] === 0x6F2 && sxnextm_row(v, sxnextm_eup_application, 0x7F6, e) && sxnextm_row(v, sxnextm_eup_event_header, 0x800, e);
+}
+function sx_fujitsu_euphony_eup_build(v) {
+    return sxnextm_eup(v);
+}

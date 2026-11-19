@@ -1,0 +1,80 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/psxalt_eternalspuplugin/xx_psxalt_eternalspuplugin_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmr_spu_metadata_fields = layout([blob("magic", 4, SIGNATURE), chars("game", 64, NONE), chars("title", 64, NONE),
+    chars("artist", 32, NONE), chars("comment", 3840, NONE)]);
+var sxmr_spu_metadata = sxLayout(0x607D003D, "spu_metadata", LE, sxmr_spu_metadata_fields);
+var sxmr_spu_register_fields = layout([u16("value")]);
+var sxmr_spu_register = sxLayout(0x607D003E, "spu_register", LE, sxmr_spu_register_fields);
+var sxmr_spu_transfer_fields = layout([u8("opcode", ID), u32("payload_bytes", SIZE)]);
+var sxmr_spu_transfer = sxLayout(0x607D0044, "spu_transfer", LE, sxmr_spu_transfer_fields);
+var sxmr_spu_xa_fields = layout([u8("opcode", ID), blob("xa_metadata", 32)]);
+var sxmr_spu_xa = sxLayout(0x607D0046, "spu_xa", LE, sxmr_spu_xa_fields);
+function sxmr_spu(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var x = [0];
+    var p = 0x80208;
+    var ticks = [0];
+    if (!sxmr_eq(v, 0, "SPU", 3, end) || !sxmr_u(v, 3, 1, x, end) || x[0] !== 0 && x[0] !== 49 /*1*/ || !sxmr_row(v, sxmr_spu_metadata, 0, end) || !sxmr_table(v, sxmr_spu_register, 0x80000, 256, end) || !sxmr_u(v, 0x80200, 4, ticks, end) || !sxmr_u(v, 0x80204, 4, n, end)) {
+        return false;
+    }
+    if (ticks[0] === 44100 && n[0] <= Math.floor(sxU64(end - p) / 12)) {
+        return sxmr_row(v, sxmr_spu_old_timing, 0x80200, end) && sxmr_table(v, sxmr_spu_old_event, p, n[0], end);
+    }
+    if (!sxmr_row(v, sxmr_spu_new_timing, 0x80200, end)) {
+        return false;
+    }
+    while (p < end && n[0] < ticks[0]) {
+        if (!sxmr_u(v, p, 1, x, end)) {
+            return false;
+        }
+        if (x[0] === 0) {
+            if (!sxmr_row(v, sxmr_spu_write, p, end) || !sxmr_u(v, p + 7, 4, n, end)) {
+                return false;
+            }
+            p += 11;
+        } else if (x[0] === 1) {
+            if (!sxmr_row(v, sxmr_spu_read, p, end) || !sxmr_u(v, p + 5, 4, n, end)) {
+                return false;
+            }
+            p += 9;
+        } else if (x[0] === 2 || x[0] === 5) {
+            if (!sxmr_u(v, p + 1, 4, x, end) || !sxmr_row(v, sxmr_spu_transfer, p, end)) {
+                return false;
+            }
+            p += 5;
+            if (!sxmr_span(v, p, x[0], end)) {
+                return false;
+            }
+            p += x[0];
+            if (!sxmr_row(v, sxmr_spu_tick, p, end) || !sxmr_u(v, p, 4, n, end)) {
+                return false;
+            }
+            p += 4;
+        } else if (x[0] === 3) {
+            if (!sxmr_row(v, sxmr_spu_dma_read, p, end) || !sxmr_u(v, p + 5, 4, n, end)) {
+                return false;
+            }
+            p += 9;
+        } else if (x[0] === 4) {
+            if (!sxmr_row(v, sxmr_spu_xa, p, end) || !sxmr_span(v, p + 33, 16384, end)) {
+                return false;
+            }
+            p += 16417;
+            if (!sxmr_row(v, sxmr_spu_tick, p, end) || !sxmr_u(v, p, 4, n, end)) {
+                return false;
+            }
+            p += 4;
+        } else {
+            return false;
+        }
+    }
+    return n[0] >= ticks[0];
+}
+function sx_psxalt_eternalspuplugin_build(v) {
+    return sxmr_spu(v);
+}

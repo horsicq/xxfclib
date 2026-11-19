@@ -1,0 +1,17 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/gameboy_rippedformat/xx_gameboy_rippedformat_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxmr_gbr(v) {
+    var n = [0];
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (!sxmr_eq(v, 0, "GBRF", 4, end) || !sxmr_u(v, 4, 1, n, end) || !n[0] || !sxmr_row(v, sxmr_gbr_header, 0, end)) {
+        return false;
+    }
+    return sxmr_span(v, 32, n[0] * 16384, end);
+}
+function sx_gameboy_rippedformat_build(v) {
+    return sxmr_gbr(v);
+}

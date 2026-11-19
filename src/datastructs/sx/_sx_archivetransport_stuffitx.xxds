@@ -1,0 +1,424 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/stuffitx/xx_stuffitx_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxatp_stuffitx_signature_fields = layout([chars("signature", 8, SIGNATURE)]);
+var sxatp_stuffitx_signature = sxLayout(0x60890007, "stuffitx_signature", LE, sxatp_stuffitx_signature_fields);
+var sxatp_stuffitx_element_flag_fields = layout([field("flag", "lsb_bits[0,1]", 1, FLAGS)]);
+var sxatp_stuffitx_element_flag = sxLayout(0x60890008, "stuffitx_element_flag", LE, sxatp_stuffitx_element_flag_fields);
+var sxatp_stuffitx_element_type_bit1_fields = layout([field("element_type", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_element_type_bit1 = sxLayout(0x60890009, "stuffitx_element_type_bit1", LE, sxatp_stuffitx_element_type_bit1_fields);
+var sxatp_stuffitx_attribute_key_bit0_fields = layout([field("attribute_key", "stuffitx_p2_0", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit0 = sxLayout(0x6089000A, "stuffitx_attribute_key_bit0", LE, sxatp_stuffitx_attribute_key_bit0_fields);
+var sxatp_stuffitx_attribute_key_bit1_fields = layout([field("attribute_key", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit1 = sxLayout(0x6089000B, "stuffitx_attribute_key_bit1", LE, sxatp_stuffitx_attribute_key_bit1_fields);
+var sxatp_stuffitx_attribute_key_bit2_fields = layout([field("attribute_key", "stuffitx_p2_2", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit2 = sxLayout(0x6089000C, "stuffitx_attribute_key_bit2", LE, sxatp_stuffitx_attribute_key_bit2_fields);
+var sxatp_stuffitx_attribute_key_bit3_fields = layout([field("attribute_key", "stuffitx_p2_3", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit3 = sxLayout(0x6089000D, "stuffitx_attribute_key_bit3", LE, sxatp_stuffitx_attribute_key_bit3_fields);
+var sxatp_stuffitx_attribute_key_bit4_fields = layout([field("attribute_key", "stuffitx_p2_4", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit4 = sxLayout(0x6089000E, "stuffitx_attribute_key_bit4", LE, sxatp_stuffitx_attribute_key_bit4_fields);
+var sxatp_stuffitx_attribute_key_bit5_fields = layout([field("attribute_key", "stuffitx_p2_5", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit5 = sxLayout(0x6089000F, "stuffitx_attribute_key_bit5", LE, sxatp_stuffitx_attribute_key_bit5_fields);
+var sxatp_stuffitx_attribute_key_bit6_fields = layout([field("attribute_key", "stuffitx_p2_6", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit6 = sxLayout(0x60890010, "stuffitx_attribute_key_bit6", LE, sxatp_stuffitx_attribute_key_bit6_fields);
+var sxatp_stuffitx_attribute_key_bit7_fields = layout([field("attribute_key", "stuffitx_p2_7", 0, ID)]);
+var sxatp_stuffitx_attribute_key_bit7 = sxLayout(0x60890011, "stuffitx_attribute_key_bit7", LE, sxatp_stuffitx_attribute_key_bit7_fields);
+var sxatp_stuffitx_object_id_bit0_fields = layout([field("object_id", "stuffitx_p2_0", 0, ID)]);
+var sxatp_stuffitx_object_id_bit0 = sxLayout(0x60890012, "stuffitx_object_id_bit0", LE, sxatp_stuffitx_object_id_bit0_fields);
+var sxatp_stuffitx_object_id_bit1_fields = layout([field("object_id", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_object_id_bit1 = sxLayout(0x60890013, "stuffitx_object_id_bit1", LE, sxatp_stuffitx_object_id_bit1_fields);
+var sxatp_stuffitx_object_id_bit2_fields = layout([field("object_id", "stuffitx_p2_2", 0, ID)]);
+var sxatp_stuffitx_object_id_bit2 = sxLayout(0x60890014, "stuffitx_object_id_bit2", LE, sxatp_stuffitx_object_id_bit2_fields);
+var sxatp_stuffitx_object_id_bit3_fields = layout([field("object_id", "stuffitx_p2_3", 0, ID)]);
+var sxatp_stuffitx_object_id_bit3 = sxLayout(0x60890015, "stuffitx_object_id_bit3", LE, sxatp_stuffitx_object_id_bit3_fields);
+var sxatp_stuffitx_object_id_bit4_fields = layout([field("object_id", "stuffitx_p2_4", 0, ID)]);
+var sxatp_stuffitx_object_id_bit4 = sxLayout(0x60890016, "stuffitx_object_id_bit4", LE, sxatp_stuffitx_object_id_bit4_fields);
+var sxatp_stuffitx_object_id_bit5_fields = layout([field("object_id", "stuffitx_p2_5", 0, ID)]);
+var sxatp_stuffitx_object_id_bit5 = sxLayout(0x60890017, "stuffitx_object_id_bit5", LE, sxatp_stuffitx_object_id_bit5_fields);
+var sxatp_stuffitx_object_id_bit6_fields = layout([field("object_id", "stuffitx_p2_6", 0, ID)]);
+var sxatp_stuffitx_object_id_bit6 = sxLayout(0x60890018, "stuffitx_object_id_bit6", LE, sxatp_stuffitx_object_id_bit6_fields);
+var sxatp_stuffitx_object_id_bit7_fields = layout([field("object_id", "stuffitx_p2_7", 0, ID)]);
+var sxatp_stuffitx_object_id_bit7 = sxLayout(0x60890019, "stuffitx_object_id_bit7", LE, sxatp_stuffitx_object_id_bit7_fields);
+var sxatp_stuffitx_parent_id_bit0_fields = layout([field("parent_id", "stuffitx_p2_0", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit0 = sxLayout(0x6089001A, "stuffitx_parent_id_bit0", LE, sxatp_stuffitx_parent_id_bit0_fields);
+var sxatp_stuffitx_parent_id_bit1_fields = layout([field("parent_id", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit1 = sxLayout(0x6089001B, "stuffitx_parent_id_bit1", LE, sxatp_stuffitx_parent_id_bit1_fields);
+var sxatp_stuffitx_parent_id_bit2_fields = layout([field("parent_id", "stuffitx_p2_2", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit2 = sxLayout(0x6089001C, "stuffitx_parent_id_bit2", LE, sxatp_stuffitx_parent_id_bit2_fields);
+var sxatp_stuffitx_parent_id_bit3_fields = layout([field("parent_id", "stuffitx_p2_3", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit3 = sxLayout(0x6089001D, "stuffitx_parent_id_bit3", LE, sxatp_stuffitx_parent_id_bit3_fields);
+var sxatp_stuffitx_parent_id_bit4_fields = layout([field("parent_id", "stuffitx_p2_4", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit4 = sxLayout(0x6089001E, "stuffitx_parent_id_bit4", LE, sxatp_stuffitx_parent_id_bit4_fields);
+var sxatp_stuffitx_parent_id_bit5_fields = layout([field("parent_id", "stuffitx_p2_5", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit5 = sxLayout(0x6089001F, "stuffitx_parent_id_bit5", LE, sxatp_stuffitx_parent_id_bit5_fields);
+var sxatp_stuffitx_parent_id_bit6_fields = layout([field("parent_id", "stuffitx_p2_6", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit6 = sxLayout(0x60890020, "stuffitx_parent_id_bit6", LE, sxatp_stuffitx_parent_id_bit6_fields);
+var sxatp_stuffitx_parent_id_bit7_fields = layout([field("parent_id", "stuffitx_p2_7", 0, ID)]);
+var sxatp_stuffitx_parent_id_bit7 = sxLayout(0x60890021, "stuffitx_parent_id_bit7", LE, sxatp_stuffitx_parent_id_bit7_fields);
+var sxatp_stuffitx_stream_id_bit0_fields = layout([field("stream_id", "stuffitx_p2_0", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit0 = sxLayout(0x60890022, "stuffitx_stream_id_bit0", LE, sxatp_stuffitx_stream_id_bit0_fields);
+var sxatp_stuffitx_stream_id_bit1_fields = layout([field("stream_id", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit1 = sxLayout(0x60890023, "stuffitx_stream_id_bit1", LE, sxatp_stuffitx_stream_id_bit1_fields);
+var sxatp_stuffitx_stream_id_bit2_fields = layout([field("stream_id", "stuffitx_p2_2", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit2 = sxLayout(0x60890024, "stuffitx_stream_id_bit2", LE, sxatp_stuffitx_stream_id_bit2_fields);
+var sxatp_stuffitx_stream_id_bit3_fields = layout([field("stream_id", "stuffitx_p2_3", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit3 = sxLayout(0x60890025, "stuffitx_stream_id_bit3", LE, sxatp_stuffitx_stream_id_bit3_fields);
+var sxatp_stuffitx_stream_id_bit4_fields = layout([field("stream_id", "stuffitx_p2_4", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit4 = sxLayout(0x60890026, "stuffitx_stream_id_bit4", LE, sxatp_stuffitx_stream_id_bit4_fields);
+var sxatp_stuffitx_stream_id_bit5_fields = layout([field("stream_id", "stuffitx_p2_5", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit5 = sxLayout(0x60890027, "stuffitx_stream_id_bit5", LE, sxatp_stuffitx_stream_id_bit5_fields);
+var sxatp_stuffitx_stream_id_bit6_fields = layout([field("stream_id", "stuffitx_p2_6", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit6 = sxLayout(0x60890028, "stuffitx_stream_id_bit6", LE, sxatp_stuffitx_stream_id_bit6_fields);
+var sxatp_stuffitx_stream_id_bit7_fields = layout([field("stream_id", "stuffitx_p2_7", 0, ID)]);
+var sxatp_stuffitx_stream_id_bit7 = sxLayout(0x60890029, "stuffitx_stream_id_bit7", LE, sxatp_stuffitx_stream_id_bit7_fields);
+var sxatp_stuffitx_fork_index_bit0_fields = layout([field("fork_index", "stuffitx_p2_0", 0)]);
+var sxatp_stuffitx_fork_index_bit0 = sxLayout(0x6089002A, "stuffitx_fork_index_bit0", LE, sxatp_stuffitx_fork_index_bit0_fields);
+var sxatp_stuffitx_fork_index_bit1_fields = layout([field("fork_index", "stuffitx_p2_1", 0)]);
+var sxatp_stuffitx_fork_index_bit1 = sxLayout(0x6089002B, "stuffitx_fork_index_bit1", LE, sxatp_stuffitx_fork_index_bit1_fields);
+var sxatp_stuffitx_fork_index_bit2_fields = layout([field("fork_index", "stuffitx_p2_2", 0)]);
+var sxatp_stuffitx_fork_index_bit2 = sxLayout(0x6089002C, "stuffitx_fork_index_bit2", LE, sxatp_stuffitx_fork_index_bit2_fields);
+var sxatp_stuffitx_fork_index_bit3_fields = layout([field("fork_index", "stuffitx_p2_3", 0)]);
+var sxatp_stuffitx_fork_index_bit3 = sxLayout(0x6089002D, "stuffitx_fork_index_bit3", LE, sxatp_stuffitx_fork_index_bit3_fields);
+var sxatp_stuffitx_fork_index_bit4_fields = layout([field("fork_index", "stuffitx_p2_4", 0)]);
+var sxatp_stuffitx_fork_index_bit4 = sxLayout(0x6089002E, "stuffitx_fork_index_bit4", LE, sxatp_stuffitx_fork_index_bit4_fields);
+var sxatp_stuffitx_fork_index_bit5_fields = layout([field("fork_index", "stuffitx_p2_5", 0)]);
+var sxatp_stuffitx_fork_index_bit5 = sxLayout(0x6089002F, "stuffitx_fork_index_bit5", LE, sxatp_stuffitx_fork_index_bit5_fields);
+var sxatp_stuffitx_fork_index_bit6_fields = layout([field("fork_index", "stuffitx_p2_6", 0)]);
+var sxatp_stuffitx_fork_index_bit6 = sxLayout(0x60890030, "stuffitx_fork_index_bit6", LE, sxatp_stuffitx_fork_index_bit6_fields);
+var sxatp_stuffitx_fork_index_bit7_fields = layout([field("fork_index", "stuffitx_p2_7", 0)]);
+var sxatp_stuffitx_fork_index_bit7 = sxLayout(0x60890031, "stuffitx_fork_index_bit7", LE, sxatp_stuffitx_fork_index_bit7_fields);
+var sxatp_stuffitx_declared_size_bit0_fields = layout([field("declared_size", "stuffitx_p2_0", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit0 = sxLayout(0x60890032, "stuffitx_declared_size_bit0", LE, sxatp_stuffitx_declared_size_bit0_fields);
+var sxatp_stuffitx_declared_size_bit1_fields = layout([field("declared_size", "stuffitx_p2_1", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit1 = sxLayout(0x60890033, "stuffitx_declared_size_bit1", LE, sxatp_stuffitx_declared_size_bit1_fields);
+var sxatp_stuffitx_declared_size_bit2_fields = layout([field("declared_size", "stuffitx_p2_2", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit2 = sxLayout(0x60890034, "stuffitx_declared_size_bit2", LE, sxatp_stuffitx_declared_size_bit2_fields);
+var sxatp_stuffitx_declared_size_bit3_fields = layout([field("declared_size", "stuffitx_p2_3", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit3 = sxLayout(0x60890035, "stuffitx_declared_size_bit3", LE, sxatp_stuffitx_declared_size_bit3_fields);
+var sxatp_stuffitx_declared_size_bit4_fields = layout([field("declared_size", "stuffitx_p2_4", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit4 = sxLayout(0x60890036, "stuffitx_declared_size_bit4", LE, sxatp_stuffitx_declared_size_bit4_fields);
+var sxatp_stuffitx_declared_size_bit5_fields = layout([field("declared_size", "stuffitx_p2_5", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit5 = sxLayout(0x60890037, "stuffitx_declared_size_bit5", LE, sxatp_stuffitx_declared_size_bit5_fields);
+var sxatp_stuffitx_declared_size_bit6_fields = layout([field("declared_size", "stuffitx_p2_6", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit6 = sxLayout(0x60890038, "stuffitx_declared_size_bit6", LE, sxatp_stuffitx_declared_size_bit6_fields);
+var sxatp_stuffitx_declared_size_bit7_fields = layout([field("declared_size", "stuffitx_p2_7", 0, SIZE)]);
+var sxatp_stuffitx_declared_size_bit7 = sxLayout(0x60890039, "stuffitx_declared_size_bit7", LE, sxatp_stuffitx_declared_size_bit7_fields);
+var sxatp_stuffitx_attribute_value_bit0_fields = layout([field("attribute_value", "stuffitx_p2_0", 0)]);
+var sxatp_stuffitx_attribute_value_bit0 = sxLayout(0x6089003A, "stuffitx_attribute_value_bit0", LE, sxatp_stuffitx_attribute_value_bit0_fields);
+var sxatp_stuffitx_attribute_value_bit1_fields = layout([field("attribute_value", "stuffitx_p2_1", 0)]);
+var sxatp_stuffitx_attribute_value_bit1 = sxLayout(0x6089003B, "stuffitx_attribute_value_bit1", LE, sxatp_stuffitx_attribute_value_bit1_fields);
+var sxatp_stuffitx_attribute_value_bit2_fields = layout([field("attribute_value", "stuffitx_p2_2", 0)]);
+var sxatp_stuffitx_attribute_value_bit2 = sxLayout(0x6089003C, "stuffitx_attribute_value_bit2", LE, sxatp_stuffitx_attribute_value_bit2_fields);
+var sxatp_stuffitx_attribute_value_bit3_fields = layout([field("attribute_value", "stuffitx_p2_3", 0)]);
+var sxatp_stuffitx_attribute_value_bit3 = sxLayout(0x6089003D, "stuffitx_attribute_value_bit3", LE, sxatp_stuffitx_attribute_value_bit3_fields);
+var sxatp_stuffitx_attribute_value_bit4_fields = layout([field("attribute_value", "stuffitx_p2_4", 0)]);
+var sxatp_stuffitx_attribute_value_bit4 = sxLayout(0x6089003E, "stuffitx_attribute_value_bit4", LE, sxatp_stuffitx_attribute_value_bit4_fields);
+var sxatp_stuffitx_attribute_value_bit5_fields = layout([field("attribute_value", "stuffitx_p2_5", 0)]);
+var sxatp_stuffitx_attribute_value_bit5 = sxLayout(0x6089003F, "stuffitx_attribute_value_bit5", LE, sxatp_stuffitx_attribute_value_bit5_fields);
+var sxatp_stuffitx_attribute_value_bit6_fields = layout([field("attribute_value", "stuffitx_p2_6", 0)]);
+var sxatp_stuffitx_attribute_value_bit6 = sxLayout(0x60890040, "stuffitx_attribute_value_bit6", LE, sxatp_stuffitx_attribute_value_bit6_fields);
+var sxatp_stuffitx_attribute_value_bit7_fields = layout([field("attribute_value", "stuffitx_p2_7", 0)]);
+var sxatp_stuffitx_attribute_value_bit7 = sxLayout(0x60890041, "stuffitx_attribute_value_bit7", LE, sxatp_stuffitx_attribute_value_bit7_fields);
+var sxatp_stuffitx_algorithm_key_bit0_fields = layout([field("algorithm_key", "stuffitx_p2_0", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit0 = sxLayout(0x60890042, "stuffitx_algorithm_key_bit0", LE, sxatp_stuffitx_algorithm_key_bit0_fields);
+var sxatp_stuffitx_algorithm_key_bit1_fields = layout([field("algorithm_key", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit1 = sxLayout(0x60890043, "stuffitx_algorithm_key_bit1", LE, sxatp_stuffitx_algorithm_key_bit1_fields);
+var sxatp_stuffitx_algorithm_key_bit2_fields = layout([field("algorithm_key", "stuffitx_p2_2", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit2 = sxLayout(0x60890044, "stuffitx_algorithm_key_bit2", LE, sxatp_stuffitx_algorithm_key_bit2_fields);
+var sxatp_stuffitx_algorithm_key_bit3_fields = layout([field("algorithm_key", "stuffitx_p2_3", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit3 = sxLayout(0x60890045, "stuffitx_algorithm_key_bit3", LE, sxatp_stuffitx_algorithm_key_bit3_fields);
+var sxatp_stuffitx_algorithm_key_bit4_fields = layout([field("algorithm_key", "stuffitx_p2_4", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit4 = sxLayout(0x60890046, "stuffitx_algorithm_key_bit4", LE, sxatp_stuffitx_algorithm_key_bit4_fields);
+var sxatp_stuffitx_algorithm_key_bit5_fields = layout([field("algorithm_key", "stuffitx_p2_5", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit5 = sxLayout(0x60890047, "stuffitx_algorithm_key_bit5", LE, sxatp_stuffitx_algorithm_key_bit5_fields);
+var sxatp_stuffitx_algorithm_key_bit6_fields = layout([field("algorithm_key", "stuffitx_p2_6", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit6 = sxLayout(0x60890048, "stuffitx_algorithm_key_bit6", LE, sxatp_stuffitx_algorithm_key_bit6_fields);
+var sxatp_stuffitx_algorithm_key_bit7_fields = layout([field("algorithm_key", "stuffitx_p2_7", 0, ID)]);
+var sxatp_stuffitx_algorithm_key_bit7 = sxLayout(0x60890049, "stuffitx_algorithm_key_bit7", LE, sxatp_stuffitx_algorithm_key_bit7_fields);
+var sxatp_stuffitx_algorithm_value_bit0_fields = layout([field("algorithm_value", "stuffitx_p2_0", 0)]);
+var sxatp_stuffitx_algorithm_value_bit0 = sxLayout(0x6089004A, "stuffitx_algorithm_value_bit0", LE, sxatp_stuffitx_algorithm_value_bit0_fields);
+var sxatp_stuffitx_algorithm_value_bit1_fields = layout([field("algorithm_value", "stuffitx_p2_1", 0)]);
+var sxatp_stuffitx_algorithm_value_bit1 = sxLayout(0x6089004B, "stuffitx_algorithm_value_bit1", LE, sxatp_stuffitx_algorithm_value_bit1_fields);
+var sxatp_stuffitx_algorithm_value_bit2_fields = layout([field("algorithm_value", "stuffitx_p2_2", 0)]);
+var sxatp_stuffitx_algorithm_value_bit2 = sxLayout(0x6089004C, "stuffitx_algorithm_value_bit2", LE, sxatp_stuffitx_algorithm_value_bit2_fields);
+var sxatp_stuffitx_algorithm_value_bit3_fields = layout([field("algorithm_value", "stuffitx_p2_3", 0)]);
+var sxatp_stuffitx_algorithm_value_bit3 = sxLayout(0x6089004D, "stuffitx_algorithm_value_bit3", LE, sxatp_stuffitx_algorithm_value_bit3_fields);
+var sxatp_stuffitx_algorithm_value_bit4_fields = layout([field("algorithm_value", "stuffitx_p2_4", 0)]);
+var sxatp_stuffitx_algorithm_value_bit4 = sxLayout(0x6089004E, "stuffitx_algorithm_value_bit4", LE, sxatp_stuffitx_algorithm_value_bit4_fields);
+var sxatp_stuffitx_algorithm_value_bit5_fields = layout([field("algorithm_value", "stuffitx_p2_5", 0)]);
+var sxatp_stuffitx_algorithm_value_bit5 = sxLayout(0x6089004F, "stuffitx_algorithm_value_bit5", LE, sxatp_stuffitx_algorithm_value_bit5_fields);
+var sxatp_stuffitx_algorithm_value_bit6_fields = layout([field("algorithm_value", "stuffitx_p2_6", 0)]);
+var sxatp_stuffitx_algorithm_value_bit6 = sxLayout(0x60890050, "stuffitx_algorithm_value_bit6", LE, sxatp_stuffitx_algorithm_value_bit6_fields);
+var sxatp_stuffitx_algorithm_value_bit7_fields = layout([field("algorithm_value", "stuffitx_p2_7", 0)]);
+var sxatp_stuffitx_algorithm_value_bit7 = sxLayout(0x60890051, "stuffitx_algorithm_value_bit7", LE, sxatp_stuffitx_algorithm_value_bit7_fields);
+var sxatp_stuffitx_cipher_extra_bit0_fields = layout([field("cipher_extra", "stuffitx_p2_0", 0)]);
+var sxatp_stuffitx_cipher_extra_bit0 = sxLayout(0x60890052, "stuffitx_cipher_extra_bit0", LE, sxatp_stuffitx_cipher_extra_bit0_fields);
+var sxatp_stuffitx_cipher_extra_bit1_fields = layout([field("cipher_extra", "stuffitx_p2_1", 0)]);
+var sxatp_stuffitx_cipher_extra_bit1 = sxLayout(0x60890053, "stuffitx_cipher_extra_bit1", LE, sxatp_stuffitx_cipher_extra_bit1_fields);
+var sxatp_stuffitx_cipher_extra_bit2_fields = layout([field("cipher_extra", "stuffitx_p2_2", 0)]);
+var sxatp_stuffitx_cipher_extra_bit2 = sxLayout(0x60890054, "stuffitx_cipher_extra_bit2", LE, sxatp_stuffitx_cipher_extra_bit2_fields);
+var sxatp_stuffitx_cipher_extra_bit3_fields = layout([field("cipher_extra", "stuffitx_p2_3", 0)]);
+var sxatp_stuffitx_cipher_extra_bit3 = sxLayout(0x60890055, "stuffitx_cipher_extra_bit3", LE, sxatp_stuffitx_cipher_extra_bit3_fields);
+var sxatp_stuffitx_cipher_extra_bit4_fields = layout([field("cipher_extra", "stuffitx_p2_4", 0)]);
+var sxatp_stuffitx_cipher_extra_bit4 = sxLayout(0x60890056, "stuffitx_cipher_extra_bit4", LE, sxatp_stuffitx_cipher_extra_bit4_fields);
+var sxatp_stuffitx_cipher_extra_bit5_fields = layout([field("cipher_extra", "stuffitx_p2_5", 0)]);
+var sxatp_stuffitx_cipher_extra_bit5 = sxLayout(0x60890057, "stuffitx_cipher_extra_bit5", LE, sxatp_stuffitx_cipher_extra_bit5_fields);
+var sxatp_stuffitx_cipher_extra_bit6_fields = layout([field("cipher_extra", "stuffitx_p2_6", 0)]);
+var sxatp_stuffitx_cipher_extra_bit6 = sxLayout(0x60890058, "stuffitx_cipher_extra_bit6", LE, sxatp_stuffitx_cipher_extra_bit6_fields);
+var sxatp_stuffitx_cipher_extra_bit7_fields = layout([field("cipher_extra", "stuffitx_p2_7", 0)]);
+var sxatp_stuffitx_cipher_extra_bit7 = sxLayout(0x60890059, "stuffitx_cipher_extra_bit7", LE, sxatp_stuffitx_cipher_extra_bit7_fields);
+var sxatp_stuffitx_fork_type_bit0_fields = layout([field("fork_type", "stuffitx_p2_0", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit0 = sxLayout(0x6089005A, "stuffitx_fork_type_bit0", LE, sxatp_stuffitx_fork_type_bit0_fields);
+var sxatp_stuffitx_fork_type_bit1_fields = layout([field("fork_type", "stuffitx_p2_1", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit1 = sxLayout(0x6089005B, "stuffitx_fork_type_bit1", LE, sxatp_stuffitx_fork_type_bit1_fields);
+var sxatp_stuffitx_fork_type_bit2_fields = layout([field("fork_type", "stuffitx_p2_2", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit2 = sxLayout(0x6089005C, "stuffitx_fork_type_bit2", LE, sxatp_stuffitx_fork_type_bit2_fields);
+var sxatp_stuffitx_fork_type_bit3_fields = layout([field("fork_type", "stuffitx_p2_3", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit3 = sxLayout(0x6089005D, "stuffitx_fork_type_bit3", LE, sxatp_stuffitx_fork_type_bit3_fields);
+var sxatp_stuffitx_fork_type_bit4_fields = layout([field("fork_type", "stuffitx_p2_4", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit4 = sxLayout(0x6089005E, "stuffitx_fork_type_bit4", LE, sxatp_stuffitx_fork_type_bit4_fields);
+var sxatp_stuffitx_fork_type_bit5_fields = layout([field("fork_type", "stuffitx_p2_5", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit5 = sxLayout(0x6089005F, "stuffitx_fork_type_bit5", LE, sxatp_stuffitx_fork_type_bit5_fields);
+var sxatp_stuffitx_fork_type_bit6_fields = layout([field("fork_type", "stuffitx_p2_6", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit6 = sxLayout(0x60890060, "stuffitx_fork_type_bit6", LE, sxatp_stuffitx_fork_type_bit6_fields);
+var sxatp_stuffitx_fork_type_bit7_fields = layout([field("fork_type", "stuffitx_p2_7", 0, ID)]);
+var sxatp_stuffitx_fork_type_bit7 = sxLayout(0x60890061, "stuffitx_fork_type_bit7", LE, sxatp_stuffitx_fork_type_bit7_fields);
+var sxatp_stuffitx_root_value_bit0_fields = layout([field("root_value", "stuffitx_p2_0", 0)]);
+var sxatp_stuffitx_root_value_bit0 = sxLayout(0x60890062, "stuffitx_root_value_bit0", LE, sxatp_stuffitx_root_value_bit0_fields);
+var sxatp_stuffitx_root_value_bit1_fields = layout([field("root_value", "stuffitx_p2_1", 0)]);
+var sxatp_stuffitx_root_value_bit1 = sxLayout(0x60890063, "stuffitx_root_value_bit1", LE, sxatp_stuffitx_root_value_bit1_fields);
+var sxatp_stuffitx_root_value_bit2_fields = layout([field("root_value", "stuffitx_p2_2", 0)]);
+var sxatp_stuffitx_root_value_bit2 = sxLayout(0x60890064, "stuffitx_root_value_bit2", LE, sxatp_stuffitx_root_value_bit2_fields);
+var sxatp_stuffitx_root_value_bit3_fields = layout([field("root_value", "stuffitx_p2_3", 0)]);
+var sxatp_stuffitx_root_value_bit3 = sxLayout(0x60890065, "stuffitx_root_value_bit3", LE, sxatp_stuffitx_root_value_bit3_fields);
+var sxatp_stuffitx_root_value_bit4_fields = layout([field("root_value", "stuffitx_p2_4", 0)]);
+var sxatp_stuffitx_root_value_bit4 = sxLayout(0x60890066, "stuffitx_root_value_bit4", LE, sxatp_stuffitx_root_value_bit4_fields);
+var sxatp_stuffitx_root_value_bit5_fields = layout([field("root_value", "stuffitx_p2_5", 0)]);
+var sxatp_stuffitx_root_value_bit5 = sxLayout(0x60890067, "stuffitx_root_value_bit5", LE, sxatp_stuffitx_root_value_bit5_fields);
+var sxatp_stuffitx_root_value_bit6_fields = layout([field("root_value", "stuffitx_p2_6", 0)]);
+var sxatp_stuffitx_root_value_bit6 = sxLayout(0x60890068, "stuffitx_root_value_bit6", LE, sxatp_stuffitx_root_value_bit6_fields);
+var sxatp_stuffitx_root_value_bit7_fields = layout([field("root_value", "stuffitx_p2_7", 0)]);
+var sxatp_stuffitx_root_value_bit7 = sxLayout(0x60890069, "stuffitx_root_value_bit7", LE, sxatp_stuffitx_root_value_bit7_fields);
+var sxatp_stuffitx_block_size_bit0_fields = layout([field("block_size", "stuffitx_p2_0", 0, SIZE)]);
+var sxatp_stuffitx_block_size_bit0 = sxLayout(0x6089006A, "stuffitx_block_size_bit0", LE, sxatp_stuffitx_block_size_bit0_fields);
+var sxatp_stuffitx_trailer_size_bit0_fields = layout([field("trailer_size", "stuffitx_p2_0", 0, SIZE)]);
+var sxatp_stuffitx_trailer_size_bit0 = sxLayout(0x6089006B, "stuffitx_trailer_size_bit0", LE, sxatp_stuffitx_trailer_size_bit0_fields);
+var sxatp_stuffitx_crc32_fields = layout([u32("crc32", CHECKSUM)]);
+var sxatp_stuffitx_crc32 = sxLayout(0x6089006C, "stuffitx_crc32", BE, sxatp_stuffitx_crc32_fields);
+var sxatp_p2_element_type = [null, sxatp_stuffitx_element_type_bit1, null, null, null, null, null, null];
+var sxatp_p2_attribute_key = [sxatp_stuffitx_attribute_key_bit0, sxatp_stuffitx_attribute_key_bit1,
+    sxatp_stuffitx_attribute_key_bit2, sxatp_stuffitx_attribute_key_bit3, sxatp_stuffitx_attribute_key_bit4,
+    sxatp_stuffitx_attribute_key_bit5, sxatp_stuffitx_attribute_key_bit6, sxatp_stuffitx_attribute_key_bit7];
+var sxatp_p2_object_id = [sxatp_stuffitx_object_id_bit0, sxatp_stuffitx_object_id_bit1, sxatp_stuffitx_object_id_bit2,
+    sxatp_stuffitx_object_id_bit3, sxatp_stuffitx_object_id_bit4, sxatp_stuffitx_object_id_bit5, sxatp_stuffitx_object_id_bit6,
+    sxatp_stuffitx_object_id_bit7];
+var sxatp_p2_parent_id = [sxatp_stuffitx_parent_id_bit0, sxatp_stuffitx_parent_id_bit1, sxatp_stuffitx_parent_id_bit2,
+    sxatp_stuffitx_parent_id_bit3, sxatp_stuffitx_parent_id_bit4, sxatp_stuffitx_parent_id_bit5, sxatp_stuffitx_parent_id_bit6,
+    sxatp_stuffitx_parent_id_bit7];
+var sxatp_p2_stream_id = [sxatp_stuffitx_stream_id_bit0, sxatp_stuffitx_stream_id_bit1, sxatp_stuffitx_stream_id_bit2,
+    sxatp_stuffitx_stream_id_bit3, sxatp_stuffitx_stream_id_bit4, sxatp_stuffitx_stream_id_bit5, sxatp_stuffitx_stream_id_bit6,
+    sxatp_stuffitx_stream_id_bit7];
+var sxatp_p2_fork_index = [sxatp_stuffitx_fork_index_bit0, sxatp_stuffitx_fork_index_bit1, sxatp_stuffitx_fork_index_bit2,
+    sxatp_stuffitx_fork_index_bit3, sxatp_stuffitx_fork_index_bit4, sxatp_stuffitx_fork_index_bit5,
+    sxatp_stuffitx_fork_index_bit6, sxatp_stuffitx_fork_index_bit7];
+var sxatp_p2_declared_size = [sxatp_stuffitx_declared_size_bit0, sxatp_stuffitx_declared_size_bit1,
+    sxatp_stuffitx_declared_size_bit2, sxatp_stuffitx_declared_size_bit3, sxatp_stuffitx_declared_size_bit4,
+    sxatp_stuffitx_declared_size_bit5, sxatp_stuffitx_declared_size_bit6, sxatp_stuffitx_declared_size_bit7];
+var sxatp_p2_attribute_value = [sxatp_stuffitx_attribute_value_bit0, sxatp_stuffitx_attribute_value_bit1,
+    sxatp_stuffitx_attribute_value_bit2, sxatp_stuffitx_attribute_value_bit3, sxatp_stuffitx_attribute_value_bit4,
+    sxatp_stuffitx_attribute_value_bit5, sxatp_stuffitx_attribute_value_bit6, sxatp_stuffitx_attribute_value_bit7];
+var sxatp_p2_algorithm_key = [sxatp_stuffitx_algorithm_key_bit0, sxatp_stuffitx_algorithm_key_bit1,
+    sxatp_stuffitx_algorithm_key_bit2, sxatp_stuffitx_algorithm_key_bit3, sxatp_stuffitx_algorithm_key_bit4,
+    sxatp_stuffitx_algorithm_key_bit5, sxatp_stuffitx_algorithm_key_bit6, sxatp_stuffitx_algorithm_key_bit7];
+var sxatp_p2_algorithm_value = [sxatp_stuffitx_algorithm_value_bit0, sxatp_stuffitx_algorithm_value_bit1,
+    sxatp_stuffitx_algorithm_value_bit2, sxatp_stuffitx_algorithm_value_bit3, sxatp_stuffitx_algorithm_value_bit4,
+    sxatp_stuffitx_algorithm_value_bit5, sxatp_stuffitx_algorithm_value_bit6, sxatp_stuffitx_algorithm_value_bit7];
+var sxatp_p2_cipher_extra = [sxatp_stuffitx_cipher_extra_bit0, sxatp_stuffitx_cipher_extra_bit1,
+    sxatp_stuffitx_cipher_extra_bit2, sxatp_stuffitx_cipher_extra_bit3, sxatp_stuffitx_cipher_extra_bit4,
+    sxatp_stuffitx_cipher_extra_bit5, sxatp_stuffitx_cipher_extra_bit6, sxatp_stuffitx_cipher_extra_bit7];
+var sxatp_p2_fork_type = [sxatp_stuffitx_fork_type_bit0, sxatp_stuffitx_fork_type_bit1, sxatp_stuffitx_fork_type_bit2,
+    sxatp_stuffitx_fork_type_bit3, sxatp_stuffitx_fork_type_bit4, sxatp_stuffitx_fork_type_bit5, sxatp_stuffitx_fork_type_bit6,
+    sxatp_stuffitx_fork_type_bit7];
+var sxatp_p2_root_value = [sxatp_stuffitx_root_value_bit0, sxatp_stuffitx_root_value_bit1, sxatp_stuffitx_root_value_bit2,
+    sxatp_stuffitx_root_value_bit3, sxatp_stuffitx_root_value_bit4, sxatp_stuffitx_root_value_bit5,
+    sxatp_stuffitx_root_value_bit6, sxatp_stuffitx_root_value_bit7];
+var sxatp_p2_block_size = [sxatp_stuffitx_block_size_bit0, null, null, null, null, null, null, null];
+var sxatp_p2_trailer_size = [sxatp_stuffitx_trailer_size_bit0, null, null, null, null, null, null, null];
+function sxatp_align(b) {
+    if (b.bit) {
+        b.pos++;
+        b.bit = 0;
+    }
+}
+function sxatp_bit(c, b, v) {
+    var x = [0];
+    if (!sxatp_read(c, b.pos, x, 0, 1)) {
+        return false;
+    }
+    v[0] = x[0] >> b.bit & 1;
+    if (++b.bit === 8) {
+        b.pos++;
+        b.bit = 0;
+    }
+    return true;
+}
+function sxatp_p2(c, b, rows, v) {
+    var first = sxCopy_sxatp_bits(null, b);
+    var ones = 1;
+    var pos = 0;
+    var x = [0];
+    var value = 0;
+    for (; ; ) {
+        if (!sxatp_bit(c, b, x)) {
+            return false;
+        }
+        if (!x[0]) {
+            break;
+        }
+        if (++ones >= 64) {
+            return false;
+        }
+    }
+    while (ones) {
+        if (pos >= 64 || !sxatp_bit(c, b, x)) {
+            return false;
+        }
+        if (x[0]) {
+            value = sxOr64(value, sxShl64(1, pos));
+            ones--;
+        }
+        pos++;
+    }
+    v[0] = sxU64(value - 1);
+    var bytes = sxU64(b.pos + (b.bit !== 0 ? 1 : 0) - first.pos);
+    if (!bytes || bytes > 17) {
+        return false;
+    }
+    return sxatp_put(c, rows[first.bit], first.pos, bytes, true);
+}
+function sxatp_sxblocks(c, b) {
+    var n = [0];
+    sxatp_align(b);
+    for (var i = 0; i < 20000; i++) {
+        if (!sxatp_p2(c, b, sxatp_p2_block_size, n)) {
+            return false;
+        }
+        if (!n[0]) {
+            break;
+        }
+        sxatp_align(b);
+        if (!sxatp_span(c, b.pos, n[0])) {
+            return false;
+        }
+        b.pos += n[0];
+    }
+    sxatp_align(b);
+    var first = true;
+    for (i = 0; i < 20000; i++) {
+        if (!sxatp_p2(c, b, sxatp_p2_trailer_size, n)) {
+            return false;
+        }
+        if (!n[0]) {
+            return true;
+        }
+        sxatp_align(b);
+        if (!sxatp_span(c, b.pos, n[0])) {
+            return false;
+        }
+        if (first && n[0] === 4 && !sxatp_add(c, sxatp_stuffitx_crc32, b.pos)) {
+            return false;
+        }
+        b.pos += n[0];
+        first = false;
+    }
+    return false;
+}
+function sxatp_stuffitx(c) {
+    if (!sxatp_add(c, sxatp_stuffitx_signature, 0)) {
+        return false;
+    }
+    var b = { pos: 8, bit: 0 };
+    for (var e = 0; e < 20000; e++) {
+        sxatp_align(b);
+        if (!sxatp_put(c, sxatp_stuffitx_element_flag, b.pos, 1, true)) {
+            return false;
+        }
+        var flag = [0];
+        if (!sxatp_bit(c, b, flag)) {
+            return false;
+        }
+        var type = [0];
+        var key = [0];
+        var value = [0];
+        var size = 0;
+        var has_size = false;
+        if (!sxatp_p2(c, b, sxatp_p2_element_type, type)) {
+            return false;
+        }
+        for (var k = 0; ; k++) {
+            if (k > 256 || !sxatp_p2(c, b, sxatp_p2_attribute_key, key)) {
+                return false;
+            }
+            if (!key[0]) {
+                break;
+            }
+            var rows = key[0] === 1 ? sxatp_p2_object_id : key[0] === 2 ? sxatp_p2_parent_id : key[0] === 3 ? sxatp_p2_stream_id : key[0] === 4 ? sxatp_p2_fork_index : key[0] === 5 ? sxatp_p2_declared_size : sxatp_p2_attribute_value;
+            if (!sxatp_p2(c, b, rows, value)) {
+                return false;
+            }
+            if (key[0] === 5) {
+                size = value[0], has_size = true;
+            }
+        }
+        for (k = 0; ; k++) {
+            if (k > 256 || !sxatp_p2(c, b, sxatp_p2_algorithm_key, key)) {
+                return false;
+            }
+            if (!key[0]) {
+                break;
+            }
+            if (!sxatp_p2(c, b, sxatp_p2_algorithm_value, value)) {
+                return false;
+            }
+            if (key[0] === 4 && !sxatp_p2(c, b, sxatp_p2_cipher_extra, value)) {
+                return false;
+            }
+        }
+        if (type[0] === 0) {
+            return true;
+        }
+        if (type[0] === 1 || type[0] === 5 || type[0] > 10) {
+            if (!sxatp_sxblocks(c, b)) {
+                return false;
+            }
+        } else if (type[0] === 3) {
+            if (!sxatp_p2(c, b, sxatp_p2_fork_type, value)) {
+                return false;
+            }
+        } else if (type[0] === 7) {
+            if (!sxatp_p2(c, b, sxatp_p2_root_value, value)) {
+                return false;
+            }
+        } else if (type[0] === 6) {
+            if (!has_size) {
+                return false;
+            }
+            if (size) {
+                sxatp_align(b);
+                if (!sxatp_span(c, b.pos, size)) {
+                    return false;
+                }
+                b.pos += size;
+            }
+        } else if (type[0] === 10) {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_stuffitx_build(c) {
+    return sxatp_stuffitx(c);
+}

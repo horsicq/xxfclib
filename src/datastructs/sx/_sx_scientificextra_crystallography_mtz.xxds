@@ -1,0 +1,25 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/crystallography_mtz/xx_crystallography_mtz_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxscx_mtz_prefix_fields = layout([chars("signature", 4, SIGNATURE), u32("header_word_index"), bytes("machine_stamp", 4, ID),
+    bytes("reserved", 68, RESERVED)]);
+var sxscx_mtz_prefix = sxLayout(0x6031000B, "mtz_prefix", LE, sxscx_mtz_prefix_fields);
+var sxscx_mtz_header_record_fields = layout([chars("record_text", 80, STRING)]);
+var sxscx_mtz_header_record = sxLayout(0x6031000C, "mtz_header_record", LE, sxscx_mtz_header_record_fields);
+function sxscx_mtz(c, b, n) {
+    if (n < 80) {
+        return false;
+    }
+    var word = sxscx32(b, 4, false);
+    if (word < 21) {
+        return false;
+    }
+    var at = sxU64(word - 1) * 4;
+    return at <= n && sxU64(n - at) % 80 === 0 && sxscx_add(c, sxscx_mtz_prefix, 0) && sxscx_table(c, sxscx_mtz_header_record, at, Math.floor(sxU64(n - at) / 80));
+}
+function sx_crystallography_mtz_build(c, b) {
+    return sxscx_mtz(c, b, (c.size < 0 ? c.size + SX_U64_MAX : c.size));
+}

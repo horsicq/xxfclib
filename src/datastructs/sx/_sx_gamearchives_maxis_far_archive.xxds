@@ -1,0 +1,52 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/maxis_far_archive/xx_maxis_far_archive_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxga_far(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var at = [0];
+    var n = [0];
+    if (!sxga_row(v, sxga_far_header, 0, end) || !sxga_word(v, 12, 4, false, at, 0, end) || !sxga_row(v, sxga_count32, at[0], end) || !sxga_word(v, at[0], 4, false, n, 0, end)) {
+        return false;
+    }
+    var state = sxArcCreate(v.c.f);
+    if (state === null) {
+        return false;
+    }
+    var ok = true;
+    do {
+        var r = sxArcCurrent(v.c.f, state);
+        if (r === null) {
+            break;
+        }
+        var z = [0];
+        var wide = [0];
+        var width = 0;
+        if (r.header_offset < v.c.f.base_address || r.header_size < 14) {
+            ok = false;
+            break;
+        }
+        at[0] = (r.header_offset - v.c.f.base_address < 0 ? r.header_offset - v.c.f.base_address + SX_U64_MAX : r.header_offset - v.c.f.base_address);
+        if (!sxga_span(v, at[0], (r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size), end) || !sxga_word(v, at[0] + 12, 2, false, z, 0, end)) {
+            ok = false;
+            break;
+        }
+        if (r.header_size >= 16 && sxga_word(v, at[0] + 12, 4, false, wide, 0, end) && wide[0] === sxU64((r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size) - 16)) {
+            width = 4;
+            z[0] = wide[0];
+        } else if (z[0] === sxU64((r.header_size < 0 ? r.header_size + SX_U64_MAX : r.header_size) - 14)) {
+            width = 2;
+        }
+        if (!width || !sxga_row(v, width === 2 ? sxga_far_entry16 : sxga_far_entry32, at[0], end) || !sxga_named(v, at[0] + 12 + width, z[0], end, false)) {
+            ok = false;
+            break;
+        }
+    } while (sxArcNext(v.c.f, state));
+    sxArcFree(v.c.f, state);
+    return ok;
+}
+function sx_maxis_far_archive_build(v) {
+    return sxga_far(v);
+}

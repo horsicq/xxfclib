@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/evd/xx_evd_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_evd_header_fields = layout([u32("reserved0", RESERVED), u32("reserved1", RESERVED), u32("marker", SIGNATURE),
+    u32("version"), u32("field_10"), u32("field_14")]);
+var sxbrs_evd_header = sxLayout(0x603E002E, "evd_header", LE, sxbrs_evd_header_fields);
+var sxbrs_evd_record_fields = layout([u16("image_type", ID), u16("repeated_image_type", ID), u32("image_id", ID),
+    u32("payload_size", SIZE)]);
+var sxbrs_evd_record = sxLayout(0x603E002F, "evd_record", LE, sxbrs_evd_record_fields);
+function sxbrs_evd(c) {
+    var at = [0];
+    var end = c.size;
+    if (sxbrs_num(c, 0, 4, false) || sxbrs_num(c, 4, 4, false) || sxbrs_num(c, 8, 4, false) !== 12 || sxbrs_num(c, 12, 4, false) !== 1 && sxbrs_num(c, 12, 4, false) !== 2 || !sxbrs_num(c, 16, 4, false) || !sxbrs_num(c, 20, 4, false)) {
+        return false;
+    }
+    {
+        if (!sxbrs_take(c, sxbrs_evd_header, at, end, 1)) {
+            return false;
+        }
+    }
+    var count = 0;
+    while (at[0] < end) {
+        var type = sxbrs_num(c, at[0], 2, false);
+        var z = sxbrs_num(c, at[0] + 8, 4, false);
+        if (++count > 100000 || type !== 1 && type !== 2 || sxbrs_num(c, at[0] + 2, 2, false) !== type || !sxbrs_num(c, at[0] + 4, 4, false) || z < 8) {
+            return false;
+        }
+        {
+            if (!sxbrs_take(c, sxbrs_evd_record, at, end, 1)) {
+                return false;
+            }
+        }
+        if (type === 1 ? !sxbrs_eq(c, at[0], "\xFF\xD8\xFF", 3) : !sxbrs_eq(c, at[0], "\x89PNG\r\n\x1A\n", 8)) {
+            return false;
+        }
+        {
+            if (!sxbrs_skip(at, end, z)) {
+                return false;
+            }
+        }
+    }
+    return count > 0;
+}
+function sx_evd_build(c) {
+    return sxbrs_evd(c);
+}

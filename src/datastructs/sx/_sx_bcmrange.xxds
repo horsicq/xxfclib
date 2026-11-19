@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_bcmrange.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbcm_bcm80_first_block_fields = layout([blob("signature", 4, SIGNATURE), u32("first_block_length_code"),
+    u32("primary_index_code")]);
+var sxbcm_bcm80_first_block = sxLayout(0x60A70001, "bcm80_first_block", BE, sxbcm_bcm80_first_block_fields);
+var sxbcm_bcm80_empty_fields = layout([blob("signature", 4, SIGNATURE), u32("end_marker_code"), u32("empty_crc_code")]);
+var sxbcm_bcm80_empty = sxLayout(0x60A70002, "bcm80_empty", BE, sxbcm_bcm80_empty_fields);
+function sx_bcmrange_supports(type) {
+    return type === "BCM";
+}
+function sx_bcmrange_build(c) {
+    if (c === null || c.f === null || !sx_bcmrange_supports(c.f.file_type) || c.size <= 0 || c.f.base_address < 0 || c.f.base_address > SX_I64_MAX - c.size || c.failed) {
+        return false;
+    }
+    if (!c.f.base_info_handled && !sxBaseInfo(c.f) || !c.f.is_valid) {
+        return false;
+    }
+    var b = [];
+    var n = c.size < 12 ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : 12;
+    if (!sx_read(c, 0, b, n)) {
+        return false;
+    }
+    if (c.size >= 16 && !sxMemcmp(b, "BCM!", 4)) {
+        var length = ~sxGetU32(b, 12, 4, true) >>> 0;
+        var second = ~sxGetU32(b, 12, 8, true) >>> 0;
+        var l = null;
+        if (length && length <= 268435456 && second >= 1 && second <= length) {
+            l = sxbcm_bcm80_first_block;
+        } else if (!length && !second) {
+            l = sxbcm_bcm80_empty;
+        }
+        if (l !== null) {
+            return sx_add(c, l, 0, 12) && sx_raw(c, 12, c.size - 12) && !c.failed;
+        }
+    }
+    return sx_raw(c, 0, c.size) && !c.failed;
+}
+function sx_bcmrange_comment(r, id) {
+    if (r === null || r.name === null || id !== sxbcm_bcm80_first_block.id && id !== sxbcm_bcm80_empty.id || r.value.t === 9 /*XX_VAR_TYPE_FLOAT*/ || r.value.t === 10 /*XX_VAR_TYPE_DOUBLE*/) {
+        return true;
+    }
+    var s = null;
+    if (r.name === "signature") {
+        s = "BCM! variant (original v1.10 beta and later). BCM1 uses different model-coded headers and remains raw.";
+    } else if (r.name === "first_block_length_code") {
+        s = "Actual first flat-coded 32-bit word, preserved as a big-endian unsigned code value. Its ones-complement decodes to the first block length; this field is not a plain length or total decompressed size.";
+    } else if (r.name === "primary_index_code") {
+        s = "Actual second flat-coded 32-bit word before adaptive symbols, preserved unchanged. Its ones-complement decodes to the one-based BWT primary index; it is not a source byte offset.";
+    } else if (r.name === "end_marker_code") {
+        s = "Actual first flat-coded word in an empty stream: 0xFFFFFFFF encodes the zero end marker. The stored code is preserved, without conversion to a plain length.";
+    } else if (r.name === "empty_crc_code") {
+        s = "Actual second flat-coded word in an empty stream: 0xFFFFFFFF encodes the CRC of empty data (zero). It remains an encoded code value, not a displayed decoded checksum. Later adaptive CRC words have no fixed physical word extent.";
+    }
+    return s === null || sxSetComment(r, s);
+}

@@ -1,0 +1,58 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/bgp_messages/xx_bgp_messages_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxnm_bgp(v) {
+    var at = 0;
+    for (var msg = 0; at < v.n; msg++) {
+        if (msg >= 128 || !sxnm_row(v, sxnm_bgp_message_header, at, v.n)) {
+            return false;
+        }
+        var n = sxnm_u16(v.p, at + 16);
+        if (n < 19 || !sxnm_need(v, at, n, v.n)) {
+            return false;
+        }
+        var end = at + n;
+        if (v.p[at + 18] === 1) {
+            if (!sxnm_row(v, sxnm_bgp_open, at + 19, end)) {
+                return false;
+            }
+            var p = at + 29;
+            if (v.p[at + 28] !== sxU64(end - p)) {
+                return false;
+            }
+            while (p < end) {
+                if (!sxnm_row(v, sxnm_bgp_optional_parameter, p, end)) {
+                    return false;
+                }
+                var pe = p + 2 + v.p[p + 1];
+                if (pe > end) {
+                    return false;
+                }
+                var type = v.p[p];
+                p += 2;
+                if (type === 2) {
+                    while (p < pe) {
+                        if (!sxnm_row(v, sxnm_bgp_capability_header, p, pe)) {
+                            return false;
+                        }
+                        var ncap = v.p[p + 1];
+                        p += 2;
+                        if (!sxnm_need(v, p, ncap, pe)) {
+                            return false;
+                        }
+                        p += ncap;
+                    }
+                }
+                p = pe;
+            }
+        }
+        at = end;
+    }
+    return at === v.n;
+}
+function sx_bgp_messages_build(v) {
+    return sxnm_bgp(v);
+}

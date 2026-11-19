@@ -1,0 +1,42 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/document/djvu/xx_djvu_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxdm_djvu_form_header_fields = layout([chars("magic", 8, SIGNATURE), u32("form_size", SIZE), chars("form_type", 4, ID)]);
+var sxdm_djvu_form_header = sxLayout(0x60230001, "djvu_form_header", BE, sxdm_djvu_form_header_fields);
+var sxdm_djvu_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxdm_djvu_chunk_header = sxLayout(0x60230002, "djvu_chunk_header", BE, sxdm_djvu_chunk_header_fields);
+var sxdm_djvu_info_fields = layout([field("width", "uint16be", 2, COUNT), field("height", "uint16be", 2, COUNT),
+    u16("version", ID), u16("dpi"), u8("gamma_times_ten"), u8("orientation", ID)]);
+var sxdm_djvu_info = sxLayout(0x60230003, "djvu_info", LE, sxdm_djvu_info_fields);
+function sxdm_djvu(c) {
+    var b = [];
+    if (!sx_read(c, 0, b, 16) || sxMemcmp(b, "AT&TFORM", 8) || sxMemcmpAt(b, 12, "DJVU", 0, 4) || !sxdm_add(c, sxdm_djvu_form_header, 0, 16)) {
+        return false;
+    }
+    var n = sxGetU32At(b, 8, 4, 0, true);
+    var end = 12 + n;
+    var at = 16;
+    if (n < 4 || !sxdm_span(c, 0, (end < 0 ? end + SX_U64_MAX : end))) {
+        return false;
+    }
+    for (var i = 0; at < end; i++) {
+        if (i >= 4096 || end - at < 8 || !sx_read(c, at, b, 8)) {
+            return false;
+        }
+        n = sxGetU32At(b, 4, 4, 0, true);
+        if (n + (n & 1) > (end - at - 8 < 0 ? end - at - 8 + SX_U64_MAX : end - at - 8) || !sxdm_add(c, sxdm_djvu_chunk_header, at, 8)) {
+            return false;
+        }
+        if (!sxMemcmp(b, "INFO", 4) && n === 10 && !sxdm_add(c, sxdm_djvu_info, at + 8, 10)) {
+            return false;
+        }
+        at += 8 + n + (n & 1);
+    }
+    return true;
+}
+function sx_djvu_build(c) {
+    return sxdm_djvu(c);
+}

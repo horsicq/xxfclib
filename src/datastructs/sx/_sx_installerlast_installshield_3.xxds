@@ -1,0 +1,56 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/installer/installshield_3/xx_installshield_3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxil_installshield3_descriptor_fields = layout([u32("descriptor_size", SIZE), u32("version", ID),
+    u32("data_offset", OFFSET), u32("file_count", COUNT), u32("end_offset", OFFSET), u32("unknown"), u32("reserved", RESERVED),
+    field("encoded_unused_string", "byte[40]", 40), field("encoded_command", "byte[128]", 128),
+    field("encoded_product_title", "byte[80]", 80), field("encoded_source_directory", "byte[128]", 128)]);
+var sxil_installshield3_descriptor = sxLayout(0x60850025, "installshield3_descriptor", LE, sxil_installshield3_descriptor_fields);
+var sxil_installshield3_name_size_fields = layout([u32("name_size", SIZE)]);
+var sxil_installshield3_name_size = sxLayout(0x60850026, "installshield3_name_size", LE, sxil_installshield3_name_size_fields);
+var sxil_installshield3_member_fields = layout([u16("dos_date"), u16("dos_time"), u32("file_size", SIZE)]);
+var sxil_installshield3_member = sxLayout(0x60850027, "installshield3_member", LE, sxil_installshield3_member_fields);
+var sxil_is3_magic = [0x94, 1, 0, 0, 6, 0, 0, 0];
+function sxil_is3(c, r) {
+    if (!r.count) {
+        return true;
+    }
+    var p = [0];
+    var start = 0;
+    var b = [];
+    var resource_size = [0];
+    if (sxil_resource(c, 1024, 0, "MYRESOURCE", p, resource_size) && resource_size[0] >= 404) {
+        if (!sxil_put(c, sxil_installshield3_descriptor, p[0], 1)) {
+            return false;
+        }
+    }
+    while (sxil_find(c, sxil_is3_magic, 8, start, r.items[0].header, p)) {
+        start = p[0] + 8;
+        if (!sxil_read(c, p[0], b, 28)) {
+            break;
+        }
+        if (sxil32(b, 8, false) === r.items[0].header && sxil32(b, 12, false) >= r.count) {
+            if (!sxil_put(c, sxil_installshield3_descriptor, p[0], 1)) {
+                return false;
+            }
+            break;
+        }
+    }
+    for (var i = 0; i < r.count; i++) {
+        var m = r.items[i];
+        var n = [0];
+        if (!sxil_u32(c, m.header, n) || !n[0] || n[0] > 1024 || n[0] + 12 !== m.header_size) {
+            continue;
+        }
+        if (!sxil_put(c, sxil_installshield3_name_size, m.header, 1) || !sxil_encoded(c, m.header + 4, n[0]) || !sxil_put(c, sxil_installshield3_member, m.header + 4 + n[0], 1)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_installshield_3_build(c, records) {
+    return sxil_is3(c, records);
+}

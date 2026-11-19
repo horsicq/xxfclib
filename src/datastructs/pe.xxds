@@ -1,0 +1,1990 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// PE32/PE32+ images (Microsoft PE/COFF): headers, section table, data
+// directories and the tables they lead to.
+//
+// Structure ids are XX_PE_DATA_STRUCT_* (include/xxfclib/formats/executable/pe/xx_pe.h);
+// the id of a structure is its index in PE_NAMES. Every occurrence address is
+// the address the host maps its file offset to (MAPPED, -1 when unmapped).
+//
+// This script is included by dotnet.xxds: the catalog and the scanner live in
+// peStructs() / peScan(extension) and the shared helpers are prefixed "pe".
+// peScan() passes its scan context to the extension, which reports more
+// structures with peAdd() / peRaw() after the PE ones.
+
+function fileTypes() { return ["PE32", "PE64"]; }
+
+function structs() { return peStructs(); }
+
+function scan() { return peScan(); }
+
+var PE_MAX_ITEMS = 262144;
+var PE_MAX_TABLE = 1048576;
+var PE_MAX_LINKED = 65536;
+var PE_MAX_RESOURCE_DEPTH = 32;
+var PE_MAX_RESOURCE_NODES = 65536;
+var PE_MAX_STRING = 4096;
+var PE_MAX_DISPLAY = 128;
+var PE_FILE_PART_SECTION = 2;
+var PE_HUGE = -2; // a 64-bit value that does not fit a double exactly (>= 2^53)
+
+// Index = structure id (XX_PE_DATA_STRUCT_*); 0 is UNKNOWN and not a catalog entry.
+var PE_NAMES = [
+    "UNKNOWN", "IMAGE_DOS_HEADER", "IMAGE_NT_SIGNATURE", "IMAGE_FILE_HEADER", "IMAGE_OPTIONAL_HEADER32", "IMAGE_DATA_DIRECTORY",
+    "IMAGE_SECTION_HEADER", "IMAGE_OPTIONAL_HEADER64", "DOS_STUB", "IMAGE_SYMBOL", "IMAGE_AUX_SYMBOL",
+    "IMAGE_AUX_SYMBOL_FUNCTION_DEFINITION", "IMAGE_AUX_SYMBOL_BF_EF", "IMAGE_AUX_SYMBOL_WEAK_EXTERNAL", "IMAGE_AUX_SYMBOL_FILE",
+    "IMAGE_AUX_SYMBOL_SECTION_DEFINITION", "IMAGE_AUX_SYMBOL_CLR_TOKEN", "COFF_STRING_TABLE_HEADER", "COFF_STRING", "IMAGE_RELOCATION",
+    "IMAGE_LINENUMBER", "IMAGE_EXPORT_DIRECTORY", "EXPORT_ADDRESS_TABLE", "EXPORT_NAME_POINTER_TABLE", "EXPORT_ORDINAL_TABLE",
+    "EXPORT_FORWARDER", "IMAGE_IMPORT_DESCRIPTOR", "IMAGE_THUNK_DATA32", "IMAGE_THUNK_DATA64", "IMAGE_IMPORT_BY_NAME", "ASCII_STRING",
+    "IMAGE_RESOURCE_DIRECTORY", "IMAGE_RESOURCE_DIRECTORY_ENTRY", "IMAGE_RESOURCE_DIR_STRING_U", "IMAGE_RESOURCE_DATA_ENTRY",
+    "RESOURCE_PAYLOAD", "RUNTIME_FUNCTION_X64", "RUNTIME_FUNCTION_IA64", "RUNTIME_FUNCTION_ARM", "RUNTIME_FUNCTION_ARM64",
+    "RUNTIME_FUNCTION_MIPS", "RUNTIME_FUNCTION_ALPHA32", "RUNTIME_FUNCTION_ALPHA64", "RUNTIME_FUNCTION_CE", "UNWIND_INFO", "UNWIND_CODE",
+    "UNWIND_HANDLER", "UNWIND_CHAINED_FUNCTION", "ARM64_XDATA_HEADER", "ARM64_XDATA_EXTENDED", "ARM64_EPILOG_SCOPE", "WIN_CERTIFICATE",
+    "IMAGE_BASE_RELOCATION", "BASE_RELOCATION_ENTRY", "IMAGE_DEBUG_DIRECTORY", "IMAGE_COFF_SYMBOLS_HEADER", "CODEVIEW_RSDS",
+    "CODEVIEW_NB10", "IMAGE_DEBUG_MISC", "FPO_DATA", "OMAP_ENTRY", "VC_FEATURE", "POGO_HEADER", "POGO_ENTRY", "EMBEDDED_PORTABLE_PDB",
+    "REPRO_HASH_HEADER", "DEBUG_GUID", "EX_DLL_CHARACTERISTICS", "DEBUG_RAW", "IMAGE_ARCHITECTURE_HEADER", "IMAGE_ARCHITECTURE_ENTRY",
+    "IMAGE_TLS_DIRECTORY32", "IMAGE_TLS_DIRECTORY64", "TLS_CALLBACK32", "TLS_CALLBACK64", "TLS_TEMPLATE", "IMAGE_LOAD_CONFIG_DIRECTORY32",
+    "IMAGE_LOAD_CONFIG_DIRECTORY64", "IMAGE_LOAD_CONFIG_CODE_INTEGRITY", "SE_HANDLER_ENTRY", "GUARD_FUNCTION_ENTRY",
+    "GUARD_ADDRESS_TAKEN_IAT_ENTRY", "GUARD_LONG_JUMP_ENTRY", "GUARD_EH_CONTINUATION_ENTRY", "IMAGE_DYNAMIC_RELOCATION_TABLE",
+    "IMAGE_DYNAMIC_RELOCATION32", "IMAGE_DYNAMIC_RELOCATION64", "IMAGE_DYNAMIC_RELOCATION32_V2", "IMAGE_DYNAMIC_RELOCATION64_V2",
+    "DYNAMIC_RELOCATION_PROLOGUE", "DYNAMIC_RELOCATION_EPILOGUE", "DYNAMIC_RELOCATION_IMPORT_CONTROL",
+    "DYNAMIC_RELOCATION_ARM64_IMPORT_CONTROL", "DYNAMIC_RELOCATION_INDIR", "DYNAMIC_RELOCATION_SWITCHTABLE", "FUNCTION_OVERRIDE_HEADER",
+    "FUNCTION_OVERRIDE_ENTRY", "BDD_INFO", "BDD_NODE", "IMAGE_HOT_PATCH_INFO", "IMAGE_HOT_PATCH_BASE", "IMAGE_HOT_PATCH_MACHINE",
+    "IMAGE_HOT_PATCH_HASHES", "IMAGE_ENCLAVE_CONFIG32", "IMAGE_ENCLAVE_CONFIG64", "IMAGE_ENCLAVE_IMPORT", "IMAGE_VOLATILE_METADATA",
+    "IMAGE_BOUND_IMPORT_DESCRIPTOR", "IMAGE_BOUND_FORWARDER_REF", "IMAGE_DELAYLOAD_DESCRIPTOR", "IAT32", "IAT64", "RESERVED_112",
+    "RESERVED_113", "RESERVED_114", "RESERVED_115", "RESERVED_116", "RESERVED_117", "RESERVED_DIRECTORY_RAW", "ARM32_XDATA_HEADER",
+    "ARM32_EPILOG_SCOPE", "DYNAMIC_RELOCATION_ARM64X", "ARM64X_FIXUP", "ARM64X_DELTA", "PDB_CHECKSUM", "R2R_PERFMAP", "CHPE_METADATA",
+    "ARM64EC_METADATA", "CHPE_CODE_RANGE_ENTRY", "CHPE_CODE_RANGE_TO_ENTRY_POINT", "CHPE_REDIRECTION_ENTRY", "VOLATILE_ACCESS",
+    "VOLATILE_INFO_RANGE", "ARM32_XDATA_EXTENDED", "IMAGE_FUNCTION_ENTRY", "IMAGE_FUNCTION_ENTRY64", "IMAGE_POLICY_METADATA",
+    "IMAGE_POLICY_ENTRY32", "IMAGE_POLICY_ENTRY64"
+];
+
+// IMAGE_FILE_HEADER.Machine names.
+var PE_MACHINE_NAMES = {
+    0: "IMAGE_FILE_MACHINE_UNKNOWN",
+    1: "IMAGE_FILE_MACHINE_TARGET_HOST",
+    332: "IMAGE_FILE_MACHINE_I386",
+    333: "IMAGE_FILE_MACHINE_I486",
+    334: "IMAGE_FILE_MACHINE_PENTIUM",
+    352: "IMAGE_FILE_MACHINE_R3000BE",
+    354: "IMAGE_FILE_MACHINE_R3000",
+    358: "IMAGE_FILE_MACHINE_R4000",
+    360: "IMAGE_FILE_MACHINE_R10000",
+    361: "IMAGE_FILE_MACHINE_WCEMIPSV2",
+    388: "IMAGE_FILE_MACHINE_ALPHA",
+    418: "IMAGE_FILE_MACHINE_SH3",
+    419: "IMAGE_FILE_MACHINE_SH3DSP",
+    420: "IMAGE_FILE_MACHINE_SH3E",
+    422: "IMAGE_FILE_MACHINE_SH4",
+    424: "IMAGE_FILE_MACHINE_SH5",
+    448: "IMAGE_FILE_MACHINE_ARM",
+    450: "IMAGE_FILE_MACHINE_THUMB",
+    452: "IMAGE_FILE_MACHINE_ARMNT",
+    467: "IMAGE_FILE_MACHINE_AM33",
+    496: "IMAGE_FILE_MACHINE_POWERPC",
+    497: "IMAGE_FILE_MACHINE_POWERPCFP",
+    498: "IMAGE_FILE_MACHINE_POWERPCBE",
+    512: "IMAGE_FILE_MACHINE_IA64",
+    614: "IMAGE_FILE_MACHINE_MIPS16",
+    644: "IMAGE_FILE_MACHINE_ALPHA64",
+    870: "IMAGE_FILE_MACHINE_MIPSFPU",
+    1126: "IMAGE_FILE_MACHINE_MIPSFPU16",
+    1312: "IMAGE_FILE_MACHINE_TRICORE",
+    3311: "IMAGE_FILE_MACHINE_CEF",
+    3772: "IMAGE_FILE_MACHINE_EBC",
+    14948: "IMAGE_FILE_MACHINE_CHPE_X86",
+    20530: "IMAGE_FILE_MACHINE_RISCV32",
+    20580: "IMAGE_FILE_MACHINE_RISCV64",
+    20776: "IMAGE_FILE_MACHINE_RISCV128",
+    25138: "IMAGE_FILE_MACHINE_LOONGARCH32",
+    25188: "IMAGE_FILE_MACHINE_LOONGARCH64",
+    34404: "IMAGE_FILE_MACHINE_AMD64",
+    36929: "IMAGE_FILE_MACHINE_M32R",
+    42561: "IMAGE_FILE_MACHINE_ARM64EC",
+    42574: "IMAGE_FILE_MACHINE_ARM64X",
+    43620: "IMAGE_FILE_MACHINE_ARM64",
+    49390: "IMAGE_FILE_MACHINE_CEE",
+    64797: "IMAGE_FILE_MACHINE_AMD64_LINUX_NI"
+};
+
+// IMAGE_FILE_HEADER.Characteristics flag names, in the order they are listed.
+var PE_FILE_CHARACTERISTICS = [
+    [0x0001, "IMAGE_FILE_RELOCS_STRIPPED"],
+    [0x0002, "IMAGE_FILE_EXECUTABLE_IMAGE"],
+    [0x0004, "IMAGE_FILE_LINE_NUMS_STRIPPED"],
+    [0x0008, "IMAGE_FILE_LOCAL_SYMS_STRIPPED"],
+    [0x0010, "IMAGE_FILE_AGGRESIVE_WS_TRIM"],
+    [0x0020, "IMAGE_FILE_LARGE_ADDRESS_AWARE"],
+    [0x0080, "IMAGE_FILE_BYTES_REVERSED_LO"],
+    [0x0100, "IMAGE_FILE_32BIT_MACHINE"],
+    [0x0200, "IMAGE_FILE_DEBUG_STRIPPED"],
+    [0x0400, "IMAGE_FILE_REMOVABLE_RUN_FROM_SWAP"],
+    [0x0800, "IMAGE_FILE_NET_RUN_FROM_SWAP"],
+    [0x1000, "IMAGE_FILE_SYSTEM"],
+    [0x2000, "IMAGE_FILE_DLL"],
+    [0x4000, "IMAGE_FILE_UP_SYSTEM_ONLY"],
+    [0x8000, "IMAGE_FILE_BYTES_REVERSED_HI"]
+];
+
+// ------------------------------------------------------------------ catalog
+
+// What a structure is (catalog `description`), by structure name.
+var PE_DESCRIPTIONS = {
+    IMAGE_DOS_HEADER: "The first structure in every PE file. It is a leftover from MS-DOS compatibility: DOS reads it to run the stub, Windows only uses e_magic and e_lfanew.",
+    DOS_STUB: "A small MS-DOS program that prints \"This program cannot be run in DOS mode\"; it may be followed by the linker's Rich header.",
+    IMAGE_NT_SIGNATURE: "The four bytes \"PE\\0\\0\" at e_lfanew that mark the start of the NT headers.",
+    IMAGE_FILE_HEADER: "The COFF file header: target machine, number of sections, link time and what kind of image this is.",
+    IMAGE_OPTIONAL_HEADER32: "The optional header of a 32-bit image: entry point, image base, alignments, sizes and subsystem. Required for executables despite its name.",
+    IMAGE_OPTIONAL_HEADER64: "The optional header of a 64-bit image: entry point, image base, alignments, sizes and subsystem. Required for executables despite its name.",
+    IMAGE_DATA_DIRECTORY: "One entry of the data directory table at the end of the optional header: where a table such as imports, resources or relocations is and how big it is.",
+    IMAGE_SECTION_HEADER: "One row of the section table: where a section lies in the file, where it is mapped in memory and how its pages are protected.",
+    IMAGE_IMPORT_DESCRIPTOR: "One imported DLL: its name and the two parallel thunk tables that name the imported functions and receive their addresses.",
+    IMAGE_EXPORT_DIRECTORY: "The export table header: the DLL name and the tables of exported function addresses, names and ordinals.",
+    IMAGE_RESOURCE_DIRECTORY: "One node of the resource tree (type, name or language level) followed by its entries.",
+    IMAGE_BASE_RELOCATION: "The header of one base relocation block: the page it applies to and the size of the block.",
+    IMAGE_DEBUG_DIRECTORY: "One debug record: the type of debug information and where its data is.",
+    IMAGE_TLS_DIRECTORY32: "The thread-local storage directory: the TLS template, the index slot and the callbacks run for each thread.",
+    IMAGE_TLS_DIRECTORY64: "The thread-local storage directory: the TLS template, the index slot and the callbacks run for each thread.",
+    WIN_CERTIFICATE: "An Authenticode signature entry of the certificate table."
+};
+
+// What a field means (field `description`), by structure name and field name.
+var PE_FIELD_DESCRIPTIONS = {
+    IMAGE_DOS_HEADER: {
+        e_magic: "Magic number",
+        e_cblp: "Bytes on last page of file",
+        e_cp: "Pages in file",
+        e_crlc: "Relocations",
+        e_cparhdr: "Size of header in paragraphs",
+        e_minalloc: "Minimum extra paragraphs needed",
+        e_maxalloc: "Maximum extra paragraphs needed",
+        e_ss: "Initial (relative) SS value",
+        e_sp: "Initial SP value",
+        e_csum: "Checksum",
+        e_ip: "Initial IP value",
+        e_cs: "Initial (relative) CS value",
+        e_lfarlc: "File address of relocation table",
+        e_ovno: "Overlay number",
+        e_res: "Reserved words",
+        e_oemid: "OEM identifier (for e_oeminfo)",
+        e_oeminfo: "OEM information; e_oemid specific",
+        e_res2: "Reserved words",
+        e_lfanew: "File address of new exe header"
+    },
+    IMAGE_NT_SIGNATURE: {
+        Signature: "PE signature"
+    },
+    IMAGE_FILE_HEADER: {
+        Machine: "Target CPU architecture",
+        NumberOfSections: "Number of entries in the section table",
+        TimeDateStamp: "Link time in seconds since 1970, or a build hash for reproducible builds",
+        PointerToSymbolTable: "File offset of the COFF symbol table, 0 if none",
+        NumberOfSymbols: "Number of COFF symbol table entries",
+        SizeOfOptionalHeader: "Size of the optional header that follows",
+        Characteristics: "Image attribute flags"
+    },
+    IMAGE_DATA_DIRECTORY: {
+        VirtualAddress: "RVA of the table",
+        FileOffset: "File offset of the table (the certificate table is not mapped)",
+        Size: "Size of the table in bytes"
+    },
+    IMAGE_SECTION_HEADER: {
+        Name: "Section name, padded with NUL bytes",
+        VirtualSize: "Size of the section in memory",
+        VirtualAddress: "RVA of the section in memory",
+        SizeOfRawData: "Size of the section data in the file",
+        PointerToRawData: "File offset of the section data",
+        PointerToRelocations: "File offset of COFF relocations (object files)",
+        PointerToLinenumbers: "File offset of COFF line numbers (deprecated)",
+        NumberOfRelocations: "Number of COFF relocations",
+        NumberOfLinenumbers: "Number of COFF line numbers",
+        Characteristics: "Section flags: content type and memory protection"
+    }
+};
+
+function peStructs() {
+    var list = [], id;
+    for (id = 1; id < PE_NAMES.length; id++) {
+        list.push({ id: id, name: PE_NAMES[id], fields: peRecordFields, description: PE_DESCRIPTIONS[PE_NAMES[id]] });
+    }
+    list[3].aliases = ["IMAGE_OPTIONAL_HEADER"];   // id 4, the name without a width
+    return list;
+}
+
+// ------------------------------------------------------------- file facts
+
+// Reads that past the end of the file answer 0, like xx_io_get_*.
+function peU8(o) { return File.valid(o, 1) ? File.u8(o) : 0; }
+function peU16(o) { return File.valid(o, 2) ? File.u16(o) : 0; }
+function peU32(o) { return File.valid(o, 4) ? File.u32(o) : 0; }
+function peI16(o) { return File.valid(o, 2) ? File.i16(o) : 0; }
+
+// A 64-bit little-endian value as a number, PE_HUGE when it is 2^53 or more.
+function peU64(o) {
+    var hi, lo;
+    if (!File.valid(o, 8)) return 0;
+    hi = File.u32(o + 4);
+    lo = File.u32(o);
+    return hi >= 0x200000 ? PE_HUGE : hi * 4294967296 + lo;
+}
+
+function peIsZero64(o) { return peU32(o) === 0 && peU32(o + 4) === 0; }
+function peIsOnes64(o) { return peU32(o) === 0xFFFFFFFF && peU32(o + 4) === 0xFFFFFFFF; }
+
+function peOffset() { return File.u32(0x3C); }
+function peIs64() { return File.u16(peOffset() + 24) === 0x20B; }
+
+// The parsed header facts xx_pe.c keeps in struct xx_pe.
+function peHeader() {
+    var h = {}, nt = File.u32(0x3C), directory, available, i, o, s;
+    h.peOffset = nt;
+    h.machine = File.u16(nt + 4);
+    h.sectionCount = File.u16(nt + 6);
+    h.optionalSize = File.u16(nt + 20);
+    h.optional = nt + 24;
+    h.is64 = File.u16(h.optional) === 0x20B;
+    directory = h.is64 ? 112 : 96;
+    h.directoryCount = File.u32(h.optional + (h.is64 ? 108 : 92));
+    available = h.optionalSize >= directory ? Math.floor((h.optionalSize - directory) / 8) : 0;
+    if (h.directoryCount > available) h.directoryCount = available;
+    if (h.directoryCount > 16) h.directoryCount = 16;
+    h.rva = [];
+    h.size = [];
+    for (i = 0; i < 16; i++) {
+        o = h.optional + directory + i * 8;
+        h.rva.push(i < h.directoryCount ? File.u32(o) : 0);
+        h.size.push(i < h.directoryCount ? File.u32(o + 4) : 0);
+    }
+    h.sections = [];
+    for (i = 0; i < h.sectionCount; i++) {
+        o = h.optional + h.optionalSize + i * 40;
+        s = {};
+        s.name = File.cstr(o, 8);
+        s.virtualAddress = File.u32(o + 12);
+        s.rawSize = File.u32(o + 16);
+        s.rawOffset = File.u32(o + 20);
+        h.sections.push(s);
+    }
+    return h;
+}
+
+// --------------------------------------------------------------- ranges
+
+function peFileRange(c, offset, size) {
+    return offset >= 0 && size >= 0 && offset <= c.fileSize && size <= c.fileSize - offset ? offset : -1;
+}
+
+function peRva(rva, size) {
+    if (rva < 0 || size <= 0 || rva === PE_HUGE || size === PE_HUGE) return -1;
+    return Format.rvaRange(rva, size);
+}
+
+function peVa(va, size) {
+    if (va <= 0 || size <= 0 || va === PE_HUGE || size === PE_HUGE) return -1;
+    return Format.vaRange(va, size);
+}
+
+function peLocation(location, isVa, size) { return isVa ? peVa(location, size) : peRva(location, size); }
+
+// Range of a pointer-sized VA stored at o (4 or 8 bytes by image type).
+function pePointerRange(c, o, size) {
+    if (size <= 0) return -1;
+    return c.h.is64 ? Format.vaRangeAt(o, 8, size) : peVa(peU32(o), size);
+}
+
+// Length of a NUL-terminated string including the NUL, 0 when none within
+// min(maximum, 4096) bytes.
+function peCString(offset, maximum) {
+    var size = File.size(), n;
+    if (offset < 0 || offset >= size) return 0;
+    if (maximum > PE_MAX_STRING) maximum = PE_MAX_STRING;
+    if (maximum > size - offset) maximum = size - offset;
+    if (maximum <= 0) return 0;
+    n = File.cstrSize(offset, maximum);
+    return n < 0 ? 0 : n;
+}
+
+function peAlign(value, alignment) { return Math.ceil(value / alignment) * alignment; }
+
+// -------------------------------------------------------- occurrence list
+
+function peFail(what) { throw new Error("pe: " + what); }
+
+// pe_append_absolute: range-checked, de-duplicated by (id, offset, size).
+function peAdd(c, name, offset, entrySize, totalSize, count, kind) {
+    var key;
+    if (peFileRange(c, offset, totalSize) < 0) peFail("structure outside the file");
+    key = name + "|" + offset + "|" + totalSize;
+    if (c.seen[key]) return;
+    if (c.count >= PE_MAX_ITEMS) peFail("too many structures");
+    c.seen[key] = true;
+    c.count++;
+    // The C took xx_format_offset_to_address(offset), which MAPPED asks the host for.
+    Structs.put(name, offset, entrySize, totalSize, count, kind, MAPPED);
+}
+
+function peRaw(c, name, offset, size) {
+    if (size === 0) return;
+    peAdd(c, name, offset, 1, size, size, RAW);
+}
+
+function peAddRva(c, name, rva, entrySize, totalSize, count, kind) {
+    var offset = peRva(rva, totalSize);
+    if (offset < 0) peFail("rva outside the image");
+    peAdd(c, name, offset, entrySize, totalSize, count, kind);
+}
+
+function peRawRva(c, name, rva, size) {
+    var offset;
+    if (size === 0) return;
+    offset = peRva(rva, size);
+    if (offset < 0) peFail("rva outside the image");
+    peRaw(c, name, offset, size);
+}
+
+function peCStringRva(c, name, rva) {
+    var offset, size;
+    if (!rva || (offset = peRva(rva, 1)) < 0) return;
+    size = peCString(offset, PE_MAX_STRING);
+    if (size) peAdd(c, name, offset, 1, size, size, RAW);
+}
+
+function peContext() {
+    return { h: peHeader(), mapped: Format.isMapped(), fileSize: File.size(), seen: {}, count: 0 };
+}
+
+// ------------------------------------------------------------- scanning
+
+function peScan(extension) {
+    var c, formatSize;
+    if (Format.imageBase() < 0) return false;
+    c = peContext();
+    peCore(c);
+    peCoff(c);
+    peExport(c);
+    peImport(c);
+    peResources(c);
+    peException(c);
+    peSecurity(c);
+    peBaseRelocations(c);
+    peDebug(c);
+    peArchitecture(c);
+    peDirectoryRaw(c, 8);
+    peTls(c);
+    peLoadConfig(c);
+    peBoundImports(c);
+    peIat(c);
+    peDelayImports(c);
+    peDirectoryRaw(c, 14);
+    peDirectoryRaw(c, 15);
+    formatSize = Format.size();
+    if (formatSize > 0 && formatSize < c.fileSize) peRaw(c, "RAW_DATA", formatSize, c.fileSize - formatSize);
+    if (extension) extension(c);
+    return c.count > 0;
+}
+
+function peCore(c) {
+    var h = c.h, optional = h.peOffset + 24, prefix = h.is64 ? 112 : 96, i, directoryBytes, sectionStart, sectionBytes;
+    var cursor, next, nextEnd, s;
+    peAdd(c, "IMAGE_DOS_HEADER", 0, 64, 64, 1, STRUCT);
+    if (h.peOffset > 64) peRaw(c, "DOS_STUB", 64, h.peOffset - 64);
+    peAdd(c, "IMAGE_NT_SIGNATURE", h.peOffset, 4, 4, 1, STRUCT);
+    peAdd(c, "IMAGE_FILE_HEADER", h.peOffset + 4, 20, 20, 1, STRUCT);
+    peAdd(c, h.is64 ? "IMAGE_OPTIONAL_HEADER64" : "IMAGE_OPTIONAL_HEADER32", optional, prefix, prefix, 1, STRUCT);
+    directoryBytes = h.directoryCount * 8;
+    for (i = 0; i < h.directoryCount; i++) peAdd(c, "IMAGE_DATA_DIRECTORY", optional + prefix + i * 8, 8, 8, 1, ENTRY);
+    if (h.optionalSize > prefix + directoryBytes) peRaw(c, "RAW_DATA", optional + prefix + directoryBytes, h.optionalSize - prefix - directoryBytes);
+    sectionStart = optional + h.optionalSize;
+    sectionBytes = h.sectionCount * 40;
+    peAdd(c, "IMAGE_SECTION_HEADER", sectionStart, 40, sectionBytes, h.sectionCount, ENTRY);
+
+    // Alignment holes outside the section payloads.
+    if (c.mapped) return;
+    cursor = sectionStart + sectionBytes;
+    for (;;) {
+        next = -1;
+        nextEnd = 0;
+        for (i = 0; i < h.sectionCount; i++) {
+            s = h.sections[i];
+            if (!s.rawSize || s.rawOffset < cursor || (next >= 0 && s.rawOffset >= next)) continue;
+            next = s.rawOffset;
+            nextEnd = s.rawOffset + s.rawSize;
+        }
+        if (next < 0) break;
+        if (next > cursor) peRaw(c, "RAW_DATA", cursor, next - cursor);
+        cursor = nextEnd;
+        for (i = 0; i < h.sectionCount; i++) {
+            s = h.sections[i];
+            if (s.rawSize && s.rawOffset <= cursor && s.rawOffset + s.rawSize > cursor) cursor = s.rawOffset + s.rawSize;
+        }
+    }
+}
+
+function peAuxName(storage, type, sectionNumber, value) {
+    if (storage === 2 && (type & 0x30) === 0x20) return "IMAGE_AUX_SYMBOL_FUNCTION_DEFINITION";
+    if (storage === 101) return "IMAGE_AUX_SYMBOL_BF_EF";
+    if (storage === 105) return "IMAGE_AUX_SYMBOL_WEAK_EXTERNAL";
+    if (storage === 103) return "IMAGE_AUX_SYMBOL_FILE";
+    if (storage === 107) return "IMAGE_AUX_SYMBOL_CLR_TOKEN";
+    if (storage === 3 && sectionNumber > 0 && value === 0) return "IMAGE_AUX_SYMBOL_SECTION_DEFINITION";
+    return "IMAGE_AUX_SYMBOL";
+}
+
+function peCoff(c) {
+    var h = c.h, fileHeader = h.peOffset + 4, pointer, count, symbolsSize, index = 0, symbol, aux, available, name;
+    var strings, tableSize, cursor, length, i, header, relocPointer, linePointer, relocCount, lineCount, characteristics, stored, actual;
+    if (c.mapped) return;
+    if (peFileRange(c, fileHeader, 20) < 0) return;
+    pointer = File.u32(fileHeader + 8);
+    count = File.u32(fileHeader + 12);
+    symbolsSize = count * 18;
+    if (pointer && count && count <= PE_MAX_TABLE && peFileRange(c, pointer, symbolsSize) >= 0) {
+        while (index < count) {
+            symbol = pointer + index * 18;
+            if (peFileRange(c, symbol, 18) < 0) peFail("symbol outside the file");
+            peAdd(c, "IMAGE_SYMBOL", symbol, 18, 18, 1, ENTRY);
+            aux = File.u8(symbol + 17);
+            available = count - index - 1;
+            if (aux > available) aux = available;
+            name = peAuxName(File.u8(symbol + 16), File.u16(symbol + 14), File.i16(symbol + 12), File.u32(symbol + 8));
+            if (aux) peAdd(c, name, pointer + (index + 1) * 18, 18, aux * 18, aux, ENTRY);
+            index += 1 + aux;
+        }
+        strings = pointer + symbolsSize;
+        if (peFileRange(c, strings, 4) >= 0) {
+            tableSize = File.u32(strings);
+            if (tableSize >= 4 && tableSize <= PE_MAX_TABLE * 16 && peFileRange(c, strings, tableSize) >= 0) {
+                peAdd(c, "COFF_STRING_TABLE_HEADER", strings, 4, 4, 1, STRUCT);
+                cursor = 4;
+                while (cursor < tableSize) {
+                    length = peCString(strings + cursor, tableSize - cursor);
+                    if (!length) {
+                        peRaw(c, "RAW_DATA", strings + cursor, tableSize - cursor);
+                        break;
+                    }
+                    peAdd(c, "COFF_STRING", strings + cursor, 1, length, length, RAW);
+                    cursor += length;
+                }
+            }
+        }
+    }
+    for (i = 0; i < h.sectionCount; i++) {
+        header = h.peOffset + 24 + h.optionalSize + i * 40;
+        if (peFileRange(c, header, 40) < 0) peFail("section header outside the file");
+        relocPointer = File.u32(header + 24);
+        linePointer = File.u32(header + 28);
+        relocCount = File.u16(header + 32);
+        lineCount = File.u16(header + 34);
+        characteristics = File.u32(header + 36);
+        if (relocPointer && relocCount === 0xFFFF && (characteristics & 0x01000000) && peFileRange(c, relocPointer, 10) >= 0) {
+            stored = File.u32(relocPointer);
+            actual = stored ? stored - 1 : 0;
+            if (stored >= 1 && stored <= PE_MAX_TABLE && peFileRange(c, relocPointer, stored * 10) >= 0) {
+                peAdd(c, "IMAGE_RELOCATION", relocPointer, 10, 10, 1, ENTRY);
+                if (actual) peAdd(c, "IMAGE_RELOCATION", relocPointer + 10, 10, actual * 10, actual, ENTRY);
+                relocCount = 0;
+            }
+        }
+        if (relocPointer && relocCount && peFileRange(c, relocPointer, relocCount * 10) >= 0)
+            peAdd(c, "IMAGE_RELOCATION", relocPointer, 10, relocCount * 10, relocCount, ENTRY);
+        if (linePointer && lineCount && peFileRange(c, linePointer, lineCount * 6) >= 0)
+            peAdd(c, "IMAGE_LINENUMBER", linePointer, 6, lineCount * 6, lineCount, ENTRY);
+    }
+}
+
+function peCStringEquals(offset, expected) {
+    var n = expected.length + 1;
+    if (offset < 0 || n > PE_MAX_STRING || !File.valid(offset, n)) return false;
+    return File.bytes(offset, n) === expected + "\0";
+}
+
+function pePolicyMetadata(c, rva) {
+    var offset, record, available, stride = 16, count = 0, terminated = false, entry, index, value, string, size, section;
+    if (!rva || (offset = peRva(rva, 16)) < 0) return;
+    record = Format.mapRecord(rva);
+    if (!record || record.offset < 0 || record.size <= 0 || !(record.part & PE_FILE_PART_SECTION) || record.partNumber <= 0 ||
+        record.partNumber > c.h.sectionCount)
+        return;
+    section = c.h.sections[record.partNumber - 1];
+    if (section.name !== ".tPolicy" || offset < record.offset || offset >= record.offset + record.size) return;
+    available = record.offset + record.size - offset;
+    if (available > 16 + PE_MAX_LINKED * stride) available = 16 + PE_MAX_LINKED * stride;
+    if (peU8(offset) !== 1) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, available);
+        return;
+    }
+    peAdd(c, "IMAGE_POLICY_METADATA", offset, 16, 16, 1, STRUCT);
+    while (count < PE_MAX_LINKED && 16 + (count + 1) * stride <= available) {
+        entry = offset + 16 + count * stride;
+        ++count;
+        if (peU32(entry) === 0 && peU32(entry + 4) === 0 && peIsZero64(entry + 8)) {
+            terminated = true;
+            break;
+        }
+    }
+    if (!terminated) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset + 16, available - 16);
+        return;
+    }
+    if (count) peAdd(c, c.h.is64 ? "IMAGE_POLICY_ENTRY64" : "IMAGE_POLICY_ENTRY32", offset + 16, stride, count * stride, count, ENTRY);
+    for (index = 0; index + 1 < count; index++) {
+        entry = offset + 16 + index * stride;
+        if (peU32(entry) !== 10) continue;
+        if (peIsZero64(entry + 8)) continue;
+        value = peU64(entry + 8);
+        if ((string = peVa(value, 1)) < 0) continue;
+        size = peCString(string, PE_MAX_STRING);
+        if (size) peAdd(c, "ASCII_STRING", string, 1, size, size, RAW);
+    }
+}
+
+function peExport(c) {
+    var rva = c.h.rva[0], size = c.h.size[0], offset, functions, names, functionRva, namesRva, ordinalsRva, index, entry, value;
+    var nameTable, ordinalTable, namesValid, ordinalsValid, nameRva, nameOffset, ordinal, policyRva;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    if (size < 40) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    peAdd(c, "IMAGE_EXPORT_DIRECTORY", offset, 40, 40, 1, STRUCT);
+    functions = File.u32(offset + 20);
+    names = File.u32(offset + 24);
+    functionRva = File.u32(offset + 28);
+    namesRva = File.u32(offset + 32);
+    ordinalsRva = File.u32(offset + 36);
+    peCStringRva(c, "ASCII_STRING", File.u32(offset + 12));
+    if (functions > PE_MAX_TABLE || names > PE_MAX_TABLE) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset + 40, size - 40);
+        return;
+    }
+    if (functions && peRva(functionRva, functions * 4) >= 0) {
+        peAddRva(c, "EXPORT_ADDRESS_TABLE", functionRva, 4, functions * 4, functions, ENTRY);
+        for (index = 0; index < functions; index++) {
+            if ((entry = peRva(functionRva + index * 4, 4)) < 0) break;
+            value = File.u32(entry);
+            if (value >= rva && value < rva + size) peCStringRva(c, "EXPORT_FORWARDER", value);
+        }
+    }
+    if (names) {
+        nameTable = peRva(namesRva, names * 4);
+        ordinalTable = peRva(ordinalsRva, names * 2);
+        namesValid = nameTable >= 0;
+        ordinalsValid = ordinalTable >= 0;
+        if (namesValid) peAddRva(c, "EXPORT_NAME_POINTER_TABLE", namesRva, 4, names * 4, names, ENTRY);
+        if (ordinalsValid) peAddRva(c, "EXPORT_ORDINAL_TABLE", ordinalsRva, 2, names * 2, names, ENTRY);
+        for (index = 0; namesValid && index < names; index++) {
+            nameRva = File.u32(nameTable + index * 4);
+            peCStringRva(c, "ASCII_STRING", nameRva);
+            if (ordinalsValid && (nameOffset = peRva(nameRva, 1)) >= 0 && peCStringEquals(nameOffset, "__ImagePolicyMetadata")) {
+                ordinal = File.u16(ordinalTable + index * 2);
+                if (ordinal < functions && (entry = peRva(functionRva + ordinal * 4, 4)) >= 0) {
+                    policyRva = File.u32(entry);
+                    if (policyRva < rva || policyRva >= rva + size) pePolicyMetadata(c, policyRva);
+                }
+            }
+        }
+    }
+}
+
+// A table may span adjacent RVAs whose file backing is discontiguous.
+function peLocationTable(c, name, location, isVa, stride, count) {
+    var runOffset = -1, runCount = 0, index, current;
+    for (index = 0; index < count; index++) {
+        if ((current = peLocation(location + index * stride, isVa, stride)) < 0) break;
+        if (runCount && current !== runOffset + runCount * stride) {
+            peAdd(c, name, runOffset, stride, runCount * stride, runCount, ENTRY);
+            runCount = 0;
+        }
+        if (!runCount) runOffset = current;
+        ++runCount;
+    }
+    if (runCount) peAdd(c, name, runOffset, stride, runCount * stride, runCount, ENTRY);
+}
+
+function peThunks(c, lookup, iat, locationIsVa, valuesAreVa) {
+    var is64 = c.h.is64, stride = is64 ? 8 : 4, count = 0, current, index, value, ordinal, nameOffset, length;
+    if (!lookup || peLocation(lookup, locationIsVa, stride) < 0) return;
+    while (count < PE_MAX_LINKED) {
+        if ((current = peLocation(lookup + count * stride, locationIsVa, stride)) < 0) break;
+        if (is64 ? peIsZero64(current) : !File.u32(current)) break;
+        ++count;
+    }
+    if (!count) return;
+    peLocationTable(c, is64 ? "IMAGE_THUNK_DATA64" : "IMAGE_THUNK_DATA32", lookup, locationIsVa, stride, count);
+    if (iat) peLocationTable(c, is64 ? "IAT64" : "IAT32", iat, locationIsVa, stride, count);
+    for (index = 0; index < count; index++) {
+        if ((current = peLocation(lookup + index * stride, locationIsVa, stride)) < 0) break;
+        if (is64) {
+            ordinal = (File.u32(current + 4) & 0x80000000) !== 0;
+            value = peU64(current);
+        } else {
+            value = File.u32(current);
+            ordinal = (value & 0x80000000) !== 0;
+        }
+        if (ordinal) continue;
+        if ((nameOffset = peLocation(value, valuesAreVa, 3)) < 0) continue;
+        length = peCString(nameOffset + 2, PE_MAX_STRING);
+        if (length) peAdd(c, "IMAGE_IMPORT_BY_NAME", nameOffset, 2 + length, 2 + length, 1, STRUCT);
+    }
+}
+
+function peImport(c) {
+    var rva = c.h.rva[1], size = c.h.size[1], offset, count = 0, current, index, original, first;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    if (size < 20) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    while (count < Math.floor(size / 20) && count < PE_MAX_LINKED) {
+        current = offset + count * 20;
+        if (!File.u32(current) && !File.u32(current + 4) && !File.u32(current + 8) && !File.u32(current + 12) && !File.u32(current + 16)) break;
+        ++count;
+    }
+    if (count) peAdd(c, "IMAGE_IMPORT_DESCRIPTOR", offset, 20, count * 20, count, ENTRY);
+    for (index = 0; index < count; index++) {
+        current = offset + index * 20;
+        original = File.u32(current);
+        first = File.u32(current + 16);
+        peCStringRva(c, "ASCII_STRING", File.u32(current + 12));
+        peThunks(c, original ? original : first, first, false, false);
+    }
+    if (count === 0) peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+}
+
+function peResourceSeen(walk, relative) {
+    if (walk.visited[relative]) return true;
+    if (walk.visitedCount >= PE_MAX_RESOURCE_NODES) return true;
+    walk.visited[relative] = true;
+    walk.visitedCount++;
+    return false;
+}
+
+function peResourceDirectory(c, walk, relative, depth) {
+    var offset, entries, entriesSize, index, entryOffset, name, child, nameRelative, nameOffset, nameSize, dataOffset, dataRva, dataSize;
+    if (depth > PE_MAX_RESOURCE_DEPTH || peResourceSeen(walk, relative) || relative > walk.size || walk.size - relative < 16 ||
+        walk.root > 0xFFFFFFFF - relative || (offset = peRva(walk.root + relative, 16)) < 0)
+        return;
+    entries = File.u16(offset + 12) + File.u16(offset + 14);
+    entriesSize = entries * 8;
+    if (entriesSize > walk.size - relative - 16) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, walk.size - relative);
+        return;
+    }
+    peAdd(c, "IMAGE_RESOURCE_DIRECTORY", offset, 16, 16, 1, STRUCT);
+    if (entries) peAdd(c, "IMAGE_RESOURCE_DIRECTORY_ENTRY", offset + 16, 8, entriesSize, entries, ENTRY);
+    for (index = 0; index < entries; index++) {
+        entryOffset = offset + 16 + index * 8;
+        name = File.u32(entryOffset);
+        child = File.u32(entryOffset + 4);
+        if (name >= 0x80000000) {
+            nameRelative = name - 0x80000000;
+            if (nameRelative <= walk.size - 2 && (nameOffset = peRva(walk.root + nameRelative, 2)) >= 0) {
+                nameSize = 2 + File.u16(nameOffset) * 2;
+                if (nameSize <= walk.size - nameRelative && peRva(walk.root + nameRelative, nameSize) >= 0)
+                    peAdd(c, "IMAGE_RESOURCE_DIR_STRING_U", nameOffset, nameSize, nameSize, 1, STRUCT);
+            }
+        }
+        if (child >= 0x80000000) {
+            peResourceDirectory(c, walk, child - 0x80000000, depth + 1);
+        } else if (child <= walk.size - 16 && walk.root <= 0xFFFFFFFF - child) {
+            if ((dataOffset = peRva(walk.root + child, 16)) >= 0) {
+                dataRva = File.u32(dataOffset);
+                dataSize = File.u32(dataOffset + 4);
+                peAdd(c, "IMAGE_RESOURCE_DATA_ENTRY", dataOffset, 16, 16, 1, ENTRY);
+                if (dataSize && peRva(dataRva, dataSize) >= 0) peRawRva(c, "RESOURCE_PAYLOAD", dataRva, dataSize);
+            }
+        }
+    }
+}
+
+function peResources(c) {
+    var rva = c.h.rva[2], size = c.h.size[2], offset;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    if (size < 16) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    peResourceDirectory(c, { root: rva, size: size, visited: {}, visitedCount: 0 }, 0, 0);
+}
+
+function peX64Unwind(c, rva) {
+    var offset, flags, codes, codeBytes, tail;
+    if (!rva || (offset = peRva(rva, 4)) < 0) return;
+    flags = File.u8(offset);
+    if ((flags & 7) === 0) return;
+    codes = File.u8(offset + 2);
+    codeBytes = codes * 2;
+    peAdd(c, "UNWIND_INFO", offset, 4, 4, 1, STRUCT);
+    if (peRva(rva, 4 + codeBytes) < 0) return;
+    if (codes) peAddRva(c, "UNWIND_CODE", rva + 4, 2, codeBytes, codes, ENTRY);
+    tail = rva + 4 + ((codes + 1) & ~1) * 2;
+    if ((flags >> 3) & 4) {
+        if (peRva(tail, 12) < 0) return;
+        peAddRva(c, "UNWIND_CHAINED_FUNCTION", tail, 12, 12, 1, STRUCT);
+        return;
+    }
+    if ((flags >> 3) & 3) {
+        if (peRva(tail, 4) < 0) return;
+        peAddRva(c, "UNWIND_HANDLER", tail, 4, 4, 1, STRUCT);
+    }
+}
+
+function peArmXdata(c, rva, arm64) {
+    var offset, header, epilogs, codeWords, cursor = 4, hasHandler, singleEpilogue, extendedOffset, extended, scopeBytes, codeBytes;
+    if (!rva || (offset = peRva(rva, 4)) < 0) return;
+    header = File.u32(offset);
+    if (((header >>> 18) & 3) !== 0) return;
+    hasHandler = ((header >>> 20) & 1) !== 0;
+    singleEpilogue = ((header >>> 21) & 1) !== 0;
+    if (arm64) {
+        epilogs = (header >>> 22) & 0x1F;
+        codeWords = (header >>> 27) & 0x1F;
+    } else {
+        epilogs = (header >>> 23) & 0x1F;
+        codeWords = (header >>> 28) & 0x0F;
+    }
+    peAdd(c, arm64 ? "ARM64_XDATA_HEADER" : "ARM32_XDATA_HEADER", offset, 4, 4, 1, STRUCT);
+    if (epilogs === 0 && codeWords === 0) {
+        if ((extendedOffset = peRva(rva + cursor, 4)) < 0) return;
+        extended = File.u32(extendedOffset);
+        epilogs = extended & 0xFFFF;
+        codeWords = (extended >>> 16) & 0xFF;
+        peAdd(c, arm64 ? "ARM64_XDATA_EXTENDED" : "ARM32_XDATA_EXTENDED", extendedOffset, 4, 4, 1, STRUCT);
+        cursor += 4;
+    }
+    if (!singleEpilogue && epilogs) {
+        scopeBytes = epilogs * 4;
+        if (epilogs > PE_MAX_LINKED || peRva(rva + cursor, scopeBytes) < 0) return;
+        peAddRva(c, arm64 ? "ARM64_EPILOG_SCOPE" : "ARM32_EPILOG_SCOPE", rva + cursor, 4, scopeBytes, epilogs, ENTRY);
+        cursor += scopeBytes;
+    }
+    if (codeWords) {
+        codeBytes = codeWords * 4;
+        if (peRva(rva + cursor, codeBytes) < 0) return;
+        peRawRva(c, "RAW_DATA", rva + cursor, codeBytes);
+        cursor += codeBytes;
+    }
+    if (hasHandler && peRva(rva + cursor, 4) >= 0) peAddRva(c, "UNWIND_HANDLER", rva + cursor, 4, 4, 1, STRUCT);
+}
+
+// [structure name, entry size] of the exception directory of a machine.
+function peExceptionKind(machine) {
+    switch (machine) {
+        case 0x8664: return ["RUNTIME_FUNCTION_X64", 12];
+        case 0x0200: return ["RUNTIME_FUNCTION_IA64", 12];
+        case 0xAA64:
+        case 0xA641:
+        case 0xA64E: return ["RUNTIME_FUNCTION_ARM64", 8];
+        case 0x01C0:
+        case 0x01C2:
+        case 0x01C4: return ["RUNTIME_FUNCTION_ARM", 8];
+        case 0x0162:
+        case 0x0166:
+        case 0x0168:
+        case 0x0169:
+        case 0x0266:
+        case 0x0366:
+        case 0x0466: return ["RUNTIME_FUNCTION_MIPS", 20];
+        case 0x0184: return ["RUNTIME_FUNCTION_ALPHA32", 20];
+        case 0x0284: return ["RUNTIME_FUNCTION_ALPHA64", 40];
+        case 0x01F0:
+        case 0x01F1:
+        case 0x01A2:
+        case 0x01A3:
+        case 0x01A6:
+        case 0x01A8: return ["RUNTIME_FUNCTION_CE", 8];
+        default: return null;
+    }
+}
+
+function peException(c) {
+    var rva = c.h.rva[3], size = c.h.size[3], offset, kind, entrySize, count, covered, index, current, unwind;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    if (!(kind = peExceptionKind(c.h.machine))) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    entrySize = kind[1];
+    count = Math.floor(size / entrySize);
+    covered = count * entrySize;
+    if (count) peAdd(c, kind[0], offset, entrySize, covered, count, ENTRY);
+    for (index = 0; index < count; index++) {
+        current = offset + index * entrySize;
+        if (kind[0] === "RUNTIME_FUNCTION_X64") {
+            peX64Unwind(c, File.u32(current + 8));
+        } else if (kind[0] === "RUNTIME_FUNCTION_ARM" || kind[0] === "RUNTIME_FUNCTION_ARM64") {
+            unwind = File.u32(current + 4);
+            if ((unwind & 3) === 0) peArmXdata(c, unwind, kind[0] === "RUNTIME_FUNCTION_ARM64");
+        }
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + covered, size - covered);
+}
+
+function peSecurity(c) {
+    var relative = c.h.rva[4], size = c.h.size[4], offset, cursor = 0, length, next;
+    if (c.mapped) return;
+    if (!relative || !size) return;
+    if ((offset = peFileRange(c, relative, size)) < 0) return;
+    while (cursor < size) {
+        if (size - cursor < 8) {
+            peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+            return;
+        }
+        length = File.u32(offset + cursor);
+        next = peAlign(length, 8);
+        if (length < 8 || length > size - cursor || next > size - cursor) {
+            peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+            return;
+        }
+        peAdd(c, "WIN_CERTIFICATE", offset + cursor, 8, length, 1, STRUCT);
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor + 8, length - 8);
+        peRaw(c, "RAW_DATA", offset + cursor + length, next - length);
+        cursor += next;
+    }
+}
+
+function peBaseRelocations(c) {
+    var rva = c.h.rva[5], size = c.h.size[5], offset, cursor = 0, blockSize, entries, entriesSize;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    while (cursor < size) {
+        if (size - cursor < 8) break;
+        blockSize = File.u32(offset + cursor + 4);
+        if (blockSize < 8 || blockSize > size - cursor) break;
+        entriesSize = blockSize - 8;
+        entries = Math.floor(entriesSize / 2);
+        peAdd(c, "IMAGE_BASE_RELOCATION", offset + cursor, 8, 8, 1, STRUCT);
+        if (entries) peAdd(c, "BASE_RELOCATION_ENTRY", offset + cursor + 8, 2, entries * 2, entries, ENTRY);
+        peRaw(c, "RAW_DATA", offset + cursor + 8 + entries * 2, entriesSize - entries * 2);
+        cursor += blockSize;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+}
+
+function peDebugDataOffset(c, entry, dataSize) {
+    var pointer = File.u32(entry + 24), rva = File.u32(entry + 20), offset;
+    if (!dataSize) return -1;
+    if (pointer && (offset = peFileRange(c, pointer, dataSize)) >= 0) return offset;
+    return rva ? peRva(rva, dataSize) : -1;
+}
+
+function pePogo(c, offset, size) {
+    var cursor = 4, nameSize, next;
+    if (size < 4) {
+        peRaw(c, "DEBUG_RAW", offset, size);
+        return;
+    }
+    peAdd(c, "POGO_HEADER", offset, 4, 4, 1, STRUCT);
+    while (cursor < size) {
+        if (size - cursor < 9) break;
+        nameSize = peCString(offset + cursor + 8, size - cursor - 8);
+        if (!nameSize) break;
+        next = peAlign(cursor + 8 + nameSize, 4);
+        if (next > size) break;
+        peAdd(c, "POGO_ENTRY", offset + cursor, 8, next - cursor, 1, ENTRY);
+        peAdd(c, "ASCII_STRING", offset + cursor + 8, 1, nameSize, nameSize, RAW);
+        cursor = next;
+    }
+    peRaw(c, "DEBUG_RAW", offset + cursor, size - cursor);
+}
+
+// A fixed header followed by the rest of the payload as DEBUG_RAW.
+function peDebugHead(c, name, offset, head, size) {
+    peAdd(c, name, offset, head, head, 1, STRUCT);
+    peRaw(c, "DEBUG_RAW", offset + head, size - head);
+}
+
+// A CodeView record: fixed header, PDB path, rest.
+function peDebugCodeView(c, name, offset, head, size) {
+    var length = peCString(offset + head, size - head);
+    peAdd(c, name, offset, head, head, 1, STRUCT);
+    if (length) {
+        peAdd(c, "ASCII_STRING", offset + head, 1, length, length, RAW);
+        peRaw(c, "DEBUG_RAW", offset + head + length, size - head - length);
+    } else {
+        peRaw(c, "DEBUG_RAW", offset + head, size - head);
+    }
+}
+
+// An array of entries, the remainder as DEBUG_RAW.
+function peDebugArray(c, name, offset, stride, size) {
+    var count = Math.floor(size / stride), covered = count * stride;
+    peAdd(c, name, offset, stride, covered, count, ENTRY);
+    peRaw(c, "DEBUG_RAW", offset + covered, size - covered);
+}
+
+function peDebugPayload(c, offset, size, type) {
+    var signature, length, stride;
+    if (!size) return;
+    signature = size >= 4 ? File.u32(offset) : 0;
+    switch (type) {
+        case 1:
+            if (size >= 32) return peDebugHead(c, "IMAGE_COFF_SYMBOLS_HEADER", offset, 32, size);
+            break;
+        case 2:
+            if (signature === 0x53445352 && size >= 24) return peDebugCodeView(c, "CODEVIEW_RSDS", offset, 24, size);
+            if (signature === 0x3031424E && size >= 16) return peDebugCodeView(c, "CODEVIEW_NB10", offset, 16, size);
+            break;
+        case 3:
+            if (size >= 16) return peDebugArray(c, "FPO_DATA", offset, 16, size);
+            break;
+        case 4:
+            if (size >= 12) return peDebugHead(c, "IMAGE_DEBUG_MISC", offset, 12, size);
+            break;
+        case 5:
+            stride = c.h.is64 ? 24 : 12;
+            if (size >= stride) return peDebugArray(c, stride === 24 ? "IMAGE_FUNCTION_ENTRY64" : "IMAGE_FUNCTION_ENTRY", offset, stride, size);
+            break;
+        case 7:
+        case 8:
+            if (size >= 8) return peDebugArray(c, "OMAP_ENTRY", offset, 8, size);
+            break;
+        case 11:
+            if (size >= 16) return peDebugHead(c, "DEBUG_GUID", offset, 16, size);
+            break;
+        case 12:
+            if (size >= 20) return peDebugHead(c, "VC_FEATURE", offset, 20, size);
+            break;
+        case 13: return pePogo(c, offset, size);
+        case 16:
+            if (size >= 4 && File.u32(offset) <= size - 4) return peDebugHead(c, "REPRO_HASH_HEADER", offset, 4, size);
+            break;
+        case 17:
+            if (signature === 0x4244504D && size >= 8) return peDebugHead(c, "EMBEDDED_PORTABLE_PDB", offset, 8, size);
+            break;
+        case 19:
+            length = peCString(offset, size);
+            if (length && length < size) {
+                peAdd(c, "PDB_CHECKSUM", offset, 1, length, length, RAW);
+                peRaw(c, "DEBUG_RAW", offset + length, size - length);
+                return;
+            }
+            break;
+        case 20:
+            if (size >= 4) return peDebugHead(c, "EX_DLL_CHARACTERISTICS", offset, 4, size);
+            break;
+        case 21:
+            if (size >= 25 && signature === 0x4D523252) {
+                length = peCString(offset + 24, size - 24);
+                if (length) {
+                    peAdd(c, "R2R_PERFMAP", offset, 24, 24, 1, STRUCT);
+                    peAdd(c, "ASCII_STRING", offset + 24, 1, length, length, RAW);
+                    peRaw(c, "DEBUG_RAW", offset + 24 + length, size - 24 - length);
+                    return;
+                }
+            }
+            break;
+        default: break;
+    }
+    peRaw(c, "DEBUG_RAW", offset, size);
+}
+
+function peDebug(c) {
+    var rva = c.h.rva[6], size = c.h.size[6], offset, count, covered, index, entry, dataSize, dataOffset;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    count = Math.floor(size / 28);
+    covered = count * 28;
+    if (count) peAdd(c, "IMAGE_DEBUG_DIRECTORY", offset, 28, covered, count, ENTRY);
+    for (index = 0; index < count; index++) {
+        entry = offset + index * 28;
+        dataSize = File.u32(entry + 16);
+        if (dataSize && (dataOffset = peDebugDataOffset(c, entry, dataSize)) >= 0) peDebugPayload(c, dataOffset, dataSize, File.u32(entry + 12));
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + covered, size - covered);
+}
+
+function peArchitecture(c) {
+    var rva = c.h.rva[7], size = c.h.size[7], offset, headerEnd = 0, cursor, terminated = false, firstEntry, entryRelative, entryEnd, entryTerminated, e;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    if (size < 8) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    for (cursor = 0; cursor + 8 <= size; cursor += 8) {
+        if (peIsOnes64(offset + cursor)) {
+            headerEnd = cursor;
+            terminated = true;
+            break;
+        }
+    }
+    if (!terminated) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    for (cursor = 0; cursor < headerEnd; cursor += 8) {
+        if (peIsZero64(offset + cursor)) continue;
+        peAdd(c, "IMAGE_ARCHITECTURE_HEADER", offset + cursor, 8, 8, 1, STRUCT);
+        firstEntry = peU32(offset + cursor + 4);
+        if (firstEntry < rva || firstEntry + 8 > rva + size) continue;
+        entryRelative = firstEntry - rva;
+        entryTerminated = false;
+        for (entryEnd = entryRelative; entryEnd + 8 <= size && (entryEnd - entryRelative) / 8 < PE_MAX_LINKED; entryEnd += 8) {
+            if (peIsOnes64(offset + entryEnd)) {
+                entryTerminated = true;
+                break;
+            }
+        }
+        if (!entryTerminated) continue;
+        for (e = entryRelative; e < entryEnd; e += 8) {
+            if (!peIsZero64(offset + e)) peAdd(c, "IMAGE_ARCHITECTURE_ENTRY", offset + e, 8, 8, 1, ENTRY);
+        }
+    }
+    peRaw(c, "RAW_DATA", offset + size - size % 8, size % 8);
+}
+
+function peTls(c) {
+    var rva = c.h.rva[9], size = c.h.size[9], is64 = c.h.is64, fixed = is64 ? 40 : 24, stride = is64 ? 8 : 4;
+    var offset, start, end, callbacks, count = 0, callbackOffset, template, current;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    if (size < fixed) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    peAdd(c, is64 ? "IMAGE_TLS_DIRECTORY64" : "IMAGE_TLS_DIRECTORY32", offset, fixed, fixed, 1, STRUCT);
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + fixed, size - fixed);
+    start = is64 ? peU64(offset) : File.u32(offset);
+    end = is64 ? peU64(offset + 8) : File.u32(offset + 4);
+    callbacks = is64 ? peU64(offset + 24) : File.u32(offset + 12);
+    // Values of 2^53 and more are never mapped here (image bases stay below).
+    if (start !== PE_HUGE && end !== PE_HUGE && end > start && (template = peVa(start, end - start)) >= 0) peRaw(c, "TLS_TEMPLATE", template, end - start);
+    if (!callbacks || (callbackOffset = peVa(callbacks, stride)) < 0) return;
+    while (count < PE_MAX_LINKED) {
+        if ((current = peVa(callbacks + count * stride, stride)) < 0) break;
+        if (is64 ? peIsZero64(current) : !File.u32(current)) break;
+        ++count;
+    }
+    if (count) peAdd(c, is64 ? "TLS_CALLBACK64" : "TLS_CALLBACK32", callbackOffset, stride, count * stride, count, ENTRY);
+}
+
+function peTableAdd(c, name, offset, stride, count) {
+    if (offset >= 0) peAdd(c, name, offset, stride, count * stride, count, ENTRY);
+}
+
+// pe_append_va_table with a 32-bit VA and count.
+function peVaTable32(c, name, va, count, stride) {
+    if (!va || !count || count > PE_MAX_TABLE) return;
+    peTableAdd(c, name, peVa(va, count * stride), stride, count);
+}
+
+// pe_append_va_table with a 64-bit VA stored at o and a 64-bit count at countOffset.
+function peVaTable64(c, name, o, countOffset, stride) {
+    var count;
+    if (peIsZero64(o) || peIsZero64(countOffset) || peU32(countOffset + 4) !== 0) return;
+    count = peU32(countOffset);
+    if (count > PE_MAX_TABLE) return;
+    peTableAdd(c, name, Format.vaRangeAt(o, 8, count * stride), stride, count);
+}
+
+function peRvaTable(c, name, rva, count, stride) {
+    if (!rva || !count || count > PE_MAX_TABLE) return;
+    peTableAdd(c, name, peRva(rva, count * stride), stride, count);
+}
+
+function peArm64xFixups(c, offset, size) {
+    var cursor = 0, pageRva, blockSize, blockCursor, wordOffset, word, type, arg, valueSize;
+    while (cursor < size) {
+        if (size - cursor < 8) break;
+        pageRva = File.u32(offset + cursor);
+        blockSize = File.u32(offset + cursor + 4);
+        if ((pageRva & 0xFFF) !== 0 || blockSize <= 8 || (blockSize & 3) !== 0 || blockSize > size - cursor) break;
+        peAdd(c, "IMAGE_BASE_RELOCATION", offset + cursor, 8, 8, 1, STRUCT);
+        blockCursor = 8;
+        while (blockCursor < blockSize) {
+            wordOffset = offset + cursor + blockCursor;
+            if (blockSize - blockCursor < 2) break;
+            word = File.u16(wordOffset);
+            // A zero ARM64X word is block-alignment padding.
+            if (word === 0) break;
+            type = (word >> 12) & 3;
+            arg = word >> 14;
+            if (type === 0) {
+                peAdd(c, "ARM64X_FIXUP", wordOffset, 2, 2, 1, ENTRY);
+                blockCursor += 2;
+            } else if (type === 1 && arg !== 0) {
+                valueSize = 1 << arg;
+                if (valueSize > blockSize - blockCursor - 2) break;
+                peAdd(c, "ARM64X_FIXUP", wordOffset, 2, 2, 1, ENTRY);
+                peRaw(c, "RAW_DATA", wordOffset + 2, valueSize);
+                blockCursor += 2 + valueSize;
+            } else if (type === 2) {
+                if (blockSize - blockCursor < 4) break;
+                peAdd(c, "ARM64X_DELTA", wordOffset, 4, 4, 1, ENTRY);
+                blockCursor += 4;
+            } else {
+                break;
+            }
+        }
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor + blockCursor, blockSize - blockCursor);
+        cursor += blockSize;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+}
+
+function pePlainBaseRelocBlocks(c, offset, size) {
+    var cursor = 0, blockSize, entries;
+    while (cursor < size) {
+        if (size - cursor < 8) break;
+        blockSize = File.u32(offset + cursor + 4);
+        if (blockSize < 8 || blockSize > size - cursor) break;
+        entries = Math.floor((blockSize - 8) / 2);
+        peAdd(c, "IMAGE_BASE_RELOCATION", offset + cursor, 8, 8, 1, STRUCT);
+        if (entries) peAdd(c, "BASE_RELOCATION_ENTRY", offset + cursor + 8, 2, entries * 2, entries, ENTRY);
+        cursor += blockSize;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+}
+
+function peGroupedDynamicEntries(c, offset, size, name, stride) {
+    var cursor = 0, blockSize, body, count;
+    while (cursor < size) {
+        if (size - cursor < 8) break;
+        blockSize = File.u32(offset + cursor + 4);
+        if (blockSize < 8 || blockSize > size - cursor) break;
+        body = blockSize - 8;
+        count = Math.floor(body / stride);
+        peAdd(c, "IMAGE_BASE_RELOCATION", offset + cursor, 8, 8, 1, STRUCT);
+        if (count) peAdd(c, name, offset + cursor + 8, stride, count * stride, count, ENTRY);
+        peRaw(c, "RAW_DATA", offset + cursor + 8 + count * stride, body - count * stride);
+        cursor += blockSize;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+}
+
+function peFunctionOverride(c, offset, size) {
+    var overrideSize, cursor, rvaSize, relocSize, total, bddSize, nodeBytes;
+    if (size < 4) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    overrideSize = File.u32(offset);
+    if (overrideSize > size - 4) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+        return;
+    }
+    peAdd(c, "FUNCTION_OVERRIDE_HEADER", offset, 4, 4, 1, STRUCT);
+    cursor = 4;
+    while (cursor < 4 + overrideSize) {
+        if (4 + overrideSize - cursor < 16) break;
+        rvaSize = File.u32(offset + cursor + 8);
+        relocSize = File.u32(offset + cursor + 12);
+        total = 16 + rvaSize + relocSize;
+        if (total > 4 + overrideSize - cursor) break;
+        peAdd(c, "FUNCTION_OVERRIDE_ENTRY", offset + cursor, 16, 16, 1, ENTRY);
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor + 16, total - 16);
+        cursor += total;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, 4 + overrideSize - cursor);
+    cursor = 4 + overrideSize;
+    if (size - cursor >= 8) {
+        bddSize = File.u32(offset + cursor + 4);
+        if (bddSize <= size - cursor - 8) {
+            peAdd(c, "BDD_INFO", offset + cursor, 8, 8, 1, STRUCT);
+            nodeBytes = bddSize - bddSize % 8;
+            if (nodeBytes) peAdd(c, "BDD_NODE", offset + cursor + 8, 8, nodeBytes, nodeBytes / 8, ENTRY);
+            cursor += 8 + bddSize;
+        }
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+}
+
+function peDynamicFixupPayload(c, symbol, offset, size) {
+    switch (symbol) {
+        case 1:
+            if (size >= 1) {
+                peAdd(c, "DYNAMIC_RELOCATION_PROLOGUE", offset, 1, 1, 1, STRUCT);
+                peRaw(c, "RAW_DATA", offset + 1, size - 1);
+                return;
+            }
+            break;
+        case 2:
+            if (size >= 8) {
+                peAdd(c, "DYNAMIC_RELOCATION_EPILOGUE", offset, 8, 8, 1, STRUCT);
+                peRaw(c, "RAW_DATA", offset + 8, size - 8);
+                return;
+            }
+            break;
+        case 3: return peGroupedDynamicEntries(c, offset, size, "DYNAMIC_RELOCATION_IMPORT_CONTROL", 4);
+        case 4: return peGroupedDynamicEntries(c, offset, size, "DYNAMIC_RELOCATION_INDIR", 2);
+        case 5: return peGroupedDynamicEntries(c, offset, size, "DYNAMIC_RELOCATION_SWITCHTABLE", 2);
+        case 6: return peArm64xFixups(c, offset, size);
+        case 7: return peFunctionOverride(c, offset, size);
+        case 8: return peGroupedDynamicEntries(c, offset, size, "DYNAMIC_RELOCATION_ARM64_IMPORT_CONTROL", 4);
+        default: return pePlainBaseRelocBlocks(c, offset, size);
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+}
+
+// A 64-bit symbol as a number; values above 32 bits only need to differ
+// from the small symbol numbers.
+function peSymbol(c, o) {
+    if (!c.h.is64) return File.u32(o);
+    return File.u32(o + 4) ? -1 : File.u32(o);
+}
+
+function peDynamicRelocationsAt(c, offset) {
+    var is64 = c.h.is64, version, size, cursor = 0, symbol, payloadSize, headerSize, declared, total, name, at;
+    if (peFileRange(c, offset, 8) < 0) return;
+    version = File.u32(offset);
+    size = File.u32(offset + 4);
+    if (peFileRange(c, offset, size + 8) < 0) return;
+    peAdd(c, "IMAGE_DYNAMIC_RELOCATION_TABLE", offset, 8, 8, 1, STRUCT);
+    while (cursor < size) {
+        at = offset + 8 + cursor;
+        if (version === 1) {
+            headerSize = is64 ? 12 : 8;
+            if (size - cursor < headerSize) break;
+            symbol = peSymbol(c, at);
+            payloadSize = File.u32(at + (is64 ? 8 : 4));
+            name = symbol === 6 ? "DYNAMIC_RELOCATION_ARM64X" : (is64 ? "IMAGE_DYNAMIC_RELOCATION64" : "IMAGE_DYNAMIC_RELOCATION32");
+        } else if (version === 2) {
+            headerSize = is64 ? 24 : 20;
+            if (size - cursor < headerSize) break;
+            declared = File.u32(at);
+            payloadSize = File.u32(at + 4);
+            if (declared < headerSize) break;
+            headerSize = declared;
+            if (size - cursor < headerSize) break;
+            symbol = peSymbol(c, at + 8);
+            name = symbol === 6 ? "DYNAMIC_RELOCATION_ARM64X" : (is64 ? "IMAGE_DYNAMIC_RELOCATION64_V2" : "IMAGE_DYNAMIC_RELOCATION32_V2");
+        } else {
+            break;
+        }
+        total = headerSize + payloadSize;
+        if (total > size - cursor) break;
+        peAdd(c, name, at, headerSize, headerSize, 1, ENTRY);
+        peDynamicFixupPayload(c, symbol, at + headerSize, payloadSize);
+        cursor += total;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + 8 + cursor, size - cursor);
+}
+
+function peLoadHas(size, offset, width) { return offset <= size && width <= size - offset; }
+
+function peChpeMetadata(c, pointer) {
+    var machine = c.h.machine, offset, version, fixed;
+    if (!c.h.is64 || (machine !== 0x8664 && machine !== 0xAA64 && machine !== 0xA641 && machine !== 0xA64E)) return;
+    if ((offset = pePointerRange(c, pointer, 80)) < 0) return;
+    version = File.u32(offset);
+    fixed = version === 2 ? 92 : 80;
+    if (pePointerRange(c, pointer, fixed) < 0) return;
+    peAdd(c, machine === 0x8664 || machine === 0xA641 ? "ARM64EC_METADATA" : "CHPE_METADATA", offset, fixed, fixed, 1, STRUCT);
+    if (version !== 1 && version !== 2) return;
+    peRvaTable(c, "CHPE_CODE_RANGE_ENTRY", File.u32(offset + 4), File.u32(offset + 8), 8);
+    peRvaTable(c, "CHPE_CODE_RANGE_TO_ENTRY_POINT", File.u32(offset + 12), File.u32(offset + 48), 12);
+    peRvaTable(c, "CHPE_REDIRECTION_ENTRY", File.u32(offset + 16), File.u32(offset + 52), 8);
+}
+
+function peVolatileMetadata(c, pointer) {
+    var offset, declared;
+    if ((offset = pePointerRange(c, pointer, 24)) < 0) return;
+    declared = File.u32(offset);
+    if (declared < 24 || pePointerRange(c, pointer, declared) < 0) return;
+    peAdd(c, "IMAGE_VOLATILE_METADATA", offset, declared, declared, 1, STRUCT);
+    peRvaTable(c, "VOLATILE_ACCESS", File.u32(offset + 8), Math.floor(File.u32(offset + 12) / 4), 4);
+    peRvaTable(c, "VOLATILE_INFO_RANGE", File.u32(offset + 16), Math.floor(File.u32(offset + 20) / 8), 8);
+}
+
+function peEnclave(c, pointer) {
+    var minimum = c.h.is64 ? 76 : 72, offset, declared, count, listRva, stride, imports, index;
+    if ((offset = pePointerRange(c, pointer, 24)) < 0) return;
+    declared = File.u32(offset);
+    if (declared < minimum || pePointerRange(c, pointer, declared) < 0) return;
+    peAdd(c, c.h.is64 ? "IMAGE_ENCLAVE_CONFIG64" : "IMAGE_ENCLAVE_CONFIG32", offset, declared, declared, 1, STRUCT);
+    count = File.u32(offset + 12);
+    listRva = File.u32(offset + 16);
+    stride = File.u32(offset + 20);
+    if (stride < 80 || count > PE_MAX_TABLE || (imports = peRva(listRva, count * stride)) < 0) return;
+    peRvaTable(c, "IMAGE_ENCLAVE_IMPORT", listRva, count, stride);
+    for (index = 0; index < count; index++) peCStringRva(c, "ASCII_STRING", File.u32(imports + index * stride + 72));
+}
+
+function peHotPatch(c, rva) {
+    var offset, declared, listOffset, baseCount, listRva, list, index, base, integrityOffset, integritySize;
+    if (!rva || (offset = peRva(rva, 20)) < 0) return;
+    declared = File.u32(offset + 4);
+    if (declared < 20 || peRva(rva, declared) < 0) return;
+    peAdd(c, "IMAGE_HOT_PATCH_INFO", offset, declared, declared, 1, STRUCT);
+    listOffset = File.u32(offset + 12);
+    baseCount = File.u32(offset + 16);
+    if (!listOffset || !baseCount || baseCount > PE_MAX_TABLE) return;
+    if (listOffset > 0xFFFFFFFF - rva) return;
+    listRva = rva + listOffset;
+    if ((list = peRva(listRva, baseCount * 32)) < 0) return;
+    peRvaTable(c, "IMAGE_HOT_PATCH_BASE", listRva, baseCount, 32);
+    for (index = 0; index < baseCount; index++) {
+        base = list + index * 32;
+        integrityOffset = File.u32(base + 16);
+        integritySize = File.u32(base + 20);
+        peAdd(c, "IMAGE_HOT_PATCH_MACHINE", base + 4, 4, 4, 1, STRUCT);
+        if (integritySize === 52 && integrityOffset <= 0xFFFFFFFF - rva && peRva(rva + integrityOffset, 52) >= 0)
+            peAddRva(c, "IMAGE_HOT_PATCH_HASHES", rva + integrityOffset, 52, 52, 1, STRUCT);
+    }
+}
+
+function peLoadConfig(c) {
+    var h = c.h, is64 = h.is64, rva = h.rva[10], directorySize = h.size[10], width = is64 ? 8 : 4, maximum = is64 ? 328 : 196;
+    var offset, declared, effective, guardFlags = 0, guardStride = 4, dynamicHandled = false, offsetField, sectionField;
+    var dynamicOffset, sectionNumber, section, dynamicFileOffset, dynamicSize, value;
+    if (!rva || !directorySize) return;
+    if (directorySize < 4 || (offset = peRva(rva, directorySize)) < 0) return;
+    declared = File.u32(offset);
+    effective = declared;
+    if (effective > directorySize) effective = directorySize;
+    if (effective > maximum) effective = maximum;
+    if (effective < 4) {
+        peRaw(c, "RESERVED_DIRECTORY_RAW", offset, directorySize);
+        return;
+    }
+    peAdd(c, is64 ? "IMAGE_LOAD_CONFIG_DIRECTORY64" : "IMAGE_LOAD_CONFIG_DIRECTORY32", offset, effective, effective, 1, STRUCT);
+    if (directorySize > effective) peRaw(c, "RESERVED_DIRECTORY_RAW", offset + effective, directorySize - effective);
+    if (is64) {
+        if (peLoadHas(effective, 148, 12)) peAdd(c, "IMAGE_LOAD_CONFIG_CODE_INTEGRITY", offset + 148, 12, 12, 1, STRUCT);
+        if (peLoadHas(effective, 144, 4)) guardFlags = File.u32(offset + 144);
+        guardStride += (guardFlags >>> 28) & 0x0F;
+        if (peLoadHas(effective, 128, 16)) peVaTable64(c, "GUARD_FUNCTION_ENTRY", offset + 128, offset + 136, guardStride);
+        if (peLoadHas(effective, 160, 16)) peVaTable64(c, "GUARD_ADDRESS_TAKEN_IAT_ENTRY", offset + 160, offset + 168, 4);
+        if (peLoadHas(effective, 176, 16)) peVaTable64(c, "GUARD_LONG_JUMP_ENTRY", offset + 176, offset + 184, 4);
+        if (peLoadHas(effective, 264, 16)) peVaTable64(c, "GUARD_EH_CONTINUATION_ENTRY", offset + 264, offset + 272, 4);
+    } else {
+        if (peLoadHas(effective, 92, 12)) peAdd(c, "IMAGE_LOAD_CONFIG_CODE_INTEGRITY", offset + 92, 12, 12, 1, STRUCT);
+        if (peLoadHas(effective, 88, 4)) guardFlags = File.u32(offset + 88);
+        guardStride += (guardFlags >>> 28) & 0x0F;
+        if (peLoadHas(effective, 64, 8)) peVaTable32(c, "SE_HANDLER_ENTRY", File.u32(offset + 64), File.u32(offset + 68), 4);
+        if (peLoadHas(effective, 80, 8)) peVaTable32(c, "GUARD_FUNCTION_ENTRY", File.u32(offset + 80), File.u32(offset + 84), guardStride);
+        if (peLoadHas(effective, 104, 8)) peVaTable32(c, "GUARD_ADDRESS_TAKEN_IAT_ENTRY", File.u32(offset + 104), File.u32(offset + 108), 4);
+        if (peLoadHas(effective, 112, 8)) peVaTable32(c, "GUARD_LONG_JUMP_ENTRY", File.u32(offset + 112), File.u32(offset + 116), 4);
+        if (peLoadHas(effective, 164, 8)) peVaTable32(c, "GUARD_EH_CONTINUATION_ENTRY", File.u32(offset + 164), File.u32(offset + 168), 4);
+    }
+    offsetField = is64 ? 224 : 136;
+    sectionField = is64 ? 228 : 140;
+    if (peLoadHas(effective, offsetField, 4) && peLoadHas(effective, sectionField, 2)) {
+        dynamicOffset = File.u32(offset + offsetField);
+        sectionNumber = File.u16(offset + sectionField);
+        if (sectionNumber > 0 && sectionNumber <= h.sectionCount) {
+            section = h.sections[sectionNumber - 1];
+            dynamicFileOffset = -1;
+            if (dynamicOffset <= section.rawSize && section.rawSize - dynamicOffset >= 8) {
+                if (c.mapped) dynamicFileOffset = peRva(section.virtualAddress + dynamicOffset, 8);
+                else dynamicFileOffset = peFileRange(c, section.rawOffset + dynamicOffset, 8);
+            }
+            if (dynamicFileOffset >= 0) {
+                dynamicSize = File.u32(dynamicFileOffset + 4);
+                if (dynamicSize + 8 <= section.rawSize - dynamicOffset) {
+                    peDynamicRelocationsAt(c, dynamicFileOffset);
+                    dynamicHandled = true;
+                }
+            }
+        }
+    }
+    value = is64 ? 192 : 120;
+    if (!dynamicHandled && peLoadHas(effective, value, width)) {
+        if ((dynamicFileOffset = pePointerRange(c, offset + value, 8)) >= 0) peDynamicRelocationsAt(c, dynamicFileOffset);
+    }
+    value = is64 ? 200 : 124;
+    if (peLoadHas(effective, value, width)) peChpeMetadata(c, offset + value);
+    value = is64 ? 240 : 148;
+    if (peLoadHas(effective, value, 4)) peHotPatch(c, File.u32(offset + value));
+    value = is64 ? 248 : 156;
+    if (peLoadHas(effective, value, width)) peEnclave(c, offset + value);
+    value = is64 ? 256 : 160;
+    if (peLoadHas(effective, value, width)) peVolatileMetadata(c, offset + value);
+}
+
+function peBoundImports(c) {
+    var rva = c.h.rva[11], size = c.h.size[11], offset, cursor = 0, descriptor, nameOffset, refs, refBytes, length, index, child;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    while (cursor < size) {
+        if (size - cursor < 8) break;
+        descriptor = offset + cursor;
+        nameOffset = File.u16(descriptor + 4);
+        refs = File.u16(descriptor + 6);
+        if (File.u32(descriptor) === 0 && nameOffset === 0 && refs === 0) break;
+        refBytes = refs * 8;
+        if (refBytes > size - cursor - 8) break;
+        peAdd(c, "IMAGE_BOUND_IMPORT_DESCRIPTOR", descriptor, 8, 8, 1, ENTRY);
+        if (refs) peAdd(c, "IMAGE_BOUND_FORWARDER_REF", descriptor + 8, 8, refBytes, refs, ENTRY);
+        if (nameOffset < size) {
+            length = peCString(offset + nameOffset, size - nameOffset);
+            if (length) peAdd(c, "ASCII_STRING", offset + nameOffset, 1, length, length, RAW);
+        }
+        for (index = 0; index < refs; index++) {
+            child = File.u16(descriptor + 8 + index * 8 + 4);
+            if (child < size) {
+                length = peCString(offset + child, size - child);
+                if (length) peAdd(c, "ASCII_STRING", offset + child, 1, length, length, RAW);
+            }
+        }
+        cursor += 8 + refBytes;
+    }
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + cursor, size - cursor);
+}
+
+function peDelayImports(c) {
+    var rva = c.h.rva[13], size = c.h.size[13], offset, count = 0, current, zero, word, index, isVa, name, iat, names, length, location;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    while (count < Math.floor(size / 32) && count < PE_MAX_LINKED) {
+        current = offset + count * 32;
+        zero = true;
+        for (word = 0; word < 8; word++) {
+            if (File.u32(current + word * 4) !== 0) {
+                zero = false;
+                break;
+            }
+        }
+        if (zero) break;
+        ++count;
+    }
+    if (count) peAdd(c, "IMAGE_DELAYLOAD_DESCRIPTOR", offset, 32, count * 32, count, ENTRY);
+    for (index = 0; index < count; index++) {
+        current = offset + index * 32;
+        isVa = (File.u32(current) & 1) === 0;
+        name = File.u32(current + 4);
+        iat = File.u32(current + 12);
+        names = File.u32(current + 16);
+        if (name && (location = peLocation(name, isVa, 1)) >= 0) {
+            length = peCString(location, PE_MAX_STRING);
+            if (length) peAdd(c, "ASCII_STRING", location, 1, length, length, RAW);
+        }
+        peThunks(c, names ? names : iat, iat, isVa, isVa);
+    }
+    if (!count) peRaw(c, "RESERVED_DIRECTORY_RAW", offset, size);
+}
+
+function peIat(c) {
+    var rva = c.h.rva[12], size = c.h.size[12], stride = c.h.is64 ? 8 : 4, offset, count, covered;
+    if (!rva || !size) return;
+    if ((offset = peRva(rva, size)) < 0) return;
+    count = Math.floor(size / stride);
+    covered = count * stride;
+    if (count) peAdd(c, stride === 8 ? "IAT64" : "IAT32", offset, stride, covered, count, ENTRY);
+    peRaw(c, "RESERVED_DIRECTORY_RAW", offset + covered, size - covered);
+}
+
+function peDirectoryRaw(c, directory) {
+    var rva = c.h.rva[directory], size = c.h.size[directory];
+    if (!rva || !size || peRva(rva, size) < 0) return;
+    peRawRva(c, "RESERVED_DIRECTORY_RAW", rva, size);
+}
+
+// ---------------------------------------------------------------- records
+
+// The fixed field table of an occurrence, by structure name.
+function peStaticTable(ds) {
+    var F = PE_FIELDS, directory;
+    switch (ds.name) {
+        case "IMAGE_DOS_HEADER": return F.dos;
+        case "IMAGE_NT_SIGNATURE": return F.signature;
+        case "IMAGE_FILE_HEADER": return F.file;
+        case "IMAGE_OPTIONAL_HEADER32": return F.optional32;
+        case "IMAGE_OPTIONAL_HEADER64": return F.optional64;
+        case "IMAGE_DATA_DIRECTORY":
+            directory = peOffset() + 24 + (peIs64() ? 112 : 96);
+            return ds.offset >= directory && Math.floor((ds.offset - directory) / 8) === 4 ? F.directory_file : F.directory_rva;
+        case "IMAGE_SECTION_HEADER": return F.section;
+        case "IMAGE_SYMBOL": return F.symbol;
+        case "IMAGE_AUX_SYMBOL": return F.aux_generic;
+        case "IMAGE_AUX_SYMBOL_FUNCTION_DEFINITION": return F.aux_function;
+        case "IMAGE_AUX_SYMBOL_BF_EF": return F.aux_bfef;
+        case "IMAGE_AUX_SYMBOL_WEAK_EXTERNAL": return F.aux_weak;
+        case "IMAGE_AUX_SYMBOL_FILE": return F.aux_file;
+        case "IMAGE_AUX_SYMBOL_SECTION_DEFINITION": return F.aux_section;
+        case "IMAGE_AUX_SYMBOL_CLR_TOKEN": return F.aux_clr;
+        case "COFF_STRING_TABLE_HEADER": return F.string_table_header;
+        case "IMAGE_RELOCATION": return F.relocation;
+        case "IMAGE_LINENUMBER": return F.line;
+        case "IMAGE_EXPORT_DIRECTORY": return F["export"];
+        case "EXPORT_ADDRESS_TABLE":
+        case "EXPORT_NAME_POINTER_TABLE": return F.rva_entry;
+        case "EXPORT_ORDINAL_TABLE": return F.ordinal;
+        case "IMAGE_IMPORT_DESCRIPTOR": return F["import"];
+        case "IMAGE_THUNK_DATA32": return F.thunk32;
+        case "IMAGE_THUNK_DATA64": return F.thunk64;
+        case "IMAGE_RESOURCE_DIRECTORY": return F.resource_dir;
+        case "IMAGE_RESOURCE_DIRECTORY_ENTRY": return F.resource_entry;
+        case "IMAGE_RESOURCE_DATA_ENTRY": return F.resource_data;
+        case "RUNTIME_FUNCTION_X64":
+        case "RUNTIME_FUNCTION_IA64":
+        case "UNWIND_CHAINED_FUNCTION": return F.runtime_x64;
+        case "RUNTIME_FUNCTION_ARM":
+        case "RUNTIME_FUNCTION_ARM64":
+        case "RUNTIME_FUNCTION_CE": return F.runtime_arm;
+        case "RUNTIME_FUNCTION_MIPS":
+        case "RUNTIME_FUNCTION_ALPHA32": return F.runtime_mips;
+        case "RUNTIME_FUNCTION_ALPHA64": return F.runtime_alpha64;
+        case "UNWIND_INFO": return F.unwind_info;
+        case "UNWIND_CODE": return F.unwind_code;
+        case "UNWIND_HANDLER": return F.unwind_handler;
+        case "ARM64_XDATA_HEADER":
+        case "ARM32_XDATA_HEADER": return F.arm_xdata;
+        case "ARM64_XDATA_EXTENDED":
+        case "ARM32_XDATA_EXTENDED": return F.xdata_extended;
+        case "ARM64_EPILOG_SCOPE":
+        case "ARM32_EPILOG_SCOPE": return F.xdata_scope;
+        case "WIN_CERTIFICATE": return F.win_certificate;
+        case "IMAGE_BASE_RELOCATION": return F.base_reloc;
+        case "BASE_RELOCATION_ENTRY": return F.base_reloc_entry;
+        case "IMAGE_DEBUG_DIRECTORY": return F.debug_dir;
+        case "IMAGE_COFF_SYMBOLS_HEADER": return F.debug_coff;
+        case "CODEVIEW_RSDS": return F.rsds;
+        case "CODEVIEW_NB10": return F.nb10;
+        case "IMAGE_DEBUG_MISC": return F.debug_misc;
+        case "FPO_DATA": return F.fpo;
+        case "OMAP_ENTRY": return F.omap;
+        case "VC_FEATURE": return F.vc_feature;
+        case "POGO_HEADER": return F.pogo_header;
+        case "POGO_ENTRY": return F.pogo_entry;
+        case "EMBEDDED_PORTABLE_PDB": return F.mpdb;
+        case "REPRO_HASH_HEADER": return F.repro;
+        case "DEBUG_GUID": return F.guid;
+        case "EX_DLL_CHARACTERISTICS": return F.dword_flags;
+        case "R2R_PERFMAP": return F.r2r;
+        case "IMAGE_FUNCTION_ENTRY": return F.debug_function32;
+        case "IMAGE_FUNCTION_ENTRY64": return F.debug_function64;
+        case "IMAGE_POLICY_METADATA": return F.policy_metadata;
+        case "IMAGE_POLICY_ENTRY32": return F.policy_entry32;
+        case "IMAGE_POLICY_ENTRY64": return F.policy_entry64;
+        case "IMAGE_ARCHITECTURE_HEADER": return F.architecture;
+        case "IMAGE_ARCHITECTURE_ENTRY": return F.architecture_entry;
+        case "IMAGE_TLS_DIRECTORY32": return F.tls32;
+        case "IMAGE_TLS_DIRECTORY64": return F.tls64;
+        case "TLS_CALLBACK32":
+        case "IAT32": return F.pointer32;
+        case "TLS_CALLBACK64":
+        case "IAT64": return F.pointer64;
+        case "IMAGE_LOAD_CONFIG_DIRECTORY32": return F.load32;
+        case "IMAGE_LOAD_CONFIG_DIRECTORY64": return F.load64;
+        case "IMAGE_LOAD_CONFIG_CODE_INTEGRITY": return F.code_integrity;
+        case "SE_HANDLER_ENTRY":
+        case "GUARD_FUNCTION_ENTRY":
+        case "GUARD_ADDRESS_TAKEN_IAT_ENTRY":
+        case "GUARD_LONG_JUMP_ENTRY":
+        case "GUARD_EH_CONTINUATION_ENTRY":
+        case "VOLATILE_ACCESS": return F.rva_entry;
+        case "IMAGE_DYNAMIC_RELOCATION_TABLE": return F.dynamic_table;
+        case "IMAGE_DYNAMIC_RELOCATION32": return F.dynamic32;
+        case "IMAGE_DYNAMIC_RELOCATION64": return F.dynamic64;
+        case "IMAGE_DYNAMIC_RELOCATION32_V2": return F.dynamic32_v2;
+        case "IMAGE_DYNAMIC_RELOCATION64_V2": return F.dynamic64_v2;
+        case "DYNAMIC_RELOCATION_ARM64X":
+            if (peIs64()) return ds.entrySize >= 24 ? F.dynamic64_v2 : F.dynamic64;
+            return ds.entrySize >= 20 ? F.dynamic32_v2 : F.dynamic32;
+        case "DYNAMIC_RELOCATION_PROLOGUE": return F.prologue;
+        case "DYNAMIC_RELOCATION_EPILOGUE": return F.epilogue;
+        case "DYNAMIC_RELOCATION_IMPORT_CONTROL":
+        case "DYNAMIC_RELOCATION_ARM64_IMPORT_CONTROL":
+        case "IMAGE_HOT_PATCH_MACHINE": return F.dword_flags;
+        case "DYNAMIC_RELOCATION_INDIR":
+        case "DYNAMIC_RELOCATION_SWITCHTABLE": return F.word_flags;
+        case "FUNCTION_OVERRIDE_HEADER": return F.function_override;
+        case "FUNCTION_OVERRIDE_ENTRY": return F.function_override_entry;
+        case "BDD_INFO": return F.bdd_info;
+        case "BDD_NODE": return F.bdd_node;
+        case "IMAGE_HOT_PATCH_INFO": return F.hot_patch_info;
+        case "IMAGE_HOT_PATCH_BASE": return F.hot_patch_base;
+        case "IMAGE_HOT_PATCH_HASHES": return F.hot_patch_hashes;
+        case "IMAGE_ENCLAVE_CONFIG32": return F.enclave32;
+        case "IMAGE_ENCLAVE_CONFIG64": return F.enclave64;
+        case "IMAGE_ENCLAVE_IMPORT": return F.enclave_import;
+        case "IMAGE_VOLATILE_METADATA": return F.volatile;
+        case "VOLATILE_INFO_RANGE": return F.volatile_range;
+        case "CHPE_METADATA":
+        case "ARM64EC_METADATA": return F.chpe;
+        case "CHPE_CODE_RANGE_ENTRY": return F.chpe_code_range;
+        case "CHPE_CODE_RANGE_TO_ENTRY_POINT": return F.chpe_range_entry;
+        case "CHPE_REDIRECTION_ENTRY": return F.chpe_redirect;
+        case "IMAGE_BOUND_IMPORT_DESCRIPTOR": return F.bound;
+        case "IMAGE_BOUND_FORWARDER_REF": return F.bound_forwarder;
+        case "IMAGE_DELAYLOAD_DESCRIPTOR": return F.delay;
+        case "ARM64X_FIXUP": return F.arm64x_fixup;
+        case "ARM64X_DELTA": return F.arm64x_delta;
+        default: return null;
+    }
+}
+
+// Display of text arrays: up to 128 bytes, printable ASCII, '.' otherwise.
+function peDisplayChars(value) {
+    var text = "" + value, out = "", i, code, n = text.length < PE_MAX_DISPLAY ? text.length : PE_MAX_DISPLAY;
+    for (i = 0; i < n; i++) {
+        code = text.charCodeAt(i);
+        out += code >= 0x20 && code < 0x7F ? text.charAt(i) : ".";
+    }
+    return out;
+}
+
+var PE_HEX_DIGITS = "0123456789ABCDEF";
+
+// Display of byte arrays: up to 128 bytes as "AA BB ..", " ..." when longer.
+function peDisplayHex(value) {
+    var bytes = "" + value, out = "", i, code, n = bytes.length < PE_MAX_DISPLAY ? bytes.length : PE_MAX_DISPLAY;
+    for (i = 0; i < n; i++) {
+        code = bytes.charCodeAt(i) & 0xFF;
+        if (i) out += " ";
+        out += PE_HEX_DIGITS.charAt(code >> 4) + PE_HEX_DIGITS.charAt(code & 15);
+    }
+    if (bytes.length > PE_MAX_DISPLAY) out += " ...";
+    return out;
+}
+
+// Display of a UTF-16LE string up to its NUL (at most 4096 characters), as
+// UTF-8 text: the field carries utf8: true so the host decodes it.
+function peDisplayWide(value) {
+    var bytes = "" + value, out = "", i, code, n = Math.floor(bytes.length / 2);
+    if (n > PE_MAX_STRING) n = PE_MAX_STRING;
+    for (i = 0; i < n; i++) {
+        code = (bytes.charCodeAt(2 * i) & 0xFF) | ((bytes.charCodeAt(2 * i + 1) & 0xFF) << 8);
+        if (!code) break;
+        if (code < 0x80) out += String.fromCharCode(code);
+        else if (code < 0x800) out += String.fromCharCode(0xC0 | (code >> 6), 0x80 | (code & 0x3F));
+        else out += String.fromCharCode(0xE0 | (code >> 12), 0x80 | ((code >> 6) & 0x3F), 0x80 | (code & 0x3F));
+    }
+    return out;
+}
+
+function peDisplayTime(value) { return Util.utc(value); }
+
+function peDisplayInt(value) { return "" + value; }
+
+function peFlagsComment(value, names, size) {
+    var remaining = value, out = "", i, mask, unknown;
+    if (value === 0) return "0";
+    for (i = 0; i < names.length; i++) {
+        mask = names[i][0];
+        if (mask !== 0 && (remaining & mask) === mask) {
+            if (out) out += "|";
+            out += names[i][1];
+            remaining &= ~mask;
+        }
+    }
+    if (remaining !== 0) {
+        unknown = Util.hex(remaining >>> 0, size <= 2 ? 4 : (size <= 4 ? 8 : 16));
+        if (out) out += "|";
+        out += unknown;
+    }
+    return out;
+}
+
+function peMachineComment(value) { return PE_MACHINE_NAMES[value]; }
+
+function peCharacteristicsComment(value) { return peFlagsComment(value, PE_FILE_CHARACTERISTICS, 2); }
+
+// pe_set_record_comment: the comment of a field, undefined for the standard one.
+function peFieldComment(ds, offset) {
+    switch (ds.name) {
+        case "IMAGE_DOS_HEADER":
+            if (offset === 0) return "IMAGE_DOS_SIGNATURE (MZ)";
+            if (offset === 2) return "Bytes in final 512-byte page; 0 means 512";
+            if (offset === 4) return "512-byte pages";
+            if (offset === 8 || offset === 10 || offset === 12) return "16-byte paragraphs";
+            return undefined;
+        case "FPO_DATA": return offset === 8 || offset === 12 ? "4-byte units (DWORDs)" : undefined;
+        case "IMAGE_FILE_HEADER":
+            if (offset === 0) return peMachineComment;
+            if (offset === 18) return peCharacteristicsComment;
+            return undefined;
+        default: return undefined;
+    }
+}
+
+// One record as pe_populate_record shows it.
+function peField(ds, name, type, offset, size, role) {
+    var f = { name: name, type: type, offset: offset, size: size, role: role }, comment,
+        descriptions = PE_FIELD_DESCRIPTIONS[ds.name];
+    if (descriptions && descriptions[name] !== undefined) f.description = descriptions[name];
+    if (type.substr(0, 4) === "char") f.display = peDisplayChars;
+    else if (type.substr(0, 7) === "wchar16") { f.display = peDisplayWide; f.utf8 = true; }
+    else if (type.indexOf("[") >= 0) f.display = peDisplayHex;
+    else if ((role & TIMESTAMP) && size === 4) f.display = peDisplayTime;
+    else if (type === "int16" || type === "int32" || type === "int64") f.display = peDisplayInt;
+    comment = peFieldComment(ds, offset);
+    if (comment !== undefined) f.comment = comment;
+    return f;
+}
+
+// The fixed fields that fit the entry (or the whole occurrence).
+function peTableFields(ds, table, out) {
+    var limit = ds.entrySize > 0 && ds.entrySize < ds.totalSize ? ds.entrySize : ds.totalSize, i, r;
+    for (i = 0; table && i < table.length; i++) {
+        r = table[i];
+        if (r[2] >= 0 && r[3] > 0 && r[2] <= limit && r[3] <= limit - r[2]) out.push(peField(ds, r[0], r[1], r[2], r[3], r[4]));
+    }
+    return out;
+}
+
+function peRecordFields(ds) {
+    var out;
+    if (ds.offset < 0 || ds.totalSize <= 0) return undefined;
+    out = peTableFields(ds, peStaticTable(ds), []);
+    switch (ds.name) {
+        case "COFF_STRING":
+        case "EXPORT_FORWARDER":
+        case "ASCII_STRING":
+            out.push(peField(ds, "String", "char[]", 0, ds.totalSize, STRING));
+            break;
+        case "PDB_CHECKSUM":
+            out.push(peField(ds, "AlgorithmName", "char[]", 0, ds.totalSize, STRING));
+            break;
+        case "IMAGE_IMPORT_BY_NAME":
+            out.push(peField(ds, "Hint", "uint16", 0, 2, ID));
+            out.push(peField(ds, "Name", "char[]", 2, ds.totalSize - 2, STRING));
+            break;
+        case "IMAGE_RESOURCE_DIR_STRING_U":
+            out.push(peField(ds, "Length", "uint16", 0, 2, COUNT));
+            out.push(peField(ds, "NameString", "wchar16[]", 2, ds.totalSize - 2, STRING));
+            break;
+        case "POGO_ENTRY":
+            out.push(peField(ds, "Name", "char[]", 8, ds.totalSize > 8 ? ds.totalSize - 8 : 0, STRING));
+            break;
+        default: break;
+    }
+    return out.length ? out : undefined;
+}
+
+// --------------------------------------------------------- field tables
+
+// [name, type, offset, size, role] rows of the former C field tables.
+var PE_FIELDS = {
+    dos: [["e_magic", "uint16", 0, 2, SIGNATURE], ["e_cblp", "uint16", 2, 2, NONE], ["e_cp", "uint16", 4, 2, COUNT],
+        ["e_crlc", "uint16", 6, 2, COUNT], ["e_cparhdr", "uint16", 8, 2, COUNT], ["e_minalloc", "uint16", 10, 2, COUNT],
+        ["e_maxalloc", "uint16", 12, 2, COUNT], ["e_ss", "uint16", 14, 2, VA], ["e_sp", "uint16", 16, 2, VA], ["e_csum", "uint16", 18, 2, CHECKSUM],
+        ["e_ip", "uint16", 20, 2, VA], ["e_cs", "uint16", 22, 2, VA], ["e_lfarlc", "uint16", 24, 2, OFFSET], ["e_ovno", "uint16", 26, 2, ID],
+        ["e_res", "uint16[4]", 28, 8, RESERVED], ["e_oemid", "uint16", 36, 2, ID], ["e_oeminfo", "uint16", 38, 2, NONE],
+        ["e_res2", "uint16[10]", 40, 20, RESERVED], ["e_lfanew", "uint32", 60, 4, OFFSET]],
+    signature: [["Signature", "uint32", 0, 4, ID]],
+    file: [["Machine", "uint16", 0, 2, ID], ["NumberOfSections", "uint16", 2, 2, COUNT], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP],
+        ["PointerToSymbolTable", "uint32", 8, 4, OFFSET], ["NumberOfSymbols", "uint32", 12, 4, COUNT],
+        ["SizeOfOptionalHeader", "uint16", 16, 2, SIZE], ["Characteristics", "uint16", 18, 2, FLAGS]],
+    optional32: [["Magic", "uint16", 0, 2, ID], ["MajorLinkerVersion", "uint8", 2, 1, NONE], ["MinorLinkerVersion", "uint8", 3, 1, NONE],
+        ["SizeOfCode", "uint32", 4, 4, SIZE], ["SizeOfInitializedData", "uint32", 8, 4, SIZE], ["SizeOfUninitializedData", "uint32", 12, 4, SIZE],
+        ["AddressOfEntryPoint", "uint32", 16, 4, VA], ["BaseOfCode", "uint32", 20, 4, VA], ["BaseOfData", "uint32", 24, 4, VA],
+        ["ImageBase", "uint32", 28, 4, VA], ["SectionAlignment", "uint32", 32, 4, SIZE], ["FileAlignment", "uint32", 36, 4, SIZE],
+        ["MajorOperatingSystemVersion", "uint16", 40, 2, NONE], ["MinorOperatingSystemVersion", "uint16", 42, 2, NONE],
+        ["MajorImageVersion", "uint16", 44, 2, NONE], ["MinorImageVersion", "uint16", 46, 2, NONE], ["MajorSubsystemVersion", "uint16", 48, 2, NONE],
+        ["MinorSubsystemVersion", "uint16", 50, 2, NONE], ["Win32VersionValue", "uint32", 52, 4, RESERVED], ["SizeOfImage", "uint32", 56, 4, SIZE],
+        ["SizeOfHeaders", "uint32", 60, 4, SIZE], ["CheckSum", "uint32", 64, 4, CHECKSUM], ["Subsystem", "uint16", 68, 2, ID],
+        ["DllCharacteristics", "uint16", 70, 2, FLAGS], ["SizeOfStackReserve", "uint32", 72, 4, SIZE], ["SizeOfStackCommit", "uint32", 76, 4, SIZE],
+        ["SizeOfHeapReserve", "uint32", 80, 4, SIZE], ["SizeOfHeapCommit", "uint32", 84, 4, SIZE], ["LoaderFlags", "uint32", 88, 4, FLAGS],
+        ["NumberOfRvaAndSizes", "uint32", 92, 4, COUNT]],
+    optional64: [["Magic", "uint16", 0, 2, ID], ["MajorLinkerVersion", "uint8", 2, 1, NONE], ["MinorLinkerVersion", "uint8", 3, 1, NONE],
+        ["SizeOfCode", "uint32", 4, 4, SIZE], ["SizeOfInitializedData", "uint32", 8, 4, SIZE], ["SizeOfUninitializedData", "uint32", 12, 4, SIZE],
+        ["AddressOfEntryPoint", "uint32", 16, 4, VA], ["BaseOfCode", "uint32", 20, 4, VA], ["ImageBase", "uint64", 24, 8, VA],
+        ["SectionAlignment", "uint32", 32, 4, SIZE], ["FileAlignment", "uint32", 36, 4, SIZE],
+        ["MajorOperatingSystemVersion", "uint16", 40, 2, NONE], ["MinorOperatingSystemVersion", "uint16", 42, 2, NONE],
+        ["MajorImageVersion", "uint16", 44, 2, NONE], ["MinorImageVersion", "uint16", 46, 2, NONE], ["MajorSubsystemVersion", "uint16", 48, 2, NONE],
+        ["MinorSubsystemVersion", "uint16", 50, 2, NONE], ["Win32VersionValue", "uint32", 52, 4, RESERVED], ["SizeOfImage", "uint32", 56, 4, SIZE],
+        ["SizeOfHeaders", "uint32", 60, 4, SIZE], ["CheckSum", "uint32", 64, 4, CHECKSUM], ["Subsystem", "uint16", 68, 2, ID],
+        ["DllCharacteristics", "uint16", 70, 2, FLAGS], ["SizeOfStackReserve", "uint64", 72, 8, SIZE], ["SizeOfStackCommit", "uint64", 80, 8, SIZE],
+        ["SizeOfHeapReserve", "uint64", 88, 8, SIZE], ["SizeOfHeapCommit", "uint64", 96, 8, SIZE], ["LoaderFlags", "uint32", 104, 4, FLAGS],
+        ["NumberOfRvaAndSizes", "uint32", 108, 4, COUNT]],
+    directory_rva: [["VirtualAddress", "uint32", 0, 4, VA], ["Size", "uint32", 4, 4, SIZE]],
+    directory_file: [["FileOffset", "uint32", 0, 4, OFFSET], ["Size", "uint32", 4, 4, SIZE]],
+    section: [["Name", "char[8]", 0, 8, STRING], ["VirtualSize", "uint32", 8, 4, SIZE], ["VirtualAddress", "uint32", 12, 4, VA],
+        ["SizeOfRawData", "uint32", 16, 4, SIZE], ["PointerToRawData", "uint32", 20, 4, OFFSET], ["PointerToRelocations", "uint32", 24, 4, OFFSET],
+        ["PointerToLinenumbers", "uint32", 28, 4, OFFSET], ["NumberOfRelocations", "uint16", 32, 2, COUNT],
+        ["NumberOfLinenumbers", "uint16", 34, 2, COUNT], ["Characteristics", "uint32", 36, 4, FLAGS]],
+    symbol: [["Name", "char[8]", 0, 8, STRING], ["Value", "uint32", 8, 4, NONE], ["SectionNumber", "int16", 12, 2, ID],
+        ["Type", "uint16", 14, 2, FLAGS], ["StorageClass", "uint8", 16, 1, ID], ["NumberOfAuxSymbols", "uint8", 17, 1, COUNT]],
+    aux_generic: [["Data", "uint8[18]", 0, 18, NONE]],
+    aux_function: [["TagIndex", "uint32", 0, 4, ID], ["TotalSize", "uint32", 4, 4, SIZE], ["PointerToLinenumber", "uint32", 8, 4, OFFSET],
+        ["PointerToNextFunction", "uint32", 12, 4, OFFSET], ["Unused", "uint16", 16, 2, RESERVED]],
+    aux_bfef: [["Unused1", "uint32", 0, 4, RESERVED], ["Linenumber", "uint16", 4, 2, NONE], ["Unused2", "uint8[6]", 6, 6, RESERVED],
+        ["PointerToNextFunction", "uint32", 12, 4, OFFSET], ["Unused3", "uint16", 16, 2, RESERVED]],
+    aux_weak: [["TagIndex", "uint32", 0, 4, ID], ["Characteristics", "uint32", 4, 4, FLAGS], ["Reserved", "uint8[10]", 8, 10, RESERVED]],
+    aux_file: [["FileName", "char[18]", 0, 18, STRING]],
+    aux_section: [["Length", "uint32", 0, 4, SIZE], ["NumberOfRelocations", "uint16", 4, 2, COUNT], ["NumberOfLinenumbers", "uint16", 6, 2, COUNT],
+        ["CheckSum", "uint32", 8, 4, CHECKSUM], ["Number", "int16", 12, 2, ID], ["Selection", "uint8", 14, 1, ID],
+        ["Reserved", "uint8", 15, 1, RESERVED], ["HighNumber", "int16", 16, 2, ID]],
+    aux_clr: [["AuxType", "uint8", 0, 1, ID], ["Reserved", "uint8", 1, 1, RESERVED], ["SymbolTableIndex", "uint32", 2, 4, ID],
+        ["Reserved2", "uint8[12]", 6, 12, RESERVED]],
+    string_table_header: [["TotalSize", "uint32", 0, 4, SIZE]],
+    relocation: [["VirtualAddress", "uint32", 0, 4, VA], ["SymbolTableIndex", "uint32", 4, 4, ID], ["Type", "uint16", 8, 2, ID]],
+    line: [["SymbolTableIndexOrVirtualAddress", "uint32", 0, 4, POINTER], ["Linenumber", "uint16", 4, 2, NONE]],
+    export: [["Characteristics", "uint32", 0, 4, FLAGS], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP], ["MajorVersion", "uint16", 8, 2, NONE],
+        ["MinorVersion", "uint16", 10, 2, NONE], ["Name", "uint32", 12, 4, VA], ["Base", "uint32", 16, 4, ID],
+        ["NumberOfFunctions", "uint32", 20, 4, COUNT], ["NumberOfNames", "uint32", 24, 4, COUNT], ["AddressOfFunctions", "uint32", 28, 4, VA],
+        ["AddressOfNames", "uint32", 32, 4, VA], ["AddressOfNameOrdinals", "uint32", 36, 4, VA]],
+    rva_entry: [["Rva", "uint32", 0, 4, VA]],
+    ordinal: [["OrdinalIndex", "uint16", 0, 2, ID]],
+    import: [["OriginalFirstThunk", "uint32", 0, 4, VA], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP], ["ForwarderChain", "uint32", 8, 4, ID],
+        ["Name", "uint32", 12, 4, VA], ["FirstThunk", "uint32", 16, 4, VA]],
+    thunk32: [["AddressOfDataOrOrdinal", "uint32", 0, 4, POINTER]],
+    thunk64: [["AddressOfDataOrOrdinal", "uint64", 0, 8, POINTER]],
+    resource_dir: [["Characteristics", "uint32", 0, 4, FLAGS], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP], ["MajorVersion", "uint16", 8, 2, NONE],
+        ["MinorVersion", "uint16", 10, 2, NONE], ["NumberOfNamedEntries", "uint16", 12, 2, COUNT], ["NumberOfIdEntries", "uint16", 14, 2, COUNT]],
+    resource_entry: [["NameOrId", "uint32", 0, 4, POINTER], ["OffsetToDataOrDirectory", "uint32", 4, 4, POINTER]],
+    resource_data: [["OffsetToData", "uint32", 0, 4, VA], ["Size", "uint32", 4, 4, SIZE], ["CodePage", "uint32", 8, 4, ID],
+        ["Reserved", "uint32", 12, 4, RESERVED]],
+    runtime_x64: [["BeginAddress", "uint32", 0, 4, VA], ["EndAddress", "uint32", 4, 4, VA], ["UnwindInfoAddress", "uint32", 8, 4, VA]],
+    runtime_arm: [["BeginAddress", "uint32", 0, 4, VA], ["UnwindData", "uint32", 4, 4, POINTER]],
+    runtime_mips: [["BeginAddress", "uint32", 0, 4, VA], ["EndAddress", "uint32", 4, 4, VA], ["ExceptionHandler", "uint32", 8, 4, VA],
+        ["HandlerData", "uint32", 12, 4, VA], ["PrologEndAddress", "uint32", 16, 4, VA]],
+    runtime_alpha64: [["BeginAddress", "uint64", 0, 8, VA], ["EndAddress", "uint64", 8, 8, VA], ["ExceptionHandler", "uint64", 16, 8, VA],
+        ["HandlerData", "uint64", 24, 8, VA], ["PrologEndAddress", "uint64", 32, 8, VA]],
+    unwind_info: [["VersionAndFlags", "uint8", 0, 1, FLAGS], ["SizeOfProlog", "uint8", 1, 1, SIZE], ["CountOfCodes", "uint8", 2, 1, COUNT],
+        ["FrameRegisterAndOffset", "uint8", 3, 1, FLAGS]],
+    unwind_code: [["CodeOffset", "uint8", 0, 1, OFFSET], ["UnwindOpAndInfo", "uint8", 1, 1, FLAGS]],
+    arm_xdata: [["Header", "uint32", 0, 4, FLAGS]],
+    win_certificate: [["dwLength", "uint32", 0, 4, SIZE], ["wRevision", "uint16", 4, 2, ID], ["wCertificateType", "uint16", 6, 2, ID]],
+    base_reloc: [["VirtualAddress", "uint32", 0, 4, VA], ["SizeOfBlock", "uint32", 4, 4, SIZE]],
+    base_reloc_entry: [["TypeAndOffset", "uint16", 0, 2, FLAGS]],
+    debug_dir: [["Characteristics", "uint32", 0, 4, FLAGS], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP], ["MajorVersion", "uint16", 8, 2, NONE],
+        ["MinorVersion", "uint16", 10, 2, NONE], ["Type", "uint32", 12, 4, ID], ["SizeOfData", "uint32", 16, 4, SIZE],
+        ["AddressOfRawData", "uint32", 20, 4, VA], ["PointerToRawData", "uint32", 24, 4, OFFSET]],
+    debug_coff: [["NumberOfSymbols", "uint32", 0, 4, COUNT], ["LvaToFirstSymbol", "uint32", 4, 4, OFFSET],
+        ["NumberOfLinenumbers", "uint32", 8, 4, COUNT], ["LvaToFirstLinenumber", "uint32", 12, 4, OFFSET],
+        ["RvaToFirstByteOfCode", "uint32", 16, 4, VA], ["RvaToLastByteOfCode", "uint32", 20, 4, VA], ["RvaToFirstByteOfData", "uint32", 24, 4, VA],
+        ["RvaToLastByteOfData", "uint32", 28, 4, VA]],
+    rsds: [["Signature", "char[4]", 0, 4, ID], ["Guid", "uint8[16]", 4, 16, ID], ["Age", "uint32", 20, 4, NONE]],
+    nb10: [["Signature", "char[4]", 0, 4, ID], ["Offset", "uint32", 4, 4, OFFSET], ["TimeDateStamp", "uint32", 8, 4, TIMESTAMP],
+        ["Age", "uint32", 12, 4, NONE]],
+    debug_misc: [["DataType", "uint32", 0, 4, ID], ["Length", "uint32", 4, 4, SIZE], ["Unicode", "uint8", 8, 1, FLAGS],
+        ["Reserved", "uint8[3]", 9, 3, RESERVED]],
+    fpo: [["ulOffStart", "uint32", 0, 4, OFFSET], ["cbProcSize", "uint32", 4, 4, SIZE], ["cdwLocals", "uint32", 8, 4, COUNT],
+        ["cdwParams", "uint16", 12, 2, COUNT], ["Attributes", "uint16", 14, 2, FLAGS]],
+    omap: [["Rva", "uint32", 0, 4, VA], ["RvaTo", "uint32", 4, 4, VA]],
+    vc_feature: [["PreVCPlusPlusCount", "uint32", 0, 4, COUNT], ["CAndCPlusPlusCount", "uint32", 4, 4, COUNT], ["GSCount", "uint32", 8, 4, COUNT],
+        ["SDLCount", "uint32", 12, 4, COUNT], ["GuardNCount", "uint32", 16, 4, COUNT]],
+    pogo_header: [["Signature", "char[4]", 0, 4, ID]],
+    pogo_entry: [["Rva", "uint32", 0, 4, VA], ["Size", "uint32", 4, 4, SIZE]],
+    mpdb: [["Signature", "char[4]", 0, 4, ID], ["UncompressedSize", "uint32", 4, 4, SIZE]],
+    repro: [["HashLength", "uint32", 0, 4, SIZE]],
+    guid: [["Guid", "uint8[16]", 0, 16, ID]],
+    dword_flags: [["Flags", "uint32", 0, 4, FLAGS]],
+    architecture: [["Flags", "uint32", 0, 4, FLAGS], ["FirstEntryRVA", "uint32", 4, 4, VA]],
+    architecture_entry: [["FixupInstRVA", "uint32", 0, 4, VA], ["NewInst", "uint32", 4, 4, NONE]],
+    tls32: [["StartAddressOfRawData", "uint32", 0, 4, VA], ["EndAddressOfRawData", "uint32", 4, 4, VA], ["AddressOfIndex", "uint32", 8, 4, VA],
+        ["AddressOfCallBacks", "uint32", 12, 4, VA], ["SizeOfZeroFill", "uint32", 16, 4, SIZE], ["Characteristics", "uint32", 20, 4, FLAGS]],
+    tls64: [["StartAddressOfRawData", "uint64", 0, 8, VA], ["EndAddressOfRawData", "uint64", 8, 8, VA], ["AddressOfIndex", "uint64", 16, 8, VA],
+        ["AddressOfCallBacks", "uint64", 24, 8, VA], ["SizeOfZeroFill", "uint32", 32, 4, SIZE], ["Characteristics", "uint32", 36, 4, FLAGS]],
+    pointer32: [["Address", "uint32", 0, 4, VA]],
+    pointer64: [["Address", "uint64", 0, 8, VA]],
+    load32: [["Size", "uint32", 0, 4, SIZE], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP], ["MajorVersion", "uint16", 8, 2, NONE],
+        ["MinorVersion", "uint16", 10, 2, NONE], ["GlobalFlagsClear", "uint32", 12, 4, FLAGS], ["GlobalFlagsSet", "uint32", 16, 4, FLAGS],
+        ["CriticalSectionDefaultTimeout", "uint32", 20, 4, NONE], ["DeCommitFreeBlockThreshold", "uint32", 24, 4, SIZE],
+        ["DeCommitTotalFreeThreshold", "uint32", 28, 4, SIZE], ["LockPrefixTable", "uint32", 32, 4, VA],
+        ["MaximumAllocationSize", "uint32", 36, 4, SIZE], ["VirtualMemoryThreshold", "uint32", 40, 4, SIZE],
+        ["ProcessHeapFlags", "uint32", 44, 4, FLAGS], ["ProcessAffinityMask", "uint32", 48, 4, FLAGS], ["CSDVersion", "uint16", 52, 2, NONE],
+        ["DependentLoadFlags", "uint16", 54, 2, FLAGS], ["EditList", "uint32", 56, 4, VA], ["SecurityCookie", "uint32", 60, 4, VA],
+        ["SEHandlerTable", "uint32", 64, 4, VA], ["SEHandlerCount", "uint32", 68, 4, COUNT], ["GuardCFCheckFunctionPointer", "uint32", 72, 4, VA],
+        ["GuardCFDispatchFunctionPointer", "uint32", 76, 4, VA], ["GuardCFFunctionTable", "uint32", 80, 4, VA],
+        ["GuardCFFunctionCount", "uint32", 84, 4, COUNT], ["GuardFlags", "uint32", 88, 4, FLAGS], ["CodeIntegrity", "uint8[12]", 92, 12, NONE],
+        ["GuardAddressTakenIatEntryTable", "uint32", 104, 4, VA], ["GuardAddressTakenIatEntryCount", "uint32", 108, 4, COUNT],
+        ["GuardLongJumpTargetTable", "uint32", 112, 4, VA], ["GuardLongJumpTargetCount", "uint32", 116, 4, COUNT],
+        ["DynamicValueRelocTable", "uint32", 120, 4, VA], ["CHPEMetadataPointer", "uint32", 124, 4, VA],
+        ["GuardRFFailureRoutine", "uint32", 128, 4, VA], ["GuardRFFailureRoutineFunctionPointer", "uint32", 132, 4, VA],
+        ["DynamicValueRelocTableOffset", "uint32", 136, 4, OFFSET], ["DynamicValueRelocTableSection", "uint16", 140, 2, ID],
+        ["Reserved2", "uint16", 142, 2, RESERVED], ["GuardRFVerifyStackPointerFunctionPointer", "uint32", 144, 4, VA],
+        ["HotPatchTableOffset", "uint32", 148, 4, VA], ["Reserved3", "uint32", 152, 4, RESERVED],
+        ["EnclaveConfigurationPointer", "uint32", 156, 4, VA], ["VolatileMetadataPointer", "uint32", 160, 4, VA],
+        ["GuardEHContinuationTable", "uint32", 164, 4, VA], ["GuardEHContinuationCount", "uint32", 168, 4, COUNT],
+        ["GuardXFGCheckFunctionPointer", "uint32", 172, 4, VA], ["GuardXFGDispatchFunctionPointer", "uint32", 176, 4, VA],
+        ["GuardXFGTableDispatchFunctionPointer", "uint32", 180, 4, VA], ["CastGuardOsDeterminedFailureMode", "uint32", 184, 4, VA],
+        ["GuardMemcpyFunctionPointer", "uint32", 188, 4, VA], ["UmaFunctionPointers", "uint32", 192, 4, VA]],
+    load64: [["Size", "uint32", 0, 4, SIZE], ["TimeDateStamp", "uint32", 4, 4, TIMESTAMP], ["MajorVersion", "uint16", 8, 2, NONE],
+        ["MinorVersion", "uint16", 10, 2, NONE], ["GlobalFlagsClear", "uint32", 12, 4, FLAGS], ["GlobalFlagsSet", "uint32", 16, 4, FLAGS],
+        ["CriticalSectionDefaultTimeout", "uint32", 20, 4, NONE], ["DeCommitFreeBlockThreshold", "uint64", 24, 8, SIZE],
+        ["DeCommitTotalFreeThreshold", "uint64", 32, 8, SIZE], ["LockPrefixTable", "uint64", 40, 8, VA],
+        ["MaximumAllocationSize", "uint64", 48, 8, SIZE], ["VirtualMemoryThreshold", "uint64", 56, 8, SIZE],
+        ["ProcessAffinityMask", "uint64", 64, 8, FLAGS], ["ProcessHeapFlags", "uint32", 72, 4, FLAGS], ["CSDVersion", "uint16", 76, 2, NONE],
+        ["DependentLoadFlags", "uint16", 78, 2, FLAGS], ["EditList", "uint64", 80, 8, VA], ["SecurityCookie", "uint64", 88, 8, VA],
+        ["SEHandlerTable", "uint64", 96, 8, VA], ["SEHandlerCount", "uint64", 104, 8, COUNT], ["GuardCFCheckFunctionPointer", "uint64", 112, 8, VA],
+        ["GuardCFDispatchFunctionPointer", "uint64", 120, 8, VA], ["GuardCFFunctionTable", "uint64", 128, 8, VA],
+        ["GuardCFFunctionCount", "uint64", 136, 8, COUNT], ["GuardFlags", "uint32", 144, 4, FLAGS], ["CodeIntegrity", "uint8[12]", 148, 12, NONE],
+        ["GuardAddressTakenIatEntryTable", "uint64", 160, 8, VA], ["GuardAddressTakenIatEntryCount", "uint64", 168, 8, COUNT],
+        ["GuardLongJumpTargetTable", "uint64", 176, 8, VA], ["GuardLongJumpTargetCount", "uint64", 184, 8, COUNT],
+        ["DynamicValueRelocTable", "uint64", 192, 8, VA], ["CHPEMetadataPointer", "uint64", 200, 8, VA],
+        ["GuardRFFailureRoutine", "uint64", 208, 8, VA], ["GuardRFFailureRoutineFunctionPointer", "uint64", 216, 8, VA],
+        ["DynamicValueRelocTableOffset", "uint32", 224, 4, OFFSET], ["DynamicValueRelocTableSection", "uint16", 228, 2, ID],
+        ["Reserved2", "uint16", 230, 2, RESERVED], ["GuardRFVerifyStackPointerFunctionPointer", "uint64", 232, 8, VA],
+        ["HotPatchTableOffset", "uint32", 240, 4, VA], ["Reserved3", "uint32", 244, 4, RESERVED],
+        ["EnclaveConfigurationPointer", "uint64", 248, 8, VA], ["VolatileMetadataPointer", "uint64", 256, 8, VA],
+        ["GuardEHContinuationTable", "uint64", 264, 8, VA], ["GuardEHContinuationCount", "uint64", 272, 8, COUNT],
+        ["GuardXFGCheckFunctionPointer", "uint64", 280, 8, VA], ["GuardXFGDispatchFunctionPointer", "uint64", 288, 8, VA],
+        ["GuardXFGTableDispatchFunctionPointer", "uint64", 296, 8, VA], ["CastGuardOsDeterminedFailureMode", "uint64", 304, 8, VA],
+        ["GuardMemcpyFunctionPointer", "uint64", 312, 8, VA], ["UmaFunctionPointers", "uint64", 320, 8, VA]],
+    code_integrity: [["Flags", "uint16", 0, 2, FLAGS], ["Catalog", "uint16", 2, 2, ID], ["CatalogOffset", "uint32", 4, 4, OFFSET],
+        ["Reserved", "uint32", 8, 4, RESERVED]],
+    dynamic_table: [["Version", "uint32", 0, 4, ID], ["Size", "uint32", 4, 4, SIZE]],
+    dynamic32: [["Symbol", "uint32", 0, 4, ID], ["BaseRelocSize", "uint32", 4, 4, SIZE]],
+    dynamic64: [["Symbol", "uint64", 0, 8, ID], ["BaseRelocSize", "uint32", 8, 4, SIZE]],
+    dynamic32_v2: [["HeaderSize", "uint32", 0, 4, SIZE], ["FixupInfoSize", "uint32", 4, 4, SIZE], ["Symbol", "uint32", 8, 4, ID],
+        ["SymbolGroup", "uint32", 12, 4, ID], ["Flags", "uint32", 16, 4, FLAGS]],
+    dynamic64_v2: [["HeaderSize", "uint32", 0, 4, SIZE], ["FixupInfoSize", "uint32", 4, 4, SIZE], ["Symbol", "uint64", 8, 8, ID],
+        ["SymbolGroup", "uint32", 16, 4, ID], ["Flags", "uint32", 20, 4, FLAGS]],
+    epilogue: [["EpilogueCount", "uint32", 0, 4, COUNT], ["EpilogueByteCount", "uint8", 4, 1, SIZE],
+        ["BranchDescriptorElementSize", "uint8", 5, 1, SIZE], ["BranchDescriptorCount", "uint16", 6, 2, COUNT]],
+    function_override: [["FuncOverrideSize", "uint32", 0, 4, SIZE]],
+    function_override_entry: [["OriginalRva", "uint32", 0, 4, VA], ["BDDOffset", "uint32", 4, 4, OFFSET], ["RvaSize", "uint32", 8, 4, SIZE],
+        ["BaseRelocSize", "uint32", 12, 4, SIZE]],
+    bdd_info: [["Version", "uint32", 0, 4, ID], ["BDDSize", "uint32", 4, 4, SIZE]],
+    bdd_node: [["Left", "uint16", 0, 2, ID], ["Right", "uint16", 2, 2, ID], ["Value", "uint32", 4, 4, ID]],
+    hot_patch_info: [["Version", "uint32", 0, 4, ID], ["Size", "uint32", 4, 4, SIZE], ["SequenceNumber", "uint32", 8, 4, ID],
+        ["BaseImageList", "uint32", 12, 4, OFFSET], ["BaseImageCount", "uint32", 16, 4, COUNT], ["BufferOffset", "uint32", 20, 4, OFFSET],
+        ["ExtraPatchSize", "uint32", 24, 4, SIZE], ["MinSequenceNumber", "uint32", 28, 4, ID], ["Flags", "uint32", 32, 4, FLAGS]],
+    hot_patch_base: [["SequenceNumber", "uint32", 0, 4, ID], ["Flags", "uint32", 4, 4, FLAGS], ["OriginalTimeDateStamp", "uint32", 8, 4, TIMESTAMP],
+        ["OriginalCheckSum", "uint32", 12, 4, CHECKSUM], ["CodeIntegrityInfo", "uint32", 16, 4, OFFSET],
+        ["CodeIntegritySize", "uint32", 20, 4, SIZE], ["PatchTable", "uint32", 24, 4, OFFSET], ["BufferOffset", "uint32", 28, 4, OFFSET]],
+    hot_patch_hashes: [["SHA256", "uint8[32]", 0, 32, CHECKSUM], ["SHA1", "uint8[20]", 32, 20, CHECKSUM]],
+    enclave32: [["Size", "uint32", 0, 4, SIZE], ["MinimumRequiredConfigSize", "uint32", 4, 4, SIZE], ["PolicyFlags", "uint32", 8, 4, FLAGS],
+        ["NumberOfImports", "uint32", 12, 4, COUNT], ["ImportList", "uint32", 16, 4, VA], ["ImportEntrySize", "uint32", 20, 4, SIZE],
+        ["FamilyID", "uint8[16]", 24, 16, ID], ["ImageID", "uint8[16]", 40, 16, ID], ["ImageVersion", "uint32", 56, 4, NONE],
+        ["SecurityVersion", "uint32", 60, 4, NONE], ["EnclaveSize", "uint32", 64, 4, SIZE], ["NumberOfThreads", "uint32", 68, 4, COUNT],
+        ["EnclaveFlags", "uint32", 72, 4, FLAGS]],
+    enclave64: [["Size", "uint32", 0, 4, SIZE], ["MinimumRequiredConfigSize", "uint32", 4, 4, SIZE], ["PolicyFlags", "uint32", 8, 4, FLAGS],
+        ["NumberOfImports", "uint32", 12, 4, COUNT], ["ImportList", "uint32", 16, 4, VA], ["ImportEntrySize", "uint32", 20, 4, SIZE],
+        ["FamilyID", "uint8[16]", 24, 16, ID], ["ImageID", "uint8[16]", 40, 16, ID], ["ImageVersion", "uint32", 56, 4, NONE],
+        ["SecurityVersion", "uint32", 60, 4, NONE], ["EnclaveSize", "uint64", 64, 8, SIZE], ["NumberOfThreads", "uint32", 72, 4, COUNT],
+        ["EnclaveFlags", "uint32", 76, 4, FLAGS]],
+    enclave_import: [["MatchType", "uint32", 0, 4, ID], ["MinimumSecurityVersion", "uint32", 4, 4, NONE],
+        ["UniqueOrAuthorID", "uint8[32]", 8, 32, ID], ["FamilyID", "uint8[16]", 40, 16, ID], ["ImageID", "uint8[16]", 56, 16, ID],
+        ["ImportName", "uint32", 72, 4, VA], ["Reserved", "uint32", 76, 4, RESERVED]],
+    volatile: [["Size", "uint32", 0, 4, SIZE], ["Version", "uint32", 4, 4, ID], ["VolatileAccessTable", "uint32", 8, 4, VA],
+        ["VolatileAccessTableSize", "uint32", 12, 4, SIZE], ["VolatileInfoRangeTable", "uint32", 16, 4, VA],
+        ["VolatileInfoRangeTableSize", "uint32", 20, 4, SIZE]],
+    volatile_range: [["Rva", "uint32", 0, 4, VA], ["Size", "uint32", 4, 4, SIZE]],
+    chpe: [["Version", "uint32", 0, 4, ID], ["CodeMap", "uint32", 4, 4, VA], ["CodeMapCount", "uint32", 8, 4, COUNT],
+        ["CodeRangesToEntryPoints", "uint32", 12, 4, VA], ["RedirectionMetadata", "uint32", 16, 4, VA],
+        ["__os_arm64x_dispatch_call_no_redirect", "uint32", 20, 4, VA], ["__os_arm64x_dispatch_ret", "uint32", 24, 4, VA],
+        ["__os_arm64x_dispatch_call", "uint32", 28, 4, VA], ["__os_arm64x_dispatch_icall", "uint32", 32, 4, VA],
+        ["__os_arm64x_dispatch_icall_cfg", "uint32", 36, 4, VA], ["AlternateEntryPoint", "uint32", 40, 4, VA], ["AuxiliaryIAT", "uint32", 44, 4, VA],
+        ["CodeRangesToEntryPointsCount", "uint32", 48, 4, COUNT], ["RedirectionMetadataCount", "uint32", 52, 4, COUNT],
+        ["GetX64InformationFunctionPointer", "uint32", 56, 4, VA], ["SetX64InformationFunctionPointer", "uint32", 60, 4, VA],
+        ["ExtraRFETable", "uint32", 64, 4, VA], ["ExtraRFETableSize", "uint32", 68, 4, SIZE], ["__os_arm64x_dispatch_fptr", "uint32", 72, 4, VA],
+        ["AuxiliaryIATCopy", "uint32", 76, 4, VA], ["AuxiliaryDelayloadIAT", "uint32", 80, 4, VA],
+        ["AuxiliaryDelayloadIATCopy", "uint32", 84, 4, VA], ["HybridImageInfoBitfield", "uint32", 88, 4, FLAGS]],
+    chpe_code_range: [["StartOffsetAndType", "uint32", 0, 4, FLAGS], ["Length", "uint32", 4, 4, SIZE]],
+    chpe_range_entry: [["StartRva", "uint32", 0, 4, VA], ["EndRva", "uint32", 4, 4, VA], ["EntryPoint", "uint32", 8, 4, VA]],
+    chpe_redirect: [["Source", "uint32", 0, 4, VA], ["Destination", "uint32", 4, 4, VA]],
+    bound: [["TimeDateStamp", "uint32", 0, 4, TIMESTAMP], ["OffsetModuleName", "uint16", 4, 2, OFFSET],
+        ["NumberOfModuleForwarderRefs", "uint16", 6, 2, COUNT]],
+    bound_forwarder: [["TimeDateStamp", "uint32", 0, 4, TIMESTAMP], ["OffsetModuleName", "uint16", 4, 2, OFFSET],
+        ["Reserved", "uint16", 6, 2, RESERVED]],
+    delay: [["Attributes", "uint32", 0, 4, FLAGS], ["DllNameRVA", "uint32", 4, 4, POINTER], ["ModuleHandleRVA", "uint32", 8, 4, POINTER],
+        ["ImportAddressTableRVA", "uint32", 12, 4, POINTER], ["ImportNameTableRVA", "uint32", 16, 4, POINTER],
+        ["BoundImportAddressTableRVA", "uint32", 20, 4, POINTER], ["UnloadInformationTableRVA", "uint32", 24, 4, POINTER],
+        ["TimeDateStamp", "uint32", 28, 4, TIMESTAMP]],
+    arm64x_fixup: [["TypeOffsetArg", "uint16", 0, 2, FLAGS]],
+    arm64x_delta: [["TypeOffsetSignScale", "uint16", 0, 2, FLAGS], ["Magnitude", "uint16", 2, 2, NONE]],
+    r2r: [["Magic", "char[4]", 0, 4, ID], ["Signature", "uint8[16]", 4, 16, ID], ["Version", "uint32", 20, 4, NONE]],
+    debug_function32: [["StartingAddress", "uint32", 0, 4, VA], ["EndingAddress", "uint32", 4, 4, VA], ["EndOfPrologue", "uint32", 8, 4, VA]],
+    debug_function64: [["StartingAddress", "uint64", 0, 8, VA], ["EndingAddress", "uint64", 8, 8, VA],
+        ["EndOfPrologueOrUnwindInfoAddress", "uint64", 16, 8, POINTER]],
+    xdata_extended: [["ExtendedEpilogCount", "uint16", 0, 2, COUNT], ["ExtendedCodeWords", "uint8", 2, 1, COUNT],
+        ["Reserved", "uint8", 3, 1, RESERVED]],
+    xdata_scope: [["Scope", "uint32", 0, 4, FLAGS]],
+    unwind_handler: [["HandlerRVA", "uint32", 0, 4, VA]],
+    prologue: [["PrologueByteCount", "uint8", 0, 1, COUNT]],
+    word_flags: [["Value", "uint16", 0, 2, FLAGS]],
+    policy_metadata: [["Version", "uint8", 0, 1, ID], ["Reserved", "uint8[7]", 1, 7, RESERVED], ["ApplicationId", "uint64", 8, 8, ID]],
+    policy_entry32: [["Type", "uint32", 0, 4, ID], ["PolicyId", "uint32", 4, 4, ID], ["ValueOrPointer", "uint64", 8, 8, POINTER]],
+    policy_entry64: [["Type", "uint32", 0, 4, ID], ["PolicyId", "uint32", 4, 4, ID], ["ValueOrPointer", "uint64", 8, 8, POINTER]]
+};

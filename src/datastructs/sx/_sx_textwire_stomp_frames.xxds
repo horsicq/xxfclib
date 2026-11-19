@@ -1,0 +1,89 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/other/stomp_frames/xx_stomp_frames_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxtw_stomp(q) {
+    while (q.p < q.n) {
+        if (q.c.count >= 32000) {
+            return true;
+        }
+        var a = [0];
+        var end = [0];
+        if (!sxtw_line(q, a, end)) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_command, a[0], end[0] - a[0])) {
+                return false;
+            }
+        }
+        var bytes = 0;
+        var length = false;
+        while (sxtw_line(q, a, end) && a[0] !== end[0]) {
+            var c = a[0];
+            while (c < end[0] && q.b[c] !== 58 /*:*/) {
+                c++;
+            }
+            if (c === end[0]) {
+                return false;
+            }
+            {
+                if (!sxtw_emit(q, sxtw_field_name, a[0], c - a[0])) {
+                    return false;
+                }
+            }
+            if (sxtw_eq(q, a[0], c - a[0], "content-length")) {
+                var v = [0];
+                if (!sxtw_number(q, c + 1, end[0] - c - 1, 10, v)) {
+                    return false;
+                }
+                if (!length) {
+                    bytes = v[0];
+                    length = true;
+                }
+                {
+                    if (!sxtw_emit(q, sxtw_content_length, c + 1, end[0] - c - 1)) {
+                        return false;
+                    }
+                }
+            } else {
+                {
+                    if (!sxtw_emit(q, sxtw_field_value, c + 1, end[0] - c - 1)) {
+                        return false;
+                    }
+                }
+            }
+            if (q.c.count >= 32000) {
+                return true;
+            }
+        }
+        if (length) {
+            if (bytes > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p)) {
+                return false;
+            }
+            q.p += (bytes >= SX_I64_MAX ? bytes - SX_U64_MAX : bytes);
+        } else {
+            while (q.p < q.n && q.b[q.p]) {
+                q.p++;
+            }
+        }
+        if (q.p === q.n || q.b[q.p]) {
+            return false;
+        }
+        {
+            if (!sxtw_emit(q, sxtw_control, q.p, 1)) {
+                return false;
+            }
+        }
+        q.p++;
+        while (q.p < q.n && (q.b[q.p] === 13 || q.b[q.p] === 10)) {
+            q.p++;
+        }
+    }
+    return true;
+}
+function sx_stomp_frames_build(q) {
+    return sxtw_stomp(q);
+}

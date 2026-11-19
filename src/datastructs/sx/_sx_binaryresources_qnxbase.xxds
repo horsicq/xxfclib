@@ -1,0 +1,68 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/firmware/qnxbase/xx_qnxbase_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbrs_qnx_startup_prefix_fields = layout([u32("signature", SIGNATURE), u16("version"), u8("flags1", FLAGS),
+    u8("flags2", FLAGS), u16("header_size", SIZE), u16("machine", ID), u32("startup_vaddr", VA), u32("paddr_bias"),
+    u32("image_paddr", VA), u32("ram_paddr", VA), u32("ram_size", SIZE), u32("startup_size", SIZE), u32("stored_size", SIZE),
+    u32("imagefs_paddr", VA), u32("imagefs_size", SIZE), u16("preboot_size", OFFSET), u16("zero0", RESERVED)]);
+var sxbrs_qnx_startup_prefix = sxLayout(0x603E001C, "qnx_startup_prefix", LE, sxbrs_qnx_startup_prefix_fields);
+var sxbrs_qnx_startup_header_fields = layout([u32("signature", SIGNATURE), u16("version"), u8("flags1", FLAGS),
+    u8("flags2", FLAGS), u16("header_size", SIZE), u16("machine", ID), u32("startup_vaddr", VA), u32("paddr_bias"),
+    u32("image_paddr", VA), u32("ram_paddr", VA), u32("ram_size", SIZE), u32("startup_size", SIZE), u32("stored_size", SIZE),
+    u32("imagefs_paddr", VA), u32("imagefs_size", SIZE), u16("preboot_size", OFFSET), u16("zero0", RESERVED),
+    field("zero", "uint32[3]", 12, RESERVED), field("info", "uint32[48]", 192)]);
+var sxbrs_qnx_startup_header = sxLayout(0x603E001D, "qnx_startup_header", LE, sxbrs_qnx_startup_header_fields);
+var sxbrs_qnx_block_fields = layout([u16("packed_size", SIZE)]);
+var sxbrs_qnx_block = sxLayout(0x603E001E, "qnx_block", BE, sxbrs_qnx_block_fields);
+function sxbrs_qnx(c) {
+    if (!sxbrs_eq(c, 0, "\xEBLDDDD\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00", 16)) {
+        return false;
+    }
+    var start = -1;
+    var end = c.size;
+    for (var p = 0; p + 52 <= end && p <= 65536; p += 4) {
+        if (sxbrs_num(c, p, 4, false) === 0xFF7EEB && sxbrs_num(c, p + 48, 4, false) === (p < 0 ? p + SX_U64_MAX : p) && sxbrs_num(c, p + 32, 4, false) > 0 && sxbrs_num(c, p + 32, 4, false) <= 2147483647 && sxbrs_num(c, p + 44, 4, false) > 0 && sxbrs_num(c, p + 44, 4, false) <= 134217728 && sxbrs_num(c, p + 32, 4, false) <= (end - p - 2 < 0 ? end - p - 2 + SX_U64_MAX : end - p - 2)) {
+            start = p;
+            break;
+        }
+        if (false) {
+            return false;
+        }
+    }
+    if (start < 0) {
+        return false;
+    }
+    var declared = sxbrs_num(c, start + 8, 2, false);
+    var startup = sxbrs_num(c, start + 32, 4, false);
+    var l = declared >= 256 && startup >= 256 && end - start >= 256 ? sxbrs_qnx_startup_header : sxbrs_qnx_startup_prefix;
+    if (!sxbrs_add(c, l, start)) {
+        return false;
+    }
+    var at = [start + (startup >= SX_I64_MAX ? startup - SX_U64_MAX : startup)];
+    var blocks = 0;
+    for (; ; ) {
+        var n = sxbrs_num(c, at[0], 2, true);
+        {
+            if (!sxbrs_take(c, sxbrs_qnx_block, at, end, 1)) {
+                return false;
+            }
+        }
+        if (!n) {
+            return blocks > 0;
+        }
+        if (++blocks > 1048576) {
+            return false;
+        }
+        {
+            if (!sxbrs_skip(at, end, n)) {
+                return false;
+            }
+        }
+    }
+}
+function sx_qnxbase_build(c) {
+    return sxbrs_qnx(c);
+}

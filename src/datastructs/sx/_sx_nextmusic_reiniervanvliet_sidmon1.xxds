@@ -1,0 +1,49 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/reiniervanvliet_sidmon1/xx_reiniervanvliet_sidmon1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxnextm_sid1_sequence_fields = layout([u32("track_number", ID), u8("unknown"), i8("note_transpose")]);
+var sxnextm_sid1_sequence = sxLayout(0x608B0072, "sid1_sequence", BE, sxnextm_sid1_sequence_fields);
+function sxnextm_sid1(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var limit = e < 4096 ? e : 4096;
+    var p = [0];
+    var word = [0];
+    var base;
+    var seq = [];
+    var data = [0];
+    var n = [0];
+    if (e < 1024 || !sxnextm_find16(v, p, 0x41FA, sxU64(limit - 4), e) || !sxnextm_be(v, p[0] + 2, 2, word, 0, e) || word[0] > sxU64(sxU64(e - p[0]) - 2)) {
+        return false;
+    }
+    base = p[0] + 2 + word[0];
+    p[0] += 4;
+    for (var i = 0; i < 4; i++) {
+        var at = [0];
+        if (!sxnextm_find16(v, p, 0xD1E8, sxU64(limit - 4), e) || !sxnextm_rel(v, p[0] + 2, 2, base, at, e) || !sxnextm_row(v, sxnextm_sid1_base_offset, at[0], e) || !sxnextm_rel32(v, at[0], base, seq, i, e)) {
+            return false;
+        }
+        p[0] += 4;
+    }
+    p[0] = 0;
+    for (; p[0] + 4 < limit; p[0] += 2) {
+        if (sxnextm_eq(v, p[0], "H\xE7\xFF\xFE", 4, e)) {
+            break;
+        }
+    }
+    if (p[0] + 4 >= limit || !sxnextm_find16(v, p, 0x6100, sxU64(limit - 4), e) || !sxnextm_find16(v, p, 0xD3E9, sxU64(limit - 4), e) || !sxnextm_rel(v, p[0] + 2, 2, base, word, e) || !sxnextm_row(v, sxnextm_sid1_base_offset, word[0], e) || !sxnextm_rel32(v, word[0], base, data, 0, e) || !sxnextm_row(v, sxnextm_sid1_song, data[0], e) || !sxnextm_be(v, data[0] + 28, 4, n, 0, e) || !n[0]) {
+        return false;
+    }
+    n[0]--;
+    for (i = 0; i < 4; i++) {
+        if (!sxnextm_table(v, sxnextm_sid1_sequence, seq[i], n[0], e)) {
+            return false;
+        }
+    }
+    return true;
+}
+function sx_reiniervanvliet_sidmon1_build(v) {
+    return sxnextm_sid1(v);
+}

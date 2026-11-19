@@ -1,0 +1,157 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/cpk/xx_cpk_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgco_cpk_packet_fields = layout([chars("tag", 4, ID), u32("flags", FLAGS), u64("table_bytes", SIZE)]);
+var sxgco_cpk_packet = sxLayout(0x6040004A, "cpk_packet", LE, sxgco_cpk_packet_fields);
+var sxgco_cpk_utf_sizes = [1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 4, 8];
+function sxgco_cpk_utf(v, at, size, packets, depth) {
+    var end = at + size;
+    var declared = [0];
+    var rows = [0];
+    var strings = [0];
+    var data = [0];
+    var cols = [0];
+    var width = [0];
+    var count = [0];
+    var p;
+    var rowpos = 0;
+    var sig = [];
+    if (depth > 4 || !sxgco_span(v, at, size, (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size)) || size < 32 || !sxgco_read(v, at, sig, 4, end)) {
+        return false;
+    }
+    if (sxMemcmp(sig, "@UTF", 4)) {
+        return true;
+    }
+    if (!sxgco_row(v, sxgco_cpk_utf_header, at, end) || !sxgco_word(v, at + 4, 4, true, declared, end) || declared[0] + 8 > size || !sxgco_word(v, at + 10, 2, true, rows, end) || !sxgco_word(v, at + 12, 4, true, strings, end) || !sxgco_word(v, at + 16, 4, true, data, end) || !sxgco_word(v, at + 24, 2, true, cols, end) || !sxgco_word(v, at + 26, 2, true, width, end) || !sxgco_word(v, at + 28, 4, true, count, end) || !cols[0] || cols[0] > 256 || count[0] > 0x100000) {
+        return false;
+    }
+    end = at + 8 + declared[0];
+    rows[0] += at + 8;
+    strings[0] += at + 8;
+    data[0] += at + 8;
+    if (rows[0] < at + 32 || strings[0] < rows[0] || data[0] < strings[0] || data[0] > end || count[0] && width[0] > Math.floor(sxU64(strings[0] - rows[0]) / count[0])) {
+        return false;
+    }
+    p = at + 32;
+    for (var i = 0; i < cols[0]; i++) {
+        var flags = [0];
+        var no = [0];
+        var value = [0];
+        var cell = 0;
+        var z;
+        var name = [];
+        if (!sxgco_row(v, sxgco_cpk_utf_column, p, rows[0]) || !sxgco_word(v, p, 1, false, flags, rows[0]) || !sxgco_word(v, p + 1, 4, true, no, rows[0])) {
+            return false;
+        }
+        var type = flags[0] >>> 0 & 15;
+        var storage = flags[0] >>> 0 & 0xF0;
+        if (type > 11 || no[0] >= sxU64(data[0] - strings[0])) {
+            return false;
+        }
+        z = sxgco_cpk_utf_sizes[type];
+        p += 5;
+        if (storage === 0x30) {
+            cell = p;
+            if (!sxgco_span(v, p, z, rows[0])) {
+                return false;
+            }
+            p += z;
+        } else if (storage === 0x50) {
+            if (z > sxU64(width[0] - rowpos)) {
+                return false;
+            }
+            cell = rows[0] + rowpos;
+            rowpos += z;
+        } else if (storage !== 0x10 && storage !== 0) {
+            return false;
+        }
+        var q = strings[0] + no[0];
+        var j = 0;
+        for (; j < 31 && q + j < data[0]; j++) {
+            var c = [0];
+            if (!sxgco_word(v, q + j, 1, false, c, data[0])) {
+                return false;
+            }
+            name[j] = c[0] << 24 >> 24;
+            if (!c[0]) {
+                break;
+            }
+        }
+        name[j] = 0;
+        if (cell && count[0] && type < 8 && !sxgco_word(v, cell, z >>> 0, true, value, end)) {
+            return false;
+        }
+        if (packets !== null && count[0] && type < 8) {
+            if (!sxStrcmp(name, "TocOffset")) {
+                packets[0] = value[0];
+            } else if (!sxStrcmp(name, "ItocOffset")) {
+                packets[1] = value[0];
+            }
+        }
+        if (cell && count[0] && type === 11 && (!sxStrcmp(name, "DataL") || !sxStrcmp(name, "DataH"))) {
+            var off = [0];
+            var len = [0];
+            if (!sxgco_word(v, cell, 4, true, off, end) || !sxgco_word(v, cell + 4, 4, true, len, end) || off[0] > sxU64(end - data[0]) || len[0] > sxU64(sxU64(end - data[0]) - off[0])) {
+                return false;
+            }
+            if (len[0] && !sxgco_cpk_utf(v, data[0] + off[0], len[0], null, (depth + 1) >>> 0)) {
+                return false;
+            }
+        }
+    }
+    return sxgco_table(v, sxgco_filename_byte, strings[0], sxU64(data[0] - strings[0]), end);
+}
+function sxgco_cpk_parse_packet(v, at, pointers) {
+    var z = [0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    return sxgco_row(v, sxgco_cpk_packet, at, e) && sxgco_word(v, at + 8, 8, false, z, e) && sxgco_span(v, at + 16, z[0], e) && sxgco_cpk_utf(v, at + 16, z[0], pointers, 0);
+}
+function sxgco_cpk(v) {
+    var refs = [0, 0];
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    if (!sxgco_cpk_parse_packet(v, 0, refs)) {
+        return false;
+    }
+    for (var i = 0; i < 2; i++) {
+        if (refs[i] && refs[i] !== SX_U64_MAX) {
+            var tag = [];
+            if (!sxgco_read(v, refs[i], tag, 4, e) || sxMemcmp(tag, i ? "ITOC" : "TOC ", 4) || !sxgco_cpk_parse_packet(v, refs[i], null)) {
+                return false;
+            }
+        }
+    }
+    var f = v.c.f;
+    var s = sxArcCreate(f);
+    if (s === null) {
+        return true;
+    }
+    var ok = true;
+    var count = 0;
+    do {
+        var r = sxArcCurrent(f, s);
+        if (r === null) {
+            break;
+        }
+        if (++count > 0x100000) {
+            ok = false;
+            break;
+        }
+        if (r.data_offset < f.base_address || r.compressed_size < 16) {
+            continue;
+        }
+        var at = (r.data_offset - f.base_address < 0 ? r.data_offset - f.base_address + SX_U64_MAX : r.data_offset - f.base_address);
+        var h = [];
+        if (sxgco_read(v, at, h, 8, e) && !sxMemcmp(h, "CRILAYLA", 8) && !sxgco_row(v, sxgco_cpk_crilayla, at, e)) {
+            ok = false;
+            break;
+        }
+    } while (sxArcNext(f, s));
+    sxArcFree(f, s);
+    return ok;
+}
+function sx_cpk_build(v) {
+    return sxgco_cpk(v);
+}

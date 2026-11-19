@@ -1,0 +1,48 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/valve_xzp/xx_valve_xzp_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_xzp_mapping_fields = layout([u16("preload_entry", ID)]);
+var sxga_xzp_mapping = sxLayout(0x603B0039, "xzp_mapping", LE, sxga_xzp_mapping_fields);
+var sxga_xzp_footer_fields = layout([u32("file_bytes", SIZE), chars("magic", 4, SIGNATURE)]);
+var sxga_xzp_footer = sxLayout(0x603B003B, "xzp_footer", LE, sxga_xzp_footer_fields);
+function sxga_xzp(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var n = [0];
+    var p = [0];
+    var z = [0];
+    var m = [0];
+    var at = [0];
+    var names = [0];
+    var table_end;
+    if (!sxga_row(v, sxga_xzp_header, 0, end) || !sxga_word(v, 8, 4, false, p, 0, end) || !sxga_word(v, 12, 4, false, n, 0, end) || !sxga_word(v, 16, 4, false, z, 0, end) || !sxga_word(v, 24, 4, false, m, 0, end) || !sxga_word(v, 28, 4, false, at, 0, end) || !sxga_word(v, 32, 4, false, names, 0, end) || m[0] > 1000000) {
+        return false;
+    }
+    if (!sxga_table(v, sxga_xzp_entry, 36, n[0], end)) {
+        return false;
+    }
+    if (z[0] && (!sxga_table(v, sxga_xzp_entry, 36 + 12 * n[0], p[0], end) || !sxga_table(v, sxga_xzp_mapping, 36 + 12 * (n[0] + p[0]), n[0], end))) {
+        return false;
+    }
+    if (!sxga_span(v, at[0], names[0], end) || !sxga_table(v, sxga_xzp_name, at[0], m[0], at[0] + names[0])) {
+        return false;
+    }
+    table_end = at[0] + names[0];
+    for (var i = 0; i < m[0]; i++) {
+        var pos = [0];
+        var start;
+        if (!sxga_word(v, at[0] + 12 * i + 4, 4, false, pos, 0, table_end)) {
+            return false;
+        }
+        start = pos[0];
+        if (pos[0] >= at[0] + 12 * m[0] && pos[0] < table_end && sxga_cstring(v, pos, table_end, 256) && !sxga_named(v, start, sxU64(pos[0] - start), table_end, false)) {
+            return false;
+        }
+    }
+    return end >= 8 && sxga_row(v, sxga_xzp_footer, sxU64(end - 8), end);
+}
+function sx_valve_xzp_build(v) {
+    return sxga_xzp(v);
+}

@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/audio/die_music/altar_onyxmusicfile/xx_altar_onyxmusicfile_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxamip_omf_identity_fields = layout([chars("signature", 15, SIGNATURE), u8("eof_marker", ID), u8("zero"), u8("version", ID)]);
+var sxamip_omf_identity = sxLayout(0x6090000C, "omf_identity", LE, sxamip_omf_identity_fields);
+var sxamip_omf_unknown_fields = layout([u16("unknown")]);
+var sxamip_omf_unknown = sxLayout(0x60900010, "omf_unknown", LE, sxamip_omf_unknown_fields);
+var sxamip_omf_pattern_fields = layout([u16("zero"), u8("channels", COUNT)]);
+var sxamip_omf_pattern = sxLayout(0x60900011, "omf_pattern", LE, sxamip_omf_pattern_fields);
+var sxamip_omf_sample_data_fields = layout([u8("marker", ID), u16("sample_bytes", SIZE)]);
+var sxamip_omf_sample_data = sxLayout(0x60900013, "omf_sample_data", LE, sxamip_omf_sample_data_fields);
+function sxamip_omf(v) {
+    var e = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var channels = [0];
+    var patterns = [0];
+    var positions = [0];
+    var p = [1306];
+    var z = [0];
+    if (!sxamip_eq(v, 0, "Onyx Music File\x1A\x00\x01", 18, e) || !sxamip_span(v, 0, p[0], e) || !sxamip_u(v, 402, 1, channels, e) || !sxamip_u(v, 403, 1, patterns, e) || !sxamip_u(v, 404, 1, positions, e) || sxAnd64(positions[0], 1)) {
+        return false;
+    }
+    channels[0]++;
+    patterns[0]++;
+    positions[0] = Math.floor(positions[0] / 2) + 1;
+    if (positions[0] > 128 || !sxamip_row(v, sxamip_omf_identity, 0, e) || !sxamip_table(v, sxamip_omf_position, 18, 128, e) || !sxamip_row(v, sxamip_omf_header_tail, 402, e) || !sxamip_table(v, sxamip_omf_sample, 436, 31, e) || !sxamip_row(v, sxamip_omf_unknown, 1304, e)) {
+        return false;
+    }
+    for (var i = 0; i < patterns[0]; i++) {
+        var nc = [0];
+        var zero = [0];
+        if (!sxamip_u(v, p[0], 2, zero, e) || zero[0] || !sxamip_u(v, p[0] + 2, 1, nc, e) || nc[0] !== channels[0] || !sxamip_take(v, sxamip_omf_pattern, p, 1, e) || !sxamip_take(v, sxamip_omf_event, p, 64 * channels[0], e)) {
+            return false;
+        }
+    }
+    for (i = 0; i < 31; i++) {
+        var declared = [0];
+        if (!sxamip_u(v, 436 + i * 28 + 24, 2, declared, e)) {
+            return false;
+        }
+        if (declared[0]) {
+            var mark = [0];
+            if (!sxamip_u(v, p[0], 1, mark, e) || mark[0] || !sxamip_u(v, p[0] + 1, 2, z, e) || z[0] !== declared[0] || !sxamip_take(v, sxamip_omf_sample_data, p, 1, e) || !sxamip_skip(v, p, z[0], e)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+function sx_altar_onyxmusicfile_build(v) {
+    return sxamip_omf(v);
+}

@@ -1,0 +1,43 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/filesystem/cffa/xx_cffa_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+function sxdt_cffa(c) {
+    var slot = 33554432;
+    var slots = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / slot);
+    if ((c.size < 0 ? c.size + SX_U64_MAX : c.size) % slot === sxU64(slot - 512)) {
+        slots++;
+    }
+    var six = (c.size < 0 ? c.size + SX_U64_MAX : c.size) === 4 * slot + 0x80000000 || (c.size < 0 ? c.size + SX_U64_MAX : c.size) === 4 * slot + 0x80000000 - 512;
+    if (six) {
+        slots = 6;
+    }
+    if (slots !== 4 && slots !== 8 && !six) {
+        return false;
+    }
+    var p = 0;
+    for (var i = 0; i < slots; i++) {
+        var n = six && i >= 4 ? 1073741824 : slot;
+        if (n > sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p)) {
+            n = sxU64((c.size < 0 ? c.size + SX_U64_MAX : c.size) - p);
+        }
+        var b = [];
+        if (!sxdt_read(c, p + 1024, b, 0, 512)) {
+            return false;
+        }
+        if (sxdt_av_pd_header(b) || b[0] === 66 /*B*/ && b[1] === 68 /*D*/) {
+            if (!sxdt_child(c, p, n)) {
+                return false;
+            }
+        }
+        p += n;
+    }
+    return c.count !== 0;
+}
+function sx_cffa_build(c) {
+    var ok = false;
+    ok = sxdt_cffa(c);
+    return !!(ok && c.count && sxdt_finish(c));
+}

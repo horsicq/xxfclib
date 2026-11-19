@@ -1,0 +1,72 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/infogramesft/xx_infogramesft_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxga_ipak_inline_prefix_fields = layout([u8("marker", SIGNATURE), u8("descriptor_bytes", SIZE)]);
+var sxga_ipak_inline_prefix = sxLayout(0x603B004F, "ipak_inline_prefix", LE, sxga_ipak_inline_prefix_fields);
+function sxga_ipak(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var table = [0];
+    var last = 0;
+    if (!sxga_word(v, 4, 4, false, table, 0, end) || table[0] % 4 || !sxga_table(v, sxga_ipak_offset, 0, Math.floor(table[0] / 4), end)) {
+        return false;
+    }
+    var state = sxArcCreate(v.c.f);
+    if (state === null) {
+        return false;
+    }
+    var ok = true;
+    do {
+        var r = sxArcCurrent(v.c.f, state);
+        if (r === null) {
+            break;
+        }
+        var off;
+        var n = [0];
+        var extra = [0];
+        var inl = [0];
+        var packed = [0];
+        var mark = [0];
+        var length = [0];
+        if (r.header_offset < v.c.f.base_address) {
+            ok = false;
+            break;
+        }
+        off = (r.header_offset - v.c.f.base_address < 0 ? r.header_offset - v.c.f.base_address + SX_U64_MAX : r.header_offset - v.c.f.base_address);
+        if (!sxga_word(v, off, 4, false, n, 0, end)) {
+            ok = false;
+            break;
+        }
+        if (n[0] === 0x04034B50) {
+            if (!sxga_row(v, sxga_ipak_local_crumb, off, end)) {
+                ok = false;
+                break;
+            }
+            off += 16;
+        }
+        if (!sxga_row(v, sxga_ipak_entry, off, end) || !sxga_word(v, off, 4, false, extra, 0, end) || !sxga_word(v, off + 4, 4, false, packed, 0, end) || !sxga_word(v, off + 14, 2, false, inl, 0, end) || !sxga_span(v, off + 16, inl[0] + extra[0] + packed[0], end)) {
+            ok = false;
+            break;
+        }
+        if (inl[0] >= 3 && sxga_word(v, off + 16, 1, false, mark, 0, end) && sxga_word(v, off + 17, 1, false, length, 0, end) && mark[0] === 0x49 && length[0] === inl[0]) {
+            if (!sxga_row(v, sxga_ipak_inline_prefix, off + 16, end) || !sxga_named(v, off + 18, sxU64(inl[0] - 2), end, false)) {
+                ok = false;
+                break;
+            }
+        }
+        if (off + 16 + inl[0] + extra[0] + packed[0] > last) {
+            last = off + 16 + inl[0] + extra[0] + packed[0];
+        }
+    } while (sxArcNext(v.c.f, state));
+    sxArcFree(v.c.f, state);
+    var tag = [0];
+    if (ok && sxga_span(v, last, 16, end) && sxga_word(v, last, 4, false, tag, 0, end) && tag[0] === 0x02014B50) {
+        ok = sxga_row(v, sxga_ipak_central_crumb, last, end);
+    }
+    return ok;
+}
+function sx_infogramesft_build(v) {
+    return sxga_ipak(v);
+}

@@ -1,0 +1,41 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/game/nintendo_unif/xx_nintendo_unif_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxgp_unif_header_fields = layout([blob("signature", 4, SIGNATURE), u32("version", ID), blob("reserved", 24, RESERVED)]);
+var sxgp_unif_header = sxLayout(0x6036000F, "unif_header", LE, sxgp_unif_header_fields);
+var sxgp_unif_chunk_fields = layout([blob("chunk_id", 4, ID), u32("data_size", SIZE)]);
+var sxgp_unif_chunk = sxLayout(0x60360010, "unif_chunk", LE, sxgp_unif_chunk_fields);
+var sxgp_unif_crc_fields = layout([u32("crc32", CHECKSUM)]);
+var sxgp_unif_crc = sxLayout(0x60360011, "unif_crc", LE, sxgp_unif_crc_fields);
+var sxgp_unif_mirroring_fields = layout([u8("mirroring", ID)]);
+var sxgp_unif_mirroring = sxLayout(0x60360012, "unif_mirroring", LE, sxgp_unif_mirroring_fields);
+function sxgp_unif(v) {
+    var end = (v.c.size < 0 ? v.c.size + SX_U64_MAX : v.c.size);
+    var p = 32;
+    var z = [0];
+    var tag = [];
+    if (!sxgp_row(v, sxgp_unif_header, 0, end)) {
+        return false;
+    }
+    while (p < end) {
+        if (!sxgp_row(v, sxgp_unif_chunk, p, end) || !sxgp_read(v, p, tag, 4, end) || !sxgp_word(v, p + 4, 4, false, z, 0, end) || !sxgp_span(v, p + 8, z[0], end)) {
+            return false;
+        }
+        p += 8;
+        if ((!sxMemcmp(tag, "PCK", 3) || !sxMemcmp(tag, "CCK", 3)) && z[0] === 4) {
+            if (!sxgp_row(v, sxgp_unif_crc, p, p + z[0])) {
+                return false;
+            }
+        } else if (!sxMemcmp(tag, "MIRR", 4) && z[0] === 1 && !sxgp_row(v, sxgp_unif_mirroring, p, p + z[0])) {
+            return false;
+        }
+        p += z[0];
+    }
+    return p === end;
+}
+function sx_nintendo_unif_build(v) {
+    return sxgp_unif(v);
+}

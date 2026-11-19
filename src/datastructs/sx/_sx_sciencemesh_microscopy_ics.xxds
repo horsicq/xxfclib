@@ -1,0 +1,123 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/science/microscopy_ics/xx_microscopy_ics_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxsm_filename_fields = layout([field("filename", "char", 0, STRING)]);
+var sxsm_filename = sxLayout(0x6063000E, "mesh_filename", LE, sxsm_filename_fields);
+var sxsm_significant_bits_fields = layout([field("significant_bits", "ascii_signed", 0)]);
+var sxsm_significant_bits = sxLayout(0x6063003B, "mesh_significant_bits", LE, sxsm_significant_bits_fields);
+var sxsm_ics_parameter_count_fields = layout([field("ics_parameter_count", "ascii_signed", 0, COUNT)]);
+var sxsm_ics_parameter_count = sxLayout(0x6063003C, "mesh_ics_parameter_count", LE, sxsm_ics_parameter_count_fields);
+var sxsm_byte_order_index_fields = layout([field("byte_order_index", "ascii_signed", 0)]);
+var sxsm_byte_order_index = sxLayout(0x6063003D, "mesh_byte_order_index", LE, sxsm_byte_order_index_fields);
+var sxsm_parameter_origin_fields = layout([field("parameter_origin", "ascii_real", 0)]);
+var sxsm_parameter_origin = sxLayout(0x6063003E, "mesh_parameter_origin", LE, sxsm_parameter_origin_fields);
+var sxsm_parameter_scale_fields = layout([field("parameter_scale", "ascii_real", 0)]);
+var sxsm_parameter_scale = sxLayout(0x6063003F, "mesh_parameter_scale", LE, sxsm_parameter_scale_fields);
+var sxsm_axis_name_fields = layout([field("axis_name", "char", 0, STRING)]);
+var sxsm_axis_name = sxLayout(0x60630074, "mesh_axis_name", LE, sxsm_axis_name_fields);
+var sxsm_axis_unit_fields = layout([field("axis_unit", "char", 0, STRING)]);
+var sxsm_axis_unit = sxLayout(0x60630075, "mesh_axis_unit", LE, sxsm_axis_unit_fields);
+function sxsm_ics(q) {
+    var line = sxNew_sxsm_token();
+    var t = sxAllocN(32, sxNew_sxsm_token);
+    var n = [0];
+    if (!sxsm_line(q, line)) {
+        return false;
+    }
+    while (sxsm_next(q, line, t[0], 32, n, "")) {
+        if (q.c.count >= 24000) {
+            return true;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, t[0]))) {
+                return false;
+            }
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "end")) {
+            return true;
+        }
+        if (n[0] < 2) {
+            return false;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "ics_version")) {
+            {
+                if (!sxsm_emit(q, sxsm_option_value, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "filename")) {
+            {
+                if (!sxsm_emit(q, sxsm_filename, sxCopy_sxsm_token(null, t[1]))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "history")) {
+            {
+                if (!sxsm_emit(q, sxsm_text_value, sxCopy_sxsm_token(null, { a: t[1].a, z: line.a + line.z - t[1].a }))) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        {
+            if (!sxsm_emit(q, sxsm_key, sxCopy_sxsm_token(null, t[1]))) {
+                return false;
+            }
+        }
+        if (n[0] < 3) {
+            return false;
+        }
+        var l = sxsm_option_value;
+        if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "layout")) {
+            if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "parameters")) {
+                l = sxsm_ics_parameter_count;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "sizes")) {
+                {
+                    if (!sxsm_emit(q, sxsm_sample_bits, sxCopy_sxsm_token(null, t[2]))) {
+                        return false;
+                    }
+                }
+                if (!sxsm_each(q, t, 3, (n[0] - 3) >>> 0, sxsm_axis_count)) {
+                    return false;
+                }
+                continue;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "significant_bits")) {
+                l = sxsm_significant_bits;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "order")) {
+                l = sxsm_axis_name;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "representation")) {
+            if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "byte_order")) {
+                l = sxsm_byte_order_index;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "format")) {
+                l = sxsm_type_name;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "compression")) {
+                l = sxsm_encoding;
+            }
+        } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[0]), "parameter")) {
+            if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "origin")) {
+                l = sxsm_parameter_origin;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "scale")) {
+                l = sxsm_parameter_scale;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "units")) {
+                l = sxsm_axis_unit;
+            } else if (sxsm_eq(q, sxCopy_sxsm_token(null, t[1]), "labels")) {
+                l = sxsm_axis_name;
+            }
+        }
+        if (!sxsm_each(q, t, 2, (n[0] - 2) >>> 0, l)) {
+            return false;
+        }
+    }
+    return false;
+}
+function sx_microscopy_ics_build(q) {
+    return sxsm_ics(q);
+}

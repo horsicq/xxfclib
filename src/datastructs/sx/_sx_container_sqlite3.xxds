@@ -1,0 +1,60 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/database/sqlite3/xx_sqlite3_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_c_sqlite_cell_pointer_fields = layout([u16("cell_offset", OFFSET)]);
+var sx_c_sqlite_cell_pointer = sxLayout(0x60020025, "sqlite_cell_pointer", BE, sx_c_sqlite_cell_pointer_fields);
+function sx_c_sqlite(c) {
+    var h = [];
+    var b = [];
+    var page;
+    var pages;
+    var usable;
+    var cells;
+    var start;
+    var freeblock;
+    var header;
+    if (!sx_read(c, 0, h, 100) || sxMemcmp(h, "SQLite format 3\x00", 16)) {
+        return false;
+    }
+    page = sxGetU16At(h, 16, 2, 0, true);
+    if (page === 1) {
+        page = 65536;
+    }
+    pages = sxGetU32At(h, 28, 4, 0, true);
+    if (page < 512 || page > 65536 || (page & (page - 1) >>> 0) >>> 0 || h[20] > (page - 480) >>> 0 || !pages || pages > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / page)) {
+        return false;
+    }
+    usable = (page - h[20]) >>> 0;
+    if (!sx_add(c, sx_c_sqlite3_database_header, 0, 100) || !sx_read(c, 100, b, 8)) {
+        return false;
+    }
+    if (b[0] !== 5 && b[0] !== 13) {
+        return false;
+    }
+    header = b[0] === 5 ? 12 : 8;
+    cells = sxGetU16At(b, 3, 2, 0, true);
+    start = sxGetU16At(b, 5, 2, 0, true);
+    freeblock = sxGetU16At(b, 1, 2, 0, true);
+    if ((((100 + header) >>> 0) + 2 * cells) >>> 0 > usable || start && (start < (((100 + header) >>> 0) + 2 * cells) >>> 0 || start > usable) || b[7] > 60 || freeblock && (freeblock < (((100 + header) >>> 0) + 2 * cells) >>> 0 || freeblock > (usable - 4) >>> 0)) {
+        return false;
+    }
+    if (!sx_add(c, b[0] === 5 ? sx_c_sqlite_btree_interior_page_header : sx_c_sqlite_btree_leaf_page_header, 100, header) || !sx_table(c, sx_c_sqlite_cell_pointer, (100 + header) >>> 0, 2, cells)) {
+        return false;
+    }
+    for (var i = 0; i < cells; ++i) {
+        var cell;
+        if ((cell = sx_u16(c, (((100 + header) >>> 0) + ((2 * i) >>> 0)) >>> 0, true)) === null || cell < (((100 + header) >>> 0) + 2 * cells) >>> 0 || cell >= usable) {
+            return false;
+        }
+    }
+    if (!sx_raw(c, (((100 + header) >>> 0) + 2 * cells) >>> 0, (page - ((((100 + header) >>> 0) + 2 * cells) >>> 0)) >>> 0)) {
+        return false;
+    }
+    return sx_raw(c, page, ((pages - 1) >>> 0) * page) && sx_raw(c, pages * page, c.size - pages * page);
+}
+function sx_sqlite3_build(c) {
+    return sx_c_sqlite(c);
+}

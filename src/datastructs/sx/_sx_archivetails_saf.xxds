@@ -1,0 +1,59 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/saf/xx_saf_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxat_saf_banner29_fields = layout([chars("banner", 29, SIGNATURE)]);
+var sxat_saf_banner29 = sxLayout(0x60640003, "saf_banner29", LE, sxat_saf_banner29_fields);
+var sxat_saf_banner47_fields = layout([chars("banner", 47, SIGNATURE)]);
+var sxat_saf_banner47 = sxLayout(0x60640004, "saf_banner47", LE, sxat_saf_banner47_fields);
+var sxat_saf_member_fields = layout([chars("name", 14, NONE), i32("uncompressed_size", SIZE), i32("compressed_size", SIZE),
+    u16("dos_date"), u16("dos_time"), u8("unknown"), u8("method"), bytes("opaque", 7)]);
+var sxat_saf_member = sxLayout(0x60640005, "saf_member", LE, sxat_saf_member_fields);
+var sxat_saf_chunk_fields = layout([i32("compressed_size", SIZE)]);
+var sxat_saf_chunk = sxLayout(0x60640006, "saf_chunk", LE, sxat_saf_chunk_fields);
+function sxat_saf(c) {
+    var b = [];
+    if (!sxat_read(c, 0, b, 47)) {
+        return false;
+    }
+    var p = b[27] === 0x1A && b[28] === 0 ? 29 : 47;
+    if (!sxat_add(c, p === 29 ? sxat_saf_banner29 : sxat_saf_banner47, 0)) {
+        return false;
+    }
+    while (sxat_span(c, p, 35)) {
+        var h = [];
+        if (!sxat_read(c, p, h, 35)) {
+            return false;
+        }
+        var z = sxat_uint(h, 18, 4, false);
+        if (z > 2147483647 || !sxat_add(c, sxat_saf_member, p)) {
+            return false;
+        }
+        p += 35;
+        if (!sxat_span(c, p, z)) {
+            return true;
+        }
+        if (h[27] !== 3) {
+            var q = p;
+            var end = p + z;
+            while (q < end) {
+                var n = [0];
+                if (sxU64(end - q) < 4 || !sxat_word(c, q, 4, false, n) || n[0] > 2147483647 || !sxat_add(c, sxat_saf_chunk, q)) {
+                    break;
+                }
+                q += 4;
+                if (n[0] > sxU64(end - q)) {
+                    break;
+                }
+                q += n[0];
+            }
+        }
+        p += z;
+    }
+    return true;
+}
+function sx_saf_build(c) {
+    return sxat_saf(c);
+}

@@ -1,0 +1,187 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/enigma_virtual_box/xx_enigma_virtual_box_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxbx_evb_header_fields = layout([chars("signature", 4, SIGNATURE), u32("header_size", SIZE)]);
+var sxbx_evb_header = sxLayout(0x603000E6, "evb_header", LE, sxbx_evb_header_fields);
+var sxbx_evb_table_prefix_fields = layout([u32("node_size", SIZE), u32("unknown1"), u32("unknown2"), u32("root_count", COUNT)]);
+var sxbx_evb_table_prefix = sxLayout(0x603000E7, "evb_table_prefix", LE, sxbx_evb_table_prefix_fields);
+var sxbx_evb_node_fields = layout([u32("node_size", SIZE), u32("unknown1"), u32("unknown2"), u32("child_count", COUNT)]);
+var sxbx_evb_node = sxLayout(0x603000E8, "evb_node", LE, sxbx_evb_node_fields);
+var sxbx_evb_node_type_fields = layout([u8("type", ID)]);
+var sxbx_evb_node_type = sxLayout(0x603000E9, "evb_node_type", LE, sxbx_evb_node_type_fields);
+var sxbx_evb_file_stored_size_fields = layout([u32("packed_size", SIZE)]);
+var sxbx_evb_file_stored_size = sxLayout(0x603000EA, "evb_file_stored_size", LE, sxbx_evb_file_stored_size_fields);
+var sxbx_evb_file_modern_fields = layout([u16("reserved0"), u32("unpacked_size", SIZE), u32("unknown"), u64("filetime1"),
+    u64("filetime2"), u64("filetime3"), bytes("reserved1", 15), u32("packed_size", SIZE)]);
+var sxbx_evb_file_modern = sxLayout(0x603000F8, "evb_file_modern", LE, sxbx_evb_file_modern_fields);
+var sxbx_evb_file_legacy_fields = layout([u16("reserved0"), u32("unpacked_size", SIZE), u32("unknown"), u64("filetime1"),
+    u64("filetime2"), u64("filetime3"), bytes("reserved1", 7), u32("packed_size", SIZE), u32("reserved2")]);
+var sxbx_evb_file_legacy = sxLayout(0x603000F9, "evb_file_legacy", LE, sxbx_evb_file_legacy_fields);
+var sxbx_evb_chunk_header_fields = layout([u32("table_size", SIZE), u32("unknown")]);
+var sxbx_evb_chunk_header = sxLayout(0x603000FA, "evb_chunk_header", LE, sxbx_evb_chunk_header_fields);
+var sxbx_evb_chunk_entry_fields = layout([u32("packed_size", SIZE), u32("total_size", SIZE), u32("reserved")]);
+var sxbx_evb_chunk_entry = sxLayout(0x603000FB, "evb_chunk_entry", LE, sxbx_evb_chunk_entry_fields);
+var sxbx_evb_ap32_fields = layout([chars("signature", 4, SIGNATURE), u32("header_size", SIZE), u32("packed_size", SIZE),
+    u32("packed_crc32", CHECKSUM), u32("unpacked_size", SIZE), u32("unpacked_crc32", CHECKSUM)]);
+var sxbx_evb_ap32 = sxLayout(0x603000FC, "evb_ap32", LE, sxbx_evb_ap32_fields);
+function sxbx_evb_compressed(c, p, z) {
+    var table = [0];
+    if (z < 12 || !sxbx_word(c, p, 4, false, table) || table[0] < 12 || table[0] >= z || sxU64(table[0] - 12) % 12 || table[0] > 1048576) {
+        return true;
+    }
+    if (!sxbx_add(c, sxbx_evb_chunk_header, p)) {
+        return false;
+    }
+    var count = Math.floor(sxU64(table[0] - 12) / 12) + 1;
+    var data = p + table[0];
+    for (var i = 0; i < count && c.count < 20000; i++) {
+        var n = [0];
+        var q = p + 8 + i * 12;
+        if (!sxbx_word(c, q, 4, false, n) || n[0] > sxU64(p + z - data)) {
+            break;
+        }
+        if (!sxbx_add(c, i + 1 === count ? sxbx_evb_file_stored_size : sxbx_evb_chunk_entry, q)) {
+            return false;
+        }
+        var magic = [];
+        if (n[0] >= 24 && sxbx_read(c, data, magic, 4) && !sxMemcmp(magic, "AP32", 4) && !sxbx_add(c, sxbx_evb_ap32, data)) {
+            return false;
+        }
+        data += n[0];
+    }
+    return true;
+}
+function sxbx_evb_nodes(c, p, payload, table_end, count, legacy, depth, work) {
+    if (depth > 64 || count > 20000) {
+        return false;
+    }
+    for (var i = 0; i < count; i++) {
+        if (++work[0] > 20000 || c.count >= 20000) {
+            return false;
+        }
+        var start = p[0];
+        var size = [0];
+        var children = [0];
+        var type = [0];
+        if (!sxbx_word(c, start, 4, false, size) || !sxbx_word(c, start + 12, 4, false, children) || !sxbx_span(c, start, 16)) {
+            return false;
+        }
+        if (!sx_add(c, sxbx_evb_node, (start >= SX_I64_MAX ? start - SX_U64_MAX : start), 16)) {
+            return false;
+        }
+        p[0] += 16;
+        if (!sxbx_zero_string(c, p, table_end, 2) || !sxbx_word(c, p[0], 1, false, type) || !sxbx_add(c, sxbx_evb_node_type, p[0]++)) {
+            return false;
+        }
+        if (type[0] === 3) {
+            if (legacy) {
+                if (size[0] < 16 || !sxbx_span(c, start, size[0] + 4) || start + size[0] + 4 < p[0]) {
+                    return false;
+                }
+                p[0] = start + size[0] + 4;
+            } else {
+                if (p[0] > table_end || sxU64(table_end - p[0]) < 25) {
+                    return false;
+                }
+                p[0] += 25;
+            }
+            if (!sxbx_evb_nodes(c, p, payload, table_end, children[0], legacy, (depth + 1) >>> 0, work)) {
+                return false;
+            }
+        } else if (type[0] === 2) {
+            var info;
+            var original = [0];
+            var packed = [0];
+            var data;
+            if (children[0]) {
+                return false;
+            }
+            if (legacy) {
+                if (size[0] < 45 || !sxbx_span(c, start, size[0] + 4) || start + size[0] + 4 < 49 || sxU64(start + size[0] + 4 - 49) < p[0]) {
+                    return false;
+                }
+                info = sxU64(start + size[0] + 4 - 49);
+                data = start + size[0] + 4;
+            } else {
+                info = p[0];
+                if (info > table_end || sxU64(table_end - info) < 53) {
+                    return false;
+                }
+                data = payload[0];
+            }
+            if (!sxbx_word(c, info + 2, 4, false, original) || !sxbx_word(c, info + (legacy ? 41 : 49), 4, false, packed) || !sxbx_span(c, data, packed[0]) || !sxbx_add(c, legacy ? sxbx_evb_file_legacy : sxbx_evb_file_modern, info)) {
+                return false;
+            }
+            if (original[0] !== packed[0] && !sxbx_evb_compressed(c, data, packed[0])) {
+                return false;
+            }
+            if (legacy) {
+                p[0] = data + packed[0];
+            } else {
+                p[0] = info + 53;
+                payload[0] += packed[0];
+            }
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+function sxbx_evb(c) {
+    done: {
+        var b = [];
+        var limit = (c.size < 0 ? c.size + SX_U64_MAX : c.size);
+        if (limit > 67108864) {
+            limit = 67108864;
+        }
+        var window = sxAlloc(0x10003);
+        if (window === null) {
+            return false;
+        }
+        var candidates = 0;
+        var result = false;
+        for (var chunk = 0; chunk < limit; chunk += 65536) {
+            var take = sxU64(limit - chunk) > 65539 ? 65539 : sxU64(limit - chunk);
+            if (!sxbx_read(c, chunk, window, take)) {
+                break;
+            }
+            for (var i = 0; i + 4 <= take && i < 65536; i++) {
+                if (sxMemcmpAt(window, i, "EVB\x00", 0, 4)) {
+                    continue;
+                }
+                if (++candidates > 64) {
+                    break done;
+                }
+                var p = chunk + i;
+                if (!sxbx_read(c, p, b, 80) || sxbx32(b, 4, false) !== 64) {
+                    continue;
+                }
+                var size = sxbx32(b, 64, false);
+                var count = sxbx32(b, 76, false);
+                if (!count || count > 65536 || size < 15 || !sxbx_span(c, p + 64, size + 4)) {
+                    continue;
+                }
+                for (var mode = 0; mode < 2; mode++) {
+                    var keep = c.count;
+                    var legacy = mode !== 0;
+                    var q = [legacy ? p + 68 + size : p + 79];
+                    var payload = [p + 68 + size];
+                    var table_end = legacy ? (c.size < 0 ? c.size + SX_U64_MAX : c.size) : payload[0];
+                    var work = [0];
+                    if (sxbx_add(c, sxbx_evb_header, p) && sxbx_add(c, sxbx_evb_table_prefix, p + 64) && sxbx_evb_nodes(c, q, payload, table_end, count, legacy, 0, work)) {
+                        result = true;
+                        break done;
+                    }
+                    c.count = keep;
+                }
+            }
+        }
+    }
+    return result;
+}
+function sx_enigma_virtual_box_build(c) {
+    return sxbx_evb(c);
+}

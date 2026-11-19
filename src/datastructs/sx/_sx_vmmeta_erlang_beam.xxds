@@ -1,0 +1,79 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/erlang_beam/xx_erlang_beam_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sx_vm_beam_header_fields = layout([chars("signature", 4, SIGNATURE), u32("form_size", SIZE), chars("form_type", 4, ID)]);
+var sx_vm_beam_header = sxLayout(0x6016002C, "beam_header", BE, sx_vm_beam_header_fields);
+var sx_vm_beam_chunk_header_fields = layout([chars("chunk_id", 4, ID), u32("chunk_size", SIZE)]);
+var sx_vm_beam_chunk_header = sxLayout(0x6016002D, "beam_chunk_header", BE, sx_vm_beam_chunk_header_fields);
+var sx_vm_beam_code_header_fields = layout([u32("subheader_size", SIZE), u32("instruction_set", ID), u32("opcode_maximum", ID),
+    u32("label_count", COUNT), u32("function_count", COUNT)]);
+var sx_vm_beam_code_header = sxLayout(0x6016002E, "beam_code_header", BE, sx_vm_beam_code_header_fields);
+var sx_vm_beam_atom_count_fields = layout([u32("atom_count", COUNT)]);
+var sx_vm_beam_atom_count = sxLayout(0x6016002F, "beam_atom_count", BE, sx_vm_beam_atom_count_fields);
+var sx_vm_beam_atom_length_fields = layout([u8("byte_length", SIZE)]);
+var sx_vm_beam_atom_length = sxLayout(0x60160030, "beam_atom_length", BE, sx_vm_beam_atom_length_fields);
+var sx_vm_beam_table_count_fields = layout([u32("entry_count", COUNT)]);
+var sx_vm_beam_table_count = sxLayout(0x60160031, "beam_table_count", BE, sx_vm_beam_table_count_fields);
+var sx_vm_beam_import_fields = layout([u32("module_atom_index", ID), u32("function_atom_index", ID), u32("arity", COUNT)]);
+var sx_vm_beam_import = sxLayout(0x60160032, "beam_import", BE, sx_vm_beam_import_fields);
+var sx_vm_beam_export_fields = layout([u32("function_atom_index", ID), u32("arity", COUNT), u32("label_index", ID)]);
+var sx_vm_beam_export = sxLayout(0x60160033, "beam_export", BE, sx_vm_beam_export_fields);
+function sx_vm_beam(c) {
+    var form_size;
+    if ((form_size = sx_u32(c, 4, true)) === null || form_size < 4 || !sx_vm_span(c, 8, form_size) || !sx_add(c, sx_vm_beam_header, 0, 12)) {
+        return false;
+    }
+    var at = 12;
+    var end = 8 + form_size;
+    for (var i = 0; at < end && i < 128; i++) {
+        var b = [];
+        if (sxU64(end - at) < 8 || !sx_read(c, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), b, 8)) {
+            return false;
+        }
+        var n = sxGetU32(b, 8, 4, true);
+        var padded = sxAnd64(n + 3, sxK(0xFFFFFFFF, 0xFFFFFFFC));
+        var q = at + 8;
+        if (padded > sxU64(end - q) || !sx_add(c, sx_vm_beam_chunk_header, (at >= SX_I64_MAX ? at - SX_U64_MAX : at), 8)) {
+            return false;
+        }
+        if (!sxMemcmp(b, "Code", 4)) {
+            if (n < 20 || !sx_add(c, sx_vm_beam_code_header, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 20)) {
+                return false;
+            }
+        } else if (!sxMemcmp(b, "Atom", 4) || !sxMemcmp(b, "AtU8", 4)) {
+            var count;
+            if (n < 4 || (count = sx_u32(c, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), true)) === null || count > 65536 || !sx_add(c, sx_vm_beam_atom_count, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 4)) {
+                return false;
+            }
+            var p = q + 4;
+            for (var k = 0; k < count; k++) {
+                var len = [0];
+                if (p >= q + n || !sx_read(c, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), len, 1) || len[0] > sxU64(sxU64(q + n - p) - 1) || !sx_add(c, sx_vm_beam_atom_length, (p >= SX_I64_MAX ? p - SX_U64_MAX : p), 1)) {
+                    return false;
+                }
+                p += 1 + len[0];
+            }
+            if (p !== q + n) {
+                return false;
+            }
+        } else if (!sxMemcmp(b, "ImpT", 4) || !sxMemcmp(b, "ExpT", 4) || !sxMemcmp(b, "LocT", 4)) {
+            count = 0;
+            var optional = !sxMemcmp(b, "LocT", 4);
+            if (n >= 4 && (count = sx_u32(c, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), true)) !== null && count <= 65536 && n === 4 + count * 12) {
+                if (!sx_add(c, sx_vm_beam_table_count, (q >= SX_I64_MAX ? q - SX_U64_MAX : q), 4) || !sx_table(c, !sxMemcmp(b, "ImpT", 4) ? sx_vm_beam_import : sx_vm_beam_export, (q >= SX_I64_MAX ? q - SX_U64_MAX : q) + 4, 12, count)) {
+                    return false;
+                }
+            } else if (!optional) {
+                return false;
+            }
+        }
+        at = q + padded;
+    }
+    return at === end;
+}
+function sx_erlang_beam_build(c) {
+    return sx_vm_beam(c);
+}

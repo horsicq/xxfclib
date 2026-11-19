@@ -1,0 +1,54 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/tarx1/xx_tarx1_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxarfinal_tarx1_transport_prefix_fields = layout([chars("signature", 4, SIGNATURE)]);
+var sxarfinal_tarx1_transport_prefix = sxLayout(0x6092020B, "tarx1_transport_prefix", LE, sxarfinal_tarx1_transport_prefix_fields);
+var sxarfinal_tarx1_encrypted_tar_core_fields = layout([bytes("encoded_name", 100), bytes("encoded_mode", 8),
+    bytes("encoded_uid", 8), bytes("encoded_gid", 8), bytes("encoded_size", 12), bytes("encoded_mtime", 12),
+    bytes("encoded_checksum", 8), bytes("encoded_typeflag", 1), bytes("encoded_linkname", 100)]);
+var sxarfinal_tarx1_encrypted_tar_core = sxLayout(0x6092020C, "tarx1_encrypted_tar_core", LE, sxarfinal_tarx1_encrypted_tar_core_fields);
+function sxarfinal_tarx(c) {
+    done: {
+        var f = c.f;
+        var magic = [];
+        if (!sxarfinal_read(c, 0, magic, 4) || sxMemcmp(magic, "TaRx", 4) || f.create_archive_records_reading === null || f.get_current_archive_record === null || f.archive_record_move_to_next === null || f.free_archive_records_reading === null) {
+            return false;
+        }
+        var s = f.create_archive_records_reading(f, null, c.pd);
+        if (s === null) {
+            return false;
+        }
+        var ok = false;
+        if (!sxarfinal_put(c, sxarfinal_tarx1_transport_prefix, 0)) {
+            break done;
+        }
+        for (var i = 0; i < 20000; i++) {
+            var r = f.get_current_archive_record(f, s);
+            if (r === null) {
+                ok = true;
+                break;
+            }
+            if (r.header_offset < 0 || r.header_size !== 512 || (r.header_offset < 0 ? r.header_offset + SX_U64_MAX : r.header_offset) > (0xFFFFFFFF * 4294967296 + 0xFFFFFFFB)) {
+                break done;
+            }
+            var p = (r.header_offset < 0 ? r.header_offset + SX_U64_MAX : r.header_offset) + 4;
+            if (!sxarfinal_span(c, p, 512) || !sxarfinal_put(c, sxarfinal_tarx1_encrypted_tar_core, p)) {
+                break done;
+            }
+            if (!f.archive_record_move_to_next(f, s, c.pd)) {
+                ok = true;
+                break;
+            }
+        }
+    }
+    f.free_archive_records_reading(f, s);
+    return ok;
+}
+function sx_tarx1_build(c) {
+    var ok = false;
+    ok = sxarfinal_tarx(c);
+    return !!(c.count && sxarfinal_finish(c));
+}

@@ -1,0 +1,155 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/image/polygon_ply/xx_polygon_ply_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxmt_element_name_fields = layout([field("element_name", "char", 0, STRING)]);
+var sxmt_element_name = sxLayout(0x60520004, "modeltext_element_name", LE, sxmt_element_name_fields);
+var sxmt_property_type_fields = layout([field("property_type", "char", 0, STRING)]);
+var sxmt_property_type = sxLayout(0x60520006, "modeltext_property_type", LE, sxmt_property_type_fields);
+var sxmt_count_type_fields = layout([field("count_type", "char", 0, STRING)]);
+var sxmt_count_type = sxLayout(0x60520007, "modeltext_count_type", LE, sxmt_count_type_fields);
+var sxmt_element_count_fields = layout([field("element_count", "ascii_signed", 0, COUNT)]);
+var sxmt_element_count = sxLayout(0x60520017, "modeltext_element_count", LE, sxmt_element_count_fields);
+var sxmt_list_uint8_le_fields = layout([u8("list_count", COUNT)]);
+var sxmt_list_uint8_le = sxLayout(0x60520069, "modeltext_list_uint8_le", LE, sxmt_list_uint8_le_fields);
+var sxmt_list_uint16_le_fields = layout([u16("list_count", COUNT)]);
+var sxmt_list_uint16_le = sxLayout(0x6052006A, "modeltext_list_uint16_le", LE, sxmt_list_uint16_le_fields);
+var sxmt_list_uint32_le_fields = layout([u32("list_count", COUNT)]);
+var sxmt_list_uint32_le = sxLayout(0x6052006B, "modeltext_list_uint32_le", LE, sxmt_list_uint32_le_fields);
+var sxmt_list_uint8_be_fields = layout([u8("list_count", COUNT)]);
+var sxmt_list_uint8_be = sxLayout(0x60520074, "modeltext_list_uint8_be", BE, sxmt_list_uint8_be_fields);
+var sxmt_list_uint16_be_fields = layout([u16("list_count", COUNT)]);
+var sxmt_list_uint16_be = sxLayout(0x60520075, "modeltext_list_uint16_be", BE, sxmt_list_uint16_be_fields);
+var sxmt_list_uint32_be_fields = layout([u32("list_count", COUNT)]);
+var sxmt_list_uint32_be = sxLayout(0x60520076, "modeltext_list_uint32_be", BE, sxmt_list_uint32_be_fields);
+var sxmt_ply_type_names = ["char", "int8", "uchar", "uint8", "short", "int16", "ushort", "uint16", "int", "int32", "uint",
+    "uint32", "float", "float32", "double", "float64"];
+function sxmt_ply_type(q, a, z, p) {
+    for (var i = 0; i < 16; i++) {
+        if (sxmt_eq(q, a, z, sxmt_ply_type_names[i])) {
+            p.kind = i < 4 ? i < 2 ? 73 /*I*/ : 85 /*U*/ : i < 8 ? i < 6 ? 73 /*I*/ : 85 /*U*/ : i < 12 ? i < 10 ? 73 /*I*/ : 85 /*U*/ : 70 /*F*/;
+            p.width = i < 4 ? 1 : i < 8 ? 2 : i < 14 ? 4 : 8;
+            return true;
+        }
+    }
+    return false;
+}
+function sxmt_ply(q) {
+    var sxb1, sxr2;
+    done: {
+        var es = sxAllocN(32, sxNew_sxmt_element);
+        if (es === null) {
+            return false;
+        }
+        sxFillN(es, 0, 32, sxNew_sxmt_element);
+        var ok = false;
+        var be = false;
+        var ended = false;
+        var ne = 0;
+        var a = [0];
+        var e = [0];
+        var z = [0];
+        var k = [0];
+        if (!sxmt_line(q, a, e, false) || !sxmt_emit(q, sxmt_signature, a[0], e[0] - a[0]) || !sxmt_line(q, a, e, false)) {
+            break done;
+        }
+        var next = q.p;
+        q.p = a[0];
+        if (!sxmt_token(q, e[0], k, z, false) || !sxmt_value(q, sxmt_encoding, e[0], null) || !sxmt_value(q, sxmt_version, e[0], null)) {
+            break done;
+        }
+        be = e[0] - a[0] >= 24 && !sxMemcmpAt(q.b, a[0], "format binary_big_endian", 0, 23);
+        q.p = next;
+        while (sxmt_line(q, a, e, false)) {
+            if (q.p > 65536) {
+                break done;
+            }
+            next = q.p;
+            q.p = a[0];
+            if (!sxmt_token(q, e[0], k, z, false)) {
+                break done;
+            }
+            if (sxmt_eq(q, k[0], z[0], "end_header")) {
+                q.p = next;
+                ended = true;
+                break;
+            }
+            if (sxmt_eq(q, k[0], z[0], "comment") || sxmt_eq(q, k[0], z[0], "obj_info")) {
+                q.p = next;
+                continue;
+            }
+            if (sxmt_eq(q, k[0], z[0], "element")) {
+                if (ne === 32 || !sxmt_value(q, sxmt_element_name, e[0], null) || !(sxr2 = sxmt_value(q, sxmt_element_count, e[0], (sxb1 = [es[ne].count])), es[ne].count = sxb1[0], sxr2) || es[ne].count > 1000000) {
+                    break done;
+                }
+                ne++;
+            } else if (sxmt_eq(q, k[0], z[0], "property")) {
+                if (!ne || es[(ne - 1) >>> 0].fields === 64 || !sxmt_token(q, e[0], a, z, false)) {
+                    break done;
+                }
+                var prop = es[(ne - 1) >>> 0].props[es[(ne - 1) >>> 0].fields++];
+                if (sxmt_eq(q, a[0], z[0], "list")) {
+                    var cp = { kind: 0, width: 0, list_width: 0 };
+                    if (!sxmt_token(q, e[0], a, z, false) || !sxmt_ply_type(q, a[0], z[0], cp) || cp.kind !== 85 /*U*/ || !sxmt_emit(q, sxmt_count_type, a[0], z[0])) {
+                        break done;
+                    }
+                    prop.list_width = cp.width;
+                    if (!sxmt_token(q, e[0], a, z, false)) {
+                        break done;
+                    }
+                }
+                if (!sxmt_ply_type(q, a[0], z[0], prop) || !sxmt_emit(q, sxmt_property_type, a[0], z[0]) || !sxmt_value(q, sxmt_property_name, e[0], null)) {
+                    break done;
+                }
+            } else {
+                break done;
+            }
+            q.p = next;
+        }
+        if (!ended || !ne) {
+            break done;
+        }
+        for (var el = 0; el < ne; el++) {
+            for (var row = 0; row < es[el].count; row++) {
+                for (var f = 0; f < es[el].fields; f++) {
+                    if (q.c.count >= 32000) {
+                        ok = true;
+                        break done;
+                    }
+                    var p = es[el].props[f];
+                    var count = 1;
+                    var l = sxmt_binary_type(p.kind, p.width, be);
+                    if (l === null) {
+                        break done;
+                    }
+                    if (p.list_width) {
+                        var w = p.list_width;
+                        if (w > (q.n - q.p < 0 ? q.n - q.p + SX_U64_MAX : q.n - q.p)) {
+                            break done;
+                        }
+                        count = w === 1 ? q.b[q.p] : w === 2 ? sxGetU16At(q.b, q.p, 2, 0, be) : sxGetU32At(q.b, q.p, 4, 0, be);
+                        if (count > 65536) {
+                            break done;
+                        }
+                        var cl = w === 1 ? be ? sxmt_list_uint8_be : sxmt_list_uint8_le : w === 2 ? be ? sxmt_list_uint16_be : sxmt_list_uint16_le : be ? sxmt_list_uint32_be : sxmt_list_uint32_le;
+                        if (!sxmt_emit(q, cl, q.p, w)) {
+                            break done;
+                        }
+                        q.p += w;
+                    }
+                    if (!sxmt_table(q, l, q.p, p.width, count)) {
+                        break done;
+                    }
+                    q.p += (count * p.width >= SX_I64_MAX ? count * p.width - SX_U64_MAX : count * p.width);
+                }
+            }
+        }
+        ok = true;
+    }
+    return ok;
+}
+function sx_polygon_ply_build(q) {
+    return sxmt_ply(q);
+}

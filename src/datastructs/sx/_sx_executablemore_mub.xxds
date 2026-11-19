@@ -1,0 +1,38 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/executable/mub/xx_mub_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxexm_mub_header_le_fields = layout([u32("magic", SIGNATURE), u32("slice_count", COUNT)]);
+var sxexm_mub_header_le = sxLayout(0x602B000C, "mub_header_le", LE, sxexm_mub_header_le_fields);
+var sxexm_mub_arch32_le_fields = layout([i32("cpu_type", ID), i32("cpu_subtype", ID), u32("slice_offset", OFFSET),
+    u32("slice_size", SIZE), u32("alignment_shift")]);
+var sxexm_mub_arch32_le = sxLayout(0x602B000D, "mub_arch32_le", LE, sxexm_mub_arch32_le_fields);
+var sxexm_mub_header_be_fields = layout([u32("magic", SIGNATURE), u32("slice_count", COUNT)]);
+var sxexm_mub_header_be = sxLayout(0x602B000E, "mub_header_be", BE, sxexm_mub_header_be_fields);
+var sxexm_mub_arch32_be_fields = layout([i32("cpu_type", ID), i32("cpu_subtype", ID), u32("slice_offset", OFFSET),
+    u32("slice_size", SIZE), u32("alignment_shift")]);
+var sxexm_mub_arch32_be = sxLayout(0x602B000F, "mub_arch32_be", BE, sxexm_mub_arch32_be_fields);
+var sxexm_mub_arch64_be_fields = layout([i32("cpu_type", ID), i32("cpu_subtype", ID), u64("slice_offset", OFFSET),
+    u64("slice_size", SIZE), u32("alignment_shift"), u32("reserved", RESERVED)]);
+var sxexm_mub_arch64_be = sxLayout(0x602B0010, "mub_arch64_be", BE, sxexm_mub_arch64_be_fields);
+function sxexm_mub(c) {
+    var h = [];
+    if (!sxexm_read(c, 0, h, 8)) {
+        return false;
+    }
+    var magic = sxexm32(h, 0, true);
+    var be = magic !== 0xB9FAF10E;
+    var fat64 = magic === 0xCAFEBABF;
+    if (magic !== 0xCAFEBABE && magic !== 0xCAFEBABF && magic !== 0xB9FAF10E) {
+        return false;
+    }
+    var n = sxexm32(h, 4, be);
+    return sxexm_add(c, be ? sxexm_mub_header_be : sxexm_mub_header_le, 0) && sxexm_table(c, fat64 ? sxexm_mub_arch64_be : be ? sxexm_mub_arch32_be : sxexm_mub_arch32_le, 8, n);
+}
+function sx_mub_build(c) {
+    var ok = false;
+    ok = sxexm_mub(c);
+    return ok && sxexm_finish(c);
+}

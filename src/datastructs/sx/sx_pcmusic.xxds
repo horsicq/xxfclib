@@ -1,0 +1,93 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/xx_format_schema_pcmusic.c and its format files of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+include("_sx");
+include("_sx_types");
+include("_sx_pcmusic");
+include("_sx_pcmusic_bero_t0ast");
+include("_sx_pcmusic_bero_toast_ins");
+include("_sx_pcmusic_cyberbrain_cybertracker");
+include("_sx_pcmusic_cyberbrain_cybertracker_ci");
+include("_sx_pcmusic_defy_adlibtracker_dtm");
+include("_sx_pcmusic_gnilk_beaversweeper_gtk");
+include("_sx_pcmusic_kahlin_victracker");
+include("_sx_pcmusic_kajapon_professionalmd_m");
+include("_sx_pcmusic_kaneda_mvstrackersuite_mus");
+include("_sx_pcmusic_packen_muap98_object");
+include("_sx_pcmusic_packen_muap98_tonesdta");
+include("_sx_pcmusic_resolution_axs");
+include("_sx_pcmusic_spp_benitrackeradlib_pis");
+include("_sx_pcmusic_taylor_fmtracker");
+include("_sx_pcmusic_xorjs_fmtracker");
+
+function fileTypes() { return ["DIE_MUSIC_RESOLUTION_AXS", "DIE_MUSIC_CYBERBRAIN_CYBERTRACKER",
+    "DIE_MUSIC_CYBERBRAIN_CYBERTRACKER_CI", "DIE_MUSIC_DEFY_ADLIBTRACKER_DTM", "DIE_MUSIC_TAYLOR_FMTRACKER",
+    "DIE_MUSIC_XORJS_FMTRACKER", "DIE_MUSIC_PACKEN_MUAP98_TONESDTA", "DIE_MUSIC_KANEDA_MVSTRACKERSUITE_MUS",
+    "DIE_MUSIC_BERO_T0AST", "DIE_MUSIC_BERO_TOAST_INS", "DIE_MUSIC_KAHLIN_VICTRACKER", "DIE_MUSIC_GNILK_BEAVERSWEEPER_GTK",
+    "DIE_MUSIC_KAJAPON_PROFESSIONALMD_M", "DIE_MUSIC_PACKEN_MUAP98_OBJECT", "DIE_MUSIC_SPP_BENITRACKERADLIB_PIS"]; }
+
+var sx_pcmusic_layouts = [sxpcm_pc_text, sxpcm_pc_u8_length, sxpcm_pc_u16_length, sxpcm_pc_u32_length, sxpcm_pc_pattern_index,
+    sxpcm_pc_pattern_count, sxpcm_pc_order_count, sxpcm_pc_present, sxpcm_pc_packed_pattern, sxpcm_defy_header,
+    sxpcm_defy_instrument, sxpcm_beni_header, sxpcm_beni_pattern_map, sxpcm_beni_instrument_map, sxpcm_beni_event,
+    sxpcm_beni_instrument, sxpcm_beni_version, sxpcm_taylor_header, sxpcm_taylor_instrument, sxpcm_taylor_counts,
+    sxpcm_taylor_delay, sxpcm_xorjs_header, sxpcm_xorjs_instrument, sxpcm_xorjs_event, sxpcm_cybertracker_header,
+    sxpcm_cybertracker_vibrato, sxpcm_cybertracker_vibrato_depth, sxpcm_cybertracker_vibrato_speed, sxpcm_cybertracker_arpeggio,
+    sxpcm_cybertracker_adsr, sxpcm_cybertracker_name, sxpcm_cybertracker_multieffect, sxpcm_cybertracker_song_length,
+    sxpcm_cybertracker_song_repeat, sxpcm_cybertracker_loop_start, sxpcm_cybertracker_envelope_length, sxpcm_cybertracker_x_low,
+    sxpcm_cybertracker_x_high, sxpcm_cybertracker_y_low, sxpcm_cybertracker_y_high, sxpcm_cybertracker_pattern_length,
+    sxpcm_victracker_header, sxpcm_victracker_song, sxpcm_victracker_arpeggio, sxpcm_victracker_arpeggio_config,
+    sxpcm_victracker_title, sxpcm_victracker_sound, sxpcm_victracker_sequence_length, sxpcm_victracker_event, sxpcm_muap_header,
+    sxpcm_muap_tone, sxpcm_pmd_header, sxpcm_pmd_program_pointer, sxpcm_pmd_memo_header, sxpcm_pmd_memo_pointer,
+    sxpcm_toast_signature, sxpcm_toast_synth, sxpcm_toast_adsr, sxpcm_toast_settings, sxpcm_toast_channel,
+    sxpcm_toast_instrument, sxpcm_toast_orders, sxpcm_toast_restart, sxpcm_victracker_reserved, sxpcm_victracker_sequence,
+    sxpcm_mvs_header, sxpcm_mvs_instrument, sxpcm_mvs_event, sxpcm_axs_form, sxpcm_axs_chunk, sxpcm_axs_settings,
+    sxpcm_axs_sequence, sxpcm_axs_event, sxpcm_beaver_synth_marker, sxpcm_beaver_sample_flags, sxpcm_beaver_sample_length,
+    sxpcm_beaver_sample_loop, sxpcm_beaver_voice_count, sxpcm_beaver_polyphony, sxpcm_beaver_voice_range,
+    sxpcm_beaver_modulator_count, sxpcm_beaver_oscillator_count, sxpcm_beaver_insert_count, sxpcm_beaver_type,
+    sxpcm_beaver_envelope, sxpcm_beaver_lfo, sxpcm_beaver_controller, sxpcm_beaver_oscillator, sxpcm_beaver_filter,
+    sxpcm_beaver_distortion, sxpcm_beaver_delay, sxpcm_beaver_chorus, sxpcm_beaver_voice_modulation,
+    sxpcm_beaver_distortion_enabled, sxpcm_beaver_arpeggio_enabled, sxpcm_beaver_arpeggio_step, sxpcm_beaver_arpeggio_timing,
+    sxpcm_beaver_mixer, sxpcm_beaver_chain, sxpcm_beaver_song_header, sxpcm_beaver_channel_v102, sxpcm_beaver_channel,
+    sxpcm_beaver_position_mask, sxpcm_beaver_position_pattern, sxpcm_beaver_position_transpose, sxpcm_beaver_position_effect,
+    sxpcm_beaver_position_effect_parameter_1, sxpcm_beaver_position_effect_parameter_2,
+    sxpcm_beaver_position_effect_parameter_3, sxpcm_beaver_position_effect_parameter_4,
+    sxpcm_beaver_position_effect_parameter_5, sxpcm_beaver_position_effect_parameter_6, sxpcm_beaver_pattern_v102,
+    sxpcm_beaver_pattern, sxpcm_beaver_pattern_row, sxpcm_beaver_event];
+
+function structs() {
+    return sxCatalog([sxpcm_pc_text, sxpcm_pc_u8_length, sxpcm_pc_u16_length, sxpcm_pc_u32_length, sxpcm_pc_pattern_index,
+        sxpcm_pc_pattern_count, sxpcm_pc_order_count, sxpcm_pc_present, sxpcm_pc_packed_pattern, sxpcm_defy_header,
+        sxpcm_defy_instrument, sxpcm_beni_header, sxpcm_beni_pattern_map, sxpcm_beni_instrument_map, sxpcm_beni_event,
+        sxpcm_beni_instrument, sxpcm_beni_version, sxpcm_taylor_header, sxpcm_taylor_instrument, sxpcm_taylor_counts,
+        sxpcm_taylor_delay, sxpcm_xorjs_header, sxpcm_xorjs_instrument, sxpcm_xorjs_event, sxpcm_cybertracker_header,
+        sxpcm_cybertracker_vibrato, sxpcm_cybertracker_vibrato_depth, sxpcm_cybertracker_vibrato_speed,
+        sxpcm_cybertracker_arpeggio, sxpcm_cybertracker_adsr, sxpcm_cybertracker_name, sxpcm_cybertracker_multieffect,
+        sxpcm_cybertracker_song_length, sxpcm_cybertracker_song_repeat, sxpcm_cybertracker_loop_start,
+        sxpcm_cybertracker_envelope_length, sxpcm_cybertracker_x_low, sxpcm_cybertracker_x_high, sxpcm_cybertracker_y_low,
+        sxpcm_cybertracker_y_high, sxpcm_cybertracker_pattern_length, sxpcm_victracker_header, sxpcm_victracker_song,
+        sxpcm_victracker_arpeggio, sxpcm_victracker_arpeggio_config, sxpcm_victracker_title, sxpcm_victracker_sound,
+        sxpcm_victracker_sequence_length, sxpcm_victracker_event, sxpcm_muap_header, sxpcm_muap_tone, sxpcm_pmd_header,
+        sxpcm_pmd_program_pointer, sxpcm_pmd_memo_header, sxpcm_pmd_memo_pointer, sxpcm_toast_signature, sxpcm_toast_synth,
+        sxpcm_toast_adsr, sxpcm_toast_settings, sxpcm_toast_channel, sxpcm_toast_instrument, sxpcm_toast_orders,
+        sxpcm_toast_restart, sxpcm_victracker_reserved, sxpcm_victracker_sequence, sxpcm_mvs_header, sxpcm_mvs_instrument,
+        sxpcm_mvs_event, sxpcm_axs_form, sxpcm_axs_chunk, sxpcm_axs_settings, sxpcm_axs_sequence, sxpcm_axs_event,
+        sxpcm_beaver_synth_marker, sxpcm_beaver_sample_flags, sxpcm_beaver_sample_length, sxpcm_beaver_sample_loop,
+        sxpcm_beaver_voice_count, sxpcm_beaver_polyphony, sxpcm_beaver_voice_range, sxpcm_beaver_modulator_count,
+        sxpcm_beaver_oscillator_count, sxpcm_beaver_insert_count, sxpcm_beaver_type, sxpcm_beaver_envelope, sxpcm_beaver_lfo,
+        sxpcm_beaver_controller, sxpcm_beaver_oscillator, sxpcm_beaver_filter, sxpcm_beaver_distortion, sxpcm_beaver_delay,
+        sxpcm_beaver_chorus, sxpcm_beaver_voice_modulation, sxpcm_beaver_distortion_enabled, sxpcm_beaver_arpeggio_enabled,
+        sxpcm_beaver_arpeggio_step, sxpcm_beaver_arpeggio_timing, sxpcm_beaver_mixer, sxpcm_beaver_chain,
+        sxpcm_beaver_song_header, sxpcm_beaver_channel_v102, sxpcm_beaver_channel, sxpcm_beaver_position_mask,
+        sxpcm_beaver_position_pattern, sxpcm_beaver_position_transpose, sxpcm_beaver_position_effect,
+        sxpcm_beaver_position_effect_parameter_1, sxpcm_beaver_position_effect_parameter_2,
+        sxpcm_beaver_position_effect_parameter_3, sxpcm_beaver_position_effect_parameter_4,
+        sxpcm_beaver_position_effect_parameter_5, sxpcm_beaver_position_effect_parameter_6, sxpcm_beaver_pattern_v102,
+        sxpcm_beaver_pattern, sxpcm_beaver_pattern_row, sxpcm_beaver_event], sx_pcmusic_comment, false, false);
+}
+
+function scan() {
+    return sxScan(sx_pcmusic_build, false);
+}

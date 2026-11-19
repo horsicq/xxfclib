@@ -1,0 +1,145 @@
+// Copyright (c) 2026 hors<horsicq@gmail.com>
+// SPDX-License-Identifier: MIT
+//
+// Schema script, generated once from src/formats/archive/zpaq/xx_zpaq_data.c of the retired C schema engine
+// (transpiler sx2xxds). This file is now the source of truth and may be edited by hand; RULES.md applies.
+
+var sxan_zpaq_block_fields = layout([chars("signature", 3, SIGNATURE), u8("level"), u8("type"), u16("header_size", SIZE)]);
+var sxan_zpaq_block = sxLayout(0x607700A8, "zpaq_block", LE, sxan_zpaq_block_fields);
+var sxan_zpaq_model_fields = layout([u8("hcomp_hash_bits"), u8("hcomp_memory_bits"), u8("pcomp_hash_bits"),
+    u8("pcomp_memory_bits"), u8("component_count", COUNT)]);
+var sxan_zpaq_model = sxLayout(0x607700A9, "zpaq_model", LE, sxan_zpaq_model_fields);
+var sxan_zpaq_locator_fields = layout([bytes("locator", 13, SIGNATURE)]);
+var sxan_zpaq_locator = sxLayout(0x607700AA, "zpaq_locator", LE, sxan_zpaq_locator_fields);
+var sxan_zpaq_marker_fields = layout([u8("marker")]);
+var sxan_zpaq_marker = sxLayout(0x607700AB, "zpaq_marker", LE, sxan_zpaq_marker_fields);
+var sxan_zpaq_stored_run_fields = layout([u32("run_size", SIZE)]);
+var sxan_zpaq_stored_run = sxLayout(0x607700AC, "zpaq_stored_run", BE, sxan_zpaq_stored_run_fields);
+var sxan_zpaq_sha1_fields = layout([bytes("sha1", 20, CHECKSUM)]);
+var sxan_zpaq_sha1 = sxLayout(0x607700AD, "zpaq_sha1", LE, sxan_zpaq_sha1_fields);
+var sxan_zpaq_comment_fields = layout([field("comment", "char", 0)]);
+var sxan_zpaq_comment = sxLayout(0x607700AE, "zpaq_comment", LE, sxan_zpaq_comment_fields);
+var sxan_zpaq_cons_fields = layout([u8("component_type"), u8("constant")]);
+var sxan_zpaq_cons = sxLayout(0x607700AF, "zpaq_cons", LE, sxan_zpaq_cons_fields);
+var sxan_zpaq_cm_fields = layout([u8("component_type"), u8("sizebits"), u8("limit")]);
+var sxan_zpaq_cm = sxLayout(0x607700B0, "zpaq_cm", LE, sxan_zpaq_cm_fields);
+var sxan_zpaq_icm_fields = layout([u8("component_type"), u8("sizebits")]);
+var sxan_zpaq_icm = sxLayout(0x607700B1, "zpaq_icm", LE, sxan_zpaq_icm_fields);
+var sxan_zpaq_match_fields = layout([u8("component_type"), u8("sizebits"), u8("bufferbits")]);
+var sxan_zpaq_match = sxLayout(0x607700B2, "zpaq_match", LE, sxan_zpaq_match_fields);
+var sxan_zpaq_avg_fields = layout([u8("component_type"), u8("component_j"), u8("component_k"), u8("weight")]);
+var sxan_zpaq_avg = sxLayout(0x607700B3, "zpaq_avg", LE, sxan_zpaq_avg_fields);
+var sxan_zpaq_mix2_fields = layout([u8("component_type"), u8("sizebits"), u8("component_j"), u8("component_k"), u8("rate"),
+    u8("mask")]);
+var sxan_zpaq_mix2 = sxLayout(0x607700B4, "zpaq_mix2", LE, sxan_zpaq_mix2_fields);
+var sxan_zpaq_mix_fields = layout([u8("component_type"), u8("sizebits"), u8("first_component"), u8("component_count", COUNT),
+    u8("rate"), u8("mask")]);
+var sxan_zpaq_mix = sxLayout(0x607700B5, "zpaq_mix", LE, sxan_zpaq_mix_fields);
+var sxan_zpaq_isse_fields = layout([u8("component_type"), u8("sizebits"), u8("component_j")]);
+var sxan_zpaq_isse = sxLayout(0x607700B6, "zpaq_isse", LE, sxan_zpaq_isse_fields);
+var sxan_zpaq_sse_fields = layout([u8("component_type"), u8("sizebits"), u8("component_j"), u8("start"), u8("limit")]);
+var sxan_zpaq_sse = sxLayout(0x607700B7, "zpaq_sse", LE, sxan_zpaq_sse_fields);
+var sxan_zpaq_locator_static = [0x37, 0x6B, 0x53, 0x74, 0xA0, 0x31, 0x83, 0xD3, 0x8C, 0xB2, 0x28, 0xB0, 0xD3];
+var sxan_zpaq_width = [0, 2, 3, 2, 3, 4, 6, 6, 3, 5];
+var sxan_zpaq_layouts = [null, sxan_zpaq_cons, sxan_zpaq_cm, sxan_zpaq_icm, sxan_zpaq_match, sxan_zpaq_avg, sxan_zpaq_mix2,
+    sxan_zpaq_mix, sxan_zpaq_isse, sxan_zpaq_sse];
+function sxan_zpaq(c) {
+    var p = 0;
+    for (var blocks = 0; blocks < 20000 && p < (c.size < 0 ? c.size + SX_U64_MAX : c.size); blocks++) {
+        var h = [];
+        if (sxan_read(c, p, h, 13) && !sxMemcmp(h, sxan_zpaq_locator_static, 13)) {
+            if (!sxan_add(c, sxan_zpaq_locator, p)) {
+                return false;
+            }
+            p += 13;
+        }
+        if (!sxan_read(c, p, h, 7) || sxMemcmp(h, "zPQ", 3)) {
+            return true;
+        }
+        var z = [sxan_uint(h, 5, 2, false)];
+        if (z[0] < 7 || !sxan_span(c, p + 7, z[0]) || !sxan_add(c, sxan_zpaq_block, p)) {
+            return false;
+        }
+        p += 7;
+        var header_end = p + z[0];
+        if (!sxan_read(c, p, h, 5) || !sxan_add(c, sxan_zpaq_model, p)) {
+            return false;
+        }
+        var count = h[4];
+        p += 5;
+        for (var i = 0; i < count; i++) {
+            var kind = [0];
+            if (!sxan_word(c, p, 1, false, kind) || kind[0] < 1 || kind[0] > 9 || p > header_end || sxan_zpaq_width[kind[0]] > sxU64(header_end - p) || !sxan_add(c, sxan_zpaq_layouts[kind[0]], p)) {
+                return false;
+            }
+            p += sxan_zpaq_width[kind[0]];
+        }
+        if (p >= header_end || !sxan_add(c, sxan_zpaq_marker, p)) {
+            return false;
+        }
+        if (sxU64(header_end - 1) > p && !sxan_add(c, sxan_zpaq_marker, sxU64(header_end - 1))) {
+            return false;
+        }
+        p = header_end;
+        for (var segments = 0; segments < 20000; segments++) {
+            var marker = [0];
+            var len = [0];
+            if (!sxan_word(c, p, 1, false, marker) || !sxan_add(c, sxan_zpaq_marker, p)) {
+                return false;
+            }
+            p++;
+            if (marker[0] === 255) {
+                break;
+            }
+            if (marker[0] !== 1) {
+                return true;
+            }
+            if (!sxan_zlen(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), len) || !sxan_named(c, p, len[0])) {
+                return false;
+            }
+            p += len[0];
+            if (!sxan_zlen(c, p, (c.size < 0 ? c.size + SX_U64_MAX : c.size), len) || !sxan_text(c, sxan_zpaq_comment, p, len[0], false)) {
+                return false;
+            }
+            p += len[0];
+            if (!sxan_add(c, sxan_zpaq_marker, p)) {
+                return false;
+            }
+            p++;
+            if (count) {
+                return true;
+            }
+            for (var runs = 0; runs < 20000; runs++) {
+                if (!sxan_word(c, p, 4, true, z) || !sxan_add(c, sxan_zpaq_stored_run, p)) {
+                    return false;
+                }
+                p += 4;
+                if (!z[0]) {
+                    break;
+                }
+                if (!sxan_span(c, p, z[0])) {
+                    return true;
+                }
+                p += z[0];
+            }
+            if (!sxan_word(c, p, 1, false, marker) || !sxan_add(c, sxan_zpaq_marker, p)) {
+                return false;
+            }
+            p++;
+            if (marker[0] === 253) {
+                if (!sxan_add(c, sxan_zpaq_sha1, p)) {
+                    return false;
+                }
+                p += 20;
+            } else if (marker[0] !== 254) {
+                return true;
+            }
+        }
+    }
+    return true;
+}
+function sx_zpaq_build(c) {
+    var ok = false;
+    ok = sxan_zpaq(c);
+    return !!(c.count && sxan_finish(c));
+}
