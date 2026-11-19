@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "formats": [
+    {
+      "enum": "IMPRESSIONS_RES",
+      "sources": [
+        "src/formats/game/impressions_res/xx_impressions_res.c",
+        "src/formats/game/impressions_res/xx_impressions_res_extractor.c"
+      ],
+      "note": "\".RES\" magic; the reader validates the directory-tail size relation.",
+      "rules": [
+        {
+          "tests": [
+            {
+              "origin": "base",
+              "offset": 0,
+              "hex": "2e 52 45 53"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
