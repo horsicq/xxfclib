@@ -109,7 +109,8 @@ XX_FORMAT_READER_PROBE(spoon_installer, XX_FILE_TYPE_SPOON_INSTALLER,
 XX_FORMAT_READER_PROBE(tarma_installer, XX_FILE_TYPE_TARMA_INSTALLER,
     (is_mz))
 /* A DD/HD floppy (80..83 cylinders) is probed whatever its boot tag: the reader then
- * requires a checksummed root block or, without one, a complete ProTracker module. */
+ * requires a checksummed root block or, without one, a complete file it can carve (a
+ * ProTracker module, a load file, an IFF file or a crunched data file that decrunches). */
 XX_FORMAT_READER_PROBE(adf, XX_FILE_TYPE_ADF,
     (header_size >= 4U && ((header[0] == 0x44U && header[1] == 0x4FU && header[2] == 0x53U && header[3] <= 7U) || (total_size >= 901120 && total_size <= 934912 && total_size % 11264 == 0) || (total_size >= 1802240 && total_size <= 1869824 && total_size % 22528 == 0))))
 XX_FORMAT_READER_PROBE(apm, XX_FILE_TYPE_APM,

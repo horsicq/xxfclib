@@ -31,6 +31,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include "xxfclib/data/xx_data.h"
+#include "xx_adf_crunch.h"
 
 /* Registration placeholder: picks up the real file type as soon as ADF is
  * registered in xxfc_defs.h. */
@@ -138,7 +139,7 @@ typedef struct adf_volume_s {
     bool long_names;
     bool blank_boot; /**< Boot blocks all zero; OFS/FFS still to decide. */
     bool type_known; /**< ffs is settled (always, when the boot tag is DOS). */
-    bool carved;     /**< No filesystem: the members are carved modules. */
+    bool carved;     /**< No filesystem: the members are carved files. */
     int64_t format_size;
     char volume_name[96];
 } adf_volume;
@@ -161,6 +162,8 @@ typedef struct adf_member_s {
     adf_kind kind;
     bool raw;            /**< Carved: one run of bytes at raw_offset. */
     uint32_t raw_offset; /**< Bytes from the start of the image. */
+    uint32_t packed;     /**< Carved and crunched: its length on the disk. */
+    uint8_t crunch;      /**< ADFC_NONE, or the cruncher to undo. */
 } adf_member;
 
 /* Open-addressed set of (parent, folded leaf); a slot holds index + 1 of the
@@ -1181,8 +1184,10 @@ static size_t adf_carve_title(char *raw, const uint8_t *title, size_t size)
     return size - first;
 }
 
-/* Add one carved run of bytes under the name @p raw (not terminated). */
-static bool adf_carve_add(adf_stream *stream, adf_names *names, const char *raw, size_t size, uint32_t offset, uint32_t length)
+/* Add one carved run of bytes under the name @p raw (not terminated).  A
+ * crunched file is @p packed bytes on the disk and @p length bytes once
+ * @p crunch is undone. */
+static bool adf_carve_add(adf_stream *stream, adf_names *names, const char *raw, size_t size, uint32_t offset, uint32_t length, unsigned crunch, uint32_t packed)
 {
     adf_member member;
     char *leaf;
@@ -1193,6 +1198,8 @@ static bool adf_carve_add(adf_stream *stream, adf_names *names, const char *raw,
     member.kind = ADF_KIND_FILE;
     member.raw = true;
     member.raw_offset = offset;
+    member.crunch = (uint8_t)crunch;
+    member.packed = packed;
     member.header = offset / ADF_BSIZE;
     member.size = length;
     member.parent = ADF_NO_PARENT;
@@ -1220,20 +1227,44 @@ static size_t adf_mod_name(char *raw, const uint8_t *mod, uint32_t offset)
     return size;
 }
 
+/* Name a decrunched file after what it holds: a load file, an IFF file or
+ * a module is named as if it had been found plain, anything else is
+ * "data_<offset>.bin".  @p offset is where the crunched file starts. */
+static size_t adf_crunch_name(char *raw, const uint8_t *plain, uint32_t size, uint32_t offset, uint32_t *hunks)
+{
+    const adf_iff_type *type;
+    const uint8_t *title;
+    size_t title_size, name_size;
+    if (size >= 4U && plain[0] == 0U && plain[1] == 0U && plain[2] == 3U && plain[3] == 0xF3U && adf_hunk_size(plain, size, hunks) != 0U)
+        return adf_carve_offset_name(raw, "program", offset);
+    if (size >= 4U && !xx_rt_memcmp(plain, "FORM", 4U) && adf_iff_size(plain, size, &type, &title, &title_size) != 0U) {
+        name_size = title_size ? adf_carve_title(raw, title, title_size) : 0U;
+        if (name_size == 0U) name_size = adf_carve_offset_name(raw, type->stem, offset);
+        return adf_carve_text(raw, name_size, type->extension);
+    }
+    if (adf_mod_size(plain, size) != 0U) return adf_mod_name(raw, plain, offset);
+    return adf_carve_text(raw, adf_carve_offset_name(raw, "data", offset), ".bin");
+}
+
 /* List what can be recovered from a DD/HD floppy image without a root
  * block: ProTracker modules ("<title>.mod"), Amiga load files
- * ("program_<offset>", no extension, as on the Amiga) and IFF files (named
- * by their NAME chunk or "<kind>_<offset>", with .iff/.8svx/.anim/...).
- * With no @p stream it only answers whether there is anything.  Files of
- * one kind do not overlap: the scan for that kind resumes behind each file
- * it accepts.  Kinds may overlap, so a module or a picture linked into a
- * program is listed as well as the program. */
+ * ("program_<offset>", no extension, as on the Amiga), IFF files (named
+ * by their NAME chunk or "<kind>_<offset>", with .iff/.8svx/.anim/...) and
+ * crunched data files (PowerPacker, ProPack, Crunch-Mania, Imploder), which
+ * are listed decrunched and named after their content.  With no @p stream
+ * it only answers whether there is anything.  Files of one kind do not
+ * overlap: the scan for that kind resumes behind each file it accepts.
+ * Kinds may overlap, so a module or a picture linked into a program is
+ * listed as well as the program.  Measured on the 4,566 TOSEC images left
+ * without a filesystem, module, load file or IFF file: see
+ * xx_adf_crunch.h for what a crunched file must pass. */
 static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *names)
 {
     int64_t total, size;
     uint8_t *image;
     uint32_t *hunks = NULL;
-    size_t at, limit, next_mod = 0U, next_hunk = 0U, next_iff = 0U;
+    adfc_state crunch_state;
+    size_t at, limit, next_mod = 0U, next_hunk = 0U, next_iff = 0U, next_crunch = 0U;
     bool found = false, failed = false, stop = false;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
@@ -1251,10 +1282,12 @@ static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *nam
         if (hunks) xx_mem_free(hunks);
         return false;
     }
+    xx_mem_zero(&crunch_state, sizeof(crunch_state));
     for (at = 0U; !stop && at + 4U <= limit; ++at) {
         char raw[ADF_CARVE_NAME];
         size_t name_size = 0U;
-        uint32_t start = 0U, length = 0U;
+        uint32_t start = 0U, length = 0U, packed = 0U;
+        unsigned crunch = ADFC_NONE;
         uint8_t byte = image[at];
         if (byte == 0U) {
             if (at >= next_hunk && image[at + 1U] == 0U && image[at + 2U] == 3U && image[at + 3U] == 0xF3U && (length = adf_hunk_size(image + at, limit - at, hunks)) != 0U) {
@@ -1280,10 +1313,22 @@ static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *nam
             next_mod = (size_t)start + length;
             name_size = adf_mod_name(raw, image + start, start);
         }
+        if (length == 0U && at >= next_crunch && adfc_tag(image + at) != ADFC_NONE) {
+            uint8_t *plain = NULL;
+            if ((packed = adfc_open(image + at, limit - at, &crunch, &plain, &length, &crunch_state)) != 0U) {
+                start = (uint32_t)at;
+                next_crunch = at + packed;
+                name_size = adf_crunch_name(raw, plain, length, start, hunks);
+                xx_mem_free(plain);
+            } else {
+                crunch = ADFC_NONE;
+                length = 0U;
+            }
+        }
         if (length == 0U) continue;
         found = true;
         if (!stream) break;
-        if (!adf_carve_add(stream, names, raw, name_size, start, length)) {
+        if (!adf_carve_add(stream, names, raw, name_size, start, length, crunch, packed)) {
             /* A full listing ends here; anything else (memory) fails the
              * open instead of passing for a complete listing. */
             failed = !adf_listing_full(stream);
@@ -1292,6 +1337,7 @@ static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *nam
     }
     xx_mem_free(image);
     xx_mem_free(hunks);
+    if (crunch_state.scratch) xx_mem_free(crunch_state.scratch);
     if (found && stream && stream->volume.root != 0U) {
         stream->volume.carved = true; /* an empty volume: keep its name and root */
     } else if (found && stream) {
@@ -1560,6 +1606,24 @@ static bool adf_copy_raw(const adf_volume *volume, uint32_t offset, uint64_t siz
     return adf_sink_flush(sink);
 }
 
+/* Decrunch one carved file and hand out its plain bytes. */
+static bool adf_copy_crunched(const adf_volume *volume, const adf_member *member, adf_sink *sink, xx_pd_struct *pd)
+{
+    uint8_t *packed, *plain;
+    bool result = false;
+    if (member->size == 0U || member->size > ADFC_MAX_RAW || member->packed == 0U || (int64_t)member->packed > volume->format_size ||
+        (int64_t)member->raw_offset > volume->format_size - (int64_t)member->packed)
+        return false;
+    packed = (uint8_t *)xx_mem_alloc(member->packed);
+    plain = (uint8_t *)xx_mem_alloc((size_t)member->size);
+    if (packed && plain && !(pd && xx_pd_is_stopped(pd)) && adf_read_at(volume->device, volume->base + (int64_t)member->raw_offset, packed, member->packed) &&
+        adfc_decode(member->crunch, packed, member->packed, plain, (uint32_t)member->size, NULL))
+        result = adf_sink_put(sink, plain, (size_t)member->size) && adf_sink_flush(sink);
+    if (packed) xx_mem_free(packed);
+    if (plain) xx_mem_free(plain);
+    return result;
+}
+
 /* Copy (or, with no @p destination, verify) one file.  The bytes count
  * against the session's budget, so shared data cannot be emitted without
  * bound. */
@@ -1577,7 +1641,11 @@ static bool adf_emit_file(adf_stream *stream, const adf_member *member, xx_io_de
         sink.buffer = (uint8_t *)xx_mem_alloc(sink.capacity);
         if (!sink.buffer) return false;
     }
-    result = member->raw ? adf_copy_raw(volume, member->raw_offset, member->size, &sink, pd) : adf_copy_file(volume, member->data, member->size, &sink, pd);
+    if (member->crunch != ADFC_NONE) {
+        result = adf_copy_crunched(volume, member, &sink, pd);
+    } else {
+        result = member->raw ? adf_copy_raw(volume, member->raw_offset, member->size, &sink, pd) : adf_copy_file(volume, member->data, member->size, &sink, pd);
+    }
     if (sink.buffer) xx_mem_free(sink.buffer);
     return result;
 }
@@ -1617,6 +1685,7 @@ static bool adf_set_record(xx_archive_record *record, const adf_stream *stream, 
 {
     bool folder = member->kind == ADF_KIND_FOLDER;
     uint64_t size = member->kind == ADF_KIND_FILE ? member->size : 0U;
+    uint64_t stored = member->crunch != ADFC_NONE ? member->packed : size;
     char *name;
     bool named;
     xx_archive_record_cleanup(record);
@@ -1626,13 +1695,13 @@ static bool adf_set_record(xx_archive_record *record, const adf_stream *stream, 
     record->data_offset = member->kind == ADF_KIND_FILE && size != 0U && adf_pointer_ok(&stream->volume, member->first)
                               ? stream->volume.base + (int64_t)member->first * (int64_t)ADF_BSIZE
                               : record->header_offset;
-    record->compressed_size = (int64_t)size;
+    record->compressed_size = (int64_t)stored;
     name = adf_member_path(stream->items, stream->count, (uint32_t)(member - stream->items));
     if (!name) return false;
     named = xx_archive_record_set_original_name(record, name);
     xx_mem_free(name);
-    if (!named || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, size) ||
-        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, 0U) ||
+    if (!named || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSED_SIZE, stored) ||
+        !xx_archive_record_set_meta_u64(record, XX_META_ID_UNCOMPRESSED_SIZE, size) || !xx_archive_record_set_meta_u64(record, XX_META_ID_COMPRESSION_METHOD, member->crunch) ||
         !xx_archive_record_set_meta_u64(record, XX_META_ID_ATTRIBUTES, member->protect) || !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_ENCRYPTED, false) ||
         !xx_archive_record_set_meta_bool(record, XX_META_ID_IS_FOLDER, folder))
         return false;
