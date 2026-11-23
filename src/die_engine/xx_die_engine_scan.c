@@ -863,11 +863,16 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
         pEngine->pMap = &binaryMap;
     }
 
-    /* NE branch/pointer signatures use the same reverse physical lookup as
-     * XBinary's address conversions, including segments overlapping headers.
+    /* NE and LE/LX branch/pointer signatures use the same reverse physical
+     * lookup as XBinary's address conversions, including segments/objects
+     * overlapping headers (both script maps copy XNE/XLE file parts).
      * Other formats retain their existing signature lookup policy. */
     xx_data_sig_context_from_memory_map_ex(&pEngine->sigContext, pEngine->pMap,
-                                         pEngine->pMap->file_type == XX_FILE_TYPE_NE ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH, true);
+                                         (pEngine->pMap->file_type == XX_FILE_TYPE_NE || pEngine->pMap->file_type == XX_FILE_TYPE_LE ||
+                                          pEngine->pMap->file_type == XX_FILE_TYPE_LX)
+                                             ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
+                                             : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH,
+                                         true);
 
     pResult->file_type = die_engine_native_from_xft(pEngine->fileType);
     pResult->compatibility_file_type = (uint32_t)pEngine->fileType;

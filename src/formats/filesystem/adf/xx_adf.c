@@ -1684,8 +1684,10 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t ex
                  * when the chain says so: it carries this position's
                  * sequence number and the block before it (or the header)
                  * links to it.  Disk tools that copy a file block by block
-                 * leave the old owner behind. */
-                if (!owned && (xx_data_get_u32(data + 8U, 4, 0, true) != sequence || link != pointer)) return false;
+                 * leave the old owner behind.  A volume without a root
+                 * block gets no such credit: a header found there may be a
+                 * deleted file whose blocks a later file took over. */
+                if (!owned && (volume->carved || xx_data_get_u32(data + 8U, 4, 0, true) != sequence || link != pointer)) return false;
                 if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || size == 0U || size > ADF_OFS_PAYLOAD || !adf_checksum_ok(data)) return false;
                 link = xx_data_get_u32(data + 16U, 4, 0, true);
                 take = (uint64_t)size < remaining ? (size_t)size : (size_t)remaining;

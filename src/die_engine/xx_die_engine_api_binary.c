@@ -995,8 +995,10 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
     xx_io_device *pFile = pEngine->device;
     xx_pe_inspection *pPE = &pEngine->pe;
     xx_memory_map *pMap = pEngine->pMap;
-    xx_memory_map_lookup_t addressLookup = (pEngine->bHasPE || pMap->file_type == XX_FILE_TYPE_NE) ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
-                                                                                         : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH;
+    xx_memory_map_lookup_t addressLookup = (pEngine->bHasPE || pMap->file_type == XX_FILE_TYPE_NE || pMap->file_type == XX_FILE_TYPE_LE ||
+                                            pMap->file_type == XX_FILE_TYPE_LX)
+                                               ? XX_MEMORY_MAP_LOOKUP_LAST_PHYSICAL
+                                               : XX_MEMORY_MAP_LOOKUP_FIRST_MATCH;
     /* NE's script base is zero even though its segmented map starts at
      * 0x10000. XNE's module address and Binary_Script's RVA base differ.
      * The same holds for the DOS script map: XMSDOS's module address is
