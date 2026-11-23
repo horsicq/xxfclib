@@ -486,36 +486,178 @@ static void script_pe_overlay(xx_pe_inspection *pe)
     pe->nOverlaySize = pe->nOverlayOffset >= 0 ? size - pe->nOverlayOffset : 0;
 }
 
-/* XLE/XLX scripts see the object map, whose entry is the start object's base
- * plus EIP (XLE::_getEntryPointAddress); LE.compareEP / LX.compareEP need it.
- * Returns 1 with a map, 0 when the header is unusable (flat fallback). */
+/* XLE/XLX scripts see XLE::getFileParts as a memory map: the header
+ * (e_lfanew + sizeof(IMAGE_VXD_HEADER)), one contiguous record per object
+ * spanning the file bytes of its pages, and the rest of the file as overlay.
+ * The native xx_le/xx_lx map (one record per page, clipped to the object's
+ * virtual size, page types 1/5 unmapped) gives other overlay starts and other
+ * offsets for objects whose pages are not contiguous, so the script map is
+ * built here from the header the same way XLE does. XLE caps the object list
+ * at 100 and reads only the e32_mpages page-map entries. Parts are ordered by
+ * address with a stable sort (std::sort is an insertion sort at these sizes);
+ * lookups through this map then search last to first, as XBinary does.
+ * The native parse is kept as the type check and for e_lfanew.
+ * Returns 1 with a map, 0 when the header is unusable (flat fallback), -1 on
+ * an allocation failure. */
+typedef struct {
+    cd_i64 offset;
+    cd_i64 size;
+    cd_u64 address;
+    xx_file_part_t part;
+    unsigned number;
+} script_linear_part;
+
 static int script_linear_memory_map(xx_io_device *device, int bLX, xx_memory_map *map, xx_pd_struct *pd)
 {
     xx_linear_executable linear;
-    int result = 0;
+    script_linear_part parts[102];
+    unsigned count = 0;
+    unsigned objects = 0;
+    unsigned index;
+    int valid;
+    cd_i64 total = xx_io_total_size(device);
+    cd_i64 header;
+    cd_i64 end;
+    cd_i64 map_offset = -1;
+    cd_i64 object_offset;
+    cd_i64 data_pages;
+    cd_i64 loader_size = 0;
+    cd_u32 page_size;
+    cd_u32 page_count;
+    cd_u32 last_page;
+    cd_u32 start_object;
+    cd_u32 value;
 
     if (bLX) xx_lx_init(&linear, device, 0);
     else xx_le_init(&linear, device, 0);
-    if (xx_format_handle_base_info(&linear.format, pd)) {
-        bool ok = bLX ? xx_lx_get_memory_map(&linear.format, XX_MEMORY_MAP_MODE_UNKNOWN, map, pd)
-                      : xx_le_get_memory_map(&linear.format, XX_MEMORY_MAP_MODE_UNKNOWN, map, pd);
-        if (ok && map->entry_point_address != XX_INVALID_ADDRESS) {
-            /* XLE's header part is e_lfanew + sizeof(IMAGE_VXD_HEADER) (0xAC);
-             * the native map's header runs to the data pages, and at address
-             * 0 that range would shadow objects below it in first-match
-             * lookups (an LE loader often extends past 0x10000). */
-            cd_i64 qt_header = (cd_i64)linear.linear_offset + 0xAC;
-            if (map->record_count > 0 && map->records[0].file_part == XX_FILE_PART_HEADER && map->records[0].size > qt_header)
-                map->records[0].size = qt_header;
-            result = 1;
-        } else {
-            xx_memory_map_cleanup(map);
-            xx_memory_map_init(map);
-        }
-    }
+    valid = xx_format_handle_base_info(&linear.format, pd);
+    header = (cd_i64)linear.linear_offset;
     if (bLX) xx_lx_destroy(&linear);
     else xx_le_destroy(&linear);
-    return result;
+    if (!valid || total <= 0 || header < 0 || header >= total) return 0;
+
+    page_count = xx_io_get_u32(device, header + 0x14, false);
+    start_object = xx_io_get_u32(device, header + 0x18, false);
+    page_size = xx_io_get_u32(device, header + 0x28, false);
+    last_page = xx_io_get_u32(device, header + 0x2c, false);
+    data_pages = (cd_i64)xx_io_get_u32(device, header + 0x80, false);
+    value = xx_io_get_u32(device, header + 0x48, false);
+    if ((cd_u64)value <= (cd_u64)(INT64_MAX - header)) map_offset = header + (cd_i64)value;
+
+    /* Header */
+    parts[count].offset = 0;
+    parts[count].size = header <= total - 0xAC ? header + 0xAC : total;
+    parts[count].address = 0;
+    parts[count].part = XX_FILE_PART_HEADER;
+    parts[count].number = 0;
+    end = parts[count].size;
+    if (parts[count].size > 0) ++count;
+
+    /* XLE::getObjects */
+    value = xx_io_get_u32(device, header + 0x40, false);
+    object_offset = (cd_u64)value <= (cd_u64)(INT64_MAX - header) ? header + (cd_i64)value : -1;
+    if (object_offset >= 0 && object_offset < total && total - object_offset >= 24) {
+        cd_i64 by_size = (total - object_offset) / 24;
+        objects = xx_io_get_u32(device, header + 0x44, false);
+        if (objects > 100U) objects = 100U;
+        if ((cd_i64)objects > by_size) objects = (unsigned)by_size;
+    }
+
+    if (page_count > 0 && page_size > 0 && data_pages < total) {
+        cd_i64 span = (cd_i64)page_count - 1;
+        if (span > 0) {
+            cd_i64 max_span = data_pages <= total - (cd_i64)last_page ? (total - data_pages - (cd_i64)last_page) / (cd_i64)page_size : -1;
+            loader_size = (max_span >= 0 && span <= max_span) ? data_pages + span * (cd_i64)page_size + (cd_i64)last_page : total;
+        } else {
+            loader_size = data_pages + (cd_i64)last_page;
+        }
+    }
+
+    for (index = 0; index < objects && !xx_pd_is_stopped(pd); ++index) {
+        cd_i64 item = object_offset + (cd_i64)index * 24;
+        cd_u64 base = xx_io_get_u32(device, item + 4, false);
+        cd_i64 base_page = (cd_i64)xx_io_get_u32(device, item + 12, false) - 1;
+        cd_i64 map_pages = (cd_i64)xx_io_get_u32(device, item + 16, false);
+        cd_i64 entry_size = bLX ? 8 : 4;
+        cd_i64 max_map_page;
+        cd_i64 object_min = -1;
+        cd_i64 object_max = 0;
+        cd_i64 j;
+
+        if (map_pages > (cd_i64)page_count) map_pages = (cd_i64)page_count;
+        if (map_offset < 0 || base_page < 0 || total - map_offset < entry_size) continue;
+        max_map_page = (total - map_offset - entry_size) / entry_size;
+        if (max_map_page - base_page + 1 <= 0 || base_page > max_map_page || base_page >= (cd_i64)page_count) continue;
+        if (map_pages > max_map_page - base_page + 1) map_pages = max_map_page - base_page + 1;
+        if (map_pages > (cd_i64)page_count - base_page) map_pages = (cd_i64)page_count - base_page;
+
+        for (j = 0; j < map_pages; ++j) {
+            cd_i64 entry = map_offset + (base_page + j) * entry_size;
+            cd_i64 page_offset;
+            cd_i64 this_size = (cd_i64)page_size;
+            if (base_page + j > max_map_page) break;
+            if (entry + entry_size > total) continue;
+            if (!bLX) {
+                cd_i64 number = ((cd_i64)xx_io_get_u8(device, entry) << 16) | ((cd_i64)xx_io_get_u8(device, entry + 1) << 8) | xx_io_get_u8(device, entry + 2);
+                if (number == 0 || page_size == 0) continue;
+                /* Signed division, as in XLE: an offset equal to EOF still passes and is dropped below */
+                if (data_pages > total || number - 1 > (total - data_pages - 1) / (cd_i64)page_size) continue;
+                page_offset = (number - 1) * (cd_i64)page_size + data_pages;
+                if (loader_size > 0 && page_offset < loader_size && loader_size - page_offset < this_size) this_size = loader_size - page_offset;
+            } else {
+                cd_u64 relative = (cd_u64)xx_io_get_u32(device, entry, false) << (last_page & 31U);
+                cd_u32 flags = xx_io_get_u16(device, entry + 6, false) & 7U;
+                cd_u32 size16 = xx_io_get_u16(device, entry + 4, false);
+                /* Types 2/3/4 (invalid, zero-filled, range) have no file data */
+                if (flags == 2U || flags == 3U || flags == 4U) continue;
+                if (data_pages >= total || relative > (cd_u64)(total - data_pages - 1)) continue;
+                page_offset = data_pages + (cd_i64)relative;
+                this_size = size16 ? (cd_i64)size16 : (cd_i64)page_size;
+            }
+            if (page_offset < 0 || page_offset >= total) continue;
+            if (this_size > total - page_offset) this_size = total - page_offset;
+            if (this_size <= 0) continue;
+            if (object_min == -1 || page_offset < object_min) object_min = page_offset;
+            if (page_offset + this_size > object_max) object_max = page_offset + this_size;
+        }
+        if (object_min >= 0 && object_max > object_min) {
+            parts[count].offset = object_min;
+            parts[count].size = object_max - object_min < total - object_min ? object_max - object_min : total - object_min;
+            parts[count].address = base;
+            parts[count].part = XX_FILE_PART_OBJECT;
+            parts[count].number = index + 1U;
+            if (parts[count].offset + parts[count].size > end) end = parts[count].offset + parts[count].size;
+            ++count;
+        }
+    }
+
+    /* Stable insertion sort by address (all parts so far have one) */
+    for (index = 1; index < count; ++index) {
+        script_linear_part item = parts[index];
+        unsigned k = index;
+        while (k > 0 && item.address < parts[k - 1].address) {
+            parts[k] = parts[k - 1];
+            --k;
+        }
+        parts[k] = item;
+    }
+
+    map->binary_size = total;
+    map->file_type = bLX ? XX_FILE_TYPE_LX : XX_FILE_TYPE_LE;
+    map->endian = XX_ENDIAN_LITTLE;
+    map->mode = XX_MEMORY_MAP_MODE_OBJECTS;
+    map->entry_point_address = XX_INVALID_ADDRESS;
+    if (start_object != 0U && start_object <= objects)
+        map->entry_point_address = (cd_u64)xx_io_get_u32(device, object_offset + (cd_i64)(start_object - 1U) * 24 + 4, false) + xx_io_get_u32(device, header + 0x1c, false);
+    for (index = 0; index < count; ++index) {
+        char name[32];
+        if (parts[index].part == XX_FILE_PART_HEADER) x_snprintf(name, sizeof(name), "Header");
+        else x_snprintf(name, sizeof(name), "Object(%u)", parts[index].number);
+        if (!xx_memory_map_add_part(map, parts[index].offset, parts[index].size, parts[index].address, parts[index].size, parts[index].part, (int)index, name, false))
+            return -1;
+    }
+    if (end < total && !xx_memory_map_add_part(map, end, total - end, XX_INVALID_ADDRESS, 0, XX_FILE_PART_OVERLAY, (int)count, "Overlay", false)) return -1;
+    return !xx_pd_is_stopped(pd) && xx_memory_map_finalize(map) ? 1 : -1;
 }
 
 /* The script view follows XNE's segmented memory map. The native NE parser
@@ -692,6 +834,14 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
         xx_memory_map_init(&binaryMap);
         if (pEngine->fileType == XFT_NE) script_map = script_ne_memory_map(pEngine->device, &binaryMap, pd);
         else if (pEngine->fileType == XFT_MSDOS) script_map = script_msdos_memory_map(pEngine->device, &binaryMap, pd);
+        else if (pEngine->fileType == XFT_LE || pEngine->fileType == XFT_LX) {
+            script_map = script_linear_memory_map(pEngine->device, pEngine->fileType == XFT_LX, &binaryMap, pd);
+            if (script_map == 0) {
+                /* A rejected header can leave nothing usable behind; start the flat fallback clean */
+                xx_memory_map_cleanup(&binaryMap);
+                xx_memory_map_init(&binaryMap);
+            }
+        }
         if (script_map < 0) {
             xx_memory_map_cleanup(&binaryMap);
             xx_io_close(pEngine->device);
@@ -700,13 +850,7 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
             if (!xx_pd_is_stopped(pd)) xx_pd_set_error(pd, XXFC_ERR_IO, "Cannot initialize executable signature map");
             return 0;
         }
-        pEngine->nBits = script_map ? 16 : 32;
-        if (!script_map && (pEngine->fileType == XFT_LE || pEngine->fileType == XFT_LX)) {
-            if (script_linear_memory_map(pEngine->device, pEngine->fileType == XFT_LX, &binaryMap, pd)) {
-                script_map = 1;
-                pEngine->nBits = 32;
-            }
-        }
+        pEngine->nBits = (script_map && pEngine->fileType != XFT_LE && pEngine->fileType != XFT_LX) ? 16 : 32;
         if (!script_map) {
             /* Forced-format callbacks still run on nonmatching input. Keep
              * their previous flat-map fallback when no matching header exists. */

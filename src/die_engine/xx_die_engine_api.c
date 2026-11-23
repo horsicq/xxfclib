@@ -272,10 +272,10 @@ cd_i64 die_engine_api_script_entry_point_offset(DieEngine *pEngine)
     }
 
     if (pEngine->pMap->file_type == XX_FILE_TYPE_LE || pEngine->pMap->file_type == XX_FILE_TYPE_LX) {
-        /* XLE: start object base + EIP through the object map. XBinary's
-         * addressToOffset takes the first record holding the address; LX files
-         * may carry later base-0 objects that overlap the start object. */
-        return xx_memory_map_address_to_offset_ex(pEngine->pMap, pEngine->pMap->entry_point_address, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
+        /* XLE: start object base + EIP through the XLE file-part map, searched
+         * last to first like XBinary::addressToOffset (the map is sorted by
+         * address, so later base-0 objects come before the start object). */
+        return xx_memory_map_address_to_offset(pEngine->pMap, pEngine->pMap->entry_point_address);
     }
 
     if (pEngine->bHasElf) {

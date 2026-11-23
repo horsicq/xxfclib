@@ -1042,6 +1042,11 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
 
             if (pEngine->bHasPE && (pPE->nOverlaySize > 0)) {
                 bResult = die_engine_signature_compare(pEngine, pPE->nOverlayOffset + nOffset, pSignature, 2, pPE->nOverlayOffset);
+            } else if (pEngine->bHasElf && (pEngine->elf.nOverlaySize > 0)) {
+                /* Same overlay as ELF getOverlayOffset/getOverlaySize/isOverlayPresent */
+                if (nOffset <= INT64_MAX - pEngine->elf.nOverlayOffset) {
+                    bResult = die_engine_signature_compare(pEngine, pEngine->elf.nOverlayOffset + nOffset, pSignature, 2, pEngine->elf.nOverlayOffset);
+                }
             } else if (has_map_overlay(pMap)) {
                 cd_i64 nOverlay = legacy_overlay_offset(pMap);
                 if (nOverlay >= 0 && nOffset <= INT64_MAX - nOverlay) {
@@ -1453,8 +1458,9 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             return true;
 
         case A_getAddressOfEntryPoint:
-            if (has_legacy_script_map(pMap)) {
-                *pResult = js_num((double)pMap->entry_point_address);
+            /* Binary_Script returns the XADDR as qint64: no entry is -1 */
+            if (has_map_overlay(pMap)) {
+                *pResult = js_num((double)(cd_i64)pMap->entry_point_address);
                 return true;
             }
             *pResult = js_num((double)(pEngine->bHasPE ? pPE->nEntryPointAddress : 0));

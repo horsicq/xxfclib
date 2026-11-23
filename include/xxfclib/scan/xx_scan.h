@@ -41,6 +41,8 @@ XXFC_API const char *xx_scan_file_type_name(xx_file_type_t type);
 
 /* --------------------------------------------------------------- options  */
 
+struct xx_scan_device_event;
+
 /** Origin of a scan within its containing input. */
 typedef enum xx_scan_part {
     XX_SCAN_PART_INPUT = 0,
@@ -134,6 +136,18 @@ typedef struct xx_scan_options {
      * XBinary::getHandleMethods names it ("Deflate", "Bzip2", "Imploded 4K/2"...);
      * NULL selects "Deflate"/"Store" from archive_compressed. */
     const char *archive_method;
+    /** Optional, borrowed: called once for every scanned device -- the input,
+     * then (before it) each overlay, resource and archive member child -- when
+     * that device's scan has finished, with the device still open and the
+     * device's result (for a parent: including the records merged from its
+     * children). Child scans inherit it with the rest of the options. The
+     * event and everything it points to are valid only during the call; the
+     * callback must not close the device. Returning false fails the scan
+     * (pd gets an error unless the callback set one or stopped pd). Children
+     * call it in the order they are scanned, so a child's call precedes its
+     * parent's, as XScanEngine's collection step runs per scanProcess call. */
+    bool (*device_callback)(void *user, const struct xx_scan_device_event *event, xx_pd_struct *pd);
+    void *device_callback_user;
 } xx_scan_options;
 typedef struct xx_scan_options xx_scan_options_t;
 
@@ -204,6 +218,16 @@ typedef struct xx_scan_result {
     bool sort; /**< options.sort of the scan, set by signature scans. Each pass sorted its own records; merging never re-sorts. */
 } xx_scan_result;
 typedef struct xx_scan_result xx_scan_result_t;
+
+/** What xx_scan_options.device_callback receives for one scanned device. */
+typedef struct xx_scan_device_event {
+    xx_io_device *device;            /**< Borrowed and open: the device this scan was called with (for an
+                                          overlay or resource child, its xx_io_sub view of the parent's scanned
+                                          device, so xx_io_sub_get_range gives its range there), never the
+                                          scanner's private memory copy. Seek before reading. */
+    const xx_scan_options *options;  /**< Resolved options of this device's scan: scan_id, parent_id, scan_part, file_name, resource_type, archive_member... */
+    const xx_scan_result *result;    /**< This device's result, children's records included. */
+} xx_scan_device_event;
 
 /** Release standard result contents and clear the struct; does not free the struct. */
 XXFC_API void xx_scan_result_free(xx_scan_result *pResult);

@@ -90,6 +90,14 @@ struct xx_format_search_info;
  * create positions the state on the first match, current returns a borrowed
  * result valid until next/free, and free releases the search state.
  */
+/** Bytes found a fixed distance into every instance of a format: the
+ * anchors a format search scans for (see Abstractextractor.anchors). */
+typedef struct xx_format_anchor {
+    const uint8_t *bytes;
+    uint32_t size;
+    uint32_t offset; /**< Distance from the start of the format to bytes */
+} xx_format_anchor;
+
 struct Abstractextractor {
     /**
      * Fast format-detection callback.
@@ -137,6 +145,21 @@ struct Abstractextractor {
     void (*free_reader)(Abstractformat *format);
     /** Fixed magic only: 1 match, 0 reject, -1 requires structural analysis. */
     int (*signature)(xx_io_device *device, int64_t base_address, bool is_mapped);
+
+    /**
+     * The search's anchors, borrowed and static (NULL member: not published).
+     * Returns their count; 0 means the format is only looked for at offset 0.
+     */
+    size_t (*anchors)(const xx_format_anchor **anchors);
+
+    /**
+     * Exactly the search's test of one candidate start: the reader accepts
+     * it, the detector names one of the format's types, and its size is
+     * measured (-1 when unknown). Preserves the device cursor. NULL member:
+     * not published; use create_format_search.
+     */
+    bool (*probe)(xx_io_device *device, int64_t base_address, bool is_mapped, xx_pd_struct *pd, xx_file_type_t *type,
+                  int64_t *size);
 };
 
 /** Return the detection, size, version, and streaming callbacks for a file type.
