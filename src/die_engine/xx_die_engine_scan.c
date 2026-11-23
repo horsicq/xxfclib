@@ -28,6 +28,8 @@
 #include "xxfclib/strings/xx_string.h"
 #include "xxfclib/global/xx_global.h"
 #include "xxfclib/memory/xx_memory.h"
+#include "xxfclib/formats/executable/le/xx_le.h"
+#include "xxfclib/formats/executable/lx/xx_lx.h"
 #include "../io/xx_io_buffer.h"
 #include <limits.h>
 
@@ -484,6 +486,38 @@ static void script_pe_overlay(xx_pe_inspection *pe)
     pe->nOverlaySize = pe->nOverlayOffset >= 0 ? size - pe->nOverlayOffset : 0;
 }
 
+/* XLE/XLX scripts see the object map, whose entry is the start object's base
+ * plus EIP (XLE::_getEntryPointAddress); LE.compareEP / LX.compareEP need it.
+ * Returns 1 with a map, 0 when the header is unusable (flat fallback). */
+static int script_linear_memory_map(xx_io_device *device, int bLX, xx_memory_map *map, xx_pd_struct *pd)
+{
+    xx_linear_executable linear;
+    int result = 0;
+
+    if (bLX) xx_lx_init(&linear, device, 0);
+    else xx_le_init(&linear, device, 0);
+    if (xx_format_handle_base_info(&linear.format, pd)) {
+        bool ok = bLX ? xx_lx_get_memory_map(&linear.format, XX_MEMORY_MAP_MODE_UNKNOWN, map, pd)
+                      : xx_le_get_memory_map(&linear.format, XX_MEMORY_MAP_MODE_UNKNOWN, map, pd);
+        if (ok && map->entry_point_address != XX_INVALID_ADDRESS) {
+            /* XLE's header part is e_lfanew + sizeof(IMAGE_VXD_HEADER) (0xAC);
+             * the native map's header runs to the data pages, and at address
+             * 0 that range would shadow objects below it in first-match
+             * lookups (an LE loader often extends past 0x10000). */
+            cd_i64 qt_header = (cd_i64)linear.linear_offset + 0xAC;
+            if (map->record_count > 0 && map->records[0].file_part == XX_FILE_PART_HEADER && map->records[0].size > qt_header)
+                map->records[0].size = qt_header;
+            result = 1;
+        } else {
+            xx_memory_map_cleanup(map);
+            xx_memory_map_init(map);
+        }
+    }
+    if (bLX) xx_lx_destroy(&linear);
+    else xx_le_destroy(&linear);
+    return result;
+}
+
 /* The script view follows XNE's segmented memory map. The native NE parser
  * also counts relocation/resource/name tables when finding its format end;
  * XNE's script overlay starts after the header and physical segments only. */
@@ -667,6 +701,12 @@ static int scan_run_pass(xx_io_device *device, XFileType fileType, int bIsCliAss
             return 0;
         }
         pEngine->nBits = script_map ? 16 : 32;
+        if (!script_map && (pEngine->fileType == XFT_LE || pEngine->fileType == XFT_LX)) {
+            if (script_linear_memory_map(pEngine->device, pEngine->fileType == XFT_LX, &binaryMap, pd)) {
+                script_map = 1;
+                pEngine->nBits = 32;
+            }
+        }
         if (!script_map) {
             /* Forced-format callbacks still run on nonmatching input. Keep
              * their previous flat-map fallback when no matching header exists. */

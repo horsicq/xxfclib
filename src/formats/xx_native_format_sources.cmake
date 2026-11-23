@@ -5,6 +5,9 @@ file(GLOB_RECURSE XXFCLIB_NATIVE_FORMAT_SOURCES CONFIGURE_DEPENDS
 list(FILTER XXFCLIB_NATIVE_FORMAT_SOURCES EXCLUDE REGEX
     "[/\\\\][^/\\\\]* \\(conflicted copy [^/\\\\]*\\)\\.[^/\\\\]+$")
 list(FILTER XXFCLIB_NATIVE_FORMAT_SOURCES EXCLUDE REGEX "/die_music/")
+# Superseded by the per-format fss / mlb_ft / sfx_localzip / thebat_msb
+# extractor files (2026-11-11); compiling both defines every symbol twice.
+list(FILTER XXFCLIB_NATIVE_FORMAT_SOURCES EXCLUDE REGEX "/xx_corpus_extra_extractors\.c$")
 include("${CMAKE_CURRENT_LIST_DIR}/adapters/xx_reader_adapters_filter.cmake")
 xxfc_keep_listed_reader_adapters(XXFCLIB_NATIVE_FORMAT_SOURCES)
 list(APPEND XXFCLIB_SOURCES ${XXFCLIB_NATIVE_FORMAT_SOURCES}

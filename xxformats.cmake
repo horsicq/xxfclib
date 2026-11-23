@@ -18,6 +18,10 @@ list(FILTER XXFORMATS_SOURCES EXCLUDE REGEX
 # is needed for formats-only consumers or non-x86 builds.
 # DIE music readers require the separate signature engine and its runtime.
 list(FILTER XXFORMATS_SOURCES EXCLUDE REGEX "/src/formats/audio/die_music/")
+# xx_corpus_extra_extractors.c (2026-10-16) predates the per-format
+# fss / mlb_ft / sfx_localzip / thebat_msb extractor files (2026-11-11) that
+# replace it; compiling both defines every symbol twice (LNK2005).
+list(FILTER XXFORMATS_SOURCES EXCLUDE REGEX "/src/formats/xx_corpus_extra_extractors\.c$")
 include("${CMAKE_CURRENT_LIST_DIR}/src/formats/adapters/xx_reader_adapters_filter.cmake")
 xxfc_keep_listed_reader_adapters(XXFORMATS_SOURCES)
 list(APPEND XXFORMATS_SOURCES

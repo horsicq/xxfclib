@@ -168,6 +168,31 @@ static bool xx_zlib_decode_stream(Abstractformat *self, xx_io_device *destinatio
             }
             xx_mem_free(input);
             input = NULL;
+            /* The stream is longer than the probe, or not a stream at all.
+             * Decode it from the device: the bit reader fetches input as the
+             * decoder needs it, so invalid data (most chance 78 xx pairs met
+             * by a raw search) fails after a few bytes instead of after
+             * reading and inflating the whole rest of the input. */
+            {
+                uint8_t header[2], trailer[4];
+                int64_t consumed = 0;
+                sink.write = xx_zlib_buffer_write;
+                sink.priv = &output;
+                if (xx_zlib_read_exact_at(self->device, self->base_address, header, 2U) && xx_zlib_header_is_valid(header, (size_t)input_size) &&
+                    xx_deflate_unpack_device_flags(self->device, self->base_address + 2, input_size - 2, &sink, false, 0U, NULL, 0U, &consumed, 0U, pd) &&
+                    !output.failed && consumed > 0 && consumed <= input_size - 6 &&
+                    xx_zlib_read_exact_at(self->device, self->base_address + 2 + consumed, trailer, 4U)) {
+                    expected_adler = xx_data_get_u32(trailer, 4, 0, true);
+                    if (xx_adler32(output.data, output.size) == expected_adler &&
+                        (!destination || xx_zlib_write_all(destination, output.data, output.size, pd))) {
+                        *uncompressed_size = (uint64_t)output.size;
+                        *stream_size = 2 + consumed + 4;
+                        *adler32 = expected_adler;
+                        result = true;
+                    }
+                }
+            }
+            goto cleanup;
         }
         if (!input) {
             input = (uint8_t *)xx_mem_alloc((size_t)input_size);

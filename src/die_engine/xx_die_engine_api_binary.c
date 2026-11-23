@@ -1042,7 +1042,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
 
             if (pEngine->bHasPE && (pPE->nOverlaySize > 0)) {
                 bResult = die_engine_signature_compare(pEngine, pPE->nOverlayOffset + nOffset, pSignature, 2, pPE->nOverlayOffset);
-            } else if (has_legacy_script_map(pMap)) {
+            } else if (has_map_overlay(pMap)) {
                 cd_i64 nOverlay = legacy_overlay_offset(pMap);
                 if (nOverlay >= 0 && nOffset <= INT64_MAX - nOverlay) {
                     bResult = die_engine_signature_compare(pEngine, nOverlay + nOffset, pSignature, 2, nOverlay);
@@ -1412,7 +1412,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             return true;
 
         case A_getOverlayOffset:
-            if (has_legacy_script_map(pMap)) {
+            if (has_map_overlay(pMap)) {
                 *pResult = js_num((double)legacy_overlay_offset(pMap));
                 return true;
             }
@@ -1425,7 +1425,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             return true;
 
         case A_getOverlaySize:
-            if (has_legacy_script_map(pMap)) {
+            if (has_map_overlay(pMap)) {
                 cd_i64 nOverlay = legacy_overlay_offset(pMap);
                 *pResult = js_num((double)(nOverlay >= 0 ? pMap->binary_size - nOverlay : 0));
                 return true;
@@ -1439,7 +1439,7 @@ bool die_engine_api_dispatch_binary(DieEngine *pEngine, JSCtx *pCtx, ApiId id, i
             return true;
 
         case A_isOverlayPresent:
-            if (has_legacy_script_map(pMap)) {
+            if (has_map_overlay(pMap)) {
                 cd_i64 nOverlay = legacy_overlay_offset(pMap);
                 *pResult = js_bool(nOverlay >= 0 && nOverlay < pMap->binary_size);
                 return true;

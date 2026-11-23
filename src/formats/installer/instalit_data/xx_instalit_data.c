@@ -4,6 +4,7 @@
  * (detected automatically); footerless media fall back to the explicitly
  * selected DCL stream walk below: a raw DCL prefix does not identify its producer. */
 #include "xxfclib/formats/installer/instalit_data/xx_instalit_data.h"
+#include "xxfclib/data/xx_data.h"
 #include "xxfclib/formats/archive/dclraw/xx_dclraw.h"
 #include "xxfclib/algo/dcl/xx_dcl.h"
 #include "../../xx_payload_members.h"

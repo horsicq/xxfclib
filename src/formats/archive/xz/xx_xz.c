@@ -728,6 +728,87 @@ static int64_t xx_xz_filter_size(xx_io_device *device)
     return sink->received <= (uint64_t)INT64_MAX ? (int64_t)sink->received : -1;
 }
 
+typedef enum xx_xz_walk_result_e {
+    XX_XZ_WALK_INVALID = -1,
+    XX_XZ_WALK_CUT = 0,
+    XX_XZ_WALK_WHOLE = 1,
+    XX_XZ_WALK_LIMIT = 2
+} xx_xz_walk_result;
+
+typedef struct xx_xz_walk_s {
+    int64_t end;          /* WHOLE: the end of the end marker. */
+    int64_t complete_end; /* The end of the last whole chunk. */
+    uint64_t size;        /* The decoded size of the whole chunks. */
+    /* CUT inside a chunk's data: where it starts, the part of it that the
+     * input holds, and the chunk's header (tail_offset -1 when none). */
+    int64_t tail_offset;
+    uint64_t tail_size;
+    uint8_t tail_header[6];
+    size_t tail_header_size;
+} xx_xz_walk;
+
+/* Walk the LZMA2 chunk headers of a Block's data at offset without decoding
+ * it. WHOLE: the data ends with its end marker. CUT: the input ends inside
+ * a chunk; LIMIT: the whole chunks hold limit decoded bytes. */
+static xx_xz_walk_result xx_xz_walk_lzma2(xx_io_device *device, int64_t offset, int64_t total_size, uint64_t limit, xx_xz_walk *walk, xx_pd_struct *pd)
+{
+    int64_t cursor = offset;
+    xx_mem_zero(walk, sizeof(*walk));
+    walk->end = -1;
+    walk->complete_end = offset;
+    walk->tail_offset = -1;
+    for (;;) {
+        uint8_t header[6];
+        size_t header_size;
+        uint64_t packed;
+        uint64_t unpacked;
+        if (pd && xx_pd_is_stopped(pd)) return XX_XZ_WALK_INVALID;
+        if (walk->size >= limit) return XX_XZ_WALK_LIMIT;
+        if (cursor >= total_size) return XX_XZ_WALK_CUT;
+        if (!xx_lzma_stream_read_exact_at(device, cursor, header, 1U, pd)) return XX_XZ_WALK_INVALID;
+        if (header[0] == 0U) {
+            walk->end = cursor + 1;
+            return XX_XZ_WALK_WHOLE;
+        }
+        if (header[0] == 1U || header[0] == 2U) header_size = 3U;
+        else if (header[0] >= 0x80U) header_size = ((header[0] >> 5) & 3U) >= 2U ? 6U : 5U;
+        else return XX_XZ_WALK_INVALID;
+        if (total_size - cursor < (int64_t)header_size) return XX_XZ_WALK_CUT;
+        if (!xx_lzma_stream_read_exact_at(device, cursor, header, header_size, pd)) return XX_XZ_WALK_INVALID;
+        if (header[0] < 0x80U) {
+            packed = (((uint64_t)header[1] << 8) | header[2]) + 1U;
+            unpacked = packed;
+        } else {
+            unpacked = ((((uint64_t)header[0] & 0x1fU) << 16) | ((uint64_t)header[1] << 8) | header[2]) + 1U;
+            packed = (((uint64_t)header[3] << 8) | header[4]) + 1U;
+        }
+        if ((uint64_t)(total_size - cursor) - header_size < packed) {
+            if ((uint64_t)(total_size - cursor) > header_size) {
+                walk->tail_offset = cursor + (int64_t)header_size;
+                walk->tail_size = (uint64_t)(total_size - walk->tail_offset);
+                xx_mem_copy(walk->tail_header, header, header_size);
+                walk->tail_header_size = header_size;
+            }
+            return XX_XZ_WALK_CUT;
+        }
+        if (walk->size > (uint64_t)INT64_MAX - unpacked) return XX_XZ_WALK_INVALID;
+        cursor += (int64_t)(header_size + packed);
+        walk->size += unpacked;
+        walk->complete_end = cursor;
+    }
+}
+
+/* xz requires a Block's Compressed Size to end exactly with its LZMA2 end
+ * marker (xz-utils: "Compressed data is corrupt"). The decoder stops at the
+ * end marker, so bytes after it inside the indexed extent go unnoticed;
+ * walking the chunk headers finds where the data really ends. */
+static bool xx_xz_lzma2_fills_extent(xx_io_device *device, int64_t offset, int64_t size, xx_pd_struct *pd)
+{
+    xx_xz_walk walk;
+    if (offset < 0 || size <= 0 || offset > INT64_MAX - size) return false;
+    return xx_xz_walk_lzma2(device, offset, offset + size, UINT64_MAX, &walk, pd) == XX_XZ_WALK_WHOLE && walk.end == offset + size;
+}
+
 static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_stream *stream, const xx_xz_block *block, const xx_list_s *options, xx_io_device *target,
                                             xx_pd_struct *pd)
 {
@@ -766,7 +847,8 @@ static bool xx_xz_verify_filter_chain_block(Abstractformat *self, const xx_xz_st
                (block->delta_after_bcj && !xx_xz_filter_stage_init(&sink->stages[sink->count++], 2U, 0U, NULL, 0U, block->delta_distance))) {
         goto cleanup;
     }
-    if (!xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
+    if (!xx_xz_lzma2_fills_extent(self->device, block->data_offset, block->compressed_size, pd) ||
+        !xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property,
                                                  block->delta_after_bcj ? 0U : block->delta_distance, block->uncompressed_size, &sink->device, 0U, &decoded,
                                                  pd) ||
         sink->failed || decoded.written != block->uncompressed_size || (pd && xx_pd_is_stopped(pd)) || !xx_xz_filter_push(sink, 0U, NULL, 0U, true) ||
@@ -803,7 +885,8 @@ static bool xx_xz_verify_block(Abstractformat *self, const xx_xz_stream *stream,
         case XX_XZ_CHECK_SHA256: check_mask = XX_LZMA2_CALC_SHA256; break;
         default: return false;
     }
-    if (!xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property, block->delta_distance,
+    if (!xx_xz_lzma2_fills_extent(self->device, block->data_offset, block->compressed_size, pd) ||
+        !xx_lzma2_unpack_filtered_checked_device(self->device, block->data_offset, block->compressed_size, block->lzma2_property, block->delta_distance,
                                                  block->uncompressed_size, target, check_mask, &decoded, pd) ||
         !xx_lzma_stream_read_exact_at(self->device, block->check_offset, expected, (size_t)block->check_size, pd)) {
         return false;
@@ -1056,76 +1139,6 @@ static size_t xx_xz_vli_size(uint64_t value)
         ++size;
     }
     return size;
-}
-
-typedef enum xx_xz_walk_result_e {
-    XX_XZ_WALK_INVALID = -1,
-    XX_XZ_WALK_CUT = 0,
-    XX_XZ_WALK_WHOLE = 1,
-    XX_XZ_WALK_LIMIT = 2
-} xx_xz_walk_result;
-
-typedef struct xx_xz_walk_s {
-    int64_t end;          /* WHOLE: the end of the end marker. */
-    int64_t complete_end; /* The end of the last whole chunk. */
-    uint64_t size;        /* The decoded size of the whole chunks. */
-    /* CUT inside a chunk's data: where it starts, the part of it that the
-     * input holds, and the chunk's header (tail_offset -1 when none). */
-    int64_t tail_offset;
-    uint64_t tail_size;
-    uint8_t tail_header[6];
-    size_t tail_header_size;
-} xx_xz_walk;
-
-/* Walk the LZMA2 chunk headers of a Block's data at offset without decoding
- * it. WHOLE: the data ends with its end marker. CUT: the input ends inside
- * a chunk; LIMIT: the whole chunks hold limit decoded bytes. */
-static xx_xz_walk_result xx_xz_walk_lzma2(xx_io_device *device, int64_t offset, int64_t total_size, uint64_t limit, xx_xz_walk *walk, xx_pd_struct *pd)
-{
-    int64_t cursor = offset;
-    xx_mem_zero(walk, sizeof(*walk));
-    walk->end = -1;
-    walk->complete_end = offset;
-    walk->tail_offset = -1;
-    for (;;) {
-        uint8_t header[6];
-        size_t header_size;
-        uint64_t packed;
-        uint64_t unpacked;
-        if (pd && xx_pd_is_stopped(pd)) return XX_XZ_WALK_INVALID;
-        if (walk->size >= limit) return XX_XZ_WALK_LIMIT;
-        if (cursor >= total_size) return XX_XZ_WALK_CUT;
-        if (!xx_lzma_stream_read_exact_at(device, cursor, header, 1U, pd)) return XX_XZ_WALK_INVALID;
-        if (header[0] == 0U) {
-            walk->end = cursor + 1;
-            return XX_XZ_WALK_WHOLE;
-        }
-        if (header[0] == 1U || header[0] == 2U) header_size = 3U;
-        else if (header[0] >= 0x80U) header_size = ((header[0] >> 5) & 3U) >= 2U ? 6U : 5U;
-        else return XX_XZ_WALK_INVALID;
-        if (total_size - cursor < (int64_t)header_size) return XX_XZ_WALK_CUT;
-        if (!xx_lzma_stream_read_exact_at(device, cursor, header, header_size, pd)) return XX_XZ_WALK_INVALID;
-        if (header[0] < 0x80U) {
-            packed = (((uint64_t)header[1] << 8) | header[2]) + 1U;
-            unpacked = packed;
-        } else {
-            unpacked = ((((uint64_t)header[0] & 0x1fU) << 16) | ((uint64_t)header[1] << 8) | header[2]) + 1U;
-            packed = (((uint64_t)header[3] << 8) | header[4]) + 1U;
-        }
-        if ((uint64_t)(total_size - cursor) - header_size < packed) {
-            if ((uint64_t)(total_size - cursor) > header_size) {
-                walk->tail_offset = cursor + (int64_t)header_size;
-                walk->tail_size = (uint64_t)(total_size - walk->tail_offset);
-                xx_mem_copy(walk->tail_header, header, header_size);
-                walk->tail_header_size = header_size;
-            }
-            return XX_XZ_WALK_CUT;
-        }
-        if (walk->size > (uint64_t)INT64_MAX - unpacked) return XX_XZ_WALK_INVALID;
-        cursor += (int64_t)(header_size + packed);
-        walk->size += unpacked;
-        walk->complete_end = cursor;
-    }
 }
 
 typedef struct xx_xz_counter_s {

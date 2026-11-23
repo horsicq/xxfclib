@@ -3,19 +3,30 @@
  * SPDX-License-Identifier: MIT AND BSD-2-Clause
  *
  * Decrunchers for the crunched data files found on Amiga disks without a
- * filesystem: PowerPacker (PP20), Rob Northen ProPack (RNC 1 and 2),
+ * filesystem: PowerPacker (PP20), Rob Northen ProPack (RNC 1 and 2, and the
+ * old form of both with a 12-byte header and no CRC),
  * Crunch-Mania (CrM!, CrM2, Crm!, Crm2), File Imploder (IMP! and the ids
  * of its clones), Pack-Ice (Ice!, ICE! and the ids of its clones) and
  * StoneCracker (S300, S401, S403, S404).  The Crunch-Mania, Imploder,
- * Pack-Ice and StoneCracker decoders are bounded native C adaptations of
- * Ancient's CRMDecompressor.cpp, IMPDecompressor.cpp, IceDecompressor.cpp
- * and StoneCrackerDecompressor.cpp; see LICENSE.ancient.
+ * Pack-Ice, StoneCracker and old-form ProPack decoders are bounded native C
+ * adaptations of Ancient's CRMDecompressor.cpp, IMPDecompressor.cpp,
+ * IceDecompressor.cpp, StoneCrackerDecompressor.cpp and RNCDecompressor.cpp
+ * (RNCDecompressOld); see LICENSE.ancient.
  *
  * Everything here works on a memory image.  A file is accepted only when
  * its whole stream decodes: ProPack by both of its CRCs, Imploder by its
  * checksum, the others by a decode that ends exactly at the first byte of
  * the stream (StoneCracker 4.01 reads forwards and pads its stream: at
- * most four bytes may be left).  PowerPacker stores no crunched length, so
+ * most four bytes may be left).
+ *
+ * ProPack method 1 can be keyed: every literal byte is XORed with the low
+ * byte of a 16-bit key that is rotated right once per literal run.  Such a
+ * file has a good packed CRC and decodes, but the CRC of the result is wrong
+ * without the key, and the key is not in the file.  CRC-16 is linear, so the
+ * keys that fit one file follow from 16 equations.  A key is taken for an
+ * image only when it fits at least ADFC_KEY_FILES files (measured: the Anco
+ * football managers, one key per game), and then each file it fits is
+ * listed.  PowerPacker stores no crunched length, so
  * its end is searched: every longword-aligned position whose trailer is
  * plausible is tried, and the first one that decodes with at most one bit
  * to spare is taken (measured: genuine files leave 0 or 1 bit, never more).
@@ -36,6 +47,8 @@
 #define ADFC_IMP 4U
 #define ADFC_ICE 5U
 #define ADFC_SC 6U
+#define ADFC_RNC_OLD 7U
+#define ADFC_RNC_KEY 8U
 
 /** No Amiga floppy file decrunches to more than this. */
 #define ADFC_MAX_RAW UINT32_C(0x1000000)
@@ -55,6 +68,16 @@
 #define ADFC_RNC_HEADER 18U
 #define ADFC_RNC_MAX_RATIO 8192U
 #define ADFC_RNC_OVERSHOOT 0x10000U
+/** Files one key must fit before it is believed. */
+#define ADFC_KEY_FILES 3U
+/** Keyed files looked at to find the key. */
+#define ADFC_KEY_WINDOW 16U
+/** Searches for the key one image gets; a search that fails is costly. */
+#define ADFC_KEY_SEARCHES 4U
+/** ProPack files one search may decode, keyed or not. */
+#define ADFC_KEY_DECODES 64U
+/** A keyed file larger than this is not used to find the key. */
+#define ADFC_KEY_MAX_RAW UINT32_C(0x400000)
 #define ADFC_CRM_HEADER 14U
 #define ADFC_CRM_NODES 8193U
 #define ADFC_IMP_TAIL 0x32U
@@ -65,6 +88,9 @@ typedef struct adfc_state_s {
     uint64_t tests; /**< PowerPacker trailer positions examined so far. */
     uint8_t *scratch;
     size_t scratch_size;
+    uint32_t key;   /**< ProPack key of this image, once found. */
+    bool key_known;
+    unsigned key_searches; /**< Searches for the key made so far. */
 } adfc_state;
 
 static uint32_t adfc_be32(const uint8_t *p)
@@ -248,6 +274,8 @@ typedef struct adfc_rnc_out_s {
     uint8_t *data;
     uint64_t capacity;
     uint64_t position;
+    uint8_t *origin; /**< Optional: per byte, the literal run (mod 16) it came from. */
+    uint8_t mark;
     bool failed;
 } adfc_rnc_out;
 
@@ -255,6 +283,7 @@ static void adfc_rnc_put(adfc_rnc_out *out, uint8_t value)
 {
     if (out->position < out->capacity) {
         out->data[out->position] = value;
+        if (out->origin) out->origin[out->position] = out->mark;
     } else if (out->position >= out->capacity + ADFC_RNC_OVERSHOOT) {
         out->failed = true;
         return;
@@ -268,6 +297,7 @@ static bool adfc_rnc_copy(adfc_rnc_out *out, uint32_t distance, uint32_t length)
     if (distance == 0U || distance > out->position) return false;
     for (index = 0U; index < length; ++index) {
         uint64_t from = out->position - distance;
+        if (out->origin && from < out->capacity) out->mark = out->origin[from];
         adfc_rnc_put(out, from < out->capacity ? out->data[from] : 0U);
         if (out->failed) return false;
     }
@@ -367,8 +397,9 @@ static bool adfc_rnc_symbol(const adfc_rnc_huf *table, adfc_rnc_bits *bits, uint
     return false;
 }
 
-static bool adfc_rnc_method1(const uint8_t *packed, size_t size, adfc_rnc_out *out)
+static bool adfc_rnc_method1(const uint8_t *packed, size_t size, adfc_rnc_out *out, uint32_t key)
 {
+    unsigned run = 0U;
     adfc_rnc_bits bits;
     adfc_rnc_huf raw_table, distance_table, length_table;
     bits.data = packed;
@@ -390,9 +421,12 @@ static bool adfc_rnc_method1(const uint8_t *packed, size_t size, adfc_rnc_out *o
                 size_t start = bits.position;
                 if (length > size || start > size - length) return false;
                 for (index = 0U; index < length; ++index) {
-                    adfc_rnc_put(out, packed[start + index]);
+                    out->mark = (uint8_t)run;
+                    adfc_rnc_put(out, (uint8_t)(packed[start + index] ^ (key & 0xFFU)));
                     if (out->failed) return false;
                 }
+                key = ((key >> 1U) | (key << 15U)) & 0xFFFFU;
+                run = (run + 1U) & 15U;
                 /* The prefetched word was the start of the run: drop it and
                  * load the word behind the run. */
                 bits.count -= 16U;
@@ -530,17 +564,128 @@ static bool adfc_rnc_sizes(const uint8_t *data, size_t limit, uint32_t *raw_size
 }
 
 /* Decode the body of a ProPack file whose sizes and packed CRC are good. */
-static bool adfc_rnc_decode(const uint8_t *data, uint32_t packed_size, uint8_t *out, uint32_t raw_size, uint64_t *made)
+/* Decode the body without looking at the CRC of the result.  @p origin, if
+ * given, receives for each byte the literal run (mod 16) it came from. */
+static bool adfc_rnc_run(const uint8_t *data, uint32_t packed_size, uint8_t *out, uint32_t raw_size, uint64_t *made, uint32_t key, uint8_t *origin)
 {
     adfc_rnc_out output;
     bool good;
     output.data = out;
     output.capacity = raw_size;
     output.position = 0U;
+    output.origin = origin;
+    output.mark = 0U;
     output.failed = false;
-    good = data[3] == 1U ? adfc_rnc_method1(data + ADFC_RNC_HEADER, packed_size, &output) : adfc_rnc_method2(data + ADFC_RNC_HEADER, packed_size, &output);
+    good = data[3] == 1U ? adfc_rnc_method1(data + ADFC_RNC_HEADER, packed_size, &output, key) : adfc_rnc_method2(data + ADFC_RNC_HEADER, packed_size, &output);
     if (made) *made = output.position < raw_size ? output.position : raw_size;
-    return good && !output.failed && output.position >= raw_size && adfc_crc16(out, raw_size) == adfc_be16(data + 12U);
+    return good && !output.failed && output.position >= raw_size;
+}
+
+static bool adfc_rnc_decode(const uint8_t *data, uint32_t packed_size, uint8_t *out, uint32_t raw_size, uint64_t *made, uint32_t key)
+{
+    return adfc_rnc_run(data, packed_size, out, raw_size, made, key, NULL) && adfc_crc16(out, raw_size) == adfc_be16(data + 12U);
+}
+
+/* Is data[0] a method 1 file in the new form with a good packed CRC?  The
+ * bytes the CRC reads are charged to @p work. */
+static bool adfc_rnc_key_candidate(const uint8_t *data, size_t limit, uint32_t *raw_size, uint32_t *packed_size, uint64_t *work)
+{
+    if (limit < ADFC_RNC_HEADER || data[0] != 'R' || data[1] != 'N' || data[2] != 'C' || data[3] != 1U || !adfc_rnc_sizes(data, limit, raw_size, packed_size) ||
+        *raw_size > ADFC_KEY_MAX_RAW)
+        return false;
+    *work += *packed_size;
+    return adfc_crc16(data + ADFC_RNC_HEADER, *packed_size) == adfc_be16(data + 14U);
+}
+
+/* Find the key of the image from the keyed file at data[0] and the keyed
+ * files behind it: each file votes for every key that makes its CRC right,
+ * and the key with the most votes wins when ADFC_KEY_FILES files agree and
+ * no other key has as many (a file with few literal runs leaves the high key
+ * bits open).  A file stored twice votes once.  Every byte read and every
+ * key tried is charged to the work of the image. */
+static bool adfc_rnc_find_key(const uint8_t *data, size_t limit, adfc_state *state)
+{
+    uint16_t *sums = (uint16_t *)xx_mem_alloc(65536U * sizeof(*sums));
+    uint8_t *votes = (uint8_t *)xx_mem_alloc(65536U);
+    uint8_t *raw = NULL, *origin = NULL;
+    size_t at = 0U, raw_room = 0U;
+    unsigned files = 0U, decodes = 0U, best = 0U, ties = 0U, seen;
+    uint32_t key, found = 0U, voted[ADFC_KEY_WINDOW][3];
+    ++state->key_searches;
+    if (sums && votes) xx_mem_zero(votes, 65536U);
+    while (sums && votes && files < ADFC_KEY_WINDOW && decodes < ADFC_KEY_DECODES && at + ADFC_RNC_HEADER <= limit && state->work <= ADFC_MAX_WORK) {
+        uint32_t raw_size = 0U, packed = 0U, column[16], index, target;
+        uint64_t made = 0U;
+        unsigned bit;
+        if (data[at] != 'R' || !adfc_rnc_key_candidate(data + at, limit - at, &raw_size, &packed, &state->work)) {
+            ++at;
+            continue;
+        }
+        ++decodes;
+        if (raw_room < raw_size) {
+            if (raw) xx_mem_free(raw);
+            if (origin) xx_mem_free(origin);
+            raw = (uint8_t *)xx_mem_alloc(raw_size);
+            origin = (uint8_t *)xx_mem_alloc(raw_size);
+            raw_room = raw && origin ? raw_size : 0U;
+            if (!raw_room) break;
+        }
+        if (!adfc_rnc_run(data + at, packed, raw, raw_size, &made, 0U, origin)) {
+            state->work += made;
+            ++at;
+            continue;
+        }
+        state->work += (uint64_t)raw_size * 2U;
+        target = adfc_crc16(raw, raw_size) ^ adfc_be16(data + at + 12U);
+        for (seen = 0U; seen < files; ++seen) {
+            if (voted[seen][0] == raw_size && voted[seen][1] == packed && voted[seen][2] == adfc_be32(data + at + 12U)) break;
+        }
+        voted[files][0] = raw_size;
+        voted[files][1] = packed;
+        voted[files][2] = adfc_be32(data + at + 12U);
+        at += (size_t)packed + ADFC_RNC_HEADER;
+        if (target == 0U || seen < files) continue; /* not keyed, or the same file again */
+        state->work += (uint64_t)raw_size * 16U + 65536U;
+        /* column[bit] = CRC of the mask that key bit lays over the file */
+        for (bit = 0U; bit < 16U; ++bit) column[bit] = 0U;
+        for (index = 0U; index < raw_size; ++index) {
+            for (bit = 0U; bit < 16U; ++bit) {
+                /* bit `bit` of the key is in the low byte after `origin` rotations when 0 <= bit - origin < 8 (mod 16) */
+                uint32_t place = (bit - origin[index]) & 15U, crc = column[bit] ^ (place < 8U ? UINT32_C(1) << place : 0U);
+                unsigned step;
+                for (step = 0U; step < 8U; ++step) crc = (crc & 1U) ? (crc >> 1U) ^ 0xA001U : crc >> 1U;
+                column[bit] = crc;
+            }
+        }
+        sums[0] = 0U;
+        for (key = 1U; key < 65536U; ++key) {
+            uint32_t low = key & (0U - key);
+            for (bit = 0U; (UINT32_C(1) << bit) != low; ++bit) {
+            }
+            sums[key] = (uint16_t)(sums[key ^ low] ^ column[bit]);
+            if (sums[key] == target && votes[key] < 255U) ++votes[key];
+        }
+        ++files;
+    }
+    if (sums && votes) {
+        for (key = 1U; key < 65536U; ++key) {
+            if (votes[key] > best) {
+                best = votes[key];
+                found = key;
+                ties = 0U;
+            } else if (votes[key] == best) {
+                ++ties;
+            }
+        }
+    }
+    if (sums) xx_mem_free(sums);
+    if (votes) xx_mem_free(votes);
+    if (raw) xx_mem_free(raw);
+    if (origin) xx_mem_free(origin);
+    if (best < ADFC_KEY_FILES || ties != 0U) return false;
+    state->key = found;
+    state->key_known = true;
+    return true;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1467,6 +1612,95 @@ static bool adfc_sc_decode(const uint8_t *data, uint32_t total, uint8_t *raw, ui
 }
 
 /* ---------------------------------------------------------------------- */
+/* ProPack, old form                                                       */
+
+#define ADFC_RNC_OLD_HEADER 12U
+
+/* The old form has the id, the two sizes and then the stream, which is read
+ * backwards.  It carries no checksum: a file is taken only when the decode
+ * ends on the first bit of the stream. */
+static bool adfc_rnc_old_sizes(const uint8_t *data, size_t limit, uint32_t *raw_size, uint32_t *total)
+{
+    uint32_t packed;
+    if (limit < ADFC_RNC_OLD_HEADER + 2U) return false;
+    *raw_size = adfc_be32(data + 4U);
+    packed = adfc_be32(data + 8U);
+    if (*raw_size == 0U || *raw_size > ADFC_MAX_RAW || packed < 2U || packed > limit - ADFC_RNC_OLD_HEADER) return false;
+    *total = packed + ADFC_RNC_OLD_HEADER;
+    return true;
+}
+
+static bool adfc_rnc_old_decode(const uint8_t *data, uint32_t total, uint8_t *raw, uint32_t raw_size, uint64_t *made)
+{
+    static const uint8_t literal_one[6] = {1U, 1U, 2U, 2U, 3U, 10U};
+    static const uint8_t literal_two[18] = {1U, 1U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 11U, 12U, 13U, 14U, 15U, 16U};
+    static const uint8_t length_rows[5][3] = {{1U, 0x0U, 0U}, {2U, 0x2U, 1U}, {3U, 0x6U, 2U}, {4U, 0xEU, 3U}, {4U, 0xFU, 4U}};
+    static const uint8_t distance_rows[3][3] = {{1U, 0x0U, 1U}, {2U, 0x2U, 0U}, {2U, 0x3U, 2U}};
+    static const uint8_t length_base[5] = {0U, 1U, 2U, 4U, 8U};
+    static const uint16_t distance_base[3] = {0U, 32U, 288U};
+    uint8_t length_bits[5] = {0U, 0U, 1U, 2U, 10U};
+    uint8_t distance_bits[3] = {5U, 8U, 12U};
+    bool two = data[3] == 2U, good = false;
+    adfc_bits bits;
+    adfc_out out;
+    uint32_t value;
+    unsigned index;
+    bits.data = data;
+    bits.at = total;
+    bits.stop = ADFC_RNC_OLD_HEADER;
+    bits.word = 0U;
+    bits.left = 0U;
+    bits.bytes = 1U;
+    bits.backward = true;
+    bits.msb = true;
+    bits.error = false;
+    out.data = raw;
+    out.size = raw_size;
+    out.pos = raw_size;
+    out.backward = true;
+    out.failed = false;
+    if (two) { /* method 2 names its two longest field widths */
+        value = adfc_bits_byte(&bits) + 1U;
+        distance_bits[2] = (uint8_t)(value & 0x0FU);
+        length_bits[4] = (uint8_t)((value >> 4U) + 1U);
+        if (length_bits[4] > 16U) bits.error = true;
+    }
+    /* The lowest set bit of the last byte marks where the bits start. */
+    value = adfc_bits_byte(&bits);
+    for (index = 0U; index < 7U; ++index) {
+        if (value & (1U << index)) {
+            bits.word = value >> (index + 1U);
+            bits.left = 7U - index;
+            break;
+        }
+    }
+    while (!bits.error && !out.failed) {
+        uint32_t count = two ? adfc_bits_cascade(&bits, literal_two, 18U) : adfc_bits_cascade(&bits, literal_one, 6U), distance, symbol;
+        if (bits.error || count > out.pos) break;
+        while (count-- != 0U) adfc_out_put(&out, adfc_bits_byte(&bits));
+        if (bits.error) break;
+        if (adfc_out_full(&out)) {
+            good = true;
+            break;
+        }
+        symbol = adfc_sc_symbol(&bits, length_rows, 5U);
+        if (bits.error) break;
+        count = length_base[symbol] + adfc_bits_get(&bits, length_bits[symbol]) + 2U;
+        if (count != 2U) {
+            symbol = adfc_sc_symbol(&bits, distance_rows, 3U);
+            if (bits.error) break;
+            distance = distance_base[symbol] + adfc_bits_get(&bits, distance_bits[symbol]);
+        } else {
+            distance = adfc_bits_get(&bits, 1U) ? adfc_bits_get(&bits, 9U) + 64U : adfc_bits_get(&bits, 6U);
+        }
+        if (bits.error) break;
+        adfc_out_copy(&out, distance ? distance + count - 1U : 1U, count);
+    }
+    if (made) *made = adfc_out_made(&out);
+    return good && !bits.error && !out.failed && bits.at == bits.stop && bits.left == 0U;
+}
+
+/* ---------------------------------------------------------------------- */
 /* Any of them                                                             */
 
 /* Which cruncher's id stands at @p tag (four bytes). */
@@ -1518,6 +1752,8 @@ static bool adfc_sizes(unsigned kind, const uint8_t *data, size_t limit, uint32_
             return adfc_ice_sizes(data, limit, raw_size, total);
         case ADFC_SC:
             return adfc_sc_sizes(data, limit, raw_size, total);
+        case ADFC_RNC_OLD:
+            return adfc_rnc_old_sizes(data, limit, raw_size, total);
         default:
             return false;
     }
@@ -1526,7 +1762,7 @@ static bool adfc_sizes(unsigned kind, const uint8_t *data, size_t limit, uint32_
 /* Decode the crunched file data[0..packed_size) of a known kind into
  * out[0..raw_size).  The header is checked again, so the call is safe on
  * bytes that are not what adfc_open saw. */
-static bool adfc_decode(unsigned kind, const uint8_t *data, uint32_t packed_size, uint8_t *out, uint32_t raw_size, uint64_t *made)
+static bool adfc_decode(unsigned kind, const uint8_t *data, uint32_t packed_size, uint8_t *out, uint32_t raw_size, uint64_t *made, uint32_t key)
 {
     uint32_t raw = 0U, total = 0U;
     size_t produced = 0U;
@@ -1542,11 +1778,14 @@ static bool adfc_decode(unsigned kind, const uint8_t *data, uint32_t packed_size
         if (made) *made = produced;
         return good;
     }
-    if (!adfc_sizes(kind, data, packed_size, &raw, &total) || raw != raw_size || total != packed_size) return false;
-    if (kind == ADFC_RNC) return adfc_crc16(data + ADFC_RNC_HEADER, packed_size - ADFC_RNC_HEADER) == adfc_be16(data + 14U) && adfc_rnc_decode(data, packed_size - ADFC_RNC_HEADER, out, raw_size, made);
+    if (!adfc_sizes(kind == ADFC_RNC_KEY ? ADFC_RNC : kind, data, packed_size, &raw, &total) || raw != raw_size || total != packed_size) return false;
+    if (kind == ADFC_RNC || kind == ADFC_RNC_KEY)
+        return (kind == ADFC_RNC || (data[3] == 1U && key != 0U)) && adfc_crc16(data + ADFC_RNC_HEADER, packed_size - ADFC_RNC_HEADER) == adfc_be16(data + 14U) &&
+               adfc_rnc_decode(data, packed_size - ADFC_RNC_HEADER, out, raw_size, made, kind == ADFC_RNC ? 0U : key & 0xFFFFU);
     if (kind == ADFC_CRM) return adfc_crm_decode(data, packed_size - ADFC_CRM_HEADER, out, raw_size, made);
     if (kind == ADFC_ICE) return adfc_ice_decode(data, packed_size, out, raw_size, made);
     if (kind == ADFC_SC) return adfc_sc_decode(data, packed_size, out, raw_size, made);
+    if (kind == ADFC_RNC_OLD) return (data[3] == 1U || data[3] == 2U) && adfc_rnc_old_decode(data, packed_size, out, raw_size, made);
     return adfc_imp_sum_ok(data, packed_size) && adfc_imp_decode(data, packed_size, out, raw_size, made);
 }
 
@@ -1562,19 +1801,33 @@ static uint32_t adfc_open(const uint8_t *data, size_t limit, unsigned *kind, uin
     *raw_size = 0U;
     if (limit < 4U || (*kind = adfc_tag(data)) == ADFC_NONE || state->work > ADFC_MAX_WORK) return 0U;
     if (*kind == ADFC_PP20) return adfc_pp_open(data, limit, plain, raw_size, state);
-    if (!adfc_sizes(*kind, data, limit, raw_size, &total)) return 0U;
-    state->work += total;
-    *plain = (uint8_t *)xx_mem_alloc(*raw_size);
-    if (!*plain) return 0U;
-    good = adfc_decode(*kind, data, total, *plain, *raw_size, &made);
-    state->work += made;
-    if (!good) {
-        xx_mem_free(*plain);
-        *plain = NULL;
+    for (;;) {
+        good = adfc_sizes(*kind, data, limit, raw_size, &total);
+        if (good) {
+            state->work += total;
+            *plain = (uint8_t *)xx_mem_alloc(*raw_size);
+            if (!*plain) return 0U;
+            good = adfc_decode(*kind, data, total, *plain, *raw_size, &made, 0U);
+            state->work += made;
+            if (good) return total;
+            /* A method 1 file that is sound but for the CRC of its result may be keyed. */
+            if (*kind == ADFC_RNC && data[3] == 1U && made == *raw_size && *raw_size <= ADFC_KEY_MAX_RAW &&
+                adfc_crc16(data + ADFC_RNC_HEADER, total - ADFC_RNC_HEADER) == adfc_be16(data + 14U) && (state->key_known || (state->key_searches < ADFC_KEY_SEARCHES && adfc_rnc_find_key(data, limit, state)))) {
+                good = adfc_decode(ADFC_RNC_KEY, data, total, *plain, *raw_size, &made, state->key);
+                state->work += made;
+                if (good) {
+                    *kind = ADFC_RNC_KEY;
+                    return total;
+                }
+            }
+            xx_mem_free(*plain);
+            *plain = NULL;
+        }
         *raw_size = 0U;
-        return 0U;
+        /* The old and the new ProPack form share their ids. */
+        if (*kind != ADFC_RNC || state->work > ADFC_MAX_WORK) return 0U;
+        *kind = ADFC_RNC_OLD;
     }
-    return total;
 }
 
 #endif /* XX_ADF_CRUNCH_H */

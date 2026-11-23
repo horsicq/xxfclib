@@ -776,6 +776,21 @@ static xx_scan_result *xx_scan_internal(xx_scan_engine *engine, xx_io_device *de
         result = NULL;
         xx_pd_set_error(pd, XXFC_ERR_OUT_OF_MEMORY, "Cannot allocate scan buffer");
     }
+    /* Per-device hook (collection/sort tools): the device is still open and
+     * the result holds this device's records, its children's merged in. */
+    if (result && resolved.device_callback) {
+        xx_scan_device_event event;
+        /* The caller's device (for a child: its bounded view of the parent),
+         * not the private memory copy small inputs are scanned from. */
+        event.device = device;
+        event.options = &resolved;
+        event.result = result;
+        if (!resolved.device_callback(resolved.device_callback_user, &event, pd)) {
+            xx_scan_free_result(engine, result);
+            result = NULL;
+            if (pd && !pd->last_error && !pd->is_stop) xx_pd_set_error(pd, XXFC_ERR_GENERIC, "Scan device callback failed");
+        }
+    }
 
 done:
     if (memory_device) xx_io_close(memory_device);

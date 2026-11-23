@@ -378,6 +378,14 @@ static bool xx_zip_read_zip64_extra(xx_io_device *device, int64_t offset, uint16
     return found && values->packed <= INT64_MAX && values->unpacked <= INT64_MAX && values->relative <= INT64_MAX;
 }
 
+/* General-purpose flag bits that change how an entry is read: encryption (0),
+ * compression options (1, 2), data descriptor (3), enhanced deflate (4),
+ * patched data (5), strong encryption (6), UTF-8 names (11) and masked local
+ * headers (13). APPNOTE leaves bits 7-10, 12, 14 and 15 unused or reserved;
+ * some writers set them in the local header only (PKZIP's ZIP2EXE stores bit
+ * 15 there), so local and central headers need only agree on these bits. */
+#define XX_ZIP_SIGNIFICANT_FLAGS 0x287FU
+
 static bool xx_zip_split_validate_cd(xx_zip *zip, uint64_t count, int64_t cd_offset, int64_t cd_size, uint32_t counted_disk, uint64_t entries_disk, uint64_t entries_last,
                                      xx_pd_struct *pd)
 {
@@ -412,7 +420,7 @@ static bool xx_zip_split_validate_cd(xx_zip *zip, uint64_t count, int64_t cd_off
             !xx_zip_read_zip64_extra(zip->format.device, cursor + 46 + name_size, extra_size, &entry, false) ||
             !xx_zip_disk_offset(zip, entry.disk, entry.relative, sizeof(local), &local_offset) ||
             !xx_zip_split_read(zip->format.device, local_offset, local, sizeof(local)) || xx_zip_split_u32(local) != XX_ZIP_LOCAL_FILE_HEADER_SIGNATURE ||
-            xx_zip_split_u16(local + 26) != name_size || xx_zip_split_u16(local + 6) != xx_zip_split_u16(central + 8) ||
+            xx_zip_split_u16(local + 26) != name_size || ((xx_zip_split_u16(local + 6) ^ xx_zip_split_u16(central + 8)) & XX_ZIP_SIGNIFICANT_FLAGS) ||
             xx_zip_split_u16(local + 8) != xx_zip_split_u16(central + 10))
             return false;
         header_size = 30 + (int64_t)name_size + xx_zip_split_u16(local + 28);

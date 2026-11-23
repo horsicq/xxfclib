@@ -9,9 +9,14 @@
 static const xx_file_type_t types[] = {XX_FILE_TYPE_CWC};
 static Abstractformat *open_reader(xx_io_device *d)
 {
-    return xx_cwc_create(d, 0);
+    xx_cwc *reader = xx_cwc_create(d, 0);
+    return reader ? &reader->format : NULL;
 }
-static const xx_format_search_desc desc = {types, 1U, NULL, 0U, open_reader, xx_cwc_free, true};
+static void close_reader(Abstractformat *format)
+{
+    xx_cwc_free((xx_cwc *)format);
+}
+static const xx_format_search_desc desc = {types, 1U, NULL, 0U, open_reader, close_reader, true};
 static xx_format_search_state *create_search(xx_format_extractor *x, xx_io_device *d, const xx_list_s *o, xx_pd_struct *pd)
 {
     (void)x;

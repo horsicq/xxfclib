@@ -224,6 +224,29 @@ bool xx_format_search_fast_detect(const xx_format_search_desc *desc, xx_io_devic
     return xx_format_search_probe_direct(desc, device, base_address, is_mapped, false, NULL);
 }
 
+bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped,
+                               xx_pd_struct *pd, xx_file_type_t *type, int64_t *size)
+{
+    int64_t saved_position, total;
+    xx_file_type_t found_type = XX_FILE_TYPE_UNKNOWN;
+    int64_t found_size = -1;
+    bool matched = false;
+    if (type) *type = XX_FILE_TYPE_UNKNOWN;
+    if (size) *size = -1;
+    if (!desc || !device || base_address < 0) return false;
+    saved_position = xx_io_tell(device);
+    if (saved_position < 0) return false;
+    total = xx_io_total_size(device);
+    if (base_address < total)
+        matched = xx_format_search_probe(desc, device, base_address, total, is_mapped, true, pd, &found_type, &found_size);
+    if (xx_io_seek64(device, saved_position, SEEK_SET) != 0) return false;
+    if (matched) {
+        if (type) *type = found_type;
+        if (size) *size = found_size;
+    }
+    return matched;
+}
+
 int64_t xx_format_search_size(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped)
 {
     int64_t size;

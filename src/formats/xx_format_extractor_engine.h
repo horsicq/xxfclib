@@ -40,12 +40,9 @@
 extern "C" {
 #endif
 
-/** Bytes that occur a fixed distance into every instance of a format. */
-typedef struct xx_format_search_anchor {
-    const uint8_t *bytes;
-    uint32_t size;
-    uint32_t offset; /**< Distance from the start of the format to @p bytes */
-} xx_format_search_anchor;
+/** Bytes that occur a fixed distance into every instance of a format.
+ * The public xx_format_anchor (Abstractextractor.anchors). */
+typedef xx_format_anchor xx_format_search_anchor;
 
 /** Everything the engine needs to know about one format. */
 typedef struct xx_format_search_desc {
@@ -85,6 +82,11 @@ int xx_format_search_signature(const xx_format_search_desc *desc, xx_io_device *
 /** Measure a validated format at an absolute offset, or return -1 when the
  * extent is unknown, invalid, or outside the device. Preserves its cursor. */
 int64_t xx_format_search_size(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped);
+
+/** The search's test of one candidate start (reader, detector, size), at an
+ * absolute offset. Preserves the device cursor; false when it cannot. */
+bool xx_format_search_probe_at(const xx_format_search_desc *desc, xx_io_device *device, int64_t base_address, bool is_mapped,
+                               xx_pd_struct *pd, xx_file_type_t *type, int64_t *size);
 
 xx_format_search_state *xx_format_search_create(const xx_format_search_desc *desc, xx_io_device *device, const xx_list_s *options, xx_pd_struct *pd);
 const xx_format_search_info *xx_format_search_current(xx_format_search_state *state);

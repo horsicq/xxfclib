@@ -332,6 +332,7 @@ JSVal die_engine_api_native_str_take(JSCtx *ctx, char *text);
 void die_engine_api_value_to_hex_ex(cd_u64 nValue, char *pBuffer, size_t nBufferSize);
 char *die_engine_api_clean_string(const char *pString);
 int die_engine_api_has_legacy_script_map(const xx_memory_map *map);
+int die_engine_api_has_map_overlay(const xx_memory_map *map);
 cd_i64 die_engine_api_script_entry_point_offset(DieEngine *pEngine);
 cd_i64 die_engine_api_legacy_overlay_offset(const xx_memory_map *map);
 void die_engine_api_fix_offset_size(DieEngine *pEngine, cd_i64 *pnOffset, cd_i64 *pnSize);
@@ -349,6 +350,7 @@ void die_engine_api_fix_offset_size(DieEngine *pEngine, cd_i64 *pnOffset, cd_i64
 #define value_to_hex_ex die_engine_api_value_to_hex_ex
 #define clean_string die_engine_api_clean_string
 #define has_legacy_script_map die_engine_api_has_legacy_script_map
+#define has_map_overlay die_engine_api_has_map_overlay
 #define script_entry_point_offset die_engine_api_script_entry_point_offset
 #define legacy_overlay_offset die_engine_api_legacy_overlay_offset
 #define fix_offset_size die_engine_api_fix_offset_size

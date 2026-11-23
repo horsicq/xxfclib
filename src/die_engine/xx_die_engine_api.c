@@ -253,6 +253,14 @@ int die_engine_api_has_legacy_script_map(const xx_memory_map *map)
            (map->file_type == XX_FILE_TYPE_MSDOS && map->mode == XX_MEMORY_MAP_MODE_SEGMENTS);
 }
 
+/* Script maps whose overlay is the file after the last mapped part: the
+ * NE/DOS legacy maps and the LE/LX object map (XLE's overlay starts after
+ * the header and object pages, so trailing name tables count as overlay). */
+int die_engine_api_has_map_overlay(const xx_memory_map *map)
+{
+    return die_engine_api_has_legacy_script_map(map) || map->file_type == XX_FILE_TYPE_LE || map->file_type == XX_FILE_TYPE_LX;
+}
+
 cd_i64 die_engine_api_script_entry_point_offset(DieEngine *pEngine)
 {
     if (has_legacy_script_map(pEngine->pMap)) {
@@ -261,6 +269,13 @@ cd_i64 die_engine_api_script_entry_point_offset(DieEngine *pEngine)
          * address of the entry inside its loaded image (as XMSDOS does).
          * Mapping also rejects an entry that falls into an overlay. */
         return xx_memory_map_address_to_offset(pEngine->pMap, pEngine->pMap->entry_point_address);
+    }
+
+    if (pEngine->pMap->file_type == XX_FILE_TYPE_LE || pEngine->pMap->file_type == XX_FILE_TYPE_LX) {
+        /* XLE: start object base + EIP through the object map. XBinary's
+         * addressToOffset takes the first record holding the address; LX files
+         * may carry later base-0 objects that overlap the start object. */
+        return xx_memory_map_address_to_offset_ex(pEngine->pMap, pEngine->pMap->entry_point_address, XX_MEMORY_MAP_LOOKUP_FIRST_MATCH);
     }
 
     if (pEngine->bHasElf) {

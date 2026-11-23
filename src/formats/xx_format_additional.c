@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "xx_format_additional.h"
+#include "xxfclib/data/xx_data.h"
 #include "xxfclib/formats/filesystem/dfsee_imz/xx_dfsee_imz.h"
 #include "xxfclib/formats/archive/dh/xx_dh.h"
 #include "xxfclib/formats/archive/djcomp/xx_djcomp.h"

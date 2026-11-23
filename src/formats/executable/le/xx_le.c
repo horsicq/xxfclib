@@ -147,8 +147,9 @@ static bool xx_linear_page_layout(const xx_linear_executable *linear, uint32_t p
         if (page->data_offset == linear->module_page_count && linear->last_page_size_or_shift != 0U && linear->last_page_size_or_shift <= linear->page_size)
             size = linear->last_page_size_or_shift;
     } else {
-        if (linear->last_page_size_or_shift >= 63U || (uint64_t)page->data_offset > (UINT64_MAX >> linear->last_page_size_or_shift)) return false;
-        displacement = (uint64_t)page->data_offset << linear->last_page_size_or_shift;
+        /* x86 SHL semantics: only the low 5 bits of e32_pageshift count (os2.sfx stores 64, meaning 0) */
+        uint32_t shift = linear->last_page_size_or_shift & 31U;
+        displacement = (uint64_t)page->data_offset << shift;
         if (!xx_linear_add_u64(linear->data_pages_offset, displacement, relative)) return false;
         size = page->data_size ? page->data_size : linear->page_size;
     }
@@ -223,7 +224,7 @@ static bool xx_linear_parse(Abstractformat *format, xx_linear_executable *parsed
         parsed->windows_resource_offset = xx_io_get_u32(format->device, absolute + 0xb8, false);
         parsed->windows_resource_size = xx_io_get_u32(format->device, absolute + 0xbc, false);
     }
-    if (parsed->page_size == 0U || (signature == XX_LX_SIGNATURE && parsed->last_page_size_or_shift >= 32U)) return false;
+    if (parsed->page_size == 0U) return false;
 
     if (!xx_linear_mul_u64(parsed->object_count, XX_LINEAR_OBJECT_SIZE, &size) || size > SIZE_MAX ||
         !xx_linear_add_u64(linear_offset, parsed->object_table_offset, &relative) || !xx_linear_range(format, relative, size, &absolute))
@@ -246,9 +247,12 @@ static bool xx_linear_parse(Abstractformat *format, xx_linear_executable *parsed
         object->page_count = xx_io_get_u32(format->device, item + 16, false);
         object->reserved = xx_io_get_u32(format->device, item + 20, false);
         if (object->page_count == 0U) continue;
-        if (object->first_page == 0U) return false;
-        first = (uint64_t)object->first_page - 1U;
-        if (first > parsed->module_page_count || object->page_count > parsed->module_page_count - first) return false;
+        /* VxDs (QEMM386.SYS, W32S.386) list pages past e32_mpages: keep the pages that exist, like Qt XLE */
+        first = object->first_page == 0U ? (uint64_t)parsed->module_page_count : (uint64_t)object->first_page - 1U;
+        if (first >= parsed->module_page_count)
+            object->page_count = 0U;
+        else if (object->page_count > parsed->module_page_count - first)
+            object->page_count = (uint32_t)(parsed->module_page_count - first);
     }
 
     size = signature == XX_LE_SIGNATURE ? XX_LE_PAGE_RECORD_SIZE : XX_LX_PAGE_RECORD_SIZE;
