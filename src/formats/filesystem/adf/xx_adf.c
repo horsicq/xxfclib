@@ -195,6 +195,7 @@ typedef struct adf_frame_s {
     uint32_t table[ADF_HT_SIZE];
     uint32_t slot; /**< Next hash slot to start. */
     uint32_t next; /**< Next entry on the current chain, 0 if none. */
+    uint32_t prior; /**< Entry whose chain field gave @c next, 0 for a table slot. */
 } adf_frame;
 
 /* ---------------------------------------------------------------------- */
@@ -837,6 +838,7 @@ static void adf_load_table(adf_frame *frame, const uint8_t *block)
     for (index = 0U; index < ADF_HT_SIZE; ++index) frame->table[index] = xx_data_get_u32(block + ADF_OFF_TABLE + index * 4U, 4, 0, true);
     frame->slot = 0U;
     frame->next = 0U;
+    frame->prior = 0U;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1495,7 +1497,7 @@ static bool adf_parse(Abstractformat *format, adf_stream **result, xx_pd_struct 
     while (depth != 0U) {
         adf_frame *frame = &frames[depth - 1U];
         adf_member member;
-        uint32_t number, secondary, hash = 0U;
+        uint32_t number, secondary, parent, hash = 0U;
         char *leaf = NULL;
         if ((++steps & 0xFFUL) == 0UL && pd && xx_pd_is_stopped(pd)) goto done;
         if (frame->next == 0U) {
@@ -1505,13 +1507,19 @@ static bool adf_parse(Abstractformat *format, adf_stream **result, xx_pd_struct 
                 continue;
             }
             frame->next = frame->table[frame->slot++];
+            frame->prior = 0U;
         }
         number = frame->next;
         frame->next = 0U;
-        if (!adf_pointer_ok(&stream->volume, number) || !adf_visit(visited, number) || !adf_read_block(&stream->volume, number, block) || !adf_entry_ok(block, number) ||
-            xx_data_get_u32(block + ADF_OFF_PARENT, 4, 0, true) != frame->block)
+        if (!adf_pointer_ok(&stream->volume, number) || !adf_visit(visited, number) || !adf_read_block(&stream->volume, number, block) || !adf_entry_ok(block, number))
             continue;
+        /* The parent field names the directory.  One mastering tool wrote
+         * the entry before it on the hash chain there instead (Putty, System
+         * 3, 1992: every chained entry of the root); that is taken too. */
+        parent = xx_data_get_u32(block + ADF_OFF_PARENT, 4, 0, true);
+        if (parent != frame->block && (frame->prior == 0U || parent != frame->prior)) continue;
         frame->next = xx_data_get_u32(block + ADF_OFF_HASH_CHAIN, 4, 0, true);
+        frame->prior = number;
         xx_mem_zero(&member, sizeof(member));
         member.header = number;
         member.parent = frame->member;
@@ -1654,7 +1662,7 @@ static bool adf_sink_put(adf_sink *sink, const uint8_t *data, size_t size)
  * way.  The files have every block checksummed and owned and add up to the
  * header's byte size.  Reference tools differ here: amitools refuses the
  * sequence number, ADFlib follows the next links and writes an empty file. */
-static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t expected, adf_sink *sink, xx_pd_struct *pd)
+static bool adf_copy_table(const adf_volume *volume, uint32_t header, uint64_t expected, adf_sink *sink, xx_pd_struct *pd)
 {
     uint8_t table[ADF_BSIZE];
     uint8_t data[ADF_BSIZE];
@@ -1716,6 +1724,59 @@ static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t ex
             return false;
     }
     return adf_sink_flush(sink);
+}
+
+/* Copy the bytes of an OFS file by its chain of data blocks instead of its
+ * block table: from the header's first-data field along each block's next
+ * field.  Nothing is taken on trust here.  Every block must be a checksummed
+ * data block that names this header and carries the sequence number of its
+ * position, the chain must end with a next field of 0, and the sizes must add
+ * up to exactly the header's byte size.  The rising sequence number bounds
+ * the walk. */
+static bool adf_copy_chain(const adf_volume *volume, uint32_t header, uint64_t expected, adf_sink *sink, xx_pd_struct *pd)
+{
+    uint8_t data[ADF_BSIZE];
+    uint64_t remaining;
+    uint32_t sequence = 0U, pointer;
+    if (volume->ffs || !adf_file_header_ok(volume, header, data)) return false;
+    pointer = xx_data_get_u32(data + 16U, 4, 0, true);
+    remaining = xx_data_get_u32(data + ADF_OFF_BYTE_SIZE, 4, 0, true);
+    if (remaining != expected || remaining == 0U || remaining > (uint64_t)volume->blocks * ADF_OFS_PAYLOAD) return false;
+    while (remaining != 0U) {
+        uint32_t size;
+        if ((sequence & 0xFFU) == 0xFFU && pd && xx_pd_is_stopped(pd)) return false;
+        if (++sequence > volume->blocks || !adf_pointer_ok(volume, pointer) || pointer == volume->root || pointer == header || !adf_read_block(volume, pointer, data))
+            return false;
+        size = xx_data_get_u32(data + 12U, 4, 0, true);
+        if (xx_data_get_u32(data, 4, 0, true) != ADF_T_DATA || xx_data_get_u32(data + 4U, 4, 0, true) != header ||
+            xx_data_get_u32(data + 8U, 4, 0, true) != sequence || size == 0U || size > ADF_OFS_PAYLOAD || (uint64_t)size > remaining || !adf_checksum_ok(data))
+            return false;
+        if (!adf_sink_put(sink, data + ADF_OFS_HEADER, (size_t)size)) return false;
+        remaining -= size;
+        pointer = xx_data_get_u32(data + 16U, 4, 0, true);
+    }
+    if (pointer != 0U) return false;
+    return adf_sink_flush(sink);
+}
+
+/* Copy (or, with a sink that has no device, verify) one file.  The block
+ * table is tried first and decides whenever it reads.  When it does not, an
+ * OFS file is read by its chain of data blocks if that chain proves itself
+ * (adf_copy_chain).  That is the state a link virus leaves: it puts its own
+ * blocks in front of the file, raises the byte size and repoints the
+ * header's first-data field, and leaves the table as it was, so the table
+ * comes up short by the added blocks ("[v Smily Cancer]" disks in TOSEC).
+ * ADFlib reads such a file the same way.  A volume without a root block
+ * keeps to the table.  Each way is verified in full before a byte is
+ * written, so a way that does not verify writes nothing. */
+static bool adf_copy_file(const adf_volume *volume, uint32_t header, uint64_t expected, adf_sink *sink, xx_pd_struct *pd)
+{
+    adf_sink probe;
+    xx_mem_zero(&probe, sizeof(probe));
+    if (adf_copy_table(volume, header, expected, &probe, pd)) return sink->device ? adf_copy_table(volume, header, expected, sink, pd) : true;
+    if (volume->ffs || volume->carved || (pd && xx_pd_is_stopped(pd))) return false;
+    if (!adf_copy_chain(volume, header, expected, &probe, pd)) return false;
+    return sink->device ? adf_copy_chain(volume, header, expected, sink, pd) : true;
 }
 
 /* Copy one carved run of bytes. */

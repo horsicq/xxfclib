@@ -987,7 +987,10 @@ XX_FORMAT_PROBE_READ(4100U)
 XX_FORMAT_READER_PROBE(microsoft_msf, XX_FILE_TYPE_MICROSOFT_MSF,
     (header_size >= 56 && !xx_rt_memcmp(header, "\x4d\x69\x63\x72\x6f\x73\x6f\x66\x74\x20\x43\x2f\x43\x2b\x2b\x20\x4d\x53\x46\x20\x37\x2e\x30\x30\x0d\x0a\x1a\x44\x53\x00\x00\x00", 32) &&
      header[32] == 0 && (header[33] == 0x02 || header[33] == 0x04 || header[33] == 0x08 || header[33] == 0x10) && header[34] == 0 && header[35] == 0 &&
-     (header[36] == 1 || header[36] == 2) && header[37] == 0 && header[38] == 0 && header[39] == 0))
+     (header[36] == 1 || header[36] == 2) && header[37] == 0 && header[38] == 0 && header[39] == 0) ||
+    /* The old "program database 2.00" (JG) layout: 44-byte magic, then the page size. */
+    (header_size >= 48 && !xx_rt_memcmp(header, "Microsoft C/C++ program database 2.00\r\n\x1a" "JG\0\0", 44) &&
+     header[44] == 0 && (header[45] == 0x02 || header[45] == 0x04 || header[45] == 0x08 || header[45] == 0x10) && header[46] == 0 && header[47] == 0))
 XX_FORMAT_READER_PROBE(pef, XX_FILE_TYPE_PEF,
     (header_size >= 12 && !xx_rt_memcmp(header, "Joy!peff", 8) &&
      (!xx_rt_memcmp(header + 8, "pwpc", 4) || !xx_rt_memcmp(header + 8, "m68k", 4))))

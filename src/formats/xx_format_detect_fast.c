@@ -303,6 +303,15 @@ xx_file_type_t xx_format_get_file_type_device_fast(xx_io_device *dev, const char
     if (type != XX_FILE_TYPE_UNKNOWN) return type;
     if (!source_path) source_path = xx_io_source_path(dev);
     type = xx_format_get_file_type_extension(source_path);
+    /* ".pdb" names both Palm OS databases and Microsoft program databases
+     * (MSF 7.00, the old "program database 2.00", portable PDB). The Palm
+     * container has no magic, so the extension alone must not claim the file:
+     * content detection decides, and Palm wins only when nothing else does. */
+    if (type == XX_FILE_TYPE_PDB) {
+        xx_file_type_t content = xx_format_get_file_type_device(dev);
+        if (content != XX_FILE_TYPE_UNKNOWN && content != XX_FILE_TYPE_BINARY) return content;
+        return type;
+    }
     if (type != XX_FILE_TYPE_UNKNOWN) return type;
     return xx_format_get_file_type_device(dev);
 }

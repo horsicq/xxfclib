@@ -436,6 +436,122 @@ XXFC_API int64_t xx_io_find_ansi_string_buffer_optimize(xx_io_device *dev, int64
 XXFC_API int64_t xx_io_find_unicode_string_buffer_optimize(xx_io_device *dev, int64_t start_offset, int64_t max_search_len, const wchar_t *wstr, bool big_endian,
                                                            xx_pd_struct *pd);
 
+/* ========================================================================= */
+/* --- Extended value decoders and encoders (xx_data_values.c)        --- */
+/* ========================================================================= */
+
+/* Every getter returns 0 / an invalid value and every setter returns false
+ * and writes nothing when [offset, offset + width) is not inside data_size. */
+
+/* Float16 / bfloat16. The setters round to nearest, ties to even (binary16:
+ * subnormals included, overflow gives an infinity); a NaN stays a quiet NaN. */
+XXFC_API bool xx_data_set_f16(void *data, size_t data_size, size_t offset, float val, bool big_endian);
+XXFC_API float xx_data_get_bf16(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API bool xx_data_set_bf16(void *data, size_t data_size, size_t offset, float val, bool big_endian);
+XXFC_API double xx_data_f16_to_double(uint16_t u16);
+XXFC_API double xx_data_bf16_to_double(uint16_t u16);
+
+/* 48-bit integers */
+XXFC_API uint64_t xx_data_get_u48(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API int64_t xx_data_get_i48(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API bool xx_data_set_u48(void *data, size_t data_size, size_t offset, uint64_t val, bool big_endian);
+XXFC_API bool xx_data_set_i48(void *data, size_t data_size, size_t offset, int64_t val, bool big_endian);
+
+/* LEB128 variable-length integers (at most 10 bytes) */
+XXFC_API uint64_t xx_data_get_uleb128(const void *data, size_t data_size, size_t offset, size_t *consumed);
+XXFC_API int64_t xx_data_get_sleb128(const void *data, size_t data_size, size_t offset, size_t *consumed);
+XXFC_API bool xx_data_set_uleb128(void *data, size_t data_size, size_t offset, uint64_t val, size_t *written);
+XXFC_API bool xx_data_set_sleb128(void *data, size_t data_size, size_t offset, int64_t val, size_t *written);
+
+/* Date and Time (Proleptic Gregorian, UTC, no libc time functions) */
+typedef struct xx_data_datetime {
+    int32_t year;
+    int32_t month;
+    int32_t day;
+    int32_t hour;
+    int32_t minute;
+    int32_t second;
+    int32_t nanosecond;
+    bool valid;
+} xx_data_datetime;
+
+XXFC_API xx_data_datetime xx_data_get_dos_date(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API xx_data_datetime xx_data_get_dos_time(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API xx_data_datetime xx_data_get_dos_datetime(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API xx_data_datetime xx_data_get_unix_time32(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API xx_data_datetime xx_data_get_unix_time64(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API xx_data_datetime xx_data_get_filetime(const void *data, size_t data_size, size_t offset, bool big_endian);
+
+XXFC_API bool xx_data_set_dos_date(void *data, size_t data_size, size_t offset, const xx_data_datetime *dt, bool big_endian);
+XXFC_API bool xx_data_set_dos_time(void *data, size_t data_size, size_t offset, const xx_data_datetime *dt, bool big_endian);
+XXFC_API bool xx_data_set_dos_datetime(void *data, size_t data_size, size_t offset, const xx_data_datetime *dt, bool big_endian);
+XXFC_API bool xx_data_set_unix_time32(void *data, size_t data_size, size_t offset, const xx_data_datetime *dt, bool big_endian);
+XXFC_API bool xx_data_set_unix_time64(void *data, size_t data_size, size_t offset, const xx_data_datetime *dt, bool big_endian);
+XXFC_API bool xx_data_set_filetime(void *data, size_t data_size, size_t offset, const xx_data_datetime *dt, bool big_endian);
+
+/* Getters: an instant whose year does not fit int32 gives valid = false.
+ * xx_data_set_unix_time32 fails outside the int32 second range;
+ * xx_data_set_filetime fails before 1601-01-01 and beyond UINT64_MAX ticks
+ * (its nanosecond field is floored to 100 ns and may carry into the seconds);
+ * xx_data_set_dos_datetime writes both words or nothing.
+ *
+ * Text: "YYYY-MM-DDTHH:MM:SSZ" / "YYYY-MM-DD HH:MM:SS UTC" for years 0..9999,
+ * otherwise the ISO 8601 expanded year with a sign and at least four digits
+ * ("+10000-01-01T00:00:00Z", "-0001-..."); "n/a" when !dt->valid. They return
+ * false only when cap is too small (21 / 24 bytes for a four-digit year, at
+ * most 28 / 31); the buffer then holds an empty string. */
+XXFC_API bool xx_data_datetime_to_iso8601(const xx_data_datetime *dt, char *buf, size_t cap);
+XXFC_API bool xx_data_datetime_to_display(const xx_data_datetime *dt, char *buf, size_t cap);
+
+/* GUID / UUID (Microsoft mixed-endian or big-endian) */
+typedef struct xx_data_guid {
+    uint32_t data1;
+    uint16_t data2;
+    uint16_t data3;
+    uint8_t data4[8];
+} xx_data_guid;
+
+XXFC_API xx_data_guid xx_data_get_guid(const void *data, size_t data_size, size_t offset, bool microsoft_mixed_endian);
+XXFC_API bool xx_data_set_guid(void *data, size_t data_size, size_t offset, const xx_data_guid *guid, bool microsoft_mixed_endian);
+XXFC_API bool xx_data_guid_to_string(const xx_data_guid *guid, char *buf, size_t cap);
+XXFC_API bool xx_data_guid_from_string(const char *str, xx_data_guid *guid);
+
+/* Color formats (RGB565 and RGBA8) */
+XXFC_API uint32_t xx_data_get_rgb565(const void *data, size_t data_size, size_t offset, bool big_endian);
+XXFC_API bool xx_data_set_rgb565(void *data, size_t data_size, size_t offset, uint32_t rgb, bool big_endian);
+XXFC_API bool xx_data_rgb565_to_hex(uint16_t rgb565, char *buf, size_t cap);
+XXFC_API bool xx_data_rgba8_to_hex(const uint8_t bytes[4], char *buf, size_t cap);
+
+/* IEEE-754 Floating Point Breakdown */
+typedef enum xx_data_float_class {
+    XX_DATA_FLOAT_ZERO = 0,
+    XX_DATA_FLOAT_SUBNORMAL = 1,
+    XX_DATA_FLOAT_NORMAL = 2,
+    XX_DATA_FLOAT_INFINITY = 3,
+    XX_DATA_FLOAT_NAN = 4
+} xx_data_float_class;
+
+typedef struct xx_data_float_parts {
+    int sign;
+    uint64_t exponent_raw;
+    int64_t exponent; /* unbiased */
+    uint64_t mantissa;
+    xx_data_float_class num_class;
+} xx_data_float_parts;
+
+XXFC_API bool xx_data_f16_parts(uint64_t raw_bits, xx_data_float_parts *parts);
+XXFC_API bool xx_data_f32_parts(uint64_t raw_bits, xx_data_float_parts *parts);
+XXFC_API bool xx_data_f64_parts(uint64_t raw_bits, xx_data_float_parts *parts);
+XXFC_API const char *xx_data_float_class_name(xx_data_float_class cls);
+/* Exact decimal text of (-1)^sign * mantissa * 2^power_of_two, e.g. "0.1f" =
+ * 13421773 * 2^-27 = "0.100000001490116119384765625"; integers end in ".0".
+ * power_of_two must be in [-16445, 16383] (binary16/32/64 and x87 extended
+ * with a 64-bit mantissa; a double subnormal needs up to 1074 fraction
+ * digits). Returns false, leaving an empty string, when the exact text and
+ * its terminator do not fit in cap or the exponent is out of range; the text
+ * is never truncated. */
+XXFC_API bool xx_data_float_exact_decimal(int sign, uint64_t mantissa_with_implicit, int power_of_two, char *buf, size_t cap);
+
 #ifdef __cplusplus
 }
 #endif

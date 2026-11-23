@@ -1206,6 +1206,8 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/science/matrix_market/xx_matrix_market.h
     include/xxfclib/formats/science/gromacs_gro/xx_gromacs_gro.h
     include/xxfclib/formats/executable/microsoft_msf/xx_microsoft_msf.h
+    include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb.h
+    include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb_def.h
     include/xxfclib/formats/executable/pef/xx_pef.h
     include/xxfclib/formats/other/rprj/xx_rprj.h
     include/xxfclib/formats/other/windows_registry_hive/xx_windows_registry_hive.h
@@ -2140,6 +2142,7 @@ set(XXFCLIB_SOURCES
     src/extractor/xx_extractor.c
     src/data/xx_pd.c
     src/data/xx_data_raw.c
+    src/data/xx_data_values.c
     src/data/xx_data_io.c
     src/global/platforms/xx_global_cpu.c
     src/data/platforms/xx_data_sse2.c
@@ -2180,6 +2183,8 @@ set(XXFCLIB_SOURCES
     src/algo/adler32/platforms/xx_adler32_avx2.c
     src/algo/adler32/platforms/xx_adler32_neon.c
     src/algo/adler32/platforms/xx_adler32_arm_dotprod.c
+    src/algo/nchash/xx_nchash.c
+    src/algo/intmath/xx_intmath.c
     src/algo/lzfse/xx_lzfse.c
     src/algo/lzfse/xx_lzfse_enc.c
     src/algo/lzfse/xx_lzfse_encode_reference.c
@@ -2811,6 +2816,7 @@ set(XXFCLIB_SOURCES
     src/formats/archive/lzop/xx_lzop_extractor.c
     src/formats/firmware/srec/xx_srec.c
     src/formats/firmware/srec/xx_srec_extractor.c
+    src/formats/firmware/srec/xx_srec_writer.c
     src/formats/archive/dclraw/xx_dclraw.c
     src/formats/archive/dclraw/xx_dclraw_extractor.c
     src/formats/archive/xpak/xx_xpak.c
@@ -4003,6 +4009,7 @@ set(XXFCLIB_SOURCES
     src/formats/science/gromacs_gro/xx_gromacs_gro_extractor.c
     src/formats/executable/microsoft_msf/xx_microsoft_msf.c
     src/formats/executable/microsoft_msf/xx_microsoft_msf_extractor.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb.c
     src/formats/executable/pef/xx_pef.c
     src/formats/executable/pef/xx_pef_extractor.c
     src/formats/other/rprj/xx_rprj.c
@@ -5020,6 +5027,8 @@ set(XXFCLIB_SOURCES
     src/formats/other/gpgsigned/xx_gpgsigned_extractor.c
     src/formats/firmware/ihex/xx_ihex.c
     src/formats/firmware/ihex/xx_ihex_extractor.c
+    src/formats/firmware/ihex/xx_ihex_writer.c
+    src/formats/patch/ips/xx_ips.c
     src/formats/archive/kwaj/xx_kwaj.c
     src/formats/archive/kwaj/xx_kwaj_extractor.c
     src/formats/archive/lbr/xx_lbr.c

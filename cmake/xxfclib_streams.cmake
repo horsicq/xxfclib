@@ -129,6 +129,8 @@ function(xxfclib_select_stream_sources source_list)
         # Data-structure descriptions expose the public format type name.
         # The pure name catalog adds no concrete reader dependencies.
         list(APPEND _selected "${_root}/src/formats/xx_format_names.c")
+        # Format-independent compare of two files' DataStructs.
+        list(APPEND _selected "${_root}/src/formats/xx_data_struct_compare.c")
     endif()
     # DataStructs scripts (src/datastructs/*.xxds) run in the JS engine, so the
     # script host joins exactly the profiles that already carry it.
