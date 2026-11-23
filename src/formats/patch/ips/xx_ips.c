@@ -57,7 +57,12 @@ static bool ensure_capacity(xx_ips_patch *patch, size_t needed)
 
 bool xx_ips_patch_add_record(xx_ips_patch *patch, uint64_t offset, const uint8_t *data, uint32_t size)
 {
-    if (!patch || size == 0 || !data) return false;
+    if (!patch || size == 0 || size > XX_IPS_MAX_RECORD_SIZE || !data) return false;
+    if (patch->type == XX_IPS_TYPE_IPS) {
+        if (offset == 0x454F46ULL || offset > 0xFFFFFFULL) return false;
+    } else {
+        if (offset == 0x45454F46ULL || offset > 0xFFFFFFFFULL) return false;
+    }
     if (!ensure_capacity(patch, patch->record_count + 1)) return false;
 
     uint8_t *copy = (uint8_t *)xx_mem_alloc(size);
@@ -76,7 +81,12 @@ bool xx_ips_patch_add_record(xx_ips_patch *patch, uint64_t offset, const uint8_t
 
 bool xx_ips_patch_add_rle_record(xx_ips_patch *patch, uint64_t offset, uint8_t value, uint32_t rle_size)
 {
-    if (!patch || rle_size == 0) return false;
+    if (!patch || rle_size == 0 || rle_size > XX_IPS_MAX_RECORD_SIZE) return false;
+    if (patch->type == XX_IPS_TYPE_IPS) {
+        if (offset == 0x454F46ULL || offset > 0xFFFFFFULL) return false;
+    } else {
+        if (offset == 0x45454F46ULL || offset > 0xFFFFFFFFULL) return false;
+    }
     if (!ensure_capacity(patch, patch->record_count + 1)) return false;
 
     xx_ips_record *rec = &patch->records[patch->record_count++];
@@ -313,8 +323,13 @@ bool xx_ips_apply_buffer(const xx_ips_patch *patch, uint8_t **data, size_t *size
 
     for (size_t i = 0; i < patch->record_count; ++i) {
         const xx_ips_record *rec = &patch->records[i];
-        uint64_t needed_end = rec->is_rle ? (rec->offset + rec->rle_size) : (rec->offset + rec->size);
+        uint64_t rec_len = rec->is_rle ? (uint64_t)rec->rle_size : (uint64_t)rec->size;
+        if (rec->offset > UINT64_MAX - rec_len) {
+            set_err(error, error_cap, "Record bounds overflow 64-bit integer");
+            return false;
+        }
 
+        uint64_t needed_end = rec->offset + rec_len;
         if (needed_end > (uint64_t)SIZE_MAX) {
             set_err(error, error_cap, "Record extends beyond memory limits");
             return false;
@@ -340,13 +355,33 @@ bool xx_ips_apply_buffer(const xx_ips_patch *patch, uint8_t **data, size_t *size
         if (rec->is_rle) {
             xx_rt_memset(cur_data + rec->offset, rec->rle_value, rec->rle_size);
         } else {
-            xx_rt_memcpy(cur_data + rec->offset, rec->data, rec->size);
+            if (rec->size > 0 && rec->data) {
+                xx_rt_memcpy(cur_data + rec->offset, rec->data, rec->size);
+            }
         }
     }
 
     if (patch->has_truncation) {
-        if ((uint64_t)cur_size > patch->truncate_length) {
-            cur_size = (size_t)patch->truncate_length;
+        if (patch->truncate_length > (uint64_t)SIZE_MAX) {
+            set_err(error, error_cap, "Truncate length exceeds memory limits");
+            *data = cur_data;
+            *size = cur_size;
+            return false;
+        }
+        size_t target_sz = (size_t)patch->truncate_length;
+        if (target_sz > cur_size) {
+            uint8_t *extended = (uint8_t *)xx_mem_realloc(cur_data, target_sz == 0 ? 1 : target_sz);
+            if (!extended) {
+                set_err(error, error_cap, "Out of memory extending buffer to truncate length");
+                *data = cur_data;
+                *size = cur_size;
+                return false;
+            }
+            xx_rt_memset(extended + cur_size, 0, target_sz - cur_size);
+            cur_data = extended;
+            cur_size = target_sz;
+        } else if (target_sz < cur_size) {
+            cur_size = target_sz;
             uint8_t *truncated = (uint8_t *)xx_mem_realloc(cur_data, cur_size == 0 ? 1 : cur_size);
             if (truncated) cur_data = truncated;
         }
@@ -370,20 +405,41 @@ bool xx_ips_apply_device(const xx_ips_patch *patch, xx_io_device *target, xx_pd_
 
     for (size_t i = 0; i < patch->record_count; ++i) {
         const xx_ips_record *rec = &patch->records[i];
+        uint64_t rec_len = rec->is_rle ? (uint64_t)rec->rle_size : (uint64_t)rec->size;
+        if (rec->offset > UINT64_MAX - rec_len) {
+            set_err(error, error_cap, "Record bounds overflow 64-bit integer");
+            return false;
+        }
+
+        uint64_t needed_end = rec->offset + rec_len;
+        if (needed_end > (uint64_t)INT64_MAX) {
+            set_err(error, error_cap, "Record extends beyond device limits");
+            return false;
+        }
+
         if (rec->offset > (uint64_t)cur_len) {
             /* Zero-fill gap */
-            size_t gap = (size_t)(rec->offset - (uint64_t)cur_len);
+            uint64_t gap = rec->offset - (uint64_t)cur_len;
             uint8_t zeroes[1024] = {0};
-            if (xx_io_seek64(target, cur_len, SEEK_SET) != 0) return false;
+            if (xx_io_seek64(target, cur_len, SEEK_SET) != 0) {
+                set_err(error, error_cap, "Failed to seek device for gap fill");
+                return false;
+            }
             while (gap > 0) {
-                size_t n = gap > sizeof(zeroes) ? sizeof(zeroes) : gap;
-                if (xx_io_write(target, zeroes, n) != (ssize_t)n) return false;
+                size_t n = gap > (uint64_t)sizeof(zeroes) ? sizeof(zeroes) : (size_t)gap;
+                if (xx_io_write(target, zeroes, n) != (ssize_t)n) {
+                    set_err(error, error_cap, "Failed to write zero gap to device");
+                    return false;
+                }
                 gap -= n;
             }
             cur_len = (int64_t)rec->offset;
         }
 
-        if (xx_io_seek64(target, (int64_t)rec->offset, SEEK_SET) != 0) return false;
+        if (xx_io_seek64(target, (int64_t)rec->offset, SEEK_SET) != 0) {
+            set_err(error, error_cap, "Failed to seek device to record offset");
+            return false;
+        }
 
         if (rec->is_rle) {
             uint8_t val = rec->rle_value;
@@ -392,24 +448,53 @@ bool xx_ips_apply_device(const xx_ips_patch *patch, xx_io_device *target, xx_pd_
             size_t rem = rec->rle_size;
             while (rem > 0) {
                 size_t n = rem > sizeof(rle_buf) ? sizeof(rle_buf) : rem;
-                if (xx_io_write(target, rle_buf, n) != (ssize_t)n) return false;
+                if (xx_io_write(target, rle_buf, n) != (ssize_t)n) {
+                    set_err(error, error_cap, "Failed to write RLE data to device");
+                    return false;
+                }
                 rem -= n;
             }
             if ((int64_t)(rec->offset + rec->rle_size) > cur_len) {
                 cur_len = (int64_t)(rec->offset + rec->rle_size);
             }
         } else {
-            if (xx_io_write(target, rec->data, rec->size) != (ssize_t)rec->size) return false;
-            if ((int64_t)(rec->offset + rec->size) > cur_len) {
-                cur_len = (int64_t)(rec->offset + rec->size);
+            if (rec->size > 0 && rec->data) {
+                if (xx_io_write(target, rec->data, rec->size) != (ssize_t)rec->size) {
+                    set_err(error, error_cap, "Failed to write payload data to device");
+                    return false;
+                }
+                if ((int64_t)(rec->offset + rec->size) > cur_len) {
+                    cur_len = (int64_t)(rec->offset + rec->size);
+                }
             }
         }
     }
 
-    if (patch->has_truncation && (uint64_t)cur_len > patch->truncate_length) {
-        if (!xx_io_resize(target, (int64_t)patch->truncate_length)) {
-            set_err(error, error_cap, "Failed to truncate output device");
+    if (patch->has_truncation) {
+        if (patch->truncate_length > (uint64_t)INT64_MAX) {
+            set_err(error, error_cap, "Truncate length exceeds device limits");
             return false;
+        }
+        if ((uint64_t)cur_len > patch->truncate_length) {
+            if (!xx_io_resize(target, (int64_t)patch->truncate_length)) {
+                set_err(error, error_cap, "Failed to truncate output device");
+                return false;
+            }
+        } else if ((uint64_t)cur_len < patch->truncate_length) {
+            uint64_t gap = patch->truncate_length - (uint64_t)cur_len;
+            uint8_t zeroes[1024] = {0};
+            if (xx_io_seek64(target, cur_len, SEEK_SET) != 0) {
+                set_err(error, error_cap, "Failed to seek device for truncate extension");
+                return false;
+            }
+            while (gap > 0) {
+                size_t n = gap > (uint64_t)sizeof(zeroes) ? sizeof(zeroes) : (size_t)gap;
+                if (xx_io_write(target, zeroes, n) != (ssize_t)n) {
+                    set_err(error, error_cap, "Failed to write zero extension to device");
+                    return false;
+                }
+                gap -= n;
+            }
         }
     }
 
@@ -422,6 +507,53 @@ bool xx_ips_write_device(const xx_ips_patch *patch, xx_io_device *dest, xx_pd_st
     if (!patch || !dest) {
         set_err(error, error_cap, "Invalid arguments to xx_ips_write_device");
         return false;
+    }
+
+    /* Strict pre-validation: reject invalid records, offsets, sizes before emitting anything */
+    for (size_t i = 0; i < patch->record_count; ++i) {
+        const xx_ips_record *rec = &patch->records[i];
+        if (rec->is_rle) {
+            if (rec->rle_size == 0 || rec->rle_size > XX_IPS_MAX_RECORD_SIZE) {
+                set_err(error, error_cap, "Invalid IPS RLE record size");
+                return false;
+            }
+        } else {
+            if (rec->size == 0 || rec->size > XX_IPS_MAX_RECORD_SIZE || !rec->data) {
+                set_err(error, error_cap, "Invalid IPS record size or data");
+                return false;
+            }
+        }
+
+        if (patch->type == XX_IPS_TYPE_IPS) {
+            if (rec->offset == 0x454F46ULL) {
+                set_err(error, error_cap, "IPS record offset collides with EOF marker (0x454F46)");
+                return false;
+            }
+            if (rec->offset > 0xFFFFFFULL) {
+                set_err(error, error_cap, "IPS record offset exceeds 24-bit address limit");
+                return false;
+            }
+        } else {
+            if (rec->offset == 0x45454F46ULL) {
+                set_err(error, error_cap, "IPS32 record offset collides with EEOF marker (0x45454F46)");
+                return false;
+            }
+            if (rec->offset > 0xFFFFFFFFULL) {
+                set_err(error, error_cap, "IPS32 record offset exceeds 32-bit address limit");
+                return false;
+            }
+        }
+    }
+
+    if (patch->has_truncation) {
+        if (patch->type == XX_IPS_TYPE_IPS && patch->truncate_length > 0xFFFFFFULL) {
+            set_err(error, error_cap, "IPS truncation length exceeds 24-bit address limit");
+            return false;
+        }
+        if (patch->type == XX_IPS_TYPE_IPS32 && patch->truncate_length > 0xFFFFFFFFULL) {
+            set_err(error, error_cap, "IPS32 truncation length exceeds 32-bit address limit");
+            return false;
+        }
     }
 
     const char *magic = (patch->type == XX_IPS_TYPE_IPS32) ? "IPS32" : "PATCH";
@@ -494,8 +626,13 @@ xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
                                          const uint8_t *mod, size_t mod_size,
                                          bool force_ips32, char *error, size_t error_cap)
 {
-    bool need_ips32 = force_ips32;
-    xx_ips_patch *patch = xx_ips_patch_create(XX_IPS_TYPE_IPS);
+    if ((orig_size > 0 && !orig) || (mod_size > 0 && !mod)) {
+        set_err(error, error_cap, "Invalid NULL pointer for non-empty buffer");
+        return NULL;
+    }
+
+    xx_ips_type patch_type = force_ips32 ? XX_IPS_TYPE_IPS32 : XX_IPS_TYPE_IPS;
+    xx_ips_patch *patch = xx_ips_patch_create(patch_type);
     if (!patch) {
         set_err(error, error_cap, "Out of memory creating patch structure");
         return NULL;
@@ -531,9 +668,70 @@ xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
         /* Emit records for diff_start .. diff_end */
         size_t cur = diff_start;
         while (cur < diff_end) {
-            uint64_t rec_offset = (uint64_t)cur;
-            if (rec_offset >= 0x01000000ULL || rec_offset == 0x454F46ULL) {
-                need_ips32 = true;
+            if (cur > 0xFFFFFFULL && !force_ips32) {
+                set_err(error, error_cap, "Offset exceeds 24-bit address limit for standard IPS patch");
+                xx_ips_patch_free(patch);
+                return NULL;
+            }
+            if (cur > 0xFFFFFFFFULL) {
+                set_err(error, error_cap, "Offset exceeds 32-bit address limit");
+                xx_ips_patch_free(patch);
+                return NULL;
+            }
+
+            /* For 24-bit IPS: never switch to IPS32 because of 0x454F46;
+             * start such a record at 0x454F45 including unchanged byte before it.
+             * If 0x454F45 itself is already inside the previous record, merge. */
+            if (!force_ips32 && cur == 0x454F46ULL) {
+                bool merged = false;
+                if (patch->record_count > 0) {
+                    xx_ips_record *prev = &patch->records[patch->record_count - 1];
+                    uint64_t prev_end = prev->is_rle ? (prev->offset + prev->rle_size) : (prev->offset + prev->size);
+                    if (prev_end > 0x454F45ULL) {
+                        /* 0x454F45 is inside prev record; merge */
+                        if (prev->is_rle && prev->rle_size < XX_IPS_MAX_RECORD_SIZE) {
+                            uint8_t *d = (uint8_t *)xx_mem_alloc(prev->rle_size + 1);
+                            if (!d) {
+                                set_err(error, error_cap, "Out of memory merging IPS record");
+                                xx_ips_patch_free(patch);
+                                return NULL;
+                            }
+                            xx_rt_memset(d, prev->rle_value, prev->rle_size);
+                            d[prev->rle_size] = mod[cur];
+                            prev->data = d;
+                            prev->size = prev->rle_size + 1;
+                            prev->is_rle = false;
+                            prev->rle_size = 0;
+                            cur++;
+                            merged = true;
+                        } else if (prev->size < XX_IPS_MAX_RECORD_SIZE) {
+                            uint8_t *d = (uint8_t *)xx_mem_realloc(prev->data, prev->size + 1);
+                            if (!d) {
+                                set_err(error, error_cap, "Out of memory merging IPS record");
+                                xx_ips_patch_free(patch);
+                                return NULL;
+                            }
+                            prev->data = d;
+                            prev->data[prev->size] = mod[cur];
+                            prev->size++;
+                            cur++;
+                            merged = true;
+                        }
+                    }
+                }
+                if (!merged) {
+                    /* Start record at 0x454F45 including the unchanged byte mod[0x454F45] */
+                    size_t chunk = diff_end - cur;
+                    if (chunk > XX_IPS_MAX_RECORD_SIZE - 1) chunk = XX_IPS_MAX_RECORD_SIZE - 1;
+                    if (!xx_ips_patch_add_record(patch, 0x454F45ULL, mod + 0x454F45ULL, (uint32_t)(chunk + 1))) {
+                        set_err(error, error_cap, "Failed to add IPS record");
+                        xx_ips_patch_free(patch);
+                        return NULL;
+                    }
+                    cur += chunk;
+                    continue;
+                }
+                if (cur >= diff_end) break;
             }
 
             /* Check if cur starts a run of repeated identical bytes */
@@ -543,12 +741,23 @@ xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
                 ++rle_len;
             }
 
+            /* If 24-bit IPS, avoid ending a max-size chunk exactly at 0x454F46 if diff continues */
+            if (!force_ips32 && cur < 0x454F46ULL && diff_end > 0x454F46ULL) {
+                if (cur + rle_len == 0x454F46ULL && rle_len == XX_IPS_MAX_RECORD_SIZE) {
+                    rle_len--;
+                }
+            }
+
             /* Use RLE when shorter:
              * Standalone chunk: RLE is 8 bytes in IPS, raw is 5 + N. When N >= 4, RLE is shorter.
              * If not all identical, but starts with >= 16 repeated bytes: split into RLE.
              */
             if (rle_len >= 4 && (rle_len == (diff_end - cur) || rle_len >= 16)) {
-                xx_ips_patch_add_rle_record(patch, rec_offset, val, (uint32_t)rle_len);
+                if (!xx_ips_patch_add_rle_record(patch, (uint64_t)cur, val, (uint32_t)rle_len)) {
+                    set_err(error, error_cap, "Failed to add IPS RLE record");
+                    xx_ips_patch_free(patch);
+                    return NULL;
+                }
                 cur += rle_len;
             } else {
                 /* Emit raw record up to min(XX_IPS_MAX_RECORD_SIZE, remaining) */
@@ -568,21 +777,34 @@ xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
                     }
                 }
 
-                xx_ips_patch_add_record(patch, rec_offset, mod + cur, (uint32_t)chunk);
+                if (!force_ips32 && cur < 0x454F46ULL && diff_end > 0x454F46ULL) {
+                    if (cur + chunk == 0x454F46ULL && chunk == XX_IPS_MAX_RECORD_SIZE) {
+                        chunk--;
+                    }
+                }
+
+                if (!xx_ips_patch_add_record(patch, (uint64_t)cur, mod + cur, (uint32_t)chunk)) {
+                    set_err(error, error_cap, "Failed to add IPS record");
+                    xx_ips_patch_free(patch);
+                    return NULL;
+                }
                 cur += chunk;
             }
         }
     }
 
     if (mod_size < orig_size) {
-        xx_ips_patch_set_truncation(patch, mod_size);
-        if (mod_size >= 0x01000000ULL) {
-            need_ips32 = true;
+        if (!force_ips32 && mod_size > 0xFFFFFFULL) {
+            set_err(error, error_cap, "Truncate length exceeds 24-bit address limit for standard IPS patch");
+            xx_ips_patch_free(patch);
+            return NULL;
         }
-    }
-
-    if (need_ips32) {
-        patch->type = XX_IPS_TYPE_IPS32;
+        if (mod_size > 0xFFFFFFFFULL) {
+            set_err(error, error_cap, "Truncate length exceeds 32-bit address limit");
+            xx_ips_patch_free(patch);
+            return NULL;
+        }
+        xx_ips_patch_set_truncation(patch, mod_size);
     }
 
     return patch;

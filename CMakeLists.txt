@@ -154,6 +154,19 @@ if(XXFC_MSVC_ARM64 AND XXFC_STATIC_NO_CRT AND XXFC_HAS_STATIC_TARGET)
     add_library(xxfclib::no_crt_runtime ALIAS xxfclib_no_crt_runtime)
 endif()
 
+# Hosted MSVC executables (/MD) import memcpy/memset/strchr/... from
+# VCRUNTIME140.dll, the Visual C++ redistributable. Linking this OBJECT target
+# into an executable (together with xxfclib) defines them on top of xx_rt_*,
+# so the image depends only on Windows DLLs and the UCRT. An object is used
+# because it beats the import library; an archive member would not. The
+# program must not use __try/__except (SQLite: SQLITE_OMIT_SEH).
+if(MSVC)
+    add_library(xxfclib_vcruntime_free OBJECT src/rt/platforms/xx_rt_vcruntime_windows.c)
+    target_include_directories(xxfclib_vcruntime_free PRIVATE include)
+    target_compile_definitions(xxfclib_vcruntime_free PRIVATE XXFC_STATIC)
+    add_library(xxfclib::vcruntime_free ALIAS xxfclib_vcruntime_free)
+endif()
+
 # Source files
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/xxfclib_codepages.cmake")
 option(XXFC_BUILD_CODEPAGE_TESTS "Build portable codepage callback tests" OFF)
@@ -1208,6 +1221,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/executable/microsoft_msf/xx_microsoft_msf.h
     include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb.h
     include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb_def.h
+    include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb_portable.h
     include/xxfclib/formats/executable/pef/xx_pef.h
     include/xxfclib/formats/other/rprj/xx_rprj.h
     include/xxfclib/formats/other/windows_registry_hive/xx_windows_registry_hive.h
@@ -4010,6 +4024,7 @@ set(XXFCLIB_SOURCES
     src/formats/executable/microsoft_msf/xx_microsoft_msf.c
     src/formats/executable/microsoft_msf/xx_microsoft_msf_extractor.c
     src/formats/executable/microsoft_pdb/xx_microsoft_pdb.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_portable.c
     src/formats/executable/pef/xx_pef.c
     src/formats/executable/pef/xx_pef_extractor.c
     src/formats/other/rprj/xx_rprj.c

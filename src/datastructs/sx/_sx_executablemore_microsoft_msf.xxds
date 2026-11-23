@@ -16,6 +16,64 @@ var sxexm_msf7_stream_size_fields = layout([u32("stream_size", SIZE)]);
 var sxexm_msf7_stream_size = sxLayout(0x602B000A, "msf7_stream_size", LE, sxexm_msf7_stream_size_fields);
 var sxexm_msf7_stream_block_fields = layout([u32("stream_block_index", ID)]);
 var sxexm_msf7_stream_block = sxLayout(0x602B000B, "msf7_stream_block", LE, sxexm_msf7_stream_block_fields);
+
+var sxexm_msf2_superblock_fields = layout([chars("signature", 44, SIGNATURE), u32("page_size", SIZE),
+    u16("free_page_map_page", ID), u16("page_count", COUNT), u32("directory_size", SIZE), u32("reserved", RESERVED)]);
+var sxexm_msf2_superblock = sxLayout(0x602B0060, "msf2_superblock", LE, sxexm_msf2_superblock_fields);
+sxexm_msf2_superblock.description = "Microsoft Program Database 2.00 (MSF 2.0 / JG) file superblock.";
+
+var sxexm_msf2_directory_page_fields = layout([u16("directory_page_index", ID)]);
+var sxexm_msf2_directory_page = sxLayout(0x602B0061, "msf2_directory_page", LE, sxexm_msf2_directory_page_fields);
+sxexm_msf2_directory_page.description = "Physical file page index of one page of the JG stream directory.";
+
+var sxexm_msf2_stream_count_fields = layout([u16("stream_count", COUNT), u16("reserved", RESERVED)]);
+var sxexm_msf2_stream_count = sxLayout(0x602B0062, "msf2_stream_count", LE, sxexm_msf2_stream_count_fields);
+sxexm_msf2_stream_count.description = "Stream count and reserved word of the JG MSF stream directory.";
+
+var sxexm_msf2_stream_size_fields = layout([u32("stream_size", SIZE), u32("reserved", RESERVED)]);
+var sxexm_msf2_stream_size = sxLayout(0x602B0063, "msf2_stream_size", LE, sxexm_msf2_stream_size_fields);
+sxexm_msf2_stream_size.description = "Stream byte size and reserved word in the JG MSF stream directory.";
+
+var sxexm_msf2_stream_page_fields = layout([u16("stream_page_index", ID)]);
+var sxexm_msf2_stream_page = sxLayout(0x602B0064, "msf2_stream_page", LE, sxexm_msf2_stream_page_fields);
+sxexm_msf2_stream_page.description = "Physical file page index for a stream in JG MSF.";
+
+var sxexm_msf_pdb_info_header_fields = layout([u32("version", ID), u32("signature", SIGNATURE),
+    u32("age", COUNT), bytes("guid", 16, ID)]);
+var sxexm_msf_pdb_info_header = sxLayout(0x602B0065, "msf_pdb_info_header", LE, sxexm_msf_pdb_info_header_fields);
+sxexm_msf_pdb_info_header.description = "Microsoft PDB stream 1 info header.";
+
+var sxexm_msf_tpi_header_fields = layout([u32("version", ID), u32("header_size", SIZE),
+    u32("type_index_begin", ID), u32("type_index_end", ID), u32("type_record_bytes", SIZE),
+    u16("hash_stream_index", ID), u16("hash_aux_stream_index", ID), u32("hash_key_size", SIZE),
+    u32("num_hash_buckets", COUNT), i32("hash_value_buffer_offset", OFFSET),
+    u32("hash_value_buffer_length", SIZE), i32("index_offset_buffer_offset", OFFSET),
+    u32("index_offset_buffer_length", SIZE), i32("hash_adj_buffer_offset", OFFSET),
+    u32("hash_adj_buffer_length", SIZE)]);
+var sxexm_msf_tpi_header = sxLayout(0x602B0066, "msf_tpi_header", LE, sxexm_msf_tpi_header_fields);
+sxexm_msf_tpi_header.description = "Microsoft PDB stream 2 Type Info (TPI) header.";
+
+var sxexm_msf_dbi_header_fields = layout([i32("version_signature", SIGNATURE), u32("version_header", ID),
+    u32("age", COUNT), u16("global_stream_index", ID), u16("build_number", ID),
+    u16("public_stream_index", ID), u16("pdb_dll_version", NONE), u16("sym_record_stream", ID),
+    u16("pdb_dll_rbld", NONE), i32("mod_info_size", SIZE), i32("section_contribution_size", SIZE),
+    i32("section_map_size", SIZE), i32("source_info_size", SIZE), i32("type_server_map_size", SIZE),
+    u32("mfc_type_server_index", ID), i32("optional_dbg_header_size", SIZE),
+    i32("ec_substream_size", SIZE), u16("flags", FLAGS), u16("machine", ID),
+    u32("padding", RESERVED)]);
+var sxexm_msf_dbi_header = sxLayout(0x602B0067, "msf_dbi_header", LE, sxexm_msf_dbi_header_fields);
+sxexm_msf_dbi_header.description = "Microsoft PDB stream 3 Debug Info (DBI) header.";
+
+var sxexm_msf_ipi_header_fields = layout([u32("version", ID), u32("header_size", SIZE),
+    u32("type_index_begin", ID), u32("type_index_end", ID), u32("type_record_bytes", SIZE),
+    u16("hash_stream_index", ID), u16("hash_aux_stream_index", ID), u32("hash_key_size", SIZE),
+    u32("num_hash_buckets", COUNT), i32("hash_value_buffer_offset", OFFSET),
+    u32("hash_value_buffer_length", SIZE), i32("index_offset_buffer_offset", OFFSET),
+    u32("index_offset_buffer_length", SIZE), i32("hash_adj_buffer_offset", OFFSET),
+    u32("hash_adj_buffer_length", SIZE)]);
+var sxexm_msf_ipi_header = sxLayout(0x602B0068, "msf_ipi_header", LE, sxexm_msf_ipi_header_fields);
+sxexm_msf_ipi_header.description = "Microsoft PDB stream 4 Item Info (IPI) header.";
+
 function sxexm_msf_word(c, map, bs, bytes, logical, l, value) {
     var id = [0];
     if (logical > bytes || sxU64(bytes - logical) < 4 || logical % 4 || !sxexm_word(c, map + Math.floor(logical / bs) * 4, 4, false, id) || id[0] > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
@@ -24,7 +82,102 @@ function sxexm_msf_word(c, map, bs, bytes, logical, l, value) {
     var p = id[0] * bs + logical % bs;
     return sxexm_word(c, p, 4, false, value) && sxexm_add(c, l, p);
 }
-function sxexm_msf(c) {
+
+function sxexm_msf_is_jg(b) {
+    var sig = "Microsoft C/C++ program database 2.00\r\n\x1aJG\0\0";
+    if (b.length < 44) {
+        return false;
+    }
+    for (var i = 0; i < 44; i++) {
+        if (b[i] !== sig.charCodeAt(i)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function sxexm_msf_jg(c) {
+    var b = [];
+    if (!sxexm_read(c, 0, b, 60) || !sxexm_add(c, sxexm_msf2_superblock, 0)) {
+        return false;
+    }
+    var bs = sxexm32(b, 44, false);
+    var dn = sxexm32(b, 52, false);
+    var max_blk = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs);
+    if (bs !== 512 && bs !== 1024 && bs !== 2048 && bs !== 4096 || dn < 4 || dn > 4194304) {
+        return true;
+    }
+    var pages = Math.floor(sxU64(dn + bs - 1) / bs);
+    if (60 + pages * 2 > bs || !sxexm_span(c, 60, pages * 2) || !sxexm_table(c, sxexm_msf2_directory_page, 60, pages)) {
+        return true;
+    }
+    var dir_buf = [];
+    if (!sxexm_read(c, 60, dir_buf, pages * 2)) {
+        return true;
+    }
+    var dir_pages = [];
+    for (var p_idx = 0; p_idx < pages; p_idx++) {
+        dir_pages.push(sxexm16(dir_buf, p_idx * 2, false));
+    }
+    var p0 = dir_pages[0];
+    if (p0 > max_blk || !sxexm_span(c, p0 * bs, 4)) {
+        return true;
+    }
+    var cnt_buf = [];
+    if (!sxexm_read(c, p0 * bs, cnt_buf, 4) || !sxexm_add(c, sxexm_msf2_stream_count, p0 * bs)) {
+        return true;
+    }
+    var stream_count = sxexm16(cnt_buf, 0, false);
+    if (stream_count > 4093 || 4 + stream_count * 8 > dn) {
+        return true;
+    }
+    var at = 4 + stream_count * 8;
+    for (var i = 0; i < stream_count && c.count < 20000; i++) {
+        var log_sz = 4 + i * 8;
+        var pg_sz = Math.floor(log_sz / bs);
+        var z0 = 4294967295;
+        if (pg_sz < pages && dir_pages[pg_sz] <= max_blk) {
+            var p_sz = dir_pages[pg_sz] * bs + (log_sz % bs);
+            if (log_sz % bs <= bs - 8 && sxexm_span(c, p_sz, 8)) {
+                var sz_buf = [];
+                if (!sxexm_read(c, p_sz, sz_buf, 8) || !sxexm_add(c, sxexm_msf2_stream_size, p_sz)) {
+                    break;
+                }
+                z0 = sxexm32(sz_buf, 0, false);
+            } else if (log_sz % bs <= bs - 4 && sxexm_span(c, p_sz, 4)) {
+                var z_val = [0];
+                if (!sxexm_word(c, p_sz, 4, false, z_val)) {
+                    break;
+                }
+                z0 = z_val[0];
+            }
+        }
+        if (z0 === 4294967295) {
+            continue;
+        }
+        var n = Math.floor(sxU64(z0 + bs - 1) / bs);
+        if (n > Math.floor(sxU64(dn - at) / 2)) {
+            break;
+        }
+        for (var j = 0; j < n && c.count < 20000; j++) {
+            var pg_at = Math.floor(at / bs);
+            if (pg_at >= pages || dir_pages[pg_at] > max_blk) {
+                return true;
+            }
+            var p_blk = dir_pages[pg_at] * bs + (at % bs);
+            if (!sxexm_span(c, p_blk, 2) || !sxexm_add(c, sxexm_msf2_stream_page, p_blk)) {
+                return true;
+            }
+            at += 2;
+        }
+        if (c.count >= 20000) {
+            break;
+        }
+    }
+    return true;
+}
+
+function sxexm_msf7(c) {
     var b = [];
     if (!sxexm_read(c, 0, b, 56) || !sxexm_add(c, sxexm_msf7_superblock, 0)) {
         return false;
@@ -32,7 +185,8 @@ function sxexm_msf(c) {
     var bs = sxexm32(b, 32, false);
     var dn = sxexm32(b, 44, false);
     var map = sxexm32(b, 52, false);
-    if (bs !== 512 && bs !== 1024 && bs !== 2048 && bs !== 4096 || dn < 4 || dn > 4194304 || map > Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs)) {
+    var max_blk = Math.floor((c.size < 0 ? c.size + SX_U64_MAX : c.size) / bs);
+    if (bs !== 512 && bs !== 1024 && bs !== 2048 && bs !== 4096 || dn < 4 || dn > 4194304 || map > max_blk) {
         return true;
     }
     map *= bs;
@@ -44,6 +198,8 @@ function sxexm_msf(c) {
     if (!sxexm_msf_word(c, map, bs, dn, 0, sxexm_msf7_stream_count, count) || count[0] > 4093 || count[0] * 4 + 4 > dn) {
         return true;
     }
+    var s_size = {};
+    var s_block = {};
     var at = 4 + count[0] * 4;
     for (var i = 0; i < count[0] && c.count < 20000; i++) {
         var z = [0];
@@ -62,14 +218,61 @@ function sxexm_msf(c) {
             if (!sxexm_msf_word(c, map, bs, dn, at, sxexm_msf7_stream_block, id)) {
                 return true;
             }
+            if (j === 0 && (i === 1 || i === 2 || i === 3 || i === 4)) {
+                s_size[i] = z[0];
+                s_block[i] = id[0];
+            }
             at += 4;
         }
         if (c.count >= 20000) {
             break;
         }
     }
+    if (s_block[1] !== undefined && s_block[1] <= max_blk && c.count < 20000) {
+        var sz1 = s_size[1];
+        var p1 = s_block[1] * bs;
+        if (sz1 >= 28 && bs >= 28 && sxexm_span(c, p1, 28)) {
+            var v1 = [0];
+            if (sxexm_word(c, p1, 4, false, v1) && v1[0] >= 20000404) {
+                sxexm_add(c, sxexm_msf_pdb_info_header, p1);
+            }
+        }
+    }
+    if (s_block[2] !== undefined && s_block[2] <= max_blk && c.count < 20000) {
+        var sz2 = s_size[2];
+        var p2 = s_block[2] * bs;
+        if (sz2 >= 56 && bs >= 56 && sxexm_span(c, p2, 56)) {
+            sxexm_add(c, sxexm_msf_tpi_header, p2);
+        }
+    }
+    if (s_block[3] !== undefined && s_block[3] <= max_blk && c.count < 20000) {
+        var sz3 = s_size[3];
+        var p3 = s_block[3] * bs;
+        if (sz3 >= 64 && bs >= 64 && sxexm_span(c, p3, 64)) {
+            sxexm_add(c, sxexm_msf_dbi_header, p3);
+        }
+    }
+    if (s_block[4] !== undefined && s_block[4] <= max_blk && c.count < 20000) {
+        var sz4 = s_size[4];
+        var p4 = s_block[4] * bs;
+        if (sz4 >= 56 && bs >= 56 && sxexm_span(c, p4, 56)) {
+            sxexm_add(c, sxexm_msf_ipi_header, p4);
+        }
+    }
     return true;
 }
+
+function sxexm_msf(c) {
+    var b = [];
+    if (!sxexm_read(c, 0, b, 44)) {
+        return false;
+    }
+    if (sxexm_msf_is_jg(b)) {
+        return sxexm_msf_jg(c);
+    }
+    return sxexm_msf7(c);
+}
+
 function sx_microsoft_msf_build(c) {
     var ok = false;
     ok = sxexm_msf(c);

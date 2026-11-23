@@ -26,9 +26,21 @@ typedef enum xx_srec_format_e {
 } xx_srec_format;
 
 /**
- * @brief Write binary data from a device to a Motorola S-record text output device.
- * Emits S0 header record, S1/S2/S3 data records, optional S5 count record, and S9/S8/S7 termination.
+ * @brief Write binary data from a device to a Motorola S-record text output device with entry point.
+ * Emits S0 header record, S1/S2/S3 data records, S5 (or S6) count record, and S9/S8/S7 termination.
  */
+XXFC_API bool xx_srec_write_device_ex(xx_io_device *src, int64_t src_offset, size_t count,
+                                      uint64_t base_address, unsigned line_length,
+                                      xx_srec_format format, const char *header_text,
+                                      uint64_t entry_point,
+                                      xx_io_device *dest, xx_pd_struct *pd);
+
+XXFC_API bool xx_srec_write_buffer_ex(const uint8_t *data, size_t size,
+                                      uint64_t base_address, unsigned line_length,
+                                      xx_srec_format format, const char *header_text,
+                                      uint64_t entry_point,
+                                      xx_io_device *dest, xx_pd_struct *pd);
+
 XXFC_API bool xx_srec_write_device(xx_io_device *src, int64_t src_offset, size_t count,
                                    uint64_t base_address, unsigned line_length,
                                    xx_srec_format format, const char *header_text,

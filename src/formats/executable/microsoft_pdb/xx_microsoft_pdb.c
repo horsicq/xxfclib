@@ -14,14 +14,48 @@
  * the whole file is never loaded. Payloads are never executed.
  *
  * Layout reference: https://github.com/Microsoft/microsoft-pdb
+ *
+ * xx_ms_pdb::strict (xx_ms_pdb_set_strict) switches off the XPDB decoding
+ * quirks; every such place tests the flag and is marked "strict:". The list
+ * is in the header. With the flag clear nothing here behaves differently.
  */
 #include "xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb.h"
 
 #include "xxfclib/data/xx_data.h"
 #include "xxfclib/memory/xx_memory.h"
 
-/* QByteArray cannot hold more, XPDB caps its reads at the same value */
-#define PDB_MAX_BUFFER 0x7FFFFFF0
+/* XPDB caps its reads at 0x7FFFFFF0 (QByteArray's limit). Offsets inside a
+ * buffer are int32_t and a parse step can advance past the buffer end by a
+ * name (<= 8 KiB) plus a few fixed fields before the next bounds check, so the
+ * cap keeps 1 MiB of headroom below INT32_MAX: no int32_t offset can overflow.
+ * Only streams of nearly 2 GiB are affected, and they are cut either way. */
+#define PDB_MAX_BUFFER 0x7FF00000
+
+/* XPDB cuts a name at 4096 / 8192 bytes. strict: a name ends at its zero byte
+ * or at the end of its record (a record holds less than 0x10002 bytes). */
+#define PDB_NAME_MAX(pdb, quirk_size) ((pdb)->strict ? 0x10002 : (quirk_size))
+
+/* The numeric leaves XPDB does not know are stepped over by their real size
+ * in strict mode and, in both modes, in a JG file (XPDB decodes no JG record,
+ * so there is nothing to stay identical to). */
+#define PDB_NUMERIC_EXACT(pdb) ((pdb)->strict || (pdb)->is_legacy)
+
+/* Leaves only the strict mode decodes (cvinfo.h) */
+#define PDB_LF_FRIENDFCN 0x150C
+#define PDB_LF_NESTTYPEEX 0x1512
+#define PDB_LF_MEMBERMODIFY 0x1513
+#define PDB_LF_REAL48 0x800B
+#define PDB_LF_COMPLEX32 0x800C
+#define PDB_LF_COMPLEX64 0x800D
+#define PDB_LF_COMPLEX80 0x800E
+#define PDB_LF_COMPLEX128 0x800F
+#define PDB_LF_VARSTRING 0x8010
+#define PDB_LF_OCTWORD 0x8017
+#define PDB_LF_UOCTWORD 0x8018
+#define PDB_LF_DECIMAL 0x8019
+#define PDB_LF_DATE 0x801A
+#define PDB_LF_UTF8STRING 0x801B
+#define PDB_LF_REAL16 0x801C
 
 /* ---- small helpers -------------------------------------------------------- */
 
@@ -66,6 +100,7 @@ struct xx_ms_pdb {
     int64_t file_size;
     xx_ms_pdb_type type;
     bool is_legacy; /* JG: the 16t / ST records are normalised, see pdb_legacy_record */
+    bool strict;    /* xx_ms_pdb_set_strict: decode correctly instead of the XPDB way */
     xx_ms_pdb_msf_header msf;
 
     /* string arena + intern table */
@@ -497,7 +532,11 @@ static size_t pdb_put_utf8(uint8_t *out, uint32_t code_point)
  * decoded as UTF-8, a leading BOM is dropped and every byte that does not
  * start a valid sequence becomes U+FFFD. The result is that QString encoded
  * back to UTF-8. *utf16_length receives QString::size(), which is what XPDB
- * advances its offsets by (not the byte length). */
+ * advances its offsets by (not the byte length).
+ * strict: *utf16_length receives the number of bytes the name occupies, so
+ * what follows a name is read from the right place, and a leading BOM is kept
+ * (it is U+FEFF, part of the name). The text is still UTF-8 with U+FFFD for
+ * every byte that is not: the code page of an old ANSI name is not recorded. */
 static const char *pdb_string(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_size, int32_t offset, int32_t max_size, int32_t *utf16_length)
 {
     const uint8_t *source = NULL;
@@ -549,7 +588,7 @@ static const char *pdb_string(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_
 
         out = pdb->scratch;
 
-        if ((length >= 3) && (source[0] == 0xEF) && (source[1] == 0xBB) && (source[2] == 0xBF)) {
+        if (!pdb->strict && (length >= 3) && (source[0] == 0xEF) && (source[1] == 0xBB) && (source[2] == 0xBF)) {
             position = 3;
         }
 
@@ -626,7 +665,7 @@ static const char *pdb_string(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_
         result = pdb_intern(pdb, (const char *)out, out_size, true);
 
         if (result && utf16_length) {
-            *utf16_length = units;
+            *utf16_length = pdb->strict ? length : units;
         }
     }
 
@@ -1349,8 +1388,11 @@ static void pdb_parse_stream_directory(xx_ms_pdb *pdb)
             stream->is_nil = true;
         }
 
-        /* 32 bit on purpose, XPDB rounds up in quint32 */
-        number_of_blocks = (uint32_t)(stream_size + block_size - 1) / block_size;
+        /* XPDB rounds up in quint32: a size near 4 GiB wraps to a few blocks
+         * (or none) and the block numbers of the next streams are then taken
+         * from the wrong place. Such a stream cannot be in the directory; the
+         * check below ends the directory at it. */
+        number_of_blocks = ((int64_t)stream_size + block_size - 1) / block_size;
 
         if ((offset + number_of_blocks * 4) > data_size) {
             break;
@@ -1412,7 +1454,7 @@ static bool pdb_parse_stream_directory2(xx_ms_pdb *pdb, int32_t count_size)
             stream->is_nil = true;
         }
 
-        number_of_blocks = (uint32_t)(stream_size + block_size - 1) / block_size;
+        number_of_blocks = ((int64_t)stream_size + block_size - 1) / block_size; /* 64 bit: no wrap near 4 GiB */
 
         if ((offset + number_of_blocks * 2) > data_size) {
             result = false;
@@ -1706,6 +1748,38 @@ void xx_ms_pdb_set_pd(xx_ms_pdb *pdb, xx_pd_struct *pd)
     if (pdb) {
         pdb->pd = pd;
     }
+}
+
+void xx_ms_pdb_set_strict(xx_ms_pdb *pdb, bool strict)
+{
+    if (!pdb || (pdb->strict == strict)) {
+        return;
+    }
+
+    pdb->strict = strict;
+
+    /* What was decoded in the other mode is read again on demand */
+    xx_ms_pdb_unload_types(pdb);
+
+    pdb->modules_loaded = false;
+
+    if (pdb->pdb_info_loaded) {
+        if (pdb->features) {
+            xx_mem_free(pdb->features);
+            pdb->features = NULL;
+        }
+
+        pdb->named_count = 0;
+        pdb->named_sorted = false;
+        pdb_pmap_free(&pdb->named_map);
+        xx_mem_zero(&pdb->pdb_info, sizeof(pdb->pdb_info));
+        pdb->pdb_info_loaded = false;
+    }
+}
+
+bool xx_ms_pdb_is_strict(const xx_ms_pdb *pdb)
+{
+    return pdb ? pdb->strict : false;
 }
 
 void xx_ms_pdb_close(xx_ms_pdb *pdb)
@@ -2144,6 +2218,12 @@ static const xx_ms_pdb_info *pdb_get_pdb_info(xx_ms_pdb *pdb)
 
                         i += steps;
                         offset = pdb_add32(offset, steps * 8);
+                    }
+
+                    /* strict: the name table ends with the largest name index in
+                     * use (niMac); XPDB lists it as the first feature code */
+                    if (pdb->strict && (offset >= 0) && (((int64_t)offset + 4) <= data_size)) {
+                        offset += 4;
                     }
 
                     /* Feature codes. An offset that went negative is a wrapped
@@ -2700,10 +2780,10 @@ static void pdb_load_modules(xx_ms_pdb *pdb)
 
             name_offset = offset + XX_MS_PDB_MODINFO_HEADER_SIZE;
 
-            record.module_name = pdb_string(pdb, data, data_size, name_offset, 4096, &length);
+            record.module_name = pdb_string(pdb, data, data_size, name_offset, PDB_NAME_MAX(pdb, 4096), &length);
             name_offset += length + 1;
 
-            record.object_name = pdb_string(pdb, data, data_size, name_offset, 4096, &length);
+            record.object_name = pdb_string(pdb, data, data_size, name_offset, PDB_NAME_MAX(pdb, 4096), &length);
             name_offset += length + 1;
 
             if (!pdb_list_reserve((void **)&pdb->modules, &capacity, pdb->module_count, sizeof(xx_ms_pdb_module))) {
@@ -2786,7 +2866,8 @@ bool xx_ms_pdb_get_section_contribs(xx_ms_pdb *pdb, int32_t limit, xx_ms_pdb_sec
             entry_size = 32;
         }
 
-        while ((((int64_t)offset + 28) <= data_size) && pdb_not_canceled(pdb)) {
+        /* strict: a V2 entry (32 bytes) has to be inside the substream as a whole */
+        while ((((int64_t)offset + (pdb->strict ? entry_size : 28)) <= data_size) && pdb_not_canceled(pdb)) {
             xx_ms_pdb_section_contrib record = {0};
 
             if ((limit >= 0) && (out->count >= (size_t)limit)) {
@@ -2907,8 +2988,46 @@ bool xx_ms_pdb_get_section_headers(xx_ms_pdb *pdb, xx_ms_pdb_section_header_list
 
 /* ---- numeric leaves ------------------------------------------------------------------------ */
 
+/* strict (and JG): the numeric leaves XPDB takes for 2 bytes. The value is the low
+ * 64 bits of an integer and 0 for everything else. */
+static int32_t pdb_strict_numeric_leaf(const uint8_t *data, int32_t data_size, int32_t offset, uint16_t leaf, uint64_t *value)
+{
+    int32_t result = 2;
+
+    *value = 0;
+
+    if ((leaf == PDB_LF_OCTWORD) || (leaf == PDB_LF_UOCTWORD)) {
+        *value = pdb_u64(data, data_size, offset + 2);
+        result = 18;
+    } else if ((leaf == PDB_LF_COMPLEX64) || (leaf == PDB_LF_DECIMAL)) {
+        result = 18;
+    } else if (leaf == PDB_LF_REAL48) {
+        result = 8;
+    } else if ((leaf == PDB_LF_COMPLEX32) || (leaf == PDB_LF_DATE)) {
+        result = 10;
+    } else if (leaf == PDB_LF_COMPLEX80) {
+        result = 22;
+    } else if (leaf == PDB_LF_COMPLEX128) {
+        result = 34;
+    } else if (leaf == PDB_LF_REAL16) {
+        result = 4;
+    } else if (leaf == PDB_LF_VARSTRING) {
+        result = 4 + (int32_t)pdb_u16(data, data_size, offset + 2);
+    } else if (leaf == PDB_LF_UTF8STRING) {
+        int32_t end = offset + 2;
+
+        while ((end >= 0) && (end < data_size) && data[end]) {
+            end++;
+        }
+
+        result = end + 1 - offset;
+    }
+
+    return result;
+}
+
 /* Returns the number of bytes occupied by a numeric leaf at offset */
-static int32_t pdb_skip_numeric_leaf(const uint8_t *data, int32_t data_size, int32_t offset, uint64_t *value)
+static int32_t pdb_skip_numeric_leaf(bool strict, const uint8_t *data, int32_t data_size, int32_t offset, uint64_t *value)
 {
     int32_t result = 0;
     uint16_t leaf = pdb_u16(data, data_size, offset);
@@ -2934,6 +3053,8 @@ static int32_t pdb_skip_numeric_leaf(const uint8_t *data, int32_t data_size, int
     } else if (leaf == XX_MS_PDB_LF_REAL128) {
         *value = 0;
         result = 18;
+    } else if (strict) {
+        result = pdb_strict_numeric_leaf(data, data_size, offset, leaf, value);
     } else {
         *value = 0;
         result = 2;
@@ -2943,7 +3064,7 @@ static int32_t pdb_skip_numeric_leaf(const uint8_t *data, int32_t data_size, int
 }
 
 /* Same layout as pdb_skip_numeric_leaf but the value keeps its sign */
-static int32_t pdb_read_numeric_leaf(const uint8_t *data, int32_t data_size, int32_t offset, int64_t *value)
+static int32_t pdb_read_numeric_leaf(bool strict, const uint8_t *data, int32_t data_size, int32_t offset, int64_t *value)
 {
     int32_t result = 0;
     uint16_t leaf = pdb_u16(data, data_size, offset);
@@ -2975,7 +3096,7 @@ static int32_t pdb_read_numeric_leaf(const uint8_t *data, int32_t data_size, int
     } else {
         uint64_t unsigned_value = 0;
 
-        result = pdb_skip_numeric_leaf(data, data_size, offset, &unsigned_value);
+        result = pdb_skip_numeric_leaf(strict, data, data_size, offset, &unsigned_value);
         *value = (int64_t)unsigned_value;
     }
 
@@ -3011,64 +3132,64 @@ static void pdb_parse_symbol(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_s
         record->flags = pdb_u32(data, data_size, 4);
         record->offset = pdb_u32(data, data_size, 8);
         record->segment = pdb_u16(data, data_size, 12);
-        record->name = pdb_string(pdb, data, data_size, 14, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 14, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if ((kind == XX_MS_PDB_S_LDATA32) || (kind == XX_MS_PDB_S_GDATA32) || (kind == XX_MS_PDB_S_LTHREAD32) || (kind == XX_MS_PDB_S_GTHREAD32)) {
         record->type_index = pdb_u32(data, data_size, 4);
         record->offset = pdb_u32(data, data_size, 8);
         record->segment = pdb_u16(data, data_size, 12);
-        record->name = pdb_string(pdb, data, data_size, 14, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 14, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if ((kind == XX_MS_PDB_S_LPROC32) || (kind == XX_MS_PDB_S_GPROC32) || (kind == XX_MS_PDB_S_LPROC32_ID) || (kind == XX_MS_PDB_S_GPROC32_ID)) {
         record->type_index = pdb_u32(data, data_size, 28);
         record->offset = pdb_u32(data, data_size, 32);
         record->segment = pdb_u16(data, data_size, 36);
         record->flags = pdb_u8(data, data_size, 38);
-        record->name = pdb_string(pdb, data, data_size, 39, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 39, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_UDT) {
         record->type_index = pdb_u32(data, data_size, 4);
-        record->name = pdb_string(pdb, data, data_size, 8, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 8, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_CONSTANT) {
         int32_t value_size = 0;
 
         record->type_index = pdb_u32(data, data_size, 4);
         record->value_leaf = pdb_u16(data, data_size, 8);
-        value_size = pdb_read_numeric_leaf(data, data_size, 8, &record->value);
+        value_size = pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, 8, &record->value);
         record->is_value_valid = true;
-        record->name = pdb_string(pdb, data, data_size, 8 + value_size, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 8 + value_size, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_OBJNAME) {
         record->flags = pdb_u32(data, data_size, 4); /* Signature */
-        record->name = pdb_string(pdb, data, data_size, 8, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 8, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_UNAMESPACE) {
-        record->name = pdb_string(pdb, data, data_size, 4, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 4, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if ((kind == XX_MS_PDB_S_PROCREF) || (kind == XX_MS_PDB_S_LPROCREF) || (kind == XX_MS_PDB_S_DATAREF)) {
         /* The offset points into the symbol stream of the module, the module index is 1 based */
         record->offset = pdb_u32(data, data_size, 8);
         record->module_index = (int32_t)pdb_u16(data, data_size, 12) - 1;
-        record->name = pdb_string(pdb, data, data_size, 14, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 14, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_COMPILE3) {
         record->flags = pdb_u32(data, data_size, 4);
-        record->name = pdb_string(pdb, data, data_size, 26, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 26, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_ENVBLOCK) {
-        record->name = pdb_string(pdb, data, data_size, 5, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 5, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_THUNK32) {
         record->offset = pdb_u32(data, data_size, 16);
         record->segment = pdb_u16(data, data_size, 20);
-        record->name = pdb_string(pdb, data, data_size, 25, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 25, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_LABEL32) {
         record->offset = pdb_u32(data, data_size, 4);
         record->segment = pdb_u16(data, data_size, 8);
         record->flags = pdb_u8(data, data_size, 10);
-        record->name = pdb_string(pdb, data, data_size, 11, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 11, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_SECTION) {
         /* {isec, align, reserved, rva, cb, characteristics, name}, the address is the start of the section */
         record->segment = pdb_u16(data, data_size, 4);
-        record->name = pdb_string(pdb, data, data_size, 20, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 20, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_COFFGROUP) {
         record->offset = pdb_u32(data, data_size, 12);
         record->segment = pdb_u16(data, data_size, 16);
-        record->name = pdb_string(pdb, data, data_size, 18, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 18, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if (kind == XX_MS_PDB_S_EXPORT) {
         record->flags = pdb_u16(data, data_size, 6);
-        record->name = pdb_string(pdb, data, data_size, 8, 4096, NULL);
+        record->name = pdb_string(pdb, data, data_size, 8, PDB_NAME_MAX(pdb, 4096), NULL);
     }
 
     if (record->segment > 0) {
@@ -3194,7 +3315,7 @@ static void pdb_parse_symbol_legacy(xx_ms_pdb *pdb, const uint8_t *data, int32_t
 
         record->type_index = (raw_kind == XX_MS_PDB_S_CONSTANT_ST) ? pdb_u32(data, data_size, 4) : pdb_u16(data, data_size, 4);
         record->value_leaf = pdb_u16(data, data_size, value_offset);
-        value_size = pdb_read_numeric_leaf(data, data_size, value_offset, &record->value);
+        value_size = pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, value_offset, &record->value);
         record->is_value_valid = true;
         record->name = pdb_string_st(pdb, data, data_size, value_offset + value_size);
     } else if (raw_kind == XX_MS_PDB_S_OBJNAME_ST) {
@@ -3523,26 +3644,26 @@ static bool pdb_get_types(xx_ms_pdb *pdb, int32_t stream_index, int32_t limit, x
             type_record = data + offset;
 
             if ((kind == XX_MS_PDB_LF_CLASS) || (kind == XX_MS_PDB_LF_STRUCTURE) || (kind == XX_MS_PDB_LF_INTERFACE)) {
-                value_size = pdb_skip_numeric_leaf(type_record, record_size, 20, &value);
-                record.name = pdb_string(pdb, type_record, record_size, 20 + value_size, 4096, NULL);
+                value_size = pdb_skip_numeric_leaf(PDB_NUMERIC_EXACT(pdb), type_record, record_size, 20, &value);
+                record.name = pdb_string(pdb, type_record, record_size, 20 + value_size, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if (kind == XX_MS_PDB_LF_UNION) {
-                value_size = pdb_skip_numeric_leaf(type_record, record_size, 12, &value);
-                record.name = pdb_string(pdb, type_record, record_size, 12 + value_size, 4096, NULL);
+                value_size = pdb_skip_numeric_leaf(PDB_NUMERIC_EXACT(pdb), type_record, record_size, 12, &value);
+                record.name = pdb_string(pdb, type_record, record_size, 12 + value_size, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if ((kind == XX_MS_PDB_LF_CLASS2) || (kind == XX_MS_PDB_LF_STRUCTURE2) || (kind == XX_MS_PDB_LF_INTERFACE2)) {
                 /* The newer records carry a 2 byte member count before the size */
-                value_size = pdb_skip_numeric_leaf(type_record, record_size, 22, &value);
-                record.name = pdb_string(pdb, type_record, record_size, 22 + value_size, 4096, NULL);
+                value_size = pdb_skip_numeric_leaf(PDB_NUMERIC_EXACT(pdb), type_record, record_size, 22, &value);
+                record.name = pdb_string(pdb, type_record, record_size, 22 + value_size, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if (kind == XX_MS_PDB_LF_UNION2) {
-                value_size = pdb_skip_numeric_leaf(type_record, record_size, 14, &value);
-                record.name = pdb_string(pdb, type_record, record_size, 14 + value_size, 4096, NULL);
+                value_size = pdb_skip_numeric_leaf(PDB_NUMERIC_EXACT(pdb), type_record, record_size, 14, &value);
+                record.name = pdb_string(pdb, type_record, record_size, 14 + value_size, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if (kind == XX_MS_PDB_LF_ENUM) {
-                record.name = pdb_string(pdb, type_record, record_size, 16, 4096, NULL);
+                record.name = pdb_string(pdb, type_record, record_size, 16, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if (kind == XX_MS_PDB_LF_TYPESERVER2) {
-                record.name = pdb_string(pdb, type_record, record_size, 24, 4096, NULL);
+                record.name = pdb_string(pdb, type_record, record_size, 24, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if (kind == XX_MS_PDB_LF_STRING_ID) {
-                record.name = pdb_string(pdb, type_record, record_size, 8, 4096, NULL);
+                record.name = pdb_string(pdb, type_record, record_size, 8, PDB_NAME_MAX(pdb, 4096), NULL);
             } else if ((kind == XX_MS_PDB_LF_FUNC_ID) || (kind == XX_MS_PDB_LF_MFUNC_ID)) {
-                record.name = pdb_string(pdb, type_record, record_size, 12, 4096, NULL);
+                record.name = pdb_string(pdb, type_record, record_size, 12, PDB_NAME_MAX(pdb, 4096), NULL);
             }
 
             if (!pdb_list_reserve((void **)&out->items, &capacity, out->count, sizeof(xx_ms_pdb_type_record))) {
@@ -3602,6 +3723,7 @@ typedef struct pdb_rsrc {
     const uint8_t *data;
     int32_t size;
     int32_t offset;
+    bool strict; /* exact numeric leaves; always set, see PDB_NUMERIC_EXACT */
 } pdb_rsrc;
 
 static bool pdb_wbuf_reserve(pdb_wbuf *buffer, size_t extra)
@@ -3710,7 +3832,7 @@ static uint32_t pdb_rsrc_index(pdb_rsrc *source, bool is_16t)
 static void pdb_legacy_numeric(pdb_wbuf *out, pdb_rsrc *source)
 {
     uint64_t value = 0;
-    int32_t size = pdb_skip_numeric_leaf(source->data, source->size, source->offset, &value);
+    int32_t size = pdb_skip_numeric_leaf(source->strict, source->data, source->size, source->offset, &value);
     int32_t i = 0;
 
     for (i = 0; i < size; i++) {
@@ -3927,7 +4049,7 @@ static void pdb_legacy_fields(pdb_wbuf *out, size_t record_start, pdb_rsrc *sour
 }
 
 /* record points to the record start: {u16 length, u16 kind}. Appends the normalised record. */
-static void pdb_legacy_record(pdb_wbuf *out, const uint8_t *record, int32_t record_size)
+static void pdb_legacy_record(pdb_wbuf *out, const uint8_t *record, int32_t record_size, bool strict)
 {
     size_t record_start = out->size;
     pdb_rsrc reader = {0};
@@ -3939,6 +4061,7 @@ static void pdb_legacy_record(pdb_wbuf *out, const uint8_t *record, int32_t reco
     reader.data = record;
     reader.size = record_size;
     reader.offset = 4;
+    reader.strict = strict;
 
     pdb_wbuf_u16(out, 0); /* The length, set at the end */
 
@@ -4171,7 +4294,7 @@ static void pdb_legacy_convert_types(xx_ms_pdb *pdb)
             break;
         }
 
-        pdb_legacy_record(&out, data + offset, record_size);
+        pdb_legacy_record(&out, data + offset, record_size, true);
 
         if (out.failed) {
             out.size = record_start;
@@ -4249,6 +4372,44 @@ uint32_t xx_ms_pdb_get_type_index_end(xx_ms_pdb *pdb)
     return pdb ? pdb->type_index_end : 0;
 }
 
+static int32_t pdb_type_record_offset(const xx_ms_pdb *pdb, uint32_t type_index);
+
+/* strict: the size of the underlying type of an enum that is not a primitive
+ * one (a modifier or another enum in front of it). 0 if it leads nowhere. */
+static uint64_t pdb_strict_enum_size(const xx_ms_pdb *pdb, uint32_t type_index)
+{
+    int32_t depth = 0;
+
+    for (depth = 0; depth < 16; depth++) {
+        const uint8_t *data = pdb->type_records;
+        int32_t data_size = pdb->type_records_size;
+        int32_t offset = 0;
+        uint16_t kind = 0;
+
+        if (xx_ms_pdb_is_primitive_type(type_index)) {
+            return (uint64_t)(int64_t)xx_ms_pdb_primitive_type_size(type_index);
+        }
+
+        offset = pdb_type_record_offset(pdb, type_index);
+
+        if ((offset < 0) || (((int64_t)offset + 12) > data_size)) {
+            break;
+        }
+
+        kind = pdb_u16(data, data_size, offset + 2);
+
+        if (kind == XX_MS_PDB_LF_MODIFIER) {
+            type_index = pdb_u32(data, data_size, offset + 4);
+        } else if (kind == XX_MS_PDB_LF_ENUM) {
+            type_index = pdb_u32(data, data_size, offset + 8);
+        } else {
+            break;
+        }
+    }
+
+    return 0;
+}
+
 /* record points to the record start: {u16 length, u16 kind}, the payload starts at 4 */
 static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t record_size, uint32_t type_index, xx_ms_pdb_cvtype *result)
 {
@@ -4274,14 +4435,14 @@ static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t recor
         result->property = pdb_u16(record, record_size, 6);
         result->field_list_index = pdb_u32(record, record_size, 8);
         /* 12: derived, 16: vshape */
-        size_length = pdb_read_numeric_leaf(record, record_size, 20, &size);
+        size_length = pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), record, record_size, 20, &size);
         result->size = (uint64_t)size;
 
         name_offset = 20 + size_length;
-        result->name = pdb_string(pdb, record, record_size, name_offset, 8192, &name_length);
+        result->name = pdb_string(pdb, record, record_size, name_offset, PDB_NAME_MAX(pdb, 8192), &name_length);
 
         if (result->property & XX_MS_PDB_UDT_PROPERTY_HASUNIQUENAME) {
-            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, 8192, NULL);
+            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, PDB_NAME_MAX(pdb, 8192), NULL);
         }
 
         if (kind == XX_MS_PDB_LF_CLASS) {
@@ -4299,14 +4460,14 @@ static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t recor
         result->field_list_index = pdb_u32(record, record_size, 8);
         result->count = pdb_u16(record, record_size, 20);
 
-        size_length = pdb_read_numeric_leaf(record, record_size, 22, &size);
+        size_length = pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), record, record_size, 22, &size);
         result->size = (uint64_t)size;
 
         name_offset = 22 + size_length;
-        result->name = pdb_string(pdb, record, record_size, name_offset, 8192, &name_length);
+        result->name = pdb_string(pdb, record, record_size, name_offset, PDB_NAME_MAX(pdb, 8192), &name_length);
 
         if (result->property & XX_MS_PDB_UDT_PROPERTY_HASUNIQUENAME) {
-            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, 8192, NULL);
+            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, PDB_NAME_MAX(pdb, 8192), NULL);
         }
 
         if (kind == XX_MS_PDB_LF_CLASS2) {
@@ -4322,14 +4483,14 @@ static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t recor
         result->field_list_index = pdb_u32(record, record_size, 8);
         result->count = pdb_u16(record, record_size, 12);
 
-        size_length = pdb_read_numeric_leaf(record, record_size, 14, &size);
+        size_length = pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), record, record_size, 14, &size);
         result->size = (uint64_t)size;
 
         name_offset = 14 + size_length;
-        result->name = pdb_string(pdb, record, record_size, name_offset, 8192, &name_length);
+        result->name = pdb_string(pdb, record, record_size, name_offset, PDB_NAME_MAX(pdb, 8192), &name_length);
 
         if (result->property & XX_MS_PDB_UDT_PROPERTY_HASUNIQUENAME) {
-            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, 8192, NULL);
+            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, PDB_NAME_MAX(pdb, 8192), NULL);
         }
 
         result->udt_kind = XX_MS_PDB_UDT_KIND_UNION;
@@ -4338,14 +4499,14 @@ static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t recor
         result->property = pdb_u16(record, record_size, 6);
         result->field_list_index = pdb_u32(record, record_size, 8);
 
-        size_length = pdb_read_numeric_leaf(record, record_size, 12, &size);
+        size_length = pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), record, record_size, 12, &size);
         result->size = (uint64_t)size;
 
         name_offset = 12 + size_length;
-        result->name = pdb_string(pdb, record, record_size, name_offset, 8192, &name_length);
+        result->name = pdb_string(pdb, record, record_size, name_offset, PDB_NAME_MAX(pdb, 8192), &name_length);
 
         if (result->property & XX_MS_PDB_UDT_PROPERTY_HASUNIQUENAME) {
-            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, 8192, NULL);
+            result->unique_name = pdb_string(pdb, record, record_size, name_offset + name_length + 1, PDB_NAME_MAX(pdb, 8192), NULL);
         }
 
         result->udt_kind = XX_MS_PDB_UDT_KIND_UNION;
@@ -4354,13 +4515,19 @@ static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t recor
         result->property = pdb_u16(record, record_size, 6);
         result->element_type_index = pdb_u32(record, record_size, 8); /* Underlying type */
         result->field_list_index = pdb_u32(record, record_size, 12);
-        result->name = pdb_string(pdb, record, record_size, 16, 8192, &name_length);
+        result->name = pdb_string(pdb, record, record_size, 16, PDB_NAME_MAX(pdb, 8192), &name_length);
 
         if (result->property & XX_MS_PDB_UDT_PROPERTY_HASUNIQUENAME) {
-            result->unique_name = pdb_string(pdb, record, record_size, 16 + name_length + 1, 8192, NULL);
+            result->unique_name = pdb_string(pdb, record, record_size, 16 + name_length + 1, PDB_NAME_MAX(pdb, 8192), NULL);
         }
 
-        result->size = (uint64_t)(int64_t)xx_ms_pdb_primitive_type_size(result->element_type_index);
+        /* XPDB sizes the enum by the low byte of the underlying index whatever
+         * the index is. strict: an index of the type stream is followed. */
+        if (pdb->strict && !xx_ms_pdb_is_primitive_type(result->element_type_index)) {
+            result->size = pdb_strict_enum_size(pdb, result->element_type_index);
+        } else {
+            result->size = (uint64_t)(int64_t)xx_ms_pdb_primitive_type_size(result->element_type_index);
+        }
     } else if (kind == XX_MS_PDB_LF_POINTER) {
         uint32_t attr = 0;
 
@@ -4399,7 +4566,7 @@ static void pdb_decode_type(xx_ms_pdb *pdb, const uint8_t *record, int32_t recor
         result->element_type_index = pdb_u32(record, record_size, 4);
         result->index_type_index = pdb_u32(record, record_size, 8);
 
-        pdb_read_numeric_leaf(record, record_size, 12, &size);
+        pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), record, record_size, 12, &size);
         result->size = (uint64_t)size; /* In bytes */
     } else if (kind == XX_MS_PDB_LF_MODIFIER) {
         uint16_t attr = 0;
@@ -4466,8 +4633,9 @@ static const char *pdb_names_string(xx_ms_pdb *pdb, uint32_t offset)
             /* XPDB reads up to 8192 bytes whatever the table size is; a string
              * of a sound table ends inside it, one that does not is cut at its end */
             uint32_t max_size = byte_size - offset;
+            uint32_t limit = (uint32_t)PDB_NAME_MAX(pdb, 8192);
 
-            return pdb_string(pdb, data, data_size, (int32_t)(12u + offset), (max_size < 8192) ? (int32_t)max_size : 8192, NULL);
+            return pdb_string(pdb, data, data_size, (int32_t)(12u + offset), (max_size < limit) ? (int32_t)max_size : (int32_t)limit, NULL);
         }
     }
 
@@ -4813,41 +4981,41 @@ static void pdb_read_field(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_siz
         result->attr = pdb_u16(data, data_size, offset);
         result->type_index = pdb_u32(data, data_size, offset + 2);
         offset += 6;
-        offset += pdb_read_numeric_leaf(data, data_size, offset, &result->offset);
-        result->name = pdb_string(pdb, data, data_size, offset, 8192, &name_length);
+        offset += pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, offset, &result->offset);
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
         offset += name_length + 1;
     } else if (kind == XX_MS_PDB_LF_STMEMBER) {
         result->attr = pdb_u16(data, data_size, offset);
         result->type_index = pdb_u32(data, data_size, offset + 2);
         offset += 6;
-        result->name = pdb_string(pdb, data, data_size, offset, 8192, &name_length);
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
         offset += name_length + 1;
         result->is_static = true;
     } else if (kind == XX_MS_PDB_LF_BCLASS) {
         result->attr = pdb_u16(data, data_size, offset);
         result->type_index = pdb_u32(data, data_size, offset + 2);
         offset += 6;
-        offset += pdb_read_numeric_leaf(data, data_size, offset, &result->offset);
+        offset += pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, offset, &result->offset);
     } else if ((kind == XX_MS_PDB_LF_VBCLASS) || (kind == XX_MS_PDB_LF_IVBCLASS)) {
         result->attr = pdb_u16(data, data_size, offset);
         result->type_index = pdb_u32(data, data_size, offset + 2);
         result->vbptr_type_index = pdb_u32(data, data_size, offset + 6);
         offset += 10;
-        offset += pdb_read_numeric_leaf(data, data_size, offset, &result->vbptr_offset);
-        offset += pdb_read_numeric_leaf(data, data_size, offset, &result->vbtable_index);
+        offset += pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, offset, &result->vbptr_offset);
+        offset += pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, offset, &result->vbtable_index);
     } else if (kind == XX_MS_PDB_LF_ENUMERATE) {
         result->attr = pdb_u16(data, data_size, offset);
         offset += 2;
         result->value_leaf = pdb_u16(data, data_size, offset);
-        offset += pdb_read_numeric_leaf(data, data_size, offset, &result->value);
+        offset += pdb_read_numeric_leaf(PDB_NUMERIC_EXACT(pdb), data, data_size, offset, &result->value);
         result->is_value_valid = true;
-        result->name = pdb_string(pdb, data, data_size, offset, 8192, &name_length);
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
         offset += name_length + 1;
     } else if (kind == XX_MS_PDB_LF_NESTTYPE) {
         result->attr = pdb_u16(data, data_size, offset);
         result->type_index = pdb_u32(data, data_size, offset + 2);
         offset += 6;
-        result->name = pdb_string(pdb, data, data_size, offset, 8192, &name_length);
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
         offset += name_length + 1;
     } else if (kind == XX_MS_PDB_LF_ONEMETHOD) {
         result->attr = pdb_u16(data, data_size, offset);
@@ -4862,13 +5030,13 @@ static void pdb_read_field(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_siz
             offset += 4;
         }
 
-        result->name = pdb_string(pdb, data, data_size, offset, 8192, &name_length);
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
         offset += name_length + 1;
     } else if (kind == XX_MS_PDB_LF_METHOD) {
         result->method_count = pdb_u16(data, data_size, offset);
         result->method_list_index = pdb_u32(data, data_size, offset + 2);
         offset += 6;
-        result->name = pdb_string(pdb, data, data_size, offset, 8192, &name_length);
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
         offset += name_length + 1;
     } else if (kind == XX_MS_PDB_LF_VFUNCTAB) {
         offset += 2; /* padding */
@@ -4878,6 +5046,25 @@ static void pdb_read_field(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_siz
         offset += 2; /* padding */
         result->type_index = pdb_u32(data, data_size, offset);
         offset += 4;
+    } else if (pdb->strict && ((kind == PDB_LF_NESTTYPEEX) || (kind == PDB_LF_MEMBERMODIFY) || (kind == PDB_LF_FRIENDFCN))) {
+        /* strict: {attr (padding for a friend), type, name}. A nested type
+         * with attributes is reported as LF_NESTTYPE; the other two are only
+         * walked over, see xx_ms_pdb_get_field_list */
+        result->attr = pdb_u16(data, data_size, offset);
+        result->type_index = pdb_u32(data, data_size, offset + 2);
+        offset += 6;
+        result->name = pdb_string(pdb, data, data_size, offset, PDB_NAME_MAX(pdb, 8192), &name_length);
+        offset += name_length + 1;
+
+        if (kind == PDB_LF_NESTTYPEEX) {
+            result->kind = XX_MS_PDB_LF_NESTTYPE;
+        }
+    } else if (pdb->strict && (kind == XX_MS_PDB_LF_FRIENDCLS)) {
+        result->type_index = pdb_u32(data, data_size, offset + 2); /* strict: {padding, type} */
+        offset += 6;
+    } else if (pdb->strict && (kind == XX_MS_PDB_LF_VFUNCOFF)) {
+        result->type_index = pdb_u32(data, data_size, offset + 2); /* strict: {padding, type, offset} */
+        offset += 10;
     } else {
         /* Unknown entry: the walk cannot continue safely */
         *field_size = 0;
@@ -4981,6 +5168,10 @@ bool xx_ms_pdb_get_field_list(xx_ms_pdb *pdb, uint32_t type_index, xx_ms_pdb_cvf
 
             if (field.kind == XX_MS_PDB_LF_INDEX) {
                 current_index = field.type_index; /* Continuation record */
+            } else if (pdb->strict && ((field.kind == PDB_LF_FRIENDFCN) || (field.kind == PDB_LF_MEMBERMODIFY) || (field.kind == XX_MS_PDB_LF_FRIENDCLS) ||
+                                       (field.kind == XX_MS_PDB_LF_VFUNCOFF))) {
+                /* strict: entries XPDB ends the list at. They are not members
+                 * and are left out, as in a JG file (pdb_legacy_fields). */
             } else {
                 if (!pdb_list_reserve((void **)&out->items, &capacity, out->count, sizeof(xx_ms_pdb_cvfield))) {
                     xx_ms_pdb_cvfield_list_free(out);
@@ -5047,6 +5238,13 @@ bool xx_ms_pdb_get_method_list(xx_ms_pdb *pdb, uint32_t type_index, int32_t coun
                 offset += 8;
 
                 if ((record.method_property == XX_MS_PDB_FLD_MPROP_INTRO) || (record.method_property == XX_MS_PDB_FLD_MPROP_PUREINTRO)) {
+                    /* XPDB reads the offset wherever it is, also behind the
+                     * record. strict: an entry cut off by the end of its
+                     * record ends the list. */
+                    if (pdb->strict && ((offset + 4) > record_end)) {
+                        break;
+                    }
+
                     record.vtable_offset = pdb_u32(data, data_size, offset);
                     record.is_vtable_offset_valid = true;
                     offset += 4;

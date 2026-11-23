@@ -73,8 +73,9 @@ XXFC_API bool xx_ips_write_device(const xx_ips_patch *patch, xx_io_device *dest,
  * @brief Create an IPS or IPS32 patch comparing original and modified buffers.
  * Runs of identical bytes are encoded as RLE when shorter.
  * Runs longer than 0xFFFF are split.
- * If force_ips32 is false, but any offset > 0xFFFFFF or hits the 0x454F46 "EOF" ambiguity,
- * IPS32 is written automatically.
+ * If force_ips32 is false, but any offset > 0xFFFFFF, patch creation fails cleanly.
+ * The 0x454F46 "EOF" ambiguity is handled by starting such record at 0x454F45,
+ * retaining standard IPS format.
  */
 XXFC_API xx_ips_patch *xx_ips_create_from_buffers(const uint8_t *orig, size_t orig_size,
                                                   const uint8_t *mod, size_t mod_size,

@@ -65,21 +65,18 @@ typedef struct xx_nchash_oat_ctx { uint32_t state; } xx_nchash_oat_ctx;
 
 typedef struct xx_nchash_murmur3_32_ctx {
     uint32_t h;
-    uint32_t total_len;
     uint8_t buffer[4];
     size_t buffered;
 } xx_nchash_murmur3_32_ctx;
 
 typedef struct xx_nchash_murmur3_128_ctx {
     uint64_t h1, h2;
-    uint64_t total_len;
     uint8_t buffer[16];
     size_t buffered;
 } xx_nchash_murmur3_128_ctx;
 
 typedef struct xx_nchash_xxhash32_ctx {
     uint32_t v1, v2, v3, v4;
-    uint64_t total_len;
     uint8_t buffer[16];
     size_t buffered;
     uint32_t seed;
@@ -87,7 +84,6 @@ typedef struct xx_nchash_xxhash32_ctx {
 
 typedef struct xx_nchash_xxhash64_ctx {
     uint64_t v1, v2, v3, v4;
-    uint64_t total_len;
     uint8_t buffer[32];
     size_t buffered;
     uint64_t seed;
@@ -95,7 +91,6 @@ typedef struct xx_nchash_xxhash64_ctx {
 
 typedef struct xx_nchash_siphash_ctx {
     uint64_t v0, v1, v2, v3;
-    uint64_t total_len;
     uint8_t buffer[8];
     size_t buffered;
     bool is128;

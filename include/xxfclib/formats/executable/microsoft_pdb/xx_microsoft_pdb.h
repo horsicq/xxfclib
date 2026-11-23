@@ -21,6 +21,47 @@
  * terminated, owned by the xx_ms_pdb object and valid until
  * xx_ms_pdb_close(). Arrays returned through an `xx_ms_pdb_*_list` are owned
  * by the caller and released with the matching *_list_free().
+ *
+ * Strict mode (xx_ms_pdb_set_strict, off by default). By default the reader
+ * decodes exactly as XPDB does, its mistakes included, so that a program
+ * built on it gives the output of its Qt counterpart. Strict mode decodes
+ * these places the way the format defines them:
+ *  1. Names. XPDB steps over a name by its UTF-16 length, not its byte
+ *     length, and cuts a name at 4096 (symbols, modules, type list) or 8192
+ *     bytes (decoded types, field lists). After a name with a non-ASCII
+ *     character, or a longer one, the unique name of a type, the next entry
+ *     of a field list and the object name / next record of the module list
+ *     are read from the wrong place. Strict: a name is stepped over by its
+ *     bytes and ends at its zero byte or at the end of its record.
+ *     The text itself stays what it is in both modes: UTF-8, with U+FFFD for
+ *     every byte that is not valid UTF-8 (the names of an old ANSI file are
+ *     in a code page the file does not record; MSDIA converts them with the
+ *     code page of the machine). Strict only keeps a leading U+FEFF, which
+ *     XPDB drops.
+ *  2. LF_ENUM size. XPDB takes it from the low byte of the underlying type
+ *     index even when that is an index of the type stream. Strict follows
+ *     LF_MODIFIER / LF_ENUM records to the primitive type (0 if there is none).
+ *  3. xx_ms_pdb_get_method_list. XPDB reads the vtable offset of an
+ *     introducing method wherever it falls, also behind the record. Strict:
+ *     an entry cut off by the end of its record ends the list.
+ *  4. Numeric leaves. XPDB knows LF_CHAR .. LF_UQUADWORD and takes every
+ *     other leaf for 2 bytes. Strict steps over LF_REAL48, LF_COMPLEX32/64/
+ *     80/128, LF_VARSTRING, LF_OCTWORD, LF_UOCTWORD, LF_DECIMAL, LF_DATE,
+ *     LF_UTF8STRING and LF_REAL16 by their size; the value of a 128 bit
+ *     integer is its low 64 bits, that of the others 0.
+ *  5. Field lists. XPDB ends a list at LF_NESTTYPEEX, LF_FRIENDFCN,
+ *     LF_FRIENDCLS, LF_VFUNCOFF and LF_MEMBERMODIFY. Strict reports
+ *     LF_NESTTYPEEX as LF_NESTTYPE with its attributes and walks over the
+ *     other four without listing them (as for a JG file in both modes).
+ *  6. xx_ms_pdb_get_pdb_info. XPDB lists the word behind the named stream map
+ *     (the largest name index, usually 0) as the first feature code. Strict
+ *     leaves it out.
+ *  7. xx_ms_pdb_get_section_contribs. With 32 byte (V2) entries XPDB accepts
+ *     a last entry of 28 bytes. Strict wants all 32.
+ * Everything else is the same in both modes. In particular the member count
+ * of LF_CLASS2 / LF_STRUCTURE2 / LF_INTERFACE2 / LF_UNION2 is 2 plain bytes
+ * in both (MSDIA reads it so; a numeric leaf there breaks it). In a JG file
+ * the numeric leaves of point 4 are stepped over correctly in both modes.
  */
 #ifndef XX_MICROSOFT_PDB_H
 #define XX_MICROSOFT_PDB_H
@@ -375,6 +416,15 @@ typedef struct xx_ms_pdb_portable_info {
  * progress object the later calls poll for a stop request (NULL = none); it
  * has to stay alive while it is set. A stopped call returns what it has. */
 XXFC_API void xx_ms_pdb_set_pd(xx_ms_pdb *pdb, xx_pd_struct *pd);
+/* Strict decoding on / off (off after xx_ms_pdb_open), see the list at the
+ * top of this file. Call it right after xx_ms_pdb_open, before
+ * xx_ms_pdb_load_types and the getters. A change of the mode later unloads
+ * the types and drops the cached PDB info and module list, so they are read
+ * again in the new mode; the `features` array of an xx_ms_pdb_info taken
+ * before the change is then no longer valid (strings stay valid). Lists the
+ * caller already holds keep the mode they were made in. */
+XXFC_API void xx_ms_pdb_set_strict(xx_ms_pdb *pdb, bool strict);
+XXFC_API bool xx_ms_pdb_is_strict(const xx_ms_pdb *pdb);
 XXFC_API xx_ms_pdb_portable_info xx_ms_pdb_get_portable_info(xx_ms_pdb *pdb);
 /* The named stream map of the PDB info stream (XPDB::getNamedStreams), in
  * QMap key order: name, index = stream index, size = that stream's size. */

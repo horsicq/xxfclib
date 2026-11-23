@@ -1362,7 +1362,7 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
                 SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 uint64_t res = s->v0 ^ s->v1 ^ s->v2 ^ s->v3;
-                xx_nchash_store64_be(out, res);
+                xx_nchash_store64_le(out, res);
             } else {
                 s->v2 ^= 0xEE;
                 SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
@@ -1372,8 +1372,8 @@ bool xx_nchash_context_final(xx_nchash_context *ctx, void *digest, size_t digest
                 SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 SIPROUND(s->v0, s->v1, s->v2, s->v3); SIPROUND(s->v0, s->v1, s->v2, s->v3);
                 uint64_t out1 = s->v0 ^ s->v1 ^ s->v2 ^ s->v3;
-                xx_nchash_store64_be(out, out0);
-                xx_nchash_store64_be(out + 8, out1);
+                xx_nchash_store64_le(out, out0);
+                xx_nchash_store64_le(out + 8, out1);
             }
             break;
         }

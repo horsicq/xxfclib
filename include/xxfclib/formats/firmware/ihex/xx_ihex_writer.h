@@ -19,11 +19,21 @@ extern "C" {
 #define XX_IHEX_MAX_DATA_PER_LINE 255U
 
 /**
- * @brief Write binary data from a device to an Intel HEX text output device.
+ * @brief Write binary data to an Intel HEX text output device with optional start linear address.
  * Emits I8HEX when highest address <= 0xFFFF; emits I32HEX (Type 04 records)
- * when addressing requires 32 bits or crosses 64 KiB boundaries.
- * Ends with EOF record (:00000001FF).
+ * whenever bits 16-31 change or address crosses 64 KiB boundaries.
+ * Emits optional Type 05 start address record before EOF record (:00000001FF).
  */
+XXFC_API bool xx_ihex_write_device_ex(xx_io_device *src, int64_t src_offset, size_t count,
+                                      uint64_t base_address, unsigned line_length,
+                                      bool has_start_address, uint32_t start_address,
+                                      xx_io_device *dest, xx_pd_struct *pd);
+
+XXFC_API bool xx_ihex_write_buffer_ex(const uint8_t *data, size_t size,
+                                      uint64_t base_address, unsigned line_length,
+                                      bool has_start_address, uint32_t start_address,
+                                      xx_io_device *dest, xx_pd_struct *pd);
+
 XXFC_API bool xx_ihex_write_device(xx_io_device *src, int64_t src_offset, size_t count,
                                    uint64_t base_address, unsigned line_length,
                                    xx_io_device *dest, xx_pd_struct *pd);
