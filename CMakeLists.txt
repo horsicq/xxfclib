@@ -1227,6 +1227,7 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/formats/executable/microsoft_msf/xx_microsoft_msf.h
     include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb.h
     include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb_def.h
+    include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb_debug.h
     include/xxfclib/formats/executable/microsoft_pdb/xx_microsoft_pdb_portable.h
     include/xxfclib/formats/executable/pef/xx_pef.h
     include/xxfclib/formats/other/rprj/xx_rprj.h
@@ -4037,6 +4038,13 @@ set(XXFCLIB_SOURCES
     src/formats/executable/microsoft_msf/xx_microsoft_msf_extractor.c
     src/formats/executable/microsoft_pdb/xx_microsoft_pdb.c
     src/formats/executable/microsoft_pdb/xx_microsoft_pdb_portable.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_portable_dump.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_names.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_lines.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_syms.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_srcs.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_decode.c
+    src/formats/executable/microsoft_pdb/xx_microsoft_pdb_dump.c
     src/formats/executable/pef/xx_pef.c
     src/formats/executable/pef/xx_pef_extractor.c
     src/formats/other/rprj/xx_rprj.c

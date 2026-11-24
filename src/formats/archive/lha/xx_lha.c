@@ -608,10 +608,12 @@ static xx_lha_stream *xx_lha_parse(Abstractformat *self, xx_pd_struct *pd)
             }
         } else if (level >= 2U) {
             /* The exact inline GEMDOS carrier bounds the whole stream and
-             * identifies its writer independently. Its Atari level-2 headers
-             * omit the common CRC; require the extension terminator to consume
-             * the declared header exactly. Other probes still require CRC. */
-            if (level != 2U || os_id != (uint8_t)'a' ||
+             * identifies its writer independently. Its level-2 headers may
+             * omit the common CRC (Atari writers, OS id 'a'; archives made on
+             * Unix for an Atari stub, OS id 'U'); require the extension
+             * terminator to consume the declared header exactly. Other
+             * probes still require CRC. */
+            if (level != 2U || (os_id != (uint8_t)'a' && os_id != (uint8_t)'U') ||
                 self->priv != &atari_inline_context ||
                 ext_pos + word_size != header_total) goto fail;
         }

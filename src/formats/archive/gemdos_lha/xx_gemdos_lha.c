@@ -7,10 +7,27 @@
 #include "../../common/xx_sfx_carrier.h"
 
 #include "xxfclib/formats/archive/lha/xx_lha.h"
+#include "../lha/xx_lha_atari_inline_internal.h"
 #include "xxfclib/formats/archive/sfx_zipcentral/xx_sfx_zipcentral.h"
 static Abstractformat *nested_open(xx_io_device *d, int64_t at)
 {
+    static const uint8_t code[18] = {
+        0x41,0xfa,0x00,0x10,0x20,0x3a,0xff,0xee,0x72,
+        0x01,0xc2,0x40,0xd0,0x81,0xd1,0xc0,0x4e,0xd0
+    };
+    uint8_t head[60];
     xx_lha *r = xx_lha_create(d, at);
+    /* Level-2 headers without the common CRC are taken only behind the exact
+     * inline stub the LHA self-extractor reader accepts: the GEMDOS header,
+     * the branch over a 32-byte descriptor, "SFX", its dispatcher, and the
+     * archive right after it at offset 60. Any other program keeps the CRC
+     * requirement. */
+    if (r && at >= 60 && xx_io_seek64(d, at - 60, SEEK_SET) == 0 &&
+        xx_io_read(d, head, sizeof(head)) == (ssize_t)sizeof(head) &&
+        head[0] == 0x60 && head[1] == 0x1a && head[28] == 0x60 && head[29] == 0x0c &&
+        xx_data_get_u32(head + 34, 4, 0, true) == 32U &&
+        !xx_rt_memcmp(head + 38, "SFX\0", 4) && !xx_rt_memcmp(head + 42, code, sizeof(code)))
+        xx_lha_set_atari_inline_context(r);
     return r ? &r->format : NULL;
 }
 static void nested_close(Abstractformat *f)
