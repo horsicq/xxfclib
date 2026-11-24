@@ -382,6 +382,8 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/js/xx_js.h
     include/xxfclib/js/xx_js_debug.h
     include/xxfclib/memory/xx_memory.h
+    include/xxfclib/memory/xx_arena.h
+    include/xxfclib/memory/xx_mem_array.h
     include/xxfclib/formats/xx_memory_map.h
     include/xxfclib/strings/xx_string.h
     include/xxfclib/strings/xx_strings_scan.h
@@ -396,10 +398,14 @@ set(XXFCLIB_PUBLIC_HEADERS
     include/xxfclib/data/xx_data.h
     include/xxfclib/formats/xx_data_signature.h
     include/xxfclib/list/xx_list.h
+    include/xxfclib/list/xx_u64_set.h
     include/xxfclib/threads/xx_threads.h
     include/xxfclib/threads/xx_thread_pool.h
     include/xxfclib/threads/xx_parallel.h
     include/xxfclib/sort/xx_sort.h
+    include/xxfclib/sort/xx_sort_u32.h
+    include/xxfclib/json/xx_json_writer.h
+    include/xxfclib/buf/xx_buf_text.h
     include/xxfclib/var/xx_var.h
     include/xxfclib/global/xx_global.h
     include/xxfclib/global/xx_settings_global.h
@@ -1993,7 +1999,9 @@ set(XXFCLIB_SOURCES
     src/rt/xx_rt_fp.c
     src/rt/xx_rt_math.c
     src/buf/xx_buf.c
+    src/buf/xx_buf_text.c
     src/json/xx_json.c
+    src/json/xx_json_writer.c
     src/xml/xx_xml.c
     src/toml/xx_toml.c
     src/net/xx_domain_yx.c
@@ -2142,6 +2150,8 @@ set(XXFCLIB_SOURCES
     src/io/xx_io_process.c
     src/process/xx_process_structs.c
     src/memory/xx_memory.c
+    src/memory/xx_arena.c
+    src/memory/xx_mem_array.c
     src/memory/xx_memory_rt.c
     src/memory/platforms/xx_memory_sse2.c
     src/memory/platforms/xx_memory_avx2.c
@@ -2163,10 +2173,12 @@ set(XXFCLIB_SOURCES
     src/data/platforms/xx_data_avx2.c
     src/data/platforms/xx_data_neon.c
     src/list/xx_list.c
+    src/list/xx_u64_set.c
     src/threads/xx_threads.c
     src/threads/xx_thread_pool.c
     src/threads/xx_parallel.c
     src/sort/xx_sort_list.c
+    src/sort/xx_sort_u32.c
     src/var/xx_var.c
     src/algo/crc/xx_crc.c
     src/algo/md5/xx_md5.c

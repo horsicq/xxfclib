@@ -34,7 +34,10 @@ function fileTypes() { return ["AMIGAHUNK", "DOS16M", "DOS4G", "RESOURCEFORK", "
 
 var sx_executablemore_layouts = [sxexm_vz_header, sxexm_xalz_header, sxexm_pyc_header8, sxexm_pyc_header12,
     sxexm_pyc_header16_timestamp, sxexm_pyc_header16_hash, sxexm_msf7_superblock, sxexm_msf7_directory_block,
-    sxexm_msf7_stream_count, sxexm_msf7_stream_size, sxexm_msf7_stream_block, sxexm_mub_header_le, sxexm_mub_arch32_le,
+    sxexm_msf7_stream_count, sxexm_msf7_stream_size, sxexm_msf7_stream_block,
+    sxexm_msf2_superblock, sxexm_msf2_directory_page, sxexm_msf2_stream_count, sxexm_msf2_stream_size,
+    sxexm_msf2_stream_page, sxexm_msf_pdb_info_header, sxexm_msf_tpi_header, sxexm_msf_dbi_header, sxexm_msf_ipi_header,
+    sxexm_mub_header_le, sxexm_mub_arch32_le,
     sxexm_mub_header_be, sxexm_mub_arch32_be, sxexm_mub_arch64_be, sxexm_resource_fork_header, sxexm_resource_map_header,
     sxexm_resource_type_count, sxexm_resource_type_entry, sxexm_resource_reference, sxexm_resource_data_length,
     sxexm_resource_name_length, sxexm_pebble_header, sxexm_pebble_relocation, sxexm_nro_start, sxexm_nro_header,
@@ -57,7 +60,9 @@ var sx_executablemore_layouts = [sxexm_vz_header, sxexm_xalz_header, sxexm_pyc_h
 function structs() {
     return sxCatalog([sxexm_vz_header, sxexm_xalz_header, sxexm_pyc_header8, sxexm_pyc_header12, sxexm_pyc_header16_timestamp,
         sxexm_pyc_header16_hash, sxexm_msf7_superblock, sxexm_msf7_directory_block, sxexm_msf7_stream_count,
-        sxexm_msf7_stream_size, sxexm_msf7_stream_block, sxexm_mub_header_le, sxexm_mub_arch32_le, sxexm_mub_header_be,
+        sxexm_msf7_stream_size, sxexm_msf7_stream_block, sxexm_msf2_superblock, sxexm_msf2_directory_page,
+        sxexm_msf2_stream_count, sxexm_msf2_stream_size, sxexm_msf2_stream_page, sxexm_msf_pdb_info_header,
+        sxexm_msf_tpi_header, sxexm_msf_dbi_header, sxexm_msf_ipi_header, sxexm_mub_header_le, sxexm_mub_arch32_le, sxexm_mub_header_be,
         sxexm_mub_arch32_be, sxexm_mub_arch64_be, sxexm_resource_fork_header, sxexm_resource_map_header,
         sxexm_resource_type_count, sxexm_resource_type_entry, sxexm_resource_reference, sxexm_resource_data_length,
         sxexm_resource_name_length, sxexm_pebble_header, sxexm_pebble_relocation, sxexm_nro_start, sxexm_nro_header,

@@ -206,7 +206,11 @@ int xx_crt_vsscanf(const char *pInput, const char *pFormat, int bSecure, va_list
         } else if (f[0] == 'L') {
             nLength = XX_CRT_SCAN_DOUBLE_LONG;
             ++f;
-        } else if (f[0] == 'j' || f[0] == 'z' || f[0] == 't') {
+        } else if (f[0] == 'j') {
+            /* intmax_t is 64-bit on x86 as well */
+            nLength = XX_CRT_SCAN_64;
+            ++f;
+        } else if (f[0] == 'z' || f[0] == 't') {
             nLength = sizeof(size_t) == 8 ? XX_CRT_SCAN_64 : XX_CRT_SCAN_INT;
             ++f;
         } else if (f[0] == 'I') {

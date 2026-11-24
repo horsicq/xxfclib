@@ -59,7 +59,26 @@ typedef struct xxds_entry {
     char **aliases; /* further names string_to_id accepts */
     size_t alias_count;
     int endian; /* 0 LE, 1 BE, 2 FILE */
+    int fields_mode; /* 0 ask the script every time, 1 static list, 2 sizedFields function */
 } xxds_entry;
+
+/* A field list the host read from a script, kept for reuse (see xxds_create_records_on). */
+#define XXDS_LAYOUT_SLOTS 1024U
+
+typedef struct xxds_layout_field {
+    wchar_t *name, *type, *description;
+    int64_t rel_offset, size, role, endian;
+    bool has_endian, comment, display, logical, utf8;
+    JSVal field; /* owned when the field has hooks */
+} xxds_layout_field;
+
+typedef struct xxds_layout {
+    bool used, bad; /* bad: the list has no usable fields */
+    size_t entry;
+    int64_t entry_size, total_size; /* 0 for a static list */
+    xxds_layout_field *fields;
+    size_t count;
+} xxds_layout;
 
 typedef struct xxds_script {
     struct xxds_script *next;
@@ -68,9 +87,13 @@ typedef struct xxds_script {
     bool failed;
     xxds_entry *entries;
     size_t entry_count;
+    xxds_layout *layouts; /* XXDS_LAYOUT_SLOTS reusable field lists, allocated on first use */
 } xxds_script;
 
 /* What the natives act on while one API call runs a script. */
+#define XXDS_CACHE_SLOTS 8U
+#define XXDS_CACHE_WINDOW 16384U
+
 typedef struct xxds_call {
     xxds_script *script;
     Abstractformat *format;
@@ -80,16 +103,18 @@ typedef struct xxds_call {
     xx_data_struct *items;
     size_t count, capacity;
     bool collecting;
-    /* One window of the device, so that the many small reads of a walker (File.u8/u16/u32, short File.bytes)
-     * cost a copy instead of a device read each. Filled on demand, dropped by xxds_end. */
-    uint8_t *cache;
-    int64_t cache_at; /* format-relative offset of cache[0] */
-    size_t cache_size;
+    /* A few windows of the device, so that the many small reads of a walker (File.u8/u16/u32, short
+     * File.bytes) cost a copy instead of a device read each. Walkers alternate between regions (a PE
+     * exception table and the unwind data it points to), so one window would be refilled on almost
+     * every read: the least recently used window is refilled. Filled on demand, dropped by xxds_end. */
+    uint8_t *cache; /* XXDS_CACHE_SLOTS windows of XXDS_CACHE_WINDOW bytes */
+    int64_t cache_at[XXDS_CACHE_SLOTS]; /* format-relative offset of each window */
+    size_t cache_size[XXDS_CACHE_SLOTS]; /* 0: empty */
+    uint64_t cache_used[XXDS_CACHE_SLOTS], cache_tick;
     /* Counters of one scan, printed by xxds_end when the environment variable XXDS_PROFILE is set. */
     uint64_t prof_natives, prof_reads, prof_read_bytes, prof_device_reads, prof_device_bytes, prof_scanned;
 } xxds_call;
 
-#define XXDS_CACHE_WINDOW 65536U
 
 struct xx_xxds_table {
     JSCtx *ctx;
@@ -284,20 +309,27 @@ static bool xxds_read(JSCtx *ctx, xxds_call *call, int64_t offset, void *out, si
     call->prof_reads++;
     call->prof_read_bytes += size;
     if (size <= XXDS_CACHE_WINDOW / 4U) {
-        if (!call->cache || offset < call->cache_at || (uint64_t)(offset - call->cache_at) + size > call->cache_size) {
+        size_t slot, victim = 0;
+        for (slot = 0; slot < XXDS_CACHE_SLOTS; ++slot) {
+            if (call->cache_size[slot] && offset >= call->cache_at[slot] && (uint64_t)(offset - call->cache_at[slot]) + size <= call->cache_size[slot]) break;
+            if (call->cache_used[slot] < call->cache_used[victim]) victim = slot;
+        }
+        if (slot == XXDS_CACHE_SLOTS) {
             int64_t start = offset & ~(int64_t)0xFFF, left = call->size - start;
             size_t fill = (size_t)(left < (int64_t)XXDS_CACHE_WINDOW ? left : (int64_t)XXDS_CACHE_WINDOW);
-            if (!call->cache) call->cache = (uint8_t *)xx_mem_alloc(XXDS_CACHE_WINDOW);
-            call->cache_size = 0;
+            if (!call->cache) call->cache = (uint8_t *)xx_mem_alloc((size_t)XXDS_CACHE_SLOTS * XXDS_CACHE_WINDOW);
+            slot = victim;
+            call->cache_size[slot] = 0;
             call->prof_device_reads++;
             call->prof_device_bytes += fill;
-            if (call->cache && xx_io_read_at(call->format->device, call->base + start, call->cache, fill)) {
-                call->cache_at = start;
-                call->cache_size = fill;
+            if (call->cache && xx_io_read_at(call->format->device, call->base + start, call->cache + slot * XXDS_CACHE_WINDOW, fill)) {
+                call->cache_at[slot] = start;
+                call->cache_size[slot] = fill;
             }
         }
-        if (call->cache && call->cache_size && offset >= call->cache_at && (uint64_t)(offset - call->cache_at) + size <= call->cache_size) {
-            xx_rt_memcpy(out, call->cache + (size_t)(offset - call->cache_at), size);
+        if (call->cache && call->cache_size[slot] && offset >= call->cache_at[slot] && (uint64_t)(offset - call->cache_at[slot]) + size <= call->cache_size[slot]) {
+            call->cache_used[slot] = ++call->cache_tick;
+            xx_rt_memcpy(out, call->cache + slot * XXDS_CACHE_WINDOW + (size_t)(offset - call->cache_at[slot]), size);
             return true;
         }
     }
@@ -1005,8 +1037,15 @@ static void xxds_define(JSCtx *ctx, const char *object_name, JSNativeFn fn, cons
     js_release(ctx, global);
 }
 
+static void xxds_layout_clear(JSCtx *ctx, xxds_layout *layout);
+
 static void xxds_script_release(xxds_script *script)
 {
+    if (script->layouts) {
+        for (size_t i = 0; i < XXDS_LAYOUT_SLOTS; ++i) xxds_layout_clear(script->ctx, &script->layouts[i]);
+        xx_mem_free(script->layouts);
+        script->layouts = NULL;
+    }
     if (script->ctx) js_free(script->ctx);
     script->ctx = NULL;
     for (size_t i = 0; i < script->entry_count; ++i) {
@@ -1046,6 +1085,13 @@ static bool xxds_read_catalog(xxds_script *script)
                 slot->name[size] = '\0';
                 slot->id = (uint32_t)id;
                 slot->endian = (int)xxds_get_i64(ctx, entry, "endian", 0);
+                {
+                    JSVal fields = js_get(ctx, entry, "fields"), sized = js_get(ctx, entry, "sizedFields");
+                    if (js_is_array(fields)) slot->fields_mode = 1;
+                    else if (js_is_callable(fields) && sized.tag == JT_BOOL && sized.u.b) slot->fields_mode = 2;
+                    js_release(ctx, sized);
+                    js_release(ctx, fields);
+                }
                 ++script->entry_count;
                 ok = xxds_read_aliases(ctx, entry, slot);
                 if (ok) {
@@ -1332,7 +1378,7 @@ static void xxds_end(xxds_call *call)
     }
     xx_mem_free(call->cache);
     call->cache = NULL;
-    call->cache_size = 0;
+    xx_mem_zero(call->cache_size, sizeof(call->cache_size));
     if (call->script && call->script->ctx) js_set_user(call->script->ctx, NULL);
 }
 
@@ -1623,16 +1669,158 @@ static xx_data_struct_record_state *xxds_create_records(Abstractformat *outer, c
     return state;
 }
 
+/* One field of a field list as the host reads it from the script. */
+static bool xxds_layout_field_read(JSCtx *ctx, JSVal field, xxds_layout_field *out)
+{
+    JSVal name = js_get(ctx, field, "name"), type = js_get(ctx, field, "type"), endian = js_get(ctx, field, "endian"), description;
+    out->name = xxds_wide_value(ctx, name);
+    out->type = xxds_wide_value(ctx, type);
+    out->has_endian = !js_is_undefined(endian);
+    out->endian = out->has_endian ? js_to_int64(ctx, endian) : 0;
+    out->rel_offset = xxds_get_i64(ctx, field, "offset", -1);
+    out->size = xxds_get_i64(ctx, field, "size", -1);
+    out->role = xxds_get_i64(ctx, field, "role", 0);
+    description = js_get(ctx, field, "description");
+    if (description.tag == JT_STR) out->description = xxds_wide_value(ctx, description);
+    js_release(ctx, description);
+    js_release(ctx, endian);
+    js_release(ctx, type);
+    js_release(ctx, name);
+    out->comment = js_has(ctx, field, "comment") != 0;
+    out->display = js_has(ctx, field, "display") != 0;
+    out->logical = js_has(ctx, field, "logical") != 0;
+    out->utf8 = js_has(ctx, field, "utf8") != 0;
+    out->field = out->comment || out->display || out->logical ? js_dup(field) : js_undefined();
+    return out->name && out->type && out->rel_offset >= 0 && out->size >= 0;
+}
+
+static void xxds_layout_clear(JSCtx *ctx, xxds_layout *layout)
+{
+    for (size_t i = 0; i < layout->count; ++i) {
+        xx_mem_free(layout->fields[i].name);
+        xx_mem_free(layout->fields[i].type);
+        xx_mem_free(layout->fields[i].description);
+        if (ctx) js_release(ctx, layout->fields[i].field);
+    }
+    xx_mem_free(layout->fields);
+    xx_mem_zero(layout, sizeof(*layout));
+}
+
+/* Reads a returned field list. A list the host cannot use is kept as bad. */
+static bool xxds_layout_fill(JSCtx *ctx, JSVal fields, xxds_layout *layout)
+{
+    int64_t count = js_is_array(fields) ? js_array_length(ctx, fields) : 0;
+    layout->bad = !(count > 0 && count <= (int64_t)XXDS_MAX_FIELDS);
+    if (layout->bad) return true;
+    layout->fields = (xxds_layout_field *)xx_mem_calloc((size_t)count, sizeof(*layout->fields));
+    if (!layout->fields) return false;
+    for (int64_t i = 0; !layout->bad && i < count; ++i) {
+        JSVal field = js_get_index(ctx, fields, i);
+        layout->bad = !xxds_layout_field_read(ctx, field, &layout->fields[layout->count]);
+        ++layout->count;
+        js_release(ctx, field);
+    }
+    return true;
+}
+
+static uint32_t xxds_layout_slot(size_t entry, int64_t entry_size, int64_t total_size)
+{
+    uint64_t h = (uint64_t)entry * 0x9E3779B97F4A7C15ULL;
+    h ^= (uint64_t)entry_size + 0x632BE59BD9B4E019ULL + (h << 6) + (h >> 2);
+    h ^= (uint64_t)total_size + 0x85EBCA77C2B2AE63ULL + (h << 6) + (h >> 2);
+    h ^= h >> 29;
+    return (uint32_t)(h & (XXDS_LAYOUT_SLOTS - 1U));
+}
+
+/* The occurrence as the `ds` argument of field functions and hooks. */
+static JSVal xxds_ds_value(xxds_call *call, const xxds_entry *entry, const xx_data_struct *ds)
+{
+    JSCtx *ctx = call->script->ctx;
+    JSVal value = js_new_object(ctx);
+    js_set(ctx, value, "id", js_num((double)ds->id));
+    js_set(ctx, value, "name", js_str(ctx, entry->name));
+    js_set(ctx, value, "offset", js_num((double)(ds->offset - call->base)));
+    js_set(ctx, value, "address", js_num((double)ds->address));
+    js_set(ctx, value, "entrySize", js_num((double)ds->entry_size));
+    js_set(ctx, value, "totalSize", js_num((double)ds->total_size));
+    js_set(ctx, value, "count", js_num((double)ds->count));
+    return value;
+}
+
+static wchar_t *xxds_wide_dup(const wchar_t *text)
+{
+    size_t length = 0;
+    wchar_t *copy;
+    if (!text) return NULL;
+    while (text[length]) ++length;
+    copy = (wchar_t *)xx_mem_alloc((length + 1U) * sizeof(*copy));
+    if (copy) xx_rt_memcpy(copy, text, (length + 1U) * sizeof(*copy));
+    return copy;
+}
+
+/* Prepares one record of an occurrence from its list field; runs its hooks. */
+static bool xxds_prepare_field(xxds_call *call, const xxds_entry *entry, Abstractformat *format, const xx_data_struct *ds, JSVal *ds_value,
+                               const xxds_layout_field *source, xxds_prepared_field *prepared)
+{
+    JSCtx *ctx = call->script->ctx;
+    xx_data_struct_record record;
+    int64_t endian = source->has_endian ? source->endian : entry->endian;
+    bool ok;
+    prepared->name = xxds_wide_dup(source->name);
+    prepared->type = xxds_wide_dup(source->type);
+    prepared->desc.name = prepared->name;
+    prepared->desc.type = prepared->type;
+    prepared->desc.rel_offset = source->rel_offset;
+    prepared->desc.size = source->size;
+    prepared->desc.property = (xx_data_struct_record_property_t)source->role;
+    prepared->big_endian = endian == 1 || (endian == 2 && format->endian == XX_ENDIAN_BIG);
+    if (source->description) prepared->description = xxds_wide_dup(source->description);
+    ok = prepared->name && prepared->type && (!source->description || prepared->description) &&
+         (ds->total_size < 0 || (prepared->desc.rel_offset <= ds->total_size && prepared->desc.size <= ds->total_size - prepared->desc.rel_offset));
+    if (!ok || !(source->comment || source->display || source->logical)) return ok;
+    if (ds_value->tag == JT_UNDEF) *ds_value = xxds_ds_value(call, entry, ds);
+    /* Hooks see the decoded value, so decode the record once here. */
+    ok = xx_xxds_populate_field(&record, format, ds, &prepared->desc, prepared->big_endian);
+    if (ok && source->logical) {
+        JSVal hook = js_get(ctx, source->field, "logical"), hook_argv[2], result;
+        hook_argv[0] = xxds_record_value(ctx, &record);
+        hook_argv[1] = *ds_value;
+        result = js_call(ctx, hook, js_undefined(), 2, hook_argv);
+        if (js_has_exception(ctx)) {
+            xxds_script_error(call->script);
+            ok = false;
+        } else if (result.tag == JT_BOOL) {
+            prepared->logical = 1;
+            prepared->logical_value = result.u.b ? 1.0 : 0.0;
+        } else if (result.tag == JT_NUM) {
+            prepared->logical = prepared->type[0] == L'i' ? 3 : 2;
+            prepared->logical_value = result.u.n;
+        }
+        js_release(ctx, result);
+        js_release(ctx, hook_argv[0]);
+        js_release(ctx, hook);
+        if (ok && !xxds_apply_logical(&record, prepared)) ok = false;
+        if (!ok) xx_data_struct_record_cleanup(&record);
+    }
+    if (ok) {
+        if (source->comment) prepared->comment = xxds_field_note(call, source->field, "comment", &record, *ds_value, &ok, &prepared->no_comment);
+        if (ok && source->display) prepared->display = xxds_field_note(call, source->field, source->utf8 ? "display\x01" : "display", &record, *ds_value, &ok, NULL);
+        xx_data_struct_record_cleanup(&record);
+    }
+    return ok;
+}
+
 static xx_data_struct_record_state *xxds_create_records_on(Abstractformat *outer, Abstractformat *format, const xx_data_struct *ds, xx_pd_struct *pd)
 {
     xx_data_struct_record_state *state = NULL;
     xxds_records *records = NULL;
     const xxds_entry *entry;
+    const xxds_layout *layout = NULL;
+    xxds_layout scratch;
     xxds_call call;
     JSCtx *ctx;
-    JSVal argv[2], fields = js_undefined(), ds_value;
+    JSVal ds_value = js_undefined();
     size_t index = 0;
-    int64_t count = 0;
     bool ok;
     if (!format || !ds || ds->id == XX_DATA_STRUCT_ID_RAW_DATA || (pd && xx_pd_is_stopped(pd)) || !xxds_lock()) return NULL;
     g_xxds_error[0] = '\0';
@@ -1641,85 +1829,57 @@ static xx_data_struct_record_state *xxds_create_records_on(Abstractformat *outer
         return NULL;
     }
     ctx = call.script->ctx;
+    xx_mem_zero(&scratch, sizeof(scratch));
     entry = xxds_entry_by_id(call.script, ds->id, &index);
     ok = entry && ds->offset >= call.base && ds->offset - call.base <= call.size;
-    ds_value = js_new_object(ctx);
     if (ok) {
-        js_set(ctx, ds_value, "id", js_num((double)ds->id));
-        js_set(ctx, ds_value, "name", js_str(ctx, entry->name));
-        js_set(ctx, ds_value, "offset", js_num((double)(ds->offset - call.base)));
-        js_set(ctx, ds_value, "address", js_num((double)ds->address));
-        js_set(ctx, ds_value, "entrySize", js_num((double)ds->entry_size));
-        js_set(ctx, ds_value, "totalSize", js_num((double)ds->total_size));
-        js_set(ctx, ds_value, "count", js_num((double)ds->count));
-        argv[0] = js_num((double)index);
-        argv[1] = ds_value;
-        fields = xxds_invoke(call.script, "__xxds_fields", 2, argv, &ok);
-        count = ok && js_is_array(fields) ? js_array_length(ctx, fields) : 0;
-        ok = ok && count > 0 && count <= (int64_t)XXDS_MAX_FIELDS;
+        /* Field lists the script declared reusable are read once (RULES.md, section 4): the static list of an
+         * entry, or the list of a sizedFields function for one entrySize/totalSize. */
+        xxds_layout *slot = NULL;
+        int64_t entry_size = entry->fields_mode == 2 ? ds->entry_size : 0, total_size = entry->fields_mode == 2 ? ds->total_size : 0;
+        if (entry->fields_mode && !call.script->layouts)
+            call.script->layouts = (xxds_layout *)xx_mem_calloc(XXDS_LAYOUT_SLOTS, sizeof(*call.script->layouts));
+        if (entry->fields_mode && call.script->layouts) {
+            slot = &call.script->layouts[xxds_layout_slot(index, entry_size, total_size)];
+            if (slot->used && slot->entry == index && slot->entry_size == entry_size && slot->total_size == total_size) layout = slot;
+        }
+        if (!layout) {
+            JSVal argv[2], fields;
+            ds_value = xxds_ds_value(&call, entry, ds);
+            argv[0] = js_num((double)index);
+            argv[1] = ds_value;
+            fields = xxds_invoke(call.script, "__xxds_fields", 2, argv, &ok);
+            if (ok && slot) {
+                xxds_layout_clear(ctx, slot);
+                ok = xxds_layout_fill(ctx, fields, slot);
+                if (ok) {
+                    slot->used = true;
+                    slot->entry = index;
+                    slot->entry_size = entry_size;
+                    slot->total_size = total_size;
+                    layout = slot;
+                } else {
+                    xxds_layout_clear(ctx, slot);
+                }
+            } else if (ok) {
+                ok = xxds_layout_fill(ctx, fields, &scratch);
+                layout = &scratch;
+            }
+            js_release(ctx, fields);
+        }
+        ok = ok && layout && !layout->bad;
     }
     if (ok) {
         records = (xxds_records *)xx_mem_calloc(1U, sizeof(*records));
-        if (records) records->fields = (xxds_prepared_field *)xx_mem_calloc((size_t)count, sizeof(*records->fields));
+        if (records) records->fields = (xxds_prepared_field *)xx_mem_calloc(layout->count, sizeof(*records->fields));
         ok = records && records->fields;
         if (ok) records->format = format;
     }
-    for (int64_t i = 0; ok && i < count; ++i) {
-        JSVal field = js_get_index(ctx, fields, i), name = js_get(ctx, field, "name"), type = js_get(ctx, field, "type");
-        xxds_prepared_field *prepared = &records->fields[records->count];
-        xx_data_struct_record record;
-        int64_t endian = xxds_get_i64(ctx, field, "endian", entry->endian);
-        prepared->name = xxds_wide_value(ctx, name);
-        prepared->type = xxds_wide_value(ctx, type);
-        prepared->desc.name = prepared->name;
-        prepared->desc.type = prepared->type;
-        prepared->desc.rel_offset = xxds_get_i64(ctx, field, "offset", -1);
-        prepared->desc.size = xxds_get_i64(ctx, field, "size", -1);
-        prepared->desc.property = (xx_data_struct_record_property_t)xxds_get_i64(ctx, field, "role", 0);
-        prepared->big_endian = endian == 1 || (endian == 2 && format->endian == XX_ENDIAN_BIG);
-        {
-            JSVal description = js_get(ctx, field, "description");
-            if (description.tag == JT_STR) prepared->description = xxds_wide_value(ctx, description);
-            js_release(ctx, description);
-        }
+    for (size_t i = 0; ok && i < layout->count; ++i) {
+        ok = xxds_prepare_field(&call, entry, format, ds, &ds_value, &layout->fields[i], &records->fields[records->count]);
         ++records->count;
-        ok = prepared->name && prepared->type && prepared->desc.rel_offset >= 0 && prepared->desc.size >= 0 &&
-             (ds->total_size < 0 || (prepared->desc.rel_offset <= ds->total_size && prepared->desc.size <= ds->total_size - prepared->desc.rel_offset));
-        if (ok && (js_has(ctx, field, "comment") || js_has(ctx, field, "display") || js_has(ctx, field, "logical"))) {
-            /* Hooks see the decoded value, so decode the record once here. */
-            ok = xx_xxds_populate_field(&record, format, ds, &prepared->desc, prepared->big_endian);
-            if (ok && js_has(ctx, field, "logical")) {
-                JSVal hook = js_get(ctx, field, "logical"), hook_argv[2], result;
-                hook_argv[0] = xxds_record_value(ctx, &record);
-                hook_argv[1] = ds_value;
-                result = js_call(ctx, hook, js_undefined(), 2, hook_argv);
-                if (js_has_exception(ctx)) {
-                    xxds_script_error(call.script);
-                    ok = false;
-                } else if (result.tag == JT_BOOL) {
-                    prepared->logical = 1;
-                    prepared->logical_value = result.u.b ? 1.0 : 0.0;
-                } else if (result.tag == JT_NUM) {
-                    prepared->logical = prepared->type[0] == L'i' ? 3 : 2;
-                    prepared->logical_value = result.u.n;
-                }
-                js_release(ctx, result);
-                js_release(ctx, hook_argv[0]);
-                js_release(ctx, hook);
-                if (ok && !xxds_apply_logical(&record, prepared)) ok = false;
-                if (!ok) xx_data_struct_record_cleanup(&record);
-            }
-            if (ok) {
-                prepared->comment = xxds_field_note(&call, field, "comment", &record, ds_value, &ok, &prepared->no_comment);
-                if (ok) prepared->display = xxds_field_note(&call, field, js_has(ctx, field, "utf8") ? "display\x01" : "display", &record, ds_value, &ok, NULL);
-                xx_data_struct_record_cleanup(&record);
-            }
-        }
-        js_release(ctx, type);
-        js_release(ctx, name);
-        js_release(ctx, field);
     }
-    js_release(ctx, fields);
+    xxds_layout_clear(ctx, &scratch);
     js_release(ctx, ds_value);
     xxds_end(&call);
     xxds_unlock();

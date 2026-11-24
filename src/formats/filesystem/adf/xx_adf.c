@@ -937,6 +937,88 @@ static uint32_t adf_mod_size(const uint8_t *mod, size_t limit)
     return size;
 }
 
+/* ---- SoundTracker modules ----
+ * The 15-instrument module of the SoundTracker family (1987-1989) is the
+ * same layout without a tag: title, 15 sample headers, the song length at
+ * 470, one byte, the pattern table at 472, patterns from 600.  With no tag
+ * to find it by, every rule must hold:
+ *   - the title and all 15 sample names are plain ASCII or zero bytes;
+ *   - every sample: finetune byte 0, volume <= 64, at most 0x8000 words, the
+ *     loop inside the sample (its start counted in bytes or in words);
+ *   - at least one sample, song length 1..128, pattern numbers <= 63, and
+ *     the highest number lies inside the song, so the entries behind the
+ *     song's end cannot change the size;
+ *   - the module ends inside the image;
+ *   - pattern cells: sample number <= 15, period 0 or within 8 of a
+ *     ProTracker period, at most 1% of the cells wrong, at least 16 notes.
+ * Measured on the 3,117 TOSEC images left without a filesystem: 378 modules
+ * on 163 disks, all of which libopenmpt loads. */
+#define ADF_ST_SAMPLES 15U
+#define ADF_ST_LENGTH 470U
+#define ADF_ST_TABLE 472U
+#define ADF_ST_HEADER 600U
+/** Pattern cells all SoundTracker checks on one image may read. */
+#define ADF_ST_WORK UINT32_C(0x2000000)
+
+static bool adf_st_text(const uint8_t *text, size_t size)
+{
+    size_t index;
+    for (index = 0U; index < size; ++index) {
+        if (text[index] != 0U && (text[index] < 0x20U || text[index] > 0x7EU)) return false;
+    }
+    return true;
+}
+
+/* Byte size of the SoundTracker module that starts at @p mod, 0 when it is
+ * not one.  @p limit is the number of bytes left in the image. */
+static uint32_t adf_st_size(const uint8_t *mod, size_t limit, uint32_t *work)
+{
+    uint32_t samples = 0U, size, cells, index, bad = 0U, notes = 0U;
+    unsigned used = 0U, patterns = 0U, inside = 0U, length;
+    if (limit < ADF_ST_HEADER) return 0U;
+    length = mod[ADF_ST_LENGTH];
+    if (length < 1U || length > 128U) return 0U;
+    for (index = 0U; index < 128U; ++index) {
+        unsigned number = mod[ADF_ST_TABLE + index];
+        if (number > 63U) return 0U;
+        if (number > patterns) patterns = number;
+        if (index < length && number > inside) inside = number;
+    }
+    if (inside != patterns || !adf_st_text(mod, ADF_MOD_TITLE)) return 0U;
+    for (index = 0U; index < ADF_ST_SAMPLES; ++index) {
+        const uint8_t *sample = mod + ADF_MOD_TITLE + ADF_MOD_SAMPLE * index;
+        uint32_t words = ((uint32_t)sample[22] << 8) | sample[23];
+        uint32_t start = ((uint32_t)sample[26] << 8) | sample[27];
+        uint32_t loop = ((uint32_t)sample[28] << 8) | sample[29];
+        if (!adf_st_text(sample, 22U) || sample[24] != 0U || sample[25] > 64U || words > 0x8000U) return 0U;
+        if (loop > 1U && start + loop * 2U > words * 2U + 2U && start + loop > words + 1U) return 0U;
+        if (words > 1U) ++used;
+        samples += words * 2U;
+    }
+    if (used == 0U || (limit >= ADF_MOD_HEADER && adf_mod_tag(mod + ADF_MOD_TAG))) return 0U; /* a ProTracker module is not one */
+    ++patterns;
+    size = ADF_ST_HEADER + (uint32_t)patterns * ADF_MOD_PATTERN + samples;
+    if ((size_t)size > limit) return 0U;
+    cells = (uint32_t)patterns * (ADF_MOD_PATTERN / 4U);
+    if (*work > ADF_ST_WORK) return 0U;
+    *work += cells;
+    for (index = 0U; index < cells; ++index) {
+        const uint8_t *cell = mod + ADF_ST_HEADER + (size_t)index * 4U;
+        unsigned period;
+        if (cell[0] & 0xF0U) {
+            ++bad;
+            continue;
+        }
+        period = ((unsigned)cell[0] << 8) | cell[1];
+        if (period != 0U) {
+            ++notes;
+            if (!adf_mod_period_ok(period)) ++bad;
+        }
+    }
+    if (notes < 16U || bad * 100U > cells) return 0U;
+    return size;
+}
+
 /* ---- OctaMED modules ---- */
 
 /* An MMD0..MMD3 module gives its own length, and every pointer in it is an
@@ -1337,7 +1419,7 @@ static size_t adf_crunch_name(char *raw, const uint8_t *plain, uint32_t size, ui
 }
 
 /* List what can be recovered from a DD/HD floppy image without a root
- * block: ProTracker modules ("<title>.mod"), OctaMED modules ("<song
+ * block: ProTracker and SoundTracker modules ("<title>.mod"), OctaMED modules ("<song
  * name>.med" or "med_<offset>.med"), Amiga load files
  * ("program_<offset>", no extension, as on the Amiga), IFF files (named
  * by their NAME chunk or "<kind>_<offset>", with .iff/.8svx/.anim/...) and
@@ -1356,8 +1438,8 @@ static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *nam
     uint8_t *image;
     uint32_t *hunks = NULL;
     adfc_state crunch_state;
-    size_t at, limit, next_mod = 0U, next_hunk = 0U, next_iff = 0U, next_crunch = 0U, next_med = 0U;
-    uint32_t med_work = 0U;
+    size_t at, limit, next_mod = 0U, next_hunk = 0U, next_iff = 0U, next_crunch = 0U, next_med = 0U, next_st = 0U;
+    uint32_t med_work = 0U, st_work = 0U;
     bool found = false, failed = false, stop = false;
     if (!format || !format->device || format->base_address < 0) return false;
     total = xx_io_total_size(format->device);
@@ -1405,6 +1487,14 @@ static bool adf_carve(Abstractformat *format, adf_stream *stream, adf_names *nam
             (length = adf_mod_size(image + at - ADF_MOD_TAG, limit - (at - ADF_MOD_TAG))) != 0U) {
             start = (uint32_t)(at - ADF_MOD_TAG);
             next_mod = (size_t)start + length;
+            name_size = adf_mod_name(raw, image + start, start);
+        }
+        /* A SoundTracker module has no tag: the scan stands on its song
+         * length byte, and zero bytes end the check at once. */
+        if (length == 0U && byte <= 128U && byte != 0U && at >= ADF_ST_LENGTH && at - ADF_ST_LENGTH >= next_st && at - ADF_ST_LENGTH >= next_mod &&
+            (length = adf_st_size(image + at - ADF_ST_LENGTH, limit - (at - ADF_ST_LENGTH), &st_work)) != 0U) {
+            start = (uint32_t)(at - ADF_ST_LENGTH);
+            next_st = (size_t)start + length;
             name_size = adf_mod_name(raw, image + start, start);
         }
         if (length == 0U && byte == 'M' && at >= next_med) {

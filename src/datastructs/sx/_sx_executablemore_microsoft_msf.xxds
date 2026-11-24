@@ -177,6 +177,18 @@ function sxexm_msf_jg(c) {
     return true;
 }
 
+// A TPI/IPI stream header: a known TPI version and the 56-byte header size. Before VC14 stream 4 is the
+// /names string table (0xEFFEEFFE), not an IPI stream.
+function sxexm_msf_tpi_ok(c, p) {
+    var v = [0];
+    var h = [0];
+    if (!sxexm_span(c, p, 56) || !sxexm_word(c, p, 4, false, v) || !sxexm_word(c, p + 4, 4, false, h)) {
+        return false;
+    }
+    return h[0] === 56 && (v[0] === 19950410 || v[0] === 19951122 || v[0] === 19961031 || v[0] === 19990903 ||
+        v[0] === 20040203);
+}
+
 function sxexm_msf7(c) {
     var b = [];
     if (!sxexm_read(c, 0, b, 56) || !sxexm_add(c, sxexm_msf7_superblock, 0)) {
@@ -241,21 +253,22 @@ function sxexm_msf7(c) {
     if (s_block[2] !== undefined && s_block[2] <= max_blk && c.count < 20000) {
         var sz2 = s_size[2];
         var p2 = s_block[2] * bs;
-        if (sz2 >= 56 && bs >= 56 && sxexm_span(c, p2, 56)) {
+        if (sz2 >= 56 && bs >= 56 && sxexm_msf_tpi_ok(c, p2)) {
             sxexm_add(c, sxexm_msf_tpi_header, p2);
         }
     }
     if (s_block[3] !== undefined && s_block[3] <= max_blk && c.count < 20000) {
         var sz3 = s_size[3];
         var p3 = s_block[3] * bs;
-        if (sz3 >= 64 && bs >= 64 && sxexm_span(c, p3, 64)) {
+        var v3 = [0];
+        if (sz3 >= 64 && bs >= 64 && sxexm_span(c, p3, 64) && sxexm_word(c, p3, 4, false, v3) && v3[0] === 4294967295) {
             sxexm_add(c, sxexm_msf_dbi_header, p3);
         }
     }
     if (s_block[4] !== undefined && s_block[4] <= max_blk && c.count < 20000) {
         var sz4 = s_size[4];
         var p4 = s_block[4] * bs;
-        if (sz4 >= 56 && bs >= 56 && sxexm_span(c, p4, 56)) {
+        if (sz4 >= 56 && bs >= 56 && sxexm_msf_tpi_ok(c, p4)) {
             sxexm_add(c, sxexm_msf_ipi_header, p4);
         }
     }

@@ -164,6 +164,13 @@ struct xx_ms_pdb {
     uint8_t *names_stream;
     int32_t names_stream_size;
     bool names_stream_loaded;
+
+    /* IPI record offsets, filled by the first xx_ms_pdb_get_id_by_index */
+    bool ids_loaded;
+    uint32_t *id_offsets; /* stream offsets of the records (header included) */
+    uint32_t id_offset_count;
+    uint32_t id_index_begin;
+    uint8_t *id_record;   /* one record, 0x10002 bytes at most */
 };
 
 static const char g_pdb_empty[1] = {0};
@@ -1813,6 +1820,8 @@ void xx_ms_pdb_close(xx_ms_pdb *pdb)
     if (pdb->modules) xx_mem_free(pdb->modules);
     if (pdb->sections) xx_mem_free(pdb->sections);
     if (pdb->md_streams) xx_mem_free(pdb->md_streams);
+    if (pdb->id_offsets) xx_mem_free(pdb->id_offsets);
+    if (pdb->id_record) xx_mem_free(pdb->id_record);
 
     xx_mem_free(pdb);
 }
@@ -3117,6 +3126,18 @@ static uint64_t pdb_segment_offset_to_address(const xx_ms_pdb *pdb, uint16_t seg
     return result;
 }
 
+/* PROCSYM32 {len, kind, pParent, pEnd, pNext, len, DbgStart, DbgEnd, ...}: the
+ * part every S_*PROC32* form (current, 16t, ST) has in the same place */
+static void pdb_parse_proc_links(const uint8_t *data, int32_t data_size, xx_ms_pdb_symbol *record)
+{
+    record->parent = pdb_u32(data, data_size, 4);
+    record->end = pdb_u32(data, data_size, 8);
+    record->next = pdb_u32(data, data_size, 12);
+    record->code_size = pdb_u32(data, data_size, 16);
+    record->debug_start = pdb_u32(data, data_size, 20);
+    record->debug_end = pdb_u32(data, data_size, 24);
+}
+
 /* data points to the beginning of the record (length field), the payload starts at offset 4 */
 static void pdb_parse_symbol(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_size, uint16_t kind, xx_ms_pdb_symbol *record)
 {
@@ -3139,6 +3160,7 @@ static void pdb_parse_symbol(xx_ms_pdb *pdb, const uint8_t *data, int32_t data_s
         record->segment = pdb_u16(data, data_size, 12);
         record->name = pdb_string(pdb, data, data_size, 14, PDB_NAME_MAX(pdb, 4096), NULL);
     } else if ((kind == XX_MS_PDB_S_LPROC32) || (kind == XX_MS_PDB_S_GPROC32) || (kind == XX_MS_PDB_S_LPROC32_ID) || (kind == XX_MS_PDB_S_GPROC32_ID)) {
+        pdb_parse_proc_links(data, data_size, record);
         record->type_index = pdb_u32(data, data_size, 28);
         record->offset = pdb_u32(data, data_size, 32);
         record->segment = pdb_u16(data, data_size, 36);
@@ -3292,12 +3314,14 @@ static void pdb_parse_symbol_legacy(xx_ms_pdb *pdb, const uint8_t *data, int32_t
         record->type_index = pdb_u16(data, data_size, 10);
         record->name = pdb_string_st(pdb, data, data_size, 12);
     } else if ((raw_kind == XX_MS_PDB_S_LPROC32_ST) || (raw_kind == XX_MS_PDB_S_GPROC32_ST)) {
+        pdb_parse_proc_links(data, data_size, record);
         record->type_index = pdb_u32(data, data_size, 28);
         record->offset = pdb_u32(data, data_size, 32);
         record->segment = pdb_u16(data, data_size, 36);
         record->flags = pdb_u8(data, data_size, 38);
         record->name = pdb_string_st(pdb, data, data_size, 39);
     } else if ((raw_kind == XX_MS_PDB_S_LPROC32_16T) || (raw_kind == XX_MS_PDB_S_GPROC32_16T)) {
+        pdb_parse_proc_links(data, data_size, record);
         record->offset = pdb_u32(data, data_size, 28);
         record->segment = pdb_u16(data, data_size, 32);
         record->type_index = pdb_u16(data, data_size, 34);
@@ -5306,6 +5330,213 @@ bool xx_ms_pdb_get_arg_list(xx_ms_pdb *pdb, uint32_t type_index, xx_ms_pdb_u32_l
                 out->items[out->count++] = pdb_u32(data, data_size, offset);
                 offset += 4;
             }
+        }
+    }
+
+    return true;
+}
+
+/* ---- IPI records by index ------------------------------------------------------------------- */
+
+/* The offsets of the IPI records: the walk of pdb_get_types over stream 4 */
+static void pdb_load_ids(xx_ms_pdb *pdb)
+{
+    const xx_ms_pdb_tpi_info *ipi_info = NULL;
+    uint8_t *data = NULL;
+    int32_t data_size = 0;
+    int32_t offset = 0;
+    size_t capacity = 0;
+
+    if (pdb->ids_loaded) {
+        return;
+    }
+
+    pdb->ids_loaded = true;
+    ipi_info = pdb_get_tpi_info(pdb, XX_MS_PDB_STREAM_IPI);
+
+    if ((!ipi_info->is_valid) || (ipi_info->type_record_bytes == 0)) {
+        return;
+    }
+
+    pdb->id_index_begin = ipi_info->type_index_begin;
+    data = pdb_stream_region(pdb, XX_MS_PDB_STREAM_IPI, ipi_info->header_size, ipi_info->type_record_bytes, &data_size);
+
+    while (data && (((int64_t)offset + 4) <= data_size) && pdb_not_canceled(pdb)) {
+        uint16_t record_length = pdb_u16(data, data_size, offset);
+        int32_t record_size = 0;
+
+        if (record_length < 2) {
+            break;
+        }
+
+        record_size = (int32_t)record_length + 2;
+
+        if (((int64_t)offset + record_size) > data_size) {
+            break;
+        }
+
+        if ((pdb->id_offset_count == UINT32_MAX) ||
+            !pdb_list_reserve((void **)&pdb->id_offsets, &capacity, pdb->id_offset_count, sizeof(uint32_t))) {
+            break;
+        }
+
+        pdb->id_offsets[pdb->id_offset_count++] = ipi_info->header_size + (uint32_t)offset;
+        offset += record_size;
+    }
+
+    if (data) {
+        xx_mem_free(data);
+    }
+
+    if (!pdb_not_canceled(pdb)) {
+        /* A stopped walk is not the list; the next call walks again */
+        pdb->ids_loaded = false;
+        pdb->id_offset_count = 0;
+    }
+}
+
+/* Reads the record of an id index into pdb->id_record; its size, 0 if none */
+static int32_t pdb_read_id_record(xx_ms_pdb *pdb, uint32_t id_index, int64_t *record_offset)
+{
+    uint32_t slot = 0;
+    uint8_t header[4];
+    int32_t record_size = 0;
+
+    pdb_load_ids(pdb);
+
+    if ((id_index < pdb->id_index_begin) || ((id_index - pdb->id_index_begin) >= pdb->id_offset_count)) {
+        return 0;
+    }
+
+    slot = id_index - pdb->id_index_begin;
+
+    if (pdb_stream_read(pdb, XX_MS_PDB_STREAM_IPI, pdb->id_offsets[slot], 4, header) != 4) {
+        return 0;
+    }
+
+    record_size = (int32_t)pdb_u16(header, 4, 0) + 2;
+
+    if (!pdb->id_record) {
+        pdb->id_record = (uint8_t *)xx_mem_alloc(0x10002);
+
+        if (!pdb->id_record) {
+            return 0;
+        }
+    }
+
+    if (pdb_stream_read(pdb, XX_MS_PDB_STREAM_IPI, pdb->id_offsets[slot], record_size, pdb->id_record) != record_size) {
+        return 0;
+    }
+
+    *record_offset = pdb->id_offsets[slot];
+
+    return record_size;
+}
+
+bool xx_ms_pdb_get_id_by_index(xx_ms_pdb *pdb, uint32_t id_index, xx_ms_pdb_id_record *out)
+{
+    const uint8_t *data = NULL;
+    int32_t data_size = 0;
+    int64_t record_offset = 0;
+
+    if (!out) {
+        return false;
+    }
+
+    xx_mem_zero(out, sizeof(*out));
+    out->id_index = id_index;
+    out->name = g_pdb_empty;
+
+    if (!pdb) {
+        return false;
+    }
+
+    data_size = pdb_read_id_record(pdb, id_index, &record_offset);
+
+    if (data_size < 4) {
+        return false;
+    }
+
+    data = pdb->id_record;
+
+    out->is_valid = true;
+    out->kind = pdb_u16(data, data_size, 2);
+    out->record_offset = record_offset;
+    out->record_size = data_size;
+
+    if (out->kind == XX_MS_PDB_LF_FUNC_ID) {
+        out->scope_index = pdb_u32(data, data_size, 4);
+        out->type_index = pdb_u32(data, data_size, 8);
+        out->name = pdb_string(pdb, data, data_size, 12, PDB_NAME_MAX(pdb, 4096), NULL);
+    } else if (out->kind == XX_MS_PDB_LF_MFUNC_ID) {
+        out->parent_type_index = pdb_u32(data, data_size, 4);
+        out->type_index = pdb_u32(data, data_size, 8);
+        out->name = pdb_string(pdb, data, data_size, 12, PDB_NAME_MAX(pdb, 4096), NULL);
+    } else if (out->kind == XX_MS_PDB_LF_STRING_ID) {
+        out->list_index = pdb_u32(data, data_size, 4);
+        out->name = pdb_string(pdb, data, data_size, 8, PDB_NAME_MAX(pdb, 4096), NULL);
+    } else if (out->kind == XX_MS_PDB_LF_UDT_SRC_LINE) {
+        out->type_index = pdb_u32(data, data_size, 4);
+        out->source_index = pdb_u32(data, data_size, 8);
+        out->line = pdb_u32(data, data_size, 12);
+    } else if (out->kind == XX_MS_PDB_LF_UDT_MOD_SRC_LINE) {
+        out->type_index = pdb_u32(data, data_size, 4);
+        out->source_index = pdb_u32(data, data_size, 8);
+        out->line = pdb_u32(data, data_size, 12);
+        out->module = pdb_u16(data, data_size, 16);
+        out->name = pdb_names_string(pdb, out->source_index);
+    } else if (out->kind == XX_MS_PDB_LF_BUILDINFO) {
+        out->count = pdb_u16(data, data_size, 4);
+    } else if (out->kind == XX_MS_PDB_LF_SUBSTR_LIST) {
+        out->count = pdb_u32(data, data_size, 4);
+    }
+
+    return true;
+}
+
+bool xx_ms_pdb_get_id_list(xx_ms_pdb *pdb, uint32_t id_index, xx_ms_pdb_u32_list *out)
+{
+    size_t capacity = 0;
+    int64_t record_offset = 0;
+    int32_t data_size = 0;
+
+    if (!out) {
+        return false;
+    }
+
+    out->items = NULL;
+    out->count = 0;
+
+    if (!pdb) {
+        return false;
+    }
+
+    data_size = pdb_read_id_record(pdb, id_index, &record_offset);
+
+    if (data_size >= 4) {
+        const uint8_t *data = pdb->id_record;
+        uint16_t kind = pdb_u16(data, data_size, 2);
+        uint32_t count = 0;
+        int32_t offset = 0;
+        uint32_t i = 0;
+
+        if (kind == XX_MS_PDB_LF_BUILDINFO) {
+            count = pdb_u16(data, data_size, 4);
+            offset = 6;
+        } else if (kind == XX_MS_PDB_LF_SUBSTR_LIST) {
+            count = pdb_u32(data, data_size, 4);
+            offset = 8;
+        }
+
+        for (i = 0; (i < count) && ((offset + 4) <= data_size); i++) {
+            if (!pdb_list_reserve((void **)&out->items, &capacity, out->count, sizeof(uint32_t))) {
+                xx_ms_pdb_u32_list_free(out);
+
+                return false;
+            }
+
+            out->items[out->count++] = pdb_u32(data, data_size, offset);
+            offset += 4;
         }
     }
 

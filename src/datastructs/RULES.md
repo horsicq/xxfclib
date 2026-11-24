@@ -71,6 +71,7 @@ Catalog entry:
 | `name`   | Canonical name, unique in the script (`IMAGE_DOS_HEADER`, `MEMBER_HEADER`). |
 | `fields` | An array of fields, or a function `(ds)` returning one for layouts that depend on the occurrence (see 4). Omit for structures without decoded fields. |
 | `endian` | `LE`, `BE` or `FILE` (the reader's byte order). Default `LE`. |
+| `sizedFields` | Optional `true` for a `fields` function whose result depends only on `entrySize` and `totalSize` (see 4). |
 | `aliases` | Optional array of further names that a name lookup resolves to this id. |
 | `description` | Optional: what the structure is, one or two plain sentences ("The first structure in every PE file. A leftover from MS-DOS compatibility."). |
 
@@ -136,6 +137,15 @@ occurrence and may read the file:
 `scan()` reported, so a `fields` function validates what it reads; the host
 rejects the occurrence when a field does not lie inside `totalSize`. Returning `undefined` or an empty array means the
 occurrence has no decodable fields.
+
+The host reads a static `fields` array once. When a `fields` function sets
+`sizedFields: true` on its entry, the host also keeps the list it returns and
+uses it again for every occurrence of that structure with the same `entrySize`
+and `totalSize`, without calling the function. Set it only when the function
+reads nothing else (not the file, not `offset` or `address`). Hooks still run
+for every occurrence, so they must use the `ds` they are passed and not one
+captured when the list was built. A list given to the host must not be
+changed afterwards.
 
 ## 5. Host objects
 

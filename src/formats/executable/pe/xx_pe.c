@@ -748,3 +748,123 @@ const xx_pe_section *xx_pe_get_section(const xx_pe *pe, uint16_t index)
 {
     return pe && pe->sections && index < pe->number_of_sections ? &pe->sections[index] : NULL;
 }
+
+/* ---- CodeView debug record ---------------------------------------------------- */
+
+#define XX_PE_DEBUG_ENTRY_SIZE 28U
+#define XX_PE_DEBUG_MAX_ENTRIES 256U
+#define XX_PE_DEBUG_TYPE_CODEVIEW 2U
+
+static bool xx_pe_codeview_record(xx_pe *pe, int64_t offset, uint32_t size, int64_t total, xx_pe_codeview_info *out)
+{
+    uint8_t header[24];
+    uint32_t signature;
+    uint32_t path_offset;
+    uint64_t path_size;
+    size_t read_size;
+    size_t length = 0;
+
+    if (offset < pe->format.base_address || offset > total || size < 16U || (uint64_t)(total - offset) < 16U) return false;
+    if (!xx_io_read_at(pe->format.device, offset, header, 16U)) return false;
+    signature = xx_pe_read_le32(header);
+    if (signature == XX_PE_CODEVIEW_SIGNATURE_RSDS) {
+        /* CV_INFO_PDB70 {CvSignature, Signature (GUID), Age, PdbFileName} */
+        if (size < 24U || (uint64_t)(total - offset) < 24U || !xx_io_read_at(pe->format.device, offset + 16, header + 16, 8U)) return false;
+        xx_mem_copy(out->guid, header + 4, 16U);
+        out->age = xx_pe_read_le32(header + 20);
+        path_offset = 24U;
+    } else if (signature == XX_PE_CODEVIEW_SIGNATURE_NB10) {
+        /* CV_INFO_PDB20 {CvSignature, Offset, Signature, Age, PdbFileName} */
+        out->nb10_offset = xx_pe_read_le32(header + 4);
+        out->nb10_signature = xx_pe_read_le32(header + 8);
+        out->age = xx_pe_read_le32(header + 12);
+        path_offset = 16U;
+    } else {
+        return false;
+    }
+    out->signature = signature;
+    out->record_offset = offset;
+    out->record_size = size;
+    path_size = (uint64_t)size - path_offset;
+    if (path_size > (uint64_t)(total - offset - (int64_t)path_offset)) path_size = (uint64_t)(total - offset - (int64_t)path_offset);
+    read_size = (path_size < (uint64_t)(sizeof(out->pdb_path) - 1U)) ? (size_t)path_size : sizeof(out->pdb_path) - 1U;
+    if (read_size && !xx_io_read_at(pe->format.device, offset + (int64_t)path_offset, out->pdb_path, read_size)) read_size = 0U;
+    out->pdb_path[read_size] = 0;
+    while (length < read_size && out->pdb_path[length]) ++length;
+    out->is_path_truncated = (length == read_size) && (path_size > read_size);
+    return true;
+}
+
+bool xx_pe_get_codeview_info(xx_pe *pe, xx_pe_codeview_info *out)
+{
+    const xx_memory_map *memory_map;
+    uint32_t rva;
+    uint32_t size;
+    uint32_t count;
+    uint32_t i;
+    int64_t total;
+
+    if (out) xx_mem_zero(out, sizeof(*out));
+    if (!pe || !out || !pe->format.device) return false;
+    if (!pe->format.base_info_handled && !xx_pe_handle_base_info(&pe->format, NULL)) return false;
+    if (pe->number_of_data_directories <= XX_PE_DIRECTORY_DEBUG) return false;
+    rva = pe->data_directory_rva[XX_PE_DIRECTORY_DEBUG];
+    size = pe->data_directory_size[XX_PE_DIRECTORY_DEBUG];
+    if (!rva || size < XX_PE_DEBUG_ENTRY_SIZE) return false;
+    memory_map = xx_format_get_memory_map(&pe->format, XX_MEMORY_MAP_MODE_UNKNOWN, NULL);
+    total = xx_io_size(pe->format.device);
+    if (!memory_map || total < 0) return false;
+    count = size / XX_PE_DEBUG_ENTRY_SIZE;
+    if (count > XX_PE_DEBUG_MAX_ENTRIES) count = XX_PE_DEBUG_MAX_ENTRIES;
+    for (i = 0U; i < count; ++i) {
+        /* IMAGE_DEBUG_DIRECTORY {Characteristics, TimeDateStamp, Major, Minor, Type,
+         * SizeOfData, AddressOfRawData, PointerToRawData} */
+        uint8_t entry[XX_PE_DEBUG_ENTRY_SIZE];
+        uint64_t entry_rva = (uint64_t)rva + (uint64_t)i * XX_PE_DEBUG_ENTRY_SIZE;
+        int64_t entry_offset;
+        int64_t data_offset = -1;
+        uint32_t data_size;
+        uint32_t data_rva;
+        uint32_t data_pointer;
+        if (entry_rva > UINT32_MAX) break;
+        entry_offset = xx_pe_relative_range_to_offset(memory_map, entry_rva, XX_PE_DEBUG_ENTRY_SIZE);
+        if (entry_offset < 0 || entry_offset > total || total - entry_offset < (int64_t)XX_PE_DEBUG_ENTRY_SIZE ||
+            !xx_io_read_at(pe->format.device, entry_offset, entry, sizeof(entry)))
+            break;
+        if (xx_pe_read_le32(entry + 12) != XX_PE_DEBUG_TYPE_CODEVIEW) continue;
+        data_size = xx_pe_read_le32(entry + 16);
+        data_rva = xx_pe_read_le32(entry + 20);
+        data_pointer = xx_pe_read_le32(entry + 24);
+        if (data_pointer) {
+            if (!xx_pe_add_offset(pe->format.base_address, data_pointer, &data_offset)) continue;
+        } else if (data_rva && data_size) {
+            data_offset = xx_pe_relative_range_to_offset(memory_map, data_rva, data_size);
+        }
+        if (data_offset < 0) continue;
+        xx_mem_zero(out, sizeof(*out));
+        if (xx_pe_codeview_record(pe, data_offset, data_size, total, out)) return true;
+    }
+    xx_mem_zero(out, sizeof(*out));
+    return false;
+}
+
+bool xx_pe_codeview_guid_to_string(const uint8_t guid[16], bool with_braces, char *out, size_t out_size)
+{
+    static const char digits[] = "0123456789ABCDEF";
+    /* Data1 (4 bytes), Data2, Data3 (2 bytes each) are little endian, Data4 is a byte array */
+    static const uint8_t order[16] = {3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15};
+    size_t position = 0U;
+    size_t i;
+    if (!out || !out_size) return false;
+    out[0] = 0;
+    if (!guid || out_size < (with_braces ? 39U : 33U)) return false;
+    if (with_braces) out[position++] = '{';
+    for (i = 0U; i < 16U; ++i) {
+        if (with_braces && (i == 4U || i == 6U || i == 8U || i == 10U)) out[position++] = '-';
+        out[position++] = digits[guid[order[i]] >> 4];
+        out[position++] = digits[guid[order[i]] & 15U];
+    }
+    if (with_braces) out[position++] = '}';
+    out[position] = 0;
+    return true;
+}

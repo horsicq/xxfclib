@@ -713,7 +713,11 @@ static int xx_crt_vformat_out(xx_crt_out *pOut, const char *pFormat, va_list arg
         } else if (p[0] == 'L') {
             nLength = XX_CRT_LEN_LONGDOUBLE;
             ++p;
-        } else if (p[0] == 'j' || p[0] == 'z' || p[0] == 't') {
+        } else if (p[0] == 'j') {
+            /* intmax_t is 64-bit on x86 as well */
+            nLength = XX_CRT_LEN_64;
+            ++p;
+        } else if (p[0] == 'z' || p[0] == 't') {
             nLength = sizeof(size_t) == 8 ? XX_CRT_LEN_64 : XX_CRT_LEN_32;
             ++p;
         } else if (p[0] == 'I') {

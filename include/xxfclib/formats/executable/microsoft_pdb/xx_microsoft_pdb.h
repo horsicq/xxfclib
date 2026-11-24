@@ -222,6 +222,16 @@ typedef struct xx_ms_pdb_symbol {
     uint16_t value_leaf;  /* S_CONSTANT: numeric leaf the value was stored in */
     int64_t record_offset;
     int32_t record_size;
+    /* S_GPROC32 / S_LPROC32 / S_GPROC32_ID / S_LPROC32_ID (and their JG 16t / ST
+     * forms): the PROCSYM32 fields; 0 for every other kind. parent / end /
+     * next are offsets in the same symbol stream (end = the S_END record),
+     * debug_start / debug_end are offsets from the start of the code. */
+    uint32_t parent;
+    uint32_t end;
+    uint32_t next;
+    uint32_t code_size;
+    uint32_t debug_start;
+    uint32_t debug_end;
 } xx_ms_pdb_symbol;
 
 typedef struct xx_ms_pdb_type_record {
@@ -433,6 +443,49 @@ XXFC_API bool xx_ms_pdb_get_named_streams(xx_ms_pdb *pdb, xx_ms_pdb_stream_list 
  * and load them on demand. */
 XXFC_API size_t xx_ms_pdb_get_hash_adjuster_count(xx_ms_pdb *pdb);
 XXFC_API bool xx_ms_pdb_get_hash_adjuster(xx_ms_pdb *pdb, const char *name, uint32_t *type_index);
+
+/* ---- IPI (id) records by index ----------------------------------------------- */
+
+/* A decoded record of the IPI stream (stream 4). Only the fields of the kind
+ * are filled in, the rest are 0 / "":
+ *   LF_FUNC_ID        scope_index (an LF_STRING_ID / namespace id, 0 = global),
+ *                     type_index (the LF_PROCEDURE), name
+ *   LF_MFUNC_ID       parent_type_index (the class), type_index (the
+ *                     LF_MFUNCTION), name
+ *   LF_STRING_ID      list_index (an LF_SUBSTR_LIST id or 0), name (the string)
+ *   LF_UDT_SRC_LINE   type_index (the UDT), source_index (an LF_STRING_ID id
+ *                     holding the file name), line
+ *   LF_UDT_MOD_SRC_LINE type_index, source_index (an offset into /names; name is
+ *                     that string when the /names stream has it), line, module
+ *                     (1 based)
+ *   LF_BUILDINFO, LF_SUBSTR_LIST  count (the ids: xx_ms_pdb_get_id_list)
+ * Every other kind comes back with is_valid, kind and the record location. */
+typedef struct xx_ms_pdb_id_record {
+    bool is_valid;          /* the index names a record of the IPI stream */
+    uint32_t id_index;
+    uint16_t kind;
+    const char *name;       /* never NULL */
+    uint32_t scope_index;
+    uint32_t parent_type_index;
+    uint32_t type_index;
+    uint32_t list_index;
+    uint32_t source_index;
+    uint32_t line;
+    uint16_t module;
+    uint32_t count;
+    int64_t record_offset;  /* in the IPI stream (header included) */
+    int32_t record_size;
+} xx_ms_pdb_id_record;
+
+/* The record of an id index (>= the IPI type_index_begin). The offsets of the
+ * IPI records are collected on the first call (one walk over the stream, as
+ * xx_ms_pdb_get_ids does; the records themselves are read on demand and not
+ * kept). False (out->is_valid false) when the PDB has no IPI stream or the
+ * index is not in it. JG files have no IPI stream. */
+XXFC_API bool xx_ms_pdb_get_id_by_index(xx_ms_pdb *pdb, uint32_t id_index, xx_ms_pdb_id_record *out);
+/* The ids of an LF_BUILDINFO or LF_SUBSTR_LIST record (count entries, cut at
+ * the end of the record). True with an empty list for every other kind. */
+XXFC_API bool xx_ms_pdb_get_id_list(xx_ms_pdb *pdb, uint32_t id_index, xx_ms_pdb_u32_list *out);
 
 /* Notes on the functions above:
  * - a list getter returns false only for a bad argument or a failed

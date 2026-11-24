@@ -206,7 +206,9 @@ var PE_FIELD_DESCRIPTIONS = {
 function peStructs() {
     var list = [], id;
     for (id = 1; id < PE_NAMES.length; id++) {
-        list.push({ id: id, name: PE_NAMES[id], fields: peRecordFields, description: PE_DESCRIPTIONS[PE_NAMES[id]] });
+        // The fields depend only on entrySize and totalSize, except for the two structures that read the file.
+        list.push({ id: id, name: PE_NAMES[id], fields: peRecordFields, description: PE_DESCRIPTIONS[PE_NAMES[id]],
+            sizedFields: PE_NAMES[id] !== "IMAGE_DATA_DIRECTORY" && PE_NAMES[id] !== "DYNAMIC_RELOCATION_ARM64X" });
     }
     list[3].aliases = ["IMAGE_OPTIONAL_HEADER"];   // id 4, the name without a width
     return list;
@@ -1720,6 +1722,8 @@ function peTableFields(ds, table, out) {
     return out;
 }
 
+// Big programs repeat a few thousand shapes hundreds of thousands of times:
+// the host reuses the lists of sizedFields entries (see peStructs).
 function peRecordFields(ds) {
     var out;
     if (ds.offset < 0 || ds.totalSize <= 0) return undefined;
