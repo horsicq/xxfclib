@@ -6,6 +6,7 @@
 
 #include "xxfclib/formats/xx_format_stream_features.h"
 #include "xxfclib/data/xx_pd.h"
+#include "xxfclib/io/xx_io.h"
 #include "xxfclib/var/xx_var.h"
 #include <stdbool.h>
 #include <stdint.h>
